@@ -25,6 +25,13 @@
     <PackageReference Include="Reloaded.SharedLib.Hooks" Version="1.9.0" />
   </ItemGroup>
 
+  <!-- Reference to FFTIVC Mod Loader for file redirection -->
+  <ItemGroup>
+    <Reference Include="fftivc.utility.modloader.Interfaces">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFTIVC_Mod_Loader\fftivc.utility.modloader.Interfaces.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
   <ItemGroup>
     <Compile Remove="Tests\**" />
     <EmbeddedResource Remove="Tests\**" />
