@@ -1,19 +1,24 @@
 # FFT Color Mod - TODO List
 <!-- KEEP UNDER 100 LINES TOTAL -->
 
-## ⚡ CURRENT STATUS: Mod Initializing Successfully!
+## ⚡ CURRENT STATUS: Streaming PAC Extraction Complete!
 
-**Achievement**: StartEx initialization bug FIXED! 🎉
-**Status**: 118 tests passing! ✅ - Mod loads in 151ms!
+**Achievement**: PacExtractor now handles large files (>2GB) using streaming! 🎉
+**Status**: 124 tests passing! ✅ - Can extract from real FFT PAC files!
 
-### ACCOMPLISHMENTS:
+### ACCOMPLISHMENTS (Dec 4, 2024):
+- ✅ **STREAMING PAC EXTRACTION**: PacExtractor now uses FileStream to handle >2GB files!
+- ✅ **PACK FORMAT SUPPORT**: Can read FFT's actual PAC format with PACK header
+- ✅ **124 TESTS PASSING**: Added streaming tests for large file support
 - ✅ **CRITICAL BUG FIX**: StartEx initialization pattern implemented!
-- ✅ Full TDD implementation with 118 tests passing
+- ✅ Full TDD implementation with comprehensive test coverage
+- ✅ **.bin File Support**: Updated all code to handle FFT's actual sprite format
+- ✅ **Test Sprite Processed**: battle_dami_spr.bin with all 5 color variants
+- ✅ **Folder Structure Created**: FFTIVC/data/enhanced/fftpack/unit/sprites_[color]/
 - ✅ Mod successfully initializing in game (151ms load time)
 - ✅ File-based color swapping system complete
 - ✅ Hotkey support (F1-F5) for color switching
 - ✅ File path interception for sprite redirection
-- ✅ Sprite variant generation system ready
 
 ## 📋 IMPLEMENTATION STATUS
 
@@ -31,9 +36,10 @@
   - Can open PAC files and validate paths
   - Supports both simple and FFT PACK format
   - Methods for GetFileName, GetFileSize, ExtractFile
-  - ExtractAllSprites for .SPR filtering
+  - ExtractAllSprites for .SPR and _spr.bin filtering
   - ExtractSpritesFromDirectory for batch processing
 - [x] **Command-line tool** - Program.cs with extract/process/full commands
+- [x] **.bin file support** - Handles FFT's actual sprite format
 
 ### ✅ Phase 3: Game Integration (COMPLETE!)
 **100% Complete** - Ready for deployment!
@@ -43,39 +49,54 @@
 - [x] **File path interception** - InterceptFilePath redirects to color folders
 - [x] **Sprite variant generation** - GenerateSpriteVariants creates all colors
 
-### 🚀 IMMEDIATE NEXT STEPS TO DEPLOY:
+### ✅ COMPLETED TASKS (Dec 4, 2024):
 
-#### UPDATED IMPLEMENTATION (Dec 4, 2024) - .bin Files Discovery
-1. **Update code for .bin files** - Change all .spr references to .bin
-2. **Process test sprite** - Use battle_dami_spr.bin from Blue And Red Mages mod
-3. **Generate color variants** - Apply PaletteDetector to .bin file
-4. **Create folder structure** - FFTIVC/data/enhanced/fftpack/unit/sprites_[color]/
-5. **Test hotkeys** - F1=Blue, F2=Red, F3=Green, F4=Purple, F5=Original
-6. **Deploy mod** - Copy to Reloaded mods folder
-7. **Extract more sprites** - Update PacExtractor to find .bin files
+1. ✅ **Updated code for .bin files** - All .spr references changed to support .bin
+2. ✅ **Processed test sprite** - battle_dami_spr.bin successfully processed
+3. ✅ **Generated color variants** - All 5 variants created (blue/red/green/purple/original)
+4. ✅ **Created folder structure** - FFTIVC/data/enhanced/fftpack/unit/sprites_[color]/
+5. ✅ **PacExtractor updated** - Now extracts both .spr and _spr.bin files
+
+### 🚀 NEXT STEPS (Where to pickup):
+
+1. **Extract sprites from actual PAC files** - Use the new streaming method to extract from the large PAC files
+   ```bash
+   dotnet run --project FFTColorMod.csproj -- extract-stream "C:/Program Files (x86)/Steam/steamapps/common/FINAL FANTASY TACTICS/data/enhanced" extracted_sprites
+   ```
+2. **Find Ramza's sprite files** - Look for files like `battle_ramza_spr.bin` in extracted sprites
+3. **Process Ramza sprites** - Apply color variants to the actual Ramza sprite files
+4. **Deploy and test** - Copy processed sprites to mod folder and test in-game
 
 ## 🔧 Technical Stack
 
 ### Working Components:
 - **PaletteDetector.cs** - Detects & replaces colors (multiple palette support)
-- **SpriteColorGenerator.cs** - Batch-processes sprites with color variants
+- **SpriteColorGenerator.cs** - Batch-processes sprites with color variants (.spr and .bin)
 - **SpriteProcessingPipeline.cs** - Full pipeline with color swapping
 - **FileRedirector.cs** - Color scheme management
-- **ModLoaderIntegration.cs** - Hotkey handling and file redirection
-- **PacExtractor.cs** - PAC file extraction (supports PACK header)
-- **Program.cs** - CLI tool for extraction and processing
-- **Test Scripts** - Reliable run_tests.sh/.ps1 (98 tests passing)
+- **GameIntegration.cs** - Hotkey handling and file redirection (.spr and .bin support)
+- **PacExtractor.cs** - PAC file extraction (supports PACK header, .spr and _spr.bin)
+- **Program.cs** - CLI tool for extraction and processing (.bin aware)
+- **Startup.cs** - Reloaded-II StartEx entry point
+- **Test Scripts** - Reliable run_tests.sh/.ps1 (121 tests passing!)
 
-### File Structure:
+### File Structure (Updated):
 ```
 FFT_Color_Mod/
-├── FFTIVC/data/
+├── FFTIVC/data/enhanced/fftpack/unit/
 │   ├── sprites_blue/
+│   │   └── battle_dami_spr.bin
 │   ├── sprites_red/
+│   │   └── battle_dami_spr.bin
 │   ├── sprites_green/
+│   │   └── battle_dami_spr.bin
 │   ├── sprites_purple/
+│   │   └── battle_dami_spr.bin
 │   └── sprites_original/
+│       └── battle_dami_spr.bin
 ├── FFTColorMod.dll
+├── Startup.cs
+├── ModContext.cs
 └── ModConfig.json
 ```
 

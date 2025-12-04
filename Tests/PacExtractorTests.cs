@@ -348,5 +348,257 @@ namespace FFTColorMod.Tests
                     Directory.Delete(outputDir, true);
             }
         }
+
+        [Fact]
+        public void OpenPacStream_HandlesLargeFiles()
+        {
+            // TLDR: Test that PacExtractor can handle large files using streaming
+            var extractor = new PacExtractor();
+            var tempFile = Path.GetTempFileName();
+
+            try
+            {
+                // Create a small test PAC file (simulating the structure)
+                var pacData = new List<byte>();
+                pacData.AddRange(BitConverter.GetBytes(1)); // file count
+                pacData.AddRange(BitConverter.GetBytes(44)); // offset
+                pacData.AddRange(BitConverter.GetBytes(4));  // size
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("test.spr".PadRight(32, '\0')));
+                pacData.AddRange(new byte[] { 0x01, 0x02, 0x03, 0x04 });
+
+                File.WriteAllBytes(tempFile, pacData.ToArray());
+
+                // Test streaming approach
+                var result = extractor.OpenPacStream(tempFile);
+                Assert.True(result);
+            }
+            finally
+            {
+                extractor.ClosePac();
+                File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public void ExtractSpritesUsingStream_ExtractsFromLargePac()
+        {
+            // TLDR: Test extracting sprites using streaming for large files
+            var extractor = new PacExtractor();
+            var tempFile = Path.GetTempFileName();
+            var outputDir = Path.Combine(Path.GetTempPath(), "stream_sprites");
+
+            try
+            {
+                // Create test PAC with sprite
+                var pacData = new List<byte>();
+                pacData.AddRange(BitConverter.GetBytes(1)); // file count
+                pacData.AddRange(BitConverter.GetBytes(44)); // offset
+                pacData.AddRange(BitConverter.GetBytes(4));  // size
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("battle_test_spr.bin".PadRight(32, '\0')));
+                pacData.AddRange(new byte[] { 0xAA, 0xBB, 0xCC, 0xDD });
+
+                File.WriteAllBytes(tempFile, pacData.ToArray());
+
+                // Open with streaming
+                var opened = extractor.OpenPacStream(tempFile);
+                Assert.True(opened);
+
+                // Extract sprites using stream
+                var count = extractor.ExtractSpritesUsingStream(outputDir);
+
+                // Should extract 1 sprite
+                Assert.Equal(1, count);
+                Assert.True(File.Exists(Path.Combine(outputDir, "battle_test_spr.bin")));
+            }
+            finally
+            {
+                extractor.ClosePac();
+                File.Delete(tempFile);
+                if (Directory.Exists(outputDir))
+                    Directory.Delete(outputDir, true);
+            }
+        }
+
+        [Fact]
+        public void ExtractSpritesUsingStream_HandlesFFTPackFormat()
+        {
+            // TLDR: Test extracting from FFT's PACK header format
+            var extractor = new PacExtractor();
+            var tempFile = Path.GetTempFileName();
+            var outputDir = Path.Combine(Path.GetTempPath(), "pack_sprites");
+
+            try
+            {
+                // Create FFT PACK format PAC file
+                var pacData = new List<byte>();
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("PACK")); // PACK header
+                pacData.AddRange(BitConverter.GetBytes(1)); // file count at offset 4
+
+                // File entry at offset 8
+                pacData.AddRange(BitConverter.GetBytes(48)); // data offset
+                pacData.AddRange(BitConverter.GetBytes(5));  // size
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("ramza_spr.bin".PadRight(32, '\0')));
+
+                // File data at offset 48
+                pacData.AddRange(new byte[] { 0x11, 0x22, 0x33, 0x44, 0x55 });
+
+                File.WriteAllBytes(tempFile, pacData.ToArray());
+
+                // Open and extract using streaming
+                var opened = extractor.OpenPacStream(tempFile);
+                Assert.True(opened);
+
+                var count = extractor.ExtractSpritesUsingStream(outputDir);
+
+                // Should extract the sprite
+                Assert.Equal(1, count);
+                Assert.True(File.Exists(Path.Combine(outputDir, "ramza_spr.bin")));
+
+                // Verify file contents
+                var extracted = File.ReadAllBytes(Path.Combine(outputDir, "ramza_spr.bin"));
+                Assert.Equal(5, extracted.Length);
+                Assert.Equal(0x11, extracted[0]);
+            }
+            finally
+            {
+                extractor.ClosePac();
+                File.Delete(tempFile);
+                if (Directory.Exists(outputDir))
+                    Directory.Delete(outputDir, true);
+            }
+        }
+
+        [Fact]
+        public void ExtractSpritesFromGameDirectory_FindsRamzaSprite()
+        {
+            // TLDR: Test searching for Ramza sprite in actual game PAC files
+            var extractor = new PacExtractor();
+            var gameDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS\data\enhanced";
+            var outputDir = Path.Combine(Path.GetTempPath(), "fft_ramza_search");
+
+            try
+            {
+                // Skip test if game directory doesn't exist
+                if (!Directory.Exists(gameDir))
+                {
+                    return; // Skip test when game not installed
+                }
+
+                // Search for Ramza sprites in PAC files
+                var pacFiles = Directory.GetFiles(gameDir, "*.pac", SearchOption.AllDirectories);
+                bool ramzaFound = false;
+
+                foreach (var pacFile in pacFiles)
+                {
+                    if (extractor.OpenPacStream(pacFile))
+                    {
+                        // Check if this PAC contains Ramza sprite
+                        var fileCount = extractor.GetFileCount();
+                        for (int i = 0; i < fileCount; i++)
+                        {
+                            var fileName = extractor.GetFileName(i);
+                            if (fileName != null && fileName.Contains("ramza", StringComparison.OrdinalIgnoreCase)
+                                && fileName.EndsWith("_spr.bin", StringComparison.OrdinalIgnoreCase))
+                            {
+                                ramzaFound = true;
+
+                                // Extract just this file for testing
+                                Directory.CreateDirectory(outputDir);
+                                var fileData = extractor.ExtractFile(i);
+                                Assert.NotNull(fileData);
+
+                                // Write the extracted data to file
+                                var outputPath = Path.Combine(outputDir, fileName);
+                                File.WriteAllBytes(outputPath, fileData);
+
+                                // Verify the file was extracted
+                                Assert.True(File.Exists(outputPath));
+                                break;
+                            }
+                        }
+
+                        extractor.ClosePac();
+
+                        if (ramzaFound) break;
+                    }
+                }
+
+                // We expect to find Ramza's sprite somewhere
+                Assert.True(ramzaFound, "Could not find Ramza sprite in game PAC files");
+            }
+            finally
+            {
+                extractor.ClosePac();
+                if (Directory.Exists(outputDir))
+                    Directory.Delete(outputDir, true);
+            }
+        }
+
+        [Fact]
+        public void FindAndExtractSpritesUsingStream_ExtractsMatchingSprites()
+        {
+            // TLDR: Test the FindAndExtractSpritesUsingStream method with search pattern
+            var extractor = new PacExtractor();
+            var tempDir = Path.Combine(Path.GetTempPath(), "find_extract_stream_test");
+            var gameDir = Path.Combine(tempDir, "game");
+            var outputDir = Path.Combine(tempDir, "output");
+
+            try
+            {
+                Directory.CreateDirectory(gameDir);
+
+                // Create a test PAC file with multiple sprites
+                var pacFile = Path.Combine(gameDir, "test.pac");
+                var pacData = new List<byte>();
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("PACK")); // PACK header
+                pacData.AddRange(BitConverter.GetBytes(3)); // 3 files
+
+                // File entries start at offset 8
+                // Each entry is 40 bytes (4 offset + 4 size + 32 name)
+                // So 3 entries = 120 bytes, starting at offset 8, ending at 128
+                // Data starts at offset 128
+
+                // File 1: ramza_spr.bin at offset 128
+                pacData.AddRange(BitConverter.GetBytes(128)); // offset
+                pacData.AddRange(BitConverter.GetBytes(5));   // size
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("ramza_spr.bin".PadRight(32, '\0')));
+
+                // File 2: delita_spr.bin at offset 133
+                pacData.AddRange(BitConverter.GetBytes(133)); // offset
+                pacData.AddRange(BitConverter.GetBytes(5));   // size
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("delita_spr.bin".PadRight(32, '\0')));
+
+                // File 3: some_other_file.dat at offset 138
+                pacData.AddRange(BitConverter.GetBytes(138)); // offset
+                pacData.AddRange(BitConverter.GetBytes(5));   // size
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("some_other_file.dat".PadRight(32, '\0')));
+
+                // File data
+                pacData.AddRange(new byte[] { 0x11, 0x22, 0x33, 0x44, 0x55 }); // ramza
+                pacData.AddRange(new byte[] { 0x66, 0x77, 0x88, 0x99, 0xAA }); // delita
+                pacData.AddRange(new byte[] { 0xBB, 0xCC, 0xDD, 0xEE, 0xFF }); // other
+
+                File.WriteAllBytes(pacFile, pacData.ToArray());
+
+                // Search for "ramza" sprites using the streaming method
+                var extracted = extractor.FindAndExtractSpritesUsingStream(gameDir, "ramza", outputDir);
+
+                // Should only extract ramza sprite
+                Assert.Equal(1, extracted.Count);
+                Assert.Contains("ramza_spr.bin", extracted);
+
+                // Verify file exists and has correct content
+                var outputFile = Path.Combine(outputDir, "ramza_spr.bin");
+                Assert.True(File.Exists(outputFile));
+                var content = File.ReadAllBytes(outputFile);
+                Assert.Equal(5, content.Length);
+                Assert.Equal(0x11, content[0]);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
     }
 }

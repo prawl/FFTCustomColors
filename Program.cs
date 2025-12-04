@@ -3,9 +3,9 @@ using System.IO;
 
 namespace FFTColorMod
 {
-    class Program
+    public class Program
     {
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             Console.WriteLine("FFT Color Mod - Sprite Processor");
             Console.WriteLine("=====================================");
@@ -34,6 +34,10 @@ namespace FFTColorMod
 
                 case "full":
                     RunFullPipeline(args);
+                    break;
+
+                case "find-ramza":
+                    FindRamza(args);
                     break;
 
                 default:
@@ -201,6 +205,24 @@ namespace FFTColorMod
             ExtractSprites(args);
             Console.WriteLine();
             ProcessSprites(new[] { "process" });
+        }
+
+        static void FindRamza(string[] args)
+        {
+            // TLDR: Find and extract Ramza sprites from PAC files
+            if (args.Length < 3)
+            {
+                Console.WriteLine("Usage: find-ramza <game-dir> <output-dir>");
+                return;
+            }
+
+            string gameDir = args[1];
+            string outputDir = args[2];
+
+            var extractor = new PacExtractor();
+            var extracted = extractor.FindAndExtractSpritesUsingStream(gameDir, "ramza", outputDir);
+
+            Console.WriteLine($"Found and extracted {extracted.Count} Ramza sprites");
         }
     }
 }
