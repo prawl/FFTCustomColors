@@ -1,5 +1,6 @@
 using Xunit;
 using System.IO;
+using System.Collections.Generic;
 
 namespace FFTColorMod.Tests
 {
@@ -14,12 +15,22 @@ namespace FFTColorMod.Tests
         }
 
         [Fact]
-        public void OpenPac_WithValidPath_ReturnsTrue()
+        public void OpenPac_WithExistingFile_ReturnsTrue()
         {
-            // TLDR: Test opening a PAC file
+            // TLDR: Test opening an existing PAC file
             var extractor = new PacExtractor();
-            var result = extractor.OpenPac("test.pac");
-            Assert.True(result);
+
+            // Create a temporary test file
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                var result = extractor.OpenPac(tempFile);
+                Assert.True(result);
+            }
+            finally
+            {
+                File.Delete(tempFile);
+            }
         }
 
         [Fact]
@@ -74,6 +85,129 @@ namespace FFTColorMod.Tests
             var extractor = new PacExtractor();
             var data = extractor.ExtractFile(0);
             Assert.Null(data);
+        }
+
+        [Fact]
+        public void OpenPac_WithNonExistentFile_ReturnsFalse()
+        {
+            // TLDR: Test opening non-existent file returns false
+            var extractor = new PacExtractor();
+            var result = extractor.OpenPac("nonexistent.pac");
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void OpenPac_SetsFileCount()
+        {
+            // TLDR: Test that OpenPac reads file count
+            var extractor = new PacExtractor();
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                // Write 4 bytes for file count
+                File.WriteAllBytes(tempFile, new byte[] { 0x05, 0x00, 0x00, 0x00 }); // 5 files
+                extractor.OpenPac(tempFile);
+                Assert.Equal(5, extractor.GetFileCount());
+            }
+            finally
+            {
+                File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public void GetFileCount_AfterOpeningFile_ReturnsNonZero()
+        {
+            // TLDR: Test file count after opening a PAC file
+            var extractor = new PacExtractor();
+
+            // Create a test PAC file with minimal header
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                // Write minimal PAC header (4 bytes for file count, little endian)
+                File.WriteAllBytes(tempFile, new byte[] { 0x01, 0x00, 0x00, 0x00 }); // 1 file
+
+                var opened = extractor.OpenPac(tempFile);
+                Assert.True(opened, "Failed to open test PAC file");
+
+                var count = extractor.GetFileCount();
+                Assert.Equal(1, count);
+            }
+            finally
+            {
+                File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public void GetFileName_AfterOpeningFile_ReturnsFileName()
+        {
+            // TLDR: Test getting file name from PAC
+            var extractor = new PacExtractor();
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                // PAC format: [4 bytes count][file entries][file data]
+                // File entry: [4 bytes offset][4 bytes size][32 bytes name]
+                var pacData = new List<byte>();
+
+                // File count (1 file)
+                pacData.AddRange(BitConverter.GetBytes(1));
+
+                // File entry: offset=44, size=100, name="test.spr"
+                pacData.AddRange(BitConverter.GetBytes(44)); // offset after header
+                pacData.AddRange(BitConverter.GetBytes(100)); // size
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("test.spr".PadRight(32, '\0')));
+
+                File.WriteAllBytes(tempFile, pacData.ToArray());
+
+                extractor.OpenPac(tempFile);
+                var fileName = extractor.GetFileName(0);
+                Assert.Equal("test.spr", fileName);
+            }
+            finally
+            {
+                File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public void ExtractFile_AfterOpeningFile_ReturnsFileData()
+        {
+            // TLDR: Test extracting file data from PAC
+            var extractor = new PacExtractor();
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                var pacData = new List<byte>();
+
+                // File count (1 file)
+                pacData.AddRange(BitConverter.GetBytes(1));
+
+                // File entry: offset=44, size=4, name="test.spr"
+                int fileDataOffset = 44;
+                int fileSize = 4;
+                pacData.AddRange(BitConverter.GetBytes(fileDataOffset));
+                pacData.AddRange(BitConverter.GetBytes(fileSize));
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("test.spr".PadRight(32, '\0')));
+
+                // File data
+                byte[] testData = new byte[] { 0xAA, 0xBB, 0xCC, 0xDD };
+                pacData.AddRange(testData);
+
+                File.WriteAllBytes(tempFile, pacData.ToArray());
+
+                extractor.OpenPac(tempFile);
+                var extractedData = extractor.ExtractFile(0);
+
+                Assert.NotNull(extractedData);
+                Assert.Equal(testData, extractedData);
+            }
+            finally
+            {
+                File.Delete(tempFile);
+            }
         }
     }
 }
