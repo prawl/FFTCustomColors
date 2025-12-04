@@ -4,6 +4,48 @@ using System;
 
 namespace FFTColorMod.Tests;
 
+public class ModHookIntegrationTests
+{
+    [Fact]
+    public void Mod_ShouldCreateSpriteHook_WhenPatternFound()
+    {
+        // TLDR: Test that Mod creates sprite hook when pattern is found
+        // Arrange
+        var mod = new Mod();
+
+        // Act - simulate pattern found
+        var patternFound = mod.TestHandlePatternFound(new IntPtr(0x12345678));
+
+        // Assert - hook should be created
+        Assert.True(patternFound, "Pattern handler should return true when hook created");
+    }
+
+    [Fact]
+    public void Mod_ShouldCallSignatureScannerCreateHook_WhenPatternFound()
+    {
+        // TLDR: Test that Mod calls SignatureScanner.CreateSpriteLoadHook
+        // Arrange
+        var mod = new Mod();
+
+        // Act - simulate pattern found with hooks
+        var hookCreated = mod.TestCreateHookForPattern(new IntPtr(0x12345678));
+
+        // Assert
+        Assert.True(hookCreated, "Should create hook when pattern found");
+    }
+
+    [Fact]
+    public void Mod_ShouldHaveSignatureScannerInitialized_WhenPatternHandled()
+    {
+        // TLDR: Test that SignatureScanner is available when handling patterns
+        // Arrange
+        var mod = new Mod();
+
+        // Act & Assert
+        Assert.True(mod.IsSignatureScannerReady(), "SignatureScanner should be ready");
+    }
+}
+
 public class GameIntegrationTests
 {
     [Fact]

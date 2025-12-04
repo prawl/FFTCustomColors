@@ -4,35 +4,39 @@
 ## ⚡ IMMEDIATE: Get RED Working with F2
 
 **Goal**: v0.1-alpha in 1-2 weeks
-**Status**: 45 tests passing ✅, mod loads in Reloaded-II!
+**Status**: 52 tests passing ✅, mod loads in Reloaded-II!
 
-### ✅ CONFIRMED WORKING (Dec 3, 2024):
+### ✅ CONFIRMED WORKING (Dec 4, 2024):
 - Mod loads successfully in Reloaded-II
 - F1/F2 hotkeys respond correctly
 - Memory scanning finds palettes (5 found in test)
 - Chapter detection works (found Ch1 & Ch2)
 - Memory writes succeed (WriteProcessMemory=True)
 - Color values change in memory (80 40 60 → 30 30 80)
+- Hook infrastructure ready with TDD (CreateSpriteLoadHook)
+- Constructor initialization working (v1223-hooks confirmed)
 
-### 🔴 PROBLEM: Colors don't persist visually
-**Why**: FFT reloads palettes from files constantly
-**Solution**: Need to hook sprite loading functions
+### 🔴 PROBLEM: Start() method not called
+**Why**: fftivc.utility.modloader doesn't call Start()
+**Impact**: Can't get IStartupScanner for pattern scanning
+**Solution**: Need manual memory scanning or different hook approach
 
-### This Week: Add Dependencies & Hook
+### This Week: Hook Implementation
 - [x] ✅ Add required packages (DONE)
-- [x] ✅ Create SignatureScanner with tests (49 tests passing!)
-- [x] ✅ Add ProcessSpriteData hook method (DONE)
-- [x] ✅ Test mod in Reloaded-II (WORKS!)
-- [x] ✅ Fix: Start() method called properly (constructor accepts IModLoader & IReloadedHooks)
-- [ ] 🔴 Find actual sprite loading signature with x64dbg
+- [x] ✅ Create SignatureScanner with tests (52 tests passing!)
+- [x] ✅ Add CreateSpriteLoadHook with TDD
+- [x] ✅ Test mod in Reloaded-II (loads but no Start())
+- [x] ✅ Wire up pattern found handler in Mod.cs
+- [ ] 🔴 Get IStartupScanner without Start() OR manual scan
+- [ ] 🔴 Find actual sprite loading signature
 - [ ] 🔴 Hook sprite loading to modify DURING load
 
-### Next Week: Red Color
-- [ ] 🔴 Hook sprite loading function
-- [ ] 🔴 Integrate existing PaletteDetector
-- [ ] 🔴 Hard-code RED color only
-- [ ] 🔴 Test with Chapter 1 Ramza
-- [ ] 🔴 Add F2 hotkey toggle
+### Next Steps: Manual Scanning or Alternative
+- [ ] 🔴 Try manual memory scanning without IStartupScanner
+- [ ] 🔴 OR investigate different mod template (ModContext like FFTGenericJobs)
+- [ ] 🔴 OR hook Windows API functions directly
+- [ ] 🔴 Test palette modification in LoadSpriteHook
+- [ ] 🔴 Verify colors change when F2 pressed
 
 ### Release v0.1-alpha
 - [ ] 🔴 One screenshot (before/after)
@@ -85,14 +89,5 @@ private nint LoadSpriteHook(nint spriteData, int size) {
 }
 ```
 
-## ✅ Completed (December 3, 2025)
-- [x] Analyzed FFTGenericJobs approach
-- [x] Build scripts (BuildLinked.ps1, Publish.ps1)
-- [x] GitHub Actions CI/CD
-- [x] 29 passing tests
-- [x] PaletteDetector logic
-- [x] Hotkey system (F1/F2)
-- [x] All 4 chapter detection
-
 ---
-**See FUTURE_TODOS.md for post-MVP tasks**
+**See FUTURE_TODOS.md for completed tasks & post-MVP features**

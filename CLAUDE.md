@@ -7,6 +7,7 @@ Color modification mod for FFT (Steam) using function hooking to swap character 
 ## Paths
 - **Dev**: `C:\Users\ptyRa\Dev\FFT_Color_Mod`
 - **Install**: `C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFT_Color_Mod`
+- **Reference**: `C:\Users\ptyRa\Dev\FFTGenericJobs` (GenericMod source for hooking patterns)
 
 ## Technical Details
 - **Format**: BGR (Blue-Green-Red), 3 bytes per color

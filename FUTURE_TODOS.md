@@ -1,6 +1,20 @@
 # FFT Color Mod - Future TODOs
 <!-- Tasks to tackle AFTER v0.1-alpha is working -->
 
+## ✅ Completed (December 2024)
+- [x] Analyzed FFTGenericJobs approach
+- [x] Build scripts (BuildLinked.ps1, Publish.ps1)
+- [x] GitHub Actions CI/CD
+- [x] 52 passing tests (up from 29)
+- [x] PaletteDetector logic
+- [x] Hotkey system (F1/F2)
+- [x] All 4 chapter detection
+- [x] Added required packages
+- [x] Created SignatureScanner with tests
+- [x] Added CreateSpriteLoadHook with TDD
+- [x] Tested mod in Reloaded-II (loads but no Start())
+- [x] Wired up pattern found handler in Mod.cs
+
 ## 🎯 POST-MVP Tasks
 
 ### Account Setup

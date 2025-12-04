@@ -285,6 +285,65 @@ namespace FFTColorMod.Tests
         }
 
         [Fact]
+        public void CreateSpriteHook_ShouldHookFunction_WhenPatternFound()
+        {
+            // TLDR: Test that finding sprite pattern creates actual hook
+            // Arrange
+            var scanner = new SignatureScanner();
+            var mockHooks = new Mock<IReloadedHooks>();
+            var mockStartupScanner = new Mock<IStartupScanner>();
+            IntPtr testAddress = new IntPtr(0x12345678);
+
+            // Act - simulate finding the sprite loading pattern
+            scanner.CreateSpriteLoadHook(mockHooks.Object, testAddress);
+
+            // Assert - should have created a hook for sprite loading
+            Assert.True(scanner.IsSpriteHookActive, "Sprite hook should be active after pattern found");
+        }
+
+        [Fact]
+        public void CreateSpriteHook_ShouldNotBeActive_WhenHooksIsNull()
+        {
+            // TLDR: Test that hook is not activated when hooks is null
+            // Arrange
+            var scanner = new SignatureScanner();
+            IntPtr testAddress = new IntPtr(0x12345678);
+
+            // Act
+            scanner.CreateSpriteLoadHook(null, testAddress);
+
+            // Assert - should NOT be active
+            Assert.False(scanner.IsSpriteHookActive, "Hook should not be active when hooks is null");
+        }
+
+        [Fact]
+        public void LoadSpriteHook_ShouldReturnSamePointer_WhenCalled()
+        {
+            // TLDR: Test that our hook function returns the sprite data unchanged
+            // Arrange
+            var scanner = new SignatureScanner();
+            IntPtr testData = new IntPtr(0xDEADBEEF);
+            int testSize = 256;
+
+            // Act - call the hook method directly
+            var result = scanner.TestLoadSpriteHook(testData, testSize);
+
+            // Assert - should return same pointer
+            Assert.Equal(testData, result);
+        }
+
+        [Fact]
+        public void CreateSpriteHook_ShouldCallActivate_WhenHookCreated()
+        {
+            // TLDR: Test that we call Activate() on the hook
+            // Arrange
+            var scanner = new SignatureScanner();
+
+            // Act & Assert - check that hook is activated
+            Assert.True(scanner.TestIfHookWouldBeActivated(), "Hook should be activated when created");
+        }
+
+        [Fact]
         public void SetupExperimentalHooks_ShouldAddMultiplePatterns()
         {
             // Arrange
