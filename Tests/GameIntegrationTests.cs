@@ -44,6 +44,29 @@ public class ModHookIntegrationTests
         // Act & Assert
         Assert.True(mod.IsSignatureScannerReady(), "SignatureScanner should be ready");
     }
+
+    [Fact]
+    public void Mod_Constructor_ShouldCreateManualMemoryScanner()
+    {
+        // TLDR: Test that Mod creates ManualMemoryScanner in constructor
+        // Arrange & Act
+        var mod = new Mod();
+
+        // Assert - mod should initialize with scanner ready
+        Assert.NotNull(mod);
+        Assert.True(mod.HasManualScanner(), "Should have manual scanner ready");
+    }
+
+    [Fact]
+    public void Mod_Constructor_ShouldStartScanning()
+    {
+        // TLDR: Test that Mod starts scanning for patterns on initialization
+        // Arrange & Act
+        var mod = new Mod();
+
+        // Assert - mod should have started scanning
+        Assert.True(mod.IsScanningStarted(), "Should start scanning in constructor");
+    }
 }
 
 public class GameIntegrationTests

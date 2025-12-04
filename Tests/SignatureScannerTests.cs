@@ -241,7 +241,10 @@ namespace FFTColorMod.Tests
             // Assert
             Assert.Equal(testPointer, result);
         }
+    }
 
+    public class SignatureScannerAdvancedTests
+    {
         [Fact]
         public void ProcessSpriteData_WithoutPaletteDetector_ShouldReturnSamePointer()
         {

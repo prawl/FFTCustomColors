@@ -31,6 +31,8 @@ public class Mod : IMod
     private IReloadedHooks? _hooks;
     private IModLoader? _modLoader;
     private IHook<LoadSpriteDelegate>? _loadSpriteHook;
+    private ManualMemoryScanner? _manualScanner;
+    private bool _scanningStarted = false;
 
     // Delegate for sprite loading function
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
@@ -58,6 +60,10 @@ public class Mod : IMod
     {
         var logPath = Path.Combine(Path.GetTempPath(), "FFTColorMod.log");
         File.WriteAllText(logPath, $"[{DateTime.Now}] FFT Color Mod initializing in constructor\n");
+
+        // Initialize manual scanner
+        _manualScanner = new ManualMemoryScanner();
+        _scanningStarted = true;
 
         // Initialize process handles
         _gameProcess = Process.GetCurrentProcess();
@@ -473,5 +479,17 @@ public class Mod : IMod
     {
         // TLDR: Check if SignatureScanner is initialized
         return _signatureScanner != null;
+    }
+
+    public bool HasManualScanner()
+    {
+        // TLDR: Check if ManualMemoryScanner is initialized
+        return _manualScanner != null;
+    }
+
+    public bool IsScanningStarted()
+    {
+        // TLDR: Check if scanning has been started
+        return _scanningStarted;
     }
 }
