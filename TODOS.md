@@ -1,93 +1,78 @@
 # FFT Color Mod - TODO List
 <!-- KEEP UNDER 100 LINES TOTAL -->
 
-## ⚡ IMMEDIATE: Get RED Working with F2
+## ⚡ NEW APPROACH: File-Based Color Swapping (Proven Method)
 
-**Goal**: v0.1-alpha in 1-2 weeks
-**Status**: 52 tests passing ✅, mod loads in Reloaded-II!
+**Goal**: v0.1 release using file replacement approach
+**Status**: PaletteDetector working (34 tests passing ✅)
 
-### ✅ CONFIRMED WORKING (Dec 4, 2024):
-- Mod loads successfully in Reloaded-II
-- F1/F2 hotkeys respond correctly
-- Memory scanning finds palettes (5 found in test)
-- Chapter detection works (found Ch1 & Ch2)
-- Memory writes succeed (WriteProcessMemory=True)
-- Color values change in memory (80 40 60 → 30 30 80)
-- Hook infrastructure ready with TDD (CreateSpriteLoadHook)
-- Constructor initialization working (v1223-hooks confirmed)
+### WHY FILE-BASED:
+- WotL Characters mod proves it works
+- No reverse engineering needed
+- Can build TODAY with existing code
 
-### 🔴 PROBLEM: Start() method not called
-**Why**: fftivc.utility.modloader doesn't call Start()
-**Impact**: Can't get IStartupScanner for pattern scanning
-**Solution**: Need manual memory scanning or different hook approach
+## 📋 IMPLEMENTATION TASKS
 
-### This Week: Hook Implementation
-- [x] ✅ Add required packages (DONE)
-- [x] ✅ Create SignatureScanner with tests (52 tests passing!)
-- [x] ✅ Add CreateSpriteLoadHook with TDD
-- [x] ✅ Test mod in Reloaded-II (loads but no Start())
-- [x] ✅ Wire up pattern found handler in Mod.cs
-- [ ] 🔴 Get IStartupScanner without Start() OR manual scan
-- [ ] 🔴 Find actual sprite loading signature
-- [ ] 🔴 Hook sprite loading to modify DURING load
+### Phase 1: Extract & Generate Sprites
+- [ ] **Extract sprite files from FFT**
+  - Location: Steam\...\FINAL FANTASY TACTICS\pack\*.pac files
+  - Target: .SPR files with embedded palettes
 
-### Next Steps: Manual Scanning or Alternative
-- [ ] 🔴 Try manual memory scanning without IStartupScanner
-- [ ] 🔴 OR investigate different mod template (ModContext like FFTGenericJobs)
-- [ ] 🔴 OR hook Windows API functions directly
-- [ ] 🔴 Test palette modification in LoadSpriteHook
-- [ ] 🔴 Verify colors change when F2 pressed
+- [ ] **Create SpriteColorGenerator tool**
+  - Read all .SPR files from input directory
+  - Use PaletteDetector.DetectChapterOutfit()
+  - Generate 5 variants using ReplacePaletteColors()
+  - Save to FFTIVC/data/sprites_[color]/
 
-### Release v0.1-alpha
-- [ ] 🔴 One screenshot (before/after)
-- [ ] 🔴 Basic README
-- [ ] 🔴 Build with `.\Publish.ps1`
-- [ ] 🔴 Tag as v0.1.0-alpha
-- [ ] 🔴 Upload to GitHub
-- [ ] 🔴 Post on FFHacktics
+- [ ] **Generate all color variants**
+  - Blue (F1), Red (F2), Green (F3), Purple (F4), Original (F5)
+  - ~500 sprites × 5 colors = 2500 files
 
-## 📖 Quick Context (for new sessions)
+### Phase 2: Mod Integration
+- [ ] **Add fftivc.utility.modloader dependency**
+  ```json
+  "ModDependencies": ["fftivc.utility.modloader", "reloaded.sharedlib.hooks"]
+  ```
 
-**Problem**: Direct memory edits fail - FFT reloads palettes
-**Solution**: Hook sprite loading functions (like FFTGenericJobs does)
-**Format**: BGR colors, 256 per palette
-**Key Files**:
-- PaletteDetector.cs (tested - detects all 4 chapters!)
-- SignatureScanner.cs (hook infrastructure ready)
-- run_tests.sh / run_tests.ps1 (use these to run tests!)
+- [ ] **Implement file redirection logic**
+  - Handle F1-F5 hotkeys
+  - Switch active sprite folder
+  - Use modloader's file redirection
 
-**Test Results (Dec 3, 2024)**:
-- ✅ Memory modification works (5 palettes found & modified)
-- ✅ Chapter detection accurate (Ch1 & Ch2 identified)
-- ✅ Hotkeys work (F1/F2 switching)
-- 🔴 Visual changes don't persist (need hooks)
-- 🔴 Start() not called (need to fix Reloaded integration)
-- 🔴 Need actual sprite loading signatures
+- [ ] **Test hotkey switching**
+  - F1-F5 instantly swap colors
+  - Works without battle restart
 
-## 🔧 Hook Implementation Pattern
+### Phase 3: Polish & Release
+- [ ] **Create installer** with pre-generated sprites
+- [ ] **Documentation** (installation, hotkeys)
+- [ ] **Test all 4 chapter outfits**
 
-```csharp
-// Find function signature
-_startupScanner.AddMainModuleScan(
-    "48 8B C4 48 89 58 ??",  // Byte pattern
-    result => {
-        if (result.Found) {
-            _hooks.CreateHook<LoadSpriteDelegate>(
-                LoadSpriteHook,
-                gameBase + result.Offset
-            ).Activate();
-        }
-    }
-);
+## 🔧 Technical Details
 
-// Hook implementation
-private nint LoadSpriteHook(nint spriteData, int size) {
-    var result = _loadSpriteHook.OriginalFunction(spriteData, size);
-    // Apply our PaletteDetector here!
-    ModifyPaletteInMemory(spriteData);
-    return result;
-}
+### File Structure:
+```
+FFT_Color_Mod/
+├── FFTIVC/data/
+│   ├── sprites_blue/
+│   ├── sprites_red/
+│   ├── sprites_green/
+│   ├── sprites_purple/
+│   └── sprites_original/
+├── FFTColorMod.dll
+└── ModConfig.json
 ```
 
+### Key Components:
+- **PaletteDetector.cs** - Detects & replaces colors (working!)
+- **SpriteColorGenerator.cs** - Batch-processes sprites
+- **Mod.cs** - Hotkeys & file redirection
+- **fftivc.utility.modloader** - File interception
+
+### Success Criteria:
+✅ F1-F5 instantly change ALL sprite colors
+✅ Works in battles, cutscenes, menus
+✅ Compatible with other mods
+
 ---
-**See FUTURE_TODOS.md for completed tasks & post-MVP features**
+**See PLANNING.md for technical details and research**

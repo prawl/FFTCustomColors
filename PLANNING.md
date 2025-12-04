@@ -1,5 +1,159 @@
 # FFT Color Mod - Technical Planning & Research
 
+## 🔥 ULTRA-DEEP ANALYSIS: FFTGenericJobs Complete Architecture Decoded!
+
+### CRITICAL DISCOVERIES FROM DEEP DIVE (December 2024)
+
+After thorough sequential analysis of FFTGenericJobs source code, we've uncovered the **EXACT implementation patterns** that make their memory manipulation successful:
+
+#### 1. **StartEx vs Start - The Missing Link**
+- **PROBLEM**: Our `Start()` method never gets called by Reloaded-II
+- **SOLUTION**: Use `StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig)` instead!
+- **PROOF**: GenericJobs/Template/Startup.cs line 51 - StartEx DOES get called
+- **KEY**: StartEx is the actual entry point Reloaded-II uses, not Start
+
+#### 2. **ModContext Pattern - Immediate Initialization**
+```csharp
+// Their Pattern (WORKS):
+public class Startup : IMod {
+    public void StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig) {
+        // Collect all services HERE
+        _mod = new Mod(new ModContext {
+            Hooks = _hooks,
+            Logger = _logger,
+            ModLoader = _modLoader
+        });
+    }
+}
+
+public class Mod : ModBase {
+    public Mod(ModContext context) {
+        // Everything available IMMEDIATELY in constructor!
+        Initialize(); // Can hook right away!
+    }
+}
+```
+
+#### 3. **IStartupScanner Dependency - Not Optional!**
+- **CRITICAL**: They list "Reloaded.Memory.SigScan.ReloadedII" as REQUIRED dependency
+- **Location**: ModConfig.json line 60
+- **Effect**: Guarantees IStartupScanner is available when mod loads
+- **Our Fix**: Add same dependency to our ModConfig.json
+
+#### 4. **Direct Memory Patching with SafeWrite**
+```csharp
+// Their WriteMemory implementation (lines 326-332):
+private unsafe void WriteMemory(nuint address, byte[] data) {
+    fixed (byte* dataPtr = data) {
+        Reloaded.Memory.Memory.Instance.SafeWrite(address,
+            new Span<byte>(dataPtr, data.Length));
+    }
+}
+```
+- Uses `Reloaded.Memory.Memory.Instance.SafeWrite` for safe memory writing
+- Writes NOPs (0x90), jumps (0xEB), and data values directly
+
+#### 5. **Temporary Patching Pattern - Genius Execution Control**
+```csharp
+// Temporarily disable game code (lines 434-452):
+private void ApplyTempPatches(bool disable) {
+    if (disable) {
+        // Replace with NOPs to disable
+        WriteMemory(addr, [0x90, 0x90, 0x90]);
+    } else {
+        // Restore original instructions
+        WriteMemory(addr, [0x89, 0x83, 0x38]);
+    }
+}
+
+// Usage pattern:
+ApplyTempPatches(true);  // Disable game code
+DoOurModifications();     // Make changes safely
+CallOriginalFunction();   // Let game continue
+ApplyTempPatches(false); // Re-enable game code
+```
+
+#### 6. **Hook Pattern for Runtime Modification**
+```csharp
+// Hook creation (lines 196, 200, etc):
+_hooks.CreateHook<DelegateType>(HookFunction, address).Activate()
+
+// Hook function pattern:
+private ReturnType HookFunction(params) {
+    // Pre-processing
+    ModifyData();
+
+    // Call original
+    var result = _hook.OriginalFunction(params);
+
+    // Post-processing
+    ModifyMoreData();
+
+    return result;
+}
+```
+
+### 🎯 SOLUTION FOR OUR COLOR MOD
+
+Based on these discoveries, here's our exact implementation path:
+
+#### Step 1: Fix Initialization (IMMEDIATE)
+1. Create `Template/Startup.cs` with StartEx entry point
+2. Implement ModContext pattern
+3. Pass all services to Mod constructor
+4. Initialize hooks in constructor, not Start()
+
+#### Step 2: Add Required Dependencies
+```json
+"ModDependencies": [
+    "Reloaded.Memory.SigScan.ReloadedII",  // CRITICAL!
+    "reloaded.sharedlib.hooks"
+]
+```
+
+#### Step 3: Find Sprite Loading Signatures
+We need signatures for:
+- Sprite/palette loading from PAC files
+- Palette application to sprites
+- The reload function that overwrites our changes
+
+#### Step 4: Implement Hooks
+```csharp
+// Hook sprite loading to modify palettes AS they load:
+private nint LoadSpriteHook(nint spriteData, int size) {
+    var result = _loadSpriteHook.OriginalFunction(spriteData, size);
+
+    // Apply our existing PaletteDetector logic HERE!
+    if (_paletteDetector.DetectChapterOutfit(spriteData)) {
+        _paletteDetector.ReplacePaletteColors(spriteData, _currentScheme);
+    }
+
+    return result;
+}
+```
+
+#### Step 5: Optional - Temporary Patch Pattern
+If palette reloading persists, temporarily NOP the reload call:
+```csharp
+// During our color modification:
+WriteMemory(reloadFunctionAddr, [0x90, 0x90, 0x90]); // NOP
+ModifyColors();
+WriteMemory(reloadFunctionAddr, originalBytes);      // Restore
+```
+
+### 🚨 WHY THIS CHANGES EVERYTHING
+
+**Old Approach (Failed)**:
+- Modified palette data AFTER loading
+- FFT reloaded palettes, overwriting changes
+- No control over execution flow
+
+**New Approach (Will Work)**:
+- Hook loading functions directly
+- Modify data DURING load process
+- Control execution with temp patches
+- Prevent reloading through hooks
+
 ## 🚨 BREAKTHROUGH: FFTGenericJobs Analysis Changes Everything!
 
 After analyzing the successful **FFTGenericJobs** mod, we discovered they use a completely different approach that **successfully modifies FFT through memory manipulation**. This solves our palette reloading problem!
@@ -302,6 +456,140 @@ We can find these using tools like:
 - **Finding correct signatures**: Use multiple patterns, test thoroughly
 - **Hook timing**: Ensure hooks are installed before game loads assets
 - **Compatibility**: Test with other mods, especially fftivc.utility.modloader
+
+## CRITICAL DISCOVERY #2: FFTGenericJobs DUAL-ENTRY INITIALIZATION
+
+### The Secret: TWO-LAYER Architecture!
+
+After deep analysis, FFTGenericJobs uses a **two-layer initialization pattern** that bypasses the IStartupScanner problem:
+
+1. **Startup.cs** (Entry point - IMod interface)
+   - Implements `StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig)`
+   - This DOES get called by Reloaded-II
+   - Collects all necessary services (IReloadedHooks, ILogger, etc.)
+   - Creates ModContext with all services
+   - Instantiates the actual Mod class with ModContext
+
+2. **Mod.cs** (Business logic - ModBase class)
+   - Constructor receives ModContext with ALL services already initialized
+   - Doesn't need Start() to be called - everything happens in constructor
+   - Can immediately use IReloadedHooks to create hooks
+   - IStartupScanner issue becomes irrelevant for basic hooks
+
+### Why This Works When Ours Doesn't
+
+**Our Current Structure (BROKEN):**
+```csharp
+public class Mod : IMod {
+    public Mod() { /* Can't do much here */ }
+    public void Start(IModLoader modLoader) { /* NEVER GETS CALLED */ }
+}
+```
+
+**FFTGenericJobs Structure (WORKS):**
+```csharp
+// Startup.cs - Gets called by Reloaded
+public class Startup : IMod {
+    public void StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig) {
+        // Gather all services here
+        _mod = new Mod(new ModContext {
+            Hooks = _hooks,
+            Logger = _logger,
+            ModLoader = _modLoader
+        });
+    }
+}
+
+// Mod.cs - Business logic
+public class Mod : ModBase {
+    public Mod(ModContext context) {
+        // Have everything we need immediately!
+        _hooks = context.Hooks;
+        // Can create hooks right here!
+    }
+}
+```
+
+### The IStartupScanner Mystery Solved
+
+FFTGenericJobs DOES try to use IStartupScanner but:
+1. They check if it's available (lines 177-182)
+2. If NOT available, they log error and **return**
+3. **BUT** - The mod still works because they use CreateWrapper/CreateHook directly!
+
+The key insight: **They don't actually NEED IStartupScanner for basic hooks!**
+
+They can use `_hooks.CreateHook()` directly with known addresses. IStartupScanner is just for pattern scanning to FIND addresses dynamically.
+
+### How They Actually Hook Without IStartupScanner
+
+Even when IStartupScanner fails, they could still:
+1. Use hardcoded offsets (if they knew them)
+2. Use their own Scanner class (Reloaded.Memory.Sigscan)
+3. Hook functions they can find other ways
+
+### SOLUTION FOR OUR MOD
+
+We need to adopt the two-layer pattern:
+
+1. **Create Template/Startup.cs**:
+```csharp
+public class Startup : IMod {
+    public void StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig) {
+        // This WILL get called
+        var modContext = new ModContext {
+            Hooks = _hooks,
+            Logger = _logger,
+            ModLoader = _modLoader
+        };
+        _mod = new Mod(modContext);
+    }
+}
+```
+
+2. **Modify our Mod.cs**:
+```csharp
+public class Mod : ModBase {
+    public Mod(ModContext context) {
+        _hooks = context.Hooks;
+        // NOW we can create hooks immediately!
+        InitializeHooks();
+    }
+}
+```
+
+3. **For Pattern Scanning Without IStartupScanner**:
+```csharp
+// Use Reloaded.Memory.Sigscan directly
+var scanner = new Scanner(_process, _process.MainModule);
+var result = scanner.CompiledFindPattern("B9 00 03 00 00");
+if (result.Found) {
+    var hook = _hooks.CreateHook<PaletteLoadDelegate>(
+        MyHookFunction,
+        _gameBase + result.Offset
+    );
+    hook.Activate();
+}
+```
+
+### Why FFTGenericJobs Still Works
+
+The mod successfully adds Dark Knight and Onion Knight by:
+1. Using the two-layer initialization to get hooks working
+2. Patching memory directly with WriteMemory()
+3. Hooking critical functions even without IStartupScanner
+4. Using hardcoded patterns that rarely change
+
+### Action Items for Our Mod
+
+1. **IMMEDIATE**: Adopt the Startup.cs/ModBase pattern
+2. **Use StartEx** instead of Start (it actually gets called!)
+3. **Pass services via ModContext** to avoid waiting for Start()
+4. **Hook directly** with known addresses from our pattern analysis
+5. **Use Scanner class** directly instead of waiting for IStartupScanner
+
+This explains EVERYTHING about why FFTGenericJobs works while ours doesn't!
+
 
 ## Alternative Approaches (Future)
 
