@@ -97,5 +97,63 @@ namespace FFTColorMod
 
             return fileData;
         }
+
+        public int ExtractAllSprites(string outputDirectory)
+        {
+            // TLDR: Extracts all .SPR files from the PAC to a directory
+            if (_pacData == null) return 0;
+
+            // Create output directory if it doesn't exist
+            Directory.CreateDirectory(outputDirectory);
+
+            int extractedCount = 0;
+
+            for (int i = 0; i < _fileCount; i++)
+            {
+                string? fileName = GetFileName(i);
+                if (fileName != null && fileName.EndsWith(".spr", StringComparison.OrdinalIgnoreCase))
+                {
+                    byte[]? fileData = ExtractFile(i);
+                    if (fileData != null)
+                    {
+                        string outputPath = Path.Combine(outputDirectory, fileName);
+                        File.WriteAllBytes(outputPath, fileData);
+                        extractedCount++;
+                    }
+                }
+            }
+
+            return extractedCount;
+        }
+
+        // Helper method to extract sprites from all PAC files in a directory
+        public static int ExtractSpritesFromDirectory(string pacDirectory, string outputDirectory)
+        {
+            // TLDR: Extracts all sprites from all PAC files in a directory
+            if (!Directory.Exists(pacDirectory))
+                return 0;
+
+            int totalExtracted = 0;
+            var pacFiles = Directory.GetFiles(pacDirectory, "*.pac", SearchOption.AllDirectories);
+
+            foreach (var pacFile in pacFiles)
+            {
+                var extractor = new PacExtractor();
+                if (extractor.OpenPac(pacFile))
+                {
+                    string pacName = Path.GetFileNameWithoutExtension(pacFile);
+                    string pacOutputDir = Path.Combine(outputDirectory, pacName);
+
+                    int extracted = extractor.ExtractAllSprites(pacOutputDir);
+                    if (extracted > 0)
+                    {
+                        Console.WriteLine($"Extracted {extracted} sprites from {Path.GetFileName(pacFile)} to {pacOutputDir}");
+                        totalExtracted += extracted;
+                    }
+                }
+            }
+
+            return totalExtracted;
+        }
     }
 }

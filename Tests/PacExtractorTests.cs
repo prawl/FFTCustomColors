@@ -209,5 +209,58 @@ namespace FFTColorMod.Tests
                 File.Delete(tempFile);
             }
         }
+
+        [Fact]
+        public void ExtractAllSprites_ExtractsOnlySprFiles()
+        {
+            // TLDR: Test extracting only .SPR files from PAC
+            var extractor = new PacExtractor();
+            var tempFile = Path.GetTempFileName();
+            var outputDir = Path.Combine(Path.GetTempPath(), "test_sprites");
+
+            try
+            {
+                var pacData = new List<byte>();
+
+                // File count (3 files: 2 SPR, 1 other)
+                pacData.AddRange(BitConverter.GetBytes(3));
+
+                // File 1: test.spr at offset 124
+                pacData.AddRange(BitConverter.GetBytes(124));
+                pacData.AddRange(BitConverter.GetBytes(4));
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("test.spr".PadRight(32, '\0')));
+
+                // File 2: other.bin at offset 128
+                pacData.AddRange(BitConverter.GetBytes(128));
+                pacData.AddRange(BitConverter.GetBytes(4));
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("other.bin".PadRight(32, '\0')));
+
+                // File 3: sprite2.spr at offset 132
+                pacData.AddRange(BitConverter.GetBytes(132));
+                pacData.AddRange(BitConverter.GetBytes(4));
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("sprite2.spr".PadRight(32, '\0')));
+
+                // File data
+                pacData.AddRange(new byte[] { 0x01, 0x02, 0x03, 0x04 }); // test.spr
+                pacData.AddRange(new byte[] { 0x05, 0x06, 0x07, 0x08 }); // other.bin
+                pacData.AddRange(new byte[] { 0x09, 0x0A, 0x0B, 0x0C }); // sprite2.spr
+
+                File.WriteAllBytes(tempFile, pacData.ToArray());
+
+                extractor.OpenPac(tempFile);
+                var extractedCount = extractor.ExtractAllSprites(outputDir);
+
+                Assert.Equal(2, extractedCount); // Only 2 SPR files
+                Assert.True(File.Exists(Path.Combine(outputDir, "test.spr")));
+                Assert.True(File.Exists(Path.Combine(outputDir, "sprite2.spr")));
+                Assert.False(File.Exists(Path.Combine(outputDir, "other.bin")));
+            }
+            finally
+            {
+                File.Delete(tempFile);
+                if (Directory.Exists(outputDir))
+                    Directory.Delete(outputDir, true);
+            }
+        }
     }
 }
