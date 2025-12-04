@@ -40,6 +40,10 @@ namespace FFTColorMod
                     FindRamza(args);
                     break;
 
+                case "list-files":
+                    ListPacFiles(args);
+                    break;
+
                 default:
                     Console.WriteLine($"Unknown command: {command}");
                     ShowUsage();
@@ -223,6 +227,54 @@ namespace FFTColorMod
             var extracted = extractor.FindAndExtractSpritesUsingStream(gameDir, "ramza", outputDir);
 
             Console.WriteLine($"Found and extracted {extracted.Count} Ramza sprites");
+        }
+
+        static void ListPacFiles(string[] args)
+        {
+            // TLDR: List all files in a PAC archive
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Usage: list-files <pac-file>");
+                return;
+            }
+
+            string pacFile = args[1];
+            var extractor = new PacExtractor();
+
+            if (!File.Exists(pacFile))
+            {
+                Console.WriteLine($"PAC file not found: {pacFile}");
+                return;
+            }
+
+            if (extractor.OpenPacStream(pacFile))
+            {
+                var fileCount = extractor.GetFileCountFromStream();
+                Console.WriteLine($"PAC contains {fileCount} files:");
+                Console.WriteLine();
+
+                int spriteCount = 0;
+                for (int i = 0; i < Math.Min(fileCount, 100); i++)
+                {
+                    var fileName = extractor.GetFileNameFromStream(i);
+                    if (!string.IsNullOrEmpty(fileName))
+                    {
+                        Console.WriteLine($"  {i:D4}: {fileName}");
+                        if (fileName.Contains("spr", StringComparison.OrdinalIgnoreCase) ||
+                            fileName.EndsWith(".bin", StringComparison.OrdinalIgnoreCase))
+                        {
+                            spriteCount++;
+                        }
+                    }
+                }
+
+                if (fileCount > 100)
+                    Console.WriteLine($"  ... and {fileCount - 100} more files");
+
+                Console.WriteLine();
+                Console.WriteLine($"Found {spriteCount} potential sprite files");
+                extractor.ClosePac();
+            }
         }
     }
 }

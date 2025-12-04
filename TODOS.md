@@ -59,13 +59,34 @@
 
 ### 🚀 NEXT STEPS (Where to pickup):
 
-1. **Extract sprites from actual PAC files** - Use the new streaming method to extract from the large PAC files
+### Current Discovery (Dec 4, 2024 - Session End):
+1. **PAC File Investigation** - 0001.pac contains 1339 files but filenames appear corrupted/encrypted
+   - Added `list-files` command to examine PAC contents
+   - File names in PAC aren't readable - may be encrypted or use different encoding
+   - Need to investigate PAC format more deeply or find documentation
+
+2. **Commands Available**:
    ```bash
-   dotnet run --project FFTColorMod.csproj -- extract-stream "C:/Program Files (x86)/Steam/steamapps/common/FINAL FANTASY TACTICS/data/enhanced" extracted_sprites
+   # List files in a PAC (shows first 100)
+   dotnet run --project FFTColorMod.csproj -- list-files "C:/Program Files (x86)/Steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/data/enhanced/0001.pac"
+
+   # Search for ramza sprites (currently finds 0 due to naming)
+   dotnet run --project FFTColorMod.csproj -- find-ramza "C:/Program Files (x86)/Steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/data/enhanced" output_dir
    ```
-2. **Find Ramza's sprite files** - Look for files like `battle_ramza_spr.bin` in extracted sprites
-3. **Process Ramza sprites** - Apply color variants to the actual Ramza sprite files
-4. **Deploy and test** - Copy processed sprites to mod folder and test in-game
+
+3. **What We Know**:
+   - FFT PAC files use "PACK" header format
+   - File count is stored at offset 4
+   - Each file entry is 40 bytes (4 offset + 4 size + 32 name)
+   - Filenames appear corrupted - may need decryption/decoding
+   - We have working color modification for any sprites we can extract
+   - 130 tests passing with full streaming support
+
+4. **Next Session Tasks**:
+   - Research FFT PAC file format documentation
+   - Try different character encodings for filenames
+   - Look for unencrypted PAC files or tools to decode them
+   - Consider extracting by file extension patterns instead of names
 
 ## 🔧 Technical Stack
 
