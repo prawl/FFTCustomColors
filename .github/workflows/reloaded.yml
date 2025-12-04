@@ -1,0 +1,121 @@
+# GitHub Actions workflow for FFT Color Mod
+# Builds and publishes the mod for Reloaded-II
+# Based on the Reloaded-II template by Sewer56
+
+# Produces:
+#   - Build artifacts for testing (on every push)
+#   - GitHub Release (on tag push)
+#   - Automatic changelog generation
+#   - Optional: NuGet package, GameBanana upload
+
+name: Build and Publish FFT Color Mod
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PUBLISH_PATH: ./Publish
+  PUBLISH_GITHUB_PATH: ./Publish/ToUpload/Generic
+  PUBLISH_CHANGELOG_PATH: ./Publish/Changelog.md
+
+  # Set RELOADEDIIMODS to current directory for build
+  RELOADEDIIMODS: .
+
+  # Determine if this is a release (tag push)
+  IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') }}
+  RELEASE_TAG: ${{ github.ref_name }}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for changelog
+        submodules: 'recursive'
+
+    - name: Setup .NET 8.0 SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Setup Node.js (for changelog)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Changelog Generator
+      run: npm install -g auto-changelog
+
+    - name: Generate Changelog
+      run: |
+        [System.IO.Directory]::CreateDirectory("$env:PUBLISH_PATH")
+        if ($env:IS_RELEASE -eq 'true') {
+            auto-changelog --sort-commits date --hide-credit --template keepachangelog --commit-limit false --starting-version "$env:RELEASE_TAG" --output "$env:PUBLISH_CHANGELOG_PATH"
+        }
+        else {
+            auto-changelog --sort-commits date --hide-credit --template keepachangelog --commit-limit false --unreleased --output "$env:PUBLISH_CHANGELOG_PATH"
+        }
+
+    - name: Run Tests
+      run: dotnet test FFTColorMod.Tests.csproj --verbosity minimal
+      continue-on-error: true  # Don't fail build if tests fail (for now)
+
+    - name: Build and Package
+      run: ./Publish.ps1 -ChangelogPath "$env:PUBLISH_CHANGELOG_PATH"
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: FFT-Color-Mod-${{ github.sha }}
+        path: |
+          ${{ env.PUBLISH_GITHUB_PATH }}/*
+        retention-days: 30
+
+    - name: Upload Changelog
+      uses: actions/upload-artifact@v4
+      with:
+        name: Changelog
+        path: ${{ env.PUBLISH_CHANGELOG_PATH }}
+        retention-days: 30
+
+    - name: Create GitHub Release (on Tag)
+      uses: softprops/action-gh-release@v2
+      if: env.IS_RELEASE == 'true'
+      with:
+        name: FFT Color Mod ${{ env.RELEASE_TAG }}
+        body_path: ${{ env.PUBLISH_CHANGELOG_PATH }}
+        files: |
+          ${{ env.PUBLISH_GITHUB_PATH }}/*
+        draft: false
+        prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+
+  # Optional: Add test results comment on PR
+  test-results:
+    if: github.event_name == 'pull_request'
+    runs-on: windows-latest
+    needs: build
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 8.0 SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Run Tests with Coverage
+      run: |
+        dotnet test FFTColorMod.Tests.csproj --logger "console;verbosity=detailed"
+      continue-on-error: true

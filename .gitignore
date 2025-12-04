@@ -1,0 +1,58 @@
+# Build outputs
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+
+# Test results
+TestResults/
+*.coverage
+*.coveragexml
+
+# Publish artifacts
+Publish/
+*.zip
+*.nupkg
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+.vscode/
+
+# Rider
+.idea/
+*.sln.iml
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+
+# Reloaded-II specific
+*.log
+Reloaded.Mod.Loader.Bootstrapper.dll
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+
+# User-specific files
+*.rsuser
+*.suo
+*.bak
+*.cache
+
+# Temporary files
+*.tmp
+*.temp
+~$*
+
+# Build script tools (downloaded automatically)
+Publish/Tools/

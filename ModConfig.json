@@ -1,0 +1,34 @@
+{
+  "ModId": "ptyra.fft.colormod",
+  "ModName": "FFT Custom Colors",
+  "ModAuthor": "ptyRa",
+  "ModVersion": "1.0.0",
+  "ModDescription": "Changes character clothing colors in Final Fantasy Tactics",
+  "ModDll": "FFTColorMod.dll",
+  "ModIcon": "Preview.png",
+  "ModR2RManagedDll32": "x86/FFTColorMod.dll",
+  "ModR2RManagedDll64": "x64/FFTColorMod.dll",
+  "ModNativeDll32": "",
+  "ModNativeDll64": "",
+  "HasExports": false,
+  "CanUnload": false,
+  "IsLibrary": false,
+  "ReleaseMetadataFileName": "FFTColorMod.ReleaseMetadata.json",
+  "IgnoreRegexes": [
+    ".*\\.json"
+  ],
+  "IncludeRegexes": [
+    "\\.deps\\.json",
+    "\\.runtimeconfig\\.json"
+  ],
+  "PluginData": {},
+  "IsUniversalMod": false,
+  "ModDependencies": [
+    "fftivc.utility.modloader",
+    "Reloaded.Memory.SigScan.ReloadedII",
+    "reloaded.sharedlib.hooks"
+  ],
+  "OptionalDependencies": [],
+  "SupportedAppId": ["fft_enhanced.exe", "fft_classic.exe"],
+  "ProjectUrl": ""
+}
