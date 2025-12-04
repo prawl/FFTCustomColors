@@ -118,6 +118,7 @@ Every push to GitHub triggers automated builds:
 - .NET SDK 8.0 or later
 - Visual Studio 2022 or VS Code with C# extension
 - Git for version control
+- FF16Tools GUI app for extracting sprites from PAC files (required for sprite modification)
 
 ### Build Steps
 
