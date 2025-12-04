@@ -33,7 +33,7 @@ dotnet build -c Release
 ```
 
 ## Development Style
-**STRICT TDD**: Write ONE test at a time, then minimal code to pass. No extra code.
+**TLDDR (TDD + TLDR)**: Write ONE test at a time, then minimal code to pass. Add TLDR comments explaining what code does, not process.
 
 ## Hotkeys
 - **F1-F5**: Color schemes (Blue/Red/Green/Purple/Original)

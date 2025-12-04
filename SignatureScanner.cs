@@ -39,6 +39,40 @@ namespace FFTColorMod
             ColorScheme = scheme;
         }
 
+        public void SetupExperimentalHooks(IStartupScanner scanner, IReloadedHooks hooks)
+        {
+            // Store hooks reference
+            Hooks = hooks;
+
+            // Add experimental patterns to try to find sprite loading functions
+            string[] experimentalPatterns = new[]
+            {
+                "48 8B C4 48 89 58 ??",  // Common x64 function prologue
+                "48 89 5C 24 ?? 48 89 74 24 ??",  // Stack frame setup
+                "40 53 48 83 EC ??"  // push rbx, sub rsp
+            };
+
+            foreach (var pattern in experimentalPatterns)
+            {
+                scanner.AddMainModuleScan(pattern, result =>
+                {
+                    LogPatternMatch(pattern, result.Offset, result.Found);
+                });
+            }
+        }
+
+        public void LogPatternMatch(string pattern, int offset, bool found)
+        {
+            if (found)
+            {
+                Console.WriteLine($"[SignatureScanner] FOUND pattern '{pattern.Substring(0, Math.Min(8, pattern.Length))}...' at offset 0x{offset:X}");
+            }
+            else
+            {
+                Console.WriteLine($"[SignatureScanner] Pattern '{pattern.Substring(0, Math.Min(8, pattern.Length))}...' not found");
+            }
+        }
+
         public unsafe IntPtr ProcessSpriteData(IntPtr spriteData, int size)
         {
             // Safety checks

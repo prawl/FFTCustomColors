@@ -1,5 +1,4 @@
 using System;
-using Xunit;
 using Moq;
 using Reloaded.Memory.SigScan.ReloadedII.Interfaces;
 using Reloaded.Memory.Sigscan.Definitions.Structs;
@@ -256,6 +255,61 @@ namespace FFTColorMod.Tests
 
             // Assert
             Assert.Equal(testPointer, result);
+        }
+
+        [Fact]
+        public void AddMultipleScans_ShouldRegisterAllPatterns()
+        {
+            // Arrange
+            var mockStartupScanner = new Mock<IStartupScanner>();
+            var scanner = new SignatureScanner();
+            var patterns = new[]
+            {
+                "48 8B C4 48 89 58 ??",  // Common function prologue
+                "48 89 5C 24 ?? 48 89 74 24 ??",  // Stack frame setup
+                "40 53 48 83 EC ??"  // Another common pattern
+            };
+
+            // Act
+            foreach (var pattern in patterns)
+            {
+                scanner.AddScan(mockStartupScanner.Object, pattern, $"Pattern_{pattern.Substring(0, 5)}", result => { });
+            }
+
+            // Assert - should have registered all patterns
+            mockStartupScanner.Verify(s => s.AddMainModuleScan(
+                It.IsAny<string>(),
+                It.IsAny<Action<PatternScanResult>>()
+            ), Times.Exactly(3));
+        }
+
+        [Fact]
+        public void SetupExperimentalHooks_ShouldAddMultiplePatterns()
+        {
+            // Arrange
+            var mockStartupScanner = new Mock<IStartupScanner>();
+            var mockHooks = new Mock<IReloadedHooks>();
+            var scanner = new SignatureScanner();
+
+            // Act
+            scanner.SetupExperimentalHooks(mockStartupScanner.Object, mockHooks.Object);
+
+            // Assert - should add at least 3 experimental patterns
+            mockStartupScanner.Verify(s => s.AddMainModuleScan(
+                It.IsAny<string>(),
+                It.IsAny<Action<PatternScanResult>>()
+            ), Times.AtLeast(3));
+        }
+
+        [Fact]
+        public void LogPatternMatch_ShouldNotThrow()
+        {
+            // Arrange
+            var scanner = new SignatureScanner();
+
+            // Act & Assert - just ensure it doesn't throw
+            scanner.LogPatternMatch("48 8B C4", 0x1000, true);
+            scanner.LogPatternMatch("48 8B C4", 0x2000, false);
         }
     }
 }
