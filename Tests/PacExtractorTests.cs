@@ -262,5 +262,51 @@ namespace FFTColorMod.Tests
                     Directory.Delete(outputDir, true);
             }
         }
+
+        [Fact]
+        public void ExtractSpritesFromDirectory_ProcessesAllPacFiles()
+        {
+            // TLDR: Test extracting sprites from multiple PAC files
+            var tempDir = Path.Combine(Path.GetTempPath(), "test_pacs");
+            var outputDir = Path.Combine(Path.GetTempPath(), "extracted_sprites");
+
+            try
+            {
+                Directory.CreateDirectory(tempDir);
+
+                // Create test PAC file 1
+                var pacData1 = new List<byte>();
+                pacData1.AddRange(BitConverter.GetBytes(1));
+                pacData1.AddRange(BitConverter.GetBytes(44));
+                pacData1.AddRange(BitConverter.GetBytes(4));
+                pacData1.AddRange(System.Text.Encoding.ASCII.GetBytes("sprite1.spr".PadRight(32, '\0')));
+                pacData1.AddRange(new byte[] { 0x01, 0x02, 0x03, 0x04 });
+                File.WriteAllBytes(Path.Combine(tempDir, "test1.pac"), pacData1.ToArray());
+
+                // Create test PAC file 2
+                var pacData2 = new List<byte>();
+                pacData2.AddRange(BitConverter.GetBytes(1));
+                pacData2.AddRange(BitConverter.GetBytes(44));
+                pacData2.AddRange(BitConverter.GetBytes(4));
+                pacData2.AddRange(System.Text.Encoding.ASCII.GetBytes("sprite2.spr".PadRight(32, '\0')));
+                pacData2.AddRange(new byte[] { 0x05, 0x06, 0x07, 0x08 });
+                File.WriteAllBytes(Path.Combine(tempDir, "test2.pac"), pacData2.ToArray());
+
+                int totalExtracted = PacExtractor.ExtractSpritesFromDirectory(tempDir, outputDir);
+
+                Assert.Equal(2, totalExtracted);
+                Assert.True(Directory.Exists(Path.Combine(outputDir, "test1")));
+                Assert.True(Directory.Exists(Path.Combine(outputDir, "test2")));
+                Assert.True(File.Exists(Path.Combine(outputDir, "test1", "sprite1.spr")));
+                Assert.True(File.Exists(Path.Combine(outputDir, "test2", "sprite2.spr")));
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+                if (Directory.Exists(outputDir))
+                    Directory.Delete(outputDir, true);
+            }
+        }
     }
 }

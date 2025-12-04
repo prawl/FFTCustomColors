@@ -27,16 +27,17 @@ namespace FFTColorMod
             File.WriteAllBytes(Path.Combine(outputPath, "sprites_purple", fileName), spriteData);
         }
 
-        public void ProcessDirectory(string inputPath, string outputPath)
+        public int ProcessDirectory(string inputPath, string outputPath)
         {
-            // TLDR: Process all .spr files in directory
-            var sprFiles = Directory.GetFiles(inputPath, "*.spr");
+            // TLDR: Process all .spr files in directory and return count
+            var sprFiles = Directory.GetFiles(inputPath, "*.spr", SearchOption.AllDirectories);
             foreach (var file in sprFiles)
             {
                 var spriteData = File.ReadAllBytes(file);
                 var fileName = Path.GetFileName(file);
                 GenerateColorVariants(spriteData, outputPath, fileName);
             }
+            return sprFiles.Length;
         }
     }
 }

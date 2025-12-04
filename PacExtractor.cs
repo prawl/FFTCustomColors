@@ -23,10 +23,24 @@ namespace FFTColorMod
             // Read PAC file
             _pacData = File.ReadAllBytes(path);
 
-            // Ensure we have at least 4 bytes for file count
-            if (_pacData.Length >= 4)
+            // Check for PACK header (FFT format)
+            if (_pacData.Length >= 4 &&
+                _pacData[0] == 'P' && _pacData[1] == 'A' &&
+                _pacData[2] == 'C' && _pacData[3] == 'K')
             {
-                // Read file count from first 4 bytes (little endian)
+                // FFT PAC format: PACK header + file count at offset 4
+                if (_pacData.Length >= 8)
+                {
+                    _fileCount = BitConverter.ToInt32(_pacData, 4);
+                }
+                else
+                {
+                    _fileCount = 0;
+                }
+            }
+            else if (_pacData.Length >= 4)
+            {
+                // Simple format: just file count at start
                 _fileCount = BitConverter.ToInt32(_pacData, 0);
             }
             else
