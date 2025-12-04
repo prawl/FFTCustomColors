@@ -56,3 +56,19 @@ packages/
 
 # Build script tools (downloaded automatically)
 Publish/Tools/
+
+# Test and temporary files
+*.hex
+temp_*.bin
+test_*.spr
+test_*.bin
+extraction.log
+*.diff_files.txt
+
+# Working directories (not for deployment)
+input_sprites/
+extracted_sprites/
+processed_sprites/
+
+# Individual test sprites in root (not the FFTIVC ones)
+/battle_*.bin

@@ -269,6 +269,9 @@ public class Mod : IMod
         Console.WriteLine("[FFT Color Mod] Hotkey monitoring thread started");
         bool f1WasPressed = false;
         bool f2WasPressed = false;
+        bool f3WasPressed = false;
+        bool f4WasPressed = false;
+        bool f5WasPressed = false;
         int loopCount = 0;
 
         while (!cancellationToken.IsCancellationRequested)
@@ -282,27 +285,55 @@ public class Mod : IMod
                 }
                 loopCount++;
 
-                // Check F1 key
+                // Check F1 key - Blue
                 short f1State = GetAsyncKeyState(VK_F1);
                 bool f1Pressed = (f1State & 0x8000) != 0;
                 if (f1Pressed && !f1WasPressed)
                 {
-                    Console.WriteLine("[FFT Color Mod] F1 PRESSED - Switching to original colors");
-                    ApplyColorScheme("original");
-                    Console.WriteLine("[FFT Color Mod] Switched to original colors");
+                    Console.WriteLine("[FFT Color Mod] F1 PRESSED - Switching to BLUE colors");
+                    SwitchPacFile("blue");
                 }
                 f1WasPressed = f1Pressed;
 
-                // Check F2 key
+                // Check F2 key - Red
                 short f2State = GetAsyncKeyState(VK_F2);
                 bool f2Pressed = (f2State & 0x8000) != 0;
                 if (f2Pressed && !f2WasPressed)
                 {
-                    Console.WriteLine("[FFT Color Mod] F2 PRESSED - Switching to red colors");
-                    ApplyColorScheme("red");
-                    Console.WriteLine("[FFT Color Mod] Switched to red colors");
+                    Console.WriteLine("[FFT Color Mod] F2 PRESSED - Switching to RED colors");
+                    SwitchPacFile("red");
                 }
                 f2WasPressed = f2Pressed;
+
+                // Check F3 key - Green
+                short f3State = GetAsyncKeyState(0x72); // VK_F3
+                bool f3Pressed = (f3State & 0x8000) != 0;
+                if (f3Pressed && !f3WasPressed)
+                {
+                    Console.WriteLine("[FFT Color Mod] F3 PRESSED - Switching to GREEN colors");
+                    SwitchPacFile("green");
+                }
+                f3WasPressed = f3Pressed;
+
+                // Check F4 key - Purple
+                short f4State = GetAsyncKeyState(0x73); // VK_F4
+                bool f4Pressed = (f4State & 0x8000) != 0;
+                if (f4Pressed && !f4WasPressed)
+                {
+                    Console.WriteLine("[FFT Color Mod] F4 PRESSED - Switching to PURPLE colors");
+                    SwitchPacFile("purple");
+                }
+                f4WasPressed = f4Pressed;
+
+                // Check F5 key - Original (remove active PAC)
+                short f5State = GetAsyncKeyState(0x74); // VK_F5
+                bool f5Pressed = (f5State & 0x8000) != 0;
+                if (f5Pressed && !f5WasPressed)
+                {
+                    Console.WriteLine("[FFT Color Mod] F5 PRESSED - Switching to ORIGINAL colors");
+                    SwitchPacFile("original");
+                }
+                f5WasPressed = f5Pressed;
 
                 Thread.Sleep(50); // Check every 50ms
             }
@@ -313,6 +344,67 @@ public class Mod : IMod
             }
         }
         Console.WriteLine("[FFT Color Mod] Hotkey monitoring thread stopped");
+    }
+
+    private void SwitchPacFile(string color)
+    {
+        try
+        {
+            // Get the mod's directory
+            var modDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            var enhancedDir = Path.Combine(modDir, "data", "enhanced");
+
+            // The active PAC file that FFT will load
+            var activePacFile = Path.Combine(enhancedDir, "0002.active.diff.pac");
+
+            Console.WriteLine($"[FFT Color Mod] Switching to {color} color scheme");
+            Console.WriteLine($"[FFT Color Mod] Mod directory: {modDir}");
+            Console.WriteLine($"[FFT Color Mod] Enhanced directory: {enhancedDir}");
+
+            if (color == "original")
+            {
+                // Delete the active PAC file to use original colors
+                if (File.Exists(activePacFile))
+                {
+                    File.Delete(activePacFile);
+                    Console.WriteLine($"[FFT Color Mod] Removed active PAC file - using original colors");
+                }
+            }
+            else
+            {
+                // Copy the selected color PAC to be the active one
+                var sourcePac = Path.Combine(enhancedDir, $"0002.{color}.diff.pac");
+
+                if (File.Exists(sourcePac))
+                {
+                    File.Copy(sourcePac, activePacFile, overwrite: true);
+                    Console.WriteLine($"[FFT Color Mod] Copied {color} PAC to active: {activePacFile}");
+
+                    // Also try direct override in game directory for immediate effect
+                    var gameDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\data\enhanced";
+                    var gameActivePac = Path.Combine(gameDir, "0002.active.diff.pac");
+
+                    try
+                    {
+                        File.Copy(sourcePac, gameActivePac, overwrite: true);
+                        Console.WriteLine($"[FFT Color Mod] Also copied to game directory: {gameActivePac}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[FFT Color Mod] Could not copy to game directory (expected): {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[FFT Color Mod] ERROR: Source PAC not found: {sourcePac}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FFT Color Mod] Error switching PAC file: {ex.Message}");
+            Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
+        }
     }
 
     private void ApplyColorScheme(string scheme)
