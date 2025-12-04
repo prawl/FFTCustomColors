@@ -49,6 +49,11 @@ packages/
 *.bak
 *.cache
 
+# Generated output directories
+output_sprites/
+test_output/
+extracted_sprites/
+
 # Temporary files
 *.tmp
 *.temp

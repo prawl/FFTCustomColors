@@ -156,6 +156,42 @@ dotnet build -c Release
 # Output will be in bin/Release/
 ```
 
+### Testing Sprite Color Changes
+
+#### Extract Sprites from Game
+```bash
+# Use FF16Tools GUI to extract sprites from PAC files
+# PAC files location:
+# C:/Program Files (x86)/Steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/data/enhanced/0002.pac
+```
+
+#### Process Single Sprite for Testing
+```bash
+# Extract sprites first (using FF16Tools GUI)
+# Copy sprites to input_sprites folder
+
+# Process a single sprite to test colors
+dotnet run --project FFTColorMod.csproj -- process input_sprites/battle_knight_m_spr.bin test_output
+
+# This creates color variants in:
+# test_output/sprites_red/
+# test_output/sprites_blue/
+# test_output/sprites_green/
+# test_output/sprites_purple/
+# test_output/sprites_original/
+```
+
+#### Deploy and Test In-Game
+```bash
+# Deploy mod to Reloaded-II
+powershell -File BuildLinked.ps1
+
+# Launch FFT through Reloaded-II
+# Enable FFT_Color_Mod
+# Press F2 in-game to switch to red color
+# Knights should now appear with red armor
+```
+
 ## Project Structure
 
 ```
@@ -168,6 +204,7 @@ FFT_Color_Mod/
 ├── FFTColorMod.Tests.csproj # Test project
 ├── BuildLinked.ps1          # Quick build & deploy script
 ├── Publish.ps1              # Release packaging script
+├── input_sprites/           # Extracted FFT sprites (included for testing)
 ├── Tests/
 │   ├── PaletteDetectorTests.cs  # Unit tests for color detection
 │   └── MemoryScannerTests.cs    # Unit tests for memory scanning
@@ -176,6 +213,8 @@ FFT_Color_Mod/
 └── PLANNING.md              # Technical research & strategy
 ```
 
+**Note**: The `input_sprites/` directory contains 179 extracted FFT sprite files (about 7MB total) and is included in version control to enable immediate testing and development without requiring FF16Tools extraction setup.
+
 ## Technical Details
 
 - **Platform**: Windows (Steam version of FFT)
@@ -183,6 +222,7 @@ FFT_Color_Mod/
 - **Mod Loader**: Reloaded-II
 - **Color Format**: BGR (Blue-Green-Red)
 - **Testing**: xUnit with FluentAssertions
+- **Sprite Format**: First 288 bytes contain palette data
 
 ## Current Status
 
