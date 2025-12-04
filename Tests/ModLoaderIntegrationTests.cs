@@ -103,5 +103,29 @@ namespace FFTColorMod.Tests
 
             integration.RescanCount.Should().Be(initialRescanCount + 1);
         }
+
+        [Fact]
+        public void ProcessHotkey_Should_Ignore_Unassigned_Keys()
+        {
+            // TLDR: Unassigned keys don't change color scheme
+            var integration = new ModLoaderIntegration();
+            integration.SetColorScheme(ColorScheme.Blue);
+
+            integration.ProcessHotkey(System.Windows.Forms.Keys.F10);
+
+            integration.CurrentColorScheme.Should().Be(ColorScheme.Blue);
+        }
+
+        [Fact]
+        public void SetColorScheme_Should_Update_FileRedirector()
+        {
+            // TLDR: Setting color scheme updates connected FileRedirector
+            var integration = new ModLoaderIntegration();
+
+            integration.SetColorScheme(ColorScheme.Red);
+
+            integration.FileRedirector.Should().NotBeNull();
+            integration.FileRedirector.ActiveScheme.Should().Be(ColorScheme.Red);
+        }
     }
 }

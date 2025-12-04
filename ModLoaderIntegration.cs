@@ -8,6 +8,13 @@ namespace FFTColorMod
 
         public ColorScheme CurrentColorScheme { get; private set; }
         public int RescanCount { get; private set; }
+        public FileRedirector FileRedirector { get; private set; }
+
+        public ModLoaderIntegration()
+        {
+            // TLDR: Initialize with FileRedirector
+            FileRedirector = new FileRedirector();
+        }
 
         public bool RegisterFileRedirect(string originalPath, string redirectedPath)
         {
@@ -19,6 +26,7 @@ namespace FFTColorMod
         {
             // TLDR: Update active color scheme
             CurrentColorScheme = scheme;
+            FileRedirector.SetActiveColorScheme(scheme);
         }
 
         public void ProcessHotkey(Keys key)
@@ -26,23 +34,23 @@ namespace FFTColorMod
             // TLDR: Handle hotkey press for color switching
             if (key == Keys.F1)
             {
-                CurrentColorScheme = ColorScheme.Blue;
+                SetColorScheme(ColorScheme.Blue);
             }
             else if (key == Keys.F2)
             {
-                CurrentColorScheme = ColorScheme.Red;
+                SetColorScheme(ColorScheme.Red);
             }
             else if (key == Keys.F4)
             {
-                CurrentColorScheme = ColorScheme.Purple;
+                SetColorScheme(ColorScheme.Purple);
             }
             else if (key == Keys.F7)
             {
-                CurrentColorScheme = ColorScheme.Green;
+                SetColorScheme(ColorScheme.Green);
             }
             else if (key == Keys.F8)
             {
-                CurrentColorScheme = ColorScheme.Original;
+                SetColorScheme(ColorScheme.Original);
             }
             else if (key == Keys.F9)
             {
