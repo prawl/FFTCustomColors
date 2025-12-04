@@ -65,6 +65,9 @@ public class Mod : IMod
         _manualScanner = new ManualMemoryScanner();
         _scanningStarted = true;
 
+        // Start scanning for sprite loading patterns
+        StartPatternScanning();
+
         // Initialize process handles
         _gameProcess = Process.GetCurrentProcess();
         Console.WriteLine($"[FFT Color Mod] Game base: 0x{_gameProcess.MainModule?.BaseAddress.ToInt64():X}");
@@ -491,5 +494,36 @@ public class Mod : IMod
     {
         // TLDR: Check if scanning has been started
         return _scanningStarted;
+    }
+
+    private void StartPatternScanning()
+    {
+        // TLDR: Scan for common sprite loading patterns
+        if (_manualScanner == null || _gameProcess == null) return;
+
+        Console.WriteLine("[FFT Color Mod] Starting pattern scanning...");
+
+        // Common x64 function prologues that might be sprite loading
+        var patterns = new[] {
+            "48 8B C4 48 89 58 ??",  // mov rax,rsp; mov [rsp+??],rbx
+            "48 89 5C 24 ?? 48 89 74 24 ??",  // Stack frame setup
+            "40 53 48 83 EC ??",  // push rbx; sub rsp,??
+        };
+
+        foreach (var pattern in patterns)
+        {
+            try
+            {
+                _manualScanner.ScanForPattern(_gameProcess, pattern, (offset) =>
+                {
+                    Console.WriteLine($"[FFT Color Mod] Found pattern at offset: 0x{offset:X}");
+                    // TODO: Hook the function at this offset
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[FFT Color Mod] Error scanning pattern: {ex.Message}");
+            }
+        }
     }
 }

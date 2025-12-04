@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace FFTColorMod.Tests;
 
 public class ManualMemoryScannerTests
@@ -44,5 +46,34 @@ public class ManualMemoryScannerTests
 
         // Assert - callback might not execute if pattern not found, that's ok for test
         Assert.NotNull(scanner);
+    }
+
+    [Fact]
+    public void ScanForPattern_WithCommonPattern_ShouldFindSomething()
+    {
+        // Arrange
+        var scanner = new ManualMemoryScanner();
+        var testProcess = System.Diagnostics.Process.GetCurrentProcess();
+        // Very common x64 patterns that should exist in any process
+        var patterns = new[] {
+            "48 89 5C 24", // push rbx
+            "48 83 EC",    // sub rsp
+            "C3"           // ret
+        };
+
+        // Act - try each pattern
+        bool foundAny = false;
+        foreach (var pattern in patterns)
+        {
+            var results = scanner.ScanForPattern(testProcess, pattern);
+            if (results != null && results.Any())
+            {
+                foundAny = true;
+                break;
+            }
+        }
+
+        // Assert - at least one pattern should be found in a real process
+        Assert.True(foundAny, "Should find at least one common x64 pattern");
     }
 }
