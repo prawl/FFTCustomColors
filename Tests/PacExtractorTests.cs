@@ -48,5 +48,32 @@ namespace FFTColorMod.Tests
             var result = extractor.OpenPac("");
             Assert.False(result);
         }
+
+        [Fact]
+        public void GetFileName_ReturnsNullBeforeOpening()
+        {
+            // TLDR: Test file name returns null before opening
+            var extractor = new PacExtractor();
+            var name = extractor.GetFileName(0);
+            Assert.Null(name);
+        }
+
+        [Fact]
+        public void GetFileSize_ReturnsZeroBeforeOpening()
+        {
+            // TLDR: Test file size returns 0 before opening
+            var extractor = new PacExtractor();
+            var size = extractor.GetFileSize(0);
+            Assert.Equal(0, size);
+        }
+
+        [Fact]
+        public void ExtractFile_ReturnsNullBeforeOpening()
+        {
+            // TLDR: Test extract returns null before opening
+            var extractor = new PacExtractor();
+            var data = extractor.ExtractFile(0);
+            Assert.Null(data);
+        }
     }
 }

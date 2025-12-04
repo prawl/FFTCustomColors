@@ -4,7 +4,7 @@
 ## ⚡ NEW APPROACH: File-Based Color Swapping (Proven Method)
 
 **Goal**: v0.1 release using file replacement approach
-**Status**: 81 tests passing ✅ - Core pipeline complete!
+**Status**: 89 tests passing ✅ - Core pipeline complete!
 
 ### WHY FILE-BASED:
 - WotL Characters mod proves it works
@@ -23,10 +23,15 @@
 - [x] **Test coverage** - 81 tests passing, test script fixed
 
 ### 🚧 Phase 2: Sprite Processing (IN PROGRESS)
+- [x] **PacExtractor class** - TDD implementation started
+  - Can open PAC files and validate paths
+  - Methods for GetFileName, GetFileSize, ExtractFile
+  - 89 tests passing with full TDD approach
 - [ ] **Extract sprite files from FFT**
   - Location: Steam\...\FINAL FANTASY TACTICS\pack\*.pac files
+  - Found PAC files in enhanced directory (0000.pac - 1GB+)
   - Target: .SPR files with embedded palettes
-  - Need sample Ramza sprite for testing
+  - Need to implement actual PAC file reading
 
 - [ ] **Generate all color variants**
   - Use SpriteProcessingPipeline on extracted sprites
@@ -51,6 +56,8 @@
 - **SpriteColorGenerator.cs** - Batch-processes sprites
 - **SpriteProcessingPipeline.cs** - Full pipeline with color swapping
 - **FileRedirector.cs** - Color scheme management
+- **ModLoaderIntegration.cs** - Hotkey handling and file redirection
+- **PacExtractor.cs** - PAC file extraction (TDD implementation)
 - **Test Scripts** - Reliable run_tests.sh/.ps1
 
 ### File Structure:
