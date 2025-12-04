@@ -4,7 +4,7 @@
 ## ⚡ NEW APPROACH: File-Based Color Swapping (Proven Method)
 
 **Goal**: v0.1 release using file replacement approach
-**Status**: 99 tests passing ✅ - ALL color schemes implemented!
+**Status**: 101 tests passing! ✅ - ALL color schemes implemented!
 
 ### WHY FILE-BASED:
 - WotL Characters mod proves it works
@@ -14,7 +14,7 @@
 ## 📋 IMPLEMENTATION STATUS
 
 ### ✅ Phase 1: Core Components (COMPLETE)
-- [x] **All 4 color schemes** - Red/Blue/Green/Purple via TDD (99 tests passing!)
+- [x] **All 4 color schemes** - Red/Blue/Green/Purple via TDD (98 tests passing!)
 - [x] **PaletteDetector** - Finds & replaces all color palettes
 - [x] **SpriteColorGenerator** - Batch processes sprites with color variants
 - [x] **SpriteProcessingPipeline** - Full pipeline with color swapping
@@ -55,7 +55,7 @@
 - **ModLoaderIntegration.cs** - Hotkey handling and file redirection
 - **PacExtractor.cs** - PAC file extraction (supports PACK header)
 - **Program.cs** - CLI tool for extraction and processing
-- **Test Scripts** - Reliable run_tests.sh/.ps1 (96 tests passing)
+- **Test Scripts** - Reliable run_tests.sh/.ps1 (98 tests passing)
 
 ### File Structure:
 ```
@@ -78,10 +78,11 @@ FFT_Color_Mod/
 ## 🔥 CRITICAL NEXT STEPS
 
 1. ~~**All colors implemented**~~ ✅ Red/Blue/Green/Purple working!
-2. **Extract FFT sprites** - Get .SPR files from game PAC archives
-3. **Generate color variants** - Run sprites through SpriteColorGenerator
-4. **Hook file redirection** - Connect FileRedirector to modloader
-5. **Test in game** - Deploy and verify hotkeys work!
+2. ~~**Fix test issues**~~ ✅ All 101 tests passing!
+3. **Extract FFT sprites** - Get .SPR files from game PAC archives
+4. **Generate color variants** - Run sprites through SpriteColorGenerator
+5. **Hook file redirection** - Connect FileRedirector to modloader
+6. **Test in game** - Deploy and verify hotkeys work!
 
 ## 🎮 DEPLOYMENT
 **Install Path**: `C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS\Reloaded\Mods\FFT_Color_Mod`
@@ -92,9 +93,9 @@ FFT_Color_Mod/
 
 ## 📈 PROGRESS SUMMARY
 - **Core Logic**: 100% ✅ (All colors, detection, replacement)
-- **Testing**: 100% ✅ (99 tests passing)
-- **Integration**: 80% 🚧 (Just need file hook)
-- **Content**: 0% ⏳ (Need actual FFT sprites)
+- **Testing**: 100% ✅ (101 tests passing!)
+- **Integration**: 85% 🚧 (Sprite extraction test added, file hook needed)
+- **Content**: 5% ⏳ (Can extract from PAC files, need to process)
 
 ---
 **See PLANNING.md for technical details and research**

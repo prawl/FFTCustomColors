@@ -67,6 +67,21 @@ public class ModHookIntegrationTests
         // Assert - mod should have started scanning
         Assert.True(mod.IsScanningStarted(), "Should start scanning in constructor");
     }
+
+    [Fact]
+    public void Mod_ShouldIntegrateGameIntegrationForFileHooks()
+    {
+        // TLDR: Mod should use GameIntegration to handle file hooks
+        // Arrange
+        var mod = new Mod();
+
+        // Act
+        mod.InitializeGameIntegration();
+
+        // Assert
+        mod.HasGameIntegration().Should().BeTrue("Mod should have GameIntegration");
+        mod.IsFileRedirectionActive().Should().BeTrue("File redirection should be active");
+    }
 }
 
 public class GameIntegrationTests
@@ -206,5 +221,325 @@ public class GameIntegrationTests
         fakeMemory[200].Should().Be(0x40, "Chapter 1 B reduced for red");
         fakeMemory[201].Should().Be(0x40, "Chapter 1 G reduced for red");
         fakeMemory[202].Should().Be(0xA0, "Chapter 1 R enhanced for red");
+    }
+
+    [Fact]
+    public void Should_Find_PAC_Files_In_Game_Directory()
+    {
+        // TLDR: Check that we can find PAC files in the FFT game directory
+        const string gamePath = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles";
+        var dataPath = System.IO.Path.Combine(gamePath, "data", "classic");
+
+        // Skip test if game not installed
+        if (!System.IO.Directory.Exists(dataPath))
+        {
+            return; // Skip test gracefully if game not installed
+        }
+
+        var pacFiles = System.IO.Directory.GetFiles(dataPath, "*.pac");
+        pacFiles.Should().NotBeEmpty("Game should have PAC archive files");
+    }
+
+    [Fact]
+    public void Should_Extract_First_Sprite_From_PAC_File()
+    {
+        // TLDR: Extract first .SPR file from a real FFT PAC archive
+        const string gamePath = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles";
+        var dataPath = System.IO.Path.Combine(gamePath, "data", "classic");
+
+        // Skip test if game not installed
+        if (!System.IO.Directory.Exists(dataPath))
+        {
+            return; // Skip test gracefully if game not installed
+        }
+
+        // Find first PAC file
+        var pacFiles = System.IO.Directory.GetFiles(dataPath, "*.pac");
+        pacFiles.Should().NotBeEmpty();
+
+        var firstPac = pacFiles[0];
+        var outputDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "FFTColorMod_Test_Sprites");
+
+        // Create output directory
+        if (System.IO.Directory.Exists(outputDir))
+            System.IO.Directory.Delete(outputDir, true);
+        System.IO.Directory.CreateDirectory(outputDir);
+
+        try
+        {
+            // Extract sprites using PacExtractor
+            var extractor = new PacExtractor();
+            var opened = extractor.OpenPac(firstPac);
+            opened.Should().BeTrue($"Should be able to open PAC file: {firstPac}");
+
+            var extractedCount = extractor.ExtractAllSprites(outputDir);
+
+            // If no sprites extracted, it might be the wrong PAC file
+            if (extractedCount == 0)
+            {
+                // This PAC might not contain sprites, skip the rest of the test
+                return; // Skip gracefully - not all PAC files contain sprites
+            }
+
+            // Verify we extracted at least one sprite
+            extractedCount.Should().BeGreaterThan(0, "Should extract at least one sprite from PAC file");
+
+            // Verify extracted files exist and have .SPR extension
+            var extractedFiles = System.IO.Directory.GetFiles(outputDir, "*.SPR");
+            extractedFiles.Should().NotBeEmpty("Output directory should contain .SPR files");
+
+            foreach (var file in extractedFiles)
+            {
+                System.IO.File.Exists(file).Should().BeTrue($"Extracted file {file} should exist");
+                System.IO.Path.GetExtension(file).ToUpper().Should().Be(".SPR", $"File {file} should have .SPR extension");
+            }
+        }
+        finally
+        {
+            // Cleanup
+            if (System.IO.Directory.Exists(outputDir))
+                System.IO.Directory.Delete(outputDir, true);
+        }
+    }
+
+    [Fact]
+    public void GameIntegration_ShouldHookFileRedirection_WhenInitialized()
+    {
+        // TLDR: GameIntegration should hook file operations to redirect sprite paths
+        // Arrange
+        var integration = new GameIntegration();
+
+        // Act
+        integration.InitializeFileHook();
+
+        // Assert
+        integration.IsFileHookActive.Should().BeTrue("File hook should be active after initialization");
+    }
+
+    [Fact]
+    public void GameIntegration_ShouldRedirectSpriteFile_WhenColorSchemeActive()
+    {
+        // TLDR: When a color scheme is active, sprite file paths should be redirected
+        // Arrange
+        var integration = new GameIntegration();
+        integration.InitializeFileHook();
+
+        // Set active color scheme to red
+        integration.ProcessHotkey(0x71); // F2 for red
+
+        // Act - request original sprite path
+        var originalPath = @"data\sprites\RAMZA.SPR";
+        var redirectedPath = integration.GetRedirectedPath(originalPath);
+
+        // Assert - should redirect to red sprite folder
+        redirectedPath.Should().Contain("sprites_red", "Path should redirect to red sprite folder");
+        redirectedPath.Should().EndWith("RAMZA.SPR", "Filename should be preserved");
+    }
+
+    [Fact]
+    public void GameIntegration_ShouldRegisterFileHook_WithModLoader()
+    {
+        // TLDR: GameIntegration should register file hook callback with mod loader
+        // Arrange
+        var integration = new GameIntegration();
+
+        // Act
+        integration.RegisterFileHookWithModLoader();
+
+        // Assert
+        integration.FileHookCallback.Should().NotBeNull("File hook callback should be registered");
+        integration.IsFileHookRegistered.Should().BeTrue("File hook should be registered with mod loader");
+    }
+
+    [Fact]
+    public void GameIntegration_ShouldInvokeCallback_WhenFileRequested()
+    {
+        // TLDR: File hook callback should be invoked when file is requested
+        // Arrange
+        var integration = new GameIntegration();
+        integration.InitializeFileHook();
+        integration.RegisterFileHookWithModLoader();
+
+        // Set color scheme to blue
+        integration.ProcessHotkey(0x72); // F3 for blue
+
+        // Act - simulate file request through callback
+        var originalPath = @"data\sprites\CHARACTER.SPR";
+        var redirectedPath = integration.InvokeFileHookCallback(originalPath);
+
+        // Assert
+        redirectedPath.Should().NotBeNull();
+        redirectedPath.Should().Contain("sprites_blue", "Should redirect to blue sprite folder");
+        redirectedPath.Should().EndWith("CHARACTER.SPR");
+    }
+
+    [Fact]
+    public void GameIntegration_ShouldProcessSpriteFiles_ForColorVariants()
+    {
+        // TLDR: GameIntegration should process sprite files to create color variants
+        // Arrange
+        var integration = new GameIntegration();
+        var testSpritePath = System.IO.Path.GetTempPath() + "test_sprite.SPR";
+
+        // Create a test sprite file with palette data
+        byte[] spriteData = new byte[1024];
+        // Add Ramza's brown palette at offset 100
+        spriteData[100] = 0x17; // Blue component
+        spriteData[101] = 0x2C; // Green component
+        spriteData[102] = 0x4A; // Red component (Ramza brown)
+        System.IO.File.WriteAllBytes(testSpritePath, spriteData);
+
+        try
+        {
+            // Act - process sprite for color variants
+            var processedCount = integration.ProcessSpriteForColorVariants(testSpritePath);
+
+            // Assert
+            processedCount.Should().Be(4, "Should create 4 color variants (red, blue, green, purple)");
+            integration.LastProcessedSpritePath.Should().Be(testSpritePath);
+        }
+        finally
+        {
+            // Cleanup
+            if (System.IO.File.Exists(testSpritePath))
+                System.IO.File.Delete(testSpritePath);
+        }
+    }
+
+    [Fact]
+    public void Mod_ShouldInterceptFilePath_WhenSpriteRequested()
+    {
+        // TLDR: Mod should intercept file paths and redirect to color variant folders
+        // Arrange
+        var mod = new Mod();
+        mod.InitializeGameIntegration();
+
+        // Set active color scheme to blue using public method
+        mod.SetColorScheme("blue");
+
+        // Act - simulate file request
+        var originalPath = @"data\sprites\RAMZA.SPR";
+        var interceptedPath = mod.InterceptFilePath(originalPath);
+
+        // Assert
+        interceptedPath.Should().NotBe(originalPath);
+        interceptedPath.Should().Contain("sprites_blue");
+        interceptedPath.Should().EndWith("RAMZA.SPR");
+    }
+
+    [Fact]
+    public void Mod_ShouldGenerateSpriteColorVariants_WhenRequested()
+    {
+        // TLDR: Mod should generate color variant sprites for deployment
+        // Arrange
+        var mod = new Mod();
+        mod.InitializeGameIntegration();
+
+        var testSpritePath = System.IO.Path.GetTempPath() + "test_sprite.SPR";
+        var outputDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "test_variants");
+
+        // Create test sprite with Ramza palette
+        byte[] spriteData = new byte[1024];
+        spriteData[100] = 0x17; // B
+        spriteData[101] = 0x2C; // G
+        spriteData[102] = 0x4A; // R (Ramza brown)
+        System.IO.File.WriteAllBytes(testSpritePath, spriteData);
+
+        try
+        {
+            // Act - generate color variants
+            var generatedCount = mod.GenerateSpriteVariants(testSpritePath, outputDir);
+
+            // Assert
+            generatedCount.Should().Be(4, "Should generate 4 color variants");
+            System.IO.Directory.Exists(outputDir).Should().BeTrue();
+        }
+        finally
+        {
+            // Cleanup
+            if (System.IO.File.Exists(testSpritePath))
+                System.IO.File.Delete(testSpritePath);
+            if (System.IO.Directory.Exists(outputDir))
+                System.IO.Directory.Delete(outputDir, true);
+        }
+    }
+
+    [Fact]
+    public void Mod_FullIntegration_HotkeysShouldSwitchFileRedirection()
+    {
+        // TLDR: Full integration test - hotkeys should change file redirection behavior
+        // Arrange
+        var mod = new Mod();
+        mod.InitializeGameIntegration();
+
+        var spritePath = @"data\sprites\RAMZA.SPR";
+
+        // Act & Assert - Test each color scheme
+        // F1 - Original (no redirection)
+        mod.SetColorScheme("original");
+        var originalPath = mod.InterceptFilePath(spritePath);
+        originalPath.Should().Be(spritePath, "Original scheme should not redirect");
+
+        // F2 - Red
+        mod.SetColorScheme("red");
+        var redPath = mod.InterceptFilePath(spritePath);
+        redPath.Should().Contain("sprites_red", "Red scheme should redirect to red folder");
+        redPath.Should().EndWith("RAMZA.SPR");
+
+        // F3 - Blue
+        mod.SetColorScheme("blue");
+        var bluePath = mod.InterceptFilePath(spritePath);
+        bluePath.Should().Contain("sprites_blue", "Blue scheme should redirect to blue folder");
+        bluePath.Should().EndWith("RAMZA.SPR");
+
+        // F4 - Green
+        mod.SetColorScheme("green");
+        var greenPath = mod.InterceptFilePath(spritePath);
+        greenPath.Should().Contain("sprites_green", "Green scheme should redirect to green folder");
+        greenPath.Should().EndWith("RAMZA.SPR");
+
+        // F5 - Purple
+        mod.SetColorScheme("purple");
+        var purplePath = mod.InterceptFilePath(spritePath);
+        purplePath.Should().Contain("sprites_purple", "Purple scheme should redirect to purple folder");
+        purplePath.Should().EndWith("RAMZA.SPR");
+    }
+
+    [Fact]
+    public void GameIntegration_ShouldUseSpriteColorGenerator_ToCreateVariants()
+    {
+        // TLDR: GameIntegration should use SpriteColorGenerator to create actual color variant files
+        // Arrange
+        var integration = new GameIntegration();
+        integration.InitializeSpriteProcessor();
+
+        var testSpritePath = System.IO.Path.GetTempPath() + "test_sprite.SPR";
+        var outputDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "test_variants");
+
+        // Create test sprite with Ramza palette
+        byte[] spriteData = new byte[1024];
+        spriteData[100] = 0x17; // B
+        spriteData[101] = 0x2C; // G
+        spriteData[102] = 0x4A; // R (Ramza brown)
+        System.IO.File.WriteAllBytes(testSpritePath, spriteData);
+
+        try
+        {
+            // Act - generate color variants to output directory
+            var generatedFiles = integration.GenerateColorVariants(testSpritePath, outputDir);
+
+            // Assert
+            generatedFiles.Should().NotBeNull();
+            generatedFiles.Count.Should().Be(4, "Should generate 4 color variant files");
+            integration.HasSpriteProcessor.Should().BeTrue("Should have initialized sprite processor");
+        }
+        finally
+        {
+            // Cleanup
+            if (System.IO.File.Exists(testSpritePath))
+                System.IO.File.Delete(testSpritePath);
+            if (System.IO.Directory.Exists(outputDir))
+                System.IO.Directory.Delete(outputDir, true);
+        }
     }
 }

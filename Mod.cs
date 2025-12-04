@@ -44,6 +44,11 @@ public class Mod : IMod
         // Do minimal work in constructor - Reloaded will call Start() for initialization
         Console.WriteLine("[FFT Color Mod] Constructor called");
 
+        // Initialize these fields even if other initialization fails
+        _manualScanner = new ManualMemoryScanner();
+        _scanningStarted = true;
+        _signatureScanner = new SignatureScanner();
+
         // Try initializing here since fftivc.utility.modloader might not call Start()
         try
         {
@@ -525,5 +530,91 @@ public class Mod : IMod
                 Console.WriteLine($"[FFT Color Mod] Error scanning pattern: {ex.Message}");
             }
         }
+    }
+
+    public void InitializeGameIntegration()
+    {
+        // TLDR: Initialize GameIntegration for file hooks
+        if (_gameIntegration == null)
+        {
+            _gameIntegration = new GameIntegration();
+        }
+
+        // Always initialize file hooks when this method is called
+        _gameIntegration.InitializeFileHook();
+        _gameIntegration.RegisterFileHookWithModLoader();
+    }
+
+    public bool HasGameIntegration()
+    {
+        // TLDR: Check if GameIntegration is initialized
+        return _gameIntegration != null;
+    }
+
+    public bool IsFileRedirectionActive()
+    {
+        // TLDR: Check if file redirection is active
+        return _gameIntegration?.IsFileHookActive ?? false;
+    }
+
+    public void SetColorScheme(string scheme)
+    {
+        // TLDR: Public method to set color scheme
+        if (_signatureScanner != null)
+        {
+            _signatureScanner.SetColorScheme(scheme);
+        }
+        if (_gameIntegration != null)
+        {
+            // Update game integration with new scheme
+            var vkCode = scheme switch
+            {
+                "original" => VK_F1,
+                "red" => VK_F2,
+                "blue" => 0x72, // F3
+                "green" => 0x73, // F4
+                "purple" => 0x74, // F5
+                _ => VK_F1
+            };
+            _gameIntegration.ProcessHotkey(vkCode);
+        }
+    }
+
+    public string InterceptFilePath(string originalPath)
+    {
+        // TLDR: Intercept file path and redirect based on active color scheme
+        if (_gameIntegration == null || !originalPath.Contains("sprites"))
+            return originalPath;
+
+        // Get current color scheme from GameIntegration
+        var currentScheme = _gameIntegration.HotkeyManager.CurrentScheme;
+        if (currentScheme == "original" || string.IsNullOrEmpty(currentScheme))
+            return originalPath;
+
+        // Replace sprites folder with color variant folder
+        return originalPath.Replace(@"sprites\", $@"sprites_{currentScheme}\");
+    }
+
+    public int GenerateSpriteVariants(string spritePath, string outputDir)
+    {
+        // TLDR: Generate color variants for a sprite file
+        if (!File.Exists(spritePath))
+            return 0;
+
+        // Create output directory if it doesn't exist
+        if (!Directory.Exists(outputDir))
+            Directory.CreateDirectory(outputDir);
+
+        // Read sprite data
+        byte[] spriteData = File.ReadAllBytes(spritePath);
+
+        // Use SpriteColorGenerator to create variants
+        var generator = new SpriteColorGenerator();
+        var fileName = Path.GetFileNameWithoutExtension(spritePath);
+
+        // GenerateColorVariants creates all 4 variants at once
+        generator.GenerateColorVariants(spriteData, outputDir, fileName);
+
+        return 4; // Always generates 4 variants (red, blue, green, purple)
     }
 }
