@@ -1,23 +1,15 @@
 # FFT Color Mod - Technical Planning & Research
+<!-- KEEP UNDER 100 LINES -->
 
-## 🔥 ULTRA-DEEP ANALYSIS: FFTGenericJobs Complete Architecture Decoded!
+## 🚨 CRITICAL DISCOVERY #1: StartEx vs Start - THE BUG!
+**Our `Start()` method NEVER gets called by Reloaded-II!**
 
-### CRITICAL DISCOVERIES FROM DEEP DIVE (December 2024)
-
-After thorough sequential analysis of FFTGenericJobs source code, we've uncovered the **EXACT implementation patterns** that make their memory manipulation successful:
-
-#### 1. **StartEx vs Start - The Missing Link**
-- **PROBLEM**: Our `Start()` method never gets called by Reloaded-II
-- **SOLUTION**: Use `StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig)` instead!
-- **PROOF**: GenericJobs/Template/Startup.cs line 51 - StartEx DOES get called
-- **KEY**: StartEx is the actual entry point Reloaded-II uses, not Start
-
-#### 2. **ModContext Pattern - Immediate Initialization**
+### The Fix (From FFTGenericJobs):
 ```csharp
-// Their Pattern (WORKS):
+// Template/Startup.cs - REQUIRED PATTERN
 public class Startup : IMod {
     public void StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig) {
-        // Collect all services HERE
+        // This DOES get called!
         _mod = new Mod(new ModContext {
             Hooks = _hooks,
             Logger = _logger,
@@ -26,84 +18,17 @@ public class Startup : IMod {
     }
 }
 
+// Mod.cs - Receives context in constructor
 public class Mod : ModBase {
     public Mod(ModContext context) {
-        // Everything available IMMEDIATELY in constructor!
+        // Everything available immediately!
+        _hooks = context.Hooks;
         Initialize(); // Can hook right away!
     }
 }
 ```
 
-#### 3. **IStartupScanner Dependency - Not Optional!**
-- **CRITICAL**: They list "Reloaded.Memory.SigScan.ReloadedII" as REQUIRED dependency
-- **Location**: ModConfig.json line 60
-- **Effect**: Guarantees IStartupScanner is available when mod loads
-- **Our Fix**: Add same dependency to our ModConfig.json
-
-#### 4. **Direct Memory Patching with SafeWrite**
-```csharp
-// Their WriteMemory implementation (lines 326-332):
-private unsafe void WriteMemory(nuint address, byte[] data) {
-    fixed (byte* dataPtr = data) {
-        Reloaded.Memory.Memory.Instance.SafeWrite(address,
-            new Span<byte>(dataPtr, data.Length));
-    }
-}
-```
-- Uses `Reloaded.Memory.Memory.Instance.SafeWrite` for safe memory writing
-- Writes NOPs (0x90), jumps (0xEB), and data values directly
-
-#### 5. **Temporary Patching Pattern - Genius Execution Control**
-```csharp
-// Temporarily disable game code (lines 434-452):
-private void ApplyTempPatches(bool disable) {
-    if (disable) {
-        // Replace with NOPs to disable
-        WriteMemory(addr, [0x90, 0x90, 0x90]);
-    } else {
-        // Restore original instructions
-        WriteMemory(addr, [0x89, 0x83, 0x38]);
-    }
-}
-
-// Usage pattern:
-ApplyTempPatches(true);  // Disable game code
-DoOurModifications();     // Make changes safely
-CallOriginalFunction();   // Let game continue
-ApplyTempPatches(false); // Re-enable game code
-```
-
-#### 6. **Hook Pattern for Runtime Modification**
-```csharp
-// Hook creation (lines 196, 200, etc):
-_hooks.CreateHook<DelegateType>(HookFunction, address).Activate()
-
-// Hook function pattern:
-private ReturnType HookFunction(params) {
-    // Pre-processing
-    ModifyData();
-
-    // Call original
-    var result = _hook.OriginalFunction(params);
-
-    // Post-processing
-    ModifyMoreData();
-
-    return result;
-}
-```
-
-### 🎯 SOLUTION FOR OUR COLOR MOD
-
-Based on these discoveries, here's our exact implementation path:
-
-#### Step 1: Fix Initialization (IMMEDIATE)
-1. Create `Template/Startup.cs` with StartEx entry point
-2. Implement ModContext pattern
-3. Pass all services to Mod constructor
-4. Initialize hooks in constructor, not Start()
-
-#### Step 2: Add Required Dependencies
+### Required Dependencies:
 ```json
 "ModDependencies": [
     "Reloaded.Memory.SigScan.ReloadedII",  // CRITICAL!
@@ -111,19 +36,21 @@ Based on these discoveries, here's our exact implementation path:
 ]
 ```
 
-#### Step 3: Find Sprite Loading Signatures
-We need signatures for:
-- Sprite/palette loading from PAC files
-- Palette application to sprites
-- The reload function that overwrites our changes
+## 🚨 CRITICAL DISCOVERY #2: Two Successful Modding Approaches
 
-#### Step 4: Implement Hooks
+### Path A: Simple File Override (Proven by 4 mods)
+- Place modified files in `FFTIVC/data/enhanced/` structure
+- FFT automatically loads replacements
+- **NO CODE NEEDED** for basic asset replacement
+- Works for: Black Boco, better_palettes, WotL Characters
+
+### Path B: Memory Hooking (FFTGenericJobs)
 ```csharp
 // Hook sprite loading to modify palettes AS they load:
 private nint LoadSpriteHook(nint spriteData, int size) {
     var result = _loadSpriteHook.OriginalFunction(spriteData, size);
 
-    // Apply our existing PaletteDetector logic HERE!
+    // Apply PaletteDetector during load!
     if (_paletteDetector.DetectChapterOutfit(spriteData)) {
         _paletteDetector.ReplacePaletteColors(spriteData, _currentScheme);
     }
@@ -132,492 +59,587 @@ private nint LoadSpriteHook(nint spriteData, int size) {
 }
 ```
 
-#### Step 5: Optional - Temporary Patch Pattern
-If palette reloading persists, temporarily NOP the reload call:
-```csharp
-// During our color modification:
-WriteMemory(reloadFunctionAddr, [0x90, 0x90, 0x90]); // NOP
-ModifyColors();
-WriteMemory(reloadFunctionAddr, originalBytes);      // Restore
+## 🚨 CRITICAL DISCOVERY #3: File Format Clarification
+
+**Sprites are `.bin` files, NOT `.spr`!**
+- Location: `FFTIVC/data/enhanced/fftpack/unit/`
+- Format: `battle_[name]_spr.bin`
+- Example: `battle_ramza_spr.bin`
+
+## Implementation Paths
+
+### Immediate Fix (StartEx):
+1. Create Template/Startup.cs with StartEx
+2. Update Mod.cs to accept ModContext
+3. Add dependencies to ModConfig.json
+
+### Option A: File Override (1-2 days):
+1. Extract `battle_ramza_spr.bin`
+2. Generate color variants with PaletteDetector
+3. Place in FFTIVC structure
+4. Test hotkey switching
+
+### Option B: Memory Hooks (3-4 days):
+1. Add Reloaded.Memory dependencies
+2. Find sprite loading signatures
+3. Hook and modify during load
+4. Prevent palette reloading
+
+### Option C: Hybrid (Recommended):
+Start with file override, add hooks for real-time switching
+
+## Why Our Approach Failed
+
+**Root Cause**: FFT continuously reloads palettes from source files
+- Memory modifications get overwritten
+- Need to intercept at load time, not after
+- StartEx bug prevented initialization entirely
+
+## Next Steps (Priority Order)
+
+1. **Fix StartEx bug** - Mod doesn't initialize without this!
+2. **Update for .bin files** - Wrong extension blocked extraction
+3. **Choose implementation** - File override vs memory hooks
+4. **Test with existing sprites** - We have sample files from other mods
+5. **Deploy and verify** - Hotkeys should work immediately after StartEx fix
+
+## 🔍 Mod Repository Analysis - WotL Characters
+
+### Repository Overview
+**Location**: `C:\Users\ptyRa\Dev\WotL Characters`
+**Description**: Adds Balthier and Luso characters to FFT
+**Author**: Dana Crysalis
+**Version**: 1.0.1
+
+### Directory Structure
+```
+WotL Characters/
+├── FFTIVC/                              # Main mod content directory
+│   └── data/
+│       └── enhanced/
+│           ├── nxd/                     # Game data files (NXD format)
+│           │   ├── ability.en.nxd       # Abilities
+│           │   ├── charaname.en.nxd     # Character names
+│           │   ├── charshape.nxd        # Character appearance data
+│           │   ├── job.en.nxd           # Job definitions
+│           │   ├── jobcommand.en.nxd    # Job commands
+│           │   └── uijobabilityhelp.en.nxd
+│           └── ui/                      # User interface assets
+│               └── ffto/
+│                   └── common/
+│                       └── face/        # Character face portraits
+│                           ├── texture/
+│                           │   ├── wldface_163_08_uitx.tex  # Balthier face
+│                           │   └── wldface_164_08_uitx.tex  # Luso face
+│                           └── textureparts/
+│                               ├── wldface_163_08_uitx.utexpt
+│                               └── wldface_164_08_uitx.utexpt
+├── ModConfig.json                       # Reloaded-II mod configuration
+├── WotLCharacters.dll                   # Compiled mod assembly (.NET 9.0)
+├── WotLCharacters.deps.json             # .NET dependencies
+├── WotLCharacters.pdb                   # Debug symbols
+├── Reloaded.Hooks.Definitions.dll      # Hook framework
+├── Reloaded.Hooks.ReloadedII.Interfaces.dll
+└── Preview.png                          # Mod preview image
 ```
 
-### 🚨 WHY THIS CHANGES EVERYTHING
+### Key Insights for Character Sprite Modification
 
-**Old Approach (Failed)**:
-- Modified palette data AFTER loading
-- FFT reloaded palettes, overwriting changes
-- No control over execution flow
+#### 1. **File-Based Asset Replacement Approach**
+WotL Characters uses **pure file replacement** - no memory manipulation or function hooking. The mod works by:
+- Placing replacement files in the exact same directory structure as the original game
+- FFT automatically loads the replacement files instead of originals
+- No runtime code execution required for basic asset replacement
 
-**New Approach (Will Work)**:
-- Hook loading functions directly
-- Modify data DURING load process
-- Control execution with temp patches
-- Prevent reloading through hooks
+#### 2. **Character Data Components**
+Character modifications involve multiple file types:
+- **NXD files**: Core character data (names, abilities, appearance parameters)
+- **TEX files**: Face portrait textures
+- **UTEXPT files**: Texture part definitions
+- **Character shape data**: Physical appearance and sprite references
 
-## 🚨 BREAKTHROUGH: FFTGenericJobs Analysis Changes Everything!
-
-After analyzing the successful **FFTGenericJobs** mod, we discovered they use a completely different approach that **successfully modifies FFT through memory manipulation**. This solves our palette reloading problem!
-
-### Key Discovery
-**They succeed by hooking game functions and patching memory at startup**, not by modifying data after loading. This is why their changes persist while ours didn't.
-
-### New Approach: Function Hooking + Signature Scanning
-1. **Find functions dynamically** using byte pattern signatures
-2. **Hook sprite/palette loading functions** to modify data as it loads
-3. **Patch memory locations** to prevent palette reloading
-4. **Use proven tools**: Reloaded.Memory.SigScan + Reloaded.SharedLib.Hooks
-
-### Why This Changes Everything
-- ✅ **Solves palette reloading**: Hook the loading function, not the loaded data
-- ✅ **Proven to work**: FFTGenericJobs successfully modifies FFT this way
-- ✅ **Survives updates**: Signature scanning finds addresses dynamically
-- ✅ **Reuses our code**: All 27 tests and PaletteDetector logic still apply
-
-**See detailed analysis below in "CRITICAL DISCOVERY" section**
-
----
-
-## Memory Manipulation Research Findings
-
-### Root Cause Analysis: FFT Palette System Behavior
-Through extensive testing, we discovered that FFT uses a **dynamic palette reloading system**:
-
-1. **Initial Search**: Found 8 palettes across multiple memory regions
-2. **Successful Modification**: All WriteProcessMemory operations succeeded (256 bytes each)
-3. **Color Transformation**: Verified `80 40 60` → `30 30 80` (purple to red)
-4. **Palette Disappearance**: After modification, subsequent searches find "No palettes found"
-5. **Conclusion**: FFT actively reloads palettes from source data, overriding memory modifications
-
-### Technical Achievements
-- **Memory Search Evolution**: 6 → 26 → 38 regions searched
-- **Palette Discovery**: Found palettes up to 0x15E000000 (high graphics memory)
-- **Multiple Detection**: Successfully found both Chapter 1 and Chapter 2 patterns
-- **Comprehensive Coverage**: Searched from base memory to GPU texture regions (12GB+)
-
-**Finding**: FFT's palette system actively reloads from source data, making real-time memory modification ineffective for persistent visual changes.
-
-## Asset Replacement Hook Approach
-
-### Why File Interception is Recommended
-- **Solves Root Cause**: Intercepts at source before FFT's palette reloading
-- **Persistent Changes**: Modifications survive asset management system
-- **Performance**: No continuous memory scanning overhead
-- **Reliability**: Works with FFT's loading system instead of against it
-
-### Technical Implementation
-
-#### Reloaded-II Universal Redirector Setup
-```csharp
-// Add to FFTColorMod.csproj
-<PackageReference Include="Reloaded.Universal.Redirector.Interfaces" Version="2.1.0" />
-
-// Update ModConfig.json dependencies
-"ModDependencies": [
-    "reloaded.universal.redirector"  // Add this
-]
+#### 3. **FFT File Override System**
+The mod demonstrates FFT's **hierarchical file loading**:
+```
+Game searches for: data/enhanced/ui/ffto/common/face/texture/wldface_163_08_uitx.tex
+1. Checks mod directories first (FFTIVC/data/enhanced/...)
+2. Falls back to original game files if not found
+3. No special hooking required - just file placement
 ```
 
-#### Basic File Hook Implementation
-```csharp
-public class FFTSpriteHooks
-{
-    private IRedirectorController _redirector;
-    private PaletteDetector _paletteDetector; // Reuse existing TDD code!
+#### 4. **Character Face Portrait System**
+- **File naming pattern**: `wldface_[ID]_08_uitx.tex`
+- **ID mapping**: 163 = Balthier, 164 = Luso
+- **Format**: TEX format (custom texture format)
+- **Size**: ~14KB per face texture
+- **Companion files**: Corresponding .utexpt texture part files
 
-    public void Start(IModLoaderV1 loader)
-    {
-        _redirector = loader.GetController<IRedirectorController>();
-        _paletteDetector = new PaletteDetector();
+#### 5. **Texture File Format Analysis**
+From hexdump of `wldface_163_08_uitx.tex`:
+- **Header**: "TEX " signature (0x54455820)
+- **Format**: Custom FFT texture format, not standard image format
+- **Size**: 14,520 bytes for face textures
+- **Structure**: Binary format with embedded texture data
 
-        // Hook sprite files
-        _redirector.RegisterFileHook("**/*.spr", ModifySpriteFile);
-        _redirector.RegisterFileHook("**/*.pac", ModifyArchiveFile);
-    }
-
-    private byte[] ModifySpriteFile(string filePath, byte[] originalData)
-    {
-        if (_currentColorScheme == ColorScheme.Original)
-            return originalData;
-
-        // Use existing TDD methods
-        var chapter = _paletteDetector.DetectChapterOutfit(originalData);
-        return _paletteDetector.ReplacePaletteColors(originalData, chapter, _currentColorScheme);
-    }
-}
-```
-
-### FFT File Structure Findings
-
-#### PAC Archive Format
-- Steam version uses `.pac` files instead of BIN/ISO
-- Numbered PAC files by resource type
-- Sprites contained in specific PAC archives
-
-#### SPR File Structure
-```csharp
-// Discovered structure
-Header:         32 bytes
-Palette Data:   768 bytes (256 colors × 3 bytes BGR)
-Sprite Data:    Variable (indexed pixel data)
-Animation Data: Variable (frame sequences)
-
-PALETTE_OFFSET = 32  // Where our tests found patterns
-```
-
-## CRITICAL DISCOVERY: FFTGenericJobs Implementation Analysis
-
-### Revolutionary Findings from FFTGenericJobs Mod
-After analyzing the successful FFTGenericJobs mod (adds Dark Knight & Onion Knight), we discovered a **completely different approach to FFT modding** that successfully modifies the game through memory manipulation. This changes everything!
-
-#### Key Technologies They Use
-1. **Signature Scanning (SigScan)**: Dynamically finds memory addresses using byte patterns
-2. **Function Hooking**: Intercepts game functions to modify behavior
-3. **Direct Memory Patching**: Writes specific byte sequences to memory addresses
-4. **FFT-Specific Mod Loader**: Uses `fftivc.utility.modloader` by Nenkai
-
-#### Their Dependencies (From GenericJobs.csproj)
-```xml
-<PackageReference Include="Reloaded.Memory" Version="9.4.3" />
-<PackageReference Include="Reloaded.Memory.Sigscan" Version="3.1.9" />
-<PackageReference Include="Reloaded.Memory.SigScan.ReloadedII.Interfaces" Version="1.2.0" />
-<PackageReference Include="Reloaded.SharedLib.Hooks" Version="1.9.0" />
-```
-
-#### How They Modify FFT Successfully
-```csharp
-// They use signature scanning to find function addresses:
-_startupScanner.AddMainModuleScan(
-    "48 8B C4 48 89 58 ?? 48 89 70 ?? ...",  // Byte pattern
-    result => {
-        if (result.Found) {
-            // Hook the function or patch memory
-            _hooks.CreateHook<DelegateType>(HookFunction, gameBase + result.Offset);
-        }
-    }
-);
-
-// Direct memory patching that works:
-private unsafe void WriteMemory(nuint address, byte[] data) {
-    fixed (byte* dataPtr = data) {
-        Reloaded.Memory.Memory.Instance.SafeWrite(address,
-            new Span<byte>(dataPtr, data.Length));
-    }
-}
-
-// Example patches they apply:
-WriteMemory(_gameBase + offset, [0x90, 0x90, 0x90]); // NOP instructions
-WriteMemory(_gameBase + offset, [0x07, 0x00, 0x00]); // Data modifications
-```
-
-### Why Their Memory Manipulation Works vs Ours Didn't
-
-#### Their Approach (WORKS ✅)
-- **Hooks game functions** before assets are loaded
-- **Patches memory at specific offsets** identified through reverse engineering
-- **Uses signature scanning** to find addresses dynamically (survives updates)
-- **Modifies game logic** not just data values
-- **Timing is critical**: Patches applied at startup through hooks
-
-#### Our Initial Approach (FAILED ❌)
-- Tried to modify palette data after it was loaded
-- FFT reloads palettes from source files periodically
-- Didn't hook the loading functions
-- Modified data instead of logic
-
-### How This Applies to Our Color Mod
-
-#### Option 1: Hook Sprite Loading Functions (RECOMMENDED)
-Instead of modifying palettes in memory after loading, we should:
-1. Find the sprite loading function using signature scanning
-2. Hook the function that loads .SPR files from PAC archives
-3. Modify the palette data as it's being loaded
-4. This prevents FFT from reloading original colors
-
-```csharp
-// Conceptual implementation using FFTGenericJobs approach
-[Function(CallingConventions.Microsoft)]
-private delegate nint LoadSpriteDelegate(nint spriteData, int size);
-
-private nint LoadSpriteHook(nint spriteData, int size) {
-    // Let original function load the sprite
-    var result = _loadSpriteHook.OriginalFunction(spriteData, size);
-
-    // Now modify the palette data in the loaded sprite
-    ModifyPaletteInMemory(spriteData);
-
-    return result;
-}
-```
-
-#### Option 2: Patch Palette Reload Logic
-Find and patch the code that triggers palette reloading:
-1. Use signature scanning to find the reload function
-2. NOP out the reload calls
-3. Our memory modifications become permanent
-
-#### Option 3: Hybrid Approach (File + Memory Hooks)
-Combine both approaches:
-1. Use Universal Redirector for initial file loading
-2. Use memory hooks to prevent reloading
-3. Best of both worlds
-
-### Required Changes to Our Project
-
-#### Add New Dependencies
-```xml
-<!-- Add to FFTColorMod.csproj -->
-<PackageReference Include="Reloaded.Memory" Version="9.4.3" />
-<PackageReference Include="Reloaded.Memory.Sigscan" Version="3.1.9" />
-<PackageReference Include="Reloaded.Memory.SigScan.ReloadedII.Interfaces" Version="1.2.0" />
-<PackageReference Include="Reloaded.SharedLib.Hooks" Version="1.9.0" />
-```
-
-#### Update ModConfig.json Dependencies
+#### 6. **Configuration and Dependencies**
 ```json
+// ModConfig.json reveals dependency pattern
 "ModDependencies": [
-    "Reloaded.Memory.SigScan.ReloadedII",
-    "reloaded.sharedlib.hooks",
-    "fftivc.utility.modloader"  // Check if this helps with FFT-specific functionality
+    "fftivc.utility.modloader",    # FFT-specific mod utilities
+    "reloaded.sharedlib.hooks"     # Hook framework (unused for pure asset replacement)
 ]
 ```
 
-### Signature Patterns We Need to Find
+#### 7. **Character Definition System**
+The `charshape.nxd` file contains character appearance definitions:
+- Binary format with structured character data
+- Links character IDs to sprite references
+- Defines visual parameters and animations
 
-Based on FFT's behavior, we need to find:
-1. **Sprite Loading Function**: Called when loading .SPR files
-2. **Palette Application Function**: Applies palette to sprites
-3. **Palette Reload Function**: The one that overwrites our changes
-4. **PAC Archive Extraction**: Where files are loaded from archives
+### Implications for FFT Color Mod
 
-We can find these using tools like:
-- x64dbg with FFT_enhanced.exe
-- IDA Pro or Ghidra for static analysis
-- Cheat Engine for runtime analysis
+#### ✅ **Validation of File-Based Approach**
+- WotL Characters proves **file replacement works** for FFT modifications
+- No memory manipulation needed for basic asset changes
+- Simpler implementation than function hooking
 
-### Implementation Strategy
+#### 🎯 **Key Learnings for Sprite Colors**
+1. **File structure is critical** - exact path matching required
+2. **Multiple file types** may be involved for complete character changes
+3. **TEX format** is used for textures, may apply to sprite files too
+4. **ID-based naming** suggests systematic file organization
 
-#### Phase 0: Research & Pattern Discovery (2-3 days)
-1. Use x64dbg to trace sprite loading
-2. Find function signatures for:
-   - LoadSprite / LoadPalette functions
-   - Palette reload triggers
-   - PAC file extraction
-3. Document byte patterns for signature scanning
+#### 🔄 **Revised Implementation Strategy**
+Based on WotL Characters success with file replacement:
+1. **Extract original sprite files** to proper directory structure
+2. **Generate color variants** using our existing PaletteDetector
+3. **Place variants in mod directory** following FFT's path conventions
+4. **Use file redirection** instead of memory hooks for hotkey switching
 
-## Implementation Plan
+#### ⚠️ **Differences from Our Use Case**
+- WotL Characters adds **new** characters (face portraits)
+- We need to **modify existing** character sprites (Ramza)
+- Our changes are **runtime/hotkey based**, theirs are permanent
+- May need to combine file replacement with selective loading logic
 
-### Phase 1: Proof of Concept with Hooks (3-4 days)
-1. Add SigScan and Memory dependencies
-2. Research FFT_enhanced.exe with x64dbg to find:
-   - Sprite loading function signatures
-   - Palette application points
-3. Implement basic function hooks
-4. Test palette modifications through hooks
+### Technical Architecture Comparison
 
-### Phase 2: Full Hook Integration (3 days)
-1. Hook all sprite-related functions
-2. Integrate existing PaletteDetector logic
-3. Apply hotkey system to hooked modifications
-4. Test all 4 chapter variations with hooks
+| Aspect | WotL Characters | FFT Color Mod (Planned) |
+|--------|----------------|--------------------------|
+| **Approach** | Static file replacement | Dynamic color switching |
+| **Files Modified** | Face portraits + character data | Sprite palettes |
+| **Runtime Logic** | None (pure asset swap) | Hotkey handling + file redirection |
+| **Complexity** | Low (file placement) | Medium (selective loading) |
+| **Memory Usage** | Minimal | Multiple color variants |
 
-### Phase 3: Hybrid Approach (2 days)
-1. Combine Universal Redirector with hooks
-2. File interception for initial load
-3. Hooks to prevent palette reloading
-4. Performance optimization
+This analysis confirms that **file-based asset replacement is a proven approach** for FFT modifications and validates our pivot away from complex memory manipulation toward simpler file override systems.
 
-### Phase 4: Polish & Release (1 day)
-1. Cleanup and optimization
-2. Comprehensive logging
-3. User documentation
-4. Package for distribution
+## 🔍 Mod Repository Analysis - Black Boco
 
-## Actionable Next Steps
+After analyzing the **Black Boco** FFT mod repository located at `~/Dev/'Black Boco'`, here are the key findings that reveal a **completely different approach** to FFT modding:
 
-### Immediate Actions
-1. **Add new dependencies** to FFTColorMod.csproj:
-   ```bash
-   dotnet add package Reloaded.Memory --version 9.4.3
-   dotnet add package Reloaded.Memory.Sigscan --version 3.1.9
-   dotnet add package Reloaded.Memory.SigScan.ReloadedII.Interfaces --version 1.2.0
-   dotnet add package Reloaded.SharedLib.Hooks --version 1.9.0
-   ```
+### Repository Structure Analysis
+```
+Black Boco/
+├── ModConfig.json              # Mod configuration and dependencies
+├── icon.png                    # Mod icon (200x200 PNG)
+└── FFTIVC/
+    └── data/
+        └── enhanced/
+            └── nxd/
+                └── overrideentrydata.nxd  # Binary data file (97KB)
+```
 
-2. **Study FFTGenericJobs patterns** for sprite-related functions
-3. **Create signature scanner** to find our target functions
-4. **Implement hook-based approach** using existing PaletteDetector
+### Critical Discovery: Two Completely Different Modding Approaches
 
-### Research Tools Needed
-- **x64dbg**: For runtime analysis and finding function signatures
-- **Process Monitor**: To trace file access patterns
-- **Cheat Engine**: For memory scanning and testing
+#### 1. **Black Boco Approach: File Replacement via fftivc.utility.modloader**
+- **Method**: Data file replacement using `.nxd` format
+- **Dependencies**: `fftivc.utility.modloader` by Nenkai
+- **File Format**: `overrideentrydata.nxd` - Custom binary format with "NXDF" header
+- **Approach**: Replace game data files directly, no code execution
+- **Size**: Single 97KB binary data file
+- **Complexity**: Simple file replacement system
 
-### Expected Challenges & Solutions
-- **Finding correct signatures**: Use multiple patterns, test thoroughly
-- **Hook timing**: Ensure hooks are installed before game loads assets
-- **Compatibility**: Test with other mods, especially fftivc.utility.modloader
+#### 2. **FFTGenericJobs Approach: Function Hooking & Memory Manipulation**
+- **Method**: Dynamic function hooking and memory patching
+- **Dependencies**: `reloaded.sharedlib.hooks`, `Reloaded.Memory.SigScan.ReloadedII`
+- **File Format**: Compiled .NET assembly (.dll) with source code
+- **Approach**: Hook game functions, patch memory at runtime
+- **Size**: Full C# source code project with complex initialization
+- **Complexity**: Advanced reverse engineering with signature scanning
 
-## CRITICAL DISCOVERY #2: FFTGenericJobs DUAL-ENTRY INITIALIZATION
+### Technical Analysis of .nxd Format
 
-### The Secret: TWO-LAYER Architecture!
+#### File Structure Discovery
+```
+Header: "NXDF" (4 bytes) + Version/Metadata (28 bytes)
+Data:   Binary entries with offsets and sizes
+        Contains palette/texture override data
+        Uses structured entry system with pointers
+```
 
-After deep analysis, FFTGenericJobs uses a **two-layer initialization pattern** that bypasses the IStartupScanner problem:
+#### Key Insights
+1. **NXDF Format**: Custom FFT data override format
+2. **Entry-Based**: Contains multiple data entries with offsets
+3. **Palette Data**: Contains color/texture replacement information
+4. **Game Integration**: Loaded directly by FFT without code execution
 
-1. **Startup.cs** (Entry point - IMod interface)
-   - Implements `StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig)`
-   - This DOES get called by Reloaded-II
-   - Collects all necessary services (IReloadedHooks, ILogger, etc.)
-   - Creates ModContext with all services
-   - Instantiates the actual Mod class with ModContext
+### Comparison: File Replacement vs Function Hooking
 
-2. **Mod.cs** (Business logic - ModBase class)
-   - Constructor receives ModContext with ALL services already initialized
-   - Doesn't need Start() to be called - everything happens in constructor
-   - Can immediately use IReloadedHooks to create hooks
-   - IStartupScanner issue becomes irrelevant for basic hooks
+| Aspect | Black Boco (File Replacement) | FFTGenericJobs (Function Hooking) |
+|--------|-------------------------------|----------------------------------|
+| **Complexity** | Low - Single data file | High - Complex C# hooking system |
+| **Dependencies** | fftivc.utility.modloader only | Multiple memory/hooking libraries |
+| **Runtime** | No code execution | Active memory manipulation |
+| **Approach** | Replace source data | Intercept game functions |
+| **Maintenance** | Simple file updates | Complex signature maintenance |
+| **Flexibility** | Limited to data changes | Unlimited game behavior changes |
 
-### Why This Works When Ours Doesn't
+### Implications for Our Color Mod
 
-**Our Current Structure (BROKEN):**
+#### Option 1: Adopt .nxd File Format (SIMPLE)
+**Pros:**
+- Much simpler than function hooking
+- No complex signature scanning needed
+- Direct game integration via fftivc.utility.modloader
+- Proven to work with color changes (Black Boco changes Boco's colors)
+
+**Cons:**
+- Need to reverse engineer .nxd format
+- Limited to predefined data changes
+- No real-time hotkey switching
+- Less flexible than hook approach
+
+**Implementation:**
+1. Analyze Black Boco's .nxd file structure
+2. Find Ramza sprite entries in the data
+3. Create color variant .nxd files
+4. Use fftivc.utility.modloader for file switching
+
+#### Option 2: Continue with Function Hooking (COMPLEX)
+**Pros:**
+- Full control over game behavior
+- Real-time hotkey switching possible
+- Reuse all existing PaletteDetector code
+- More powerful and flexible
+
+**Cons:**
+- Much more complex implementation
+- Requires extensive reverse engineering
+- Signature scanning maintenance needed
+- Higher chance of breaking with updates
+
+#### Option 3: Hybrid Approach (RECOMMENDED)
+**Phase 1:** Implement .nxd approach for quick proof-of-concept
+**Phase 2:** Add function hooking for real-time switching
+
+### File Format Research Needed
+
+To adopt the .nxd approach, we need to:
+1. **Hex analyze** the `overrideentrydata.nxd` file structure
+2. **Identify** sprite/palette entry formats
+3. **Locate** Ramza-specific data entries
+4. **Extract** the data layout and offset calculations
+5. **Create** our own .nxd files with modified palettes
+
+### Immediate Next Steps
+
+1. **Analyze .nxd structure** using hex editor and pattern analysis
+2. **Study fftivc.utility.modloader** documentation/source if available
+3. **Test file replacement** approach with simple color changes
+4. **Compare complexity** vs function hooking approach
+5. **Choose primary implementation** path based on analysis
+
+### Strategic Decision Point
+
+The discovery of Black Boco reveals that **file replacement might be significantly simpler** than our current function hooking approach. We should evaluate:
+
+- **Time to Implementation**: .nxd approach likely days vs weeks for hooking
+- **Feature Requirements**: Do we need real-time switching or is mod loading sufficient?
+- **Maintenance Burden**: File format changes vs signature maintenance
+- **User Experience**: Mod loading vs hotkey switching
+
+This analysis provides a **crucial alternative path** that could dramatically simplify our implementation while still achieving the core color modification goals.
+
+## 🔍 Mod Repository Analysis - better_palettes
+
+### Repository Overview
+The **better_palettes** mod by Daytona (v2.0.7) is a comprehensive palette replacement mod that provides "cooler palettes" for generic jobs and includes a real black chocobo. The mod represents a mature implementation of asset replacement using file override methodology.
+
+### Key Technical Findings
+
+#### 1. **Implementation Approach: File Asset Replacement**
+- **Method**: Complete file replacement, not memory patching
+- **Architecture**: Creates FFTIVC folder structure to override game assets
+- **Persistence**: Changes are permanent once files are copied to game directory
+- **Performance**: No runtime overhead - game loads pre-modified assets directly
+
+#### 2. **Dependencies & Configuration**
+```json
+// ModConfig.json - Critical Dependencies
+"ModDependencies": ["fftivc.utility.modloader"]  // Required for FFT-specific functionality
+
+// GitHubDependencies include:
+- fftivc.utility.modloader (Nenkai) - FFT-specific mod loader
+- Reloaded.Memory.SigScan.ReloadedII - Memory scanning capabilities
+- reloaded.sharedlib.hooks - Function hooking support
+```
+
+#### 3. **File Structure & Asset Organization**
+```
+FFTIVC/data/enhanced/
+├── fftpack/unit/           # Battle sprites (.bin files)
+├── system/ffto/g2d/        # UI sprites (.bin files)
+└── ui/ffto/common/face/texture/  # Portrait files (.tex files)
+```
+
+**Asset Types Discovered:**
+- **Battle Sprites**: `battle_[job]_[gender]_spr.bin` (42-46 KB each)
+- **Portraits**: `wldface_[id]_[variant]_uitx.tex` (26-73 KB each)
+- **UI Elements**: `tex_[id].bin` (116-128 KB each)
+
+#### 4. **Palette Variant System**
+The mod uses a sophisticated variant system with multiple palette themes:
+
+**Available Themes:**
+- Smoke (dark/gray tones)
+- Azure (blue/cyan tones)
+- Lucavi (demonic/red tones)
+- Festive (holiday colors)
+- Gold_with_Blue_Cape
+- Southern_Sky / Northern_Sky
+- Corpse_Brigade (faction colors)
+- Ginger (warm tones)
+- Maid (specific for Chemist Female)
+- Red_Bard (specific variant)
+
+**Configuration Structure:**
+```
+config_files/units/
+├── male/[JobClass]/[Variant]/
+├── female/[JobClass]/[Variant]/
+└── unique/[CharacterName]/[Variant]/
+```
+
+#### 5. **Asset Processing & Deployment**
+From the log file analysis, the mod:
+1. **Processes 50+ job variants** across male/female/unique characters
+2. **Copies sprites and portraits** to game directory at runtime
+3. **Handles multiple file sizes** - sprites (42-46KB), portraits (26-73KB)
+4. **Supports unique characters** like Agrias with special variants
+5. **Processes UI elements** for mobile and standard variants
+
+#### 6. **Binary Asset Format Analysis**
+**Sprite Files (.bin)**:
+- Size range: 42-46 KB for character sprites
+- Header analysis shows structured binary data (not plain bitmap)
+- Likely contains palette data + compressed sprite frames
+- Format appears to be FFT-specific sprite containers
+
+**Portrait Files (.tex)**:
+- Size range: 26-73 KB for face textures
+- Various numbering system (096-133 range observed)
+- Multiple variants per character (08, 09, 10, 11, 12 suffixes)
+- Binary texture format with embedded palette data
+
+#### 7. **Deployment Strategy**
+The mod uses **runtime file copying** rather than permanent installation:
+1. Maintains original assets in `config_files/`
+2. Copies selected variants to `FFTIVC/data/enhanced/` at mod load
+3. Game loads modified assets transparently
+4. Allows variant switching by reloading mod with different configs
+
+### Critical Insights for FFT_Color_Mod
+
+#### 1. **File Override is Proven Effective**
+- The better_palettes mod successfully overrides FFT assets using file replacement
+- No memory hooking or patching required for basic palette changes
+- FFTIVC folder structure is the standard for asset override
+
+#### 2. **Asset Format Compatibility**
+- Our existing `.spr.bin` approach aligns with their `.bin` sprite format
+- Portrait modification (`wldface_*.tex`) could extend our scope beyond sprites
+- Binary formats suggest embedded palette data that our PaletteDetector can process
+
+#### 3. **Scalability Model**
+- Pre-generated palette variants (like our color schemes) work effectively
+- Runtime variant switching achievable through file management
+- Multiple job classes and unique characters can be handled systematically
+
+#### 4. **Implementation Parallels**
 ```csharp
-public class Mod : IMod {
-    public Mod() { /* Can't do much here */ }
-    public void Start(IModLoader modLoader) { /* NEVER GETS CALLED */ }
+// better_palettes approach (conceptual)
+CopyAssetFiles(selectedVariant, destinationPath);
+// Translates to our approach:
+FileRedirector.RedirectPath(originalFile, GenerateColorVariant(originalFile, colorScheme));
+```
+
+#### 5. **Dependency Learning**
+- `fftivc.utility.modloader` appears critical for FFT-specific functionality
+- Memory.SigScan + SharedLib.Hooks suggest they may use hybrid approach
+- Our Universal Redirector approach could be simpler and more direct
+
+### Recommended Integration Strategy
+
+#### Phase 1: Asset Format Validation
+1. Test our PaletteDetector on their `.bin` files from config_files
+2. Verify our color transformation works on their asset format
+3. Validate FFTIVC folder structure compatibility
+
+#### Phase 2: Hybrid Implementation
+1. Use our Universal Redirector for real-time switching
+2. Adopt their FFTIVC folder organization for compatibility
+3. Support both sprite (.bin) and portrait (.tex) modification
+
+#### Phase 3: Extended Coverage
+1. Add support for unique characters like Agrias
+2. Implement multiple palette themes beyond our 4 color schemes
+3. Consider UI element modification (chocobo, etc.)
+
+### Key Technical Advantages Identified
+
+**For Memory Approach Advocates:**
+- better_palettes proves asset replacement works reliably
+- No complex signature scanning or hooking required
+- Compatible with existing FFT mod ecosystem
+
+**For Our Hotkey System:**
+- Runtime file copying enables dynamic switching
+- Our approach could be more responsive (no file I/O during switches)
+- Hybrid model could combine both benefits
+
+**For Performance:**
+- Pre-generated assets = zero runtime processing overhead
+- File-based approach = no memory scanning loops
+- Compatible with existing mod infrastructure
+
+This analysis confirms that **file-based asset replacement is a mature, proven approach** for FFT modding, while also revealing that sophisticated variants and runtime management are achievable within this paradigm.
+
+## 🔍 Mod Repository Analysis - FFT Texture Pack
+
+### Repository Structure Overview
+The Final Fantasy Tactics Texture Pack repository provides a comprehensive example of FFT modding through the Reloaded-II framework. It consists of two main components:
+
+1. **fftivc.asset.zoditexturepack** - The actual texture assets
+2. **fftivc.config.zodioverwriter** - A configurator mod that dynamically manages texture application
+
+### Key Architectural Insights
+
+#### Texture Replacement System
+The texture pack uses a **dynamic file replacement** approach rather than memory modification:
+
+- **Path Structure**: `FFTIVC/data/enhanced/[category]/` mirrors the game's internal file structure
+- **File Override**: Places replacement files at exact game paths to override defaults
+- **No Memory Hooks**: Pure file-level replacement without runtime memory manipulation
+
+#### Character-Related Discoveries
+
+**Color Lookup Tables (LUTs)**:
+- `lut_chara.tga` (64x64 RGBA) - Character color lookup table
+- `lut_uichara.tga` (slightly larger) - UI character color table
+- These are **palette transformation files** that could apply to sprite coloring
+
+**Sprite References**:
+- Configuration includes `SpriteOption` enum (Original, Mobile)
+- Suggests different sprite sets can be swapped
+- Mobile sprites mentioned as iOS/Android variants with different styling
+
+#### Configurator Pattern - Dynamic Asset Management
+
+The configurator uses a **resource bundling** approach:
+
+```csharp
+// Pattern from Mod.cs
+string sourceDir = Path.Combine(_modRoot, "Resources", "StatusIcons", "PSX");
+string targetDir = Path.Combine(texturePackDir, "FFTIVC", "data", "enhanced", "ui", "ffto", "icon");
+
+if (option == Original) {
+    DeleteManagedFiles(referenceDir, targetDir);  // Remove overrides
+} else {
+    CopyDirectory(sourceDir, targetDir);          // Apply overrides
 }
 ```
 
-**FFTGenericJobs Structure (WORKS):**
-```csharp
-// Startup.cs - Gets called by Reloaded
-public class Startup : IMod {
-    public void StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig) {
-        // Gather all services here
-        _mod = new Mod(new ModContext {
-            Hooks = _hooks,
-            Logger = _logger,
-            ModLoader = _modLoader
-        });
-    }
-}
+**Key Insights**:
+1. **Resources folder** contains all variant assets
+2. **Copy/Delete operations** enable real-time switching
+3. **Managed file tracking** ensures clean state transitions
 
-// Mod.cs - Business logic
-public class Mod : ModBase {
-    public Mod(ModContext context) {
-        // Have everything we need immediately!
-        _hooks = context.Hooks;
-        // Can create hooks right here!
-    }
-}
+#### Texture File Formats and Locations
+
+**Primary Formats**:
+- `.tga` files for most textures (background, UI elements, color LUTs)
+- `.tex` files for UI textures (`ui_unit_tex_uitx.tex`, `ui_unit_info_assets_uitx.tex`)
+- Numbered directories (001-116) contain map-specific textures
+
+**Directory Structure Pattern**:
+```
+FFTIVC/data/enhanced/
+├── bg/textures/           # Background textures by map number
+├── ui/ffto/               # UI-related textures
+│   ├── battle/texture/    # Battle UI elements
+│   ├── common/texture/    # Shared UI components
+│   └── unit/texture/      # Unit-specific UI
+├── system/ffto/g2d/       # System graphics
+└── vfx/post_process/      # Visual effects
 ```
 
-### The IStartupScanner Mystery Solved
+### Applications to Sprite Color Modification
 
-FFTGenericJobs DOES try to use IStartupScanner but:
-1. They check if it's available (lines 177-182)
-2. If NOT available, they log error and **return**
-3. **BUT** - The mod still works because they use CreateWrapper/CreateHook directly!
+#### 1. LUT-Based Color Transformation
+The `lut_chara.tga` files suggest FFT uses lookup tables for character coloring:
+- Could potentially **hook LUT loading** instead of individual sprites
+- **Single LUT modification** might affect all character sprites
+- More efficient than per-sprite palette replacement
 
-The key insight: **They don't actually NEED IStartupScanner for basic hooks!**
-
-They can use `_hooks.CreateHook()` directly with known addresses. IStartupScanner is just for pattern scanning to FIND addresses dynamically.
-
-### How They Actually Hook Without IStartupScanner
-
-Even when IStartupScanner fails, they could still:
-1. Use hardcoded offsets (if they knew them)
-2. Use their own Scanner class (Reloaded.Memory.Sigscan)
-3. Hook functions they can find other ways
-
-### SOLUTION FOR OUR MOD
-
-We need to adopt the two-layer pattern:
-
-1. **Create Template/Startup.cs**:
+#### 2. Resource Management Pattern
+The configurator's approach could be adapted for sprite colors:
 ```csharp
-public class Startup : IMod {
-    public void StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig) {
-        // This WILL get called
-        var modContext = new ModContext {
-            Hooks = _hooks,
-            Logger = _logger,
-            ModLoader = _modLoader
-        };
-        _mod = new Mod(modContext);
-    }
-}
+// Conceptual adaptation
+string ramzaOriginal = "Resources/Sprites/Original/battle_ramza_spr.bin";
+string ramzaRed = "Resources/Sprites/Red/battle_ramza_spr.bin";
+// Copy appropriate variant to game path based on hotkey
 ```
 
-2. **Modify our Mod.cs**:
+#### 3. File Structure Insights
+- **Exact path matching required** - game expects files at specific locations
+- **File extension consistency** - `.bin` for sprites, `.tga` for color data
+- **Nested directory structure** must be preserved exactly
+
+#### 4. Configuration Integration
+The Reloaded-II configuration system could be extended for color schemes:
 ```csharp
-public class Mod : ModBase {
-    public Mod(ModContext context) {
-        _hooks = context.Hooks;
-        // NOW we can create hooks immediately!
-        InitializeHooks();
-    }
-}
+public enum CharacterColorScheme { Original, Red, Blue, Green, Purple }
+
+[Category("Character Colors")]
+[DisplayName("Ramza Color Scheme")]
+public CharacterColorScheme RamzaColors { get; set; } = CharacterColorScheme.Original;
 ```
 
-3. **For Pattern Scanning Without IStartupScanner**:
-```csharp
-// Use Reloaded.Memory.Sigscan directly
-var scanner = new Scanner(_process, _process.MainModule);
-var result = scanner.CompiledFindPattern("B9 00 03 00 00");
-if (result.Found) {
-    var hook = _hooks.CreateHook<PaletteLoadDelegate>(
-        MyHookFunction,
-        _gameBase + result.Offset
-    );
-    hook.Activate();
-}
-```
+### Technical Implementation Recommendations
 
-### Why FFTGenericJobs Still Works
+#### Option 1: LUT Interception (Most Promising)
+- Hook loading of `lut_chara.tga` files
+- Generate color-transformed LUTs for each scheme
+- Single intercept point affects all sprites
 
-The mod successfully adds Dark Knight and Onion Knight by:
-1. Using the two-layer initialization to get hooks working
-2. Patching memory directly with WriteMemory()
-3. Hooking critical functions even without IStartupScanner
-4. Using hardcoded patterns that rarely change
+#### Option 2: Sprite File Redirection (Current Approach)
+- Continue with individual sprite file replacement
+- Use configurator pattern for resource management
+- Maintain separate sprite variants per color scheme
 
-### Action Items for Our Mod
+#### Option 3: Hybrid Approach
+- Use LUT transformation for real-time color changes
+- Fall back to file replacement for complex modifications
+- Best performance with maximum flexibility
 
-1. **IMMEDIATE**: Adopt the Startup.cs/ModBase pattern
-2. **Use StartEx** instead of Start (it actually gets called!)
-3. **Pass services via ModContext** to avoid waiting for Start()
-4. **Hook directly** with known addresses from our pattern analysis
-5. **Use Scanner class** directly instead of waiting for IStartupScanner
+### Dependencies and Compatibility
+The texture pack successfully integrates with:
+- `fftivc.utility.modloader` - Core FFT mod loader
+- `Reloaded.Memory.SigScan.ReloadedII` - For potential memory operations
+- `reloaded.sharedlib.hooks` - Function hooking capability
 
-This explains EVERYTHING about why FFTGenericJobs works while ours doesn't!
+This suggests our color mod could coexist with texture modifications using the same dependency chain.
 
-
-## Alternative Approaches (Future)
-
-### Shishi Sprite Editor (Manual)
-- **Pros**: Well-documented, community support
-- **Cons**: Manual process, not real-time
-- **Use Case**: Creating base modified sprites
-
-### GPU Shader Interception
-- **Pros**: Most powerful, unlimited effects
-- **Cons**: Complex implementation (8/10 difficulty)
-- **Use Case**: Advanced visual effects
-
-### Direct File Modification
-- **Pros**: Permanent changes
-- **Cons**: No real-time switching
-- **Use Case**: Distribution of pre-modified sprites
-
-## Code Reuse Strategy
-
-All 27 existing tests transfer directly:
-- `DetectChapterOutfit()` - works on file data
-- `ReplacePaletteColors()` - transforms file palettes
-- `FindPalette()`/`FindAllPalettes()` - scan file offsets
-- `HotkeyManager` - triggers cache refresh instead of memory write
-
-## Risk Mitigation
-- **Backup**: Keep original detection/transformation logic
-- **Fallback**: Memory approach remains as alternative
-- **Testing**: 27 existing tests validate core logic
-- **Logging**: Comprehensive debugging output
+### Critical Observation: No Sprite Color Modifications
+**Important**: The texture pack focuses on UI, backgrounds, and effects but does **not modify character sprite colors**. This confirms that **character sprite coloring remains an unsolved challenge** in the FFT modding community, making our approach potentially groundbreaking if successful.

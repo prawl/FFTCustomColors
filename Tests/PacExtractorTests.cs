@@ -308,5 +308,45 @@ namespace FFTColorMod.Tests
                     Directory.Delete(outputDir, true);
             }
         }
+
+        [Fact]
+        public void ExtractAllSprites_ExtractsBinFiles()
+        {
+            // TLDR: Test extracting .bin files (FFT sprite format) from PAC
+            var extractor = new PacExtractor();
+            var tempFile = Path.GetTempFileName();
+            var outputDir = Path.Combine(Path.GetTempPath(), "test_bin_sprites");
+
+            try
+            {
+                var pacData = new List<byte>();
+
+                // File count (1 file)
+                pacData.AddRange(BitConverter.GetBytes(1));
+
+                // File 1: battle_ramza_spr.bin at offset 44
+                pacData.AddRange(BitConverter.GetBytes(44));
+                pacData.AddRange(BitConverter.GetBytes(4));
+                pacData.AddRange(System.Text.Encoding.ASCII.GetBytes("battle_ramza_spr.bin".PadRight(32, '\0')));
+
+                // File data
+                pacData.AddRange(new byte[] { 0x01, 0x02, 0x03, 0x04 });
+
+                File.WriteAllBytes(tempFile, pacData.ToArray());
+
+                extractor.OpenPac(tempFile);
+                var extractedCount = extractor.ExtractAllSprites(outputDir);
+
+                // Should extract the .bin file
+                Assert.Equal(1, extractedCount);
+                Assert.True(File.Exists(Path.Combine(outputDir, "battle_ramza_spr.bin")));
+            }
+            finally
+            {
+                File.Delete(tempFile);
+                if (Directory.Exists(outputDir))
+                    Directory.Delete(outputDir, true);
+            }
+        }
     }
 }

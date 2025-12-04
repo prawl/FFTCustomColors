@@ -89,8 +89,11 @@ public class GameIntegration
         if (!IsFileHookActive || HotkeyManager.CurrentScheme == "original")
             return originalPath;
 
-        // Check if this is a sprite file
-        if (!originalPath.EndsWith(".SPR", StringComparison.OrdinalIgnoreCase))
+        // Check if this is a sprite file (.SPR or _spr.bin)
+        bool isSpriteFile = originalPath.EndsWith(".SPR", StringComparison.OrdinalIgnoreCase) ||
+                           originalPath.EndsWith("_spr.bin", StringComparison.OrdinalIgnoreCase);
+
+        if (!isSpriteFile)
             return originalPath;
 
         // Replace sprites folder with color-specific folder

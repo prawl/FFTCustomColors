@@ -59,15 +59,33 @@ namespace FFTColorMod
 
         public int ProcessDirectory(string inputPath, string outputPath)
         {
-            // TLDR: Process all .spr files in directory and return count
+            // TLDR: Process all sprite files (.spr and _spr.bin) in directory and return count
             var sprFiles = Directory.GetFiles(inputPath, "*.spr", SearchOption.AllDirectories);
+            var binFiles = Directory.GetFiles(inputPath, "*_spr.bin", SearchOption.AllDirectories);
+
             foreach (var file in sprFiles)
             {
                 var spriteData = File.ReadAllBytes(file);
                 var fileName = Path.GetFileName(file);
                 GenerateColorVariants(spriteData, outputPath, fileName);
             }
-            return sprFiles.Length;
+
+            foreach (var file in binFiles)
+            {
+                var spriteData = File.ReadAllBytes(file);
+                var fileName = Path.GetFileName(file);
+                GenerateColorVariants(spriteData, outputPath, fileName);
+            }
+
+            return sprFiles.Length + binFiles.Length;
+        }
+
+        public void ProcessSingleSprite(string spriteFile, string outputPath)
+        {
+            // TLDR: Process a single sprite file and generate color variants
+            var spriteData = File.ReadAllBytes(spriteFile);
+            var fileName = Path.GetFileName(spriteFile);
+            GenerateColorVariants(spriteData, outputPath, fileName);
         }
     }
 }

@@ -163,5 +163,67 @@ namespace FFTColorMod.Tests
                     Directory.Delete(tempPath, true);
             }
         }
+
+        [Fact]
+        public void ProcessSingleSprite_CreatesColorVariantsForOneFile()
+        {
+            // TLDR: Processes a single sprite file and creates all color variants
+            var tempPath = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            var inputPath = Path.Combine(tempPath, "input");
+            Directory.CreateDirectory(inputPath);
+
+            try
+            {
+                // Create a test sprite file
+                var spriteFile = Path.Combine(inputPath, "test.spr");
+                var spriteData = new byte[256];
+                File.WriteAllBytes(spriteFile, spriteData);
+
+                var generator = new SpriteColorGenerator();
+                generator.ProcessSingleSprite(spriteFile, tempPath);
+
+                // Check all color variant files were created
+                Assert.True(File.Exists(Path.Combine(tempPath, "sprites_blue", "test.spr")));
+                Assert.True(File.Exists(Path.Combine(tempPath, "sprites_red", "test.spr")));
+                Assert.True(File.Exists(Path.Combine(tempPath, "sprites_green", "test.spr")));
+                Assert.True(File.Exists(Path.Combine(tempPath, "sprites_purple", "test.spr")));
+                Assert.True(File.Exists(Path.Combine(tempPath, "sprites_original", "test.spr")));
+            }
+            finally
+            {
+                if (Directory.Exists(tempPath))
+                    Directory.Delete(tempPath, true);
+            }
+        }
+
+        [Fact]
+        public void ProcessDirectory_ProcessesBinFiles()
+        {
+            // TLDR: Processes .bin sprite files (FFT format) in addition to .spr files
+            var tempPath = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            var inputPath = Path.Combine(tempPath, "input");
+            Directory.CreateDirectory(inputPath);
+
+            try
+            {
+                // Create test .bin file with FFT sprite naming convention
+                File.WriteAllBytes(Path.Combine(inputPath, "battle_ramza_spr.bin"), new byte[256]);
+
+                var generator = new SpriteColorGenerator();
+                generator.ProcessDirectory(inputPath, tempPath);
+
+                // Check the .bin file was processed
+                Assert.True(File.Exists(Path.Combine(tempPath, "sprites_blue", "battle_ramza_spr.bin")));
+                Assert.True(File.Exists(Path.Combine(tempPath, "sprites_red", "battle_ramza_spr.bin")));
+                Assert.True(File.Exists(Path.Combine(tempPath, "sprites_green", "battle_ramza_spr.bin")));
+                Assert.True(File.Exists(Path.Combine(tempPath, "sprites_purple", "battle_ramza_spr.bin")));
+                Assert.True(File.Exists(Path.Combine(tempPath, "sprites_original", "battle_ramza_spr.bin")));
+            }
+            finally
+            {
+                if (Directory.Exists(tempPath))
+                    Directory.Delete(tempPath, true);
+            }
+        }
     }
 }

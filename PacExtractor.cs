@@ -114,7 +114,7 @@ namespace FFTColorMod
 
         public int ExtractAllSprites(string outputDirectory)
         {
-            // TLDR: Extracts all .SPR files from the PAC to a directory
+            // TLDR: Extracts all sprite files (.spr and _spr.bin) from the PAC to a directory
             if (_pacData == null) return 0;
 
             // Create output directory if it doesn't exist
@@ -125,7 +125,9 @@ namespace FFTColorMod
             for (int i = 0; i < _fileCount; i++)
             {
                 string? fileName = GetFileName(i);
-                if (fileName != null && fileName.EndsWith(".spr", StringComparison.OrdinalIgnoreCase))
+                if (fileName != null &&
+                    (fileName.EndsWith(".spr", StringComparison.OrdinalIgnoreCase) ||
+                     fileName.EndsWith("_spr.bin", StringComparison.OrdinalIgnoreCase)))
                 {
                     byte[]? fileData = ExtractFile(i);
                     if (fileData != null)

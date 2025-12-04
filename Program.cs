@@ -24,6 +24,10 @@ namespace FFTColorMod
                     ExtractSprites(args);
                     break;
 
+                case "extract-single":
+                    ExtractSinglePac(args);
+                    break;
+
                 case "process":
                     ProcessSprites(args);
                     break;
@@ -45,7 +49,8 @@ namespace FFTColorMod
             Console.WriteLine();
             Console.WriteLine("Commands:");
             Console.WriteLine("  extract               Extract sprites from FFT enhanced PAC files");
-            Console.WriteLine("  process <dir>        Process extracted sprites to generate color variants");
+            Console.WriteLine("  extract-single <pac> <output>  Extract sprites from a single PAC file");
+            Console.WriteLine("  process <sprite> <output>      Process a single sprite to generate color variants");
             Console.WriteLine("  full                 Run full pipeline: extract and process");
             Console.WriteLine();
             Console.WriteLine("The tool will automatically use FFT's enhanced directory.");
@@ -85,7 +90,9 @@ namespace FFTColorMod
                         for (int i = 0; i < testCount; i++)
                         {
                             var fileName = extractor.GetFileName(i);
-                            if (fileName != null && fileName.EndsWith(".spr", StringComparison.OrdinalIgnoreCase))
+                            if (fileName != null &&
+                                (fileName.EndsWith(".spr", StringComparison.OrdinalIgnoreCase) ||
+                                 fileName.EndsWith("_spr.bin", StringComparison.OrdinalIgnoreCase)))
                             {
                                 Console.WriteLine($"  Found sprite: {fileName}");
                                 extracted++;
@@ -101,25 +108,88 @@ namespace FFTColorMod
             Console.WriteLine($"\nExtraction complete! Total sprites extracted: {totalExtracted}");
         }
 
-        static void ProcessSprites(string[] args)
+        static void ExtractSinglePac(string[] args)
         {
-            // TLDR: Generate color variants for extracted sprites
-            string inputPath = args.Length > 1 ? args[1] : Path.Combine(Directory.GetCurrentDirectory(), "extracted_sprites");
-            string outputPath = Path.Combine(Directory.GetCurrentDirectory(), "FFTIVC", "data");
-
-            if (!Directory.Exists(inputPath))
+            // TLDR: Extract sprites from a single PAC file
+            if (args.Length < 3)
             {
-                Console.WriteLine($"Input directory not found: {inputPath}");
+                Console.WriteLine("Usage: extract-single <pac_file> <output_dir>");
                 return;
             }
 
-            Console.WriteLine($"Processing sprites from: {inputPath}");
+            string pacFile = args[1];
+            string outputPath = args[2];
+
+            if (!File.Exists(pacFile))
+            {
+                Console.WriteLine($"PAC file not found: {pacFile}");
+                return;
+            }
+
+            // Create output directory if it doesn't exist
+            if (!Directory.Exists(outputPath))
+            {
+                Directory.CreateDirectory(outputPath);
+            }
+
+            Console.WriteLine($"Extracting sprites from: {pacFile}");
             Console.WriteLine($"Output directory: {outputPath}");
 
-            var generator = new SpriteColorGenerator();
-            var processedCount = generator.ProcessDirectory(inputPath, outputPath);
+            var extractor = new PacExtractor();
+            if (extractor.OpenPac(pacFile))
+            {
+                int extractedCount = extractor.ExtractAllSprites(outputPath);
+                Console.WriteLine($"Successfully extracted {extractedCount} sprites");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to open PAC file: {pacFile}");
+            }
+        }
 
-            Console.WriteLine($"\nProcessing complete! Files processed: {processedCount}");
+        static void ProcessSprites(string[] args)
+        {
+            // TLDR: Generate color variants for extracted sprites or a single sprite
+            if (args.Length < 3)
+            {
+                // Directory processing mode
+                string inputPath = args.Length > 1 ? args[1] : Path.Combine(Directory.GetCurrentDirectory(), "extracted_sprites");
+                string outputPath = Path.Combine(Directory.GetCurrentDirectory(), "FFTIVC", "data");
+
+                if (!Directory.Exists(inputPath))
+                {
+                    Console.WriteLine($"Input directory not found: {inputPath}");
+                    return;
+                }
+
+                Console.WriteLine($"Processing sprites from: {inputPath}");
+                Console.WriteLine($"Output directory: {outputPath}");
+
+                var generator = new SpriteColorGenerator();
+                var processedCount = generator.ProcessDirectory(inputPath, outputPath);
+
+                Console.WriteLine($"\nProcessing complete! Files processed: {processedCount}");
+            }
+            else
+            {
+                // Single sprite processing mode
+                string spriteFile = args[1];
+                string outputPath = args[2];
+
+                if (!File.Exists(spriteFile))
+                {
+                    Console.WriteLine($"Sprite file not found: {spriteFile}");
+                    return;
+                }
+
+                Console.WriteLine($"Processing sprite: {spriteFile}");
+                Console.WriteLine($"Output directory: {outputPath}");
+
+                var generator = new SpriteColorGenerator();
+                generator.ProcessSingleSprite(spriteFile, outputPath);
+
+                Console.WriteLine($"Color variants generated for: {Path.GetFileName(spriteFile)}");
+            }
         }
 
         static void RunFullPipeline(string[] args)

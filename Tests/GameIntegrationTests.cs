@@ -542,4 +542,24 @@ public class GameIntegrationTests
                 System.IO.Directory.Delete(outputDir, true);
         }
     }
+
+    [Fact]
+    public void GetRedirectedPath_ShouldHandleBinFiles()
+    {
+        // TLDR: GetRedirectedPath should handle .bin sprite files (FFT format)
+        var integration = new GameIntegration();
+        integration.InitializeFileHook();
+
+        // Set color scheme to blue
+        integration.ProcessHotkey(0x72); // F3 key = blue
+
+        var binSpritePath = @"data\sprites\battle_ramza_spr.bin";
+
+        // Act
+        var redirectedPath = integration.GetRedirectedPath(binSpritePath);
+
+        // Assert - should redirect .bin files that end with _spr.bin
+        redirectedPath.Should().Contain("sprites_blue");
+        redirectedPath.Should().EndWith("battle_ramza_spr.bin");
+    }
 }

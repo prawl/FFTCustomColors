@@ -38,11 +38,11 @@ public class Mod : IMod
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate IntPtr LoadSpriteDelegate(IntPtr spriteData, int size);
 
-    // TLDR: Reloaded-II requires parameterless constructor
-    public Mod()
+    // Constructor that accepts ModContext (new pattern from FFTGenericJobs)
+    public Mod(ModContext context)
     {
         // Do minimal work in constructor - Reloaded will call Start() for initialization
-        Console.WriteLine("[FFT Color Mod] Constructor called");
+        Console.WriteLine("[FFT Color Mod] Constructor called with ModContext");
 
         // Initialize these fields even if other initialization fails
         _manualScanner = new ManualMemoryScanner();
@@ -59,6 +59,11 @@ public class Mod : IMod
         {
             Console.WriteLine($"[FFT Color Mod] Error in constructor: {ex.Message}");
         }
+    }
+
+    // TLDR: Keep parameterless constructor for backward compatibility
+    public Mod() : this(new ModContext())
+    {
     }
 
     private void InitializeModBasics()
