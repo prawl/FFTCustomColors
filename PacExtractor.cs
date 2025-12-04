@@ -7,8 +7,14 @@ namespace FFTColorMod
         public bool OpenPac(string path)
         {
             // TLDR: Opens a PAC file for extraction
-            if (path == null) return false;
+            if (string.IsNullOrEmpty(path)) return false;
             return true;
+        }
+
+        public int GetFileCount()
+        {
+            // TLDR: Returns number of files in the PAC
+            return 0;
         }
     }
 }

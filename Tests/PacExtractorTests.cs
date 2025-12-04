@@ -30,5 +30,23 @@ namespace FFTColorMod.Tests
             var result = extractor.OpenPac(null);
             Assert.False(result);
         }
+
+        [Fact]
+        public void GetFileCount_ReturnsZeroBeforeOpening()
+        {
+            // TLDR: Test file count is zero before opening PAC
+            var extractor = new PacExtractor();
+            var count = extractor.GetFileCount();
+            Assert.Equal(0, count);
+        }
+
+        [Fact]
+        public void OpenPac_WithEmptyPath_ReturnsFalse()
+        {
+            // TLDR: Test empty path returns false
+            var extractor = new PacExtractor();
+            var result = extractor.OpenPac("");
+            Assert.False(result);
+        }
     }
 }
