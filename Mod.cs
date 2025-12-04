@@ -25,6 +25,15 @@ public class Mod : IMod
     private Process? _gameProcess;
     private IntPtr _processHandle;
 
+    // Hooking infrastructure
+    private SignatureScanner? _signatureScanner;
+    private IReloadedHooks? _hooks;
+    private IHook<LoadSpriteDelegate>? _loadSpriteHook;
+
+    // Delegate for sprite loading function
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate IntPtr LoadSpriteDelegate(IntPtr spriteData, int size);
+
     public Mod()
     {
         Console.WriteLine("[FFT Color Mod] Default constructor called!");
@@ -66,7 +75,53 @@ public class Mod : IMod
     // Keep Start method even if not called
     public void Start(IModLoader modLoader)
     {
-        Console.WriteLine("[FFT Color Mod] Start() called - already initialized in constructor");
+        Console.WriteLine("[FFT Color Mod] Start() called - hook setup deferred");
+
+        try
+        {
+            // Initialize signature scanner
+            _signatureScanner = new SignatureScanner();
+            _signatureScanner.SetPaletteDetector(_gameIntegration?.PaletteDetector ?? new PaletteDetector());
+
+            Console.WriteLine("[FFT Color Mod] SignatureScanner initialized and ready");
+            Console.WriteLine("[FFT Color Mod] Waiting for actual sprite loading signature from x64dbg analysis");
+
+            // TODO: Once we have the actual sprite loading signature from x64dbg:
+            // 1. Get IReloadedHooks and IStartupScanner from modLoader (need to find correct method)
+            // 2. Use startupScanner.AddMainModuleScan with the real signature
+            // 3. Create and activate the hook in the callback
+            //
+            // Placeholder signatures to try once we have the services:
+            // "48 8B C4 48 89 58 ??" - common function start
+            // "48 89 5C 24 ?? 48 89 74 24 ??" - another common pattern
+            // "40 53 48 83 EC ??" - push rbx, sub rsp
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FFT Color Mod] Error in Start(): {ex.Message}");
+            Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
+        }
+    }
+
+    // Hook function that intercepts sprite loading
+    private IntPtr LoadSpriteHook(IntPtr spriteData, int size)
+    {
+        Console.WriteLine($"[FFT Color Mod] LoadSpriteHook called! spriteData=0x{spriteData.ToInt64():X}, size={size}");
+
+        // Call original function first
+        var result = _loadSpriteHook?.OriginalFunction(spriteData, size) ?? spriteData;
+
+        // Apply palette modification if we have a valid color scheme
+        if (_signatureScanner != null && _signatureScanner.ColorScheme != "original")
+        {
+            Console.WriteLine($"[FFT Color Mod] Applying {_signatureScanner.ColorScheme} color scheme to sprite data");
+
+            // TODO: Use PaletteDetector to identify and modify the palette
+            // For now, just log
+            result = _signatureScanner.ProcessSpriteData(spriteData, size);
+        }
+
+        return result;
     }
 
     // Windows API for memory operations
@@ -158,6 +213,13 @@ public class Mod : IMod
     private void ApplyColorScheme(string scheme)
     {
         Console.WriteLine($"[FFT Color Mod] ApplyColorScheme called with scheme: {scheme}");
+
+        // Update the SignatureScanner's color scheme for hook-based modifications
+        if (_signatureScanner != null)
+        {
+            _signatureScanner.SetColorScheme(scheme);
+            Console.WriteLine($"[FFT Color Mod] SignatureScanner color scheme set to: {scheme}");
+        }
 
         if (_gameIntegration == null || _processHandle == IntPtr.Zero || _gameProcess == null)
         {

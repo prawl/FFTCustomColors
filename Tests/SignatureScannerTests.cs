@@ -142,5 +142,120 @@ namespace FFTColorMod.Tests
             // Assert
             Assert.Equal(scheme, scanner.ColorScheme);
         }
+
+        [Fact]
+        public unsafe void ProcessSpriteData_WithRedScheme_ShouldModifyBrownColors()
+        {
+            // Arrange
+            var scanner = new SignatureScanner();
+            var detector = new PaletteDetector();
+            scanner.SetPaletteDetector(detector);
+            scanner.SetColorScheme("red");
+
+            // Create a test palette with Chapter 1 Ramza colors
+            byte[] paletteData = new byte[768];
+            // Set up Chapter 1 Ramza's main tunic brown color at a known position
+            paletteData[0] = 0x17;  // Blue component of brown
+            paletteData[1] = 0x2C;  // Green component of brown
+            paletteData[2] = 0x4A;  // Red component of brown
+
+            // Add Chapter 1 signature colors for detection
+            paletteData[0x20 * 3] = 0x17; paletteData[0x20 * 3 + 1] = 0x2C; paletteData[0x20 * 3 + 2] = 0x4A;
+            paletteData[0x21 * 3] = 0x23; paletteData[0x21 * 3 + 1] = 0x3A; paletteData[0x21 * 3 + 2] = 0x62;
+            paletteData[0x2B * 3] = 0x38; paletteData[0x2B * 3 + 1] = 0x53; paletteData[0x2B * 3 + 2] = 0x83;
+
+            fixed (byte* ptr = paletteData)
+            {
+                IntPtr spriteData = new IntPtr(ptr);
+
+                // Act
+                scanner.ProcessSpriteData(spriteData, 768);
+
+                // Assert - brown should be changed to red
+                Assert.Equal(0x00, paletteData[0]);  // Blue = 0 for red
+                Assert.Equal(0x00, paletteData[1]);  // Green = 0 for red
+                Assert.Equal(0xFF, paletteData[2]);  // Red = 255 for red
+            }
+        }
+
+        [Fact]
+        public unsafe void ProcessSpriteData_WithOriginalScheme_ShouldNotModifyColors()
+        {
+            // Arrange
+            var scanner = new SignatureScanner();
+            var detector = new PaletteDetector();
+            scanner.SetPaletteDetector(detector);
+            scanner.SetColorScheme("original");
+
+            // Create a test palette with Chapter 1 Ramza colors
+            byte[] paletteData = new byte[768];
+            // Set up Chapter 1 Ramza's main tunic brown color
+            paletteData[0] = 0x17;  // Blue component of brown
+            paletteData[1] = 0x2C;  // Green component of brown
+            paletteData[2] = 0x4A;  // Red component of brown
+
+            // Add Chapter 1 signature colors for detection
+            paletteData[0x20 * 3] = 0x17; paletteData[0x20 * 3 + 1] = 0x2C; paletteData[0x20 * 3 + 2] = 0x4A;
+            paletteData[0x21 * 3] = 0x23; paletteData[0x21 * 3 + 1] = 0x3A; paletteData[0x21 * 3 + 2] = 0x62;
+            paletteData[0x2B * 3] = 0x38; paletteData[0x2B * 3 + 1] = 0x53; paletteData[0x2B * 3 + 2] = 0x83;
+
+            fixed (byte* ptr = paletteData)
+            {
+                IntPtr spriteData = new IntPtr(ptr);
+
+                // Act
+                scanner.ProcessSpriteData(spriteData, 768);
+
+                // Assert - colors should remain unchanged
+                Assert.Equal(0x17, paletteData[0]);
+                Assert.Equal(0x2C, paletteData[1]);
+                Assert.Equal(0x4A, paletteData[2]);
+            }
+        }
+
+        [Fact]
+        public void ProcessSpriteData_WithNullPointer_ShouldReturnSamePointer()
+        {
+            // Arrange
+            var scanner = new SignatureScanner();
+            scanner.SetColorScheme("red");
+
+            // Act
+            var result = scanner.ProcessSpriteData(IntPtr.Zero, 768);
+
+            // Assert
+            Assert.Equal(IntPtr.Zero, result);
+        }
+
+        [Fact]
+        public void ProcessSpriteData_WithSmallSize_ShouldNotModify()
+        {
+            // Arrange
+            var scanner = new SignatureScanner();
+            scanner.SetColorScheme("red");
+            var testPointer = new IntPtr(123456);
+
+            // Act
+            var result = scanner.ProcessSpriteData(testPointer, 100); // Too small for palette
+
+            // Assert
+            Assert.Equal(testPointer, result);
+        }
+
+        [Fact]
+        public void ProcessSpriteData_WithoutPaletteDetector_ShouldReturnSamePointer()
+        {
+            // Arrange
+            var scanner = new SignatureScanner();
+            scanner.SetColorScheme("red");
+            // Don't set PaletteDetector
+            var testPointer = new IntPtr(123456);
+
+            // Act
+            var result = scanner.ProcessSpriteData(testPointer, 768);
+
+            // Assert
+            Assert.Equal(testPointer, result);
+        }
     }
 }
