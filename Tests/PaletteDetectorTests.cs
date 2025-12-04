@@ -317,4 +317,46 @@ public class PaletteDetectorTests
         memoryData[7].Should().Be(0x25, "G reduced for red");
         memoryData[8].Should().Be(0x70, "R enhanced for red");
     }
+
+    [Fact]
+    public void ReplacePaletteColors_BlueScheme_ShouldReplaceBrownWithBlue()
+    {
+        // TLDR: Test brown → blue replacement for default chapter
+        var detector = new PaletteDetector();
+        byte[] data = new byte[] { 0x17, 0x2C, 0x4A }; // Original brown color
+
+        detector.ReplacePaletteColors(data, 0, "blue", 0);
+
+        data[0].Should().Be(0x7F); // B: enhanced blue
+        data[1].Should().Be(0x2C); // G: keep similar
+        data[2].Should().Be(0x1A); // R: reduced
+    }
+
+    [Fact]
+    public void ReplacePaletteColors_GreenScheme_ShouldReplaceBrownWithGreen()
+    {
+        // TLDR: Test brown → green replacement for default chapter
+        var detector = new PaletteDetector();
+        byte[] data = new byte[] { 0x17, 0x2C, 0x4A }; // Original brown color
+
+        detector.ReplacePaletteColors(data, 0, "green", 0);
+
+        data[0].Should().Be(0x1A); // B: reduced
+        data[1].Should().Be(0x7F); // G: enhanced green
+        data[2].Should().Be(0x2C); // R: keep similar
+    }
+
+    [Fact]
+    public void ReplacePaletteColors_PurpleScheme_ShouldReplaceBrownWithPurple()
+    {
+        // TLDR: Test brown → purple replacement for default chapter
+        var detector = new PaletteDetector();
+        byte[] data = new byte[] { 0x17, 0x2C, 0x4A }; // Original brown color
+
+        detector.ReplacePaletteColors(data, 0, "purple", 0);
+
+        data[0].Should().Be(0x7F); // B: enhanced for purple
+        data[1].Should().Be(0x2C); // G: keep similar
+        data[2].Should().Be(0x7F); // R: enhanced for purple
+    }
 }

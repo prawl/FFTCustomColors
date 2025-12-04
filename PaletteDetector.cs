@@ -173,5 +173,44 @@ public class PaletteDetector
                 }
             }
         }
+        else if (colorScheme.ToLower() == "blue")
+        {
+            // TLDR: Replace original brown with blue
+            if (offset + 2 < memoryData.Length &&
+                memoryData[offset] == 0x17 &&
+                memoryData[offset + 1] == 0x2C &&
+                memoryData[offset + 2] == 0x4A)
+            {
+                memoryData[offset] = 0x7F;     // B: enhanced blue
+                memoryData[offset + 1] = 0x2C; // G: keep similar
+                memoryData[offset + 2] = 0x1A; // R: reduced
+            }
+        }
+        else if (colorScheme.ToLower() == "green")
+        {
+            // TLDR: Replace original brown with green
+            if (offset + 2 < memoryData.Length &&
+                memoryData[offset] == 0x17 &&
+                memoryData[offset + 1] == 0x2C &&
+                memoryData[offset + 2] == 0x4A)
+            {
+                memoryData[offset] = 0x1A;     // B: reduced
+                memoryData[offset + 1] = 0x7F; // G: enhanced green
+                memoryData[offset + 2] = 0x2C; // R: keep similar
+            }
+        }
+        else if (colorScheme.ToLower() == "purple")
+        {
+            // TLDR: Replace original brown with purple
+            if (offset + 2 < memoryData.Length &&
+                memoryData[offset] == 0x17 &&
+                memoryData[offset + 1] == 0x2C &&
+                memoryData[offset + 2] == 0x4A)
+            {
+                memoryData[offset] = 0x7F;     // B: enhanced for purple
+                memoryData[offset + 1] = 0x2C; // G: keep similar
+                memoryData[offset + 2] = 0x7F; // R: enhanced for purple
+            }
+        }
     }
 }
