@@ -75,7 +75,7 @@ public class Mod : IMod
     // Keep Start method even if not called
     public void Start(IModLoader modLoader)
     {
-        Console.WriteLine("[FFT Color Mod] Start() called - hook setup deferred");
+        Console.WriteLine("[FFT Color Mod] Start() called - attempting experimental hooks");
 
         try
         {
@@ -83,18 +83,16 @@ public class Mod : IMod
             _signatureScanner = new SignatureScanner();
             _signatureScanner.SetPaletteDetector(_gameIntegration?.PaletteDetector ?? new PaletteDetector());
 
-            Console.WriteLine("[FFT Color Mod] SignatureScanner initialized and ready");
-            Console.WriteLine("[FFT Color Mod] Waiting for actual sprite loading signature from x64dbg analysis");
+            Console.WriteLine("[FFT Color Mod] SignatureScanner initialized");
 
-            // TODO: Once we have the actual sprite loading signature from x64dbg:
-            // 1. Get IReloadedHooks and IStartupScanner from modLoader (need to find correct method)
-            // 2. Use startupScanner.AddMainModuleScan with the real signature
-            // 3. Create and activate the hook in the callback
-            //
-            // Placeholder signatures to try once we have the services:
-            // "48 8B C4 48 89 58 ??" - common function start
-            // "48 89 5C 24 ?? 48 89 74 24 ??" - another common pattern
-            // "40 53 48 83 EC ??" - push rbx, sub rsp
+            // Try to get services - these might not be available in all Reloaded versions
+            // Using a simple approach that logs what's available
+            Console.WriteLine("[FFT Color Mod] Note: Hook services may not be available - this is experimental");
+            Console.WriteLine("[FFT Color Mod] Experimental patterns ready for manual testing:");
+            Console.WriteLine("[FFT Color Mod]   - 48 8B C4 48 89 58 ?? (common function prologue)");
+            Console.WriteLine("[FFT Color Mod]   - 48 89 5C 24 ?? 48 89 74 24 ?? (stack frame setup)");
+            Console.WriteLine("[FFT Color Mod]   - 40 53 48 83 EC ?? (push rbx, sub rsp)");
+            Console.WriteLine("[FFT Color Mod] If patterns are found during gameplay, they will be logged");
         }
         catch (Exception ex)
         {

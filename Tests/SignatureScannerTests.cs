@@ -311,5 +311,35 @@ namespace FFTColorMod.Tests
             scanner.LogPatternMatch("48 8B C4", 0x1000, true);
             scanner.LogPatternMatch("48 8B C4", 0x2000, false);
         }
+
+        [Fact]
+        public void SetupExperimentalHooks_ShouldLogWhenPatternFound()
+        {
+            // Arrange
+            var mockStartupScanner = new Mock<IStartupScanner>();
+            var mockHooks = new Mock<IReloadedHooks>();
+            var scanner = new SignatureScanner();
+            Action<PatternScanResult>? capturedCallback = null;
+
+            mockStartupScanner.Setup(s => s.AddMainModuleScan(It.IsAny<string>(), It.IsAny<Action<PatternScanResult>>()))
+                .Callback<string, Action<PatternScanResult>>((pattern, callback) =>
+                {
+                    if (pattern.StartsWith("48 8B C4"))
+                        capturedCallback = callback;
+                });
+
+            // Act
+            scanner.SetupExperimentalHooks(mockStartupScanner.Object, mockHooks.Object);
+
+            // Simulate pattern found
+            if (capturedCallback != null)
+            {
+                var result = new PatternScanResult(0x1000);
+                capturedCallback(result); // Should log without throwing
+            }
+
+            // Assert - test passes if no exception
+            Assert.NotNull(capturedCallback);
+        }
     }
 }

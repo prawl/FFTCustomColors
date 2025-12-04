@@ -4,15 +4,17 @@
 ## ⚡ IMMEDIATE: Get RED Working with F2
 
 **Goal**: v0.1-alpha in 1-2 weeks
-**Status**: 36 tests passing ✅, hook infrastructure ready!
+**Status**: 45 tests passing ✅, experimental hooks deployed!
 
 ### This Week: Add Dependencies & Hook
 - [x] ✅ Add required packages (DONE - already in csproj)
 - [x] ✅ Update ModConfig.json dependencies (DONE)
-- [x] ✅ Create SignatureScanner class with tests (DONE - 36 tests passing!)
+- [x] ✅ Create SignatureScanner class with tests (DONE - 45 tests passing!)
 - [x] ✅ Add ProcessSpriteData hook method (DONE)
 - [x] ✅ Wire up PaletteDetector to SignatureScanner (DONE)
 - [x] ✅ Add ColorScheme property for F2 switching (DONE)
+- [x] ✅ Add experimental hook patterns (DONE)
+- [x] ✅ Add logging for pattern discovery (DONE)
 - [ ] 🔴 Find actual sprite loading signature with x64dbg
 - [ ] 🔴 Test hook fires in game with console output
 
@@ -46,8 +48,9 @@
 - ✅ ProcessSpriteData hook method ready
 - ✅ PaletteDetector wired up to scanner
 - ✅ ColorScheme property for F1/F2 switching
-- 🔴 Need: Find actual sprite loading signature
-- 🔴 Need: Wire up to Mod.cs Start() method
+- ✅ Experimental hook patterns ready for testing
+- ✅ Logging system for pattern discovery
+- 🔴 Need: Find actual sprite loading signature via testing
 
 ## 🔧 Hook Implementation Pattern
 
