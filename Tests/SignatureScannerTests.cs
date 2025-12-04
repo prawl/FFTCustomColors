@@ -1,4 +1,5 @@
 using System;
+using Xunit;
 using Moq;
 using Reloaded.Memory.SigScan.ReloadedII.Interfaces;
 using Reloaded.Memory.Sigscan.Definitions.Structs;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -28,76 +29,147 @@ public class Mod : IMod
     // Hooking infrastructure
     private SignatureScanner? _signatureScanner;
     private IReloadedHooks? _hooks;
+    private IModLoader? _modLoader;
     private IHook<LoadSpriteDelegate>? _loadSpriteHook;
 
     // Delegate for sprite loading function
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate IntPtr LoadSpriteDelegate(IntPtr spriteData, int size);
 
+    // TLDR: Reloaded-II requires parameterless constructor
     public Mod()
     {
-        Console.WriteLine("[FFT Color Mod] Default constructor called!");
+        // Do minimal work in constructor - Reloaded will call Start() for initialization
+        Console.WriteLine("[FFT Color Mod] Constructor called");
 
-        // Initialize immediately in constructor since Start() doesn't get called
-        InitializeInConstructor();
-    }
-
-    private void InitializeInConstructor()
-    {
+        // Try initializing here since fftivc.utility.modloader might not call Start()
         try
         {
-            Console.WriteLine("[FFT Color Mod] Initializing in constructor...");
-
-            _gameProcess = Process.GetCurrentProcess();
-            Console.WriteLine($"[FFT Color Mod] Game process ID: {_gameProcess.Id}");
-            Console.WriteLine($"[FFT Color Mod] Game base: 0x{_gameProcess.MainModule?.BaseAddress.ToInt64():X}");
-
-            _processHandle = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION,
-                                        false, _gameProcess.Id);
-
-            // Initialize game integration
-            _gameIntegration = new GameIntegration();
-            _gameIntegration.StartMonitoring();
-
-            // Start hotkey monitoring in background
-            _cancellationTokenSource = new CancellationTokenSource();
-            _hotkeyTask = Task.Run(() => MonitorHotkeys(_cancellationTokenSource.Token));
-
-            Console.WriteLine("[FFT Color Mod] Loaded successfully!");
-            Console.WriteLine("[FFT Color Mod] Press F1 for original colors, F2 for red colors");
+            Console.WriteLine("[FFT Color Mod] Initializing... v1222");  // Unique version marker
+            InitializeModBasics();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[FFT Color Mod] Error during initialization: {ex.Message}");
+            Console.WriteLine($"[FFT Color Mod] Error in constructor: {ex.Message}");
         }
     }
 
-    // Keep Start method even if not called
+    private void InitializeModBasics()
+    {
+        var logPath = Path.Combine(Path.GetTempPath(), "FFTColorMod.log");
+        File.WriteAllText(logPath, $"[{DateTime.Now}] FFT Color Mod initializing in constructor\n");
+
+        // Initialize process handles
+        _gameProcess = Process.GetCurrentProcess();
+        Console.WriteLine($"[FFT Color Mod] Game base: 0x{_gameProcess.MainModule?.BaseAddress.ToInt64():X}");
+
+        _processHandle = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION,
+                                    false, _gameProcess.Id);
+
+        // Initialize game integration
+        _gameIntegration = new GameIntegration();
+        _gameIntegration.StartMonitoring();
+
+        // Initialize signature scanner
+        _signatureScanner = new SignatureScanner();
+        _signatureScanner.SetPaletteDetector(_gameIntegration.PaletteDetector);
+
+        // Start hotkey monitoring
+        _cancellationTokenSource = new CancellationTokenSource();
+        _hotkeyTask = Task.Run(() => MonitorHotkeys(_cancellationTokenSource.Token));
+
+        Console.WriteLine("[FFT Color Mod] Loaded successfully!");
+        Console.WriteLine("[FFT Color Mod] Press F1 for original colors, F2 for red colors");
+        File.AppendAllText(logPath, $"[{DateTime.Now}] FFT Color Mod loaded successfully!\n");
+    }
+
+    // TLDR: Start() might be called by Reloaded (but fftivc.utility.modloader might not call it)
     public void Start(IModLoader modLoader)
     {
-        Console.WriteLine("[FFT Color Mod] Start() called - attempting experimental hooks");
+        var logPath = Path.Combine(Path.GetTempPath(), "FFTColorMod.log");
+        Console.WriteLine("[FFT Color Mod] Start() called - setting up hooks");
+        File.AppendAllText(logPath, $"[{DateTime.Now}] FFT Color Mod Start() method called!\n");
 
         try
         {
-            // Initialize signature scanner
-            _signatureScanner = new SignatureScanner();
-            _signatureScanner.SetPaletteDetector(_gameIntegration?.PaletteDetector ?? new PaletteDetector());
+            // Store modLoader
+            _modLoader = modLoader;
 
-            Console.WriteLine("[FFT Color Mod] SignatureScanner initialized");
+            // Get IReloadedHooks service for hook functionality
+            _modLoader.GetController<IReloadedHooks>()?.TryGetTarget(out _hooks!);
 
-            // Try to get services - these might not be available in all Reloaded versions
-            // Using a simple approach that logs what's available
-            Console.WriteLine("[FFT Color Mod] Note: Hook services may not be available - this is experimental");
-            Console.WriteLine("[FFT Color Mod] Experimental patterns ready for manual testing:");
-            Console.WriteLine("[FFT Color Mod]   - 48 8B C4 48 89 58 ?? (common function prologue)");
-            Console.WriteLine("[FFT Color Mod]   - 48 89 5C 24 ?? 48 89 74 24 ?? (stack frame setup)");
-            Console.WriteLine("[FFT Color Mod]   - 40 53 48 83 EC ?? (push rbx, sub rsp)");
-            Console.WriteLine("[FFT Color Mod] If patterns are found during gameplay, they will be logged");
+            // Try to find patterns if we have hooks
+            if (_hooks != null)
+            {
+                Console.WriteLine("[FFT Color Mod] Hook services available - setting up signature scanning");
+                TryFindPatterns();
+            }
+            else
+            {
+                Console.WriteLine("[FFT Color Mod] Warning: Hook services not available");
+            }
+
+            File.AppendAllText(logPath, $"[{DateTime.Now}] Start() completed\n");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[FFT Color Mod] Error in Start(): {ex.Message}");
-            Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
+            File.AppendAllText(logPath, $"[{DateTime.Now}] Error in Start(): {ex.Message}\n{ex.StackTrace}\n");
+        }
+    }
+
+    // TLDR: Test if we can find functions using FFTGenericJobs patterns
+    private void TryFindPatterns()
+    {
+        var logPath = Path.Combine(Path.GetTempPath(), "FFTColorMod.log");
+
+        try
+        {
+            Console.WriteLine("[FFT Color Mod] Testing pattern scanning...");
+            File.AppendAllText(logPath, $"[{DateTime.Now}] Testing pattern scanning...\n");
+
+            // Get IStartupScanner service
+            var startupScannerController = _modLoader?.GetController<IStartupScanner>();
+            if (startupScannerController == null || !startupScannerController.TryGetTarget(out var startupScanner))
+            {
+                Console.WriteLine("[FFT Color Mod] Could not get IStartupScanner service");
+                File.AppendAllText(logPath, $"[{DateTime.Now}] Could not get IStartupScanner service\n");
+                return;
+            }
+
+            File.AppendAllText(logPath, $"[{DateTime.Now}] Got IStartupScanner service\n");
+
+            // Test with a simple pattern from FFTGenericJobs
+            string testPattern = "48 8B C4 48 89 58 ?? 48 89 70 ?? 48 89 78 ??";
+            Console.WriteLine($"[FFT Color Mod] Searching for pattern: {testPattern}");
+            File.AppendAllText(logPath, $"[{DateTime.Now}] Searching for pattern: {testPattern}\n");
+
+            startupScanner.AddMainModuleScan(testPattern, result =>
+            {
+                if (result.Found)
+                {
+                    Console.WriteLine($"[FFT Color Mod] Pattern found at offset: 0x{result.Offset:X}");
+                    File.AppendAllText(logPath, $"[{DateTime.Now}] Pattern found at offset: 0x{result.Offset:X}\n");
+
+                    // Calculate actual address
+                    var gameBase = Process.GetCurrentProcess().MainModule?.BaseAddress ?? IntPtr.Zero;
+                    var actualAddress = (long)gameBase + result.Offset;
+                    Console.WriteLine($"[FFT Color Mod] Actual address: 0x{actualAddress:X}");
+                    File.AppendAllText(logPath, $"[{DateTime.Now}] Actual address: 0x{actualAddress:X}\n");
+                }
+                else
+                {
+                    Console.WriteLine("[FFT Color Mod] Pattern not found");
+                    File.AppendAllText(logPath, $"[{DateTime.Now}] Pattern not found\n");
+                }
+            });
+
+            File.AppendAllText(logPath, $"[{DateTime.Now}] Pattern scan registered\n");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FFT Color Mod] Error in TryFindPatterns: {ex.Message}");
+            File.AppendAllText(logPath, $"[{DateTime.Now}] Error in TryFindPatterns: {ex.Message}\n{ex.StackTrace}\n");
         }
     }
 

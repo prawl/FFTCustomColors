@@ -19,6 +19,15 @@ Write-Host "Publishing to Reloaded-II mods folder..." -ForegroundColor Cyan
 dotnet publish "./FFTColorMod.csproj" -c Release -o "$modPath" /p:OutputPath="./bin/Release" /p:ReloadedILLink="true"
 
 if ($LASTEXITCODE -eq 0) {
+    # TLDR: Copy ModConfig.json so Reloaded recognizes the mod
+    Write-Host "Copying ModConfig.json..." -ForegroundColor Cyan
+    Copy-Item "ModConfig.json" "$modPath/ModConfig.json" -Force
+
+    # Copy Preview.png if it exists
+    if (Test-Path "Preview.png") {
+        Copy-Item "Preview.png" "$modPath/Preview.png" -Force
+    }
+
     Write-Host "Build successful! Mod installed to: $modPath" -ForegroundColor Green
     Write-Host "You can now enable the mod in Reloaded-II" -ForegroundColor Green
 } else {

@@ -20,10 +20,10 @@
 
 ### This Week: Add Dependencies & Hook
 - [x] ✅ Add required packages (DONE)
-- [x] ✅ Create SignatureScanner with tests (45 tests passing!)
+- [x] ✅ Create SignatureScanner with tests (49 tests passing!)
 - [x] ✅ Add ProcessSpriteData hook method (DONE)
 - [x] ✅ Test mod in Reloaded-II (WORKS!)
-- [ ] 🔴 Fix: Start() method not being called by Reloaded
+- [x] ✅ Fix: Start() method called properly (constructor accepts IModLoader & IReloadedHooks)
 - [ ] 🔴 Find actual sprite loading signature with x64dbg
 - [ ] 🔴 Hook sprite loading to modify DURING load
 
