@@ -4,19 +4,28 @@
 ## ⚡ IMMEDIATE: Get RED Working with F2
 
 **Goal**: v0.1-alpha in 1-2 weeks
-**Status**: 45 tests passing ✅, experimental hooks deployed!
+**Status**: 45 tests passing ✅, mod loads in Reloaded-II!
+
+### ✅ CONFIRMED WORKING (Dec 3, 2024):
+- Mod loads successfully in Reloaded-II
+- F1/F2 hotkeys respond correctly
+- Memory scanning finds palettes (5 found in test)
+- Chapter detection works (found Ch1 & Ch2)
+- Memory writes succeed (WriteProcessMemory=True)
+- Color values change in memory (80 40 60 → 30 30 80)
+
+### 🔴 PROBLEM: Colors don't persist visually
+**Why**: FFT reloads palettes from files constantly
+**Solution**: Need to hook sprite loading functions
 
 ### This Week: Add Dependencies & Hook
-- [x] ✅ Add required packages (DONE - already in csproj)
-- [x] ✅ Update ModConfig.json dependencies (DONE)
-- [x] ✅ Create SignatureScanner class with tests (DONE - 45 tests passing!)
+- [x] ✅ Add required packages (DONE)
+- [x] ✅ Create SignatureScanner with tests (45 tests passing!)
 - [x] ✅ Add ProcessSpriteData hook method (DONE)
-- [x] ✅ Wire up PaletteDetector to SignatureScanner (DONE)
-- [x] ✅ Add ColorScheme property for F2 switching (DONE)
-- [x] ✅ Add experimental hook patterns (DONE)
-- [x] ✅ Add logging for pattern discovery (DONE)
+- [x] ✅ Test mod in Reloaded-II (WORKS!)
+- [ ] 🔴 Fix: Start() method not being called by Reloaded
 - [ ] 🔴 Find actual sprite loading signature with x64dbg
-- [ ] 🔴 Test hook fires in game with console output
+- [ ] 🔴 Hook sprite loading to modify DURING load
 
 ### Next Week: Red Color
 - [ ] 🔴 Hook sprite loading function
@@ -43,14 +52,13 @@
 - SignatureScanner.cs (hook infrastructure ready)
 - run_tests.sh / run_tests.ps1 (use these to run tests!)
 
-**Current Progress**:
-- ✅ SignatureScanner with IReloadedHooks integration
-- ✅ ProcessSpriteData hook method ready
-- ✅ PaletteDetector wired up to scanner
-- ✅ ColorScheme property for F1/F2 switching
-- ✅ Experimental hook patterns ready for testing
-- ✅ Logging system for pattern discovery
-- 🔴 Need: Find actual sprite loading signature via testing
+**Test Results (Dec 3, 2024)**:
+- ✅ Memory modification works (5 palettes found & modified)
+- ✅ Chapter detection accurate (Ch1 & Ch2 identified)
+- ✅ Hotkeys work (F1/F2 switching)
+- 🔴 Visual changes don't persist (need hooks)
+- 🔴 Start() not called (need to fix Reloaded integration)
+- 🔴 Need actual sprite loading signatures
 
 ## 🔧 Hook Implementation Pattern
 
