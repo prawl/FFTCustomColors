@@ -26,5 +26,29 @@ namespace FFTColorMod.Tests
             redirector.SetActiveColorScheme(ColorScheme.Red);
             Assert.Equal(ColorScheme.Red, redirector.ActiveScheme);
         }
+
+        [Fact]
+        public void GetRedirectedPath_Should_Return_Color_Variant_Path()
+        {
+            // TLDR: GetRedirectedPath returns path with color suffix for active scheme
+            var redirector = new FileRedirector();
+            redirector.SetActiveColorScheme(ColorScheme.Blue);
+
+            var result = redirector.GetRedirectedPath("sprites/ramza.pac");
+
+            Assert.Equal("sprites/ramza_blue.pac", result);
+        }
+
+        [Fact]
+        public void GetRedirectedPath_Should_Return_Original_Path_For_Original_Scheme()
+        {
+            // TLDR: GetRedirectedPath returns original path when scheme is Original
+            var redirector = new FileRedirector();
+            // Default is Original
+
+            var result = redirector.GetRedirectedPath("sprites/ramza.pac");
+
+            Assert.Equal("sprites/ramza.pac", result);
+        }
     }
 }

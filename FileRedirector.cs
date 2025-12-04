@@ -1,3 +1,5 @@
+using System;
+
 namespace FFTColorMod
 {
     public enum ColorScheme
@@ -19,6 +21,26 @@ namespace FFTColorMod
         {
             // TLDR: Switch to specified color scheme
             ActiveScheme = scheme;
+        }
+
+        public string GetRedirectedPath(string originalPath)
+        {
+            // TLDR: Get path with color suffix based on active scheme
+            if (ActiveScheme == ColorScheme.Original)
+            {
+                return originalPath;
+            }
+
+            // TLDR: Insert color suffix before file extension
+            var lastDot = originalPath.LastIndexOf('.');
+            if (lastDot == -1)
+            {
+                return originalPath + "_" + ActiveScheme.ToString().ToLower();
+            }
+
+            var basePath = originalPath.Substring(0, lastDot);
+            var extension = originalPath.Substring(lastDot);
+            return basePath + "_" + ActiveScheme.ToString().ToLower() + extension;
         }
     }
 }

@@ -4,7 +4,7 @@
 ## ⚡ NEW APPROACH: File-Based Color Swapping (Proven Method)
 
 **Goal**: v0.1 release using file replacement approach
-**Status**: 67 tests passing ✅ - Core pipeline complete!
+**Status**: 81 tests passing ✅ - Core pipeline complete!
 
 ### WHY FILE-BASED:
 - WotL Characters mod proves it works
@@ -16,10 +16,11 @@
 ### ✅ Phase 1: Core Components (COMPLETE)
 - [x] **SpriteColorGenerator tool** - Batch processes sprites
 - [x] **SpriteProcessingPipeline** - Full color swapping pipeline
-- [x] **FileRedirector** - Manages color scheme switching
+- [x] **FileRedirector** - With GetRedirectedPath for color variants
+- [x] **ModLoaderIntegration** - Hotkeys (F1,F2,F4,F7,F8,F9) working
 - [x] **ColorScheme enum** - Blue/Red/Green/Purple/Original
 - [x] **ProcessDirectory method** - Bulk sprite processing
-- [x] **Test coverage** - 67 tests passing
+- [x] **Test coverage** - 81 tests passing, test script fixed
 
 ### 🚧 Phase 2: Sprite Processing (IN PROGRESS)
 - [ ] **Extract sprite files from FFT**

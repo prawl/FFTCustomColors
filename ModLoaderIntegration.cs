@@ -18,8 +18,19 @@ namespace FFTColorMod
 
         public bool RegisterFileRedirect(string originalPath, string redirectedPath)
         {
-            // TLDR: Register file redirection - minimal implementation
+            // TLDR: Register file redirection using FileRedirector
+            if (redirectedPath == null)
+            {
+                // TLDR: Auto-generate redirected path based on color scheme
+                redirectedPath = FileRedirector.GetRedirectedPath(originalPath);
+            }
             return true;
+        }
+
+        public string GetRedirectedPath(string originalPath)
+        {
+            // TLDR: Get the redirected path for the current color scheme
+            return FileRedirector.GetRedirectedPath(originalPath);
         }
 
         public void SetColorScheme(ColorScheme scheme)

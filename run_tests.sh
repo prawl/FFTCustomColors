@@ -9,6 +9,6 @@ echo -e "\033[33mBuilding test project...\033[0m"
 dotnet build FFTColorMod.Tests.csproj --no-restore
 
 echo -e "\033[32mRunning tests...\033[0m"
-dotnet test FFTColorMod.Tests.csproj --verbosity minimal --no-build
+dotnet test FFTColorMod.Tests.csproj --verbosity minimal --no-build --framework net8.0-windows
 
 echo -e "\n\033[36mTest run complete!\033[0m"

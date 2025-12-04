@@ -127,5 +127,19 @@ namespace FFTColorMod.Tests
             integration.FileRedirector.Should().NotBeNull();
             integration.FileRedirector.ActiveScheme.Should().Be(ColorScheme.Red);
         }
+
+        [Fact]
+        public void RegisterFileRedirect_Should_Create_Mapping_For_Active_Color()
+        {
+            // TLDR: Registering redirects creates appropriate color variant mapping
+            var integration = new ModLoaderIntegration();
+            integration.SetColorScheme(ColorScheme.Blue);
+            var originalPath = "sprites/ramza.pac";
+
+            var result = integration.RegisterFileRedirect(originalPath, null);
+
+            result.Should().BeTrue();
+            integration.GetRedirectedPath(originalPath).Should().Be("sprites/ramza_blue.pac");
+        }
     }
 }
