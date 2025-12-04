@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace FFTColorMod
@@ -71,8 +72,48 @@ namespace FFTColorMod
             // Skip offset and size (8 bytes), read name (32 bytes)
             int nameOffset = entryOffset + 8;
 
-            // Read name and trim null characters
-            string name = Encoding.ASCII.GetString(_pacData, nameOffset, 32);
+            // Try to decode the filename - it might be XORed or use different encoding
+            byte[] nameBytes = new byte[32];
+            Array.Copy(_pacData, nameOffset, nameBytes, 0, 32);
+
+            // First, let's see if it's just raw bytes (for debugging)
+            // If all bytes are 0xFF or strange patterns, it might be encrypted
+            bool allSamePattern = true;
+            for (int i = 1; i < nameBytes.Length; i++)
+            {
+                if (nameBytes[i] != nameBytes[0])
+                {
+                    allSamePattern = false;
+                    break;
+                }
+            }
+
+            // Try ASCII first (original approach)
+            string name = Encoding.ASCII.GetString(nameBytes);
+
+            // If name looks corrupted (lots of ? or non-printable), try other encodings
+            int questionCount = name.Count(c => c == '?' || c < 32 || c > 126);
+            if (questionCount > name.Length / 2)
+            {
+                // Try UTF-8
+                try
+                {
+                    name = Encoding.UTF8.GetString(nameBytes);
+                }
+                catch { }
+
+                // If still bad, try Shift-JIS (common in Japanese games)
+                if (name.Count(c => c == '?' || c < 32) > name.Length / 2)
+                {
+                    try
+                    {
+                        var shiftJis = Encoding.GetEncoding("shift_jis");
+                        name = shiftJis.GetString(nameBytes);
+                    }
+                    catch { }
+                }
+            }
+
             int nullIndex = name.IndexOf('\0');
             if (nullIndex >= 0)
                 name = name.Substring(0, nullIndex);

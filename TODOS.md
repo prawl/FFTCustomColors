@@ -60,10 +60,10 @@
 ### 🚀 NEXT STEPS (Where to pickup):
 
 ### Current Discovery (Dec 4, 2024 - Session End):
-1. **PAC File Investigation** - 0001.pac contains 1339 files but filenames appear corrupted/encrypted
-   - Added `list-files` command to examine PAC contents
-   - File names in PAC aren't readable - may be encrypted or use different encoding
-   - Need to investigate PAC format more deeply or find documentation
+1. **PAC File Investigation** - FFT PAC files are encrypted/obfuscated
+   - Added `debug-pac` command to examine raw PAC file structure
+   - File names show repeating pattern `E6-12-D6-54-9A-8F-4C-53` - definitely encrypted
+   - **SOLUTION FOUND**: Use FF16Tools by Nenkai with `--gametype fft` flag
 
 2. **Commands Available**:
    ```bash
@@ -83,10 +83,20 @@
    - 130 tests passing with full streaming support
 
 4. **Next Session Tasks**:
-   - Research FFT PAC file format documentation
-   - Try different character encodings for filenames
-   - Look for unencrypted PAC files or tools to decode them
-   - Consider extracting by file extension patterns instead of names
+   - Use FF16Tools to extract PAC files properly:
+     ```bash
+     # List files in PAC
+     FF16Tools.CLI list-files -i 0003.pac -g fft
+
+     # Extract all sprites from 0003.pac (the 3.5GB file with all assets)
+     FF16Tools.CLI unpack-all -i "C:/Program Files (x86)/Steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/data/enhanced/0003.pac" -o extracted_sprites -g fft
+
+     # Create .diff.pac for modded sprites
+     FF16Tools.CLI pack -i sprites_modded -o 0003.diff.pac -g fft
+     ```
+   - Find and extract Ramza's sprite files
+   - Process sprites with our color modification system
+   - Package as .diff.pac files for the mod
 
 ## 🔧 Technical Stack
 

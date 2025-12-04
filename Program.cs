@@ -44,6 +44,15 @@ namespace FFTColorMod
                     ListPacFiles(args);
                     break;
 
+                case "debug-pac":
+                    if (args.Length < 2)
+                    {
+                        Console.WriteLine("Usage: debug-pac <pac-file>");
+                        return;
+                    }
+                    DebugPacFile(args);
+                    break;
+
                 default:
                     Console.WriteLine($"Unknown command: {command}");
                     ShowUsage();
@@ -274,6 +283,80 @@ namespace FFTColorMod
                 Console.WriteLine();
                 Console.WriteLine($"Found {spriteCount} potential sprite files");
                 extractor.ClosePac();
+            }
+        }
+
+        static void DebugPacFile(string[] args)
+        {
+            // TLDR: Debug PAC file format to understand filename encoding
+            string pacFile = args[1];
+
+            if (!File.Exists(pacFile))
+            {
+                Console.WriteLine($"PAC file not found: {pacFile}");
+                return;
+            }
+
+            Console.WriteLine($"Debugging PAC file: {pacFile}");
+            Console.WriteLine();
+
+            using (var fs = new FileStream(pacFile, FileMode.Open, FileAccess.Read))
+            {
+                // Read header
+                byte[] header = new byte[8];
+                fs.Read(header, 0, 8);
+
+                // Check if PACK header
+                bool isPack = header[0] == 'P' && header[1] == 'A' && header[2] == 'C' && header[3] == 'K';
+                Console.WriteLine($"Header: {BitConverter.ToString(header)}");
+                Console.WriteLine($"Is PACK format: {isPack}");
+
+                int fileCount = BitConverter.ToInt32(header, 4);
+                Console.WriteLine($"File count: {fileCount}");
+                Console.WriteLine();
+
+                // Show first 5 entries in detail
+                Console.WriteLine("First 5 file entries (raw hex):");
+                for (int i = 0; i < Math.Min(5, fileCount); i++)
+                {
+                    // Each entry is 40 bytes: 4 offset + 4 size + 32 name
+                    byte[] entry = new byte[40];
+                    fs.Read(entry, 0, 40);
+
+                    int offset = BitConverter.ToInt32(entry, 0);
+                    int size = BitConverter.ToInt32(entry, 4);
+                    byte[] nameBytes = new byte[32];
+                    Array.Copy(entry, 8, nameBytes, 0, 32);
+
+                    Console.WriteLine($"Entry {i:D3}:");
+                    Console.WriteLine($"  Offset: {offset:X8} ({offset})  Size: {size:X8} ({size})");
+                    Console.WriteLine($"  Name (hex): {BitConverter.ToString(nameBytes)}");
+
+                    // Try different decodings
+                    string asciiName = System.Text.Encoding.ASCII.GetString(nameBytes).TrimEnd('\0');
+                    Console.WriteLine($"  Name (ASCII): {asciiName}");
+
+                    // Check if it might be XORed
+                    bool allSame = true;
+                    for (int j = 1; j < 32; j++)
+                    {
+                        if (nameBytes[j] != nameBytes[0])
+                        {
+                            allSame = false;
+                            break;
+                        }
+                    }
+
+                    if (nameBytes[0] == 0xFF && nameBytes[1] == 0xFF)
+                    {
+                        Console.WriteLine($"  Note: Name appears to be all 0xFF - might be encrypted or unused");
+                    }
+                    else if (allSame)
+                    {
+                        Console.WriteLine($"  Note: All bytes are the same ({nameBytes[0]:X2}) - suspicious pattern");
+                    }
+                    Console.WriteLine();
+                }
             }
         }
     }
