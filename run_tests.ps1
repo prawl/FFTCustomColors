@@ -1,16 +1,16 @@
 # FFT Color Mod - Test Runner
-# This script ensures tests run with the exact correct command every time
+# Reliable test execution with proper build order
 
 Write-Host "Cleaning build artifacts..." -ForegroundColor Yellow
 Remove-Item -Path "bin", "obj" -Recurse -Force -ErrorAction SilentlyContinue
 
-Write-Host "Restoring packages..." -ForegroundColor Yellow
-dotnet restore FFTColorMod.Tests.csproj
-
-Write-Host "Building test project..." -ForegroundColor Yellow
-dotnet build FFTColorMod.Tests.csproj
-
-Write-Host "Running tests..." -ForegroundColor Green
+Write-Host "Restoring and building projects..." -ForegroundColor Yellow
+# Use the single test command which handles everything properly
 dotnet test FFTColorMod.Tests.csproj --verbosity minimal
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Tests failed!" -ForegroundColor Red
+    exit 1
+}
 
 Write-Host "`nTest run complete!" -ForegroundColor Cyan
