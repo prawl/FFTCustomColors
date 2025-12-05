@@ -40,6 +40,10 @@ namespace FFTColorMod
                     FindRamza(args);
                     break;
 
+                case "binary-search":
+                    BinarySearchForRamza(args);
+                    break;
+
                 case "list-files":
                     ListPacFiles(args);
                     break;
@@ -69,6 +73,7 @@ namespace FFTColorMod
             Console.WriteLine("  extract-single <pac> <output>  Extract sprites from a single PAC file");
             Console.WriteLine("  process <sprite> <output>      Process a single sprite to generate color variants");
             Console.WriteLine("  full                 Run full pipeline: extract and process");
+            Console.WriteLine("  binary-search        Apply green/red colors for Ramza binary search");
             Console.WriteLine();
             Console.WriteLine("The tool will automatically use FFT's enhanced directory.");
         }
@@ -236,6 +241,13 @@ namespace FFTColorMod
             var extracted = extractor.FindAndExtractSpritesUsingStream(gameDir, "ramza", outputDir);
 
             Console.WriteLine($"Found and extracted {extracted.Count} Ramza sprites");
+        }
+
+        static void BinarySearchForRamza(string[] args)
+        {
+            // TLDR: Apply green/red colors to sprite halves for binary search
+            var searcher = new SimplePaletteReplace();
+            searcher.ProcessBinarySearch();
         }
 
         static void ListPacFiles(string[] args)

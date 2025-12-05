@@ -28,9 +28,9 @@ if ($LASTEXITCODE -eq 0) {
         Copy-Item "Preview.png" "$modPath/Preview.png" -Force
     }
 
-    # TLDR: Copy the FFTIVC directory with all color PAC files
+    # TLDR: Copy the FFTIVC directory with all color PAC files and sprites
     if (Test-Path "FFTIVC") {
-        Write-Host "Copying color variant PAC files..." -ForegroundColor Cyan
+        Write-Host "Copying color variant PAC files and sprites..." -ForegroundColor Cyan
         Copy-Item "FFTIVC" "$modPath" -Recurse -Force
 
         # Also copy to data/enhanced for the new switching mechanism
@@ -39,6 +39,16 @@ if ($LASTEXITCODE -eq 0) {
             New-Item -ItemType Directory -Force -Path $enhancedPath | Out-Null
             Copy-Item "FFTIVC/data/enhanced/*.pac" $enhancedPath -Force
             Write-Host "Copied $(Get-ChildItem FFTIVC/data/enhanced/*.pac | Measure-Object).Count PAC files" -ForegroundColor Green
+        }
+
+        # Copy individual sprite files to fftpack/unit directory
+        $spritePath = "$modPath/FFTIVC/data/enhanced/fftpack/unit"
+        if (Test-Path "FFTIVC/data/enhanced/fftpack/unit") {
+            Write-Host "Copying individual sprite files..." -ForegroundColor Cyan
+            New-Item -ItemType Directory -Force -Path $spritePath | Out-Null
+            Copy-Item "FFTIVC/data/enhanced/fftpack/unit/*.bin" $spritePath -Force
+            $spriteCount = (Get-ChildItem "FFTIVC/data/enhanced/fftpack/unit/*.bin" | Measure-Object).Count
+            Write-Host "Copied $spriteCount sprite files to fftpack/unit" -ForegroundColor Green
         }
     }
 

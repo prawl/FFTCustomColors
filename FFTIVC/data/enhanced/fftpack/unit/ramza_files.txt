@@ -1,0 +1,3 @@
+battle_ramuza_spr.bin
+battle_ramuza2_spr.bin
+battle_ramuza3_spr.bin
