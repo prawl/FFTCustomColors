@@ -254,6 +254,99 @@ This is currently a personal project, but suggestions and bug reports are welcom
 
 This mod is for personal use. Final Fantasy Tactics is property of Square Enix.
 
+## Sprite Mappings
+
+### File Locations
+- **0002.pac**: Contains all job sprites and generic units
+- **0003.pac**: Contains additional sprites and portraits
+
+### Generic Unit Sprites (NPCs/Enemies)
+| File | Description | Size |
+|------|-------------|------|
+| battle_10m_spr.bin | Generic Male Unit Type 1 | 37,377 bytes |
+| battle_10w_spr.bin | Generic Female Unit Type 1 | 37,377 bytes |
+| battle_20m_spr.bin | Generic Male Unit Type 2 | 37,377 bytes |
+| battle_20w_spr.bin | Generic Female Unit Type 2 | 37,377 bytes |
+| battle_40m_spr.bin | Generic Male Unit Type 3 | 37,377 bytes |
+| battle_40w_spr.bin | Generic Female Unit Type 3 | 37,377 bytes |
+| battle_60m_spr.bin | Generic Male Unit Type 4 | 37,377 bytes |
+| battle_60w_spr.bin | Generic Female Unit Type 4 | 37,377 bytes |
+
+### Male Job Classes
+| Job Class | Sprite File | Portrait Base | Japanese Name |
+|-----------|-------------|---------------|---------------|
+| Squire | battle_mina_m_spr.bin | wldface_096 | mina (見習い) |
+| Chemist | battle_item_m_spr.bin | wldface_098 | item (アイテム士) |
+| Knight | battle_knight_m_spr.bin | wldface_100 | knight (ナイト) |
+| Archer | battle_yumi_m_spr.bin | wldface_102 | yumi (弓使い) |
+| Monk | battle_monk_m_spr.bin | wldface_104 | monk (モンク) |
+| White Mage | battle_siro_m_spr.bin | wldface_106 | siro (白魔道士) |
+| Black Mage | battle_kuro_m_spr.bin | wldface_108 | kuro (黒魔道士) |
+| Time Mage | battle_toki_m_spr.bin | wldface_110 | toki (時魔道士) |
+| Summoner | battle_syou_m_spr.bin | wldface_112 | syou (召喚士) |
+| Thief | battle_thief_m_spr.bin | wldface_114 | thief (シーフ) |
+| Mediator | battle_waju_m_spr.bin | wldface_116 | waju (話術士) |
+| Oracle | battle_onmyo_m_spr.bin | wldface_118 | onmyo (陰陽士) |
+| Geomancer | battle_fusui_m_spr.bin | wldface_120 | fusui (風水士) |
+| Dragoon | battle_ryu_m_spr.bin | wldface_122 | ryu (竜騎士) |
+| Samurai | battle_samu_m_spr.bin | wldface_124 | samu (侍) |
+| Ninja | battle_ninja_m_spr.bin | wldface_126 | ninja (忍者) |
+| Calculator | battle_san_m_spr.bin | wldface_128 | san (算術士) |
+| Bard | battle_gin_m_spr.bin | wldface_130 | gin (吟遊詩人) |
+| Mime | battle_mono_m_spr.bin | wldface_132 | mono (ものまね士) |
+
+### Female Job Classes
+| Job Class | Sprite File | Portrait Base | Japanese Name |
+|-----------|-------------|---------------|---------------|
+| Squire | battle_mina_w_spr.bin | wldface_097 | mina (見習い) |
+| Chemist | battle_item_w_spr.bin | wldface_099 | item (アイテム士) |
+| Knight | battle_knight_w_spr.bin | wldface_101 | knight (ナイト) |
+| Archer | battle_yumi_w_spr.bin | wldface_103 | yumi (弓使い) |
+| Monk | battle_monk_w_spr.bin | wldface_105 | monk (モンク) |
+| White Mage | battle_siro_w_spr.bin | wldface_107 | siro (白魔道士) |
+| Black Mage | battle_kuro_w_spr.bin | wldface_109 | kuro (黒魔道士) |
+| Time Mage | battle_toki_w_spr.bin | wldface_111 | toki (時魔道士) |
+| Summoner | battle_syou_w_spr.bin | wldface_113 | syou (召喚士) |
+| Thief | battle_thief_w_spr.bin | wldface_115 | thief (シーフ) |
+| Mediator | battle_waju_w_spr.bin | wldface_117 | waju (話術士) |
+| Oracle | battle_onmyo_w_spr.bin | wldface_119 | onmyo (陰陽士) |
+| Geomancer | battle_fusui_w_spr.bin | wldface_121 | fusui (風水士) |
+| Dragoon | battle_ryu_w_spr.bin | wldface_123 | ryu (竜騎士) |
+| Samurai | battle_samu_w_spr.bin | wldface_125 | samu (侍) |
+| Ninja | battle_ninja_w_spr.bin | wldface_127 | ninja (忍者) |
+| Calculator | battle_san_w_spr.bin | wldface_129 | san (算術士) |
+| Dancer | battle_odori_w_spr.bin | wldface_131 | odori (踊り子) |
+| Mime | battle_mono_w_spr.bin | wldface_133 | mono (ものまね士) |
+
+### Unique/Special Characters
+| Character | Sprite Files | Portrait Base |
+|-----------|-------------|---------------|
+| Agrias | battle_aguri_spr.bin, battle_kanba_spr.bin | wldface_052 |
+
+### Color Variants (from better_palettes mod)
+- **Default**: Standard colors
+- **Azure**: Blue-tinted variant
+- **Smoke**: Gray/dark variant
+- **Lucavi**: Dark/evil variant
+- **Northern_Sky**: Light/holy variant
+- **Southern_Sky**: Warm-toned variant
+- **Corpse_Brigade**: Rebel/bandit colors
+- **Ginger**: Orange/red hair variant
+- **Maid**: Special Chemist variant
+- **Festive**: Colorful Time Mage variant
+- **Gold_with_Blue_Cape**: Special Dragoon variant
+- **Red_Bard**: Special Bard variant
+- **Cobalt**: Blue Dragoon variant
+- **Forest**: Green Ninja variant
+- **Concept**: Special Agrias variant
+
+### Sprite Technical Details
+- Job sprites: ~43-47 KB each
+- Generic units: 37,377 bytes exactly
+- Portraits: ~30-75 KB each
+- Color palette data: First 288 bytes of sprite files
+- Each sprite supports multiple palettes for team colors
+
 ## Support
 
 For issues or questions:
