@@ -187,7 +187,7 @@ namespace FFTColorMod
                 Console.WriteLine($"Processing sprites from: {inputPath}");
                 Console.WriteLine($"Output directory: {outputPath}");
 
-                var generator = new SpriteColorGenerator();
+                var generator = new SpriteColorGeneratorV2();
                 var processedCount = generator.ProcessDirectory(inputPath, outputPath);
 
                 Console.WriteLine($"\nProcessing complete! Files processed: {processedCount}");
@@ -207,7 +207,7 @@ namespace FFTColorMod
                 Console.WriteLine($"Processing sprite: {spriteFile}");
                 Console.WriteLine($"Output directory: {outputPath}");
 
-                var generator = new SpriteColorGenerator();
+                var generator = new SpriteColorGeneratorV2();
                 generator.ProcessSingleSprite(spriteFile, outputPath);
 
                 Console.WriteLine($"Color variants generated for: {Path.GetFileName(spriteFile)}");

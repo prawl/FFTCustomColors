@@ -49,6 +49,20 @@ if ($LASTEXITCODE -eq 0) {
             Copy-Item "FFTIVC/data/enhanced/fftpack/unit/*.bin" $spritePath -Force
             $spriteCount = (Get-ChildItem "FFTIVC/data/enhanced/fftpack/unit/*.bin" | Measure-Object).Count
             Write-Host "Copied $spriteCount sprite files to fftpack/unit" -ForegroundColor Green
+
+            # TLDR: Copy color variant directories (sprites_red, sprites_blue, etc.)
+            Write-Host "Copying color variant directories..." -ForegroundColor Cyan
+            $colorVariants = @("sprites_red", "sprites_blue", "sprites_green", "sprites_purple", "sprites_original")
+            foreach ($variant in $colorVariants) {
+                $sourcePath = "FFTIVC/data/enhanced/fftpack/unit/$variant"
+                if (Test-Path $sourcePath) {
+                    $destPath = "$spritePath/$variant"
+                    New-Item -ItemType Directory -Force -Path $destPath | Out-Null
+                    Copy-Item "$sourcePath/*" $destPath -Force -Recurse
+                    $variantCount = (Get-ChildItem "$sourcePath/*.bin" -ErrorAction SilentlyContinue | Measure-Object).Count
+                    Write-Host "  Copied $variantCount files to $variant" -ForegroundColor Gray
+                }
+            }
         }
     }
 
