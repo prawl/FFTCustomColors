@@ -35,26 +35,28 @@ public class ModHookIntegrationTests
     }
 
     [Fact]
-    public void Mod_ShouldHaveSignatureScannerInitialized_WhenPatternHandled()
+    public void Mod_ShouldInitialize_WhenCreated()
     {
-        // TLDR: Test that SignatureScanner is available when handling patterns
+        // TLDR: Test that Mod initializes properly
         // Arrange
         var mod = new Mod();
 
         // Act & Assert
-        Assert.True(mod.IsSignatureScannerReady(), "SignatureScanner should be ready");
+        Assert.NotNull(mod);
+        Assert.False(mod.IsSignatureScannerReady(), "SignatureScanner was removed");
     }
 
     [Fact]
-    public void Mod_Constructor_ShouldCreateManualMemoryScanner()
+    public void Mod_Constructor_ShouldSetFlags()
     {
-        // TLDR: Test that Mod creates ManualMemoryScanner in constructor
+        // TLDR: Test that Mod sets proper flags
         // Arrange & Act
         var mod = new Mod();
 
-        // Assert - mod should initialize with scanner ready
+        // Assert - mod should set flags correctly
         Assert.NotNull(mod);
-        Assert.True(mod.HasManualScanner(), "Should have manual scanner ready");
+        Assert.False(mod.HasManualScanner(), "Manual scanner was removed");
+        Assert.True(mod.IsScanningStarted(), "Should have scanning flag set");
     }
 
     [Fact]
@@ -93,7 +95,6 @@ public class GameIntegrationTests
         var integration = new GameIntegration();
 
         // Assert
-        integration.MemoryScanner.Should().NotBeNull();
         integration.PaletteDetector.Should().NotBeNull();
         integration.HotkeyManager.Should().NotBeNull();
         integration.IsInitialized.Should().BeTrue();

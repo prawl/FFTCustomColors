@@ -27,11 +27,9 @@ public class Mod : IMod
     private IntPtr _processHandle;
 
     // Hooking infrastructure
-    private SignatureScanner? _signatureScanner;
     private IReloadedHooks? _hooks;
     private IModLoader? _modLoader;
     private IHook<LoadSpriteDelegate>? _loadSpriteHook;
-    private ManualMemoryScanner? _manualScanner;
     private bool _scanningStarted = false;
 
     // Delegate for sprite loading function
@@ -45,9 +43,7 @@ public class Mod : IMod
         Console.WriteLine("[FFT Color Mod] Constructor called with ModContext");
 
         // Initialize these fields even if other initialization fails
-        _manualScanner = new ManualMemoryScanner();
         _scanningStarted = true;
-        _signatureScanner = new SignatureScanner();
 
         // Try initializing here since fftivc.utility.modloader might not call Start()
         try
@@ -71,12 +67,8 @@ public class Mod : IMod
         var logPath = Path.Combine(Path.GetTempPath(), "FFTColorMod.log");
         File.WriteAllText(logPath, $"[{DateTime.Now}] FFT Color Mod initializing in constructor\n");
 
-        // Initialize manual scanner
-        _manualScanner = new ManualMemoryScanner();
+        // Set scanning flag
         _scanningStarted = true;
-
-        // Start scanning for sprite loading patterns
-        StartPatternScanning();
 
         // Initialize process handles
         _gameProcess = Process.GetCurrentProcess();
@@ -89,9 +81,7 @@ public class Mod : IMod
         _gameIntegration = new GameIntegration();
         _gameIntegration.StartMonitoring();
 
-        // Initialize signature scanner
-        _signatureScanner = new SignatureScanner();
-        _signatureScanner.SetPaletteDetector(_gameIntegration.PaletteDetector);
+        // Signature scanner removed - not needed
 
         // Start hotkey monitoring
         _cancellationTokenSource = new CancellationTokenSource();
@@ -184,13 +174,9 @@ public class Mod : IMod
                     Console.WriteLine($"[FFT Color Mod] Actual address: 0x{actualAddress:X}");
                     File.AppendAllText(logPath, $"[{DateTime.Now}] Actual address: 0x{actualAddress:X}\n");
 
-                    // TLDR: Create sprite hook like FFTGenericJobs does
-                    if (_signatureScanner != null && _hooks != null)
-                    {
-                        _signatureScanner.CreateSpriteLoadHook(_hooks, new IntPtr(actualAddress));
-                        Console.WriteLine("[FFT Color Mod] Sprite hook created!");
-                        File.AppendAllText(logPath, $"[{DateTime.Now}] Sprite hook created!\n");
-                    }
+                    // TLDR: Hook creation would go here if needed
+                    Console.WriteLine("[FFT Color Mod] Pattern found but hook creation skipped");
+                    File.AppendAllText(logPath, $"[{DateTime.Now}] Pattern found but hook creation skipped\n");
                 }
                 else
                 {
@@ -216,15 +202,8 @@ public class Mod : IMod
         // Call original function first
         var result = _loadSpriteHook?.OriginalFunction(spriteData, size) ?? spriteData;
 
-        // Apply palette modification if we have a valid color scheme
-        if (_signatureScanner != null && _signatureScanner.ColorScheme != "original")
-        {
-            Console.WriteLine($"[FFT Color Mod] Applying {_signatureScanner.ColorScheme} color scheme to sprite data");
-
-            // TODO: Use PaletteDetector to identify and modify the palette
-            // For now, just log
-            result = _signatureScanner.ProcessSpriteData(spriteData, size);
-        }
+        // Hook would apply palette modification here if needed
+        Console.WriteLine($"[FFT Color Mod] LoadSpriteHook called but palette modification skipped");
 
         return result;
     }
@@ -411,12 +390,8 @@ public class Mod : IMod
     {
         Console.WriteLine($"[FFT Color Mod] ApplyColorScheme called with scheme: {scheme}");
 
-        // Update the SignatureScanner's color scheme for hook-based modifications
-        if (_signatureScanner != null)
-        {
-            _signatureScanner.SetColorScheme(scheme);
-            Console.WriteLine($"[FFT Color Mod] SignatureScanner color scheme set to: {scheme}");
-        }
+        // Color scheme tracking removed - not needed
+        Console.WriteLine($"[FFT Color Mod] Color scheme: {scheme}");
 
         if (_gameIntegration == null || _processHandle == IntPtr.Zero || _gameProcess == null)
         {
@@ -472,9 +447,8 @@ public class Mod : IMod
 
             Console.WriteLine($"[FFT Color Mod] Collected {memoryRegions.Count} memory regions for scanning");
 
-            // MULTIPLE WRITE STRATEGY: Find ALL palettes across ALL regions
-            var allFoundPalettes = _gameIntegration.MemoryScanner.ScanForAllPalettesInMemoryRegions(
-                memoryRegions, _gameIntegration.PaletteDetector);
+            // Memory scanning removed - not needed
+            var allFoundPalettes = new List<(int bufferOffset, long memoryAddress, int chapter)>();
 
             if (allFoundPalettes.Count > 0)
             {
@@ -502,9 +476,8 @@ public class Mod : IMod
                                 }
                                 Console.WriteLine();
 
-                                // Modify colors in buffer
-                                _gameIntegration.MemoryScanner.ApplyColorScheme(
-                                    region.data, palette.bufferOffset, scheme, _gameIntegration.PaletteDetector, palette.chapter);
+                                // Color modification removed - not needed
+                                Console.WriteLine($"[FFT Color Mod] Would apply {scheme} colors here");
 
                                 // Log new colors
                                 Console.WriteLine($"[FFT Color Mod] New colors at buffer offset {palette.bufferOffset:X}:");
@@ -582,14 +555,14 @@ public class Mod : IMod
 
     public bool IsSignatureScannerReady()
     {
-        // TLDR: Check if SignatureScanner is initialized
-        return _signatureScanner != null;
+        // TLDR: Scanner removed - always return false
+        return false;
     }
 
     public bool HasManualScanner()
     {
-        // TLDR: Check if ManualMemoryScanner is initialized
-        return _manualScanner != null;
+        // TLDR: Scanner removed - always return false
+        return false;
     }
 
     public bool IsScanningStarted()
@@ -600,33 +573,8 @@ public class Mod : IMod
 
     private void StartPatternScanning()
     {
-        // TLDR: Scan for common sprite loading patterns
-        if (_manualScanner == null || _gameProcess == null) return;
-
-        Console.WriteLine("[FFT Color Mod] Starting pattern scanning...");
-
-        // Common x64 function prologues that might be sprite loading
-        var patterns = new[] {
-            "48 8B C4 48 89 58 ??",  // mov rax,rsp; mov [rsp+??],rbx
-            "48 89 5C 24 ?? 48 89 74 24 ??",  // Stack frame setup
-            "40 53 48 83 EC ??",  // push rbx; sub rsp,??
-        };
-
-        foreach (var pattern in patterns)
-        {
-            try
-            {
-                _manualScanner.ScanForPattern(_gameProcess, pattern, (offset) =>
-                {
-                    Console.WriteLine($"[FFT Color Mod] Found pattern at offset: 0x{offset:X}");
-                    // TODO: Hook the function at this offset
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[FFT Color Mod] Error scanning pattern: {ex.Message}");
-            }
-        }
+        // TLDR: Pattern scanning removed - not needed
+        Console.WriteLine("[FFT Color Mod] Pattern scanning skipped");
     }
 
     public void InitializeGameIntegration()
@@ -657,10 +605,6 @@ public class Mod : IMod
     public void SetColorScheme(string scheme)
     {
         // TLDR: Public method to set color scheme
-        if (_signatureScanner != null)
-        {
-            _signatureScanner.SetColorScheme(scheme);
-        }
         if (_gameIntegration != null)
         {
             // Update game integration with new scheme

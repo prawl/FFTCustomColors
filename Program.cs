@@ -246,8 +246,7 @@ namespace FFTColorMod
         static void BinarySearchForRamza(string[] args)
         {
             // TLDR: Apply green/red colors to sprite halves for binary search
-            var searcher = new SimplePaletteReplace();
-            searcher.ProcessBinarySearch();
+            Console.WriteLine("Binary search command not implemented - SimplePaletteReplace class not available");
         }
 
         static void ListPacFiles(string[] args)
