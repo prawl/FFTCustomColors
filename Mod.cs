@@ -26,6 +26,7 @@ public class Mod : IMod
     private Process? _gameProcess;
     private IntPtr _processHandle;
     private ColorPreferencesManager? _preferencesManager;
+    private string _currentColorScheme = "original";
 
     // Hooking infrastructure
     private IReloadedHooks? _hooks;
@@ -271,7 +272,7 @@ public class Mod : IMod
                 if (f1Pressed && !f1WasPressed)
                 {
                     Console.WriteLine("[FFT Color Mod] F1 PRESSED - Switching to BLUE colors");
-                    SwitchPacFile("blue");
+                    ProcessHotkeyPress(VK_F1);
                 }
                 f1WasPressed = f1Pressed;
 
@@ -281,7 +282,7 @@ public class Mod : IMod
                 if (f2Pressed && !f2WasPressed)
                 {
                     Console.WriteLine("[FFT Color Mod] F2 PRESSED - Switching to RED colors");
-                    SwitchPacFile("red");
+                    ProcessHotkeyPress(VK_F2);
                 }
                 f2WasPressed = f2Pressed;
 
@@ -291,7 +292,7 @@ public class Mod : IMod
                 if (f3Pressed && !f3WasPressed)
                 {
                     Console.WriteLine("[FFT Color Mod] F3 PRESSED - Switching to GREEN colors");
-                    SwitchPacFile("green");
+                    ProcessHotkeyPress(0x72);
                 }
                 f3WasPressed = f3Pressed;
 
@@ -301,7 +302,7 @@ public class Mod : IMod
                 if (f4Pressed && !f4WasPressed)
                 {
                     Console.WriteLine("[FFT Color Mod] F4 PRESSED - Switching to PURPLE colors");
-                    SwitchPacFile("purple");
+                    ProcessHotkeyPress(0x73);
                 }
                 f4WasPressed = f4Pressed;
 
@@ -311,7 +312,7 @@ public class Mod : IMod
                 if (f5Pressed && !f5WasPressed)
                 {
                     Console.WriteLine("[FFT Color Mod] F5 PRESSED - Switching to ORIGINAL colors");
-                    SwitchPacFile("original");
+                    ProcessHotkeyPress(0x74);
                 }
                 f5WasPressed = f5Pressed;
 
@@ -606,6 +607,8 @@ public class Mod : IMod
     public void SetColorScheme(string scheme)
     {
         // TLDR: Public method to set color scheme and save preference
+        _currentColorScheme = scheme;
+
         if (_gameIntegration != null)
         {
             // Update game integration with new scheme
@@ -641,6 +644,32 @@ public class Mod : IMod
     {
         // TLDR: Set path for preferences file
         _preferencesManager = new ColorPreferencesManager(path);
+    }
+
+    public void ProcessHotkeyPress(int vkCode)
+    {
+        // TLDR: Process a hotkey press and update color scheme
+        string scheme = vkCode switch
+        {
+            VK_F1 => "blue",
+            VK_F2 => "red",
+            0x72 => "green",  // F3
+            0x73 => "purple", // F4
+            0x74 => "original", // F5
+            _ => null
+        };
+
+        if (scheme != null)
+        {
+            SetColorScheme(scheme);
+            SwitchPacFile(scheme);
+        }
+    }
+
+    public string GetCurrentColorScheme()
+    {
+        // TLDR: Get the currently active color scheme
+        return _currentColorScheme;
     }
 
     public string InterceptFilePath(string originalPath)

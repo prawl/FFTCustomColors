@@ -584,4 +584,29 @@ public class GameIntegrationTests
         // Cleanup
         System.IO.File.Delete(tempPath);
     }
+
+    [Fact]
+    public void Mod_Hotkey_F2_Should_Apply_Red_Colors_And_Save()
+    {
+        // TLDR: When F2 is pressed, mod should apply red colors and save preference
+        // Arrange
+        var tempPath = System.IO.Path.GetTempFileName();
+        var mod = new Mod();
+        mod.SetPreferencesPath(tempPath);
+        mod.InitializeGameIntegration();
+
+        // Act - Simulate F2 press via ProcessHotkey
+        mod.ProcessHotkeyPress(0x71); // VK_F2
+
+        // Assert - Verify red color scheme is active and saved
+        var currentScheme = mod.GetCurrentColorScheme();
+        currentScheme.Should().Be("red");
+
+        var manager = new ColorPreferencesManager(tempPath);
+        var savedScheme = manager.LoadPreferences();
+        savedScheme.Should().Be(ColorScheme.Red);
+
+        // Cleanup
+        System.IO.File.Delete(tempPath);
+    }
 }
