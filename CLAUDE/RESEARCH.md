@@ -170,6 +170,66 @@ FFTIVC/data/enhanced/
     └── battle_10m_spr.bin  # Individual sprite variants
 ```
 
+## 🎮 UI MODIFICATION RESEARCH (Dec 4, 2024)
+
+### Feasibility Assessment: POSSIBLE - MEDIUM/HIGH DIFFICULTY
+
+**Vision**: Add "Color Palette" menu item to unit status screen for per-unit color customization
+
+### Technical Approaches Discovered:
+
+#### 1. **Function Hooking (CONFIRMED WORKING - GenericJobs Example)**
+The FFTGenericJobs mod successfully hooks UI functions to modify job menu behavior:
+- Hooks `HandleJobMenuClick`, `HandleJobMenuState`, `UpdateLevelRequirementsPopup`
+- Manipulates menu data structures directly in memory
+- Uses memory patching to modify menu behavior
+- **Key insight**: No ImGui or external UI framework - direct memory manipulation!
+
+#### 2. **Dear ImGui Integration (THEORETICAL - Reloaded-II Support)**
+- Reloaded.ImGui.Hook library exists for Reloaded-II mods
+- Can inject Dear ImGui overlays into games
+- Would create floating UI overlay rather than integrated menu
+- **Difficulty**: HIGH - requires rendering hook setup
+
+#### 3. **Menu Data Structure Manipulation (MOST PROMISING)**
+Based on GenericJobs analysis:
+- Menu items stored as data structures in memory
+- Can hook menu creation/update functions
+- Add new menu items by expanding data arrays
+- Hook click handlers to respond to new items
+
+### Implementation Strategy (Recommended):
+
+1. **Find Formation Screen Functions** (x64dbg)
+   - Signature scan for unit status menu creation
+   - Identify menu item array structure
+   - Find click handler dispatch function
+
+2. **Hook Menu Creation**
+   - Inject "Color Palette" option into menu array
+   - Adjust menu item count/bounds
+
+3. **Hook Click Handler**
+   - Detect when Color Palette selected
+   - Open custom color selection submenu
+   - Apply color to specific unit (not global)
+
+4. **Store Per-Unit Colors**
+   - Track colors by unit ID/slot
+   - Apply during sprite load for that unit
+
+### Difficulty Factors:
+- **+** GenericJobs proves UI hooking works
+- **+** No external UI framework needed
+- **-** Requires reverse engineering menu structures
+- **-** Must handle menu navigation/rendering
+- **-** Per-unit tracking adds complexity
+
+### Alternative: Configuration-Based (Like Better Palettes)
+- Use Reloaded-II config menu (already working)
+- Less user-friendly but much simpler
+- Could add per-job configuration
+
 ## 🔄 NEXT STEPS
 
 ### Immediate: Scale Up Option A
@@ -177,11 +237,17 @@ FFTIVC/data/enhanced/
 2. **Identify Ramza** through gameplay testing
 3. **Optimize PaletteDetector** to focus on first 288 bytes only
 
-### Future: Add Memory Hooking (Option B)
+### Future Priority: Memory Hooking for Ramza (Required)
 1. Find sprite loading signatures with x64dbg
 2. Hook functions at startup using IStartupScanner
 3. Apply palette changes during load (first 288 bytes)
-4. Combine with file approach for maximum flexibility
+4. Bypass DLC protection layer
+
+### Future Enhancement: In-Game UI
+1. Study GenericJobs menu hooking patterns
+2. Find formation screen menu structures
+3. Implement per-unit color selection
+4. Consider simpler config-based approach first
 
 ## 📝 IMPORTANT NOTES
 - Current approach (Option A) is WORKING and deployed

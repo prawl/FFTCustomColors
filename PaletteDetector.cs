@@ -12,8 +12,11 @@ public class PaletteDetector
 
     public int FindPalette(byte[] memoryData)
     {
+        // TLDR: Palette data is only in first 288 bytes (96 colors × 3 bytes BGR)
+        int searchLimit = System.Math.Min(288, memoryData.Length);
+
         // Look for the first known brown color (0x17, 0x2C, 0x4A in BGR)
-        for (int i = 0; i <= memoryData.Length - 3; i++)
+        for (int i = 0; i <= searchLimit - 3; i++)
         {
             if (memoryData[i] == 0x17 &&
                 memoryData[i + 1] == 0x2C &&
@@ -29,7 +32,10 @@ public class PaletteDetector
     {
         var offsets = new List<int>();
 
-        for (int i = 0; i <= memoryData.Length - 3; i++)
+        // TLDR: Palette data is only in first 288 bytes
+        int searchLimit = System.Math.Min(288, memoryData.Length);
+
+        for (int i = 0; i <= searchLimit - 3; i++)
         {
             if (memoryData[i] == 0x17 &&
                 memoryData[i + 1] == 0x2C &&
