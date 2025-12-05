@@ -1,8 +1,10 @@
 # Build outputs
 bin/
+!bin/FF16Tools.CLI.exe
 obj/
 *.dll
 *.exe
+!bin/FF16Tools.CLI.exe
 *.pdb
 
 # Test results
