@@ -28,6 +28,8 @@ public class Mod : IMod
     private ColorPreferencesManager? _preferencesManager;
     private string _currentColorScheme = "original";
     private PaletteDetector? _paletteDetector;
+    private HotkeyManager? _hotkeyManager;
+    private SpriteMemoryHooker? _memoryHooker;
 
     // Hooking infrastructure
     private IReloadedHooks? _hooks;
@@ -152,6 +154,38 @@ public class Mod : IMod
             if (_hooks != null)
             {
                 Console.WriteLine("[FFT Color Mod] Hook services available - setting up signature scanning");
+
+                // Initialize HotkeyManager if not already done
+                if (_hotkeyManager == null)
+                {
+                    _hotkeyManager = new HotkeyManager();
+                    Console.WriteLine("[FFT Color Mod] Created HotkeyManager");
+                }
+
+                // Get IStartupScanner and initialize memory hooks
+                var scannerController = _modLoader?.GetController<IStartupScanner>();
+                if (scannerController != null && scannerController.TryGetTarget(out var scanner))
+                {
+                    Console.WriteLine("[FFT Color Mod] Got IStartupScanner - initializing memory hooks");
+
+                    try
+                    {
+                        _memoryHooker = new SpriteMemoryHooker(_hooks, scanner, _paletteDetector!, _hotkeyManager);
+                        Console.WriteLine("[FFT Color Mod] Created SpriteMemoryHooker, calling InitializeHooks...");
+                        _memoryHooker.InitializeHooks();
+                        Console.WriteLine("[FFT Color Mod] Memory hooks initialized! Press F1-F5 for real-time color changes!");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[FFT Color Mod] Error initializing memory hooks: {ex.Message}");
+                        Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("[FFT Color Mod] Could not get IStartupScanner - memory hooks disabled");
+                }
+
                 TryFindPatterns();
             }
             else
@@ -362,59 +396,77 @@ public class Mod : IMod
     {
         try
         {
-            // Get the mod's directory
+            // Get the mod's directory structure for sprites
             var modDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            var enhancedDir = Path.Combine(modDir, "data", "enhanced");
-
-            // The active PAC file that FFT will load
-            var activePacFile = Path.Combine(enhancedDir, "0002.active.diff.pac");
+            var unitDir = Path.Combine(modDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
             Console.WriteLine($"[FFT Color Mod] Switching to {color} color scheme");
-            Console.WriteLine($"[FFT Color Mod] Mod directory: {modDir}");
-            Console.WriteLine($"[FFT Color Mod] Enhanced directory: {enhancedDir}");
+            Console.WriteLine($"[FFT Color Mod] Unit directory: {unitDir}");
 
+            if (!Directory.Exists(unitDir))
+            {
+                Console.WriteLine($"[FFT Color Mod] ERROR: Unit directory not found: {unitDir}");
+                return;
+            }
+
+            // Get the source directory for the selected color
+            string sourceDir;
             if (color == "original")
             {
-                // Delete the active PAC file to use original colors
-                if (File.Exists(activePacFile))
-                {
-                    File.Delete(activePacFile);
-                    Console.WriteLine($"[FFT Color Mod] Removed active PAC file - using original colors");
-                }
+                sourceDir = Path.Combine(unitDir, "sprites_original");
             }
             else
             {
-                // Copy the selected color PAC to be the active one
-                var sourcePac = Path.Combine(enhancedDir, $"0002.{color}.diff.pac");
+                sourceDir = Path.Combine(unitDir, $"sprites_{color}");
+            }
 
-                if (File.Exists(sourcePac))
+            Console.WriteLine($"[FFT Color Mod] Source directory: {sourceDir}");
+
+            if (!Directory.Exists(sourceDir))
+            {
+                Console.WriteLine($"[FFT Color Mod] WARNING: Color variant directory not found: {sourceDir}");
+                Console.WriteLine($"[FFT Color Mod] Color variants need to be generated first!");
+                return;
+            }
+
+            // Get all sprite files from the color variant directory
+            var spriteFiles = Directory.GetFiles(sourceDir, "*.bin");
+
+            if (spriteFiles.Length == 0)
+            {
+                Console.WriteLine($"[FFT Color Mod] WARNING: No sprite files found in {sourceDir}");
+                Console.WriteLine($"[FFT Color Mod] Run sprite color generation first to create variants!");
+                return;
+            }
+
+            Console.WriteLine($"[FFT Color Mod] Found {spriteFiles.Length} sprite files to copy");
+
+            // Copy all sprite files from the color directory to the base unit directory
+            int copiedCount = 0;
+            foreach (var sourceFile in spriteFiles)
+            {
+                var fileName = Path.GetFileName(sourceFile);
+                var destFile = Path.Combine(unitDir, fileName);
+
+                try
                 {
-                    File.Copy(sourcePac, activePacFile, overwrite: true);
-                    Console.WriteLine($"[FFT Color Mod] Copied {color} PAC to active: {activePacFile}");
-
-                    // Also try direct override in game directory for immediate effect
-                    var gameDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\data\enhanced";
-                    var gameActivePac = Path.Combine(gameDir, "0002.active.diff.pac");
-
-                    try
-                    {
-                        File.Copy(sourcePac, gameActivePac, overwrite: true);
-                        Console.WriteLine($"[FFT Color Mod] Also copied to game directory: {gameActivePac}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[FFT Color Mod] Could not copy to game directory (expected): {ex.Message}");
-                    }
+                    File.Copy(sourceFile, destFile, overwrite: true);
+                    copiedCount++;
                 }
-                else
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"[FFT Color Mod] ERROR: Source PAC not found: {sourcePac}");
+                    Console.WriteLine($"[FFT Color Mod] Failed to copy {fileName}: {ex.Message}");
                 }
             }
+
+            Console.WriteLine($"[FFT Color Mod] Successfully copied {copiedCount} sprite files for {color} color scheme");
+
+            // Note: Reloaded-II should automatically apply these overrides
+            // The game will load the modified sprites from FFTIVC/data/enhanced/fftpack/unit/
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[FFT Color Mod] Error switching PAC file: {ex.Message}");
+            Console.WriteLine($"[FFT Color Mod] Error switching sprites: {ex.Message}");
             Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
         }
     }
@@ -649,6 +701,21 @@ public class Mod : IMod
         // TLDR: Public method to set color scheme and save preference
         _currentColorScheme = scheme;
 
+        // Save preference if manager is available (regardless of game integration)
+        if (_preferencesManager != null)
+        {
+            var colorScheme = scheme switch
+            {
+                "original" => ColorScheme.Original,
+                "red" => ColorScheme.Red,
+                "blue" => ColorScheme.Blue,
+                "green" => ColorScheme.Green,
+                "purple" => ColorScheme.Purple,
+                _ => ColorScheme.Original
+            };
+            _preferencesManager.SavePreferences(colorScheme);
+        }
+
         if (_gameIntegration != null)
         {
             // Update game integration with new scheme
@@ -662,21 +729,6 @@ public class Mod : IMod
                 _ => VK_F1
             };
             _gameIntegration.ProcessHotkey(vkCode);
-
-            // Save preference if manager is available
-            if (_preferencesManager != null)
-            {
-                var colorScheme = scheme switch
-                {
-                    "original" => ColorScheme.Original,
-                    "red" => ColorScheme.Red,
-                    "blue" => ColorScheme.Blue,
-                    "green" => ColorScheme.Green,
-                    "purple" => ColorScheme.Purple,
-                    _ => ColorScheme.Original
-                };
-                _preferencesManager.SavePreferences(colorScheme);
-            }
         }
     }
 
@@ -691,10 +743,15 @@ public class Mod : IMod
         // TLDR: Process a hotkey press and update color scheme
         string scheme = vkCode switch
         {
+            0x31 => "red",      // 1 key
+            0x32 => "blue",     // 2 key
+            0x33 => "green",    // 3 key
+            0x34 => "original", // 4 key
+            // Legacy F-key support
             VK_F1 => "blue",
             VK_F2 => "red",
-            0x72 => "green",  // F3
-            0x73 => "purple", // F4
+            0x72 => "green",    // F3
+            0x73 => "purple",   // F4
             0x74 => "original", // F5
             _ => null
         };
@@ -715,16 +772,15 @@ public class Mod : IMod
     public string InterceptFilePath(string originalPath)
     {
         // TLDR: Intercept file path and redirect based on active color scheme
-        if (_gameIntegration == null || !originalPath.Contains("sprites"))
+        if (!originalPath.Contains("sprites"))
             return originalPath;
 
-        // Get current color scheme from GameIntegration
-        var currentScheme = _gameIntegration.HotkeyManager.CurrentScheme;
-        if (currentScheme == "original" || string.IsNullOrEmpty(currentScheme))
+        // Use the mod's current color scheme
+        if (_currentColorScheme == "original" || string.IsNullOrEmpty(_currentColorScheme))
             return originalPath;
 
         // Replace sprites folder with color variant folder
-        return originalPath.Replace(@"sprites\", $@"sprites_{currentScheme}\");
+        return originalPath.Replace(@"sprites\", $@"sprites_{_currentColorScheme}\");
     }
 
     public int GenerateSpriteVariants(string spritePath, string outputDir)
