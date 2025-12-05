@@ -78,3 +78,10 @@ processed_sprites/
 
 # Individual test sprites in root (not the FFTIVC ones)
 /battle_*.bin
+# Test output directories
+test_*/
+--verbose/
+
+# Game sprite files (except input_sprites for testing)
+*.bin
+!input_sprites/*.bin
