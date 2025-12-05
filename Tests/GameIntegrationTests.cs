@@ -144,7 +144,7 @@ public class GameIntegrationTests
         integration.StartMonitoring();
 
         // Act - simulate 1 key press for red colors
-        integration.ProcessHotkey(0x31); // 1 key
+        integration.ProcessHotkey(0x70); // F1 key
 
         // Assert
         integration.LastAppliedScheme.Should().Be("red");
@@ -171,7 +171,7 @@ public class GameIntegrationTests
         integration.StartMonitoring();
 
         // Act - simulate 1 key press for red colors
-        integration.ProcessHotkey(0x31); // 1 key
+        integration.ProcessHotkey(0x70); // F1 key
 
         // Assert - Should find and transform Chapter 4 palette
         integration.LastAppliedScheme.Should().Be("red");
@@ -211,7 +211,7 @@ public class GameIntegrationTests
         integration.StartMonitoring();
 
         // Act - simulate 1 key press for red colors
-        integration.ProcessHotkey(0x31); // 1 key
+        integration.ProcessHotkey(0x70); // F1 key
 
         // Assert - Should find first palette and apply transformation
         integration.LastAppliedScheme.Should().Be("red");
@@ -326,7 +326,7 @@ public class GameIntegrationTests
         integration.InitializeFileHook();
 
         // Set active color scheme to red
-        integration.ProcessHotkey(0x31); // 1 key for red
+        integration.ProcessHotkey(0x70); // F1 key for red
 
         // Act - request original sprite path
         var originalPath = @"data\sprites\RAMZA.SPR";
@@ -362,7 +362,7 @@ public class GameIntegrationTests
         integration.RegisterFileHookWithModLoader();
 
         // Set color scheme to blue
-        integration.ProcessHotkey(0x32); // 2 key for blue
+        integration.ProcessHotkey(0x71); // F2 key for blue
 
         // Act - simulate file request through callback
         var originalPath = @"data\sprites\CHARACTER.SPR";
@@ -552,7 +552,7 @@ public class GameIntegrationTests
         integration.InitializeFileHook();
 
         // Set color scheme to blue
-        integration.ProcessHotkey(0x32); // 2 key = blue
+        integration.ProcessHotkey(0x71); // F2 key = blue
 
         var binSpritePath = @"data\sprites\battle_ramza_spr.bin";
 
@@ -596,7 +596,7 @@ public class GameIntegrationTests
         mod.InitializeGameIntegration();
 
         // Act - Simulate 1 key press via ProcessHotkey
-        mod.ProcessHotkeyPress(0x31); // 1 key
+        mod.ProcessHotkeyPress(0x70); // F1 key
 
         // Assert - Verify red color scheme is active and saved
         var currentScheme = mod.GetCurrentColorScheme();
