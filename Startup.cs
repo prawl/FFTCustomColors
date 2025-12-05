@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Reloaded.Mod.Interfaces;
 using Reloaded.Mod.Interfaces.Internal;
 
@@ -8,6 +9,16 @@ namespace FFTColorMod;
 public class Startup : IMod
 {
     private Mod _mod = null!;
+    public ColorPreferencesManager ColorPreferencesManager { get; private set; } = null!;
+
+    public Startup()
+    {
+        // TLDR: Initialize ColorPreferencesManager with config file in AppData
+        var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FFTColorMod");
+        Directory.CreateDirectory(configDir);
+        var configPath = Path.Combine(configDir, "preferences.json");
+        ColorPreferencesManager = new ColorPreferencesManager(configPath);
+    }
 
     // This is the method that Reloaded-II actually calls!
     public void StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig)

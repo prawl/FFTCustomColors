@@ -19,4 +19,141 @@ public class ColorPreferencesManagerTests
         // Cleanup
         File.Delete(tempPath);
     }
+
+    [Fact]
+    public void SavePreferences_ShouldWriteColorSchemeToFile()
+    {
+        // Arrange
+        var tempPath = Path.GetTempFileName();
+        var manager = new ColorPreferencesManager(tempPath);
+
+        // Act
+        manager.SavePreferences(ColorScheme.Red);
+
+        // Assert
+        var content = File.ReadAllText(tempPath);
+        Assert.Contains("Red", content);
+
+        // Cleanup
+        File.Delete(tempPath);
+    }
+
+    [Fact]
+    public void LoadPreferences_ShouldReturnSavedColorScheme()
+    {
+        // Arrange
+        var tempPath = Path.GetTempFileName();
+        var manager = new ColorPreferencesManager(tempPath);
+        manager.SavePreferences(ColorScheme.Green);
+
+        // Act
+        var loadedScheme = manager.LoadPreferences();
+
+        // Assert
+        Assert.Equal(ColorScheme.Green, loadedScheme);
+
+        // Cleanup
+        File.Delete(tempPath);
+    }
+
+    [Fact]
+    public void LoadPreferences_WhenFileDoesNotExist_ShouldReturnDefaultColorScheme()
+    {
+        // Arrange
+        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var manager = new ColorPreferencesManager(tempPath);
+
+        // Act
+        var loadedScheme = manager.LoadPreferences();
+
+        // Assert
+        Assert.Equal(ColorScheme.Original, loadedScheme);
+    }
+
+    [Fact]
+    public void SaveCharacterPreference_ShouldSaveColorSchemeForSpecificCharacter()
+    {
+        // Arrange
+        var tempPath = Path.GetTempFileName();
+        var manager = new ColorPreferencesManager(tempPath);
+
+        // Act
+        manager.SaveCharacterPreference("Ramza", ColorScheme.Blue);
+        manager.SaveCharacterPreference("Agrias", ColorScheme.Red);
+
+        // Assert
+        var ramzaColor = manager.LoadCharacterPreference("Ramza");
+        var agriasColor = manager.LoadCharacterPreference("Agrias");
+
+        Assert.Equal(ColorScheme.Blue, ramzaColor);
+        Assert.Equal(ColorScheme.Red, agriasColor);
+
+        // Cleanup
+        File.Delete(tempPath);
+    }
+
+    [Fact]
+    public void SaveCharacterPreference_ShouldPersistMultipleCharactersAfterUpdates()
+    {
+        // Arrange
+        var tempPath = Path.GetTempFileName();
+        var manager = new ColorPreferencesManager(tempPath);
+
+        // Act - Save initial preferences
+        manager.SaveCharacterPreference("Ramza", ColorScheme.Blue);
+        manager.SaveCharacterPreference("Agrias", ColorScheme.Red);
+        manager.SaveCharacterPreference("Delita", ColorScheme.Green);
+
+        // Update one character's preference
+        manager.SaveCharacterPreference("Ramza", ColorScheme.Purple);
+
+        // Assert - All preferences should be correct
+        Assert.Equal(ColorScheme.Purple, manager.LoadCharacterPreference("Ramza"));
+        Assert.Equal(ColorScheme.Red, manager.LoadCharacterPreference("Agrias"));
+        Assert.Equal(ColorScheme.Green, manager.LoadCharacterPreference("Delita"));
+
+        // Create new manager instance to verify persistence
+        var newManager = new ColorPreferencesManager(tempPath);
+        Assert.Equal(ColorScheme.Purple, newManager.LoadCharacterPreference("Ramza"));
+        Assert.Equal(ColorScheme.Red, newManager.LoadCharacterPreference("Agrias"));
+        Assert.Equal(ColorScheme.Green, newManager.LoadCharacterPreference("Delita"));
+
+        // Cleanup
+        File.Delete(tempPath);
+    }
+
+    [Fact]
+    public void LoadCharacterPreference_WhenCharacterNotSaved_ShouldReturnDefault()
+    {
+        // Arrange
+        var tempPath = Path.GetTempFileName();
+        var manager = new ColorPreferencesManager(tempPath);
+
+        // Save preference for one character
+        manager.SaveCharacterPreference("Ramza", ColorScheme.Blue);
+
+        // Act - Load preference for character that was never saved
+        var mustadioColor = manager.LoadCharacterPreference("Mustadio");
+        var orleanduColor = manager.LoadCharacterPreference("Orleandu");
+
+        // Assert - Should return default (Original) for unsaved characters
+        Assert.Equal(ColorScheme.Original, mustadioColor);
+        Assert.Equal(ColorScheme.Original, orleanduColor);
+
+        // Ramza should still have his saved preference
+        Assert.Equal(ColorScheme.Blue, manager.LoadCharacterPreference("Ramza"));
+
+        // Cleanup
+        File.Delete(tempPath);
+    }
+
+    [Fact]
+    public void Startup_ShouldExposeColorPreferencesManager()
+    {
+        // Arrange & Act
+        var startup = new Startup();
+
+        // Assert - Verify that Startup exposes a ColorPreferencesManager
+        Assert.NotNull(startup.ColorPreferencesManager);
+    }
 }
