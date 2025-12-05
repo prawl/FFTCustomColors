@@ -331,22 +331,22 @@ public class Mod : IMod
                 }
                 loopCount++;
 
-                // Check F1 key - Blue
+                // Check F1 key - Red
                 short f1State = GetAsyncKeyState(VK_F1);
                 bool f1Pressed = (f1State & 0x8000) != 0;
                 if (f1Pressed && !f1WasPressed)
                 {
-                    Console.WriteLine("[FFT Color Mod] F1 PRESSED - Switching to BLUE colors");
+                    Console.WriteLine("[FFT Color Mod] F1 PRESSED - Switching to RED colors");
                     ProcessHotkeyPress(VK_F1);
                 }
                 f1WasPressed = f1Pressed;
 
-                // Check F2 key - Red
+                // Check F2 key - Blue
                 short f2State = GetAsyncKeyState(VK_F2);
                 bool f2Pressed = (f2State & 0x8000) != 0;
                 if (f2Pressed && !f2WasPressed)
                 {
-                    Console.WriteLine("[FFT Color Mod] F2 PRESSED - Switching to RED colors");
+                    Console.WriteLine("[FFT Color Mod] F2 PRESSED - Switching to BLUE colors");
                     ProcessHotkeyPress(VK_F2);
                 }
                 f2WasPressed = f2Pressed;
@@ -361,12 +361,12 @@ public class Mod : IMod
                 }
                 f3WasPressed = f3Pressed;
 
-                // Check F4 key - Purple
+                // Check F4 key - Original
                 short f4State = GetAsyncKeyState(0x73); // VK_F4
                 bool f4Pressed = (f4State & 0x8000) != 0;
                 if (f4Pressed && !f4WasPressed)
                 {
-                    Console.WriteLine("[FFT Color Mod] F4 PRESSED - Switching to PURPLE colors");
+                    Console.WriteLine("[FFT Color Mod] F4 PRESSED - Switching to ORIGINAL colors");
                     ProcessHotkeyPress(0x73);
                 }
                 f4WasPressed = f4Pressed;
@@ -743,16 +743,12 @@ public class Mod : IMod
         // TLDR: Process a hotkey press and update color scheme
         string scheme = vkCode switch
         {
-            0x31 => "red",      // 1 key
-            0x32 => "blue",     // 2 key
-            0x33 => "green",    // 3 key
-            0x34 => "original", // 4 key
-            // Legacy F-key support
-            VK_F1 => "blue",
-            VK_F2 => "red",
+            // F-key support
+            VK_F1 => "red",      // F1 key (0x70)
+            VK_F2 => "blue",     // F2 key (0x71)
             0x72 => "green",    // F3
-            0x73 => "purple",   // F4
-            0x74 => "original", // F5
+            0x73 => "original",  // F4
+            0x74 => "original",  // F5
             _ => null
         };
 
