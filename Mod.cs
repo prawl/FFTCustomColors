@@ -95,10 +95,9 @@ public class Mod : IMod
         var savedScheme = _preferencesManager.LoadPreferences();
         var scheme = savedScheme switch
         {
-            ColorScheme.Blue => "blue",
-            ColorScheme.Red => "red",
-            ColorScheme.Green => "green",
-            ColorScheme.Purple => "purple",
+            ColorScheme.WhiteSilver => "white_silver",
+            ColorScheme.OceanBlue => "ocean_blue",
+            ColorScheme.DeepPurple => "deep_purple",
             _ => "original"
         };
         _currentColorScheme = scheme;
@@ -707,10 +706,9 @@ public class Mod : IMod
             var colorScheme = scheme switch
             {
                 "original" => ColorScheme.Original,
-                "red" => ColorScheme.Red,
-                "blue" => ColorScheme.Blue,
-                "green" => ColorScheme.Green,
-                "purple" => ColorScheme.Purple,
+                "white_silver" => ColorScheme.WhiteSilver,
+                "ocean_blue" => ColorScheme.OceanBlue,
+                "deep_purple" => ColorScheme.DeepPurple,
                 _ => ColorScheme.Original
             };
             _preferencesManager.SavePreferences(colorScheme);
@@ -744,9 +742,9 @@ public class Mod : IMod
         string scheme = vkCode switch
         {
             // F-key support
-            VK_F1 => "red",      // F1 key (0x70)
-            VK_F2 => "blue",     // F2 key (0x71)
-            0x72 => "green",    // F3
+            VK_F1 => "white_silver",      // F1 key (0x70)
+            VK_F2 => "ocean_blue",     // F2 key (0x71)
+            0x72 => "deep_purple",    // F3
             0x73 => "original",  // F4
             0x74 => "original",  // F5
             _ => null

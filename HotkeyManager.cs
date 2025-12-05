@@ -8,14 +8,14 @@ public class HotkeyManager
     {
         switch (keyCode)
         {
-            case 0x70: // F1 - Red colors
-                CurrentScheme = "red";
+            case 0x70: // F1 - White/Silver colors
+                CurrentScheme = "white_silver";
                 break;
-            case 0x71: // F2 - Blue colors
-                CurrentScheme = "blue";
+            case 0x71: // F2 - Ocean Blue colors
+                CurrentScheme = "ocean_blue";
                 break;
-            case 0x72: // F3 - Green colors
-                CurrentScheme = "green";
+            case 0x72: // F3 - Deep Purple colors
+                CurrentScheme = "deep_purple";
                 break;
             case 0x73: // F4 - Original colors
                 CurrentScheme = "original";

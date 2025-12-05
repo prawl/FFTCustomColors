@@ -31,65 +31,78 @@ namespace FFTColorMod.Tests
             // TLDR: SetColorScheme changes the current active color scheme
             var integration = new ModLoaderIntegration();
 
-            integration.SetColorScheme(ColorScheme.Blue);
+            integration.SetColorScheme(ColorScheme.OceanBlue);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.Blue);
+            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue);
         }
 
         [Fact]
-        public void ProcessHotkey_F1_Should_Set_Blue_ColorScheme()
+        public void ProcessHotkey_F1_Should_Set_WhiteSilver_ColorScheme()
         {
-            // TLDR: F1 hotkey switches to blue color scheme
+            // TLDR: F1 hotkey switches to white silver color scheme
             var integration = new ModLoaderIntegration();
 
             integration.ProcessHotkey(System.Windows.Forms.Keys.F1);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.Blue);
+            integration.CurrentColorScheme.Should().Be(ColorScheme.WhiteSilver);
         }
 
         [Fact]
-        public void ProcessHotkey_F2_Should_Set_Red_ColorScheme()
+        public void ProcessHotkey_F2_Should_Set_OceanBlue_ColorScheme()
         {
-            // TLDR: F2 hotkey switches to red color scheme
+            // TLDR: F2 hotkey switches to ocean blue color scheme
             var integration = new ModLoaderIntegration();
 
             integration.ProcessHotkey(System.Windows.Forms.Keys.F2);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.Red);
+            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue);
         }
 
         [Fact]
-        public void ProcessHotkey_F4_Should_Set_Purple_ColorScheme()
+        public void ProcessHotkey_F3_Should_Set_DeepPurple_ColorScheme()
         {
-            // TLDR: F4 hotkey switches to purple color scheme
+            // TLDR: F3 hotkey switches to deep purple color scheme
             var integration = new ModLoaderIntegration();
+
+            integration.ProcessHotkey(System.Windows.Forms.Keys.F3);
+
+            integration.CurrentColorScheme.Should().Be(ColorScheme.DeepPurple);
+        }
+
+        [Fact]
+        public void ProcessHotkey_F4_Should_Set_Original_ColorScheme()
+        {
+            // TLDR: F4 hotkey switches to original color scheme
+            var integration = new ModLoaderIntegration();
+            integration.SetColorScheme(ColorScheme.OceanBlue); // Start with non-original
 
             integration.ProcessHotkey(System.Windows.Forms.Keys.F4);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.Purple);
+            integration.CurrentColorScheme.Should().Be(ColorScheme.Original);
         }
 
         [Fact]
-        public void ProcessHotkey_F7_Should_Set_Green_ColorScheme()
+        public void ProcessHotkey_F7_Should_Be_Unassigned()
         {
-            // TLDR: F7 hotkey switches to green color scheme
+            // TLDR: F7 is not assigned to any color scheme
             var integration = new ModLoaderIntegration();
+            integration.SetColorScheme(ColorScheme.OceanBlue);
 
             integration.ProcessHotkey(System.Windows.Forms.Keys.F7);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.Green);
+            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue); // Should remain unchanged
         }
 
         [Fact]
-        public void ProcessHotkey_F8_Should_Set_Original_ColorScheme()
+        public void ProcessHotkey_F8_Should_Be_Unassigned()
         {
-            // TLDR: F8 hotkey switches to original color scheme
+            // TLDR: F8 is not assigned to any color scheme
             var integration = new ModLoaderIntegration();
-            integration.SetColorScheme(ColorScheme.Blue); // Start with non-original
+            integration.SetColorScheme(ColorScheme.OceanBlue);
 
             integration.ProcessHotkey(System.Windows.Forms.Keys.F8);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.Original);
+            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue); // Should remain unchanged
         }
 
         [Fact]
@@ -109,11 +122,11 @@ namespace FFTColorMod.Tests
         {
             // TLDR: Unassigned keys don't change color scheme
             var integration = new ModLoaderIntegration();
-            integration.SetColorScheme(ColorScheme.Blue);
+            integration.SetColorScheme(ColorScheme.OceanBlue);
 
             integration.ProcessHotkey(System.Windows.Forms.Keys.F10);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.Blue);
+            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue);
         }
 
         [Fact]
@@ -122,10 +135,10 @@ namespace FFTColorMod.Tests
             // TLDR: Setting color scheme updates connected FileRedirector
             var integration = new ModLoaderIntegration();
 
-            integration.SetColorScheme(ColorScheme.Red);
+            integration.SetColorScheme(ColorScheme.WhiteSilver);
 
             integration.FileRedirector.Should().NotBeNull();
-            integration.FileRedirector.ActiveScheme.Should().Be(ColorScheme.Red);
+            integration.FileRedirector.ActiveScheme.Should().Be(ColorScheme.WhiteSilver);
         }
 
         [Fact]
@@ -133,13 +146,13 @@ namespace FFTColorMod.Tests
         {
             // TLDR: Registering redirects creates appropriate color variant mapping
             var integration = new ModLoaderIntegration();
-            integration.SetColorScheme(ColorScheme.Blue);
+            integration.SetColorScheme(ColorScheme.OceanBlue);
             var originalPath = "sprites/ramza.pac";
 
             var result = integration.RegisterFileRedirect(originalPath, null);
 
             result.Should().BeTrue();
-            integration.GetRedirectedPath(originalPath).Should().Be("sprites/ramza_blue.pac");
+            integration.GetRedirectedPath(originalPath).Should().Be("sprites/ramza_ocean_blue.pac");
         }
 
         [Fact]
@@ -151,18 +164,18 @@ namespace FFTColorMod.Tests
             var integration = new ModLoaderIntegration();
             integration.SetPreferencesPath(tempPath);
 
-            // Act - Process F2 hotkey (Red color scheme)
+            // Act - Process F2 hotkey (Ocean Blue color scheme)
             integration.ProcessHotkey(System.Windows.Forms.Keys.F2);
 
             // Assert - Verify preference was saved
-            integration.CurrentColorScheme.Should().Be(ColorScheme.Red);
+            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue);
 
             // Create new integration instance to verify persistence
             var newIntegration = new ModLoaderIntegration();
             newIntegration.SetPreferencesPath(tempPath);
             newIntegration.LoadPreferences();
 
-            newIntegration.CurrentColorScheme.Should().Be(ColorScheme.Red);
+            newIntegration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue);
 
             // Cleanup
             System.IO.File.Delete(tempPath);
@@ -178,7 +191,7 @@ namespace FFTColorMod.Tests
             // Simulate initial game load - set blue color
             var battleContext = new ModLoaderIntegration();
             battleContext.SetPreferencesPath(tempPath);
-            battleContext.ProcessHotkey(System.Windows.Forms.Keys.F1); // Blue
+            battleContext.ProcessHotkey(System.Windows.Forms.Keys.F1); // White Silver
 
             // Act - Simulate transition to cutscene (new context load)
             var cutsceneContext = new ModLoaderIntegration();
@@ -196,9 +209,9 @@ namespace FFTColorMod.Tests
             battleContext2.LoadPreferences();
 
             // Assert - All contexts should have the same color scheme
-            cutsceneContext.CurrentColorScheme.Should().Be(ColorScheme.Blue);
-            formationContext.CurrentColorScheme.Should().Be(ColorScheme.Blue);
-            battleContext2.CurrentColorScheme.Should().Be(ColorScheme.Blue);
+            cutsceneContext.CurrentColorScheme.Should().Be(ColorScheme.WhiteSilver);
+            formationContext.CurrentColorScheme.Should().Be(ColorScheme.WhiteSilver);
+            battleContext2.CurrentColorScheme.Should().Be(ColorScheme.WhiteSilver);
 
             // Cleanup
             System.IO.File.Delete(tempPath);
@@ -214,13 +227,13 @@ namespace FFTColorMod.Tests
             // Save a preference first
             var firstSession = new ModLoaderIntegration();
             firstSession.SetPreferencesPath(tempPath);
-            firstSession.ProcessHotkey(System.Windows.Forms.Keys.F4); // Purple
+            firstSession.ProcessHotkey(System.Windows.Forms.Keys.F3); // Deep Purple
 
             // Act - Create new integration with constructor that takes path
             var secondSession = new ModLoaderIntegration(tempPath);
 
             // Assert - Should automatically have loaded the saved preference
-            secondSession.CurrentColorScheme.Should().Be(ColorScheme.Purple);
+            secondSession.CurrentColorScheme.Should().Be(ColorScheme.DeepPurple);
 
             // Cleanup
             System.IO.File.Delete(tempPath);
@@ -236,18 +249,18 @@ namespace FFTColorMod.Tests
             // Save a preference first
             var firstSession = new ModLoaderIntegration();
             firstSession.SetPreferencesPath(tempPath);
-            firstSession.ProcessHotkey(System.Windows.Forms.Keys.F7); // Green
+            firstSession.ProcessHotkey(System.Windows.Forms.Keys.F1); // White Silver
 
             // Act - Create new integration that auto-loads
             var secondSession = new ModLoaderIntegration(tempPath);
 
             // Assert - FileRedirector should have the loaded color scheme
             secondSession.FileRedirector.Should().NotBeNull();
-            secondSession.FileRedirector.ActiveScheme.Should().Be(ColorScheme.Green);
+            secondSession.FileRedirector.ActiveScheme.Should().Be(ColorScheme.WhiteSilver);
 
             // Verify file redirection works with loaded scheme
             var redirectedPath = secondSession.GetRedirectedPath("sprites/ramza.pac");
-            redirectedPath.Should().Be("sprites/ramza_green.pac");
+            redirectedPath.Should().Be("sprites/ramza_white_silver.pac");
 
             // Cleanup
             System.IO.File.Delete(tempPath);

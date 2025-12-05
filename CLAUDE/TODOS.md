@@ -8,7 +8,7 @@
 - [X] Optimize PaletteDetector to only process first 288 bytes - DONE: FindPalette and FindAllPalettes now limited to 288 bytes
 - [X] Test color persistence across battles, cutscenes, formation screen - DONE: Tests verify persistence
 - [X] Implement color persistence across game sessions - DONE: ColorPreferencesManager saves to %AppData%
-- [ ] Test compatibility with other mods
+- [X] Test compatibility with other mods - DONE: Compatible with Better Palettes and GenericJobs
 
 ## Future Enhancements
 - [ ] **REQUIRED FOR RAMZA**: Find sprite loading signatures with x64dbg

@@ -11,7 +11,7 @@ public class ColorPreferencesManagerTests
         var manager = new ColorPreferencesManager(tempPath);
 
         // Act
-        manager.SavePreferences(ColorScheme.Blue);
+        manager.SavePreferences(ColorScheme.OceanBlue);
 
         // Assert
         Assert.True(File.Exists(tempPath));
@@ -28,11 +28,11 @@ public class ColorPreferencesManagerTests
         var manager = new ColorPreferencesManager(tempPath);
 
         // Act
-        manager.SavePreferences(ColorScheme.Red);
+        manager.SavePreferences(ColorScheme.WhiteSilver);
 
         // Assert
         var content = File.ReadAllText(tempPath);
-        Assert.Contains("Red", content);
+        Assert.Contains("WhiteSilver", content);
 
         // Cleanup
         File.Delete(tempPath);
@@ -44,13 +44,13 @@ public class ColorPreferencesManagerTests
         // Arrange
         var tempPath = Path.GetTempFileName();
         var manager = new ColorPreferencesManager(tempPath);
-        manager.SavePreferences(ColorScheme.Green);
+        manager.SavePreferences(ColorScheme.OceanBlue);
 
         // Act
         var loadedScheme = manager.LoadPreferences();
 
         // Assert
-        Assert.Equal(ColorScheme.Green, loadedScheme);
+        Assert.Equal(ColorScheme.OceanBlue, loadedScheme);
 
         // Cleanup
         File.Delete(tempPath);
@@ -78,15 +78,15 @@ public class ColorPreferencesManagerTests
         var manager = new ColorPreferencesManager(tempPath);
 
         // Act
-        manager.SaveCharacterPreference("Ramza", ColorScheme.Blue);
-        manager.SaveCharacterPreference("Agrias", ColorScheme.Red);
+        manager.SaveCharacterPreference("Ramza", ColorScheme.OceanBlue);
+        manager.SaveCharacterPreference("Agrias", ColorScheme.WhiteSilver);
 
         // Assert
         var ramzaColor = manager.LoadCharacterPreference("Ramza");
         var agriasColor = manager.LoadCharacterPreference("Agrias");
 
-        Assert.Equal(ColorScheme.Blue, ramzaColor);
-        Assert.Equal(ColorScheme.Red, agriasColor);
+        Assert.Equal(ColorScheme.OceanBlue, ramzaColor);
+        Assert.Equal(ColorScheme.WhiteSilver, agriasColor);
 
         // Cleanup
         File.Delete(tempPath);
@@ -100,23 +100,23 @@ public class ColorPreferencesManagerTests
         var manager = new ColorPreferencesManager(tempPath);
 
         // Act - Save initial preferences
-        manager.SaveCharacterPreference("Ramza", ColorScheme.Blue);
-        manager.SaveCharacterPreference("Agrias", ColorScheme.Red);
-        manager.SaveCharacterPreference("Delita", ColorScheme.Green);
+        manager.SaveCharacterPreference("Ramza", ColorScheme.OceanBlue);
+        manager.SaveCharacterPreference("Agrias", ColorScheme.WhiteSilver);
+        manager.SaveCharacterPreference("Delita", ColorScheme.OceanBlue);
 
         // Update one character's preference
-        manager.SaveCharacterPreference("Ramza", ColorScheme.Purple);
+        manager.SaveCharacterPreference("Ramza", ColorScheme.DeepPurple);
 
         // Assert - All preferences should be correct
-        Assert.Equal(ColorScheme.Purple, manager.LoadCharacterPreference("Ramza"));
-        Assert.Equal(ColorScheme.Red, manager.LoadCharacterPreference("Agrias"));
-        Assert.Equal(ColorScheme.Green, manager.LoadCharacterPreference("Delita"));
+        Assert.Equal(ColorScheme.DeepPurple, manager.LoadCharacterPreference("Ramza"));
+        Assert.Equal(ColorScheme.WhiteSilver, manager.LoadCharacterPreference("Agrias"));
+        Assert.Equal(ColorScheme.OceanBlue, manager.LoadCharacterPreference("Delita"));
 
         // Create new manager instance to verify persistence
         var newManager = new ColorPreferencesManager(tempPath);
-        Assert.Equal(ColorScheme.Purple, newManager.LoadCharacterPreference("Ramza"));
-        Assert.Equal(ColorScheme.Red, newManager.LoadCharacterPreference("Agrias"));
-        Assert.Equal(ColorScheme.Green, newManager.LoadCharacterPreference("Delita"));
+        Assert.Equal(ColorScheme.DeepPurple, newManager.LoadCharacterPreference("Ramza"));
+        Assert.Equal(ColorScheme.WhiteSilver, newManager.LoadCharacterPreference("Agrias"));
+        Assert.Equal(ColorScheme.OceanBlue, newManager.LoadCharacterPreference("Delita"));
 
         // Cleanup
         File.Delete(tempPath);
@@ -130,7 +130,7 @@ public class ColorPreferencesManagerTests
         var manager = new ColorPreferencesManager(tempPath);
 
         // Save preference for one character
-        manager.SaveCharacterPreference("Ramza", ColorScheme.Blue);
+        manager.SaveCharacterPreference("Ramza", ColorScheme.OceanBlue);
 
         // Act - Load preference for character that was never saved
         var mustadioColor = manager.LoadCharacterPreference("Mustadio");
@@ -141,7 +141,7 @@ public class ColorPreferencesManagerTests
         Assert.Equal(ColorScheme.Original, orleanduColor);
 
         // Ramza should still have his saved preference
-        Assert.Equal(ColorScheme.Blue, manager.LoadCharacterPreference("Ramza"));
+        Assert.Equal(ColorScheme.OceanBlue, manager.LoadCharacterPreference("Ramza"));
 
         // Cleanup
         File.Delete(tempPath);

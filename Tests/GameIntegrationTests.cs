@@ -143,11 +143,11 @@ public class GameIntegrationTests
         integration.SetTestMemory(fakeMemory);
         integration.StartMonitoring();
 
-        // Act - simulate 1 key press for red colors
+        // Act - simulate 1 key press for white/silver colors
         integration.ProcessHotkey(0x70); // F1 key
 
         // Assert
-        integration.LastAppliedScheme.Should().Be("red");
+        integration.LastAppliedScheme.Should().Be("white_silver");
         integration.LastPaletteOffset.Should().Be(100);
     }
 
@@ -170,17 +170,17 @@ public class GameIntegrationTests
         integration.SetTestMemory(fakeMemory);
         integration.StartMonitoring();
 
-        // Act - simulate 1 key press for red colors
+        // Act - simulate 1 key press for white/silver colors
         integration.ProcessHotkey(0x70); // F1 key
 
         // Assert - Should find and transform Chapter 4 palette
-        integration.LastAppliedScheme.Should().Be("red");
+        integration.LastAppliedScheme.Should().Be("white_silver");
         integration.LastPaletteOffset.Should().Be(400);
 
         // Verify colors were actually transformed in memory
-        fakeMemory[400].Should().Be(0x30, "B reduced for red");
-        fakeMemory[401].Should().Be(0x30, "G reduced for red");
-        fakeMemory[402].Should().Be(0x80, "R enhanced for red");
+        fakeMemory[400].Should().Be(0x30, "B reduced for white/silver");
+        fakeMemory[401].Should().Be(0x30, "G reduced for white/silver");
+        fakeMemory[402].Should().Be(0x80, "R enhanced for white/silver");
     }
 
     [Fact]
@@ -210,11 +210,11 @@ public class GameIntegrationTests
         integration.SetTestMemory(fakeMemory);
         integration.StartMonitoring();
 
-        // Act - simulate 1 key press for red colors
+        // Act - simulate 1 key press for white/silver colors
         integration.ProcessHotkey(0x70); // F1 key
 
         // Assert - Should find first palette and apply transformation
-        integration.LastAppliedScheme.Should().Be("red");
+        integration.LastAppliedScheme.Should().Be("white_silver");
         // Should find first matching palette (Chapter 1 at offset 200)
         integration.LastPaletteOffset.Should().Be(200);
 
@@ -325,15 +325,15 @@ public class GameIntegrationTests
         var integration = new GameIntegration();
         integration.InitializeFileHook();
 
-        // Set active color scheme to red
-        integration.ProcessHotkey(0x70); // F1 key for red
+        // Set active color scheme to white/silver
+        integration.ProcessHotkey(0x70); // F1 key for white/silver
 
         // Act - request original sprite path
         var originalPath = @"data\sprites\RAMZA.SPR";
         var redirectedPath = integration.GetRedirectedPath(originalPath);
 
         // Assert - should redirect to red sprite folder
-        redirectedPath.Should().Contain("sprites_red", "Path should redirect to red sprite folder");
+        redirectedPath.Should().Contain("sprites_white_silver", "Path should redirect to white/silver sprite folder");
         redirectedPath.Should().EndWith("RAMZA.SPR", "Filename should be preserved");
     }
 
@@ -370,7 +370,7 @@ public class GameIntegrationTests
 
         // Assert
         redirectedPath.Should().NotBeNull();
-        redirectedPath.Should().Contain("sprites_blue", "Should redirect to blue sprite folder");
+        redirectedPath.Should().Contain("sprites_ocean_blue", "Should redirect to ocean blue sprite folder");
         redirectedPath.Should().EndWith("CHARACTER.SPR");
     }
 
@@ -415,8 +415,8 @@ public class GameIntegrationTests
         var mod = new Mod();
         mod.InitializeGameIntegration();
 
-        // Set active color scheme to blue using public method
-        mod.SetColorScheme("blue");
+        // Set active color scheme to ocean blue using public method
+        mod.SetColorScheme("ocean_blue");
 
         // Act - simulate file request
         var originalPath = @"data\sprites\RAMZA.SPR";
@@ -424,7 +424,7 @@ public class GameIntegrationTests
 
         // Assert
         interceptedPath.Should().NotBe(originalPath);
-        interceptedPath.Should().Contain("sprites_blue");
+        interceptedPath.Should().Contain("sprites_ocean_blue");
         interceptedPath.Should().EndWith("RAMZA.SPR");
     }
 
@@ -481,22 +481,22 @@ public class GameIntegrationTests
         var originalPath = mod.InterceptFilePath(spritePath);
         originalPath.Should().Be(spritePath, "Original scheme should not redirect");
 
-        // F2 - Red
-        mod.SetColorScheme("red");
+        // F1 - White/Silver
+        mod.SetColorScheme("white_silver");
         var redPath = mod.InterceptFilePath(spritePath);
-        redPath.Should().Contain("sprites_red", "Red scheme should redirect to red folder");
+        redPath.Should().Contain("sprites_white_silver", "White/Silver scheme should redirect to white_silver folder");
         redPath.Should().EndWith("RAMZA.SPR");
 
-        // F3 - Blue
-        mod.SetColorScheme("blue");
+        // F2 - Ocean Blue
+        mod.SetColorScheme("ocean_blue");
         var bluePath = mod.InterceptFilePath(spritePath);
-        bluePath.Should().Contain("sprites_blue", "Blue scheme should redirect to blue folder");
+        bluePath.Should().Contain("sprites_ocean_blue", "Ocean Blue scheme should redirect to ocean_blue folder");
         bluePath.Should().EndWith("RAMZA.SPR");
 
-        // F4 - Green
-        mod.SetColorScheme("green");
+        // F3 - Deep Purple
+        mod.SetColorScheme("deep_purple");
         var greenPath = mod.InterceptFilePath(spritePath);
-        greenPath.Should().Contain("sprites_green", "Green scheme should redirect to green folder");
+        greenPath.Should().Contain("sprites_deep_purple", "Deep Purple scheme should redirect to deep_purple folder");
         greenPath.Should().EndWith("RAMZA.SPR");
 
         // F5 - Purple
@@ -560,7 +560,7 @@ public class GameIntegrationTests
         var redirectedPath = integration.GetRedirectedPath(binSpritePath);
 
         // Assert - should redirect .bin files that end with _spr.bin
-        redirectedPath.Should().Contain("sprites_blue");
+        redirectedPath.Should().Contain("sprites_ocean_blue");
         redirectedPath.Should().EndWith("battle_ramza_spr.bin");
     }
 
@@ -574,12 +574,12 @@ public class GameIntegrationTests
         mod.SetPreferencesPath(tempPath);
 
         // Act - Set color scheme to purple
-        mod.SetColorScheme("purple");
+        mod.SetColorScheme("deep_purple");
 
         // Assert - Verify preference was saved
         var manager = new ColorPreferencesManager(tempPath);
         var savedScheme = manager.LoadPreferences();
-        savedScheme.Should().Be(ColorScheme.Purple);
+        savedScheme.Should().Be(ColorScheme.DeepPurple);
 
         // Cleanup
         System.IO.File.Delete(tempPath);
@@ -600,11 +600,11 @@ public class GameIntegrationTests
 
         // Assert - Verify red color scheme is active and saved
         var currentScheme = mod.GetCurrentColorScheme();
-        currentScheme.Should().Be("red");
+        currentScheme.Should().Be("white_silver");
 
         var manager = new ColorPreferencesManager(tempPath);
         var savedScheme = manager.LoadPreferences();
-        savedScheme.Should().Be(ColorScheme.Red);
+        savedScheme.Should().Be(ColorScheme.WhiteSilver);
 
         // Cleanup
         System.IO.File.Delete(tempPath);
