@@ -29,7 +29,20 @@ public class ColorPreferencesManager
         }
 
         var content = File.ReadAllText(_configPath);
-        return Enum.Parse<ColorScheme>(content);
+
+        // TLDR: Handle empty or whitespace content
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return ColorScheme.Original;
+        }
+
+        // TLDR: Try to parse, return default if invalid
+        if (Enum.TryParse<ColorScheme>(content.Trim(), out var result))
+        {
+            return result;
+        }
+
+        return ColorScheme.Original;
     }
 
     public void SaveCharacterPreference(string characterName, ColorScheme colorScheme)

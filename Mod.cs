@@ -27,6 +27,7 @@ public class Mod : IMod
     private IntPtr _processHandle;
     private ColorPreferencesManager? _preferencesManager;
     private string _currentColorScheme = "original";
+    private PaletteDetector? _paletteDetector;
 
     // Hooking infrastructure
     private IReloadedHooks? _hooks;
@@ -46,6 +47,9 @@ public class Mod : IMod
 
         // Initialize these fields even if other initialization fails
         _scanningStarted = true;
+
+        // TLDR: Always initialize PaletteDetector even if other initialization fails
+        _paletteDetector = new PaletteDetector();
 
         // Try initializing here since fftivc.utility.modloader might not call Start()
         try
@@ -79,6 +83,25 @@ public class Mod : IMod
         _processHandle = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION,
                                     false, _gameProcess.Id);
 
+        // Initialize preferences manager and load saved preferences
+        var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FFTColorMod");
+        Directory.CreateDirectory(configDir);
+        var configPath = Path.Combine(configDir, "preferences.json");
+        _preferencesManager = new ColorPreferencesManager(configPath);
+
+        // Load and apply saved color preference
+        var savedScheme = _preferencesManager.LoadPreferences();
+        var scheme = savedScheme switch
+        {
+            ColorScheme.Blue => "blue",
+            ColorScheme.Red => "red",
+            ColorScheme.Green => "green",
+            ColorScheme.Purple => "purple",
+            _ => "original"
+        };
+        _currentColorScheme = scheme;
+        Console.WriteLine($"[FFT Color Mod] Loaded saved preference: {scheme}");
+
         // Initialize game integration
         _gameIntegration = new GameIntegration();
         _gameIntegration.StartMonitoring();
@@ -105,9 +128,17 @@ public class Mod : IMod
     // TLDR: Start() might be called by Reloaded (but fftivc.utility.modloader might not call it)
     public void Start(IModLoader modLoader)
     {
-        var logPath = Path.Combine(Path.GetTempPath(), "FFTColorMod.log");
+        var logPath = Path.Combine(Path.GetTempPath(), $"FFTColorMod_{Guid.NewGuid()}.log");
         Console.WriteLine("[FFT Color Mod] Start() called - setting up hooks");
-        File.AppendAllText(logPath, $"[{DateTime.Now}] FFT Color Mod Start() method called!\n");
+
+        try
+        {
+            File.AppendAllText(logPath, $"[{DateTime.Now}] FFT Color Mod Start() method called!\n");
+        }
+        catch
+        {
+            // Ignore file write errors in tests
+        }
 
         try
         {
@@ -538,8 +569,17 @@ public class Mod : IMod
         _cancellationTokenSource?.Dispose();
     }
 
-    public bool CanUnload() => true;
-    public bool CanSuspend() => true;
+    // TLDR: ModId property for other mods to identify this mod
+    public string ModId => "FFTColorMod";
+
+    // TLDR: Cannot unload due to active memory hooks
+    public bool CanUnload() => false;
+
+    // TLDR: Cannot suspend as we actively modify memory
+    public bool CanSuspend() => false;
+
+    // TLDR: Indicates support for per-character color customization
+    public bool SupportsPerCharacterColors() => true;
 
     public Action Disposing { get; } = () => { };
 
