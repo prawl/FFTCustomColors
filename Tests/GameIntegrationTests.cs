@@ -563,4 +563,25 @@ public class GameIntegrationTests
         redirectedPath.Should().Contain("sprites_blue");
         redirectedPath.Should().EndWith("battle_ramza_spr.bin");
     }
+
+    [Fact]
+    public void Mod_SetColorScheme_Should_Save_Preferences()
+    {
+        // TLDR: Mod.SetColorScheme should save color preferences to persistent storage
+        // Arrange
+        var tempPath = System.IO.Path.GetTempFileName();
+        var mod = new Mod();
+        mod.SetPreferencesPath(tempPath);
+
+        // Act - Set color scheme to purple
+        mod.SetColorScheme("purple");
+
+        // Assert - Verify preference was saved
+        var manager = new ColorPreferencesManager(tempPath);
+        var savedScheme = manager.LoadPreferences();
+        savedScheme.Should().Be(ColorScheme.Purple);
+
+        // Cleanup
+        System.IO.File.Delete(tempPath);
+    }
 }

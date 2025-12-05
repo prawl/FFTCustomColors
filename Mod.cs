@@ -25,6 +25,7 @@ public class Mod : IMod
     private CancellationTokenSource? _cancellationTokenSource;
     private Process? _gameProcess;
     private IntPtr _processHandle;
+    private ColorPreferencesManager? _preferencesManager;
 
     // Hooking infrastructure
     private IReloadedHooks? _hooks;
@@ -604,7 +605,7 @@ public class Mod : IMod
 
     public void SetColorScheme(string scheme)
     {
-        // TLDR: Public method to set color scheme
+        // TLDR: Public method to set color scheme and save preference
         if (_gameIntegration != null)
         {
             // Update game integration with new scheme
@@ -618,7 +619,28 @@ public class Mod : IMod
                 _ => VK_F1
             };
             _gameIntegration.ProcessHotkey(vkCode);
+
+            // Save preference if manager is available
+            if (_preferencesManager != null)
+            {
+                var colorScheme = scheme switch
+                {
+                    "original" => ColorScheme.Original,
+                    "red" => ColorScheme.Red,
+                    "blue" => ColorScheme.Blue,
+                    "green" => ColorScheme.Green,
+                    "purple" => ColorScheme.Purple,
+                    _ => ColorScheme.Original
+                };
+                _preferencesManager.SavePreferences(colorScheme);
+            }
         }
+    }
+
+    public void SetPreferencesPath(string path)
+    {
+        // TLDR: Set path for preferences file
+        _preferencesManager = new ColorPreferencesManager(path);
     }
 
     public string InterceptFilePath(string originalPath)

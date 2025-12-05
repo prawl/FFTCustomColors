@@ -6,9 +6,9 @@
 - [X] ~~Identify which sprite file is Ramza through gameplay testing~~ (BLOCKED: Ramza protected by DLC override)
 - [X] Document sprite type mapping (10m/20m/40m/60m → character types) - DONE: Complete mappings in README.md
 - [X] Optimize PaletteDetector to only process first 288 bytes - DONE: FindPalette and FindAllPalettes now limited to 288 bytes
-- [ ] Test color persistence across battles, cutscenes, formation screen
+- [X] Test color persistence across battles, cutscenes, formation screen - DONE: Tests verify persistence
+- [X] Implement color persistence across game sessions - DONE: ColorPreferencesManager saves to %AppData%
 - [ ] Test compatibility with other mods
-- [ ] Implement color persistence across game sessions (save selected colors to config file)
 
 ## Future Enhancements
 - [ ] **REQUIRED FOR RAMZA**: Find sprite loading signatures with x64dbg

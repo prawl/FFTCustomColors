@@ -225,5 +225,32 @@ namespace FFTColorMod.Tests
             // Cleanup
             System.IO.File.Delete(tempPath);
         }
+
+        [Fact]
+        public void ModLoaderIntegration_Should_Apply_Loaded_Color_To_FileRedirector()
+        {
+            // TLDR: When preferences are loaded, FileRedirector should be updated with the color scheme
+            // Arrange
+            var tempPath = System.IO.Path.GetTempFileName();
+
+            // Save a preference first
+            var firstSession = new ModLoaderIntegration();
+            firstSession.SetPreferencesPath(tempPath);
+            firstSession.ProcessHotkey(System.Windows.Forms.Keys.F7); // Green
+
+            // Act - Create new integration that auto-loads
+            var secondSession = new ModLoaderIntegration(tempPath);
+
+            // Assert - FileRedirector should have the loaded color scheme
+            secondSession.FileRedirector.Should().NotBeNull();
+            secondSession.FileRedirector.ActiveScheme.Should().Be(ColorScheme.Green);
+
+            // Verify file redirection works with loaded scheme
+            var redirectedPath = secondSession.GetRedirectedPath("sprites/ramza.pac");
+            redirectedPath.Should().Be("sprites/ramza_green.pac");
+
+            // Cleanup
+            System.IO.File.Delete(tempPath);
+        }
     }
 }
