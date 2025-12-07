@@ -1,8 +1,6 @@
 using System;
 using System.IO;
 using System.Threading;
-using Reloaded.Hooks.Definitions;
-using Reloaded.Memory.SigScan.ReloadedII.Interfaces;
 using Reloaded.Mod.Interfaces;
 using Reloaded.Mod.Interfaces.Internal;
 
@@ -12,7 +10,6 @@ namespace FFTColorMod;
 public class Startup : IMod
 {
     private Mod _mod = null!;
-    private SpriteMemoryHooker? _memoryHooker;
     private HotkeyManager _hotkeyManager = null!;
     private PaletteDetector _paletteDetector = null!;
     private Thread? _hotkeyThread;
@@ -35,31 +32,12 @@ public class Startup : IMod
     // This is the method that Reloaded-II actually calls!
     public void StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig)
     {
-        Console.WriteLine("[FFTColorMod] Starting with memory hooking for real-time color changes!");
+        Console.WriteLine("[FFTColorMod] Starting with file swapping for color changes!");
 
-        // Try to get hooking services
-        var hooksController = loaderApi?.GetController<IReloadedHooks>();
-        var scannerController = loaderApi?.GetController<IStartupScanner>();
+        // Start hotkey monitoring for file swapping
+        StartHotkeyMonitoring();
 
-        if (hooksController != null && scannerController != null &&
-            hooksController.TryGetTarget(out var hooks) &&
-            scannerController.TryGetTarget(out var scanner))
-        {
-            Console.WriteLine("[FFTColorMod] Hook services available - initializing memory hooks");
-
-            // Initialize memory hooking for real-time color changes
-            _memoryHooker = new SpriteMemoryHooker(hooks, scanner, _paletteDetector, _hotkeyManager);
-            _memoryHooker.InitializeHooks();
-
-            // Start hotkey monitoring
-            StartHotkeyMonitoring();
-
-            Console.WriteLine("[FFTColorMod] Memory hooks initialized! Press F1-F5 to change colors in real-time!");
-        }
-        else
-        {
-            Console.WriteLine("[FFTColorMod] Hook services not available - falling back to standard mode");
-        }
+        Console.WriteLine("[FFTColorMod] File swapping initialized! Press F1-F4 to change colors!");
 
         // Create ModContext with services (will expand later)
         var context = new ModContext();

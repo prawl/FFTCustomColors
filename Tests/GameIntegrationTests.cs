@@ -107,10 +107,10 @@ public class GameIntegrationTests
         var integration = new GameIntegration();
 
         // Act
-        integration.StartMonitoring();
+        // Monitoring removed - file swapping only
 
-        // Assert
-        integration.IsMonitoring.Should().BeTrue();
+        // Assert - Monitoring removed, file swapping only
+        integration.IsMonitoring.Should().BeFalse();
     }
 
     [Fact]
@@ -118,10 +118,10 @@ public class GameIntegrationTests
     {
         // Arrange
         var integration = new GameIntegration();
-        integration.StartMonitoring();
+        // Monitoring removed - file swapping only
 
         // Act
-        integration.StopMonitoring();
+        // Monitoring removed - file swapping only
 
         // Assert
         integration.IsMonitoring.Should().BeFalse();
@@ -140,15 +140,15 @@ public class GameIntegrationTests
         fakeMemory[101] = 0x60;
         fakeMemory[102] = 0x40;
 
-        integration.SetTestMemory(fakeMemory);
-        integration.StartMonitoring();
+        // Test memory removed - file swapping only
+        // Monitoring removed - file swapping only
 
         // Act - simulate 1 key press for white/silver colors
         integration.ProcessHotkey(0x70); // F1 key
 
-        // Assert
+        // Assert - File swapping only, no memory operations
         integration.LastAppliedScheme.Should().Be("white_silver");
-        integration.LastPaletteOffset.Should().Be(100);
+        integration.LastPaletteOffset.Should().Be(-1); // No memory operations
     }
 
     [Fact]
@@ -167,20 +167,18 @@ public class GameIntegrationTests
         fakeMemory[404] = 0x30;
         fakeMemory[405] = 0x50;
 
-        integration.SetTestMemory(fakeMemory);
-        integration.StartMonitoring();
+        // Test memory removed - file swapping only
+        // Monitoring removed - file swapping only
 
         // Act - simulate 1 key press for white/silver colors
         integration.ProcessHotkey(0x70); // F1 key
 
-        // Assert - Should find and transform Chapter 4 palette
+        // Assert - File swapping only, no memory operations
         integration.LastAppliedScheme.Should().Be("white_silver");
-        integration.LastPaletteOffset.Should().Be(400);
+        integration.LastPaletteOffset.Should().Be(-1); // No memory operations
 
-        // Verify colors were actually transformed in memory
-        fakeMemory[400].Should().Be(0x30, "B reduced for white/silver");
-        fakeMemory[401].Should().Be(0x30, "G reduced for white/silver");
-        fakeMemory[402].Should().Be(0x80, "R enhanced for white/silver");
+        // Memory operations removed - file swapping only
+        // Colors are changed via file swapping, not memory modification
     }
 
     [Fact]
@@ -207,21 +205,19 @@ public class GameIntegrationTests
         fakeMemory[1201] = 0x30;
         fakeMemory[1202] = 0x60;
 
-        integration.SetTestMemory(fakeMemory);
-        integration.StartMonitoring();
+        // Test memory removed - file swapping only
+        // Monitoring removed - file swapping only
 
         // Act - simulate 1 key press for white/silver colors
         integration.ProcessHotkey(0x70); // F1 key
 
-        // Assert - Should find first palette and apply transformation
+        // Assert - File swapping only, no memory operations
         integration.LastAppliedScheme.Should().Be("white_silver");
-        // Should find first matching palette (Chapter 1 at offset 200)
-        integration.LastPaletteOffset.Should().Be(200);
+        // No memory operations - file swapping only
+        integration.LastPaletteOffset.Should().Be(-1);
 
-        // Verify Chapter 1 colors were transformed
-        fakeMemory[200].Should().Be(0x40, "Chapter 1 B reduced for red");
-        fakeMemory[201].Should().Be(0x40, "Chapter 1 G reduced for red");
-        fakeMemory[202].Should().Be(0xA0, "Chapter 1 R enhanced for red");
+        // Memory operations removed - file swapping only
+        // Colors are changed via file swapping, not memory modification
     }
 
     [Fact]

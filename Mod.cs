@@ -84,7 +84,7 @@ public class Mod : IMod
 
         // Initialize game integration
         _gameIntegration = new GameIntegration();
-        _gameIntegration.StartMonitoring();
+        // Monitoring removed - file swapping only
 
         // Signature scanner removed - not needed
 
@@ -371,19 +371,19 @@ public class Mod : IMod
 
     public void Suspend()
     {
-        _gameIntegration?.StopMonitoring();
+        // Monitoring removed - file swapping only
     }
 
     public void Resume()
     {
-        _gameIntegration?.StartMonitoring();
+        // Monitoring removed - file swapping only
     }
 
     public void Unload()
     {
         _cancellationTokenSource?.Cancel();
         _hotkeyTask?.Wait(1000);
-        _gameIntegration?.StopMonitoring();
+        // Monitoring removed - file swapping only
         _cancellationTokenSource?.Dispose();
     }
 
