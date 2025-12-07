@@ -7,11 +7,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Reloaded.Mod.Interfaces;
-using Reloaded.Hooks.Definitions;
-using Reloaded.Memory.SigScan.ReloadedII.Interfaces;
-using Reloaded.Memory.Sigscan;
-using Reloaded.Memory.Sigscan.Structs;
-using Reloaded.Memory.Sigscan.Definitions.Structs;
 
 namespace FFTColorMod;
 
@@ -29,17 +24,6 @@ public class Mod : IMod
     private string _currentColorScheme = "original";
     private PaletteDetector? _paletteDetector;
     private HotkeyManager? _hotkeyManager;
-    private SpriteMemoryHooker? _memoryHooker;
-
-    // Hooking infrastructure
-    private IReloadedHooks? _hooks;
-    private IModLoader? _modLoader;
-    private IHook<LoadSpriteDelegate>? _loadSpriteHook;
-    private bool _scanningStarted = false;
-
-    // Delegate for sprite loading function
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    private delegate IntPtr LoadSpriteDelegate(IntPtr spriteData, int size);
 
     // Constructor that accepts ModContext (new pattern from FFTGenericJobs)
     public Mod(ModContext context)
@@ -47,16 +31,13 @@ public class Mod : IMod
         // Do minimal work in constructor - Reloaded will call Start() for initialization
         Console.WriteLine("[FFT Color Mod] Constructor called with ModContext");
 
-        // Initialize these fields even if other initialization fails
-        _scanningStarted = true;
-
         // TLDR: Always initialize PaletteDetector even if other initialization fails
         _paletteDetector = new PaletteDetector();
 
         // Try initializing here since fftivc.utility.modloader might not call Start()
         try
         {
-            Console.WriteLine("[FFT Color Mod] Initializing... v1223-hooks");  // Updated version marker
+            Console.WriteLine("[FFT Color Mod] Initializing... v1223-file-swap-only");  // File swap only version
             InitializeModBasics();
         }
         catch (Exception ex)
@@ -75,8 +56,6 @@ public class Mod : IMod
         var logPath = Path.Combine(Path.GetTempPath(), "FFTColorMod.log");
         File.WriteAllText(logPath, $"[{DateTime.Now}] FFT Color Mod initializing in constructor\n");
 
-        // Set scanning flag
-        _scanningStarted = true;
 
         // Initialize process handles
         _gameProcess = Process.GetCurrentProcess();
@@ -143,14 +122,8 @@ public class Mod : IMod
 
         try
         {
-            // Store modLoader
-            _modLoader = modLoader;
-
-            // Get IReloadedHooks service for hook functionality
-            _modLoader.GetController<IReloadedHooks>()?.TryGetTarget(out _hooks!);
-
-            // Try to find patterns if we have hooks
-            if (_hooks != null)
+            // File swapping mode - no external services needed
+            if (true)
             {
                 Console.WriteLine("[FFT Color Mod] Hook services available - setting up signature scanning");
 
@@ -161,31 +134,8 @@ public class Mod : IMod
                     Console.WriteLine("[FFT Color Mod] Created HotkeyManager");
                 }
 
-                // Get IStartupScanner and initialize memory hooks
-                var scannerController = _modLoader?.GetController<IStartupScanner>();
-                if (scannerController != null && scannerController.TryGetTarget(out var scanner))
-                {
-                    Console.WriteLine("[FFT Color Mod] Got IStartupScanner - initializing memory hooks");
-
-                    try
-                    {
-                        _memoryHooker = new SpriteMemoryHooker(_hooks, scanner, _paletteDetector!, _hotkeyManager);
-                        Console.WriteLine("[FFT Color Mod] Created SpriteMemoryHooker, calling InitializeHooks...");
-                        _memoryHooker.InitializeHooks();
-                        Console.WriteLine("[FFT Color Mod] Memory hooks initialized! Press F1-F5 for real-time color changes!");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[FFT Color Mod] Error initializing memory hooks: {ex.Message}");
-                        Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("[FFT Color Mod] Could not get IStartupScanner - memory hooks disabled");
-                }
-
-                TryFindPatterns();
+                // File swapping only - no memory hooks
+                Console.WriteLine("[FFT Color Mod] File swapping mode enabled - Press F1-F4 to change colors!");
             }
             else
             {
@@ -201,95 +151,8 @@ public class Mod : IMod
         }
     }
 
-    // TLDR: Test if we can find functions using FFTGenericJobs patterns
-    private void TryFindPatterns()
-    {
-        var logPath = Path.Combine(Path.GetTempPath(), "FFTColorMod.log");
 
-        try
-        {
-            Console.WriteLine("[FFT Color Mod] Testing pattern scanning...");
-            File.AppendAllText(logPath, $"[{DateTime.Now}] Testing pattern scanning...\n");
 
-            // Get IStartupScanner service
-            var startupScannerController = _modLoader?.GetController<IStartupScanner>();
-            if (startupScannerController == null || !startupScannerController.TryGetTarget(out var startupScanner))
-            {
-                Console.WriteLine("[FFT Color Mod] Could not get IStartupScanner service");
-                File.AppendAllText(logPath, $"[{DateTime.Now}] Could not get IStartupScanner service\n");
-                return;
-            }
-
-            File.AppendAllText(logPath, $"[{DateTime.Now}] Got IStartupScanner service\n");
-
-            // Test with a simple pattern from FFTGenericJobs
-            string testPattern = "48 8B C4 48 89 58 ?? 48 89 70 ?? 48 89 78 ??";
-            Console.WriteLine($"[FFT Color Mod] Searching for pattern: {testPattern}");
-            File.AppendAllText(logPath, $"[{DateTime.Now}] Searching for pattern: {testPattern}\n");
-
-            startupScanner.AddMainModuleScan(testPattern, result =>
-            {
-                if (result.Found)
-                {
-                    Console.WriteLine($"[FFT Color Mod] Pattern found at offset: 0x{result.Offset:X}");
-                    File.AppendAllText(logPath, $"[{DateTime.Now}] Pattern found at offset: 0x{result.Offset:X}\n");
-
-                    // Calculate actual address
-                    var gameBase = Process.GetCurrentProcess().MainModule?.BaseAddress ?? IntPtr.Zero;
-                    var actualAddress = (long)gameBase + result.Offset;
-                    Console.WriteLine($"[FFT Color Mod] Actual address: 0x{actualAddress:X}");
-                    File.AppendAllText(logPath, $"[{DateTime.Now}] Actual address: 0x{actualAddress:X}\n");
-
-                    // TLDR: Hook creation would go here if needed
-                    Console.WriteLine("[FFT Color Mod] Pattern found but hook creation skipped");
-                    File.AppendAllText(logPath, $"[{DateTime.Now}] Pattern found but hook creation skipped\n");
-                }
-                else
-                {
-                    Console.WriteLine("[FFT Color Mod] Pattern not found");
-                    File.AppendAllText(logPath, $"[{DateTime.Now}] Pattern not found\n");
-                }
-            });
-
-            File.AppendAllText(logPath, $"[{DateTime.Now}] Pattern scan registered\n");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[FFT Color Mod] Error in TryFindPatterns: {ex.Message}");
-            File.AppendAllText(logPath, $"[{DateTime.Now}] Error in TryFindPatterns: {ex.Message}\n{ex.StackTrace}\n");
-        }
-    }
-
-    // Hook function that intercepts sprite loading
-    private IntPtr LoadSpriteHook(IntPtr spriteData, int size)
-    {
-        Console.WriteLine($"[FFT Color Mod] LoadSpriteHook called! spriteData=0x{spriteData.ToInt64():X}, size={size}");
-
-        // Call original function first
-        var result = _loadSpriteHook?.OriginalFunction(spriteData, size) ?? spriteData;
-
-        // Hook would apply palette modification here if needed
-        Console.WriteLine($"[FFT Color Mod] LoadSpriteHook called but palette modification skipped");
-
-        return result;
-    }
-
-    // Windows API for memory operations
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool ReadProcessMemory(
-        IntPtr hProcess,
-        IntPtr lpBaseAddress,
-        [Out] byte[] lpBuffer,
-        int dwSize,
-        out IntPtr lpNumberOfBytesRead);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool WriteProcessMemory(
-        IntPtr hProcess,
-        IntPtr lpBaseAddress,
-        byte[] lpBuffer,
-        int nSize,
-        out IntPtr lpNumberOfBytesWritten);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr OpenProcess(
@@ -495,105 +358,9 @@ public class Mod : IMod
             IntPtr baseAddress = _gameProcess.MainModule?.BaseAddress ?? IntPtr.Zero;
             Console.WriteLine($"[FFT Color Mod] Game base address: 0x{baseAddress.ToInt64():X}");
 
-            // ULTRA-EXPANDED: Try even higher memory regions for GPU-accessible palettes
-            long[] tryOffsets = {
-                // Original ranges (cached palettes found here)
-                0, 0x1000000, 0x2000000, 0x3000000, 0x4000000, 0x5000000,
-                // Extended ranges for active rendering memory
-                0x6000000, 0x7000000, 0x8000000, 0x9000000, 0xA000000, 0xB000000,
-                0xC000000, 0xD000000, 0xE000000, 0xF000000, 0x10000000, 0x12000000,
-                0x14000000, 0x16000000, 0x18000000, 0x1A000000, 0x1C000000, 0x1E000000,
-                // Graphics memory regions (found 8 palettes here but no visual changes)
-                0x20000000, 0x30000000, 0x40000000, 0x50000000, 0x60000000, 0x70000000,
-                // ULTRA-HIGH: GPU-accessible rendering memory (where live palettes should be)
-                0x80000000, 0x90000000, 0xA0000000, 0xB0000000, 0xC0000000, 0xD0000000,
-                0xE0000000, 0xF0000000, 0x100000000, 0x120000000, 0x140000000, 0x160000000,
-                0x180000000, 0x1A0000000, 0x1C0000000, 0x1E0000000, 0x200000000, 0x300000000
-            };
-
-            // Collect all readable memory regions
-            var memoryRegions = new List<(byte[] data, long baseOffset)>();
-
-            foreach (var offsetToTry in tryOffsets)
-            {
-                IntPtr searchAddress = IntPtr.Add(baseAddress, (int)Math.Min(offsetToTry, int.MaxValue));
-
-                byte[] buffer = new byte[searchSize];
-                IntPtr bytesRead;
-                bool success = ReadProcessMemory(_processHandle, searchAddress, buffer, searchSize, out bytesRead);
-
-                if (success && bytesRead.ToInt64() > 0)
-                {
-                    memoryRegions.Add((buffer, offsetToTry));
-                    Console.WriteLine($"[FFT Color Mod] Read {bytesRead.ToInt64()} bytes from 0x{searchAddress.ToInt64():X}");
-                }
-            }
-
-            Console.WriteLine($"[FFT Color Mod] Collected {memoryRegions.Count} memory regions for scanning");
-
-            // Memory scanning removed - not needed
-            var allFoundPalettes = new List<(int bufferOffset, long memoryAddress, int chapter)>();
-
-            if (allFoundPalettes.Count > 0)
-            {
-                Console.WriteLine($"[FFT Color Mod] Found {allFoundPalettes.Count} total palette(s) across all memory regions");
-
-                foreach (var palette in allFoundPalettes)
-                {
-                    Console.WriteLine($"[FFT Color Mod] Palette at memory 0x{(baseAddress.ToInt64() + palette.memoryAddress):X} is Chapter {palette.chapter}");
-
-                    if (palette.chapter > 0)
-                    {
-                        // Find the corresponding memory region and buffer
-                        var region = memoryRegions.FirstOrDefault(r => r.baseOffset == (palette.memoryAddress - palette.bufferOffset));
-                        if (region.data != null)
-                        {
-                            // Apply color scheme
-                            if (scheme != "original")
-                            {
-                                // Log original colors
-                                Console.WriteLine($"[FFT Color Mod] Original colors at buffer offset {palette.bufferOffset:X}:");
-                                for (int i = 0; i < 9; i++) // Show first 3 colors (9 bytes)
-                                {
-                                    if (palette.bufferOffset + i < region.data.Length)
-                                        Console.Write($"{region.data[palette.bufferOffset + i]:X2} ");
-                                }
-                                Console.WriteLine();
-
-                                // Color modification removed - not needed
-                                Console.WriteLine($"[FFT Color Mod] Would apply {scheme} colors here");
-
-                                // Log new colors
-                                Console.WriteLine($"[FFT Color Mod] New colors at buffer offset {palette.bufferOffset:X}:");
-                                for (int i = 0; i < 9; i++) // Show first 3 colors (9 bytes)
-                                {
-                                    if (palette.bufferOffset + i < region.data.Length)
-                                        Console.Write($"{region.data[palette.bufferOffset + i]:X2} ");
-                                }
-                                Console.WriteLine();
-
-                                // CRITICAL: Write to actual memory address
-                                byte[] modifiedData = new byte[256];
-                                Buffer.BlockCopy(region.data, palette.bufferOffset, modifiedData, 0, 256);
-
-                                IntPtr writeAddress = IntPtr.Add(baseAddress, (int)(palette.memoryAddress));
-                                IntPtr bytesWritten;
-                                bool writeSuccess = WriteProcessMemory(_processHandle, writeAddress,
-                                                 modifiedData, modifiedData.Length, out bytesWritten);
-                                Console.WriteLine($"[FFT Color Mod] WriteProcessMemory to 0x{writeAddress.ToInt64():X}: success={writeSuccess}, bytesWritten={bytesWritten.ToInt64()}");
-                            }
-                            else
-                            {
-                                Console.WriteLine($"[FFT Color Mod] Skipping modification (original colors requested)");
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                Console.WriteLine("[FFT Color Mod] No palettes found in any memory region searched");
-            }
+            // Memory operations removed - only file swapping is used
+            Console.WriteLine($"[FFT Color Mod] Color scheme '{scheme}' will be applied via file swapping");
+            Console.WriteLine("[FFT Color Mod] Use F1-F4 hotkeys to switch between color variants");
         }
         catch (Exception ex)
         {
@@ -661,7 +428,7 @@ public class Mod : IMod
     public bool IsScanningStarted()
     {
         // TLDR: Check if scanning has been started
-        return _scanningStarted;
+        return false;
     }
 
     private void StartPatternScanning()

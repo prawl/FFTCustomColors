@@ -12,59 +12,6 @@ namespace FFTColorMod.Tests
     {
 
         [Fact]
-        public void Mod_Start_Should_Store_ModLoader_Reference()
-        {
-            // TLDR: When Start() is called, mod should store the modLoader reference
-            // Arrange
-            var context = new ModContext();
-            var mod = new Mod(context);
-
-            // Act - Call Start with null (the method handles this gracefully)
-            mod.Start(null);
-
-            // Use reflection to check if _modLoader field was set
-            var modLoaderField = typeof(Mod).GetField("_modLoader",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            // Assert - The field should exist (even if null in test environment)
-            modLoaderField.Should().NotBeNull();
-        }
-
-        [Fact]
-        public void Mod_Should_Have_LoadSpriteHook_Delegate_Field()
-        {
-            // TLDR: Mod class should have a LoadSpriteHook field for hooking sprite loading
-            // Arrange & Act
-            var loadSpriteHookField = typeof(Mod).GetField("_loadSpriteHook",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            // Assert
-            loadSpriteHookField.Should().NotBeNull();
-            loadSpriteHookField.FieldType.Name.Should().Contain("IHook");
-        }
-
-        [Fact]
-        public void LoadSpriteHook_Method_Should_Exist()
-        {
-            // TLDR: Mod should have a LoadSpriteHook method that intercepts sprite loading
-            // Arrange
-            var loadSpriteHookMethod = typeof(Mod).GetMethod("LoadSpriteHook",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            // Assert
-            loadSpriteHookMethod.Should().NotBeNull();
-
-            // Verify method signature - should take IntPtr spriteData and int size, return IntPtr
-            var parameters = loadSpriteHookMethod.GetParameters();
-            parameters.Should().HaveCount(2);
-            parameters[0].ParameterType.Should().Be(typeof(IntPtr));
-            parameters[0].Name.Should().Be("spriteData");
-            parameters[1].ParameterType.Should().Be(typeof(int));
-            parameters[1].Name.Should().Be("size");
-            loadSpriteHookMethod.ReturnType.Should().Be(typeof(IntPtr));
-        }
-
-        [Fact]
         public void Mod_Should_Have_PaletteDetector_Field()
         {
             // TLDR: Mod should have a PaletteDetector field to detect and modify palettes

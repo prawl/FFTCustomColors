@@ -56,7 +56,7 @@ public class ModHookIntegrationTests
         // Assert - mod should set flags correctly
         Assert.NotNull(mod);
         Assert.False(mod.HasManualScanner(), "Manual scanner was removed");
-        Assert.True(mod.IsScanningStarted(), "Should have scanning flag set");
+        Assert.False(mod.IsScanningStarted(), "Scanning was removed - should return false");
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class ModHookIntegrationTests
         var mod = new Mod();
 
         // Assert - mod should have started scanning
-        Assert.True(mod.IsScanningStarted(), "Should start scanning in constructor");
+        Assert.False(mod.IsScanningStarted(), "Scanning was removed - should return false");
     }
 
     [Fact]
