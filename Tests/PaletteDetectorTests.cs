@@ -115,207 +115,22 @@ public class PaletteDetectorTests
         paletteOffsets[1].Should().Be(12, "second palette at offset 12");
     }
 
-    [Fact]
-    public void DetectChapterOutfit_ShouldReturnChapter1_WhenLightBlueTunicDetected()
-    {
-        // Arrange
-        var detector = new PaletteDetector();
-
-        // Chapter 1 Ramza's light blue tunic colors (BGR format)
-        byte[] memoryData = new byte[]
-        {
-            0xFF, 0xFF, 0xFF,  // Random data
-            0xA0, 0x60, 0x40,  // Light blue (BGR)
-            0x80, 0x50, 0x30,  // Medium blue (BGR)
-            0x60, 0x40, 0x20,  // Dark blue shadows (BGR)
-        };
-
-        // Act
-        var chapter = detector.DetectChapterOutfit(memoryData, 3);
-
-        // Assert
-        chapter.Should().Be(1, "Chapter 1 outfit has light blue tunic");
-    }
 
     [Fact]
-    public void DetectChapterOutfit_ShouldReturnChapter2_WhenPurpleBlueTunicDetected()
+    public void ReplacePaletteColors_RedScheme_ShouldReplaceBrownWithRed()
     {
-        // Arrange
+        // TLDR: Test brown → red replacement
         var detector = new PaletteDetector();
+        byte[] data = new byte[] { 0x17, 0x2C, 0x4A, 0x21, 0x3A, 0x5A }; // Original brown colors
 
-        // Chapter 2 Ramza's purple-blue tunic colors (BGR format)
-        byte[] memoryData = new byte[]
-        {
-            0xFF, 0xFF, 0xFF,  // Random data
-            0x80, 0x40, 0x60,  // Purple-blue (BGR)
-            0x60, 0x30, 0x50,  // Medium purple (BGR)
-            0x40, 0x20, 0x40,  // Dark purple shadows (BGR)
-        };
+        detector.ReplacePaletteColors(data, 0, "red");
 
-        // Act
-        var chapter = detector.DetectChapterOutfit(memoryData, 3);
-
-        // Assert
-        chapter.Should().Be(2, "Chapter 2 outfit has purple-blue tunic");
-    }
-
-    [Fact]
-    public void DetectChapterOutfit_ShouldReturnChapter3_WhenBurgundyOutfitDetected()
-    {
-        // Arrange
-        var detector = new PaletteDetector();
-
-        // Chapter 3 Ramza's burgundy outfit colors (BGR format)
-        byte[] memoryData = new byte[]
-        {
-            0xFF, 0xFF, 0xFF,  // Random data
-            0x40, 0x30, 0x60,  // Burgundy (BGR)
-            0x30, 0x25, 0x50,  // Medium burgundy (BGR)
-            0x20, 0x18, 0x40,  // Dark burgundy (BGR)
-        };
-
-        // Act
-        var chapter = detector.DetectChapterOutfit(memoryData, 3);
-
-        // Assert
-        chapter.Should().Be(3, "Chapter 3 outfit has burgundy tunic");
-    }
-
-    [Fact]
-    public void DetectChapterOutfit_ShouldReturnChapter4_WhenChapter4ColorsDetected()
-    {
-        // Arrange
-        var detector = new PaletteDetector();
-
-        // Chapter 4 Ramza uses same colors as Chapter 2 but should return 4
-        // This test will help us figure out how to distinguish Chapter 4 from Chapter 2
-        // For now, we'll test with Chapter 2 colors but expect Chapter 4 result
-        byte[] memoryData = new byte[]
-        {
-            0xFF, 0xFF, 0xFF,  // Random data
-            0x80, 0x40, 0x60,  // Same purple-blue as Chapter 2 (BGR)
-            0x60, 0x30, 0x50,  // Medium purple (BGR)
-            0x40, 0x20, 0x40,  // Dark purple shadows (BGR)
-        };
-
-        // Act
-        var chapter = detector.DetectChapterOutfit(memoryData, 3, preferChapter4: true);
-
-        // Assert
-        // This test verifies Chapter 4 detection with preferChapter4 = true
-        chapter.Should().Be(4, "Chapter 4 outfit should be detected when preferChapter4 is true");
-    }
-
-    [Fact]
-    public void ReplacePaletteColors_ShouldReplaceChapter1BlueWithRed_WhenRedSchemeSelected()
-    {
-        // Arrange
-        var detector = new PaletteDetector();
-
-        // Chapter 1 blue tunic palette
-        byte[] memoryData = new byte[]
-        {
-            0xFF, 0xFF, 0xFF,  // Random data
-            0xA0, 0x60, 0x40,  // Light blue (BGR)
-            0x80, 0x50, 0x30,  // Medium blue (BGR)
-            0x60, 0x40, 0x20,  // Dark blue shadows (BGR)
-        };
-
-        // Act
-        detector.ReplacePaletteColors(memoryData, 3, "red", 1);
-
-        // Assert - Blue to Red transformation
-        memoryData[3].Should().Be(0x40, "B reduced for red");
-        memoryData[4].Should().Be(0x40, "G reduced for red");
-        memoryData[5].Should().Be(0xA0, "R enhanced for red");
-
-        memoryData[6].Should().Be(0x30, "B reduced for red");
-        memoryData[7].Should().Be(0x30, "G reduced for red");
-        memoryData[8].Should().Be(0x80, "R enhanced for red");
-    }
-
-    [Fact]
-    public void ReplacePaletteColors_ShouldReplaceChapter2PurpleWithRed_WhenRedSchemeSelected()
-    {
-        // Arrange
-        var detector = new PaletteDetector();
-
-        // Chapter 2 purple-blue tunic palette
-        byte[] memoryData = new byte[]
-        {
-            0xFF, 0xFF, 0xFF,  // Random data
-            0x80, 0x40, 0x60,  // Purple-blue (BGR)
-            0x60, 0x30, 0x50,  // Medium purple (BGR)
-            0x40, 0x20, 0x40,  // Dark purple shadows (BGR)
-        };
-
-        // Act
-        detector.ReplacePaletteColors(memoryData, 3, "red", 2);
-
-        // Assert - Purple to Red transformation
-        memoryData[3].Should().Be(0x30, "B reduced for red");
-        memoryData[4].Should().Be(0x30, "G reduced for red");
-        memoryData[5].Should().Be(0x80, "R enhanced for red");
-
-        memoryData[6].Should().Be(0x25, "B reduced for red");
-        memoryData[7].Should().Be(0x25, "G reduced for red");
-        memoryData[8].Should().Be(0x70, "R enhanced for red");
-    }
-
-    [Fact]
-    public void ReplacePaletteColors_ShouldReplaceChapter3BurgundyWithRed_WhenRedSchemeSelected()
-    {
-        // Arrange
-        var detector = new PaletteDetector();
-
-        // Chapter 3 burgundy outfit palette
-        byte[] memoryData = new byte[]
-        {
-            0xFF, 0xFF, 0xFF,  // Random data
-            0x40, 0x30, 0x60,  // Burgundy (BGR)
-            0x30, 0x25, 0x50,  // Medium burgundy (BGR)
-            0x20, 0x18, 0x40,  // Dark burgundy (BGR)
-        };
-
-        // Act
-        detector.ReplacePaletteColors(memoryData, 3, "red", 3);
-
-        // Assert - Burgundy to Red transformation
-        memoryData[3].Should().Be(0x1A, "B reduced for red");
-        memoryData[4].Should().Be(0x2C, "G adjusted for red");
-        memoryData[5].Should().Be(0x7F, "R enhanced for red");
-
-        memoryData[6].Should().Be(0x15, "B reduced for red");
-        memoryData[7].Should().Be(0x20, "G adjusted for red");
-        memoryData[8].Should().Be(0x65, "R enhanced for red");
-    }
-
-    [Fact]
-    public void ReplacePaletteColors_ShouldReplaceChapter4PurpleWithRed_WhenRedSchemeSelected()
-    {
-        // Arrange
-        var detector = new PaletteDetector();
-
-        // Chapter 4 uses same purple colors as Chapter 2 (BGR format)
-        byte[] memoryData = new byte[]
-        {
-            0xFF, 0xFF, 0xFF,  // Random data
-            0x80, 0x40, 0x60,  // Purple-blue (BGR) - same as Chapter 2
-            0x60, 0x30, 0x50,  // Medium purple (BGR)
-            0x40, 0x20, 0x40,  // Dark purple shadows (BGR)
-        };
-
-        // Act
-        detector.ReplacePaletteColors(memoryData, 3, "red", 4);
-
-        // Assert - Chapter 4 Purple to Red transformation (should be same as Chapter 2)
-        memoryData[3].Should().Be(0x30, "B reduced for red");
-        memoryData[4].Should().Be(0x30, "G reduced for red");
-        memoryData[5].Should().Be(0x80, "R enhanced for red");
-
-        memoryData[6].Should().Be(0x25, "B reduced for red");
-        memoryData[7].Should().Be(0x25, "G reduced for red");
-        memoryData[8].Should().Be(0x70, "R enhanced for red");
+        data[0].Should().Be(0x1A); // B: dark red blue component
+        data[1].Should().Be(0x2C); // G: keep similar
+        data[2].Should().Be(0x7F); // R: red (127)
+        data[3].Should().Be(0x2A); // B: medium red blue component
+        data[4].Should().Be(0x3A); // G: keep similar
+        data[5].Should().Be(0x9F); // R: brighter red (159)
     }
 
     [Fact]
@@ -325,7 +140,7 @@ public class PaletteDetectorTests
         var detector = new PaletteDetector();
         byte[] data = new byte[] { 0x17, 0x2C, 0x4A }; // Original brown color
 
-        detector.ReplacePaletteColors(data, 0, "blue", 0);
+        detector.ReplacePaletteColors(data, 0, "blue");
 
         data[0].Should().Be(0x7F); // B: enhanced blue
         data[1].Should().Be(0x2C); // G: keep similar
@@ -339,7 +154,7 @@ public class PaletteDetectorTests
         var detector = new PaletteDetector();
         byte[] data = new byte[] { 0x17, 0x2C, 0x4A }; // Original brown color
 
-        detector.ReplacePaletteColors(data, 0, "green", 0);
+        detector.ReplacePaletteColors(data, 0, "green");
 
         data[0].Should().Be(0x1A); // B: reduced
         data[1].Should().Be(0x7F); // G: enhanced green
@@ -353,7 +168,7 @@ public class PaletteDetectorTests
         var detector = new PaletteDetector();
         byte[] data = new byte[] { 0x17, 0x2C, 0x4A }; // Original brown color
 
-        detector.ReplacePaletteColors(data, 0, "purple", 0);
+        detector.ReplacePaletteColors(data, 0, "purple");
 
         data[0].Should().Be(0x7F); // B: enhanced for purple
         data[1].Should().Be(0x2C); // G: keep similar

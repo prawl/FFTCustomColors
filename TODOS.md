@@ -7,11 +7,11 @@
 - ✅ Deployed mod successfully with BuildLinked.ps1
 - ✅ Confirmed all color variants have unique palettes (MD5 verified)
 
-## 🌈 CURRENT ISSUES
-- **Rainbow Warrior Syndrome**: Unique character sprites (like Laurentius) turn into walking pride flags
-  - Generic job sprites (Knight, Monk, etc.) work fine
-  - Unique characters have different palette layouts causing wild color transformations
-  - Laurentius particularly affected with neon green hair and rainbow armor
+## 🌈 RESOLVED ISSUES
+- ✅ **Rainbow Warrior Syndrome FIXED**: Removed memory hooks that were causing universal color transformations
+  - Switched to file-swapping-only approach
+  - Only sprites with prepared color variants will change colors
+  - Unique characters keep original colors (no more rainbow Laurentius!)
 
 ## 📋 HIGH PRIORITY
 - [ ] Fix unique character sprite transformations
