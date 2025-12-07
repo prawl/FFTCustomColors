@@ -2,7 +2,6 @@ using Xunit;
 using FFTColorMod;
 using Reloaded.Mod.Interfaces;
 using Reloaded.Mod.Interfaces.Internal;
-using Reloaded.Hooks.ReloadedII.Interfaces;
 
 namespace FFTColorMod.Tests;
 
