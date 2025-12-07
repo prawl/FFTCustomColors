@@ -92,13 +92,6 @@ public class Mod : IMod
         Console.WriteLine("[FFT Color Mod] Press F1 for original colors, F2 for red colors");
         File.AppendAllText(logPath, $"[{DateTime.Now}] FFT Color Mod loaded successfully!\n");
 
-        // TLDR: Try pattern scanning here since Start() might not be called
-        Console.WriteLine("[FFT Color Mod] Attempting pattern scan from constructor...");
-        File.AppendAllText(logPath, $"[{DateTime.Now}] Attempting pattern scan from constructor...\n");
-
-        // We can't use IStartupScanner here, but we can log that we need it
-        Console.WriteLine("[FFT Color Mod] Note: Pattern scanning requires IStartupScanner from Start() method");
-        File.AppendAllText(logPath, $"[{DateTime.Now}] Pattern scanning requires IStartupScanner which comes from Start()\n");
     }
 
     // TLDR: Start() might be called by Reloaded (but fftivc.utility.modloader might not call it)
@@ -118,25 +111,15 @@ public class Mod : IMod
 
         try
         {
-            // File swapping mode - no external services needed
-            if (true)
+            // Initialize HotkeyManager if not already done
+            if (_hotkeyManager == null)
             {
-                Console.WriteLine("[FFT Color Mod] Hook services available - setting up signature scanning");
-
-                // Initialize HotkeyManager if not already done
-                if (_hotkeyManager == null)
-                {
-                    _hotkeyManager = new HotkeyManager();
-                    Console.WriteLine("[FFT Color Mod] Created HotkeyManager");
-                }
-
-                // File swapping only - no memory hooks
-                Console.WriteLine("[FFT Color Mod] File swapping mode enabled - Press F1-F4 to change colors!");
+                _hotkeyManager = new HotkeyManager();
+                Console.WriteLine("[FFT Color Mod] Created HotkeyManager");
             }
-            else
-            {
-                Console.WriteLine("[FFT Color Mod] Warning: Hook services not available");
-            }
+
+            // File swapping only - no memory hooks
+            Console.WriteLine("[FFT Color Mod] File swapping mode enabled - Press F1-F4 to change colors!");
 
             File.AppendAllText(logPath, $"[{DateTime.Now}] Start() completed\n");
         }
@@ -352,29 +335,6 @@ public class Mod : IMod
     public Action Disposing { get; } = () => { };
 
 
-    public bool IsSignatureScannerReady()
-    {
-        // TLDR: Scanner removed - always return false
-        return false;
-    }
-
-    public bool HasManualScanner()
-    {
-        // TLDR: Scanner removed - always return false
-        return false;
-    }
-
-    public bool IsScanningStarted()
-    {
-        // TLDR: Check if scanning has been started
-        return false;
-    }
-
-    private void StartPatternScanning()
-    {
-        // TLDR: Pattern scanning removed - not needed
-        Console.WriteLine("[FFT Color Mod] Pattern scanning skipped");
-    }
 
     public void InitializeGameIntegration()
     {

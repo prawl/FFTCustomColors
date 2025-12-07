@@ -37,7 +37,7 @@ public class ModHookIntegrationTests
 
         // Act & Assert
         Assert.NotNull(mod);
-        Assert.False(mod.IsSignatureScannerReady(), "SignatureScanner was removed");
+        // SignatureScanner was removed - no tests needed
     }
 
     [Fact]
@@ -49,8 +49,7 @@ public class ModHookIntegrationTests
 
         // Assert - mod should set flags correctly
         Assert.NotNull(mod);
-        Assert.False(mod.HasManualScanner(), "Manual scanner was removed");
-        Assert.False(mod.IsScanningStarted(), "Scanning was removed - should return false");
+        // Manual scanner and scanning were removed - no tests needed
     }
 
     [Fact]
@@ -61,7 +60,7 @@ public class ModHookIntegrationTests
         var mod = new Mod();
 
         // Assert - mod should have started scanning
-        Assert.False(mod.IsScanningStarted(), "Scanning was removed - should return false");
+        // Scanning was removed - no tests needed
     }
 
     [Fact]
