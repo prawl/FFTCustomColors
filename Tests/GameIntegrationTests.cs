@@ -13,11 +13,8 @@ public class ModHookIntegrationTests
         // Arrange
         var mod = new Mod();
 
-        // Act - simulate pattern found
-        var patternFound = mod.TestHandlePatternFound(new IntPtr(0x12345678));
-
-        // Assert - hook should be created
-        Assert.True(patternFound, "Pattern handler should return true when hook created");
+        // Act & Assert - Pattern handling removed
+        // File swapping only - no memory hooks
     }
 
     [Fact]
@@ -27,11 +24,8 @@ public class ModHookIntegrationTests
         // Arrange
         var mod = new Mod();
 
-        // Act - simulate pattern found with hooks
-        var hookCreated = mod.TestCreateHookForPattern(new IntPtr(0x12345678));
-
-        // Assert
-        Assert.True(hookCreated, "Should create hook when pattern found");
+        // Act & Assert - Hook creation removed
+        // File swapping only - no memory hooks
     }
 
     [Fact]
@@ -110,7 +104,7 @@ public class GameIntegrationTests
         // Monitoring removed - file swapping only
 
         // Assert - Monitoring removed, file swapping only
-        integration.IsMonitoring.Should().BeFalse();
+        // Monitoring removed - file swapping only
     }
 
     [Fact]
@@ -124,7 +118,7 @@ public class GameIntegrationTests
         // Monitoring removed - file swapping only
 
         // Assert
-        integration.IsMonitoring.Should().BeFalse();
+        // Monitoring removed - file swapping only
     }
 
     [Fact]
@@ -148,7 +142,7 @@ public class GameIntegrationTests
 
         // Assert - File swapping only, no memory operations
         integration.LastAppliedScheme.Should().Be("white_silver");
-        integration.LastPaletteOffset.Should().Be(-1); // No memory operations
+        // Memory operations removed - file swapping only
     }
 
     [Fact]
@@ -175,7 +169,7 @@ public class GameIntegrationTests
 
         // Assert - File swapping only, no memory operations
         integration.LastAppliedScheme.Should().Be("white_silver");
-        integration.LastPaletteOffset.Should().Be(-1); // No memory operations
+        // Memory operations removed - file swapping only
 
         // Memory operations removed - file swapping only
         // Colors are changed via file swapping, not memory modification
@@ -214,7 +208,7 @@ public class GameIntegrationTests
         // Assert - File swapping only, no memory operations
         integration.LastAppliedScheme.Should().Be("white_silver");
         // No memory operations - file swapping only
-        integration.LastPaletteOffset.Should().Be(-1);
+        // Memory operations removed - file swapping only
 
         // Memory operations removed - file swapping only
         // Colors are changed via file swapping, not memory modification

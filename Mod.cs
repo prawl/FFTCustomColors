@@ -19,7 +19,6 @@ public class Mod : IMod
     private Task? _hotkeyTask;
     private CancellationTokenSource? _cancellationTokenSource;
     private Process? _gameProcess;
-    private IntPtr _processHandle;
     private ColorPreferencesManager? _preferencesManager;
     private string _currentColorScheme = "original";
     private PaletteDetector? _paletteDetector;
@@ -60,9 +59,6 @@ public class Mod : IMod
         // Initialize process handles
         _gameProcess = Process.GetCurrentProcess();
         Console.WriteLine($"[FFT Color Mod] Game base: 0x{_gameProcess.MainModule?.BaseAddress.ToInt64():X}");
-
-        _processHandle = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION,
-                                    false, _gameProcess.Id);
 
         // Initialize preferences manager and load saved preferences
         var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FFTColorMod");
@@ -153,17 +149,6 @@ public class Mod : IMod
 
 
 
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern IntPtr OpenProcess(
-        uint dwDesiredAccess,
-        bool bInheritHandle,
-        int dwProcessId);
-
-    // Process access flags
-    private const uint PROCESS_VM_READ = 0x0010;
-    private const uint PROCESS_VM_WRITE = 0x0020;
-    private const uint PROCESS_VM_OPERATION = 0x0008;
 
     // Windows API for hotkey detection
     [DllImport("user32.dll")]
@@ -333,41 +318,6 @@ public class Mod : IMod
         }
     }
 
-    private void ApplyColorScheme(string scheme)
-    {
-        Console.WriteLine($"[FFT Color Mod] ApplyColorScheme called with scheme: {scheme}");
-
-        // Color scheme tracking removed - not needed
-        Console.WriteLine($"[FFT Color Mod] Color scheme: {scheme}");
-
-        if (_gameIntegration == null || _processHandle == IntPtr.Zero || _gameProcess == null)
-        {
-            Console.WriteLine("[FFT Color Mod] ApplyColorScheme: Missing required objects");
-            return;
-        }
-
-        try
-        {
-            // Update the hotkey manager
-            _gameIntegration.HotkeyManager.ProcessHotkey(scheme == "original" ? VK_F1 : VK_F2);
-            Console.WriteLine($"[FFT Color Mod] HotkeyManager updated with scheme: {scheme}");
-
-            // EXPANDED MEMORY SEARCH: Find active rendering palettes across multiple regions
-            const int searchSize = 1024 * 1024 * 10; // 10MB per region
-
-            IntPtr baseAddress = _gameProcess.MainModule?.BaseAddress ?? IntPtr.Zero;
-            Console.WriteLine($"[FFT Color Mod] Game base address: 0x{baseAddress.ToInt64():X}");
-
-            // Memory operations removed - only file swapping is used
-            Console.WriteLine($"[FFT Color Mod] Color scheme '{scheme}' will be applied via file swapping");
-            Console.WriteLine("[FFT Color Mod] Use F1-F4 hotkeys to switch between color variants");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[FFT Color Mod] Error applying color scheme: {ex.Message}");
-            Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
-        }
-    }
 
     public void Suspend()
     {
@@ -401,17 +351,6 @@ public class Mod : IMod
 
     public Action Disposing { get; } = () => { };
 
-    // TLDR: Test method for verifying pattern found behavior
-    public bool TestHandlePatternFound(IntPtr offset)
-    {
-        return true;
-    }
-
-    public bool TestCreateHookForPattern(IntPtr offset)
-    {
-        // TLDR: Minimal - just return true
-        return true;
-    }
 
     public bool IsSignatureScannerReady()
     {

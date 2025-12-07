@@ -9,9 +9,7 @@ public class GameIntegration
     public PaletteDetector PaletteDetector { get; private set; }
     public HotkeyManager HotkeyManager { get; private set; }
     public bool IsInitialized { get; private set; }
-    public bool IsMonitoring { get; private set; }
     public string? LastAppliedScheme { get; private set; }
-    public int LastPaletteOffset { get; private set; } = -1;
     public bool IsFileHookActive { get; private set; }
     public bool IsFileHookRegistered { get; private set; }
     public Func<string, string>? FileHookCallback { get; private set; }
