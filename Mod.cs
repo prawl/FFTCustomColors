@@ -304,29 +304,26 @@ public class Mod : IMod
 
     public void Suspend()
     {
-        // Monitoring removed - file swapping only
     }
 
     public void Resume()
     {
-        // Monitoring removed - file swapping only
     }
 
     public void Unload()
     {
         _cancellationTokenSource?.Cancel();
         _hotkeyTask?.Wait(1000);
-        // Monitoring removed - file swapping only
         _cancellationTokenSource?.Dispose();
     }
 
     // TLDR: ModId property for other mods to identify this mod
     public string ModId => "FFTColorMod";
 
-    // TLDR: Cannot unload due to active memory hooks
+    // Cannot unload while mod is active
     public bool CanUnload() => false;
 
-    // TLDR: Cannot suspend as we actively modify memory
+    // Cannot suspend while mod is active
     public bool CanSuspend() => false;
 
     // TLDR: Indicates support for per-character color customization
