@@ -557,8 +557,8 @@ public class Mod : IMod
         // Read sprite data
         byte[] spriteData = File.ReadAllBytes(spritePath);
 
-        // Use SpriteColorGenerator to create variants
-        var generator = new SpriteColorGenerator();
+        // Use SpriteColorGeneratorV2 to create variants
+        var generator = new SpriteColorGeneratorV2();
         var fileName = Path.GetFileNameWithoutExtension(spritePath);
 
         // GenerateColorVariants creates all 4 variants at once

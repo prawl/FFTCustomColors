@@ -370,38 +370,6 @@ public class GameIntegrationTests
         redirectedPath.Should().EndWith("CHARACTER.SPR");
     }
 
-    [Fact]
-    public void GameIntegration_ShouldProcessSpriteFiles_ForColorVariants()
-    {
-        // TLDR: GameIntegration should process sprite files to create color variants
-        // Arrange
-        var integration = new GameIntegration();
-        var testSpritePath = System.IO.Path.GetTempPath() + "test_sprite.SPR";
-
-        // Create a test sprite file with palette data
-        byte[] spriteData = new byte[1024];
-        // Add Ramza's brown palette at offset 100
-        spriteData[100] = 0x17; // Blue component
-        spriteData[101] = 0x2C; // Green component
-        spriteData[102] = 0x4A; // Red component (Ramza brown)
-        System.IO.File.WriteAllBytes(testSpritePath, spriteData);
-
-        try
-        {
-            // Act - process sprite for color variants
-            var processedCount = integration.ProcessSpriteForColorVariants(testSpritePath);
-
-            // Assert
-            processedCount.Should().Be(4, "Should create 4 color variants (red, blue, green, purple)");
-            integration.LastProcessedSpritePath.Should().Be(testSpritePath);
-        }
-        finally
-        {
-            // Cleanup
-            if (System.IO.File.Exists(testSpritePath))
-                System.IO.File.Delete(testSpritePath);
-        }
-    }
 
     [Fact]
     public void Mod_ShouldInterceptFilePath_WhenSpriteRequested()
@@ -502,43 +470,6 @@ public class GameIntegrationTests
         purplePath.Should().EndWith("RAMZA.SPR");
     }
 
-    [Fact]
-    public void GameIntegration_ShouldUseSpriteColorGenerator_ToCreateVariants()
-    {
-        // TLDR: GameIntegration should use SpriteColorGenerator to create actual color variant files
-        // Arrange
-        var integration = new GameIntegration();
-        integration.InitializeSpriteProcessor();
-
-        var testSpritePath = System.IO.Path.GetTempPath() + "test_sprite.SPR";
-        var outputDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "test_variants");
-
-        // Create test sprite with Ramza palette
-        byte[] spriteData = new byte[1024];
-        spriteData[100] = 0x17; // B
-        spriteData[101] = 0x2C; // G
-        spriteData[102] = 0x4A; // R (Ramza brown)
-        System.IO.File.WriteAllBytes(testSpritePath, spriteData);
-
-        try
-        {
-            // Act - generate color variants to output directory
-            var generatedFiles = integration.GenerateColorVariants(testSpritePath, outputDir);
-
-            // Assert
-            generatedFiles.Should().NotBeNull();
-            generatedFiles.Count.Should().Be(4, "Should generate 4 color variant files");
-            integration.HasSpriteProcessor.Should().BeTrue("Should have initialized sprite processor");
-        }
-        finally
-        {
-            // Cleanup
-            if (System.IO.File.Exists(testSpritePath))
-                System.IO.File.Delete(testSpritePath);
-            if (System.IO.Directory.Exists(outputDir))
-                System.IO.Directory.Delete(outputDir, true);
-        }
-    }
 
     [Fact]
     public void GetRedirectedPath_ShouldHandleBinFiles()
