@@ -23,6 +23,7 @@ public class Mod : IMod
     private string _currentColorScheme = "original";
     private PaletteDetector? _paletteDetector;
     private HotkeyManager? _hotkeyManager;
+    private ColorSchemeCycler _colorCycler;
 
     // Constructor that accepts ModContext (new pattern from FFTGenericJobs)
     public Mod(ModContext context)
@@ -32,6 +33,8 @@ public class Mod : IMod
 
         // TLDR: Always initialize PaletteDetector even if other initialization fails
         _paletteDetector = new PaletteDetector();
+        _colorCycler = new ColorSchemeCycler();
+        _colorCycler.SetCurrentScheme("original");
 
         // Try initializing here since fftivc.utility.modloader might not call Start()
         try
@@ -78,6 +81,9 @@ public class Mod : IMod
         _currentColorScheme = scheme;
         Console.WriteLine($"[FFT Color Mod] Loaded saved preference: {scheme}");
 
+        // Apply the saved color scheme
+        SwitchPacFile(scheme);
+
         // Initialize game integration
         _gameIntegration = new GameIntegration();
         // Monitoring removed - file swapping only
@@ -89,7 +95,7 @@ public class Mod : IMod
         _hotkeyTask = Task.Run(() => MonitorHotkeys(_cancellationTokenSource.Token));
 
         Console.WriteLine("[FFT Color Mod] Loaded successfully!");
-        Console.WriteLine("[FFT Color Mod] Press F1 for original colors, F2 for red colors");
+        Console.WriteLine("[FFT Color Mod] Press F1 to cycle through color schemes");
         File.AppendAllText(logPath, $"[{DateTime.Now}] FFT Color Mod loaded successfully!\n");
 
     }
@@ -119,7 +125,7 @@ public class Mod : IMod
             }
 
             // File swapping only - no memory hooks
-            Console.WriteLine("[FFT Color Mod] File swapping mode enabled - Press F1-F4 to change colors!");
+            Console.WriteLine("[FFT Color Mod] File swapping mode enabled - Press F1 to cycle through color schemes!");
 
             File.AppendAllText(logPath, $"[{DateTime.Now}] Start() completed\n");
         }
@@ -144,10 +150,6 @@ public class Mod : IMod
     {
         Console.WriteLine("[FFT Color Mod] Hotkey monitoring thread started");
         bool f1WasPressed = false;
-        bool f2WasPressed = false;
-        bool f3WasPressed = false;
-        bool f4WasPressed = false;
-        bool f5WasPressed = false;
         int loopCount = 0;
 
         while (!cancellationToken.IsCancellationRequested)
@@ -161,55 +163,15 @@ public class Mod : IMod
                 }
                 loopCount++;
 
-                // Check F1 key - Red
+                // Check F1 key - Cycle colors
                 short f1State = GetAsyncKeyState(VK_F1);
                 bool f1Pressed = (f1State & 0x8000) != 0;
                 if (f1Pressed && !f1WasPressed)
                 {
-                    Console.WriteLine("[FFT Color Mod] F1 PRESSED - Switching to RED colors");
+                    Console.WriteLine("[FFT Color Mod] F1 PRESSED - Cycling to next color scheme");
                     ProcessHotkeyPress(VK_F1);
                 }
                 f1WasPressed = f1Pressed;
-
-                // Check F2 key - Blue
-                short f2State = GetAsyncKeyState(VK_F2);
-                bool f2Pressed = (f2State & 0x8000) != 0;
-                if (f2Pressed && !f2WasPressed)
-                {
-                    Console.WriteLine("[FFT Color Mod] F2 PRESSED - Switching to BLUE colors");
-                    ProcessHotkeyPress(VK_F2);
-                }
-                f2WasPressed = f2Pressed;
-
-                // Check F3 key - Green
-                short f3State = GetAsyncKeyState(0x72); // VK_F3
-                bool f3Pressed = (f3State & 0x8000) != 0;
-                if (f3Pressed && !f3WasPressed)
-                {
-                    Console.WriteLine("[FFT Color Mod] F3 PRESSED - Switching to GREEN colors");
-                    ProcessHotkeyPress(0x72);
-                }
-                f3WasPressed = f3Pressed;
-
-                // Check F4 key - Original
-                short f4State = GetAsyncKeyState(0x73); // VK_F4
-                bool f4Pressed = (f4State & 0x8000) != 0;
-                if (f4Pressed && !f4WasPressed)
-                {
-                    Console.WriteLine("[FFT Color Mod] F4 PRESSED - Switching to ORIGINAL colors");
-                    ProcessHotkeyPress(0x73);
-                }
-                f4WasPressed = f4Pressed;
-
-                // Check F5 key - Original (remove active PAC)
-                short f5State = GetAsyncKeyState(0x74); // VK_F5
-                bool f5Pressed = (f5State & 0x8000) != 0;
-                if (f5Pressed && !f5WasPressed)
-                {
-                    Console.WriteLine("[FFT Color Mod] F5 PRESSED - Switching to ORIGINAL colors");
-                    ProcessHotkeyPress(0x74);
-                }
-                f5WasPressed = f5Pressed;
 
                 Thread.Sleep(50); // Check every 50ms
             }
@@ -369,28 +331,15 @@ public class Mod : IMod
             var colorScheme = scheme switch
             {
                 "original" => ColorScheme.Original,
-                "white_silver" => ColorScheme.WhiteSilver,
-                "ocean_blue" => ColorScheme.OceanBlue,
-                "deep_purple" => ColorScheme.DeepPurple,
+                "default" => ColorScheme.WhiteSilver,  // Map to existing enum for now
+                "corpse_brigade" => ColorScheme.OceanBlue,  // Map to existing enum for now
+                "lucavi" => ColorScheme.DeepPurple,  // Map to existing enum for now
                 _ => ColorScheme.Original
             };
             _preferencesManager.SavePreferences(colorScheme);
         }
 
-        if (_gameIntegration != null)
-        {
-            // Update game integration with new scheme
-            var vkCode = scheme switch
-            {
-                "original" => VK_F1,
-                "red" => VK_F2,
-                "blue" => 0x72, // F3
-                "green" => 0x73, // F4
-                "purple" => 0x74, // F5
-                _ => VK_F1
-            };
-            _gameIntegration.ProcessHotkey(vkCode);
-        }
+        // Game integration removed - file swapping only
     }
 
     public void SetPreferencesPath(string path)
@@ -402,16 +351,13 @@ public class Mod : IMod
     public void ProcessHotkeyPress(int vkCode)
     {
         // TLDR: Process a hotkey press and update color scheme
-        string scheme = vkCode switch
+        string scheme = null;
+
+        if (vkCode == VK_F1) // F1 cycles through schemes
         {
-            // F-key support
-            VK_F1 => "white_silver",      // F1 key (0x70)
-            VK_F2 => "ocean_blue",     // F2 key (0x71)
-            0x72 => "deep_purple",    // F3
-            0x73 => "original",  // F4
-            0x74 => "original",  // F5
-            _ => null
-        };
+            scheme = _colorCycler.GetNextScheme();
+            _colorCycler.SetCurrentScheme(scheme);
+        }
 
         if (scheme != null)
         {
@@ -440,26 +386,4 @@ public class Mod : IMod
         return originalPath.Replace(@"sprites\", $@"sprites_{_currentColorScheme}\");
     }
 
-    public int GenerateSpriteVariants(string spritePath, string outputDir)
-    {
-        // TLDR: Generate color variants for a sprite file
-        if (!File.Exists(spritePath))
-            return 0;
-
-        // Create output directory if it doesn't exist
-        if (!Directory.Exists(outputDir))
-            Directory.CreateDirectory(outputDir);
-
-        // Read sprite data
-        byte[] spriteData = File.ReadAllBytes(spritePath);
-
-        // Use SpriteColorGeneratorV2 to create variants
-        var generator = new SpriteColorGeneratorV2();
-        var fileName = Path.GetFileNameWithoutExtension(spritePath);
-
-        // GenerateColorVariants creates all 4 variants at once
-        generator.GenerateColorVariants(spriteData, outputDir, fileName);
-
-        return 4; // Always generates 4 variants (red, blue, green, purple)
-    }
 }

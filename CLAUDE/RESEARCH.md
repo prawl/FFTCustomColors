@@ -249,8 +249,35 @@ Based on GenericJobs analysis:
 3. Implement per-unit color selection
 4. Consider simpler config-based approach first
 
+## 🔧 SPRITE REFRESH ISSUE (Dec 7, 2024)
+
+### Problem: Sprites don't refresh immediately when hotkeys pressed
+- Colors DO change (file swapping works)
+- But sprites only update when hovering over units or changing menus
+- Game caches sprites in memory
+
+### Failed Attempts:
+1. **InvalidateRect** - Window refresh doesn't trigger sprite reload
+2. **Direct memory modification** - Previously tried, didn't work
+3. **Window focus changes** - No effect on sprite cache
+
+### Creative Solutions to Force Sprite Refresh:
+1. **Simulate Mouse Movement** - Send fake hover event to trigger refresh
+   - `SendMessage(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(x, y))`
+2. **Menu State Toggle** - Quick ESC press to force menu refresh
+   - `SendMessage(hwnd, WM_KEYDOWN, VK_ESCAPE, 0)`
+3. **Camera Movement** - Send camera rotate keys (Q/E)
+4. **Alt+Tab Simulation** - Force focus loss/regain
+5. **Resolution Toggle** - Alt+Enter for windowed/fullscreen
+
+### Why Memory Hooks Won't Help Here:
+- We already tried modifying sprites in memory - didn't work
+- FFTGenericJobs uses hooks for UI, not sprite refresh
+- Need to trigger game's own refresh mechanism
+
 ## 📝 IMPORTANT NOTES
 - Current approach (Option A) is WORKING and deployed
 - Memory hooking would add real-time flexibility but isn't required
 - Focus on identifying which sprite is Ramza's for targeted testing
 - Consider optimizing to only process first 288 bytes for performance
+- Sprite refresh requires triggering game events, not memory manipulation

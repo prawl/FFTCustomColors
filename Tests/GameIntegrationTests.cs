@@ -385,42 +385,8 @@ public class GameIntegrationTests
         interceptedPath.Should().EndWith("RAMZA.SPR");
     }
 
-    [Fact]
-    public void Mod_ShouldGenerateSpriteColorVariants_WhenRequested()
-    {
-        // TLDR: Mod should generate color variant sprites for deployment
-        // Arrange
-        var mod = new Mod();
-        mod.InitializeGameIntegration();
-
-        var testSpritePath = System.IO.Path.GetTempPath() + "test_sprite.SPR";
-        var outputDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "test_variants");
-
-        // Create test sprite with Ramza palette
-        byte[] spriteData = new byte[1024];
-        spriteData[100] = 0x17; // B
-        spriteData[101] = 0x2C; // G
-        spriteData[102] = 0x4A; // R (Ramza brown)
-        System.IO.File.WriteAllBytes(testSpritePath, spriteData);
-
-        try
-        {
-            // Act - generate color variants
-            var generatedCount = mod.GenerateSpriteVariants(testSpritePath, outputDir);
-
-            // Assert
-            generatedCount.Should().Be(4, "Should generate 4 color variants");
-            System.IO.Directory.Exists(outputDir).Should().BeTrue();
-        }
-        finally
-        {
-            // Cleanup
-            if (System.IO.File.Exists(testSpritePath))
-                System.IO.File.Delete(testSpritePath);
-            if (System.IO.Directory.Exists(outputDir))
-                System.IO.Directory.Delete(outputDir, true);
-        }
-    }
+    // Removed - We're using better_palettes sprites now, not generating them programmatically
+    // The GenerateSpriteVariants method has been removed from Mod.cs
 
     [Fact]
     public void Mod_FullIntegration_HotkeysShouldSwitchFileRedirection()
@@ -493,13 +459,36 @@ public class GameIntegrationTests
         var mod = new Mod();
         mod.SetPreferencesPath(tempPath);
 
-        // Act - Set color scheme to purple
-        mod.SetColorScheme("deep_purple");
+        // Act - Set color scheme to lucavi
+        mod.SetColorScheme("lucavi");
 
         // Assert - Verify preference was saved
         var manager = new ColorPreferencesManager(tempPath);
         var savedScheme = manager.LoadPreferences();
-        savedScheme.Should().Be(ColorScheme.DeepPurple);
+        savedScheme.Should().Be(ColorScheme.DeepPurple); // lucavi maps to DeepPurple
+
+        // Cleanup
+        System.IO.File.Delete(tempPath);
+    }
+
+    [Fact]
+    public void Mod_F1_Should_Cycle_Through_Color_Schemes()
+    {
+        // TLDR: Test that F1 cycles through color schemes
+        var tempPath = Path.GetTempFileName();
+        var mod = new Mod();
+        mod.SetPreferencesPath(tempPath);
+
+        // Initial state should be original
+        mod.GetCurrentColorScheme().Should().Be("original");
+
+        // Press F1 - should cycle to corpse_brigade (skipping default now)
+        mod.ProcessHotkeyPress(0x70); // F1 key
+        mod.GetCurrentColorScheme().Should().Be("corpse_brigade");
+
+        // Press F1 again - should cycle to lucavi
+        mod.ProcessHotkeyPress(0x70); // F1 key
+        mod.GetCurrentColorScheme().Should().Be("lucavi");
 
         // Cleanup
         System.IO.File.Delete(tempPath);
@@ -508,23 +497,23 @@ public class GameIntegrationTests
     [Fact]
     public void Mod_Hotkey_1_Should_Apply_Red_Colors_And_Save()
     {
-        // TLDR: When 1 key is pressed, mod should apply red colors and save preference
+        // TLDR: When F1 key is pressed, mod should cycle to next color scheme
         // Arrange
         var tempPath = System.IO.Path.GetTempFileName();
         var mod = new Mod();
         mod.SetPreferencesPath(tempPath);
         mod.InitializeGameIntegration();
 
-        // Act - Simulate 1 key press via ProcessHotkey
+        // Act - Simulate F1 key press via ProcessHotkey (cycles from original to corpse_brigade)
         mod.ProcessHotkeyPress(0x70); // F1 key
 
-        // Assert - Verify red color scheme is active and saved
+        // Assert - Verify cycled to corpse_brigade color scheme
         var currentScheme = mod.GetCurrentColorScheme();
-        currentScheme.Should().Be("white_silver");
+        currentScheme.Should().Be("corpse_brigade");
 
         var manager = new ColorPreferencesManager(tempPath);
         var savedScheme = manager.LoadPreferences();
-        savedScheme.Should().Be(ColorScheme.WhiteSilver);
+        savedScheme.Should().Be(ColorScheme.OceanBlue); // corpse_brigade maps to OceanBlue
 
         // Cleanup
         System.IO.File.Delete(tempPath);

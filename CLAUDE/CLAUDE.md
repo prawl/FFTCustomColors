@@ -7,7 +7,13 @@ Color modification mod for FFT (Steam) using function hooking to swap character 
 ## Paths
 - **Dev**: `C:\Users\ptyRa\Dev\FFT_Color_Mod`
 - **Install**: `C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFT_Color_Mod`
-- **Reference**: `C:\Users\ptyRa\Dev\FFTGenericJobs` (GenericMod source for hooking patterns)
+
+## Reference Mods (Proven Working)
+- `C:\Users\ptyRa\Dev\FFTGenericJobs` - GenericMod source for hooking patterns
+- `C:\Users\ptyRa\Dev\better_palettes` - Working palette mod
+- `C:\Users\ptyRa\Dev\Black Boco` - Working sprite mod
+- `C:\Users\ptyRa\Dev\Final-Fantasy-Tactics-The-Ivalice-Chronicles-Texture-Pack` - Working texture mod
+- `C:\Users\ptyRa\Dev\WotL Characters` - Working character mod
 
 ## Technical Details
 - **Format**: BGR (Blue-Green-Red), 3 bytes per color
