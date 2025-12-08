@@ -10,16 +10,13 @@ namespace FFTColorMod;
 public class Startup : IMod
 {
     private Mod _mod = null!;
-    private HotkeyManager _hotkeyManager = null!;
-    private PaletteDetector _paletteDetector = null!;
     private Thread? _hotkeyThread;
     private bool _running = true;
+    private string _currentScheme = "original";
 
     public Startup()
     {
         // Initialize core components
-        _hotkeyManager = new HotkeyManager();
-        _paletteDetector = new PaletteDetector();
     }
 
     // This is the method that Reloaded-II actually calls!
@@ -50,13 +47,19 @@ public class Startup : IMod
                 // Check for F1 key only (0x70)
                 if ((GetAsyncKeyState(0x70) & 0x8000) != 0)
                 {
-                    var oldScheme = _hotkeyManager.CurrentScheme;
-                    _hotkeyManager.ProcessHotkey(0x70);
-
-                    if (_hotkeyManager.CurrentScheme != oldScheme)
+                    // Simple cycling through schemes
+                    _currentScheme = _currentScheme switch
                     {
-                        Console.WriteLine($"[FFTColorMod] Cycled to {_hotkeyManager.CurrentScheme} colors - sprites will update in real-time!");
-                    }
+                        "original" => "corpse_brigade",
+                        "corpse_brigade" => "lucavi",
+                        "lucavi" => "northern_sky",
+                        "northern_sky" => "smoke",
+                        "smoke" => "southern_sky",
+                        "southern_sky" => "original",
+                        _ => "original"
+                    };
+
+                    Console.WriteLine($"[FFTColorMod] Cycled to {_currentScheme} colors - sprites will update in real-time!");
 
                     // Debounce
                     Thread.Sleep(500);

@@ -16,8 +16,6 @@ public class Mod : IMod
     private SpriteFileManager? _spriteFileManager;
     private Process? _gameProcess;
     private string _currentColorScheme = "original";
-    private PaletteDetector? _paletteDetector;
-    private HotkeyManager? _hotkeyManager;
     private ColorSchemeCycler _colorCycler;
 
     // Constructor that accepts ModContext (new pattern from FFTGenericJobs)
@@ -26,8 +24,6 @@ public class Mod : IMod
         // Do minimal work in constructor - Reloaded will call Start() for initialization
         Console.WriteLine("[FFT Color Mod] Constructor called with ModContext");
 
-        // TLDR: Always initialize PaletteDetector even if other initialization fails
-        _paletteDetector = new PaletteDetector();
         _colorCycler = new ColorSchemeCycler();
         _colorCycler.SetCurrentScheme("original");
 
@@ -94,12 +90,6 @@ public class Mod : IMod
 
         try
         {
-            // Initialize HotkeyManager if not already done
-            if (_hotkeyManager == null)
-            {
-                _hotkeyManager = new HotkeyManager();
-                Console.WriteLine("[FFT Color Mod] Created HotkeyManager");
-            }
 
             // File swapping only - no memory hooks
             Console.WriteLine("[FFT Color Mod] File swapping mode enabled - Press F1 to cycle through color schemes!");
@@ -187,8 +177,6 @@ public class Mod : IMod
         // Update cycler's current scheme
         _colorCycler?.SetCurrentScheme(scheme);
 
-        // Update HotkeyManager's current scheme for GameIntegration compatibility
-        _hotkeyManager?.SetCurrentColor(scheme);
     }
 
 

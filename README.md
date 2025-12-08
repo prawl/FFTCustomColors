@@ -4,74 +4,94 @@ Custom color palettes for Final Fantasy Tactics (Steam) using professionally edi
 
 ## Features
 
-- **F1 Hotkey**: Cycle through 6 color schemes
+- **F1 Hotkey**: Cycle through 6 color schemes in-game
+- **Persistent**: Color choices persist between game sessions (file-based swapping)
+- **Currently Supported**: Male Knight sprite only (more coming soon)
 - **Color Schemes**: Original, Corpse Brigade, Lucavi, Northern Sky, Smoke, Southern Sky
-- **All Job Classes**: Works with Knight, Monk, Ninja, and all sprites
-- **Save Preferences**: Remembers your color choice between sessions
 
 ## Installation
 
 1. Install [Reloaded-II mod loader](https://github.com/Reloaded-II/Reloaded-II)
-2. Download the latest release from [Releases](https://github.com/ptyRa/FFT_Color_Mod/releases)
-3. Extract to: `[Steam]\steamapps\common\FINAL FANTASY TACTICS\Reloaded\Mods\`
-4. Enable the mod in Reloaded-II
-5. Launch FFT through Reloaded-II
+2. Download FFT_Color_Mod from releases
+3. Extract to: `Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\`
+4. Launch Reloaded-II and enable "FFT Color Mod"
+5. Start the game through Reloaded-II
 
 ## Usage
 
-Press **F1** in-game to cycle through color schemes.
+Press **F1** in-game to cycle through color schemes. Changes apply immediately.
 
-## Development
+## Building from Source
 
 ### Requirements
 - .NET SDK 8.0+
-- Visual Studio 2022 or VS Code
+- Windows (Git Bash recommended for scripts)
 
-### Building
+### Quick Deploy
+```powershell
+# Builds and deploys directly to Reloaded-II mods folder
+./BuildLinked.ps1
+```
+
+### Run Tests
 ```bash
-cd ColorMod
-powershell -ExecutionPolicy Bypass -File ./BuildLinked.ps1
+./RunTests.sh
 ```
 
 ### Project Structure
 ```
 FFT_Color_Mod/
-├── ColorMod/           # Main mod code
-│   ├── FFTIVC/        # Sprite files
-│   └── Tests/         # Unit tests
-├── FFTColorMod.sln    # Solution file
-└── README.md
-```
-
-### Testing
-```bash
-dotnet test FFTColorMod.Tests.csproj
+├── ColorMod/
+│   ├── FFTIVC/                 # Sprite files and color variants
+│   │   └── data/enhanced/
+│   │       └── fftpack/unit/   # Original sprites + variant folders
+│   ├── Utilities/              # Core functionality
+│   │   ├── HotkeyHandler.cs   # F1 key detection
+│   │   └── SpriteFileManager.cs # Sprite file swapping
+│   ├── Mod.cs                  # Main mod entry point
+│   └── ModConfig.json          # Reloaded-II configuration
+├── Tests/                      # Unit tests (77 tests)
+├── BuildLinked.ps1            # Build & deploy script
+└── RunTests.sh                # Test runner script
 ```
 
 ## Color Schemes
 
-| Scheme | Description |
-|--------|-------------|
-| Original | Default game colors |
-| Corpse Brigade | Blue armor theme |
-| Lucavi | Dark purple theme |
-| Northern Sky | Light/holy colors |
-| Smoke | Gray/dark theme |
-| Southern Sky | Warm tones |
+| Scheme | Description | Theme |
+|--------|-------------|-------|
+| Original | Default FFT colors | Classic brown/beige |
+| Corpse Brigade | Blue armor variant | Cool blue tones |
+| Lucavi | Dark demon theme | Deep purple |
+| Northern Sky | Holy knight colors | Light silver/gold |
+| Smoke | Stealthy gray | Dark gray/black |
+| Southern Sky | Warm desert theme | Orange/red tones |
 
-## Technical Details
+## Technical Implementation
 
-- **Framework**: Reloaded-II mod loader
-- **Method**: File-based sprite swapping
-- **Format**: FFT sprite files (.bin) with BGR palette data
-- **Source**: Sprites from better_palettes mod (professionally edited)
+- **Method**: Physical file swapping (not memory patching)
+- **Persistence**: Swapped files remain until changed (no save system needed)
+- **Performance**: Instant switching with no game restart required
+- **Compatibility**: Works with FFTIVC utility modloader
+
+## Troubleshooting
+
+- **Mod not loading**: Ensure Reloaded-II is properly installed and FFT is launched through it
+- **F1 not working**: Check if another mod is using F1 hotkey
+- **Missing sprites**: Run BuildLinked.ps1 to verify deployment
+
+## Development Status
+
+- ✅ Male Knight sprite with 6 color variants
+- ⬜ Female Knight and other job sprites (planned)
+- ⬜ Enemy unit color variants (planned)
+- ⬜ Configuration UI (planned)
 
 ## Credits
 
-- **Developer**: ptyRa
-- **Sprites**: better_palettes mod team
-- **Tools**: Reloaded-II by Sewer56
+- **Sprites**: better_palettes mod team (professional color editing)
+- **Framework**: Reloaded-II by Sewer56
+- **Testing**: XUnit with FluentAssertions
 
 ## License
 
-For personal use only. Final Fantasy Tactics is property of Square Enix.
+For personal use only. Final Fantasy Tactics © Square Enix.

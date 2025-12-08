@@ -4,7 +4,6 @@ namespace FFTColorMod;
 
 public class GameIntegration
 {
-    private readonly HotkeyManager HotkeyManager;
     private readonly ColorSchemeCycler _colorCycler;
 
     public bool IsFileHookActive { get; private set; }
@@ -14,7 +13,6 @@ public class GameIntegration
     public GameIntegration()
     {
         // Initialize components for game integration
-        HotkeyManager = new HotkeyManager();
         _colorCycler = new ColorSchemeCycler();
         _colorCycler.SetCurrentScheme("original");
         LastAppliedScheme = "original";
@@ -27,7 +25,6 @@ public class GameIntegration
         {
             string nextScheme = _colorCycler.GetNextScheme();
             _colorCycler.SetCurrentScheme(nextScheme);
-            HotkeyManager.CurrentScheme = nextScheme;
             LastAppliedScheme = nextScheme;
         }
     }

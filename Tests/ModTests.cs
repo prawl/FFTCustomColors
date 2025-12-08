@@ -12,54 +12,6 @@ namespace FFTColorMod.Tests
     {
 
         [Fact]
-        public void Mod_Should_Have_PaletteDetector_Field()
-        {
-            // TLDR: Mod should have a PaletteDetector field to detect and modify palettes
-            // Arrange
-            var paletteDetectorField = typeof(Mod).GetField("_paletteDetector",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            // Assert
-            paletteDetectorField.Should().NotBeNull();
-            paletteDetectorField.FieldType.Should().Be(typeof(PaletteDetector));
-        }
-
-        [Fact]
-        public void Mod_Should_Initialize_PaletteDetector_In_Constructor()
-        {
-            // TLDR: Mod should initialize PaletteDetector when constructed
-            // Arrange
-            var tempAppData = Path.Combine(Path.GetTempPath(), $"TestAppData_{Guid.NewGuid()}");
-            Directory.CreateDirectory(tempAppData);
-            var originalAppData = Environment.GetEnvironmentVariable("APPDATA");
-            Environment.SetEnvironmentVariable("APPDATA", tempAppData);
-
-            try
-            {
-                // Act
-                var context = new ModContext();
-                var mod = new Mod(context);
-
-                // Use reflection to get the private _paletteDetector field
-                var paletteDetectorField = typeof(Mod).GetField("_paletteDetector",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                // Assert
-                paletteDetectorField.Should().NotBeNull();
-                var paletteDetector = paletteDetectorField.GetValue(mod);
-                paletteDetector.Should().NotBeNull();
-                paletteDetector.Should().BeOfType<PaletteDetector>();
-            }
-            finally
-            {
-                // Cleanup
-                Environment.SetEnvironmentVariable("APPDATA", originalAppData);
-                if (Directory.Exists(tempAppData))
-                    Directory.Delete(tempAppData, recursive: true);
-            }
-        }
-
-        [Fact]
         public void Mod_Should_Support_Other_Mods_Compatibility()
         {
             // TLDR: Mod should implement CanSuspend and CanUnload for compatibility with other mods
