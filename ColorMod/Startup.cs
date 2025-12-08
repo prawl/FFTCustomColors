@@ -30,7 +30,7 @@ public class Startup : IMod
         // Start hotkey monitoring for file swapping
         StartHotkeyMonitoring();
 
-        Console.WriteLine("[FFTColorMod] File swapping initialized! Press F1-F4 to change colors!");
+        Console.WriteLine("[FFTColorMod] File swapping initialized! Press F1 to cycle colors!");
 
         // Create ModContext with services (will expand later)
         var context = new ModContext();
@@ -43,36 +43,23 @@ public class Startup : IMod
     {
         _hotkeyThread = new Thread(() =>
         {
-            Console.WriteLine("[FFTColorMod] Hotkey monitoring started - F1-F5 to change colors");
+            Console.WriteLine("[FFTColorMod] Hotkey monitoring started - F1 to cycle colors");
 
             while (_running)
             {
-                // Check for F1-F5 keys
-                for (int keyCode = 0x70; keyCode <= 0x74; keyCode++)
+                // Check for F1 key only (0x70)
+                if ((GetAsyncKeyState(0x70) & 0x8000) != 0)
                 {
-                    if ((GetAsyncKeyState(keyCode) & 0x8000) != 0)
+                    var oldScheme = _hotkeyManager.CurrentScheme;
+                    _hotkeyManager.ProcessHotkey(0x70);
+
+                    if (_hotkeyManager.CurrentScheme != oldScheme)
                     {
-                        var oldScheme = _hotkeyManager.CurrentScheme;
-                        _hotkeyManager.ProcessHotkey(keyCode);
-
-                        if (_hotkeyManager.CurrentScheme != oldScheme)
-                        {
-                            var schemeName = keyCode switch
-                            {
-                                0x70 => "ORIGINAL",
-                                0x71 => "RED",
-                                0x72 => "BLUE",
-                                0x73 => "GREEN",
-                                0x74 => "PURPLE",
-                                _ => "UNKNOWN"
-                            };
-
-                            Console.WriteLine($"[FFTColorMod] Switched to {schemeName} colors - sprites will update in real-time!");
-                        }
-
-                        // Debounce
-                        Thread.Sleep(500);
+                        Console.WriteLine($"[FFTColorMod] Cycled to {_hotkeyManager.CurrentScheme} colors - sprites will update in real-time!");
                     }
+
+                    // Debounce
+                    Thread.Sleep(500);
                 }
 
                 Thread.Sleep(50);
