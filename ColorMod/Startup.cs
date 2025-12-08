@@ -55,7 +55,21 @@ public class Startup : IMod
                         "lucavi" => "northern_sky",
                         "northern_sky" => "smoke",
                         "smoke" => "southern_sky",
-                        "southern_sky" => "original",
+                        "southern_sky" => "crimson_red",
+                        "crimson_red" => "royal_purple",
+                        "royal_purple" => "phoenix_flame",
+                        "phoenix_flame" => "frost_knight",
+                        "frost_knight" => "silver_knight",
+                        "silver_knight" => "shadow_assassin",
+                        "shadow_assassin" => "emerald_dragon",
+                        "emerald_dragon" => "rose_gold",
+                        "rose_gold" => "ocean_depths",
+                        "ocean_depths" => "golden_templar",
+                        "golden_templar" => "blood_moon",
+                        "blood_moon" => "celestial",
+                        "celestial" => "volcanic",
+                        "volcanic" => "amethyst",
+                        "amethyst" => "original",
                         _ => "original"
                     };
 

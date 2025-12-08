@@ -13,7 +13,21 @@ namespace FFTColorMod
             "lucavi",
             "northern_sky",
             "smoke",
-            "southern_sky"
+            "southern_sky",
+            "crimson_red",
+            "royal_purple",
+            "phoenix_flame",
+            "frost_knight",
+            "silver_knight",
+            "shadow_assassin",
+            "emerald_dragon",
+            "rose_gold",
+            "ocean_depths",
+            "golden_templar",
+            "blood_moon",
+            "celestial",
+            "volcanic",
+            "amethyst"
         };
 
         public void SetCurrentScheme(string scheme)

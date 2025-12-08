@@ -24,6 +24,20 @@ public class SpriteFileManager
         _pacFileMapping["northern_sky"] = "pack003.pac";
         _pacFileMapping["smoke"] = "pack004.pac";
         _pacFileMapping["southern_sky"] = "pack005.pac";
+        _pacFileMapping["crimson_red"] = "pack006.pac";
+        _pacFileMapping["royal_purple"] = "pack007.pac";
+        _pacFileMapping["phoenix_flame"] = "pack008.pac";
+        _pacFileMapping["frost_knight"] = "pack009.pac";
+        _pacFileMapping["silver_knight"] = "pack010.pac";
+        _pacFileMapping["shadow_assassin"] = "pack011.pac";
+        _pacFileMapping["emerald_dragon"] = "pack012.pac";
+        _pacFileMapping["rose_gold"] = "pack013.pac";
+        _pacFileMapping["ocean_depths"] = "pack014.pac";
+        _pacFileMapping["golden_templar"] = "pack015.pac";
+        _pacFileMapping["blood_moon"] = "pack016.pac";
+        _pacFileMapping["celestial"] = "pack017.pac";
+        _pacFileMapping["volcanic"] = "pack018.pac";
+        _pacFileMapping["amethyst"] = "pack019.pac";
     }
 
     public void SwitchColorScheme(string colorScheme)
