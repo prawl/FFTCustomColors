@@ -14,16 +14,9 @@ public class Startup : IMod
     private PaletteDetector _paletteDetector = null!;
     private Thread? _hotkeyThread;
     private bool _running = true;
-    public ColorPreferencesManager ColorPreferencesManager { get; private set; } = null!;
 
     public Startup()
     {
-        // TLDR: Initialize ColorPreferencesManager with config file in AppData
-        var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FFTColorMod");
-        Directory.CreateDirectory(configDir);
-        var configPath = Path.Combine(configDir, "preferences.json");
-        ColorPreferencesManager = new ColorPreferencesManager(configPath);
-
         // Initialize core components
         _hotkeyManager = new HotkeyManager();
         _paletteDetector = new PaletteDetector();

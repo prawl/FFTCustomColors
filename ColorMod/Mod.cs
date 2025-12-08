@@ -15,7 +15,6 @@ public class Mod : IMod
     private HotkeyHandler? _hotkeyHandler;
     private SpriteFileManager? _spriteFileManager;
     private Process? _gameProcess;
-    private ColorPreferencesManager? _preferencesManager;
     private string _currentColorScheme = "original";
     private PaletteDetector? _paletteDetector;
     private HotkeyManager? _hotkeyManager;
@@ -62,29 +61,9 @@ public class Mod : IMod
         string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
         _spriteFileManager = new SpriteFileManager(modPath);
 
-        // Initialize preferences manager and load saved preferences
-        var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FFTColorMod");
-        Directory.CreateDirectory(configDir);
-        var configPath = Path.Combine(configDir, "preferences.json");
-        _preferencesManager = new ColorPreferencesManager(configPath);
-
-        // Load and apply saved color preference
-        var savedScheme = _preferencesManager.LoadPreferences();
-        _currentColorScheme = savedScheme switch
-        {
-            ColorScheme.Original => "original",
-            ColorScheme.WhiteSilver => "corpse_brigade",  // Map old enums
-            ColorScheme.OceanBlue => "lucavi",
-            ColorScheme.DeepPurple => "northern_sky",
-            _ => "original"
-        };
-
-        if (_currentColorScheme != "original")
-        {
-            Console.WriteLine($"[FFT Color Mod] Loaded saved preference: {_currentColorScheme}");
-            // Apply the saved color scheme
-            _spriteFileManager.SwitchColorScheme(_currentColorScheme);
-        }
+        // Start with original color scheme (file swapping persists across restarts)
+        _currentColorScheme = "original";
+        Console.WriteLine($"[FFT Color Mod] Starting with color scheme: {_currentColorScheme}");
 
         // Initialize game integration
         _gameIntegration = new GameIntegration();
@@ -205,22 +184,6 @@ public class Mod : IMod
         // Actually switch the sprite files to apply the color
         _spriteFileManager?.SwitchColorScheme(scheme);
 
-        // Save the preference
-        if (_preferencesManager != null)
-        {
-            var colorScheme = scheme switch
-            {
-                "original" => ColorScheme.Original,
-                "corpse_brigade" => ColorScheme.WhiteSilver,  // Map to old enums
-                "lucavi" => ColorScheme.OceanBlue,
-                "northern_sky" => ColorScheme.DeepPurple,
-                "smoke" => ColorScheme.Original,  // Default mapping
-                "southern_sky" => ColorScheme.Original,  // Default mapping
-                _ => ColorScheme.Original
-            };
-            _preferencesManager.SavePreferences(colorScheme);
-        }
-
         // Update cycler's current scheme
         _colorCycler?.SetCurrentScheme(scheme);
 
@@ -228,11 +191,6 @@ public class Mod : IMod
         _hotkeyManager?.SetCurrentColor(scheme);
     }
 
-    public void SetPreferencesPath(string path)
-    {
-        // TLDR: Set path for preferences file
-        _preferencesManager = new ColorPreferencesManager(path);
-    }
 
     public void ProcessHotkeyPress(int vkCode)
     {
@@ -257,4 +215,4 @@ public class Mod : IMod
     {
         return _spriteFileManager?.InterceptFilePath(originalPath, _currentColorScheme) ?? originalPath;
     }
-}
+} 

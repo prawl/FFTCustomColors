@@ -450,35 +450,12 @@ public class GameIntegrationTests
     }
 
     [Fact]
-    public void Mod_SetColorScheme_Should_Save_Preferences()
-    {
-        // TLDR: Mod.SetColorScheme should save color preferences to persistent storage
-        // Arrange
-        var tempPath = System.IO.Path.GetTempFileName();
-        var mod = new Mod();
-        mod.SetPreferencesPath(tempPath);
-
-        // Act - Set color scheme to lucavi
-        mod.SetColorScheme("lucavi");
-
-        // Assert - Verify preference was saved
-        var manager = new ColorPreferencesManager(tempPath);
-        var savedScheme = manager.LoadPreferences();
-        savedScheme.Should().Be(ColorScheme.OceanBlue); // lucavi maps to OceanBlue
-
-        // Cleanup
-        System.IO.File.Delete(tempPath);
-    }
-
-    [Fact]
     public void Mod_F1_Should_Cycle_Through_Color_Schemes()
     {
         // TLDR: Test that F1 cycles through color schemes
-        var tempPath = Path.GetTempFileName();
         var mod = new Mod();
-        mod.SetPreferencesPath(tempPath);
 
-        // Reset to original since constructor may load a saved preference
+        // Reset to original
         mod.SetColorScheme("original");
 
         // Initial state should be original
@@ -491,19 +468,14 @@ public class GameIntegrationTests
         // Press F1 again - should cycle to lucavi
         mod.ProcessHotkeyPress(0x70); // F1 key
         mod.GetCurrentColorScheme().Should().Be("lucavi");
-
-        // Cleanup
-        System.IO.File.Delete(tempPath);
     }
 
     [Fact]
-    public void Mod_Hotkey_1_Should_Apply_Red_Colors_And_Save()
+    public void Mod_Hotkey_1_Should_Cycle_Colors()
     {
         // TLDR: When F1 key is pressed, mod should cycle to next color scheme
         // Arrange
-        var tempPath = System.IO.Path.GetTempFileName();
         var mod = new Mod();
-        mod.SetPreferencesPath(tempPath);
         mod.InitializeGameIntegration();
 
         // Act - Simulate F1 key press via ProcessHotkey (cycles from original to corpse_brigade)
@@ -512,12 +484,5 @@ public class GameIntegrationTests
         // Assert - Verify cycled to corpse_brigade color scheme
         var currentScheme = mod.GetCurrentColorScheme();
         currentScheme.Should().Be("corpse_brigade");
-
-        var manager = new ColorPreferencesManager(tempPath);
-        var savedScheme = manager.LoadPreferences();
-        savedScheme.Should().Be(ColorScheme.WhiteSilver); // corpse_brigade maps to WhiteSilver
-
-        // Cleanup
-        System.IO.File.Delete(tempPath);
     }
 }
