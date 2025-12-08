@@ -1,11 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
+using FFTColorMod.Utilities;
 using Reloaded.Mod.Interfaces;
 
 namespace FFTColorMod;
@@ -16,8 +12,8 @@ namespace FFTColorMod;
 public class Mod : IMod
 {
     private GameIntegration? _gameIntegration;
-    private Task? _hotkeyTask;
-    private CancellationTokenSource? _cancellationTokenSource;
+    private HotkeyHandler? _hotkeyHandler;
+    private SpriteFileManager? _spriteFileManager;
     private Process? _gameProcess;
     private ColorPreferencesManager? _preferencesManager;
     private string _currentColorScheme = "original";
@@ -58,10 +54,13 @@ public class Mod : IMod
         var logPath = Path.Combine(Path.GetTempPath(), "FFTColorMod.log");
         File.WriteAllText(logPath, $"[{DateTime.Now}] FFT Color Mod initializing in constructor\n");
 
-
         // Initialize process handles
         _gameProcess = Process.GetCurrentProcess();
         Console.WriteLine($"[FFT Color Mod] Game base: 0x{_gameProcess.MainModule?.BaseAddress.ToInt64():X}");
+
+        // Initialize sprite file manager
+        string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
+        _spriteFileManager = new SpriteFileManager(modPath);
 
         // Initialize preferences manager and load saved preferences
         var configDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FFTColorMod");
@@ -71,33 +70,32 @@ public class Mod : IMod
 
         // Load and apply saved color preference
         var savedScheme = _preferencesManager.LoadPreferences();
-        var scheme = savedScheme switch
+        _currentColorScheme = savedScheme switch
         {
-            ColorScheme.WhiteSilver => "white_silver",
-            ColorScheme.OceanBlue => "ocean_blue",
-            ColorScheme.DeepPurple => "deep_purple",
+            ColorScheme.Original => "original",
+            ColorScheme.WhiteSilver => "corpse_brigade",  // Map old enums
+            ColorScheme.OceanBlue => "lucavi",
+            ColorScheme.DeepPurple => "northern_sky",
             _ => "original"
         };
-        _currentColorScheme = scheme;
-        Console.WriteLine($"[FFT Color Mod] Loaded saved preference: {scheme}");
 
-        // Apply the saved color scheme
-        SwitchPacFile(scheme);
+        if (_currentColorScheme != "original")
+        {
+            Console.WriteLine($"[FFT Color Mod] Loaded saved preference: {_currentColorScheme}");
+            // Apply the saved color scheme
+            _spriteFileManager.SwitchColorScheme(_currentColorScheme);
+        }
 
         // Initialize game integration
         _gameIntegration = new GameIntegration();
-        // Monitoring removed - file swapping only
 
-        // Signature scanner removed - not needed
-
-        // Start hotkey monitoring
-        _cancellationTokenSource = new CancellationTokenSource();
-        _hotkeyTask = Task.Run(() => MonitorHotkeys(_cancellationTokenSource.Token));
+        // Initialize and start hotkey handler
+        _hotkeyHandler = new HotkeyHandler(ProcessHotkeyPress);
+        _hotkeyHandler.StartMonitoring();
 
         Console.WriteLine("[FFT Color Mod] Loaded successfully!");
         Console.WriteLine("[FFT Color Mod] Press F1 to cycle through color schemes");
         File.AppendAllText(logPath, $"[{DateTime.Now}] FFT Color Mod loaded successfully!\n");
-
     }
 
     // TLDR: Start() might be called by Reloaded (but fftivc.utility.modloader might not call it)
@@ -136,134 +134,6 @@ public class Mod : IMod
         }
     }
 
-
-
-
-    // Windows API for hotkey detection
-    [DllImport("user32.dll")]
-    private static extern short GetAsyncKeyState(int vKey);
-
-    private const int VK_F1 = 0x70;
-    private const int VK_F2 = 0x71;
-
-    private void MonitorHotkeys(CancellationToken cancellationToken)
-    {
-        Console.WriteLine("[FFT Color Mod] Hotkey monitoring thread started");
-        bool f1WasPressed = false;
-        int loopCount = 0;
-
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                // Log every 100 loops (5 seconds) to show thread is alive
-                if (loopCount % 100 == 0)
-                {
-                    Console.WriteLine($"[FFT Color Mod] Hotkey thread alive, checking keys... (loop {loopCount})");
-                }
-                loopCount++;
-
-                // Check F1 key - Cycle colors
-                short f1State = GetAsyncKeyState(VK_F1);
-                bool f1Pressed = (f1State & 0x8000) != 0;
-                if (f1Pressed && !f1WasPressed)
-                {
-                    Console.WriteLine("[FFT Color Mod] F1 PRESSED - Cycling to next color scheme");
-                    ProcessHotkeyPress(VK_F1);
-                }
-                f1WasPressed = f1Pressed;
-
-                Thread.Sleep(50); // Check every 50ms
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[FFT Color Mod] Error in hotkey monitoring: {ex.Message}");
-                Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
-            }
-        }
-        Console.WriteLine("[FFT Color Mod] Hotkey monitoring thread stopped");
-    }
-
-    private void SwitchPacFile(string color)
-    {
-        try
-        {
-            // Get the mod's directory structure for sprites
-            var modDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-            var unitDir = Path.Combine(modDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");
-
-            Console.WriteLine($"[FFT Color Mod] Switching to {color} color scheme");
-            Console.WriteLine($"[FFT Color Mod] Unit directory: {unitDir}");
-
-            if (!Directory.Exists(unitDir))
-            {
-                Console.WriteLine($"[FFT Color Mod] ERROR: Unit directory not found: {unitDir}");
-                return;
-            }
-
-            // Get the source directory for the selected color
-            string sourceDir;
-            if (color == "original")
-            {
-                sourceDir = Path.Combine(unitDir, "sprites_original");
-            }
-            else
-            {
-                sourceDir = Path.Combine(unitDir, $"sprites_{color}");
-            }
-
-            Console.WriteLine($"[FFT Color Mod] Source directory: {sourceDir}");
-
-            if (!Directory.Exists(sourceDir))
-            {
-                Console.WriteLine($"[FFT Color Mod] WARNING: Color variant directory not found: {sourceDir}");
-                Console.WriteLine($"[FFT Color Mod] Color variants need to be generated first!");
-                return;
-            }
-
-            // Get all sprite files from the color variant directory
-            var spriteFiles = Directory.GetFiles(sourceDir, "*.bin");
-
-            if (spriteFiles.Length == 0)
-            {
-                Console.WriteLine($"[FFT Color Mod] WARNING: No sprite files found in {sourceDir}");
-                Console.WriteLine($"[FFT Color Mod] Run sprite color generation first to create variants!");
-                return;
-            }
-
-            Console.WriteLine($"[FFT Color Mod] Found {spriteFiles.Length} sprite files to copy");
-
-            // Copy all sprite files from the color directory to the base unit directory
-            int copiedCount = 0;
-            foreach (var sourceFile in spriteFiles)
-            {
-                var fileName = Path.GetFileName(sourceFile);
-                var destFile = Path.Combine(unitDir, fileName);
-
-                try
-                {
-                    File.Copy(sourceFile, destFile, overwrite: true);
-                    copiedCount++;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[FFT Color Mod] Failed to copy {fileName}: {ex.Message}");
-                }
-            }
-
-            Console.WriteLine($"[FFT Color Mod] Successfully copied {copiedCount} sprite files for {color} color scheme");
-
-            // Note: Reloaded-II should automatically apply these overrides
-            // The game will load the modified sprites from FFTIVC/data/enhanced/fftpack/unit/
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[FFT Color Mod] Error switching sprites: {ex.Message}");
-            Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
-        }
-    }
-
-
     public void Suspend()
     {
     }
@@ -274,9 +144,11 @@ public class Mod : IMod
 
     public void Unload()
     {
-        _cancellationTokenSource?.Cancel();
-        _hotkeyTask?.Wait(1000);
-        _cancellationTokenSource?.Dispose();
+        Console.WriteLine("[FFT Color Mod] Unloading...");
+        _hotkeyHandler?.StopMonitoring();
+        _gameProcess?.Dispose();
+
+        Console.WriteLine("[FFT Color Mod] Unloaded");
     }
 
     // TLDR: ModId property for other mods to identify this mod
@@ -293,14 +165,19 @@ public class Mod : IMod
 
     public Action Disposing { get; } = () => { };
 
-
-
     public void InitializeGameIntegration()
     {
         // TLDR: Initialize GameIntegration for file hooks
         if (_gameIntegration == null)
         {
             _gameIntegration = new GameIntegration();
+        }
+
+        // Initialize SpriteFileManager if not already done
+        if (_spriteFileManager == null)
+        {
+            string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
+            _spriteFileManager = new SpriteFileManager(modPath);
         }
 
         // Always initialize file hooks when this method is called
@@ -322,24 +199,33 @@ public class Mod : IMod
 
     public void SetColorScheme(string scheme)
     {
-        // TLDR: Public method to set color scheme and save preference
         _currentColorScheme = scheme;
+        Console.WriteLine($"[FFT Color Mod] Color scheme set to: {scheme}");
 
-        // Save preference if manager is available (regardless of game integration)
+        // Actually switch the sprite files to apply the color
+        _spriteFileManager?.SwitchColorScheme(scheme);
+
+        // Save the preference
         if (_preferencesManager != null)
         {
             var colorScheme = scheme switch
             {
                 "original" => ColorScheme.Original,
-                "default" => ColorScheme.WhiteSilver,  // Map to existing enum for now
-                "corpse_brigade" => ColorScheme.OceanBlue,  // Map to existing enum for now
-                "lucavi" => ColorScheme.DeepPurple,  // Map to existing enum for now
+                "corpse_brigade" => ColorScheme.WhiteSilver,  // Map to old enums
+                "lucavi" => ColorScheme.OceanBlue,
+                "northern_sky" => ColorScheme.DeepPurple,
+                "smoke" => ColorScheme.Original,  // Default mapping
+                "southern_sky" => ColorScheme.Original,  // Default mapping
                 _ => ColorScheme.Original
             };
             _preferencesManager.SavePreferences(colorScheme);
         }
 
-        // Game integration removed - file swapping only
+        // Update cycler's current scheme
+        _colorCycler?.SetCurrentScheme(scheme);
+
+        // Update HotkeyManager's current scheme for GameIntegration compatibility
+        _hotkeyManager?.SetCurrentColor(scheme);
     }
 
     public void SetPreferencesPath(string path)
@@ -350,19 +236,14 @@ public class Mod : IMod
 
     public void ProcessHotkeyPress(int vkCode)
     {
-        // TLDR: Process a hotkey press and update color scheme
-        string scheme = null;
+        const int VK_F1 = 0x70;
 
-        if (vkCode == VK_F1) // F1 cycles through schemes
+        if (vkCode == VK_F1)
         {
-            scheme = _colorCycler.GetNextScheme();
-            _colorCycler.SetCurrentScheme(scheme);
-        }
-
-        if (scheme != null)
-        {
-            SetColorScheme(scheme);
-            SwitchPacFile(scheme);
+            // Cycle to next color
+            string nextColor = _colorCycler.GetNextScheme();
+            Console.WriteLine($"[FFT Color Mod] Cycling to {nextColor}");
+            SetColorScheme(nextColor);
         }
     }
 
@@ -374,16 +255,6 @@ public class Mod : IMod
 
     public string InterceptFilePath(string originalPath)
     {
-        // TLDR: Intercept file path and redirect based on active color scheme
-        if (!originalPath.Contains("sprites"))
-            return originalPath;
-
-        // Use the mod's current color scheme
-        if (_currentColorScheme == "original" || string.IsNullOrEmpty(_currentColorScheme))
-            return originalPath;
-
-        // Replace sprites folder with color variant folder
-        return originalPath.Replace(@"sprites\", $@"sprites_{_currentColorScheme}\");
+        return _spriteFileManager?.InterceptFilePath(originalPath, _currentColorScheme) ?? originalPath;
     }
-
 }

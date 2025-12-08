@@ -47,39 +47,6 @@ namespace FFTColorMod.Tests
             integration.CurrentColorScheme.Should().Be(ColorScheme.WhiteSilver);
         }
 
-        [Fact]
-        public void ProcessHotkey_F2_Should_Set_OceanBlue_ColorScheme()
-        {
-            // TLDR: F2 hotkey switches to ocean blue color scheme
-            var integration = new ModLoaderIntegration();
-
-            integration.ProcessHotkey(System.Windows.Forms.Keys.F2);
-
-            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue);
-        }
-
-        [Fact]
-        public void ProcessHotkey_F3_Should_Set_DeepPurple_ColorScheme()
-        {
-            // TLDR: F3 hotkey switches to deep purple color scheme
-            var integration = new ModLoaderIntegration();
-
-            integration.ProcessHotkey(System.Windows.Forms.Keys.F3);
-
-            integration.CurrentColorScheme.Should().Be(ColorScheme.DeepPurple);
-        }
-
-        [Fact]
-        public void ProcessHotkey_F4_Should_Set_Original_ColorScheme()
-        {
-            // TLDR: F4 hotkey switches to original color scheme
-            var integration = new ModLoaderIntegration();
-            integration.SetColorScheme(ColorScheme.OceanBlue); // Start with non-original
-
-            integration.ProcessHotkey(System.Windows.Forms.Keys.F4);
-
-            integration.CurrentColorScheme.Should().Be(ColorScheme.Original);
-        }
 
         [Fact]
         public void ProcessHotkey_F7_Should_Be_Unassigned()
@@ -164,8 +131,9 @@ namespace FFTColorMod.Tests
             var integration = new ModLoaderIntegration();
             integration.SetPreferencesPath(tempPath);
 
-            // Act - Process F2 hotkey (Ocean Blue color scheme)
-            integration.ProcessHotkey(System.Windows.Forms.Keys.F2);
+            // Act - Process F1 hotkey to cycle color scheme
+            integration.ProcessHotkey(System.Windows.Forms.Keys.F1);
+            integration.ProcessHotkey(System.Windows.Forms.Keys.F1); // Cycle twice to get to OceanBlue
 
             // Assert - Verify preference was saved
             integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue);
@@ -227,7 +195,10 @@ namespace FFTColorMod.Tests
             // Save a preference first
             var firstSession = new ModLoaderIntegration();
             firstSession.SetPreferencesPath(tempPath);
-            firstSession.ProcessHotkey(System.Windows.Forms.Keys.F3); // Deep Purple
+            // Cycle through F1 to get to DeepPurple
+            firstSession.ProcessHotkey(System.Windows.Forms.Keys.F1); // WhiteSilver
+            firstSession.ProcessHotkey(System.Windows.Forms.Keys.F1); // OceanBlue
+            firstSession.ProcessHotkey(System.Windows.Forms.Keys.F1); // DeepPurple
 
             // Act - Create new integration with constructor that takes path
             var secondSession = new ModLoaderIntegration(tempPath);

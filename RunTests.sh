@@ -20,16 +20,8 @@ if [ $? -ne 0 ]; then
 fi
 
 echo -e "\033[32m[3/3] Running tests...\033[0m"
-dotnet test FFTColorMod.Tests.csproj --no-build --verbosity minimal > test_output.tmp 2>&1
+dotnet test FFTColorMod.Tests.csproj --no-build --verbosity normal
 TEST_RESULT=$?
-
-# Display only the test summary line if file exists
-if [ -f test_output.tmp ]; then
-    grep -E "Failed:|Passed!" test_output.tmp || cat test_output.tmp
-    rm -f test_output.tmp
-else
-    echo -e "\033[31mERROR: Test output file not created\033[0m"
-fi
 
 if [ $TEST_RESULT -ne 0 ]; then
     echo -e "\033[31mERROR: Tests failed\033[0m"

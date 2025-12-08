@@ -12,10 +12,10 @@
 
 ## Code Quality & Structure (Lower Priority)
 - [X] Update project structure to match GenericJobs repo (Root > ColorMod, .gitignore, .sln, LICENSE)
-- [ ] Fix scripts to use CamelCase naming convention
-- [ ] Update repository files to use CamelCase naming convention
+- [X] Fix scripts to use CamelCase naming convention
+- [X] Update repository files to use CamelCase naming convention
 - [ ] Refactor all classes for better organization and clarity
-- [ ] Fix test flakiness issues (tests randomly failing)
+- [  ] Fix test flakiness issues (tests randomly failing)
 - [ ] Add extensive documentation (XML comments, README sections, API docs)
 
 ## Core User Requirements (Full Vision)

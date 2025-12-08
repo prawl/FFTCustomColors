@@ -1,33 +1,35 @@
 using System;
-using System.Collections.Generic;
-using System.Threading;
 
 namespace FFTColorMod;
 
 public class GameIntegration
 {
-    public PaletteDetector PaletteDetector { get; private set; }
-    public HotkeyManager HotkeyManager { get; private set; }
-    public bool IsInitialized { get; private set; }
-    public string? LastAppliedScheme { get; private set; }
-    public bool IsFileHookActive { get; private set; }
-    public bool IsFileHookRegistered { get; private set; }
-    public Func<string, string>? FileHookCallback { get; private set; }
+    private readonly HotkeyManager HotkeyManager;
+    private readonly ColorSchemeCycler _colorCycler;
 
+    public bool IsFileHookActive { get; private set; }
+    public Func<string, string?>? FileHookCallback { get; set; }
+    public string? LastAppliedScheme { get; private set; }
 
     public GameIntegration()
     {
-        PaletteDetector = new PaletteDetector();
+        // Initialize components for game integration
         HotkeyManager = new HotkeyManager();
-        IsInitialized = true;
+        _colorCycler = new ColorSchemeCycler();
+        _colorCycler.SetCurrentScheme("original");
+        LastAppliedScheme = "original";
     }
-
 
     public void ProcessHotkey(int keyCode)
     {
-        // Process the hotkey
-        HotkeyManager.ProcessHotkey(keyCode);
-        LastAppliedScheme = HotkeyManager.CurrentScheme;
+        // Process F1 to cycle colors
+        if (keyCode == 0x70) // F1
+        {
+            string nextScheme = _colorCycler.GetNextScheme();
+            _colorCycler.SetCurrentScheme(nextScheme);
+            HotkeyManager.CurrentScheme = nextScheme;
+            LastAppliedScheme = nextScheme;
+        }
     }
 
     public void InitializeFileHook()
@@ -38,35 +40,28 @@ public class GameIntegration
 
     public string GetRedirectedPath(string originalPath)
     {
-        // TLDR: Redirect sprite file paths based on current color scheme
-        if (!IsFileHookActive || HotkeyManager.CurrentScheme == "original")
+        // TLDR: Redirect sprite paths based on current color scheme
+        if (LastAppliedScheme == "original" || string.IsNullOrEmpty(LastAppliedScheme))
             return originalPath;
 
-        // Check if this is a sprite file (.SPR or _spr.bin)
-        bool isSpriteFile = originalPath.EndsWith(".SPR", StringComparison.OrdinalIgnoreCase) ||
-                           originalPath.EndsWith("_spr.bin", StringComparison.OrdinalIgnoreCase);
-
-        if (!isSpriteFile)
+        // Only redirect sprite files
+        if (!originalPath.Contains("sprites"))
             return originalPath;
 
-        // Replace sprites folder with color-specific folder
-        var fileName = System.IO.Path.GetFileName(originalPath);
-        var colorFolder = $"sprites_{HotkeyManager.CurrentScheme}";
-
-        return originalPath.Replace(@"data\sprites", $@"data\{colorFolder}");
+        // Replace sprites with color variant folder
+        return originalPath.Replace(@"sprites\", $@"sprites_{LastAppliedScheme}\");
     }
 
     public void RegisterFileHookWithModLoader()
     {
-        // TLDR: Register file hook callback with mod loader for sprite redirection
+        // TLDR: Register file redirection callback with mod loader
         FileHookCallback = GetRedirectedPath;
-        IsFileHookRegistered = true;
+        IsFileHookActive = true;
     }
 
     public string? InvokeFileHookCallback(string originalPath)
     {
-        // TLDR: Invoke the registered file hook callback
+        // TLDR: Invoke registered file hook callback
         return FileHookCallback?.Invoke(originalPath);
     }
-
 }

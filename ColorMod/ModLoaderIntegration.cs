@@ -53,22 +53,16 @@ namespace FFTColorMod
             // TLDR: Handle hotkey press for color switching and save preferences
             if (key == Keys.F1)
             {
-                SetColorScheme(ColorScheme.WhiteSilver);
-                SavePreferences();
-            }
-            else if (key == Keys.F2)
-            {
-                SetColorScheme(ColorScheme.OceanBlue);
-                SavePreferences();
-            }
-            else if (key == Keys.F3)
-            {
-                SetColorScheme(ColorScheme.DeepPurple);
-                SavePreferences();
-            }
-            else if (key == Keys.F4)
-            {
-                SetColorScheme(ColorScheme.Original);
+                // Cycle through colors: Original -> WhiteSilver -> OceanBlue -> DeepPurple -> Original
+                ColorScheme nextScheme = CurrentColorScheme switch
+                {
+                    ColorScheme.Original => ColorScheme.WhiteSilver,
+                    ColorScheme.WhiteSilver => ColorScheme.OceanBlue,
+                    ColorScheme.OceanBlue => ColorScheme.DeepPurple,
+                    ColorScheme.DeepPurple => ColorScheme.Original,
+                    _ => ColorScheme.Original
+                };
+                SetColorScheme(nextScheme);
                 SavePreferences();
             }
             else if (key == Keys.F9)

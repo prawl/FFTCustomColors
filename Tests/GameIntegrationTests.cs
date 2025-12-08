@@ -88,9 +88,8 @@ public class GameIntegrationTests
         var integration = new GameIntegration();
 
         // Assert
-        integration.PaletteDetector.Should().NotBeNull();
-        integration.HotkeyManager.Should().NotBeNull();
-        integration.IsInitialized.Should().BeTrue();
+        integration.Should().NotBeNull();
+        integration.LastAppliedScheme.Should().Be("original");
     }
 
     [Fact]
@@ -140,7 +139,7 @@ public class GameIntegrationTests
         integration.ProcessHotkey(0x70); // F1 key
 
         // Assert - File swapping only, no memory operations
-        integration.LastAppliedScheme.Should().Be("white_silver");
+        integration.LastAppliedScheme.Should().Be("corpse_brigade");
         // Memory operations removed - file swapping only
     }
 
@@ -167,7 +166,7 @@ public class GameIntegrationTests
         integration.ProcessHotkey(0x70); // F1 key
 
         // Assert - File swapping only, no memory operations
-        integration.LastAppliedScheme.Should().Be("white_silver");
+        integration.LastAppliedScheme.Should().Be("corpse_brigade");
         // Memory operations removed - file swapping only
 
         // Memory operations removed - file swapping only
@@ -205,7 +204,7 @@ public class GameIntegrationTests
         integration.ProcessHotkey(0x70); // F1 key
 
         // Assert - File swapping only, no memory operations
-        integration.LastAppliedScheme.Should().Be("white_silver");
+        integration.LastAppliedScheme.Should().Be("corpse_brigade");
         // No memory operations - file swapping only
         // Memory operations removed - file swapping only
 
@@ -322,7 +321,7 @@ public class GameIntegrationTests
         var redirectedPath = integration.GetRedirectedPath(originalPath);
 
         // Assert - should redirect to red sprite folder
-        redirectedPath.Should().Contain("sprites_white_silver", "Path should redirect to white/silver sprite folder");
+        redirectedPath.Should().Contain("sprites_corpse_brigade", "Path should redirect to corpse_brigade sprite folder");
         redirectedPath.Should().EndWith("RAMZA.SPR", "Filename should be preserved");
     }
 
@@ -338,7 +337,7 @@ public class GameIntegrationTests
 
         // Assert
         integration.FileHookCallback.Should().NotBeNull("File hook callback should be registered");
-        integration.IsFileHookRegistered.Should().BeTrue("File hook should be registered with mod loader");
+        integration.IsFileHookActive.Should().BeTrue("File hook should be registered with mod loader");
     }
 
     [Fact]
@@ -350,8 +349,8 @@ public class GameIntegrationTests
         integration.InitializeFileHook();
         integration.RegisterFileHookWithModLoader();
 
-        // Set color scheme to blue
-        integration.ProcessHotkey(0x71); // F2 key for blue
+        // Cycle to second color scheme (corpse_brigade)
+        integration.ProcessHotkey(0x70); // F1 key cycles from original to corpse_brigade
 
         // Act - simulate file request through callback
         var originalPath = @"data\sprites\CHARACTER.SPR";
@@ -359,7 +358,7 @@ public class GameIntegrationTests
 
         // Assert
         redirectedPath.Should().NotBeNull();
-        redirectedPath.Should().Contain("sprites_ocean_blue", "Should redirect to ocean blue sprite folder");
+        redirectedPath.Should().Contain("sprites_corpse_brigade", "Should redirect to corpse_brigade sprite folder");
         redirectedPath.Should().EndWith("CHARACTER.SPR");
     }
 
@@ -373,7 +372,7 @@ public class GameIntegrationTests
         mod.InitializeGameIntegration();
 
         // Set active color scheme to ocean blue using public method
-        mod.SetColorScheme("ocean_blue");
+        mod.SetColorScheme("corpse_brigade");
 
         // Act - simulate file request
         var originalPath = @"data\sprites\RAMZA.SPR";
@@ -381,7 +380,7 @@ public class GameIntegrationTests
 
         // Assert
         interceptedPath.Should().NotBe(originalPath);
-        interceptedPath.Should().Contain("sprites_ocean_blue");
+        interceptedPath.Should().Contain("sprites_corpse_brigade");
         interceptedPath.Should().EndWith("RAMZA.SPR");
     }
 
@@ -405,27 +404,27 @@ public class GameIntegrationTests
         originalPath.Should().Be(spritePath, "Original scheme should not redirect");
 
         // F1 - White/Silver
-        mod.SetColorScheme("white_silver");
+        mod.SetColorScheme("corpse_brigade");
         var redPath = mod.InterceptFilePath(spritePath);
-        redPath.Should().Contain("sprites_white_silver", "White/Silver scheme should redirect to white_silver folder");
+        redPath.Should().Contain("sprites_corpse_brigade", "Corpse Brigade scheme should redirect to corpse_brigade folder");
         redPath.Should().EndWith("RAMZA.SPR");
 
-        // F2 - Ocean Blue
-        mod.SetColorScheme("ocean_blue");
+        // Test lucavi scheme
+        mod.SetColorScheme("lucavi");
         var bluePath = mod.InterceptFilePath(spritePath);
-        bluePath.Should().Contain("sprites_ocean_blue", "Ocean Blue scheme should redirect to ocean_blue folder");
+        bluePath.Should().Contain("sprites_lucavi", "Lucavi scheme should redirect to lucavi folder");
         bluePath.Should().EndWith("RAMZA.SPR");
 
-        // F3 - Deep Purple
-        mod.SetColorScheme("deep_purple");
+        // Test northern_sky scheme
+        mod.SetColorScheme("northern_sky");
         var greenPath = mod.InterceptFilePath(spritePath);
-        greenPath.Should().Contain("sprites_deep_purple", "Deep Purple scheme should redirect to deep_purple folder");
+        greenPath.Should().Contain("sprites_northern_sky", "Northern Sky scheme should redirect to northern_sky folder");
         greenPath.Should().EndWith("RAMZA.SPR");
 
-        // F5 - Purple
-        mod.SetColorScheme("purple");
+        // Test smoke scheme
+        mod.SetColorScheme("smoke");
         var purplePath = mod.InterceptFilePath(spritePath);
-        purplePath.Should().Contain("sprites_purple", "Purple scheme should redirect to purple folder");
+        purplePath.Should().Contain("sprites_smoke", "Smoke scheme should redirect to smoke folder");
         purplePath.Should().EndWith("RAMZA.SPR");
     }
 
@@ -437,8 +436,8 @@ public class GameIntegrationTests
         var integration = new GameIntegration();
         integration.InitializeFileHook();
 
-        // Set color scheme to blue
-        integration.ProcessHotkey(0x71); // F2 key = blue
+        // Cycle to second color scheme (corpse_brigade)
+        integration.ProcessHotkey(0x70); // F1 key cycles from original to corpse_brigade
 
         var binSpritePath = @"data\sprites\battle_ramza_spr.bin";
 
@@ -446,7 +445,7 @@ public class GameIntegrationTests
         var redirectedPath = integration.GetRedirectedPath(binSpritePath);
 
         // Assert - should redirect .bin files that end with _spr.bin
-        redirectedPath.Should().Contain("sprites_ocean_blue");
+        redirectedPath.Should().Contain("sprites_corpse_brigade");
         redirectedPath.Should().EndWith("battle_ramza_spr.bin");
     }
 
@@ -465,7 +464,7 @@ public class GameIntegrationTests
         // Assert - Verify preference was saved
         var manager = new ColorPreferencesManager(tempPath);
         var savedScheme = manager.LoadPreferences();
-        savedScheme.Should().Be(ColorScheme.DeepPurple); // lucavi maps to DeepPurple
+        savedScheme.Should().Be(ColorScheme.OceanBlue); // lucavi maps to OceanBlue
 
         // Cleanup
         System.IO.File.Delete(tempPath);
@@ -516,7 +515,7 @@ public class GameIntegrationTests
 
         var manager = new ColorPreferencesManager(tempPath);
         var savedScheme = manager.LoadPreferences();
-        savedScheme.Should().Be(ColorScheme.OceanBlue); // corpse_brigade maps to OceanBlue
+        savedScheme.Should().Be(ColorScheme.WhiteSilver); // corpse_brigade maps to WhiteSilver
 
         // Cleanup
         System.IO.File.Delete(tempPath);
