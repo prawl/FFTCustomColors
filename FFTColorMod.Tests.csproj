@@ -30,11 +30,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include=".\FFTColorMod.csproj" />
+    <ProjectReference Include="ColorMod\FFTColorMod.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Program.cs" />
+    <Compile Remove="ColorMod\**" />
   </ItemGroup>
 
 </Project>

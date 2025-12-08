@@ -1,101 +1,36 @@
 # FFT Color Mod - Development Guide
-<!-- KEEP UNDER 100 LINES TOTAL -->
 
-## Overview
-Color modification mod for FFT (Steam) using function hooking to swap character palettes via hotkeys. Uses Reloaded-II mod loader.
+## Current Implementation (v0.5.0)
+- **F1 Cycling**: Uses better_palettes sprites (6 color schemes)
+- **File Swapping**: Copies sprites to `unit/` directory for real-time changes
+- **Preferences**: Saves/loads color choice between sessions
 
-## Paths
-- **Dev**: `C:\Users\ptyRa\Dev\FFT_Color_Mod`
-- **Install**: `C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFT_Color_Mod`
+## Key Components
 
-## Reference Mods (Proven Working)
-- `C:\Users\ptyRa\Dev\FFTGenericJobs` - GenericMod source for hooking patterns
-- `C:\Users\ptyRa\Dev\better_palettes` - Working palette mod
-- `C:\Users\ptyRa\Dev\Black Boco` - Working sprite mod
-- `C:\Users\ptyRa\Dev\Final-Fantasy-Tactics-The-Ivalice-Chronicles-Texture-Pack` - Working texture mod
-- `C:\Users\ptyRa\Dev\WotL Characters` - Working character mod
+### Mod.cs
+- `MonitorHotkeys()`: F1 key detection
+- `ProcessHotkeyPress()`: Cycles schemes
+- `SwitchPacFile()`: Sprite file swapping
+- `SetColorScheme()`: Saves preference
 
-## Technical Details
-- **Format**: BGR (Blue-Green-Red), 3 bytes per color
-- **Ramza Brown**: `0x17, 0x2C, 0x4A` (main tunic)
-- **Approach**: Function hooking via signature scanning (not direct memory modification)
-- **Status**: 34 tests passing ✅
+### ColorSchemeCycler.cs
+- Schemes: original, corpse_brigade, lucavi, northern_sky, smoke, southern_sky
 
-## Critical Commands
+## Development
 
-```bash
-# Run Tests - USE THE SCRIPT!
-./run_tests.sh    # Git Bash (recommended)
-.\run_tests.ps1   # PowerShell
+### Adding Sprites
+1. Get from: `C:/Users/ptyRa/Dev/better_palettes/`
+2. Copy to: `ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_[scheme]/`
+3. Deploy: Run BuildLinked.ps1
 
-# Manual test command (if script fails)
-rm -rf bin obj && dotnet restore FFTColorMod.Tests.csproj && dotnet build FFTColorMod.Tests.csproj && dotnet test FFTColorMod.Tests.csproj --verbosity minimal
+## Status
+- ✅ F1 cycling (6 schemes)
+- ✅ Knight sprite ready
+- ✅ Preferences persist
+- ✅ 104 tests passing
+- 🔄 Add more job sprites
 
-# Quick test result check (just pass/fail line)
-./run_tests.sh 2>&1 | grep "Passed!"
-
-# Build & Deploy
-dotnet build -c Release
-.\BuildLinked.ps1  # Quick deploy to Reloaded
-```
-
-## Development Style
-**TLDDR (TDD + TLDR)**: Write ONE test at a time, then minimal code to pass. Add TLDR comments explaining what code does, not process.
-
-## Hotkeys
-- **F1-F5**: Color schemes (Blue/Red/Green/Purple/Original)
-- **F9**: Rescan palettes
-
-## Important Notes
-- PAC files (not BIN/ISO)
-- .NET 8.0
-- `AllowUnsafeBlocks` required
-- Tests need `<ImplicitUsings>enable</ImplicitUsings>` + `<Using Include="Xunit" />`
-- Main project needs `<Compile Remove="Tests\**" />`
-
-## Function Hooking Approach (From FFTGenericJobs)
-
-**Key**: Hook sprite loading functions to modify palettes AS they load (not after).
-
-### Required Dependencies
-```xml
-<!-- FFTColorMod.csproj -->
-<PackageReference Include="Reloaded.Memory" Version="9.4.3" />
-<PackageReference Include="Reloaded.Memory.Sigscan" Version="3.1.9" />
-<PackageReference Include="Reloaded.Memory.SigScan.ReloadedII.Interfaces" Version="1.2.0" />
-<PackageReference Include="Reloaded.SharedLib.Hooks" Version="1.9.0" />
-```
-
-```json
-// ModConfig.json
-"ModDependencies": ["Reloaded.Memory.SigScan.ReloadedII", "reloaded.sharedlib.hooks"]
-```
-
-### Implementation Pattern
-```csharp
-// Hook sprite loading
-_startupScanner.AddMainModuleScan(
-    "48 8B C4 48 89 58 ??",  // Find function signature
-    result => _hooks.CreateHook<LoadSpriteDelegate>(LoadSpriteHook, gameBase + result.Offset).Activate()
-);
-
-private nint LoadSpriteHook(nint spriteData, int size) {
-    var result = _loadSpriteHook.OriginalFunction(spriteData, size);
-    ModifyPaletteInMemory(spriteData);  // Apply our PaletteDetector!
-    return result;
-}
-```
-
-### Next Steps
-1. Find sprite loading signatures with x64dbg
-2. Hook functions at startup
-3. Apply existing color logic in hooks
-
-
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
-NEVER create new .md files without permission.
-
+## Tech Notes
+- BGR format, palette in first 288 bytes
+- File swapping approach
+- Each directory needs complete sprite set

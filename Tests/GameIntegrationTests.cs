@@ -479,6 +479,9 @@ public class GameIntegrationTests
         var mod = new Mod();
         mod.SetPreferencesPath(tempPath);
 
+        // Reset to original since constructor may load a saved preference
+        mod.SetColorScheme("original");
+
         // Initial state should be original
         mod.GetCurrentColorScheme().Should().Be("original");
 

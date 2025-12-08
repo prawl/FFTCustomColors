@@ -10,13 +10,13 @@
 - [X] Implement color persistence across game sessions - DONE: ColorPreferencesManager saves to %AppData%
 - [X] Test compatibility with other mods - DONE: Compatible with Better Palettes and GenericJobs
 
-## Future Enhancements
-- [ ] **REQUIRED FOR RAMZA**: Find sprite loading signatures with x64dbg
-- [ ] **REQUIRED FOR RAMZA**: Implement memory hooking to bypass DLC protection
-- [ ] Add per-character color customization
-- [ ] Create color-blind friendly schemes
-- [ ] Add enemy color modifications
-- [ ] Test if users without deluxe/preorder can modify Ramza via files
+## Code Quality & Structure (Lower Priority)
+- [X] Update project structure to match GenericJobs repo (Root > ColorMod, .gitignore, .sln, LICENSE)
+- [ ] Fix scripts to use CamelCase naming convention
+- [ ] Update repository files to use CamelCase naming convention
+- [ ] Refactor all classes for better organization and clarity
+- [ ] Fix test flakiness issues (tests randomly failing)
+- [ ] Add extensive documentation (XML comments, README sections, API docs)
 
 ## Core User Requirements (Full Vision)
 - [ ] **Character Customization**: Customize color of every playable character
@@ -33,14 +33,6 @@
 - [ ] Add per-unit color tracking and persistence
 - [ ] Handle menu navigation and state management
 - [ ] Consider simpler config-based approach as stepping stone
-
-## Code Quality & Structure (Lower Priority)
-- [ ] Update project structure to match GenericJobs repo (Root > ColorMod, .gitignore, .sln, LICENSE)
-- [ ] Fix scripts to use CamelCase naming convention
-- [ ] Update repository files to use CamelCase naming convention
-- [ ] Refactor all classes for better organization and clarity
-- [ ] Fix test flakiness issues (tests randomly failing)
-- [ ] Add extensive documentation (XML comments, README sections, API docs)
 
 ## MVP Features (Dream Features)
 ### Community & Sharing
@@ -72,6 +64,15 @@
 - [ ] **Color History/Undo** - Track last 5-10 changes with quick undo/redo
 - [ ] **Color Randomizer Mode** - Chaos mode randomizing each battle
 - [ ] **Color-Based Ability Effects** - Visual effects vary by character color
+
+## Future Enhancements
+- [ ] **REQUIRED FOR RAMZA**: Find sprite loading signatures with x64dbg
+- [ ] **REQUIRED FOR RAMZA**: Implement memory hooking to bypass DLC protection
+- [ ] Add per-character color customization
+- [ ] Create color-blind friendly schemes
+- [ ] Add enemy color modifications
+- [ ] Test if users without deluxe/preorder can modify Ramza via files
+
 
 ## Release Preparation
 - [ ] Create before/after screenshots
