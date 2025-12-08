@@ -82,6 +82,8 @@ processed_sprites/
 test_*/
 --verbose/
 
-# Game sprite files (except input_sprites for testing)
+# Game sprite files (except input_sprites for testing and FFTIVC sprites)
 *.bin
 !input_sprites/*.bin
+!ColorMod/FFTIVC/data/enhanced/fftpack/unit/**/*.bin
+

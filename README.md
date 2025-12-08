@@ -12,7 +12,7 @@ Custom color palettes for Final Fantasy Tactics (Steam) using professionally edi
 ## Installation
 
 1. Install [Reloaded-II mod loader](https://github.com/Reloaded-II/Reloaded-II)
-2. Download FFT_Color_Mod from releases
+2. Download FFColorMod from releases
 3. Extract to: `Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\`
 4. Launch Reloaded-II and enable "FFT Color Mod"
 5. Start the game through Reloaded-II
@@ -40,7 +40,7 @@ Press **F1** in-game to cycle through color schemes. Changes apply immediately.
 
 ### Project Structure
 ```
-FFT_Color_Mod/
+FFColorMod/
 ├── ColorMod/
 │   ├── FFTIVC/                 # Sprite files and color variants
 │   │   └── data/enhanced/
