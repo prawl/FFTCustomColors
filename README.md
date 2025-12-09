@@ -97,38 +97,22 @@ The mod automatically detects all color schemes in the `sprites_*` directories.
 
 ## Creating Custom Themes
 
-### Theme Creation Scripts
+### Theme Creation Script
 
-#### 1. create_sprite_theme.py - Full Palette Transformations
-Create cohesive color themes by transforming entire palettes:
+#### create_sprite_theme.py - Precise Palette Control
+Create themes with primary and accent colors:
 ```bash
-# Hue shift to create new color schemes
-python create_sprite_theme.py --source corpse_brigade --name ocean_blue --hue-shift 180
+# Two-tone theme with primary and accent colors
+python create_sprite_theme.py --source original --name royal_blue \
+  --primary-color "#0047AB" --accent-color "#FFD700"
 
-# Adjust brightness/saturation
-python create_sprite_theme.py --source original --name dark_knight --brightness -30 --saturation +20
+# Single color theme (no accent)
+python create_sprite_theme.py --source original --name crimson \
+  --primary-color "#DC143C"
 
-# Transform specific clothing items (experimental)
-python create_sprite_theme.py --source original --name black_leather \
-  --transform-items "boots,gloves" --item-color "#1A1A1A"
-```
-
-Features:
-- Automatic skin tone preservation
-- HSV color adjustments
-- Hue shifting for complete recolors
-- Clothing item detection (boots, gloves, armor, etc.)
-
-#### 2. create_sprite_theme_indices.py - Precise Palette Control
-Target specific palette indices for surgical color changes:
-```bash
-# Change specific palette indices
-python create_sprite_theme_indices.py --source original --name custom \
-  --custom-indices "13,39,61" --custom-color "#000000"
-
-# Predefined item groups
-python create_sprite_theme_indices.py --source original --name black_boots \
-  --boots-color "#1A1A1A" --gloves-color "#1A1A1A"
+# Custom indices for specific modifications
+python create_sprite_theme.py --source original --name custom \
+  --custom-indices "3,4,5" --custom-color "#FFD700"
 ```
 
 #### 3. analyze_palette.py - Palette Analysis Tool
@@ -147,14 +131,23 @@ FFT sprites use palette-based coloring where different body parts reference spec
 
 #### CONFIRMED WORKING INDICES - Tested & Verified 2024-12-09
 **These indices change visible armor WITHOUT affecting hair:**
-- **Range 3-9**: Armor base colors (indices 3, 4, 5, 6, 7, 8, 9)
-- **Range 20-31**: Additional armor colors (indices 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
-- **Range 35-47**: More armor elements (indices 35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47)
-- **Range 51-62**: Extended armor palette (indices 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62)
 
-**Full safe index list for themes:**
-```
-3,4,5,6,7,8,9,20,21,22,23,24,25,26,27,28,29,30,31,35,36,37,38,39,40,41,42,43,45,46,47,51,52,53,54,55,56,57,58,59,60,61,62
+**ACCENT COLORS (clasp, buckle, trim):**
+- **Indices 3-5**: These control accent elements like belt buckles, clasps, and trim
+
+**PRIMARY COLORS (cape, clothing, armor):**
+- **Indices 6-9**: Main clothing and cape colors
+- **Indices 20-31**: Additional armor elements
+- **Indices 35-47**: Extended armor pieces (skip 44)
+- **Indices 51-62**: More armor palette
+
+**Creating Two-Tone Themes:**
+```python
+# Accent indices (gold trim, silver buckles, etc.)
+accent_indices = "3,4,5"
+
+# Primary armor indices (main color of cape, clothes, armor)
+primary_indices = "6,7,8,9,20,21,22,23,24,25,26,27,28,29,30,31,35,36,37,38,39,40,41,42,43,45,46,47,51,52,53,54,55,56,57,58,59,60,61,62"
 ```
 
 #### Hair Indices - NEVER MODIFY
