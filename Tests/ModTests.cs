@@ -92,7 +92,7 @@ namespace FFTColorMod.Tests
             try
             {
                 var context = new ModContext();
-                var mockInputSimulator = new MockInputSimulator();
+                var mockInputSimulator = new TrackingMockInputSimulator();
                 var mod = new Mod(context, mockInputSimulator);
 
                 // Act
@@ -111,7 +111,8 @@ namespace FFTColorMod.Tests
         }
     }
 
-    public class MockInputSimulator : IInputSimulator
+    // Mock that tracks if menu refresh was called
+    public class TrackingMockInputSimulator : IInputSimulator
     {
         public bool MenuRefreshCalled { get; private set; }
 

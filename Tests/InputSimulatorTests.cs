@@ -68,88 +68,88 @@ public class InputSimulatorTests
         Assert.Equal(1, simulator.KeyPressCallCount);
         Assert.Equal(0x0D, simulator.KeysPressed[0]); // Only Enter was attempted
     }
+}
 
-    // Mock implementation for testing
-    public class MockInputSimulator : IInputSimulator
+// Mock implementation for testing
+public class MockInputSimulator : IInputSimulator
+{
+    public int KeyPressCallCount { get; private set; }
+    public System.Collections.Generic.List<int> KeysPressed { get; } = new();
+
+    public bool SendKeyPress(int vkCode)
     {
-        public int KeyPressCallCount { get; private set; }
-        public System.Collections.Generic.List<int> KeysPressed { get; } = new();
-
-        public bool SendKeyPress(int vkCode)
-        {
-            KeyPressCallCount++;
-            KeysPressed.Add(vkCode);
-            return true;
-        }
-
-        public bool SimulateMenuRefresh()
-        {
-            // Send Enter key
-            bool enterResult = SendKeyPress(0x0D);
-            if (!enterResult) return false;
-
-            // Send Escape key (no delay in tests)
-            bool escapeResult = SendKeyPress(0x1B);
-
-            return escapeResult;
-        }
+        KeyPressCallCount++;
+        KeysPressed.Add(vkCode);
+        return true;
     }
 
-    // Mock that includes timing delays like the real implementation
-    public class TimingMockInputSimulator : IInputSimulator
+    public bool SimulateMenuRefresh()
     {
-        public int KeyPressCallCount { get; private set; }
-        public System.Collections.Generic.List<int> KeysPressed { get; } = new();
+        // Send Enter key
+        bool enterResult = SendKeyPress(0x0D);
+        if (!enterResult) return false;
 
-        public bool SendKeyPress(int vkCode)
-        {
-            KeyPressCallCount++;
-            KeysPressed.Add(vkCode);
-            // Simulate the 50ms delay in the real implementation
-            System.Threading.Thread.Sleep(50);
-            return true;
-        }
+        // Send Escape key (no delay in tests)
+        bool escapeResult = SendKeyPress(0x1B);
 
-        public bool SimulateMenuRefresh()
-        {
-            // Send Enter key
-            bool enterResult = SendKeyPress(0x0D);
-            if (!enterResult) return false;
+        return escapeResult;
+    }
+}
 
-            // Simulate the 500ms delay from real implementation
-            System.Threading.Thread.Sleep(500);
+// Mock that includes timing delays like the real implementation
+public class TimingMockInputSimulator : IInputSimulator
+{
+    public int KeyPressCallCount { get; private set; }
+    public System.Collections.Generic.List<int> KeysPressed { get; } = new();
 
-            // Send Escape key
-            bool escapeResult = SendKeyPress(0x1B);
-
-            return escapeResult;
-        }
+    public bool SendKeyPress(int vkCode)
+    {
+        KeyPressCallCount++;
+        KeysPressed.Add(vkCode);
+        // Simulate the 50ms delay in the real implementation
+        System.Threading.Thread.Sleep(50);
+        return true;
     }
 
-    // Mock that simulates failure on Enter key
-    public class FailingMockInputSimulator : IInputSimulator
+    public bool SimulateMenuRefresh()
     {
-        public int KeyPressCallCount { get; private set; }
-        public System.Collections.Generic.List<int> KeysPressed { get; } = new();
+        // Send Enter key
+        bool enterResult = SendKeyPress(0x0D);
+        if (!enterResult) return false;
 
-        public bool SendKeyPress(int vkCode)
-        {
-            KeyPressCallCount++;
-            KeysPressed.Add(vkCode);
-            // Return false for Enter key, true for others
-            return vkCode != 0x0D;
-        }
+        // Simulate the 500ms delay from real implementation
+        System.Threading.Thread.Sleep(500);
 
-        public bool SimulateMenuRefresh()
-        {
-            // Send Enter key
-            bool enterResult = SendKeyPress(0x0D);
-            if (!enterResult) return false;
+        // Send Escape key
+        bool escapeResult = SendKeyPress(0x1B);
 
-            // This shouldn't be reached
-            System.Threading.Thread.Sleep(500);
-            bool escapeResult = SendKeyPress(0x1B);
-            return escapeResult;
-        }
+        return escapeResult;
+    }
+}
+
+// Mock that simulates failure on Enter key
+public class FailingMockInputSimulator : IInputSimulator
+{
+    public int KeyPressCallCount { get; private set; }
+    public System.Collections.Generic.List<int> KeysPressed { get; } = new();
+
+    public bool SendKeyPress(int vkCode)
+    {
+        KeyPressCallCount++;
+        KeysPressed.Add(vkCode);
+        // Return false for Enter key, true for others
+        return vkCode != 0x0D;
+    }
+
+    public bool SimulateMenuRefresh()
+    {
+        // Send Enter key
+        bool enterResult = SendKeyPress(0x0D);
+        if (!enterResult) return false;
+
+        // This shouldn't be reached
+        System.Threading.Thread.Sleep(500);
+        bool escapeResult = SendKeyPress(0x1B);
+        return escapeResult;
     }
 }
