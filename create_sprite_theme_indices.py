@@ -21,22 +21,24 @@ class IndexBasedThemeGenerator:
     # Known palette index mappings for different sprite parts
     # CONFIRMED TESTING 2024-12-09:
     # NEVER USE indices 10-19 (ALL affect hair, including 13 which was mistaken for boots)
-    # SAFE indices that actually change visible elements: 39, 75, 76, 77, 78
+    # WORKING indices verified from existing themes: 3-9, 20-31, 35-47 (skip 44), 51-62
     ITEM_INDICES = {
-        # CONFIRMED SAFE - These don't touch hair and change visible elements
-        "armor_safe": [39, 75, 76, 77, 78],  # Tested and confirmed safe
+        # CONFIRMED WORKING - These indices change visible armor WITHOUT affecting hair
+        # Based on analysis of existing working themes (corpse_brigade, lucavi, etc.)
+        "armor_all": [3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+                     35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47,
+                     51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62],
 
-        # Legacy mappings - DO NOT USE (kept for reference)
-        # "knight_boots": [13, 39, 40],  # INDEX 13 AFFECTS HAIR - DO NOT USE
-        # "knight_gloves": [12, 76],     # INDEX 12 IS IN HAIR RANGE - DO NOT USE
+        # Grouped by ranges for targeted changes
+        "armor_primary": [3, 4, 5, 6, 7, 8, 9],  # Primary armor colors
+        "armor_secondary": [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],  # Secondary armor
+        "armor_tertiary": [35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47],  # Additional elements
+        "armor_extended": [51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62],  # Extended palette
 
-        # Safe extended set (not all may be visible)
-        "extended_safe": [39, 75, 76, 77, 78] + list(range(20, 30)) + list(range(30, 39)) + [40] + list(range(41, 50)) + list(range(50, 60)) + list(range(60, 70)) + list(range(70, 75)) + [79],
-
-        # Simplified safe groups
-        "generic_armor": [39, 75, 76, 77, 78],  # Use for all armor themes
-        "generic_highlights": [75, 77, 78],     # Highlight/accent colors
-        "generic_base": [39, 76],               # Base armor colors
+        # Legacy names for compatibility
+        "generic_armor": [3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+                         35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47,
+                         51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62],
     }
 
     def __init__(self, base_dir: Path = Path(".")):

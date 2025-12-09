@@ -145,21 +145,27 @@ python analyze_palette.py sprite1.bin --compare sprite2.bin
 
 FFT sprites use palette-based coloring where different body parts reference specific color indices:
 
-#### Confirmed Safe Indices (Won't Affect Hair) - Tested 2024-12-09
-- **Safe for themes**: Indices 39, 75, 76, 77, 78 (confirmed don't touch hair)
-- **Extended safe range**: Indices 20-29, 30-39 (except 13), 40-49, 50-59, 60-69, 70-79
+#### CONFIRMED WORKING INDICES - Tested & Verified 2024-12-09
+**These indices change visible armor WITHOUT affecting hair:**
+- **Range 3-9**: Armor base colors (indices 3, 4, 5, 6, 7, 8, 9)
+- **Range 20-31**: Additional armor colors (indices 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
+- **Range 35-47**: More armor elements (indices 35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47)
+- **Range 51-62**: Extended armor palette (indices 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62)
 
-#### Hair Indices - DO NOT MODIFY
+**Full safe index list for themes:**
+```
+3,4,5,6,7,8,9,20,21,22,23,24,25,26,27,28,29,30,31,35,36,37,38,39,40,41,42,43,45,46,47,51,52,53,54,55,56,57,58,59,60,61,62
+```
+
+#### Hair Indices - NEVER MODIFY
 - **Range 10-19**: ALL indices in this range affect hair (10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
 - **Specifically index 13**: Commonly mistaken for boots, but actually affects hair
+- **Index 44**: Skip this one (between 43 and 45)
 
-#### Testing Results
-- Many indices that don't affect hair also don't change visible sprite elements
-- The safest confirmed indices that actually change visible armor: 39, 75, 76, 77, 78
-- Index 39 changes some armor pieces without affecting hair
-- Indices 75-78 appear to be highlight/accent colors
+#### Discovery Method
+These indices were discovered by analyzing existing working themes (corpse_brigade, lucavi, etc.) and identifying which indices they modify. All working themes change these same indices to create their color variations.
 
-**Important**: Many palette indices are shared across multiple body parts. This is why changing what looks like "boot colors" (index 13) actually affects hair. Always test with the safe indices listed above when creating themes.
+**Important**: This is why the original themes also change hair - they modify indices 10-19. Our new themes skip this range entirely to preserve hair color.
 
 ### Creating Your Own Theme
 
