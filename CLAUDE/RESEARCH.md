@@ -1,347 +1,159 @@
-# FFT Color Mod - Technical Research & Current State
-<!-- KEEP UNDER 100 LINES -->
+# FFT Color Mod - Individual Unit Color Swapping Research
 
-## 🎯 CURRENT STATUS (Dec 4, 2024)
-**Working Implementation**: File-based color swapping with hotkeys (F1-F5)
-- ✅ 124 tests passing with streaming PAC extraction
-- ✅ StartEx bug FIXED - mod initializes properly (151ms load time)
-- ✅ Successfully extracted and processed sprites from PAC files
-- ✅ Generated color variant .diff.pac files for all color schemes
-- ✅ Hotkey switching functional for generic job sprites
-- ❌ **RAMZA CANNOT BE MODIFIED VIA FILE REPLACEMENT** (see critical discovery below)
+## Current State
+- F1 hotkey cycles through 21 color schemes but changes ALL units globally
+- File-based sprite swapping approach is working
+- Need to implement per-unit or per-job/gender color customization
 
-## 🚨 CRITICAL DISCOVERY: RAMZA MODIFICATION BLOCKED
+## Discovery: Better Palettes Approach
+Better Palettes implements job/gender-based customization via Reloaded-II config menu:
+- ALL male squires can be one color
+- ALL female squires can be another color
+- Each job/gender combination gets its own setting
+- This is more practical than true per-individual-unit colors
 
-**Confirmed by Better Palettes mod author (Dec 4, 2024):**
-- "unfortunately swapping ramza doesn't work because of deluxe/preorder"
-- "preorder/deluxe seems to override it"
-- Our corrupted Ramza sprites (22 bytes) didn't crash or affect the game
-- Better Palettes has NO Ramza files - only modifies generic job sprites
+## Proposed Solution: Context-Sensitive F1 with Job/Gender Mapping
 
-**Implications:**
-- Deluxe/Preorder DLC overrides base game Ramza sprites
-- File replacement approach CANNOT modify Ramza
-- Must use memory hooking to intercept palette loading
-- Generic job sprites CAN be modified (confirmed working)
+### Core Concept
+Instead of changing ALL sprites globally, change colors based on job/gender of targeted unit:
+- Target a knight and press F1 → ALL male knights change color
+- Target a female archer and press F1 → ALL female archers change color
+- Maintains file-based swapping but with smarter targeting
 
-## 🚨 KEY DISCOVERIES
+### Implementation Phases
 
-### 1. Sprite Palette Format (CRITICAL)
-**Palette is in first 288 bytes of sprite files!**
-- FFT sprite files store color palette data in bytes 0-287
-- Sprite shape/pixel data stored after byte 288
-- Proof: Copying first 288 bytes transfers colors between sprites
-```bash
-# Copy palette from source to target
-dd if=source.bin of=target.bin bs=1 count=288 conv=notrunc
-```
+#### Phase 1: Get Unit Job/Gender Detection Working
+- Find memory addresses for currently selected/targeted unit
+- Identify unit's job class ID (knight, archer, squire, etc.)
+- Identify unit's gender flag (male/female)
+- Create mapping key like "knight_male" or "archer_female"
 
-### 2. File Format & Location
-- **Format**: `.bin` files (NOT .spr!)
-- **Location**: `FFTIVC/data/enhanced/fftpack/unit/`
-- **Naming**: `battle_[type]_spr.bin` (e.g., battle_ramza_spr.bin)
-- **Extracted from**: 0002.pac and 0003.pac files
-
-### 3. Implementation Approaches
-
-#### Option A: File Replacement (IMPLEMENTED ✅)
-**Current working solution**:
-1. Extract sprites using FF16Tools/PacExtractor
-2. Generate color variants using PaletteDetector
-3. Create .diff.pac files for each color scheme
-4. Hotkeys (F1-F5) trigger file path redirection
-5. Game loads pre-modified sprites
-
-**Status**: Working for battle_10m_spr.bin sprites
-
-#### Option B: Memory Hooking (Future Enhancement)
-Hook sprite loading functions to modify palettes during load:
+#### Phase 2: Implement Job-Based Color Mapping
 ```csharp
-private nint LoadSpriteHook(nint spriteData, int size) {
-    var result = _loadSpriteHook.OriginalFunction(spriteData, size);
-    // Modify first 288 bytes only!
-    if (_paletteDetector.DetectChapterOutfit(spriteData)) {
-        _paletteDetector.ReplacePaletteColors(spriteData, _currentScheme, 288);
+public class JobColorManager
+{
+    // Map of JobClass_Gender → ColorScheme
+    Dictionary<string, string> JobColorMappings = new()
+    {
+        ["squire_male"] = "original",
+        ["squire_female"] = "corpse_brigade",
+        ["knight_male"] = "lucavi",
+        ["knight_female"] = "northern_sky",
+        // etc...
+    };
+
+    public void ProcessF1Press()
+    {
+        var targetUnit = GetTargetedUnit();
+        var jobType = GetUnitJobType(targetUnit);  // "knight"
+        var gender = GetUnitGender(targetUnit);    // "male"
+        var key = $"{jobType}_{gender}";
+
+        // Cycle to next color for this job/gender combo
+        var nextColor = GetNextColorScheme(JobColorMappings[key]);
+        JobColorMappings[key] = nextColor;
+
+        // Swap sprite files for this job/gender
+        SwapSpritesForJobGender(jobType, gender, nextColor);
+
+        ShowNotification($"All {gender} {jobType}s → {nextColor}");
     }
-    return result;
 }
 ```
 
-### 4. Why Direct Memory Modification Failed
-**Root Cause**: FFT continuously reloads palettes from source files
-- Memory modifications get overwritten immediately
-- Need to intercept at load time OR replace source files
-- File replacement approach avoids this issue entirely
+#### Phase 3: Handle Sprite Refresh
+**Option A: Battle Prep Only**
+- Only allow color changes during formation/prep screen
+- Colors lock when battle starts
+- Avoids refresh problem entirely
 
-### 5. Sprite Deployment (IMPORTANT)
-**No PAC packing required when using Reloaded-II!** Unpacked sprites work directly:
-- Place modified sprites in: `FFTIVC/data/enhanced/fftpack/unit/`
-- Deploy with `.\BuildLinked.ps1` to copy to Reloaded-II mods folder
-- Reloaded-II handles file redirection automatically
+**Option B: Force Refresh**
+- Simulate mouse hover events to trigger sprite reload
+- Or find and call sprite cache invalidation function
+- Or trigger menu state change to force redraw
 
-### 6. How to Apply Color to FFT Sprites (CONFIRMED WORKING)
+### Technical Implementation Details
 
-**Critical Discovery**: The palette is stored in the first 288 bytes of the sprite file!
-
-#### Working Method (Binary Palette Replacement):
-```bash
-# Extract palette from a working colored sprite (e.g., red knight from GenericJobs)
-dd if="FFTIVC/data/enhanced/fftpack/unit/sprites_red/battle_knight_m_spr.bin" of="palette.bin" bs=1 count=288
-
-# Apply this palette to target sprites
-dd if="palette.bin" of="target_sprite.bin" bs=1 count=288 conv=notrunc
+#### File Structure for Job-Based Colors
+```
+FFTIVC/data/enhanced/fftpack/unit/
+├── battle_knight_m_spr.bin      # Active male knight sprite
+├── battle_knight_w_spr.bin      # Active female knight sprite
+├── sprites_corpse_brigade/       # Color variant source
+│   ├── battle_knight_m_spr.bin
+│   └── battle_knight_w_spr.bin
+└── sprites_lucavi/              # Another color variant
+    ├── battle_knight_m_spr.bin
+    └── battle_knight_w_spr.bin
 ```
 
-#### Important Notes:
-- Palette is BGR format (Blue-Green-Red), not RGB
-- First 288 bytes = 96 color entries × 3 bytes per color
-- Direct byte replacement works better than algorithmic color shifting
-- Use palettes from GenericJobs sprites (they have proper color variants)
-
-#### DISCOVERED: "White/Silver" Effect
-- Applying red knight palette to chemist sprites creates a beautiful white/silver appearance!
-- This is an unintended cross-class palette swap that produces stunning results
-- The red palette from knight (`battle_knight_m_spr.bin`) when applied to chemist sprites produces white/silver coloring
-- This suggests different sprite types interpret the same palette data differently
-
-#### Deployment Process for Binary Search:
-
-**CRITICAL: Deploy unpacked sprites, NOT PAC files!**
-
-1. **Extract correct red palette from GenericJobs:**
-```bash
-dd if="FFTIVC/data/enhanced/fftpack/unit/sprites_red/battle_knight_m_spr.bin" of="correct_red_palette.bin" bs=1 count=288 2>/dev/null
-```
-
-2. **Copy ONLY sprite files (exclude seq/shp/sp2 files that cause crashes):**
-```bash
-# Clean directory first
-rm -rf FFTIVC/data/enhanced/fftpack/unit
-mkdir -p FFTIVC/data/enhanced/fftpack/unit
-
-# Copy only _spr.bin files and apply palette to desired subset
-counter=0
-for sprite in input_sprites/*_spr.bin; do
-    filename=$(basename "$sprite")
-    cp "$sprite" "FFTIVC/data/enhanced/fftpack/unit/$filename"
-    counter=$((counter + 1))
-    # Example: Apply red palette to second half (sprites 70-138)
-    if [ $counter -gt 69 ]; then
-        dd if="correct_red_palette.bin" of="FFTIVC/data/enhanced/fftpack/unit/$filename" bs=1 count=288 conv=notrunc 2>/dev/null
-    fi
-done
-```
-
-3. **Deploy with BuildLinked.ps1:**
-```powershell
-powershell -ExecutionPolicy Bypass -File BuildLinked.ps1
-```
-
-**Key Lessons Learned:**
-- DO NOT create PAC files for deployment - Reloaded-II works with unpacked sprites
-- MUST exclude non-sprite files (seq/shp/sp2) - these cause game crashes
-- Use GenericJobs red knight palette - creates the white/silver effect
-- BuildLinked.ps1 copies entire FFTIVC directory to Reloaded-II mods folder
-
-## 📊 TECHNICAL IMPLEMENTATION
-
-### Working Components
-- **PacExtractor**: Streaming extraction of >2GB PAC files
-- **PaletteDetector**: Finds and replaces colors in first 288 bytes
-- **SpriteColorGenerator**: Batch processes sprites with variants
-- **FileRedirector**: Manages hotkey → color scheme mapping
-- **Startup.cs**: Proper StartEx pattern for Reloaded-II
-
-### Sprite Types Discovered
-- `10m/10w` - Type 10 male/female (possibly Squires)
-- `20m/20w` - Type 20 male/female (possibly Knights)
-- `40m/40w` - Type 40 male/female (other job class)
-- `60m/60w` - Type 60 male/female (other job class)
-- **Ramza**: Unknown - needs identification through gameplay
-
-### File Structure
-```
-FFTIVC/data/enhanced/
-├── 0002.blue.diff.pac    # Color variant PAC files
-├── 0002.red.diff.pac
-├── 0002.green.diff.pac
-├── 0002.purple.diff.pac
-└── fftpack/unit/sprites_[color]/
-    └── battle_10m_spr.bin  # Individual sprite variants
-```
-
-## 🎮 UI MODIFICATION RESEARCH (Dec 4, 2024)
-
-### Feasibility Assessment: POSSIBLE - MEDIUM/HIGH DIFFICULTY
-
-**Vision**: Add "Color Palette" menu item to unit status screen for per-unit color customization
-
-### Technical Approaches Discovered:
-
-#### 1. **Function Hooking (CONFIRMED WORKING - GenericJobs Example)**
-The FFTGenericJobs mod successfully hooks UI functions to modify job menu behavior:
-- Hooks `HandleJobMenuClick`, `HandleJobMenuState`, `UpdateLevelRequirementsPopup`
-- Manipulates menu data structures directly in memory
-- Uses memory patching to modify menu behavior
-- **Key insight**: No ImGui or external UI framework - direct memory manipulation!
-
-#### 2. **Dear ImGui Integration (THEORETICAL - Reloaded-II Support)**
-- Reloaded.ImGui.Hook library exists for Reloaded-II mods
-- Can inject Dear ImGui overlays into games
-- Would create floating UI overlay rather than integrated menu
-- **Difficulty**: HIGH - requires rendering hook setup
-
-#### 3. **Menu Data Structure Manipulation (MOST PROMISING)**
-Based on GenericJobs analysis:
-- Menu items stored as data structures in memory
-- Can hook menu creation/update functions
-- Add new menu items by expanding data arrays
-- Hook click handlers to respond to new items
-
-### Implementation Strategy (Recommended):
-
-1. **Find Formation Screen Functions** (x64dbg)
-   - Signature scan for unit status menu creation
-   - Identify menu item array structure
-   - Find click handler dispatch function
-
-2. **Hook Menu Creation**
-   - Inject "Color Palette" option into menu array
-   - Adjust menu item count/bounds
-
-3. **Hook Click Handler**
-   - Detect when Color Palette selected
-   - Open custom color selection submenu
-   - Apply color to specific unit (not global)
-
-4. **Store Per-Unit Colors**
-   - Track colors by unit ID/slot
-   - Apply during sprite load for that unit
-
-### Difficulty Factors:
-- **+** GenericJobs proves UI hooking works
-- **+** No external UI framework needed
-- **-** Requires reverse engineering menu structures
-- **-** Must handle menu navigation/rendering
-- **-** Per-unit tracking adds complexity
-
-### Alternative: Configuration-Based (Like Better Palettes)
-- Use Reloaded-II config menu (already working)
-- Less user-friendly but much simpler
-- Could add per-job configuration
-
-## 🔄 NEXT STEPS
-
-### Immediate: Scale Up Option A
-1. **Process ALL sprites** in unit folder (not just 10m)
-2. **Identify Ramza** through gameplay testing
-3. **Optimize PaletteDetector** to focus on first 288 bytes only
-
-### Future Priority: Memory Hooking for Ramza (Required)
-1. Find sprite loading signatures with x64dbg
-2. Hook functions at startup using IStartupScanner
-3. Apply palette changes during load (first 288 bytes)
-4. Bypass DLC protection layer
-
-### Future Enhancement: In-Game UI
-1. Study GenericJobs menu hooking patterns
-2. Find formation screen menu structures
-3. Implement per-unit color selection
-4. Consider simpler config-based approach first
-
-## 🔧 SPRITE REFRESH ISSUE (Dec 8, 2024)
-
-### Problem: Sprites don't refresh immediately when hotkeys pressed
-- Colors DO change (file swapping works)
-- But sprites only update when hovering over units or changing menus
-- Game caches sprites in memory
-
-### Root Cause Analysis:
-The fundamental issue is that FFT caches sprite data in memory for performance. When we swap sprite files via F1, the files on disk change successfully, but the game doesn't reload them from disk until certain UI events trigger a refresh. This is a common optimization in games to avoid constant disk I/O.
-
-### What Triggers Sprite Refresh (Confirmed):
-1. **Mouse hover over unit** - Immediate sprite reload
-2. **Menu state changes** - Opening/closing menus
-3. **Camera movement** - Sometimes triggers partial refresh
-4. **Window focus changes** - Inconsistent results
-
-### Failed Attempts:
-1. **InvalidateRect** - Window refresh doesn't trigger sprite reload
-2. **Direct memory modification** - Previously tried, didn't work
-3. **Window focus changes** - No effect on sprite cache
-4. **Simple WM_PAINT messages** - Graphics refresh != sprite reload
-
-### Potential Solutions (Ranked by Feasibility):
-
-#### 1. **Simulate Mouse Hover Events** (MOST PROMISING)
+#### Sprite Swapping Logic
 ```csharp
-// Send synthetic mouse movement to trigger hover detection
-private void ForceUIRefresh() {
-    var hwnd = GetGameWindowHandle();
-    var currentPos = GetCursorPos();
+private void SwapSpritesForJobGender(string job, string gender, string colorScheme)
+{
+    // Generate file name based on job and gender
+    var genderChar = gender == "male" ? "m" : "w";
+    var spriteFile = $"battle_{job}_{genderChar}_spr.bin";
 
-    // Move mouse slightly and back to trigger hover events
-    SendMessage(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(currentPos.X + 1, currentPos.Y));
-    SendMessage(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(currentPos.X, currentPos.Y));
+    // Copy from color variant folder to active folder
+    var source = $"sprites_{colorScheme}/{spriteFile}";
+    var dest = $"fftpack/unit/{spriteFile}";
+    File.Copy(source, dest, true);
+
+    // Trigger refresh (implementation TBD)
+    ForceGameSpriteReload();
 }
 ```
 
-#### 2. **Menu State Manipulation** (RELIABLE BUT VISIBLE)
-```csharp
-// Quick ESC press to force menu refresh
-private void ForceMenuRefresh() {
-    SendMessage(hwnd, WM_KEYDOWN, VK_ESCAPE, 0);
-    Thread.Sleep(50);
-    SendMessage(hwnd, WM_KEYUP, VK_ESCAPE, 0);
-}
-```
+### Alternative Approaches Considered
 
-#### 3. **Direct Sprite Cache Invalidation** (REQUIRES REVERSE ENGINEERING)
-- Need to find sprite cache data structures in memory
-- Hook the sprite loading function
-- Force cache invalidation flag when F1 pressed
-- Most elegant but requires significant RE work
+#### 1. Hook-Based Unit Differentiation (Complex)
+- Hook sprite loading function to detect which unit is requesting
+- Maintain map of UnitID → ColorScheme
+- Redirect to different files per individual unit
+- **Pros**: True per-unit colors
+- **Cons**: Need complex unit tracking, file proliferation
 
-#### 4. **Hook Sprite Drawing Functions** (COMPLEX BUT CLEAN)
-- Find Direct3D/OpenGL drawing calls for sprites
-- Hook the texture binding functions
-- Force texture reload from disk on next draw call
+#### 2. Memory-Based Palette Swapping (Failed Previously)
+- Modify palette in memory after sprite loads
+- Game continuously reloads from cache, overwrites changes
+- Would need to hook rendering pipeline
 
-#### 5. **Camera Manipulation** (LESS RELIABLE)
-```csharp
-// Send camera rotate keys to potentially trigger refresh
-SendMessage(hwnd, WM_KEYDOWN, 'Q', 0);  // Rotate left
-Thread.Sleep(10);
-SendMessage(hwnd, WM_KEYUP, 'Q', 0);
-```
+#### 3. In-Game Menu Addition (Complex)
+- Add "Color Palette" option to unit formation menu
+- Requires extensive UI hooking like FFTGenericJobs
+- More user-friendly but significantly more complex
 
-### FFHacktics Community Solutions:
-Based on research of similar mods:
-- **Better Palettes mod** - Doesn't solve this, users manually hover
-- **FFTGenericJobs** - Hooks UI functions but not sprite refresh
-- **No known mod** has solved the instant refresh problem
+#### 4. Save File Manipulation (Risky)
+- Store color preferences in save data
+- Risk of save corruption
+- May not support customization data
 
-### Why Memory Hooks Won't Help Here:
-- We already tried modifying sprites in memory - didn't work
-- FFT continuously reloads from cached data, not from disk
-- Need to trigger the game's own cache invalidation mechanism
-- FFTGenericJobs uses hooks for UI logic, not sprite refresh
+### Benefits of Job/Gender-Based Approach
 
-### Recommended Implementation Strategy:
-1. **Start with mouse hover simulation** - Least intrusive, most likely to work
-2. **Test menu state manipulation** as backup
-3. **Consider reverse engineering sprite cache** for perfect solution
-4. **Accept manual hover as fallback** if automated solutions fail
+1. **Simpler than per-unit** - No individual unit tracking needed
+2. **Cohesive teams** - All knights match, all archers match, etc.
+3. **Predictable** - Players know what they're changing
+4. **Memory efficient** - One sprite file per job/gender combo
+5. **Natural persistence** - File state persists across sessions
 
-### Technical Investigation Needed:
-1. Use x64dbg to find sprite loading functions
-2. Look for cache invalidation routines
-3. Identify exact mouse event processing code
-4. Find menu state management functions
+### Enhanced Features (Future)
 
-## 📝 IMPORTANT NOTES
-- Current approach (Option A) is WORKING and deployed
-- Memory hooking would add real-time flexibility but isn't required
-- Focus on identifying which sprite is Ramza's for targeted testing
-- Consider optimizing to only process first 288 bytes for performance
-- Sprite refresh requires triggering game events, not memory manipulation
+- **Story characters** get individual entries (Ramza, Agrias, etc.)
+- **Enemy colors** - Different color rules for enemy units
+- **Chapter progression** - Colors evolve as story progresses
+- **Team uniforms** - Quick presets for matching color schemes
+
+### Key Challenges to Solve
+
+1. **Unit Detection**: Finding memory addresses for selected unit's job/gender
+2. **Sprite Refresh**: Triggering game to reload sprites after swap
+3. **Persistence**: Saving job/gender → color mappings between sessions
+4. **UI Feedback**: Showing player which job/gender they're modifying
+
+### Next Steps
+
+1. Use x64dbg to find unit selection and job/gender memory addresses
+2. Implement basic job/gender detection
+3. Test context-sensitive F1 with job-based swapping
+4. Solve sprite refresh issue (or limit to battle prep)
