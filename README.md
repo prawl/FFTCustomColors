@@ -97,10 +97,29 @@ The mod automatically detects all color schemes in the `sprites_*` directories.
 
 ## Creating Custom Themes
 
-### Theme Creation Script
+### Theme Creation Scripts
 
-#### create_sprite_theme.py - Precise Palette Control
-Create themes with primary and accent colors:
+#### create_cohesive_theme.py - NEW! Proper Cape Edge & Accent Handling (Recommended)
+Creates truly cohesive themes with correct cape edges and shadows:
+```bash
+# Create a two-tone theme with proper cape shading
+python create_cohesive_theme.py --name "cobalt_crusader" --primary "#0047AB" --accent "#FFD700"
+
+# Single color theme with auto-generated darker shades
+python create_cohesive_theme.py --name "crimson_knight" --primary "#DC143C"
+
+# Test with single sprite first
+python create_cohesive_theme.py --name "test_theme" --primary "#0047AB" --accent "#FFD700" --single "battle_knight_m_spr.bin"
+```
+
+This script properly handles:
+- Main cape color at indices 6-10 in palette 0
+- Cape edges at index 7 across palettes 0-3 (25% darker)
+- Cape shadows at index 9 across palettes 0-3 (50% darker)
+- Buckles/clasps at indices 3-5 with accent color
+
+#### create_sprite_theme.py - Legacy Palette Control
+Create themes with primary and accent colors (older method):
 ```bash
 # Two-tone theme with primary and accent colors
 python create_sprite_theme.py --source original --name royal_blue \
@@ -177,11 +196,27 @@ These indices were discovered by analyzing existing working themes (corpse_briga
 - Palettes 8-15: Portraits
 - Each palette: 2 bytes per color (XBBBBBGGGGGRRRRR format)
 
-**CRITICAL DISCOVERY (2024-12-09): Cape Edge Colors Use Multiple Palettes**
-- Cape edges use indices 7, 9, and 51-62 from MULTIPLE palettes (not just palette 0)
-- The game renders cape edges using colors from palettes 1, 2, and 3 in addition to palette 0
-- This is why cape edges remained bright white even when modifying palette 0
-- **Solution**: Must modify the same indices (7, 9, 51-62) across ALL unit palettes (0-7)
+**🚨 CRITICAL DISCOVERY (2024-12-09): Cape Color Mapping Breakthrough**
+
+After extensive testing with color-coded sprites, we've definitively mapped the cape structure:
+
+**Cape Components & Their Indices:**
+- **Main Cape Body**: Indices 6-10 in palette 0 (primary cape color)
+- **Cape Edge/Trim**: Index 7 in palettes 0-3 (the literal border/edge of the cape)
+- **Cape Accent/Shadows**: Index 9 in palettes 0-3 (darker areas for depth/shadows)
+- **Additional Details**: Indices 12-15 in palettes 0-3 (extra armor/cape details)
+- **Buckles/Clasps**: Indices 3-5 in palette 0 (metal accents, trim pieces)
+
+**Why Previous Attempts Failed:**
+- Working themes (corpse_brigade, lucavi, etc.) actually **swap entire palettes** rather than modifying individual colors
+- Example: corpse_brigade swaps palette 0 ↔ palette 3, lucavi swaps palette 0 ↔ palette 4
+- Cape edges/accents appear because they use colors from MULTIPLE palettes simultaneously
+- **Solution**: Must modify index 7 and 9 across palettes 0-3 for complete cape coverage
+
+**Proper Color Relationships for Cohesive Themes:**
+- **Cape Edge** (index 7): Should be ~25% darker than main cape color
+- **Cape Accent/Shadow** (index 9): Should be ~50% darker than main cape color
+- **Buckles/Clasps** (indices 3-5): Use accent color for two-tone themes
 
 **How Color Mods Work**:
 1. The mod physically swaps entire sprite files when you press F1
