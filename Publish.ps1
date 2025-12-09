@@ -7,7 +7,7 @@
 
 .PARAMETER ProjectPath
     Path to the project to be built.
-    Default: FFTColorMod.csproj
+    Default: ColorMod/FFTColorMod.csproj
 
 .PARAMETER PackageName
     Name of the package to be built.
@@ -64,7 +64,7 @@ param (
     $IsPrerelease=$False,
 
     ## => Project Config <= ##
-    $ProjectPath = "FFTColorMod.csproj",
+    $ProjectPath = "ColorMod/FFTColorMod.csproj",
     $PackageName = "FFT_Color_Mod",
     $PublishOutputDir = "Publish/ToUpload",
 
