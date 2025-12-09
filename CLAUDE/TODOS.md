@@ -21,8 +21,8 @@
 ## Core User Requirements (Full Vision)
 - [ ] **Character Customization**: Customize color of every playable character
 - [ ] **Targeted Customization**: Separate color control for armor vs hair
-- [ ] **Preset Palettes**: Select from faction color schemes (Northern Sky, Southern Sky, etc.)
-- [ ] **Save Persistence**: Colors persist between game saves and sessions
+- [X] **Preset Palettes**: Select from faction color schemes (Northern Sky, Southern Sky, etc.)
+- [X] **Save Persistence**: Colors persist between game saves and sessions
 - [ ] **In-Game UI**: Edit character colors directly in-game via UI menu
 - [ ] **Unlockable Colors**: Rare colors as gameplay rewards (MVP feature)
 

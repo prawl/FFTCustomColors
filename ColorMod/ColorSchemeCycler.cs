@@ -1,34 +1,39 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace FFTColorMod
 {
     public class ColorSchemeCycler
     {
         private string _currentScheme = "original";
+        private readonly List<string> _schemes;
 
-        private readonly List<string> _schemes = new List<string>
+        public ColorSchemeCycler() : this(null)
         {
-            "original",
-            "corpse_brigade",
-            "lucavi",
-            "northern_sky",
-            "smoke",
-            "southern_sky",
-            "crimson_red",
-            "royal_purple",
-            "phoenix_flame",
-            "frost_knight",
-            "silver_knight",
-            "shadow_assassin",
-            "emerald_dragon",
-            "rose_gold",
-            "ocean_depths",
-            "golden_templar",
-            "blood_moon",
-            "celestial",
-            "volcanic",
-            "amethyst"
-        };
+        }
+
+        public ColorSchemeCycler(string spritesPath)
+        {
+            if (!string.IsNullOrEmpty(spritesPath) && Directory.Exists(spritesPath))
+            {
+                var detectedSchemes = Directory.GetDirectories(spritesPath)
+                    .Where(d => Path.GetFileName(d).StartsWith("sprites_"))
+                    .Select(d => Path.GetFileName(d).Replace("sprites_", ""))
+                    .ToList();
+
+                // Sort with "original" first, then everything else alphabetically
+                _schemes = detectedSchemes
+                    .OrderBy(s => s == "original" ? 0 : 1)
+                    .ThenBy(s => s)
+                    .ToList();
+            }
+            else
+            {
+                // Minimal fallback for testing when no directory exists
+                _schemes = new List<string> { "original", "corpse_brigade", "lucavi", "northern_sky", "smoke", "southern_sky" };
+            }
+        }
 
         public void SetCurrentScheme(string scheme)
         {
@@ -38,6 +43,11 @@ namespace FFTColorMod
         public string GetNextScheme()
         {
             // TLDR: Return next color scheme in cycle
+            if (_schemes.Count == 0)
+            {
+                return _currentScheme; // No schemes available, return current
+            }
+
             int currentIndex = _schemes.IndexOf(_currentScheme);
             if (currentIndex == -1 || currentIndex == _schemes.Count - 1)
             {

@@ -249,31 +249,95 @@ Based on GenericJobs analysis:
 3. Implement per-unit color selection
 4. Consider simpler config-based approach first
 
-## 🔧 SPRITE REFRESH ISSUE (Dec 7, 2024)
+## 🔧 SPRITE REFRESH ISSUE (Dec 8, 2024)
 
 ### Problem: Sprites don't refresh immediately when hotkeys pressed
 - Colors DO change (file swapping works)
 - But sprites only update when hovering over units or changing menus
 - Game caches sprites in memory
 
+### Root Cause Analysis:
+The fundamental issue is that FFT caches sprite data in memory for performance. When we swap sprite files via F1, the files on disk change successfully, but the game doesn't reload them from disk until certain UI events trigger a refresh. This is a common optimization in games to avoid constant disk I/O.
+
+### What Triggers Sprite Refresh (Confirmed):
+1. **Mouse hover over unit** - Immediate sprite reload
+2. **Menu state changes** - Opening/closing menus
+3. **Camera movement** - Sometimes triggers partial refresh
+4. **Window focus changes** - Inconsistent results
+
 ### Failed Attempts:
 1. **InvalidateRect** - Window refresh doesn't trigger sprite reload
 2. **Direct memory modification** - Previously tried, didn't work
 3. **Window focus changes** - No effect on sprite cache
+4. **Simple WM_PAINT messages** - Graphics refresh != sprite reload
 
-### Creative Solutions to Force Sprite Refresh:
-1. **Simulate Mouse Movement** - Send fake hover event to trigger refresh
-   - `SendMessage(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(x, y))`
-2. **Menu State Toggle** - Quick ESC press to force menu refresh
-   - `SendMessage(hwnd, WM_KEYDOWN, VK_ESCAPE, 0)`
-3. **Camera Movement** - Send camera rotate keys (Q/E)
-4. **Alt+Tab Simulation** - Force focus loss/regain
-5. **Resolution Toggle** - Alt+Enter for windowed/fullscreen
+### Potential Solutions (Ranked by Feasibility):
+
+#### 1. **Simulate Mouse Hover Events** (MOST PROMISING)
+```csharp
+// Send synthetic mouse movement to trigger hover detection
+private void ForceUIRefresh() {
+    var hwnd = GetGameWindowHandle();
+    var currentPos = GetCursorPos();
+
+    // Move mouse slightly and back to trigger hover events
+    SendMessage(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(currentPos.X + 1, currentPos.Y));
+    SendMessage(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(currentPos.X, currentPos.Y));
+}
+```
+
+#### 2. **Menu State Manipulation** (RELIABLE BUT VISIBLE)
+```csharp
+// Quick ESC press to force menu refresh
+private void ForceMenuRefresh() {
+    SendMessage(hwnd, WM_KEYDOWN, VK_ESCAPE, 0);
+    Thread.Sleep(50);
+    SendMessage(hwnd, WM_KEYUP, VK_ESCAPE, 0);
+}
+```
+
+#### 3. **Direct Sprite Cache Invalidation** (REQUIRES REVERSE ENGINEERING)
+- Need to find sprite cache data structures in memory
+- Hook the sprite loading function
+- Force cache invalidation flag when F1 pressed
+- Most elegant but requires significant RE work
+
+#### 4. **Hook Sprite Drawing Functions** (COMPLEX BUT CLEAN)
+- Find Direct3D/OpenGL drawing calls for sprites
+- Hook the texture binding functions
+- Force texture reload from disk on next draw call
+
+#### 5. **Camera Manipulation** (LESS RELIABLE)
+```csharp
+// Send camera rotate keys to potentially trigger refresh
+SendMessage(hwnd, WM_KEYDOWN, 'Q', 0);  // Rotate left
+Thread.Sleep(10);
+SendMessage(hwnd, WM_KEYUP, 'Q', 0);
+```
+
+### FFHacktics Community Solutions:
+Based on research of similar mods:
+- **Better Palettes mod** - Doesn't solve this, users manually hover
+- **FFTGenericJobs** - Hooks UI functions but not sprite refresh
+- **No known mod** has solved the instant refresh problem
 
 ### Why Memory Hooks Won't Help Here:
 - We already tried modifying sprites in memory - didn't work
-- FFTGenericJobs uses hooks for UI, not sprite refresh
-- Need to trigger game's own refresh mechanism
+- FFT continuously reloads from cached data, not from disk
+- Need to trigger the game's own cache invalidation mechanism
+- FFTGenericJobs uses hooks for UI logic, not sprite refresh
+
+### Recommended Implementation Strategy:
+1. **Start with mouse hover simulation** - Least intrusive, most likely to work
+2. **Test menu state manipulation** as backup
+3. **Consider reverse engineering sprite cache** for perfect solution
+4. **Accept manual hover as fallback** if automated solutions fail
+
+### Technical Investigation Needed:
+1. Use x64dbg to find sprite loading functions
+2. Look for cache invalidation routines
+3. Identify exact mouse event processing code
+4. Find menu state management functions
 
 ## 📝 IMPORTANT NOTES
 - Current approach (Option A) is WORKING and deployed

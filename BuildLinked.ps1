@@ -52,7 +52,9 @@ if ($LASTEXITCODE -eq 0) {
 
             # TLDR: Copy better_palettes color variant directories
             Write-Host "Copying color variant directories..." -ForegroundColor Cyan
-            $colorVariants = @("sprites_original", "sprites_default", "sprites_corpse_brigade", "sprites_lucavi", "sprites_northern_sky", "sprites_smoke", "sprites_southern_sky", "sprites_crimson_red", "sprites_royal_purple", "sprites_phoenix_flame", "sprites_frost_knight", "sprites_silver_knight", "sprites_shadow_assassin", "sprites_emerald_dragon", "sprites_rose_gold", "sprites_ocean_depths", "sprites_golden_templar", "sprites_blood_moon", "sprites_celestial", "sprites_volcanic", "sprites_amethyst")
+            # Auto-discover all sprite variant directories
+            $colorVariants = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_*" |
+                ForEach-Object { $_.Name }
 
             foreach ($variant in $colorVariants) {
                 $sourcePath = "ColorMod/FFTIVC/data/enhanced/fftpack/unit/$variant"
@@ -97,7 +99,10 @@ if ($LASTEXITCODE -eq 0) {
 
     # Check each color variant directory
     # We expect at least 1 modified sprite per variant (the knight sprite)
-    $colorVariants = @("sprites_corpse_brigade", "sprites_lucavi", "sprites_northern_sky", "sprites_smoke", "sprites_southern_sky", "sprites_crimson_red", "sprites_royal_purple", "sprites_phoenix_flame", "sprites_frost_knight", "sprites_silver_knight", "sprites_shadow_assassin", "sprites_emerald_dragon", "sprites_rose_gold", "sprites_ocean_depths", "sprites_golden_templar", "sprites_blood_moon", "sprites_celestial", "sprites_volcanic", "sprites_amethyst")
+    # Auto-discover all sprite variant directories (excluding sprites_original and sprites_default)
+    $colorVariants = Get-ChildItem "$mainSpriteDir" -Directory -Filter "sprites_*" |
+        Where-Object { $_.Name -ne "sprites_original" -and $_.Name -ne "sprites_default" } |
+        ForEach-Object { $_.Name }
     foreach ($variant in $colorVariants) {
         $variantDir = "$mainSpriteDir/$variant"
         if (!(Test-Path $variantDir)) {
@@ -127,8 +132,8 @@ if ($LASTEXITCODE -eq 0) {
     } else {
         Write-Host "`nBUILD VERIFICATION FAILED!" -ForegroundColor Red
         Write-Host "The following errors were detected:" -ForegroundColor Red
-        foreach ($error in $verificationErrors) {
-            Write-Host "  X $error" -ForegroundColor Red
+        foreach ($verifyError in $verificationErrors) {
+            Write-Host "  X $verifyError" -ForegroundColor Red
         }
         Write-Host "`nPlease check your source files and try again." -ForegroundColor Yellow
         exit 1

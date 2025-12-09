@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using FFTColorMod.Utilities;
 using Reloaded.Mod.Interfaces;
 
@@ -24,8 +25,24 @@ public class Mod : IMod
         // Do minimal work in constructor - Reloaded will call Start() for initialization
         Console.WriteLine("[FFT Color Mod] Constructor called with ModContext");
 
-        _colorCycler = new ColorSchemeCycler();
-        _colorCycler.SetCurrentScheme("original");
+        // Try to auto-detect sprite variants from mod directory
+        string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
+        string spritesPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+
+        _colorCycler = new ColorSchemeCycler(spritesPath);
+        var schemes = _colorCycler.GetAvailableSchemes();
+
+        if (schemes.Count > 0)
+        {
+            Console.WriteLine($"[FFT Color Mod] Auto-detected {schemes.Count} color schemes");
+            _colorCycler.SetCurrentScheme("original");
+        }
+        else
+        {
+            Console.WriteLine("[FFT Color Mod] No color schemes found in: " + spritesPath);
+            // Still set a default even if no schemes found
+            _colorCycler.SetCurrentScheme("original");
+        }
 
         // Try initializing here since fftivc.utility.modloader might not call Start()
         try
