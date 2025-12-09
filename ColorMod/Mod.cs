@@ -18,12 +18,14 @@ public class Mod : IMod
     private Process? _gameProcess;
     private string _currentColorScheme = "original";
     private ColorSchemeCycler _colorCycler;
+    private IInputSimulator? _inputSimulator;
 
-    // Constructor that accepts ModContext (new pattern from FFTGenericJobs)
-    public Mod(ModContext context)
+    // Constructor that accepts ModContext and optional IInputSimulator (for testing)
+    public Mod(ModContext context, IInputSimulator? inputSimulator = null)
     {
         // Do minimal work in constructor - Reloaded will call Start() for initialization
         Console.WriteLine("[FFT Color Mod] Constructor called with ModContext");
+        _inputSimulator = inputSimulator;
 
         // Try to auto-detect sprite variants from mod directory
         string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
@@ -73,6 +75,12 @@ public class Mod : IMod
         // Initialize sprite file manager
         string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
         _spriteFileManager = new SpriteFileManager(modPath);
+
+        // Initialize input simulator if not provided (for testing)
+        if (_inputSimulator == null)
+        {
+            _inputSimulator = new InputSimulator();
+        }
 
         // Start with original color scheme (file swapping persists across restarts)
         _currentColorScheme = "original";
@@ -207,6 +215,19 @@ public class Mod : IMod
             string nextColor = _colorCycler.GetNextScheme();
             Console.WriteLine($"[FFT Color Mod] Cycling to {nextColor}");
             SetColorScheme(nextColor);
+
+            // Simulate menu refresh to update sprites immediately
+            Console.WriteLine($"[FFT Color Mod] InputSimulator is {(_inputSimulator != null ? "available" : "NULL")}");
+            if (_inputSimulator != null)
+            {
+                Console.WriteLine("[FFT Color Mod] Calling SimulateMenuRefresh...");
+                bool result = _inputSimulator.SimulateMenuRefresh();
+                Console.WriteLine($"[FFT Color Mod] SimulateMenuRefresh returned: {result}");
+            }
+            else
+            {
+                Console.WriteLine("[FFT Color Mod] WARNING: InputSimulator is null!");
+            }
         }
     }
 

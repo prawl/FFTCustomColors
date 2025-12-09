@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using Reloaded.Mod.Interfaces;
 using Reloaded.Mod.Interfaces.Internal;
+using FFTColorMod.Utilities;
 
 namespace FFTColorMod.Tests
 {
@@ -77,6 +78,52 @@ namespace FFTColorMod.Tests
                 if (Directory.Exists(tempAppData))
                     Directory.Delete(tempAppData, recursive: true);
             }
+        }
+
+        [Fact]
+        public void ProcessHotkeyPress_F1_Should_Call_SimulateMenuRefresh()
+        {
+            // Arrange
+            var tempAppData = Path.Combine(Path.GetTempPath(), $"TestAppData_{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempAppData);
+            var originalAppData = Environment.GetEnvironmentVariable("APPDATA");
+            Environment.SetEnvironmentVariable("APPDATA", tempAppData);
+
+            try
+            {
+                var context = new ModContext();
+                var mockInputSimulator = new MockInputSimulator();
+                var mod = new Mod(context, mockInputSimulator);
+
+                // Act
+                mod.ProcessHotkeyPress(0x70); // VK_F1
+
+                // Assert
+                mockInputSimulator.MenuRefreshCalled.Should().BeTrue("F1 should trigger menu refresh");
+            }
+            finally
+            {
+                // Cleanup
+                Environment.SetEnvironmentVariable("APPDATA", originalAppData);
+                if (Directory.Exists(tempAppData))
+                    Directory.Delete(tempAppData, recursive: true);
+            }
+        }
+    }
+
+    public class MockInputSimulator : IInputSimulator
+    {
+        public bool MenuRefreshCalled { get; private set; }
+
+        public bool SendKeyPress(int vkCode)
+        {
+            return true;
+        }
+
+        public bool SimulateMenuRefresh()
+        {
+            MenuRefreshCalled = true;
+            return true;
         }
     }
 }
