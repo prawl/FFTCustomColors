@@ -19,21 +19,24 @@ class IndexBasedThemeGenerator:
     COLOR_COUNT = 256   # 256 colors total
 
     # Known palette index mappings for different sprite parts
-    # These would need to be determined through experimentation or analysis
+    # CONFIRMED TESTING 2024-12-09:
+    # NEVER USE indices 10-19 (ALL affect hair, including 13 which was mistaken for boots)
+    # SAFE indices that actually change visible elements: 39, 75, 76, 77, 78
     ITEM_INDICES = {
-        "knight_boots": [13, 39, 61],  # Dark browns from our analysis
-        "knight_gloves": [11, 59],     # Medium browns from our analysis
-        "knight_belt": [13],            # Darker browns
+        # CONFIRMED SAFE - These don't touch hair and change visible elements
+        "armor_safe": [39, 75, 76, 77, 78],  # Tested and confirmed safe
 
-        # These would need to be mapped for other job classes
-        "generic_boots": [13, 39, 61, 40],
-        "generic_gloves": [11, 59, 27],
-        "generic_belt": [13, 61],
+        # Legacy mappings - DO NOT USE (kept for reference)
+        # "knight_boots": [13, 39, 40],  # INDEX 13 AFFECTS HAIR - DO NOT USE
+        # "knight_gloves": [12, 76],     # INDEX 12 IS IN HAIR RANGE - DO NOT USE
 
-        # Common indices across many sprites (discovered through analysis)
-        "common_dark_leather": [13, 39, 61],
-        "common_medium_leather": [11, 27, 59],
-        "common_light_leather": [14, 28, 44],
+        # Safe extended set (not all may be visible)
+        "extended_safe": [39, 75, 76, 77, 78] + list(range(20, 30)) + list(range(30, 39)) + [40] + list(range(41, 50)) + list(range(50, 60)) + list(range(60, 70)) + list(range(70, 75)) + [79],
+
+        # Simplified safe groups
+        "generic_armor": [39, 75, 76, 77, 78],  # Use for all armor themes
+        "generic_highlights": [75, 77, 78],     # Highlight/accent colors
+        "generic_base": [39, 76],               # Base armor colors
     }
 
     def __init__(self, base_dir: Path = Path(".")):

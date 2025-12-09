@@ -145,12 +145,21 @@ python analyze_palette.py sprite1.bin --compare sprite2.bin
 
 FFT sprites use palette-based coloring where different body parts reference specific color indices:
 
-#### Known Index Groups (Knight Sprite)
-- **Boots**: Indices 13, 39, 61, 40 (dark browns)
-- **Gloves/Hair Mix**: Indices 11, 59, 27 (medium browns - shared between items)
-- **Hair/Leather Mix**: Indices 14, 28, 44, 60, 12 (lighter browns/tans)
+#### Confirmed Safe Indices (Won't Affect Hair) - Tested 2024-12-09
+- **Safe for themes**: Indices 39, 75, 76, 77, 78 (confirmed don't touch hair)
+- **Extended safe range**: Indices 20-29, 30-39 (except 13), 40-49, 50-59, 60-69, 70-79
 
-**Important**: Many palette indices are shared across multiple body parts. Changing boots might also affect belts, and changing gloves often affects hair. This is a limitation of the palette-based sprite system.
+#### Hair Indices - DO NOT MODIFY
+- **Range 10-19**: ALL indices in this range affect hair (10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
+- **Specifically index 13**: Commonly mistaken for boots, but actually affects hair
+
+#### Testing Results
+- Many indices that don't affect hair also don't change visible sprite elements
+- The safest confirmed indices that actually change visible armor: 39, 75, 76, 77, 78
+- Index 39 changes some armor pieces without affecting hair
+- Indices 75-78 appear to be highlight/accent colors
+
+**Important**: Many palette indices are shared across multiple body parts. This is why changing what looks like "boot colors" (index 13) actually affects hair. Always test with the safe indices listed above when creating themes.
 
 ### Creating Your Own Theme
 
