@@ -13,8 +13,10 @@
 - `SwitchPacFile()`: Sprite file swapping
 - `SetColorScheme()`: Saves preference
 
-### ColorSchemeCycler.cs
-- Schemes: original, corpse_brigade, lucavi, northern_sky, smoke, southern_sky
+### Color Scheme System
+- **Auto-Detection**: Automatically finds all `sprites_*` directories
+- **Dynamic Loading**: No hardcoded scheme list needed
+- **Easy Addition**: Just create new `sprites_[name]` folder with sprites
 
 ## Development
 

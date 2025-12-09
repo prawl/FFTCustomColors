@@ -55,7 +55,9 @@ FFColorMod/
 └── RunTests.sh                # Test runner script
 ```
 
-## Color Schemes (20 Total)
+## Color Schemes (21 Total - Auto-Detected)
+
+The mod automatically detects all color schemes in the `sprites_*` directories.
 
 ### Original Themes
 | Scheme | Description | Theme |
@@ -70,6 +72,7 @@ FFColorMod/
 ### Custom Created Themes
 | Scheme | Description | Theme |
 |--------|-------------|-------|
+| Aaron | Aquatic warrior | Teal/cyan oceanic tones |
 | Crimson Red | Deep red armor | Red/crimson tones |
 | Royal Purple | Regal purple armor | Purple with gold accents |
 | Phoenix Flame | Fire-themed armor | Orange/yellow flames |
@@ -91,6 +94,72 @@ FFColorMod/
 - **Persistence**: Swapped files remain until changed (no save system needed)
 - **Performance**: Instant switching with no game restart required
 - **Compatibility**: Works with FFTIVC utility modloader
+
+## Creating Custom Themes
+
+### Theme Creation Scripts
+
+#### 1. create_sprite_theme.py - Full Palette Transformations
+Create cohesive color themes by transforming entire palettes:
+```bash
+# Hue shift to create new color schemes
+python create_sprite_theme.py --source corpse_brigade --name ocean_blue --hue-shift 180
+
+# Adjust brightness/saturation
+python create_sprite_theme.py --source original --name dark_knight --brightness -30 --saturation +20
+
+# Transform specific clothing items (experimental)
+python create_sprite_theme.py --source original --name black_leather \
+  --transform-items "boots,gloves" --item-color "#1A1A1A"
+```
+
+Features:
+- Automatic skin tone preservation
+- HSV color adjustments
+- Hue shifting for complete recolors
+- Clothing item detection (boots, gloves, armor, etc.)
+
+#### 2. create_sprite_theme_indices.py - Precise Palette Control
+Target specific palette indices for surgical color changes:
+```bash
+# Change specific palette indices
+python create_sprite_theme_indices.py --source original --name custom \
+  --custom-indices "13,39,61" --custom-color "#000000"
+
+# Predefined item groups
+python create_sprite_theme_indices.py --source original --name black_boots \
+  --boots-color "#1A1A1A" --gloves-color "#1A1A1A"
+```
+
+#### 3. analyze_palette.py - Palette Analysis Tool
+Analyze sprite palettes to understand color usage:
+```bash
+# Analyze a sprite's color palette
+python analyze_palette.py ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_original/battle_knight_m_spr.bin
+
+# Compare two sprites
+python analyze_palette.py sprite1.bin --compare sprite2.bin
+```
+
+### Palette Index Mapping
+
+FFT sprites use palette-based coloring where different body parts reference specific color indices:
+
+#### Known Index Groups (Knight Sprite)
+- **Boots**: Indices 13, 39, 61, 40 (dark browns)
+- **Gloves/Hair Mix**: Indices 11, 59, 27 (medium browns - shared between items)
+- **Hair/Leather Mix**: Indices 14, 28, 44, 60, 12 (lighter browns/tans)
+
+**Important**: Many palette indices are shared across multiple body parts. Changing boots might also affect belts, and changing gloves often affects hair. This is a limitation of the palette-based sprite system.
+
+### Creating Your Own Theme
+
+1. **Extract base sprites** (already included in sprites_original)
+2. **Choose transformation method**:
+   - Use `create_sprite_theme.py` for complete color themes
+   - Use `create_sprite_theme_indices.py` for specific item colors
+3. **Test your theme** using BuildLinked.ps1
+4. **Iterate** based on in-game appearance
 
 ### CRITICAL: How FFT Color System Actually Works
 
