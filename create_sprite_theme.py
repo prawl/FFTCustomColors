@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Generic sprite theme generator for FFT Color Mod.
-Creates new color themes by transforming existing sprite palettes.
+Create sprite themes by modifying specific palette indices.
+This is more precise than color-based detection.
 """
 
 import argparse
@@ -9,477 +9,267 @@ import os
 import shutil
 import struct
 import colorsys
-import json
 from pathlib import Path
-from typing import List, Tuple, Dict, Optional
-import re
+from typing import List, Tuple, Dict, Set
 
-class SpriteThemeGenerator:
-    """Generates new sprite themes by transforming color palettes."""
+class IndexBasedThemeGenerator:
+    """Generate themes by targeting specific palette indices."""
 
     PALETTE_SIZE = 512  # First 512 bytes contain the color palettes
-    COLOR_COUNT = 256   # 256 colors total (16 palettes × 16 colors)
+    COLOR_COUNT = 256   # 256 colors total
+
+    # Known palette index mappings for different sprite parts
+    # CONFIRMED TESTING 2024-12-09:
+    # NEVER USE indices 10-19 (ALL affect hair, including 13 which was mistaken for boots)
+    # ACCENT COLORS: indices 3-5 (clasp, buckle, trim)
+    # PRIMARY COLORS: indices 6-9 + 20-62 (cape, clothing, armor)
+    ITEM_INDICES = {
+        # CONFIRMED WORKING - These indices change visible armor WITHOUT affecting hair
+        # Based on analysis of existing working themes (corpse_brigade, lucavi, etc.)
+
+        # ACCENT COLORS (clasp, buckle, trim) - Use these for accent/secondary colors
+        "accent": [3, 4, 5],
+
+        # PRIMARY COLORS (cape, clothing, armor) - Use these for main armor color
+        "primary": [6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+                   35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47,
+                   51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62],
+
+        # ALL ARMOR (for single-color themes)
+        "armor_all": [3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+                     35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47,
+                     51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62],
+
+        # Legacy names for compatibility
+        "generic_armor": [3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+                         35, 36, 37, 38, 39, 40, 41, 42, 43, 45, 46, 47,
+                         51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62],
+    }
 
     def __init__(self, base_dir: Path = Path(".")):
-        """Initialize the theme generator."""
+        """Initialize the generator."""
         self.base_dir = base_dir
         self.sprite_dir = base_dir / "ColorMod" / "FFTIVC" / "data" / "enhanced" / "fftpack" / "unit"
 
-    def read_palette(self, sprite_path: Path) -> List[Tuple[int, int, int]]:
-        """Read the color palette from a sprite file."""
-        colors = []
+    def read_sprite(self, sprite_path: Path) -> bytearray:
+        """Read entire sprite file."""
         with open(sprite_path, 'rb') as f:
-            palette_data = f.read(self.PALETTE_SIZE)
+            return bytearray(f.read())
 
-        # Parse 16-bit colors (XBBBBBGGGGGRRRRR format)
-        for i in range(0, self.PALETTE_SIZE, 2):
-            if i + 1 < len(palette_data):
-                # Read 16-bit color value
-                color_value = struct.unpack('<H', palette_data[i:i+2])[0]
-
-                # Extract 5-bit BGR components
-                r = (color_value & 0x001F) << 3  # Red: bits 0-4
-                g = ((color_value & 0x03E0) >> 5) << 3  # Green: bits 5-9
-                b = ((color_value & 0x7C00) >> 10) << 3  # Blue: bits 10-14
-
-                # Convert to 8-bit values (0-255)
-                colors.append((r, g, b))
-
-        return colors
-
-    def write_palette(self, sprite_path: Path, colors: List[Tuple[int, int, int]]) -> None:
-        """Write a color palette to a sprite file."""
-        # Read the entire sprite file
-        with open(sprite_path, 'rb') as f:
-            sprite_data = bytearray(f.read())
-
-        # Convert colors back to 16-bit format and write
-        for i, (r, g, b) in enumerate(colors[:self.COLOR_COUNT]):
-            if i * 2 + 1 < self.PALETTE_SIZE:
-                # Convert 8-bit RGB to 5-bit BGR
-                r5 = (r >> 3) & 0x1F
-                g5 = (g >> 3) & 0x1F
-                b5 = (b >> 3) & 0x1F
-
-                # Pack into 16-bit value (XBBBBBGGGGGRRRRR)
-                color_value = r5 | (g5 << 5) | (b5 << 10)
-
-                # Write to sprite data
-                struct.pack_into('<H', sprite_data, i * 2, color_value)
-
-        # Write back the modified sprite
+    def write_sprite(self, sprite_path: Path, data: bytearray) -> None:
+        """Write sprite data to file."""
         with open(sprite_path, 'wb') as f:
-            f.write(sprite_data)
+            f.write(data)
 
-    def is_skin_tone(self, r: int, g: int, b: int) -> bool:
-        """Detect if a color is likely a skin tone."""
-        # Convert to HSV for better skin detection
-        h, s, v = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
-        h_degrees = h * 360
+    def get_color_at_index(self, sprite_data: bytearray, index: int) -> Tuple[int, int, int]:
+        """Get RGB color at a specific palette index."""
+        if index >= self.COLOR_COUNT or index * 2 + 1 >= self.PALETTE_SIZE:
+            return (0, 0, 0)
 
-        # Skin tones typically fall in these ranges:
-        # - Hue: 0-50 degrees (reds to oranges/yellows)
-        # - Saturation: 10-60% (not too gray, not too vivid)
-        # - Value: 25-95% (not too dark, not pure white)
+        offset = index * 2
+        color_value = struct.unpack('<H', sprite_data[offset:offset+2])[0]
 
-        # Check if it's in the skin tone hue range
-        is_skin_hue = (0 <= h_degrees <= 50) or (340 <= h_degrees <= 360)
-        is_skin_saturation = 0.10 <= s <= 0.60
-        is_skin_value = 0.25 <= v <= 0.95
+        r = (color_value & 0x001F) << 3
+        g = ((color_value & 0x03E0) >> 5) << 3
+        b = ((color_value & 0x7C00) >> 10) << 3
 
-        # Also check RGB ratios typical of skin
-        # Skin usually has R > G > B
-        has_skin_rgb_pattern = r > g and g > b and (r - b) > 15
+        return (r, g, b)
 
-        return (is_skin_hue and is_skin_saturation and is_skin_value) or has_skin_rgb_pattern
+    def set_color_at_index(self, sprite_data: bytearray, index: int, color: Tuple[int, int, int]) -> None:
+        """Set RGB color at a specific palette index."""
+        if index >= self.COLOR_COUNT or index * 2 + 1 >= self.PALETTE_SIZE:
+            return
 
-    def detect_clothing_item(self, r: int, g: int, b: int, item_type: str) -> bool:
-        """Detect if a color belongs to a specific clothing item."""
-        h, s, v = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
-        h_degrees = h * 360
+        r, g, b = color
+        # Convert 8-bit RGB to 5-bit BGR
+        r5 = (r >> 3) & 0x1F
+        g5 = (g >> 3) & 0x1F
+        b5 = (b >> 3) & 0x1F
 
-        # Skip if it's skin tone
-        if self.is_skin_tone(r, g, b):
-            return False
+        # Pack into 16-bit value
+        color_value = r5 | (g5 << 5) | (b5 << 10)
 
-        # Item-specific color patterns
-        if item_type in ["boots", "shoes", "footwear"]:
-            # Boots are the darkest browns in FFT sprites (based on palette analysis)
-            # Index 39: RGB(88,80,72), Index 13: RGB(104,72,32), Index 61: RGB(112,72,32)
-            is_boot_dark_brown = (20 <= h_degrees <= 35) and (s > 0.15) and (0.30 < v < 0.50)
-            is_boot_very_dark = (s < 0.20) and (v < 0.40) and (r > 70)  # Dark grayish-browns
-            # Specific pattern: RGB values close together but slightly brown-tinted
-            is_leather_pattern = (abs(r - g) < 30) and (abs(g - b) < 30) and (r >= g >= b) and (v < 0.45)
-            return is_boot_dark_brown or is_boot_very_dark or is_leather_pattern
+        # Write to sprite data
+        offset = index * 2
+        struct.pack_into('<H', sprite_data, offset, color_value)
 
-        elif item_type in ["gloves", "gauntlets", "hands"]:
-            # Gloves are medium browns (lighter than boots but not skin)
-            # Index 11: RGB(152,96,56), Index 59: RGB(152,96,48)
-            is_glove_brown = (20 <= h_degrees <= 35) and (0.50 < s < 0.75) and (0.50 < v < 0.65)
-            # Also check for tan/lighter brown variants
-            is_glove_tan = (20 <= h_degrees <= 35) and (0.60 < s < 0.70) and (0.55 < v < 0.70)
-            # Pattern: Clear brown with good separation between RGB channels
-            is_medium_leather = (r > g > b) and (r - b > 40) and (0.50 < v < 0.70)
-            # Exclude skin tones
-            not_skin = not self.is_skin_tone(r, g, b)
-            return (is_glove_brown or is_glove_tan or is_medium_leather) and not_skin
+    def transform_indices(self, sprite_data: bytearray, indices: Set[int],
+                         target_color: Tuple[int, int, int],
+                         preserve_shading: bool = True) -> bytearray:
+        """Transform specific palette indices to a target color."""
+        result = sprite_data.copy()
 
-        elif item_type in ["belt", "belts", "strap", "straps"]:
-            # Belts are usually darker browns or blacks
-            is_belt_brown = (15 <= h_degrees <= 35) and (s > 0.2) and (0.15 < v < 0.45)
-            is_belt_black = (s < 0.2) and (v < 0.35) and (v > 0.1)
-            return is_belt_brown or is_belt_black
+        if not preserve_shading:
+            # Direct replacement
+            for idx in indices:
+                self.set_color_at_index(result, idx, target_color)
+        else:
+            # Preserve relative brightness
+            target_h, target_s, target_v = colorsys.rgb_to_hsv(
+                target_color[0]/255, target_color[1]/255, target_color[2]/255
+            )
 
-        elif item_type in ["armor", "chestplate", "breastplate"]:
-            # Armor is typically metallic - grays, silvers, or the main color theme
-            is_metallic = (s < 0.3) and (0.3 < v < 0.8)
-            is_colored_armor = (s > 0.3) and (v > 0.4)  # Non-metallic colored armor
-            return is_metallic or is_colored_armor
+            # Get brightness range of original colors
+            brightnesses = []
+            for idx in indices:
+                r, g, b = self.get_color_at_index(sprite_data, idx)
+                _, _, v = colorsys.rgb_to_hsv(r/255, g/255, b/255)
+                brightnesses.append((idx, v))
 
-        elif item_type in ["cape", "cloak", "cloth"]:
-            # Capes have more saturated colors, often the accent color
-            is_fabric = (s > 0.2) and (v > 0.3)
-            not_leather = not ((15 <= h_degrees <= 45) and (v < 0.4))
-            return is_fabric and not_leather
+            if brightnesses:
+                min_v = min(v for _, v in brightnesses)
+                max_v = max(v for _, v in brightnesses)
+                v_range = max_v - min_v if max_v > min_v else 0.1
 
-        elif item_type in ["hair"]:
-            # Hair colors - browns, blacks, blondes, but not skin
-            is_hair_brown = (10 <= h_degrees <= 40) and (s > 0.15) and (0.2 < v < 0.6)
-            is_hair_black = (s < 0.2) and (v < 0.25)
-            is_hair_blonde = (35 <= h_degrees <= 55) and (s < 0.5) and (v > 0.5)
-            return is_hair_brown or is_hair_black or is_hair_blonde
+                for idx, orig_v in brightnesses:
+                    # Scale the target brightness based on original
+                    if v_range > 0:
+                        # Map original brightness range to target
+                        relative_pos = (orig_v - min_v) / v_range
+                        # Create darker/lighter versions of target color
+                        new_v = target_v * (0.3 + 0.7 * relative_pos)
+                    else:
+                        new_v = target_v
 
-        return False
-
-    def transform_clothing_items(self, colors: List[Tuple[int, int, int]],
-                                items: List[str], target_color: Tuple[int, int, int],
-                                preserve_shading: bool = True) -> List[Tuple[int, int, int]]:
-        """Transform specific clothing items to a target color."""
-        result_colors = []
-        target_h, target_s, target_v = colorsys.rgb_to_hsv(target_color[0]/255, target_color[1]/255, target_color[2]/255)
-
-        for r, g, b in colors:
-            # Check if this color matches any of the target items
-            is_target_item = any(self.detect_clothing_item(r, g, b, item) for item in items)
-
-            if is_target_item:
-                if preserve_shading:
-                    # Preserve the relative brightness while changing color
-                    orig_h, orig_s, orig_v = colorsys.rgb_to_hsv(r/255, g/255, b/255)
-
-                    # Keep relative brightness but use target hue/saturation
-                    new_h = target_h
-                    new_s = target_s
-                    # Scale the target brightness by the original brightness ratio
-                    new_v = target_v * (orig_v / 0.35) if orig_v > 0 else target_v
-
-                    # Clamp values
-                    new_v = min(1.0, max(0, new_v))
-
-                    r_new, g_new, b_new = colorsys.hsv_to_rgb(new_h, new_s, new_v)
-                    result_colors.append((
+                    # Generate new color with preserved relative brightness
+                    r_new, g_new, b_new = colorsys.hsv_to_rgb(target_h, target_s, new_v)
+                    new_color = (
                         int(r_new * 255),
                         int(g_new * 255),
                         int(b_new * 255)
-                    ))
-                else:
-                    # Direct color replacement
-                    result_colors.append(target_color)
-            else:
-                # Keep original color
-                result_colors.append((r, g, b))
+                    )
+                    self.set_color_at_index(result, idx, new_color)
 
-        return result_colors
+        return result
 
-    def hue_shift(self, colors: List[Tuple[int, int, int]], shift_degrees: float, preserve_skin: bool = True) -> List[Tuple[int, int, int]]:
-        """Shift the hue of all colors by a given number of degrees."""
-        shifted_colors = []
-        shift_fraction = shift_degrees / 360.0
-
-        for r, g, b in colors:
-            # Skip pure black/white/gray
-            if r == g == b:
-                shifted_colors.append((r, g, b))
-                continue
-
-            # Preserve skin tones if requested
-            if preserve_skin and self.is_skin_tone(r, g, b):
-                shifted_colors.append((r, g, b))
-                continue
-
-            # Convert to HSV
-            h, s, v = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
-
-            # Shift hue
-            h = (h + shift_fraction) % 1.0
-
-            # Convert back to RGB
-            r_new, g_new, b_new = colorsys.hsv_to_rgb(h, s, v)
-            shifted_colors.append((
-                int(r_new * 255),
-                int(g_new * 255),
-                int(b_new * 255)
-            ))
-
-        return shifted_colors
-
-    def adjust_hsv(self, colors: List[Tuple[int, int, int]],
-                   hue_shift: float = 0, saturation_delta: float = 0,
-                   brightness_delta: float = 0, preserve_skin: bool = True) -> List[Tuple[int, int, int]]:
-        """Adjust HSV values of all colors."""
-        adjusted_colors = []
-
-        for r, g, b in colors:
-            # Preserve skin tones if requested
-            if preserve_skin and self.is_skin_tone(r, g, b):
-                adjusted_colors.append((r, g, b))
-                continue
-
-            # Convert to HSV
-            h, s, v = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
-
-            # Apply adjustments
-            h = (h + hue_shift / 360.0) % 1.0
-            s = max(0, min(1, s + saturation_delta / 100.0))
-            v = max(0, min(1, v + brightness_delta / 100.0))
-
-            # Convert back to RGB
-            r_new, g_new, b_new = colorsys.hsv_to_rgb(h, s, v)
-            adjusted_colors.append((
-                int(r_new * 255),
-                int(g_new * 255),
-                int(b_new * 255)
-            ))
-
-        return adjusted_colors
-
-    def map_colors(self, colors: List[Tuple[int, int, int]],
-                   color_map: Dict[str, str]) -> List[Tuple[int, int, int]]:
-        """Map specific colors to new colors."""
-        mapped_colors = []
-
-        # Parse color map (hex strings to RGB tuples)
-        rgb_map = {}
-        for src_hex, dst_hex in color_map.items():
-            src_rgb = self.hex_to_rgb(src_hex)
-            dst_rgb = self.hex_to_rgb(dst_hex)
-            rgb_map[src_rgb] = dst_rgb
-
-        for color in colors:
-            # Check if this exact color should be mapped
-            if color in rgb_map:
-                mapped_colors.append(rgb_map[color])
-            else:
-                # Check for close matches (within tolerance)
-                replaced = False
-                for src_color, dst_color in rgb_map.items():
-                    if self.colors_similar(color, src_color, tolerance=30):
-                        mapped_colors.append(dst_color)
-                        replaced = True
-                        break
-
-                if not replaced:
-                    mapped_colors.append(color)
-
-        return mapped_colors
-
-    def replace_color_range(self, colors: List[Tuple[int, int, int]],
-                           source_color: Tuple[int, int, int],
-                           target_color: Tuple[int, int, int],
-                           tolerance: int = 50) -> List[Tuple[int, int, int]]:
-        """Replace colors within a range of a source color with variations of target color."""
-        result_colors = []
-
-        # Convert source and target to HSV for better range matching
-        src_h, src_s, src_v = colorsys.rgb_to_hsv(source_color[0]/255, source_color[1]/255, source_color[2]/255)
-        tgt_h, tgt_s, tgt_v = colorsys.rgb_to_hsv(target_color[0]/255, target_color[1]/255, target_color[2]/255)
-
-        for r, g, b in colors:
-            # Check if color is within range of source color
-            if self.colors_similar((r, g, b), source_color, tolerance):
-                # Calculate how different this color is from source
-                h, s, v = colorsys.rgb_to_hsv(r/255, g/255, b/255)
-
-                # Apply the same relative difference to target color
-                v_ratio = v / src_v if src_v > 0 else 1
-                s_ratio = s / src_s if src_s > 0 else 1
-
-                new_h = tgt_h
-                new_s = min(1.0, tgt_s * s_ratio)
-                new_v = min(1.0, tgt_v * v_ratio)
-
-                # Convert back to RGB
-                r_new, g_new, b_new = colorsys.hsv_to_rgb(new_h, new_s, new_v)
-                result_colors.append((
-                    int(r_new * 255),
-                    int(g_new * 255),
-                    int(b_new * 255)
-                ))
-            else:
-                result_colors.append((r, g, b))
-
-        return result_colors
-
-    def colors_similar(self, c1: Tuple[int, int, int], c2: Tuple[int, int, int], tolerance: int) -> bool:
-        """Check if two colors are similar within a tolerance."""
-        return (abs(c1[0] - c2[0]) <= tolerance and
-                abs(c1[1] - c2[1]) <= tolerance and
-                abs(c1[2] - c2[2]) <= tolerance)
-
-    def hex_to_rgb(self, hex_color: str) -> Tuple[int, int, int]:
-        """Convert hex color string to RGB tuple."""
-        hex_color = hex_color.lstrip('#')
-        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-
-    def create_theme(self, source_theme: str, target_theme: str,
-                    transformation: str, **kwargs) -> None:
-        """Create a new theme by transforming an existing one."""
-        # Create source and target directories
+    def create_theme_with_indices(self, source_theme: str, target_theme: str,
+                                 index_sets: Dict[str, Set[int]],
+                                 color_map: Dict[str, Tuple[int, int, int]],
+                                 preserve_shading: bool = True) -> None:
+        """Create a theme by modifying specific indices."""
         source_dir = self.sprite_dir / f"sprites_{source_theme}"
         target_dir = self.sprite_dir / f"sprites_{target_theme}"
 
         if not source_dir.exists():
             raise ValueError(f"Source theme directory does not exist: {source_dir}")
 
-        # Create target directory
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        # Process each sprite file
         sprite_files = list(source_dir.glob("*.bin"))
         print(f"Processing {len(sprite_files)} sprite files...")
 
         for sprite_file in sprite_files:
             print(f"  Processing {sprite_file.name}...")
 
-            # Copy sprite to target directory
+            # Read sprite data
+            sprite_data = self.read_sprite(sprite_file)
+
+            # Apply transformations for each index set
+            for set_name, indices in index_sets.items():
+                if set_name in color_map:
+                    sprite_data = self.transform_indices(
+                        sprite_data, indices, color_map[set_name], preserve_shading
+                    )
+
+            # Write to target
             target_sprite = target_dir / sprite_file.name
-            shutil.copy2(sprite_file, target_sprite)
-
-            # Read palette
-            colors = self.read_palette(target_sprite)
-
-            # Apply transformation
-            if transformation == "hue_shift":
-                colors = self.hue_shift(colors, kwargs.get('degrees', 0),
-                                       kwargs.get('preserve_skin', True))
-            elif transformation == "hsv_adjust":
-                colors = self.adjust_hsv(colors,
-                                        kwargs.get('hue', 0),
-                                        kwargs.get('saturation', 0),
-                                        kwargs.get('brightness', 0),
-                                        kwargs.get('preserve_skin', True))
-            elif transformation == "color_map":
-                colors = self.map_colors(colors, kwargs.get('mappings', {}))
-            elif transformation == "color_range":
-                for replacement in kwargs.get('replacements', []):
-                    colors = self.replace_color_range(colors,
-                                                     replacement['source'],
-                                                     replacement['target'],
-                                                     replacement.get('tolerance', 50))
-            elif transformation == "clothing_items":
-                colors = self.transform_clothing_items(colors,
-                                                      kwargs.get('items', []),
-                                                      kwargs.get('target_color', (0, 0, 0)),
-                                                      kwargs.get('preserve_shading', True))
-            else:
-                raise ValueError(f"Unknown transformation: {transformation}")
-
-            # Write modified palette
-            self.write_palette(target_sprite, colors)
+            self.write_sprite(target_sprite, sprite_data)
 
         print(f"Theme '{target_theme}' created successfully in {target_dir}")
 
+    def analyze_sprite_indices(self, sprite_path: Path, indices: List[int]) -> None:
+        """Analyze specific indices in a sprite to see their colors."""
+        sprite_data = self.read_sprite(sprite_path)
+
+        print(f"\nAnalyzing indices in {sprite_path.name}:")
+        print("-" * 60)
+
+        for idx in indices:
+            r, g, b = self.get_color_at_index(sprite_data, idx)
+            h, s, v = colorsys.rgb_to_hsv(r/255, g/255, b/255)
+            print(f"  Index {idx:3d}: RGB({r:3d}, {g:3d}, {b:3d}) = #{r:02X}{g:02X}{b:02X}")
+            print(f"             HSV(H:{h*360:3.0f}°, S:{s:.2f}, V:{v:.2f})")
+
 def main():
-    parser = argparse.ArgumentParser(description="Generate new sprite color themes for FFT Color Mod")
-    parser.add_argument("--source", required=True, help="Source theme to base transformation on")
-    parser.add_argument("--name", required=True, help="Name for the new theme")
+    parser = argparse.ArgumentParser(description="Generate sprite themes using palette indices")
+    parser.add_argument("--source", help="Source theme name")
+    parser.add_argument("--name", help="New theme name")
 
-    # Transformation methods
-    parser.add_argument("--hue-shift", type=float, help="Shift hue by degrees (-180 to 180)")
-    parser.add_argument("--brightness", type=float, help="Adjust brightness (-100 to 100)")
-    parser.add_argument("--saturation", type=float, help="Adjust saturation (-100 to 100)")
-    parser.add_argument("--map", action="append", help="Map colors (format: #SOURCE:#TARGET)")
-    parser.add_argument("--palette", help="JSON file with color mappings")
-    parser.add_argument("--replace-range", action="append", help="Replace color range (format: #SOURCE:#TARGET:TOLERANCE)")
+    # Transformation options
+    parser.add_argument("--primary-color", help="Primary armor color (cape, clothing)")
+    parser.add_argument("--accent-color", help="Accent color (clasp, buckle, trim)")
+    parser.add_argument("--boots-color", help="Color for boots (hex format: #000000)")
+    parser.add_argument("--gloves-color", help="Color for gloves (hex format: #000000)")
+    parser.add_argument("--belt-color", help="Color for belt (hex format: #000000)")
+    parser.add_argument("--custom-indices", help="Custom indices to transform (comma-separated)")
+    parser.add_argument("--custom-color", help="Color for custom indices (hex format)")
 
-    # Clothing item transformation
-    parser.add_argument("--transform-items", help="Transform specific clothing items (comma-separated: boots,gloves,belt,armor,cape,hair)")
-    parser.add_argument("--item-color", help="Target color for item transformation (hex format: #000000 for black)")
+    # Analysis mode
+    parser.add_argument("--analyze", help="Analyze a sprite file")
+    parser.add_argument("--analyze-indices", help="Indices to analyze (comma-separated)")
 
     # Options
-    parser.add_argument("--no-preserve-skin", action="store_true", help="Don't preserve skin tones (by default, skin is preserved)")
-    parser.add_argument("--no-preserve-shading", action="store_true", help="Don't preserve shading on transformed items")
+    parser.add_argument("--no-preserve-shading", action="store_true", help="Don't preserve shading")
 
     args = parser.parse_args()
+    generator = IndexBasedThemeGenerator()
 
-    generator = SpriteThemeGenerator()
-    preserve_skin = not args.no_preserve_skin
+    if args.analyze and args.analyze_indices:
+        # Analysis mode
+        sprite_path = Path(args.analyze)
+        indices = [int(i) for i in args.analyze_indices.split(',')]
+        generator.analyze_sprite_indices(sprite_path, indices)
+        return 0
 
-    # Determine transformation type and parameters
-    if args.hue_shift is not None:
-        generator.create_theme(args.source, args.name, "hue_shift",
-                             degrees=args.hue_shift, preserve_skin=preserve_skin)
+    # Theme creation mode
+    index_sets = {}
+    color_map = {}
 
-    elif args.brightness is not None or args.saturation is not None:
-        generator.create_theme(args.source, args.name, "hsv_adjust",
-                             hue=0,
-                             saturation=args.saturation or 0,
-                             brightness=args.brightness or 0,
-                             preserve_skin=preserve_skin)
+    def hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
+        hex_color = hex_color.lstrip('#')
+        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
-    elif args.map:
-        # Parse color mappings
-        mappings = {}
-        for mapping in args.map:
-            src, dst = mapping.split(':')
-            mappings[src] = dst
-        generator.create_theme(args.source, args.name, "color_map", mappings=mappings)
+    # Build index sets based on arguments
+    if args.primary_color and args.accent_color:
+        # Two-tone theme with primary and accent colors
+        index_sets["primary"] = set(generator.ITEM_INDICES["primary"])
+        color_map["primary"] = hex_to_rgb(args.primary_color)
+        index_sets["accent"] = set(generator.ITEM_INDICES["accent"])
+        color_map["accent"] = hex_to_rgb(args.accent_color)
+    elif args.primary_color:
+        # Single color theme (primary only, applied to all armor)
+        index_sets["all_armor"] = set(generator.ITEM_INDICES["armor_all"])
+        color_map["all_armor"] = hex_to_rgb(args.primary_color)
 
-    elif args.palette:
-        # Load palette from JSON file
-        with open(args.palette, 'r') as f:
-            palette_data = json.load(f)
+    if args.boots_color:
+        index_sets["boots"] = set(generator.ITEM_INDICES.get("generic_boots", []))
+        color_map["boots"] = hex_to_rgb(args.boots_color)
 
-        if 'mappings' in palette_data:
-            generator.create_theme(args.source, args.name, "color_map", mappings=palette_data['mappings'])
-        elif 'replacements' in palette_data:
-            # Process color range replacements
-            replacements = []
-            for repl in palette_data['replacements']:
-                replacements.append({
-                    'source': generator.hex_to_rgb(repl['source']),
-                    'target': generator.hex_to_rgb(repl['target']),
-                    'tolerance': repl.get('tolerance', 50)
-                })
-            generator.create_theme(args.source, args.name, "color_range", replacements=replacements)
+    if args.gloves_color:
+        index_sets["gloves"] = set(generator.ITEM_INDICES.get("generic_gloves", []))
+        color_map["gloves"] = hex_to_rgb(args.gloves_color)
 
-    elif args.replace_range:
-        # Parse color range replacements
-        replacements = []
-        for replacement in args.replace_range:
-            parts = replacement.split(':')
-            if len(parts) >= 2:
-                replacements.append({
-                    'source': generator.hex_to_rgb(parts[0]),
-                    'target': generator.hex_to_rgb(parts[1]),
-                    'tolerance': int(parts[2]) if len(parts) > 2 else 50
-                })
-        generator.create_theme(args.source, args.name, "color_range", replacements=replacements)
+    if args.belt_color:
+        index_sets["belt"] = set(generator.ITEM_INDICES.get("generic_belt", []))
+        color_map["belt"] = hex_to_rgb(args.belt_color)
 
-    elif args.transform_items and args.item_color:
-        # Transform specific clothing items
-        items = [item.strip().lower() for item in args.transform_items.split(',')]
-        target_color = generator.hex_to_rgb(args.item_color)
-        preserve_shading = not args.no_preserve_shading
+    if args.custom_indices and args.custom_color:
+        indices = set(int(i) for i in args.custom_indices.split(','))
+        index_sets["custom"] = indices
+        color_map["custom"] = hex_to_rgb(args.custom_color)
 
-        generator.create_theme(args.source, args.name, "clothing_items",
-                             items=items,
-                             target_color=target_color,
-                             preserve_shading=preserve_shading)
-
-    else:
-        print("Error: Must specify a transformation method (--hue-shift, --brightness, --saturation, --map, --palette, --replace-range, or --transform-items with --item-color)")
+    if not index_sets:
+        print("Error: No transformations specified")
         return 1
+
+    if not args.source or not args.name:
+        print("Error: --source and --name are required for theme creation")
+        return 1
+
+    generator.create_theme_with_indices(
+        args.source, args.name, index_sets, color_map,
+        preserve_shading=not args.no_preserve_shading
+    )
 
     return 0
 
