@@ -94,7 +94,7 @@ public class Mod : IMod
         _hotkeyHandler.StartMonitoring();
 
         Console.WriteLine("[FFT Color Mod] Loaded successfully!");
-        Console.WriteLine("[FFT Color Mod] Press F1 to cycle through color schemes");
+        Console.WriteLine("[FFT Color Mod] Press F1 (previous) or F2 (next) to cycle through color schemes");
         File.AppendAllText(logPath, $"[{DateTime.Now}] FFT Color Mod loaded successfully!\n");
     }
 
@@ -208,12 +208,33 @@ public class Mod : IMod
     public void ProcessHotkeyPress(int vkCode)
     {
         const int VK_F1 = 0x70;
+        const int VK_F2 = 0x71;
 
         if (vkCode == VK_F1)
         {
+            // Cycle to previous color
+            string previousColor = _colorCycler.GetPreviousScheme();
+            Console.WriteLine($"[FFT Color Mod] Cycling backward to {previousColor}");
+            SetColorScheme(previousColor);
+
+            // Simulate menu refresh to update sprites immediately
+            Console.WriteLine($"[FFT Color Mod] InputSimulator is {(_inputSimulator != null ? "available" : "NULL")}");
+            if (_inputSimulator != null)
+            {
+                Console.WriteLine("[FFT Color Mod] Calling SimulateMenuRefresh...");
+                bool result = _inputSimulator.SimulateMenuRefresh();
+                Console.WriteLine($"[FFT Color Mod] SimulateMenuRefresh returned: {result}");
+            }
+            else
+            {
+                Console.WriteLine("[FFT Color Mod] WARNING: InputSimulator is null!");
+            }
+        }
+        else if (vkCode == VK_F2)
+        {
             // Cycle to next color
             string nextColor = _colorCycler.GetNextScheme();
-            Console.WriteLine($"[FFT Color Mod] Cycling to {nextColor}");
+            Console.WriteLine($"[FFT Color Mod] Cycling forward to {nextColor}");
             SetColorScheme(nextColor);
 
             // Simulate menu refresh to update sprites immediately

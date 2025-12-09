@@ -56,6 +56,22 @@ namespace FFTColorMod
             return _schemes[currentIndex + 1];
         }
 
+        public string GetPreviousScheme()
+        {
+            // TLDR: Return previous color scheme in cycle
+            if (_schemes.Count == 0)
+            {
+                return _currentScheme; // No schemes available, return current
+            }
+
+            int currentIndex = _schemes.IndexOf(_currentScheme);
+            if (currentIndex == -1 || currentIndex == 0)
+            {
+                return _schemes[_schemes.Count - 1];
+            }
+            return _schemes[currentIndex - 1];
+        }
+
         public List<string> GetAvailableSchemes()
         {
             // TLDR: Return list of available color schemes

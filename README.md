@@ -4,7 +4,7 @@ Custom color palettes for Final Fantasy Tactics (Steam) using professionally edi
 
 ## Features
 
-- **F1 Hotkey**: Cycle through 20 unique color schemes in-game
+- **F1/F2 Hotkeys**: F1 cycles backward, F2 cycles forward through 20 unique color schemes in-game
 - **Persistent**: Color choices persist between game sessions (file-based swapping)
 - **38 Sprites Modified**: All major job classes included
 - **Custom Themes**: 14 new color schemes beyond the original 6
@@ -19,7 +19,9 @@ Custom color palettes for Final Fantasy Tactics (Steam) using professionally edi
 
 ## Usage
 
-Press **F1** in-game to cycle through color schemes. Changes apply immediately.
+- Press **F1** to cycle backward through color schemes
+- Press **F2** to cycle forward through color schemes
+- Changes apply immediately when you click on a unit after pressing the hotkey
 
 ## Building from Source
 

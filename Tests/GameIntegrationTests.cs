@@ -450,9 +450,9 @@ public class GameIntegrationTests
     }
 
     [Fact]
-    public void Mod_F1_Should_Cycle_Through_Color_Schemes()
+    public void Mod_F1_Should_Cycle_Through_Color_Schemes_Backward()
     {
-        // TLDR: Test that F1 cycles through color schemes
+        // TLDR: Test that F1 cycles backward through color schemes
         var mod = new Mod();
 
         // Reset to original
@@ -461,28 +461,28 @@ public class GameIntegrationTests
         // Initial state should be original
         mod.GetCurrentColorScheme().Should().Be("original");
 
-        // Press F1 - should cycle to corpse_brigade (skipping default now)
+        // Press F1 - should cycle backward to last scheme (southern_sky)
         mod.ProcessHotkeyPress(0x70); // F1 key
-        mod.GetCurrentColorScheme().Should().Be("corpse_brigade");
+        mod.GetCurrentColorScheme().Should().Be("southern_sky");
 
-        // Press F1 again - should cycle to lucavi
+        // Press F1 again - should cycle backward to smoke
         mod.ProcessHotkeyPress(0x70); // F1 key
-        mod.GetCurrentColorScheme().Should().Be("lucavi");
+        mod.GetCurrentColorScheme().Should().Be("smoke");
     }
 
     [Fact]
-    public void Mod_Hotkey_1_Should_Cycle_Colors()
+    public void Mod_Hotkey_F1_Should_Cycle_Colors_Backward()
     {
-        // TLDR: When F1 key is pressed, mod should cycle to next color scheme
+        // TLDR: When F1 key is pressed, mod should cycle backward to previous color scheme
         // Arrange
         var mod = new Mod();
         mod.InitializeGameIntegration();
 
-        // Act - Simulate F1 key press via ProcessHotkey (cycles from original to corpse_brigade)
+        // Act - Simulate F1 key press via ProcessHotkey (cycles backward from original to southern_sky)
         mod.ProcessHotkeyPress(0x70); // F1 key
 
-        // Assert - Verify cycled to corpse_brigade color scheme
+        // Assert - Verify cycled backward to southern_sky color scheme
         var currentScheme = mod.GetCurrentColorScheme();
-        currentScheme.Should().Be("corpse_brigade");
+        currentScheme.Should().Be("southern_sky");
     }
 }

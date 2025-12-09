@@ -86,5 +86,29 @@ namespace FFTColorMod.Tests
 
             current.Should().Be("lucavi");
         }
+
+        [Fact]
+        public void GetPreviousScheme_CyclesBackward()
+        {
+            // TLDR: Test cycling backward from corpse_brigade to amethyst
+            var cycler = new ColorSchemeCycler(_testPath);
+            cycler.SetCurrentScheme("corpse_brigade");
+
+            string previous = cycler.GetPreviousScheme();
+
+            previous.Should().Be("amethyst");
+        }
+
+        [Fact]
+        public void GetPreviousScheme_WrapsAroundToLastScheme()
+        {
+            // TLDR: Test cycling backward from original wraps to last scheme
+            var cycler = new ColorSchemeCycler(_testPath);
+            cycler.SetCurrentScheme("original");
+
+            string previous = cycler.GetPreviousScheme();
+
+            previous.Should().Be("lucavi"); // Last scheme alphabetically
+        }
     }
 }
