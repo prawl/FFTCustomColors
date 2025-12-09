@@ -177,6 +177,12 @@ These indices were discovered by analyzing existing working themes (corpse_briga
 - Palettes 8-15: Portraits
 - Each palette: 2 bytes per color (XBBBBBGGGGGRRRRR format)
 
+**CRITICAL DISCOVERY (2024-12-09): Cape Edge Colors Use Multiple Palettes**
+- Cape edges use indices 7, 9, and 51-62 from MULTIPLE palettes (not just palette 0)
+- The game renders cape edges using colors from palettes 1, 2, and 3 in addition to palette 0
+- This is why cape edges remained bright white even when modifying palette 0
+- **Solution**: Must modify the same indices (7, 9, 51-62) across ALL unit palettes (0-7)
+
 **How Color Mods Work**:
 1. The mod physically swaps entire sprite files when you press F1
 2. Each color scheme (corpse_brigade, lucavi, etc.) has its own set of 38 sprite files
