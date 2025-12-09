@@ -56,6 +56,7 @@ if ($LASTEXITCODE -eq 0) {
             $colorVariants = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_*" |
                 ForEach-Object { $_.Name }
 
+            $emptyDirs = @()
             foreach ($variant in $colorVariants) {
                 $sourcePath = "ColorMod/FFTIVC/data/enhanced/fftpack/unit/$variant"
                 $destPath = "$spritePath/$variant"
@@ -71,10 +72,20 @@ if ($LASTEXITCODE -eq 0) {
                         $variantCount = (Get-ChildItem "$destPath/*.bin" -ErrorAction SilentlyContinue | Measure-Object).Count
                         Write-Host "  Variant $variant has $variantCount modified sprite(s)" -ForegroundColor Green
                     } else {
-                        Write-Host "  Variant $variant has no modified sprites" -ForegroundColor Yellow
+                        Write-Host "  Variant $variant has no modified sprites - will be deleted" -ForegroundColor Yellow
+                        $emptyDirs += $destPath
                     }
                 } else {
                     Write-Host "  Variant directory $variant not found in source" -ForegroundColor Yellow
+                }
+            }
+
+            # Delete empty sprite directories
+            if ($emptyDirs.Count -gt 0) {
+                Write-Host "`nCleaning up empty sprite directories..." -ForegroundColor Yellow
+                foreach ($emptyDir in $emptyDirs) {
+                    Remove-Item $emptyDir -Force -Recurse -ErrorAction SilentlyContinue
+                    Write-Host "  Deleted: $(Split-Path $emptyDir -Leaf)" -ForegroundColor Gray
                 }
             }
         }
@@ -98,19 +109,19 @@ if ($LASTEXITCODE -eq 0) {
     }
 
     # Check each color variant directory
-    # We expect at least 1 modified sprite per variant (the knight sprite)
+    # Only check directories that exist (empty ones were deleted)
     # Auto-discover all sprite variant directories (excluding sprites_original and sprites_default)
-    $colorVariants = Get-ChildItem "$mainSpriteDir" -Directory -Filter "sprites_*" |
+    $colorVariants = Get-ChildItem "$mainSpriteDir" -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -ne "sprites_original" -and $_.Name -ne "sprites_default" } |
         ForEach-Object { $_.Name }
     foreach ($variant in $colorVariants) {
         $variantDir = "$mainSpriteDir/$variant"
-        if (!(Test-Path $variantDir)) {
-            $verificationErrors += "Variant directory missing: $variantDir"
-        } else {
+        # Only verify directories that exist (empty ones should have been deleted)
+        if (Test-Path $variantDir) {
             $variantSpriteCount = (Get-ChildItem "$variantDir/*.bin" -ErrorAction SilentlyContinue | Measure-Object).Count
             if ($variantSpriteCount -eq 0) {
-                $verificationErrors += "Variant $variant has no sprite files"
+                # This shouldn't happen since we delete empty directories
+                $verificationErrors += "Variant $variant exists but has no sprite files (should have been deleted)"
             } else {
                 Write-Host "  [OK] Variant $variant has $variantSpriteCount modified sprite(s)" -ForegroundColor Green
             }
