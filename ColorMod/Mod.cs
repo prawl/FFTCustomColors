@@ -94,7 +94,7 @@ public class Mod : IMod, IConfigurable
 
         // Load saved configuration
         var loadedConfig = _configurationManager.LoadConfig();
-        Console.WriteLine($"[FFT Color Mod] Loaded config - KnightMale: {loadedConfig.KnightMale}");
+        Console.WriteLine($"[FFT Color Mod] Loaded config - Knight_Male: {loadedConfig.Knight_Male}");
         _configBasedSpriteManager.ApplyConfiguration();
 
         // Initialize input simulator if not provided (for testing)
