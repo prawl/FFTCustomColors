@@ -137,8 +137,8 @@ namespace FFTColorMod.Configuration
         {
             foreach (var config in Configurations)
             {
-                if (config is Config cfg)
-                    cfg.Save();
+                // Call the Save action from IConfigurable interface
+                (config as IConfigurable)?.Save?.Invoke();
             }
         }
 

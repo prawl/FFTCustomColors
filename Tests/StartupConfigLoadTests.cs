@@ -1,0 +1,97 @@
+using System;
+using System.IO;
+using System.Text.Json;
+using System.Reflection;
+using Xunit;
+using FFTColorMod.Configuration;
+
+namespace FFTColorMod.Tests
+{
+    public class StartupConfigLoadTests : IDisposable
+    {
+        private readonly string _originalLocation;
+        private readonly string _testRoot;
+        private readonly string _testModDir;
+        private readonly string _testUserDir;
+        private readonly string _modConfigPath;
+        private readonly string _userConfigPath;
+
+        public StartupConfigLoadTests()
+        {
+            // Save original assembly location
+            _originalLocation = Assembly.GetExecutingAssembly().Location;
+
+            // Simulate Reloaded-II directory structure
+            _testRoot = Path.Combine(Path.GetTempPath(), $"test_startup_{Guid.NewGuid()}");
+
+            // Mod installation directory
+            _testModDir = Path.Combine(_testRoot, "Mods", "FFT_Color_Mod");
+            _modConfigPath = Path.Combine(_testModDir, "Config.json");
+
+            // User configuration directory
+            _testUserDir = Path.Combine(_testRoot, "User", "Mods", "ptyra.fft.colormod");
+            _userConfigPath = Path.Combine(_testUserDir, "Config.json");
+
+            Directory.CreateDirectory(_testModDir);
+            Directory.CreateDirectory(_testUserDir);
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_testRoot))
+                Directory.Delete(_testRoot, true);
+        }
+
+        [Fact]
+        public void Startup_ShouldLoadConfigFromUserDirectory()
+        {
+            // Arrange
+            // User has configured corpse_brigade for Squire
+            var userSettings = @"{
+                ""SquireMale"": ""corpse_brigade"",
+                ""KnightFemale"": ""emerald_dragon""
+            }";
+            File.WriteAllText(_userConfigPath, userSettings);
+
+            // Mod directory has defaults (all zeros/original)
+            var defaultSettings = @"{
+                ""Squire_Male"": 0,
+                ""Knight_Female"": 0
+            }";
+            File.WriteAllText(_modConfigPath, defaultSettings);
+
+            // Act - Simulate what StartEx NOW does (CORRECT!)
+            var modDirectory = _testModDir;  // This simulates getting the mod's install directory
+
+            // Calculate the User config directory (like Startup.cs does now)
+            var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modDirectory));
+            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colormod");
+
+            var configurator = new Configurator(userConfigDir);  // Now using User directory!
+            var config = configurator.GetConfiguration<Config>(0);
+
+            // Assert - THIS SHOULD FAIL because we're loading from the wrong place
+            Assert.NotNull(config);
+
+            // These assertions SHOULD pass but will FAIL because of the bug
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)1, config.Squire_Male);   // Should be corpse_brigade but gets original!
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)12, config.Knight_Female); // Should be emerald_dragon but gets original!
+        }
+
+        [Fact]
+        public void ConfigDirectory_PathCalculation_IsCorrect()
+        {
+            // Given a mod installed at standard Reloaded location
+            var modDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFT_Color_Mod";
+
+            // The user config should be at
+            var expectedUserDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\ptyra.fft.colormod";
+
+            // Calculate it the way we do in code
+            var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modDir));
+            var actualUserDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colormod");
+
+            Assert.Equal(expectedUserDir, actualUserDir);
+        }
+    }
+}

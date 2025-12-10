@@ -35,7 +35,13 @@ public class Startup : IMod
         // Need a different name, format or more configurations? Modify the `Configurator`.
         // If you do not want a config, remove Configuration folder and Config class.
         var modDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        var configurator = new Configurator(modDirectory);
+
+        // Calculate the User config directory where Reloaded-II actually stores user configs
+        var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modDirectory));
+        var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colormod");
+
+        // Load configuration from the User directory, not the mod directory
+        var configurator = new Configurator(userConfigDir);
         _configuration = configurator.GetConfiguration<Config>(0);
         _configuration.ConfigurationUpdated += OnConfigurationUpdated;
 
@@ -59,8 +65,33 @@ public class Startup : IMod
     private void OnConfigurationUpdated(Reloaded.Mod.Interfaces.IUpdatableConfigurable config)
     {
         _configuration = (Config)config;
+
+        // Calculate the User config directory path
+        // From: .../Reloaded/Mods/FFT_Color_Mod/
+        // To:   .../Reloaded/User/Mods/ptyra.fft.colormod/Config.json
+        var modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "";
+        var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modPath));
+        var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colormod");
+        var userConfigPath = Path.Combine(userConfigDir, "Config.json");
+
+        // Manually serialize and save to the USER directory where Reloaded-II reads from
+        try
+        {
+            Directory.CreateDirectory(userConfigDir);
+            var json = System.Text.Json.JsonSerializer.Serialize(_configuration,
+                Configuration.Configurable<Config>.SerializerOptions);
+            File.WriteAllText(userConfigPath, json);
+            Console.WriteLine($"[FFTColorMod] Configuration saved to USER directory: {userConfigPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FFTColorMod] Failed to save configuration: {ex.Message}");
+        }
+
+        // Then notify the mod
         _mod?.ConfigurationUpdated(_configuration);
-        Console.WriteLine("[FFTColorMod] Configuration updated!");
+
+        Console.WriteLine("[FFTColorMod] Configuration updated and saved!");
     }
 
     private void StartHotkeyMonitoring()

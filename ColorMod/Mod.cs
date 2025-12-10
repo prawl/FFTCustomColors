@@ -86,8 +86,9 @@ public class Mod : IMod, IConfigurable
         _spriteFileManager = new SpriteFileManager(modPath);
 
         // Initialize configuration-based sprite management
+        // Use Config.json (capital C) to match Reloaded-II convention
         string configPath = Environment.GetEnvironmentVariable("FFT_CONFIG_PATH") ??
-                           Path.Combine(modPath, "config.json");
+                           Path.Combine(modPath, "Config.json");
         Console.WriteLine($"[FFT Color Mod] Loading config from: {configPath}");
         _configurationManager = new ConfigurationManager(configPath);
         _configBasedSpriteManager = new ConfigBasedSpriteManager(modPath, _configurationManager);
@@ -305,9 +306,10 @@ public class Mod : IMod, IConfigurable
     {
         // Check if this matches any of the job sprite patterns
         var jobPatterns = new[] {
+            "battle_mina_",   // Squire - MUST BE FIRST for proper interception
             "battle_knight_", "battle_yumi_", "battle_item_", "battle_monk_",
             "battle_siro_", "battle_kuro_", "battle_thief_", "battle_ninja_",
-            "battle_mina_", "battle_toki_", "battle_syou_", "battle_samu_",
+            "battle_toki_", "battle_syou_", "battle_samu_",
             "battle_ryu_", "battle_fusui_", "battle_onmyo_", "battle_waju_",
             "battle_odori_", "battle_gin_", "battle_mono_", "battle_san_"
         };
@@ -398,8 +400,8 @@ public class Mod : IMod, IConfigurable
         // Initialize configuration manager if not already initialized
         if (_configurationManager == null)
         {
-            var modPath = _modPath ?? Path.GetTempPath();
-            var defaultPath = Path.Combine(modPath, "config.json");
+            var modPath = _modPath ?? Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Path.GetTempPath();
+            var defaultPath = Path.Combine(modPath, "Config.json");
             InitializeConfiguration(defaultPath);
         }
 
@@ -410,5 +412,6 @@ public class Mod : IMod, IConfigurable
         _configBasedSpriteManager?.ApplyConfiguration();
 
         Console.WriteLine("[FFT Color Mod] Configuration updated from Reloaded-II UI");
+        Console.WriteLine($"[FFT Color Mod] Squire_Male set to: {configuration.Squire_Male}");
     }
 } 
