@@ -1,7 +1,7 @@
 using System;
+using FFTColorMod.Configuration;
 using System.Reflection;
 using Xunit;
-using Reloaded.Mod.Interfaces.Config;
 
 namespace FFTColorMod.Tests
 {
@@ -11,7 +11,7 @@ namespace FFTColorMod.Tests
         public void CheckConfigurableClass()
         {
             // Try to find the Configurable<T> class
-            var configurableType = typeof(Configurable<>);
+            var configurableType = typeof(FFTColorMod.Configuration.Configurable<>);
 
             Console.WriteLine($"Found type: {configurableType.FullName}");
             Console.WriteLine($"Assembly: {configurableType.Assembly.FullName}");

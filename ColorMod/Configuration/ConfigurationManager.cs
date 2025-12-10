@@ -79,10 +79,14 @@ namespace FFTColorMod.Configuration
             var config = LoadConfig();
             var propertyInfo = typeof(Config).GetProperty(jobProperty);
 
-            if (propertyInfo != null && propertyInfo.PropertyType == typeof(string))
+            if (propertyInfo != null && propertyInfo.PropertyType == typeof(ColorScheme))
             {
-                propertyInfo.SetValue(config, colorScheme);
-                SaveConfig(config);
+                // Parse the string to ColorScheme enum
+                if (Enum.TryParse<ColorScheme>(colorScheme, true, out var colorSchemeEnum))
+                {
+                    propertyInfo.SetValue(config, colorSchemeEnum);
+                    SaveConfig(config);
+                }
             }
         }
 
@@ -126,63 +130,63 @@ namespace FFTColorMod.Configuration
             var mappings = new Dictionary<string, string>
             {
                 // Knights
-                ["knight_m"] = "KnightMale",
-                ["knight_w"] = "KnightFemale",
+                ["knight_m"] = "Knight_Male",
+                ["knight_w"] = "Knight_Female",
                 // Archers (yumi)
-                ["yumi_m"] = "ArcherMale",
-                ["yumi_w"] = "ArcherFemale",
+                ["yumi_m"] = "Archer_Male",
+                ["yumi_w"] = "Archer_Female",
                 // Chemists (item)
-                ["item_m"] = "ChemistMale",
-                ["item_w"] = "ChemistFemale",
+                ["item_m"] = "Chemist_Male",
+                ["item_w"] = "Chemist_Female",
                 // Monks
-                ["monk_m"] = "MonkMale",
-                ["monk_w"] = "MonkFemale",
+                ["monk_m"] = "Monk_Male",
+                ["monk_w"] = "Monk_Female",
                 // White Mages (siro)
-                ["siro_m"] = "WhiteMageMale",
-                ["siro_w"] = "WhiteMageFemale",
+                ["siro_m"] = "WhiteMage_Male",
+                ["siro_w"] = "WhiteMage_Female",
                 // Black Mages (kuro)
-                ["kuro_m"] = "BlackMageMale",
-                ["kuro_w"] = "BlackMageFemale",
+                ["kuro_m"] = "BlackMage_Male",
+                ["kuro_w"] = "BlackMage_Female",
                 // Thieves
-                ["thief_m"] = "ThiefMale",
-                ["thief_w"] = "ThiefFemale",
+                ["thief_m"] = "Thief_Male",
+                ["thief_w"] = "Thief_Female",
                 // Ninjas
-                ["ninja_m"] = "NinjaMale",
-                ["ninja_w"] = "NinjaFemale",
+                ["ninja_m"] = "Ninja_Male",
+                ["ninja_w"] = "Ninja_Female",
                 // Squires (mina)
-                ["mina_m"] = "SquireMale",
-                ["mina_w"] = "SquireFemale",
+                ["mina_m"] = "Squire_Male",
+                ["mina_w"] = "Squire_Female",
                 // Time Mages (toki)
-                ["toki_m"] = "TimeMageMale",
-                ["toki_w"] = "TimeMageFemale",
+                ["toki_m"] = "TimeMage_Male",
+                ["toki_w"] = "TimeMage_Female",
                 // Summoners (syou)
-                ["syou_m"] = "SummonerMale",
-                ["syou_w"] = "SummonerFemale",
+                ["syou_m"] = "Summoner_Male",
+                ["syou_w"] = "Summoner_Female",
                 // Samurai (samu)
-                ["samu_m"] = "SamuraiMale",
-                ["samu_w"] = "SamuraiFemale",
+                ["samu_m"] = "Samurai_Male",
+                ["samu_w"] = "Samurai_Female",
                 // Dragoons (ryu)
-                ["ryu_m"] = "DragoonMale",
-                ["ryu_w"] = "DragoonFemale",
+                ["ryu_m"] = "Dragoon_Male",
+                ["ryu_w"] = "Dragoon_Female",
                 // Geomancers (fusui)
-                ["fusui_m"] = "GeomancerMale",
-                ["fusui_w"] = "GeomancerFemale",
+                ["fusui_m"] = "Geomancer_Male",
+                ["fusui_w"] = "Geomancer_Female",
                 // Oracles/Mystics (onmyo)
-                ["onmyo_m"] = "MysticMale",
-                ["onmyo_w"] = "MysticFemale",
+                ["onmyo_m"] = "Mystic_Male",
+                ["onmyo_w"] = "Mystic_Female",
                 // Mediators/Orators (waju)
-                ["waju_m"] = "MediatorMale",
-                ["waju_w"] = "MediatorFemale",
+                ["waju_m"] = "Mediator_Male",
+                ["waju_w"] = "Mediator_Female",
                 // Dancers (odori - female only)
-                ["odori_w"] = "DancerFemale",
+                ["odori_w"] = "Dancer_Female",
                 // Bards (gin - male only)
-                ["gin_m"] = "BardMale",
+                ["gin_m"] = "Bard_Male",
                 // Mimes (mono)
-                ["mono_m"] = "MimeMale",
-                ["mono_w"] = "MimeFemale",
+                ["mono_m"] = "Mime_Male",
+                ["mono_w"] = "Mime_Female",
                 // Calculators (san)
-                ["san_m"] = "CalculatorMale",
-                ["san_w"] = "CalculatorFemale"
+                ["san_m"] = "Calculator_Male",
+                ["san_w"] = "Calculator_Female"
             };
 
             foreach (var mapping in mappings)

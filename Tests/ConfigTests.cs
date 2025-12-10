@@ -7,63 +7,63 @@ namespace FFTColorMod.Tests
     {
         [Theory]
         // Knights
-        [InlineData("battle_knight_m_spr.bin", "KnightMale")]
-        [InlineData("battle_knight_w_spr.bin", "KnightFemale")]
+        [InlineData("battle_knight_m_spr.bin", "Knight_Male")]
+        [InlineData("battle_knight_w_spr.bin", "Knight_Female")]
         // Archers (yumi = bow)
-        [InlineData("battle_yumi_m_spr.bin", "ArcherMale")]
-        [InlineData("battle_yumi_w_spr.bin", "ArcherFemale")]
+        [InlineData("battle_yumi_m_spr.bin", "Archer_Male")]
+        [InlineData("battle_yumi_w_spr.bin", "Archer_Female")]
         // Chemists (item)
-        [InlineData("battle_item_m_spr.bin", "ChemistMale")]
-        [InlineData("battle_item_w_spr.bin", "ChemistFemale")]
+        [InlineData("battle_item_m_spr.bin", "Chemist_Male")]
+        [InlineData("battle_item_w_spr.bin", "Chemist_Female")]
         // Monks
-        [InlineData("battle_monk_m_spr.bin", "MonkMale")]
-        [InlineData("battle_monk_w_spr.bin", "MonkFemale")]
+        [InlineData("battle_monk_m_spr.bin", "Monk_Male")]
+        [InlineData("battle_monk_w_spr.bin", "Monk_Female")]
         // White Mages (siro)
-        [InlineData("battle_siro_m_spr.bin", "WhiteMageMale")]
-        [InlineData("battle_siro_w_spr.bin", "WhiteMageFemale")]
+        [InlineData("battle_siro_m_spr.bin", "WhiteMage_Male")]
+        [InlineData("battle_siro_w_spr.bin", "WhiteMage_Female")]
         // Black Mages (kuro)
-        [InlineData("battle_kuro_m_spr.bin", "BlackMageMale")]
-        [InlineData("battle_kuro_w_spr.bin", "BlackMageFemale")]
+        [InlineData("battle_kuro_m_spr.bin", "BlackMage_Male")]
+        [InlineData("battle_kuro_w_spr.bin", "BlackMage_Female")]
         // Thieves
-        [InlineData("battle_thief_m_spr.bin", "ThiefMale")]
-        [InlineData("battle_thief_w_spr.bin", "ThiefFemale")]
+        [InlineData("battle_thief_m_spr.bin", "Thief_Male")]
+        [InlineData("battle_thief_w_spr.bin", "Thief_Female")]
         // Ninjas
-        [InlineData("battle_ninja_m_spr.bin", "NinjaMale")]
-        [InlineData("battle_ninja_w_spr.bin", "NinjaFemale")]
+        [InlineData("battle_ninja_m_spr.bin", "Ninja_Male")]
+        [InlineData("battle_ninja_w_spr.bin", "Ninja_Female")]
         // Squires (mina)
-        [InlineData("battle_mina_m_spr.bin", "SquireMale")]
-        [InlineData("battle_mina_w_spr.bin", "SquireFemale")]
+        [InlineData("battle_mina_m_spr.bin", "Squire_Male")]
+        [InlineData("battle_mina_w_spr.bin", "Squire_Female")]
         // Time Mages (toki)
-        [InlineData("battle_toki_m_spr.bin", "TimeMageMale")]
-        [InlineData("battle_toki_w_spr.bin", "TimeMageFemale")]
+        [InlineData("battle_toki_m_spr.bin", "TimeMage_Male")]
+        [InlineData("battle_toki_w_spr.bin", "TimeMage_Female")]
         // Summoners (syou)
-        [InlineData("battle_syou_m_spr.bin", "SummonerMale")]
-        [InlineData("battle_syou_w_spr.bin", "SummonerFemale")]
+        [InlineData("battle_syou_m_spr.bin", "Summoner_Male")]
+        [InlineData("battle_syou_w_spr.bin", "Summoner_Female")]
         // Samurai (samu)
-        [InlineData("battle_samu_m_spr.bin", "SamuraiMale")]
-        [InlineData("battle_samu_w_spr.bin", "SamuraiFemale")]
+        [InlineData("battle_samu_m_spr.bin", "Samurai_Male")]
+        [InlineData("battle_samu_w_spr.bin", "Samurai_Female")]
         // Dragoons (ryu)
-        [InlineData("battle_ryu_m_spr.bin", "DragoonMale")]
-        [InlineData("battle_ryu_w_spr.bin", "DragoonFemale")]
+        [InlineData("battle_ryu_m_spr.bin", "Dragoon_Male")]
+        [InlineData("battle_ryu_w_spr.bin", "Dragoon_Female")]
         // Geomancers (fusui)
-        [InlineData("battle_fusui_m_spr.bin", "GeomancerMale")]
-        [InlineData("battle_fusui_w_spr.bin", "GeomancerFemale")]
+        [InlineData("battle_fusui_m_spr.bin", "Geomancer_Male")]
+        [InlineData("battle_fusui_w_spr.bin", "Geomancer_Female")]
         // Oracles/Mystics (onmyo)
-        [InlineData("battle_onmyo_m_spr.bin", "MysticMale")]
-        [InlineData("battle_onmyo_w_spr.bin", "MysticFemale")]
+        [InlineData("battle_onmyo_m_spr.bin", "Mystic_Male")]
+        [InlineData("battle_onmyo_w_spr.bin", "Mystic_Female")]
         // Mediators/Orators (waju)
-        [InlineData("battle_waju_m_spr.bin", "MediatorMale")]
-        [InlineData("battle_waju_w_spr.bin", "MediatorFemale")]
+        [InlineData("battle_waju_m_spr.bin", "Mediator_Male")]
+        [InlineData("battle_waju_w_spr.bin", "Mediator_Female")]
         // Dancers (odori - female only)
-        [InlineData("battle_odori_w_spr.bin", "DancerFemale")]
+        [InlineData("battle_odori_w_spr.bin", "Dancer_Female")]
         // Bards (gin - male only)
-        [InlineData("battle_gin_m_spr.bin", "BardMale")]
+        [InlineData("battle_gin_m_spr.bin", "Bard_Male")]
         // Mimes (mono)
-        [InlineData("battle_mono_m_spr.bin", "MimeMale")]
-        [InlineData("battle_mono_w_spr.bin", "MimeFemale")]
+        [InlineData("battle_mono_m_spr.bin", "Mime_Male")]
+        [InlineData("battle_mono_w_spr.bin", "Mime_Female")]
         // Calculators/Arithmeticians (san)
-        [InlineData("battle_san_m_spr.bin", "CalculatorMale")]
-        [InlineData("battle_san_w_spr.bin", "CalculatorFemale")]
+        [InlineData("battle_san_m_spr.bin", "Calculator_Male")]
+        [InlineData("battle_san_w_spr.bin", "Calculator_Female")]
         public void GetColorForSprite_ShouldMapCorrectly(string spriteName, string expectedProperty)
         {
             // Arrange
@@ -72,13 +72,13 @@ namespace FFTColorMod.Tests
             // Set a unique color for each property to verify correct mapping
             var propertyInfo = typeof(Config).GetProperty(expectedProperty);
             Assert.NotNull(propertyInfo); // Verify the property exists
-            propertyInfo.SetValue(config, "test_color");
+            propertyInfo.SetValue(config, (Configuration.ColorScheme)1); // Use ColorScheme enum value
 
             // Act
             var result = config.GetColorForSprite(spriteName);
 
             // Assert
-            Assert.Equal("test_color", result);
+            Assert.Equal("Corpse Brigade", result); // ColorScheme.ToString() returns Description attribute
         }
 
         [Theory]
@@ -94,7 +94,7 @@ namespace FFTColorMod.Tests
             var result = config.GetColorForSprite(spriteName);
 
             // Assert
-            Assert.Equal("original", result);
+            Assert.Equal("Original", result); // ColorScheme.original.ToString() returns "Original"
         }
 
         [Fact]
@@ -103,45 +103,45 @@ namespace FFTColorMod.Tests
             // Arrange & Act
             var config = new Config();
 
-            // Assert - verify all job properties are initialized to "original"
-            Assert.Equal("original", config.KnightMale);
-            Assert.Equal("original", config.KnightFemale);
-            Assert.Equal("original", config.ArcherMale);
-            Assert.Equal("original", config.ArcherFemale);
-            Assert.Equal("original", config.MonkMale);
-            Assert.Equal("original", config.MonkFemale);
-            Assert.Equal("original", config.WhiteMageMale);
-            Assert.Equal("original", config.WhiteMageFemale);
-            Assert.Equal("original", config.BlackMageMale);
-            Assert.Equal("original", config.BlackMageFemale);
-            Assert.Equal("original", config.ThiefMale);
-            Assert.Equal("original", config.ThiefFemale);
-            Assert.Equal("original", config.NinjaMale);
-            Assert.Equal("original", config.NinjaFemale);
-            Assert.Equal("original", config.SquireMale);
-            Assert.Equal("original", config.SquireFemale);
-            Assert.Equal("original", config.TimeMageMale);
-            Assert.Equal("original", config.TimeMageFemale);
-            Assert.Equal("original", config.SummonerMale);
-            Assert.Equal("original", config.SummonerFemale);
-            Assert.Equal("original", config.SamuraiMale);
-            Assert.Equal("original", config.SamuraiFemale);
-            Assert.Equal("original", config.DragoonMale);
-            Assert.Equal("original", config.DragoonFemale);
-            Assert.Equal("original", config.ChemistMale);
-            Assert.Equal("original", config.ChemistFemale);
-            Assert.Equal("original", config.GeomancerMale);
-            Assert.Equal("original", config.GeomancerFemale);
-            Assert.Equal("original", config.MysticMale);
-            Assert.Equal("original", config.MysticFemale);
-            Assert.Equal("original", config.MediatorMale);
-            Assert.Equal("original", config.MediatorFemale);
-            Assert.Equal("original", config.DancerFemale);
-            Assert.Equal("original", config.BardMale);
-            Assert.Equal("original", config.MimeMale);
-            Assert.Equal("original", config.MimeFemale);
-            Assert.Equal("original", config.CalculatorMale);
-            Assert.Equal("original", config.CalculatorFemale);
+            // Assert - verify all job properties are initialized to ColorScheme.original
+            Assert.Equal((Configuration.ColorScheme)0, config.Knight_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Knight_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Archer_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Archer_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Monk_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Monk_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.WhiteMage_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.WhiteMage_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.BlackMage_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.BlackMage_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Thief_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Thief_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Ninja_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Ninja_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Squire_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Squire_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.TimeMage_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.TimeMage_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Summoner_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Summoner_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Samurai_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Samurai_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Dragoon_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Dragoon_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Chemist_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Chemist_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Geomancer_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Geomancer_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Mystic_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Mystic_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Mediator_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Mediator_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Dancer_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Bard_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Mime_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Mime_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Calculator_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Calculator_Female);
         }
     }
 }

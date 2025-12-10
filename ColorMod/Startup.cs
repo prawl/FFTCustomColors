@@ -34,7 +34,8 @@ public class Startup : IMod
         // Your config file is in Config.json.
         // Need a different name, format or more configurations? Modify the `Configurator`.
         // If you do not want a config, remove Configuration folder and Config class.
-        var configurator = new Configurator(((IModLoader)_modLoader).GetModConfigDirectory(_modConfig.ModId));
+        var modDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+        var configurator = new Configurator(modDirectory);
         _configuration = configurator.GetConfiguration<Config>(0);
         _configuration.ConfigurationUpdated += OnConfigurationUpdated;
 

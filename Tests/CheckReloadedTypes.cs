@@ -1,4 +1,5 @@
 using System;
+using FFTColorMod.Configuration;
 using System.Linq;
 using Xunit;
 
@@ -9,8 +10,8 @@ namespace FFTColorMod.Tests
         [Fact]
         public void FindConfigurableTypes()
         {
-            // Check what's available in the Reloaded.Mod.Loader.IO assembly
-            var assembly = typeof(Reloaded.Mod.Loader.IO.Config.Configurable<>).Assembly;
+            // Check what's available in the Reloaded.Mod.Interfaces assembly
+            var assembly = typeof(Reloaded.Mod.Interfaces.IConfiguratorV3).Assembly;
 
             Console.WriteLine($"Assembly: {assembly.FullName}");
             Console.WriteLine("\nTypes containing 'Config':");

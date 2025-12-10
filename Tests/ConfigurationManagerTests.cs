@@ -31,9 +31,9 @@ namespace FFTColorMod.Tests
 
             // Assert
             Assert.NotNull(config);
-            Assert.Equal("original", config.KnightMale);
-            Assert.Equal("original", config.ArcherFemale);
-            Assert.Equal("original", config.MonkMale);
+            Assert.Equal((Configuration.ColorScheme)0, config.Knight_Male);
+            Assert.Equal((Configuration.ColorScheme)0, config.Archer_Female);
+            Assert.Equal((Configuration.ColorScheme)0, config.Monk_Male);
         }
 
         [Fact]
@@ -42,9 +42,9 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                KnightMale = "corpse_brigade",
-                ArcherFemale = "lucavi",
-                MonkMale = "northern_sky"
+                Knight_Male = (Configuration.ColorScheme)1,
+                Archer_Female = (Configuration.ColorScheme)2,
+                Monk_Male = (Configuration.ColorScheme)3
             };
 
             // Act
@@ -55,9 +55,9 @@ namespace FFTColorMod.Tests
             var savedContent = File.ReadAllText(_testConfigPath);
             var loadedConfig = JsonConvert.DeserializeObject<Config>(savedContent);
 
-            Assert.Equal("corpse_brigade", loadedConfig.KnightMale);
-            Assert.Equal("lucavi", loadedConfig.ArcherFemale);
-            Assert.Equal("northern_sky", loadedConfig.MonkMale);
+            Assert.Equal((Configuration.ColorScheme)1, loadedConfig.Knight_Male);
+            Assert.Equal((Configuration.ColorScheme)2, loadedConfig.Archer_Female);
+            Assert.Equal((Configuration.ColorScheme)3, loadedConfig.Monk_Male);
         }
 
         [Fact]
@@ -66,9 +66,9 @@ namespace FFTColorMod.Tests
             // Arrange
             var originalConfig = new Config
             {
-                KnightMale = "smoke",
-                ArcherFemale = "southern_sky",
-                WhiteMageMale = "crimson_red"
+                Knight_Male = (Configuration.ColorScheme)4,
+                Archer_Female = (Configuration.ColorScheme)5,
+                WhiteMage_Male = (Configuration.ColorScheme)6
             };
             _configManager.SaveConfig(originalConfig);
 
@@ -76,11 +76,11 @@ namespace FFTColorMod.Tests
             var loadedConfig = _configManager.LoadConfig();
 
             // Assert
-            Assert.Equal("smoke", loadedConfig.KnightMale);
-            Assert.Equal("southern_sky", loadedConfig.ArcherFemale);
-            Assert.Equal("crimson_red", loadedConfig.WhiteMageMale);
+            Assert.Equal((Configuration.ColorScheme)4, loadedConfig.Knight_Male);
+            Assert.Equal((Configuration.ColorScheme)5, loadedConfig.Archer_Female);
+            Assert.Equal((Configuration.ColorScheme)6, loadedConfig.WhiteMage_Male);
             // Other properties should still have default values
-            Assert.Equal("original", loadedConfig.BlackMageFemale);
+            Assert.Equal((Configuration.ColorScheme)0, loadedConfig.BlackMage_Female); // original - default value
         }
 
         [Fact]
@@ -89,8 +89,8 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                KnightMale = "royal_purple",
-                DragoonFemale = "phoenix_flame"
+                Knight_Male = (Configuration.ColorScheme)7,    // royal_purple
+                Dragoon_Female = (Configuration.ColorScheme)8  // phoenix_flame
             };
             _configManager.SaveConfig(config);
 
@@ -100,9 +100,9 @@ namespace FFTColorMod.Tests
             var unknownColor = _configManager.GetColorSchemeForSprite("unknown_sprite.bin");
 
             // Assert
-            Assert.Equal("royal_purple", knightColor);
-            Assert.Equal("phoenix_flame", dragoonColor);
-            Assert.Equal("original", unknownColor);
+            Assert.Equal("Royal Purple", knightColor);
+            Assert.Equal("Phoenix Flame", dragoonColor);
+            Assert.Equal("Original", unknownColor);
         }
 
         [Fact]
@@ -113,14 +113,14 @@ namespace FFTColorMod.Tests
             _configManager.SaveConfig(config);
 
             // Act
-            _configManager.SetColorSchemeForJob("KnightMale", "frost_knight");
-            _configManager.SetColorSchemeForJob("ArcherFemale", "silver_knight");
+            _configManager.SetColorSchemeForJob("Knight_Male", "frost_knight");
+            _configManager.SetColorSchemeForJob("Archer_Female", "silver_knight");
 
             // Assert
             var updatedConfig = _configManager.LoadConfig();
-            Assert.Equal("frost_knight", updatedConfig.KnightMale);
-            Assert.Equal("silver_knight", updatedConfig.ArcherFemale);
-            Assert.Equal("original", updatedConfig.MonkMale); // Should remain unchanged
+            Assert.Equal((Configuration.ColorScheme)9, updatedConfig.Knight_Male);   // frost_knight
+            Assert.Equal((Configuration.ColorScheme)10, updatedConfig.Archer_Female); // silver_knight
+            Assert.Equal((Configuration.ColorScheme)0, updatedConfig.Monk_Male);      // original - unchanged
         }
 
         [Fact]
@@ -149,10 +149,10 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                KnightMale = "corpse_brigade",
-                ArcherFemale = "lucavi",
-                MonkMale = "northern_sky",
-                ThiefFemale = "smoke"
+                Knight_Male = (Configuration.ColorScheme)1,   // corpse_brigade
+                Archer_Female = (Configuration.ColorScheme)2,  // lucavi
+                Monk_Male = (Configuration.ColorScheme)3,     // northern_sky
+                Thief_Female = (Configuration.ColorScheme)4      // smoke
             };
             _configManager.SaveConfig(config);
 
@@ -161,10 +161,10 @@ namespace FFTColorMod.Tests
 
             // Assert
             var resetConfig = _configManager.LoadConfig();
-            Assert.Equal("original", resetConfig.KnightMale);
-            Assert.Equal("original", resetConfig.ArcherFemale);
-            Assert.Equal("original", resetConfig.MonkMale);
-            Assert.Equal("original", resetConfig.ThiefFemale);
+            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Knight_Male);   // original
+            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Archer_Female); // original
+            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Monk_Male);     // original
+            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Thief_Female);  // original
         }
 
         [Fact]
@@ -178,16 +178,16 @@ namespace FFTColorMod.Tests
 
             // Assert
             Assert.NotNull(config);
-            Assert.Equal("original", config.KnightMale); // Should return default config
+            Assert.Equal((Configuration.ColorScheme)0, config.Knight_Male); // Should return default config
         }
 
         [Fact]
         public void GetJobPropertyForSprite_ReturnsCorrectPropertyName()
         {
             // Act & Assert
-            Assert.Equal("KnightMale", _configManager.GetJobPropertyForSprite("battle_knight_m_spr.bin"));
-            Assert.Equal("ArcherFemale", _configManager.GetJobPropertyForSprite("battle_yumi_w_spr.bin"));
-            Assert.Equal("MonkMale", _configManager.GetJobPropertyForSprite("battle_monk_m_spr.bin"));
+            Assert.Equal("Knight_Male", _configManager.GetJobPropertyForSprite("battle_knight_m_spr.bin"));
+            Assert.Equal("Archer_Female", _configManager.GetJobPropertyForSprite("battle_yumi_w_spr.bin"));
+            Assert.Equal("Monk_Male", _configManager.GetJobPropertyForSprite("battle_monk_m_spr.bin"));
             Assert.Null(_configManager.GetJobPropertyForSprite("unknown_sprite.bin"));
         }
     }

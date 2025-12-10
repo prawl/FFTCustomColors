@@ -1,4 +1,5 @@
 using System;
+using FFTColorMod.Configuration;
 using System.Linq;
 using System.Reflection;
 using Xunit;

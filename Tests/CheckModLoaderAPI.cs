@@ -1,8 +1,10 @@
 using System;
+using FFTColorMod.Configuration;
 using System.Linq;
 using System.Reflection;
 using Xunit;
 using Reloaded.Mod.Interfaces;
+using Reloaded.Mod.Interfaces.Internal;
 
 namespace FFTColorMod.Tests
 {

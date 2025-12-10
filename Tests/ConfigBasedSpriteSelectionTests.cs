@@ -81,8 +81,8 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                KnightMale = "corpse_brigade",
-                ArcherFemale = "lucavi"
+                Knight_Male = (Configuration.ColorScheme)1, // corpse_brigade
+                Archer_Female = (Configuration.ColorScheme)2  // lucavi
             };
             _configManager.SaveConfig(config);
 
@@ -107,9 +107,9 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                KnightMale = "northern_sky",
-                ArcherFemale = "corpse_brigade",
-                MonkMale = "lucavi"
+                Knight_Male = (Configuration.ColorScheme)3, // northern_sky
+                Archer_Female = (Configuration.ColorScheme)1, // corpse_brigade
+                Monk_Male = (Configuration.ColorScheme)2     // lucavi
             };
             _configManager.SaveConfig(config);
             var unitDir = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -133,20 +133,20 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                KnightMale = "corpse_brigade",
-                DragoonFemale = "northern_sky"
+                Knight_Male = (Configuration.ColorScheme)1,   // corpse_brigade
+                Dragoon_Female = (Configuration.ColorScheme)3  // northern_sky
             };
             _configManager.SaveConfig(config);
 
             // Act
-            var knightColor = _spriteManager.GetActiveColorForJob("KnightMale");
-            var dragoonColor = _spriteManager.GetActiveColorForJob("DragoonFemale");
-            var monkColor = _spriteManager.GetActiveColorForJob("MonkMale");
+            var knightColor = _spriteManager.GetActiveColorForJob("Knight_Male");
+            var dragoonColor = _spriteManager.GetActiveColorForJob("Dragoon_Female");
+            var monkColor = _spriteManager.GetActiveColorForJob("Monk_Male");
 
             // Assert
-            Assert.Equal("corpse_brigade", knightColor);
-            Assert.Equal("northern_sky", dragoonColor);
-            Assert.Equal("original", monkColor);
+            Assert.Equal("Corpse Brigade", knightColor);
+            Assert.Equal("Northern Sky", dragoonColor);
+            Assert.Equal("Original", monkColor);
         }
 
         [Fact]
@@ -156,11 +156,11 @@ namespace FFTColorMod.Tests
             var unitDir = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
             // Act
-            _spriteManager.SetColorForJob("KnightMale", "lucavi");
+            _spriteManager.SetColorForJob("Knight_Male", "lucavi");
 
             // Assert - Config should be updated
             var config = _configManager.LoadConfig();
-            Assert.Equal("lucavi", config.KnightMale);
+            Assert.Equal((Configuration.ColorScheme)2, config.Knight_Male); // lucavi
 
             // Assert - Sprite should be swapped
             var knightContent = File.ReadAllText(Path.Combine(unitDir, "battle_knight_m_spr.bin"));
@@ -173,9 +173,9 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                KnightMale = "corpse_brigade",
-                ArcherFemale = "lucavi",
-                MonkMale = "northern_sky"
+                Knight_Male = (Configuration.ColorScheme)1,   // corpse_brigade
+                Archer_Female = (Configuration.ColorScheme)2,  // lucavi
+                Monk_Male = (Configuration.ColorScheme)3       // northern_sky
             };
             _configManager.SaveConfig(config);
             _spriteManager.ApplyConfiguration();
@@ -187,9 +187,9 @@ namespace FFTColorMod.Tests
 
             // Assert - Config should be reset
             var resetConfig = _configManager.LoadConfig();
-            Assert.Equal("original", resetConfig.KnightMale);
-            Assert.Equal("original", resetConfig.ArcherFemale);
-            Assert.Equal("original", resetConfig.MonkMale);
+            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Knight_Male);   // original
+            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Archer_Female); // original
+            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Monk_Male);     // original
 
             // Assert - Sprites should be original
             var knightContent = File.ReadAllText(Path.Combine(unitDir, "battle_knight_m_spr.bin"));
@@ -205,10 +205,10 @@ namespace FFTColorMod.Tests
         public void GetJobFromSpriteName_ReturnsCorrectJobProperty()
         {
             // Act & Assert
-            Assert.Equal("KnightMale", _spriteManager.GetJobFromSpriteName("battle_knight_m_spr.bin"));
-            Assert.Equal("ArcherFemale", _spriteManager.GetJobFromSpriteName("battle_yumi_w_spr.bin"));
-            Assert.Equal("MonkMale", _spriteManager.GetJobFromSpriteName("battle_monk_m_spr.bin"));
-            Assert.Equal("TimeMageFemale", _spriteManager.GetJobFromSpriteName("battle_toki_w_spr.bin"));
+            Assert.Equal("Knight_Male", _spriteManager.GetJobFromSpriteName("battle_knight_m_spr.bin"));
+            Assert.Equal("Archer_Female", _spriteManager.GetJobFromSpriteName("battle_yumi_w_spr.bin"));
+            Assert.Equal("Monk_Male", _spriteManager.GetJobFromSpriteName("battle_monk_m_spr.bin"));
+            Assert.Equal("TimeMage_Female", _spriteManager.GetJobFromSpriteName("battle_toki_w_spr.bin"));
             Assert.Null(_spriteManager.GetJobFromSpriteName("unknown_sprite.bin"));
         }
     }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using FFTColorMod.Configuration;
 using System.IO;
 using Xunit;
 using FluentAssertions;

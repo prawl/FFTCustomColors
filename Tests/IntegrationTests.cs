@@ -1,4 +1,5 @@
 using Xunit;
+using FFTColorMod.Configuration;
 using System.IO;
 
 namespace FFTColorMod.Tests

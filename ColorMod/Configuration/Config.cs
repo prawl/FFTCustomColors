@@ -221,122 +221,122 @@ namespace FFTColorMod.Configuration
 
             // Knights
             if (spriteName.Contains("knight_m"))
-                return Knight_Male.ToString();
+                return Knight_Male.GetDescription();
             if (spriteName.Contains("knight_w"))
-                return Knight_Female.ToString();
+                return Knight_Female.GetDescription();
 
             // Archers (yumi = bow in Japanese)
             if (spriteName.Contains("yumi_m"))
-                return Archer_Male.ToString();
+                return Archer_Male.GetDescription();
             if (spriteName.Contains("yumi_w"))
-                return Archer_Female.ToString();
+                return Archer_Female.GetDescription();
 
             // Chemists (item)
             if (spriteName.Contains("item_m"))
-                return Chemist_Male.ToString();
+                return Chemist_Male.GetDescription();
             if (spriteName.Contains("item_w"))
-                return Chemist_Female.ToString();
+                return Chemist_Female.GetDescription();
 
             // Monks
             if (spriteName.Contains("monk_m"))
-                return Monk_Male.ToString();
+                return Monk_Male.GetDescription();
             if (spriteName.Contains("monk_w"))
-                return Monk_Female.ToString();
+                return Monk_Female.GetDescription();
 
             // White Mages (siro)
             if (spriteName.Contains("siro_m"))
-                return WhiteMage_Male.ToString();
+                return WhiteMage_Male.GetDescription();
             if (spriteName.Contains("siro_w"))
-                return WhiteMage_Female.ToString();
+                return WhiteMage_Female.GetDescription();
 
             // Black Mages (kuro)
             if (spriteName.Contains("kuro_m"))
-                return BlackMage_Male.ToString();
+                return BlackMage_Male.GetDescription();
             if (spriteName.Contains("kuro_w"))
-                return BlackMage_Female.ToString();
+                return BlackMage_Female.GetDescription();
 
             // Thieves
             if (spriteName.Contains("thief_m"))
-                return Thief_Male.ToString();
+                return Thief_Male.GetDescription();
             if (spriteName.Contains("thief_w"))
-                return Thief_Female.ToString();
+                return Thief_Female.GetDescription();
 
             // Ninjas
             if (spriteName.Contains("ninja_m"))
-                return Ninja_Male.ToString();
+                return Ninja_Male.GetDescription();
             if (spriteName.Contains("ninja_w"))
-                return Ninja_Female.ToString();
+                return Ninja_Female.GetDescription();
 
             // Squires (mina)
             if (spriteName.Contains("mina_m"))
-                return Squire_Male.ToString();
+                return Squire_Male.GetDescription();
             if (spriteName.Contains("mina_w"))
-                return Squire_Female.ToString();
+                return Squire_Female.GetDescription();
 
             // Time Mages (toki)
             if (spriteName.Contains("toki_m"))
-                return TimeMage_Male.ToString();
+                return TimeMage_Male.GetDescription();
             if (spriteName.Contains("toki_w"))
-                return TimeMage_Female.ToString();
+                return TimeMage_Female.GetDescription();
 
             // Summoners (syou)
             if (spriteName.Contains("syou_m"))
-                return Summoner_Male.ToString();
+                return Summoner_Male.GetDescription();
             if (spriteName.Contains("syou_w"))
-                return Summoner_Female.ToString();
+                return Summoner_Female.GetDescription();
 
             // Samurai (samu)
             if (spriteName.Contains("samu_m"))
-                return Samurai_Male.ToString();
+                return Samurai_Male.GetDescription();
             if (spriteName.Contains("samu_w"))
-                return Samurai_Female.ToString();
+                return Samurai_Female.GetDescription();
 
             // Dragoons (ryu)
             if (spriteName.Contains("ryu_m"))
-                return Dragoon_Male.ToString();
+                return Dragoon_Male.GetDescription();
             if (spriteName.Contains("ryu_w"))
-                return Dragoon_Female.ToString();
+                return Dragoon_Female.GetDescription();
 
             // Geomancers (fusui)
             if (spriteName.Contains("fusui_m"))
-                return Geomancer_Male.ToString();
+                return Geomancer_Male.GetDescription();
             if (spriteName.Contains("fusui_w"))
-                return Geomancer_Female.ToString();
+                return Geomancer_Female.GetDescription();
 
             // Oracles/Mystics (onmyo)
             if (spriteName.Contains("onmyo_m"))
-                return Mystic_Male.ToString();
+                return Mystic_Male.GetDescription();
             if (spriteName.Contains("onmyo_w"))
-                return Mystic_Female.ToString();
+                return Mystic_Female.GetDescription();
 
             // Mediators/Orators (waju)
             if (spriteName.Contains("waju_m"))
-                return Mediator_Male.ToString();
+                return Mediator_Male.GetDescription();
             if (spriteName.Contains("waju_w"))
-                return Mediator_Female.ToString();
+                return Mediator_Female.GetDescription();
 
             // Dancers (odori - female only)
             if (spriteName.Contains("odori_w"))
-                return Dancer_Female.ToString();
+                return Dancer_Female.GetDescription();
 
             // Bards (gin - male only)
             if (spriteName.Contains("gin_m"))
-                return Bard_Male.ToString();
+                return Bard_Male.GetDescription();
 
             // Mimes (mono)
             if (spriteName.Contains("mono_m"))
-                return Mime_Male.ToString();
+                return Mime_Male.GetDescription();
             if (spriteName.Contains("mono_w"))
-                return Mime_Female.ToString();
+                return Mime_Female.GetDescription();
 
             // Calculators/Arithmeticians (san)
             if (spriteName.Contains("san_m"))
-                return Calculator_Male.ToString();
+                return Calculator_Male.GetDescription();
             if (spriteName.Contains("san_w"))
-                return Calculator_Female.ToString();
+                return Calculator_Female.GetDescription();
 
             // Default to original if no mapping found
-            return "original";
+            return ColorScheme.original.GetDescription();
         }
     }
 }

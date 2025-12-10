@@ -334,17 +334,34 @@ public class Mod : IMod, IConfigurable
     public Dictionary<string, string> GetAllJobColors()
     {
         var result = new Dictionary<string, string>();
+
+        // Always load or create a config
+        Config config = null;
         if (_configurationManager != null)
         {
-            var config = _configurationManager.LoadConfig();
-            var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(string) &&
-                           (p.Name.EndsWith("Male") || p.Name.EndsWith("Female")));
+            config = _configurationManager.LoadConfig();
+        }
+        else
+        {
+            // Create a default config if no manager
+            config = new Config();
+        }
 
-            foreach (var property in properties)
+        // Get all job properties
+        var properties = typeof(Config).GetProperties()
+            .Where(p => p.PropertyType == typeof(Configuration.ColorScheme) &&
+                       (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
+
+        foreach (var property in properties)
+        {
+            var value = property.GetValue(config);
+            if (value is Configuration.ColorScheme colorScheme)
             {
-                var value = property.GetValue(config) as string;
-                result[property.Name] = string.IsNullOrEmpty(value) ? "original" : value;
+                result[property.Name] = colorScheme.GetDescription(); // Returns Description attribute
+            }
+            else
+            {
+                result[property.Name] = "Original";
             }
         }
         return result;
@@ -381,7 +398,8 @@ public class Mod : IMod, IConfigurable
         // Initialize configuration manager if not already initialized
         if (_configurationManager == null)
         {
-            var defaultPath = Path.Combine(_modPath, "config.json");
+            var modPath = _modPath ?? Path.GetTempPath();
+            var defaultPath = Path.Combine(modPath, "config.json");
             InitializeConfiguration(defaultPath);
         }
 

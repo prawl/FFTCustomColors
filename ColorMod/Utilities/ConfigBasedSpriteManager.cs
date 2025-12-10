@@ -34,8 +34,13 @@ namespace FFTColorMod.Utilities
             if (propertyInfo == null)
                 return originalPath;
 
-            var colorScheme = propertyInfo.GetValue(config) as string;
-            if (string.IsNullOrEmpty(colorScheme) || colorScheme == "original")
+            var colorSchemeEnum = propertyInfo.GetValue(config);
+            if (colorSchemeEnum == null || !(colorSchemeEnum is Configuration.ColorScheme))
+                return originalPath;
+
+            var colorSchemeValue = ((Configuration.ColorScheme)colorSchemeEnum);
+            var colorScheme = colorSchemeValue.ToString(); // Use enum name for file paths
+            if (colorScheme == "original")
             {
                 // For "original" scheme, return the path unchanged
                 return originalPath;
@@ -68,14 +73,14 @@ namespace FFTColorMod.Utilities
 
             // Get all properties of Config that represent job colors
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(string) &&
-                           (p.Name.EndsWith("Male") || p.Name.EndsWith("Female")));
+                .Where(p => p.PropertyType == typeof(Configuration.ColorScheme) &&
+                           (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
 
             foreach (var property in properties)
             {
-                var colorScheme = property.GetValue(config) as string;
-                if (string.IsNullOrEmpty(colorScheme) || colorScheme == "original")
-                    colorScheme = "original";
+                var colorSchemeEnum = property.GetValue(config) as Configuration.ColorScheme?;
+                var colorScheme = colorSchemeEnum?.ToString() ?? "original"; // Use enum name for file paths
+                // No need to check for "Original" anymore
 
                 // Get the sprite name for this job/gender
                 var spriteName = GetSpriteNameForJob(property.Name);
@@ -110,44 +115,44 @@ namespace FFTColorMod.Utilities
         {
             return jobProperty switch
             {
-                "KnightMale" => "battle_knight_m_spr.bin",
-                "KnightFemale" => "battle_knight_w_spr.bin",
-                "ArcherMale" => "battle_yumi_m_spr.bin",
-                "ArcherFemale" => "battle_yumi_w_spr.bin",
-                "ChemistMale" => "battle_item_m_spr.bin",
-                "ChemistFemale" => "battle_item_w_spr.bin",
-                "MonkMale" => "battle_monk_m_spr.bin",
-                "MonkFemale" => "battle_monk_w_spr.bin",
-                "WhiteMageMale" => "battle_siro_m_spr.bin",
-                "WhiteMageFemale" => "battle_siro_w_spr.bin",
-                "BlackMageMale" => "battle_kuro_m_spr.bin",
-                "BlackMageFemale" => "battle_kuro_w_spr.bin",
-                "ThiefMale" => "battle_thief_m_spr.bin",
-                "ThiefFemale" => "battle_thief_w_spr.bin",
-                "NinjaMale" => "battle_ninja_m_spr.bin",
-                "NinjaFemale" => "battle_ninja_w_spr.bin",
-                "SquireMale" => "battle_mina_m_spr.bin",
-                "SquireFemale" => "battle_mina_w_spr.bin",
-                "TimeMageMale" => "battle_toki_m_spr.bin",
-                "TimeMageFemale" => "battle_toki_w_spr.bin",
-                "SummonerMale" => "battle_syou_m_spr.bin",
-                "SummonerFemale" => "battle_syou_w_spr.bin",
-                "SamuraiMale" => "battle_samu_m_spr.bin",
-                "SamuraiFemale" => "battle_samu_w_spr.bin",
-                "DragoonMale" => "battle_ryu_m_spr.bin",
-                "DragoonFemale" => "battle_ryu_w_spr.bin",
-                "GeomancerMale" => "battle_fusui_m_spr.bin",
-                "GeomancerFemale" => "battle_fusui_w_spr.bin",
-                "MysticMale" => "battle_onmyo_m_spr.bin",
-                "MysticFemale" => "battle_onmyo_w_spr.bin",
-                "MediatorMale" => "battle_waju_m_spr.bin",
-                "MediatorFemale" => "battle_waju_w_spr.bin",
-                "DancerFemale" => "battle_odori_w_spr.bin",
-                "BardMale" => "battle_gin_m_spr.bin",
-                "MimeMale" => "battle_mono_m_spr.bin",
-                "MimeFemale" => "battle_mono_w_spr.bin",
-                "CalculatorMale" => "battle_san_m_spr.bin",
-                "CalculatorFemale" => "battle_san_w_spr.bin",
+                "Knight_Male" => "battle_knight_m_spr.bin",
+                "Knight_Female" => "battle_knight_w_spr.bin",
+                "Archer_Male" => "battle_yumi_m_spr.bin",
+                "Archer_Female" => "battle_yumi_w_spr.bin",
+                "Chemist_Male" => "battle_item_m_spr.bin",
+                "Chemist_Female" => "battle_item_w_spr.bin",
+                "Monk_Male" => "battle_monk_m_spr.bin",
+                "Monk_Female" => "battle_monk_w_spr.bin",
+                "WhiteMage_Male" => "battle_siro_m_spr.bin",
+                "WhiteMage_Female" => "battle_siro_w_spr.bin",
+                "BlackMage_Male" => "battle_kuro_m_spr.bin",
+                "BlackMage_Female" => "battle_kuro_w_spr.bin",
+                "Thief_Male" => "battle_thief_m_spr.bin",
+                "Thief_Female" => "battle_thief_w_spr.bin",
+                "Ninja_Male" => "battle_ninja_m_spr.bin",
+                "Ninja_Female" => "battle_ninja_w_spr.bin",
+                "Squire_Male" => "battle_mina_m_spr.bin",
+                "Squire_Female" => "battle_mina_w_spr.bin",
+                "TimeMage_Male" => "battle_toki_m_spr.bin",
+                "TimeMage_Female" => "battle_toki_w_spr.bin",
+                "Summoner_Male" => "battle_syou_m_spr.bin",
+                "Summoner_Female" => "battle_syou_w_spr.bin",
+                "Samurai_Male" => "battle_samu_m_spr.bin",
+                "Samurai_Female" => "battle_samu_w_spr.bin",
+                "Dragoon_Male" => "battle_ryu_m_spr.bin",
+                "Dragoon_Female" => "battle_ryu_w_spr.bin",
+                "Geomancer_Male" => "battle_fusui_m_spr.bin",
+                "Geomancer_Female" => "battle_fusui_w_spr.bin",
+                "Mystic_Male" => "battle_onmyo_m_spr.bin",
+                "Mystic_Female" => "battle_onmyo_w_spr.bin",
+                "Mediator_Male" => "battle_waju_m_spr.bin",
+                "Mediator_Female" => "battle_waju_w_spr.bin",
+                "Dancer_Female" => "battle_odori_w_spr.bin",
+                "Bard_Male" => "battle_gin_m_spr.bin",
+                "Mime_Male" => "battle_mono_m_spr.bin",
+                "Mime_Female" => "battle_mono_w_spr.bin",
+                "Calculator_Male" => "battle_san_m_spr.bin",
+                "Calculator_Female" => "battle_san_w_spr.bin",
                 _ => null
             };
         }
@@ -159,8 +164,8 @@ namespace FFTColorMod.Utilities
             if (propertyInfo == null)
                 return "original";
 
-            var colorScheme = propertyInfo.GetValue(config) as string;
-            return string.IsNullOrEmpty(colorScheme) ? "original" : colorScheme;
+            var colorSchemeEnum = propertyInfo.GetValue(config) as Configuration.ColorScheme?;
+            return colorSchemeEnum?.GetDescription() ?? "Original"; // This method returns display name, not file name
         }
 
         public void SetColorForJob(string jobProperty, string colorScheme)

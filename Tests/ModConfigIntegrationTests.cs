@@ -88,7 +88,7 @@ namespace FFTColorMod.Tests
             var mod = new Mod(_modContext, _inputSimulator);
 
             // Set knight to corpse_brigade via config
-            mod.SetJobColor("KnightMale", "corpse_brigade");
+            mod.SetJobColor("Knight_Male", "corpse_brigade");
 
             // Act
             var interceptedPath = mod.InterceptFilePath(@"C:\Game\data\battle_knight_m_spr.bin");
@@ -107,11 +107,11 @@ namespace FFTColorMod.Tests
             var mod = new Mod(_modContext, _inputSimulator);
 
             // Act
-            mod.SetJobColor("ArcherFemale", "lucavi");
-            var color = mod.GetJobColor("ArcherFemale");
+            mod.SetJobColor("Archer_Female", "lucavi");
+            var color = mod.GetJobColor("Archer_Female");
 
             // Assert
-            Assert.Equal("lucavi", color);
+            Assert.Equal("Lucavi", color);  // GetJobColor returns string
         }
 
         [Fact]
@@ -122,16 +122,16 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
             var mod = new Mod(_modContext, _inputSimulator);
-            mod.SetJobColor("KnightMale", "corpse_brigade");
-            mod.SetJobColor("ArcherFemale", "lucavi");
+            mod.SetJobColor("Knight_Male", "corpse_brigade");
+            mod.SetJobColor("Archer_Female", "lucavi");
 
             // Act
             var jobColors = mod.GetAllJobColors();
 
             // Assert
-            Assert.Equal("corpse_brigade", jobColors["KnightMale"]);
-            Assert.Equal("lucavi", jobColors["ArcherFemale"]);
-            Assert.Equal("original", jobColors["MonkMale"]);
+            Assert.Equal("Corpse Brigade", jobColors["Knight_Male"]);
+            Assert.Equal("Lucavi", jobColors["Archer_Female"]);
+            Assert.Equal("Original", jobColors["Monk_Male"]);
         }
 
         [Fact]
@@ -157,8 +157,8 @@ namespace FFTColorMod.Tests
             // Arrange - Create a config file first
             var config = new Config
             {
-                KnightMale = "lucavi",
-                MonkFemale = "corpse_brigade"
+                Knight_Male = (Configuration.ColorScheme)2,    // lucavi
+                Monk_Female = (Configuration.ColorScheme)1     // corpse_brigade
             };
 
             var configManager = new ConfigurationManager(_testConfigPath);
@@ -171,8 +171,8 @@ namespace FFTColorMod.Tests
             var mod = new Mod(_modContext, _inputSimulator);
 
             // Assert - Configuration should be loaded
-            Assert.Equal("lucavi", mod.GetJobColor("KnightMale"));
-            Assert.Equal("corpse_brigade", mod.GetJobColor("MonkFemale"));
+            Assert.Equal("Lucavi", mod.GetJobColor("Knight_Male"));
+            Assert.Equal("Corpse Brigade", mod.GetJobColor("Monk_Female"));
         }
 
         [Fact]
@@ -183,15 +183,15 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
             var mod = new Mod(_modContext, _inputSimulator);
-            mod.SetJobColor("KnightMale", "corpse_brigade");
-            mod.SetJobColor("ArcherFemale", "lucavi");
+            mod.SetJobColor("Knight_Male", "corpse_brigade");
+            mod.SetJobColor("Archer_Female", "lucavi");
 
             // Act
             mod.ResetAllColors();
 
             // Assert
-            Assert.Equal("original", mod.GetJobColor("KnightMale"));
-            Assert.Equal("original", mod.GetJobColor("ArcherFemale"));
+            Assert.Equal("Original", mod.GetJobColor("Knight_Male"));
+            Assert.Equal("Original", mod.GetJobColor("Archer_Female"));
         }
     }
 

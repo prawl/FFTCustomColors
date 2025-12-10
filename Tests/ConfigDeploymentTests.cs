@@ -37,8 +37,8 @@ namespace FFTColorMod.Tests
                 // Assert
                 Assert.NotNull(config);
                 // Check that at least some jobs have default "original" value
-                Assert.Equal("original", config.KnightMale);
-                Assert.Equal("original", config.KnightFemale);
+                Assert.Equal((Configuration.ColorScheme)0, config.Knight_Male);  // original
+                Assert.Equal((Configuration.ColorScheme)0, config.Knight_Female); // original
             }
             else
             {
@@ -68,11 +68,11 @@ namespace FFTColorMod.Tests
 
             // Assert
             Assert.NotNull(config);
-            Assert.Equal("original", config.KnightMale);
-            Assert.Equal("original", config.KnightFemale);
+            Assert.Equal((Configuration.ColorScheme)0, config.Knight_Male);  // original
+            Assert.Equal((Configuration.ColorScheme)0, config.Knight_Female); // original
 
-            // Ensure Save action doesn't throw
-            configurator.Save?.Invoke();
+            // Ensure Save method doesn't throw
+            configurator.Save();
         }
     }
 }
