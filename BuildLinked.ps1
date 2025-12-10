@@ -23,6 +23,27 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "Copying ModConfig.json..." -ForegroundColor Cyan
     Copy-Item "ColorMod/ModConfig.json" "$modPath/ModConfig.json" -Force
 
+    # Copy Config.json for configuration settings
+    if (Test-Path "ColorMod/Config.json") {
+        Write-Host "Copying Config.json..." -ForegroundColor Cyan
+        Copy-Item "ColorMod/Config.json" "$modPath/Config.json" -Force
+    }
+
+    # Create User config directory and copy configs there
+    $userConfigPath = "$gamePath\Reloaded\User\Mods\FFT_Color_Mod"
+    Write-Host "Creating User config directory..." -ForegroundColor Cyan
+    New-Item -ItemType Directory -Path $userConfigPath -Force | Out-Null
+
+    Write-Host "Copying configuration files to User directory..." -ForegroundColor Cyan
+    if (Test-Path "$scriptDir\Config.json") {
+        Copy-Item "$scriptDir\Config.json" -Destination "$userConfigPath\Config.json" -Force
+        Write-Host "  Copied Config.json to User directory" -ForegroundColor Green
+    }
+    if (Test-Path "$scriptDir\ModUserConfig.json") {
+        Copy-Item "$scriptDir\ModUserConfig.json" -Destination "$userConfigPath\ModUserConfig.json" -Force
+        Write-Host "  Copied ModUserConfig.json to User directory" -ForegroundColor Green
+    }
+
     # Copy Preview.png if it exists
     if (Test-Path "ColorMod/Preview.png") {
         Copy-Item "ColorMod/Preview.png" "$modPath/Preview.png" -Force

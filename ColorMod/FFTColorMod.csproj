@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net7.0-windows</TargetFramework>
     <OutputType>Library</OutputType>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
@@ -23,7 +23,9 @@
     <PackageReference Include="Reloaded.Hooks.Definitions" Version="1.11.0" />
     <PackageReference Include="Reloaded.Memory" Version="9.4.3" />
     <PackageReference Include="Reloaded.Memory.Sigscan" Version="3.1.9" />
+    <PackageReference Include="Reloaded.Mod.Loader.IO" Version="2.5.0" />
     <PackageReference Include="Reloaded.SharedLib.Hooks" Version="1.9.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <!-- Reference to FFTIVC Mod Loader for file redirection -->

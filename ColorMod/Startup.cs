@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using Reloaded.Mod.Interfaces;
 using Reloaded.Mod.Interfaces.Internal;
+using FFTColorMod.Configuration;
 
 namespace FFTColorMod;
 
@@ -13,6 +14,9 @@ public class Startup : IMod
     private Thread? _hotkeyThread;
     private bool _running = true;
     private string _currentScheme = "original";
+    private IModLoaderV1 _modLoader = null!;
+    private IModConfigV1 _modConfig = null!;
+    private Config _configuration = null!;
 
     public Startup()
     {
@@ -22,7 +26,19 @@ public class Startup : IMod
     // This is the method that Reloaded-II actually calls!
     public void StartEx(IModLoaderV1 loaderApi, IModConfigV1 modConfig)
     {
+        _modLoader = loaderApi;
+        _modConfig = modConfig;
+
         Console.WriteLine("[FFTColorMod] Starting with file swapping for color changes!");
+
+        // Your config file is in Config.json.
+        // Need a different name, format or more configurations? Modify the `Configurator`.
+        // If you do not want a config, remove Configuration folder and Config class.
+        var configurator = new Configurator(((IModLoader)_modLoader).GetModConfigDirectory(_modConfig.ModId));
+        _configuration = configurator.GetConfiguration<Config>(0);
+        _configuration.ConfigurationUpdated += OnConfigurationUpdated;
+
+        Console.WriteLine("[FFTColorMod] Configuration loaded!");
 
         // Start hotkey monitoring for file swapping
         StartHotkeyMonitoring();
@@ -34,6 +50,16 @@ public class Startup : IMod
 
         // Create our mod instance with context
         _mod = new Mod(context);
+
+        // Apply initial configuration
+        OnConfigurationUpdated(_configuration);
+    }
+
+    private void OnConfigurationUpdated(Reloaded.Mod.Interfaces.IUpdatableConfigurable config)
+    {
+        _configuration = (Config)config;
+        _mod?.ConfigurationUpdated(_configuration);
+        Console.WriteLine("[FFTColorMod] Configuration updated!");
     }
 
     private void StartHotkeyMonitoring()
