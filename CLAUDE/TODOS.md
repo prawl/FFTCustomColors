@@ -1,5 +1,30 @@
 # FFT Color Mod - TODOs
 
+## Current Task - Config-Based Sprite Customization (COMPLETED!)
+### Status: Reloaded-II Configuration System Fully Implemented
+- [X] Created Config.cs with all job/gender mappings (battle_knight_m, battle_yumi_w, etc.)
+- [X] Implemented GetColorForSprite method mapping sprite names to config properties
+- [X] Created ConfigurationManager for loading/saving JSON configs
+- [X] Created ConfigBasedSpriteManager for per-job sprite management
+- [X] Integrated config system with Mod.cs (InterceptFilePath uses job-based colors)
+- [X] Created ReloadedConfig, ModConfig, and ReloadedConfigManager classes
+- [X] Created Configurator class implementing IConfigurable<Config>
+- [X] Updated Mod class to implement IConfigurable<Config>
+- [X] **COMPLETED: All ConfigurableTests passing (10 tests)** ✅
+- [X] Implemented IConfigurable interface correctly (ConfigName and Save properties)
+- [X] Configuration persistence working (saves and loads correctly)
+- [X] ConfigurationUpdated event system working
+- [X] GetJobColor and GetAllJobColors methods working
+- [ ] **NEXT: Test with actual Reloaded-II mod loader UI**
+- [ ] Add dropdown selections for color schemes in Reloaded-II config
+- [ ] Document configuration usage in README
+
+### Key Implementation Details:
+- **Job Sprite Patterns**: battle_knight_, battle_yumi_ (archer), battle_item_ (chemist), battle_monk_, battle_siro_ (white mage), battle_kuro_ (black mage), battle_thief_, battle_ninja_, battle_mina_ (squire), battle_toki_ (time mage), battle_syou_ (summoner), battle_samu_ (samurai), battle_ryu_ (dragoon), battle_fusui_ (geomancer), battle_onmyo_ (mystic/oracle), battle_waju_ (mediator), battle_odori_ (dancer), battle_gin_ (bard), battle_mono_ (mime), battle_san_ (calculator)
+- **Config Path**: Uses environment variable FFT_CONFIG_PATH or defaults to modPath/config.json
+- **Dual System**: InterceptFilePath checks if sprite is job-based, uses ConfigBasedSpriteManager for jobs, falls back to old SpriteFileManager for non-job sprites (like RAMZA.SPR)
+- **TDD Approach**: Writing tests first, then minimal implementation to pass
+
 ## Immediate Tasks
 - [X] Process ALL sprites in unit folder (not just 10m) - DONE: Extracted all sprites from PAC files
 - [X] Extract sprites from both 0002.pac and 0003.pac files - DONE: Both PAC files extracted

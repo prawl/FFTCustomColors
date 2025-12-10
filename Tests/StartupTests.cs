@@ -2,6 +2,7 @@ using Xunit;
 using FFTColorMod;
 using Reloaded.Mod.Interfaces;
 using Reloaded.Mod.Interfaces.Internal;
+using Moq;
 
 namespace FFTColorMod.Tests;
 
@@ -51,9 +52,11 @@ public class StartupTests
     {
         // Arrange
         var startup = new Startup();
+        var mockLoader = new Mock<IModLoaderV1>();
+        var mockConfig = new Mock<IModConfigV1>();
 
-        // Act - Call StartEx (with null params for now - minimal test)
-        startup.StartEx(null!, null!);
+        // Act - Call StartEx with mocks
+        startup.StartEx(mockLoader.Object, mockConfig.Object);
 
         // Assert - Verify that Mod property was set
         var modField = typeof(Startup).GetField("_mod",
