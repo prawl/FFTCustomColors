@@ -4,10 +4,10 @@ Custom color palettes for Final Fantasy Tactics (Steam) using professionally edi
 
 ## Features
 
-- **F1/F2 Hotkeys**: F1 cycles backward, F2 cycles forward through 20 unique color schemes in-game
-- **Persistent**: Color choices persist between game sessions (file-based swapping)
+- **20 Unique Color Schemes**: Original plus 19 custom themes
+- **Per-Job Configuration**: Set different colors for each job class via Reloaded-II config
 - **38 Sprites Modified**: All major job classes included
-- **Custom Themes**: 14 new color schemes beyond the original 6
+- **Persistent Settings**: Configuration persists between game sessions
 
 ## Installation
 
@@ -18,12 +18,6 @@ Custom color palettes for Final Fantasy Tactics (Steam) using professionally edi
 5. Start the game through Reloaded-II
 
 ## Usage
-
-### In-Game Hotkeys
-- Press **F1** to cycle backward through color schemes
-- Press **F2** to cycle forward through color schemes
-- Changes apply immediately when you click on a unit after pressing the hotkey
-- **Note**: F1/F2 changes are temporary and only last for the current session
 
 ### Configuration Menu (Persistent Settings)
 The mod now includes full integration with Reloaded-II's configuration system, allowing you to set persistent color schemes for each job class:
@@ -44,13 +38,33 @@ The mod now includes full integration with Reloaded-II's configuration system, a
 - **Real-time Updates**: Changes made in the configuration menu apply immediately when saved
 - **F2 Hotkey Behavior**: F2 still cycles colors in-game, but these changes are session-only and don't overwrite your saved configuration
 
-## Building from Source
+## Development
 
 ### Requirements
 - .NET SDK 8.0+
 - Windows (Git Bash recommended for scripts)
+- Visual Studio 2022 or VS Code
+- Reloaded-II mod loader installed
 
-### Quick Deploy
+### Development Mode Setup
+The mod includes a development mode to prevent crashes when testing with F1/F2 hotkeys:
+
+```powershell
+# Set up dev mode (keeps only 5 themes + test themes)
+./SetupDev.ps1
+
+# When ready for production (restores all 20 themes)
+./SetupProduction.ps1
+```
+
+**Dev Mode Details:**
+- Limits loaded themes to 5 core themes (original, corpse_brigade, lucavi, northern_sky, smoke)
+- Automatically keeps any `sprites_test_*` themes for testing new colors
+- Prevents game crashes from loading too many sprites at startup
+- F1/F2 hotkeys cycle through available themes (dev mode only, for testing)
+- Other 15 themes are backed up to `ColorSchemes/` folder
+
+### Build & Deploy
 ```powershell
 # Builds and deploys directly to Reloaded-II mods folder
 ./BuildLinked.ps1
