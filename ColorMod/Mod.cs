@@ -221,9 +221,12 @@ public class Mod : IMod, IConfigurable
         // Actually switch the sprite files to apply the color
         _spriteFileManager?.SwitchColorScheme(scheme);
 
-        // Update cycler's current scheme
-        _colorCycler?.SetCurrentScheme(scheme);
-
+        // Update cycler ONLY if it's out of sync (for direct calls like tests/initialization)
+        // The cycler updates itself during GetNext/GetPrevious, but not for direct SetColorScheme calls
+        if (_colorCycler?.GetCurrentScheme() != scheme)
+        {
+            _colorCycler?.SetCurrentScheme(scheme);
+        }
     }
 
 

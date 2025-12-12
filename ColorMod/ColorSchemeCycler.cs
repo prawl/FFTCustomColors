@@ -49,11 +49,18 @@ namespace FFTColorMod
             }
 
             int currentIndex = _schemes.IndexOf(_currentScheme);
+            string nextScheme;
             if (currentIndex == -1 || currentIndex == _schemes.Count - 1)
             {
-                return _schemes[0];
+                nextScheme = _schemes[0];
             }
-            return _schemes[currentIndex + 1];
+            else
+            {
+                nextScheme = _schemes[currentIndex + 1];
+            }
+
+            _currentScheme = nextScheme; // Update the current scheme!
+            return nextScheme;
         }
 
         public string GetPreviousScheme()
@@ -65,11 +72,18 @@ namespace FFTColorMod
             }
 
             int currentIndex = _schemes.IndexOf(_currentScheme);
+            string previousScheme;
             if (currentIndex == -1 || currentIndex == 0)
             {
-                return _schemes[_schemes.Count - 1];
+                previousScheme = _schemes[_schemes.Count - 1];
             }
-            return _schemes[currentIndex - 1];
+            else
+            {
+                previousScheme = _schemes[currentIndex - 1];
+            }
+
+            _currentScheme = previousScheme; // Update the current scheme!
+            return previousScheme;
         }
 
         public List<string> GetAvailableSchemes()

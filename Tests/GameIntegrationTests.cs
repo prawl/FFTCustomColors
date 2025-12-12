@@ -462,13 +462,13 @@ public class GameIntegrationTests
         // Initial state should be original
         mod.GetCurrentColorScheme().Should().Be("original");
 
-        // Press F1 - should cycle backward to last scheme (southern_sky)
+        // Press F1 - should cycle backward to last scheme (volcanic)
+        mod.ProcessHotkeyPress(0x70); // F1 key
+        mod.GetCurrentColorScheme().Should().Be("volcanic");
+
+        // Press F1 again - should cycle backward to southern_sky
         mod.ProcessHotkeyPress(0x70); // F1 key
         mod.GetCurrentColorScheme().Should().Be("southern_sky");
-
-        // Press F1 again - should cycle backward to smoke
-        mod.ProcessHotkeyPress(0x70); // F1 key
-        mod.GetCurrentColorScheme().Should().Be("smoke");
     }
 
     [Fact]
@@ -479,11 +479,11 @@ public class GameIntegrationTests
         var mod = new Mod();
         mod.InitializeGameIntegration();
 
-        // Act - Simulate F1 key press via ProcessHotkey (cycles backward from original to southern_sky)
+        // Act - Simulate F1 key press via ProcessHotkey (cycles backward from original to volcanic)
         mod.ProcessHotkeyPress(0x70); // F1 key
 
-        // Assert - Verify cycled backward to southern_sky color scheme
+        // Assert - Verify cycled backward to volcanic color scheme (last alphabetically)
         var currentScheme = mod.GetCurrentColorScheme();
-        currentScheme.Should().Be("southern_sky");
+        currentScheme.Should().Be("volcanic");
     }
 }

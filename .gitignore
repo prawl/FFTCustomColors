@@ -85,5 +85,5 @@ test_*/
 # Game sprite files (except input_sprites for testing and FFTIVC sprites)
 *.bin
 !input_sprites/*.bin
-!ColorMod/FFTIVC/data/enhanced/fftpack/unit/**/*.bin
+!FFTIVC/data/enhanced/fftpack/unit/**/*.bin
 

@@ -19,8 +19,8 @@ namespace FFTColorMod.Tests
             // Act
             mod.ProcessHotkeyPress(0x70); // F1 key
 
-            // Assert - corpse_brigade is at index 1, so previous should be original (index 0)
-            Assert.Equal("original", mod.GetCurrentColorScheme()); // Should cycle backward to original
+            // Assert - corpse_brigade comes after celestial alphabetically
+            Assert.Equal("celestial", mod.GetCurrentColorScheme()); // Should cycle backward to celestial
         }
 
         [Fact]
@@ -34,8 +34,8 @@ namespace FFTColorMod.Tests
             // Act
             mod.ProcessHotkeyPress(0x71); // F2 key
 
-            // Assert - original is at index 0, so next should be corpse_brigade (index 1)
-            Assert.Equal("corpse_brigade", mod.GetCurrentColorScheme()); // Should cycle forward
+            // Assert - original is first, so next should be amethyst (first alphabetically)
+            Assert.Equal("amethyst", mod.GetCurrentColorScheme()); // Should cycle forward
         }
 
         [Fact]
