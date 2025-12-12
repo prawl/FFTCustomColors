@@ -175,13 +175,13 @@ namespace FFTColorMod.Tests
         [Fact]
         public void IsDevMode_NotDetectedWithTooManyThemes()
         {
-            // Add an extra non-dev theme to data
-            var extraThemeDir = Path.Combine(_dataPath, "sprites_amethyst");
+            // Add an extra non-dev theme to data (one that's NOT in CoreDevThemes)
+            var extraThemeDir = Path.Combine(_dataPath, "sprites_unknown_theme");
             Directory.CreateDirectory(extraThemeDir);
 
             var loader = new DynamicSpriteLoader(_testModPath, _configManager);
 
-            // Should NOT detect as dev mode since we have more than just dev themes
+            // Should NOT detect as dev mode since we have a theme that's not in CoreDevThemes
             Assert.False(loader.IsDevMode());
         }
 

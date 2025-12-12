@@ -312,29 +312,29 @@ namespace FFTColorMod.Configuration
         [JsonPropertyName("Orlandeau")]
         public OrlandeauColorScheme Orlandeau { get; set; } = OrlandeauColorScheme.original;
 
-        // Malak (Hell Knight)
-        [Category("Story Characters")]
-        [DisplayName("Malak")]
-        [Description("Color scheme for Malak")]
-        [DefaultValue(ColorScheme.original)]
-        [JsonPropertyName("Malak")]
-        public ColorScheme Malak { get; set; } = ColorScheme.original;
+        // Malak (Hell Knight) - DISABLED UNTIL THEMES ARE CREATED
+        // [Category("Story Characters")]
+        // [DisplayName("Malak")]
+        // [Description("Color scheme for Malak")]
+        // [DefaultValue(ColorScheme.original)]
+        // [JsonPropertyName("Malak")]
+        // public ColorScheme Malak { get; set; } = ColorScheme.original;
 
-        // Beowulf (Temple Knight)
-        [Category("Story Characters")]
-        [DisplayName("Beowulf")]
-        [Description("Color scheme for Beowulf")]
-        [DefaultValue(ColorScheme.original)]
-        [JsonPropertyName("Beowulf")]
-        public ColorScheme Beowulf { get; set; } = ColorScheme.original;
+        // Beowulf (Temple Knight) - DISABLED UNTIL THEMES ARE CREATED
+        // [Category("Story Characters")]
+        // [DisplayName("Beowulf")]
+        // [Description("Color scheme for Beowulf")]
+        // [DefaultValue(ColorScheme.original)]
+        // [JsonPropertyName("Beowulf")]
+        // public ColorScheme Beowulf { get; set; } = ColorScheme.original;
 
-        // Reis (Dragon/Human)
-        [Category("Story Characters")]
-        [DisplayName("Reis")]
-        [Description("Color scheme for Reis (Human form)")]
-        [DefaultValue(ColorScheme.original)]
-        [JsonPropertyName("Reis")]
-        public ColorScheme Reis { get; set; } = ColorScheme.original;
+        // Reis (Dragon/Human) - DISABLED UNTIL THEMES ARE CREATED
+        // [Category("Story Characters")]
+        // [DisplayName("Reis")]
+        // [Description("Color scheme for Reis (Human form)")]
+        // [DefaultValue(ColorScheme.original)]
+        // [JsonPropertyName("Reis")]
+        // public ColorScheme Reis { get; set; } = ColorScheme.original;
 
         public string GetColorForSprite(string spriteName)
         {
@@ -473,17 +473,17 @@ namespace FFTColorMod.Configuration
                 return $"sprites_orlandeau_{Orlandeau.ToString().ToLower()}";
             }
 
-            // Malak (mara = Malak)
-            if (spriteName.Contains("mara"))
-                return Malak.GetDescription();
+            // Malak (mara = Malak) - DISABLED UNTIL THEMES ARE CREATED
+            // if (spriteName.Contains("mara"))
+            //     return Malak.GetDescription();
 
-            // Beowulf (beio = Beowulf)
-            if (spriteName.Contains("beio"))
-                return Beowulf.GetDescription();
+            // Beowulf (beio = Beowulf) - DISABLED UNTIL THEMES ARE CREATED
+            // if (spriteName.Contains("beio"))
+            //     return Beowulf.GetDescription();
 
-            // Reis human form (reze = Reis)
-            if (spriteName.Contains("reze") && !spriteName.Contains("reze_d"))
-                return Reis.GetDescription();
+            // Reis human form (reze = Reis) - DISABLED UNTIL THEMES ARE CREATED
+            // if (spriteName.Contains("reze") && !spriteName.Contains("reze_d"))
+            //     return Reis.GetDescription();
 
             // Default to original if no mapping found
             return ColorScheme.original.GetDescription();

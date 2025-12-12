@@ -15,13 +15,30 @@ namespace FFTColorMod.Utilities
         private readonly bool _isDevMode;
 
         // Core dev themes that are always kept for F1/F2 testing
+        // Updated to include ALL generic themes since BuildLinked.ps1 now deploys all themes
         private static readonly HashSet<string> CoreDevThemes = new HashSet<string>
         {
             "sprites_original",
             "sprites_corpse_brigade",
             "sprites_lucavi",
             "sprites_northern_sky",
-            "sprites_smoke"
+            "sprites_smoke",
+            "sprites_amethyst",
+            "sprites_blood_moon",
+            "sprites_celestial",
+            "sprites_crimson_red",
+            "sprites_emerald_dragon",
+            "sprites_frost_knight",
+            "sprites_golden_templar",
+            "sprites_ocean_depths",
+            "sprites_phoenix_flame",
+            "sprites_rose_gold",
+            "sprites_royal_purple",
+            "sprites_shadow_assassin",
+            "sprites_silver_knight",
+            "sprites_southern_sky",
+            "sprites_test",
+            "sprites_volcanic"
         };
 
         public DynamicSpriteLoader(string modPath, ConfigurationManager configManager, bool? isDevMode = null)

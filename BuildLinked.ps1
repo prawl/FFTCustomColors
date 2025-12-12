@@ -1,11 +1,11 @@
 # FFT Color Mod - DEV Build & Deploy Script
-# Builds the mod with IL trimming and deploys LIMITED themes for testing
-# For production builds with ALL themes, use BuildLinked.Production.ps1
+# Builds the mod with IL trimming and deploys ALL themes
+# Now includes all generic and story character themes
 
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "         DEV BUILD SCRIPT                   " -ForegroundColor Cyan
-Write-Host "   Deploys 5 generic + Orlandeau themes    " -ForegroundColor Yellow
-Write-Host "   (Limited to prevent F1/F2 crashes)      " -ForegroundColor Yellow
+Write-Host "   Deploys ALL generic + story themes      " -ForegroundColor Yellow
+Write-Host "   (Full theme deployment enabled)         " -ForegroundColor Yellow
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -82,15 +82,11 @@ if ($LASTEXITCODE -eq 0) {
             # TLDR: Copy color variant directories from ColorMod/FFTIVC
             Write-Host "Copying color variant directories (DEV MODE)..." -ForegroundColor Cyan
 
-            # Core themes to deploy (limit to 5 to prevent F1/F2 crashes in DEV)
-            $coreThemes = @(
-                "sprites_original",
-                "sprites_corpse_brigade",
-                "sprites_lucavi",
-                "sprites_northern_sky",
-                "sprites_smoke"
-            )
-            Write-Host "  DEV: Limiting to 5 generic themes for stability" -ForegroundColor Yellow
+            # Get all generic themes (no longer limiting for DEV)
+            $coreThemes = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -notlike "sprites_orlandeau_*" -and $_.Name -notlike "sprites_beowulf_*" -and $_.Name -notlike "sprites_agrias_*" } |
+                ForEach-Object { $_.Name }
+            Write-Host "  DEV: Including ALL $($coreThemes.Count) generic themes" -ForegroundColor Yellow
 
             # Get all story character themes (Orlandeau, Beowulf, Agrias, etc.)
             $orlandeauThemes = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_orlandeau_*" -ErrorAction SilentlyContinue |
