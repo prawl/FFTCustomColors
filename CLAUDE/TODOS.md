@@ -1,65 +1,401 @@
-# FFT Color Mod - TODOs
+# FFT Color Mod - Comprehensive Task Breakdown
 
-## Current Task - Config-Based Sprite Customization (COMPLETED!)
-### Status: Reloaded-II Configuration System Fully Implemented
-- [X] Created Config.cs with all job/gender mappings (battle_knight_m, battle_yumi_w, etc.)
-- [X] Implemented GetColorForSprite method mapping sprite names to config properties
-- [X] Created ConfigurationManager for loading/saving JSON configs
-- [X] Created ConfigBasedSpriteManager for per-job sprite management
-- [X] Integrated config system with Mod.cs (InterceptFilePath uses job-based colors)
-- [X] Created ReloadedConfig, ModConfig, and ReloadedConfigManager classes
-- [X] Created Configurator class implementing IConfigurable<Config>
-- [X] Updated Mod class to implement IConfigurable<Config>
-- [X] **COMPLETED: All ConfigurableTests passing (10 tests)** ✅
-- [X] Implemented IConfigurable interface correctly (ConfigName and Save properties)
-- [X] Configuration persistence working (saves and loads correctly)
-- [X] ConfigurationUpdated event system working
-- [X] GetJobColor and GetAllJobColors methods working
-- [ ] **NEXT: Test with actual Reloaded-II mod loader UI**
-- [ ] Add dropdown selections for color schemes in Reloaded-II config
-- [ ] Document configuration usage in README
+## Project Overview
+Implement job/gender-based color customization for FFT sprites with special handling for Ramza's DLC-locked sprite.
 
-### Key Implementation Details:
-- **Job Sprite Patterns**: battle_knight_, battle_yumi_ (archer), battle_item_ (chemist), battle_monk_, battle_siro_ (white mage), battle_kuro_ (black mage), battle_thief_, battle_ninja_, battle_mina_ (squire), battle_toki_ (time mage), battle_syou_ (summoner), battle_samu_ (samurai), battle_ryu_ (dragoon), battle_fusui_ (geomancer), battle_onmyo_ (mystic/oracle), battle_waju_ (mediator), battle_odori_ (dancer), battle_gin_ (bard), battle_mono_ (mime), battle_san_ (calculator)
-- **Config Path**: Uses environment variable FFT_CONFIG_PATH or defaults to modPath/config.json
-- **Dual System**: InterceptFilePath checks if sprite is job-based, uses ConfigBasedSpriteManager for jobs, falls back to old SpriteFileManager for non-job sprites (like RAMZA.SPR)
-- **TDD Approach**: Writing tests first, then minimal implementation to pass
+**Current State**: F1 hotkey changes ALL units globally → **Target State**: Context-sensitive colors per job/gender combination
 
-## Immediate Tasks
-- [X] Process ALL sprites in unit folder (not just 10m) - DONE: Extracted all sprites from PAC files
-- [X] Extract sprites from both 0002.pac and 0003.pac files - DONE: Both PAC files extracted
-- [X] ~~Identify which sprite file is Ramza through gameplay testing~~ (BLOCKED: Ramza protected by DLC override)
-- [X] Document sprite type mapping (10m/20m/40m/60m → character types) - DONE: Complete mappings in README.md
-- [X] Optimize PaletteDetector to only process first 288 bytes - DONE: FindPalette and FindAllPalettes now limited to 288 bytes
-- [X] Test color persistence across battles, cutscenes, formation screen - DONE: Tests verify persistence
-- [X] Implement color persistence across game sessions - DONE: ColorPreferencesManager saves to %AppData%
-- [X] Test compatibility with other mods - DONE: Compatible with Better Palettes and GenericJobs
+---
 
-## Code Quality & Structure (Lower Priority)
-- [X] Update project structure to match GenericJobs repo (Root > ColorMod, .gitignore, .sln, LICENSE)
-- [X] Fix scripts to use CamelCase naming convention
-- [X] Update repository files to use CamelCase naming convention
-- [X] Refactor all classes for better organization and clarity
-- [X] Fix test flakiness issues (tests randomly failing)
-- [X] Add extensive documentation (XML comments, README sections, API docs)
+## Phase 1: Foundation Research (CRITICAL - Blocks All Other Work)
 
-## Core User Requirements (Full Vision)
-- [ ] **Character Customization**: Customize color of every playable character
-- [ ] **Targeted Customization**: Separate color control for armor vs hair
-- [X] **Preset Palettes**: Select from faction color schemes (Northern Sky, Southern Sky, etc.)
-- [X] **Save Persistence**: Colors persist between game saves and sessions
-- [ ] **In-Game UI**: Edit character colors directly in-game via UI menu
-- [ ] **Unlockable Colors**: Rare colors as gameplay rewards (MVP feature)
+### 🚨 PRIORITY 1: API Call Monitoring & Analysis
+**Status**: Not Started
+**Estimated Time**: 4-6 hours
+**Confidence**: 90% (Standard reverse engineering)
 
-## Advanced UI Enhancement (Difficulty: 6.5-7/10)
-- [ ] Research formation screen menu structure with x64dbg
-- [ ] Hook menu creation functions to inject "Color Palette" option
-- [ ] Implement color selection submenu UI
-- [ ] Add per-unit color tracking and persistence
-- [ ] Handle menu navigation and state management
-- [ ] Consider simpler config-based approach as stepping stone
+#### Task 1.1: Set Up Monitoring Environment
+- [ ] Download and configure API Monitor (http://www.rohitab.com/apimonitor)
+- [ ] Install Process Monitor from Microsoft Sysinternals
+- [ ] Set up x64dbg for deeper analysis if needed
+- [ ] Create isolated test environment with FFT clean install
 
-## MVP Features (Dream Features)
+#### Task 1.2: Monitor FFT Sprite Loading
+- [ ] Launch API Monitor with FFT.exe as target
+- [ ] Filter for file I/O operations (CreateFile, ReadFile, FindFirstFile)
+- [ ] Monitor during character selection screen
+- [ ] Monitor during battle loading with different characters
+- [ ] **CRITICAL**: Monitor specifically when Ramza appears vs other characters
+
+**Expected Outputs**:
+- List of all files accessed during sprite loading
+- Ramza-specific file access patterns
+- DLC validation API calls (if any)
+- Error handling when files are modified
+
+#### Task 1.3: Memory Layout Discovery
+- [ ] Use CheatEngine to scan for known palette values
+- [ ] Find sprite data structures in memory
+- [ ] Identify memory addresses for currently selected unit
+- [ ] Document memory layout of job/gender data
+
+**Technical Details**:
+```csharp
+// Search patterns to test:
+byte[] ramzaNamePattern = Encoding.ASCII.GetBytes("Ramza");
+byte[] paletteHeaderPattern = { 0x00, 0x00, 0xFF, 0x7F }; // Transparent + White
+byte[] jobClassPattern = { 0x01, 0x00, 0x00, 0x00 }; // Squire job ID
+```
+
+---
+
+## Phase 2: Quick Diagnostic Test (Confidence Assessment)
+
+### 🧪 PRIORITY 2: Ramza Modification Test Suite
+**Status**: Not Started
+**Estimated Time**: 2-3 hours
+**Dependencies**: Phase 1 API monitoring results
+
+#### Task 2.1: File Modification Response Test
+- [ ] Backup original Ramza sprite file
+- [ ] Make obvious visual change (solid red palette)
+- [ ] Test game loading behavior:
+  - [ ] Does game crash immediately?
+  - [ ] Does it revert the file automatically?
+  - [ ] Does it show error message?
+  - [ ] Does it load but ignore changes?
+
+#### Task 2.2: Memory Scanning Feasibility Test
+- [ ] Use patterns from Phase 1 to search for Ramza palette in memory
+- [ ] Test writing to found memory addresses
+- [ ] Check if changes persist or get overwritten
+- [ ] Document memory protection levels
+
+#### Task 2.3: DLC Function Detection Test
+- [ ] Search for common DLC validation patterns in FFT.exe:
+  ```assembly
+  ; Common patterns:
+  ; Steam API calls: BIsDlcInstalled, GetDLCCount
+  ; File existence checks: FindFirstFile + "dlc", "ramza"
+  ; Registry checks: RegQueryValue + "DLC"
+  ```
+- [ ] Hook candidate functions using simple DLL injection
+- [ ] Test if hooking prevents file modification issues
+
+**Success Criteria**: Generate confidence report for each approach (A, B, C)
+
+---
+
+## Phase 3A: DLC Bypass Implementation (Option A - 70% Confidence)
+
+### 📋 PRIORITY 3A: Hook-Based DLC Bypass
+**Status**: Not Started
+**Dependencies**: Phase 2 DLC function detection
+
+#### Task 3A.1: DLC Function Analysis
+- [ ] Disassemble identified DLC check functions
+- [ ] Determine calling convention (stdcall, fastcall, etc.)
+- [ ] Identify function parameters and return values
+- [ ] Find all call sites to ensure complete coverage
+
+#### Task 3A.2: Implement Function Hooking
+```csharp
+// Implementation framework:
+public class DLCBypass
+{
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+
+    public void InstallHook(IntPtr targetFunction)
+    {
+        // Create trampoline to original function
+        // Patch original function to jump to our fake implementation
+        // Ensure thread safety during patching
+    }
+
+    private bool FakeDLCCheck(IntPtr dlcIdentifier)
+    {
+        // Always return "DLC owned" for Ramza-related checks
+        return true;
+    }
+}
+```
+
+#### Task 3A.3: Testing & Validation
+- [ ] Test hook installation without crashes
+- [ ] Verify normal DLC functionality still works
+- [ ] Test Ramza file modification with hook active
+- [ ] Validate that other characters remain unaffected
+
+**Risk Mitigation**:
+- Implement hook removal for clean uninstall
+- Add extensive error handling and logging
+- Test on multiple FFT versions if available
+
+---
+
+## Phase 3B: Memory Palette Implementation (Option B - 50% Confidence)
+
+### 🧠 PRIORITY 3B: Direct Memory Palette Modification
+**Status**: Not Started
+**Dependencies**: Phase 2 memory scanning results
+
+#### Task 3B.1: Palette Data Structure Analysis
+- [ ] Reverse engineer FFT's palette format:
+  - [ ] Color depth (15-bit? 16-bit? 24-bit?)
+  - [ ] Color ordering (RGB? BGR?)
+  - [ ] Palette size (16 colors? 256 colors?)
+  - [ ] Memory alignment requirements
+
+#### Task 3B.2: Palette Detection & Modification
+```csharp
+public class MemoryPaletteManager
+{
+    public struct PaletteEntry
+    {
+        public byte Red, Green, Blue, Alpha;
+
+        public static PaletteEntry FromRGB555(ushort rgb555)
+        {
+            return new PaletteEntry
+            {
+                Red = (byte)((rgb555 & 0x1F) << 3),
+                Green = (byte)(((rgb555 >> 5) & 0x1F) << 3),
+                Blue = (byte)(((rgb555 >> 10) & 0x1F) << 3),
+                Alpha = 255
+            };
+        }
+    }
+
+    public bool FindAndModifyRamzaPalette(PaletteEntry[] newColors)
+    {
+        // Scan memory for Ramza palette signature
+        // Verify found address contains valid palette data
+        // Write new palette colors directly to memory
+        // Handle write protection and memory access rights
+    }
+}
+```
+
+#### Task 3B.3: Refresh & Persistence Handling
+- [ ] Test if memory changes persist across scenes
+- [ ] Implement periodic re-application if game overwrites
+- [ ] Find sprite cache invalidation function if available
+
+---
+
+## Phase 3C: File Aliasing Implementation (Option C - 60% Confidence)
+
+### 📁 PRIORITY 3C: File System Redirection
+**Status**: Not Started
+**Dependencies**: Phase 1 file access patterns
+
+#### Task 3C.1: File API Hooking Setup
+```csharp
+public class FileAliasing
+{
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr CreateFileW(
+        string filename, uint access, uint share, IntPtr securityAttributes,
+        uint creationDisposition, uint flagsAndAttributes, IntPtr templateFile);
+
+    public IntPtr CreateFileHook(string filename, /* other parameters */)
+    {
+        // Check if this is a Ramza sprite request
+        if (IsRamzaSpriteFile(filename))
+        {
+            // Redirect to modified generic sprite
+            filename = RedirectToGenericSprite(filename);
+            LogRedirection(filename);
+        }
+
+        return CallOriginalCreateFile(filename, /* other parameters */);
+    }
+
+    private bool IsRamzaSpriteFile(string path)
+    {
+        return path.Contains("ch01") ||
+               path.Contains("ramza") ||
+               path.Contains("chapter1");
+    }
+}
+```
+
+#### Task 3C.2: File Mapping Strategy
+- [ ] Create generic sprite variants that match Ramza's structure
+- [ ] Implement file name translation logic
+- [ ] Handle both absolute and relative path requests
+- [ ] Test with different color schemes
+
+#### Task 3C.3: Integration Testing
+- [ ] Verify redirection works during character selection
+- [ ] Test during battle loading and sprite refresh
+- [ ] Ensure no impact on save game functionality
+
+---
+
+## Phase 4: Job/Gender Color System Implementation
+
+### 🎯 PRIORITY 4: Core Color Management System
+**Status**: Not Started
+**Dependencies**: At least one Phase 3 option working
+
+#### Task 4.1: Unit Detection & Context System
+```csharp
+public class UnitColorManager
+{
+    public struct UnitContext
+    {
+        public string JobClass;     // "knight", "archer", etc.
+        public string Gender;       // "male", "female"
+        public bool IsStoryChar;    // true for Ramza, Agrias, etc.
+        public string CharacterName; // "Ramza", "Agrias", or null
+    }
+
+    public UnitContext GetCurrentlySelectedUnit()
+    {
+        // Read memory to find selected unit's job/gender
+        // Use addresses discovered in Phase 1
+        // Return structured context for color decisions
+    }
+}
+```
+
+#### Task 4.2: Color Scheme Management
+- [ ] Implement job/gender → color mapping system
+- [ ] Create color persistence (registry/config file)
+- [ ] Add support for story character overrides
+- [ ] Implement F1 cycling logic with context awareness
+
+#### Task 4.3: File-Based Sprite Swapping
+- [ ] Organize color variant files by job/gender
+- [ ] Implement atomic file swapping with rollback
+- [ ] Add sprite refresh triggering (or battle prep limitation)
+- [ ] Create user feedback system (notifications/overlay)
+
+#### Task 4.4: Configuration & Persistence
+```csharp
+public class ColorConfiguration
+{
+    public Dictionary<string, string> JobColorMappings { get; set; }
+    public Dictionary<string, string> StoryCharMappings { get; set; }
+
+    public void SaveToFile(string configPath) { /* JSON serialization */ }
+    public static ColorConfiguration LoadFromFile(string configPath) { /* JSON deserialization */ }
+}
+```
+
+---
+
+## Phase 5: Testing & Polish
+
+### 🔧 PRIORITY 5: Integration & User Experience
+**Status**: Not Started
+
+#### Task 5.1: Comprehensive Testing Suite
+- [ ] Test all job/gender combinations
+- [ ] Validate color persistence across game sessions
+- [ ] Test battle transitions and sprite refresh scenarios
+- [ ] Verify compatibility with other FFT mods
+
+#### Task 5.2: Error Handling & Recovery
+- [ ] Implement rollback for failed color swaps
+- [ ] Add comprehensive logging for troubleshooting
+- [ ] Create diagnostic mode for advanced users
+- [ ] Handle edge cases (corrupted sprites, missing files)
+
+#### Task 5.3: User Interface Enhancements
+- [ ] Add visual feedback for color changes
+- [ ] Implement hotkey customization
+- [ ] Create preset color scheme system
+- [ ] Add export/import functionality for color configurations
+
+---
+
+## Implementation Priority Matrix
+
+### Must Have (Release Blockers)
+1. **API Monitoring Results** (Phase 1) - Blocks all technical decisions
+2. **Working Ramza Solution** (Any Phase 3 option) - Core feature requirement
+3. **Basic Job/Gender Detection** (Phase 4.1) - Context awareness needed
+4. **File Swapping System** (Phase 4.3) - Core functionality
+
+### Should Have (Quality Features)
+1. **Multiple Ramza Solutions** (Backup options from Phase 3)
+2. **Configuration Persistence** (Phase 4.4) - User convenience
+3. **Sprite Refresh Solution** (Phase 4.3) - Better UX than battle prep limitation
+
+### Could Have (Polish Features)
+1. **Story Character Support** (Individual Agrias, Delita colors)
+2. **Preset Color Schemes** (Phase 5.3) - User convenience
+3. **Advanced UI Features** (Phase 5.3) - Nice to have
+
+---
+
+## Risk Assessment & Mitigation
+
+### High Risk Items
+1. **Ramza DLC Protection**: May be unbreakable → **Mitigation**: Implement exclusion mode
+2. **Game Updates Breaking Hooks**: New versions could change addresses → **Mitigation**: Pattern-based scanning
+3. **Anti-Cheat False Positives**: Memory modification might trigger warnings → **Mitigation**: File-based approach where possible
+
+### Medium Risk Items
+1. **Memory Layout Changes**: Different FFT versions → **Mitigation**: Multiple signature support
+2. **Performance Impact**: Real-time memory scanning → **Mitigation**: Cache addresses, lazy scanning
+
+### Low Risk Items
+1. **Configuration Corruption**: Bad JSON data → **Mitigation**: Robust parsing with defaults
+2. **File System Permissions**: Write access issues → **Mitigation**: Admin privilege detection
+
+---
+
+## Success Metrics
+
+### Technical Milestones
+- [ ] Ramza colors successfully modified (any method)
+- [ ] Job/gender context detection working
+- [ ] Color changes apply correctly to targeted groups
+- [ ] No crashes or corruption during normal use
+
+### User Experience Goals
+- [ ] F1 key provides clear feedback about what changed
+- [ ] Color schemes persist across game sessions
+- [ ] Easy rollback to default colors
+- [ ] Intuitive context-sensitive behavior
+
+### Performance Targets
+- [ ] < 100ms delay for color application
+- [ ] < 5MB memory footprint for color management
+- [ ] No noticeable impact on game loading times
+- [ ] Stable operation across extended play sessions
+
+---
+
+## Development Timeline Estimate
+
+**Phase 1**: 1-2 weeks (Research foundation)
+**Phase 2**: 3-5 days (Quick diagnostics)
+**Phase 3**: 1-3 weeks (Ramza solution - varies by option complexity)
+**Phase 4**: 2-3 weeks (Core color system)
+**Phase 5**: 1-2 weeks (Testing & polish)
+
+**Total Estimate**: 6-10 weeks for complete implementation
+
+**Minimum Viable Product**: Phases 1-4.3 (4-6 weeks)
+
+---
+
+## Legacy Features (Future Enhancements)
+
+### Armor vs Hair Separation
+- [ ] **Selective Palette Modification** - Skip indices 10-19 to preserve hair colors
+- [ ] **Hair-Safe Theme Script** - Test cohesive theme script with hair preservation
+- [ ] **Update Existing Themes** - Regenerate all themes to preserve original hair colors
+- [ ] **Hair Color Customization** - Separate control for hair color (advanced feature)
+
 ### Community & Sharing
 - [ ] **Team Uniform System** - One-click matching colors for entire party
 - [ ] **Color Import/Export** - Share schemes via codes/files, community library
@@ -72,36 +408,19 @@
 - [ ] **Battlefield Camouflage** - Auto-adjust to terrain (desert=sandy, snow=white)
 - [ ] **Mirror Match Detection** - Auto-contrast colors vs same enemy job classes
 
-### Progression & Unlocks
-- [ ] **Achievement-Based Unlocks** - Special colors for challenges (solo run = "Lone Wolf Silver")
-- [ ] **Seasonal/Holiday Themes** - Real-world date unlocks (holidays, FFT anniversary)
-- [ ] **"Veteran Scars" System** - Battle-worn variations for experienced units
-- [ ] **Legacy Color Inheritance** - Recruited units inherit traits from recruiter
-
-### Gameplay Integration
-- [ ] **Zodiac Color Compatibility** - Bonuses for zodiac-matched colors
-- [ ] **Job-Based Color Templates** - Auto-apply thematic colors on job change
-- [ ] **Color Mixing for Hybrid Jobs** - Blend colors when multi-classing
-- [ ] **Nemesis System Colors** - Recurring enemies remember/comment on colors
-- [ ] **Enemy Army Recoloring** - Visually distinct enemy factions
-
-### Utility & Fun
-- [ ] **Color History/Undo** - Track last 5-10 changes with quick undo/redo
-- [ ] **Color Randomizer Mode** - Chaos mode randomizing each battle
-- [ ] **Color-Based Ability Effects** - Visual effects vary by character color
-
-## Future Enhancements
-- [ ] **REQUIRED FOR RAMZA**: Find sprite loading signatures with x64dbg
-- [ ] **REQUIRED FOR RAMZA**: Implement memory hooking to bypass DLC protection
-- [ ] Add per-character color customization
-- [ ] Create color-blind friendly schemes
-- [ ] Add enemy color modifications
-- [ ] Test if users without deluxe/preorder can modify Ramza via files
-
-
-## Release Preparation
+### Release Preparation
+- [ ] Create/update Reloaded-II mod image (Preview.png - 256x256 or 512x512)
+- [ ] Update ModConfig.json with proper metadata:
+  - [ ] Update ModId to proper format (e.g., "ptyra.fft.colormod")
+  - [ ] Set Version to release version (e.g., "1.0.0")
+  - [ ] Update Author name (from "YourName" to actual username)
+  - [ ] Write compelling ModDescription
+  - [ ] Update ModName if needed
+  - [ ] Add Tags for discoverability
+  - [ ] Set ProjectUrl to GitHub repository
 - [ ] Create before/after screenshots
 - [ ] Write mod description (100-200 words)
 - [ ] Create installation guide
 - [ ] Package for Reloaded-II Database
 - [ ] Register on FFHacktics forum
+- [ ] Test clean installation on fresh Reloaded-II setup

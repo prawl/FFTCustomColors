@@ -19,9 +19,30 @@ Custom color palettes for Final Fantasy Tactics (Steam) using professionally edi
 
 ## Usage
 
+### In-Game Hotkeys
 - Press **F1** to cycle backward through color schemes
 - Press **F2** to cycle forward through color schemes
 - Changes apply immediately when you click on a unit after pressing the hotkey
+- **Note**: F1/F2 changes are temporary and only last for the current session
+
+### Configuration Menu (Persistent Settings)
+The mod now includes full integration with Reloaded-II's configuration system, allowing you to set persistent color schemes for each job class:
+
+1. **Open Reloaded-II** and select "FFT Color Mod"
+2. **Click Configure** to open the configuration window
+3. **Select color schemes** for each job class using the dropdown menus:
+   - Each job (Squire, Knight, Monk, etc.) can have its own color scheme
+   - Both male and female variants can be configured separately
+   - Choose from 21 available color schemes including Original, Corpse Brigade, Lucavi, and custom themes
+4. **Save your configuration** - changes persist between game sessions
+5. **Launch the game** - your configured colors will be applied automatically
+
+**Configuration Features**:
+- **Per-Job Customization**: Set different colors for each job class
+- **Gender Variants**: Configure male and female sprites separately
+- **Persistent Settings**: Your choices are saved to `Reloaded\User\Mods\ptyra.fft.colormod\Config.json`
+- **Real-time Updates**: Changes made in the configuration menu apply immediately when saved
+- **F2 Hotkey Behavior**: F2 still cycles colors in-game, but these changes are session-only and don't overwrite your saved configuration
 
 ## Building from Source
 
