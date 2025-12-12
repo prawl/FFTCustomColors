@@ -11,23 +11,309 @@ This directory contains Python scripts for creating and managing color themes fo
 
 ## TODO: Story Character Themes
 
-**Status**: ✅ Orlandeau Complete (Thunder God theme)
+**Status**:
+- ✅ Orlandeau Complete (Thunder God theme)
+- ✅ Beowulf Complete (Temple Knight theme, Test theme)
 
 **Remaining Story Characters to Theme:**
 - [ ] **Agrias** - Holy Knight theme variations
 - [ ] **Malak** - Dark/Hell Knight themes
 - [ ] **Reis (Human)** - Dragon-themed colors
 - [ ] **Reis (Dragon)** - Matching dragon form colors
-- [ ] **Beowulf** - Temple Knight themes
 - [ ] **Mustadio** - Engineer/Machinist themes
 - [ ] **Worker 8** - Mechanical/Steel themes
 - [ ] **Cloud** - Soldier/Buster Sword themes
 
-**Implementation Notes:**
-1. Each character needs their own palette mapping (test with color-coded sprites first)
-2. Create character-specific enum (like OrlandeauColorScheme)
-3. Update Config.cs with proper sprite name detection
-4. Test F2 cycling and Reloaded-II configuration
+## Important: DynamicSpriteLoader Dev Mode Detection Fix
+
+**CRITICAL**: When adding new story characters, you MUST update the DynamicSpriteLoader's DetectDevMode method to exclude their theme directories from the dev mode check. Without this, the loader may incorrectly treat story character themes as core dev themes and fail to deploy them properly.
+
+**File to Update**: `ColorMod/Utilities/DynamicSpriteLoader.cs` (line 54)
+
+```csharp
+// Must exclude ALL story character themes from dev mode detection
+var dataThemes = Directory.GetDirectories(_dataPath, "sprites_*")
+    .Select(d => Path.GetFileName(d))
+    .Where(d => !d.StartsWith("sprites_test_")
+             && !d.StartsWith("sprites_orlandeau_")
+             && !d.StartsWith("sprites_beowulf_"))  // Add new story characters here
+    .ToHashSet();
+```
+
+**Why This Is Critical:**
+- The DynamicSpriteLoader uses this detection to determine if it's running in dev mode
+- If story character themes aren't excluded, they get counted as "core dev themes"
+- This causes the loader to think it's not in dev mode when it should be
+- Result: Story character theme directories may not be deployed to the mod folder
+
+**When to Update:**
+- Every time you add a new story character (Agrias, Malak, Reis, etc.)
+- Add an exclusion pattern like: `&& !d.StartsWith("sprites_[character]_")`
+
+## How Orlandeau Story Character Themes Work
+
+**Implementation Overview:**
+1. **Character-specific enum** (`OrlandeauColorScheme`) with themes: `original` and `thunder_god`
+2. **Theme manager** (`StoryCharacterThemeManager`) tracks and cycles the current theme
+3. **F2 hotkey** cycles through themes by copying sprite files to the main directory
+4. **Initial theme** applied on mod startup via `ApplyInitialOrlandeauTheme()`
+5. **Deployment** via BuildLinked.ps1 copies all theme variants with proper sprite counts
+
+**Key Implementation Details:**
+
+1. **OrlandeauColorScheme.cs** - Character-specific enum:
+```csharp
+public enum OrlandeauColorScheme
+{
+    [Description("Original")]
+    original,
+    [Description("Thunder God")]
+    thunder_god,
+}
+```
+
+2. **StoryCharacterThemeManager.cs** - Theme management:
+```csharp
+private OrlandeauColorScheme _currentOrlandeauTheme = OrlandeauColorScheme.thunder_god;
+
+public OrlandeauColorScheme CycleOrlandeauTheme()
+{
+    var values = Enum.GetValues<OrlandeauColorScheme>();
+    var currentIndex = Array.IndexOf(values, _currentOrlandeauTheme);
+    var nextIndex = (currentIndex + 1) % values.Length;
+    _currentOrlandeauTheme = values[nextIndex];
+    return _currentOrlandeauTheme;
+}
+```
+
+3. **Mod.cs - F2 Handler** - Cycles and applies theme by copying files:
+```csharp
+// In ProcessHotkeyPress for F2:
+var nextOrlandeauTheme = _storyCharacterManager.CycleOrlandeauTheme();
+string orlandeauThemeDir = $"sprites_orlandeau_{nextOrlandeauTheme.ToString().ToLower()}";
+var sourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, "battle_oru_spr.bin");
+var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_oru_spr.bin");
+File.Copy(sourceFile, destFile, true);
+// Also copy variants: battle_goru_spr.bin, battle_voru_spr.bin
+```
+
+4. **BuildLinked.ps1** - Deployment with correct sprite counts:
+- Orlandeau themes get 124 sprites (121 generic + 3 Orlandeau: oru, goru, voru)
+- Filter pattern: `$_.Name -like "sprites_orlandeau_*"`
+- Verification: Expects exactly 124 sprites per Orlandeau theme directory
+
+**Important Directory Structure:**
+```
+ColorMod/FFTIVC/data/enhanced/fftpack/unit/
+├── sprites_orlandeau_thunder_god/
+│   ├── battle_oru_spr.bin     # Main Orlandeau sprite
+│   ├── battle_goru_spr.bin    # Guest Orlandeau
+│   └── battle_voru_spr.bin    # Variant Orlandeau
+└── battle_oru_spr.bin          # Active sprite (copied from theme dir)
+```
+
+**Key Point:** The F2 handler copies sprites from theme directories to the main unit/ directory. This is a file-swapping approach, NOT path interception.
+
+## Beowulf Story Character Theme Implementation (Complete Example)
+
+**Implementation completed using TDD approach:**
+
+1. **Created BeowulfColorScheme.cs enum**:
+```csharp
+public enum BeowulfColorScheme
+{
+    [Description("Original")]
+    original,
+    [Description("Test")]
+    test,
+    [Description("Temple Knight")]
+    temple_knight,
+}
+```
+
+2. **Updated StoryCharacterThemeManager.cs**:
+```csharp
+private BeowulfColorScheme _currentBeowulfTheme = BeowulfColorScheme.test;
+
+public BeowulfColorScheme CycleBeowulfTheme()
+{
+    var values = Enum.GetValues<BeowulfColorScheme>();
+    var currentIndex = Array.IndexOf(values, _currentBeowulfTheme);
+    var nextIndex = (currentIndex + 1) % values.Length;
+    _currentBeowulfTheme = values[nextIndex];
+    return _currentBeowulfTheme;
+}
+```
+
+3. **Added to Mod.cs**:
+- `ApplyInitialBeowulfTheme()` - Applies test theme on startup
+- F2 handler cycles Beowulf themes and copies sprite files
+- Beowulf has only 1 sprite variant (battle_beio_spr.bin)
+
+4. **Updated BuildLinked.ps1**:
+- Added Beowulf theme detection and deployment
+- Beowulf themes get 122 sprites (121 generic + 1 Beowulf)
+- Verification expects exactly 122 sprites per Beowulf theme
+
+5. **Theme Files Created**:
+```
+ColorMod/FFTIVC/data/enhanced/fftpack/unit/
+├── sprites_beowulf_test/
+│   └── battle_beio_spr.bin
+└── sprites_beowulf_temple_knight/
+    └── battle_beio_spr.bin
+```
+
+**Key Differences from Orlandeau:**
+- Beowulf has only 1 sprite file (beio) vs Orlandeau's 3 (oru, goru, voru)
+- Beowulf themes contain 122 sprites total vs Orlandeau's 124
+- Default theme is "test" for Beowulf vs "thunder_god" for Orlandeau
+
+## Adding New Story Character Themes - Complete Steps
+
+Follow these steps when adding themes for a new story character (using Beowulf as example):
+
+### Step 1: Create Theme Scripts
+1. Create character directory: `scripts/[character_name]/`
+2. Create three Python scripts:
+   - `extract_original_colors.py` - Extract original palette
+   - `create_simple_color_test.py` - Test palette mapping with distinct colors
+   - `create_[theme_name].py` - Create the actual theme
+
+### Step 2: Test Palette Mapping
+```bash
+# Extract original colors to understand base palette
+cd scripts/beowulf
+python extract_original_colors.py
+
+# Create color test to identify which indices control what
+python create_simple_color_test.py
+
+# Deploy and test in-game to confirm mapping
+# RED = armor, GREEN = secondary, BLUE = cape, etc.
+```
+
+### Step 3: Create C# Enum for Character Themes
+Create `ColorMod/Configuration/[Character]ColorScheme.cs`:
+```csharp
+using System.ComponentModel;
+
+namespace FFTColorMod.Configuration
+{
+    public enum BeowulfColorScheme
+    {
+        [Description("Original")]
+        original,
+
+        [Description("Temple Knight")]
+        temple_knight,
+
+        [Description("Test")]
+        test,
+    }
+}
+```
+
+### Step 4: Update Config.cs
+1. Change the property type from `ColorScheme` to character-specific enum:
+```csharp
+// Before:
+public ColorScheme Beowulf { get; set; } = ColorScheme.original;
+
+// After:
+public BeowulfColorScheme Beowulf { get; set; } = BeowulfColorScheme.original;
+```
+
+2. Update `GetColorSchemeForSprite` method to handle character themes:
+```csharp
+// Beowulf (beio = Beowulf)
+if (spriteName.Contains("beio"))
+{
+    if (Beowulf == BeowulfColorScheme.original)
+        return "sprites_original";
+    if (Beowulf == BeowulfColorScheme.test)
+        return "sprites_beowulf_test";
+    return $"sprites_beowulf_{Beowulf.ToString().ToLower()}";
+}
+```
+
+### Step 5: Update BuildLinked.ps1
+Add support for the new character's themes in the deployment script:
+```powershell
+# Get all story character themes
+$beowulfThemes = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_beowulf_*"
+
+# Include in deployment
+Where-Object { $_.Name -like "sprites_orlandeau_*" -or $_.Name -like "sprites_beowulf_*" }
+
+# Update sprite exclusion patterns to include character sprite
+Where-Object { $_.Name -notmatch "aguri|kanba|musu|dily|hime|aruma|rafa|mara|cloud|reze" -or $_.Name -match "oru|beio" }
+```
+
+### Step 6: Update Story Character Theme Manager
+Update `ColorMod/Utilities/StoryCharacterThemeManager.cs`:
+```csharp
+// Add theme tracking for the character
+private BeowulfColorScheme _currentBeowulfTheme = BeowulfColorScheme.test;
+
+// Add cycling methods
+public BeowulfColorScheme CycleBeowulfTheme()
+{
+    var values = Enum.GetValues<BeowulfColorScheme>();
+    var currentIndex = Array.IndexOf(values, _currentBeowulfTheme);
+    var nextIndex = (currentIndex + 1) % values.Length;
+    _currentBeowulfTheme = values[nextIndex];
+    return _currentBeowulfTheme;
+}
+```
+
+### Step 7: Update Mod.cs for Path Interception
+Add story character sprite handling to `InterceptFilePath`:
+```csharp
+// Check if it's a story character sprite
+if (IsStoryCharacterSprite(fileName))
+{
+    return HandleStoryCharacterSprite(originalPath, fileName);
+}
+
+// Handle Beowulf in HandleStoryCharacterSprite
+if (fileName.Contains("beio_spr"))
+{
+    var beowulfTheme = _storyCharacterManager.GetCurrentBeowulfTheme();
+    if (beowulfTheme != BeowulfColorScheme.original)
+    {
+        var themeDir = $"sprites_beowulf_{beowulfTheme.ToString().ToLower()}";
+        var themedPath = Path.Combine(_modPath, "data", "enhanced", "fftpack", "unit", themeDir, fileName);
+        if (File.Exists(themedPath))
+        {
+            return themedPath;
+        }
+    }
+}
+```
+
+### Step 8: Add F2 Cycling Support
+Update F2 handler in Mod.cs to cycle the character's themes:
+```csharp
+// Cycle Beowulf theme
+var nextBeowulfTheme = _storyCharacterManager.CycleBeowulfTheme();
+Console.WriteLine($"[FFT Color Mod] Cycling Beowulf to {nextBeowulfTheme}");
+```
+
+### Step 9: Test and Verify
+1. Run `BuildLinked.ps1` to deploy
+2. Launch game through Reloaded-II
+3. Test theme switching with F2 or config menu
+4. Verify all character variants work (main, guest, variant sprites)
+
+**Critical Implementation Notes:**
+1. **Path Structure**: Theme sprites must be in `ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_[character]_[theme]/`
+2. **Deployment Path**: BuildLinked.ps1 deploys from `ColorMod/FFTIVC/data/` to `$modPath/data/` (NOT `$modPath/FFTIVC/data/`)
+3. **File Interception**: Use `InterceptFilePath` for path redirection, NOT file copying in F2 handler
+4. **Story Character Detection**: Check sprite names (e.g., "beio_spr" for Beowulf) in `IsStoryCharacterSprite`
+5. **Theme Directory Naming**: Must match pattern `sprites_[character]_[theme]` exactly
+6. **Initial Theme Application**: Apply default theme on mod startup via `ApplyInitialStoryCharacterThemes`
+7. **Sprite Count Verification**: Beowulf themes have 122 sprites (121 generic + 1 Beowulf), Orlandeau has 124
 
 ## Scripts Overview
 

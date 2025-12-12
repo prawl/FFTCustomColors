@@ -107,8 +107,9 @@ public class Mod : IMod, IConfigurable
 
         _configBasedSpriteManager.ApplyConfiguration();
 
-        // Apply initial Orlandeau theme
+        // Apply initial story character themes
         ApplyInitialOrlandeauTheme();
+        ApplyInitialBeowulfTheme();
 
         // Initialize input simulator if not provided (for testing)
         if (_inputSimulator == null)
@@ -286,6 +287,35 @@ public class Mod : IMod, IConfigurable
         }
     }
 
+    private void ApplyInitialBeowulfTheme()
+    {
+        try
+        {
+            var currentTheme = _storyCharacterManager.GetCurrentBeowulfTheme();
+            Console.WriteLine($"[FFT Color Mod] Applying initial Beowulf theme: {currentTheme}");
+
+            // Apply the initial theme by copying the sprite file
+            string beowulfThemeDir = $"sprites_beowulf_{currentTheme.ToString().ToLower()}";
+            var sourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", beowulfThemeDir, "battle_beio_spr.bin");
+            var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_beio_spr.bin");
+
+            Console.WriteLine($"[FFT Color Mod] Looking for initial Beowulf sprite at: {sourceFile}");
+            if (File.Exists(sourceFile))
+            {
+                File.Copy(sourceFile, destFile, true);
+                Console.WriteLine($"[FFT Color Mod] Successfully applied initial Beowulf theme: {currentTheme}");
+            }
+            else
+            {
+                Console.WriteLine($"[FFT Color Mod] Warning: Initial Beowulf theme file not found at: {sourceFile}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FFT Color Mod] Error applying initial Beowulf theme: {ex.Message}");
+        }
+    }
+
     public void ProcessHotkeyPress(int vkCode)
     {
         const int VK_F1 = 0x70;
@@ -350,6 +380,26 @@ public class Mod : IMod, IConfigurable
             else
             {
                 Console.WriteLine($"[FFT Color Mod] ERROR: Orlandeau sprite not found at: {sourceFile}");
+            }
+
+            // Also cycle Beowulf theme
+            var nextBeowulfTheme = _storyCharacterManager.CycleBeowulfTheme();
+            Console.WriteLine($"[FFT Color Mod] Cycling Beowulf to {nextBeowulfTheme}");
+
+            // Apply Beowulf theme by copying the sprite file
+            string beowulfThemeDir = $"sprites_beowulf_{nextBeowulfTheme.ToString().ToLower()}";
+            var beowulfSourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", beowulfThemeDir, "battle_beio_spr.bin");
+            var beowulfDestFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_beio_spr.bin");
+
+            Console.WriteLine($"[FFT Color Mod] Looking for Beowulf sprite at: {beowulfSourceFile}");
+            if (File.Exists(beowulfSourceFile))
+            {
+                File.Copy(beowulfSourceFile, beowulfDestFile, true);
+                Console.WriteLine($"[FFT Color Mod] Successfully copied Beowulf theme: {nextBeowulfTheme}");
+            }
+            else
+            {
+                Console.WriteLine($"[FFT Color Mod] ERROR: Beowulf sprite not found at: {beowulfSourceFile}");
             }
 
             // Simulate menu refresh to update sprites immediately

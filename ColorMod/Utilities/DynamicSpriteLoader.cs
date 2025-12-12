@@ -51,7 +51,7 @@ namespace FFTColorMod.Utilities
 
             var dataThemes = Directory.GetDirectories(_dataPath, "sprites_*")
                 .Select(d => Path.GetFileName(d))
-                .Where(d => !d.StartsWith("sprites_test_") && !d.StartsWith("sprites_orlandeau_")) // Exclude test and Orlandeau themes from check
+                .Where(d => !d.StartsWith("sprites_test_") && !d.StartsWith("sprites_orlandeau_") && !d.StartsWith("sprites_beowulf_")) // Exclude test, Orlandeau, and Beowulf themes from check
                 .ToHashSet();
 
             // Dev mode if we have exactly the core dev themes (or subset)

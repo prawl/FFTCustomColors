@@ -92,18 +92,23 @@ if ($LASTEXITCODE -eq 0) {
             )
             Write-Host "  DEV: Limiting to 5 generic themes for stability" -ForegroundColor Yellow
 
-            # Get all Orlandeau themes (these are separate from generic themes)
+            # Get all story character themes (Orlandeau, Beowulf, etc.)
             $orlandeauThemes = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_orlandeau_*" -ErrorAction SilentlyContinue |
+                ForEach-Object { $_.Name }
+            $beowulfThemes = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_beowulf_*" -ErrorAction SilentlyContinue |
                 ForEach-Object { $_.Name }
 
             if ($orlandeauThemes.Count -gt 0) {
                 Write-Host "  DEV: Including $($orlandeauThemes.Count) Orlandeau theme(s)" -ForegroundColor Magenta
             }
+            if ($beowulfThemes.Count -gt 0) {
+                Write-Host "  DEV: Including $($beowulfThemes.Count) Beowulf theme(s)" -ForegroundColor Magenta
+            }
 
-            # Combine core themes and Orlandeau themes
-            # Only copy the core themes for stability (5 generic + all Orlandeau)
+            # Combine core themes and story character themes
+            # Only copy the core themes for stability (5 generic + all story character themes)
             $colorVariants = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue |
-                Where-Object { $coreThemes -contains $_.Name -or $_.Name -like "sprites_orlandeau_*" } |
+                Where-Object { $coreThemes -contains $_.Name -or $_.Name -like "sprites_orlandeau_*" -or $_.Name -like "sprites_beowulf_*" } |
                 ForEach-Object { $_.Name }
 
             foreach ($variant in $colorVariants) {
@@ -135,6 +140,11 @@ if ($LASTEXITCODE -eq 0) {
                         $baseSprites = Get-ChildItem "$sourceBasePath/*.bin" -ErrorAction SilentlyContinue |
                             Where-Object { $_.Name -notmatch "aguri|kanba|musu|dily|hime|aruma|rafa|mara|cloud|beio|reze" -or $_.Name -match "oru" }
                         $baseCount = $baseSprites.Count
+                    } elseif ($variant -like "sprites_beowulf_*") {
+                        # For Beowulf themes, include all base sprites plus Beowulf
+                        $baseSprites = Get-ChildItem "$sourceBasePath/*.bin" -ErrorAction SilentlyContinue |
+                            Where-Object { $_.Name -notmatch "aguri|kanba|oru|musu|dily|hime|aruma|rafa|mara|cloud|reze" -or $_.Name -match "beio" }
+                        $baseCount = $baseSprites.Count
                     }
 
                     # Copy all base sprites first
@@ -154,6 +164,8 @@ if ($LASTEXITCODE -eq 0) {
 
                     if ($variant -like "sprites_orlandeau_*") {
                         Write-Host "    [Orlandeau] ${variant}: $modifiedCount modified, $totalCount total sprites" -ForegroundColor Magenta
+                    } elseif ($variant -like "sprites_beowulf_*") {
+                        Write-Host "    [Beowulf] ${variant}: $modifiedCount modified, $totalCount total sprites" -ForegroundColor Cyan
                     } else {
                         Write-Host "    [Generic] ${variant}: $modifiedCount modified, $totalCount total sprites" -ForegroundColor Green
                     }
@@ -161,7 +173,14 @@ if ($LASTEXITCODE -eq 0) {
                     # Verify expected count
                     # 121 generic sprites for generic themes
                     # 124 sprites for Orlandeau themes (121 generic + 3 Orlandeau variants: oru, goru, voru)
-                    $expectedCount = if ($variant -like "sprites_orlandeau_*") { 124 } else { 121 }
+                    # 122 sprites for Beowulf themes (121 generic + 1 Beowulf: beio)
+                    $expectedCount = if ($variant -like "sprites_orlandeau_*") {
+                        124
+                    } elseif ($variant -like "sprites_beowulf_*") {
+                        122
+                    } else {
+                        121
+                    }
                     if ($totalCount -ne $expectedCount) {
                         Write-Host "    WARNING: Expected $expectedCount sprites but found $totalCount" -ForegroundColor Yellow
                     }
@@ -218,6 +237,8 @@ if ($LASTEXITCODE -eq 0) {
     $expectedGenericThemes = @("sprites_corpse_brigade", "sprites_lucavi", "sprites_northern_sky", "sprites_smoke")
     $expectedOrlandeauThemes = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_orlandeau_*" -ErrorAction SilentlyContinue |
         ForEach-Object { $_.Name }
+    $expectedBeowulfThemes = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_beowulf_*" -ErrorAction SilentlyContinue |
+        ForEach-Object { $_.Name }
 
     # Check generic themes (should have 121 sprites each - all generics, no story characters)
     $expectedGenericCount = 121
@@ -253,6 +274,25 @@ if ($LASTEXITCODE -eq 0) {
                 Write-Host "  [WARN] Orlandeau theme $theme has $spriteCount sprites (expected $expectedOrlandeauCount)" -ForegroundColor Yellow
             } else {
                 Write-Host "  [OK] Orlandeau theme $theme has $spriteCount sprites" -ForegroundColor Magenta
+            }
+        }
+    }
+
+    # Check Beowulf themes (should have 122 sprites each - all generics + 1 Beowulf)
+    $expectedBeowulfCount = 122
+    foreach ($theme in $expectedBeowulfThemes) {
+        $themeDir = "$mainSpriteDir/$theme"
+        if (!(Test-Path $themeDir)) {
+            $verificationErrors += "Beowulf theme directory missing: $theme"
+        } else {
+            $spriteCount = (Get-ChildItem "$themeDir/*.bin" -ErrorAction SilentlyContinue | Measure-Object).Count
+            if ($spriteCount -eq 0) {
+                $verificationErrors += "Beowulf theme $theme has no sprite files"
+            } elseif ($spriteCount -ne $expectedBeowulfCount) {
+                $verificationErrors += "Beowulf theme $theme has $spriteCount sprites (expected $expectedBeowulfCount)"
+                Write-Host "  [WARN] Beowulf theme $theme has $spriteCount sprites (expected $expectedBeowulfCount)" -ForegroundColor Yellow
+            } else {
+                Write-Host "  [OK] Beowulf theme $theme has $spriteCount sprites" -ForegroundColor Cyan
             }
         }
     }
