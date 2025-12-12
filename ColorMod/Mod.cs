@@ -304,13 +304,20 @@ public class Mod : IMod, IConfigurable
         // Check if this is a job sprite that should be handled by config-based system
         var fileName = Path.GetFileName(originalPath);
 
-        // If we have a config-based manager and this is a recognized job sprite
+        // F1/F2 global scheme takes priority over per-character config
+        // When global scheme is not "original", ALL sprites use it
+        if (_currentColorScheme != "original" && _spriteFileManager != null)
+        {
+            return _spriteFileManager.InterceptFilePath(originalPath, _currentColorScheme);
+        }
+
+        // Only use config-based system when global scheme is "original"
         if (_configBasedSpriteManager != null && IsJobSprite(fileName))
         {
             return _configBasedSpriteManager.InterceptFilePath(originalPath);
         }
 
-        // Fall back to old system for non-job sprites or when config manager not available
+        // Fall back to sprite file manager for non-job sprites
         return _spriteFileManager?.InterceptFilePath(originalPath, _currentColorScheme) ?? originalPath;
     }
 
@@ -323,7 +330,20 @@ public class Mod : IMod, IConfigurable
             "battle_siro_", "battle_kuro_", "battle_thief_", "battle_ninja_",
             "battle_toki_", "battle_syou_", "battle_samu_",
             "battle_ryu_", "battle_fusui_", "battle_onmyo_", "battle_waju_",
-            "battle_odori_", "battle_gin_", "battle_mono_", "battle_san_"
+            "battle_odori_", "battle_gin_", "battle_mono_", "battle_san_",
+            // Story characters - MUST use actual sprite names from game
+            "battle_musu_",   // Mustadio
+            "battle_aguri_",  // Agrias (has two sprites)
+            "battle_kanba_",  // Agrias second sprite
+            "battle_oru_",    // Orlandeau (NOT oran!)
+            "battle_dily",    // Delita (has dily, dily2, dily3)
+            "battle_hime_",   // Ovelia
+            "battle_aruma_",  // Alma
+            "battle_rafa_",   // Rafa
+            "battle_mara_",   // Malak
+            "battle_cloud_",  // Cloud
+            "battle_beio_",   // Beowulf
+            "battle_reze_",   // Reis (has reze and reze_d)
         };
 
         return jobPatterns.Any(pattern => fileName.StartsWith(pattern, StringComparison.OrdinalIgnoreCase));

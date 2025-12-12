@@ -81,6 +81,21 @@ public class SpriteFileManager
                 string fileName = Path.GetFileName(sourceFile);
                 string targetFile = Path.Combine(targetDir, fileName);
 
+                // Log if this is a story character sprite
+                if (fileName.Contains("musu") || fileName.Contains("aguri") || fileName.Contains("oran"))
+                {
+                    Console.WriteLine($"[FFT Color Mod] STORY CHARACTER: Applying {colorScheme} variant for {fileName}");
+                    Console.WriteLine($"[FFT Color Mod]   Source: {sourceFile}");
+                    Console.WriteLine($"[FFT Color Mod]   Target: {targetFile}");
+
+                    // Verify the file exists before copying
+                    if (!File.Exists(sourceFile))
+                    {
+                        Console.WriteLine($"[FFT Color Mod] ERROR: Source file does not exist: {sourceFile}");
+                        continue;
+                    }
+                }
+
                 File.Copy(sourceFile, targetFile, true);
                 Console.WriteLine($"[FFT Color Mod] Applied {colorScheme} variant: {fileName}");
             }
@@ -100,11 +115,33 @@ public class SpriteFileManager
         if (currentScheme == "original" || string.IsNullOrEmpty(currentScheme))
             return originalPath;
 
-        // Only intercept sprite paths
-        if (!originalPath.Contains("sprites"))
+        // Check if this is a sprite file (ends with _spr.bin)
+        if (!originalPath.EndsWith("_spr.bin", StringComparison.OrdinalIgnoreCase))
             return originalPath;
 
-        // Replace sprites folder with color variant folder
-        return originalPath.Replace(@"sprites\", $@"sprites_{currentScheme}\");
+        // For sprite files, redirect to the color scheme directory
+        // The path should be redirected to the mod's sprite variant folder
+        var fileName = Path.GetFileName(originalPath);
+        var modSpriteDir = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", $"sprites_{currentScheme}");
+        var redirectedPath = Path.Combine(modSpriteDir, fileName);
+
+        // If the variant sprite exists, return that path; otherwise return original
+        if (File.Exists(redirectedPath))
+        {
+            // Extra logging for story characters
+            if (fileName.Contains("musu") || fileName.Contains("aguri") || fileName.Contains("beio"))
+            {
+                Console.WriteLine($"[FFT Color Mod] STORY CHARACTER: Redirecting {fileName} to {currentScheme} variant");
+                Console.WriteLine($"[FFT Color Mod]   From: {originalPath}");
+                Console.WriteLine($"[FFT Color Mod]   To: {redirectedPath}");
+            }
+            else
+            {
+                Console.WriteLine($"[FFT Color Mod] Redirecting {fileName} to {currentScheme} variant");
+            }
+            return redirectedPath;
+        }
+
+        return originalPath;
     }
 }

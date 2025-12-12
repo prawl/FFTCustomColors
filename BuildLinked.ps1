@@ -71,11 +71,21 @@ if ($LASTEXITCODE -eq 0) {
             $spriteCount = (Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/*.bin" | Measure-Object).Count
             Write-Host "Copied $spriteCount sprite files to fftpack/unit" -ForegroundColor Green
 
-            # TLDR: Copy color variant directories from root FFTIVC (respects dev/prod mode)
+            # TLDR: Copy color variant directories from ColorMod/FFTIVC
             Write-Host "Copying color variant directories..." -ForegroundColor Cyan
-            # Auto-discover sprite variant directories from root FFTIVC folder (not ColorMod subfolder)
-            # This ensures we only copy what's in the active environment (5 themes in dev, 0 in prod)
-            $colorVariants = Get-ChildItem "FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue |
+
+            # Core themes to deploy (limit to 5 to prevent F1/F2 crashes)
+            $coreThemes = @(
+                "sprites_original",
+                "sprites_corpse_brigade",
+                "sprites_lucavi",
+                "sprites_northern_sky",
+                "sprites_smoke"
+            )
+
+            # Only copy the core themes for stability
+            $colorVariants = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue |
+                Where-Object { $coreThemes -contains $_.Name } |
                 ForEach-Object { $_.Name }
 
             $emptyDirs = @()
@@ -86,7 +96,7 @@ if ($LASTEXITCODE -eq 0) {
                     continue
                 }
 
-                $sourcePath = "FFTIVC/data/enhanced/fftpack/unit/$variant"
+                $sourcePath = "ColorMod/FFTIVC/data/enhanced/fftpack/unit/$variant"
                 $destPath = "$spritePath/$variant"
 
                 # Create variant directory
