@@ -184,6 +184,33 @@ ColorMod/FFTIVC/data/enhanced/fftpack/unit/
 └── *.bin                     # Active sprites (swapped by F1/F2)
 ```
 
+## Mod Implementation Details
+
+### Current Implementation (v0.5.0)
+- **F1/F2 Cycling**: Hotkeys cycle through available color schemes
+- **File Swapping**: Copies sprites to `unit/` directory for real-time changes
+- **Preferences**: Saves/loads color choice between sessions
+- **Auto-Detection**: Automatically finds all `sprites_*` directories
+- **Dynamic Loading**: No hardcoded scheme list needed
+
+### Key Components (C# Mod)
+- `MonitorHotkeys()`: F1/F2 key detection
+- `ProcessHotkeyPress()`: Cycles through schemes
+- `SwitchPacFile()`: Sprite file swapping mechanism
+- `SetColorScheme()`: Saves preference to config
+
+### Adding New Color Schemes
+1. Create new `sprites_[name]` folder in `ColorMod/FFTIVC/data/enhanced/fftpack/unit/`
+2. Add all 38 required job sprites to the folder
+3. Deploy using BuildLinked.ps1
+4. The mod will auto-detect the new scheme on next launch
+
+### Technical Details
+- **Color Format**: BGR format, palette in first 512 bytes (256 colors)
+- **First 288 bytes**: Contains the first 144 colors (legacy note, actually 512 bytes total)
+- **File Swapping**: Direct file replacement approach for compatibility
+- **Complete Set Required**: Each theme directory needs all 38 job sprites
+
 ## Troubleshooting
 
 ### Common Issues
