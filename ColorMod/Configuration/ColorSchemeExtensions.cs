@@ -14,5 +14,26 @@ namespace FFTColorMod.Configuration
             var attribute = fieldInfo.GetCustomAttribute<DescriptionAttribute>();
             return attribute?.Description ?? colorScheme.ToString();
         }
+
+        public static string GetDescription(this AgriasColorScheme colorScheme)
+        {
+            if (colorScheme == AgriasColorScheme.original)
+                return "sprites_original";
+            return $"sprites_agrias_{colorScheme.ToString().ToLower()}";
+        }
+
+        public static string GetDescription(this OrlandeauColorScheme colorScheme)
+        {
+            if (colorScheme == OrlandeauColorScheme.original)
+                return "sprites_original";
+            return $"sprites_orlandeau_{colorScheme.ToString().ToLower()}";
+        }
+
+        public static string GetDescription(this BeowulfColorScheme colorScheme)
+        {
+            if (colorScheme == BeowulfColorScheme.original)
+                return "sprites_original";
+            return $"sprites_beowulf_{colorScheme.ToString().ToLower()}";
+        }
     }
 }

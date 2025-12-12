@@ -300,9 +300,9 @@ namespace FFTColorMod.Configuration
         [Category("Story Characters")]
         [DisplayName("Agrias")]
         [Description("Color scheme for Agrias")]
-        [DefaultValue(ColorScheme.original)]
+        [DefaultValue(AgriasColorScheme.original)]
         [JsonPropertyName("Agrias")]
-        public ColorScheme Agrias { get; set; } = ColorScheme.original;
+        public AgriasColorScheme Agrias { get; set; } = AgriasColorScheme.original;
 
         // Orlandeau (Thunder God Cid)
         [Category("Story Characters")]
