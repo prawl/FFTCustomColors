@@ -46,23 +46,46 @@ The mod now includes full integration with Reloaded-II's configuration system, a
 - Visual Studio 2022 or VS Code
 - Reloaded-II mod loader installed
 
+### Dynamic Sprite Loading System
+The mod uses a dynamic sprite loading system to prevent crashes and optimize memory usage:
+
+**How It Works:**
+1. All 20 color themes are stored in the `ColorSchemes/` directory
+2. At game startup, only the sprites configured in Reloaded-II are copied to `data/`
+3. The game only loads what's actually being used (prevents crashes)
+4. No manual file management needed - everything is automatic!
+
+**Dev Mode Auto-Detection:**
+- The system automatically detects dev mode when the 5 core themes are in `data/`
+- In dev mode, DynamicSpriteLoader is disabled to preserve F1/F2 functionality
+- Configured themes outside the dev set will be skipped with a console message
+- Test themes (`sprites_test_*`) are always preserved
+
 ### Development Mode Setup
-The mod includes a development mode to prevent crashes when testing with F1/F2 hotkeys:
+For testing with F1/F2 hotkeys, use development mode:
 
 ```powershell
-# Set up dev mode (keeps only 5 themes + test themes)
+# Set up dev mode (5 themes for F1/F2 testing)
 ./SetupDev.ps1
 
-# When ready for production (restores all 20 themes)
+# When ready for production (dynamic loading only)
 ./SetupProduction.ps1
 ```
 
-**Dev Mode Details:**
-- Limits loaded themes to 5 core themes (original, corpse_brigade, lucavi, northern_sky, smoke)
-- Automatically keeps any `sprites_test_*` themes for testing new colors
-- Prevents game crashes from loading too many sprites at startup
-- F1/F2 hotkeys cycle through available themes (dev mode only, for testing)
-- Other 15 themes are backed up to `ColorSchemes/` folder
+**Dev Mode:**
+- Keeps 5 core themes in `data/` for F1/F2 testing (original, corpse_brigade, lucavi, northern_sky, smoke)
+- Stores all other themes in `ColorSchemes/`
+- Supports `sprites_test_*` themes for development
+- DynamicSpriteLoader auto-detects and preserves this setup
+- F1/F2 hotkeys work perfectly without interference
+- Prevents crashes during hotkey testing
+
+**Production Mode:**
+- All themes stored in `ColorSchemes/`
+- `data/` directory kept empty
+- DynamicSpriteLoader copies only configured themes at startup
+- No crashes, minimal memory usage
+- All 20 themes available through config
 
 ### Build & Deploy
 ```powershell

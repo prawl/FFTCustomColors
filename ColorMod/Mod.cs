@@ -20,6 +20,7 @@ public class Mod : IMod, IConfigurable
     private SpriteFileManager? _spriteFileManager;
     private ConfigBasedSpriteManager? _configBasedSpriteManager;
     private ConfigurationManager? _configurationManager;
+    private DynamicSpriteLoader? _dynamicSpriteLoader;
     private Process? _gameProcess;
     private string _currentColorScheme = "original";
     private ColorSchemeCycler _colorCycler;
@@ -93,9 +94,17 @@ public class Mod : IMod, IConfigurable
         _configurationManager = new ConfigurationManager(configPath);
         _configBasedSpriteManager = new ConfigBasedSpriteManager(modPath, _configurationManager);
 
-        // Load saved configuration
+        // Initialize dynamic sprite loader
+        _dynamicSpriteLoader = new DynamicSpriteLoader(modPath, _configurationManager);
+
+        // Load saved configuration and prepare sprites
         var loadedConfig = _configurationManager.LoadConfig();
         Console.WriteLine($"[FFT Color Mod] Loaded config - Knight_Male: {loadedConfig.Knight_Male}");
+
+        // Prepare sprites based on configuration (copy from ColorSchemes to data)
+        Console.WriteLine("[FFT Color Mod] Preparing sprites based on configuration...");
+        _dynamicSpriteLoader.PrepareSpritesForConfig();
+
         _configBasedSpriteManager.ApplyConfiguration();
 
         // Initialize input simulator if not provided (for testing)

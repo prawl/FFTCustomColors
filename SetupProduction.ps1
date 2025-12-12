@@ -1,11 +1,12 @@
 #!/usr/bin/env pwsh
-# Setup Production Mode - Restores all themes for release (F1/F2 should be disabled in code)
+# Setup Production Mode - Ensures all themes are in ColorSchemes for dynamic loading
+# Clears data directory so only configured themes are copied at runtime
 
-Write-Host "Setting up Production Mode with all themes..." -ForegroundColor Cyan
+Write-Host "Setting up Production Mode with dynamic sprite loading..." -ForegroundColor Cyan
 
 $modPath = $PSScriptRoot
 $gameThemesPath = Join-Path $modPath "FFTIVC\data\enhanced\fftpack\unit"
-$backupPath = Join-Path $modPath "ColorSchemes"
+$colorSchemesPath = Join-Path $modPath "ColorSchemes"
 
 # Create game directory if it doesn't exist
 if (-not (Test-Path $gameThemesPath)) {
@@ -13,89 +14,85 @@ if (-not (Test-Path $gameThemesPath)) {
     Write-Host "Created game themes directory: $gameThemesPath" -ForegroundColor Green
 }
 
-# Check if backup directory exists
-if (-not (Test-Path $backupPath)) {
-    Write-Host "No backup directory found. All themes might already be in place." -ForegroundColor Yellow
-} else {
-    # Get all themes from backup
-    $backupThemes = Get-ChildItem -Path $backupPath -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue
-
-    if ($backupThemes.Count -eq 0) {
-        Write-Host "No themes found in backup directory." -ForegroundColor Yellow
-    } else {
-        Write-Host "Found $($backupThemes.Count) themes in backup" -ForegroundColor Gray
-
-        # Move all themes back to game directory (except test themes)
-        $restoredCount = 0
-        $skippedTestThemes = 0
-
-        foreach ($theme in $backupThemes) {
-            # Skip test themes in production
-            if ($theme.Name -like "sprites_test_*") {
-                Write-Host "Skipping test theme: $($theme.Name)" -ForegroundColor Yellow
-                $skippedTestThemes++
-                continue
-            }
-
-            $sourcePath = $theme.FullName
-            $destPath = Join-Path $gameThemesPath $theme.Name
-
-            # Remove destination if it exists
-            if (Test-Path $destPath) {
-                Remove-Item -Path $destPath -Recurse -Force
-            }
-
-            Write-Host "Restoring $($theme.Name)..." -ForegroundColor Gray
-            Move-Item -Path $sourcePath -Destination $destPath -Force
-            $restoredCount++
-        }
-
-        Write-Host "Restored $restoredCount production themes" -ForegroundColor Green
-        if ($skippedTestThemes -gt 0) {
-            Write-Host "Skipped $skippedTestThemes test themes" -ForegroundColor Yellow
-        }
-    }
+# Create ColorSchemes directory if it doesn't exist
+if (-not (Test-Path $colorSchemesPath)) {
+    New-Item -ItemType Directory -Path $colorSchemesPath -Force | Out-Null
+    Write-Host "Created ColorSchemes directory: $colorSchemesPath" -ForegroundColor Green
 }
 
-# Also clean up any test themes that might be in the game directory
-$gameThemes = Get-ChildItem -Path $gameThemesPath -Directory -Filter "sprites_test_*" -ErrorAction SilentlyContinue
-if ($gameThemes.Count -gt 0) {
-    Write-Host "`nRemoving test themes from production..." -ForegroundColor Yellow
-    foreach ($testTheme in $gameThemes) {
-        # Move test themes back to ColorSchemes for safekeeping
-        $destPath = Join-Path $backupPath $testTheme.Name
+# Move ALL themes from data to ColorSchemes
+$dataThemes = Get-ChildItem -Path $gameThemesPath -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue
+
+if ($dataThemes.Count -eq 0) {
+    Write-Host "No themes found in data directory." -ForegroundColor Yellow
+} else {
+    Write-Host "Found $($dataThemes.Count) themes in data directory" -ForegroundColor Gray
+
+    $movedCount = 0
+    foreach ($theme in $dataThemes) {
+        $sourcePath = $theme.FullName
+        $destPath = Join-Path $colorSchemesPath $theme.Name
+
+        # If already exists in ColorSchemes, remove from data
         if (Test-Path $destPath) {
-            Remove-Item -Path $destPath -Recurse -Force
+            Write-Host "Removing duplicate $($theme.Name) from data..." -ForegroundColor Gray
+            Remove-Item -Path $sourcePath -Recurse -Force
+        } else {
+            Write-Host "Moving $($theme.Name) to ColorSchemes..." -ForegroundColor Gray
+            Move-Item -Path $sourcePath -Destination $destPath -Force
+            $movedCount++
         }
-        Move-Item -Path $testTheme.FullName -Destination $destPath -Force
-        Write-Host "Moved $($testTheme.Name) back to ColorSchemes" -ForegroundColor Gray
+    }
+
+    if ($movedCount -gt 0) {
+        Write-Host "Moved $movedCount themes to ColorSchemes" -ForegroundColor Green
     }
 }
 
-# Verify final state
-$finalThemes = Get-ChildItem -Path $gameThemesPath -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue
+# Clean up data directory - remove all sprites_* directories
+Write-Host "`nCleaning data directory for production mode..." -ForegroundColor Yellow
+$remainingThemes = Get-ChildItem -Path $gameThemesPath -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue
+foreach ($theme in $remainingThemes) {
+    Remove-Item -Path $theme.FullName -Recurse -Force
+    Write-Host "Removed $($theme.Name) from data directory" -ForegroundColor Gray
+}
+
+# Verify ColorSchemes directory contains all themes
+$colorSchemeThemes = Get-ChildItem -Path $colorSchemesPath -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue
+$dataThemeCount = (Get-ChildItem -Path $gameThemesPath -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue).Count
+
 Write-Host "`nProduction mode setup complete!" -ForegroundColor Green
-Write-Host "Active themes ($($finalThemes.Count)):" -ForegroundColor Cyan
+Write-Host "`nColorSchemes directory: $($colorSchemeThemes.Count) themes" -ForegroundColor Cyan
+Write-Host "Data directory: $dataThemeCount themes (should be 0 for production)" -ForegroundColor Cyan
 
-# List themes, highlighting if we have the expected 20
-$themeList = @()
-foreach ($theme in $finalThemes) {
-    $themeName = $theme.Name -replace "sprites_", ""
-    $themeList += $themeName
+# List themes in ColorSchemes
+if ($colorSchemeThemes.Count -gt 0) {
+    Write-Host "`nAvailable themes in ColorSchemes:" -ForegroundColor White
+    $themeList = @()
+    foreach ($theme in $colorSchemeThemes) {
+        $themeName = $theme.Name -replace "sprites_", ""
+        if ($theme.Name -notlike "sprites_test_*") {
+            $themeList += $themeName
+        }
+    }
+
+    # Sort with original first, then alphabetically
+    $sortedThemes = @("original") + ($themeList | Where-Object { $_ -ne "original" } | Sort-Object)
+
+    foreach ($theme in $sortedThemes) {
+        Write-Host "  - $theme" -ForegroundColor Gray
+    }
 }
 
-# Sort with original first, then alphabetically
-$sortedThemes = @("original") + ($themeList | Where-Object { $_ -ne "original" } | Sort-Object)
-
-foreach ($theme in $sortedThemes) {
-    Write-Host "  - $theme" -ForegroundColor White
-}
-
-if ($finalThemes.Count -eq 20) {
-    Write-Host "`nAll 20 production themes are ready!" -ForegroundColor Green
+if ($colorSchemeThemes.Count -ge 20) {
+    Write-Host "`nAll production themes are ready in ColorSchemes!" -ForegroundColor Green
+    Write-Host "The DynamicSpriteLoader will copy only configured themes at runtime." -ForegroundColor Yellow
 } else {
-    Write-Host "`nWarning: Expected 20 themes but found $($finalThemes.Count)" -ForegroundColor Yellow
+    Write-Host "`nWarning: Expected 20+ themes but found $($colorSchemeThemes.Count)" -ForegroundColor Yellow
 }
 
-Write-Host "`nREMINDER: Disable F1/F2 hotkeys in the code for production!" -ForegroundColor Red
-Write-Host "Users will need to restart the game after changing themes in Reloaded config." -ForegroundColor Gray
+Write-Host "`nREMINDER:" -ForegroundColor Red
+Write-Host "- F1/F2 hotkeys should be disabled for production" -ForegroundColor Gray
+Write-Host "- Users configure themes via Reloaded-II config" -ForegroundColor Gray
+Write-Host "- Only configured themes will be loaded at game startup" -ForegroundColor Gray
+Write-Host "- No game restart needed when changing config!" -ForegroundColor Green

@@ -1,16 +1,17 @@
 #!/usr/bin/env pwsh
-# Setup Development Mode - Keeps only 5 themes to prevent crashes during F1/F2 testing
+# Setup Development Mode - Moves all themes to ColorSchemes for dynamic loading
+# Keeps only 5 core themes in data/ for F1/F2 testing
 
-Write-Host "Setting up Development Mode with limited themes..." -ForegroundColor Cyan
+Write-Host "Setting up Development Mode with dynamic sprite loading..." -ForegroundColor Cyan
 
 $modPath = $PSScriptRoot
 $gameThemesPath = Join-Path $modPath "FFTIVC\data\enhanced\fftpack\unit"
-$backupPath = Join-Path $modPath "ColorSchemes"
+$colorSchemesPath = Join-Path $modPath "ColorSchemes"
 
-# Create backup directory if it doesn't exist
-if (-not (Test-Path $backupPath)) {
-    New-Item -ItemType Directory -Path $backupPath -Force | Out-Null
-    Write-Host "Created backup directory: $backupPath" -ForegroundColor Green
+# Create ColorSchemes directory if it doesn't exist
+if (-not (Test-Path $colorSchemesPath)) {
+    New-Item -ItemType Directory -Path $colorSchemesPath -Force | Out-Null
+    Write-Host "Created ColorSchemes directory: $colorSchemesPath" -ForegroundColor Green
 }
 
 # Core themes to keep for development (always keep these)
@@ -25,46 +26,56 @@ $coreDevThemes = @(
 # Also keep any test themes (themes starting with "sprites_test_")
 # This allows you to add sprites_test_1, sprites_test_2, etc. for testing
 
-# Get all sprite directories
+# Get all sprite directories from data folder
 $allThemes = Get-ChildItem -Path $gameThemesPath -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue
 
-if ($allThemes.Count -eq 0) {
-    Write-Host "No themes found in game directory. They might already be in backup." -ForegroundColor Yellow
+Write-Host "Found $($allThemes.Count) themes in data directory" -ForegroundColor Gray
 
-    # Try to restore dev themes from backup
-    $backupThemes = Get-ChildItem -Path $backupPath -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue
-    foreach ($theme in $backupThemes) {
-        # Keep core dev themes and any test themes
-        if ($coreDevThemes -contains $theme.Name -or $theme.Name -like "sprites_test_*") {
-            $sourcePath = $theme.FullName
-            $destPath = Join-Path $gameThemesPath $theme.Name
-            Write-Host "Restoring theme: $($theme.Name)" -ForegroundColor Gray
-            Move-Item -Path $sourcePath -Destination $destPath -Force
-        }
-    }
-} else {
-    Write-Host "Found $($allThemes.Count) themes in game directory" -ForegroundColor Gray
+# Move ALL themes to ColorSchemes first
+$movedCount = 0
+foreach ($theme in $allThemes) {
+    $sourcePath = $theme.FullName
+    $destPath = Join-Path $colorSchemesPath $theme.Name
 
-    # Move non-dev themes to backup (keep core themes and test themes)
-    $movedCount = 0
-    foreach ($theme in $allThemes) {
-        # Keep core dev themes and any test themes
-        if ($coreDevThemes -notcontains $theme.Name -and $theme.Name -notlike "sprites_test_*") {
-            $sourcePath = $theme.FullName
-            $destPath = Join-Path $backupPath $theme.Name
-
-            # Remove destination if it exists
-            if (Test-Path $destPath) {
-                Remove-Item -Path $destPath -Recurse -Force
-            }
-
-            Write-Host "Moving $($theme.Name) to backup..." -ForegroundColor Gray
-            Move-Item -Path $sourcePath -Destination $destPath -Force
-            $movedCount++
-        }
+    # Skip if already exists in ColorSchemes
+    if (Test-Path $destPath) {
+        Write-Host "Theme $($theme.Name) already exists in ColorSchemes" -ForegroundColor Gray
+        continue
     }
 
-    Write-Host "Moved $movedCount themes to backup" -ForegroundColor Green
+    Write-Host "Moving $($theme.Name) to ColorSchemes..." -ForegroundColor Gray
+    Move-Item -Path $sourcePath -Destination $destPath -Force
+    $movedCount++
+}
+
+if ($movedCount -gt 0) {
+    Write-Host "Moved $movedCount themes to ColorSchemes" -ForegroundColor Green
+}
+
+# Now copy ONLY the dev themes back to data for F1/F2 testing
+$colorSchemeThemes = Get-ChildItem -Path $colorSchemesPath -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue
+$copiedCount = 0
+
+foreach ($theme in $colorSchemeThemes) {
+    # Only copy core dev themes and test themes
+    if ($coreDevThemes -contains $theme.Name -or $theme.Name -like "sprites_test_*") {
+        $sourcePath = $theme.FullName
+        $destPath = Join-Path $gameThemesPath $theme.Name
+
+        # Skip if already exists
+        if (Test-Path $destPath) {
+            Write-Host "Dev theme $($theme.Name) already in data directory" -ForegroundColor Gray
+            continue
+        }
+
+        Write-Host "Copying dev theme: $($theme.Name)" -ForegroundColor Gray
+        Copy-Item -Path $sourcePath -Destination $destPath -Recurse -Force
+        $copiedCount++
+    }
+}
+
+if ($copiedCount -gt 0) {
+    Write-Host "Copied $copiedCount dev themes to data directory" -ForegroundColor Green
 }
 
 # Verify final state

@@ -49,12 +49,12 @@ if ($LASTEXITCODE -eq 0) {
         Copy-Item "ColorMod/Preview.png" "$modPath/Preview.png" -Force
     }
 
-    # TLDR: Copy the FFTIVC directory with all color PAC files and sprites
+    # TLDR: Copy the FFTIVC directory structure but NOT the sprites_* directories
     if (Test-Path "ColorMod/FFTIVC") {
         Write-Host "Copying color variant PAC files and sprites..." -ForegroundColor Cyan
-        Copy-Item "ColorMod/FFTIVC" "$modPath" -Recurse -Force
+        # Don't copy the entire directory - we'll copy sprites selectively below
 
-        # Also copy to data/enhanced for the new switching mechanism
+        # Copy to data/enhanced for the new switching mechanism
         $enhancedPath = "$modPath/data/enhanced"
         if (Test-Path "ColorMod/FFTIVC/data/enhanced") {
             New-Item -ItemType Directory -Force -Path $enhancedPath | Out-Null
@@ -71,15 +71,22 @@ if ($LASTEXITCODE -eq 0) {
             $spriteCount = (Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/*.bin" | Measure-Object).Count
             Write-Host "Copied $spriteCount sprite files to fftpack/unit" -ForegroundColor Green
 
-            # TLDR: Copy better_palettes color variant directories
+            # TLDR: Copy color variant directories from root FFTIVC (respects dev/prod mode)
             Write-Host "Copying color variant directories..." -ForegroundColor Cyan
-            # Auto-discover all sprite variant directories
-            $colorVariants = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_*" |
+            # Auto-discover sprite variant directories from root FFTIVC folder (not ColorMod subfolder)
+            # This ensures we only copy what's in the active environment (5 themes in dev, 0 in prod)
+            $colorVariants = Get-ChildItem "FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue |
                 ForEach-Object { $_.Name }
 
             $emptyDirs = @()
             foreach ($variant in $colorVariants) {
-                $sourcePath = "ColorMod/FFTIVC/data/enhanced/fftpack/unit/$variant"
+                # Skip sprites_original - those files are already in the base unit/ directory
+                if ($variant -eq "sprites_original") {
+                    Write-Host "  Skipping sprites_original (already in base directory)" -ForegroundColor Gray
+                    continue
+                }
+
+                $sourcePath = "FFTIVC/data/enhanced/fftpack/unit/$variant"
                 $destPath = "$spritePath/$variant"
 
                 # Create variant directory
