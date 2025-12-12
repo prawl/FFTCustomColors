@@ -57,8 +57,8 @@ namespace FFTColorMod.Tests
             var orlandeauTheme = handler.GetCurrentOrlandeauTheme();
 
             // Assert
-            orlandeauTheme.Should().Be(OrlandeauColorScheme.crimson_knight,
-                "Orlandeau themes should cycle from thunder_god to crimson_knight");
+            orlandeauTheme.Should().Be(OrlandeauColorScheme.original,
+                "Orlandeau themes should cycle from thunder_god to original");
         }
 
         [Fact]
@@ -77,8 +77,8 @@ namespace FFTColorMod.Tests
             // Assert
             knightSpritePath.Should().Be("sprites_corpse_brigade/battle_knight_m_spr.bin",
                 "Knight sprite should use corpse_brigade theme after F2");
-            orlandeauSpritePath.Should().Be("sprites_orlandeau_crimson_knight/battle_oru_spr.bin",
-                "Orlandeau sprite should use crimson_knight theme after F2");
+            orlandeauSpritePath.Should().Be("sprites_orlandeau_original/battle_oru_spr.bin",
+                "Orlandeau sprite should use original theme after F2 (cycles from thunder_god to original)");
         }
 
         [Fact]
@@ -89,7 +89,7 @@ namespace FFTColorMod.Tests
 
             // Set to last themes
             handler.SetGenericTheme("amethyst"); // Last generic theme
-            handler.SetOrlandeauTheme(OrlandeauColorScheme.storm_bringer); // Last Orlandeau theme
+            handler.SetOrlandeauTheme(OrlandeauColorScheme.thunder_god); // Last Orlandeau theme (only 2: original and thunder_god)
 
             // Act
             handler.HandleF2Press();
@@ -99,8 +99,8 @@ namespace FFTColorMod.Tests
             // Assert
             genericTheme.Should().Be("original",
                 "Generic themes should wrap to original after last theme");
-            orlandeauTheme.Should().Be(OrlandeauColorScheme.thunder_god,
-                "Orlandeau themes should wrap to thunder_god after storm_bringer");
+            orlandeauTheme.Should().Be(OrlandeauColorScheme.original,
+                "Orlandeau themes should wrap to original after thunder_god");
         }
 
         [Fact]
@@ -122,8 +122,8 @@ namespace FFTColorMod.Tests
             // Assert
             genericTheme.Should().Be("northern_sky",
                 "After 3 presses: original -> corpse_brigade -> lucavi -> northern_sky");
-            orlandeauTheme.Should().Be(OrlandeauColorScheme.holy_paladin,
-                "After 3 presses: thunder_god -> crimson_knight -> shadow_lord -> holy_paladin");
+            orlandeauTheme.Should().Be(OrlandeauColorScheme.original,
+                "After 3 presses with only 2 themes: thunder_god -> original -> thunder_god -> original");
         }
 
         [Fact]

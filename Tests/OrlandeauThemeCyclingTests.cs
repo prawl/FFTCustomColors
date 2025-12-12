@@ -10,23 +10,28 @@ namespace FFTColorMod.Tests
     public class OrlandeauThemeCyclingTests
     {
         [Fact]
-        public void OrlandeauColorScheme_Should_Have_10_Unique_Themes()
+        public void OrlandeauColorScheme_Should_Have_2_Themes()
         {
             // Arrange & Act
             var themes = System.Enum.GetValues(typeof(OrlandeauColorScheme));
 
             // Assert
-            themes.Length.Should().Be(10, "Orlandeau should have exactly 10 unique themes");
+            themes.Length.Should().Be(2, "Orlandeau should have exactly 2 themes: original and thunder_god");
         }
 
         [Fact]
-        public void OrlandeauColorScheme_Should_Not_Include_Generic_Themes()
+        public void OrlandeauColorScheme_Should_Include_Original_But_Not_Other_Generic_Themes()
         {
             // Arrange
             var orlandeauThemes = System.Enum.GetNames(typeof(OrlandeauColorScheme));
-            var genericThemes = new[] { "original", "corpse_brigade", "lucavi", "northern_sky", "smoke" };
+            var genericThemes = new[] { "corpse_brigade", "lucavi", "northern_sky", "smoke" };
 
             // Act & Assert
+            // Original should be included so players can revert to default
+            orlandeauThemes.Should().Contain("original",
+                "Orlandeau themes should include 'original' for reverting to default");
+
+            // But other generic themes shouldn't be in the enum
             foreach (var genericTheme in genericThemes)
             {
                 orlandeauThemes.Should().NotContain(genericTheme,
@@ -40,16 +45,8 @@ namespace FFTColorMod.Tests
             // Arrange
             var expectedThemes = new[]
             {
-                "thunder_god",
-                "crimson_knight",
-                "shadow_lord",
-                "holy_paladin",
-                "azure_dragon",
-                "inferno_warlord",
-                "frost_emperor",
-                "void_breaker",
-                "golden_lion",
-                "storm_bringer"
+                "original",
+                "thunder_god"
             };
 
             // Act
