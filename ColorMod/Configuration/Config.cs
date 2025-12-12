@@ -5,17 +5,17 @@ namespace FFTColorMod.Configuration
 {
     public class Config : Configurable<Config>
     {
-        // ================== GENERIC JOB CLASSES ==================
+        // ================== GENERIC CHARACTERS ==================
 
         // Squires (starting class)
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Squire")]
         [Description("Color scheme for all male squires")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("SquireMale")]
         public ColorScheme Squire_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Squire")]
         [Description("Color scheme for all female squires")]
         [DefaultValue(ColorScheme.original)]
@@ -23,14 +23,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Squire_Female { get; set; } = ColorScheme.original;
 
         // Knights
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Knight")]
         [Description("Color scheme for all male knights")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("KnightMale")]
         public ColorScheme Knight_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Knight")]
         [Description("Color scheme for all female knights")]
         [DefaultValue(ColorScheme.original)]
@@ -38,14 +38,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Knight_Female { get; set; } = ColorScheme.original;
 
         // Monks
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Monk")]
         [Description("Color scheme for all male monks")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MonkMale")]
         public ColorScheme Monk_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Monk")]
         [Description("Color scheme for all female monks")]
         [DefaultValue(ColorScheme.original)]
@@ -53,14 +53,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Monk_Female { get; set; } = ColorScheme.original;
 
         // Archers
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Archer")]
         [Description("Color scheme for all male archers")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("ArcherMale")]
         public ColorScheme Archer_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Archer")]
         [Description("Color scheme for all female archers")]
         [DefaultValue(ColorScheme.original)]
@@ -68,14 +68,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Archer_Female { get; set; } = ColorScheme.original;
 
         // White Mages
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male White Mage")]
         [Description("Color scheme for all male white mages")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("WhiteMageMale")]
         public ColorScheme WhiteMage_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female White Mage")]
         [Description("Color scheme for all female white mages")]
         [DefaultValue(ColorScheme.original)]
@@ -83,14 +83,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme WhiteMage_Female { get; set; } = ColorScheme.original;
 
         // Black Mages
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Black Mage")]
         [Description("Color scheme for all male black mages")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("BlackMageMale")]
         public ColorScheme BlackMage_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Black Mage")]
         [Description("Color scheme for all female black mages")]
         [DefaultValue(ColorScheme.original)]
@@ -98,14 +98,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme BlackMage_Female { get; set; } = ColorScheme.original;
 
         // Time Mages
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Time Mage")]
         [Description("Color scheme for all male time mages")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("TimeMageMale")]
         public ColorScheme TimeMage_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Time Mage")]
         [Description("Color scheme for all female time mages")]
         [DefaultValue(ColorScheme.original)]
@@ -113,14 +113,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme TimeMage_Female { get; set; } = ColorScheme.original;
 
         // Summoners
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Summoner")]
         [Description("Color scheme for all male summoners")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("SummonerMale")]
         public ColorScheme Summoner_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Summoner")]
         [Description("Color scheme for all female summoners")]
         [DefaultValue(ColorScheme.original)]
@@ -128,14 +128,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Summoner_Female { get; set; } = ColorScheme.original;
 
         // Thieves
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Thief")]
         [Description("Color scheme for all male thieves")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("ThiefMale")]
         public ColorScheme Thief_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Thief")]
         [Description("Color scheme for all female thieves")]
         [DefaultValue(ColorScheme.original)]
@@ -143,14 +143,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Thief_Female { get; set; } = ColorScheme.original;
 
         // Ninjas
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Ninja")]
         [Description("Color scheme for all male ninjas")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("NinjaMale")]
         public ColorScheme Ninja_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Ninja")]
         [Description("Color scheme for all female ninjas")]
         [DefaultValue(ColorScheme.original)]
@@ -158,14 +158,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Ninja_Female { get; set; } = ColorScheme.original;
 
         // Samurai
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Samurai")]
         [Description("Color scheme for all male samurai")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("SamuraiMale")]
         public ColorScheme Samurai_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Samurai")]
         [Description("Color scheme for all female samurai")]
         [DefaultValue(ColorScheme.original)]
@@ -173,14 +173,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Samurai_Female { get; set; } = ColorScheme.original;
 
         // Dragoons
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Dragoon")]
         [Description("Color scheme for all male dragoons")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("DragoonMale")]
         public ColorScheme Dragoon_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Dragoon")]
         [Description("Color scheme for all female dragoons")]
         [DefaultValue(ColorScheme.original)]
@@ -188,14 +188,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Dragoon_Female { get; set; } = ColorScheme.original;
 
         // Chemists
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Chemist")]
         [Description("Color scheme for all male chemists")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("ChemistMale")]
         public ColorScheme Chemist_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Chemist")]
         [Description("Color scheme for all female chemists")]
         [DefaultValue(ColorScheme.original)]
@@ -203,7 +203,7 @@ namespace FFTColorMod.Configuration
         public ColorScheme Chemist_Female { get; set; } = ColorScheme.original;
 
         // Dancers (Female only)
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Dancer")]
         [Description("Color scheme for all dancers")]
         [DefaultValue(ColorScheme.original)]
@@ -211,7 +211,7 @@ namespace FFTColorMod.Configuration
         public ColorScheme Dancer_Female { get; set; } = ColorScheme.original;
 
         // Bards (Male only)
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Bard")]
         [Description("Color scheme for all bards")]
         [DefaultValue(ColorScheme.original)]
@@ -219,14 +219,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Bard_Male { get; set; } = ColorScheme.original;
 
         // Mimes
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Mime")]
         [Description("Color scheme for all male mimes")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MimeMale")]
         public ColorScheme Mime_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Mime")]
         [Description("Color scheme for all female mimes")]
         [DefaultValue(ColorScheme.original)]
@@ -234,14 +234,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Mime_Female { get; set; } = ColorScheme.original;
 
         // Calculators/Arithmeticians
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Calculator")]
         [Description("Color scheme for all male calculators")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("CalculatorMale")]
         public ColorScheme Calculator_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Calculator")]
         [Description("Color scheme for all female calculators")]
         [DefaultValue(ColorScheme.original)]
@@ -249,14 +249,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Calculator_Female { get; set; } = ColorScheme.original;
 
         // Mediators/Orators
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Mediator")]
         [Description("Color scheme for all male mediators")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MediatorMale")]
         public ColorScheme Mediator_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Mediator")]
         [Description("Color scheme for all female mediators")]
         [DefaultValue(ColorScheme.original)]
@@ -264,14 +264,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Mediator_Female { get; set; } = ColorScheme.original;
 
         // Mystics/Oracles
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Mystic")]
         [Description("Color scheme for all male mystics")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MysticMale")]
         public ColorScheme Mystic_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Mystic")]
         [Description("Color scheme for all female mystics")]
         [DefaultValue(ColorScheme.original)]
@@ -279,14 +279,14 @@ namespace FFTColorMod.Configuration
         public ColorScheme Mystic_Female { get; set; } = ColorScheme.original;
 
         // Geomancers
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Male Geomancer")]
         [Description("Color scheme for all male geomancers")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("GeomancerMale")]
         public ColorScheme Geomancer_Male { get; set; } = ColorScheme.original;
 
-        [Category("Generic Job Classes")]
+        [Category("Generic Characters")]
         [DisplayName("Female Geomancer")]
         [Description("Color scheme for all female geomancers")]
         [DefaultValue(ColorScheme.original)]
@@ -294,15 +294,7 @@ namespace FFTColorMod.Configuration
         public ColorScheme Geomancer_Female { get; set; } = ColorScheme.original;
 
         // ================== STORY CHARACTER SWITCHER ==================
-        // Special story characters with unique sprites
-
-        // Mustadio (Engineer with guns)
-        [Category("Story Characters")]
-        [DisplayName("Mustadio")]
-        [Description("Color scheme for Mustadio")]
-        [DefaultValue(ColorScheme.original)]
-        [JsonPropertyName("Mustadio")]
-        public ColorScheme Mustadio { get; set; } = ColorScheme.original;
+        // Only includes characters confirmed to work with color changes
 
         // Agrias (Holy Knight)
         [Category("Story Characters")]
@@ -316,41 +308,9 @@ namespace FFTColorMod.Configuration
         [Category("Story Characters")]
         [DisplayName("Orlandeau")]
         [Description("Color scheme for Orlandeau (Thunder God Cid)")]
-        [DefaultValue(ColorScheme.original)]
+        [DefaultValue(OrlandeauColorScheme.thunder_god)]
         [JsonPropertyName("Orlandeau")]
-        public ColorScheme Orlandeau { get; set; } = ColorScheme.original;
-
-        // Delita (Holy Knight)
-        [Category("Story Characters")]
-        [DisplayName("Delita")]
-        [Description("Color scheme for Delita")]
-        [DefaultValue(ColorScheme.original)]
-        [JsonPropertyName("Delita")]
-        public ColorScheme Delita { get; set; } = ColorScheme.original;
-
-        // Ovelia (Princess)
-        [Category("Story Characters")]
-        [DisplayName("Ovelia")]
-        [Description("Color scheme for Princess Ovelia")]
-        [DefaultValue(ColorScheme.original)]
-        [JsonPropertyName("Ovelia")]
-        public ColorScheme Ovelia { get; set; } = ColorScheme.original;
-
-        // Alma (Ramza's sister)
-        [Category("Story Characters")]
-        [DisplayName("Alma")]
-        [Description("Color scheme for Alma")]
-        [DefaultValue(ColorScheme.original)]
-        [JsonPropertyName("Alma")]
-        public ColorScheme Alma { get; set; } = ColorScheme.original;
-
-        // Rafa (Heaven Knight)
-        [Category("Story Characters")]
-        [DisplayName("Rafa")]
-        [Description("Color scheme for Rafa")]
-        [DefaultValue(ColorScheme.original)]
-        [JsonPropertyName("Rafa")]
-        public ColorScheme Rafa { get; set; } = ColorScheme.original;
+        public OrlandeauColorScheme Orlandeau { get; set; } = OrlandeauColorScheme.thunder_god;
 
         // Malak (Hell Knight)
         [Category("Story Characters")]
@@ -359,14 +319,6 @@ namespace FFTColorMod.Configuration
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("Malak")]
         public ColorScheme Malak { get; set; } = ColorScheme.original;
-
-        // Cloud (from FF7)
-        [Category("Story Characters")]
-        [DisplayName("Cloud")]
-        [Description("Color scheme for Cloud")]
-        [DefaultValue(ColorScheme.original)]
-        [JsonPropertyName("Cloud")]
-        public ColorScheme Cloud { get; set; } = ColorScheme.original;
 
         // Beowulf (Temple Knight)
         [Category("Story Characters")]
@@ -507,42 +459,19 @@ namespace FFTColorMod.Configuration
 
             // ================== STORY CHARACTERS ==================
             // Map unique character sprite names to their config properties
-
-            // Mustadio (musu = Mustadio in Japanese)
-            if (spriteName.Contains("musu"))
-                return Mustadio.GetDescription();
+            // Only includes working story characters
 
             // Agrias (aguri = Agrias in Japanese)
             if (spriteName.Contains("aguri"))
                 return Agrias.GetDescription();
 
-            // Orlandeau (oran = Orlandeau in Japanese)
-            if (spriteName.Contains("oran"))
-                return Orlandeau.GetDescription();
-
-            // Delita (dily/dily2/dily3 = different Delita sprites)
-            if (spriteName.Contains("dily"))
-                return Delita.GetDescription();
-
-            // Ovelia (hime = princess in Japanese)
-            if (spriteName.Contains("hime"))
-                return Ovelia.GetDescription();
-
-            // Alma (aruma = Alma in Japanese)
-            if (spriteName.Contains("aruma"))
-                return Alma.GetDescription();
-
-            // Rafa (rafa)
-            if (spriteName.Contains("rafa"))
-                return Rafa.GetDescription();
+            // Orlandeau (oru = Orlandeau sprite name, not oran)
+            if (spriteName.Contains("oru"))
+                return $"sprites_orlandeau_{Orlandeau.ToString().ToLower()}";
 
             // Malak (mara = Malak)
             if (spriteName.Contains("mara"))
                 return Malak.GetDescription();
-
-            // Cloud (cloud)
-            if (spriteName.Contains("cloud"))
-                return Cloud.GetDescription();
 
             // Beowulf (beio = Beowulf)
             if (spriteName.Contains("beio"))

@@ -19,6 +19,7 @@ namespace FFTColorMod
             {
                 var detectedSchemes = Directory.GetDirectories(spritesPath)
                     .Where(d => Path.GetFileName(d).StartsWith("sprites_"))
+                    .Where(d => !Path.GetFileName(d).StartsWith("sprites_orlandeau_")) // Exclude Orlandeau themes
                     .Select(d => Path.GetFileName(d).Replace("sprites_", ""))
                     .ToList();
 

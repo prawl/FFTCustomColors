@@ -46,6 +46,33 @@ The mod now includes full integration with Reloaded-II's configuration system, a
 - Visual Studio 2022 or VS Code
 - Reloaded-II mod loader installed
 
+### Build Scripts
+
+The mod includes two build scripts for different deployment scenarios:
+
+#### BuildLinked.ps1 (Development)
+- **Purpose**: Quick iteration and testing
+- **Themes Deployed**: 5 generic themes + all Orlandeau themes
+- **Generic Themes Limited**: original, corpse_brigade, lucavi, northern_sky, smoke
+- **Why Limited**: Prevents F1/F2 cycling crashes during development
+- **Usage**: `.\BuildLinked.ps1`
+
+#### BuildLinked.Production.ps1 (Production)
+- **Purpose**: Full release builds with all themes available
+- **Themes Deployed**: ALL available themes (all generic + all story characters)
+- **Theme Loading**: Only themes specified in Config.json are loaded into memory
+- **Benefit**: All themes on disk but only configured ones use memory
+- **Confirmation**: Requires "yes" confirmation to prevent accidental production builds
+- **Warning**: Shows warnings if too many themes might cause stability issues
+- **Usage**: `.\BuildLinked.Production.ps1`
+
+**Important Distinction**:
+- **Deployment** (BuildLinked scripts): Controls which theme files are copied to the mod folder
+- **Loading** (Config.json): Controls which deployed themes are actually loaded into memory
+- **Production Advantage**: All themes deployed but only configured themes consume resources
+
+**Note**: The DevMode.ps1 and ProductionMode.ps1 scripts control CONFIG settings (which features are enabled), while BuildLinked scripts control DEPLOYMENT (which themes are included).
+
 ### Dynamic Sprite Loading System
 The mod uses a dynamic sprite loading system to prevent crashes and optimize memory usage:
 

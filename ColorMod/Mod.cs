@@ -239,6 +239,8 @@ public class Mod : IMod, IConfigurable
     }
 
 
+    private StoryCharacterThemeManager _storyCharacterManager = new StoryCharacterThemeManager();
+
     public void ProcessHotkeyPress(int vkCode)
     {
         const int VK_F1 = 0x70;
@@ -267,10 +269,32 @@ public class Mod : IMod, IConfigurable
         }
         else if (vkCode == VK_F2)
         {
-            // Cycle to next color
+            // Cycle BOTH generic and Orlandeau themes
             string nextColor = _colorCycler.GetNextScheme();
-            Console.WriteLine($"[FFT Color Mod] Cycling forward to {nextColor}");
+            Console.WriteLine($"[FFT Color Mod] Cycling generic forward to {nextColor}");
             SetColorScheme(nextColor);
+
+            // Also cycle Orlandeau theme
+            var nextOrlandeauTheme = _storyCharacterManager.CycleOrlandeauTheme();
+            Console.WriteLine($"[FFT Color Mod] Cycling Orlandeau to {nextOrlandeauTheme}");
+
+            // Apply Orlandeau theme by copying the sprite file
+            string orlandeauThemeDir = $"sprites_orlandeau_{nextOrlandeauTheme.ToString().ToLower()}";
+            var sourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, "battle_oru_spr.bin");
+            var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_oru_spr.bin");
+
+            Console.WriteLine($"[FFT Color Mod] Looking for Orlandeau sprite at: {sourceFile}");
+            if (File.Exists(sourceFile))
+            {
+                File.Copy(sourceFile, destFile, true);
+                Console.WriteLine($"[FFT Color Mod] Successfully copied Orlandeau theme: {nextOrlandeauTheme}");
+                Console.WriteLine($"[FFT Color Mod] Source: {sourceFile}");
+                Console.WriteLine($"[FFT Color Mod] Dest: {destFile}");
+            }
+            else
+            {
+                Console.WriteLine($"[FFT Color Mod] ERROR: Orlandeau sprite not found at: {sourceFile}");
+            }
 
             // Simulate menu refresh to update sprites immediately
             Console.WriteLine($"[FFT Color Mod] InputSimulator is {(_inputSimulator != null ? "available" : "NULL")}");

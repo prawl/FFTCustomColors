@@ -43,7 +43,30 @@ python create_sprite_theme.py --source original --name custom \
   --custom-indices "3,4,5" --custom-color "#FFD700"
 ```
 
-### 3. apply_story_characters.py - Story Character Management
+### 3. create_orlandeau_themes.py - Orlandeau Theme Creator
+Creates unique themes specifically for Orlandeau with custom armor, cape, and buckle colors.
+
+**Usage:**
+```bash
+# Create all 10 predefined Orlandeau themes
+python create_orlandeau_themes.py
+
+# Creates themes in sprites_orlandeau_[theme_name] directories
+```
+
+**Available Themes:**
+- Thunder God - Electric blue armor with golden accents
+- Crimson Knight - Deep red armor with silver trim
+- Shadow Lord - Black and purple with dark energy
+- Holy Paladin - Pure white with gold accents
+- Emerald Champion - Forest green with bronze details
+- Azure Templar - Royal blue with silver highlights
+- Onyx Warlord - Black armor with red accents
+- Golden Lion - Gold and brown noble colors
+- Frost Commander - Ice blue with white trim
+- Dusk Blade - Dark purple with copper accents
+
+### 4. apply_story_characters.py - Story Character Management
 Apply themes to story character sprites or revert them to original colors.
 
 **Usage:**

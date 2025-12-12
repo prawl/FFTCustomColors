@@ -42,7 +42,7 @@ namespace FFTColorMod.Utilities
 
         /// <summary>
         /// Detects if we're in dev mode by checking what themes are in the data directory.
-        /// Dev mode = exactly the 5 core dev themes (plus any test themes).
+        /// Dev mode = exactly the 5 core dev themes (plus any test/Orlandeau themes).
         /// </summary>
         private bool DetectDevMode()
         {
@@ -51,7 +51,7 @@ namespace FFTColorMod.Utilities
 
             var dataThemes = Directory.GetDirectories(_dataPath, "sprites_*")
                 .Select(d => Path.GetFileName(d))
-                .Where(d => !d.StartsWith("sprites_test_")) // Exclude test themes from check
+                .Where(d => !d.StartsWith("sprites_test_") && !d.StartsWith("sprites_orlandeau_")) // Exclude test and Orlandeau themes from check
                 .ToHashSet();
 
             // Dev mode if we have exactly the core dev themes (or subset)
@@ -73,6 +73,8 @@ namespace FFTColorMod.Utilities
         /// </summary>
         public void PrepareSpritesForConfig()
         {
+            Console.WriteLine($"[DynamicSpriteLoader] PrepareSpritesForConfig called - Dev mode: {_isDevMode}");
+
             if (_isDevMode)
             {
                 Console.WriteLine("[DynamicSpriteLoader] Dev mode detected - preserving existing themes for F1/F2 testing");
@@ -80,13 +82,17 @@ namespace FFTColorMod.Utilities
                 return;
             }
 
+            Console.WriteLine("[DynamicSpriteLoader] Production mode - managing sprites");
             var requiredSchemes = GetRequiredSchemes();
+            Console.WriteLine($"[DynamicSpriteLoader] Required schemes: {string.Join(", ", requiredSchemes)}");
 
             // Copy required schemes from ColorSchemes to data
             CopyRequiredSchemes(requiredSchemes);
 
             // Remove unused schemes from data (except test themes)
+            Console.WriteLine("[DynamicSpriteLoader] Starting cleanup of data directory...");
             CleanupDataDirectory(requiredSchemes);
+            Console.WriteLine("[DynamicSpriteLoader] Cleanup complete");
         }
 
         /// <summary>
@@ -195,6 +201,20 @@ namespace FFTColorMod.Utilities
                 if (dirName.StartsWith("sprites_test_"))
                 {
                     Console.WriteLine($"[DynamicSpriteLoader] Preserving test theme: {dirName}");
+                    continue;
+                }
+
+                // Always preserve Orlandeau themes (story character themes)
+                if (dirName.StartsWith("sprites_orlandeau_"))
+                {
+                    Console.WriteLine($"[DynamicSpriteLoader] Preserving Orlandeau theme: {dirName}");
+                    continue;
+                }
+
+                // In dev mode, also preserve core dev themes for F1/F2 testing
+                if (_isDevMode && CoreDevThemes.Contains(dirName))
+                {
+                    Console.WriteLine($"[DynamicSpriteLoader] Preserving core dev theme: {dirName}");
                     continue;
                 }
 
