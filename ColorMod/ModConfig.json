@@ -3,7 +3,7 @@
   "ModName": "FFT Custom Colors",
   "ModAuthor": "ptyRa",
   "ModVersion": "1.0.0",
-  "ModDescription": "Changes character clothing colors in Final Fantasy Tactics",
+  "ModDescription": "Custom color themes for FFT characters. Features Thunder God Orlandeau theme and F2 cycling for all characters.",
   "ModDll": "FFTColorMod.dll",
   "ModIcon": "Preview.png",
   "ModR2RManagedDll32": "x86/FFTColorMod.dll",

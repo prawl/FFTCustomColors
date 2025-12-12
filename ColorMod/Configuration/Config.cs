@@ -308,9 +308,9 @@ namespace FFTColorMod.Configuration
         [Category("Story Characters")]
         [DisplayName("Orlandeau")]
         [Description("Color scheme for Orlandeau (Thunder God Cid)")]
-        [DefaultValue(OrlandeauColorScheme.thunder_god)]
+        [DefaultValue(OrlandeauColorScheme.original)]
         [JsonPropertyName("Orlandeau")]
-        public OrlandeauColorScheme Orlandeau { get; set; } = OrlandeauColorScheme.thunder_god;
+        public OrlandeauColorScheme Orlandeau { get; set; } = OrlandeauColorScheme.original;
 
         // Malak (Hell Knight)
         [Category("Story Characters")]
@@ -467,7 +467,11 @@ namespace FFTColorMod.Configuration
 
             // Orlandeau (oru = Orlandeau sprite name, not oran)
             if (spriteName.Contains("oru"))
+            {
+                if (Orlandeau == OrlandeauColorScheme.original)
+                    return "sprites_original";
                 return $"sprites_orlandeau_{Orlandeau.ToString().ToLower()}";
+            }
 
             // Malak (mara = Malak)
             if (spriteName.Contains("mara"))

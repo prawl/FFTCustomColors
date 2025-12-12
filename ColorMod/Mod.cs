@@ -107,6 +107,9 @@ public class Mod : IMod, IConfigurable
 
         _configBasedSpriteManager.ApplyConfiguration();
 
+        // Apply initial Orlandeau theme
+        ApplyInitialOrlandeauTheme();
+
         // Initialize input simulator if not provided (for testing)
         if (_inputSimulator == null)
         {
@@ -241,6 +244,48 @@ public class Mod : IMod, IConfigurable
 
     private StoryCharacterThemeManager _storyCharacterManager = new StoryCharacterThemeManager();
 
+    private void ApplyInitialOrlandeauTheme()
+    {
+        try
+        {
+            var currentTheme = _storyCharacterManager.GetCurrentOrlandeauTheme();
+            Console.WriteLine($"[FFT Color Mod] Applying initial Orlandeau theme: {currentTheme}");
+
+            // Apply the initial theme by copying the sprite file
+            string orlandeauThemeDir = $"sprites_orlandeau_{currentTheme.ToString().ToLower()}";
+            var sourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, "battle_oru_spr.bin");
+            var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_oru_spr.bin");
+
+            Console.WriteLine($"[FFT Color Mod] Looking for initial Orlandeau sprite at: {sourceFile}");
+            if (File.Exists(sourceFile))
+            {
+                File.Copy(sourceFile, destFile, true);
+                Console.WriteLine($"[FFT Color Mod] Successfully applied initial Orlandeau theme: {currentTheme}");
+
+                // Also copy the other Orlandeau variants
+                string[] variants = { "battle_goru_spr.bin", "battle_voru_spr.bin" };
+                foreach (var variant in variants)
+                {
+                    var variantSource = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, variant);
+                    var variantDest = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", variant);
+                    if (File.Exists(variantSource))
+                    {
+                        File.Copy(variantSource, variantDest, true);
+                        Console.WriteLine($"[FFT Color Mod] Applied initial theme to {variant}");
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[FFT Color Mod] Warning: Initial Orlandeau theme file not found at: {sourceFile}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FFT Color Mod] Error applying initial Orlandeau theme: {ex.Message}");
+        }
+    }
+
     public void ProcessHotkeyPress(int vkCode)
     {
         const int VK_F1 = 0x70;
@@ -288,8 +333,19 @@ public class Mod : IMod, IConfigurable
             {
                 File.Copy(sourceFile, destFile, true);
                 Console.WriteLine($"[FFT Color Mod] Successfully copied Orlandeau theme: {nextOrlandeauTheme}");
-                Console.WriteLine($"[FFT Color Mod] Source: {sourceFile}");
-                Console.WriteLine($"[FFT Color Mod] Dest: {destFile}");
+
+                // Also copy the other Orlandeau variants
+                string[] variants = { "battle_goru_spr.bin", "battle_voru_spr.bin" };
+                foreach (var variant in variants)
+                {
+                    var variantSource = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, variant);
+                    var variantDest = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", variant);
+                    if (File.Exists(variantSource))
+                    {
+                        File.Copy(variantSource, variantDest, true);
+                        Console.WriteLine($"[FFT Color Mod] Applied theme to {variant}");
+                    }
+                }
             }
             else
             {
