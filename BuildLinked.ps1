@@ -92,10 +92,12 @@ if ($LASTEXITCODE -eq 0) {
             )
             Write-Host "  DEV: Limiting to 5 generic themes for stability" -ForegroundColor Yellow
 
-            # Get all story character themes (Orlandeau, Beowulf, etc.)
+            # Get all story character themes (Orlandeau, Beowulf, Agrias, etc.)
             $orlandeauThemes = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_orlandeau_*" -ErrorAction SilentlyContinue |
                 ForEach-Object { $_.Name }
             $beowulfThemes = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_beowulf_*" -ErrorAction SilentlyContinue |
+                ForEach-Object { $_.Name }
+            $agriasThemes = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_agrias_*" -ErrorAction SilentlyContinue |
                 ForEach-Object { $_.Name }
 
             if ($orlandeauThemes.Count -gt 0) {
@@ -104,11 +106,14 @@ if ($LASTEXITCODE -eq 0) {
             if ($beowulfThemes.Count -gt 0) {
                 Write-Host "  DEV: Including $($beowulfThemes.Count) Beowulf theme(s)" -ForegroundColor Magenta
             }
+            if ($agriasThemes.Count -gt 0) {
+                Write-Host "  DEV: Including $($agriasThemes.Count) Agrias theme(s)" -ForegroundColor Magenta
+            }
 
             # Combine core themes and story character themes
             # Only copy the core themes for stability (5 generic + all story character themes)
             $colorVariants = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit" -Directory -Filter "sprites_*" -ErrorAction SilentlyContinue |
-                Where-Object { $coreThemes -contains $_.Name -or $_.Name -like "sprites_orlandeau_*" -or $_.Name -like "sprites_beowulf_*" } |
+                Where-Object { $coreThemes -contains $_.Name -or $_.Name -like "sprites_orlandeau_*" -or $_.Name -like "sprites_beowulf_*" -or $_.Name -like "sprites_agrias_*" } |
                 ForEach-Object { $_.Name }
 
             foreach ($variant in $colorVariants) {
@@ -145,6 +150,11 @@ if ($LASTEXITCODE -eq 0) {
                         $baseSprites = Get-ChildItem "$sourceBasePath/*.bin" -ErrorAction SilentlyContinue |
                             Where-Object { $_.Name -notmatch "aguri|kanba|oru|musu|dily|hime|aruma|rafa|mara|cloud|reze" -or $_.Name -match "beio" }
                         $baseCount = $baseSprites.Count
+                    } elseif ($variant -like "sprites_agrias_*") {
+                        # For Agrias themes, include all base sprites plus Agrias (aguri and kanba)
+                        $baseSprites = Get-ChildItem "$sourceBasePath/*.bin" -ErrorAction SilentlyContinue |
+                            Where-Object { $_.Name -notmatch "oru|musu|dily|hime|aruma|rafa|mara|cloud|beio|reze" -or $_.Name -match "aguri|kanba" }
+                        $baseCount = $baseSprites.Count
                     }
 
                     # Copy all base sprites first
@@ -166,6 +176,8 @@ if ($LASTEXITCODE -eq 0) {
                         Write-Host "    [Orlandeau] ${variant}: $modifiedCount modified, $totalCount total sprites" -ForegroundColor Magenta
                     } elseif ($variant -like "sprites_beowulf_*") {
                         Write-Host "    [Beowulf] ${variant}: $modifiedCount modified, $totalCount total sprites" -ForegroundColor Cyan
+                    } elseif ($variant -like "sprites_agrias_*") {
+                        Write-Host "    [Agrias] ${variant}: $modifiedCount modified, $totalCount total sprites" -ForegroundColor Yellow
                     } else {
                         Write-Host "    [Generic] ${variant}: $modifiedCount modified, $totalCount total sprites" -ForegroundColor Green
                     }
@@ -174,10 +186,13 @@ if ($LASTEXITCODE -eq 0) {
                     # 121 generic sprites for generic themes
                     # 124 sprites for Orlandeau themes (121 generic + 3 Orlandeau variants: oru, goru, voru)
                     # 122 sprites for Beowulf themes (121 generic + 1 Beowulf: beio)
+                    # 123 sprites for Agrias themes (121 generic + 2 Agrias: aguri, kanba)
                     $expectedCount = if ($variant -like "sprites_orlandeau_*") {
                         124
                     } elseif ($variant -like "sprites_beowulf_*") {
                         122
+                    } elseif ($variant -like "sprites_agrias_*") {
+                        123
                     } else {
                         121
                     }

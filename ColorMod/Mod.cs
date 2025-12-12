@@ -110,6 +110,7 @@ public class Mod : IMod, IConfigurable
         // Apply initial story character themes
         ApplyInitialOrlandeauTheme();
         ApplyInitialBeowulfTheme();
+        ApplyInitialAgriasTheme();
 
         // Initialize input simulator if not provided (for testing)
         if (_inputSimulator == null)
@@ -316,6 +317,42 @@ public class Mod : IMod, IConfigurable
         }
     }
 
+    private void ApplyInitialAgriasTheme()
+    {
+        try
+        {
+            var currentTheme = _storyCharacterManager.GetCurrentAgriasTheme();
+            Console.WriteLine($"[FFT Color Mod] Applying initial Agrias theme: {currentTheme}");
+
+            // Apply the initial theme by copying both Agrias sprite files
+            string agriasThemeDir = $"sprites_agrias_{currentTheme.ToString().ToLower()}";
+
+            // Agrias has two sprite files
+            string[] agriasSprites = { "battle_aguri_spr.bin", "battle_kanba_spr.bin" };
+
+            foreach (var sprite in agriasSprites)
+            {
+                var sourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", agriasThemeDir, sprite);
+                var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", sprite);
+
+                Console.WriteLine($"[FFT Color Mod] Looking for initial Agrias sprite at: {sourceFile}");
+                if (File.Exists(sourceFile))
+                {
+                    File.Copy(sourceFile, destFile, true);
+                    Console.WriteLine($"[FFT Color Mod] Successfully applied initial Agrias theme to {sprite}: {currentTheme}");
+                }
+                else
+                {
+                    Console.WriteLine($"[FFT Color Mod] Warning: Initial Agrias theme file not found at: {sourceFile}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FFT Color Mod] Error applying initial Agrias theme: {ex.Message}");
+        }
+    }
+
     public void ProcessHotkeyPress(int vkCode)
     {
         const int VK_F1 = 0x70;
@@ -400,6 +437,36 @@ public class Mod : IMod, IConfigurable
             else
             {
                 Console.WriteLine($"[FFT Color Mod] ERROR: Beowulf sprite not found at: {beowulfSourceFile}");
+            }
+
+            // Also cycle Agrias theme
+            var nextAgriasTheme = _storyCharacterManager.CycleAgriasTheme();
+            Console.WriteLine("================================================");
+            Console.WriteLine("================================================");
+            Console.WriteLine($"    AGRIAS THEME CHANGED TO: {nextAgriasTheme}");
+            Console.WriteLine("================================================");
+            Console.WriteLine("================================================");
+            Console.WriteLine($"[FFT Color Mod] Cycling Agrias to {nextAgriasTheme}");
+
+            // Apply Agrias theme by copying both sprite files
+            string agriasThemeDir = $"sprites_agrias_{nextAgriasTheme.ToString().ToLower()}";
+            string[] agriasSprites = { "battle_aguri_spr.bin", "battle_kanba_spr.bin" };
+
+            foreach (var sprite in agriasSprites)
+            {
+                var agriasSourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", agriasThemeDir, sprite);
+                var agriasDestFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", sprite);
+
+                Console.WriteLine($"[FFT Color Mod] Looking for Agrias sprite at: {agriasSourceFile}");
+                if (File.Exists(agriasSourceFile))
+                {
+                    File.Copy(agriasSourceFile, agriasDestFile, true);
+                    Console.WriteLine($"[FFT Color Mod] Successfully copied Agrias theme for {sprite}: {nextAgriasTheme}");
+                }
+                else
+                {
+                    Console.WriteLine($"[FFT Color Mod] ERROR: Agrias sprite not found at: {agriasSourceFile}");
+                }
             }
 
             // Simulate menu refresh to update sprites immediately

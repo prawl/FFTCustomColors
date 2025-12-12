@@ -7,6 +7,7 @@ namespace FFTColorMod
     {
         private OrlandeauColorScheme _currentOrlandeauTheme = OrlandeauColorScheme.thunder_god;
         private BeowulfColorScheme _currentBeowulfTheme = BeowulfColorScheme.test;
+        private AgriasColorScheme _currentAgriasTheme = AgriasColorScheme.ash_dark;
 
         public OrlandeauColorScheme GetCurrentOrlandeauTheme()
         {
@@ -44,6 +45,25 @@ namespace FFTColorMod
             var nextIndex = (currentIndex + 1) % values.Length;
             _currentBeowulfTheme = values[nextIndex];
             return _currentBeowulfTheme;
+        }
+
+        public AgriasColorScheme GetCurrentAgriasTheme()
+        {
+            return _currentAgriasTheme;
+        }
+
+        public void SetCurrentAgriasTheme(AgriasColorScheme theme)
+        {
+            _currentAgriasTheme = theme;
+        }
+
+        public AgriasColorScheme CycleAgriasTheme()
+        {
+            var values = Enum.GetValues<AgriasColorScheme>();
+            var currentIndex = Array.IndexOf(values, _currentAgriasTheme);
+            var nextIndex = (currentIndex + 1) % values.Length;
+            _currentAgriasTheme = values[nextIndex];
+            return _currentAgriasTheme;
         }
     }
 

@@ -1,0 +1,5 @@
+ASH_DARK THEME
+==============================
+Dark ash armor
+Primary armor RGB: (60, 60, 60)
+Accent armor RGB: (50, 50, 50)
