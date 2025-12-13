@@ -27,6 +27,7 @@ public class Mod : IMod, IConfigurable
     private IInputSimulator? _inputSimulator;
     private bool _configUIRequested = false;
     private string _modPath;
+    private string _sourcePath; // Path to git repo for theme sources
 
     // Constructor that accepts ModContext and optional IInputSimulator (for testing)
     public Mod(ModContext context, IInputSimulator? inputSimulator = null)
@@ -37,7 +38,12 @@ public class Mod : IMod, IConfigurable
 
         // Try to auto-detect sprite variants from mod directory
         _modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
-        string spritesPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+
+        // Set the source path to the git repo location (hardcoded for now, could be made configurable)
+        _sourcePath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
+
+        // Use source path for detecting themes (from git repo)
+        string spritesPath = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
         _colorCycler = new ColorSchemeCycler(spritesPath);
         var schemes = _colorCycler.GetAvailableSchemes();
@@ -80,11 +86,17 @@ public class Mod : IMod, IConfigurable
         _gameProcess = Process.GetCurrentProcess();
         Console.WriteLine($"[FFT Color Mod] Game base: 0x{_gameProcess.MainModule?.BaseAddress.ToInt64():X}");
 
-        // Initialize sprite file manager and configuration
+        // Set source path if not already set (for backward compatibility)
+        if (string.IsNullOrEmpty(_sourcePath))
+        {
+            _sourcePath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
+        }
+
+        // Initialize sprite file manager with both deployment and source paths
         string modPath = Environment.GetEnvironmentVariable("FFT_MOD_PATH") ??
                         Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ??
                         Environment.CurrentDirectory;
-        _spriteFileManager = new SpriteFileManager(modPath);
+        _spriteFileManager = new SpriteFileManager(modPath, _sourcePath);
 
         // Initialize configuration-based sprite management
         // Use Config.json (capital C) to match Reloaded-II convention
@@ -207,7 +219,9 @@ public class Mod : IMod, IConfigurable
         if (_spriteFileManager == null)
         {
             string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
-            _spriteFileManager = new SpriteFileManager(modPath);
+            // Source path is the git repo location for reading theme files
+            string sourcePath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
+            _spriteFileManager = new SpriteFileManager(modPath, sourcePath);
         }
 
         // Always initialize file hooks when this method is called
@@ -255,7 +269,7 @@ public class Mod : IMod, IConfigurable
 
             // Apply the initial theme by copying the sprite file
             string orlandeauThemeDir = $"sprites_orlandeau_{currentTheme.ToString().ToLower()}";
-            var sourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, "battle_oru_spr.bin");
+            var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, "battle_oru_spr.bin");
             var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_oru_spr.bin");
 
             Console.WriteLine($"[FFT Color Mod] Looking for initial Orlandeau sprite at: {sourceFile}");
@@ -268,7 +282,7 @@ public class Mod : IMod, IConfigurable
                 string[] variants = { "battle_goru_spr.bin", "battle_voru_spr.bin" };
                 foreach (var variant in variants)
                 {
-                    var variantSource = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, variant);
+                    var variantSource = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, variant);
                     var variantDest = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", variant);
                     if (File.Exists(variantSource))
                     {
@@ -297,7 +311,7 @@ public class Mod : IMod, IConfigurable
 
             // Apply the initial theme by copying the sprite file
             string beowulfThemeDir = $"sprites_beowulf_{currentTheme.ToString().ToLower()}";
-            var sourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", beowulfThemeDir, "battle_beio_spr.bin");
+            var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", beowulfThemeDir, "battle_beio_spr.bin");
             var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_beio_spr.bin");
 
             Console.WriteLine($"[FFT Color Mod] Looking for initial Beowulf sprite at: {sourceFile}");
@@ -332,7 +346,7 @@ public class Mod : IMod, IConfigurable
 
             foreach (var sprite in agriasSprites)
             {
-                var sourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", agriasThemeDir, sprite);
+                var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", agriasThemeDir, sprite);
                 var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", sprite);
 
                 Console.WriteLine($"[FFT Color Mod] Looking for initial Agrias sprite at: {sourceFile}");
@@ -395,9 +409,9 @@ public class Mod : IMod, IConfigurable
             var nextOrlandeauTheme = _storyCharacterManager.CycleOrlandeauTheme();
             Console.WriteLine($"[FFT Color Mod] Orlandeau theme: {nextOrlandeauTheme}");
 
-            // Apply Orlandeau theme by copying the sprite file
+            // Apply Orlandeau theme by copying the sprite file FROM GIT REPO to deployment
             string orlandeauThemeDir = $"sprites_orlandeau_{nextOrlandeauTheme.ToString().ToLower()}";
-            var sourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, "battle_oru_spr.bin");
+            var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, "battle_oru_spr.bin");
             var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_oru_spr.bin");
 
             Console.WriteLine($"[FFT Color Mod] Looking for Orlandeau sprite at: {sourceFile}");
@@ -410,7 +424,7 @@ public class Mod : IMod, IConfigurable
                 string[] variants = { "battle_goru_spr.bin", "battle_voru_spr.bin" };
                 foreach (var variant in variants)
                 {
-                    var variantSource = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, variant);
+                    var variantSource = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, variant);
                     var variantDest = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", variant);
                     if (File.Exists(variantSource))
                     {
@@ -430,7 +444,7 @@ public class Mod : IMod, IConfigurable
 
             // Apply Beowulf theme by copying the sprite file
             string beowulfThemeDir = $"sprites_beowulf_{nextBeowulfTheme.ToString().ToLower()}";
-            var beowulfSourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", beowulfThemeDir, "battle_beio_spr.bin");
+            var beowulfSourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", beowulfThemeDir, "battle_beio_spr.bin");
             var beowulfDestFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_beio_spr.bin");
 
             Console.WriteLine($"[FFT Color Mod] Looking for Beowulf sprite at: {beowulfSourceFile}");
@@ -459,7 +473,7 @@ public class Mod : IMod, IConfigurable
 
             foreach (var sprite in agriasSprites)
             {
-                var agriasSourceFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", agriasThemeDir, sprite);
+                var agriasSourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", agriasThemeDir, sprite);
                 var agriasDestFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", sprite);
 
                 Console.WriteLine($"[FFT Color Mod] Looking for Agrias sprite at: {agriasSourceFile}");

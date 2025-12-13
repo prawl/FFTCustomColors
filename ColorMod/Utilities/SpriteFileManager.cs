@@ -7,12 +7,15 @@ namespace FFTColorMod.Utilities;
 
 public class SpriteFileManager
 {
-    private readonly string _modPath;
+    private readonly string _modPath;        // Deployment path
+    private readonly string _sourcePath;     // Git repo path for themes
     private readonly Dictionary<string, string> _pacFileMapping = new();
 
-    public SpriteFileManager(string modPath)
+    public SpriteFileManager(string modPath, string sourcePath = null)
     {
         _modPath = modPath;
+        // If no source path provided, use mod path (backward compatibility)
+        _sourcePath = sourcePath ?? modPath;
         InitializePacMappings();
     }
 
@@ -44,8 +47,8 @@ public class SpriteFileManager
     {
         Console.WriteLine($"[FFT Color Mod] Switching to {colorScheme} color scheme");
 
-        // For original scheme, restore original sprites from sprites_original if it exists
-        string sourceDir = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", $"sprites_{colorScheme}");
+        // Read from source (git repo), write to deployment
+        string sourceDir = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", $"sprites_{colorScheme}");
         string targetDir = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
         Console.WriteLine($"[FFT Color Mod] Looking for modified sprites in: {sourceDir}");
