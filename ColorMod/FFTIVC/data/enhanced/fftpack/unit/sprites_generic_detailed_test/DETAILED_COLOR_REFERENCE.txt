@@ -1,0 +1,193 @@
+GENERIC SPRITES DETAILED COLOR TEST
+==================================================
+
+Each palette index has a unique color for precise identification.
+
+COLOR LEGEND:
+--------------------------------------------------
+Index  0: BLACK        - RGB(  0,  0,  0)
+Index  1: DARK_GRAY    - RGB( 64, 64, 64)
+Index  2: MED_GRAY     - RGB(128,128,128)
+Index  3: RED          - RGB(255,  0,  0)
+Index  4: ORANGE       - RGB(255,128,  0)
+Index  5: YELLOW       - RGB(255,255,  0)
+Index  6: MAGENTA      - RGB(255,  0,128)
+Index  7: GREEN        - RGB(  0,255,  0)
+Index  8: LIME         - RGB(128,255,  0)
+Index  9: SPRING_GREEN - RGB(  0,255,128)
+Index 10: LIGHT_BLUE   - RGB(  0,128,255)
+Index 11: BLUE         - RGB(  0,  0,255)
+Index 12: PURPLE       - RGB(128,  0,255)
+Index 13: WHITE        - RGB(255,255,255)
+Index 14: LIGHT_PINK   - RGB(255,192,192)
+Index 15: LIGHT_PURPLE - RGB(192,192,255)
+
+==================================================
+OBSERVATION TEMPLATE (for each sprite):
+==================================================
+
+KNIGHT_M_SPR OBSERVATIONS:
+------------------------------
+Index  0 (BLACK       ): [body part] ________________
+Index  1 (DARK_GRAY   ): [body part] ________________
+Index  2 (MED_GRAY    ): [body part] ________________
+Index  3 (RED         ): [body part] ________________
+Index  4 (ORANGE      ): [body part] ________________
+Index  5 (YELLOW      ): [body part] ________________
+Index  6 (MAGENTA     ): [body part] ________________
+Index  7 (GREEN       ): [body part] ________________
+Index  8 (LIME        ): [body part] ________________
+Index  9 (SPRING_GREEN): [body part] ________________
+Index 10 (LIGHT_BLUE  ): [body part] ________________
+Index 11 (BLUE        ): [body part] ________________
+Index 12 (PURPLE      ): [body part] ________________
+Index 13 (WHITE       ): [body part] ________________
+Index 14 (LIGHT_PINK  ): [body part] ________________
+Index 15 (LIGHT_PURPLE): [body part] ________________
+
+KNIGHT_M_SPR SUMMARY:
+• Helmet/Head:     indices _______________
+• Chest Armor:     indices _______________
+• Leg Armor:       indices _______________
+• Cape/Cloak:      indices _______________
+• Undergarments:   indices _______________
+• Metal/Buckles:   indices _______________
+• Shadows/Outline: indices _______________
+
+--------------------------------------------------
+
+KNIGHT_W_SPR OBSERVATIONS:
+------------------------------
+Index  0 (BLACK       ): [body part] ________________
+Index  1 (DARK_GRAY   ): [body part] ________________
+Index  2 (MED_GRAY    ): [body part] ________________
+Index  3 (RED         ): [body part] ________________
+Index  4 (ORANGE      ): [body part] ________________
+Index  5 (YELLOW      ): [body part] ________________
+Index  6 (MAGENTA     ): [body part] ________________
+Index  7 (GREEN       ): [body part] ________________
+Index  8 (LIME        ): [body part] ________________
+Index  9 (SPRING_GREEN): [body part] ________________
+Index 10 (LIGHT_BLUE  ): [body part] ________________
+Index 11 (BLUE        ): [body part] ________________
+Index 12 (PURPLE      ): [body part] ________________
+Index 13 (WHITE       ): [body part] ________________
+Index 14 (LIGHT_PINK  ): [body part] ________________
+Index 15 (LIGHT_PURPLE): [body part] ________________
+
+KNIGHT_W_SPR SUMMARY:
+• Helmet/Head:     indices _______________
+• Chest Armor:     indices _______________
+• Leg Armor:       indices _______________
+• Cape/Cloak:      indices _______________
+• Undergarments:   indices _______________
+• Metal/Buckles:   indices _______________
+• Shadows/Outline: indices _______________
+
+--------------------------------------------------
+
+ARCHER_M_SPR OBSERVATIONS:
+------------------------------
+Index  0 (BLACK       ): [body part] ________________
+Index  1 (DARK_GRAY   ): [body part] ________________
+Index  2 (MED_GRAY    ): [body part] ________________
+Index  3 (RED         ): [body part] ________________
+Index  4 (ORANGE      ): [body part] ________________
+Index  5 (YELLOW      ): [body part] ________________
+Index  6 (MAGENTA     ): [body part] ________________
+Index  7 (GREEN       ): [body part] ________________
+Index  8 (LIME        ): [body part] ________________
+Index  9 (SPRING_GREEN): [body part] ________________
+Index 10 (LIGHT_BLUE  ): [body part] ________________
+Index 11 (BLUE        ): [body part] ________________
+Index 12 (PURPLE      ): [body part] ________________
+Index 13 (WHITE       ): [body part] ________________
+Index 14 (LIGHT_PINK  ): [body part] ________________
+Index 15 (LIGHT_PURPLE): [body part] ________________
+
+ARCHER_M_SPR SUMMARY:
+• Helmet/Head:     indices _______________
+• Chest Armor:     indices _______________
+• Leg Armor:       indices _______________
+• Cape/Cloak:      indices _______________
+• Undergarments:   indices _______________
+• Metal/Buckles:   indices _______________
+• Shadows/Outline: indices _______________
+
+--------------------------------------------------
+
+MONK_M_SPR OBSERVATIONS:
+------------------------------
+Index  0 (BLACK       ): [body part] ________________
+Index  1 (DARK_GRAY   ): [body part] ________________
+Index  2 (MED_GRAY    ): [body part] ________________
+Index  3 (RED         ): [body part] ________________
+Index  4 (ORANGE      ): [body part] ________________
+Index  5 (YELLOW      ): [body part] ________________
+Index  6 (MAGENTA     ): [body part] ________________
+Index  7 (GREEN       ): [body part] ________________
+Index  8 (LIME        ): [body part] ________________
+Index  9 (SPRING_GREEN): [body part] ________________
+Index 10 (LIGHT_BLUE  ): [body part] ________________
+Index 11 (BLUE        ): [body part] ________________
+Index 12 (PURPLE      ): [body part] ________________
+Index 13 (WHITE       ): [body part] ________________
+Index 14 (LIGHT_PINK  ): [body part] ________________
+Index 15 (LIGHT_PURPLE): [body part] ________________
+
+MONK_M_SPR SUMMARY:
+• Helmet/Head:     indices _______________
+• Chest Armor:     indices _______________
+• Leg Armor:       indices _______________
+• Cape/Cloak:      indices _______________
+• Undergarments:   indices _______________
+• Metal/Buckles:   indices _______________
+• Shadows/Outline: indices _______________
+
+--------------------------------------------------
+
+PRIEST_M_SPR OBSERVATIONS:
+------------------------------
+Index  0 (BLACK       ): [body part] ________________
+Index  1 (DARK_GRAY   ): [body part] ________________
+Index  2 (MED_GRAY    ): [body part] ________________
+Index  3 (RED         ): [body part] ________________
+Index  4 (ORANGE      ): [body part] ________________
+Index  5 (YELLOW      ): [body part] ________________
+Index  6 (MAGENTA     ): [body part] ________________
+Index  7 (GREEN       ): [body part] ________________
+Index  8 (LIME        ): [body part] ________________
+Index  9 (SPRING_GREEN): [body part] ________________
+Index 10 (LIGHT_BLUE  ): [body part] ________________
+Index 11 (BLUE        ): [body part] ________________
+Index 12 (PURPLE      ): [body part] ________________
+Index 13 (WHITE       ): [body part] ________________
+Index 14 (LIGHT_PINK  ): [body part] ________________
+Index 15 (LIGHT_PURPLE): [body part] ________________
+
+PRIEST_M_SPR SUMMARY:
+• Helmet/Head:     indices _______________
+• Chest Armor:     indices _______________
+• Leg Armor:       indices _______________
+• Cape/Cloak:      indices _______________
+• Undergarments:   indices _______________
+• Metal/Buckles:   indices _______________
+• Shadows/Outline: indices _______________
+
+--------------------------------------------------
+
+PATTERN ANALYSIS:
+==================================================
+Common patterns across all sprites:
+• Shadow indices:     _______________
+• Main armor indices: _______________
+• Cape indices:       _______________
+• Trim indices:       _______________
+
+Avoid these indices (might be hair/skin):
+• _______________
+
+Best indices for theme creation:
+• Primary armor:   _______________
+• Secondary trim:  _______________
+• Cape/cloak:      _______________
