@@ -383,12 +383,17 @@ public class Mod : IMod, IConfigurable
         {
             // Cycle BOTH generic and Orlandeau themes
             string nextColor = _colorCycler.GetNextScheme();
+            Console.WriteLine("================================================");
+            Console.WriteLine("================================================");
+            Console.WriteLine($"    GENERIC THEME CHANGED TO: {nextColor}");
+            Console.WriteLine("================================================");
+            Console.WriteLine("================================================");
             Console.WriteLine($"[FFT Color Mod] Cycling generic forward to {nextColor}");
             SetColorScheme(nextColor);
 
             // Also cycle Orlandeau theme
             var nextOrlandeauTheme = _storyCharacterManager.CycleOrlandeauTheme();
-            Console.WriteLine($"[FFT Color Mod] Cycling Orlandeau to {nextOrlandeauTheme}");
+            Console.WriteLine($"[FFT Color Mod] Orlandeau theme: {nextOrlandeauTheme}");
 
             // Apply Orlandeau theme by copying the sprite file
             string orlandeauThemeDir = $"sprites_orlandeau_{nextOrlandeauTheme.ToString().ToLower()}";
