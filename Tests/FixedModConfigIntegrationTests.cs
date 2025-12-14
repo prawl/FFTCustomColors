@@ -31,16 +31,17 @@ namespace FFTColorMod.Tests
             var unitDir = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             Directory.CreateDirectory(unitDir);
 
-            // Create color scheme directories
-            var schemes = new[] { "sprites_original", "sprites_corpse_brigade", "sprites_lucavi" };
+            // Create color scheme directories - include all schemes used in tests
+            var schemes = new[] { "sprites_original", "sprites_corpse_brigade", "sprites_lucavi", "sprites_northern_sky" };
             foreach (var scheme in schemes)
             {
                 var schemeDir = Path.Combine(unitDir, scheme);
                 Directory.CreateDirectory(schemeDir);
 
-                // Create dummy sprite files
+                // Create dummy sprite files for all jobs used in tests
                 File.WriteAllText(Path.Combine(schemeDir, "battle_knight_m_spr.bin"), $"{scheme}_knight");
                 File.WriteAllText(Path.Combine(schemeDir, "battle_yumi_w_spr.bin"), $"{scheme}_archer");
+                File.WriteAllText(Path.Combine(schemeDir, "battle_monk_m_spr.bin"), $"{scheme}_monk");
             }
         }
 
