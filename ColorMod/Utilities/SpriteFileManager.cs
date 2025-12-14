@@ -34,7 +34,6 @@ public class SpriteFileManager
         _pacFileMapping["phoenix_flame"] = "pack007.pac";
         _pacFileMapping["frost_knight"] = "pack008.pac";
         _pacFileMapping["silver_knight"] = "pack009.pac";
-        _pacFileMapping["shadow_assassin"] = "pack010.pac";
         _pacFileMapping["emerald_dragon"] = "pack011.pac";
         _pacFileMapping["rose_gold"] = "pack012.pac";
         _pacFileMapping["ocean_depths"] = "pack013.pac";

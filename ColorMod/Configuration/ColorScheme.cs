@@ -34,9 +34,6 @@ namespace FFTColorMod.Configuration
         [Description("Silver Knight")]
         silver_knight,
 
-        [Description("Shadow Assassin")]
-        shadow_assassin,
-
         [Description("Emerald Dragon")]
         emerald_dragon,
 

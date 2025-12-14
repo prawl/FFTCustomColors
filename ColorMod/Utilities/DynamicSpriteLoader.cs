@@ -33,7 +33,6 @@ namespace FFTColorMod.Utilities
             "sprites_phoenix_flame",
             "sprites_rose_gold",
             "sprites_royal_purple",
-            "sprites_shadow_assassin",
             "sprites_silver_knight",
             "sprites_southern_sky",
             "sprites_test",

@@ -37,7 +37,7 @@ namespace FFTColorMod.Tests
             // Act - Modify config and save
             config.Squire_Male = FFTColorMod.Configuration.ColorScheme.southern_sky;
             config.Dragoon_Female = FFTColorMod.Configuration.ColorScheme.lucavi;
-            config.Ninja_Male = FFTColorMod.Configuration.ColorScheme.shadow_assassin;
+            config.Ninja_Male = FFTColorMod.Configuration.ColorScheme.emerald_dragon;
 
             config.Save();
 
@@ -58,7 +58,7 @@ namespace FFTColorMod.Tests
             Assert.Equal("lucavi", dragoonValue.GetString());
 
             Assert.True(jsonDoc.RootElement.TryGetProperty("NinjaMale", out var ninjaValue));
-            Assert.Equal("shadow_assassin", ninjaValue.GetString());
+            Assert.Equal("emerald_dragon", ninjaValue.GetString());
         }
     }
 }

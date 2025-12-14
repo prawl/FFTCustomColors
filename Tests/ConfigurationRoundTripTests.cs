@@ -36,7 +36,7 @@ namespace FFTColorMod.Tests
                 ""ArcherMale"": ""corpse_brigade"",
                 ""BlackMageFemale"": ""royal_purple"",
                 ""DragoonMale"": ""frost_knight"",
-                ""NinjaFemale"": ""shadow_assassin""
+                ""NinjaFemale"": ""volcanic""
             }";
 
             File.WriteAllText(_testConfigPath, initialJson);

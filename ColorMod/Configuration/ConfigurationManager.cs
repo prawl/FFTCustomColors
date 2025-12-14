@@ -105,7 +105,6 @@ namespace FFTColorMod.Configuration
                 "phoenix_flame",
                 "frost_knight",
                 "silver_knight",
-                "shadow_assassin",
                 "emerald_dragon",
                 "rose_gold",
                 "ocean_depths",

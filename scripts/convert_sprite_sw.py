@@ -216,6 +216,13 @@ def batch_generate_theme_previews(theme_name, job_list=None):
         'calculator_female': 'battle_san_w_spr.bin',
         'squire_male': 'battle_mina_m_spr.bin',  # In crimson_red, squire is in mina files
         'squire_female': 'battle_mina_w_spr.bin',
+
+        # Story characters
+        'agrias': 'battle_aguri_spr.bin',
+        'agrias_knight': 'battle_kanba_spr.bin',  # Agrias in knight armor
+        'orlandeau': 'battle_oru_spr.bin',
+        'orlandeau_young': 'battle_goru_spr.bin',  # Young Orlandeau
+        'orlandeau_old': 'battle_voru_spr.bin',  # Old Orlandeau
     }
 
     # Use specified job list or all jobs

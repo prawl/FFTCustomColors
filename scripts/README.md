@@ -317,37 +317,66 @@ Console.WriteLine($"[FFT Color Mod] Cycling Beowulf to {nextBeowulfTheme}");
 
 ## Sprite Conversion Tools
 
-### convert_sprite_sw.py - Extract Southwest-Facing Sprites
-Converts FFT .bin sprite files to PNG images, extracting only the southwest-facing sprite.
+### convert_sprite_sw.py - Extract Southwest-Facing Sprites and Generate Configuration Previews
+Converts FFT .bin sprite files to PNG images, extracting the southwest-facing sprite for previews or detailed viewing.
 
 **Purpose:**
-- Extracts a single directional sprite (southwest/SW) from FFT sprite sheets
-- Useful for previewing character sprites without full sprite sheet clutter
-- Scales output 8x for better visibility
+- Generates standardized 64x64 preview images for the configuration menu
+- Batch generates all job previews for a theme with consistent formatting
+- Can also extract high-resolution (8x scaled) sprites for detailed viewing
 
 **Usage:**
-```bash
-# Basic usage - extracts SW sprite using palette 0
-python scripts/convert_sprite_sw.py battle_oru_spr.bin
 
-# Specify output filename
+#### Single File Mode:
+```bash
+# Generate 64x64 config preview
+python scripts/convert_sprite_sw.py battle_knight_m_spr.bin knight.png --preview
+
+# Extract 8x scaled sprite (256x256) for detailed viewing
 python scripts/convert_sprite_sw.py battle_oru_spr.bin orlandeau_sw.png
 
 # Use different palette (0-15)
 python scripts/convert_sprite_sw.py battle_oru_spr.bin output.png 2
 ```
 
-**Technical Details:**
-- FFT sprites are 256 pixels wide with 8 directional poses in first row
-- Southwest sprite is at position 2 (x offset = 32 pixels)
-- Each sprite is 32×32 pixels, scaled to 256×256 in output
-- Sprite data uses 4-bit indexed color with 16 palettes of 16 colors each
-- Palettes stored in BGR555 format (5 bits per channel)
+#### Batch Mode - Generate All Previews for a Theme:
+```bash
+# Generate all job previews for a theme
+python scripts/convert_sprite_sw.py --batch crimson_red
 
-**Output:**
-- Single PNG file showing the southwest-facing sprite
-- Original 32×32 sprite scaled 8x to 256×256 pixels
-- Uses specified palette (default: palette 0)
+# Generate specific jobs only
+python scripts/convert_sprite_sw.py --batch royal_purple knight_male,knight_female
+
+# Generate previews for all custom themes
+for theme in crimson_red royal_purple phoenix_flame frost_knight; do
+    python scripts/convert_sprite_sw.py --batch $theme
+done
+```
+
+**Preview Mode Features (--preview or --batch):**
+- Generates standardized 64x64 PNG images for configuration menu
+- Transparent background with proper alpha channel
+- Consistent sprite positioning (y_offset=1, shifted up 2 pixels)
+- 2x scaling from original 32x32 sprite
+- Automatic output naming: `{job}_{theme}.png`
+
+**Batch Processing:**
+- Processes all job classes for a theme in one command
+- Automatically finds sprite files in theme directories
+- Supports partial processing with job list parameter
+- Generates consistent previews across all sprites
+
+**Technical Details:**
+- FFT sprites are 256 pixels wide with 8 directional poses
+- Southwest sprite position: x_offset=32 (2nd sprite), y_offset=1
+- Captures 32x32 pixels, scales to 64x64 for previews
+- Uses palette index 0 with transparent background (color 0)
+- Sprite data uses 4-bit indexed color with BGR555 palette format
+
+**Output Formats:**
+- **Preview Mode**: 64x64 PNG with transparent background (config menu)
+- **Standard Mode**: 256x256 PNG scaled 8x (detailed viewing)
+- **Batch Mode**: Multiple 64x64 PNGs in Resources/Previews directory
 
 ## Scripts Overview
 

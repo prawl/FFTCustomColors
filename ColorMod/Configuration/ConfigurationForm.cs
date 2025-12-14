@@ -107,17 +107,21 @@ namespace FFTColorMod.Configuration
             AddJobRow(row++, "Squire (Male)", _config.Squire_Male, v => _config.Squire_Male = v);
             AddJobRow(row++, "Squire (Female)", _config.Squire_Female, v => _config.Squire_Female = v);
 
+            // Chemists
+            AddJobRow(row++, "Chemist (Male)", _config.Chemist_Male, v => _config.Chemist_Male = v);
+            AddJobRow(row++, "Chemist (Female)", _config.Chemist_Female, v => _config.Chemist_Female = v);
+
             // Knights
             AddJobRow(row++, "Knight (Male)", _config.Knight_Male, v => _config.Knight_Male = v);
             AddJobRow(row++, "Knight (Female)", _config.Knight_Female, v => _config.Knight_Female = v);
 
-            // Monks
-            AddJobRow(row++, "Monk (Male)", _config.Monk_Male, v => _config.Monk_Male = v);
-            AddJobRow(row++, "Monk (Female)", _config.Monk_Female, v => _config.Monk_Female = v);
-
             // Archers
             AddJobRow(row++, "Archer (Male)", _config.Archer_Male, v => _config.Archer_Male = v);
             AddJobRow(row++, "Archer (Female)", _config.Archer_Female, v => _config.Archer_Female = v);
+
+            // Monks
+            AddJobRow(row++, "Monk (Male)", _config.Monk_Male, v => _config.Monk_Male = v);
+            AddJobRow(row++, "Monk (Female)", _config.Monk_Female, v => _config.Monk_Female = v);
 
             // White Mages
             AddJobRow(row++, "White Mage (Male)", _config.WhiteMage_Male, v => _config.WhiteMage_Male = v);
@@ -139,47 +143,43 @@ namespace FFTColorMod.Configuration
             AddJobRow(row++, "Thief (Male)", _config.Thief_Male, v => _config.Thief_Male = v);
             AddJobRow(row++, "Thief (Female)", _config.Thief_Female, v => _config.Thief_Female = v);
 
-            // Ninjas
-            AddJobRow(row++, "Ninja (Male)", _config.Ninja_Male, v => _config.Ninja_Male = v);
-            AddJobRow(row++, "Ninja (Female)", _config.Ninja_Female, v => _config.Ninja_Female = v);
-
-            // Samurai
-            AddJobRow(row++, "Samurai (Male)", _config.Samurai_Male, v => _config.Samurai_Male = v);
-            AddJobRow(row++, "Samurai (Female)", _config.Samurai_Female, v => _config.Samurai_Female = v);
-
-            // Dragoons
-            AddJobRow(row++, "Dragoon (Male)", _config.Dragoon_Male, v => _config.Dragoon_Male = v);
-            AddJobRow(row++, "Dragoon (Female)", _config.Dragoon_Female, v => _config.Dragoon_Female = v);
-
-            // Chemists
-            AddJobRow(row++, "Chemist (Male)", _config.Chemist_Male, v => _config.Chemist_Male = v);
-            AddJobRow(row++, "Chemist (Female)", _config.Chemist_Female, v => _config.Chemist_Female = v);
-
-            // Geomancers
-            AddJobRow(row++, "Geomancer (Male)", _config.Geomancer_Male, v => _config.Geomancer_Male = v);
-            AddJobRow(row++, "Geomancer (Female)", _config.Geomancer_Female, v => _config.Geomancer_Female = v);
+            // Mediators/Orators
+            AddJobRow(row++, "Mediator (Male)", _config.Mediator_Male, v => _config.Mediator_Male = v);
+            AddJobRow(row++, "Mediator (Female)", _config.Mediator_Female, v => _config.Mediator_Female = v);
 
             // Mystics/Oracles
             AddJobRow(row++, "Mystic (Male)", _config.Mystic_Male, v => _config.Mystic_Male = v);
             AddJobRow(row++, "Mystic (Female)", _config.Mystic_Female, v => _config.Mystic_Female = v);
 
-            // Mediators/Orators
-            AddJobRow(row++, "Mediator (Male)", _config.Mediator_Male, v => _config.Mediator_Male = v);
-            AddJobRow(row++, "Mediator (Female)", _config.Mediator_Female, v => _config.Mediator_Female = v);
+            // Geomancers
+            AddJobRow(row++, "Geomancer (Male)", _config.Geomancer_Male, v => _config.Geomancer_Male = v);
+            AddJobRow(row++, "Geomancer (Female)", _config.Geomancer_Female, v => _config.Geomancer_Female = v);
 
-            // Dancers (Female only)
-            AddJobRow(row++, "Dancer (Female)", _config.Dancer_Female, v => _config.Dancer_Female = v);
+            // Dragoons
+            AddJobRow(row++, "Dragoon (Male)", _config.Dragoon_Male, v => _config.Dragoon_Male = v);
+            AddJobRow(row++, "Dragoon (Female)", _config.Dragoon_Female, v => _config.Dragoon_Female = v);
 
-            // Bards (Male only)
-            AddJobRow(row++, "Bard (Male)", _config.Bard_Male, v => _config.Bard_Male = v);
+            // Samurai
+            AddJobRow(row++, "Samurai (Male)", _config.Samurai_Male, v => _config.Samurai_Male = v);
+            AddJobRow(row++, "Samurai (Female)", _config.Samurai_Female, v => _config.Samurai_Female = v);
 
-            // Mimes
-            AddJobRow(row++, "Mime (Male)", _config.Mime_Male, v => _config.Mime_Male = v);
-            AddJobRow(row++, "Mime (Female)", _config.Mime_Female, v => _config.Mime_Female = v);
+            // Ninjas
+            AddJobRow(row++, "Ninja (Male)", _config.Ninja_Male, v => _config.Ninja_Male = v);
+            AddJobRow(row++, "Ninja (Female)", _config.Ninja_Female, v => _config.Ninja_Female = v);
 
             // Calculators/Arithmeticians
             AddJobRow(row++, "Calculator (Male)", _config.Calculator_Male, v => _config.Calculator_Male = v);
             AddJobRow(row++, "Calculator (Female)", _config.Calculator_Female, v => _config.Calculator_Female = v);
+
+            // Bards (Male only)
+            AddJobRow(row++, "Bard (Male)", _config.Bard_Male, v => _config.Bard_Male = v);
+
+            // Dancers (Female only)
+            AddJobRow(row++, "Dancer (Female)", _config.Dancer_Female, v => _config.Dancer_Female = v);
+
+            // Mimes
+            AddJobRow(row++, "Mime (Male)", _config.Mime_Male, v => _config.Mime_Male = v);
+            AddJobRow(row++, "Mime (Female)", _config.Mime_Female, v => _config.Mime_Female = v);
 
             // Add header for story characters
             var storyHeader = new Label
