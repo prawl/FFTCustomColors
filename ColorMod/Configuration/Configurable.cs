@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Reloaded.Mod.Interfaces;
+using Newtonsoft.Json;
 
 namespace FFTColorMod.Configuration
 {
@@ -30,21 +31,24 @@ namespace FFTColorMod.Configuration
         /// <summary>
         /// Full path to the configuration file.
         /// </summary>
-        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
         [Browsable(false)]
         public string? FilePath { get; set; }
 
         /// <summary>
         /// The name of the configuration file.
         /// </summary>
-        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
         [Browsable(false)]
         public string? ConfigName { get; set; }
 
         /// <summary>
         /// Receives events on whenever the file is actively changed or updated.
         /// </summary>
-        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
+        [Newtonsoft.Json.JsonIgnore]
         [Browsable(false)]
         private FileSystemWatcher? ConfigWatcher { get; set; }
 
@@ -80,7 +84,7 @@ namespace FFTColorMod.Configuration
             try
             {
                 var jsonText = File.ReadAllText(filePath);
-                var config = JsonSerializer.Deserialize<TParentType>(jsonText, SerializerOptions);
+                var config = System.Text.Json.JsonSerializer.Deserialize<TParentType>(jsonText, SerializerOptions);
                 return config ?? new TParentType();
             }
             catch
@@ -112,7 +116,7 @@ namespace FFTColorMod.Configuration
                 }
             }
 
-            var json = JsonSerializer.Serialize(copy, GetType(), SerializerOptions);
+            var json = System.Text.Json.JsonSerializer.Serialize(copy, GetType(), SerializerOptions);
             File.WriteAllText(FilePath, json);
         }
 

@@ -64,8 +64,6 @@ public class Startup : IMod
 
     private void OnConfigurationUpdated(Reloaded.Mod.Interfaces.IUpdatableConfigurable config)
     {
-        _configuration = (Config)config;
-
         // Calculate the User config directory path
         // From: .../Reloaded/Mods/FFT_Color_Mod/
         // To:   .../Reloaded/User/Mods/ptyra.fft.colormod/Config.json
@@ -74,18 +72,25 @@ public class Startup : IMod
         var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colormod");
         var userConfigPath = Path.Combine(userConfigDir, "Config.json");
 
-        // Manually serialize and save to the USER directory where Reloaded-II reads from
         try
         {
             Directory.CreateDirectory(userConfigDir);
-            var json = System.Text.Json.JsonSerializer.Serialize(_configuration,
-                Configuration.Configurable<Config>.SerializerOptions);
-            File.WriteAllText(userConfigPath, json);
+
+            // Use ConfigurationUpdater to merge and save
+            var updater = new Configuration.ConfigurationUpdater();
+            updater.UpdateAndSaveConfiguration((Config)config, userConfigPath);
+
+            // Update our internal reference to the merged config
+            var savedJson = File.ReadAllText(userConfigPath);
+            _configuration = System.Text.Json.JsonSerializer.Deserialize<Config>(savedJson,
+                Configuration.Configurable<Config>.SerializerOptions) ?? (Config)config;
+
             Console.WriteLine($"[FFTColorMod] Configuration saved to USER directory: {userConfigPath}");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[FFTColorMod] Failed to save configuration: {ex.Message}");
+            _configuration = (Config)config; // Fallback to incoming config on error
         }
 
         // Then notify the mod
