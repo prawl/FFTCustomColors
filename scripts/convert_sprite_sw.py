@@ -73,13 +73,13 @@ def extract_southwest_sprite(input_file, output_file=None, palette_index=0, prev
     # - Southwest is the 2nd sprite (index 1), so x offset = 32 pixels
 
     sprite_width = 32
-    sprite_height = 32
+    sprite_height = 40  # Extract 8 extra pixels to capture full boots
     sheet_width = 256
 
     # Southwest sprite position
-    # Adjusted based on our testing - start 1 pixel down to capture more boots
+    # Southwest facing sprite position
     x_offset = 32  # Second sprite in the row (index 1)
-    y_offset = 1   # Start 1 pixel down to capture more of the boots
+    y_offset = 0   # Start at the top to capture the full sprite including boots
 
     # Create image array for the sprite
     image = np.zeros((sprite_height, sprite_width, 4), dtype=np.uint8)
@@ -124,11 +124,11 @@ def extract_southwest_sprite(input_file, output_file=None, palette_index=0, prev
         # Create 64x64 preview for config menu
         final_img = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
 
-        # Scale 2x to match the original previews (32x32 -> 64x64)
-        scaled_sprite = pil_image.resize((64, 64), Image.NEAREST)
+        # Scale 2x width, but keep aspect ratio for height (32x40 -> 64x80)
+        scaled_sprite = pil_image.resize((64, 80), Image.NEAREST)
 
-        # Shift the sprite up by 2 pixels to match the original positioning
-        final_img.paste(scaled_sprite, (0, -2), scaled_sprite)
+        # Paste into 64x64 frame, positioned to align with original sprites
+        final_img.paste(scaled_sprite, (0, -8), scaled_sprite)
 
         result_image = final_img
         size_info = "64x64 (config preview)"
@@ -172,36 +172,50 @@ def batch_generate_theme_previews(theme_name, job_list=None):
     # Ensure preview directory exists
     os.makedirs(preview_dir, exist_ok=True)
 
-    # Define the job mappings
+    # Define the job mappings - using Japanese names where needed
+    # Note: In FFT, chemist uses battle_item files
+    # Squire doesn't have its own sprite files - we'll handle it separately
     all_jobs = {
-        'squire_male': 'battle_ske_m_spr.bin',
-        'squire_female': 'battle_ske_w_spr.bin',
+        'chemist_male': 'battle_item_m_spr.bin',
+        'chemist_female': 'battle_item_w_spr.bin',
         'knight_male': 'battle_knight_m_spr.bin',
         'knight_female': 'battle_knight_w_spr.bin',
         'monk_male': 'battle_monk_m_spr.bin',
         'monk_female': 'battle_monk_w_spr.bin',
-        'white_mage_male': 'battle_wmage_m_spr.bin',
-        'white_mage_female': 'battle_wmage_w_spr.bin',
-        'black_mage_male': 'battle_bmage_m_spr.bin',
-        'black_mage_female': 'battle_bmage_w_spr.bin',
-        'mystic_male': 'battle_fusya_m_spr.bin',
-        'mystic_female': 'battle_fusya_w_spr.bin',
-        'time_mage_male': 'battle_tmage_m_spr.bin',
-        'time_mage_female': 'battle_tmage_w_spr.bin',
-        'orator_male': 'battle_orator_m_spr.bin',
-        'orator_female': 'battle_orator_w_spr.bin',
-        'summoner_male': 'battle_smage_m_spr.bin',
-        'summoner_female': 'battle_smage_w_spr.bin',
+        'white_mage_male': 'battle_siro_m_spr.bin',
+        'white_mage_female': 'battle_siro_w_spr.bin',
+        'black_mage_male': 'battle_kuro_m_spr.bin',
+        'black_mage_female': 'battle_kuro_w_spr.bin',
+        'mystic_male': 'battle_onmyo_m_spr.bin',
+        'mystic_female': 'battle_onmyo_w_spr.bin',
+        'time_mage_male': 'battle_toki_m_spr.bin',
+        'time_mage_female': 'battle_toki_w_spr.bin',
+        'orator_male': 'battle_waju_m_spr.bin',
+        'orator_female': 'battle_waju_w_spr.bin',
+        'mediator_male': 'battle_waju_m_spr.bin',  # Mediator is the old name for Orator
+        'mediator_female': 'battle_waju_w_spr.bin',
+        'summoner_male': 'battle_syou_m_spr.bin',
+        'summoner_female': 'battle_syou_w_spr.bin',
         'thief_male': 'battle_thief_m_spr.bin',
         'thief_female': 'battle_thief_w_spr.bin',
-        'archer_male': 'battle_archer_m_spr.bin',
-        'archer_female': 'battle_archer_w_spr.bin',
-        'geomancer_male': 'battle_gmancer_m_spr.bin',
-        'geomancer_female': 'battle_gmancer_w_spr.bin',
+        'archer_male': 'battle_yumi_m_spr.bin',
+        'archer_female': 'battle_yumi_w_spr.bin',
+        'geomancer_male': 'battle_fusui_m_spr.bin',
+        'geomancer_female': 'battle_fusui_w_spr.bin',
         'ninja_male': 'battle_ninja_m_spr.bin',
         'ninja_female': 'battle_ninja_w_spr.bin',
-        'samurai_male': 'battle_samurai_m_spr.bin',
-        'samurai_female': 'battle_samurai_w_spr.bin',
+        'samurai_male': 'battle_samu_m_spr.bin',
+        'samurai_female': 'battle_samu_w_spr.bin',
+        'dragoon_male': 'battle_ryu_m_spr.bin',
+        'dragoon_female': 'battle_ryu_w_spr.bin',
+        'dancer_female': 'battle_odori_w_spr.bin',
+        'bard_male': 'battle_gin_m_spr.bin',
+        'mime_male': 'battle_mono_m_spr.bin',
+        'mime_female': 'battle_mono_w_spr.bin',
+        'calculator_male': 'battle_san_m_spr.bin',
+        'calculator_female': 'battle_san_w_spr.bin',
+        'squire_male': 'battle_mina_m_spr.bin',  # In crimson_red, squire is in mina files
+        'squire_female': 'battle_mina_w_spr.bin',
     }
 
     # Use specified job list or all jobs
