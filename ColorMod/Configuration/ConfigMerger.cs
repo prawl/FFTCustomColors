@@ -11,31 +11,43 @@ namespace FFTColorMod.Configuration
         {
             var mergedConfig = new Config();
 
-            // Get all properties that are ColorScheme enums (including variants)
-            var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(ColorScheme) ||
-                           p.PropertyType == typeof(AgriasColorScheme) ||
-                           p.PropertyType == typeof(OrlandeauColorScheme));
-
-            foreach (var prop in properties)
+            // Handle generic job color schemes using dictionary approach
+            foreach (var jobKey in mergedConfig.GetAllJobKeys())
             {
-                // Get the default value from the DefaultValue attribute
-                var defaultValueAttr = prop.GetCustomAttribute<DefaultValueAttribute>();
-                var defaultValue = defaultValueAttr?.Value;
+                var incomingValue = incomingConfig.GetColorScheme(jobKey);
+                var existingValue = existingConfig.GetColorScheme(jobKey);
 
-                var incomingValue = prop.GetValue(incomingConfig);
-                var existingValue = prop.GetValue(existingConfig);
-
-                // If incoming value is different from default, it was explicitly changed
-                if (incomingValue != null && !incomingValue.Equals(defaultValue))
+                // If incoming value is different from default (original), it was explicitly changed
+                if (incomingValue != ColorScheme.original)
                 {
-                    prop.SetValue(mergedConfig, incomingValue);
+                    mergedConfig.SetColorScheme(jobKey, incomingValue);
                 }
                 else
                 {
                     // Otherwise preserve the existing value
-                    prop.SetValue(mergedConfig, existingValue);
+                    mergedConfig.SetColorScheme(jobKey, existingValue);
                 }
+            }
+
+            // Handle story characters separately (they still have properties)
+            // Agrias
+            if (incomingConfig.Agrias != AgriasColorScheme.original)
+            {
+                mergedConfig.Agrias = incomingConfig.Agrias;
+            }
+            else
+            {
+                mergedConfig.Agrias = existingConfig.Agrias;
+            }
+
+            // Orlandeau
+            if (incomingConfig.Orlandeau != OrlandeauColorScheme.original)
+            {
+                mergedConfig.Orlandeau = incomingConfig.Orlandeau;
+            }
+            else
+            {
+                mergedConfig.Orlandeau = existingConfig.Orlandeau;
             }
 
             return mergedConfig;
