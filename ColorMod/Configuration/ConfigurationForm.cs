@@ -13,7 +13,6 @@ namespace FFTColorMod.Configuration
         private TableLayoutPanel _mainPanel;
         private Button _saveButton;
         private Button _cancelButton;
-        private Button _debugButton;
 
         private bool _isFullyLoaded = false;
         private bool _isInitializing = true;  // Prevent any changes during initialization
@@ -107,16 +106,7 @@ namespace FFTColorMod.Configuration
             };
             _saveButton.Click += SaveButton_Click;
 
-            _debugButton = new Button
-            {
-                Text = "Debug",
-                Width = 80,
-                Height = 30
-            };
-            _debugButton.Click += DebugButton_Click;
-
             buttonPanel.Controls.Add(_cancelButton);
-            buttonPanel.Controls.Add(_debugButton);
             buttonPanel.Controls.Add(_saveButton);
 
             Controls.Add(buttonPanel);
@@ -550,75 +540,6 @@ namespace FFTColorMod.Configuration
                         }
                     }
                 }
-            }
-        }
-
-        private void DebugButton_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                var debugInfo = new System.Text.StringBuilder();
-                debugInfo.AppendLine("=== CURRENT CONFIG STATE ===");
-                debugInfo.AppendLine($"Squire_Male: {_config.Squire_Male}");
-                debugInfo.AppendLine($"Squire_Female: {_config.Squire_Female}");
-                debugInfo.AppendLine($"Knight_Male: {_config.Knight_Male}");
-                debugInfo.AppendLine($"Archer_Male: {_config.Archer_Male}");
-                debugInfo.AppendLine($"Monk_Male: {_config.Monk_Male}");
-                debugInfo.AppendLine($"WhiteMage_Male: {_config.WhiteMage_Male}");
-                debugInfo.AppendLine();
-
-                // Use the stored config path if available, otherwise use default
-                var configPath = _configPath;
-                if (string.IsNullOrEmpty(configPath))
-                {
-                    configPath = Path.Combine(
-                        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? ".",
-                        "Config.json"
-                    );
-                    debugInfo.AppendLine("WARNING: Using default path, not the passed-in path!");
-                }
-
-                debugInfo.AppendLine($"=== CONFIG FILE PATH ===");
-                debugInfo.AppendLine(configPath);
-                debugInfo.AppendLine();
-
-                // Test save
-                debugInfo.AppendLine("=== TESTING SAVE ===");
-                var testManager = new ConfigurationManager(configPath);
-                testManager.SaveConfig(_config);
-                debugInfo.AppendLine("Save completed");
-                debugInfo.AppendLine();
-
-                // Test load
-                debugInfo.AppendLine("=== TESTING LOAD ===");
-                var loadedConfig = testManager.LoadConfig();
-                debugInfo.AppendLine($"Loaded Squire_Male: {loadedConfig.Squire_Male}");
-                debugInfo.AppendLine($"Loaded Archer_Male: {loadedConfig.Archer_Male}");
-                debugInfo.AppendLine();
-
-                // Check file contents
-                if (File.Exists(configPath))
-                {
-                    debugInfo.AppendLine("=== RAW FILE CONTENTS (first 500 chars) ===");
-                    var fileContent = File.ReadAllText(configPath);
-                    debugInfo.AppendLine(fileContent.Substring(0, Math.Min(500, fileContent.Length)));
-                }
-                else
-                {
-                    debugInfo.AppendLine("Config file does not exist!");
-                }
-
-                // Show in message box
-                MessageBox.Show(debugInfo.ToString(), "Configuration Debug Info",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                // Also log to console
-                Console.WriteLine("[FFT Color Mod] " + debugInfo.ToString());
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Debug error: {ex.Message}\n\n{ex.StackTrace}",
-                    "Debug Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
