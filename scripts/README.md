@@ -315,6 +315,40 @@ Console.WriteLine($"[FFT Color Mod] Cycling Beowulf to {nextBeowulfTheme}");
 6. **Initial Theme Application**: Apply default theme on mod startup via `ApplyInitialStoryCharacterThemes`
 7. **Sprite Count Verification**: Beowulf themes have 122 sprites (121 generic + 1 Beowulf), Orlandeau has 124
 
+## Sprite Conversion Tools
+
+### convert_sprite_sw.py - Extract Southwest-Facing Sprites
+Converts FFT .bin sprite files to PNG images, extracting only the southwest-facing sprite.
+
+**Purpose:**
+- Extracts a single directional sprite (southwest/SW) from FFT sprite sheets
+- Useful for previewing character sprites without full sprite sheet clutter
+- Scales output 8x for better visibility
+
+**Usage:**
+```bash
+# Basic usage - extracts SW sprite using palette 0
+python scripts/convert_sprite_sw.py battle_oru_spr.bin
+
+# Specify output filename
+python scripts/convert_sprite_sw.py battle_oru_spr.bin orlandeau_sw.png
+
+# Use different palette (0-15)
+python scripts/convert_sprite_sw.py battle_oru_spr.bin output.png 2
+```
+
+**Technical Details:**
+- FFT sprites are 256 pixels wide with 8 directional poses in first row
+- Southwest sprite is at position 2 (x offset = 32 pixels)
+- Each sprite is 32×32 pixels, scaled to 256×256 in output
+- Sprite data uses 4-bit indexed color with 16 palettes of 16 colors each
+- Palettes stored in BGR555 format (5 bits per channel)
+
+**Output:**
+- Single PNG file showing the southwest-facing sprite
+- Original 32×32 sprite scaled 8x to 256×256 pixels
+- Uses specified palette (default: palette 0)
+
 ## Scripts Overview
 
 ### 1. create_cohesive_theme.py - Recommended Theme Creator
