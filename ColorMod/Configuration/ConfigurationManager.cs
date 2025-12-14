@@ -99,7 +99,6 @@ namespace FFTColorMod.Configuration
                 "corpse_brigade",
                 "lucavi",
                 "northern_sky",
-                "smoke",
                 "southern_sky",
                 "crimson_red",
                 "royal_purple",

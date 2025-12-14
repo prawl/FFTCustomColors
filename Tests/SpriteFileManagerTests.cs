@@ -129,7 +129,7 @@ namespace FFTColorMod.Tests
             Directory.CreateDirectory(tempDir);
 
             var unitDir = Path.Combine(tempDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");
-            var variantDir = Path.Combine(unitDir, "sprites_smoke");
+            var variantDir = Path.Combine(unitDir, "sprites_southern_sky");
             Directory.CreateDirectory(variantDir);
 
             // Create a sprite file - this would have been filtered out by the bug
@@ -141,7 +141,7 @@ namespace FFTColorMod.Tests
             try
             {
                 // Act
-                manager.SwitchColorScheme("smoke");
+                manager.SwitchColorScheme("southern_sky");
 
                 // Assert - The file should NOT have been filtered out
                 var targetFile = Path.Combine(unitDir, "test_sprite.bin");

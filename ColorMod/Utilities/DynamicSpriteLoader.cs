@@ -22,7 +22,6 @@ namespace FFTColorMod.Utilities
             "sprites_corpse_brigade",
             "sprites_lucavi",
             "sprites_northern_sky",
-            "sprites_smoke",
             "sprites_amethyst",
             "sprites_blood_moon",
             "sprites_celestial",

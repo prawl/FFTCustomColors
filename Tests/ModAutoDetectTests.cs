@@ -22,7 +22,7 @@ namespace Tests
 
             // Assert
             schemes.Should().NotBeNull();
-            schemes.Should().HaveCount(6); // Fallback list has 6 schemes
+            schemes.Should().HaveCount(5); // Fallback list has 5 schemes (smoke removed)
             schemes.Should().Contain("original");
         }
     }

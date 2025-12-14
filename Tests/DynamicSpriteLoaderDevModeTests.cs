@@ -33,7 +33,7 @@ namespace FFTColorMod.Tests
             // Create test sprite files in ColorSchemes (all 20 themes)
             var allSchemes = new[] {
                 "sprites_original", "sprites_corpse_brigade", "sprites_lucavi",
-                "sprites_northern_sky", "sprites_smoke", "sprites_southern_sky",
+                "sprites_northern_sky", "sprites_southern_sky", "sprites_southern_sky",
                 "sprites_crimson_red", "sprites_golden_templar", "sprites_amethyst"
             };
 
@@ -54,7 +54,7 @@ namespace FFTColorMod.Tests
             // Set up dev mode: 5 core themes + 1 test theme in data directory
             var coreDevThemes = new[] {
                 "sprites_original", "sprites_corpse_brigade", "sprites_lucavi",
-                "sprites_northern_sky", "sprites_smoke"
+                "sprites_northern_sky", "sprites_southern_sky"
             };
 
             foreach (var scheme in coreDevThemes)
@@ -93,7 +93,7 @@ namespace FFTColorMod.Tests
             Assert.True(Directory.Exists(Path.Combine(_dataPath, "sprites_corpse_brigade")));
             Assert.True(Directory.Exists(Path.Combine(_dataPath, "sprites_lucavi")));
             Assert.True(Directory.Exists(Path.Combine(_dataPath, "sprites_northern_sky")));
-            Assert.True(Directory.Exists(Path.Combine(_dataPath, "sprites_smoke")));
+            Assert.True(Directory.Exists(Path.Combine(_dataPath, "sprites_southern_sky")));
             Assert.True(Directory.Exists(Path.Combine(_dataPath, "sprites_test_custom")));
         }
 

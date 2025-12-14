@@ -16,9 +16,6 @@ namespace FFTColorMod.Configuration
         [Description("Northern Sky")]
         northern_sky,
 
-        [Description("Smoke")]
-        smoke,
-
         [Description("Southern Sky")]
         southern_sky,
 

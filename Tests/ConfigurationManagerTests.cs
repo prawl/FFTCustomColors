@@ -89,8 +89,8 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = (Configuration.ColorScheme)7,    // royal_purple
-                Dragoon_Female = (Configuration.ColorScheme)8  // phoenix_flame
+                Knight_Male = Configuration.ColorScheme.royal_purple,
+                Dragoon_Female = Configuration.ColorScheme.phoenix_flame
             };
             _configManager.SaveConfig(config);
 
@@ -118,9 +118,9 @@ namespace FFTColorMod.Tests
 
             // Assert
             var updatedConfig = _configManager.LoadConfig();
-            Assert.Equal((Configuration.ColorScheme)9, updatedConfig.Knight_Male);   // frost_knight
-            Assert.Equal((Configuration.ColorScheme)10, updatedConfig.Archer_Female); // silver_knight
-            Assert.Equal((Configuration.ColorScheme)0, updatedConfig.Monk_Male);      // original - unchanged
+            Assert.Equal(Configuration.ColorScheme.frost_knight, updatedConfig.Knight_Male);
+            Assert.Equal(Configuration.ColorScheme.silver_knight, updatedConfig.Archer_Female);
+            Assert.Equal(Configuration.ColorScheme.original, updatedConfig.Monk_Male);      // unchanged
         }
 
         [Fact]
@@ -136,7 +136,7 @@ namespace FFTColorMod.Tests
             Assert.Contains("lucavi", schemes);
             Assert.Contains("northern_sky", schemes);
             Assert.Contains("southern_sky", schemes);
-            Assert.Contains("smoke", schemes);
+            // smoke theme removed - no longer in list
             // Custom schemes
             Assert.Contains("crimson_red", schemes);
             Assert.Contains("royal_purple", schemes);
@@ -149,10 +149,10 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = (Configuration.ColorScheme)1,   // corpse_brigade
-                Archer_Female = (Configuration.ColorScheme)2,  // lucavi
-                Monk_Male = (Configuration.ColorScheme)3,     // northern_sky
-                Thief_Female = (Configuration.ColorScheme)4      // smoke
+                Knight_Male = Configuration.ColorScheme.corpse_brigade,
+                Archer_Female = Configuration.ColorScheme.lucavi,
+                Monk_Male = Configuration.ColorScheme.northern_sky,
+                Thief_Female = Configuration.ColorScheme.southern_sky
             };
             _configManager.SaveConfig(config);
 
@@ -161,7 +161,7 @@ namespace FFTColorMod.Tests
 
             // Assert
             var resetConfig = _configManager.LoadConfig();
-            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Knight_Male);   // original
+            Assert.Equal(Configuration.ColorScheme.original, resetConfig.Knight_Male);
             Assert.Equal((Configuration.ColorScheme)0, resetConfig.Archer_Female); // original
             Assert.Equal((Configuration.ColorScheme)0, resetConfig.Monk_Male);     // original
             Assert.Equal((Configuration.ColorScheme)0, resetConfig.Thief_Female);  // original

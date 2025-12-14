@@ -74,8 +74,8 @@ namespace FFTColorMod.Tests
             Assert.NotNull(config);
 
             // These assertions SHOULD pass but will FAIL because of the bug
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)1, config.Squire_Male);   // Should be corpse_brigade but gets original!
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)12, config.Knight_Female); // Should be emerald_dragon but gets original!
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.corpse_brigade, config.Squire_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.emerald_dragon, config.Knight_Female);
         }
 
         [Fact]

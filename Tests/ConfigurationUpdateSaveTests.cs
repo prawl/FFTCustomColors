@@ -35,9 +35,9 @@ namespace FFTColorMod.Tests
             Assert.NotNull(config);
 
             // Act - Modify config and save
-            config.Squire_Male = (FFTColorMod.Configuration.ColorScheme)4;   // smoke
-            config.Dragoon_Female = (FFTColorMod.Configuration.ColorScheme)2; // lucavi
-            config.Ninja_Male = (FFTColorMod.Configuration.ColorScheme)11;    // shadow_assassin
+            config.Squire_Male = FFTColorMod.Configuration.ColorScheme.southern_sky;
+            config.Dragoon_Female = FFTColorMod.Configuration.ColorScheme.lucavi;
+            config.Ninja_Male = FFTColorMod.Configuration.ColorScheme.shadow_assassin;
 
             config.Save();
 
@@ -52,7 +52,7 @@ namespace FFTColorMod.Tests
 
             // Check that JSON has correct property names (no underscores)
             Assert.True(jsonDoc.RootElement.TryGetProperty("SquireMale", out var squireValue));
-            Assert.Equal("smoke", squireValue.GetString());
+            Assert.Equal("southern_sky", squireValue.GetString());
 
             Assert.True(jsonDoc.RootElement.TryGetProperty("DragoonFemale", out var dragoonValue));
             Assert.Equal("lucavi", dragoonValue.GetString());

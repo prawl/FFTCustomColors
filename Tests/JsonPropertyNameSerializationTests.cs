@@ -30,9 +30,9 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)4,  // smoke
-                Knight_Female = (FFTColorMod.Configuration.ColorScheme)12, // emerald_dragon
-                WhiteMage_Male = (FFTColorMod.Configuration.ColorScheme)3  // northern_sky
+                Squire_Male = FFTColorMod.Configuration.ColorScheme.southern_sky,
+                Knight_Female = FFTColorMod.Configuration.ColorScheme.emerald_dragon,
+                WhiteMage_Male = FFTColorMod.Configuration.ColorScheme.northern_sky
             };
 
             // Act - Serialize to JSON
@@ -49,7 +49,7 @@ namespace FFTColorMod.Tests
             Assert.DoesNotContain("\"WhiteMage_Male\":", json);
 
             // Values should be enum names (strings), not numbers
-            Assert.Contains("\"smoke\"", json);
+            Assert.Contains("\"southern_sky\"", json);
             Assert.Contains("\"emerald_dragon\"", json);
             Assert.Contains("\"northern_sky\"", json);
         }

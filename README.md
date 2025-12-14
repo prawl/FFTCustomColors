@@ -53,7 +53,7 @@ The mod includes two build scripts for different deployment scenarios:
 #### BuildLinked.ps1 (Development)
 - **Purpose**: Quick iteration and testing
 - **Themes Deployed**: 5 generic themes + all Orlandeau themes
-- **Generic Themes Limited**: original, corpse_brigade, lucavi, northern_sky, smoke
+- **Generic Themes Limited**: original, corpse_brigade, lucavi, northern_sky, southern_sky
 - **Why Limited**: Prevents F1/F2 cycling crashes during development
 - **Usage**: `.\BuildLinked.ps1`
 
@@ -100,7 +100,7 @@ For testing with F1/F2 hotkeys, use development mode:
 ```
 
 **Dev Mode:**
-- Keeps 5 core themes in `data/` for F1/F2 testing (original, corpse_brigade, lucavi, northern_sky, smoke)
+- Keeps 5 core themes in `data/` for F1/F2 testing (original, corpse_brigade, lucavi, northern_sky, southern_sky)
 - Stores all other themes in `ColorSchemes/`
 - Supports `sprites_test_*` themes for development
 - DynamicSpriteLoader auto-detects and preserves this setup

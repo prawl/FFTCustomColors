@@ -29,7 +29,7 @@ namespace FFTColorMod.Tests
         {
             // Arrange - JSON with no underscores (like what Reloaded-II saves)
             var json = @"{
-                ""SquireMale"": ""smoke"",
+                ""SquireMale"": ""southern_sky"",
                 ""KnightFemale"": ""emerald_dragon"",
                 ""ArcherMale"": ""corpse_brigade"",
                 ""WhiteMageMale"": ""northern_sky""
@@ -40,14 +40,14 @@ namespace FFTColorMod.Tests
 
             // Assert - Properties should be correctly set
             Assert.NotNull(config);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)4, config.Squire_Male);  // smoke
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)12, config.Knight_Female); // emerald_dragon
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)1, config.Archer_Male);   // corpse_brigade
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)3, config.WhiteMage_Male); // northern_sky
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.southern_sky, config.Squire_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.emerald_dragon, config.Knight_Female);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.corpse_brigade, config.Archer_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.northern_sky, config.WhiteMage_Male);
 
             // Other properties should have default values
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Knight_Male);    // original
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Monk_Female);    // original
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, config.Knight_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, config.Monk_Female);
         }
     }
 }

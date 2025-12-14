@@ -30,7 +30,7 @@ namespace FFTColorMod.Tests
         {
             // Arrange - Create initial JSON with specific values (simulating Reloaded-II config)
             var initialJson = @"{
-                ""SquireMale"": ""smoke"",
+                ""SquireMale"": ""southern_sky"",
                 ""KnightMale"": ""rose_gold"",
                 ""KnightFemale"": ""emerald_dragon"",
                 ""ArcherMale"": ""corpse_brigade"",
@@ -48,9 +48,9 @@ namespace FFTColorMod.Tests
             Assert.NotNull(config);
 
             // Verify it loaded correctly
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)4, config.Squire_Male);   // smoke
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)13, config.Knight_Male);   // rose_gold
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)12, config.Knight_Female); // emerald_dragon
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.southern_sky, config.Squire_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.rose_gold, config.Knight_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.emerald_dragon, config.Knight_Female);
 
             // Save it back
             config.Save();

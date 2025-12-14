@@ -34,7 +34,7 @@ namespace FFTColorMod
             else
             {
                 // Minimal fallback for testing when no directory exists
-                _schemes = new List<string> { "original", "corpse_brigade", "lucavi", "northern_sky", "smoke", "southern_sky" };
+                _schemes = new List<string> { "original", "corpse_brigade", "lucavi", "northern_sky", "southern_sky" };
             }
         }
 

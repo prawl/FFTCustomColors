@@ -24,7 +24,7 @@ namespace FFTColorMod.Tests
         {
             // Arrange
             var orlandeauThemes = System.Enum.GetNames(typeof(OrlandeauColorScheme));
-            var genericThemes = new[] { "corpse_brigade", "lucavi", "northern_sky", "smoke" };
+            var genericThemes = new[] { "corpse_brigade", "lucavi", "northern_sky", "southern_sky" };
 
             // Act & Assert
             // Original should be included so players can revert to default

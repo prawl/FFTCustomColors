@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using Reloaded.Mod.Interfaces;
 
 namespace FFTColorMod.Configuration
@@ -165,6 +166,37 @@ namespace FFTColorMod.Configuration
         /// <summary>
         /// Tries to run a custom configuration menu.
         /// </summary>
-        public bool TryRunCustomConfiguration() => false;
+        public bool TryRunCustomConfiguration()
+        {
+            Console.WriteLine("[FFT Color Mod] TryRunCustomConfiguration called!");
+
+            // Use Windows Forms for better compatibility
+            try
+            {
+                Console.WriteLine("[FFT Color Mod] Getting configuration...");
+                var config = GetConfiguration<Config>(0);
+
+                Console.WriteLine("[FFT Color Mod] Creating configuration form...");
+                var configForm = new ConfigurationForm(config);
+
+                Console.WriteLine("[FFT Color Mod] Showing configuration form...");
+                var result = configForm.ShowDialog();
+
+                if (result == System.Windows.Forms.DialogResult.OK)
+                {
+                    Console.WriteLine("[FFT Color Mod] Saving configuration...");
+                    Save();
+                }
+
+                Console.WriteLine("[FFT Color Mod] Configuration window closed");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[FFT Color Mod] Error showing configuration window: {ex}");
+                Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
+                return false;
+            }
+        }
     }
 }

@@ -34,7 +34,7 @@ namespace FFTColorMod.Tests
                 "sprites_corpse_brigade",
                 "sprites_lucavi",
                 "sprites_northern_sky",
-                "sprites_smoke"
+                "sprites_southern_sky"
             };
 
             // Create the core theme directories
@@ -137,7 +137,7 @@ namespace FFTColorMod.Tests
                 "sprites_corpse_brigade",
                 "sprites_lucavi",
                 "sprites_northern_sky",
-                "sprites_smoke"
+                "sprites_southern_sky"
             };
 
             foreach (var theme in coreThemes)
@@ -160,7 +160,7 @@ namespace FFTColorMod.Tests
         {
             // Arrange
             // Create core dev themes
-            var coreThemes = new[] { "sprites_corpse_brigade", "sprites_lucavi", "sprites_northern_sky", "sprites_smoke" };
+            var coreThemes = new[] { "sprites_corpse_brigade", "sprites_lucavi", "sprites_northern_sky", "sprites_southern_sky" };
             foreach (var theme in coreThemes)
             {
                 var themeDir = Path.Combine(_testDataPath, theme);

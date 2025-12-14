@@ -101,6 +101,18 @@ if ($LASTEXITCODE -eq 0) {
         }
     }
 
+    # Copy preview images
+    Write-Host "Copying preview images..."
+    $previewSource = "$PSScriptRoot/ColorMod/Resources/Previews"
+    $previewDest = "$modPath/Resources/Previews"
+
+    if (Test-Path $previewSource) {
+        New-Item -ItemType Directory -Force -Path $previewDest | Out-Null
+        Copy-Item "$previewSource/*.png" -Destination $previewDest -Force
+        $previewCount = (Get-ChildItem "$previewDest/*.png").Count
+        Write-Host "Copied $previewCount preview images"
+    }
+
     # Theme directories are no longer deployed - they're read from git repo
 
     # Check ModConfig.json

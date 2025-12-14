@@ -70,7 +70,6 @@ namespace FFTColorMod.Configuration
                 "corpse_brigade",
                 "lucavi",
                 "northern_sky",
-                "smoke",
                 "southern_sky"
             };
         }
