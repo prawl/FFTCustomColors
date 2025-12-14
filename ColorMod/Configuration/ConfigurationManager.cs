@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 
 namespace FFTColorMod.Configuration
 {
@@ -12,6 +15,15 @@ namespace FFTColorMod.Configuration
         private readonly string _configPath;
         private Config _cachedConfig;
         private readonly object _lockObject = new object();
+
+        // Use consistent JSON settings with enum string conversion
+        // IMPORTANT: Use default naming (not camelCase) to match property names exactly
+        private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
+        {
+            Formatting = Formatting.Indented,
+            Converters = new List<JsonConverter> { new StringEnumConverter() },
+            ContractResolver = new DefaultContractResolver() // Use exact property names
+        };
 
         public ConfigurationManager(string configPath)
         {
@@ -22,11 +34,12 @@ namespace FFTColorMod.Configuration
         {
             lock (_lockObject)
             {
-                if (_cachedConfig != null)
-                    return _cachedConfig;
+                Console.WriteLine($"[FFT Color Mod] Loading config from: {_configPath}");
 
+                // Always reload from disk to get latest changes
                 if (!File.Exists(_configPath))
                 {
+                    Console.WriteLine($"[FFT Color Mod] Config file does not exist, creating new config");
                     _cachedConfig = new Config();
                     return _cachedConfig;
                 }
@@ -34,7 +47,9 @@ namespace FFTColorMod.Configuration
                 try
                 {
                     var json = File.ReadAllText(_configPath);
-                    _cachedConfig = JsonConvert.DeserializeObject<Config>(json) ?? new Config();
+                    Console.WriteLine($"[FFT Color Mod] Read JSON: {json.Substring(0, Math.Min(200, json.Length))}...");
+                    _cachedConfig = JsonConvert.DeserializeObject<Config>(json, _jsonSettings) ?? new Config();
+                    Console.WriteLine($"[FFT Color Mod] Loaded config - Squire_Male: {_cachedConfig.Squire_Male} (value: {(int)_cachedConfig.Squire_Male})");
                     return _cachedConfig;
                 }
                 catch (Exception ex)
@@ -52,14 +67,18 @@ namespace FFTColorMod.Configuration
             {
                 try
                 {
-                    var json = JsonConvert.SerializeObject(config, Formatting.Indented);
+                    Console.WriteLine($"[FFT Color Mod] Saving config - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}");
+                    var json = JsonConvert.SerializeObject(config, _jsonSettings);
+                    Console.WriteLine($"[FFT Color Mod] Serialized JSON (first 500 chars): {json.Substring(0, Math.Min(500, json.Length))}");
                     var directory = Path.GetDirectoryName(_configPath);
                     if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                     {
                         Directory.CreateDirectory(directory);
                     }
+                    Console.WriteLine($"[FFT Color Mod] Writing config to: {_configPath}");
                     File.WriteAllText(_configPath, json);
                     _cachedConfig = config;
+                    Console.WriteLine($"[FFT Color Mod] Config saved successfully");
                 }
                 catch (Exception ex)
                 {
@@ -76,17 +95,73 @@ namespace FFTColorMod.Configuration
 
         public void SetColorSchemeForJob(string jobProperty, string colorScheme)
         {
+            Console.WriteLine($"[FFT Color Mod] SetColorSchemeForJob START: {jobProperty} = {colorScheme}");
+
+            // Add thread info to debug potential race conditions
+            Console.WriteLine($"[FFT Color Mod] Thread ID: {Thread.CurrentThread.ManagedThreadId}");
+
             var config = LoadConfig();
+
+            // Log current config state BEFORE change
+            Console.WriteLine($"[FFT Color Mod] BEFORE - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
+
+            // Debug: List all ColorScheme properties
+            var allProperties = typeof(Config).GetProperties()
+                .Where(p => p.PropertyType == typeof(Configuration.ColorScheme))
+                .Select(p => p.Name)
+                .ToList();
+            Console.WriteLine($"[FFT Color Mod] Available ColorScheme properties (first 10): {string.Join(", ", allProperties.Take(10))}");
+
             var propertyInfo = typeof(Config).GetProperty(jobProperty);
 
-            if (propertyInfo != null && propertyInfo.PropertyType == typeof(ColorScheme))
+            if (propertyInfo != null)
             {
-                // Parse the string to ColorScheme enum
-                if (Enum.TryParse<ColorScheme>(colorScheme, true, out var colorSchemeEnum))
+                Console.WriteLine($"[FFT Color Mod] Property found: {propertyInfo.Name}, Type: {propertyInfo.PropertyType}");
+
+                if (propertyInfo.PropertyType == typeof(Configuration.ColorScheme))
                 {
-                    propertyInfo.SetValue(config, colorSchemeEnum);
-                    SaveConfig(config);
+                    // Parse the string to ColorScheme enum
+                    if (Enum.TryParse<Configuration.ColorScheme>(colorScheme, true, out var colorSchemeEnum))
+                    {
+                        Console.WriteLine($"[FFT Color Mod] About to set property '{propertyInfo.Name}' on config object");
+                        Console.WriteLine($"[FFT Color Mod] Config object type: {config.GetType().FullName}");
+                        Console.WriteLine($"[FFT Color Mod] Setting value to: {colorSchemeEnum} (enum value: {(int)colorSchemeEnum})");
+
+                        // Get value before setting
+                        var beforeValue = propertyInfo.GetValue(config);
+                        Console.WriteLine($"[FFT Color Mod] Property value BEFORE: {beforeValue}");
+
+                        propertyInfo.SetValue(config, colorSchemeEnum);
+
+                        // Get value after setting
+                        var afterValue = propertyInfo.GetValue(config);
+                        Console.WriteLine($"[FFT Color Mod] Property value AFTER: {afterValue}");
+
+                        // Log state AFTER setting property but BEFORE save
+                        Console.WriteLine($"[FFT Color Mod] AFTER SET - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
+
+                        SaveConfig(config);
+
+                        // Verify it was set
+                        var verifyConfig = LoadConfig();
+                        var verifyValue = propertyInfo.GetValue(verifyConfig);
+                        Console.WriteLine($"[FFT Color Mod] AFTER SAVE - Squire_Male: {verifyConfig.Squire_Male}, Archer_Female: {verifyConfig.Archer_Female}, WhiteMage_Male: {verifyConfig.WhiteMage_Male}");
+                        Console.WriteLine($"[FFT Color Mod] Verification - {jobProperty} is now: {verifyValue}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[FFT Color Mod] Failed to parse color scheme: {colorScheme}");
+                    }
                 }
+                else
+                {
+                    Console.WriteLine($"[FFT Color Mod] Property type mismatch. Expected: {typeof(Configuration.ColorScheme)}, Got: {propertyInfo.PropertyType}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[FFT Color Mod] Property not found: {jobProperty}");
+                Console.WriteLine($"[FFT Color Mod] Did you mean one of: {string.Join(", ", allProperties.Take(5))}...");
             }
         }
 

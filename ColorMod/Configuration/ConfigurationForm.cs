@@ -9,15 +9,40 @@ namespace FFTColorMod.Configuration
     public class ConfigurationForm : Form
     {
         private Config _config;
+        private string _configPath;  // Store the actual config path
         private TableLayoutPanel _mainPanel;
         private Button _saveButton;
         private Button _cancelButton;
+        private Button _debugButton;
 
-        public ConfigurationForm(Config config)
+        private bool _isFullyLoaded = false;
+        private bool _isInitializing = true;  // Prevent any changes during initialization
+
+        public ConfigurationForm(Config config, string configPath = null)
         {
             _config = config;
+            _configPath = configPath;  // Store the path for saving
+            Console.WriteLine($"[FFT Color Mod] ConfigurationForm created with config - Squire_Male: {config.Squire_Male}");
+            if (!string.IsNullOrEmpty(configPath))
+            {
+                Console.WriteLine($"[FFT Color Mod] Config path set to: {configPath}");
+            }
+
+            _isInitializing = true;  // Block all events during initialization
             InitializeForm();
             LoadConfiguration();
+            _isInitializing = false;  // Allow events after everything is loaded
+
+            // Defer enabling events until form is fully shown
+            this.Shown += (s, e) =>
+            {
+                _isFullyLoaded = true;
+                Console.WriteLine($"[FFT Color Mod] Form shown - events now enabled");
+                // Force refresh all ComboBox selections to ensure they show the right values
+                VerifyAllSelections();
+            };
+
+            Console.WriteLine($"[FFT Color Mod] ConfigurationForm initialized - Squire_Male: {_config.Squire_Male}");
         }
 
         private void InitializeForm()
@@ -82,7 +107,16 @@ namespace FFTColorMod.Configuration
             };
             _saveButton.Click += SaveButton_Click;
 
+            _debugButton = new Button
+            {
+                Text = "Debug",
+                Width = 80,
+                Height = 30
+            };
+            _debugButton.Click += DebugButton_Click;
+
             buttonPanel.Controls.Add(_cancelButton);
+            buttonPanel.Controls.Add(_debugButton);
             buttonPanel.Controls.Add(_saveButton);
 
             Controls.Add(buttonPanel);
@@ -199,6 +233,9 @@ namespace FFTColorMod.Configuration
 
         private void AddJobRow(int row, string jobName, ColorScheme currentTheme, Action<ColorScheme> setter)
         {
+            // Debug logging
+            Console.WriteLine($"[FFT Color Mod] AddJobRow: {jobName} = {currentTheme} (enum value: {(int)currentTheme})");
+
             var label = new Label
             {
                 Text = jobName,
@@ -212,9 +249,10 @@ namespace FFTColorMod.Configuration
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Dock = DockStyle.Fill,
-                DataSource = Enum.GetValues(typeof(ColorScheme)),
                 MaxDropDownItems = 30  // Show all themes at once
             };
+            // Set DataSource first, then SelectedItem (order matters!)
+            comboBox.DataSource = Enum.GetValues(typeof(ColorScheme));
             comboBox.SelectedItem = currentTheme;
 
             // Preview image
@@ -233,18 +271,31 @@ namespace FFTColorMod.Configuration
             // Store reference for refresh
             pictureBox.Tag = new { JobName = jobName, Setter = setter };
 
+            // Add controls to panel BEFORE setting up event handler
+            _mainPanel.Controls.Add(comboBox, 1, row);
+            _mainPanel.Controls.Add(pictureBox, 2, row);
+
+            // Store the combo box reference for later verification
+            comboBox.Tag = new { JobName = jobName, ExpectedValue = currentTheme, Setter = setter };
+
+            // Setup event handler AFTER controls are added and initial value is set
             comboBox.SelectedIndexChanged += (s, e) =>
             {
-                if (comboBox.SelectedItem != null)
+                // Block all events during initialization
+                if (_isInitializing)
+                    return;
+
+                // Only process events after form is fully loaded
+                if (_isFullyLoaded && comboBox.SelectedItem != null)
                 {
                     var newTheme = (ColorScheme)comboBox.SelectedItem;
+                    Console.WriteLine($"[FFT Color Mod] Selection changed: {jobName} = {newTheme}");
                     setter(newTheme);
+                    Console.WriteLine($"[FFT Color Mod] Config updated via setter for {jobName}");
                     UpdatePreviewImage(pictureBox, jobName, newTheme);
                 }
             };
 
-            _mainPanel.Controls.Add(comboBox, 1, row);
-            _mainPanel.Controls.Add(pictureBox, 2, row);
         }
 
         private void AddStoryCharacterRow(int row, string characterName, object currentTheme)
@@ -468,8 +519,107 @@ namespace FFTColorMod.Configuration
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
+            Console.WriteLine($"[FFT Color Mod] Save button clicked");
+            Console.WriteLine($"[FFT Color Mod] Current config state - Squire_Male: {_config.Squire_Male}");
+
             DialogResult = DialogResult.OK;
             Close();
+        }
+
+        private void VerifyAllSelections()
+        {
+            // Go through all ComboBoxes and ensure they have the correct selection
+            Console.WriteLine("[FFT Color Mod] Verifying all ComboBox selections...");
+
+            foreach (Control control in _mainPanel.Controls)
+            {
+                if (control is ComboBox comboBox && comboBox.Tag != null)
+                {
+                    dynamic tag = comboBox.Tag;
+                    if (tag.ExpectedValue != null)
+                    {
+                        var currentValue = comboBox.SelectedItem;
+                        if (currentValue == null || !currentValue.Equals(tag.ExpectedValue))
+                        {
+                            Console.WriteLine($"[FFT Color Mod] Correcting {tag.JobName}: was {currentValue}, setting to {tag.ExpectedValue}");
+                            comboBox.SelectedItem = tag.ExpectedValue;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[FFT Color Mod] {tag.JobName} is correctly set to {tag.ExpectedValue}");
+                        }
+                    }
+                }
+            }
+        }
+
+        private void DebugButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var debugInfo = new System.Text.StringBuilder();
+                debugInfo.AppendLine("=== CURRENT CONFIG STATE ===");
+                debugInfo.AppendLine($"Squire_Male: {_config.Squire_Male}");
+                debugInfo.AppendLine($"Squire_Female: {_config.Squire_Female}");
+                debugInfo.AppendLine($"Knight_Male: {_config.Knight_Male}");
+                debugInfo.AppendLine($"Archer_Male: {_config.Archer_Male}");
+                debugInfo.AppendLine($"Monk_Male: {_config.Monk_Male}");
+                debugInfo.AppendLine($"WhiteMage_Male: {_config.WhiteMage_Male}");
+                debugInfo.AppendLine();
+
+                // Use the stored config path if available, otherwise use default
+                var configPath = _configPath;
+                if (string.IsNullOrEmpty(configPath))
+                {
+                    configPath = Path.Combine(
+                        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? ".",
+                        "Config.json"
+                    );
+                    debugInfo.AppendLine("WARNING: Using default path, not the passed-in path!");
+                }
+
+                debugInfo.AppendLine($"=== CONFIG FILE PATH ===");
+                debugInfo.AppendLine(configPath);
+                debugInfo.AppendLine();
+
+                // Test save
+                debugInfo.AppendLine("=== TESTING SAVE ===");
+                var testManager = new ConfigurationManager(configPath);
+                testManager.SaveConfig(_config);
+                debugInfo.AppendLine("Save completed");
+                debugInfo.AppendLine();
+
+                // Test load
+                debugInfo.AppendLine("=== TESTING LOAD ===");
+                var loadedConfig = testManager.LoadConfig();
+                debugInfo.AppendLine($"Loaded Squire_Male: {loadedConfig.Squire_Male}");
+                debugInfo.AppendLine($"Loaded Archer_Male: {loadedConfig.Archer_Male}");
+                debugInfo.AppendLine();
+
+                // Check file contents
+                if (File.Exists(configPath))
+                {
+                    debugInfo.AppendLine("=== RAW FILE CONTENTS (first 500 chars) ===");
+                    var fileContent = File.ReadAllText(configPath);
+                    debugInfo.AppendLine(fileContent.Substring(0, Math.Min(500, fileContent.Length)));
+                }
+                else
+                {
+                    debugInfo.AppendLine("Config file does not exist!");
+                }
+
+                // Show in message box
+                MessageBox.Show(debugInfo.ToString(), "Configuration Debug Info",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // Also log to console
+                Console.WriteLine("[FFT Color Mod] " + debugInfo.ToString());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Debug error: {ex.Message}\n\n{ex.StackTrace}",
+                    "Debug Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }

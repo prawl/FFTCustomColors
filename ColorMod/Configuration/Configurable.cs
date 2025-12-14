@@ -32,14 +32,14 @@ namespace FFTColorMod.Configuration
         /// </summary>
         [JsonIgnore]
         [Browsable(false)]
-        public string? FilePath { get; private set; }
+        public string? FilePath { get; set; }
 
         /// <summary>
         /// The name of the configuration file.
         /// </summary>
         [JsonIgnore]
         [Browsable(false)]
-        public string? ConfigName { get; private set; }
+        public string? ConfigName { get; set; }
 
         /// <summary>
         /// Receives events on whenever the file is actively changed or updated.
@@ -63,7 +63,13 @@ namespace FFTColorMod.Configuration
 
             result.FilePath = filePath;
             result.ConfigName = configName;
-            result.Save();
+
+            // Only save if the file doesn't exist (to create default config)
+            if (!File.Exists(filePath))
+            {
+                result.Save();
+            }
+
             result.EnableFileWatcher();
 
             return result;
@@ -95,7 +101,18 @@ namespace FFTColorMod.Configuration
             if (!string.IsNullOrEmpty(directory))
                 Directory.CreateDirectory(directory);
 
-            var json = JsonSerializer.Serialize(this, GetType(), SerializerOptions);
+            // Create a copy without FilePath and ConfigName for serialization
+            var copy = (TParentType)Activator.CreateInstance(GetType())!;
+            var properties = GetType().GetProperties();
+            foreach (var prop in properties)
+            {
+                if (prop.Name != "FilePath" && prop.Name != "ConfigName" && prop.CanWrite && prop.CanRead)
+                {
+                    prop.SetValue(copy, prop.GetValue(this));
+                }
+            }
+
+            var json = JsonSerializer.Serialize(copy, GetType(), SerializerOptions);
             File.WriteAllText(FilePath, json);
         }
 

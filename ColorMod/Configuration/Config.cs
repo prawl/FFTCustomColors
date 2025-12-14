@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace FFTColorMod.Configuration
 {
@@ -13,6 +14,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male squires")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("SquireMale")]
+        [JsonProperty("SquireMale")]
         public ColorScheme Squire_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -20,6 +22,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female squires")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("SquireFemale")]
+        [JsonProperty("SquireFemale")]
         public ColorScheme Squire_Female { get; set; } = ColorScheme.original;
 
         // Knights
@@ -28,6 +31,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male knights")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("KnightMale")]
+        [JsonProperty("KnightMale")]
         public ColorScheme Knight_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -35,6 +39,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female knights")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("KnightFemale")]
+        [JsonProperty("KnightFemale")]
         public ColorScheme Knight_Female { get; set; } = ColorScheme.original;
 
         // Monks
@@ -43,6 +48,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male monks")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MonkMale")]
+        [JsonProperty("MonkMale")]
         public ColorScheme Monk_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -50,6 +56,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female monks")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MonkFemale")]
+        [JsonProperty("MonkFemale")]
         public ColorScheme Monk_Female { get; set; } = ColorScheme.original;
 
         // Archers
@@ -58,6 +65,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male archers")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("ArcherMale")]
+        [JsonProperty("ArcherMale")]
         public ColorScheme Archer_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -65,6 +73,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female archers")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("ArcherFemale")]
+        [JsonProperty("ArcherFemale")]
         public ColorScheme Archer_Female { get; set; } = ColorScheme.original;
 
         // White Mages
@@ -73,6 +82,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male white mages")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("WhiteMageMale")]
+        [JsonProperty("WhiteMageMale")]
         public ColorScheme WhiteMage_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -80,6 +90,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female white mages")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("WhiteMageFemale")]
+        [JsonProperty("WhiteMageFemale")]
         public ColorScheme WhiteMage_Female { get; set; } = ColorScheme.original;
 
         // Black Mages
@@ -88,6 +99,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male black mages")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("BlackMageMale")]
+        [JsonProperty("BlackMageMale")]
         public ColorScheme BlackMage_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -95,6 +107,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female black mages")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("BlackMageFemale")]
+        [JsonProperty("BlackMageFemale")]
         public ColorScheme BlackMage_Female { get; set; } = ColorScheme.original;
 
         // Time Mages
@@ -103,6 +116,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male time mages")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("TimeMageMale")]
+        [JsonProperty("TimeMageMale")]
         public ColorScheme TimeMage_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -110,6 +124,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female time mages")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("TimeMageFemale")]
+        [JsonProperty("TimeMageFemale")]
         public ColorScheme TimeMage_Female { get; set; } = ColorScheme.original;
 
         // Summoners
@@ -118,6 +133,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male summoners")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("SummonerMale")]
+        [JsonProperty("SummonerMale")]
         public ColorScheme Summoner_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -125,6 +141,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female summoners")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("SummonerFemale")]
+        [JsonProperty("SummonerFemale")]
         public ColorScheme Summoner_Female { get; set; } = ColorScheme.original;
 
         // Thieves
@@ -133,6 +150,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male thieves")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("ThiefMale")]
+        [JsonProperty("ThiefMale")]
         public ColorScheme Thief_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -140,6 +158,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female thieves")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("ThiefFemale")]
+        [JsonProperty("ThiefFemale")]
         public ColorScheme Thief_Female { get; set; } = ColorScheme.original;
 
         // Ninjas
@@ -148,6 +167,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male ninjas")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("NinjaMale")]
+        [JsonProperty("NinjaMale")]
         public ColorScheme Ninja_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -155,6 +175,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female ninjas")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("NinjaFemale")]
+        [JsonProperty("NinjaFemale")]
         public ColorScheme Ninja_Female { get; set; } = ColorScheme.original;
 
         // Samurai
@@ -163,6 +184,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male samurai")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("SamuraiMale")]
+        [JsonProperty("SamuraiMale")]
         public ColorScheme Samurai_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -170,6 +192,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female samurai")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("SamuraiFemale")]
+        [JsonProperty("SamuraiFemale")]
         public ColorScheme Samurai_Female { get; set; } = ColorScheme.original;
 
         // Dragoons
@@ -178,6 +201,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male dragoons")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("DragoonMale")]
+        [JsonProperty("DragoonMale")]
         public ColorScheme Dragoon_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -185,6 +209,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female dragoons")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("DragoonFemale")]
+        [JsonProperty("DragoonFemale")]
         public ColorScheme Dragoon_Female { get; set; } = ColorScheme.original;
 
         // Chemists
@@ -193,6 +218,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male chemists")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("ChemistMale")]
+        [JsonProperty("ChemistMale")]
         public ColorScheme Chemist_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -200,6 +226,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female chemists")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("ChemistFemale")]
+        [JsonProperty("ChemistFemale")]
         public ColorScheme Chemist_Female { get; set; } = ColorScheme.original;
 
         // Dancers (Female only)
@@ -208,6 +235,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all dancers")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("DancerFemale")]
+        [JsonProperty("DancerFemale")]
         public ColorScheme Dancer_Female { get; set; } = ColorScheme.original;
 
         // Bards (Male only)
@@ -216,6 +244,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all bards")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("BardMale")]
+        [JsonProperty("BardMale")]
         public ColorScheme Bard_Male { get; set; } = ColorScheme.original;
 
         // Mimes
@@ -224,6 +253,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male mimes")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MimeMale")]
+        [JsonProperty("MimeMale")]
         public ColorScheme Mime_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -231,6 +261,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female mimes")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MimeFemale")]
+        [JsonProperty("MimeFemale")]
         public ColorScheme Mime_Female { get; set; } = ColorScheme.original;
 
         // Calculators/Arithmeticians
@@ -239,6 +270,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male calculators")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("CalculatorMale")]
+        [JsonProperty("CalculatorMale")]
         public ColorScheme Calculator_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -246,6 +278,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female calculators")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("CalculatorFemale")]
+        [JsonProperty("CalculatorFemale")]
         public ColorScheme Calculator_Female { get; set; } = ColorScheme.original;
 
         // Mediators/Orators
@@ -254,6 +287,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male mediators")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MediatorMale")]
+        [JsonProperty("MediatorMale")]
         public ColorScheme Mediator_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -261,6 +295,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female mediators")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MediatorFemale")]
+        [JsonProperty("MediatorFemale")]
         public ColorScheme Mediator_Female { get; set; } = ColorScheme.original;
 
         // Mystics/Oracles
@@ -269,6 +304,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male mystics")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MysticMale")]
+        [JsonProperty("MysticMale")]
         public ColorScheme Mystic_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -276,6 +312,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female mystics")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("MysticFemale")]
+        [JsonProperty("MysticFemale")]
         public ColorScheme Mystic_Female { get; set; } = ColorScheme.original;
 
         // Geomancers
@@ -284,6 +321,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all male geomancers")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("GeomancerMale")]
+        [JsonProperty("GeomancerMale")]
         public ColorScheme Geomancer_Male { get; set; } = ColorScheme.original;
 
         [Category("Generic Characters")]
@@ -291,6 +329,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for all female geomancers")]
         [DefaultValue(ColorScheme.original)]
         [JsonPropertyName("GeomancerFemale")]
+        [JsonProperty("GeomancerFemale")]
         public ColorScheme Geomancer_Female { get; set; } = ColorScheme.original;
 
         // ================== STORY CHARACTER SWITCHER ==================
@@ -302,6 +341,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for Agrias")]
         [DefaultValue(AgriasColorScheme.original)]
         [JsonPropertyName("Agrias")]
+        [JsonProperty("Agrias")]
         public AgriasColorScheme Agrias { get; set; } = AgriasColorScheme.original;
 
         // Orlandeau (Thunder God Cid)
@@ -310,6 +350,7 @@ namespace FFTColorMod.Configuration
         [Description("Color scheme for Orlandeau (Thunder God Cid)")]
         [DefaultValue(OrlandeauColorScheme.original)]
         [JsonPropertyName("Orlandeau")]
+        [JsonProperty("Orlandeau")]
         public OrlandeauColorScheme Orlandeau { get; set; } = OrlandeauColorScheme.original;
 
         // Malak (Hell Knight) - DISABLED UNTIL THEMES ARE CREATED

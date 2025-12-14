@@ -58,8 +58,8 @@ public class Startup : IMod
         // Create our mod instance with context
         _mod = new Mod(context);
 
-        // Apply initial configuration
-        OnConfigurationUpdated(_configuration);
+        // Apply initial configuration without saving (just notify the mod)
+        _mod?.ConfigurationUpdated(_configuration);
     }
 
     private void OnConfigurationUpdated(Reloaded.Mod.Interfaces.IUpdatableConfigurable config)

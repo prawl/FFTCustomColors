@@ -8,14 +8,18 @@ namespace FFTColorMod.Utilities
     public class ConfigBasedSpriteManager
     {
         private readonly string _modPath;
+        private readonly string _sourcePath;  // Git repo path for themes
         private readonly ConfigurationManager _configManager;
         private readonly string _unitPath;
+        private readonly string _sourceUnitPath;  // Git repo unit path
 
-        public ConfigBasedSpriteManager(string modPath, ConfigurationManager configManager)
+        public ConfigBasedSpriteManager(string modPath, ConfigurationManager configManager, string sourcePath = null)
         {
             _modPath = modPath;
+            _sourcePath = sourcePath ?? @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";  // Default to git repo
             _configManager = configManager;
             _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            _sourceUnitPath = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
         }
 
         public string InterceptFilePath(string originalPath)
@@ -32,25 +36,52 @@ namespace FFTColorMod.Utilities
             var config = _configManager.LoadConfig();
             var propertyInfo = typeof(Config).GetProperty(jobProperty);
             if (propertyInfo == null)
+            {
+                Console.WriteLine($"[ConfigBasedSpriteManager] Property not found: {jobProperty}");
                 return originalPath;
+            }
 
             var colorSchemeEnum = propertyInfo.GetValue(config);
             if (colorSchemeEnum == null || !(colorSchemeEnum is Configuration.ColorScheme))
+            {
+                Console.WriteLine($"[ConfigBasedSpriteManager] No color scheme for: {jobProperty}");
                 return originalPath;
+            }
 
             var colorSchemeValue = ((Configuration.ColorScheme)colorSchemeEnum);
-            var colorScheme = colorSchemeValue.ToString(); // Use enum name for file paths
+            // Convert enum to lowercase (matching directory names)
+            var colorScheme = colorSchemeValue.ToString().ToLower();
+            Console.WriteLine($"[ConfigBasedSpriteManager] {jobProperty} configured as: {colorScheme}");
+
             if (colorScheme == "original")
             {
                 // For "original" scheme, return the path unchanged
                 return originalPath;
             }
 
-            // Build new path with color scheme
+            // Build new path with color scheme - look in GIT REPO first
             var directory = Path.GetDirectoryName(originalPath);
-            var variantPath = Path.Combine(_unitPath, $"sprites_{colorScheme}", fileName);
+            var sourceVariantPath = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}", fileName);
 
-            // Check if the variant exists in our mod directory
+            // Check if the variant exists in our GIT REPO
+            if (File.Exists(sourceVariantPath))
+            {
+                // Copy from git repo to deployment path
+                var deploymentPath = Path.Combine(_unitPath, fileName);
+                try
+                {
+                    File.Copy(sourceVariantPath, deploymentPath, true);
+                    Console.WriteLine($"[FFT Color Mod] Copied theme file from {sourceVariantPath} to {deploymentPath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[FFT Color Mod] Failed to copy theme file: {ex.Message}");
+                }
+                return deploymentPath;
+            }
+
+            // Fallback: check deployment directory
+            var variantPath = Path.Combine(_unitPath, $"sprites_{colorScheme}", fileName);
             if (File.Exists(variantPath))
             {
                 return variantPath;
@@ -79,8 +110,11 @@ namespace FFTColorMod.Utilities
             foreach (var property in properties)
             {
                 var colorSchemeEnum = property.GetValue(config) as Configuration.ColorScheme?;
-                var colorScheme = colorSchemeEnum?.ToString() ?? "original"; // Use enum name for file paths
-                // No need to check for "Original" anymore
+                // Convert enum to lowercase with underscores (matching directory names)
+                var colorScheme = colorSchemeEnum?.ToString().ToLower() ?? "original";
+
+                // Log what we're applying
+                Console.WriteLine($"[FFT Color Mod] Applying {property.Name}: {colorScheme}");
 
                 // Get the sprite name for this job/gender
                 var spriteName = GetSpriteNameForJob(property.Name);
@@ -93,7 +127,8 @@ namespace FFTColorMod.Utilities
 
         private void CopySpriteForJob(string spriteName, string colorScheme)
         {
-            var sourceDir = Path.Combine(_unitPath, $"sprites_{colorScheme}");
+            // Use _sourceUnitPath (git repo) for source files, not _unitPath (deployment)
+            var sourceDir = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}");
             var sourceFile = Path.Combine(sourceDir, spriteName);
             var destFile = Path.Combine(_unitPath, spriteName);
 
@@ -108,6 +143,10 @@ namespace FFTColorMod.Utilities
                 {
                     Console.WriteLine($"[FFT Color Mod] Error copying sprite: {ex.Message}");
                 }
+            }
+            else
+            {
+                Console.WriteLine($"[FFT Color Mod] Warning: Source sprite not found at {sourceFile}");
             }
         }
 
@@ -183,6 +222,13 @@ namespace FFTColorMod.Utilities
         public void ResetAllToOriginal()
         {
             _configManager.ResetToDefaults();
+            ApplyConfiguration();
+        }
+
+        public void UpdateConfiguration(Config newConfig)
+        {
+            // Save the new configuration and reapply all sprite changes
+            _configManager.SaveConfig(newConfig);
             ApplyConfiguration();
         }
 

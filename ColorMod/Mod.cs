@@ -99,12 +99,44 @@ public class Mod : IMod, IConfigurable
         _spriteFileManager = new SpriteFileManager(modPath, _sourcePath);
 
         // Initialize configuration-based sprite management
-        // Use Config.json (capital C) to match Reloaded-II convention
-        string configPath = Environment.GetEnvironmentVariable("FFT_CONFIG_PATH") ??
-                           Path.Combine(modPath, "Config.json");
-        Console.WriteLine($"[FFT Color Mod] Loading config from: {configPath}");
-        _configurationManager = new ConfigurationManager(configPath);
-        _configBasedSpriteManager = new ConfigBasedSpriteManager(modPath, _configurationManager);
+        // IMPORTANT: Use the User directory where Reloaded-II saves configs
+        // Path should be: Reloaded/User/Mods/ptyra.fft.colormod/Config.json
+        string configPath;
+        var envConfigPath = Environment.GetEnvironmentVariable("FFT_CONFIG_PATH");
+        Console.WriteLine($"[FFT Color Mod] FFT_CONFIG_PATH env var: '{envConfigPath}'");
+
+        if (!string.IsNullOrEmpty(envConfigPath))
+        {
+            configPath = envConfigPath;
+            Console.WriteLine($"[FFT Color Mod] Using config path from env var: {configPath}");
+        }
+        else
+        {
+            // Navigate from Mods/FFT_Color_Mod to User/Mods/ptyra.fft.colormod
+            var reloadedRoot = Directory.GetParent(Directory.GetParent(modPath).FullName)?.FullName ?? modPath;
+            configPath = Path.Combine(reloadedRoot, "User", "Mods", "ptyra.fft.colormod", "Config.json");
+
+            // Fallback if User config doesn't exist
+            if (!File.Exists(configPath))
+            {
+                Console.WriteLine($"[FFT Color Mod] User config not found at: {configPath}");
+                configPath = Path.Combine(modPath, "Config.json");
+            }
+        }
+
+        Console.WriteLine($"[FFT Color Mod] Final config path: '{configPath}'");
+        if (!string.IsNullOrEmpty(configPath))
+        {
+            Console.WriteLine($"[FFT Color Mod] Creating ConfigurationManager with path: {configPath}");
+            _configurationManager = new ConfigurationManager(configPath);
+            Console.WriteLine($"[FFT Color Mod] Creating ConfigBasedSpriteManager...");
+            _configBasedSpriteManager = new ConfigBasedSpriteManager(modPath, _configurationManager, _sourcePath);
+            Console.WriteLine($"[FFT Color Mod] Configuration managers created successfully");
+        }
+        else
+        {
+            Console.WriteLine("[FFT Color Mod] WARNING: Config path is null or empty, config-based management disabled");
+        }
 
         // Initialize dynamic sprite loader
         _dynamicSpriteLoader = new DynamicSpriteLoader(modPath, _configurationManager);
@@ -112,6 +144,19 @@ public class Mod : IMod, IConfigurable
         // Load saved configuration and prepare sprites
         var loadedConfig = _configurationManager.LoadConfig();
         Console.WriteLine($"[FFT Color Mod] Loaded config - Knight_Male: {loadedConfig.Knight_Male}");
+        Console.WriteLine($"[FFT Color Mod] Current global color scheme: {_currentColorScheme}");
+
+        // Log all configured job colors
+        var properties = typeof(Config).GetProperties()
+            .Where(p => p.PropertyType == typeof(Configuration.ColorScheme));
+        foreach (var prop in properties)
+        {
+            var value = prop.GetValue(loadedConfig);
+            if (value != null && value.ToString() != "original")
+            {
+                Console.WriteLine($"[FFT Color Mod] Config: {prop.Name} = {value}");
+            }
+        }
 
         // Prepare sprites based on configuration (copy from ColorSchemes to data)
         Console.WriteLine("[FFT Color Mod] Preparing sprites based on configuration...");
@@ -395,7 +440,7 @@ public class Mod : IMod, IConfigurable
         }
         else if (vkCode == VK_F2)
         {
-            // Cycle BOTH generic and Orlandeau themes
+            // Cycle forward through color schemes
             string nextColor = _colorCycler.GetNextScheme();
             Console.WriteLine("================================================");
             Console.WriteLine("================================================");
@@ -504,8 +549,8 @@ public class Mod : IMod, IConfigurable
         else if (vkCode == VK_F3)
         {
             // Open configuration UI
-            _configUIRequested = true;
-            Console.WriteLine("[FFT Color Mod] Configuration UI requested (F3)");
+            Console.WriteLine("[FFT Color Mod] Opening configuration UI (F3)");
+            OpenConfigurationUI();
         }
     }
 
@@ -530,7 +575,10 @@ public class Mod : IMod, IConfigurable
         // Only use config-based system when global scheme is "original"
         if (_configBasedSpriteManager != null && IsJobSprite(fileName))
         {
-            return _configBasedSpriteManager.InterceptFilePath(originalPath);
+            Console.WriteLine($"[FFT Color Mod] Using config-based system for: {fileName}");
+            var result = _configBasedSpriteManager.InterceptFilePath(originalPath);
+            Console.WriteLine($"[FFT Color Mod] Config result: {originalPath} -> {result}");
+            return result;
         }
 
         // Fall back to sprite file manager for non-job sprites
@@ -573,7 +621,17 @@ public class Mod : IMod, IConfigurable
 
     public void SetJobColor(string jobProperty, string colorScheme)
     {
-        _configBasedSpriteManager?.SetColorForJob(jobProperty, colorScheme);
+        Console.WriteLine($"[FFT Color Mod] SetJobColor called: {jobProperty} = {colorScheme}");
+        Console.WriteLine($"[FFT Color Mod] _configBasedSpriteManager is null? {_configBasedSpriteManager == null}");
+
+        if (_configBasedSpriteManager != null)
+        {
+            _configBasedSpriteManager.SetColorForJob(jobProperty, colorScheme);
+        }
+        else
+        {
+            Console.WriteLine("[FFT Color Mod] WARNING: _configBasedSpriteManager is null, cannot set job color");
+        }
     }
 
     public string GetJobColor(string jobProperty)
@@ -622,6 +680,64 @@ public class Mod : IMod, IConfigurable
         return _configUIRequested;
     }
 
+    private void OpenConfigurationUI()
+    {
+        try
+        {
+            Console.WriteLine("[FFT Color Mod] Opening configuration UI...");
+
+            // Load current configuration
+            if (_configurationManager != null)
+            {
+                var config = _configurationManager.LoadConfig();
+
+                // Use the same User directory path that the mod is using
+                var reloadedRoot = Directory.GetParent(Directory.GetParent(_modPath).FullName)?.FullName ?? _modPath;
+                var configPath = Path.Combine(reloadedRoot, "User", "Mods", "ptyra.fft.colormod", "Config.json");
+
+                var configForm = new Configuration.ConfigurationForm(config, configPath);
+
+                var result = configForm.ShowDialog();
+
+                if (result == System.Windows.Forms.DialogResult.OK)
+                {
+                    Console.WriteLine("[FFT Color Mod] Saving configuration...");
+                    _configurationManager.SaveConfig(config);
+
+                    // Update the config-based sprite manager with new configuration
+                    if (_configBasedSpriteManager != null)
+                    {
+                        Console.WriteLine("[FFT Color Mod] Updating sprite manager with new configuration...");
+                        _configBasedSpriteManager.UpdateConfiguration(config);
+                    }
+
+                    // Simulate a menu refresh to reload sprites in-game
+                    Console.WriteLine("[FFT Color Mod] Triggering sprite refresh in game...");
+                    if (_inputSimulator != null)
+                    {
+                        Console.WriteLine("[FFT Color Mod] Calling SimulateMenuRefresh...");
+                        bool refreshResult = _inputSimulator.SimulateMenuRefresh();
+                        Console.WriteLine($"[FFT Color Mod] SimulateMenuRefresh returned: {refreshResult}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("[FFT Color Mod] WARNING: InputSimulator is null - cannot refresh sprites!");
+                    }
+                }
+
+                Console.WriteLine("[FFT Color Mod] Configuration window closed");
+            }
+            else
+            {
+                Console.WriteLine("[FFT Color Mod] Warning: Configuration manager not initialized");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FFT Color Mod] Error opening configuration UI: {ex.Message}");
+        }
+    }
+
     public void ResetAllColors()
     {
         _configBasedSpriteManager?.ResetAllToOriginal();
@@ -640,7 +756,7 @@ public class Mod : IMod, IConfigurable
     {
         // Initialize the configuration manager with custom path for testing
         _configurationManager = new ConfigurationManager(configPath);
-        _configBasedSpriteManager = new ConfigBasedSpriteManager(Path.GetDirectoryName(configPath), _configurationManager);
+        _configBasedSpriteManager = new ConfigBasedSpriteManager(Path.GetDirectoryName(configPath), _configurationManager, _sourcePath);
     }
 
     public void ConfigurationUpdated(Config configuration)

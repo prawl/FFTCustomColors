@@ -174,18 +174,46 @@ namespace FFTColorMod.Configuration
             try
             {
                 Console.WriteLine("[FFT Color Mod] Getting configuration...");
-                var config = GetConfiguration<Config>(0);
+                Console.WriteLine($"[FFT Color Mod] ConfigFolder: {ConfigFolder}");
+
+                // Load directly from the config file, not through the old system
+                var configPath = Path.Combine(ConfigFolder!, "Config.json");
+                Console.WriteLine($"[FFT Color Mod] Loading config directly from: {configPath}");
+
+                var configManager = new ConfigurationManager(configPath);
+                var config = configManager.LoadConfig();
+                Console.WriteLine($"[FFT Color Mod] Config loaded - Squire_Male: {config.Squire_Male}");
 
                 Console.WriteLine("[FFT Color Mod] Creating configuration form...");
-                var configForm = new ConfigurationForm(config);
+                var formConfigPath = Path.Combine(ConfigFolder!, "Config.json");
+                Console.WriteLine($"[FFT Color Mod] Will save to: {formConfigPath}");
+                var configForm = new ConfigurationForm(config, formConfigPath);
 
                 Console.WriteLine("[FFT Color Mod] Showing configuration form...");
                 var result = configForm.ShowDialog();
 
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
-                    Console.WriteLine("[FFT Color Mod] Saving configuration...");
-                    Save();
+                    Console.WriteLine("[FFT Color Mod] User clicked Save - DialogResult.OK received");
+                    Console.WriteLine($"[FFT Color Mod] Config state before save - Squire_Male: {config.Squire_Male}");
+
+                    // Always save directly to ensure consistency
+                    var saveConfigPath = Path.Combine(ConfigFolder!, "Config.json");
+                    Console.WriteLine($"[FFT Color Mod] Saving directly to: {saveConfigPath}");
+                    var saveConfigManager = new ConfigurationManager(saveConfigPath);
+                    saveConfigManager.SaveConfig(config);
+
+                    // Don't call IConfigurable.Save here - it might trigger unwanted behavior
+                    // The ConfigurationManager.SaveConfig already saved the file
+                    Console.WriteLine("[FFT Color Mod] Config saved via ConfigurationManager");
+
+                    // Notify Mod instance if it exists to update sprite manager
+                    // This ensures the mod is aware of configuration changes made from Reloaded-II menu
+                    Console.WriteLine("[FFT Color Mod] Configuration save process completed");
+                }
+                else
+                {
+                    Console.WriteLine($"[FFT Color Mod] User cancelled - DialogResult: {result}");
                 }
 
                 Console.WriteLine("[FFT Color Mod] Configuration window closed");
