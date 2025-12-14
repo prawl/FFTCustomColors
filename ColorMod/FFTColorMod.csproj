@@ -13,6 +13,11 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
+    <!-- Resolve assembly version conflicts -->
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <NoWarn>MSB3277</NoWarn>
+
     <!-- IL Trimming Support for smaller mod size -->
     <!-- Set to true when publishing to reduce file size -->
     <ReloadedILLink>false</ReloadedILLink>
@@ -32,7 +37,9 @@
   <!-- Reference to FFTIVC Mod Loader for file redirection -->
   <ItemGroup>
     <Reference Include="fftivc.utility.modloader.Interfaces">
-      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFTIVC_Mod_Loader\fftivc.utility.modloader.Interfaces.dll</HintPath>
+      <HintPath>Publish\Builds\CurrentVersion\fftivc.utility.modloader.Interfaces.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
     </Reference>
   </ItemGroup>
 
