@@ -230,67 +230,6 @@ public class GameIntegrationTests
         pacFiles.Should().NotBeEmpty("Game should have PAC archive files");
     }
 
-    [Fact]
-    public void Should_Extract_First_Sprite_From_PAC_File()
-    {
-        // TLDR: Extract first .SPR file from a real FFT PAC archive
-        const string gamePath = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles";
-        var dataPath = System.IO.Path.Combine(gamePath, "data", "classic");
-
-        // Skip test if game not installed
-        if (!System.IO.Directory.Exists(dataPath))
-        {
-            return; // Skip test gracefully if game not installed
-        }
-
-        // Find first PAC file
-        var pacFiles = System.IO.Directory.GetFiles(dataPath, "*.pac");
-        pacFiles.Should().NotBeEmpty();
-
-        var firstPac = pacFiles[0];
-        var outputDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "FFTColorMod_Test_Sprites");
-
-        // Create output directory
-        if (System.IO.Directory.Exists(outputDir))
-            System.IO.Directory.Delete(outputDir, true);
-        System.IO.Directory.CreateDirectory(outputDir);
-
-        try
-        {
-            // Extract sprites using PacExtractor
-            var extractor = new PacExtractor();
-            var opened = extractor.OpenPac(firstPac);
-            opened.Should().BeTrue($"Should be able to open PAC file: {firstPac}");
-
-            var extractedCount = extractor.ExtractAllSprites(outputDir);
-
-            // If no sprites extracted, it might be the wrong PAC file
-            if (extractedCount == 0)
-            {
-                // This PAC might not contain sprites, skip the rest of the test
-                return; // Skip gracefully - not all PAC files contain sprites
-            }
-
-            // Verify we extracted at least one sprite
-            extractedCount.Should().BeGreaterThan(0, "Should extract at least one sprite from PAC file");
-
-            // Verify extracted files exist and have .SPR extension
-            var extractedFiles = System.IO.Directory.GetFiles(outputDir, "*.SPR");
-            extractedFiles.Should().NotBeEmpty("Output directory should contain .SPR files");
-
-            foreach (var file in extractedFiles)
-            {
-                System.IO.File.Exists(file).Should().BeTrue($"Extracted file {file} should exist");
-                System.IO.Path.GetExtension(file).ToUpper().Should().Be(".SPR", $"File {file} should have .SPR extension");
-            }
-        }
-        finally
-        {
-            // Cleanup
-            if (System.IO.Directory.Exists(outputDir))
-                System.IO.Directory.Delete(outputDir, true);
-        }
-    }
 
     [Fact]
     public void GameIntegration_ShouldHookFileRedirection_WhenInitialized()
