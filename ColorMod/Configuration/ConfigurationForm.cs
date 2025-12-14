@@ -50,6 +50,7 @@ namespace FFTColorMod.Configuration
             Size = new Size(700, 700);
             StartPosition = FormStartPosition.CenterScreen;
             AutoScroll = true;
+            TopMost = true;  // Always show above other windows including the game
 
             // Force image refresh after form loads
             this.Load += (s, e) => RefreshAllPreviews();

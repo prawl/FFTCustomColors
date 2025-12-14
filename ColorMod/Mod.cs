@@ -28,6 +28,8 @@ public class Mod : IMod, IConfigurable
     private bool _configUIRequested = false;
     private string _modPath;
     private string _sourcePath; // Path to git repo for theme sources
+    public event Action? ConfigUIRequested;
+    public event Action? ConfigUIOpened;
 
     // Constructor that accepts ModContext and optional IInputSimulator (for testing)
     public Mod(ModContext context, IInputSimulator? inputSimulator = null)
@@ -417,6 +419,7 @@ public class Mod : IMod, IConfigurable
         const int VK_F1 = 0x70;
         const int VK_F2 = 0x71;
         const int VK_F3 = 0x72;
+        const int VK_C = 0x43;
 
         if (vkCode == VK_F1)
         {
@@ -552,6 +555,22 @@ public class Mod : IMod, IConfigurable
             Console.WriteLine("[FFT Color Mod] Opening configuration UI (F3)");
             OpenConfigurationUI();
         }
+        else if (vkCode == VK_C)
+        {
+            // Open configuration UI (same as F3)
+            Console.WriteLine("[FFT Color Mod] Opening configuration UI (C)");
+
+            // If there are test event handlers, just invoke them
+            if (ConfigUIRequested != null)
+            {
+                ConfigUIRequested.Invoke();
+            }
+            else
+            {
+                // Otherwise, actually open the UI
+                OpenConfigurationUI();
+            }
+        }
     }
 
     public string GetCurrentColorScheme()
@@ -680,7 +699,7 @@ public class Mod : IMod, IConfigurable
         return _configUIRequested;
     }
 
-    private void OpenConfigurationUI()
+    protected virtual void OpenConfigurationUI()
     {
         try
         {
