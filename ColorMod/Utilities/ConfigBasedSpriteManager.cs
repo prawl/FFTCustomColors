@@ -222,6 +222,11 @@ namespace FFTColorMod.Utilities
         public void ResetAllToOriginal()
         {
             _configManager.ResetToDefaults();
+
+            // Force a reload to ensure we have the reset config
+            var resetConfig = _configManager.ReloadConfig();
+
+            // Apply the reset configuration
             ApplyConfiguration();
         }
 

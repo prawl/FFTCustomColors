@@ -141,11 +141,15 @@ namespace FFTColorMod.Configuration
                     // Serialize and deserialize to create a deep copy
                     var json = JsonConvert.SerializeObject(_cachedConfig, _jsonSettings);
                     config = JsonConvert.DeserializeObject<Config>(json, _jsonSettings) ?? new Config();
+                    Console.WriteLine($"[FFT Color Mod] Created deep copy from cache");
+                    Console.WriteLine($"[FFT Color Mod] Deep copy initial state - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, Knight_Female: {config.Knight_Female}");
                 }
                 else
                 {
                     // Load from disk if no cache
                     config = LoadConfig();
+                    Console.WriteLine($"[FFT Color Mod] Loaded from disk");
+                    Console.WriteLine($"[FFT Color Mod] Loaded config state - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, Knight_Female: {config.Knight_Female}");
                 }
 
                 // Log current config state BEFORE change
@@ -158,6 +162,7 @@ namespace FFTColorMod.Configuration
                     .ToList();
                 Console.WriteLine($"[FFT Color Mod] Available ColorScheme properties (first 10): {string.Join(", ", allProperties.Take(10))}");
 
+                Console.WriteLine($"[FFT Color Mod] Looking for property: '{jobProperty}'");
                 var propertyInfo = typeof(Config).GetProperty(jobProperty);
 
                 if (propertyInfo != null)
@@ -182,6 +187,12 @@ namespace FFTColorMod.Configuration
                             // Get value after setting
                             var afterValue = propertyInfo.GetValue(config);
                             Console.WriteLine($"[FFT Color Mod] Property value AFTER: {afterValue}");
+
+                            // Debug: Check if other properties were accidentally modified
+                            Console.WriteLine($"[FFT Color Mod] After setting {jobProperty}, checking other properties:");
+                            Console.WriteLine($"[FFT Color Mod]   Squire_Male: {config.Squire_Male}");
+                            Console.WriteLine($"[FFT Color Mod]   Archer_Female: {config.Archer_Female}");
+                            Console.WriteLine($"[FFT Color Mod]   Knight_Female: {config.Knight_Female}");
 
                             // Log state AFTER setting property but BEFORE save
                             Console.WriteLine($"[FFT Color Mod] AFTER SET - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
@@ -239,32 +250,29 @@ namespace FFTColorMod.Configuration
 
         public void ResetToDefaults()
         {
-            lock (_lockObject)
+            Console.WriteLine($"[FFT Color Mod] ResetToDefaults called");
+
+            // Create a new default config with all properties explicitly set to original
+            var defaultConfig = new Config();
+
+            // Explicitly verify all properties are set to original (ColorScheme.original = 0)
+            var properties = typeof(Config).GetProperties()
+                .Where(p => p.PropertyType == typeof(ColorScheme));
+
+            foreach (var prop in properties)
             {
-                // Create a new default config with all properties explicitly set to original
-                var defaultConfig = new Config();
-
-                // Manually update the cache to ensure it's replaced
-                _cachedConfig = defaultConfig;
-
-                // Now save to disk
-                try
-                {
-                    var json = JsonConvert.SerializeObject(defaultConfig, _jsonSettings);
-                    var directory = Path.GetDirectoryName(_configPath);
-                    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                    {
-                        Directory.CreateDirectory(directory);
-                    }
-                    File.WriteAllText(_configPath, json);
-                    _lastFileWriteTime = DateTime.Now;
-                    Console.WriteLine($"[FFT Color Mod] Reset to defaults completed");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[FFT Color Mod] Error resetting to defaults: {ex.Message}");
-                }
+                // Ensure each property is set to ColorScheme.original
+                prop.SetValue(defaultConfig, ColorScheme.original);
             }
+
+            // Log what we're about to save
+            Console.WriteLine($"[FFT Color Mod] Default config - Knight_Male: {defaultConfig.Knight_Male}, Archer_Female: {defaultConfig.Archer_Female}");
+
+            // Now save to disk using SaveConfig which properly updates the cache
+            // SaveConfig has its own lock, so we don't need to lock here
+            SaveConfig(defaultConfig);
+
+            Console.WriteLine($"[FFT Color Mod] Reset to defaults completed");
         }
 
         public string GetJobPropertyForSprite(string spriteName)
