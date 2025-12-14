@@ -133,7 +133,7 @@ public class SpriteFileManager
         if (File.Exists(redirectedPath))
         {
             // Extra logging for story characters
-            if (fileName.Contains("musu") || fileName.Contains("aguri") || fileName.Contains("beio"))
+            if (fileName.Contains("musu") || fileName.Contains("aguri"))
             {
                 Console.WriteLine($"[FFT Color Mod] STORY CHARACTER: Redirecting {fileName} to {currentScheme} variant");
                 Console.WriteLine($"[FFT Color Mod]   From: {originalPath}");

@@ -168,7 +168,6 @@ public class Mod : IMod, IConfigurable
 
         // Apply initial story character themes
         ApplyInitialOrlandeauTheme();
-        ApplyInitialBeowulfTheme();
         ApplyInitialAgriasTheme();
 
         // Initialize input simulator if not provided (for testing)
@@ -349,35 +348,6 @@ public class Mod : IMod, IConfigurable
         }
     }
 
-    private void ApplyInitialBeowulfTheme()
-    {
-        try
-        {
-            var currentTheme = _storyCharacterManager.GetCurrentBeowulfTheme();
-            Console.WriteLine($"[FFT Color Mod] Applying initial Beowulf theme: {currentTheme}");
-
-            // Apply the initial theme by copying the sprite file
-            string beowulfThemeDir = $"sprites_beowulf_{currentTheme.ToString().ToLower()}";
-            var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", beowulfThemeDir, "battle_beio_spr.bin");
-            var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_beio_spr.bin");
-
-            Console.WriteLine($"[FFT Color Mod] Looking for initial Beowulf sprite at: {sourceFile}");
-            if (File.Exists(sourceFile))
-            {
-                File.Copy(sourceFile, destFile, true);
-                Console.WriteLine($"[FFT Color Mod] Successfully applied initial Beowulf theme: {currentTheme}");
-            }
-            else
-            {
-                Console.WriteLine($"[FFT Color Mod] Warning: Initial Beowulf theme file not found at: {sourceFile}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[FFT Color Mod] Error applying initial Beowulf theme: {ex.Message}");
-        }
-    }
-
     private void ApplyInitialAgriasTheme()
     {
         try
@@ -484,26 +454,6 @@ public class Mod : IMod, IConfigurable
             else
             {
                 Console.WriteLine($"[FFT Color Mod] ERROR: Orlandeau sprite not found at: {sourceFile}");
-            }
-
-            // Also cycle Beowulf theme
-            var nextBeowulfTheme = _storyCharacterManager.CycleBeowulfTheme();
-            Console.WriteLine($"[FFT Color Mod] Cycling Beowulf to {nextBeowulfTheme}");
-
-            // Apply Beowulf theme by copying the sprite file
-            string beowulfThemeDir = $"sprites_beowulf_{nextBeowulfTheme.ToString().ToLower()}";
-            var beowulfSourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", beowulfThemeDir, "battle_beio_spr.bin");
-            var beowulfDestFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_beio_spr.bin");
-
-            Console.WriteLine($"[FFT Color Mod] Looking for Beowulf sprite at: {beowulfSourceFile}");
-            if (File.Exists(beowulfSourceFile))
-            {
-                File.Copy(beowulfSourceFile, beowulfDestFile, true);
-                Console.WriteLine($"[FFT Color Mod] Successfully copied Beowulf theme: {nextBeowulfTheme}");
-            }
-            else
-            {
-                Console.WriteLine($"[FFT Color Mod] ERROR: Beowulf sprite not found at: {beowulfSourceFile}");
             }
 
             // Also cycle Agrias theme
@@ -625,7 +575,6 @@ public class Mod : IMod, IConfigurable
             "battle_rafa_",   // Rafa
             "battle_mara_",   // Malak
             "battle_cloud_",  // Cloud
-            "battle_beio_",   // Beowulf
             "battle_reze_",   // Reis (has reze and reze_d)
         };
 

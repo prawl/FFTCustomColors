@@ -28,7 +28,6 @@ namespace Tests
                 "battle_rafa_spr.bin",    // Rafa
                 "battle_mara_spr.bin",    // Malak
                 "battle_cloud_spr.bin",   // Cloud
-                "battle_beio_spr.bin",    // Beowulf
                 "battle_reze_spr.bin",    // Reis human
                 "battle_reze_d_spr.bin"   // Reis dragon
             };

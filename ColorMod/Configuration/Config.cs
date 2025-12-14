@@ -361,14 +361,6 @@ namespace FFTColorMod.Configuration
         // [JsonPropertyName("Malak")]
         // public ColorScheme Malak { get; set; } = ColorScheme.original;
 
-        // Beowulf (Temple Knight) - DISABLED UNTIL THEMES ARE CREATED
-        // [Category("Story Characters")]
-        // [DisplayName("Beowulf")]
-        // [Description("Color scheme for Beowulf")]
-        // [DefaultValue(ColorScheme.original)]
-        // [JsonPropertyName("Beowulf")]
-        // public ColorScheme Beowulf { get; set; } = ColorScheme.original;
-
         // Reis (Dragon/Human) - DISABLED UNTIL THEMES ARE CREATED
         // [Category("Story Characters")]
         // [DisplayName("Reis")]
@@ -517,10 +509,6 @@ namespace FFTColorMod.Configuration
             // Malak (mara = Malak) - DISABLED UNTIL THEMES ARE CREATED
             // if (spriteName.Contains("mara"))
             //     return Malak.GetDescription();
-
-            // Beowulf (beio = Beowulf) - DISABLED UNTIL THEMES ARE CREATED
-            // if (spriteName.Contains("beio"))
-            //     return Beowulf.GetDescription();
 
             // Reis human form (reze = Reis) - DISABLED UNTIL THEMES ARE CREATED
             // if (spriteName.Contains("reze") && !spriteName.Contains("reze_d"))

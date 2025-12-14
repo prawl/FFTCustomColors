@@ -79,12 +79,10 @@ namespace Tests
             // Act - Set different themes for each character
             manager.SetCurrentAgriasTheme(AgriasColorScheme.ash_dark);
             manager.SetCurrentOrlandeauTheme(OrlandeauColorScheme.thunder_god);
-            manager.SetCurrentBeowulfTheme(BeowulfColorScheme.test);
 
             // Assert - Each character maintains their own theme
             Assert.Equal(AgriasColorScheme.ash_dark, manager.GetCurrentAgriasTheme());
             Assert.Equal(OrlandeauColorScheme.thunder_god, manager.GetCurrentOrlandeauTheme());
-            Assert.Equal(BeowulfColorScheme.test, manager.GetCurrentBeowulfTheme());
 
             // Act - Cycle one character's theme
             manager.CycleAgriasTheme();
@@ -92,7 +90,6 @@ namespace Tests
             // Assert - Only Agrias theme changes, others remain the same
             Assert.Equal(AgriasColorScheme.original, manager.GetCurrentAgriasTheme());
             Assert.Equal(OrlandeauColorScheme.thunder_god, manager.GetCurrentOrlandeauTheme());
-            Assert.Equal(BeowulfColorScheme.test, manager.GetCurrentBeowulfTheme());
         }
     }
 }

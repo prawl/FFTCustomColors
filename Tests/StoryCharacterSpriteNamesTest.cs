@@ -21,7 +21,6 @@ namespace Tests
         [InlineData("battle_rafa_spr.bin", true)]      // Rafa
         [InlineData("battle_mara_spr.bin", true)]      // Malak
         [InlineData("battle_cloud_spr.bin", true)]     // Cloud
-        [InlineData("battle_beio_spr.bin", true)]      // Beowulf
         [InlineData("battle_reze_spr.bin", true)]      // Reis human
         [InlineData("battle_reze_d_spr.bin", true)]    // Reis dragon
         [InlineData("battle_knight_m_spr.bin", true)]  // Generic knight (baseline)

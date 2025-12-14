@@ -28,12 +28,5 @@ namespace FFTColorMod.Configuration
                 return "sprites_original";
             return $"sprites_orlandeau_{colorScheme.ToString().ToLower()}";
         }
-
-        public static string GetDescription(this BeowulfColorScheme colorScheme)
-        {
-            if (colorScheme == BeowulfColorScheme.original)
-                return "sprites_original";
-            return $"sprites_beowulf_{colorScheme.ToString().ToLower()}";
-        }
     }
 }
