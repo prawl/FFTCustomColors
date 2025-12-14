@@ -106,13 +106,20 @@ namespace FFTColorMod.Tests
             mod.SetJobColor("Archer_Female", "lucavi");
             mod.SetJobColor("Monk_Male", "northern_sky");
 
-            // Assert
-            Assert.Equal("Corpse Brigade", mod.GetJobColor("Knight_Male"));
-            Assert.Equal("Lucavi", mod.GetJobColor("Archer_Female"));
-            Assert.Equal("Northern Sky", mod.GetJobColor("Monk_Male"));
+            // Verify the config file was actually written
+            Assert.True(File.Exists(_testConfigPath), "Config file should exist after setting colors");
+
+            // Load config directly from disk using a fresh ConfigurationManager
+            var freshConfigManager = new ConfigurationManager(_testConfigPath);
+            var diskConfig = freshConfigManager.LoadConfig();
+
+            // Assert - verify the values were persisted to disk
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)1, diskConfig.Knight_Male); // corpse_brigade
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, diskConfig.Archer_Female); // lucavi
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)3, diskConfig.Monk_Male); // northern_sky
 
             // Unchanged properties should remain original
-            Assert.Equal("Original", mod.GetJobColor("Squire_Male"));
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, diskConfig.Squire_Male); // original
         }
 
         [Fact]
@@ -185,11 +192,19 @@ namespace FFTColorMod.Tests
             // Act
             mod.ResetAllColors();
 
-            // Assert
-            var allColors = mod.GetAllJobColors();
-            foreach (var kvp in allColors)
+            // Load config directly from disk using a fresh ConfigurationManager
+            var freshConfigManager = new ConfigurationManager(_testConfigPath);
+            var diskConfig = freshConfigManager.LoadConfig();
+
+            // Assert - verify ALL properties are reset to original (0)
+            var properties = typeof(Config).GetProperties()
+                .Where(p => p.PropertyType == typeof(FFTColorMod.Configuration.ColorScheme) &&
+                           (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
+
+            foreach (var property in properties)
             {
-                Assert.Equal("Original", kvp.Value);
+                var value = property.GetValue(diskConfig);
+                Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, value); // All should be original (0)
             }
         }
     }

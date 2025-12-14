@@ -20,8 +20,29 @@ namespace FFTColorMod.Tests
 
         public void Dispose()
         {
+            // Add a small delay to ensure file handles are released
+            System.Threading.Thread.Sleep(50);
+
             if (Directory.Exists(_testConfigDir))
-                Directory.Delete(_testConfigDir, true);
+            {
+                try
+                {
+                    Directory.Delete(_testConfigDir, true);
+                }
+                catch (IOException)
+                {
+                    // Wait a bit more and try again
+                    System.Threading.Thread.Sleep(100);
+                    try
+                    {
+                        Directory.Delete(_testConfigDir, true);
+                    }
+                    catch
+                    {
+                        // Ignore cleanup errors - the temp directory will be cleaned up eventually
+                    }
+                }
+            }
         }
 
         [Fact]

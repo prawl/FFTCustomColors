@@ -105,9 +105,49 @@ namespace FFTColorMod.Tests
 
         public void Dispose()
         {
+            // Add a small delay to ensure file handles are released
+            System.Threading.Thread.Sleep(100);
+
+            // Force garbage collection to ensure any finalizers run
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
             if (Directory.Exists(_testModPath))
             {
-                Directory.Delete(_testModPath, true);
+                try
+                {
+                    // Try to delete all files first with retry logic
+                    foreach (var file in Directory.GetFiles(_testModPath, "*", SearchOption.AllDirectories))
+                    {
+                        try
+                        {
+                            File.SetAttributes(file, FileAttributes.Normal);
+                            File.Delete(file);
+                        }
+                        catch
+                        {
+                            // If we can't delete a file, try again after a short delay
+                            System.Threading.Thread.Sleep(50);
+                            try
+                            {
+                                File.Delete(file);
+                            }
+                            catch
+                            {
+                                // Ignore - best effort cleanup
+                            }
+                        }
+                    }
+
+                    // Now try to delete the directory
+                    Directory.Delete(_testModPath, true);
+                }
+                catch (IOException)
+                {
+                    // Ignore cleanup errors in tests - this is best effort
+                    // The temp directory will be cleaned up eventually by the OS
+                }
             }
         }
     }

@@ -153,15 +153,21 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
             var mod = new Mod(_modContext, _inputSimulator);
+            mod.InitializeConfiguration(_testConfigPath); // Must initialize before using config methods
+
             mod.SetJobColor("Knight_Male", "corpse_brigade");
             mod.SetJobColor("Archer_Female", "lucavi");
 
             // Act
             mod.ResetAllColors();
 
-            // Assert
-            Assert.Equal("Original", mod.GetJobColor("Knight_Male"));
-            Assert.Equal("Original", mod.GetJobColor("Archer_Female"));
+            // Load config directly from disk using a fresh ConfigurationManager
+            var freshConfigManager = new ConfigurationManager(_testConfigPath);
+            var diskConfig = freshConfigManager.LoadConfig();
+
+            // Assert - verify the values were reset on disk
+            Assert.Equal((Configuration.ColorScheme)0, diskConfig.Knight_Male); // original
+            Assert.Equal((Configuration.ColorScheme)0, diskConfig.Archer_Female); // original
         }
     }
 

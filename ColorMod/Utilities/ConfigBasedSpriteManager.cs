@@ -201,7 +201,7 @@ namespace FFTColorMod.Utilities
             var config = _configManager.LoadConfig();
             var propertyInfo = typeof(Config).GetProperty(jobProperty);
             if (propertyInfo == null)
-                return "original";
+                return "Original";
 
             var colorSchemeEnum = propertyInfo.GetValue(config) as Configuration.ColorScheme?;
             return colorSchemeEnum?.GetDescription() ?? "Original"; // This method returns display name, not file name

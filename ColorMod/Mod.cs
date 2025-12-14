@@ -604,7 +604,7 @@ public class Mod : IMod, IConfigurable
 
     public string GetJobColor(string jobProperty)
     {
-        return _configBasedSpriteManager?.GetActiveColorForJob(jobProperty) ?? "original";
+        return _configBasedSpriteManager?.GetActiveColorForJob(jobProperty) ?? "Original";
     }
 
     public Dictionary<string, string> GetAllJobColors()
