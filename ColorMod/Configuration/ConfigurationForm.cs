@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Linq;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace FFTColorMod.Configuration
 {
@@ -13,9 +14,18 @@ namespace FFTColorMod.Configuration
         private TableLayoutPanel _mainPanel;
         private Button _saveButton;
         private Button _cancelButton;
+        private Panel _titleBar;
+        private Label _titleLabel;
+        private Button _closeButton;
+        private Button _minimizeButton;
 
         private bool _isFullyLoaded = false;
         private bool _isInitializing = true;  // Prevent any changes during initialization
+
+        // For window dragging
+        private bool _isDragging = false;
+        private Point _dragCursorPoint;
+        private Point _dragFormPoint;
 
         public ConfigurationForm(Config config, string configPath = null)
         {
@@ -47,21 +57,40 @@ namespace FFTColorMod.Configuration
         private void InitializeForm()
         {
             Text = "FFT Color Mod - Configuration";
-            Size = new Size(700, 700);
+            Size = new Size(700, 730);  // Slightly taller to accommodate custom title bar
             StartPosition = FormStartPosition.CenterScreen;
-            AutoScroll = true;
+            AutoScroll = false;  // We'll manage scrolling in the content area
             TopMost = true;  // Always show above other windows including the game
+            FormBorderStyle = FormBorderStyle.None;  // Remove default title bar
+
+            // Apply RELOADED dark theme colors
+            BackColor = Color.FromArgb(30, 30, 30);  // Dark background like RELOADED
+            ForeColor = Color.White;  // White text
+
+            // Create custom title bar
+            CreateCustomTitleBar();
 
             // Force image refresh after form loads
             this.Load += (s, e) => RefreshAllPreviews();
 
-            _mainPanel = new TableLayoutPanel
+            // Create main content panel that will be below the title bar
+            var contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(30, 30, 30),
+                AutoScroll = true
+            };
+
+            _mainPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
                 ColumnCount = 3,
                 RowCount = 50,
-                AutoScroll = true,
-                Padding = new Padding(10)
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(10),
+                BackColor = Color.FromArgb(30, 30, 30),  // Dark background
+                ForeColor = Color.White  // White text
             };
 
             // Add column styles
@@ -69,43 +98,75 @@ namespace FFTColorMod.Configuration
             _mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
             _mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
 
-            // Add header
+            // Add header with white text
             var headerLabel = new Label
             {
                 Text = "Themes",
                 Font = new Font("Arial", 12, FontStyle.Bold),
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter
+                TextAlign = ContentAlignment.MiddleCenter,
+                ForeColor = Color.White,  // White text for better readability
+                BackColor = Color.FromArgb(40, 40, 40)  // Slightly lighter dark background
             };
             _mainPanel.SetColumnSpan(headerLabel, 3);
             _mainPanel.Controls.Add(headerLabel, 0, 0);
 
-            Controls.Add(_mainPanel);
+            contentPanel.Controls.Add(_mainPanel);
+            Controls.Add(contentPanel);
 
-            // Add buttons panel
+            // Add buttons panel with dark theme
             var buttonPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
                 FlowDirection = FlowDirection.RightToLeft,
                 Height = 40,
-                Padding = new Padding(5)
+                Padding = new Padding(5),
+                BackColor = Color.FromArgb(25, 25, 25)  // Darker panel for buttons
             };
 
             _cancelButton = new Button
             {
                 Text = "Cancel",
                 Width = 80,
-                Height = 30
+                Height = 30,
+                BackColor = Color.FromArgb(50, 50, 50),  // Dark button
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderColor = Color.FromArgb(100, 100, 100), BorderSize = 1 }
             };
             _cancelButton.Click += (s, e) => Close();
+
+            // Add hover effect for cancel button
+            _cancelButton.MouseEnter += (s, e) => {
+                _cancelButton.BackColor = Color.FromArgb(70, 70, 70);
+                _cancelButton.FlatAppearance.BorderColor = Color.FromArgb(150, 150, 150);
+            };
+            _cancelButton.MouseLeave += (s, e) => {
+                _cancelButton.BackColor = Color.FromArgb(50, 50, 50);
+                _cancelButton.FlatAppearance.BorderColor = Color.FromArgb(100, 100, 100);
+            };
 
             _saveButton = new Button
             {
                 Text = "Save",
                 Width = 80,
-                Height = 30
+                Height = 30,
+                BackColor = Color.FromArgb(150, 30, 30),  // Red accent for save button like RELOADED
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderColor = Color.FromArgb(220, 50, 50), BorderSize = 1 }
             };
             _saveButton.Click += SaveButton_Click;
+
+            // Add hover effect for save button
+            _saveButton.MouseEnter += (s, e) => {
+                _saveButton.BackColor = Color.FromArgb(180, 40, 40);
+                _saveButton.FlatAppearance.BorderColor = Color.FromArgb(255, 60, 60);
+            };
+            _saveButton.MouseLeave += (s, e) => {
+                _saveButton.BackColor = Color.FromArgb(150, 30, 30);
+                _saveButton.FlatAppearance.BorderColor = Color.FromArgb(220, 50, 50);
+            };
 
             buttonPanel.Controls.Add(_cancelButton);
             buttonPanel.Controls.Add(_saveButton);
@@ -123,7 +184,10 @@ namespace FFTColorMod.Configuration
                 Text = "=== Generic Characters ===",
                 Font = new Font("Arial", 10, FontStyle.Bold),
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter
+                TextAlign = ContentAlignment.MiddleCenter,
+                ForeColor = Color.White,  // White text for headers
+                BackColor = Color.FromArgb(40, 40, 40),  // Slightly lighter dark background
+                Padding = new Padding(0, 5, 0, 5)
             };
             _mainPanel.SetColumnSpan(genericHeader, 3);
             _mainPanel.Controls.Add(genericHeader, 0, row++);
@@ -212,7 +276,10 @@ namespace FFTColorMod.Configuration
                 Text = "=== Story Characters ===",
                 Font = new Font("Arial", 10, FontStyle.Bold),
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter
+                TextAlign = ContentAlignment.MiddleCenter,
+                ForeColor = Color.White,  // White text for headers
+                BackColor = Color.FromArgb(40, 40, 40),  // Slightly lighter dark background
+                Padding = new Padding(0, 5, 0, 5)
             };
             _mainPanel.SetColumnSpan(storyHeader, 3);
             _mainPanel.Controls.Add(storyHeader, 0, row++);
@@ -232,7 +299,8 @@ namespace FFTColorMod.Configuration
                 Text = jobName,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.TopLeft,
-                Padding = new Padding(0, 3, 0, 0)  // Add top padding to align with dropdown text
+                Padding = new Padding(0, 3, 0, 0),  // Add top padding to align with dropdown text
+                ForeColor = Color.White  // White text for labels
             };
             _mainPanel.Controls.Add(label, 0, row);
 
@@ -240,7 +308,10 @@ namespace FFTColorMod.Configuration
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Dock = DockStyle.Fill,
-                MaxDropDownItems = 30  // Show all themes at once
+                MaxDropDownItems = 30,  // Show all themes at once
+                BackColor = Color.FromArgb(45, 45, 45),  // Dark combo box
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
             };
             // Set DataSource first, then SelectedItem (order matters!)
             comboBox.DataSource = Enum.GetValues(typeof(ColorScheme));
@@ -253,7 +324,7 @@ namespace FFTColorMod.Configuration
                 SizeMode = PictureBoxSizeMode.Zoom,
                 BorderStyle = BorderStyle.FixedSingle,
                 Dock = DockStyle.Fill,
-                BackColor = Color.White
+                BackColor = Color.FromArgb(50, 50, 50)  // Dark background for preview boxes
             };
 
             // Load initial preview
@@ -296,7 +367,8 @@ namespace FFTColorMod.Configuration
                 Text = characterName,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.TopLeft,
-                Padding = new Padding(0, 3, 0, 0)  // Add top padding to align with dropdown text
+                Padding = new Padding(0, 3, 0, 0),  // Add top padding to align with dropdown text
+                ForeColor = Color.White  // White text for labels
             };
             _mainPanel.Controls.Add(label, 0, row);
 
@@ -304,7 +376,10 @@ namespace FFTColorMod.Configuration
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Dock = DockStyle.Fill,
-                MaxDropDownItems = 30  // Show all items at once
+                MaxDropDownItems = 30,  // Show all items at once
+                BackColor = Color.FromArgb(45, 45, 45),  // Dark combo box
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
             };
 
             // Preview image for story characters
@@ -314,7 +389,7 @@ namespace FFTColorMod.Configuration
                 SizeMode = PictureBoxSizeMode.Zoom,
                 BorderStyle = BorderStyle.FixedSingle,
                 Dock = DockStyle.Fill,
-                BackColor = Color.White
+                BackColor = Color.FromArgb(50, 50, 50)  // Dark background for preview boxes
             };
 
             // Handle different enum types for story characters
@@ -542,6 +617,95 @@ namespace FFTColorMod.Configuration
                     }
                 }
             }
+        }
+
+        private void CreateCustomTitleBar()
+        {
+            _titleBar = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 30,
+                BackColor = Color.FromArgb(139, 37, 33),  // RELOADED red color
+                ForeColor = Color.White
+            };
+
+            // Title label
+            _titleLabel = new Label
+            {
+                Text = "FFT Color Mod - Configuration",
+                Location = new Point(10, 5),
+                AutoSize = true,
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9, FontStyle.Regular)
+            };
+
+            // Close button
+            _closeButton = new Button
+            {
+                Text = "✕",
+                Size = new Size(30, 30),
+                Location = new Point(Width - 30, 0),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(139, 37, 33),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 10, FontStyle.Regular)
+            };
+            _closeButton.FlatAppearance.BorderSize = 0;
+            _closeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(200, 50, 50);
+            _closeButton.Click += (s, e) => Close();
+
+            // Minimize button
+            _minimizeButton = new Button
+            {
+                Text = "—",
+                Size = new Size(30, 30),
+                Location = new Point(Width - 60, 0),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(139, 37, 33),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 10, FontStyle.Regular)
+            };
+            _minimizeButton.FlatAppearance.BorderSize = 0;
+            _minimizeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(160, 40, 40);
+            _minimizeButton.Click += (s, e) => WindowState = FormWindowState.Minimized;
+
+            // Add controls to title bar
+            _titleBar.Controls.Add(_titleLabel);
+            _titleBar.Controls.Add(_closeButton);
+            _titleBar.Controls.Add(_minimizeButton);
+
+            // Add dragging functionality
+            _titleBar.MouseDown += TitleBar_MouseDown;
+            _titleBar.MouseMove += TitleBar_MouseMove;
+            _titleBar.MouseUp += TitleBar_MouseUp;
+            _titleLabel.MouseDown += TitleBar_MouseDown;
+            _titleLabel.MouseMove += TitleBar_MouseMove;
+            _titleLabel.MouseUp += TitleBar_MouseUp;
+
+            Controls.Add(_titleBar);
+        }
+
+        private void TitleBar_MouseDown(object sender, MouseEventArgs e)
+        {
+            _isDragging = true;
+            _dragCursorPoint = Cursor.Position;
+            _dragFormPoint = this.Location;
+        }
+
+        private void TitleBar_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDragging)
+            {
+                Point diff = Point.Subtract(Cursor.Position, new Size(_dragCursorPoint));
+                this.Location = Point.Add(_dragFormPoint, new Size(diff));
+            }
+        }
+
+        private void TitleBar_MouseUp(object sender, MouseEventArgs e)
+        {
+            _isDragging = false;
         }
     }
 }
