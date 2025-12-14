@@ -12,6 +12,7 @@ namespace FFTColorMod.Configuration
     {
         private Config _config;
         private string _configPath;  // Store the actual config path
+        private string _modPath;     // Store the mod installation path for resources
         private TableLayoutPanel _mainPanel;
         private Button _saveButton;
         private Button _cancelButton;
@@ -21,14 +22,19 @@ namespace FFTColorMod.Configuration
         private bool _isFullyLoaded = false;
         private bool _isInitializing = true;  // Prevent any changes during initialization
 
-        public ConfigurationForm(Config config, string configPath = null)
+        public ConfigurationForm(Config config, string configPath = null, string modPath = null)
         {
             _config = config;
             _configPath = configPath;  // Store the path for saving
+            _modPath = modPath;        // Store the mod path for resources
             Console.WriteLine($"[FFT Color Mod] ConfigurationForm created with config - Squire_Male: {config.Squire_Male}");
             if (!string.IsNullOrEmpty(configPath))
             {
                 Console.WriteLine($"[FFT Color Mod] Config path set to: {configPath}");
+            }
+            if (!string.IsNullOrEmpty(modPath))
+            {
+                Console.WriteLine($"[FFT Color Mod] Mod path set to: {modPath}");
             }
 
             _isInitializing = true;  // Block all events during initialization
@@ -66,7 +72,27 @@ namespace FFTColorMod.Configuration
             Controls.Add(_titleBar);
 
             // Initialize preview manager
-            string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
+            string modPath;
+
+            // Priority: Use explicitly provided mod path, then derive from config path, then use assembly location
+            if (!string.IsNullOrEmpty(_modPath))
+            {
+                modPath = _modPath;
+                Console.WriteLine($"[FFT Color Mod] Using explicitly provided mod path: {modPath}");
+            }
+            else if (!string.IsNullOrEmpty(_configPath))
+            {
+                // Config path is like "C:\path\to\mod\Config\Config.json"
+                // We need to get "C:\path\to\mod"
+                var configDir = Path.GetDirectoryName(_configPath);
+                modPath = Path.GetDirectoryName(configDir) ?? Environment.CurrentDirectory;
+                Console.WriteLine($"[FFT Color Mod] Derived mod path from config path: {modPath}");
+            }
+            else
+            {
+                modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
+                Console.WriteLine($"[FFT Color Mod] Using assembly location as mod path: {modPath}");
+            }
             _previewManager = new PreviewImageManager(modPath);
 
             // Force image refresh after form loads
@@ -167,8 +193,32 @@ namespace FFTColorMod.Configuration
                 _saveButton.FlatAppearance.BorderColor = Color.FromArgb(220, 50, 50);
             };
 
+            // Add Debug button
+            var debugButton = new Button
+            {
+                Text = "Debug",
+                Width = 80,
+                Height = 30,
+                BackColor = Color.FromArgb(50, 50, 100),  // Blue accent for debug button
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderColor = Color.FromArgb(100, 100, 200), BorderSize = 1 }
+            };
+            debugButton.Click += DebugButton_Click;
+
+            // Add hover effect for debug button
+            debugButton.MouseEnter += (s, e) => {
+                debugButton.BackColor = Color.FromArgb(70, 70, 120);
+                debugButton.FlatAppearance.BorderColor = Color.FromArgb(150, 150, 250);
+            };
+            debugButton.MouseLeave += (s, e) => {
+                debugButton.BackColor = Color.FromArgb(50, 50, 100);
+                debugButton.FlatAppearance.BorderColor = Color.FromArgb(100, 100, 200);
+            };
+
             buttonPanel.Controls.Add(_cancelButton);
             buttonPanel.Controls.Add(_saveButton);
+            buttonPanel.Controls.Add(debugButton);
 
             Controls.Add(buttonPanel);
         }
@@ -401,11 +451,11 @@ namespace FFTColorMod.Configuration
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Agrias = (AgriasColorScheme)comboBox.SelectedItem;
-                        UpdateStoryCharacterPreview(pictureBox, "agrias", _config.Agrias.ToString());
+                        UpdateStoryCharacterPreview(pictureBox, "Agrias", _config.Agrias.ToString());
                     }
                 };
-                UpdateStoryCharacterPreview(pictureBox, "agrias", _config.Agrias.ToString());
-                pictureBox.Tag = new { JobName = "agrias" };
+                UpdateStoryCharacterPreview(pictureBox, "Agrias", _config.Agrias.ToString());
+                pictureBox.Tag = new { JobName = "Agrias" };
             }
             else if (characterName == "Orlandeau")
             {
@@ -416,11 +466,11 @@ namespace FFTColorMod.Configuration
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Orlandeau = (OrlandeauColorScheme)comboBox.SelectedItem;
-                        UpdateStoryCharacterPreview(pictureBox, "orlandeau", _config.Orlandeau.ToString());
+                        UpdateStoryCharacterPreview(pictureBox, "Orlandeau", _config.Orlandeau.ToString());
                     }
                 };
-                UpdateStoryCharacterPreview(pictureBox, "orlandeau", _config.Orlandeau.ToString());
-                pictureBox.Tag = new { JobName = "orlandeau" };
+                UpdateStoryCharacterPreview(pictureBox, "Orlandeau", _config.Orlandeau.ToString());
+                pictureBox.Tag = new { JobName = "Orlandeau" };
             }
 
             _mainPanel.Controls.Add(comboBox, 1, row);
@@ -529,6 +579,78 @@ namespace FFTColorMod.Configuration
                     }
                 }
             }
+        }
+
+        private void DebugButton_Click(object sender, EventArgs e)
+        {
+            // Test preview loading for Agrias and Orlandeau
+            // Use the same path logic as in InitializeForm
+            string modPath;
+            if (!string.IsNullOrEmpty(_modPath))
+            {
+                modPath = _modPath;
+            }
+            else if (!string.IsNullOrEmpty(_configPath))
+            {
+                var configDir = Path.GetDirectoryName(_configPath);
+                modPath = Path.GetDirectoryName(configDir) ?? Environment.CurrentDirectory;
+            }
+            else
+            {
+                modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
+            }
+            string previewsPath = Path.Combine(modPath, "Resources", "Previews");
+
+            var debugInfo = new System.Text.StringBuilder();
+            debugInfo.AppendLine("=== FFT Color Mod Debug Info ===\n");
+            debugInfo.AppendLine($"Mod Path: {modPath}");
+            debugInfo.AppendLine($"Previews Path: {previewsPath}");
+            debugInfo.AppendLine($"Previews Directory Exists: {Directory.Exists(previewsPath)}\n");
+
+            // Check for Agrias images
+            debugInfo.AppendLine("Agrias Preview Files:");
+            string agriasOriginal = Path.Combine(previewsPath, "agrias_original.png");
+            string agriasAshDark = Path.Combine(previewsPath, "agrias_ash_dark.png");
+            debugInfo.AppendLine($"  agrias_original.png: {(File.Exists(agriasOriginal) ? "EXISTS" : "NOT FOUND")} - {agriasOriginal}");
+            debugInfo.AppendLine($"  agrias_ash_dark.png: {(File.Exists(agriasAshDark) ? "EXISTS" : "NOT FOUND")} - {agriasAshDark}");
+
+            // Check for Orlandeau images
+            debugInfo.AppendLine("\nOrlandeau Preview Files:");
+            string orlandeauOriginal = Path.Combine(previewsPath, "orlandeau_original.png");
+            string orlandeauThunderGod = Path.Combine(previewsPath, "orlandeau_thunder_god.png");
+            debugInfo.AppendLine($"  orlandeau_original.png: {(File.Exists(orlandeauOriginal) ? "EXISTS" : "NOT FOUND")} - {orlandeauOriginal}");
+            debugInfo.AppendLine($"  orlandeau_thunder_god.png: {(File.Exists(orlandeauThunderGod) ? "EXISTS" : "NOT FOUND")} - {orlandeauThunderGod}");
+
+            // Test PreviewImageManager with the corrected mod path
+            debugInfo.AppendLine("\nTesting PreviewImageManager:");
+            var testManager = new PreviewImageManager(modPath);
+            var testPictureBox = new PictureBox();
+
+            // Test Agrias
+            testManager.UpdateStoryCharacterPreview(testPictureBox, "Agrias", "original");
+            debugInfo.AppendLine($"  Agrias original loaded: {(testPictureBox.Image != null ? "SUCCESS" : "FAILED")}");
+            testPictureBox.Image?.Dispose();
+            testPictureBox.Image = null;
+
+            testManager.UpdateStoryCharacterPreview(testPictureBox, "Agrias", "ash_dark");
+            debugInfo.AppendLine($"  Agrias ash_dark loaded: {(testPictureBox.Image != null ? "SUCCESS" : "FAILED")}");
+            testPictureBox.Image?.Dispose();
+            testPictureBox.Image = null;
+
+            // Test Orlandeau
+            testManager.UpdateStoryCharacterPreview(testPictureBox, "Orlandeau", "original");
+            debugInfo.AppendLine($"  Orlandeau original loaded: {(testPictureBox.Image != null ? "SUCCESS" : "FAILED")}");
+            testPictureBox.Image?.Dispose();
+            testPictureBox.Image = null;
+
+            testManager.UpdateStoryCharacterPreview(testPictureBox, "Orlandeau", "thunder_god");
+            debugInfo.AppendLine($"  Orlandeau thunder_god loaded: {(testPictureBox.Image != null ? "SUCCESS" : "FAILED")}");
+            testPictureBox.Image?.Dispose();
+
+            testPictureBox.Dispose();
+
+            // Show debug info in a message box
+            MessageBox.Show(debugInfo.ToString(), "Debug Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void SaveButton_Click(object sender, EventArgs e)

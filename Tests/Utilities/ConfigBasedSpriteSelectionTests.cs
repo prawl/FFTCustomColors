@@ -173,9 +173,9 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = (Configuration.ColorScheme)1,   // corpse_brigade
-                Archer_Female = (Configuration.ColorScheme)2,  // lucavi
-                Monk_Male = (Configuration.ColorScheme)3       // northern_sky
+                Knight_Male = (FFTColorMod.Configuration.ColorScheme)1,   // corpse_brigade
+                Archer_Female = (FFTColorMod.Configuration.ColorScheme)2,  // lucavi
+                Monk_Male = (FFTColorMod.Configuration.ColorScheme)3       // northern_sky
             };
             _configManager.SaveConfig(config);
             _spriteManager.ApplyConfiguration();
@@ -187,9 +187,9 @@ namespace FFTColorMod.Tests
 
             // Assert - Config should be reset
             var resetConfig = _configManager.LoadConfig();
-            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Knight_Male);   // original
-            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Archer_Female); // original
-            Assert.Equal((Configuration.ColorScheme)0, resetConfig.Monk_Male);     // original
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, resetConfig.Knight_Male);   // original
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, resetConfig.Archer_Female); // original
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, resetConfig.Monk_Male);     // original
 
             // Assert - Sprites should be original
             var knightContent = File.ReadAllText(Path.Combine(unitDir, "battle_knight_m_spr.bin"));

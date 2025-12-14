@@ -187,7 +187,8 @@ namespace FFTColorMod.Configuration
                 Console.WriteLine("[FFT Color Mod] Creating configuration form...");
                 var formConfigPath = Path.Combine(ConfigFolder!, "Config.json");
                 Console.WriteLine($"[FFT Color Mod] Will save to: {formConfigPath}");
-                var configForm = new ConfigurationForm(config, formConfigPath);
+                Console.WriteLine($"[FFT Color Mod] Mod folder (for resources): {ModFolder}");
+                var configForm = new ConfigurationForm(config, formConfigPath, ModFolder);
 
                 Console.WriteLine("[FFT Color Mod] Showing configuration form...");
                 var result = configForm.ShowDialog();

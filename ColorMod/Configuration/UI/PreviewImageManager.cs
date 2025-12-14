@@ -12,6 +12,7 @@ namespace FFTColorMod.Configuration.UI
         public PreviewImageManager(string modPath)
         {
             _modPath = modPath;
+            Console.WriteLine($"[FFT Color Mod] PreviewImageManager initialized with path: {modPath}");
         }
 
         public void UpdateJobPreview(PictureBox pictureBox, string jobName, ColorScheme theme)
@@ -54,9 +55,11 @@ namespace FFTColorMod.Configuration.UI
             try
             {
                 string imagePath = GetStoryCharacterPreviewPath(characterName, theme);
+                Console.WriteLine($"[FFT Color Mod] Looking for story character preview at: {imagePath}");
 
                 if (File.Exists(imagePath))
                 {
+                    Console.WriteLine($"[FFT Color Mod] Found preview image: {imagePath}");
                     using (var stream = new FileStream(imagePath, FileMode.Open, FileAccess.Read))
                     using (var img = Image.FromStream(stream))
                     {
@@ -74,6 +77,7 @@ namespace FFTColorMod.Configuration.UI
                 }
                 else
                 {
+                    Console.WriteLine($"[FFT Color Mod] Preview image NOT found at: {imagePath}");
                     ClearPreview(pictureBox);
                 }
             }
@@ -86,15 +90,16 @@ namespace FFTColorMod.Configuration.UI
 
         private string GetJobPreviewPath(string jobName, ColorScheme theme)
         {
-            string themeFolder = theme == ColorScheme.original ? "sprites_original" : $"sprites_{theme}";
             string baseName = jobName.ToLower().Replace(" ", "_");
+            string themeName = theme.ToString().ToLower();
 
-            // Try different patterns for the preview image
+            // Try different patterns for the preview image (flat structure in Resources/Previews)
             string[] patterns = {
-                Path.Combine(_modPath, "previews", themeFolder, $"{baseName}_preview.png"),
-                Path.Combine(_modPath, "previews", themeFolder, $"{baseName}.png"),
-                Path.Combine(_modPath, "previews", themeFolder, $"battle_{baseName}_m_preview.png"),
-                Path.Combine(_modPath, "previews", themeFolder, $"battle_{baseName}_f_preview.png")
+                // Direct path in Resources/Previews folder (deployed location)
+                Path.Combine(_modPath, "Resources", "Previews", $"{baseName}_{themeName}.png"),
+                // Legacy paths for backwards compatibility
+                Path.Combine(_modPath, "Previews", $"{baseName}_{themeName}.png"),
+                Path.Combine(_modPath, "previews", $"{baseName}_{themeName}.png")
             };
 
             foreach (var pattern in patterns)
@@ -109,12 +114,14 @@ namespace FFTColorMod.Configuration.UI
         private string GetStoryCharacterPreviewPath(string characterName, string theme)
         {
             string baseName = characterName.ToLower();
-            string themeFolder = $"sprites_{baseName}_{theme.ToLower()}";
 
             // Try different preview paths
             string[] patterns = {
-                Path.Combine(_modPath, "previews", themeFolder, $"{baseName}_preview.png"),
-                Path.Combine(_modPath, "previews", themeFolder, "preview.png"),
+                // Direct path in Resources/Previews folder (deployed location)
+                Path.Combine(_modPath, "Resources", "Previews", $"{baseName}_{theme.ToLower()}.png"),
+                // Legacy paths for backwards compatibility
+                Path.Combine(_modPath, "Previews", $"{baseName}_{theme.ToLower()}.png"),
+                Path.Combine(_modPath, "previews", $"{baseName}_{theme.ToLower()}.png"),
                 Path.Combine(_modPath, "previews", $"{baseName}_{theme.ToLower()}_preview.png")
             };
 
