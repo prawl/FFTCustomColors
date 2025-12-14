@@ -34,14 +34,6 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
-  <!-- Reference to FFTIVC Mod Loader for file redirection -->
-  <ItemGroup>
-    <Reference Include="fftivc.utility.modloader.Interfaces">
-      <HintPath>Publish\Builds\CurrentVersion\fftivc.utility.modloader.Interfaces.dll</HintPath>
-      <Private>true</Private>
-      <SpecificVersion>false</SpecificVersion>
-    </Reference>
-  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Tests\**" />
