@@ -21,6 +21,7 @@ namespace FFTColorMod.Services
         {
             ApplyInitialOrlandeauTheme();
             ApplyInitialAgriasTheme();
+            ApplyInitialCloudTheme();
         }
 
         public void CycleOrlandeauTheme()
@@ -33,10 +34,19 @@ namespace FFTColorMod.Services
         public void CycleAgriasTheme()
         {
             var nextTheme = _storyCharacterManager.CycleAgriasTheme();
-            Console.WriteLine("================================================");
-            Console.WriteLine($"    AGRIAS THEME CHANGED TO: {nextTheme}");
-            Console.WriteLine("================================================");
+            ModLogger.Log($"================================================");
+            ModLogger.Log($"    AGRIAS THEME CHANGED TO: {nextTheme}");
+            ModLogger.Log($"================================================");
             ApplyAgriasTheme(nextTheme.ToString());
+        }
+
+        public void CycleCloudTheme()
+        {
+            var nextTheme = _storyCharacterManager.CycleCloudTheme();
+            ModLogger.Log($"================================================");
+            ModLogger.Log($"    CLOUD THEME CHANGED TO: {nextTheme}");
+            ModLogger.Log($"================================================");
+            ApplyCloudTheme(nextTheme.ToString());
         }
 
         private void ApplyInitialOrlandeauTheme()
@@ -136,6 +146,44 @@ namespace FFTColorMod.Services
                 {
                     ModLogger.LogWarning($"Agrias theme file not found at: {sourceFile}");
                 }
+            }
+        }
+
+        private void ApplyInitialCloudTheme()
+        {
+            try
+            {
+                var currentTheme = _storyCharacterManager.GetCurrentCloudTheme();
+                ModLogger.Log($"Applying initial Cloud theme: {currentTheme}");
+                ApplyCloudTheme(currentTheme.ToString());
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"applying initial Cloud theme: {ex.Message}");
+            }
+        }
+
+        private void ApplyCloudTheme(string theme)
+        {
+            string themeDir = $"sprites_cloud_{theme.ToLower()}";
+            var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", themeDir, "battle_cloud_spr.bin");
+            var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_cloud_spr.bin");
+
+            ModLogger.LogDebug($"Looking for Cloud sprite at: {sourceFile}");
+            if (File.Exists(sourceFile))
+            {
+                // Ensure destination directory exists
+                var destDir = Path.GetDirectoryName(destFile);
+                if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+                {
+                    Directory.CreateDirectory(destDir);
+                }
+                File.Copy(sourceFile, destFile, true);
+                ModLogger.LogSuccess($"Successfully copied Cloud theme: {theme}");
+            }
+            else
+            {
+                ModLogger.LogWarning($"Cloud theme file not found at: {sourceFile}");
             }
         }
     }

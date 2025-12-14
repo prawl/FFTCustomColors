@@ -124,6 +124,7 @@ public class Mod : IMod, IConfigurable
             () => _colorCycler.GetPreviousScheme(),
             () => _themeManager.CycleOrlandeauTheme(),
             () => _themeManager.CycleAgriasTheme(),
+            () => _themeManager.CycleCloudTheme(),
             OpenConfigurationUI,
             _inputSimulator);
 
@@ -397,6 +398,7 @@ public class Mod : IMod, IConfigurable
                 () => _colorCycler?.GetPreviousScheme() ?? "original",
                 () => _themeManager?.CycleOrlandeauTheme(),
                 () => _themeManager?.CycleAgriasTheme(),
+                () => _themeManager?.CycleCloudTheme(),
                 OpenConfigurationUI,
                 _inputSimulator);
 

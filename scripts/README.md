@@ -9,46 +9,39 @@ This directory contains Python scripts for creating and managing color themes fo
 2. Applying to all variants (battle_oru_spr.bin, battle_goru_spr.bin, battle_voru_spr.bin)
 3. This happens in the mod's constructor, before the game fully loads
 
-## TODO: Story Character Themes
+## Story Character Themes Status
 
-**Status**:
-- ✅ Orlandeau Complete (Thunder God theme)
-- ✅ Beowulf Complete (Temple Knight theme, Test theme)
+**Completed Story Characters**:
+- ✅ **Orlandeau** - Thunder God theme
+- ✅ **Beowulf** - Temple Knight theme, Test theme
+- ✅ **Agrias** - Holy Knight themes (multiple variants)
+- ✅ **Cloud** - Knights Round theme, Sephiroth Black theme
 
 **Remaining Story Characters to Theme:**
-- [ ] **Agrias** - Holy Knight theme variations
 - [ ] **Malak** - Dark/Hell Knight themes
 - [ ] **Reis (Human)** - Dragon-themed colors
 - [ ] **Reis (Dragon)** - Matching dragon form colors
 - [ ] **Mustadio** - Engineer/Machinist themes
 - [ ] **Worker 8** - Mechanical/Steel themes
-- [ ] **Cloud** - Soldier/Buster Sword themes
 
-## Important: DynamicSpriteLoader Dev Mode Detection Fix
+## DynamicSpriteLoader Theme Preservation
 
-**CRITICAL**: When adding new story characters, you MUST update the DynamicSpriteLoader's DetectDevMode method to exclude their theme directories from the dev mode check. Without this, the loader may incorrectly treat story character themes as core dev themes and fail to deploy them properly.
+**The DynamicSpriteLoader now automatically preserves story character themes**. It detects and preserves any theme directory matching the pattern `sprites_[character]_*`.
 
-**File to Update**: `ColorMod/Utilities/DynamicSpriteLoader.cs` (line 54)
-
+**How it Works**:
 ```csharp
-// Must exclude ALL story character themes from dev mode detection
-var dataThemes = Directory.GetDirectories(_dataPath, "sprites_*")
-    .Select(d => Path.GetFileName(d))
-    .Where(d => !d.StartsWith("sprites_test_")
-             && !d.StartsWith("sprites_orlandeau_")
-             && !d.StartsWith("sprites_beowulf_"))  // Add new story characters here
-    .ToHashSet();
+// Automatically preserves all story character themes
+if (dirName.StartsWith("sprites_orlandeau_") ||
+    dirName.StartsWith("sprites_beowulf_") ||
+    dirName.StartsWith("sprites_agrias_") ||
+    dirName.StartsWith("sprites_cloud_"))
+{
+    ModLogger.Log($"DynamicSpriteLoader: Preserving {character} theme: {dirName}");
+    continue;
+}
 ```
 
-**Why This Is Critical:**
-- The DynamicSpriteLoader uses this detection to determine if it's running in dev mode
-- If story character themes aren't excluded, they get counted as "core dev themes"
-- This causes the loader to think it's not in dev mode when it should be
-- Result: Story character theme directories may not be deployed to the mod folder
-
-**When to Update:**
-- Every time you add a new story character (Agrias, Malak, Reis, etc.)
-- Add an exclusion pattern like: `&& !d.StartsWith("sprites_[character]_")`
+**No Manual Updates Required**: The system now automatically detects and preserves story character themes, eliminating the need for manual exclusion patterns.
 
 ## How Orlandeau Story Character Themes Work
 
@@ -168,6 +161,63 @@ ColorMod/FFTIVC/data/enhanced/fftpack/unit/
 - Beowulf has only 1 sprite file (beio) vs Orlandeau's 3 (oru, goru, voru)
 - Beowulf themes contain 122 sprites total vs Orlandeau's 124
 - Default theme is "test" for Beowulf vs "thunder_god" for Orlandeau
+
+## Cloud Story Character Theme Implementation (Complete Example)
+
+**Implementation completed using efficient PNG preview workflow:**
+
+1. **Created CloudColorScheme.cs enum**:
+```csharp
+public enum CloudColorScheme
+{
+    [Description("Original")]
+    original,
+    [Description("Knights Round")]
+    knights_round,
+    [Description("Sephiroth Black")]
+    sephiroth_black,
+}
+```
+
+2. **Updated StoryCharacterThemeManager.cs**:
+```csharp
+private CloudColorScheme _currentCloudTheme = CloudColorScheme.sephiroth_black;
+
+public CloudColorScheme CycleCloudTheme()
+{
+    var values = Enum.GetValues<CloudColorScheme>();
+    var currentIndex = Array.IndexOf(values, _currentCloudTheme);
+    var nextIndex = (currentIndex + 1) % values.Length;
+    _currentCloudTheme = values[nextIndex];
+    return _currentCloudTheme;
+}
+```
+
+3. **Cloud's Simplified Color Palette**:
+Unlike generic sprites, Cloud uses only 2 color zones:
+- **Indices 3-5**: RED zone - Shoulder pads, wrists, shirt/boot outlines
+- **Indices 6-9**: GREEN zone - Main clothing (pants, shoes, shirt)
+- Higher indices (10+) are not used by Cloud's sprite
+
+4. **Theme Files Created**:
+```
+ColorMod/FFTIVC/data/enhanced/fftpack/unit/
+├── sprites_cloud_knights_round/
+│   └── battle_cloud_spr.bin
+└── sprites_cloud_sephiroth_black/
+    └── battle_cloud_spr.bin
+```
+
+5. **Efficient PNG Preview Workflow**:
+- Generated 50 Cloud theme previews as PNGs for rapid evaluation
+- Selected best themes without launching the game
+- Converted selected PNGs back to .bin format for implementation
+
+**Key Differences from Other Story Characters:**
+- Cloud has only 1 sprite file (cloud) vs 3 for Orlandeau
+- Simpler 2-zone color mapping vs complex multi-zone for generic sprites
+- Default theme is "sephiroth_black" for Cloud
+- PNG preview workflow enabled rapid theme selection without game testing
 
 ## Adding New Story Character Themes - Complete Steps
 

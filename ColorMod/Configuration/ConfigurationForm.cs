@@ -337,6 +337,7 @@ namespace FFTColorMod.Configuration
             // Story characters use different enums, need special handling
             AddStoryCharacterRow(row++, "Agrias", _config.Agrias);
             AddStoryCharacterRow(row++, "Orlandeau", _config.Orlandeau);
+            AddStoryCharacterRow(row++, "Cloud", _config.Cloud);
         }
 
         private void AddJobRow(int row, string jobName, ColorScheme currentTheme, Action<ColorScheme> setter)
@@ -473,6 +474,21 @@ namespace FFTColorMod.Configuration
                 UpdateStoryCharacterPreview(pictureBox, "Orlandeau", _config.Orlandeau.ToString());
                 pictureBox.Tag = new { JobName = "Orlandeau" };
             }
+            else if (characterName == "Cloud")
+            {
+                comboBox.DataSource = Enum.GetValues(typeof(CloudColorScheme));
+                comboBox.SelectedItem = (CloudColorScheme)currentTheme;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Cloud = (CloudColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "Cloud", _config.Cloud.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "Cloud", _config.Cloud.ToString());
+                pictureBox.Tag = new { JobName = "Cloud" };
+            }
 
             _mainPanel.Controls.Add(comboBox, 1, row);
             _mainPanel.Controls.Add(pictureBox, 2, row);
@@ -575,6 +591,10 @@ namespace FFTColorMod.Configuration
                             else if (tag.JobName == "orlandeau")
                             {
                                 UpdateStoryCharacterPreview(pictureBox, "orlandeau", _config.Orlandeau.ToString());
+                            }
+                            else if (tag.JobName == "cloud")
+                            {
+                                UpdateStoryCharacterPreview(pictureBox, "cloud", _config.Cloud.ToString());
                             }
                         }
                     }

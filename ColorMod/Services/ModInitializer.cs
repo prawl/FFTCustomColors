@@ -56,7 +56,7 @@ namespace FFTColorMod.Services
         private Process InitializeGameProcess()
         {
             var process = Process.GetCurrentProcess();
-            ModLogger.Log($"Game base: 0x{process.MainModule?.BaseAddress.ToInt64():X}");
+            ModLogger.LogDebug($"Game base: 0x{process.MainModule?.BaseAddress.ToInt64():X}");
             return process;
         }
 

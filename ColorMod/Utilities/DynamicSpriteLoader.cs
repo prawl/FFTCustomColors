@@ -21,7 +21,7 @@ namespace FFTColorMod.Utilities
             // isDevMode parameter kept for backward compatibility but ignored
             if (isDevMode.HasValue)
             {
-                Console.WriteLine("[DynamicSpriteLoader] Dev mode parameter is deprecated and ignored");
+                ModLogger.Log("DynamicSpriteLoader: Dev mode parameter is deprecated and ignored");
             }
         }
 
@@ -40,12 +40,12 @@ namespace FFTColorMod.Utilities
         /// </summary>
         public void PrepareSpritesForConfig()
         {
-            Console.WriteLine("[DynamicSpriteLoader] PrepareSpritesForConfig called");
+            ModLogger.Log("[DynamicSpriteLoader] PrepareSpritesForConfig called");
 
             // All themes already exist in the data directory
-            Console.WriteLine("[DynamicSpriteLoader] All themes available in data directory");
+            ModLogger.Log("[DynamicSpriteLoader] All themes available in data directory");
             var requiredSchemes = GetRequiredSchemes();
-            Console.WriteLine($"[DynamicSpriteLoader] Required schemes for current config: {string.Join(", ", requiredSchemes)}");
+            ModLogger.Log($"DynamicSpriteLoader: Required schemes for current config: {string.Join(", ", requiredSchemes)}");
 
             // Verify required schemes exist
             VerifyRequiredSchemes(requiredSchemes);
@@ -96,11 +96,11 @@ namespace FFTColorMod.Utilities
 
                 if (Directory.Exists(schemeDir))
                 {
-                    Console.WriteLine($"[DynamicSpriteLoader] Verified sprites_{scheme} exists in data directory");
+                    ModLogger.Log($"DynamicSpriteLoader: Verified sprites_{scheme} exists in data directory");
                 }
                 else
                 {
-                    Console.WriteLine($"[DynamicSpriteLoader] Warning: sprites_{scheme} not found in data directory");
+                    ModLogger.Log($"DynamicSpriteLoader: Warning: sprites_{scheme} not found in data directory");
                 }
             }
         }
@@ -123,21 +123,28 @@ namespace FFTColorMod.Utilities
                 // Always preserve test themes
                 if (dirName.StartsWith("sprites_test_"))
                 {
-                    Console.WriteLine($"[DynamicSpriteLoader] Preserving test theme: {dirName}");
+                    ModLogger.Log($"DynamicSpriteLoader: Preserving test theme: {dirName}");
                     continue;
                 }
 
                 // Always preserve Orlandeau themes (story character themes)
                 if (dirName.StartsWith("sprites_orlandeau_"))
                 {
-                    Console.WriteLine($"[DynamicSpriteLoader] Preserving Orlandeau theme: {dirName}");
+                    ModLogger.Log($"DynamicSpriteLoader: Preserving Orlandeau theme: {dirName}");
                     continue;
                 }
 
                 // Always preserve Agrias themes (story character themes)
                 if (dirName.StartsWith("sprites_agrias_"))
                 {
-                    Console.WriteLine($"[DynamicSpriteLoader] Preserving Agrias theme: {dirName}");
+                    ModLogger.Log($"DynamicSpriteLoader: Preserving Agrias theme: {dirName}");
+                    continue;
+                }
+
+                // Always preserve Cloud themes (story character themes)
+                if (dirName.StartsWith("sprites_cloud_"))
+                {
+                    ModLogger.Log($"DynamicSpriteLoader: Preserving Cloud theme: {dirName}");
                     continue;
                 }
 
@@ -150,11 +157,11 @@ namespace FFTColorMod.Utilities
                     try
                     {
                         Directory.Delete(dir, true);
-                        Console.WriteLine($"[DynamicSpriteLoader] Removed unused theme: {dirName}");
+                        ModLogger.Log($"DynamicSpriteLoader: Removed unused theme: {dirName}");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[DynamicSpriteLoader] Failed to remove {dirName}: {ex.Message}");
+                        ModLogger.Log($"DynamicSpriteLoader: Failed to remove {dirName}: {ex.Message}");
                     }
                 }
             }

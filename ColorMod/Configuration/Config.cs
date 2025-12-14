@@ -427,6 +427,7 @@ namespace FFTColorMod.Configuration
         // Story Characters - these remain as-is since they use different enums
         public AgriasColorScheme Agrias { get; set; } = AgriasColorScheme.original;
         public OrlandeauColorScheme Orlandeau { get; set; } = OrlandeauColorScheme.original;
+        public CloudColorScheme Cloud { get; set; } = CloudColorScheme.original;
 
         // Custom JSON serialization to maintain compatibility
         public Dictionary<string, object> ToJsonDictionary()
@@ -444,6 +445,7 @@ namespace FFTColorMod.Configuration
             // Add story characters
             result["Agrias"] = Agrias.ToString();
             result["Orlandeau"] = Orlandeau.ToString();
+            result["Cloud"] = Cloud.ToString();
 
             return result;
         }
@@ -583,6 +585,14 @@ namespace FFTColorMod.Configuration
                 if (Orlandeau == OrlandeauColorScheme.original)
                     return "sprites_original";
                 return $"sprites_orlandeau_{Orlandeau.ToString().ToLower()}";
+            }
+
+            // Cloud (cloud = Cloud sprite name)
+            if (spriteName.Contains("cloud"))
+            {
+                if (Cloud == CloudColorScheme.original)
+                    return "sprites_original";
+                return $"sprites_cloud_{Cloud.ToString().ToLower()}";
             }
 
             // Default to original if no mapping found

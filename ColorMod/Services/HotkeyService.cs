@@ -15,6 +15,7 @@ namespace FFTColorMod.Services
         private readonly Func<string> _cyclePreviousScheme;
         private readonly Action _cycleOrlandeauTheme;
         private readonly Action _cycleAgriasTheme;
+        private readonly Action _cycleCloudTheme;
         private readonly Action _openConfigUI;
         private readonly IInputSimulator? _inputSimulator;
 
@@ -26,6 +27,7 @@ namespace FFTColorMod.Services
             Func<string> cyclePreviousScheme,
             Action cycleOrlandeauTheme,
             Action cycleAgriasTheme,
+            Action cycleCloudTheme,
             Action openConfigUI,
             IInputSimulator? inputSimulator)
         {
@@ -34,6 +36,7 @@ namespace FFTColorMod.Services
             _cyclePreviousScheme = cyclePreviousScheme;
             _cycleOrlandeauTheme = cycleOrlandeauTheme;
             _cycleAgriasTheme = cycleAgriasTheme;
+            _cycleCloudTheme = cycleCloudTheme;
             _openConfigUI = openConfigUI;
             _inputSimulator = inputSimulator;
         }
@@ -78,6 +81,7 @@ namespace FFTColorMod.Services
             // Also cycle story character themes
             _cycleOrlandeauTheme();
             _cycleAgriasTheme();
+            _cycleCloudTheme();
 
             SimulateMenuRefresh();
         }

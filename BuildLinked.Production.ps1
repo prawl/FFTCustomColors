@@ -93,6 +93,7 @@ if ($LASTEXITCODE -eq 0) {
 
             $genericThemeCount = 0
             $orlandeauThemeCount = 0
+            $cloudThemeCount = 0
             $otherStoryThemeCount = 0
 
             Write-Host "`nFound $($allVariants.Count) total theme directories to deploy:" -ForegroundColor Yellow
@@ -108,6 +109,8 @@ if ($LASTEXITCODE -eq 0) {
                 # Count theme types
                 if ($variant -like "sprites_orlandeau_*") {
                     $orlandeauThemeCount++
+                } elseif ($variant -like "sprites_cloud_*") {
+                    $cloudThemeCount++
                 } elseif ($variant -like "sprites_*_*") {
                     # Might be another story character in the future
                     $otherStoryThemeCount++
@@ -131,6 +134,8 @@ if ($LASTEXITCODE -eq 0) {
                         # Color code by type
                         if ($variant -like "sprites_orlandeau_*") {
                             Write-Host "  [Orlandeau] $variant has $variantCount modified sprite(s)" -ForegroundColor Magenta
+                        } elseif ($variant -like "sprites_cloud_*") {
+                            Write-Host "  [Cloud] $variant has $variantCount modified sprite(s)" -ForegroundColor Cyan
                         } else {
                             Write-Host "  [Generic] $variant has $variantCount modified sprite(s)" -ForegroundColor Green
                         }
@@ -146,6 +151,7 @@ if ($LASTEXITCODE -eq 0) {
             Write-Host "`nTheme Summary:" -ForegroundColor Cyan
             Write-Host "  Generic Themes: $genericThemeCount" -ForegroundColor Green
             Write-Host "  Orlandeau Themes: $orlandeauThemeCount" -ForegroundColor Magenta
+            Write-Host "  Cloud Themes: $cloudThemeCount" -ForegroundColor Cyan
             if ($otherStoryThemeCount -gt 0) {
                 Write-Host "  Other Story Themes: $otherStoryThemeCount" -ForegroundColor Blue
             }
@@ -192,6 +198,7 @@ if ($LASTEXITCODE -eq 0) {
 
     $deployedGeneric = 0
     $deployedOrlandeau = 0
+    $deployedCloud = 0
 
     foreach ($variant in $colorVariants) {
         $variantDir = "$mainSpriteDir/$variant"
@@ -202,6 +209,8 @@ if ($LASTEXITCODE -eq 0) {
             } else {
                 if ($variant -like "sprites_orlandeau_*") {
                     $deployedOrlandeau++
+                } elseif ($variant -like "sprites_cloud_*") {
+                    $deployedCloud++
                 } else {
                     $deployedGeneric++
                 }
@@ -211,6 +220,7 @@ if ($LASTEXITCODE -eq 0) {
 
     Write-Host "  [OK] Deployed $deployedGeneric generic theme(s)" -ForegroundColor Green
     Write-Host "  [OK] Deployed $deployedOrlandeau Orlandeau theme(s)" -ForegroundColor Magenta
+    Write-Host "  [OK] Deployed $deployedCloud Cloud theme(s)" -ForegroundColor Cyan
 
     # Check ModConfig.json
     if (!(Test-Path "$modPath/ModConfig.json")) {
@@ -227,6 +237,7 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "Mod installed to: $modPath" -ForegroundColor Green
         Write-Host "Deployed $deployedGeneric generic themes" -ForegroundColor Cyan
         Write-Host "Deployed $deployedOrlandeau Orlandeau themes" -ForegroundColor Magenta
+        Write-Host "Deployed $deployedCloud Cloud themes" -ForegroundColor Cyan
         Write-Host "All sprite files verified and ready." -ForegroundColor Green
         Write-Host "You can now enable the mod in Reloaded-II" -ForegroundColor Green
     } else {
