@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace FFTColorMod.Utilities;
+namespace FFTColorMod.Utilities
+{
 
 public class SpriteFileManager
 {
@@ -46,24 +47,24 @@ public class SpriteFileManager
 
     public void SwitchColorScheme(string colorScheme)
     {
-        Console.WriteLine($"[FFT Color Mod] Switching to {colorScheme} color scheme");
+        ModLogger.Log($"Switching to {colorScheme} color scheme");
 
         // Read from source (git repo), write to deployment
         string sourceDir = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", $"sprites_{colorScheme}");
         string targetDir = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
-        Console.WriteLine($"[FFT Color Mod] Looking for modified sprites in: {sourceDir}");
+        ModLogger.LogDebug($"Looking for modified sprites in: {sourceDir}");
 
         if (!Directory.Exists(sourceDir))
         {
             // If it's the original scheme and the directory doesn't exist, that's OK - we just don't swap anything
             if (colorScheme == "original")
             {
-                Console.WriteLine($"[FFT Color Mod] Original scheme selected - no sprite swapping needed");
+                ModLogger.Log($"Original scheme selected - no sprite swapping needed");
                 return;
             }
 
-            Console.WriteLine($"[FFT Color Mod] WARNING: Variant directory does not exist: {sourceDir}");
+            ModLogger.LogWarning($"Variant directory does not exist: {sourceDir}");
             return;
         }
 
@@ -74,11 +75,11 @@ public class SpriteFileManager
 
             if (spriteFiles.Count == 0)
             {
-                Console.WriteLine($"[FFT Color Mod] No modified sprites found for {colorScheme}");
+                ModLogger.Log($"No modified sprites found for {colorScheme}");
                 return;
             }
 
-            Console.WriteLine($"[FFT Color Mod] Found {spriteFiles.Count} modified sprite(s) for {colorScheme}");
+            ModLogger.Log($"Found {spriteFiles.Count} modified sprite(s) for {colorScheme}");
 
             foreach (var sourceFile in spriteFiles)
             {
@@ -88,27 +89,27 @@ public class SpriteFileManager
                 // Log if this is a story character sprite
                 if (fileName.Contains("musu") || fileName.Contains("aguri") || fileName.Contains("oran"))
                 {
-                    Console.WriteLine($"[FFT Color Mod] STORY CHARACTER: Applying {colorScheme} variant for {fileName}");
-                    Console.WriteLine($"[FFT Color Mod]   Source: {sourceFile}");
-                    Console.WriteLine($"[FFT Color Mod]   Target: {targetFile}");
+                    ModLogger.Log($"STORY CHARACTER: Applying {colorScheme} variant for {fileName}");
+                    ModLogger.Log($"Source: {sourceFile}");
+                    ModLogger.Log($"Target: {targetFile}");
 
                     // Verify the file exists before copying
                     if (!File.Exists(sourceFile))
                     {
-                        Console.WriteLine($"[FFT Color Mod] ERROR: Source file does not exist: {sourceFile}");
+                        ModLogger.LogError($"Source file does not exist: {sourceFile}");
                         continue;
                     }
                 }
 
                 File.Copy(sourceFile, targetFile, true);
-                Console.WriteLine($"[FFT Color Mod] Applied {colorScheme} variant: {fileName}");
+                ModLogger.Log($"Applied {colorScheme} variant: {fileName}");
             }
 
-            Console.WriteLine($"[FFT Color Mod] Successfully applied {colorScheme} color scheme");
+            ModLogger.LogSuccess($"Successfully applied {colorScheme} color scheme");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[FFT Color Mod] ERROR switching sprites: {ex.Message}");
+            ModLogger.LogError($"switching sprites: {ex.Message}");
         }
     }
 
@@ -135,17 +136,18 @@ public class SpriteFileManager
             // Extra logging for story characters
             if (fileName.Contains("musu") || fileName.Contains("aguri"))
             {
-                Console.WriteLine($"[FFT Color Mod] STORY CHARACTER: Redirecting {fileName} to {currentScheme} variant");
-                Console.WriteLine($"[FFT Color Mod]   From: {originalPath}");
-                Console.WriteLine($"[FFT Color Mod]   To: {redirectedPath}");
+                ModLogger.Log($"STORY CHARACTER: Redirecting {fileName} to {currentScheme} variant");
+                ModLogger.Log($"From: {originalPath}");
+                ModLogger.Log($"To: {redirectedPath}");
             }
             else
             {
-                Console.WriteLine($"[FFT Color Mod] Redirecting {fileName} to {currentScheme} variant");
+                ModLogger.Log($"Redirecting {fileName} to {currentScheme} variant");
             }
             return redirectedPath;
         }
 
         return originalPath;
     }
+}
 }

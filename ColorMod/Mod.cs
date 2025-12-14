@@ -34,7 +34,7 @@ public class Mod : IMod, IConfigurable
     public Mod(ModContext context, IInputSimulator? inputSimulator = null)
     {
         // Do minimal work in constructor - Reloaded will call Start() for initialization
-        Console.WriteLine("[FFT Color Mod] Constructor called with ModContext");
+        ModLogger.Log("Constructor called with ModContext");
         _inputSimulator = inputSimulator;
 
         // Try to auto-detect sprite variants from mod directory
@@ -51,7 +51,7 @@ public class Mod : IMod, IConfigurable
 
         if (schemes.Count > 0)
         {
-            Console.WriteLine($"[FFT Color Mod] Auto-detected {schemes.Count} color schemes");
+            ModLogger.Log($"Auto-detected {schemes.Count} color schemes");
             _colorCycler.SetCurrentScheme("original");
         }
         else
@@ -64,12 +64,12 @@ public class Mod : IMod, IConfigurable
         // Try initializing here since fftivc.utility.modloader might not call Start()
         try
         {
-            Console.WriteLine("[FFT Color Mod] Initializing... v1223-file-swap-only");  // File swap only version
+            ModLogger.Log("Initializing... v1223-file-swap-only");  // File swap only version
             InitializeModBasics();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[FFT Color Mod] Error in constructor: {ex.Message}");
+            ModLogger.LogError($"in constructor: {ex.Message}");
         }
     }
 
@@ -95,7 +95,7 @@ public class Mod : IMod, IConfigurable
 
         if (!initResult.Success)
         {
-            Console.WriteLine($"[FFT Color Mod] Initialization failed: {initResult.ErrorMessage}");
+            ModLogger.Log($"Initialization failed: {initResult.ErrorMessage}");
             return;
         }
 
@@ -131,14 +131,14 @@ public class Mod : IMod, IConfigurable
 
         // Start with original color scheme
         _currentColorScheme = "original";
-        Console.WriteLine($"[FFT Color Mod] Starting with color scheme: {_currentColorScheme}");
+        ModLogger.Log($"Starting with color scheme: {_currentColorScheme}");
 
         // Initialize and start hotkey handler
         _hotkeyHandler = new HotkeyHandler(vkCode => _hotkeyService.ProcessHotkeyPress(vkCode));
         _hotkeyHandler.StartMonitoring();
 
-        Console.WriteLine("[FFT Color Mod] Loaded successfully!");
-        Console.WriteLine("[FFT Color Mod] Press F1 (previous) or F2 (next) to cycle through color schemes");
+        ModLogger.Log("Loaded successfully!");
+        ModLogger.Log("Press F1 (previous) or F2 (next) to cycle through color schemes");
         File.AppendAllText(logPath, $"[{DateTime.Now}] FFT Color Mod loaded successfully!\n");
     }
 
@@ -146,7 +146,7 @@ public class Mod : IMod, IConfigurable
     public void Start(IModLoader modLoader)
     {
         var logPath = Path.Combine(Path.GetTempPath(), $"FFTColorMod_{Guid.NewGuid()}.log");
-        Console.WriteLine("[FFT Color Mod] Start() called - setting up hooks");
+        ModLogger.Log("Start() called - setting up hooks");
 
         try
         {
@@ -161,13 +161,13 @@ public class Mod : IMod, IConfigurable
         {
 
             // File swapping only - no memory hooks
-            Console.WriteLine("[FFT Color Mod] File swapping mode enabled - Press F1 to cycle through color schemes!");
+            ModLogger.Log("File swapping mode enabled - Press F1 to cycle through color schemes!");
 
             File.AppendAllText(logPath, $"[{DateTime.Now}] Start() completed\n");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[FFT Color Mod] Error in Start(): {ex.Message}");
+            ModLogger.LogError($"in Start(): {ex.Message}");
             File.AppendAllText(logPath, $"[{DateTime.Now}] Error in Start(): {ex.Message}\n{ex.StackTrace}\n");
         }
     }
@@ -182,11 +182,11 @@ public class Mod : IMod, IConfigurable
 
     public void Unload()
     {
-        Console.WriteLine("[FFT Color Mod] Unloading...");
+        ModLogger.Log("Unloading...");
         _hotkeyHandler?.StopMonitoring();
         _gameProcess?.Dispose();
 
-        Console.WriteLine("[FFT Color Mod] Unloaded");
+        ModLogger.Log("Unloaded");
     }
 
     // TLDR: ModId property for other mods to identify this mod
@@ -240,7 +240,7 @@ public class Mod : IMod, IConfigurable
     public void SetColorScheme(string scheme)
     {
         _currentColorScheme = scheme;
-        Console.WriteLine($"[FFT Color Mod] Color scheme set to: {scheme}");
+        ModLogger.Log($"Color scheme set to: {scheme}");
 
         // Actually switch the sprite files to apply the color
         _spriteFileManager?.SwitchColorScheme(scheme);
@@ -281,9 +281,9 @@ public class Mod : IMod, IConfigurable
         // Only use config-based system when global scheme is "original"
         if (_configBasedSpriteManager != null && IsJobSprite(fileName))
         {
-            Console.WriteLine($"[FFT Color Mod] Using config-based system for: {fileName}");
+            ModLogger.Log($"Using config-based system for: {fileName}");
             var result = _configBasedSpriteManager.InterceptFilePath(originalPath);
-            Console.WriteLine($"[FFT Color Mod] Config result: {originalPath} -> {result}");
+            ModLogger.Log($"Config result: {originalPath} -> {result}");
             return result;
         }
 
@@ -326,8 +326,8 @@ public class Mod : IMod, IConfigurable
 
     public void SetJobColor(string jobProperty, string colorScheme)
     {
-        Console.WriteLine($"[FFT Color Mod] SetJobColor called: {jobProperty} = {colorScheme}");
-        Console.WriteLine($"[FFT Color Mod] _configBasedSpriteManager is null? {_configBasedSpriteManager == null}");
+        ModLogger.Log($"SetJobColor called: {jobProperty} = {colorScheme}");
+        ModLogger.Log($"_configBasedSpriteManager is null? {_configBasedSpriteManager == null}");
 
         if (_configBasedSpriteManager != null)
         {
@@ -335,7 +335,7 @@ public class Mod : IMod, IConfigurable
         }
         else
         {
-            Console.WriteLine("[FFT Color Mod] WARNING: _configBasedSpriteManager is null, cannot set job color");
+            ModLogger.LogWarning("_configBasedSpriteManager is null, cannot set job color");
         }
     }
 
@@ -410,7 +410,7 @@ public class Mod : IMod, IConfigurable
     {
         try
         {
-            Console.WriteLine("[FFT Color Mod] Opening configuration UI...");
+            ModLogger.Log("Opening configuration UI...");
 
             // Load current configuration
             if (_configurationManager != null)
@@ -427,40 +427,40 @@ public class Mod : IMod, IConfigurable
 
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
-                    Console.WriteLine("[FFT Color Mod] Saving configuration...");
+                    ModLogger.Log("Saving configuration...");
                     _configurationManager.SaveConfig(config);
 
                     // Update the config-based sprite manager with new configuration
                     if (_configBasedSpriteManager != null)
                     {
-                        Console.WriteLine("[FFT Color Mod] Updating sprite manager with new configuration...");
+                        ModLogger.Log("Updating sprite manager with new configuration...");
                         _configBasedSpriteManager.UpdateConfiguration(config);
                     }
 
                     // Simulate a menu refresh to reload sprites in-game
-                    Console.WriteLine("[FFT Color Mod] Triggering sprite refresh in game...");
+                    ModLogger.Log("Triggering sprite refresh in game...");
                     if (_inputSimulator != null)
                     {
-                        Console.WriteLine("[FFT Color Mod] Calling SimulateMenuRefresh...");
+                        ModLogger.Log("Calling SimulateMenuRefresh...");
                         bool refreshResult = _inputSimulator.SimulateMenuRefresh();
-                        Console.WriteLine($"[FFT Color Mod] SimulateMenuRefresh returned: {refreshResult}");
+                        ModLogger.Log($"SimulateMenuRefresh returned: {refreshResult}");
                     }
                     else
                     {
-                        Console.WriteLine("[FFT Color Mod] WARNING: InputSimulator is null - cannot refresh sprites!");
+                        ModLogger.LogWarning("InputSimulator is null - cannot refresh sprites!");
                     }
                 }
 
-                Console.WriteLine("[FFT Color Mod] Configuration window closed");
+                ModLogger.Log("Configuration window closed");
             }
             else
             {
-                Console.WriteLine("[FFT Color Mod] Warning: Configuration manager not initialized");
+                ModLogger.LogWarning("Configuration manager not initialized");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[FFT Color Mod] Error opening configuration UI: {ex.Message}");
+            ModLogger.LogError($"opening configuration UI: {ex.Message}");
         }
     }
 
@@ -501,7 +501,7 @@ public class Mod : IMod, IConfigurable
         // Apply the new configuration
         _configBasedSpriteManager?.ApplyConfiguration();
 
-        Console.WriteLine("[FFT Color Mod] Configuration updated from Reloaded-II UI");
-        Console.WriteLine($"[FFT Color Mod] Squire_Male set to: {configuration.Squire_Male}");
+        ModLogger.Log("Configuration updated from Reloaded-II UI");
+        ModLogger.Log($"Squire_Male set to: {configuration.Squire_Male}");
     }
 } 

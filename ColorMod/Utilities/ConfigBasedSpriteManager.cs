@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using FFTColorMod.Configuration;
+using FFTColorMod.Utilities;
 
 namespace FFTColorMod.Utilities
 {
@@ -37,21 +38,21 @@ namespace FFTColorMod.Utilities
             var propertyInfo = typeof(Config).GetProperty(jobProperty);
             if (propertyInfo == null)
             {
-                Console.WriteLine($"[ConfigBasedSpriteManager] Property not found: {jobProperty}");
+                ModLogger.LogWarning($"Property not found: {jobProperty}");
                 return originalPath;
             }
 
             var colorSchemeEnum = propertyInfo.GetValue(config);
             if (colorSchemeEnum == null || !(colorSchemeEnum is Configuration.ColorScheme))
             {
-                Console.WriteLine($"[ConfigBasedSpriteManager] No color scheme for: {jobProperty}");
+                ModLogger.LogWarning($"No color scheme for: {jobProperty}");
                 return originalPath;
             }
 
             var colorSchemeValue = ((Configuration.ColorScheme)colorSchemeEnum);
             // Convert enum to lowercase (matching directory names)
             var colorScheme = colorSchemeValue.ToString().ToLower();
-            Console.WriteLine($"[ConfigBasedSpriteManager] {jobProperty} configured as: {colorScheme}");
+            ModLogger.Log($"{jobProperty} configured as: {colorScheme}");
 
             if (colorScheme == "original")
             {
@@ -71,11 +72,11 @@ namespace FFTColorMod.Utilities
                 try
                 {
                     File.Copy(sourceVariantPath, deploymentPath, true);
-                    Console.WriteLine($"[FFT Color Mod] Copied theme file from {sourceVariantPath} to {deploymentPath}");
+                    ModLogger.Log($"Copied theme file from {sourceVariantPath} to {deploymentPath}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[FFT Color Mod] Failed to copy theme file: {ex.Message}");
+                    ModLogger.LogError($"Failed to copy theme file: {ex.Message}");
                 }
                 return deploymentPath;
             }
@@ -114,7 +115,7 @@ namespace FFTColorMod.Utilities
                 var colorScheme = colorSchemeEnum?.ToString().ToLower() ?? "original";
 
                 // Log what we're applying
-                Console.WriteLine($"[FFT Color Mod] Applying {property.Name}: {colorScheme}");
+                ModLogger.Log($"Applying {property.Name}: {colorScheme}");
 
                 // Get the sprite name for this job/gender
                 var spriteName = GetSpriteNameForJob(property.Name);
@@ -137,16 +138,16 @@ namespace FFTColorMod.Utilities
                 try
                 {
                     File.Copy(sourceFile, destFile, true);
-                    Console.WriteLine($"[FFT Color Mod] Applied {colorScheme} to {spriteName}");
+                    ModLogger.LogSuccess($"Applied {colorScheme} to {spriteName}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[FFT Color Mod] Error copying sprite: {ex.Message}");
+                    ModLogger.LogError($"Error copying sprite: {ex.Message}");
                 }
             }
             else
             {
-                Console.WriteLine($"[FFT Color Mod] Warning: Source sprite not found at {sourceFile}");
+                ModLogger.LogWarning($"Source sprite not found at {sourceFile}");
             }
         }
 

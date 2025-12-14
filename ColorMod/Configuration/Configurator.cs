@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using Reloaded.Mod.Interfaces;
 
+using FFTColorMod.Utilities;
 namespace FFTColorMod.Configuration
 {
     public class Configurator : IConfiguratorV3
@@ -168,62 +169,62 @@ namespace FFTColorMod.Configuration
         /// </summary>
         public bool TryRunCustomConfiguration()
         {
-            Console.WriteLine("[FFT Color Mod] TryRunCustomConfiguration called!");
+            ModLogger.Log("TryRunCustomConfiguration called!");
 
             // Use Windows Forms for better compatibility
             try
             {
-                Console.WriteLine("[FFT Color Mod] Getting configuration...");
-                Console.WriteLine($"[FFT Color Mod] ConfigFolder: {ConfigFolder}");
+                ModLogger.Log("Getting configuration...");
+                ModLogger.Log($"ConfigFolder: {ConfigFolder}");
 
                 // Load directly from the config file, not through the old system
                 var configPath = Path.Combine(ConfigFolder!, "Config.json");
-                Console.WriteLine($"[FFT Color Mod] Loading config directly from: {configPath}");
+                ModLogger.Log($"Loading config directly from: {configPath}");
 
                 var configManager = new ConfigurationManager(configPath);
                 var config = configManager.LoadConfig();
-                Console.WriteLine($"[FFT Color Mod] Config loaded - Squire_Male: {config.Squire_Male}");
+                ModLogger.Log($"Config loaded - Squire_Male: {config.Squire_Male}");
 
-                Console.WriteLine("[FFT Color Mod] Creating configuration form...");
+                ModLogger.Log("Creating configuration form...");
                 var formConfigPath = Path.Combine(ConfigFolder!, "Config.json");
-                Console.WriteLine($"[FFT Color Mod] Will save to: {formConfigPath}");
-                Console.WriteLine($"[FFT Color Mod] Mod folder (for resources): {ModFolder}");
+                ModLogger.Log($"Will save to: {formConfigPath}");
+                ModLogger.Log($"Mod folder (for resources): {ModFolder}");
                 var configForm = new ConfigurationForm(config, formConfigPath, ModFolder);
 
-                Console.WriteLine("[FFT Color Mod] Showing configuration form...");
+                ModLogger.Log("Showing configuration form...");
                 var result = configForm.ShowDialog();
 
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
-                    Console.WriteLine("[FFT Color Mod] User clicked Save - DialogResult.OK received");
-                    Console.WriteLine($"[FFT Color Mod] Config state before save - Squire_Male: {config.Squire_Male}");
+                    ModLogger.Log("User clicked Save - DialogResult.OK received");
+                    ModLogger.Log($"Config state before save - Squire_Male: {config.Squire_Male}");
 
                     // Always save directly to ensure consistency
                     var saveConfigPath = Path.Combine(ConfigFolder!, "Config.json");
-                    Console.WriteLine($"[FFT Color Mod] Saving directly to: {saveConfigPath}");
+                    ModLogger.Log($"Saving directly to: {saveConfigPath}");
                     var saveConfigManager = new ConfigurationManager(saveConfigPath);
                     saveConfigManager.SaveConfig(config);
 
                     // Don't call IConfigurable.Save here - it might trigger unwanted behavior
                     // The ConfigurationManager.SaveConfig already saved the file
-                    Console.WriteLine("[FFT Color Mod] Config saved via ConfigurationManager");
+                    ModLogger.Log("Config saved via ConfigurationManager");
 
                     // Notify Mod instance if it exists to update sprite manager
                     // This ensures the mod is aware of configuration changes made from Reloaded-II menu
-                    Console.WriteLine("[FFT Color Mod] Configuration save process completed");
+                    ModLogger.Log("Configuration save process completed");
                 }
                 else
                 {
-                    Console.WriteLine($"[FFT Color Mod] User cancelled - DialogResult: {result}");
+                    ModLogger.Log($"User cancelled - DialogResult: {result}");
                 }
 
-                Console.WriteLine("[FFT Color Mod] Configuration window closed");
+                ModLogger.Log("Configuration window closed");
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FFT Color Mod] Error showing configuration window: {ex}");
-                Console.WriteLine($"[FFT Color Mod] Stack trace: {ex.StackTrace}");
+                ModLogger.LogError($"showing configuration window: {ex}");
+                ModLogger.Log($"Stack trace: {ex.StackTrace}");
                 return false;
             }
         }

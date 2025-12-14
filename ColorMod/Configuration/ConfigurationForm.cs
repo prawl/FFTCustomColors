@@ -5,6 +5,7 @@ using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
 using FFTColorMod.Configuration.UI;
+using FFTColorMod.Utilities;
 
 namespace FFTColorMod.Configuration
 {
@@ -27,14 +28,14 @@ namespace FFTColorMod.Configuration
             _config = config;
             _configPath = configPath;  // Store the path for saving
             _modPath = modPath;        // Store the mod path for resources
-            Console.WriteLine($"[FFT Color Mod] ConfigurationForm created with config - Squire_Male: {config.Squire_Male}");
+            ModLogger.Log($"ConfigurationForm created with config - Squire_Male: {config.Squire_Male}");
             if (!string.IsNullOrEmpty(configPath))
             {
-                Console.WriteLine($"[FFT Color Mod] Config path set to: {configPath}");
+                ModLogger.Log($"Config path set to: {configPath}");
             }
             if (!string.IsNullOrEmpty(modPath))
             {
-                Console.WriteLine($"[FFT Color Mod] Mod path set to: {modPath}");
+                ModLogger.Log($"Mod path set to: {modPath}");
             }
 
             _isInitializing = true;  // Block all events during initialization
@@ -46,12 +47,12 @@ namespace FFTColorMod.Configuration
             this.Shown += (s, e) =>
             {
                 _isFullyLoaded = true;
-                Console.WriteLine($"[FFT Color Mod] Form shown - events now enabled");
+                ModLogger.Log($"Form shown - events now enabled");
                 // Force refresh all ComboBox selections to ensure they show the right values
                 VerifyAllSelections();
             };
 
-            Console.WriteLine($"[FFT Color Mod] ConfigurationForm initialized - Squire_Male: {_config.Squire_Male}");
+            ModLogger.Log($"ConfigurationForm initialized - Squire_Male: {_config.Squire_Male}");
         }
 
         private void InitializeForm()
@@ -78,7 +79,7 @@ namespace FFTColorMod.Configuration
             if (!string.IsNullOrEmpty(_modPath))
             {
                 modPath = _modPath;
-                Console.WriteLine($"[FFT Color Mod] Using explicitly provided mod path: {modPath}");
+                ModLogger.Log($"Using explicitly provided mod path: {modPath}");
             }
             else if (!string.IsNullOrEmpty(_configPath))
             {
@@ -86,12 +87,12 @@ namespace FFTColorMod.Configuration
                 // We need to get "C:\path\to\mod"
                 var configDir = Path.GetDirectoryName(_configPath);
                 modPath = Path.GetDirectoryName(configDir) ?? Environment.CurrentDirectory;
-                Console.WriteLine($"[FFT Color Mod] Derived mod path from config path: {modPath}");
+                ModLogger.Log($"Derived mod path from config path: {modPath}");
             }
             else
             {
                 modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
-                Console.WriteLine($"[FFT Color Mod] Using assembly location as mod path: {modPath}");
+                ModLogger.Log($"Using assembly location as mod path: {modPath}");
             }
             _previewManager = new PreviewImageManager(modPath);
 
@@ -341,7 +342,7 @@ namespace FFTColorMod.Configuration
         private void AddJobRow(int row, string jobName, ColorScheme currentTheme, Action<ColorScheme> setter)
         {
             // Debug logging
-            Console.WriteLine($"[FFT Color Mod] AddJobRow: {jobName} = {currentTheme} (enum value: {(int)currentTheme})");
+            ModLogger.Log($"AddJobRow: {jobName} = {currentTheme} (enum value: {(int)currentTheme})");
 
             var label = new Label
             {
@@ -400,9 +401,9 @@ namespace FFTColorMod.Configuration
                 if (_isFullyLoaded && comboBox.SelectedItem != null)
                 {
                     var newTheme = (ColorScheme)comboBox.SelectedItem;
-                    Console.WriteLine($"[FFT Color Mod] Selection changed: {jobName} = {newTheme}");
+                    ModLogger.Log($"Selection changed: {jobName} = {newTheme}");
                     setter(newTheme);
-                    Console.WriteLine($"[FFT Color Mod] Config updated via setter for {jobName}");
+                    ModLogger.Log($"Config updated via setter for {jobName}");
                     UpdatePreviewImage(pictureBox, jobName, newTheme);
                 }
             };
@@ -489,7 +490,7 @@ namespace FFTColorMod.Configuration
 
             string resourceName = $"FFTColorMod.Resources.Previews.{fileName}_{theme.ToString().ToLower()}.png";
 
-            Console.WriteLine($"[FFT Color Mod] Looking for embedded resource: {resourceName}");
+            ModLogger.LogDebug($"Looking for embedded resource: {resourceName}");
 
             try
             {
@@ -503,7 +504,7 @@ namespace FFTColorMod.Configuration
                         pictureBox.Image?.Dispose();
                         // Load new image from stream
                         pictureBox.Image = Image.FromStream(stream);
-                        Console.WriteLine($"[FFT Color Mod] Successfully loaded embedded preview image");
+                        ModLogger.LogSuccess($"Successfully loaded embedded preview image");
                     }
                     else
                     {
@@ -520,7 +521,7 @@ namespace FFTColorMod.Configuration
                                 {
                                     pictureBox.Image?.Dispose();
                                     pictureBox.Image = Image.FromStream(altStream);
-                                    Console.WriteLine($"[FFT Color Mod] Loaded with alt resource name: {matchingResource}");
+                                    ModLogger.Log($"Loaded with alt resource name: {matchingResource}");
                                 }
                             }
                         }
@@ -528,14 +529,14 @@ namespace FFTColorMod.Configuration
                         {
                             pictureBox.Image?.Dispose();
                             pictureBox.Image = null;
-                            Console.WriteLine($"[FFT Color Mod] Embedded resource not found");
+                            ModLogger.Log($"Embedded resource not found");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FFT Color Mod] Error loading embedded preview: {ex.Message}");
+                ModLogger.LogError($"loading embedded preview: {ex.Message}");
                 pictureBox.Image?.Dispose();
                 pictureBox.Image = null;
             }
@@ -655,8 +656,8 @@ namespace FFTColorMod.Configuration
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
-            Console.WriteLine($"[FFT Color Mod] Save button clicked");
-            Console.WriteLine($"[FFT Color Mod] Current config state - Squire_Male: {_config.Squire_Male}");
+            ModLogger.Log($"Save button clicked");
+            ModLogger.Log($"Current config state - Squire_Male: {_config.Squire_Male}");
 
             DialogResult = DialogResult.OK;
             Close();
@@ -665,7 +666,7 @@ namespace FFTColorMod.Configuration
         private void VerifyAllSelections()
         {
             // Go through all ComboBoxes and ensure they have the correct selection
-            Console.WriteLine("[FFT Color Mod] Verifying all ComboBox selections...");
+            ModLogger.Log("Verifying all ComboBox selections...");
 
             foreach (Control control in _mainPanel.Controls)
             {
@@ -677,12 +678,12 @@ namespace FFTColorMod.Configuration
                         var currentValue = comboBox.SelectedItem;
                         if (currentValue == null || !currentValue.Equals(tag.ExpectedValue))
                         {
-                            Console.WriteLine($"[FFT Color Mod] Correcting {tag.JobName}: was {currentValue}, setting to {tag.ExpectedValue}");
+                            ModLogger.Log($"Correcting {tag.JobName}: was {currentValue}, setting to {tag.ExpectedValue}");
                             comboBox.SelectedItem = tag.ExpectedValue;
                         }
                         else
                         {
-                            Console.WriteLine($"[FFT Color Mod] {tag.JobName} is correctly set to {tag.ExpectedValue}");
+                            ModLogger.Log($"{tag.JobName} is correctly set to {tag.ExpectedValue}");
                         }
                     }
                 }

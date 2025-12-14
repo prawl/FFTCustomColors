@@ -3,8 +3,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace FFTColorMod.Utilities;
-
+namespace FFTColorMod.Utilities
+{
 public class HotkeyHandler
 {
     private const int VK_F1 = 0x70;
@@ -26,7 +26,7 @@ public class HotkeyHandler
     {
         _cancellationTokenSource = new CancellationTokenSource();
         _monitorTask = Task.Run(() => MonitorHotkeys(_cancellationTokenSource.Token));
-        Console.WriteLine("[FFT Color Mod] Hotkey monitoring started");
+        ModLogger.Log("Hotkey monitoring started");
     }
 
     public void StopMonitoring()
@@ -51,7 +51,7 @@ public class HotkeyHandler
 
     private void MonitorHotkeys(CancellationToken cancellationToken)
     {
-        Console.WriteLine("[FFT Color Mod] Starting hotkey monitoring loop...");
+        ModLogger.Log("Starting hotkey monitoring loop...");
         bool wasF1Pressed = false;
         bool wasF2Pressed = false;
         bool wasCPressed = false;
@@ -71,19 +71,19 @@ public class HotkeyHandler
 
                 if (isF1Pressed && !wasF1Pressed)
                 {
-                    Console.WriteLine("[FFT Color Mod] F1 pressed - cycling colors backward");
+                    ModLogger.Log("F1 pressed - cycling colors backward");
                     _onHotkeyPressed(VK_F1);
                 }
 
                 if (isF2Pressed && !wasF2Pressed)
                 {
-                    Console.WriteLine("[FFT Color Mod] F2 pressed - cycling colors forward");
+                    ModLogger.Log("F2 pressed - cycling colors forward");
                     _onHotkeyPressed(VK_F2);
                 }
 
                 if (isCPressed && !wasCPressed)
                 {
-                    Console.WriteLine("[FFT Color Mod] C pressed - opening configuration");
+                    ModLogger.Log("C pressed - opening configuration");
                     _onHotkeyPressed(VK_C);
                 }
 
@@ -95,9 +95,10 @@ public class HotkeyHandler
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FFT Color Mod] Error in hotkey loop: {ex.Message}");
+                ModLogger.LogError($"in hotkey loop: {ex.Message}");
             }
         }
-        Console.WriteLine("[FFT Color Mod] Hotkey monitoring stopped");
+        ModLogger.Log("Hotkey monitoring stopped");
     }
+}
 }

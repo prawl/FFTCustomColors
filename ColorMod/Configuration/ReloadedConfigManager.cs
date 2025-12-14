@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using Newtonsoft.Json;
 
+using FFTColorMod.Utilities;
 namespace FFTColorMod.Configuration
 {
     /// <summary>
@@ -23,7 +24,7 @@ namespace FFTColorMod.Configuration
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FFT Color Mod] Error loading Reloaded config: {ex.Message}");
+                ModLogger.LogError($"loading Reloaded config: {ex.Message}");
                 return new ModConfig();
             }
         }
@@ -37,7 +38,7 @@ namespace FFTColorMod.Configuration
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FFT Color Mod] Error saving Reloaded config: {ex.Message}");
+                ModLogger.LogError($"saving Reloaded config: {ex.Message}");
             }
         }
     }

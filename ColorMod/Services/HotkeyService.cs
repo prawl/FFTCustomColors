@@ -61,7 +61,7 @@ namespace FFTColorMod.Services
         {
             // Cycle to previous color
             string previousColor = _cyclePreviousScheme();
-            Console.WriteLine($"[FFT Color Mod] Cycling backward to {previousColor}");
+            ModLogger.Log($"Cycling backward to {previousColor}");
             _setColorScheme(previousColor);
             SimulateMenuRefresh();
         }
@@ -84,13 +84,13 @@ namespace FFTColorMod.Services
 
         private void HandleF3Press()
         {
-            Console.WriteLine("[FFT Color Mod] Opening configuration UI (F3)");
+            ModLogger.Log("Opening configuration UI (F3)");
             _openConfigUI();
         }
 
         private void HandleCPress()
         {
-            Console.WriteLine("[FFT Color Mod] Opening configuration UI (C)");
+            ModLogger.Log("Opening configuration UI (C)");
 
             // If there are test event handlers, just invoke them
             if (ConfigUIRequested != null)
@@ -107,13 +107,13 @@ namespace FFTColorMod.Services
         {
             if (_inputSimulator != null)
             {
-                Console.WriteLine("[FFT Color Mod] Calling SimulateMenuRefresh...");
+                ModLogger.Log("Calling SimulateMenuRefresh...");
                 bool result = _inputSimulator.SimulateMenuRefresh();
-                Console.WriteLine($"[FFT Color Mod] SimulateMenuRefresh returned: {result}");
+                ModLogger.Log($"SimulateMenuRefresh returned: {result}");
             }
             else
             {
-                Console.WriteLine("[FFT Color Mod] WARNING: InputSimulator is null!");
+                ModLogger.LogWarning("InputSimulator is null!");
             }
         }
     }

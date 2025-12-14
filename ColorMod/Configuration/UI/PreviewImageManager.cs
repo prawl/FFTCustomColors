@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using FFTColorMod.Utilities;
 
 namespace FFTColorMod.Configuration.UI
 {
@@ -12,7 +13,7 @@ namespace FFTColorMod.Configuration.UI
         public PreviewImageManager(string modPath)
         {
             _modPath = modPath;
-            Console.WriteLine($"[FFT Color Mod] PreviewImageManager initialized with path: {modPath}");
+            ModLogger.Log($"PreviewImageManager initialized with path: {modPath}");
         }
 
         public void UpdateJobPreview(PictureBox pictureBox, string jobName, ColorScheme theme)
@@ -45,7 +46,7 @@ namespace FFTColorMod.Configuration.UI
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FFT Color Mod] Error loading preview for {jobName} ({theme}): {ex.Message}");
+                ModLogger.LogError($"loading preview for {jobName} ({theme}): {ex.Message}");
                 ClearPreview(pictureBox);
             }
         }
@@ -55,11 +56,11 @@ namespace FFTColorMod.Configuration.UI
             try
             {
                 string imagePath = GetStoryCharacterPreviewPath(characterName, theme);
-                Console.WriteLine($"[FFT Color Mod] Looking for story character preview at: {imagePath}");
+                ModLogger.LogDebug($"Looking for story character preview at: {imagePath}");
 
                 if (File.Exists(imagePath))
                 {
-                    Console.WriteLine($"[FFT Color Mod] Found preview image: {imagePath}");
+                    ModLogger.Log($"Found preview image: {imagePath}");
                     using (var stream = new FileStream(imagePath, FileMode.Open, FileAccess.Read))
                     using (var img = Image.FromStream(stream))
                     {
@@ -77,13 +78,13 @@ namespace FFTColorMod.Configuration.UI
                 }
                 else
                 {
-                    Console.WriteLine($"[FFT Color Mod] Preview image NOT found at: {imagePath}");
+                    ModLogger.Log($"Preview image NOT found at: {imagePath}");
                     ClearPreview(pictureBox);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FFT Color Mod] Error loading preview for {characterName} ({theme}): {ex.Message}");
+                ModLogger.LogError($"loading preview for {characterName} ({theme}): {ex.Message}");
                 ClearPreview(pictureBox);
             }
         }

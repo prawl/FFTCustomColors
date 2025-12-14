@@ -26,7 +26,7 @@ namespace FFTColorMod.Services
         public void CycleOrlandeauTheme()
         {
             var nextTheme = _storyCharacterManager.CycleOrlandeauTheme();
-            Console.WriteLine($"[FFT Color Mod] Orlandeau theme: {nextTheme}");
+            ModLogger.Log($"Orlandeau theme: {nextTheme}");
             ApplyOrlandeauTheme(nextTheme.ToString());
         }
 
@@ -44,12 +44,12 @@ namespace FFTColorMod.Services
             try
             {
                 var currentTheme = _storyCharacterManager.GetCurrentOrlandeauTheme();
-                Console.WriteLine($"[FFT Color Mod] Applying initial Orlandeau theme: {currentTheme}");
+                ModLogger.Log($"Applying initial Orlandeau theme: {currentTheme}");
                 ApplyOrlandeauTheme(currentTheme.ToString());
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FFT Color Mod] Error applying initial Orlandeau theme: {ex.Message}");
+                ModLogger.LogError($"applying initial Orlandeau theme: {ex.Message}");
             }
         }
 
@@ -59,7 +59,7 @@ namespace FFTColorMod.Services
             var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", themeDir, "battle_oru_spr.bin");
             var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_oru_spr.bin");
 
-            Console.WriteLine($"[FFT Color Mod] Looking for Orlandeau sprite at: {sourceFile}");
+            ModLogger.LogDebug($"Looking for Orlandeau sprite at: {sourceFile}");
             if (File.Exists(sourceFile))
             {
                 // Ensure destination directory exists
@@ -69,7 +69,7 @@ namespace FFTColorMod.Services
                     Directory.CreateDirectory(destDir);
                 }
                 File.Copy(sourceFile, destFile, true);
-                Console.WriteLine($"[FFT Color Mod] Successfully copied Orlandeau theme: {theme}");
+                ModLogger.LogSuccess($"Successfully copied Orlandeau theme: {theme}");
 
                 // Also copy the other Orlandeau variants
                 string[] variants = { "battle_goru_spr.bin", "battle_voru_spr.bin" };
@@ -86,13 +86,13 @@ namespace FFTColorMod.Services
                             Directory.CreateDirectory(variantDestDir);
                         }
                         File.Copy(variantSource, variantDest, true);
-                        Console.WriteLine($"[FFT Color Mod] Applied theme to {variant}");
+                        ModLogger.Log($"Applied theme to {variant}");
                     }
                 }
             }
             else
             {
-                Console.WriteLine($"[FFT Color Mod] Warning: Orlandeau theme file not found at: {sourceFile}");
+                ModLogger.LogWarning($"Orlandeau theme file not found at: {sourceFile}");
             }
         }
 
@@ -101,12 +101,12 @@ namespace FFTColorMod.Services
             try
             {
                 var currentTheme = _storyCharacterManager.GetCurrentAgriasTheme();
-                Console.WriteLine($"[FFT Color Mod] Applying initial Agrias theme: {currentTheme}");
+                ModLogger.Log($"Applying initial Agrias theme: {currentTheme}");
                 ApplyAgriasTheme(currentTheme.ToString());
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FFT Color Mod] Error applying initial Agrias theme: {ex.Message}");
+                ModLogger.LogError($"applying initial Agrias theme: {ex.Message}");
             }
         }
 
@@ -120,7 +120,7 @@ namespace FFTColorMod.Services
                 var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", themeDir, sprite);
                 var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", sprite);
 
-                Console.WriteLine($"[FFT Color Mod] Looking for Agrias sprite at: {sourceFile}");
+                ModLogger.LogDebug($"Looking for Agrias sprite at: {sourceFile}");
                 if (File.Exists(sourceFile))
                 {
                     // Ensure destination directory exists
@@ -130,11 +130,11 @@ namespace FFTColorMod.Services
                         Directory.CreateDirectory(destDir);
                     }
                     File.Copy(sourceFile, destFile, true);
-                    Console.WriteLine($"[FFT Color Mod] Successfully copied Agrias theme for {sprite}: {theme}");
+                    ModLogger.LogSuccess($"Successfully copied Agrias theme for {sprite}: {theme}");
                 }
                 else
                 {
-                    Console.WriteLine($"[FFT Color Mod] Warning: Agrias theme file not found at: {sourceFile}");
+                    ModLogger.LogWarning($"Agrias theme file not found at: {sourceFile}");
                 }
             }
         }

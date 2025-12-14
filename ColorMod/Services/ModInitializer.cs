@@ -39,7 +39,7 @@ namespace FFTColorMod.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[FFT Color Mod] Error during initialization: {ex.Message}");
+                ModLogger.LogError($"during initialization: {ex.Message}");
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
             }
@@ -56,7 +56,7 @@ namespace FFTColorMod.Services
         private Process InitializeGameProcess()
         {
             var process = Process.GetCurrentProcess();
-            Console.WriteLine($"[FFT Color Mod] Game base: 0x{process.MainModule?.BaseAddress.ToInt64():X}");
+            ModLogger.Log($"Game base: 0x{process.MainModule?.BaseAddress.ToInt64():X}");
             return process;
         }
 
@@ -68,11 +68,11 @@ namespace FFTColorMod.Services
         private string DetermineConfigPath()
         {
             var envConfigPath = Environment.GetEnvironmentVariable("FFT_CONFIG_PATH");
-            Console.WriteLine($"[FFT Color Mod] FFT_CONFIG_PATH env var: '{envConfigPath}'");
+            ModLogger.Log($"FFT_CONFIG_PATH env var: '{envConfigPath}'");
 
             if (!string.IsNullOrEmpty(envConfigPath))
             {
-                Console.WriteLine($"[FFT Color Mod] Using config path from env var: {envConfigPath}");
+                ModLogger.Log($"Using config path from env var: {envConfigPath}");
                 return envConfigPath;
             }
 
@@ -89,7 +89,7 @@ namespace FFTColorMod.Services
                     // Fallback if User config doesn't exist
                     if (!File.Exists(configPath))
                     {
-                        Console.WriteLine($"[FFT Color Mod] User config not found at: {configPath}");
+                        ModLogger.Log($"User config not found at: {configPath}");
                         configPath = Path.Combine(_modPath, "Config.json");
                     }
 
@@ -102,15 +102,15 @@ namespace FFTColorMod.Services
 
         private ConfigurationManager? InitializeConfigurationManager(string configPath)
         {
-            Console.WriteLine($"[FFT Color Mod] Final config path: '{configPath}'");
+            ModLogger.Log($"Final config path: '{configPath}'");
 
             if (!string.IsNullOrEmpty(configPath))
             {
-                Console.WriteLine($"[FFT Color Mod] Creating ConfigurationManager with path: {configPath}");
+                ModLogger.Log($"Creating ConfigurationManager with path: {configPath}");
                 return new ConfigurationManager(configPath);
             }
 
-            Console.WriteLine("[FFT Color Mod] WARNING: Config path is null or empty");
+            ModLogger.LogWarning("Config path is null or empty");
             return null;
         }
 
@@ -118,7 +118,7 @@ namespace FFTColorMod.Services
         {
             if (configManager != null)
             {
-                Console.WriteLine("[FFT Color Mod] Creating ConfigBasedSpriteManager...");
+                ModLogger.Log("Creating ConfigBasedSpriteManager...");
                 return new ConfigBasedSpriteManager(_modPath, configManager, _sourcePath);
             }
 
@@ -135,12 +135,12 @@ namespace FFTColorMod.Services
             if (result.ConfigurationManager == null) return;
 
             var loadedConfig = result.ConfigurationManager.LoadConfig();
-            Console.WriteLine($"[FFT Color Mod] Loaded config - Knight_Male: {loadedConfig.Knight_Male}");
+            ModLogger.Log($"Loaded config - Knight_Male: {loadedConfig.Knight_Male}");
 
             LogConfiguredJobColors(loadedConfig);
 
             // Prepare sprites based on configuration
-            Console.WriteLine("[FFT Color Mod] Preparing sprites based on configuration...");
+            ModLogger.Log("Preparing sprites based on configuration...");
             result.DynamicSpriteLoader?.PrepareSpritesForConfig();
             result.ConfigBasedSpriteManager?.ApplyConfiguration();
         }
@@ -155,7 +155,7 @@ namespace FFTColorMod.Services
                     var value = prop.GetValue(config);
                     if (value != null && value.ToString() != "original")
                     {
-                        Console.WriteLine($"[FFT Color Mod] Config: {prop.Name} = {value}");
+                        ModLogger.Log($"Config: {prop.Name} = {value}");
                     }
                 }
             }
