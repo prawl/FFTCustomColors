@@ -82,72 +82,8 @@ namespace FFTColorMod.Configuration
             };
             _saveButton.Click += SaveButton_Click;
 
-            // Add debug button
-            var debugButton = new Button
-            {
-                Text = "Debug Paths",
-                Width = 100,
-                Height = 30
-            };
-            debugButton.Click += (s, e) =>
-            {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string previewDir = Path.Combine(baseDir, "Resources", "Previews");
-                string testFile = Path.Combine(previewDir, "squire_male_original.png");
-
-                string message = $"Base Directory:\n{baseDir}\n\n" +
-                                $"Preview Directory:\n{previewDir}\n\n" +
-                                $"Directory Exists: {Directory.Exists(previewDir)}\n\n" +
-                                $"Test File:\n{testFile}\n\n" +
-                                $"Test File Exists: {File.Exists(testFile)}\n\n";
-
-                // Try to actually load the image
-                if (File.Exists(testFile))
-                {
-                    try
-                    {
-                        using (var testImage = Image.FromFile(testFile))
-                        {
-                            message += $"Successfully loaded image: {testImage.Width}x{testImage.Height}\n";
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        message += $"Error loading image: {ex.Message}\n";
-                    }
-                }
-
-                if (Directory.Exists(previewDir))
-                {
-                    var files = Directory.GetFiles(previewDir, "*.png").Take(5);
-                    message += "\nFirst 5 PNG files found:\n";
-                    foreach (var file in files)
-                    {
-                        message += Path.GetFileName(file) + "\n";
-                    }
-                }
-
-                // Test what the mapping produces
-                message += "\n\nTest name mapping:\n";
-                message += $"'Squire (Male)' -> '{GetMappedFileName("Squire (Male)")}_original.png'\n";
-                message += $"'Knight (Male)' -> '{GetMappedFileName("Knight (Male)")}_original.png'\n";
-
-                MessageBox.Show(message, "Debug Path Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            };
-
-            string GetMappedFileName(string jobName)
-            {
-                return jobName.ToLower()
-                    .Replace(" (male)", "_male")
-                    .Replace(" (female)", "_female")
-                    .Replace(" ", "_")
-                    .Replace("(", "")
-                    .Replace(")", "");
-            }
-
             buttonPanel.Controls.Add(_cancelButton);
             buttonPanel.Controls.Add(_saveButton);
-            buttonPanel.Controls.Add(debugButton);
 
             Controls.Add(buttonPanel);
         }
