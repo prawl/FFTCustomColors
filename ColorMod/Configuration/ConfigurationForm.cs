@@ -213,7 +213,7 @@ namespace FFTColorMod.Configuration
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Dock = DockStyle.Fill,
                 DataSource = Enum.GetValues(typeof(ColorScheme)),
-                MaxDropDownItems = 16  // Show all themes at once
+                MaxDropDownItems = 30  // Show all themes at once
             };
             comboBox.SelectedItem = currentTheme;
 
@@ -262,7 +262,7 @@ namespace FFTColorMod.Configuration
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Dock = DockStyle.Fill,
-                MaxDropDownItems = 16  // Show more items at once
+                MaxDropDownItems = 30  // Show all items at once
             };
 
             // Preview image for story characters
