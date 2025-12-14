@@ -76,14 +76,11 @@ namespace FFTColorMod
             byte[] nameBytes = new byte[32];
             Array.Copy(_pacData, nameOffset, nameBytes, 0, 32);
 
-            // First, let's see if it's just raw bytes (for debugging)
-            // If all bytes are 0xFF or strange patterns, it might be encrypted
-            bool allSamePattern = true;
+            // Check if all bytes have the same pattern (potential encryption)
             for (int i = 1; i < nameBytes.Length; i++)
             {
                 if (nameBytes[i] != nameBytes[0])
                 {
-                    allSamePattern = false;
                     break;
                 }
             }

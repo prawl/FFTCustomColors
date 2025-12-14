@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using System.Linq;
 using System.IO;
 using System.Runtime.InteropServices;
+using FFTColorMod.Configuration.UI;
 
 namespace FFTColorMod.Configuration
 {
@@ -14,18 +15,11 @@ namespace FFTColorMod.Configuration
         private TableLayoutPanel _mainPanel;
         private Button _saveButton;
         private Button _cancelButton;
-        private Panel _titleBar;
-        private Label _titleLabel;
-        private Button _closeButton;
-        private Button _minimizeButton;
+        private CustomTitleBar _titleBar;
+        private PreviewImageManager _previewManager;
 
         private bool _isFullyLoaded = false;
         private bool _isInitializing = true;  // Prevent any changes during initialization
-
-        // For window dragging
-        private bool _isDragging = false;
-        private Point _dragCursorPoint;
-        private Point _dragFormPoint;
 
         public ConfigurationForm(Config config, string configPath = null)
         {
@@ -68,7 +62,12 @@ namespace FFTColorMod.Configuration
             ForeColor = Color.White;  // White text
 
             // Create custom title bar
-            CreateCustomTitleBar();
+            _titleBar = new CustomTitleBar(this, "FFT Color Mod - Configuration");
+            Controls.Add(_titleBar);
+
+            // Initialize preview manager
+            string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
+            _previewManager = new PreviewImageManager(modPath);
 
             // Force image refresh after form loads
             this.Load += (s, e) => RefreshAllPreviews();
@@ -494,58 +493,7 @@ namespace FFTColorMod.Configuration
 
         private void UpdateStoryCharacterPreview(PictureBox pictureBox, string characterName, string theme)
         {
-            string resourceName = $"FFTColorMod.Resources.Previews.{characterName}_{theme.ToLower()}.png";
-
-            Console.WriteLine($"[FFT Color Mod] Looking for embedded story character resource: {resourceName}");
-
-            try
-            {
-                // Load from embedded resources
-                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-                using (var stream = assembly.GetManifestResourceStream(resourceName))
-                {
-                    if (stream != null)
-                    {
-                        // Dispose old image if exists
-                        pictureBox.Image?.Dispose();
-                        // Load new image from stream
-                        pictureBox.Image = Image.FromStream(stream);
-                        Console.WriteLine($"[FFT Color Mod] Successfully loaded embedded story character preview");
-                    }
-                    else
-                    {
-                        // Try with different resource name pattern
-                        var allResources = assembly.GetManifestResourceNames();
-                        var matchingResource = allResources.FirstOrDefault(r =>
-                            r.EndsWith($"{characterName}_{theme.ToLower()}.png", StringComparison.OrdinalIgnoreCase));
-
-                        if (!string.IsNullOrEmpty(matchingResource))
-                        {
-                            using (var altStream = assembly.GetManifestResourceStream(matchingResource))
-                            {
-                                if (altStream != null)
-                                {
-                                    pictureBox.Image?.Dispose();
-                                    pictureBox.Image = Image.FromStream(altStream);
-                                    Console.WriteLine($"[FFT Color Mod] Loaded story character with alt resource name: {matchingResource}");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            pictureBox.Image?.Dispose();
-                            pictureBox.Image = null;
-                            Console.WriteLine($"[FFT Color Mod] Embedded story character resource not found");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[FFT Color Mod] Error loading embedded story character preview: {ex.Message}");
-                pictureBox.Image?.Dispose();
-                pictureBox.Image = null;
-            }
+            _previewManager?.UpdateStoryCharacterPreview(pictureBox, characterName, theme);
         }
 
         private void RefreshAllPreviews()
@@ -619,93 +567,5 @@ namespace FFTColorMod.Configuration
             }
         }
 
-        private void CreateCustomTitleBar()
-        {
-            _titleBar = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 30,
-                BackColor = Color.FromArgb(139, 37, 33),  // RELOADED red color
-                ForeColor = Color.White
-            };
-
-            // Title label
-            _titleLabel = new Label
-            {
-                Text = "FFT Color Mod - Configuration",
-                Location = new Point(10, 5),
-                AutoSize = true,
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 9, FontStyle.Regular)
-            };
-
-            // Close button
-            _closeButton = new Button
-            {
-                Text = "✕",
-                Size = new Size(30, 30),
-                Location = new Point(Width - 30, 0),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(139, 37, 33),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 10, FontStyle.Regular)
-            };
-            _closeButton.FlatAppearance.BorderSize = 0;
-            _closeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(200, 50, 50);
-            _closeButton.Click += (s, e) => Close();
-
-            // Minimize button
-            _minimizeButton = new Button
-            {
-                Text = "—",
-                Size = new Size(30, 30),
-                Location = new Point(Width - 60, 0),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(139, 37, 33),
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 10, FontStyle.Regular)
-            };
-            _minimizeButton.FlatAppearance.BorderSize = 0;
-            _minimizeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(160, 40, 40);
-            _minimizeButton.Click += (s, e) => WindowState = FormWindowState.Minimized;
-
-            // Add controls to title bar
-            _titleBar.Controls.Add(_titleLabel);
-            _titleBar.Controls.Add(_closeButton);
-            _titleBar.Controls.Add(_minimizeButton);
-
-            // Add dragging functionality
-            _titleBar.MouseDown += TitleBar_MouseDown;
-            _titleBar.MouseMove += TitleBar_MouseMove;
-            _titleBar.MouseUp += TitleBar_MouseUp;
-            _titleLabel.MouseDown += TitleBar_MouseDown;
-            _titleLabel.MouseMove += TitleBar_MouseMove;
-            _titleLabel.MouseUp += TitleBar_MouseUp;
-
-            Controls.Add(_titleBar);
-        }
-
-        private void TitleBar_MouseDown(object sender, MouseEventArgs e)
-        {
-            _isDragging = true;
-            _dragCursorPoint = Cursor.Position;
-            _dragFormPoint = this.Location;
-        }
-
-        private void TitleBar_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (_isDragging)
-            {
-                Point diff = Point.Subtract(Cursor.Position, new Size(_dragCursorPoint));
-                this.Location = Point.Add(_dragFormPoint, new Size(diff));
-            }
-        }
-
-        private void TitleBar_MouseUp(object sender, MouseEventArgs e)
-        {
-            _isDragging = false;
-        }
     }
 }

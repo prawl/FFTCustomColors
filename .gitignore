@@ -2,6 +2,8 @@
 bin/
 !bin/FF16Tools.CLI.exe
 obj/
+__pycache__/
+*.pyc
 *.dll
 *.exe
 !bin/FF16Tools.CLI.exe

@@ -43,12 +43,12 @@ if ($LASTEXITCODE -eq 0) {
     New-Item -ItemType Directory -Path $userConfigPath -Force | Out-Null
 
     Write-Host "Copying configuration files to User directory..." -ForegroundColor Cyan
-    if (Test-Path "$scriptDir\Config.json") {
-        Copy-Item "$scriptDir\Config.json" -Destination "$userConfigPath\Config.json" -Force
+    if (Test-Path "$scriptDir\ColorMod\Config.json") {
+        Copy-Item "$scriptDir\ColorMod\Config.json" -Destination "$userConfigPath\Config.json" -Force
         Write-Host "  Copied Config.json to User directory" -ForegroundColor Green
     }
-    if (Test-Path "$scriptDir\ModUserConfig.json") {
-        Copy-Item "$scriptDir\ModUserConfig.json" -Destination "$userConfigPath\ModUserConfig.json" -Force
+    if (Test-Path "$scriptDir\ColorMod\ModUserConfig.json") {
+        Copy-Item "$scriptDir\ColorMod\ModUserConfig.json" -Destination "$userConfigPath\ModUserConfig.json" -Force
         Write-Host "  Copied ModUserConfig.json to User directory" -ForegroundColor Green
     }
 

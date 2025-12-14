@@ -9,122 +9,49 @@ namespace FFTColorMod.Utilities
     public class DynamicSpriteLoader
     {
         private readonly string _modPath;
-        private readonly string _colorSchemesPath;
         private readonly string _dataPath;
         private readonly ConfigurationManager _configManager;
-        private readonly bool _isDevMode;
-
-        // Core dev themes that are always kept for F1/F2 testing
-        // Updated to include ALL generic themes since BuildLinked.ps1 now deploys all themes
-        private static readonly HashSet<string> CoreDevThemes = new HashSet<string>
-        {
-            "sprites_original",
-            "sprites_corpse_brigade",
-            "sprites_lucavi",
-            "sprites_northern_sky",
-            "sprites_amethyst",
-            "sprites_blood_moon",
-            "sprites_celestial",
-            "sprites_crimson_red",
-            "sprites_emerald_dragon",
-            "sprites_frost_knight",
-            "sprites_golden_templar",
-            "sprites_ocean_depths",
-            "sprites_phoenix_flame",
-            "sprites_rose_gold",
-            "sprites_royal_purple",
-            "sprites_silver_knight",
-            "sprites_southern_sky",
-            "sprites_test",
-            "sprites_volcanic"
-        };
 
         public DynamicSpriteLoader(string modPath, ConfigurationManager configManager, bool? isDevMode = null)
         {
             _modPath = modPath;
             _configManager = configManager;
-            _colorSchemesPath = Path.Combine(_modPath, "ColorSchemes");
             _dataPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
-            // Auto-detect dev mode if not specified
-            _isDevMode = isDevMode ?? DetectDevMode();
-
-            if (_isDevMode)
+            // isDevMode parameter kept for backward compatibility but ignored
+            if (isDevMode.HasValue)
             {
-                Console.WriteLine("[DynamicSpriteLoader] Running in DEV MODE - preserving F1/F2 test themes");
+                Console.WriteLine("[DynamicSpriteLoader] Dev mode parameter is deprecated and ignored");
             }
-        }
-
-        /// <summary>
-        /// Detects if we're in dev mode by checking what themes are in the data directory.
-        /// Dev mode = exactly the 5 core dev themes (plus any test/Orlandeau themes).
-        /// </summary>
-        private bool DetectDevMode()
-        {
-            if (!Directory.Exists(_dataPath))
-                return false;
-
-            var dataThemes = Directory.GetDirectories(_dataPath, "sprites_*")
-                .Select(d => Path.GetFileName(d))
-                .Where(d => !d.StartsWith("sprites_test_") && !d.StartsWith("sprites_orlandeau_") && !d.StartsWith("sprites_agrias_")) // Exclude test, Orlandeau, and Agrias themes from check
-                .ToHashSet();
-
-            // Dev mode if we have exactly the core dev themes (or subset)
-            return dataThemes.IsSubsetOf(CoreDevThemes) && dataThemes.Count > 0;
         }
 
         /// <summary>
         /// Gets whether the loader is running in dev mode.
         /// </summary>
+        [Obsolete("Dev mode is no longer used")]
         public bool IsDevMode()
         {
-            return _isDevMode;
+            return false; // Always return false since dev mode is removed
         }
 
         /// <summary>
         /// Prepares sprites in the data directory based on current configuration.
-        /// In dev mode: Does nothing to preserve F1/F2 testing setup.
-        /// In production mode: Copies only the required color schemes from ColorSchemes to data directory.
+        /// All themes are already in the data directory, so just log status and clean up unused ones.
         /// </summary>
         public void PrepareSpritesForConfig()
         {
-            Console.WriteLine($"[DynamicSpriteLoader] PrepareSpritesForConfig called - Dev mode: {_isDevMode}");
+            Console.WriteLine("[DynamicSpriteLoader] PrepareSpritesForConfig called");
 
-            if (_isDevMode)
-            {
-                Console.WriteLine("[DynamicSpriteLoader] Dev mode detected - preserving existing themes for F1/F2 testing");
-                LogSkippedThemes();
-                return;
-            }
-
-            Console.WriteLine("[DynamicSpriteLoader] Production mode - managing sprites");
+            // All themes already exist in the data directory
+            Console.WriteLine("[DynamicSpriteLoader] All themes available in data directory");
             var requiredSchemes = GetRequiredSchemes();
-            Console.WriteLine($"[DynamicSpriteLoader] Required schemes: {string.Join(", ", requiredSchemes)}");
+            Console.WriteLine($"[DynamicSpriteLoader] Required schemes for current config: {string.Join(", ", requiredSchemes)}");
 
-            // Copy required schemes from ColorSchemes to data
-            CopyRequiredSchemes(requiredSchemes);
+            // Verify required schemes exist
+            VerifyRequiredSchemes(requiredSchemes);
 
-            // Remove unused schemes from data (except test themes)
-            Console.WriteLine("[DynamicSpriteLoader] Starting cleanup of data directory...");
+            // Clean up unused schemes (except test themes and story character themes)
             CleanupDataDirectory(requiredSchemes);
-            Console.WriteLine("[DynamicSpriteLoader] Cleanup complete");
-        }
-
-        /// <summary>
-        /// Logs which themes are being skipped in dev mode.
-        /// </summary>
-        private void LogSkippedThemes()
-        {
-            var config = _configManager.LoadConfig();
-            var configuredSchemes = GetRequiredSchemes();
-
-            foreach (var scheme in configuredSchemes)
-            {
-                if (!CoreDevThemes.Contains($"sprites_{scheme}") && scheme != "original")
-                {
-                    Console.WriteLine($"[DynamicSpriteLoader] Skipping non-dev theme: {scheme} (use production mode to load)");
-                }
-            }
         }
 
         /// <summary>
@@ -159,41 +86,22 @@ namespace FFTColorMod.Utilities
         }
 
         /// <summary>
-        /// Copies required color schemes from ColorSchemes to data directory.
+        /// Verifies that required color schemes exist in the data directory.
         /// </summary>
-        private void CopyRequiredSchemes(HashSet<string> requiredSchemes)
+        private void VerifyRequiredSchemes(HashSet<string> requiredSchemes)
         {
             foreach (var scheme in requiredSchemes)
             {
-                var sourceDir = Path.Combine(_colorSchemesPath, $"sprites_{scheme}");
-                var destDir = Path.Combine(_dataPath, $"sprites_{scheme}");
+                var schemeDir = Path.Combine(_dataPath, $"sprites_{scheme}");
 
-                // If source doesn't exist in ColorSchemes, check if it's already in data
-                if (!Directory.Exists(sourceDir))
+                if (Directory.Exists(schemeDir))
                 {
-                    // If it's already in data, keep it
-                    if (Directory.Exists(destDir))
-                    {
-                        Console.WriteLine($"[DynamicSpriteLoader] Keeping existing sprites_{scheme} in data directory");
-                        continue;
-                    }
-
-                    Console.WriteLine($"[DynamicSpriteLoader] Warning: sprites_{scheme} not found in ColorSchemes");
-                    continue;
+                    Console.WriteLine($"[DynamicSpriteLoader] Verified sprites_{scheme} exists in data directory");
                 }
-
-                // If destination already exists and is up to date, skip
-                if (Directory.Exists(destDir))
+                else
                 {
-                    // For now, assume if it exists it's up to date
-                    // Could add timestamp checking here if needed
-                    Console.WriteLine($"[DynamicSpriteLoader] sprites_{scheme} already exists in data directory");
-                    continue;
+                    Console.WriteLine($"[DynamicSpriteLoader] Warning: sprites_{scheme} not found in data directory");
                 }
-
-                // Copy the directory
-                CopyDirectory(sourceDir, destDir);
-                Console.WriteLine($"[DynamicSpriteLoader] Copied sprites_{scheme} to data directory");
             }
         }
 
@@ -226,10 +134,10 @@ namespace FFTColorMod.Utilities
                     continue;
                 }
 
-                // In dev mode, also preserve core dev themes for F1/F2 testing
-                if (_isDevMode && CoreDevThemes.Contains(dirName))
+                // Always preserve Agrias themes (story character themes)
+                if (dirName.StartsWith("sprites_agrias_"))
                 {
-                    Console.WriteLine($"[DynamicSpriteLoader] Preserving core dev theme: {dirName}");
+                    Console.WriteLine($"[DynamicSpriteLoader] Preserving Agrias theme: {dirName}");
                     continue;
                 }
 
@@ -252,26 +160,5 @@ namespace FFTColorMod.Utilities
             }
         }
 
-        /// <summary>
-        /// Recursively copies a directory.
-        /// </summary>
-        private void CopyDirectory(string sourceDir, string destDir)
-        {
-            Directory.CreateDirectory(destDir);
-
-            // Copy all files
-            foreach (var file in Directory.GetFiles(sourceDir))
-            {
-                var destFile = Path.Combine(destDir, Path.GetFileName(file));
-                File.Copy(file, destFile, true);
-            }
-
-            // Copy all subdirectories
-            foreach (var subDir in Directory.GetDirectories(sourceDir))
-            {
-                var destSubDir = Path.Combine(destDir, Path.GetFileName(subDir));
-                CopyDirectory(subDir, destSubDir);
-            }
-        }
     }
 }

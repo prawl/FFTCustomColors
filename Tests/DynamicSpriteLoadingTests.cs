@@ -9,7 +9,6 @@ namespace FFTColorMod.Tests
     public class DynamicSpriteLoadingTests : IDisposable
     {
         private readonly string _testModPath;
-        private readonly string _colorSchemesPath;
         private readonly string _dataPath;
         private readonly ConfigurationManager _configManager;
         private readonly DynamicSpriteLoader _loader;
@@ -17,10 +16,8 @@ namespace FFTColorMod.Tests
         public DynamicSpriteLoadingTests()
         {
             _testModPath = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
-            _colorSchemesPath = Path.Combine(_testModPath, "ColorSchemes");
             _dataPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
-            Directory.CreateDirectory(_colorSchemesPath);
             Directory.CreateDirectory(_dataPath);
 
             var configPath = Path.Combine(_testModPath, "Config.json");
@@ -32,13 +29,13 @@ namespace FFTColorMod.Tests
 
         private void SetupTestSprites()
         {
-            // Create test sprite files in ColorSchemes
+            // Create test sprite files directly in data directory
             var schemes = new[] { "sprites_original", "sprites_corpse_brigade", "sprites_lucavi", "sprites_crimson_red", "sprites_golden_templar" };
             var sprites = new[] { "battle_knight_m_spr.bin", "battle_knight_w_spr.bin", "battle_monk_m_spr.bin" };
 
             foreach (var scheme in schemes)
             {
-                var schemeDir = Path.Combine(_colorSchemesPath, scheme);
+                var schemeDir = Path.Combine(_dataPath, scheme);
                 Directory.CreateDirectory(schemeDir);
 
                 foreach (var sprite in sprites)

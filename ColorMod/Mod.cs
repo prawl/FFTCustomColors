@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using FFTColorMod.Configuration;
+using FFTColorMod.Services;
 using FFTColorMod.Utilities;
 using Reloaded.Mod.Interfaces;
 
@@ -25,11 +26,9 @@ public class Mod : IMod, IConfigurable
     private string _currentColorScheme = "original";
     private ColorSchemeCycler _colorCycler;
     private IInputSimulator? _inputSimulator;
-    private bool _configUIRequested = false;
     private string _modPath;
     private string _sourcePath; // Path to git repo for theme sources
     public event Action? ConfigUIRequested;
-    public event Action? ConfigUIOpened;
 
     // Constructor that accepts ModContext and optional IInputSimulator (for testing)
     public Mod(ModContext context, IInputSimulator? inputSimulator = null)
@@ -84,91 +83,33 @@ public class Mod : IMod, IConfigurable
         var logPath = Path.Combine(Path.GetTempPath(), "FFTColorMod.log");
         File.WriteAllText(logPath, $"[{DateTime.Now}] FFT Color Mod initializing in constructor\n");
 
-        // Initialize process handles
-        _gameProcess = Process.GetCurrentProcess();
-        Console.WriteLine($"[FFT Color Mod] Game base: 0x{_gameProcess.MainModule?.BaseAddress.ToInt64():X}");
-
         // Set source path if not already set (for backward compatibility)
         if (string.IsNullOrEmpty(_sourcePath))
         {
             _sourcePath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
         }
 
-        // Initialize sprite file manager with both deployment and source paths
-        string modPath = Environment.GetEnvironmentVariable("FFT_MOD_PATH") ??
-                        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ??
-                        Environment.CurrentDirectory;
-        _spriteFileManager = new SpriteFileManager(modPath, _sourcePath);
+        // Use ModInitializer to handle complex initialization
+        _modInitializer = new ModInitializer(_modPath, _sourcePath);
+        var initResult = _modInitializer.Initialize();
 
-        // Initialize configuration-based sprite management
-        // IMPORTANT: Use the User directory where Reloaded-II saves configs
-        // Path should be: Reloaded/User/Mods/ptyra.fft.colormod/Config.json
-        string configPath;
-        var envConfigPath = Environment.GetEnvironmentVariable("FFT_CONFIG_PATH");
-        Console.WriteLine($"[FFT Color Mod] FFT_CONFIG_PATH env var: '{envConfigPath}'");
-
-        if (!string.IsNullOrEmpty(envConfigPath))
+        if (!initResult.Success)
         {
-            configPath = envConfigPath;
-            Console.WriteLine($"[FFT Color Mod] Using config path from env var: {configPath}");
-        }
-        else
-        {
-            // Navigate from Mods/FFT_Color_Mod to User/Mods/ptyra.fft.colormod
-            var reloadedRoot = Directory.GetParent(Directory.GetParent(modPath).FullName)?.FullName ?? modPath;
-            configPath = Path.Combine(reloadedRoot, "User", "Mods", "ptyra.fft.colormod", "Config.json");
-
-            // Fallback if User config doesn't exist
-            if (!File.Exists(configPath))
-            {
-                Console.WriteLine($"[FFT Color Mod] User config not found at: {configPath}");
-                configPath = Path.Combine(modPath, "Config.json");
-            }
+            Console.WriteLine($"[FFT Color Mod] Initialization failed: {initResult.ErrorMessage}");
+            return;
         }
 
-        Console.WriteLine($"[FFT Color Mod] Final config path: '{configPath}'");
-        if (!string.IsNullOrEmpty(configPath))
-        {
-            Console.WriteLine($"[FFT Color Mod] Creating ConfigurationManager with path: {configPath}");
-            _configurationManager = new ConfigurationManager(configPath);
-            Console.WriteLine($"[FFT Color Mod] Creating ConfigBasedSpriteManager...");
-            _configBasedSpriteManager = new ConfigBasedSpriteManager(modPath, _configurationManager, _sourcePath);
-            Console.WriteLine($"[FFT Color Mod] Configuration managers created successfully");
-        }
-        else
-        {
-            Console.WriteLine("[FFT Color Mod] WARNING: Config path is null or empty, config-based management disabled");
-        }
+        // Assign initialized components
+        _gameProcess = initResult.GameProcess;
+        _spriteFileManager = initResult.SpriteFileManager;
+        _configurationManager = initResult.ConfigurationManager;
+        _configBasedSpriteManager = initResult.ConfigBasedSpriteManager;
+        _dynamicSpriteLoader = initResult.DynamicSpriteLoader;
+        _gameIntegration = initResult.GameIntegration;
 
-        // Initialize dynamic sprite loader
-        _dynamicSpriteLoader = new DynamicSpriteLoader(modPath, _configurationManager);
-
-        // Load saved configuration and prepare sprites
-        var loadedConfig = _configurationManager.LoadConfig();
-        Console.WriteLine($"[FFT Color Mod] Loaded config - Knight_Male: {loadedConfig.Knight_Male}");
-        Console.WriteLine($"[FFT Color Mod] Current global color scheme: {_currentColorScheme}");
-
-        // Log all configured job colors
-        var properties = typeof(Config).GetProperties()
-            .Where(p => p.PropertyType == typeof(Configuration.ColorScheme));
-        foreach (var prop in properties)
-        {
-            var value = prop.GetValue(loadedConfig);
-            if (value != null && value.ToString() != "original")
-            {
-                Console.WriteLine($"[FFT Color Mod] Config: {prop.Name} = {value}");
-            }
-        }
-
-        // Prepare sprites based on configuration (copy from ColorSchemes to data)
-        Console.WriteLine("[FFT Color Mod] Preparing sprites based on configuration...");
-        _dynamicSpriteLoader.PrepareSpritesForConfig();
-
-        _configBasedSpriteManager.ApplyConfiguration();
-
-        // Apply initial story character themes
-        ApplyInitialOrlandeauTheme();
-        ApplyInitialAgriasTheme();
+        // Initialize theme manager
+        _themeManager = new ThemeManager(_sourcePath, _modPath);
+        _themeManager.ApplyInitialThemes();
 
         // Initialize input simulator if not provided (for testing)
         if (_inputSimulator == null)
@@ -176,15 +117,24 @@ public class Mod : IMod, IConfigurable
             _inputSimulator = new InputSimulator();
         }
 
-        // Start with original color scheme (file swapping persists across restarts)
+        // Initialize hotkey service
+        _hotkeyService = new HotkeyService(
+            SetColorScheme,
+            () => _colorCycler.GetNextScheme(),
+            () => _colorCycler.GetPreviousScheme(),
+            () => _themeManager.CycleOrlandeauTheme(),
+            () => _themeManager.CycleAgriasTheme(),
+            OpenConfigurationUI,
+            _inputSimulator);
+
+        _hotkeyService.ConfigUIRequested += () => ConfigUIRequested?.Invoke();
+
+        // Start with original color scheme
         _currentColorScheme = "original";
         Console.WriteLine($"[FFT Color Mod] Starting with color scheme: {_currentColorScheme}");
 
-        // Initialize game integration
-        _gameIntegration = new GameIntegration();
-
         // Initialize and start hotkey handler
-        _hotkeyHandler = new HotkeyHandler(ProcessHotkeyPress);
+        _hotkeyHandler = new HotkeyHandler(vkCode => _hotkeyService.ProcessHotkeyPress(vkCode));
         _hotkeyHandler.StartMonitoring();
 
         Console.WriteLine("[FFT Color Mod] Loaded successfully!");
@@ -304,224 +254,11 @@ public class Mod : IMod, IConfigurable
     }
 
 
-    private StoryCharacterThemeManager _storyCharacterManager = new StoryCharacterThemeManager();
+    private ThemeManager? _themeManager;
+    private HotkeyService? _hotkeyService;
+    private ModInitializer? _modInitializer;
 
-    private void ApplyInitialOrlandeauTheme()
-    {
-        try
-        {
-            var currentTheme = _storyCharacterManager.GetCurrentOrlandeauTheme();
-            Console.WriteLine($"[FFT Color Mod] Applying initial Orlandeau theme: {currentTheme}");
 
-            // Apply the initial theme by copying the sprite file
-            string orlandeauThemeDir = $"sprites_orlandeau_{currentTheme.ToString().ToLower()}";
-            var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, "battle_oru_spr.bin");
-            var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_oru_spr.bin");
-
-            Console.WriteLine($"[FFT Color Mod] Looking for initial Orlandeau sprite at: {sourceFile}");
-            if (File.Exists(sourceFile))
-            {
-                File.Copy(sourceFile, destFile, true);
-                Console.WriteLine($"[FFT Color Mod] Successfully applied initial Orlandeau theme: {currentTheme}");
-
-                // Also copy the other Orlandeau variants
-                string[] variants = { "battle_goru_spr.bin", "battle_voru_spr.bin" };
-                foreach (var variant in variants)
-                {
-                    var variantSource = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, variant);
-                    var variantDest = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", variant);
-                    if (File.Exists(variantSource))
-                    {
-                        File.Copy(variantSource, variantDest, true);
-                        Console.WriteLine($"[FFT Color Mod] Applied initial theme to {variant}");
-                    }
-                }
-            }
-            else
-            {
-                Console.WriteLine($"[FFT Color Mod] Warning: Initial Orlandeau theme file not found at: {sourceFile}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[FFT Color Mod] Error applying initial Orlandeau theme: {ex.Message}");
-        }
-    }
-
-    private void ApplyInitialAgriasTheme()
-    {
-        try
-        {
-            var currentTheme = _storyCharacterManager.GetCurrentAgriasTheme();
-            Console.WriteLine($"[FFT Color Mod] Applying initial Agrias theme: {currentTheme}");
-
-            // Apply the initial theme by copying both Agrias sprite files
-            string agriasThemeDir = $"sprites_agrias_{currentTheme.ToString().ToLower()}";
-
-            // Agrias has two sprite files
-            string[] agriasSprites = { "battle_aguri_spr.bin", "battle_kanba_spr.bin" };
-
-            foreach (var sprite in agriasSprites)
-            {
-                var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", agriasThemeDir, sprite);
-                var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", sprite);
-
-                Console.WriteLine($"[FFT Color Mod] Looking for initial Agrias sprite at: {sourceFile}");
-                if (File.Exists(sourceFile))
-                {
-                    File.Copy(sourceFile, destFile, true);
-                    Console.WriteLine($"[FFT Color Mod] Successfully applied initial Agrias theme to {sprite}: {currentTheme}");
-                }
-                else
-                {
-                    Console.WriteLine($"[FFT Color Mod] Warning: Initial Agrias theme file not found at: {sourceFile}");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[FFT Color Mod] Error applying initial Agrias theme: {ex.Message}");
-        }
-    }
-
-    public void ProcessHotkeyPress(int vkCode)
-    {
-        const int VK_F1 = 0x70;
-        const int VK_F2 = 0x71;
-        const int VK_F3 = 0x72;
-        const int VK_C = 0x43;
-
-        if (vkCode == VK_F1)
-        {
-            // Cycle to previous color
-            string previousColor = _colorCycler.GetPreviousScheme();
-            Console.WriteLine($"[FFT Color Mod] Cycling backward to {previousColor}");
-            SetColorScheme(previousColor);
-
-            // Simulate menu refresh to update sprites immediately
-            Console.WriteLine($"[FFT Color Mod] InputSimulator is {(_inputSimulator != null ? "available" : "NULL")}");
-            if (_inputSimulator != null)
-            {
-                Console.WriteLine("[FFT Color Mod] Calling SimulateMenuRefresh...");
-                bool result = _inputSimulator.SimulateMenuRefresh();
-                Console.WriteLine($"[FFT Color Mod] SimulateMenuRefresh returned: {result}");
-            }
-            else
-            {
-                Console.WriteLine("[FFT Color Mod] WARNING: InputSimulator is null!");
-            }
-        }
-        else if (vkCode == VK_F2)
-        {
-            // Cycle forward through color schemes
-            string nextColor = _colorCycler.GetNextScheme();
-            Console.WriteLine("================================================");
-            Console.WriteLine("================================================");
-            Console.WriteLine($"    GENERIC THEME CHANGED TO: {nextColor}");
-            Console.WriteLine("================================================");
-            Console.WriteLine("================================================");
-            Console.WriteLine($"[FFT Color Mod] Cycling generic forward to {nextColor}");
-            SetColorScheme(nextColor);
-
-            // Also cycle Orlandeau theme
-            var nextOrlandeauTheme = _storyCharacterManager.CycleOrlandeauTheme();
-            Console.WriteLine($"[FFT Color Mod] Orlandeau theme: {nextOrlandeauTheme}");
-
-            // Apply Orlandeau theme by copying the sprite file FROM GIT REPO to deployment
-            string orlandeauThemeDir = $"sprites_orlandeau_{nextOrlandeauTheme.ToString().ToLower()}";
-            var sourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, "battle_oru_spr.bin");
-            var destFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_oru_spr.bin");
-
-            Console.WriteLine($"[FFT Color Mod] Looking for Orlandeau sprite at: {sourceFile}");
-            if (File.Exists(sourceFile))
-            {
-                File.Copy(sourceFile, destFile, true);
-                Console.WriteLine($"[FFT Color Mod] Successfully copied Orlandeau theme: {nextOrlandeauTheme}");
-
-                // Also copy the other Orlandeau variants
-                string[] variants = { "battle_goru_spr.bin", "battle_voru_spr.bin" };
-                foreach (var variant in variants)
-                {
-                    var variantSource = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", orlandeauThemeDir, variant);
-                    var variantDest = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", variant);
-                    if (File.Exists(variantSource))
-                    {
-                        File.Copy(variantSource, variantDest, true);
-                        Console.WriteLine($"[FFT Color Mod] Applied theme to {variant}");
-                    }
-                }
-            }
-            else
-            {
-                Console.WriteLine($"[FFT Color Mod] ERROR: Orlandeau sprite not found at: {sourceFile}");
-            }
-
-            // Also cycle Agrias theme
-            var nextAgriasTheme = _storyCharacterManager.CycleAgriasTheme();
-            Console.WriteLine("================================================");
-            Console.WriteLine("================================================");
-            Console.WriteLine($"    AGRIAS THEME CHANGED TO: {nextAgriasTheme}");
-            Console.WriteLine("================================================");
-            Console.WriteLine("================================================");
-            Console.WriteLine($"[FFT Color Mod] Cycling Agrias to {nextAgriasTheme}");
-
-            // Apply Agrias theme by copying both sprite files
-            string agriasThemeDir = $"sprites_agrias_{nextAgriasTheme.ToString().ToLower()}";
-            string[] agriasSprites = { "battle_aguri_spr.bin", "battle_kanba_spr.bin" };
-
-            foreach (var sprite in agriasSprites)
-            {
-                var agriasSourceFile = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", agriasThemeDir, sprite);
-                var agriasDestFile = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", sprite);
-
-                Console.WriteLine($"[FFT Color Mod] Looking for Agrias sprite at: {agriasSourceFile}");
-                if (File.Exists(agriasSourceFile))
-                {
-                    File.Copy(agriasSourceFile, agriasDestFile, true);
-                    Console.WriteLine($"[FFT Color Mod] Successfully copied Agrias theme for {sprite}: {nextAgriasTheme}");
-                }
-                else
-                {
-                    Console.WriteLine($"[FFT Color Mod] ERROR: Agrias sprite not found at: {agriasSourceFile}");
-                }
-            }
-
-            // Simulate menu refresh to update sprites immediately
-            Console.WriteLine($"[FFT Color Mod] InputSimulator is {(_inputSimulator != null ? "available" : "NULL")}");
-            if (_inputSimulator != null)
-            {
-                Console.WriteLine("[FFT Color Mod] Calling SimulateMenuRefresh...");
-                bool result = _inputSimulator.SimulateMenuRefresh();
-                Console.WriteLine($"[FFT Color Mod] SimulateMenuRefresh returned: {result}");
-            }
-            else
-            {
-                Console.WriteLine("[FFT Color Mod] WARNING: InputSimulator is null!");
-            }
-        }
-        else if (vkCode == VK_F3)
-        {
-            // Open configuration UI
-            Console.WriteLine("[FFT Color Mod] Opening configuration UI (F3)");
-            OpenConfigurationUI();
-        }
-        else if (vkCode == VK_C)
-        {
-            // Open configuration UI (same as F3)
-            Console.WriteLine("[FFT Color Mod] Opening configuration UI (C)");
-
-            // If there are test event handlers, just invoke them
-            if (ConfigUIRequested != null)
-            {
-                ConfigUIRequested.Invoke();
-            }
-            else
-            {
-                // Otherwise, actually open the UI
-                OpenConfigurationUI();
-            }
-        }
-    }
 
     public string GetCurrentColorScheme()
     {
@@ -645,7 +382,28 @@ public class Mod : IMod, IConfigurable
 
     public bool IsConfigUIRequested()
     {
-        return _configUIRequested;
+        return false; // This method appears to be unused but kept for API compatibility
+    }
+
+    // Public method for backward compatibility with tests
+    public void ProcessHotkeyPress(int vkCode)
+    {
+        // If hotkey service isn't initialized yet (e.g., in tests), initialize it minimally
+        if (_hotkeyService == null)
+        {
+            _hotkeyService = new HotkeyService(
+                SetColorScheme,
+                () => _colorCycler?.GetNextScheme() ?? "original",
+                () => _colorCycler?.GetPreviousScheme() ?? "original",
+                () => _themeManager?.CycleOrlandeauTheme(),
+                () => _themeManager?.CycleAgriasTheme(),
+                OpenConfigurationUI,
+                _inputSimulator);
+
+            _hotkeyService.ConfigUIRequested += () => ConfigUIRequested?.Invoke();
+        }
+
+        _hotkeyService.ProcessHotkeyPress(vkCode);
     }
 
     protected virtual void OpenConfigurationUI()

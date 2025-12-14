@@ -27,73 +27,6 @@ namespace FFTColorMod.Tests
         }
 
         [Fact]
-        public void PrepareSpritesForConfig_Should_Not_Delete_CoreDevThemes_In_DevMode()
-        {
-            // Arrange
-            var coreThemes = new[] {
-                "sprites_corpse_brigade",
-                "sprites_lucavi",
-                "sprites_northern_sky",
-                "sprites_southern_sky"
-            };
-
-            // Create the core theme directories
-            foreach (var theme in coreThemes)
-            {
-                var themeDir = Path.Combine(_testDataPath, theme);
-                Directory.CreateDirectory(themeDir);
-                // Add a dummy file to make it non-empty
-                File.WriteAllText(Path.Combine(themeDir, "test.bin"), "dummy");
-            }
-
-            var loader = new DynamicSpriteLoader(_testModPath, _configManager, isDevMode: true);
-
-            // Act
-            loader.PrepareSpritesForConfig();
-
-            // Assert
-            foreach (var theme in coreThemes)
-            {
-                var themeDir = Path.Combine(_testDataPath, theme);
-                Directory.Exists(themeDir).Should().BeTrue(
-                    $"{theme} should not be deleted in dev mode");
-            }
-        }
-
-        [Fact]
-        public void PrepareSpritesForConfig_Should_Not_Delete_Orlandeau_Themes_In_DevMode()
-        {
-            // Arrange
-            var orlandeauThemes = new[] {
-                "sprites_orlandeau_thunder_god",
-                "sprites_orlandeau_crimson_knight",
-                "sprites_orlandeau_shadow_lord",
-                "sprites_orlandeau_holy_paladin"
-            };
-
-            // Create the Orlandeau theme directories
-            foreach (var theme in orlandeauThemes)
-            {
-                var themeDir = Path.Combine(_testDataPath, theme);
-                Directory.CreateDirectory(themeDir);
-                File.WriteAllText(Path.Combine(themeDir, "battle_oru_spr.bin"), "dummy");
-            }
-
-            var loader = new DynamicSpriteLoader(_testModPath, _configManager, isDevMode: true);
-
-            // Act
-            loader.PrepareSpritesForConfig();
-
-            // Assert
-            foreach (var theme in orlandeauThemes)
-            {
-                var themeDir = Path.Combine(_testDataPath, theme);
-                Directory.Exists(themeDir).Should().BeTrue(
-                    $"{theme} should not be deleted in dev mode");
-            }
-        }
-
-        [Fact]
         public void CleanupDataDirectory_Should_Preserve_Orlandeau_Themes()
         {
             // Arrange
@@ -126,62 +59,119 @@ namespace FFTColorMod.Tests
         }
 
         [Fact]
-        public void GetRequiredSchemes_Should_Include_F2_Cycling_Themes_In_DevMode()
+        public void CleanupDataDirectory_Should_Preserve_Agrias_Themes()
         {
             // Arrange
-            var loader = new DynamicSpriteLoader(_testModPath, _configManager, isDevMode: true);
-
-            // Act - This would need to be made public or tested via PrepareSpritesForConfig
-            // For now, we'll test the behavior indirectly
-            var coreThemes = new[] {
-                "sprites_corpse_brigade",
-                "sprites_lucavi",
-                "sprites_northern_sky",
-                "sprites_southern_sky"
+            var agriasThemes = new[] {
+                "sprites_agrias_holy_knight",
+                "sprites_agrias_crimson_blade"
             };
 
-            foreach (var theme in coreThemes)
+            // Create Agrias theme directories
+            foreach (var theme in agriasThemes)
             {
                 var themeDir = Path.Combine(_testDataPath, theme);
                 Directory.CreateDirectory(themeDir);
+                File.WriteAllText(Path.Combine(themeDir, "battle_aguri_spr.bin"), "dummy");
             }
 
-            loader.PrepareSpritesForConfig();
+            var loader = new DynamicSpriteLoader(_testModPath, _configManager);
+            var requiredSchemes = new HashSet<string> { "corpse_brigade" }; // Doesn't include Agrias
 
-            // Assert
-            foreach (var theme in coreThemes)
+            // Act
+            loader.CleanupDataDirectory(requiredSchemes);
+
+            // Assert - Agrias themes should still exist
+            foreach (var theme in agriasThemes)
             {
-                Directory.Exists(Path.Combine(_testDataPath, theme)).Should().BeTrue();
+                var themeDir = Path.Combine(_testDataPath, theme);
+                Directory.Exists(themeDir).Should().BeTrue(
+                    $"{theme} should be preserved as a story character theme");
             }
         }
 
         [Fact]
-        public void DetectDevMode_Should_Return_True_When_CoreThemesAndOrlandeauThemesPresent()
+        public void CleanupDataDirectory_Should_Preserve_Test_Themes()
         {
             // Arrange
-            // Create core dev themes
-            var coreThemes = new[] { "sprites_corpse_brigade", "sprites_lucavi", "sprites_northern_sky", "sprites_southern_sky" };
-            foreach (var theme in coreThemes)
+            var testThemes = new[] {
+                "sprites_test_custom",
+                "sprites_test_special"
+            };
+
+            // Create test theme directories
+            foreach (var theme in testThemes)
             {
                 var themeDir = Path.Combine(_testDataPath, theme);
                 Directory.CreateDirectory(themeDir);
                 File.WriteAllText(Path.Combine(themeDir, "test.bin"), "dummy");
             }
 
-            // Create Orlandeau themes
-            var orlandeauThemes = new[] { "sprites_orlandeau_thunder_god", "sprites_orlandeau_crimson_knight" };
-            foreach (var theme in orlandeauThemes)
+            var loader = new DynamicSpriteLoader(_testModPath, _configManager);
+            var requiredSchemes = new HashSet<string> { "corpse_brigade" }; // Doesn't include test themes
+
+            // Act
+            loader.CleanupDataDirectory(requiredSchemes);
+
+            // Assert - Test themes should still exist
+            foreach (var theme in testThemes)
+            {
+                var themeDir = Path.Combine(_testDataPath, theme);
+                Directory.Exists(themeDir).Should().BeTrue(
+                    $"{theme} should be preserved as a test theme");
+            }
+        }
+
+        [Fact]
+        public void CleanupDataDirectory_Should_Remove_Unused_Regular_Themes()
+        {
+            // Arrange
+            var regularThemes = new[] {
+                "sprites_lucavi",
+                "sprites_northern_sky",
+                "sprites_southern_sky"
+            };
+
+            // Create regular theme directories
+            foreach (var theme in regularThemes)
             {
                 var themeDir = Path.Combine(_testDataPath, theme);
                 Directory.CreateDirectory(themeDir);
-                File.WriteAllText(Path.Combine(themeDir, "battle_oru_spr.bin"), "dummy");
+                File.WriteAllText(Path.Combine(themeDir, "test.bin"), "dummy");
             }
 
-            // Act - Create loader without forcing dev mode, let it auto-detect
+            // Also create the required theme
+            var requiredThemeDir = Path.Combine(_testDataPath, "sprites_corpse_brigade");
+            Directory.CreateDirectory(requiredThemeDir);
+            File.WriteAllText(Path.Combine(requiredThemeDir, "test.bin"), "dummy");
+
+            var loader = new DynamicSpriteLoader(_testModPath, _configManager);
+            var requiredSchemes = new HashSet<string> { "corpse_brigade" }; // Only corpse_brigade is required
+
+            // Act
+            loader.CleanupDataDirectory(requiredSchemes);
+
+            // Assert - Unused regular themes should be removed
+            foreach (var theme in regularThemes)
+            {
+                var themeDir = Path.Combine(_testDataPath, theme);
+                Directory.Exists(themeDir).Should().BeFalse(
+                    $"{theme} should be removed as it's not required");
+            }
+
+            // But the required theme should still exist
+            Directory.Exists(requiredThemeDir).Should().BeTrue(
+                "sprites_corpse_brigade should be preserved as it's required");
+        }
+
+        [Fact]
+        public void IsDevMode_Should_Always_Return_False()
+        {
+            // Arrange
             var loader = new DynamicSpriteLoader(_testModPath, _configManager);
 
-            // Assert
-            loader.IsDevMode().Should().BeTrue("Dev mode should be detected when core themes are present, even with Orlandeau themes");
+            // Act & Assert
+            loader.IsDevMode().Should().BeFalse("Dev mode has been removed");
         }
 
         public void Dispose()
