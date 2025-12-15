@@ -195,10 +195,14 @@ namespace FFTColorMod.Configuration
                         return "sprites_original";
                     return $"sprites_{_config.Lettie.ToString().ToLower()}";
 
+                case "Gaffgarion":
+                    if (_config.Gaffgarion == GaffgarionColorScheme.original)
+                        return "sprites_original";
+                    return $"sprites_gaffgarion_{_config.Gaffgarion.ToString().ToLower()}";
+
                 // These characters don't have GetDescription extensions yet
                 case "Ovelia":
                 case "Simon":
-                case "Gaffgarion":
                 case "Elmdore":
                 case "Vormav":
                 case "Zalbag":

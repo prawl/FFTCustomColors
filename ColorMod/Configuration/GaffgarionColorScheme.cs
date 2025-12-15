@@ -7,6 +7,9 @@ namespace FFTColorMod.Configuration
     public enum GaffgarionColorScheme
     {
         [Description("Original")]
-        original
+        original,
+
+        [Description("Blacksteel Red")]
+        blacksteel_red
     }
 }

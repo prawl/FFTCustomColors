@@ -140,6 +140,18 @@ namespace FFTColorMod.Utilities
             ApplyStoryCharacterTheme("rafa", "rafa", config.Rafa);
             ApplyStoryCharacterTheme("reis", "reze", config.Reis);
 
+            // New story characters
+            ApplyStoryCharacterTheme("gaffgarion", "baruna", config.Gaffgarion);
+            // TODO: Add these when themes are created:
+            // ApplyStoryCharacterTheme("ovelia", "???", config.Ovelia);
+            // ApplyStoryCharacterTheme("simon", "???", config.Simon);
+            // ApplyStoryCharacterTheme("zalbag", "???", config.Zalbag);
+            // ApplyStoryCharacterTheme("wiegraf", "???", config.Wiegraf);
+            // ApplyStoryCharacterTheme("mustadio", "garu", config.Mustadio);
+            // ApplyStoryCharacterTheme("zalmo", "???", config.Zalmo);
+            // ApplyStoryCharacterTheme("elmdore", "???", config.Elmdore);
+            // ApplyStoryCharacterTheme("vormav", "???", config.Vormav);
+
             // The original three story characters (already handled elsewhere)
             // ApplyStoryCharacterTheme("agrias", "aguri", config.Agrias);
             // ApplyStoryCharacterTheme("orlandeau", "oru", config.Orlandeau);
@@ -157,9 +169,31 @@ namespace FFTColorMod.Utilities
                 return;
             }
 
-            // Story character sprites are stored directly in the unit directory with the theme name
-            // Source file: battle_[spriteName]_[theme]_spr.bin
-            var sourceFile = Path.Combine(_sourceUnitPath, $"battle_{spriteName}_{themeName}_spr.bin");
+            // First try the directory-based structure (e.g., sprites_gaffgarion_blackguard_gold/battle_baruna_spr.bin)
+            var themeDir = $"sprites_{characterName}_{themeName}";
+            var sourceDirPath = Path.Combine(_sourceUnitPath, themeDir, $"battle_{spriteName}_spr.bin");
+
+            // Also check the flat file structure for backward compatibility (e.g., battle_baruna_blackguard_gold_spr.bin)
+            var sourceFlatPath = Path.Combine(_sourceUnitPath, $"battle_{spriteName}_{themeName}_spr.bin");
+
+            string sourceFile;
+            if (File.Exists(sourceDirPath))
+            {
+                sourceFile = sourceDirPath;
+                ModLogger.Log($"Using directory-based theme: {themeDir}");
+            }
+            else if (File.Exists(sourceFlatPath))
+            {
+                sourceFile = sourceFlatPath;
+                ModLogger.Log($"Using flat file theme: battle_{spriteName}_{themeName}_spr.bin");
+            }
+            else
+            {
+                ModLogger.Log($"Warning: Theme file not found for {characterName} - {themeName}");
+                ModLogger.Log($"  Tried: {sourceDirPath}");
+                ModLogger.Log($"  Tried: {sourceFlatPath}");
+                return;
+            }
 
             // Destination file should be the BASE sprite name (no theme appended)
             // This overwrites the original sprite with the themed version
