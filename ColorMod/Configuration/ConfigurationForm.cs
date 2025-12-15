@@ -17,6 +17,7 @@ namespace FFTColorMod.Configuration
         private TableLayoutPanel _mainPanel;
         private Button _saveButton;
         private Button _cancelButton;
+        private Button _resetAllButton;
         private CustomTitleBar _titleBar;
         private PreviewImageManager _previewManager;
 
@@ -141,20 +142,21 @@ namespace FFTColorMod.Configuration
             Controls.Add(contentPanel);
 
             // Add buttons panel with dark theme
-            var buttonPanel = new FlowLayoutPanel
+            var buttonPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                FlowDirection = FlowDirection.RightToLeft,
                 Height = 40,
-                Padding = new Padding(5),
                 BackColor = Color.FromArgb(25, 25, 25)  // Darker panel for buttons
             };
 
+            // Position buttons using absolute positioning
             _cancelButton = new Button
             {
                 Text = "Cancel",
                 Width = 80,
                 Height = 30,
+                Location = new Point(buttonPanel.Width - 95, 5),  // Right side
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 BackColor = Color.FromArgb(50, 50, 50),  // Dark button
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -177,6 +179,8 @@ namespace FFTColorMod.Configuration
                 Text = "Save",
                 Width = 80,
                 Height = 30,
+                Location = new Point(buttonPanel.Width - 180, 5),  // Right side, before Cancel
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 BackColor = Color.FromArgb(150, 30, 30),  // Red accent for save button like RELOADED
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
@@ -194,8 +198,33 @@ namespace FFTColorMod.Configuration
                 _saveButton.FlatAppearance.BorderColor = Color.FromArgb(220, 50, 50);
             };
 
+            // Add Reset All button on the left side
+            _resetAllButton = new Button
+            {
+                Text = "Reset All",
+                Width = 80,
+                Height = 30,
+                Location = new Point(10, 5),  // Left side with padding
+                BackColor = Color.FromArgb(80, 80, 30),  // Yellow accent for reset button
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderColor = Color.FromArgb(150, 150, 50), BorderSize = 1 }
+            };
+            _resetAllButton.Click += ResetAllButton_Click;
+
+            // Add hover effect for reset all button
+            _resetAllButton.MouseEnter += (s, e) => {
+                _resetAllButton.BackColor = Color.FromArgb(100, 100, 40);
+                _resetAllButton.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 60);
+            };
+            _resetAllButton.MouseLeave += (s, e) => {
+                _resetAllButton.BackColor = Color.FromArgb(80, 80, 30);
+                _resetAllButton.FlatAppearance.BorderColor = Color.FromArgb(150, 150, 50);
+            };
+
             buttonPanel.Controls.Add(_cancelButton);
             buttonPanel.Controls.Add(_saveButton);
+            buttonPanel.Controls.Add(_resetAllButton);
 
             Controls.Add(buttonPanel);
         }
@@ -1281,6 +1310,120 @@ namespace FFTColorMod.Configuration
 
             DialogResult = DialogResult.OK;
             Close();
+        }
+
+        private void ResetAllButton_Click(object sender, EventArgs e)
+        {
+            var result = MessageBox.Show("Are you sure you want to reset all themes to 'Original'?",
+                "Reset All Themes", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                _isInitializing = true;  // Prevent events from firing during reset
+
+                // Reset all generic characters
+                _config.Squire_Male = ColorScheme.original;
+                _config.Squire_Female = ColorScheme.original;
+                _config.Chemist_Male = ColorScheme.original;
+                _config.Chemist_Female = ColorScheme.original;
+                _config.Knight_Male = ColorScheme.original;
+                _config.Knight_Female = ColorScheme.original;
+                _config.Archer_Male = ColorScheme.original;
+                _config.Archer_Female = ColorScheme.original;
+                _config.Monk_Male = ColorScheme.original;
+                _config.Monk_Female = ColorScheme.original;
+                _config.WhiteMage_Male = ColorScheme.original;
+                _config.WhiteMage_Female = ColorScheme.original;
+                _config.BlackMage_Male = ColorScheme.original;
+                _config.BlackMage_Female = ColorScheme.original;
+                _config.TimeMage_Male = ColorScheme.original;
+                _config.TimeMage_Female = ColorScheme.original;
+                _config.Summoner_Male = ColorScheme.original;
+                _config.Summoner_Female = ColorScheme.original;
+                _config.Thief_Male = ColorScheme.original;
+                _config.Thief_Female = ColorScheme.original;
+                _config.Mediator_Male = ColorScheme.original;
+                _config.Mediator_Female = ColorScheme.original;
+                _config.Mystic_Male = ColorScheme.original;
+                _config.Mystic_Female = ColorScheme.original;
+                _config.Geomancer_Male = ColorScheme.original;
+                _config.Geomancer_Female = ColorScheme.original;
+                _config.Dragoon_Male = ColorScheme.original;
+                _config.Dragoon_Female = ColorScheme.original;
+                _config.Samurai_Male = ColorScheme.original;
+                _config.Samurai_Female = ColorScheme.original;
+                _config.Ninja_Male = ColorScheme.original;
+                _config.Ninja_Female = ColorScheme.original;
+                _config.Calculator_Male = ColorScheme.original;
+                _config.Calculator_Female = ColorScheme.original;
+                _config.Bard_Male = ColorScheme.original;
+                _config.Dancer_Female = ColorScheme.original;
+                _config.Mime_Male = ColorScheme.original;
+                _config.Mime_Female = ColorScheme.original;
+
+                // Reset all story characters to their original themes
+                _config.Agrias = AgriasColorScheme.original;
+                _config.Alma = AlmaColorScheme.original;
+                _config.Celia = CeliaColorScheme.original;
+                _config.Cloud = CloudColorScheme.original;
+                _config.Delita = DelitaColorScheme.original;
+                _config.Dycedarg = DycedargColorScheme.original;
+                _config.Elmdore = ElmdoreColorScheme.original;
+                _config.Gaffgarion = GaffgarionColorScheme.original;
+                _config.Lettie = LettieColorScheme.original;
+                _config.Malak = MalakColorScheme.original;
+                _config.Mustadio = MustadioColorScheme.original;
+                _config.Orlandeau = OrlandeauColorScheme.original;
+                _config.Ovelia = OveliaColorScheme.original;
+                _config.Rafa = RafaColorScheme.original;
+                _config.Reis = ReisColorScheme.original;
+                _config.Simon = SimonColorScheme.original;
+                _config.Vormav = VormavColorScheme.original;
+                _config.Wiegraf = WiegrafColorScheme.original;
+                _config.Zalbag = ZalbagColorScheme.original;
+                _config.Zalmo = ZalmoColorScheme.original;
+
+                // Update all combo boxes to reflect the reset
+                foreach (Control control in _mainPanel.Controls)
+                {
+                    if (control is ComboBox comboBox)
+                    {
+                        // Check if it's a generic character combo (uses ColorScheme)
+                        if (comboBox.DataSource is ColorScheme[])
+                        {
+                            comboBox.SelectedItem = ColorScheme.original;
+                        }
+                        // Check for story character combos (each has its own enum type)
+                        else if (comboBox.DataSource != null)
+                        {
+                            // Get the type of the enum
+                            var dataSourceType = comboBox.DataSource.GetType();
+                            if (dataSourceType.IsArray)
+                            {
+                                var elementType = dataSourceType.GetElementType();
+                                if (elementType != null && elementType.IsEnum)
+                                {
+                                    // Find the "original" value in the enum
+                                    var values = Enum.GetValues(elementType);
+                                    foreach (var value in values)
+                                    {
+                                        if (value.ToString() == "original")
+                                        {
+                                            comboBox.SelectedItem = value;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                _isInitializing = false;  // Re-enable events
+                RefreshAllPreviews();  // Update preview images
+
+                ModLogger.Log("All themes reset to original");
+            }
         }
 
         private void VerifyAllSelections()
