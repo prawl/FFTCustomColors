@@ -417,8 +417,8 @@ namespace FFTColorMod.Configuration
             AddStoryCharacterRow(row++, "Simon", _config.Simon);
             AddStoryCharacterRow(row++, "Delita", _config.Delita);
             AddStoryCharacterRow(row++, "Alma", _config.Alma);
-            AddStoryCharacterRow(row++, "Wiegraf", _config.Wiegraf);
             AddStoryCharacterRow(row++, "Zalbag", _config.Zalbag);
+            AddStoryCharacterRow(row++, "Wiegraf", _config.Wiegraf);
             AddStoryCharacterRow(row++, "Mustadio", _config.Mustadio);
             AddStoryCharacterRow(row++, "Orlandeau", _config.Orlandeau);
             AddStoryCharacterRow(row++, "Malak", _config.Malak);
