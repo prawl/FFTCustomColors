@@ -554,6 +554,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Agrias = (AgriasColorScheme)comboBox.SelectedItem;
@@ -600,6 +604,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Orlandeau = (OrlandeauColorScheme)comboBox.SelectedItem;
@@ -646,6 +654,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Cloud = (CloudColorScheme)comboBox.SelectedItem;
@@ -692,6 +704,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Mustadio = (MustadioColorScheme)comboBox.SelectedItem;
@@ -738,6 +754,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Reis = (ReisColorScheme)comboBox.SelectedItem;
@@ -784,6 +804,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Malak = (MalakColorScheme)comboBox.SelectedItem;
@@ -830,6 +854,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Rafa = (RafaColorScheme)comboBox.SelectedItem;
@@ -876,6 +904,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Delita = (DelitaColorScheme)comboBox.SelectedItem;
@@ -922,6 +954,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Alma = (AlmaColorScheme)comboBox.SelectedItem;
@@ -968,6 +1004,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Wiegraf = (WiegrafColorScheme)comboBox.SelectedItem;
@@ -1014,6 +1054,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Celia = (CeliaColorScheme)comboBox.SelectedItem;
@@ -1060,6 +1104,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Lettie = (LettieColorScheme)comboBox.SelectedItem;
@@ -1106,6 +1154,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Ovelia = (OveliaColorScheme)comboBox.SelectedItem;
@@ -1137,6 +1189,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Simon = (SimonColorScheme)comboBox.SelectedItem;
@@ -1168,6 +1224,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Gaffgarion = (GaffgarionColorScheme)comboBox.SelectedItem;
@@ -1199,6 +1259,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Dycedarg = (DycedargColorScheme)comboBox.SelectedItem;
@@ -1230,6 +1294,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Elmdore = (ElmdoreColorScheme)comboBox.SelectedItem;
@@ -1261,6 +1329,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Vormav = (VormavColorScheme)comboBox.SelectedItem;
@@ -1292,6 +1364,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Zalbag = (ZalbagColorScheme)comboBox.SelectedItem;
@@ -1323,6 +1399,10 @@ namespace FFTColorMod.Configuration
                 comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
+                    // Check if we're initializing to prevent events during reset
+                    if (_isInitializing)
+                        return;
+
                     if (comboBox.SelectedItem != null)
                     {
                         _config.Zalmo = (ZalmoColorScheme)comboBox.SelectedItem;
@@ -1483,8 +1563,6 @@ namespace FFTColorMod.Configuration
 
             if (result == DialogResult.Yes)
             {
-                _isInitializing = true;  // Prevent events from firing during reset
-
                 // Reset all generic characters
                 _config.Squire_Male = ColorScheme.original;
                 _config.Squire_Female = ColorScheme.original;
@@ -1547,44 +1625,40 @@ namespace FFTColorMod.Configuration
                 _config.Zalbag = ZalbagColorScheme.original;
                 _config.Zalmo = ZalmoColorScheme.original;
 
-                // Update all combo boxes to reflect the reset
-                foreach (Control control in _mainPanel.Controls)
-                {
-                    if (control is ComboBox comboBox)
-                    {
-                        // Check if it's a generic character combo (uses ColorScheme)
-                        if (comboBox.DataSource is ColorScheme[])
-                        {
-                            comboBox.SelectedItem = ColorScheme.original;
-                        }
-                        // Check for story character combos (each has its own enum type)
-                        else if (comboBox.DataSource != null)
-                        {
-                            // Get the type of the enum
-                            var dataSourceType = comboBox.DataSource.GetType();
-                            if (dataSourceType.IsArray)
-                            {
-                                var elementType = dataSourceType.GetElementType();
-                                if (elementType != null && elementType.IsEnum)
-                                {
-                                    // Find the "original" value in the enum
-                                    var values = Enum.GetValues(elementType);
-                                    foreach (var value in values)
-                                    {
-                                        if (value.ToString() == "original")
-                                        {
-                                            comboBox.SelectedItem = value;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                // Suspend layout to prevent flicker during reload
+                this.SuspendLayout();
+                _mainPanel.SuspendLayout();
 
-                _isInitializing = false;  // Re-enable events
-                RefreshAllPreviews();  // Update preview images
+                // Disable the panel to prevent interaction during reload
+                _mainPanel.Visible = false;
+
+                // Show a loading cursor
+                var previousCursor = this.Cursor;
+                this.Cursor = Cursors.WaitCursor;
+
+                // Use Application.DoEvents to keep UI responsive
+                Application.DoEvents();
+
+                try
+                {
+                    // Clear and reload the entire form to ensure proper initialization
+                    _mainPanel.Controls.Clear();
+                    _genericCharacterControls.Clear();
+                    _storyCharacterControls.Clear();
+
+                    // Reload the configuration UI
+                    LoadConfiguration();
+                }
+                finally
+                {
+                    // Make panel visible again
+                    _mainPanel.Visible = true;
+
+                    // Resume layout and restore cursor
+                    _mainPanel.ResumeLayout(true);
+                    this.ResumeLayout(true);
+                    this.Cursor = previousCursor;
+                }
 
                 ModLogger.Log("All themes reset to original");
             }
