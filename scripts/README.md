@@ -410,7 +410,7 @@ Run `BuildLinked.ps1` to deploy the mod with the new characters.
 
 **NEW: With the reflection-based converter system, adding story characters requires only 2 steps!**
 
-### Quick Start (2 Steps Only!)
+### Quick Start - Complete Implementation Steps
 
 #### Step 1: Add Property to Config.cs
 Add a property for your new character to the Config class:
@@ -441,7 +441,46 @@ namespace FFTColorMod.Configuration
 }
 ```
 
-**That's it! The reflection-based system automatically handles everything else:**
+#### Step 3: Update ConfigBasedSpriteManager.cs
+Add the character to the `ApplyStoryCharacterThemes` method:
+```csharp
+private void ApplyStoryCharacterThemes(Config config)
+{
+    // ... existing characters ...
+    ApplyStoryCharacterTheme("yourcharacter", "sprite_name", config.YourCharacter);
+}
+```
+
+#### Step 4: Update StoryCharacterConfig.cs
+Fix the `GetSpritePathFormat` method to return the correct theme directory:
+```csharp
+case "YourCharacter":
+    if (_config.YourCharacter == YourCharacterColorScheme.original)
+        return "sprites_original";
+    return $"sprites_yourcharacter_{_config.YourCharacter.ToString().ToLower()}";
+```
+
+#### Step 5: Create Theme Files
+Place your theme sprite files in the correct directory structure:
+```
+ColorMod/FFTIVC/data/enhanced/fftpack/unit/
+└── sprites_yourcharacter_theme1/
+    └── battle_[sprite_name]_spr.bin
+```
+
+#### Step 6: Create Preview Images
+Create and place preview images with the correct naming:
+```
+ColorMod/Resources/Previews/
+└── yourcharacter_theme1.png  (64x64 preview image)
+```
+
+**Note:** Preview images must match the pattern `[charactername]_[theme].png` where charactername is lowercase.
+
+#### Step 7: Deploy
+Run `BuildLinked.ps1` to deploy the mod with the new character themes.
+
+**The reflection-based system automatically handles:**
 - ✅ JSON serialization/deserialization (both Newtonsoft.Json and System.Text.Json)
 - ✅ Configuration merging
 - ✅ UI integration

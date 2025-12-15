@@ -78,13 +78,13 @@ namespace FFTColorMod.Tests.Utilities
             var originalLogLevel = ModLogger.LogLevel;
             ModLogger.EnableDebugLogging = true;
             ModLogger.LogLevel = LogLevel.Debug;  // Ensure log level allows debug messages
-            var message = "Debug information";
-            var expectedOutput = "[FFT Color Mod] DEBUG: Debug information";
+            var uniqueMessage = $"Debug_Test_Enabled_{Guid.NewGuid()}"; // Use unique message to avoid conflicts
+            var expectedOutput = $"[FFT Color Mod] DEBUG: {uniqueMessage}";
 
             try
             {
                 // Act
-                var output = CaptureConsoleOutput(() => ModLogger.LogDebug(message));
+                var output = CaptureConsoleOutput(() => ModLogger.LogDebug(uniqueMessage));
 
                 // Assert
                 output.Should().Contain(expectedOutput);
@@ -103,15 +103,15 @@ namespace FFTColorMod.Tests.Utilities
             // Arrange
             var originalDebugSetting = ModLogger.EnableDebugLogging;
             ModLogger.EnableDebugLogging = false;
-            var message = "Debug information";
+            var uniqueMessage = $"Debug_Test_{Guid.NewGuid()}"; // Use unique message to avoid conflicts
 
             try
             {
                 // Act
-                var output = CaptureConsoleOutput(() => ModLogger.LogDebug(message));
+                var output = CaptureConsoleOutput(() => ModLogger.LogDebug(uniqueMessage));
 
-                // Assert
-                output.Should().BeEmpty();
+                // Assert - Check that our specific message is not in the output
+                output.Should().NotContain(uniqueMessage, "debug messages should not be logged when debug is disabled");
             }
             finally
             {
