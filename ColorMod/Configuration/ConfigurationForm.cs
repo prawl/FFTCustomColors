@@ -28,6 +28,8 @@ namespace FFTColorMod.Configuration
         private List<Control> _genericCharacterControls = new List<Control>();
         private int _genericCharacterStartRow = -1;
         private int _genericCharacterEndRow = -1;
+        private bool _storyCharactersCollapsed = false;
+        private List<Control> _storyCharacterControls = new List<Control>();
 
         public ConfigurationForm(Config config, string configPath = null, string modPath = null)
         {
@@ -241,7 +243,7 @@ namespace FFTColorMod.Configuration
             // Add header for generic characters (collapsible)
             var genericHeader = new Label
             {
-                Text = _genericCharactersCollapsed ? "▶ Generic Characters ===" : "▼ Generic Characters ===",
+                Text = _genericCharactersCollapsed ? "▶ Generic Characters" : "▼ Generic Characters",
                 Font = new Font("Arial", 10, FontStyle.Bold),
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -258,7 +260,7 @@ namespace FFTColorMod.Configuration
                 this.SuspendLayout();
 
                 _genericCharactersCollapsed = !_genericCharactersCollapsed;
-                genericHeader.Text = _genericCharactersCollapsed ? "▶ Generic Characters ===" : "▼ Generic Characters ===";
+                genericHeader.Text = _genericCharactersCollapsed ? "▶ Generic Characters" : "▼ Generic Characters";
 
                 // Toggle visibility of generic character controls in batch
                 bool newVisibility = !_genericCharactersCollapsed;
@@ -370,17 +372,40 @@ namespace FFTColorMod.Configuration
                 _mainPanel.ResumeLayout(false);  // Don't perform layout yet
             }
 
-            // Add header for story characters
+            // Add header for story characters (collapsible)
             var storyHeader = new Label
             {
-                Text = "=== Story Characters ===",
+                Text = _storyCharactersCollapsed ? "▶ Story Characters" : "▼ Story Characters",
                 Font = new Font("Arial", 10, FontStyle.Bold),
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
                 ForeColor = Color.White,  // White text for headers
                 BackColor = Color.FromArgb(40, 40, 40),  // Slightly lighter dark background
-                Padding = new Padding(0, 5, 0, 5)
+                Padding = new Padding(0, 5, 0, 5),
+                Cursor = Cursors.Hand  // Show hand cursor on hover
             };
+
+            // Make header clickable
+            storyHeader.Click += (sender, e) => {
+                // Suspend layout to prevent multiple redraws
+                _mainPanel.SuspendLayout();
+                this.SuspendLayout();
+
+                _storyCharactersCollapsed = !_storyCharactersCollapsed;
+                storyHeader.Text = _storyCharactersCollapsed ? "▶ Story Characters" : "▼ Story Characters";
+
+                // Toggle visibility of story character controls in batch
+                bool newVisibility = !_storyCharactersCollapsed;
+                foreach (var control in _storyCharacterControls)
+                {
+                    control.Visible = newVisibility;
+                }
+
+                // Resume layout and force single recalculation
+                _mainPanel.ResumeLayout(true);
+                this.ResumeLayout(true);
+            };
+
             _mainPanel.SetColumnSpan(storyHeader, 3);
             _mainPanel.Controls.Add(storyHeader, 0, row++);
 
@@ -499,6 +524,9 @@ namespace FFTColorMod.Configuration
             };
             _mainPanel.Controls.Add(label, 0, row);
 
+            // Track this control as part of story characters
+            _storyCharacterControls.Add(label);
+
             var comboBox = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
@@ -560,6 +588,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Orlandeau")
@@ -602,6 +634,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Cloud")
@@ -644,6 +680,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Mustadio")
@@ -686,6 +726,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Reis")
@@ -728,6 +772,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Malak")
@@ -770,6 +818,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Rapha")
@@ -812,6 +864,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Delita")
@@ -854,6 +910,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Alma")
@@ -896,6 +956,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Wiegraf")
@@ -938,6 +1002,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Celia")
@@ -980,6 +1048,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Lettie")
@@ -1022,6 +1094,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return; // Exit early since we've handled this case
             }
             else if (characterName == "Ovelia")
@@ -1049,6 +1125,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return;
             }
             else if (characterName == "Simon")
@@ -1076,6 +1156,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return;
             }
             else if (characterName == "Gaffgarion")
@@ -1103,6 +1187,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return;
             }
             else if (characterName == "Dycedarg")
@@ -1130,6 +1218,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return;
             }
             else if (characterName == "Elmdore")
@@ -1157,6 +1249,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return;
             }
             else if (characterName == "Vormav")
@@ -1184,6 +1280,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return;
             }
             else if (characterName == "Zalbag")
@@ -1211,6 +1311,10 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return;
             }
             else if (characterName == "Zalmo")
@@ -1238,12 +1342,20 @@ namespace FFTColorMod.Configuration
                         break;
                     }
                 }
+
+                // Track these controls as part of story characters
+                _storyCharacterControls.Add(comboBox);
+                _storyCharacterControls.Add(pictureBox);
                 return;
             }
 
             // Default case - shouldn't normally be reached
             _mainPanel.Controls.Add(comboBox, 1, row);
             _mainPanel.Controls.Add(pictureBox, 2, row);
+
+            // Track these controls as part of story characters (for all cases)
+            _storyCharacterControls.Add(comboBox);
+            _storyCharacterControls.Add(pictureBox);
         }
 
         private void UpdatePreviewImage(PictureBox pictureBox, string jobName, ColorScheme theme)
