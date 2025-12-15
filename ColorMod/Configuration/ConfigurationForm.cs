@@ -1558,8 +1558,8 @@ namespace FFTColorMod.Configuration
 
         private void ResetAllButton_Click(object sender, EventArgs e)
         {
-            var result = MessageBox.Show("Are you sure you want to reset all themes to 'Original'?",
-                "Reset All Themes", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            var result = MessageBox.Show("Are you sure you want to reset all themes to 'Original'?\n\nThis will save immediately.",
+                "Reset All Themes", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
 
             if (result == DialogResult.Yes)
             {
@@ -1661,6 +1661,10 @@ namespace FFTColorMod.Configuration
                 }
 
                 ModLogger.Log("All themes reset to original");
+
+                // Auto-save the reset configuration
+                DialogResult = DialogResult.OK;
+                Close();
             }
         }
 
