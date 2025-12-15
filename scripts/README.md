@@ -406,73 +406,62 @@ Run `BuildLinked.ps1` to deploy the mod with the new characters.
 
 ---
 
-## Adding New Story Character Themes - STREAMLINED PROCESS (2 Steps!)
+## Adding New Story Character Themes - SIMPLIFIED PROCESS (2 Steps!)
 
-**NEW: The registry system has reduced story character theme addition from 8 manual steps to just 2!**
+**NEW: With the reflection-based converter system, adding story characters requires only 2 steps!**
 
 ### Quick Start (2 Steps Only!)
 
-#### Step 1: Create Theme Directories with Sprites
-Create the theme directories with properly colored sprite files:
-```bash
-ColorMod/FFTIVC/data/enhanced/fftpack/unit/
-├── sprites_[character]_[theme1]/
-│   └── battle_[sprite]_spr.bin
-└── sprites_[character]_[theme2]/
-    └── battle_[sprite]_spr.bin
+#### Step 1: Add Property to Config.cs
+Add a property for your new character to the Config class:
+```csharp
+public YourCharacterColorScheme YourCharacter { get; set; } = YourCharacterColorScheme.original;
 ```
 
-#### Step 2: Add Attribute to Character Enum
-Create or update the character's enum with the StoryCharacter attribute:
+#### Step 2: Create the ColorScheme Enum File
+Create a new file `ColorMod/Configuration/[CharacterName]ColorScheme.cs`:
 ```csharp
-using ColorMod.Registry;
 using System.ComponentModel;
+using ColorMod.Registry;
 
-[StoryCharacter(
-    SpriteNames = new[] { "sprite_name" },  // Sprite file identifiers (without battle_ prefix and _spr.bin suffix)
-    DefaultTheme = "default_theme_name"      // Must match one of the enum values
-)]
-public enum NewCharacterColorScheme
+namespace FFTColorMod.Configuration
 {
-    [Description("Original")]
-    original,
+    [StoryCharacter(SpriteNames = new[] { "sprite_name" }, DefaultTheme = "original")]
+    public enum YourCharacterColorScheme
+    {
+        [Description("Original")]
+        original,
 
-    [Description("Theme 1 Display Name")]
-    theme1,
+        [Description("Theme 1 Display Name")]
+        theme1,
 
-    [Description("Theme 2 Display Name")]
-    theme2
+        [Description("Theme 2 Display Name")]
+        theme2
+    }
 }
 ```
 
-**Examples of SpriteNames for existing characters:**
-- Cloud: `new[] { "cloud" }` - Single sprite
-- Agrias: `new[] { "aguri", "kanba" }` - Two sprite variants
-- Orlandeau: `new[] { "oru", "goru", "voru" }` - Three sprite variants
-
-The system automatically maps sprites like `battle_cloud_spr.bin` to the "Cloud" character.
-
-**That's it! The registry system automatically handles everything else:**
+**That's it! The reflection-based system automatically handles everything else:**
+- ✅ JSON serialization/deserialization (both Newtonsoft.Json and System.Text.Json)
+- ✅ Configuration merging
+- ✅ UI integration
+- ✅ Theme persistence
 - ✅ Auto-discovery at startup
 - ✅ Theme management and cycling
 - ✅ Sprite-to-character mapping
 - ✅ F1/F2 key integration
-- ✅ Configuration persistence
-- ✅ File path interception
 
-### What the Registry System Eliminated (Previously 8 Manual Steps)
+### What the Reflection System Eliminated (Previously 6+ Files)
 
-The old manual process required:
-1. ~~Create enum for character themes~~
-2. ~~Create theme directories (still needed)~~
-3. ~~Add enum to Mod.cs~~
-4. ~~Add CurrentTheme tracking~~
-5. ~~Add to CycleTheme methods~~
-6. ~~Add to InterceptFilePath~~
-7. ~~Add to ApplyInitialThemes~~
-8. ~~Update build script~~
+The old manual process required updating:
+1. ~~ConfigJsonConverter.cs (add hardcoded mapping)~~
+2. ~~ConfigSystemTextJsonConverter.cs (add hardcoded mapping)~~
+3. ~~ConfigMerger.cs (add merge logic)~~
+4. ~~StoryCharacterRegistry.cs (add registration)~~
+5. ~~Mod.cs (add initialization)~~
+6. ~~BuildLinked.ps1 (update deployment)~~
 
-Now steps 3-8 are completely automated by the registry system!
+Now ALL of these are handled automatically by reflection!
 
 ---
 
