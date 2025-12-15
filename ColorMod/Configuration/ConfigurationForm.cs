@@ -446,8 +446,8 @@ namespace FFTColorMod.Configuration
             // Handle different enum types for story characters
             if (characterName == "Agrias")
             {
-                comboBox.DataSource = Enum.GetValues(typeof(AgriasColorScheme));
-                comboBox.SelectedItem = (AgriasColorScheme)currentTheme;
+                var values = Enum.GetValues(typeof(AgriasColorScheme));
+                comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
                     if (comboBox.SelectedItem != null)
@@ -458,11 +458,38 @@ namespace FFTColorMod.Configuration
                 };
                 UpdateStoryCharacterPreview(pictureBox, "Agrias", _config.Agrias.ToString());
                 pictureBox.Tag = new { JobName = "Agrias" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
             }
             else if (characterName == "Orlandeau")
             {
-                comboBox.DataSource = Enum.GetValues(typeof(OrlandeauColorScheme));
-                comboBox.SelectedItem = (OrlandeauColorScheme)currentTheme;
+                var values = Enum.GetValues(typeof(OrlandeauColorScheme));
+                comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
                     if (comboBox.SelectedItem != null)
@@ -473,11 +500,38 @@ namespace FFTColorMod.Configuration
                 };
                 UpdateStoryCharacterPreview(pictureBox, "Orlandeau", _config.Orlandeau.ToString());
                 pictureBox.Tag = new { JobName = "Orlandeau" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
             }
             else if (characterName == "Cloud")
             {
-                comboBox.DataSource = Enum.GetValues(typeof(CloudColorScheme));
-                comboBox.SelectedItem = (CloudColorScheme)currentTheme;
+                var values = Enum.GetValues(typeof(CloudColorScheme));
+                comboBox.DataSource = values;
                 comboBox.SelectedIndexChanged += (s, e) =>
                 {
                     if (comboBox.SelectedItem != null)
@@ -488,8 +542,36 @@ namespace FFTColorMod.Configuration
                 };
                 UpdateStoryCharacterPreview(pictureBox, "Cloud", _config.Cloud.ToString());
                 pictureBox.Tag = new { JobName = "Cloud" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
             }
 
+            // Default case - shouldn't normally be reached
             _mainPanel.Controls.Add(comboBox, 1, row);
             _mainPanel.Controls.Add(pictureBox, 2, row);
         }
