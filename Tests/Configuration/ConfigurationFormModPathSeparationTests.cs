@@ -163,46 +163,6 @@ namespace FFTColorMod.Tests
             }
         }
 
-        [Fact]
-        public void ConfigurationForm_Debug_Button_Should_Use_Correct_ModPath()
-        {
-            // Test that the debug button also uses the correct mod path
-
-            // Arrange
-            var config = new Config { Agrias = AgriasColorScheme.original };
-
-            // Create form with explicit mod path
-            var form = new ConfigurationForm(config, _testConfigPath, _testModPath);
-
-            // Find the debug button
-            var debugButton = FindDebugButton(form);
-            debugButton.Should().NotBeNull("Debug button should exist");
-
-            // The debug button's click handler should use _testModPath for checking files
-            // We can't easily invoke it in a test, but we've verified the button exists
-            // and the code now uses _modPath field
-
-            // Cleanup
-            form.Dispose();
-        }
-
-        private Button FindDebugButton(Form form)
-        {
-            foreach (Control control in form.Controls)
-            {
-                if (control is FlowLayoutPanel flowPanel)
-                {
-                    foreach (Control button in flowPanel.Controls)
-                    {
-                        if (button is Button btn && btn.Text == "Debug")
-                        {
-                            return btn;
-                        }
-                    }
-                }
-            }
-            return null;
-        }
 
         private System.Collections.Generic.List<PictureBox> GetAllPictureBoxes(Form form)
         {

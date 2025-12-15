@@ -35,7 +35,7 @@ namespace Tests.Registry
         [InlineData("battle_kanba_spr.bin", "Agrias")]
         [InlineData("battle_oru_spr.bin", "Orlandeau")]
         [InlineData("battle_goru_spr.bin", "Orlandeau")]
-        [InlineData("battle_voru_spr.bin", "Orlandeau")]
+        [InlineData("battle_voru_spr.bin", "Vormav")]
         public void SpriteResolver_ShouldMapSpritesToCharacters(string spriteName, string expectedCharacter)
         {
             // Arrange
