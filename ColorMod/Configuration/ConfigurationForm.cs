@@ -347,6 +347,16 @@ namespace FFTColorMod.Configuration
             AddStoryCharacterRow(row++, "Wiegraf", _config.Wiegraf);
             AddStoryCharacterRow(row++, "Celia", _config.Celia);
             AddStoryCharacterRow(row++, "Lettie", _config.Lettie);
+
+            // Additional Story Characters
+            AddStoryCharacterRow(row++, "Ovelia", _config.Ovelia);
+            AddStoryCharacterRow(row++, "Simon", _config.Simon);
+            AddStoryCharacterRow(row++, "Gaffgarion", _config.Gaffgarion);
+            AddStoryCharacterRow(row++, "Dycedarg", _config.Dycedarg);
+            AddStoryCharacterRow(row++, "Elmdore", _config.Elmdore);
+            AddStoryCharacterRow(row++, "Vormav", _config.Vormav);
+            AddStoryCharacterRow(row++, "Zalbag", _config.Zalbag);
+            AddStoryCharacterRow(row++, "Zalmo", _config.Zalmo);
         }
 
         private void AddJobRow(int row, string jobName, ColorScheme currentTheme, Action<ColorScheme> setter)
@@ -956,6 +966,222 @@ namespace FFTColorMod.Configuration
                     }
                 }
                 return; // Exit early since we've handled this case
+            }
+            else if (characterName == "Ovelia")
+            {
+                var values = Enum.GetValues(typeof(OveliaColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Ovelia = (OveliaColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "ovelia", _config.Ovelia.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "ovelia", _config.Ovelia.ToString());
+                pictureBox.Tag = new { JobName = "ovelia" };
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+                var handle = comboBox.Handle;
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return;
+            }
+            else if (characterName == "Simon")
+            {
+                var values = Enum.GetValues(typeof(SimonColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Simon = (SimonColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "simon", _config.Simon.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "simon", _config.Simon.ToString());
+                pictureBox.Tag = new { JobName = "simon" };
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+                var handle = comboBox.Handle;
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return;
+            }
+            else if (characterName == "Gaffgarion")
+            {
+                var values = Enum.GetValues(typeof(GaffgarionColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Gaffgarion = (GaffgarionColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "gaffgarion", _config.Gaffgarion.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "gaffgarion", _config.Gaffgarion.ToString());
+                pictureBox.Tag = new { JobName = "gaffgarion" };
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+                var handle = comboBox.Handle;
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return;
+            }
+            else if (characterName == "Dycedarg")
+            {
+                var values = Enum.GetValues(typeof(DycedargColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Dycedarg = (DycedargColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "dycedarg", _config.Dycedarg.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "dycedarg", _config.Dycedarg.ToString());
+                pictureBox.Tag = new { JobName = "dycedarg" };
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+                var handle = comboBox.Handle;
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return;
+            }
+            else if (characterName == "Elmdore")
+            {
+                var values = Enum.GetValues(typeof(ElmdoreColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Elmdore = (ElmdoreColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "elmdore", _config.Elmdore.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "elmdore", _config.Elmdore.ToString());
+                pictureBox.Tag = new { JobName = "elmdore" };
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+                var handle = comboBox.Handle;
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return;
+            }
+            else if (characterName == "Vormav")
+            {
+                var values = Enum.GetValues(typeof(VormavColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Vormav = (VormavColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "vormav", _config.Vormav.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "vormav", _config.Vormav.ToString());
+                pictureBox.Tag = new { JobName = "vormav" };
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+                var handle = comboBox.Handle;
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return;
+            }
+            else if (characterName == "Zalbag")
+            {
+                var values = Enum.GetValues(typeof(ZalbagColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Zalbag = (ZalbagColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "zalbag", _config.Zalbag.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "zalbag", _config.Zalbag.ToString());
+                pictureBox.Tag = new { JobName = "zalbag" };
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+                var handle = comboBox.Handle;
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return;
+            }
+            else if (characterName == "Zalmo")
+            {
+                var values = Enum.GetValues(typeof(ZalmoColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Zalmo = (ZalmoColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "zalmo", _config.Zalmo.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "zalmo", _config.Zalmo.ToString());
+                pictureBox.Tag = new { JobName = "zalmo" };
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+                var handle = comboBox.Handle;
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return;
             }
 
             // Default case - shouldn't normally be reached

@@ -438,6 +438,16 @@ namespace FFTColorMod.Configuration
         public CeliaColorScheme Celia { get; set; } = CeliaColorScheme.original;
         public LettieColorScheme Lettie { get; set; } = LettieColorScheme.original;
 
+        // Additional Story Characters
+        public OveliaColorScheme Ovelia { get; set; } = OveliaColorScheme.original;
+        public SimonColorScheme Simon { get; set; } = SimonColorScheme.original;
+        public GaffgarionColorScheme Gaffgarion { get; set; } = GaffgarionColorScheme.original;
+        public DycedargColorScheme Dycedarg { get; set; } = DycedargColorScheme.original;
+        public ElmdoreColorScheme Elmdore { get; set; } = ElmdoreColorScheme.original;
+        public VormavColorScheme Vormav { get; set; } = VormavColorScheme.original;
+        public ZalbagColorScheme Zalbag { get; set; } = ZalbagColorScheme.original;
+        public ZalmoColorScheme Zalmo { get; set; } = ZalmoColorScheme.original;
+
         // Custom JSON serialization to maintain compatibility
         public Dictionary<string, object> ToJsonDictionary()
         {
