@@ -21,7 +21,7 @@ namespace FFTColorMod.Configuration.UI
 
             Height = 30;
             Dock = DockStyle.Top;
-            BackColor = Color.FromArgb(20, 20, 20);  // Darker than main background
+            BackColor = Color.FromArgb(121, 57, 57);  // Reloaded-II red (#793939)
 
             // Title label
             _titleLabel = new Label
