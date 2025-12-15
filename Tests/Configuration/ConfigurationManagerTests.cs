@@ -100,9 +100,9 @@ namespace FFTColorMod.Tests
             var unknownColor = _configManager.GetColorSchemeForSprite("unknown_sprite.bin");
 
             // Assert
-            Assert.Equal("Royal Purple", knightColor);
-            Assert.Equal("Phoenix Flame", dragoonColor);
-            Assert.Equal("Original", unknownColor);
+            Assert.Equal("sprites_royal_purple", knightColor);
+            Assert.Equal("sprites_phoenix_flame", dragoonColor);
+            Assert.Equal("sprites_original", unknownColor);
         }
 
         [Fact]

@@ -122,7 +122,8 @@ namespace FFTColorMod.Configuration
         public string GetColorSchemeForSprite(string spriteName)
         {
             var config = LoadConfig();
-            return config.GetColorForSprite(spriteName);
+            var mapper = new SpriteNameMapper(config);
+            return mapper.GetColorForSprite(spriteName);
         }
 
         public void SetColorSchemeForJob(string jobProperty, string colorScheme)

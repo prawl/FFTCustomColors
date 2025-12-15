@@ -129,7 +129,8 @@ namespace FFTColorMod.Tests
             config.Orlandeau = OrlandeauColorScheme.thunder_god;
 
             // Act
-            var result = config.GetColorForSprite("battle_oru_spr.bin");
+            var mapper = new SpriteNameMapper(config);
+            var result = mapper.GetColorForSprite("battle_oru_spr.bin");
 
             // Assert
             result.Should().Be("sprites_orlandeau_thunder_god",

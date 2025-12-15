@@ -75,10 +75,11 @@ namespace FFTColorMod.Tests
             propertyInfo.SetValue(config, (FFTColorMod.Configuration.ColorScheme)1); // Use ColorScheme enum value
 
             // Act
-            var result = config.GetColorForSprite(spriteName);
+            var mapper = new SpriteNameMapper(config);
+            var result = mapper.GetColorForSprite(spriteName);
 
             // Assert
-            Assert.Equal("Corpse Brigade", result); // FFTColorMod.Configuration.ColorScheme.ToString() returns Description attribute
+            Assert.Equal("sprites_corpse_brigade", result); // SpriteNameMapper returns sprite path format
         }
 
         [Theory]
@@ -91,10 +92,11 @@ namespace FFTColorMod.Tests
             var config = new Config();
 
             // Act
-            var result = config.GetColorForSprite(spriteName);
+            var mapper = new SpriteNameMapper(config);
+            var result = mapper.GetColorForSprite(spriteName);
 
             // Assert
-            Assert.Equal("Original", result); // FFTColorMod.Configuration.ColorScheme.original.ToString() returns "Original"
+            Assert.Equal("sprites_original", result); // SpriteNameMapper returns sprite path format
         }
 
         [Fact]
