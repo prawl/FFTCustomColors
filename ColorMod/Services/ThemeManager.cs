@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using ColorMod.Registry;
 using FFTColorMod.Utilities;
 
 namespace FFTColorMod.Services
@@ -15,6 +16,11 @@ namespace FFTColorMod.Services
             _storyCharacterManager = new StoryCharacterThemeManager();
             _sourcePath = sourcePath;
             _modPath = modPath;
+        }
+
+        public StoryCharacterThemeManager GetStoryCharacterManager()
+        {
+            return _storyCharacterManager;
         }
 
         public void ApplyInitialThemes()

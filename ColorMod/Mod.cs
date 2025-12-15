@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using ColorMod.Registry;
 using FFTColorMod.Configuration;
 using FFTColorMod.Services;
 using FFTColorMod.Utilities;
@@ -48,6 +49,9 @@ public class Mod : IMod, IConfigurable
 
         _colorCycler = new ColorSchemeCycler(spritesPath);
         var schemes = _colorCycler.GetAvailableSchemes();
+
+        // Initialize the registry system
+        InitializeRegistry();
 
         if (schemes.Count > 0)
         {
@@ -485,6 +489,50 @@ public class Mod : IMod, IConfigurable
         // Initialize the configuration manager with custom path for testing
         _configurationManager = new ConfigurationManager(configPath);
         _configBasedSpriteManager = new ConfigBasedSpriteManager(Path.GetDirectoryName(configPath), _configurationManager, _sourcePath);
+
+        // Initialize theme manager if not already initialized
+        if (_themeManager == null)
+        {
+            _themeManager = new ThemeManager(_sourcePath, _modPath);
+        }
+
+        // Load config and initialize story character themes
+        var config = _configurationManager.LoadConfig();
+        InitializeStoryCharacterThemes(config);
+    }
+
+    private void InitializeRegistry()
+    {
+        // Clear and auto-discover all story characters with attributes
+        StoryCharacterRegistry.Clear();
+        StoryCharacterRegistry.AutoDiscoverCharacters();
+
+        ModLogger.Log($"Registry initialized with {StoryCharacterRegistry.GetAllCharacterNames().Count()} story characters");
+    }
+
+    private void InitializeStoryCharacterThemes(Config config)
+    {
+        // Initialize story character themes from config
+        if (_themeManager != null)
+        {
+            var storyManager = _themeManager.GetStoryCharacterManager();
+            if (storyManager != null)
+            {
+                // Use the old implementation methods for now
+                storyManager.SetCurrentCloudTheme(config.Cloud);
+                storyManager.SetCurrentAgriasTheme(config.Agrias);
+                storyManager.SetCurrentOrlandeauTheme(config.Orlandeau);
+
+                ModLogger.Log($"Applying initial Cloud theme: {config.Cloud}");
+                ModLogger.Log($"Applying initial Agrias theme: {config.Agrias}");
+                ModLogger.Log($"Applying initial Orlandeau theme: {config.Orlandeau}");
+            }
+        }
+    }
+
+    public ThemeManager? GetThemeManager()
+    {
+        return _themeManager;
     }
 
     public void ConfigurationUpdated(Config configuration)
@@ -502,6 +550,9 @@ public class Mod : IMod, IConfigurable
 
         // Apply the new configuration
         _configBasedSpriteManager?.ApplyConfiguration();
+
+        // Update story character themes
+        InitializeStoryCharacterThemes(configuration);
 
         ModLogger.Log("Configuration updated from Reloaded-II UI");
         ModLogger.Log($"Squire_Male set to: {configuration.Squire_Male}");

@@ -33,6 +33,9 @@ namespace FFTColorMod.Configuration
             writer.WritePropertyName("Orlandeau");
             writer.WriteValue(value.Orlandeau.ToString());
 
+            writer.WritePropertyName("Cloud");
+            writer.WriteValue(value.Cloud.ToString());
+
             writer.WriteEndObject();
         }
 
@@ -80,6 +83,14 @@ namespace FFTColorMod.Configuration
                     if (Enum.TryParse<OrlandeauColorScheme>(propertyValue, out var orlandeauScheme))
                     {
                         config.Orlandeau = orlandeauScheme;
+                    }
+                }
+                else if (propertyName == "Cloud")
+                {
+                    // Story character - Cloud
+                    if (Enum.TryParse<CloudColorScheme>(propertyValue, out var cloudScheme))
+                    {
+                        config.Cloud = cloudScheme;
                     }
                 }
             }

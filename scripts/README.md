@@ -219,7 +219,77 @@ ColorMod/FFTIVC/data/enhanced/fftpack/unit/
 - Default theme is "sephiroth_black" for Cloud
 - PNG preview workflow enabled rapid theme selection without game testing
 
-## Adding New Story Character Themes - Complete Steps
+## Adding New Story Character Themes - STREAMLINED PROCESS (2 Steps!)
+
+**NEW: The registry system has reduced story character addition from 8 manual steps to just 2!**
+
+### Quick Start (2 Steps Only!)
+
+#### Step 1: Create Theme Directories with Sprites
+Create the theme directories with properly colored sprite files:
+```bash
+ColorMod/FFTIVC/data/enhanced/fftpack/unit/
+├── sprites_[character]_[theme1]/
+│   └── battle_[sprite]_spr.bin
+└── sprites_[character]_[theme2]/
+    └── battle_[sprite]_spr.bin
+```
+
+#### Step 2: Add Attribute to Character Enum
+Create or update the character's enum with the StoryCharacter attribute:
+```csharp
+using ColorMod.Registry;
+using System.ComponentModel;
+
+[StoryCharacter(
+    SpriteNames = new[] { "sprite_name" },  // Sprite file identifiers (without battle_ prefix and _spr.bin suffix)
+    DefaultTheme = "default_theme_name"      // Must match one of the enum values
+)]
+public enum NewCharacterColorScheme
+{
+    [Description("Original")]
+    original,
+
+    [Description("Theme 1 Display Name")]
+    theme1,
+
+    [Description("Theme 2 Display Name")]
+    theme2
+}
+```
+
+**Examples of SpriteNames for existing characters:**
+- Cloud: `new[] { "cloud" }` - Single sprite
+- Agrias: `new[] { "aguri", "kanba" }` - Two sprite variants
+- Orlandeau: `new[] { "oru", "goru", "voru" }` - Three sprite variants
+
+The system automatically maps sprites like `battle_cloud_spr.bin` to the "Cloud" character.
+
+**That's it! The registry system automatically handles everything else:**
+- ✅ Auto-discovery at startup
+- ✅ Theme management and cycling
+- ✅ Sprite-to-character mapping
+- ✅ F1/F2 key integration
+- ✅ Configuration persistence
+- ✅ File path interception
+
+### What the Registry System Eliminated (Previously 8 Manual Steps)
+
+The old manual process required:
+1. ~~Create enum for character themes~~
+2. ~~Create theme directories (still needed)~~
+3. ~~Add enum to Mod.cs~~
+4. ~~Add CurrentTheme tracking~~
+5. ~~Add to CycleTheme methods~~
+6. ~~Add to InterceptFilePath~~
+7. ~~Add to ApplyInitialThemes~~
+8. ~~Update build script~~
+
+Now steps 3-8 are completely automated by the registry system!
+
+---
+
+### Detailed Guide for Manual Customization (Optional)
 
 Follow these steps when adding themes for a new story character (using Beowulf as example):
 
