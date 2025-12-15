@@ -219,9 +219,60 @@ ColorMod/FFTIVC/data/enhanced/fftpack/unit/
 - Default theme is "sephiroth_black" for Cloud
 - PNG preview workflow enabled rapid theme selection without game testing
 
+## Adding Story Characters to Config UI (Display-Only)
+
+**To add story characters that appear in the Config UI with just their original sprite:**
+
+### Step 1: Create the Enum Class
+Create a new file `ColorMod/Configuration/[CharacterName]ColorScheme.cs`:
+
+```csharp
+using System.ComponentModel;
+using ColorMod.Registry;
+
+namespace FFTColorMod.Configuration
+{
+    [StoryCharacter(SpriteNames = new[] { "sprite_name" }, DefaultTheme = "original")]
+    public enum MustadioColorScheme
+    {
+        [Description("Original")]
+        original,
+    }
+}
+```
+
+### Step 2: Add to Config.cs
+Add a property for the new character:
+```csharp
+public MustadioColorScheme Mustadio { get; set; } = MustadioColorScheme.original;
+```
+
+### Step 3: Update ConfigurationForm.cs
+Add the character to the UI in two places:
+
+1. Add to the story character rows:
+```csharp
+AddStoryCharacterRow(row++, "Mustadio", _config.Mustadio);
+```
+
+2. Add handling in AddStoryCharacterRow method (follow the pattern of existing characters)
+
+### Step 4: Generate Preview Image
+Use the sprite conversion script to create a preview:
+```bash
+python scripts/convert_sprite_sw.py ColorMod/FFTIVC/data/enhanced/fftpack/unit/battle_musu_spr.bin ColorMod/Resources/Previews/mustadio_original.png --preview
+```
+
+**IMPORTANT:** You MUST include the `--preview` flag to generate a 64x64 config menu preview. Without this flag, the script will generate a large 256x320 (8x scaled) image that won't display correctly in the Config UI.
+
+### Step 5: Deploy
+Run `BuildLinked.ps1` to deploy the mod with the new characters.
+
+---
+
 ## Adding New Story Character Themes - STREAMLINED PROCESS (2 Steps!)
 
-**NEW: The registry system has reduced story character addition from 8 manual steps to just 2!**
+**NEW: The registry system has reduced story character theme addition from 8 manual steps to just 2!**
 
 ### Quick Start (2 Steps Only!)
 

@@ -428,6 +428,15 @@ namespace FFTColorMod.Configuration
         public AgriasColorScheme Agrias { get; set; } = AgriasColorScheme.original;
         public OrlandeauColorScheme Orlandeau { get; set; } = OrlandeauColorScheme.original;
         public CloudColorScheme Cloud { get; set; } = CloudColorScheme.original;
+        public MustadioColorScheme Mustadio { get; set; } = MustadioColorScheme.original;
+        public ReisColorScheme Reis { get; set; } = ReisColorScheme.original;
+        public MalakColorScheme Malak { get; set; } = MalakColorScheme.original;
+        public RafaColorScheme Rafa { get; set; } = RafaColorScheme.original;
+        public DelitaColorScheme Delita { get; set; } = DelitaColorScheme.original;
+        public AlmaColorScheme Alma { get; set; } = AlmaColorScheme.original;
+        public WiegrafColorScheme Wiegraf { get; set; } = WiegrafColorScheme.original;
+        public CeliaColorScheme Celia { get; set; } = CeliaColorScheme.original;
+        public LettieColorScheme Lettie { get; set; } = LettieColorScheme.original;
 
         // Custom JSON serialization to maintain compatibility
         public Dictionary<string, object> ToJsonDictionary()

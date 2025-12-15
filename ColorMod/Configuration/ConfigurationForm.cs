@@ -338,6 +338,15 @@ namespace FFTColorMod.Configuration
             AddStoryCharacterRow(row++, "Agrias", _config.Agrias);
             AddStoryCharacterRow(row++, "Orlandeau", _config.Orlandeau);
             AddStoryCharacterRow(row++, "Cloud", _config.Cloud);
+            AddStoryCharacterRow(row++, "Mustadio", _config.Mustadio);
+            AddStoryCharacterRow(row++, "Reis", _config.Reis);
+            AddStoryCharacterRow(row++, "Malak", _config.Malak);
+            AddStoryCharacterRow(row++, "Rafa", _config.Rafa);
+            AddStoryCharacterRow(row++, "Delita", _config.Delita);
+            AddStoryCharacterRow(row++, "Alma", _config.Alma);
+            AddStoryCharacterRow(row++, "Wiegraf", _config.Wiegraf);
+            AddStoryCharacterRow(row++, "Celia", _config.Celia);
+            AddStoryCharacterRow(row++, "Lettie", _config.Lettie);
         }
 
         private void AddJobRow(int row, string jobName, ColorScheme currentTheme, Action<ColorScheme> setter)
@@ -542,6 +551,384 @@ namespace FFTColorMod.Configuration
                 };
                 UpdateStoryCharacterPreview(pictureBox, "Cloud", _config.Cloud.ToString());
                 pictureBox.Tag = new { JobName = "Cloud" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
+            }
+            else if (characterName == "Mustadio")
+            {
+                var values = Enum.GetValues(typeof(MustadioColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Mustadio = (MustadioColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "Mustadio", _config.Mustadio.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "Mustadio", _config.Mustadio.ToString());
+                pictureBox.Tag = new { JobName = "Mustadio" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
+            }
+            else if (characterName == "Reis")
+            {
+                var values = Enum.GetValues(typeof(ReisColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Reis = (ReisColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "Reis", _config.Reis.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "Reis", _config.Reis.ToString());
+                pictureBox.Tag = new { JobName = "Reis" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
+            }
+            else if (characterName == "Malak")
+            {
+                var values = Enum.GetValues(typeof(MalakColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Malak = (MalakColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "Malak", _config.Malak.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "Malak", _config.Malak.ToString());
+                pictureBox.Tag = new { JobName = "Malak" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
+            }
+            else if (characterName == "Rafa")
+            {
+                var values = Enum.GetValues(typeof(RafaColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Rafa = (RafaColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "Rafa", _config.Rafa.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "Rafa", _config.Rafa.ToString());
+                pictureBox.Tag = new { JobName = "Rafa" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
+            }
+            else if (characterName == "Delita")
+            {
+                var values = Enum.GetValues(typeof(DelitaColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Delita = (DelitaColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "Delita", _config.Delita.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "Delita", _config.Delita.ToString());
+                pictureBox.Tag = new { JobName = "Delita" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
+            }
+            else if (characterName == "Alma")
+            {
+                var values = Enum.GetValues(typeof(AlmaColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Alma = (AlmaColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "Alma", _config.Alma.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "Alma", _config.Alma.ToString());
+                pictureBox.Tag = new { JobName = "Alma" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
+            }
+            else if (characterName == "Wiegraf")
+            {
+                var values = Enum.GetValues(typeof(WiegrafColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Wiegraf = (WiegrafColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "Wiegraf", _config.Wiegraf.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "Wiegraf", _config.Wiegraf.ToString());
+                pictureBox.Tag = new { JobName = "Wiegraf" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
+            }
+            else if (characterName == "Celia")
+            {
+                var values = Enum.GetValues(typeof(CeliaColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Celia = (CeliaColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "Celia", _config.Celia.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "Celia", _config.Celia.ToString());
+                pictureBox.Tag = new { JobName = "Celia" };
+
+                // Add to panel first to ensure Handle creation
+                _mainPanel.Controls.Add(comboBox, 1, row);
+                _mainPanel.Controls.Add(pictureBox, 2, row);
+
+                // Force Handle creation - This is critical!
+                var handle = comboBox.Handle;
+
+                // Wait for Items to be populated after Handle creation
+                if (comboBox.Items.Count == 0)
+                {
+                    // If Items aren't populated yet, force refresh
+                    comboBox.DataSource = null;
+                    comboBox.DataSource = values;
+                    handle = comboBox.Handle; // Ensure Handle still exists
+                }
+
+                // Now set the selection using index after Handle is created
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (values.GetValue(i).ToString() == currentTheme.ToString())
+                    {
+                        comboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                return; // Exit early since we've handled this case
+            }
+            else if (characterName == "Lettie")
+            {
+                var values = Enum.GetValues(typeof(LettieColorScheme));
+                comboBox.DataSource = values;
+                comboBox.SelectedIndexChanged += (s, e) =>
+                {
+                    if (comboBox.SelectedItem != null)
+                    {
+                        _config.Lettie = (LettieColorScheme)comboBox.SelectedItem;
+                        UpdateStoryCharacterPreview(pictureBox, "Lettie", _config.Lettie.ToString());
+                    }
+                };
+                UpdateStoryCharacterPreview(pictureBox, "Lettie", _config.Lettie.ToString());
+                pictureBox.Tag = new { JobName = "Lettie" };
 
                 // Add to panel first to ensure Handle creation
                 _mainPanel.Controls.Add(comboBox, 1, row);
