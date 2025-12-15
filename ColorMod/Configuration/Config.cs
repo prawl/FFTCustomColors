@@ -442,7 +442,6 @@ namespace FFTColorMod.Configuration
         public OveliaColorScheme Ovelia { get; set; } = OveliaColorScheme.original;
         public SimonColorScheme Simon { get; set; } = SimonColorScheme.original;
         public GaffgarionColorScheme Gaffgarion { get; set; } = GaffgarionColorScheme.original;
-        public DycedargColorScheme Dycedarg { get; set; } = DycedargColorScheme.original;
         public ElmdoreColorScheme Elmdore { get; set; } = ElmdoreColorScheme.original;
         public VormavColorScheme Vormav { get; set; } = VormavColorScheme.original;
         public ZalbagColorScheme Zalbag { get; set; } = ZalbagColorScheme.original;

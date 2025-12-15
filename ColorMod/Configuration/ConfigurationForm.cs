@@ -410,28 +410,26 @@ namespace FFTColorMod.Configuration
             _mainPanel.Controls.Add(storyHeader, 0, row++);
 
             // Story characters use different enums, need special handling
+            // Story characters in roughly the order you meet them in the game
             AddStoryCharacterRow(row++, "Agrias", _config.Agrias);
-            AddStoryCharacterRow(row++, "Orlandeau", _config.Orlandeau);
-            AddStoryCharacterRow(row++, "Cloud", _config.Cloud);
-            AddStoryCharacterRow(row++, "Mustadio", _config.Mustadio);
-            AddStoryCharacterRow(row++, "Reis", _config.Reis);
-            AddStoryCharacterRow(row++, "Malak", _config.Malak);
-            AddStoryCharacterRow(row++, "Rapha", _config.Rafa);
+            AddStoryCharacterRow(row++, "Gaffgarion", _config.Gaffgarion);
+            AddStoryCharacterRow(row++, "Ovelia", _config.Ovelia);
+            AddStoryCharacterRow(row++, "Simon", _config.Simon);
             AddStoryCharacterRow(row++, "Delita", _config.Delita);
             AddStoryCharacterRow(row++, "Alma", _config.Alma);
             AddStoryCharacterRow(row++, "Wiegraf", _config.Wiegraf);
+            AddStoryCharacterRow(row++, "Zalbag", _config.Zalbag);
+            AddStoryCharacterRow(row++, "Mustadio", _config.Mustadio);
+            AddStoryCharacterRow(row++, "Orlandeau", _config.Orlandeau);
+            AddStoryCharacterRow(row++, "Malak", _config.Malak);
+            AddStoryCharacterRow(row++, "Rapha", _config.Rafa);
+            AddStoryCharacterRow(row++, "Zalmo", _config.Zalmo);
+            AddStoryCharacterRow(row++, "Elmdore", _config.Elmdore);
             AddStoryCharacterRow(row++, "Celia", _config.Celia);
             AddStoryCharacterRow(row++, "Lettie", _config.Lettie);
-
-            // Additional Story Characters
-            AddStoryCharacterRow(row++, "Ovelia", _config.Ovelia);
-            AddStoryCharacterRow(row++, "Simon", _config.Simon);
-            AddStoryCharacterRow(row++, "Gaffgarion", _config.Gaffgarion);
-            AddStoryCharacterRow(row++, "Dycedarg", _config.Dycedarg);
-            AddStoryCharacterRow(row++, "Elmdore", _config.Elmdore);
+            AddStoryCharacterRow(row++, "Reis", _config.Reis);
+            AddStoryCharacterRow(row++, "Cloud", _config.Cloud);
             AddStoryCharacterRow(row++, "Vormav", _config.Vormav);
-            AddStoryCharacterRow(row++, "Zalbag", _config.Zalbag);
-            AddStoryCharacterRow(row++, "Zalmo", _config.Zalmo);
         }
 
         private void AddJobRow(int row, string jobName, ColorScheme currentTheme, Action<ColorScheme> setter)
@@ -1253,41 +1251,6 @@ namespace FFTColorMod.Configuration
                 _storyCharacterControls.Add(pictureBox);
                 return;
             }
-            else if (characterName == "Dycedarg")
-            {
-                var values = Enum.GetValues(typeof(DycedargColorScheme));
-                comboBox.DataSource = values;
-                comboBox.SelectedIndexChanged += (s, e) =>
-                {
-                    // Check if we're initializing to prevent events during reset
-                    if (_isInitializing)
-                        return;
-
-                    if (comboBox.SelectedItem != null)
-                    {
-                        _config.Dycedarg = (DycedargColorScheme)comboBox.SelectedItem;
-                        UpdateStoryCharacterPreview(pictureBox, "dycedarg", _config.Dycedarg.ToString());
-                    }
-                };
-                UpdateStoryCharacterPreview(pictureBox, "dycedarg", _config.Dycedarg.ToString());
-                pictureBox.Tag = new { JobName = "dycedarg" };
-                _mainPanel.Controls.Add(comboBox, 1, row);
-                _mainPanel.Controls.Add(pictureBox, 2, row);
-                var handle = comboBox.Handle;
-                for (int i = 0; i < values.Length; i++)
-                {
-                    if (values.GetValue(i).ToString() == currentTheme.ToString())
-                    {
-                        comboBox.SelectedIndex = i;
-                        break;
-                    }
-                }
-
-                // Track these controls as part of story characters
-                _storyCharacterControls.Add(comboBox);
-                _storyCharacterControls.Add(pictureBox);
-                return;
-            }
             else if (characterName == "Elmdore")
             {
                 var values = Enum.GetValues(typeof(ElmdoreColorScheme));
@@ -1609,7 +1572,6 @@ namespace FFTColorMod.Configuration
                 _config.Celia = CeliaColorScheme.original;
                 _config.Cloud = CloudColorScheme.original;
                 _config.Delita = DelitaColorScheme.original;
-                _config.Dycedarg = DycedargColorScheme.original;
                 _config.Elmdore = ElmdoreColorScheme.original;
                 _config.Gaffgarion = GaffgarionColorScheme.original;
                 _config.Lettie = LettieColorScheme.original;
