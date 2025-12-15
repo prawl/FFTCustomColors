@@ -124,9 +124,23 @@ For testing with F1/F2 hotkeys, use development mode:
 - All 20 themes available through config
 
 ### Build & Deploy
+
+For development builds:
 ```powershell
 # Builds and deploys directly to Reloaded-II mods folder
-./BuildLinked.ps1
+powershell.exe -ExecutionPolicy Bypass -File ./BuildLinked.ps1
+```
+
+For production builds with all themes:
+```powershell
+# Production build with all themes included
+powershell.exe -ExecutionPolicy Bypass -File ./BuildLinked.Production.ps1
+```
+
+For creating a release package:
+```powershell
+# Creates distributable package in Publish/ToUpload/Generic/
+powershell.exe -ExecutionPolicy Bypass -File ./Publish.ps1
 ```
 
 ### Run Tests
