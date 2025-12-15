@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Linq;
@@ -23,6 +24,10 @@ namespace FFTColorMod.Configuration
 
         private bool _isFullyLoaded = false;
         private bool _isInitializing = true;  // Prevent any changes during initialization
+        private bool _genericCharactersCollapsed = false;
+        private List<Control> _genericCharacterControls = new List<Control>();
+        private int _genericCharacterStartRow = -1;
+        private int _genericCharacterEndRow = -1;
 
         public ConfigurationForm(Config config, string configPath = null, string modPath = null)
         {
@@ -233,19 +238,45 @@ namespace FFTColorMod.Configuration
         {
             int row = 1;
 
-            // Add header for generic characters
+            // Add header for generic characters (collapsible)
             var genericHeader = new Label
             {
-                Text = "=== Generic Characters ===",
+                Text = _genericCharactersCollapsed ? "▶ Generic Characters ===" : "▼ Generic Characters ===",
                 Font = new Font("Arial", 10, FontStyle.Bold),
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
                 ForeColor = Color.White,  // White text for headers
                 BackColor = Color.FromArgb(40, 40, 40),  // Slightly lighter dark background
-                Padding = new Padding(0, 5, 0, 5)
+                Padding = new Padding(0, 5, 0, 5),
+                Cursor = Cursors.Hand  // Show hand cursor on hover
             };
+
+            // Make header clickable
+            genericHeader.Click += (sender, e) => {
+                // Suspend layout to prevent multiple redraws
+                _mainPanel.SuspendLayout();
+                this.SuspendLayout();
+
+                _genericCharactersCollapsed = !_genericCharactersCollapsed;
+                genericHeader.Text = _genericCharactersCollapsed ? "▶ Generic Characters ===" : "▼ Generic Characters ===";
+
+                // Toggle visibility of generic character controls in batch
+                bool newVisibility = !_genericCharactersCollapsed;
+                foreach (var control in _genericCharacterControls)
+                {
+                    control.Visible = newVisibility;
+                }
+
+                // Resume layout and force single recalculation
+                _mainPanel.ResumeLayout(true);
+                this.ResumeLayout(true);
+            };
+
             _mainPanel.SetColumnSpan(genericHeader, 3);
             _mainPanel.Controls.Add(genericHeader, 0, row++);
+
+            // Store the starting row for generic characters
+            _genericCharacterStartRow = row;
 
             // Squires
             AddJobRow(row++, "Squire (Male)", _config.Squire_Male, v => _config.Squire_Male = v);
@@ -325,6 +356,20 @@ namespace FFTColorMod.Configuration
             AddJobRow(row++, "Mime (Male)", _config.Mime_Male, v => _config.Mime_Male = v);
             AddJobRow(row++, "Mime (Female)", _config.Mime_Female, v => _config.Mime_Female = v);
 
+            // Mark the end of generic characters section
+            _genericCharacterEndRow = row - 1;
+
+            // Apply initial collapsed state if needed (batch operation)
+            if (_genericCharactersCollapsed)
+            {
+                _mainPanel.SuspendLayout();
+                foreach (var control in _genericCharacterControls)
+                {
+                    control.Visible = false;
+                }
+                _mainPanel.ResumeLayout(false);  // Don't perform layout yet
+            }
+
             // Add header for story characters
             var storyHeader = new Label
             {
@@ -379,6 +424,9 @@ namespace FFTColorMod.Configuration
             };
             _mainPanel.Controls.Add(label, 0, row);
 
+            // Track this control as part of generic characters
+            _genericCharacterControls.Add(label);
+
             var comboBox = new ComboBox
             {
                 DropDownStyle = ComboBoxStyle.DropDownList,
@@ -411,6 +459,10 @@ namespace FFTColorMod.Configuration
             // Add controls to panel BEFORE setting up event handler
             _mainPanel.Controls.Add(comboBox, 1, row);
             _mainPanel.Controls.Add(pictureBox, 2, row);
+
+            // Track these controls as part of generic characters
+            _genericCharacterControls.Add(comboBox);
+            _genericCharacterControls.Add(pictureBox);
 
             // Store the combo box reference for later verification
             comboBox.Tag = new { JobName = jobName, ExpectedValue = currentTheme, Setter = setter };
