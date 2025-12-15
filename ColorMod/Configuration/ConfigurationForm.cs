@@ -194,32 +194,8 @@ namespace FFTColorMod.Configuration
                 _saveButton.FlatAppearance.BorderColor = Color.FromArgb(220, 50, 50);
             };
 
-            // Add Debug button
-            var debugButton = new Button
-            {
-                Text = "Debug",
-                Width = 80,
-                Height = 30,
-                BackColor = Color.FromArgb(50, 50, 100),  // Blue accent for debug button
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                FlatAppearance = { BorderColor = Color.FromArgb(100, 100, 200), BorderSize = 1 }
-            };
-            debugButton.Click += DebugButton_Click;
-
-            // Add hover effect for debug button
-            debugButton.MouseEnter += (s, e) => {
-                debugButton.BackColor = Color.FromArgb(70, 70, 120);
-                debugButton.FlatAppearance.BorderColor = Color.FromArgb(150, 150, 250);
-            };
-            debugButton.MouseLeave += (s, e) => {
-                debugButton.BackColor = Color.FromArgb(50, 50, 100);
-                debugButton.FlatAppearance.BorderColor = Color.FromArgb(100, 100, 200);
-            };
-
             buttonPanel.Controls.Add(_cancelButton);
             buttonPanel.Controls.Add(_saveButton);
-            buttonPanel.Controls.Add(debugButton);
 
             Controls.Add(buttonPanel);
         }
@@ -1297,77 +1273,6 @@ namespace FFTColorMod.Configuration
             }
         }
 
-        private void DebugButton_Click(object sender, EventArgs e)
-        {
-            // Test preview loading for Agrias and Orlandeau
-            // Use the same path logic as in InitializeForm
-            string modPath;
-            if (!string.IsNullOrEmpty(_modPath))
-            {
-                modPath = _modPath;
-            }
-            else if (!string.IsNullOrEmpty(_configPath))
-            {
-                var configDir = Path.GetDirectoryName(_configPath);
-                modPath = Path.GetDirectoryName(configDir) ?? Environment.CurrentDirectory;
-            }
-            else
-            {
-                modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
-            }
-            string previewsPath = Path.Combine(modPath, "Resources", "Previews");
-
-            var debugInfo = new System.Text.StringBuilder();
-            debugInfo.AppendLine("=== FFT Color Mod Debug Info ===\n");
-            debugInfo.AppendLine($"Mod Path: {modPath}");
-            debugInfo.AppendLine($"Previews Path: {previewsPath}");
-            debugInfo.AppendLine($"Previews Directory Exists: {Directory.Exists(previewsPath)}\n");
-
-            // Check for Agrias images
-            debugInfo.AppendLine("Agrias Preview Files:");
-            string agriasOriginal = Path.Combine(previewsPath, "agrias_original.png");
-            string agriasAshDark = Path.Combine(previewsPath, "agrias_ash_dark.png");
-            debugInfo.AppendLine($"  agrias_original.png: {(File.Exists(agriasOriginal) ? "EXISTS" : "NOT FOUND")} - {agriasOriginal}");
-            debugInfo.AppendLine($"  agrias_ash_dark.png: {(File.Exists(agriasAshDark) ? "EXISTS" : "NOT FOUND")} - {agriasAshDark}");
-
-            // Check for Orlandeau images
-            debugInfo.AppendLine("\nOrlandeau Preview Files:");
-            string orlandeauOriginal = Path.Combine(previewsPath, "orlandeau_original.png");
-            string orlandeauThunderGod = Path.Combine(previewsPath, "orlandeau_thunder_god.png");
-            debugInfo.AppendLine($"  orlandeau_original.png: {(File.Exists(orlandeauOriginal) ? "EXISTS" : "NOT FOUND")} - {orlandeauOriginal}");
-            debugInfo.AppendLine($"  orlandeau_thunder_god.png: {(File.Exists(orlandeauThunderGod) ? "EXISTS" : "NOT FOUND")} - {orlandeauThunderGod}");
-
-            // Test PreviewImageManager with the corrected mod path
-            debugInfo.AppendLine("\nTesting PreviewImageManager:");
-            var testManager = new PreviewImageManager(modPath);
-            var testPictureBox = new PictureBox();
-
-            // Test Agrias
-            testManager.UpdateStoryCharacterPreview(testPictureBox, "Agrias", "original");
-            debugInfo.AppendLine($"  Agrias original loaded: {(testPictureBox.Image != null ? "SUCCESS" : "FAILED")}");
-            testPictureBox.Image?.Dispose();
-            testPictureBox.Image = null;
-
-            testManager.UpdateStoryCharacterPreview(testPictureBox, "Agrias", "ash_dark");
-            debugInfo.AppendLine($"  Agrias ash_dark loaded: {(testPictureBox.Image != null ? "SUCCESS" : "FAILED")}");
-            testPictureBox.Image?.Dispose();
-            testPictureBox.Image = null;
-
-            // Test Orlandeau
-            testManager.UpdateStoryCharacterPreview(testPictureBox, "Orlandeau", "original");
-            debugInfo.AppendLine($"  Orlandeau original loaded: {(testPictureBox.Image != null ? "SUCCESS" : "FAILED")}");
-            testPictureBox.Image?.Dispose();
-            testPictureBox.Image = null;
-
-            testManager.UpdateStoryCharacterPreview(testPictureBox, "Orlandeau", "thunder_god");
-            debugInfo.AppendLine($"  Orlandeau thunder_god loaded: {(testPictureBox.Image != null ? "SUCCESS" : "FAILED")}");
-            testPictureBox.Image?.Dispose();
-
-            testPictureBox.Dispose();
-
-            // Show debug info in a message box
-            MessageBox.Show(debugInfo.ToString(), "Debug Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
