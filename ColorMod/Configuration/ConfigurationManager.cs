@@ -32,7 +32,7 @@ namespace FFTColorMod.Configuration
             _configPath = configPath;
         }
 
-        public Config LoadConfig()
+        public virtual Config LoadConfig()
         {
             // If we already have the lock (recursive call), use cache directly
             if (Monitor.IsEntered(_lockObject) && _cachedConfig != null)

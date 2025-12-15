@@ -518,14 +518,35 @@ public class Mod : IMod, IConfigurable
             var storyManager = _themeManager.GetStoryCharacterManager();
             if (storyManager != null)
             {
-                // Use the old implementation methods for now
+                // Original story characters
                 storyManager.SetCurrentCloudTheme(config.Cloud);
                 storyManager.SetCurrentAgriasTheme(config.Agrias);
                 storyManager.SetCurrentOrlandeauTheme(config.Orlandeau);
 
+                // New story characters
+                storyManager.SetCurrentMustadioTheme(config.Mustadio);
+                storyManager.SetCurrentReisTheme(config.Reis);
+                storyManager.SetCurrentMalakTheme(config.Malak);
+                storyManager.SetCurrentRafaTheme(config.Rafa);
+                storyManager.SetCurrentDelitaTheme(config.Delita);
+                storyManager.SetCurrentAlmaTheme(config.Alma);
+                storyManager.SetCurrentWiegrafTheme(config.Wiegraf);
+                storyManager.SetCurrentCeliaTheme(config.Celia);
+                storyManager.SetCurrentLettieTheme(config.Lettie);
+
+                // Log all themes for debugging
                 ModLogger.Log($"Applying initial Cloud theme: {config.Cloud}");
                 ModLogger.Log($"Applying initial Agrias theme: {config.Agrias}");
                 ModLogger.Log($"Applying initial Orlandeau theme: {config.Orlandeau}");
+                ModLogger.Log($"Applying initial Mustadio theme: {config.Mustadio}");
+                ModLogger.Log($"Applying initial Reis theme: {config.Reis}");
+                ModLogger.Log($"Applying initial Malak theme: {config.Malak}");
+                ModLogger.Log($"Applying initial Rafa theme: {config.Rafa}");
+                ModLogger.Log($"Applying initial Delita theme: {config.Delita}");
+                ModLogger.Log($"Applying initial Alma theme: {config.Alma}");
+                ModLogger.Log($"Applying initial Wiegraf theme: {config.Wiegraf}");
+                ModLogger.Log($"Applying initial Celia theme: {config.Celia}");
+                ModLogger.Log($"Applying initial Lettie theme: {config.Lettie}");
             }
         }
     }

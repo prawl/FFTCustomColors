@@ -127,24 +127,26 @@ namespace FFTColorMod.Utilities
                     continue;
                 }
 
-                // Always preserve Orlandeau themes (story character themes)
-                if (dirName.StartsWith("sprites_orlandeau_"))
+                // Always preserve story character themes
+                var storyCharacters = new[] {
+                    "orlandeau", "agrias", "cloud",
+                    "mustadio", "reis", "malak", "rafa",
+                    "delita", "alma", "wiegraf", "celia", "lettie"
+                };
+
+                bool isStoryCharacterTheme = false;
+                foreach (var character in storyCharacters)
                 {
-                    ModLogger.Log($"DynamicSpriteLoader: Preserving Orlandeau theme: {dirName}");
-                    continue;
+                    if (dirName.StartsWith($"sprites_{character}_"))
+                    {
+                        ModLogger.Log($"DynamicSpriteLoader: Preserving {character} theme: {dirName}");
+                        isStoryCharacterTheme = true;
+                        break;
+                    }
                 }
 
-                // Always preserve Agrias themes (story character themes)
-                if (dirName.StartsWith("sprites_agrias_"))
+                if (isStoryCharacterTheme)
                 {
-                    ModLogger.Log($"DynamicSpriteLoader: Preserving Agrias theme: {dirName}");
-                    continue;
-                }
-
-                // Always preserve Cloud themes (story character themes)
-                if (dirName.StartsWith("sprites_cloud_"))
-                {
-                    ModLogger.Log($"DynamicSpriteLoader: Preserving Cloud theme: {dirName}");
                     continue;
                 }
 

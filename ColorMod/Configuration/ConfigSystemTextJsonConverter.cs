@@ -73,6 +73,86 @@ namespace FFTColorMod.Configuration
                         config.Orlandeau = orlandeauScheme;
                     }
                 }
+                else if (propertyName == "Cloud")
+                {
+                    // Story character - Cloud
+                    if (Enum.TryParse<CloudColorScheme>(propertyValue, out var cloudScheme))
+                    {
+                        config.Cloud = cloudScheme;
+                    }
+                }
+                else if (propertyName == "Mustadio")
+                {
+                    // Story character - Mustadio
+                    if (Enum.TryParse<MustadioColorScheme>(propertyValue, out var mustadioScheme))
+                    {
+                        config.Mustadio = mustadioScheme;
+                    }
+                }
+                else if (propertyName == "Reis")
+                {
+                    // Story character - Reis
+                    if (Enum.TryParse<ReisColorScheme>(propertyValue, out var reisScheme))
+                    {
+                        config.Reis = reisScheme;
+                    }
+                }
+                else if (propertyName == "Malak")
+                {
+                    // Story character - Malak
+                    if (Enum.TryParse<MalakColorScheme>(propertyValue, out var malakScheme))
+                    {
+                        config.Malak = malakScheme;
+                    }
+                }
+                else if (propertyName == "Rafa")
+                {
+                    // Story character - Rafa
+                    if (Enum.TryParse<RafaColorScheme>(propertyValue, out var rafaScheme))
+                    {
+                        config.Rafa = rafaScheme;
+                    }
+                }
+                else if (propertyName == "Delita")
+                {
+                    // Story character - Delita
+                    if (Enum.TryParse<DelitaColorScheme>(propertyValue, out var delitaScheme))
+                    {
+                        config.Delita = delitaScheme;
+                    }
+                }
+                else if (propertyName == "Alma")
+                {
+                    // Story character - Alma
+                    if (Enum.TryParse<AlmaColorScheme>(propertyValue, out var almaScheme))
+                    {
+                        config.Alma = almaScheme;
+                    }
+                }
+                else if (propertyName == "Wiegraf")
+                {
+                    // Story character - Wiegraf
+                    if (Enum.TryParse<WiegrafColorScheme>(propertyValue, out var wiegrafScheme))
+                    {
+                        config.Wiegraf = wiegrafScheme;
+                    }
+                }
+                else if (propertyName == "Celia")
+                {
+                    // Story character - Celia
+                    if (Enum.TryParse<CeliaColorScheme>(propertyValue, out var celiaScheme))
+                    {
+                        config.Celia = celiaScheme;
+                    }
+                }
+                else if (propertyName == "Lettie")
+                {
+                    // Story character - Lettie
+                    if (Enum.TryParse<LettieColorScheme>(propertyValue, out var lettieScheme))
+                    {
+                        config.Lettie = lettieScheme;
+                    }
+                }
             }
 
             return config;
@@ -95,6 +175,16 @@ namespace FFTColorMod.Configuration
             // Write story characters
             writer.WriteString("Agrias", value.Agrias.ToString());
             writer.WriteString("Orlandeau", value.Orlandeau.ToString());
+            writer.WriteString("Cloud", value.Cloud.ToString());
+            writer.WriteString("Mustadio", value.Mustadio.ToString());
+            writer.WriteString("Reis", value.Reis.ToString());
+            writer.WriteString("Malak", value.Malak.ToString());
+            writer.WriteString("Rafa", value.Rafa.ToString());
+            writer.WriteString("Delita", value.Delita.ToString());
+            writer.WriteString("Alma", value.Alma.ToString());
+            writer.WriteString("Wiegraf", value.Wiegraf.ToString());
+            writer.WriteString("Celia", value.Celia.ToString());
+            writer.WriteString("Lettie", value.Lettie.ToString());
 
             writer.WriteEndObject();
         }

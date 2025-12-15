@@ -341,7 +341,7 @@ namespace FFTColorMod.Configuration
             AddStoryCharacterRow(row++, "Mustadio", _config.Mustadio);
             AddStoryCharacterRow(row++, "Reis", _config.Reis);
             AddStoryCharacterRow(row++, "Malak", _config.Malak);
-            AddStoryCharacterRow(row++, "Rafa", _config.Rafa);
+            AddStoryCharacterRow(row++, "Rapha", _config.Rafa);
             AddStoryCharacterRow(row++, "Delita", _config.Delita);
             AddStoryCharacterRow(row++, "Alma", _config.Alma);
             AddStoryCharacterRow(row++, "Wiegraf", _config.Wiegraf);
@@ -705,7 +705,7 @@ namespace FFTColorMod.Configuration
                 }
                 return; // Exit early since we've handled this case
             }
-            else if (characterName == "Rafa")
+            else if (characterName == "Rapha")
             {
                 var values = Enum.GetValues(typeof(RafaColorScheme));
                 comboBox.DataSource = values;

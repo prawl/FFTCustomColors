@@ -36,6 +36,33 @@ namespace FFTColorMod.Configuration
             writer.WritePropertyName("Cloud");
             writer.WriteValue(value.Cloud.ToString());
 
+            writer.WritePropertyName("Mustadio");
+            writer.WriteValue(value.Mustadio.ToString());
+
+            writer.WritePropertyName("Reis");
+            writer.WriteValue(value.Reis.ToString());
+
+            writer.WritePropertyName("Malak");
+            writer.WriteValue(value.Malak.ToString());
+
+            writer.WritePropertyName("Rafa");
+            writer.WriteValue(value.Rafa.ToString());
+
+            writer.WritePropertyName("Delita");
+            writer.WriteValue(value.Delita.ToString());
+
+            writer.WritePropertyName("Alma");
+            writer.WriteValue(value.Alma.ToString());
+
+            writer.WritePropertyName("Wiegraf");
+            writer.WriteValue(value.Wiegraf.ToString());
+
+            writer.WritePropertyName("Celia");
+            writer.WriteValue(value.Celia.ToString());
+
+            writer.WritePropertyName("Lettie");
+            writer.WriteValue(value.Lettie.ToString());
+
             writer.WriteEndObject();
         }
 
@@ -91,6 +118,78 @@ namespace FFTColorMod.Configuration
                     if (Enum.TryParse<CloudColorScheme>(propertyValue, out var cloudScheme))
                     {
                         config.Cloud = cloudScheme;
+                    }
+                }
+                else if (propertyName == "Mustadio")
+                {
+                    // Story character - Mustadio
+                    if (Enum.TryParse<MustadioColorScheme>(propertyValue, out var mustadioScheme))
+                    {
+                        config.Mustadio = mustadioScheme;
+                    }
+                }
+                else if (propertyName == "Reis")
+                {
+                    // Story character - Reis
+                    if (Enum.TryParse<ReisColorScheme>(propertyValue, out var reisScheme))
+                    {
+                        config.Reis = reisScheme;
+                    }
+                }
+                else if (propertyName == "Malak")
+                {
+                    // Story character - Malak
+                    if (Enum.TryParse<MalakColorScheme>(propertyValue, out var malakScheme))
+                    {
+                        config.Malak = malakScheme;
+                    }
+                }
+                else if (propertyName == "Rafa")
+                {
+                    // Story character - Rafa
+                    if (Enum.TryParse<RafaColorScheme>(propertyValue, out var rafaScheme))
+                    {
+                        config.Rafa = rafaScheme;
+                    }
+                }
+                else if (propertyName == "Delita")
+                {
+                    // Story character - Delita
+                    if (Enum.TryParse<DelitaColorScheme>(propertyValue, out var delitaScheme))
+                    {
+                        config.Delita = delitaScheme;
+                    }
+                }
+                else if (propertyName == "Alma")
+                {
+                    // Story character - Alma
+                    if (Enum.TryParse<AlmaColorScheme>(propertyValue, out var almaScheme))
+                    {
+                        config.Alma = almaScheme;
+                    }
+                }
+                else if (propertyName == "Wiegraf")
+                {
+                    // Story character - Wiegraf
+                    if (Enum.TryParse<WiegrafColorScheme>(propertyValue, out var wiegrafScheme))
+                    {
+                        config.Wiegraf = wiegrafScheme;
+                    }
+                }
+                else if (propertyName == "Celia")
+                {
+                    // Story character - Celia
+                    if (Enum.TryParse<CeliaColorScheme>(propertyValue, out var celiaScheme))
+                    {
+                        config.Celia = celiaScheme;
+                    }
+                }
+                else if (propertyName == "Lettie")
+                {
+                    // Story character - Lettie
+                    if (Enum.TryParse<LettieColorScheme>(propertyValue, out var lettieScheme))
+                    {
+                        config.Lettie = lettieScheme;
                     }
                 }
             }

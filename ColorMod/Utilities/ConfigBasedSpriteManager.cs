@@ -124,6 +124,63 @@ namespace FFTColorMod.Utilities
                     CopySpriteForJob(spriteName, colorScheme);
                 }
             }
+
+            // Apply story character themes
+            ApplyStoryCharacterThemes(config);
+        }
+
+        private void ApplyStoryCharacterThemes(Config config)
+        {
+            // Apply each story character's theme if it's not original
+            ApplyStoryCharacterTheme("alma", "aruma", config.Alma);
+            ApplyStoryCharacterTheme("celia", "seria", config.Celia);
+            ApplyStoryCharacterTheme("delita", "dily", config.Delita);
+            ApplyStoryCharacterTheme("lettie", "ledy", config.Lettie);
+            ApplyStoryCharacterTheme("malak", "mara", config.Malak);
+            ApplyStoryCharacterTheme("rafa", "rafa", config.Rafa);
+            ApplyStoryCharacterTheme("reis", "reze", config.Reis);
+
+            // The original three story characters (already handled elsewhere)
+            // ApplyStoryCharacterTheme("agrias", "aguri", config.Agrias);
+            // ApplyStoryCharacterTheme("orlandeau", "oru", config.Orlandeau);
+            // ApplyStoryCharacterTheme("cloud", "cloud", config.Cloud);
+        }
+
+        private void ApplyStoryCharacterTheme<T>(string characterName, string spriteName, T theme) where T : Enum
+        {
+            var themeName = theme.ToString().ToLower();
+
+            // Skip if it's set to original
+            if (themeName == "original")
+            {
+                ModLogger.Log($"Skipping {characterName} - theme is original");
+                return;
+            }
+
+            // Story character sprites are stored directly in the unit directory with the theme name
+            // Source file: battle_[spriteName]_[theme]_spr.bin
+            var sourceFile = Path.Combine(_sourceUnitPath, $"battle_{spriteName}_{themeName}_spr.bin");
+
+            // Destination file should be the BASE sprite name (no theme appended)
+            // This overwrites the original sprite with the themed version
+            var destFile = Path.Combine(_unitPath, $"battle_{spriteName}_spr.bin");
+
+            if (File.Exists(sourceFile))
+            {
+                try
+                {
+                    File.Copy(sourceFile, destFile, true);
+                    ModLogger.LogSuccess($"Applied {characterName} theme: {themeName} - copied to {Path.GetFileName(destFile)}");
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogError($"Error copying {characterName} sprite: {ex.Message}");
+                }
+            }
+            else
+            {
+                ModLogger.LogWarning($"Source sprite not found for {characterName} at {sourceFile}");
+            }
         }
 
         private void CopySpriteForJob(string spriteName, string colorScheme)
