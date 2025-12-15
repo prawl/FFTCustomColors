@@ -20,13 +20,13 @@ namespace FFTColorMod.Tests
 
             // Act - Set values using the new dictionary-based approach
             config.SetColorScheme("Squire_Male", FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.SetColorScheme("Knight_Female", FFTColorMod.Configuration.ColorScheme.crimson_red);
-            config.SetColorScheme("Monk_Male", FFTColorMod.Configuration.ColorScheme.royal_purple);
+            config.SetColorScheme("Knight_Female", FFTColorMod.Configuration.ColorScheme.original);
+            config.SetColorScheme("Monk_Male", FFTColorMod.Configuration.ColorScheme.original);
 
             // Assert - Values should be retrievable via the new approach
             config.GetColorScheme("Squire_Male").Should().Be(FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.GetColorScheme("Knight_Female").Should().Be(FFTColorMod.Configuration.ColorScheme.crimson_red);
-            config.GetColorScheme("Monk_Male").Should().Be(FFTColorMod.Configuration.ColorScheme.royal_purple);
+            config.GetColorScheme("Knight_Female").Should().Be(FFTColorMod.Configuration.ColorScheme.original);
+            config.GetColorScheme("Monk_Male").Should().Be(FFTColorMod.Configuration.ColorScheme.original);
 
             // Assert - Default values for unset properties
             config.GetColorScheme("Archer_Male").Should().Be(FFTColorMod.Configuration.ColorScheme.original);
@@ -42,15 +42,15 @@ namespace FFTColorMod.Tests
 
             // Act - Set values using traditional properties
             config.Squire_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
-            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.crimson_red;
+            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.original;
 
             // Assert - Properties should work as before
             config.Squire_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.Knight_Female.Should().Be(FFTColorMod.Configuration.ColorScheme.crimson_red);
+            config.Knight_Female.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
 
             // Assert - Should also be accessible via dictionary approach
             config.GetColorScheme("Squire_Male").Should().Be(FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.GetColorScheme("Knight_Female").Should().Be(FFTColorMod.Configuration.ColorScheme.crimson_red);
+            config.GetColorScheme("Knight_Female").Should().Be(FFTColorMod.Configuration.ColorScheme.original);
         }
 
         [Fact]
@@ -61,16 +61,16 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config();
             config.Squire_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
-            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.crimson_red;
-            config.Archer_Male = FFTColorMod.Configuration.ColorScheme.royal_purple;
+            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.original;
+            config.Archer_Male = FFTColorMod.Configuration.ColorScheme.original;
 
             // Act
             var json = JsonConvert.SerializeObject(config, Formatting.Indented);
 
             // Assert - JSON should contain the expected property names
             json.Should().Contain("\"SquireMale\": \"corpse_brigade\"");
-            json.Should().Contain("\"KnightFemale\": \"crimson_red\"");
-            json.Should().Contain("\"ArcherMale\": \"royal_purple\"");
+            json.Should().Contain("\"KnightFemale\": \"original\"");
+            json.Should().Contain("\"ArcherMale\": \"original\"");
         }
 
         [Fact]
@@ -183,8 +183,8 @@ namespace FFTColorMod.Tests
             var updates = new Dictionary<string, FFTColorMod.Configuration.ColorScheme>
             {
                 ["Squire_Male"] = FFTColorMod.Configuration.ColorScheme.corpse_brigade,
-                ["Knight_Female"] = FFTColorMod.Configuration.ColorScheme.crimson_red,
-                ["Monk_Male"] = FFTColorMod.Configuration.ColorScheme.royal_purple
+                ["Knight_Female"] = FFTColorMod.Configuration.ColorScheme.original,
+                ["Monk_Male"] = FFTColorMod.Configuration.ColorScheme.original
             };
 
             // Act
@@ -192,8 +192,8 @@ namespace FFTColorMod.Tests
 
             // Assert
             config.Squire_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.Knight_Female.Should().Be(FFTColorMod.Configuration.ColorScheme.crimson_red);
-            config.Monk_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.royal_purple);
+            config.Knight_Female.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
+            config.Monk_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
         }
     }
 }

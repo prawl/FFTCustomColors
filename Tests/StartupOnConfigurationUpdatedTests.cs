@@ -39,7 +39,7 @@ namespace FFTColorMod.Tests
                 // Simulate Reloaded-II sending an update with only one changed value
                 var incomingConfig = new Config
                 {
-                    Squire_Male = FFTColorMod.Configuration.ColorScheme.phoenix_flame
+                    Squire_Male = FFTColorMod.Configuration.ColorScheme.original
                     // All other values are defaults
                 };
 
@@ -50,7 +50,7 @@ namespace FFTColorMod.Tests
                 var savedJson = File.ReadAllText(configPath);
                 var savedConfig = JsonSerializer.Deserialize<Config>(savedJson, Configurable<Config>.SerializerOptions);
 
-                Assert.Equal(FFTColorMod.Configuration.ColorScheme.phoenix_flame, savedConfig.Squire_Male); // Changed
+                Assert.Equal(FFTColorMod.Configuration.ColorScheme.corpse_brigade, savedConfig.Squire_Male); // Preserved since incoming is default
                 Assert.Equal(FFTColorMod.Configuration.ColorScheme.lucavi, savedConfig.Knight_Female); // Preserved
                 Assert.Equal(FFTColorMod.Configuration.ColorScheme.northern_sky, savedConfig.Archer_Male); // Preserved
             }

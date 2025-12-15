@@ -4,7 +4,7 @@ using FFTColorMod.Configuration;
 using Newtonsoft.Json;
 using Xunit;
 using Xunit.Abstractions;
-using ColorScheme = FFTColorMod.Configuration.ColorScheme;
+
 
 namespace FFTColorMod.Tests
 {

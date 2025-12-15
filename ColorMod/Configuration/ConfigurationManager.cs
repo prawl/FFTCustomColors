@@ -18,12 +18,12 @@ namespace FFTColorMod.Configuration
         private readonly object _lockObject = new object();
         private DateTime _lastFileWriteTime = DateTime.MinValue;
 
-        // Use consistent JSON settings with enum string conversion
+        // Use consistent JSON settings with reflection-based converter
         // IMPORTANT: Use default naming (not camelCase) to match property names exactly
         private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
         {
             Formatting = Formatting.Indented,
-            Converters = new List<JsonConverter> { new StringEnumConverter() },
+            Converters = new List<JsonConverter> { new ReflectionBasedConfigJsonConverter() },
             ContractResolver = new DefaultContractResolver() // Use exact property names
         };
 

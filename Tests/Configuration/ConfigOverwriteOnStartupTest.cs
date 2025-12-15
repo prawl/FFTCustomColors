@@ -59,14 +59,14 @@ namespace FFTColorMod.Tests
             var config = FFTColorMod.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
             config.Squire_Male = FFTColorMod.Configuration.ColorScheme.lucavi;
             config.Knight_Female = FFTColorMod.Configuration.ColorScheme.northern_sky;
-            config.Ninja_Male = FFTColorMod.Configuration.ColorScheme.frost_knight;
+            config.Ninja_Male = FFTColorMod.Configuration.ColorScheme.original;
             config.Save();
 
             // Verify it was saved correctly
             var savedJson = File.ReadAllText(_testConfigPath);
             Assert.Contains("\"lucavi\"", savedJson);
             Assert.Contains("\"northern_sky\"", savedJson);
-            Assert.Contains("\"frost_knight\"", savedJson);
+            Assert.Contains("\"original\"", savedJson);
 
             // Act - Create a Mod instance and call ConfigurationUpdated
             // This simulates what happens when Startup.cs calls _mod?.ConfigurationUpdated(_configuration)
@@ -82,13 +82,13 @@ namespace FFTColorMod.Tests
             // Assert - The config values should NOT have been reset
             Assert.Equal(FFTColorMod.Configuration.ColorScheme.lucavi, loadedConfig.Squire_Male);
             Assert.Equal(FFTColorMod.Configuration.ColorScheme.northern_sky, loadedConfig.Knight_Female);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.frost_knight, loadedConfig.Ninja_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, loadedConfig.Ninja_Male);
 
             // Also verify the file wasn't overwritten with defaults
             var afterUpdateJson = File.ReadAllText(_testConfigPath);
             Assert.Contains("\"lucavi\"", afterUpdateJson);
             Assert.Contains("\"northern_sky\"", afterUpdateJson);
-            Assert.Contains("\"frost_knight\"", afterUpdateJson);
+            Assert.Contains("\"original\"", afterUpdateJson);
         }
 
         [Fact]

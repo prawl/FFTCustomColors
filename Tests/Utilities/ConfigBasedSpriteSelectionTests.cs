@@ -81,8 +81,8 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = (Configuration.ColorScheme)1, // corpse_brigade
-                Archer_Female = (Configuration.ColorScheme)2  // lucavi
+                Knight_Male = (FFTColorMod.Configuration.ColorScheme)1, // corpse_brigade
+                Archer_Female = (FFTColorMod.Configuration.ColorScheme)2  // lucavi
             };
             _configManager.SaveConfig(config);
 
@@ -107,9 +107,9 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = (Configuration.ColorScheme)3, // northern_sky
-                Archer_Female = (Configuration.ColorScheme)1, // corpse_brigade
-                Monk_Male = (Configuration.ColorScheme)2     // lucavi
+                Knight_Male = (FFTColorMod.Configuration.ColorScheme)3, // northern_sky
+                Archer_Female = (FFTColorMod.Configuration.ColorScheme)1, // corpse_brigade
+                Monk_Male = (FFTColorMod.Configuration.ColorScheme)2     // lucavi
             };
             _configManager.SaveConfig(config);
             var unitDir = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -133,8 +133,8 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = (Configuration.ColorScheme)1,   // corpse_brigade
-                Dragoon_Female = (Configuration.ColorScheme)3  // northern_sky
+                Knight_Male = (FFTColorMod.Configuration.ColorScheme)1,   // corpse_brigade
+                Dragoon_Female = (FFTColorMod.Configuration.ColorScheme)3  // northern_sky
             };
             _configManager.SaveConfig(config);
 
@@ -160,7 +160,7 @@ namespace FFTColorMod.Tests
 
             // Assert - Config should be updated
             var config = _configManager.LoadConfig();
-            Assert.Equal((Configuration.ColorScheme)2, config.Knight_Male); // lucavi
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, config.Knight_Male); // lucavi
 
             // Assert - Sprite should be swapped
             var knightContent = File.ReadAllText(Path.Combine(unitDir, "battle_knight_m_spr.bin"));

@@ -94,8 +94,8 @@ namespace FFTColorMod.Tests
             // Arrange - Create a user config file
             var userConfig = new FFTColorMod.Configuration.Config
             {
-                Squire_Male = FFTColorMod.Configuration.ColorScheme.frost_knight,
-                Ninja_Female = FFTColorMod.Configuration.ColorScheme.emerald_dragon,
+                Squire_Male = FFTColorMod.Configuration.ColorScheme.original,
+                Ninja_Female = FFTColorMod.Configuration.ColorScheme.original,
                 Agrias = FFTColorMod.Configuration.AgriasColorScheme.ash_dark
             };
 
@@ -113,8 +113,8 @@ namespace FFTColorMod.Tests
             Assert.Equal(originalContent, newContent);
 
             // Config values should match what was saved
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.frost_knight, config.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.emerald_dragon, config.Ninja_Female);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, config.Squire_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, config.Ninja_Female);
             Assert.Equal(FFTColorMod.Configuration.AgriasColorScheme.ash_dark, config.Agrias);
         }
 
@@ -127,7 +127,7 @@ namespace FFTColorMod.Tests
             // Arrange - Create user config
             var userConfig = new FFTColorMod.Configuration.Config
             {
-                Squire_Male = FFTColorMod.Configuration.ColorScheme.silver_knight,
+                Squire_Male = FFTColorMod.Configuration.ColorScheme.original,
                 WhiteMage_Female = FFTColorMod.Configuration.ColorScheme.ocean_depths
             };
             var json = JsonSerializer.Serialize(userConfig, FFTColorMod.Configuration.Configurable<FFTColorMod.Configuration.Config>.SerializerOptions);
@@ -147,7 +147,7 @@ namespace FFTColorMod.Tests
 
             // Assert
             Assert.Equal(json, afterLoadJson); // File unchanged
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.silver_knight, configuration.Squire_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, configuration.Squire_Male);
             Assert.Equal(FFTColorMod.Configuration.ColorScheme.ocean_depths, configuration.WhiteMage_Female);
         }
 

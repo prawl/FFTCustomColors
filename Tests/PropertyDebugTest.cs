@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using FFTColorMod.Configuration;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -18,8 +19,8 @@ namespace FFTColorMod.Tests
         [Fact]
         public void ListAllColorSchemeProperties()
         {
-            var properties = typeof(Configuration.Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(Configuration.ColorScheme))
+            var properties = typeof(Config).GetProperties()
+                .Where(p => p.PropertyType == typeof(FFTColorMod.Configuration.ColorScheme))
                 .OrderBy(p => p.Name)
                 .ToList();
 
@@ -32,11 +33,11 @@ namespace FFTColorMod.Tests
             }
 
             // Specific check for Archer_Female
-            var archerFemale = typeof(Configuration.Config).GetProperty("Archer_Female");
+            var archerFemale = typeof(Config).GetProperty("Archer_Female");
             _output.WriteLine($"\nGetProperty('Archer_Female') returns: {archerFemale?.Name ?? "null"}");
 
             // Try without underscore
-            var archerFemaleNoUnderscore = typeof(Configuration.Config).GetProperty("ArcherFemale");
+            var archerFemaleNoUnderscore = typeof(Config).GetProperty("ArcherFemale");
             _output.WriteLine($"GetProperty('ArcherFemale') returns: {archerFemaleNoUnderscore?.Name ?? "null"}");
         }
     }

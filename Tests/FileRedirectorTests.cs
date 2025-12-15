@@ -21,11 +21,11 @@ namespace FFTColorMod.Tests
             // TLDR: Can switch between color schemes
             var redirector = new FileRedirector();
 
-            redirector.SetActiveColorScheme(ColorScheme.OceanBlue);
-            Assert.Equal(ColorScheme.OceanBlue, redirector.ActiveScheme);
+            redirector.SetActiveColorScheme(FFTColorMod.ColorScheme.Original);
+            Assert.Equal(FFTColorMod.ColorScheme.Original, redirector.ActiveScheme);
 
-            redirector.SetActiveColorScheme(ColorScheme.WhiteSilver);
-            Assert.Equal(ColorScheme.WhiteSilver, redirector.ActiveScheme);
+            redirector.SetActiveColorScheme(FFTColorMod.ColorScheme.WhiteSilver);
+            Assert.Equal(FFTColorMod.ColorScheme.WhiteSilver, redirector.ActiveScheme);
         }
 
         [Fact]
@@ -33,7 +33,7 @@ namespace FFTColorMod.Tests
         {
             // TLDR: GetRedirectedPath returns path with color suffix for active scheme
             var redirector = new FileRedirector();
-            redirector.SetActiveColorScheme(ColorScheme.OceanBlue);
+            redirector.SetActiveColorScheme(FFTColorMod.ColorScheme.OceanBlue);
 
             var result = redirector.GetRedirectedPath("sprites/ramza.pac");
 

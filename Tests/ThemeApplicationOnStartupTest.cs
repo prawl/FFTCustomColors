@@ -28,7 +28,7 @@ namespace FFTColorMod.Tests
             {
                 Squire_Male = FFTColorMod.Configuration.ColorScheme.lucavi,
                 Knight_Female = FFTColorMod.Configuration.ColorScheme.northern_sky,
-                Archer_Male = FFTColorMod.Configuration.ColorScheme.crimson_red
+                Archer_Male = FFTColorMod.Configuration.ColorScheme.original
             };
 
             // Save the config
@@ -50,13 +50,13 @@ namespace FFTColorMod.Tests
             // We need to check that ApplyConfiguration was called with the correct values
             Assert.Equal(FFTColorMod.Configuration.ColorScheme.lucavi, loadedConfig.Squire_Male);
             Assert.Equal(FFTColorMod.Configuration.ColorScheme.northern_sky, loadedConfig.Knight_Female);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.crimson_red, loadedConfig.Archer_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, loadedConfig.Archer_Male);
 
             // Also verify the config file wasn't overwritten with defaults
             var savedJson = File.ReadAllText(_testConfigPath);
             Assert.Contains("\"lucavi\"", savedJson);
             Assert.Contains("\"northern_sky\"", savedJson);
-            Assert.Contains("\"crimson_red\"", savedJson);
+            Assert.Contains("\"original\"", savedJson);
         }
 
         [Fact]
@@ -102,7 +102,7 @@ namespace FFTColorMod.Tests
             // Arrange - Create a config with specific themes
             var config = new FFTColorMod.Configuration.Config
             {
-                Monk_Male = FFTColorMod.Configuration.ColorScheme.frost_knight,
+                Monk_Male = FFTColorMod.Configuration.ColorScheme.original,
                 Thief_Female = FFTColorMod.Configuration.ColorScheme.rose_gold,
                 Dragoon_Male = FFTColorMod.Configuration.ColorScheme.volcanic
             };
@@ -124,7 +124,7 @@ namespace FFTColorMod.Tests
 
             // Assert - The configuration should be applied with correct values
             var loadedConfig = configManager.LoadConfig();
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.frost_knight, loadedConfig.Monk_Male);
+            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, loadedConfig.Monk_Male);
             Assert.Equal(FFTColorMod.Configuration.ColorScheme.rose_gold, loadedConfig.Thief_Female);
             Assert.Equal(FFTColorMod.Configuration.ColorScheme.volcanic, loadedConfig.Dragoon_Male);
         }

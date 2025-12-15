@@ -8,8 +8,8 @@ namespace FFTColorMod.Tests
         [Fact]
         public void CanAccessColorSchemeEnum()
         {
-            var scheme = (Configuration.ColorScheme)0; // original
-            Assert.Equal((Configuration.ColorScheme)0, scheme);
+            var scheme = (FFTColorMod.Configuration.ColorScheme)0; // original
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, scheme);
         }
     }
 }

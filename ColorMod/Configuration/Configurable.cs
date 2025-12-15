@@ -13,7 +13,7 @@ namespace FFTColorMod.Configuration
         // Default Serialization Options
         public static JsonSerializerOptions SerializerOptions { get; } = new JsonSerializerOptions()
         {
-            Converters = { new JsonStringEnumConverter() },
+            Converters = { new ReflectionBasedSystemTextJsonConverter(), new JsonStringEnumConverter() },
             WriteIndented = true
         };
 

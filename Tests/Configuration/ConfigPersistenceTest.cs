@@ -25,14 +25,14 @@ namespace FFTColorMod.Tests
             // Arrange - Create a config file with custom values
             var customConfig = new Config
             {
-                Squire_Male = (Configuration.ColorScheme)2,  // lucavi
-                Squire_Female = (Configuration.ColorScheme)1, // corpse_brigade
-                Knight_Male = (Configuration.ColorScheme)3   // northern_sky
+                Squire_Male = (FFTColorMod.Configuration.ColorScheme)2,  // lucavi
+                Squire_Female = (FFTColorMod.Configuration.ColorScheme)1, // corpse_brigade
+                Knight_Male = (FFTColorMod.Configuration.ColorScheme)3   // northern_sky
             };
 
             // Save the custom config to disk using same serialization as Config uses
             var json = System.Text.Json.JsonSerializer.Serialize(customConfig,
-                Configuration.Configurable<Config>.SerializerOptions);
+                Configurable<Config>.SerializerOptions);
             File.WriteAllText(_testConfigPath, json);
 
             // Act - Simulate what happens during startup
@@ -49,12 +49,12 @@ namespace FFTColorMod.Tests
             // Reload the config from disk to see what was saved
             var savedJson = File.ReadAllText(_testConfigPath);
             var reloadedConfig = System.Text.Json.JsonSerializer.Deserialize<Config>(savedJson,
-                Configuration.Configurable<Config>.SerializerOptions);
+                Configurable<Config>.SerializerOptions);
 
             // Assert - The custom values should still be there, not overwritten with defaults
-            Assert.Equal((Configuration.ColorScheme)2, reloadedConfig.Squire_Male);  // lucavi
-            Assert.Equal((Configuration.ColorScheme)1, reloadedConfig.Squire_Female); // corpse_brigade
-            Assert.Equal((Configuration.ColorScheme)3, reloadedConfig.Knight_Male);   // northern_sky
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, reloadedConfig.Squire_Male);  // lucavi
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)1, reloadedConfig.Squire_Female); // corpse_brigade
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)3, reloadedConfig.Knight_Male);   // northern_sky
         }
 
         [Fact]
@@ -64,8 +64,8 @@ namespace FFTColorMod.Tests
             var manager = new ConfigurationManager(_testConfigPath);
             var customConfig = new Config
             {
-                Squire_Male = (Configuration.ColorScheme)2,  // lucavi
-                Knight_Male = (Configuration.ColorScheme)1   // corpse_brigade
+                Squire_Male = (FFTColorMod.Configuration.ColorScheme)2,  // lucavi
+                Knight_Male = (FFTColorMod.Configuration.ColorScheme)1   // corpse_brigade
             };
             manager.SaveConfig(customConfig);
 
@@ -74,8 +74,8 @@ namespace FFTColorMod.Tests
             var loadedConfig = newManager.LoadConfig();
 
             // Assert - Values should be preserved
-            Assert.Equal((Configuration.ColorScheme)2, loadedConfig.Squire_Male);  // lucavi
-            Assert.Equal((Configuration.ColorScheme)1, loadedConfig.Knight_Male);  // corpse_brigade
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, loadedConfig.Squire_Male);  // lucavi
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)1, loadedConfig.Knight_Male);  // corpse_brigade
         }
 
         [Fact]
@@ -84,11 +84,11 @@ namespace FFTColorMod.Tests
             // Arrange - Create existing config with custom values
             var customConfig = new Config
             {
-                Squire_Male = (Configuration.ColorScheme)2,    // lucavi
-                Archer_Female = (Configuration.ColorScheme)3   // northern_sky
+                Squire_Male = (FFTColorMod.Configuration.ColorScheme)2,    // lucavi
+                Archer_Female = (FFTColorMod.Configuration.ColorScheme)3   // northern_sky
             };
             var json = System.Text.Json.JsonSerializer.Serialize(customConfig,
-                Configuration.Configurable<Config>.SerializerOptions);
+                Configurable<Config>.SerializerOptions);
             File.WriteAllText(_testConfigPath, json);
 
             // Act - Create configurator which should load existing config
@@ -96,11 +96,11 @@ namespace FFTColorMod.Tests
             var config = configurator.GetConfiguration<Config>(0);
 
             // Assert - Should have loaded the existing values, not defaults
-            Assert.Equal((Configuration.ColorScheme)2, config.Squire_Male);    // lucavi
-            Assert.Equal((Configuration.ColorScheme)3, config.Archer_Female);  // northern_sky
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, config.Squire_Male);    // lucavi
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)3, config.Archer_Female);  // northern_sky
 
             // Other values should be default
-            Assert.Equal((Configuration.ColorScheme)0, config.Knight_Male);    // original
+            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Knight_Male);    // original
         }
 
         public void Dispose()

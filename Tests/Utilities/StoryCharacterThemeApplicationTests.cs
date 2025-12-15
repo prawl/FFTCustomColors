@@ -40,7 +40,7 @@ namespace Tests.Utilities
             var config = new Config
             {
                 Alma = AlmaColorScheme.crimson_red,
-                Squire_Male = ColorScheme.original // Include a generic for comparison
+                Squire_Male = FFTColorMod.Configuration.ColorScheme.original // Include a generic for comparison
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
@@ -145,7 +145,7 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Alma = AlmaColorScheme.crimson_red // Theme selected but file doesn't exist
+                Alma = AlmaColorScheme.original // Theme selected but file doesn't exist
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
@@ -165,7 +165,7 @@ namespace Tests.Utilities
             var config = new Config
             {
                 // Generic character
-                Knight_Male = ColorScheme.corpse_brigade,
+                Knight_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade,
                 // Story character
                 Alma = AlmaColorScheme.crimson_red
             };

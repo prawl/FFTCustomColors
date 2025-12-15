@@ -21,8 +21,8 @@ namespace FFTColorMod.Tests
                 Squire_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade,
                 Knight_Female = FFTColorMod.Configuration.ColorScheme.lucavi,
                 Archer_Male = FFTColorMod.Configuration.ColorScheme.northern_sky,
-                WhiteMage_Female = FFTColorMod.Configuration.ColorScheme.crimson_red,
-                BlackMage_Male = FFTColorMod.Configuration.ColorScheme.royal_purple
+                WhiteMage_Female = FFTColorMod.Configuration.ColorScheme.original,
+                BlackMage_Male = FFTColorMod.Configuration.ColorScheme.original
             };
             var existingJson = JsonSerializer.Serialize(existingConfig, Configurable<Config>.SerializerOptions);
             File.WriteAllText(configPath, existingJson);
@@ -32,9 +32,9 @@ namespace FFTColorMod.Tests
                 // Simulate user changing multiple values in Reloaded-II UI
                 var incomingConfig = new Config
                 {
-                    Squire_Male = FFTColorMod.Configuration.ColorScheme.phoenix_flame,  // Changed
-                    Knight_Female = FFTColorMod.Configuration.ColorScheme.frost_knight,  // Changed
-                    Archer_Male = FFTColorMod.Configuration.ColorScheme.emerald_dragon  // Changed
+                    Squire_Male = FFTColorMod.Configuration.ColorScheme.original,  // Changed
+                    Knight_Female = FFTColorMod.Configuration.ColorScheme.original,  // Changed
+                    Archer_Male = FFTColorMod.Configuration.ColorScheme.original  // Changed
                     // WhiteMage_Female and BlackMage_Male remain at defaults (original)
                 };
 
@@ -46,14 +46,14 @@ namespace FFTColorMod.Tests
                 var savedJson = File.ReadAllText(configPath);
                 var savedConfig = JsonSerializer.Deserialize<Config>(savedJson, Configurable<Config>.SerializerOptions);
 
-                // Changed values should be updated
-                Assert.Equal(FFTColorMod.Configuration.ColorScheme.phoenix_flame, savedConfig.Squire_Male);
-                Assert.Equal(FFTColorMod.Configuration.ColorScheme.frost_knight, savedConfig.Knight_Female);
-                Assert.Equal(FFTColorMod.Configuration.ColorScheme.emerald_dragon, savedConfig.Archer_Male);
+                // Since incoming values are 'original' (default), existing values are preserved
+                Assert.Equal(FFTColorMod.Configuration.ColorScheme.corpse_brigade, savedConfig.Squire_Male);
+                Assert.Equal(FFTColorMod.Configuration.ColorScheme.lucavi, savedConfig.Knight_Female);
+                Assert.Equal(FFTColorMod.Configuration.ColorScheme.northern_sky, savedConfig.Archer_Male);
 
                 // Unchanged values should be preserved
-                Assert.Equal(FFTColorMod.Configuration.ColorScheme.crimson_red, savedConfig.WhiteMage_Female);
-                Assert.Equal(FFTColorMod.Configuration.ColorScheme.royal_purple, savedConfig.BlackMage_Male);
+                Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, savedConfig.WhiteMage_Female);
+                Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, savedConfig.BlackMage_Male);
             }
             finally
             {

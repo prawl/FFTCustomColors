@@ -8,8 +8,8 @@ namespace FFTColorMod.Configuration
     /// <summary>
     /// Config class using dictionary-based storage for color schemes
     /// </summary>
-    [Newtonsoft.Json.JsonConverter(typeof(ConfigJsonConverter))]
-    [JsonConverter(typeof(ConfigSystemTextJsonConverter))]
+    [Newtonsoft.Json.JsonConverter(typeof(ReflectionBasedConfigJsonConverter))]
+    [JsonConverter(typeof(ReflectionBasedSystemTextJsonConverter))]
     public class Config : Configurable<Config>
     {
         // Dictionary to store all color schemes
