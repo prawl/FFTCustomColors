@@ -33,18 +33,18 @@ namespace FFTColorMod.Tests
         }
 
         [Fact]
-        public void OnHotkeyPressed_ShouldReceiveF2KeyCode()
+        public void OnHotkeyPressed_ShouldReceiveF1KeyCode()
         {
             // Arrange
             int receivedKey = 0;
             var handler = new HotkeyHandler(key => receivedKey = key);
 
-            // Act - simulate F2 press (0x71)
-            // Note: This test verifies the handler can receive F2 keycode
+            // Act - simulate F1 press (0x70)
+            // Note: This test verifies the handler can receive F1 keycode
             // Actual key press simulation would require more complex mocking
 
             // Assert
-            Assert.Equal(0, receivedKey); // Will update when F2 monitoring is added
+            Assert.Equal(0, receivedKey); // Will update when F1 monitoring is added
         }
     }
 }

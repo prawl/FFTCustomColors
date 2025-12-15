@@ -95,12 +95,15 @@ namespace FFTColorMod.Tests
                 var context = new ModContext();
                 var mockInputSimulator = new TrackingMockInputSimulator();
                 var mod = new Mod(context, mockInputSimulator);
+                bool configUIOpened = false;
+                mod.ConfigUIRequested += () => configUIOpened = true;
 
                 // Act
                 mod.ProcessHotkeyPress(0x70); // VK_F1
 
-                // Assert
-                mockInputSimulator.MenuRefreshCalled.Should().BeTrue("F1 should trigger menu refresh");
+                // Assert - F1 now opens config UI, not refreshes menu
+                configUIOpened.Should().BeTrue("F1 should open config UI");
+                mockInputSimulator.MenuRefreshCalled.Should().BeFalse("F1 should not trigger menu refresh anymore");
             }
             finally
             {

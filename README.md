@@ -8,7 +8,7 @@ Custom color palettes for Final Fantasy Tactics (Steam) using professionally edi
 - **Per-Job Configuration**: Set different colors for each job class via Reloaded-II config
 - **38 Sprites Modified**: All major job classes included
 - **Persistent Settings**: Configuration persists between game sessions
-- **Quick Config Access**: Press C key during gameplay to open configuration
+- **Quick Config Access**: Press F1 key during gameplay to open configuration
 - **Smart Config Merging**: Runtime configuration changes preserve other settings
 
 ## Installation
@@ -38,14 +38,10 @@ The mod now includes full integration with Reloaded-II's configuration system, a
 - **Gender Variants**: Configure male and female sprites separately
 - **Persistent Settings**: Your choices are saved to `Reloaded\User\Mods\ptyra.fft.colormod\Config.json`
 - **Real-time Updates**: Changes made while the game is running now properly merge with existing settings (no more resets!)
-- **Quick Configuration Access**: Press **C** key during gameplay to open the configuration UI instantly
-- **F2 Hotkey Behavior**: F2 still cycles colors in-game, but these changes are session-only and don't overwrite your saved configuration
+- **Quick Configuration Access**: Press **F1** key during gameplay to open the configuration UI instantly
 
 ### Hotkey Controls
-- **C Key**: Opens the configuration UI during gameplay for quick theme changes
-- **F1**: Cycle backward through color schemes (session-only)
-- **F2**: Cycle forward through color schemes (session-only)
-- **F3**: Alternative way to open configuration UI
+- **F1**: Opens the configuration UI during gameplay for quick theme changes
 
 ## Development
 

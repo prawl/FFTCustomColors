@@ -332,10 +332,12 @@ public class GameIntegrationTests
     }
 
     [Fact]
-    public void Mod_F1_Should_Cycle_Through_Color_Schemes_Backward()
+    public void Mod_F1_Should_Open_Config_UI()
     {
-        // TLDR: Test that F1 cycles backward through color schemes
+        // TLDR: Test that F1 opens config UI instead of cycling colors
         var mod = new Mod();
+        bool configUIOpened = false;
+        mod.ConfigUIRequested += () => configUIOpened = true;
 
         // Reset to original
         mod.SetColorScheme("original");
@@ -343,37 +345,40 @@ public class GameIntegrationTests
         // Initial state should be original
         mod.GetCurrentColorScheme().Should().Be("original");
 
-        // Press F1 - should cycle backward to some scheme (not original)
-        var initialScheme = mod.GetCurrentColorScheme();
+        // Press F1 - should open config UI and not change scheme
         mod.ProcessHotkeyPress(0x70); // F1 key
+        configUIOpened.Should().BeTrue("F1 should open config UI");
         var afterF1 = mod.GetCurrentColorScheme();
-        afterF1.Should().NotBe(initialScheme, "F1 should change the color scheme");
+        afterF1.Should().Be("original", "F1 should not change color scheme");
 
-        // Press F1 again - should cycle backward to another scheme
+        // Reset flag and press F1 again - should still open config UI
+        configUIOpened = false;
         mod.ProcessHotkeyPress(0x70); // F1 key
+        configUIOpened.Should().BeTrue("F1 should consistently open config UI");
         var afterSecondF1 = mod.GetCurrentColorScheme();
-        afterSecondF1.Should().NotBe(afterF1, "F1 should continue cycling backward");
-        afterSecondF1.Should().NotBe("original", "Should not be back to original after just 2 presses");
+        afterSecondF1.Should().Be("original", "F1 should never change color scheme");
     }
 
     [Fact]
-    public void Mod_Hotkey_F1_Should_Cycle_Colors_Backward()
+    public void Mod_Hotkey_F1_Should_Open_Config_UI()
     {
-        // TLDR: When F1 key is pressed, mod should cycle backward to previous color scheme
+        // TLDR: When F1 key is pressed, mod should open config UI
         // Arrange
         var mod = new Mod();
         mod.InitializeGameIntegration();
+        bool configUIOpened = false;
+        mod.ConfigUIRequested += () => configUIOpened = true;
 
         // Get initial scheme
         var initialScheme = mod.GetCurrentColorScheme();
         initialScheme.Should().Be("original");
 
-        // Act - Simulate F1 key press via ProcessHotkey (cycles backward)
+        // Act - Simulate F1 key press via ProcessHotkey (opens config UI)
         mod.ProcessHotkeyPress(0x70); // F1 key
 
-        // Assert - Should have changed to a different scheme (backward cycle)
+        // Assert - Should open config UI and not change color scheme
+        configUIOpened.Should().BeTrue("F1 should open config UI");
         var currentScheme = mod.GetCurrentColorScheme();
-        currentScheme.Should().NotBe("original", "F1 should cycle backward from original");
-        currentScheme.Should().NotBeNullOrEmpty("Should have a valid color scheme after F1");
+        currentScheme.Should().Be("original", "F1 should not change color scheme anymore");
     }
 }

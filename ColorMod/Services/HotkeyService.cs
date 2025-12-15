@@ -6,9 +6,6 @@ namespace FFTColorMod.Services
     public class HotkeyService
     {
         private const int VK_F1 = 0x70;
-        private const int VK_F2 = 0x71;
-        private const int VK_F3 = 0x72;
-        private const int VK_C = 0x43;
 
         private readonly Action<string> _setColorScheme;
         private readonly Func<string> _cycleNextScheme;
@@ -48,53 +45,12 @@ namespace FFTColorMod.Services
                 case VK_F1:
                     HandleF1Press();
                     break;
-                case VK_F2:
-                    HandleF2Press();
-                    break;
-                case VK_F3:
-                    HandleF3Press();
-                    break;
-                case VK_C:
-                    HandleCPress();
-                    break;
             }
         }
 
         private void HandleF1Press()
         {
-            // Cycle to previous color
-            string previousColor = _cyclePreviousScheme();
-            ModLogger.Log($"Cycling backward to {previousColor}");
-            _setColorScheme(previousColor);
-            SimulateMenuRefresh();
-        }
-
-        private void HandleF2Press()
-        {
-            // Cycle forward through color schemes
-            string nextColor = _cycleNextScheme();
-            Console.WriteLine("================================================");
-            Console.WriteLine($"    GENERIC THEME CHANGED TO: {nextColor}");
-            Console.WriteLine("================================================");
-            _setColorScheme(nextColor);
-
-            // Also cycle story character themes
-            _cycleOrlandeauTheme();
-            _cycleAgriasTheme();
-            _cycleCloudTheme();
-
-            SimulateMenuRefresh();
-        }
-
-        private void HandleF3Press()
-        {
-            ModLogger.Log("Opening configuration UI (F3)");
-            _openConfigUI();
-        }
-
-        private void HandleCPress()
-        {
-            ModLogger.Log("Opening configuration UI (C)");
+            ModLogger.Log("Opening configuration UI (F1)");
 
             // If there are test event handlers, just invoke them
             if (ConfigUIRequested != null)
@@ -106,6 +62,7 @@ namespace FFTColorMod.Services
                 _openConfigUI();
             }
         }
+
 
         private void SimulateMenuRefresh()
         {

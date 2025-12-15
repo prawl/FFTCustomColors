@@ -136,24 +136,5 @@ namespace FFTColorMod.Tests
                 "Should return Orlandeau-specific theme directory");
         }
 
-        [Fact]
-        public void F2Handler_Should_Cycle_Both_Orlandeau_And_Generic_Themes()
-        {
-            // Arrange
-            var handler = new F2ThemeHandler();
-
-            // Act
-            handler.HandleF2Press();
-            var orlandeauTheme = handler.GetSpritePathFor("battle_oru_spr.bin");
-            var genericTheme = handler.GetSpritePathFor("battle_knight_m_spr.bin");
-
-            // Assert
-            orlandeauTheme.Should().StartWith("sprites_orlandeau_",
-                "Orlandeau sprite should use Orlandeau themes");
-            genericTheme.Should().StartWith("sprites_",
-                "Generic sprite should use generic themes");
-            genericTheme.Should().NotStartWith("sprites_orlandeau_",
-                "Generic sprite should not use Orlandeau themes");
-        }
     }
 }
