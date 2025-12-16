@@ -12,7 +12,6 @@ namespace FFTColorMod
         private ReisColorScheme _currentReisTheme = ReisColorScheme.original;
         private DelitaColorScheme _currentDelitaTheme = DelitaColorScheme.original;
         private AlmaColorScheme _currentAlmaTheme = AlmaColorScheme.original;
-        private WiegrafColorScheme _currentWiegrafTheme = WiegrafColorScheme.original;
 
         public OrlandeauColorScheme GetCurrentOrlandeauTheme()
         {
@@ -118,18 +117,6 @@ namespace FFTColorMod
             var nextIndex = (currentIndex + 1) % values.Length;
             _currentAlmaTheme = values[nextIndex];
             return _currentAlmaTheme;
-        }
-
-        // Wiegraf methods
-        public WiegrafColorScheme GetCurrentWiegrafTheme() => _currentWiegrafTheme;
-        public void SetCurrentWiegrafTheme(WiegrafColorScheme theme) => _currentWiegrafTheme = theme;
-        public WiegrafColorScheme CycleWiegrafTheme()
-        {
-            var values = Enum.GetValues<WiegrafColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentWiegrafTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentWiegrafTheme = values[nextIndex];
-            return _currentWiegrafTheme;
         }
 
     }

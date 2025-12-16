@@ -1,28 +1,162 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using FFTColorMod.Configuration;
-using FFTColorMod.Utilities;
+using FFTColorMod.Services;
 
 namespace FFTColorMod.Utilities
 {
+    /// <summary>
+    /// Refactored sprite manager that uses CharacterDefinitionService for centralized character management
+    /// This reduces coupling and makes it easier to add/remove characters
+    /// </summary>
     public class ConfigBasedSpriteManager
     {
         private readonly string _modPath;
-        private readonly string _sourcePath;  // Git repo path for themes
+        private readonly string _sourcePath;
         private readonly ConfigurationManager _configManager;
+        private readonly CharacterDefinitionService _characterService;
         private readonly string _unitPath;
-        private readonly string _sourceUnitPath;  // Git repo unit path
+        private readonly string _sourceUnitPath;
 
-        public ConfigBasedSpriteManager(string modPath, ConfigurationManager configManager, string sourcePath = null)
+        public ConfigBasedSpriteManager(
+            string modPath,
+            ConfigurationManager configManager,
+            CharacterDefinitionService characterService,
+            string sourcePath = null)
         {
             _modPath = modPath;
-            _sourcePath = sourcePath ?? @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";  // Default to git repo
+            _sourcePath = sourcePath ?? @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
             _configManager = configManager;
+            _characterService = characterService;
             _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             _sourceUnitPath = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
         }
 
+        // Backward compatibility constructor using singleton
+        public ConfigBasedSpriteManager(
+            string modPath,
+            ConfigurationManager configManager,
+            string sourcePath = null)
+            : this(modPath, configManager, CharacterServiceSingleton.Instance, sourcePath)
+        {
+        }
+
+        public void ApplyConfiguration()
+        {
+            var config = _configManager.LoadConfig();
+
+            // Apply generic job class themes
+            ApplyGenericJobThemes(config);
+
+            // Apply story character themes using CharacterDefinitionService
+            ApplyStoryCharacterThemes(config);
+        }
+
+        private void ApplyGenericJobThemes(Config config)
+        {
+            // Get all properties of Config that represent job colors
+            var properties = typeof(Config).GetProperties()
+                .Where(p => p.PropertyType == typeof(Configuration.ColorScheme) &&
+                           (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
+
+            foreach (var property in properties)
+            {
+                var colorSchemeEnum = property.GetValue(config) as Configuration.ColorScheme?;
+                var colorScheme = colorSchemeEnum?.ToString().ToLower() ?? "original";
+
+                // Log what we're applying
+                ModLogger.Log($"Applying {property.Name}: {colorScheme}");
+
+                // Get the sprite name for this job/gender
+                var spriteName = GetSpriteNameForJob(property.Name);
+                if (spriteName != null)
+                {
+                    CopySpriteForJob(spriteName, colorScheme);
+                }
+            }
+        }
+
+        private void ApplyStoryCharacterThemes(Config config)
+        {
+            foreach (var character in _characterService.GetAllCharacters())
+            {
+                if (string.IsNullOrEmpty(character.EnumType) || character.SpriteNames.Length == 0)
+                    continue;
+
+                // Get the config property for this character
+                var configProperty = typeof(Config).GetProperty(character.Name);
+                if (configProperty == null)
+                    continue;
+
+                // Get the current theme value
+                var themeValue = configProperty.GetValue(config);
+                if (themeValue == null)
+                    continue;
+
+                var themeName = themeValue.ToString()?.ToLower() ?? "original";
+
+                // Skip if it's set to original
+                if (themeName == "original")
+                {
+                    ModLogger.Log($"Skipping {character.Name} - theme is original");
+                    continue;
+                }
+
+                // Apply theme for each sprite name
+                foreach (var spriteName in character.SpriteNames)
+                {
+                    ApplyStoryCharacterTheme(character.Name.ToLower(), spriteName, themeName);
+                }
+            }
+        }
+
+        private void ApplyStoryCharacterTheme(string characterName, string spriteName, string themeName)
+        {
+            ModLogger.Log($"Applying theme for character: {characterName}, sprite: {spriteName}, theme: {themeName}");
+
+            // First try the directory-based structure
+            var themeDir = $"sprites_{characterName}_{themeName}";
+            var sourceDirPath = Path.Combine(_sourceUnitPath, themeDir, $"battle_{spriteName}_spr.bin");
+
+            // Also check the flat file structure for backward compatibility
+            var sourceFlatPath = Path.Combine(_sourceUnitPath, $"battle_{spriteName}_{themeName}_spr.bin");
+
+            string sourceFile;
+            if (File.Exists(sourceDirPath))
+            {
+                sourceFile = sourceDirPath;
+                ModLogger.Log($"Using directory-based theme: {themeDir}");
+            }
+            else if (File.Exists(sourceFlatPath))
+            {
+                sourceFile = sourceFlatPath;
+                ModLogger.Log($"Using flat file theme: battle_{spriteName}_{themeName}_spr.bin");
+            }
+            else
+            {
+                ModLogger.Log($"Warning: Theme file not found for {characterName} - {themeName}");
+                ModLogger.Log($"  Tried: {sourceDirPath}");
+                ModLogger.Log($"  Tried: {sourceFlatPath}");
+                return;
+            }
+
+            // Destination file should be the BASE sprite name
+            var destFile = Path.Combine(_unitPath, $"battle_{spriteName}_spr.bin");
+
+            try
+            {
+                File.Copy(sourceFile, destFile, true);
+                ModLogger.LogSuccess($"Applied {characterName} theme: {themeName} - copied to {Path.GetFileName(destFile)}");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"Error copying {characterName} sprite: {ex.Message}");
+            }
+        }
+
+        // Backward compatibility methods for old interface
         public string InterceptFilePath(string originalPath)
         {
             // Extract sprite filename from path
@@ -50,24 +184,19 @@ namespace FFTColorMod.Utilities
             }
 
             var colorSchemeValue = ((Configuration.ColorScheme)colorSchemeEnum);
-            // Convert enum to lowercase (matching directory names)
             var colorScheme = colorSchemeValue.ToString().ToLower();
             ModLogger.Log($"{jobProperty} configured as: {colorScheme}");
 
             if (colorScheme == "original")
             {
-                // For "original" scheme, return the path unchanged
                 return originalPath;
             }
 
-            // Build new path with color scheme - look in GIT REPO first
-            var directory = Path.GetDirectoryName(originalPath);
+            // Build new path with color scheme
             var sourceVariantPath = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}", fileName);
 
-            // Check if the variant exists in our GIT REPO
             if (File.Exists(sourceVariantPath))
             {
-                // Copy from git repo to deployment path
                 var deploymentPath = Path.Combine(_unitPath, fileName);
                 try
                 {
@@ -81,188 +210,60 @@ namespace FFTColorMod.Utilities
                 return deploymentPath;
             }
 
-            // Fallback: check deployment directory
             var variantPath = Path.Combine(_unitPath, $"sprites_{colorScheme}", fileName);
             if (File.Exists(variantPath))
             {
                 return variantPath;
             }
 
-            // If path already contains a sprites_ folder, replace it
             if (originalPath.Contains("sprites_"))
             {
                 var pattern = @"sprites_[^\\\/]*";
                 return System.Text.RegularExpressions.Regex.Replace(originalPath, pattern, $"sprites_{colorScheme}");
             }
 
-            // Default: add the scheme to the path
             return originalPath.Replace(fileName, Path.Combine($"sprites_{colorScheme}", fileName));
         }
 
-        public void ApplyConfiguration()
+        public string GetActiveColorForJob(string jobProperty)
         {
             var config = _configManager.LoadConfig();
+            var propertyInfo = typeof(Config).GetProperty(jobProperty);
+            if (propertyInfo == null)
+                return "Original";
 
-            // Get all properties of Config that represent job colors
-            var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(Configuration.ColorScheme) &&
-                           (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
-
-            foreach (var property in properties)
-            {
-                var colorSchemeEnum = property.GetValue(config) as Configuration.ColorScheme?;
-                // Convert enum to lowercase with underscores (matching directory names)
-                var colorScheme = colorSchemeEnum?.ToString().ToLower() ?? "original";
-
-                // Log what we're applying
-                ModLogger.Log($"Applying {property.Name}: {colorScheme}");
-
-                // Get the sprite name for this job/gender
-                var spriteName = GetSpriteNameForJob(property.Name);
-                if (spriteName != null)
-                {
-                    CopySpriteForJob(spriteName, colorScheme);
-                }
-            }
-
-            // Apply story character themes
-            ApplyStoryCharacterThemes(config);
+            var colorSchemeEnum = propertyInfo.GetValue(config) as Configuration.ColorScheme?;
+            return colorSchemeEnum?.GetDescription() ?? "Original";
         }
 
-        private void ApplyStoryCharacterThemes(Config config)
+        public void SetColorForJob(string jobProperty, string colorScheme)
         {
-            // Apply each story character's theme if it's not original
-            ApplyStoryCharacterTheme("alma", "aruma", config.Alma);
-            ApplyStoryCharacterTheme("delita", "dily", config.Delita);
-            ApplyStoryCharacterTheme("reis", "reze", config.Reis);
+            _configManager.SetColorSchemeForJob(jobProperty, colorScheme);
 
-            // Apply the original three story characters
-            ApplyStoryCharacterTheme("agrias", "aguri", config.Agrias);
-            ApplyStoryCharacterTheme("orlandeau", "oru", config.Orlandeau);
-            ApplyStoryCharacterTheme("cloud", "cloud", config.Cloud);
-
-            // TODO: Add these when themes are created:
-            // ApplyStoryCharacterTheme("ovelia", "???", config.Ovelia);
-            // ApplyStoryCharacterTheme("zalbag", "???", config.Zalbag);
-            // ApplyStoryCharacterTheme("wiegraf", "???", config.Wiegraf);
-            // ApplyStoryCharacterTheme("mustadio", "garu", config.Mustadio);
-        }
-
-        private void ApplyStoryCharacterTheme<T>(string characterName, string spriteName, T theme) where T : Enum
-        {
-            var themeName = theme.ToString().ToLower();
-
-            // Add detailed logging for Rapha debugging
-            if (characterName.ToLower() == "rafa" || characterName.ToLower() == "rapha")
+            // Apply the change immediately
+            var spriteName = GetSpriteNameForJob(jobProperty);
+            if (spriteName != null)
             {
-                ModLogger.Log($"[RAPHA DEBUG] Applying theme for character: {characterName}, sprite: {spriteName}, theme: {themeName}");
-            }
-
-            // Skip if it's set to original
-            if (themeName == "original")
-            {
-                ModLogger.Log($"Skipping {characterName} - theme is original");
-                return;
-            }
-
-            // First try the directory-based structure (e.g., sprites_gaffgarion_blackguard_gold/battle_baruna_spr.bin)
-            var themeDir = $"sprites_{characterName}_{themeName}";
-            var sourceDirPath = Path.Combine(_sourceUnitPath, themeDir, $"battle_{spriteName}_spr.bin");
-
-            // Also check the flat file structure for backward compatibility (e.g., battle_baruna_blackguard_gold_spr.bin)
-            var sourceFlatPath = Path.Combine(_sourceUnitPath, $"battle_{spriteName}_{themeName}_spr.bin");
-
-            // More debugging for Rapha
-            if (characterName.ToLower() == "rafa" || characterName.ToLower() == "rapha")
-            {
-                ModLogger.Log($"[RAPHA DEBUG] Checking directory path: {sourceDirPath}");
-                ModLogger.Log($"[RAPHA DEBUG] Directory exists: {File.Exists(sourceDirPath)}");
-                ModLogger.Log($"[RAPHA DEBUG] Checking flat path: {sourceFlatPath}");
-                ModLogger.Log($"[RAPHA DEBUG] Flat file exists: {File.Exists(sourceFlatPath)}");
-            }
-
-            string sourceFile;
-            if (File.Exists(sourceDirPath))
-            {
-                sourceFile = sourceDirPath;
-                ModLogger.Log($"Using directory-based theme: {themeDir}");
-            }
-            else if (File.Exists(sourceFlatPath))
-            {
-                sourceFile = sourceFlatPath;
-                ModLogger.Log($"Using flat file theme: battle_{spriteName}_{themeName}_spr.bin");
-            }
-            else
-            {
-                ModLogger.Log($"Warning: Theme file not found for {characterName} - {themeName}");
-                ModLogger.Log($"  Tried: {sourceDirPath}");
-                ModLogger.Log($"  Tried: {sourceFlatPath}");
-                return;
-            }
-
-            // Destination file should be the BASE sprite name (no theme appended)
-            // This overwrites the original sprite with the themed version
-            var destFile = Path.Combine(_unitPath, $"battle_{spriteName}_spr.bin");
-
-            // More debugging for Rapha
-            if (characterName.ToLower() == "rafa" || characterName.ToLower() == "rapha")
-            {
-                ModLogger.Log($"[RAPHA DEBUG] Destination path: {destFile}");
-                ModLogger.Log($"[RAPHA DEBUG] _unitPath: {_unitPath}");
-            }
-
-            if (File.Exists(sourceFile))
-            {
-                try
-                {
-                    File.Copy(sourceFile, destFile, true);
-                    ModLogger.LogSuccess($"Applied {characterName} theme: {themeName} - copied to {Path.GetFileName(destFile)}");
-
-                    // Verify copy for Rapha
-                    if (characterName.ToLower() == "rafa" || characterName.ToLower() == "rapha")
-                    {
-                        ModLogger.Log($"[RAPHA DEBUG] Copy successful! File now exists at: {destFile}");
-                        ModLogger.Log($"[RAPHA DEBUG] File size: {new FileInfo(destFile).Length} bytes");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    ModLogger.LogError($"Error copying {characterName} sprite: {ex.Message}");
-                    if (characterName.ToLower() == "rafa" || characterName.ToLower() == "rapha")
-                    {
-                        ModLogger.LogError($"[RAPHA DEBUG] Copy failed with exception: {ex}");
-                    }
-                }
-            }
-            else
-            {
-                ModLogger.LogWarning($"Source sprite not found for {characterName} at {sourceFile}");
+                CopySpriteForJob(spriteName, colorScheme);
             }
         }
 
-        private void CopySpriteForJob(string spriteName, string colorScheme)
+        public void UpdateConfiguration(Config newConfig)
         {
-            // Use _sourceUnitPath (git repo) for source files, not _unitPath (deployment)
-            var sourceDir = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}");
-            var sourceFile = Path.Combine(sourceDir, spriteName);
-            var destFile = Path.Combine(_unitPath, spriteName);
+            _configManager.SaveConfig(newConfig);
+            ApplyConfiguration();
+        }
 
-            if (File.Exists(sourceFile))
-            {
-                try
-                {
-                    File.Copy(sourceFile, destFile, true);
-                    ModLogger.LogSuccess($"Applied {colorScheme} to {spriteName}");
-                }
-                catch (Exception ex)
-                {
-                    ModLogger.LogError($"Error copying sprite: {ex.Message}");
-                }
-            }
-            else
-            {
-                ModLogger.LogWarning($"Source sprite not found at {sourceFile}");
-            }
+        public void ResetAllToOriginal()
+        {
+            _configManager.ResetToDefaults();
+            var resetConfig = _configManager.ReloadConfig();
+            ApplyConfiguration();
+        }
+
+        public string GetJobFromSpriteName(string spriteName)
+        {
+            return _configManager.GetJobPropertyForSprite(spriteName);
         }
 
         private string GetSpriteNameForJob(string jobProperty)
@@ -311,50 +312,28 @@ namespace FFTColorMod.Utilities
             };
         }
 
-        public string GetActiveColorForJob(string jobProperty)
+        private void CopySpriteForJob(string spriteName, string colorScheme)
         {
-            var config = _configManager.LoadConfig();
-            var propertyInfo = typeof(Config).GetProperty(jobProperty);
-            if (propertyInfo == null)
-                return "Original";
+            var sourceDir = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}");
+            var sourceFile = Path.Combine(sourceDir, spriteName);
+            var destFile = Path.Combine(_unitPath, spriteName);
 
-            var colorSchemeEnum = propertyInfo.GetValue(config) as Configuration.ColorScheme?;
-            return colorSchemeEnum?.GetDescription() ?? "Original"; // This method returns display name, not file name
-        }
-
-        public void SetColorForJob(string jobProperty, string colorScheme)
-        {
-            _configManager.SetColorSchemeForJob(jobProperty, colorScheme);
-
-            // Apply the change immediately
-            var spriteName = GetSpriteNameForJob(jobProperty);
-            if (spriteName != null)
+            if (File.Exists(sourceFile))
             {
-                CopySpriteForJob(spriteName, colorScheme);
+                try
+                {
+                    File.Copy(sourceFile, destFile, true);
+                    ModLogger.LogSuccess($"Applied {colorScheme} to {spriteName}");
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogError($"Error copying sprite: {ex.Message}");
+                }
             }
-        }
-
-        public void ResetAllToOriginal()
-        {
-            _configManager.ResetToDefaults();
-
-            // Force a reload to ensure we have the reset config
-            var resetConfig = _configManager.ReloadConfig();
-
-            // Apply the reset configuration
-            ApplyConfiguration();
-        }
-
-        public void UpdateConfiguration(Config newConfig)
-        {
-            // Save the new configuration and reapply all sprite changes
-            _configManager.SaveConfig(newConfig);
-            ApplyConfiguration();
-        }
-
-        public string GetJobFromSpriteName(string spriteName)
-        {
-            return _configManager.GetJobPropertyForSprite(spriteName);
+            else
+            {
+                ModLogger.LogWarning($"Source sprite not found at {sourceFile}");
+            }
         }
     }
 }

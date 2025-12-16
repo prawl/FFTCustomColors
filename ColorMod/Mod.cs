@@ -311,7 +311,6 @@ public class Mod : IMod, IConfigurable
             "battle_kanba_",  // Agrias second sprite
             "battle_oru_",    // Orlandeau (NOT oran!)
             "battle_dily",    // Delita (has dily, dily2, dily3)
-            "battle_hime_",   // Ovelia
             "battle_aruma_",  // Alma
             "battle_rafa_",   // Rafa
             "battle_mara_",   // Malak
@@ -511,6 +510,11 @@ public class Mod : IMod, IConfigurable
 
     private void InitializeStoryCharacterThemes(Config config)
     {
+        // Validate theme files exist
+        var validationService = new ThemeValidationService(_modPath);
+        var validationResults = validationService.ValidateConfiguration(config);
+        validationService.LogValidationResults();
+
         // Initialize story character themes from config
         if (_themeManager != null)
         {
@@ -527,7 +531,6 @@ public class Mod : IMod, IConfigurable
                 storyManager.SetCurrentReisTheme(config.Reis);
                 storyManager.SetCurrentDelitaTheme(config.Delita);
                 storyManager.SetCurrentAlmaTheme(config.Alma);
-                storyManager.SetCurrentWiegrafTheme(config.Wiegraf);
 
                 // Log all themes for debugging
                 ModLogger.Log($"Applying initial Cloud theme: {config.Cloud}");
@@ -537,7 +540,6 @@ public class Mod : IMod, IConfigurable
                 ModLogger.Log($"Applying initial Reis theme: {config.Reis}");
                 ModLogger.Log($"Applying initial Delita theme: {config.Delita}");
                 ModLogger.Log($"Applying initial Alma theme: {config.Alma}");
-                ModLogger.Log($"Applying initial Wiegraf theme: {config.Wiegraf}");
 
                 // Apply the themes AFTER they've been set from config
                 _themeManager.ApplyInitialThemes();

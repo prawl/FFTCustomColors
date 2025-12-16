@@ -23,7 +23,6 @@ namespace Tests
                 "battle_dily_spr.bin",    // Delita chapter 1
                 "battle_dily2_spr.bin",   // Delita chapter 2
                 "battle_dily3_spr.bin",   // Delita chapter 3
-                "battle_hime_spr.bin",    // Ovelia
                 "battle_aruma_spr.bin",   // Alma
                 "battle_rafa_spr.bin",    // Rafa
                 "battle_mara_spr.bin",    // Malak

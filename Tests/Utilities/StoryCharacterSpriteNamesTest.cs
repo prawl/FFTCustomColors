@@ -16,7 +16,7 @@ namespace Tests
         [InlineData("battle_dily_spr.bin", true)]      // Delita
         [InlineData("battle_dily2_spr.bin", true)]     // Delita chapter 2
         [InlineData("battle_dily3_spr.bin", true)]     // Delita chapter 3
-        [InlineData("battle_hime_spr.bin", true)]      // Ovelia
+        [InlineData("battle_hime_spr.bin", false)]     // Ovelia (removed - not recruitable)
         [InlineData("battle_aruma_spr.bin", true)]     // Alma
         [InlineData("battle_rafa_spr.bin", true)]      // Rafa
         [InlineData("battle_mara_spr.bin", true)]      // Malak

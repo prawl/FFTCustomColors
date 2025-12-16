@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using FFTColorMod.Registry;
+using FFTColorMod.Services;
 using ColorMod.Registry;
 
 namespace FFTColorMod.Configuration
@@ -13,16 +14,13 @@ namespace FFTColorMod.Configuration
     {
         private readonly Config _config;
         private readonly GenericCharacterRegistry _genericRegistry;
+        private readonly CharacterDefinitionService _characterService;
+
         public SpriteNameMapper(Config config)
         {
             _config = config;
             _genericRegistry = GenericCharacterRegistry.Instance;
-
-            // Ensure story characters are discovered
-            if (!StoryCharacterRegistry.GetAllCharacterNames().Any())
-            {
-                StoryCharacterRegistry.AutoDiscoverCharacters();
-            }
+            _characterService = CharacterServiceSingleton.Instance;
         }
 
         /// <summary>
@@ -41,16 +39,15 @@ namespace FFTColorMod.Configuration
             }
 
             // Try story characters by checking each registered character's sprite names
-            foreach (var characterName in StoryCharacterRegistry.GetAllCharacterNames())
+            foreach (var character in _characterService.GetAllCharacters())
             {
-                var character = StoryCharacterRegistry.GetCharacter(characterName);
                 if (character != null && character.SpriteNames != null)
                 {
                     foreach (var spritePattern in character.SpriteNames)
                     {
                         if (spriteName.Contains(spritePattern))
                         {
-                            return characterName;
+                            return character.Name;
                         }
                     }
                 }
@@ -84,7 +81,7 @@ namespace FFTColorMod.Configuration
             }
 
             // Handle story characters
-            var storyCharacter = StoryCharacterRegistry.GetCharacter(characterKey);
+            var storyCharacter = _characterService.GetCharacterByName(characterKey);
             if (storyCharacter != null)
             {
                 return GetStoryCharacterColor(characterKey, spriteName);

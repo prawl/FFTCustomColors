@@ -1,0 +1,53 @@
+{
+  "characters": [
+    {
+      "name": "Agrias",
+      "spriteNames": ["aguri", "kanba"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "ash_dark"],
+      "enumType": "AgriasColorScheme"
+    },
+    {
+      "name": "Alma",
+      "spriteNames": ["aruma"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "AlmaColorScheme"
+    },
+    {
+      "name": "Cloud",
+      "spriteNames": ["cloud"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "CloudColorScheme"
+    },
+    {
+      "name": "Delita",
+      "spriteNames": ["dily", "dily2", "dily3"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "DelitaColorScheme"
+    },
+    {
+      "name": "Mustadio",
+      "spriteNames": ["musu"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "MustadioColorScheme"
+    },
+    {
+      "name": "Orlandeau",
+      "spriteNames": ["oru", "goru", "voru"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "OrlandeauColorScheme"
+    },
+    {
+      "name": "Reis",
+      "spriteNames": ["reze", "reze_d"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "ReisColorScheme"
+    }
+  ]
+}

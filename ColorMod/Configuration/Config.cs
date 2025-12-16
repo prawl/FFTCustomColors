@@ -419,6 +419,37 @@ namespace FFTColorMod.Configuration
             set => SetColorScheme("Chemist_Female", value);
         }
 
+        // Dynamic story character configuration
+        private DynamicStoryCharacterConfig _dynamicCharacters;
+
+        private DynamicStoryCharacterConfig DynamicCharacters
+        {
+            get
+            {
+                if (_dynamicCharacters == null)
+                {
+                    _dynamicCharacters = new DynamicStoryCharacterConfig();
+                    // Sync existing properties to dynamic system
+                    SyncToDynamicSystem();
+                }
+                return _dynamicCharacters;
+            }
+        }
+
+        private void SyncToDynamicSystem()
+        {
+            if (_dynamicCharacters != null)
+            {
+                _dynamicCharacters.SetThemeObject("Agrias", Agrias);
+                _dynamicCharacters.SetThemeObject("Orlandeau", Orlandeau);
+                _dynamicCharacters.SetThemeObject("Cloud", Cloud);
+                _dynamicCharacters.SetThemeObject("Mustadio", Mustadio);
+                _dynamicCharacters.SetThemeObject("Reis", Reis);
+                _dynamicCharacters.SetThemeObject("Delita", Delita);
+                _dynamicCharacters.SetThemeObject("Alma", Alma);
+            }
+        }
+
         // Story Characters - these remain as-is since they use different enums
         public AgriasColorScheme Agrias { get; set; } = AgriasColorScheme.original;
         public OrlandeauColorScheme Orlandeau { get; set; } = OrlandeauColorScheme.original;
@@ -427,11 +458,6 @@ namespace FFTColorMod.Configuration
         public ReisColorScheme Reis { get; set; } = ReisColorScheme.original;
         public DelitaColorScheme Delita { get; set; } = DelitaColorScheme.original;
         public AlmaColorScheme Alma { get; set; } = AlmaColorScheme.original;
-        public WiegrafColorScheme Wiegraf { get; set; } = WiegrafColorScheme.original;
-
-        // Additional Story Characters
-        public OveliaColorScheme Ovelia { get; set; } = OveliaColorScheme.original;
-        public ZalbagColorScheme Zalbag { get; set; } = ZalbagColorScheme.original;
 
         // Custom JSON serialization to maintain compatibility
         public Dictionary<string, object> ToJsonDictionary()
@@ -454,11 +480,64 @@ namespace FFTColorMod.Configuration
             result["Reis"] = Reis.ToString();
             result["Delita"] = Delita.ToString();
             result["Alma"] = Alma.ToString();
-            result["Wiegraf"] = Wiegraf.ToString();
-            result["Ovelia"] = Ovelia.ToString();
-            result["Zalbag"] = Zalbag.ToString();
 
             return result;
+        }
+
+        /// <summary>
+        /// Get a story character's theme dynamically by name
+        /// </summary>
+        public object GetStoryCharacterTheme(string characterName)
+        {
+            // First check if it's one of the existing hardcoded properties
+            switch (characterName)
+            {
+                case "Agrias": return Agrias;
+                case "Orlandeau": return Orlandeau;
+                case "Cloud": return Cloud;
+                case "Mustadio": return Mustadio;
+                case "Reis": return Reis;
+                case "Delita": return Delita;
+                case "Alma": return Alma;
+                default:
+                    // Check dynamic system for new characters
+                    return DynamicCharacters.GetThemeObject(characterName);
+            }
+        }
+
+        /// <summary>
+        /// Set a story character's theme dynamically by name
+        /// </summary>
+        public void SetStoryCharacterTheme(string characterName, object theme)
+        {
+            // Update both the property and dynamic system
+            switch (characterName)
+            {
+                case "Agrias":
+                    if (theme is AgriasColorScheme agrias) Agrias = agrias;
+                    break;
+                case "Orlandeau":
+                    if (theme is OrlandeauColorScheme orlandeau) Orlandeau = orlandeau;
+                    break;
+                case "Cloud":
+                    if (theme is CloudColorScheme cloud) Cloud = cloud;
+                    break;
+                case "Mustadio":
+                    if (theme is MustadioColorScheme mustadio) Mustadio = mustadio;
+                    break;
+                case "Reis":
+                    if (theme is ReisColorScheme reis) Reis = reis;
+                    break;
+                case "Delita":
+                    if (theme is DelitaColorScheme delita) Delita = delita;
+                    break;
+                case "Alma":
+                    if (theme is AlmaColorScheme alma) Alma = alma;
+                    break;
+            }
+
+            // Always update dynamic system
+            DynamicCharacters.SetThemeObject(characterName, theme);
         }
 
     }
