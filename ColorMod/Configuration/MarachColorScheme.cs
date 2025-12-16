@@ -8,5 +8,8 @@ namespace FFTColorMod.Configuration
     {
         [Description("Original")]
         original,
+
+        [Description("Nightmare Armor")]
+        nightmare_armor,
     }
 }
