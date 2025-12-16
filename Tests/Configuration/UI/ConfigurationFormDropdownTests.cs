@@ -9,6 +9,7 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using FFTColorMod.Services;
+using FFTColorMod.Tests.Helpers;
 
 namespace Tests.Configuration.UI
 {
@@ -18,7 +19,7 @@ namespace Tests.Configuration.UI
     public class ConfigurationFormDropdownTests : IDisposable
     {
         private Config _config;
-        private ConfigurationForm _form;
+        private TestConfigurationForm _form;
         private string _tempConfigPath;
         private string _tempDataPath;
 
@@ -67,7 +68,7 @@ namespace Tests.Configuration.UI
         {
             // Arrange
             _config.Squire_Male = "original";
-            _form = new ConfigurationForm(_config, _tempConfigPath);
+            _form = new TestConfigurationForm(_config, _tempConfigPath);
 
             // Set _isInitializing to false to allow events to work
             var initializingField = typeof(ConfigurationForm).GetField("_isInitializing",
@@ -109,7 +110,7 @@ namespace Tests.Configuration.UI
         {
             // Arrange
             _config.Agrias = "original";
-            _form = new ConfigurationForm(_config, _tempConfigPath);
+            _form = new TestConfigurationForm(_config, _tempConfigPath);
 
             // Set _isInitializing to false to allow events to work
             var initializingField = typeof(ConfigurationForm).GetField("_isInitializing",
@@ -144,7 +145,7 @@ namespace Tests.Configuration.UI
             _config.Knight_Female = "original";
 
             // Act - Create form (initialization)
-            _form = new ConfigurationForm(_config, _tempConfigPath);
+            _form = new TestConfigurationForm(_config, _tempConfigPath);
             // Do NOT call Show() yet - form is still initializing
 
             // Assert - Config should remain unchanged during initialization
@@ -159,7 +160,7 @@ namespace Tests.Configuration.UI
         {
             // Arrange
             _config.Archer_Male = "original";
-            _form = new ConfigurationForm(_config, _tempConfigPath);
+            _form = new TestConfigurationForm(_config, _tempConfigPath);
 
             // Initialize form without showing it
             var initializingField = typeof(ConfigurationForm).GetField("_isInitializing",
@@ -198,7 +199,7 @@ namespace Tests.Configuration.UI
         {
             // Arrange
             _config.Monk_Male = "original";
-            _form = new ConfigurationForm(_config, _tempConfigPath);
+            _form = new TestConfigurationForm(_config, _tempConfigPath);
 
             // Set _isInitializing to false to allow events to work
             var initializingField = typeof(ConfigurationForm).GetField("_isInitializing",
@@ -237,7 +238,7 @@ namespace Tests.Configuration.UI
             _config.Chemist_Female = "original";
             _config.Knight_Male = "original";
 
-            _form = new ConfigurationForm(_config, _tempConfigPath);
+            _form = new TestConfigurationForm(_config, _tempConfigPath);
 
             // Set _isInitializing to false to allow events to work
             var initializingField = typeof(ConfigurationForm).GetField("_isInitializing",

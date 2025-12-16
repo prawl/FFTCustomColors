@@ -32,6 +32,12 @@ namespace FFTColorMod.Utilities
             _characterService = characterService;
             _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             _sourceUnitPath = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+
+            Console.WriteLine($"[FFT Color Mod] ConfigBasedSpriteManager initialized:");
+            Console.WriteLine($"[FFT Color Mod]   Mod path: {_modPath}");
+            Console.WriteLine($"[FFT Color Mod]   Source path: {_sourcePath}");
+            Console.WriteLine($"[FFT Color Mod]   Unit path (destination): {_unitPath}");
+            Console.WriteLine($"[FFT Color Mod]   Source unit path: {_sourceUnitPath}");
         }
 
         // Backward compatibility constructor using singleton
@@ -45,6 +51,7 @@ namespace FFTColorMod.Utilities
 
         public void ApplyConfiguration()
         {
+            Console.WriteLine($"[FFT Color Mod] ApplyConfiguration called");
             var config = _configManager.LoadConfig();
 
             // Apply generic job class themes
@@ -52,6 +59,7 @@ namespace FFTColorMod.Utilities
 
             // Apply story character themes using CharacterDefinitionService
             ApplyStoryCharacterThemes(config);
+            Console.WriteLine($"[FFT Color Mod] ApplyConfiguration completed");
         }
 
         private void ApplyGenericJobThemes(Config config)
@@ -66,7 +74,7 @@ namespace FFTColorMod.Utilities
                 var colorScheme = property.GetValue(config) as string ?? "original";
 
                 // Log what we're applying
-                ModLogger.Log($"Applying {property.Name}: {colorScheme}");
+                Console.WriteLine($"[FFT Color Mod] Applying {property.Name}: {colorScheme}");
 
                 // Get the sprite name for this job/gender
                 var spriteName = GetSpriteNameForJob(property.Name);
@@ -338,16 +346,16 @@ namespace FFTColorMod.Utilities
                 try
                 {
                     File.Copy(sourceFile, destFile, true);
-                    ModLogger.LogSuccess($"Applied {colorScheme} to {spriteName}");
+                    Console.WriteLine($"[FFT Color Mod] SUCCESS: Copied {colorScheme} theme to {destFile}");
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError($"Error copying sprite: {ex.Message}");
+                    Console.WriteLine($"[FFT Color Mod] ERROR copying sprite: {ex.Message}");
                 }
             }
             else
             {
-                ModLogger.LogWarning($"Source sprite not found at {sourceFile}");
+                Console.WriteLine($"[FFT Color Mod] WARNING: Source sprite not found at {sourceFile}");
             }
         }
     }

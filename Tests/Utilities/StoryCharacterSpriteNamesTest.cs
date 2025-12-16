@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using Xunit;
 using FFTColorMod;
+using FFTColorMod.Utilities;
 
 namespace Tests
 {
@@ -28,7 +29,7 @@ namespace Tests
         public void IsJobSprite_RecognizesCorrectStoryCharacterNames(string fileName, bool expectedResult)
         {
             // Arrange
-            var mod = new Mod(new ModContext(), null);
+            var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
             var method = typeof(Mod).GetMethod("IsJobSprite",
                 BindingFlags.NonPublic | BindingFlags.Instance);
 
@@ -52,7 +53,7 @@ namespace Tests
             // This test specifically verifies that we're using the correct Orlandeau sprite name
             // The game uses battle_oru_spr.bin, NOT battle_oran_spr.bin
 
-            var mod = new Mod(new ModContext(), null);
+            var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
             var method = typeof(Mod).GetMethod("IsJobSprite",
                 BindingFlags.NonPublic | BindingFlags.Instance);
 
@@ -70,7 +71,7 @@ namespace Tests
         {
             // Agrias has both battle_aguri_spr.bin and battle_kanba_spr.bin
 
-            var mod = new Mod(new ModContext(), null);
+            var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
             var method = typeof(Mod).GetMethod("IsJobSprite",
                 BindingFlags.NonPublic | BindingFlags.Instance);
 

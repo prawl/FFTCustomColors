@@ -13,12 +13,12 @@ namespace FFTColorMod.Utilities
         /// <summary>
         /// Gets or sets whether debug logging is enabled
         /// </summary>
-        public static bool EnableDebugLogging { get; set; } = false;
+        public static bool EnableDebugLogging { get; set; } = true;
 
         /// <summary>
         /// Gets or sets the minimum log level to output
         /// </summary>
-        public static LogLevel LogLevel { get; set; } = LogLevel.Info;
+        public static LogLevel LogLevel { get; set; } = LogLevel.Debug;
 
         /// <summary>
         /// Logs a standard information message

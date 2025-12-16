@@ -11,7 +11,8 @@ namespace FFTColorMod.Services
 
         public List<CharacterDefinition> GetAllCharacters()
         {
-            return _characters;
+            // Return a copy to prevent "Collection was modified" errors during iteration
+            return new List<CharacterDefinition>(_characters);
         }
 
         public void AddCharacter(CharacterDefinition character)

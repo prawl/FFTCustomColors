@@ -26,7 +26,7 @@ namespace FFTColorMod.Tests
             try
             {
                 var context = new ModContext();
-                var mod = new Mod(context);
+                var mod = new Mod(context, null, new NullHotkeyHandler());
 
                 // Act & Assert - Check if mod implements the compatibility methods
                 mod.CanSuspend().Should().BeFalse("Color mod should not support suspension as it modifies memory");
@@ -59,7 +59,7 @@ namespace FFTColorMod.Tests
             try
             {
                 var context = new ModContext();
-                var mod = new Mod(context);
+                var mod = new Mod(context, null, new NullHotkeyHandler());
 
                 // Act - Check if mod has per-character customization capability
                 var supportsCharacterCustomization = mod.GetType().GetMethod("SupportsPerCharacterColors");
@@ -94,7 +94,7 @@ namespace FFTColorMod.Tests
             {
                 var context = new ModContext();
                 var mockInputSimulator = new TrackingMockInputSimulator();
-                var mod = new Mod(context, mockInputSimulator);
+                var mod = new Mod(context, mockInputSimulator, new NullHotkeyHandler());
                 bool configUIOpened = false;
                 mod.ConfigUIRequested += () => configUIOpened = true;
 

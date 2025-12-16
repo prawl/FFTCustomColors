@@ -13,6 +13,11 @@ namespace FFTColorMod.Configuration.UI
         public PreviewImageManager(string modPath)
         {
             _modPath = modPath;
+            Console.WriteLine($"[FFT Color Mod] PreviewImageManager initialized with modPath: {modPath}");
+
+            // Log what preview path we'll be looking in
+            var previewPath = Path.Combine(modPath, "Resources", "Previews");
+            Console.WriteLine($"[FFT Color Mod] Will look for previews in: {previewPath}");
             ModLogger.Log($"PreviewImageManager initialized with path: {modPath}");
         }
 
@@ -56,6 +61,7 @@ namespace FFTColorMod.Configuration.UI
             try
             {
                 string imagePath = GetStoryCharacterPreviewPath(characterName, theme);
+                Console.WriteLine($"[FFT Color Mod] Looking for story character preview at: {imagePath}");
                 ModLogger.LogDebug($"Looking for story character preview at: {imagePath}");
 
                 if (File.Exists(imagePath))
@@ -116,14 +122,14 @@ namespace FFTColorMod.Configuration.UI
         {
             string baseName = characterName.ToLower();
 
-            // Try different preview paths
+            // Try different preview paths - prioritize the actual deployed location
             string[] patterns = {
-                // Direct path in Resources/Previews folder (deployed location)
+                // Actual deployed location in ColorMod/Resources/Previews/
                 Path.Combine(_modPath, "Resources", "Previews", $"{baseName}_{theme.ToLower()}.png"),
-                // Legacy paths for backwards compatibility
-                Path.Combine(_modPath, "Previews", $"{baseName}_{theme.ToLower()}.png"),
+                Path.Combine(_modPath, "Resources", "Previews", $"{baseName}_{theme.ToLower()}_preview.png"),
+                // Fallback paths for compatibility
                 Path.Combine(_modPath, "previews", $"{baseName}_{theme.ToLower()}.png"),
-                Path.Combine(_modPath, "previews", $"{baseName}_{theme.ToLower()}_preview.png")
+                Path.Combine(_modPath, "Previews", $"{baseName}_{theme.ToLower()}.png")
             };
 
             foreach (var pattern in patterns)

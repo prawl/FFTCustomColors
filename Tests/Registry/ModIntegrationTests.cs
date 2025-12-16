@@ -5,6 +5,7 @@ using ColorMod.Registry;
 using FFTColorMod;
 using FFTColorMod.Configuration;
 using FFTColorMod.Services;
+using FFTColorMod.Utilities;
 
 namespace Tests.Registry
 {
@@ -35,7 +36,7 @@ namespace Tests.Registry
             var context = new ModContext();
 
             // Act
-            var mod = new Mod(context);
+            var mod = new Mod(context, null, new NullHotkeyHandler());
 
             // Assert - All story characters should be registered
             Assert.True(StoryCharacterRegistry.HasCharacter("Cloud"));
@@ -65,7 +66,7 @@ namespace Tests.Registry
         {
             // Arrange
             var context = new ModContext();
-            var mod = new Mod(context);
+            var mod = new Mod(context, null, new NullHotkeyHandler());
 
             // Create a temp config file with specific themes
             var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());

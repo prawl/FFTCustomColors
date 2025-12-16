@@ -52,15 +52,11 @@ namespace FFTColorMod.Services
         {
             ModLogger.Log("Opening configuration UI (F1)");
 
-            // If there are test event handlers, just invoke them
-            if (ConfigUIRequested != null)
-            {
-                ConfigUIRequested.Invoke();
-            }
-            else
-            {
-                _openConfigUI();
-            }
+            // Always call the open config UI action
+            _openConfigUI();
+
+            // Also invoke any event handlers if present (for tests)
+            ConfigUIRequested?.Invoke();
         }
 
 

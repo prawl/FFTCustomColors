@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using Xunit;
 using FFTColorMod.Configuration;
 using FFTColorMod.Configuration.UI;
+using FFTColorMod.Tests.Helpers;
 using FluentAssertions;
 
 namespace FFTColorMod.Tests
@@ -69,7 +70,7 @@ namespace FFTColorMod.Tests
             // It should instead derive the mod path from _configPath when provided
 
             // Act
-            var form = new ConfigurationForm(config, _testConfigPath);
+            var form = new TestConfigurationForm(config, _testConfigPath);
 
             // Check if preview images loaded for story characters
             var pictureBoxes = GetAllPictureBoxes(form);

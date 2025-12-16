@@ -62,7 +62,7 @@ namespace Tests
         [InlineData("battle_oru_spr.bin", true)]    // Correct Orlandeau name - should work
         public void Orlandeau_OnlyWorksWithCorrectName(string fileName, bool shouldBeRecognized)
         {
-            var mod = new Mod(new ModContext(), null);
+            var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
             var method = typeof(Mod).GetMethod("IsJobSprite",
                 BindingFlags.NonPublic | BindingFlags.Instance);
 

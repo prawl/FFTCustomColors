@@ -69,7 +69,7 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_MOD_PATH", _testModPath);
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
-            var mod = new Mod(_modContext, _inputSimulator);
+            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
             mod.InitializeConfiguration(_testConfigPath); // IMPORTANT: Initialize the managers
 
             // Act
@@ -86,7 +86,7 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_MOD_PATH", _testModPath);
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
-            var mod = new Mod(_modContext, _inputSimulator);
+            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
             mod.InitializeConfiguration(_testConfigPath); // IMPORTANT: Initialize the managers
 
             // Set knight to corpse_brigade via config
@@ -108,7 +108,7 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_MOD_PATH", _testModPath);
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
-            var mod = new Mod(_modContext, _inputSimulator);
+            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
             mod.InitializeConfiguration(_testConfigPath); // Must initialize before using config methods
 
             // Set colors with delays
@@ -151,7 +151,7 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
             // Act - Create mod which should load the config
-            var mod = new Mod(_modContext, _inputSimulator);
+            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
             mod.InitializeConfiguration(_testConfigPath);
 
             // Wait for initialization to complete
@@ -176,7 +176,7 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_MOD_PATH", _testModPath);
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
-            var mod = new Mod(_modContext, _inputSimulator);
+            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
             mod.InitializeConfiguration(_testConfigPath); // Must initialize before using config methods
 
             mod.SetJobColor("Knight_Male", "corpse_brigade");

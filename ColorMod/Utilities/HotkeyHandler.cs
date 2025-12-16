@@ -2,10 +2,11 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using FFTColorMod.Interfaces;
 
 namespace FFTColorMod.Utilities
 {
-public class HotkeyHandler
+public class HotkeyHandler : IHotkeyHandler
 {
     private const int VK_F1 = 0x70;
     private readonly Action<int> _onHotkeyPressed;

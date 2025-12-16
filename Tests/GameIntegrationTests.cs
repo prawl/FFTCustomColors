@@ -1,5 +1,6 @@
 using Xunit;
 using FFTColorMod.Configuration;
+using FFTColorMod.Utilities;
 using FluentAssertions;
 using System;
 
@@ -12,7 +13,7 @@ public class ModHookIntegrationTests
     {
         // TLDR: Test that Mod creates sprite hook when pattern is found
         // Arrange
-        var mod = new Mod();
+        var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
 
         // Act & Assert - Pattern handling removed
         // File swapping only - no memory hooks
@@ -23,7 +24,7 @@ public class ModHookIntegrationTests
     {
         // TLDR: Test that Mod calls SignatureScanner.CreateSpriteLoadHook
         // Arrange
-        var mod = new Mod();
+        var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
 
         // Act & Assert - Hook creation removed
         // File swapping only - no memory hooks
@@ -34,7 +35,7 @@ public class ModHookIntegrationTests
     {
         // TLDR: Test that Mod initializes properly
         // Arrange
-        var mod = new Mod();
+        var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
 
         // Act & Assert
         Assert.NotNull(mod);
@@ -46,7 +47,7 @@ public class ModHookIntegrationTests
     {
         // TLDR: Test that Mod sets proper flags
         // Arrange & Act
-        var mod = new Mod();
+        var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
 
         // Assert - mod should set flags correctly
         Assert.NotNull(mod);
@@ -58,7 +59,7 @@ public class ModHookIntegrationTests
     {
         // TLDR: Test that Mod starts scanning for patterns on initialization
         // Arrange & Act
-        var mod = new Mod();
+        var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
 
         // Assert - mod should have started scanning
         // Scanning was removed - no tests needed
@@ -69,7 +70,7 @@ public class ModHookIntegrationTests
     {
         // TLDR: Mod should use GameIntegration to handle file hooks
         // Arrange
-        var mod = new Mod();
+        var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
 
         // Act
         mod.InitializeGameIntegration();
@@ -335,7 +336,7 @@ public class GameIntegrationTests
     public void Mod_F1_Should_Open_Config_UI()
     {
         // TLDR: Test that F1 opens config UI instead of cycling colors
-        var mod = new Mod();
+        var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
         bool configUIOpened = false;
         mod.ConfigUIRequested += () => configUIOpened = true;
 
@@ -364,7 +365,7 @@ public class GameIntegrationTests
     {
         // TLDR: When F1 key is pressed, mod should open config UI
         // Arrange
-        var mod = new Mod();
+        var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
         mod.InitializeGameIntegration();
         bool configUIOpened = false;
         mod.ConfigUIRequested += () => configUIOpened = true;

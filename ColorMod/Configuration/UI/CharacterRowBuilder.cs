@@ -99,6 +99,8 @@ namespace FFTColorMod.Configuration.UI
             var availableThemes = characterConfig.AvailableThemes?.Length > 0
                 ? characterConfig.AvailableThemes
                 : new[] { "original" }; // fallback if no themes available
+
+            Console.WriteLine($"[FFT Color Mod] Story character {characterConfig.Name} has {availableThemes.Length} themes: {string.Join(", ", availableThemes)}");
             comboBox.DataSource = availableThemes;
 
             // Setup event handler
@@ -155,7 +157,9 @@ namespace FFTColorMod.Configuration.UI
         {
             // Get themes from the JobClassDefinitionService
             // This could later be loaded from a JSON file for easier configuration
-            return _jobClassService.GetAvailableThemes();
+            var themes = _jobClassService.GetAvailableThemes();
+            Console.WriteLine($"[FFT Color Mod] GetAvailableGenericThemes returned {themes.Count} themes: {string.Join(", ", themes)}");
+            return themes;
         }
 
         private void UpdateGenericPreviewImage(PictureBox pictureBox, string jobName, string theme)

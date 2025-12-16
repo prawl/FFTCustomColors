@@ -1,5 +1,6 @@
 using System.Windows.Forms;
 using FFTColorMod.Configuration;
+using FFTColorMod.Tests.Helpers;
 using Xunit;
 
 namespace FFTColorMod.Tests
@@ -10,10 +11,20 @@ namespace FFTColorMod.Tests
         public void ConfigurationForm_Should_Be_TopMost()
         {
             // Arrange & Act
-            var form = new ConfigurationForm(new Config());
+            // Create form without showing it
+            TestConfigurationForm? form = null;
+            try
+            {
+                form = new TestConfigurationForm(new Config());
 
-            // Assert
-            Assert.True(form.TopMost, "Configuration form should be TopMost to appear above game window");
+                // Assert
+                Assert.True(form.TopMost, "Configuration form should be TopMost to appear above game window");
+            }
+            finally
+            {
+                // Clean up without showing
+                form?.Dispose();
+            }
         }
     }
 }

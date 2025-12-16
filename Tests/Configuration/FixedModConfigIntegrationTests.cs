@@ -70,7 +70,7 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_MOD_PATH", _testModPath);
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
-            var mod = new Mod(_modContext, _inputSimulator);
+            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
 
             // IMPORTANT: Call InitializeConfiguration to set up the managers
             mod.InitializeConfiguration(_testConfigPath);
@@ -96,7 +96,7 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_MOD_PATH", _testModPath);
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
-            var mod = new Mod(_modContext, _inputSimulator);
+            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
             mod.InitializeConfiguration(_testConfigPath);
 
             // Act - set colors with delays between each
@@ -141,7 +141,7 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_MOD_PATH", _testModPath);
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
-            var mod = new Mod(_modContext, _inputSimulator);
+            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
             mod.InitializeConfiguration(_testConfigPath);
 
             // Act
@@ -174,7 +174,7 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
             // Act - Create new mod instance which should load the config
-            var mod = new Mod(_modContext, _inputSimulator);
+            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
             mod.InitializeConfiguration(_testConfigPath);
 
             // Since we're not calling Start(), we need to manually apply the configuration
@@ -194,7 +194,7 @@ namespace FFTColorMod.Tests
             Environment.SetEnvironmentVariable("FFT_MOD_PATH", _testModPath);
             Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
 
-            var mod = new Mod(_modContext, _inputSimulator);
+            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
             mod.InitializeConfiguration(_testConfigPath);
 
             // Set only two colors to keep test simpler

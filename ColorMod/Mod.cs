@@ -8,6 +8,7 @@ using ColorMod.Registry;
 using FFTColorMod.Configuration;
 using FFTColorMod.Services;
 using FFTColorMod.Utilities;
+using FFTColorMod.Interfaces;
 using Reloaded.Mod.Interfaces;
 
 namespace FFTColorMod;
@@ -18,9 +19,10 @@ namespace FFTColorMod;
 public class Mod : IMod, IConfigurable
 {
     private GameIntegration? _gameIntegration;
-    private HotkeyHandler? _hotkeyHandler;
+    private IHotkeyHandler? _hotkeyHandler;
     private SpriteFileManager? _spriteFileManager;
     private ConfigBasedSpriteManager? _configBasedSpriteManager;
+    private bool _isTestEnvironment = false;
     private ConfigurationManager? _configurationManager;
     private DynamicSpriteLoader? _dynamicSpriteLoader;
     private Process? _gameProcess;
@@ -32,11 +34,15 @@ public class Mod : IMod, IConfigurable
     public event Action? ConfigUIRequested;
 
     // Constructor that accepts ModContext and optional IInputSimulator (for testing)
-    public Mod(ModContext context, IInputSimulator? inputSimulator = null)
+    public Mod(ModContext context, IInputSimulator? inputSimulator = null, IHotkeyHandler? hotkeyHandler = null)
     {
         // Do minimal work in constructor - Reloaded will call Start() for initialization
         ModLogger.Log("Constructor called with ModContext");
         _inputSimulator = inputSimulator;
+        _hotkeyHandler = hotkeyHandler;
+
+        // If NullHotkeyHandler is provided, we're likely in a test environment
+        _isTestEnvironment = hotkeyHandler is NullHotkeyHandler;
 
         // Try to auto-detect sprite variants from mod directory
         _modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
@@ -137,8 +143,11 @@ public class Mod : IMod, IConfigurable
         _currentColorScheme = "original";
         ModLogger.Log($"Starting with color scheme: {_currentColorScheme}");
 
-        // Initialize and start hotkey handler
-        _hotkeyHandler = new HotkeyHandler(vkCode => _hotkeyService.ProcessHotkeyPress(vkCode));
+        // Initialize and start hotkey handler (use provided or create default)
+        if (_hotkeyHandler == null)
+        {
+            _hotkeyHandler = new HotkeyHandler(vkCode => _hotkeyService.ProcessHotkeyPress(vkCode));
+        }
         _hotkeyHandler.StartMonitoring();
 
         ModLogger.Log("Loaded successfully!");
@@ -426,8 +435,19 @@ public class Mod : IMod, IConfigurable
 
     protected virtual void OpenConfigurationUI()
     {
+        // Skip opening UI if we're in a test environment
+        if (_isTestEnvironment)
+        {
+            ModLogger.Log("Skipping UI display in test environment");
+            ConfigUIRequested?.Invoke();
+            return;
+        }
+
+        Console.WriteLine("[FFT Color Mod] === OpenConfigurationUI called ===");
         try
         {
+            Console.WriteLine($"[FFT Color Mod] Configuration manager initialized: {_configurationManager != null}");
+            Console.WriteLine($"[FFT Color Mod] Mod path: {_modPath}");
             ModLogger.Log("=== OpenConfigurationUI called ===");
             ModLogger.Log($"Configuration manager initialized: {_configurationManager != null}");
             ModLogger.Log($"Mod path: {_modPath}");
@@ -441,36 +461,50 @@ public class Mod : IMod, IConfigurable
                 var reloadedRoot = Directory.GetParent(Directory.GetParent(_modPath).FullName)?.FullName ?? _modPath;
                 var configPath = Path.Combine(reloadedRoot, "User", "Mods", "ptyra.fft.colormod", "Config.json");
 
-                var configForm = new Configuration.ConfigurationForm(config, configPath);
+                // Pass the source path (git repo) as the mod path so it can find preview images
+                var configForm = new Configuration.ConfigurationForm(config, configPath, _sourcePath);
 
                 var result = configForm.ShowDialog();
 
+                Console.WriteLine($"[FFT Color Mod] Dialog result: {result}");
+
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
+                    Console.WriteLine("[FFT Color Mod] Saving configuration...");
                     ModLogger.Log("Saving configuration...");
                     _configurationManager.SaveConfig(config);
 
                     // Update the config-based sprite manager with new configuration
                     if (_configBasedSpriteManager != null)
                     {
+                        Console.WriteLine("[FFT Color Mod] Updating sprite manager with new configuration...");
                         ModLogger.Log("Updating sprite manager with new configuration...");
                         _configBasedSpriteManager.UpdateConfiguration(config);
                     }
+                    else
+                    {
+                        Console.WriteLine("[FFT Color Mod] WARNING: _configBasedSpriteManager is null!");
+                    }
 
                     // Simulate a menu refresh to reload sprites in-game
+                    Console.WriteLine("[FFT Color Mod] Triggering sprite refresh in game...");
                     ModLogger.Log("Triggering sprite refresh in game...");
                     if (_inputSimulator != null)
                     {
+                        Console.WriteLine("[FFT Color Mod] Calling SimulateMenuRefresh...");
                         ModLogger.Log("Calling SimulateMenuRefresh...");
                         bool refreshResult = _inputSimulator.SimulateMenuRefresh();
+                        Console.WriteLine($"[FFT Color Mod] SimulateMenuRefresh returned: {refreshResult}");
                         ModLogger.Log($"SimulateMenuRefresh returned: {refreshResult}");
                     }
                     else
                     {
+                        Console.WriteLine("[FFT Color Mod] WARNING: InputSimulator is null!");
                         ModLogger.LogWarning("InputSimulator is null - cannot refresh sprites!");
                     }
                 }
 
+                Console.WriteLine("[FFT Color Mod] Configuration window closed");
                 ModLogger.Log("Configuration window closed");
             }
             else

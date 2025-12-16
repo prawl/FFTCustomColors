@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using Xunit;
 using FFTColorMod;
+using FFTColorMod.Utilities;
 
 namespace Tests
 {
@@ -31,7 +32,7 @@ namespace Tests
                 "battle_reze_d_spr.bin"   // Reis dragon
             };
 
-            var mod = new Mod(new ModContext(), null);
+            var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
             var method = typeof(Mod).GetMethod("IsJobSprite",
                 BindingFlags.NonPublic | BindingFlags.Instance);
 
@@ -67,7 +68,7 @@ namespace Tests
         {
             // Test that our IsJobSprite method recognizes all story characters with correct names
 
-            var mod = new Mod(new ModContext(), null);
+            var mod = new Mod(new ModContext(), null, new NullHotkeyHandler());
             var method = typeof(Mod).GetMethod("IsJobSprite",
                 BindingFlags.NonPublic | BindingFlags.Instance);
 

@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using Xunit;
 using FFTColorMod.Configuration;
 using FFTColorMod.Configuration.UI;
+using FFTColorMod.Tests.Helpers;
 using FluentAssertions;
 
 namespace FFTColorMod.Tests
@@ -69,7 +70,7 @@ namespace FFTColorMod.Tests
                 "Preview images SHOULD exist in mod directory");
 
             // Act - Create form with both config path and mod path (simulating the fix)
-            var form = new ConfigurationForm(config, _testConfigPath, _testModPath);
+            var form = new TestConfigurationForm(config, _testConfigPath, _testModPath);
 
             // Assert - Images should load from mod path
             var pictureBoxes = GetAllPictureBoxes(form);
@@ -102,7 +103,7 @@ namespace FFTColorMod.Tests
 
             // Act - Create form with only config path (simulating the bug scenario)
             // Without the fix, it would try to derive mod path from config path
-            var form = new ConfigurationForm(config, _testConfigPath, null);
+            var form = new TestConfigurationForm(config, _testConfigPath, null);
 
             // The derived path would be wrong (parent of Config directory in User area)
             // So images wouldn't load
