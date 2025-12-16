@@ -137,20 +137,11 @@ namespace FFTColorMod.Configuration
         {
             _storyCharacters = StoryCharacterRegistry.GetStoryCharacters(_config);
 
-            // Story characters in roughly the order you meet them in the game
-            var characterOrder = new[]
+            // Load all available story characters from the registry
+            // The registry automatically loads from StoryCharacters.json
+            foreach (var characterConfig in _storyCharacters.Values.OrderBy(c => c.Name))
             {
-                "Agrias", "Gaffgarion", "Ovelia", "Simon", "Delita", "Alma",
-                "Zalbag", "Wiegraf", "Mustadio", "Orlandeau", "Malak", "Rafa",
-                "Zalmo", "Elmdore", "Celia", "Lettie", "Reis", "Cloud", "Vormav"
-            };
-
-            foreach (var characterName in characterOrder)
-            {
-                if (_storyCharacters.TryGetValue(characterName, out var characterConfig))
-                {
-                    _rowBuilder.AddStoryCharacterRow(row++, characterConfig);
-                }
+                _rowBuilder.AddStoryCharacterRow(row++, characterConfig);
             }
         }
 

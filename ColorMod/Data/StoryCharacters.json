@@ -37,7 +37,7 @@
     },
     {
       "name": "Rapha",
-      "spriteNames": ["g79"],
+      "spriteNames": ["h79"],
       "defaultTheme": "original",
       "availableThemes": ["original", "dark"],
       "enumType": "RaphaColorScheme"
@@ -55,13 +55,6 @@
       "defaultTheme": "original",
       "availableThemes": ["original", "dark"],
       "enumType": "BeowulfColorScheme"
-    },
-    {
-      "name": "Construct8",
-      "spriteNames": ["hasyu"],
-      "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "Construct8ColorScheme"
     },
     {
       "name": "Meliadoul",

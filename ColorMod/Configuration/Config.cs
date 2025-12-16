@@ -458,6 +458,10 @@ namespace FFTColorMod.Configuration
         public ReisColorScheme Reis { get; set; } = ReisColorScheme.original;
         public DelitaColorScheme Delita { get; set; } = DelitaColorScheme.original;
         public AlmaColorScheme Alma { get; set; } = AlmaColorScheme.original;
+        public RaphaColorScheme Rapha { get; set; } = RaphaColorScheme.original;
+        public MarachColorScheme Marach { get; set; } = MarachColorScheme.original;
+        public BeowulfColorScheme Beowulf { get; set; } = BeowulfColorScheme.original;
+        public MeliadoulColorScheme Meliadoul { get; set; } = MeliadoulColorScheme.original;
 
         // Custom JSON serialization to maintain compatibility
         public Dictionary<string, object> ToJsonDictionary()
