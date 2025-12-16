@@ -74,11 +74,9 @@ namespace Tests.Utilities
             var config = new Config
             {
                 Alma = AlmaColorScheme.golden_yellow,
-                Celia = CeliaColorScheme.royal_blue,
+                Agrias = AgriasColorScheme.ash_dark,
+                Cloud = CloudColorScheme.knights_round,
                 Delita = DelitaColorScheme.forest_green,
-                Lettie = LettieColorScheme.magenta,
-                Malak = MalakColorScheme.silver_steel,
-                Rafa = RafaColorScheme.ocean_blue,
                 Reis = ReisColorScheme.violet
             };
 
@@ -86,11 +84,9 @@ namespace Tests.Utilities
 
             // Create source directories and files for each character
             CreateStoryCharacterSprite("alma", "golden_yellow", "aruma");
-            CreateStoryCharacterSprite("celia", "royal_blue", "seria");
+            CreateStoryCharacterSprite("agrias", "ash_dark", "aguri");
+            CreateStoryCharacterSprite("cloud", "knights_round", "cloud");
             CreateStoryCharacterSprite("delita", "forest_green", "dily");
-            CreateStoryCharacterSprite("lettie", "magenta", "ledy");
-            CreateStoryCharacterSprite("malak", "silver_steel", "mara");
-            CreateStoryCharacterSprite("rafa", "ocean_blue", "rafa");
             CreateStoryCharacterSprite("reis", "violet", "reze");
 
             var sourcePath = Path.Combine(_testDir, "source");
@@ -101,11 +97,9 @@ namespace Tests.Utilities
 
             // Assert
             VerifyStoryCharacterSprite("aruma", "golden_yellow");
-            VerifyStoryCharacterSprite("seria", "royal_blue");
+            VerifyStoryCharacterSprite("aguri", "ash_dark");
+            VerifyStoryCharacterSprite("cloud", "knights_round");
             VerifyStoryCharacterSprite("dily", "forest_green");
-            VerifyStoryCharacterSprite("ledy", "magenta");
-            VerifyStoryCharacterSprite("mara", "silver_steel");
-            VerifyStoryCharacterSprite("rafa", "ocean_blue");
             VerifyStoryCharacterSprite("reze", "violet");
         }
 
@@ -116,14 +110,14 @@ namespace Tests.Utilities
             var config = new Config
             {
                 Alma = AlmaColorScheme.original,
-                Celia = CeliaColorScheme.original
+                Agrias = AgriasColorScheme.original
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create theme files that should NOT be copied when theme is "original"
             CreateStoryCharacterSprite("alma", "crimson_red", "aruma");
-            CreateStoryCharacterSprite("celia", "royal_blue", "seria");
+            CreateStoryCharacterSprite("agrias", "ash_dark", "aguri");
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -133,10 +127,10 @@ namespace Tests.Utilities
 
             // Assert - when theme is original, base sprites should NOT be created/overwritten
             var almaBase = Path.Combine(_unitPath, "battle_aruma_spr.bin");
-            var celiaBase = Path.Combine(_unitPath, "battle_seria_spr.bin");
+            var agriasBase = Path.Combine(_unitPath, "battle_aguri_spr.bin");
 
             File.Exists(almaBase).Should().BeFalse("Alma base sprite should not be created when theme is original");
-            File.Exists(celiaBase).Should().BeFalse("Celia base sprite should not be created when theme is original");
+            File.Exists(agriasBase).Should().BeFalse("Agrias base sprite should not be created when theme is original");
         }
 
         [Fact]

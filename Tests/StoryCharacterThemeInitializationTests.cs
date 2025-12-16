@@ -35,14 +35,14 @@ namespace Tests
             File.WriteAllText(Path.Combine(agriasOriginalDir, "battle_aguri_spr.bin"), "original_theme");
             File.WriteAllText(Path.Combine(agriasAshDir, "battle_aguri_spr.bin"), "ash_dark_theme");
 
-            // Create theme directories for Gaffgarion
-            var gaffOriginalDir = Path.Combine(_testSourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_gaffgarion_original");
-            var gaffBlacksteelDir = Path.Combine(_testSourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_gaffgarion_blacksteel_red");
-            Directory.CreateDirectory(gaffOriginalDir);
-            Directory.CreateDirectory(gaffBlacksteelDir);
+            // Create theme directories for Cloud
+            var cloudOriginalDir = Path.Combine(_testSourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_cloud_original");
+            var cloudKnightsDir = Path.Combine(_testSourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_cloud_knights_round");
+            Directory.CreateDirectory(cloudOriginalDir);
+            Directory.CreateDirectory(cloudKnightsDir);
 
-            File.WriteAllText(Path.Combine(gaffOriginalDir, "battle_baruna_spr.bin"), "original_theme");
-            File.WriteAllText(Path.Combine(gaffBlacksteelDir, "battle_baruna_spr.bin"), "blacksteel_red_theme");
+            File.WriteAllText(Path.Combine(cloudOriginalDir, "battle_cloud_spr.bin"), "original_theme");
+            File.WriteAllText(Path.Combine(cloudKnightsDir, "battle_cloud_spr.bin"), "knights_round_theme");
 
             // Setup config manager
             _configPath = Path.Combine(_testModPath, "Config.json");
@@ -67,7 +67,7 @@ namespace Tests
             var config = new Config
             {
                 Agrias = AgriasColorScheme.original,  // Config says original
-                Gaffgarion = GaffgarionColorScheme.blacksteel_red,  // Config says blacksteel_red
+                Cloud = CloudColorScheme.knights_round,  // Config says blacksteel_red
                 Orlandeau = OrlandeauColorScheme.original
             };
             _configManager.SaveConfig(config);
@@ -81,11 +81,11 @@ namespace Tests
             // Then load config and set themes (too late - themes already copied)
             var storyManager = themeManager.GetStoryCharacterManager();
             storyManager.SetCurrentAgriasTheme(config.Agrias);
-            storyManager.SetCurrentGaffgarionTheme(config.Gaffgarion);
+            storyManager.SetCurrentCloudTheme(config.Cloud);
 
             // Check what was actually copied to deployment
             var deployedAgriasSprite = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_aguri_spr.bin");
-            var deployedGaffSprite = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_baruna_spr.bin");
+            var deployedCloudSprite = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_cloud_spr.bin");
 
             // Assert - With the old behavior, deployed sprites would have hardcoded defaults
             Assert.True(File.Exists(deployedAgriasSprite), "Agrias sprite should be deployed");
@@ -94,9 +94,9 @@ namespace Tests
             // With defaults now set to "original", this should pass
             Assert.Equal("original_theme", agriasContent);
 
-            Assert.True(File.Exists(deployedGaffSprite), "Gaffgarion sprite should be deployed");
-            var gaffContent = File.ReadAllText(deployedGaffSprite);
-            Assert.Equal("original_theme", gaffContent); // Gaffgarion default is original
+            Assert.True(File.Exists(deployedCloudSprite), "Cloud sprite should be deployed");
+            var cloudContent = File.ReadAllText(deployedCloudSprite);
+            Assert.Equal("original_theme", cloudContent); // Cloud would get original with old behavior
         }
 
         [Fact]
@@ -106,7 +106,7 @@ namespace Tests
             var config = new Config
             {
                 Agrias = AgriasColorScheme.original,
-                Gaffgarion = GaffgarionColorScheme.blacksteel_red
+                Cloud = CloudColorScheme.knights_round
             };
             _configManager.SaveConfig(config);
 
@@ -116,23 +116,23 @@ namespace Tests
 
             // Set themes from config FIRST
             storyManager.SetCurrentAgriasTheme(config.Agrias);
-            storyManager.SetCurrentGaffgarionTheme(config.Gaffgarion);
+            storyManager.SetCurrentCloudTheme(config.Cloud);
 
             // THEN apply themes
             themeManager.ApplyInitialThemes();
 
             // Check what was deployed
             var deployedAgriasSprite = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_aguri_spr.bin");
-            var deployedGaffSprite = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_baruna_spr.bin");
+            var deployedCloudSprite = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_cloud_spr.bin");
 
             // Assert - Now themes should match config
             Assert.True(File.Exists(deployedAgriasSprite), "Agrias sprite should be deployed");
             var agriasContent = File.ReadAllText(deployedAgriasSprite);
             Assert.Equal("original_theme", agriasContent); // Should pass when themes are set before applying
 
-            Assert.True(File.Exists(deployedGaffSprite), "Gaffgarion sprite should be deployed");
-            var gaffContent = File.ReadAllText(deployedGaffSprite);
-            Assert.Equal("blacksteel_red_theme", gaffContent);
+            Assert.True(File.Exists(deployedCloudSprite), "Cloud sprite should be deployed");
+            var cloudContent = File.ReadAllText(deployedCloudSprite);
+            Assert.Equal("knights_round_theme", cloudContent);
         }
     }
 }

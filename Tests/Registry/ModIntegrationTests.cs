@@ -56,7 +56,6 @@ namespace Tests.Registry
             Assert.Equal(typeof(OrlandeauColorScheme), orlandeau.EnumType);
             Assert.Contains("oru", orlandeau.SpriteNames);
             Assert.Contains("goru", orlandeau.SpriteNames);
-            Assert.Contains("voru", orlandeau.SpriteNames);
         }
 
         [Fact]

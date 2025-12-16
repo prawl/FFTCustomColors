@@ -43,22 +43,22 @@ namespace Tests
         }
 
         [Fact]
-        public void ApplyConfiguration_WithGaffgarionBlacksteelRed_CopiesThemeFromDirectory()
+        public void ApplyConfiguration_WithAgriasAshDark_CopiesThemeFromDirectory()
         {
             // Arrange
             var config = new Config
             {
-                Gaffgarion = GaffgarionColorScheme.blacksteel_red
+                Agrias = AgriasColorScheme.ash_dark
             };
             _configManager.SaveConfig(config);
 
             // Create the theme directory structure
-            var themeDir = Path.Combine(_testSourcePath, "sprites_gaffgarion_blacksteel_red");
+            var themeDir = Path.Combine(_testSourcePath, "sprites_agrias_ash_dark");
             Directory.CreateDirectory(themeDir);
 
             // Create a dummy sprite file in the theme directory
-            var themeSpriteFile = Path.Combine(themeDir, "battle_baruna_spr.bin");
-            File.WriteAllText(themeSpriteFile, "blacksteel_red_theme_content");
+            var themeSpriteFile = Path.Combine(themeDir, "battle_aguri_spr.bin");
+            File.WriteAllText(themeSpriteFile, "ash_dark_theme_content");
 
             // Create the destination directory - match ConfigBasedSpriteManager expectations
             var destDir = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -68,37 +68,37 @@ namespace Tests
             _spriteManager.ApplyConfiguration();
 
             // Assert
-            var expectedDestFile = Path.Combine(destDir, "battle_baruna_spr.bin");
+            var expectedDestFile = Path.Combine(destDir, "battle_aguri_spr.bin");
             Assert.True(File.Exists(expectedDestFile), "Theme sprite should be copied to destination");
 
             var content = File.ReadAllText(expectedDestFile);
-            Assert.Equal("blacksteel_red_theme_content", content);
+            Assert.Equal("ash_dark_theme_content", content);
         }
 
         [Fact]
-        public void ApplyConfiguration_WithGaffgarionOriginal_DoesNotCopyTheme()
+        public void ApplyConfiguration_WithAgriasOriginal_DoesNotCopyTheme()
         {
             // Arrange
             var config = new Config
             {
-                Gaffgarion = GaffgarionColorScheme.original
+                Agrias = AgriasColorScheme.original
             };
             _configManager.SaveConfig(config);
 
             // Create the theme directory structure (shouldn't be used)
-            var themeDir = Path.Combine(_testSourcePath, "sprites_gaffgarion_blacksteel_red");
+            var themeDir = Path.Combine(_testSourcePath, "sprites_agrias_ash_dark");
             Directory.CreateDirectory(themeDir);
 
             // Create a dummy sprite file in the theme directory
-            var themeSpriteFile = Path.Combine(themeDir, "battle_baruna_spr.bin");
-            File.WriteAllText(themeSpriteFile, "blacksteel_red_theme_content");
+            var themeSpriteFile = Path.Combine(themeDir, "battle_aguri_spr.bin");
+            File.WriteAllText(themeSpriteFile, "ash_dark_theme_content");
 
             // Create the destination directory - match ConfigBasedSpriteManager expectations
             var destDir = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             Directory.CreateDirectory(destDir);
 
             // Create an existing original file
-            var originalFile = Path.Combine(destDir, "battle_baruna_spr.bin");
+            var originalFile = Path.Combine(destDir, "battle_aguri_spr.bin");
             File.WriteAllText(originalFile, "original_content");
 
             // Act
@@ -116,7 +116,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Gaffgarion = GaffgarionColorScheme.blacksteel_red
+                Agrias = AgriasColorScheme.ash_dark
             };
             _configManager.SaveConfig(config);
 
@@ -131,7 +131,7 @@ namespace Tests
 
             // Assert
             // The sprite file should not be created since source doesn't exist
-            var expectedDestFile = Path.Combine(destDir, "battle_baruna_spr.bin");
+            var expectedDestFile = Path.Combine(destDir, "battle_aguri_spr.bin");
             Assert.False(File.Exists(expectedDestFile), "No file should be created when theme is missing");
         }
 
@@ -141,13 +141,13 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Gaffgarion = GaffgarionColorScheme.blacksteel_red
+                Agrias = AgriasColorScheme.ash_dark
             };
             _configManager.SaveConfig(config);
 
             // Create a flat file structure (backward compatibility)
-            var flatThemeFile = Path.Combine(_testSourcePath, "battle_baruna_blacksteel_red_spr.bin");
-            File.WriteAllText(flatThemeFile, "flat_blacksteel_red_content");
+            var flatThemeFile = Path.Combine(_testSourcePath, "battle_aguri_ash_dark_spr.bin");
+            File.WriteAllText(flatThemeFile, "flat_ash_dark_content");
 
             // Create the destination directory - match ConfigBasedSpriteManager expectations
             var destDir = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -157,11 +157,11 @@ namespace Tests
             _spriteManager.ApplyConfiguration();
 
             // Assert
-            var expectedDestFile = Path.Combine(destDir, "battle_baruna_spr.bin");
+            var expectedDestFile = Path.Combine(destDir, "battle_aguri_spr.bin");
             Assert.True(File.Exists(expectedDestFile), "Theme sprite should be copied from flat file");
 
             var content = File.ReadAllText(expectedDestFile);
-            Assert.Equal("flat_blacksteel_red_content", content);
+            Assert.Equal("flat_ash_dark_content", content);
         }
 
         [Fact]
@@ -170,18 +170,18 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Gaffgarion = GaffgarionColorScheme.blacksteel_red
+                Agrias = AgriasColorScheme.ash_dark
             };
             _configManager.SaveConfig(config);
 
             // Create both directory structure and flat file
-            var themeDir = Path.Combine(_testSourcePath, "sprites_gaffgarion_blacksteel_red");
+            var themeDir = Path.Combine(_testSourcePath, "sprites_agrias_ash_dark");
             Directory.CreateDirectory(themeDir);
 
-            var dirSpriteFile = Path.Combine(themeDir, "battle_baruna_spr.bin");
+            var dirSpriteFile = Path.Combine(themeDir, "battle_aguri_spr.bin");
             File.WriteAllText(dirSpriteFile, "directory_content");
 
-            var flatThemeFile = Path.Combine(_testSourcePath, "battle_baruna_blacksteel_red_spr.bin");
+            var flatThemeFile = Path.Combine(_testSourcePath, "battle_aguri_ash_dark_spr.bin");
             File.WriteAllText(flatThemeFile, "flat_content");
 
             // Create the destination directory - match ConfigBasedSpriteManager expectations
@@ -192,7 +192,7 @@ namespace Tests
             _spriteManager.ApplyConfiguration();
 
             // Assert
-            var expectedDestFile = Path.Combine(destDir, "battle_baruna_spr.bin");
+            var expectedDestFile = Path.Combine(destDir, "battle_aguri_spr.bin");
             Assert.True(File.Exists(expectedDestFile), "Theme sprite should be copied");
 
             var content = File.ReadAllText(expectedDestFile);

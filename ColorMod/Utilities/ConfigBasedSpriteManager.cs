@@ -136,16 +136,16 @@ namespace FFTColorMod.Utilities
             ApplyStoryCharacterTheme("delita", "dily", config.Delita);
             ApplyStoryCharacterTheme("reis", "reze", config.Reis);
 
+            // Apply the original three story characters
+            ApplyStoryCharacterTheme("agrias", "aguri", config.Agrias);
+            ApplyStoryCharacterTheme("orlandeau", "oru", config.Orlandeau);
+            ApplyStoryCharacterTheme("cloud", "cloud", config.Cloud);
+
             // TODO: Add these when themes are created:
             // ApplyStoryCharacterTheme("ovelia", "???", config.Ovelia);
             // ApplyStoryCharacterTheme("zalbag", "???", config.Zalbag);
             // ApplyStoryCharacterTheme("wiegraf", "???", config.Wiegraf);
             // ApplyStoryCharacterTheme("mustadio", "garu", config.Mustadio);
-
-            // The original three story characters (already handled elsewhere)
-            // ApplyStoryCharacterTheme("agrias", "aguri", config.Agrias);
-            // ApplyStoryCharacterTheme("orlandeau", "oru", config.Orlandeau);
-            // ApplyStoryCharacterTheme("cloud", "cloud", config.Cloud);
         }
 
         private void ApplyStoryCharacterTheme<T>(string characterName, string spriteName, T theme) where T : Enum

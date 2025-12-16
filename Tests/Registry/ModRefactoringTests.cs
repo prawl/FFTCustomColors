@@ -35,7 +35,7 @@ namespace Tests.Registry
         [InlineData("battle_kanba_spr.bin", "Agrias")]
         [InlineData("battle_oru_spr.bin", "Orlandeau")]
         [InlineData("battle_goru_spr.bin", "Orlandeau")]
-        [InlineData("battle_voru_spr.bin", "Vormav")]
+        [InlineData("battle_voru_spr.bin", null)]
         public void SpriteResolver_ShouldMapSpritesToCharacters(string spriteName, string expectedCharacter)
         {
             // Arrange
@@ -88,10 +88,9 @@ namespace Tests.Registry
             Assert.True(StoryCharacterRegistry.HasCharacter("Orlandeau"));
             var orlandeau = StoryCharacterRegistry.GetCharacter("Orlandeau");
 
-            // Orlandeau uses three sprite variants
+            // Orlandeau uses two sprite variants
             Assert.Contains("oru", orlandeau.SpriteNames);
             Assert.Contains("goru", orlandeau.SpriteNames);
-            Assert.Contains("voru", orlandeau.SpriteNames);
         }
 
         private string GetSpriteNameWithoutExtension(string fileName)

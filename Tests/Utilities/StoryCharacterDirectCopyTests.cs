@@ -11,7 +11,7 @@ namespace Tests.Utilities
     /// <summary>
     /// TDD Tests for story character theme application.
     /// Story characters should have their themed sprites copied DIRECTLY to the base sprite name
-    /// (e.g., battle_mara_coral_spr.bin -> battle_mara_spr.bin)
+    /// (e.g., battle_agrias_ash_dark_spr.bin -> battle_agrias_spr.bin)
     /// instead of creating a new file with the theme name appended.
     /// </summary>
     public class StoryCharacterDirectCopyTests : IDisposable
@@ -39,19 +39,19 @@ namespace Tests.Utilities
         }
 
         [Fact]
-        public void Malak_Coral_Theme_Should_Copy_To_Base_Sprite_Name()
+        public void Agrias_EmeraldGreen_Theme_Should_Copy_To_Base_Sprite_Name()
         {
             // Arrange
             var config = new Config
             {
-                Malak = MalakColorScheme.coral
+                Agrias = AgriasColorScheme.ash_dark
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create the themed sprite file in the unit directory (where they actually are)
-            var themedSprite = Path.Combine(_sourceUnitPath, "battle_mara_coral_spr.bin");
-            File.WriteAllBytes(themedSprite, new byte[] { 0xC0, 0xAA, 0x11 }); // Coral theme data
+            var themedSprite = Path.Combine(_sourceUnitPath, "battle_aguri_ash_dark_spr.bin");
+            File.WriteAllBytes(themedSprite, new byte[] { 0xC0, 0xAA, 0x11 }); // Ash dark theme data
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -60,31 +60,31 @@ namespace Tests.Utilities
             _spriteManager.ApplyConfiguration();
 
             // Assert
-            // The coral theme should be copied to the BASE sprite name (battle_mara_spr.bin)
-            var baseSpriteFile = Path.Combine(_unitPath, "battle_mara_spr.bin");
-            File.Exists(baseSpriteFile).Should().BeTrue("Malak's coral theme should overwrite the base sprite");
+            // The ash dark theme should be copied to the BASE sprite name (battle_aguri_spr.bin)
+            var baseSpriteFile = Path.Combine(_unitPath, "battle_aguri_spr.bin");
+            File.Exists(baseSpriteFile).Should().BeTrue("Agrias's emerald green theme should overwrite the base sprite");
             File.ReadAllBytes(baseSpriteFile).Should().Equal(new byte[] { 0xC0, 0xAA, 0x11 },
-                "The base sprite should contain the coral theme data");
+                "The base sprite should contain the emerald green theme data");
 
             // The themed file should NOT be created with theme name appended
-            var wrongFile = Path.Combine(_unitPath, "battle_mara_coral_spr.bin");
+            var wrongFile = Path.Combine(_unitPath, "battle_aguri_ash_dark_spr.bin");
             File.Exists(wrongFile).Should().BeFalse("Should not create a separate themed file");
         }
 
         [Fact]
-        public void Rafa_CrimsonRed_Theme_Should_Copy_To_Base_Sprite_Name()
+        public void Cloud_NavyBlue_Theme_Should_Copy_To_Base_Sprite_Name()
         {
             // Arrange
             var config = new Config
             {
-                Rafa = RafaColorScheme.crimson_red
+                Cloud = CloudColorScheme.knights_round
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create the themed sprite file
-            var themedSprite = Path.Combine(_sourceUnitPath, "battle_rafa_crimson_red_spr.bin");
-            File.WriteAllBytes(themedSprite, new byte[] { 0xDC, 0x14, 0x3C }); // Crimson red data
+            var themedSprite = Path.Combine(_sourceUnitPath, "battle_cloud_knights_round_spr.bin");
+            File.WriteAllBytes(themedSprite, new byte[] { 0xDC, 0x14, 0x3C }); // Knights round data
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -93,12 +93,12 @@ namespace Tests.Utilities
             _spriteManager.ApplyConfiguration();
 
             // Assert
-            var baseSpriteFile = Path.Combine(_unitPath, "battle_rafa_spr.bin");
-            File.Exists(baseSpriteFile).Should().BeTrue("Rafa's crimson_red theme should overwrite the base sprite");
+            var baseSpriteFile = Path.Combine(_unitPath, "battle_cloud_spr.bin");
+            File.Exists(baseSpriteFile).Should().BeTrue("Cloud's knights_round theme should overwrite the base sprite");
             File.ReadAllBytes(baseSpriteFile).Should().Equal(new byte[] { 0xDC, 0x14, 0x3C });
 
             // The themed file should NOT be created with theme name appended
-            var wrongFile = Path.Combine(_unitPath, "battle_rafa_crimson_red_spr.bin");
+            var wrongFile = Path.Combine(_unitPath, "battle_cloud_knights_round_spr.bin");
             File.Exists(wrongFile).Should().BeFalse("Should not create a separate themed file");
         }
 
@@ -108,25 +108,17 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
+                Agrias = AgriasColorScheme.ash_dark,
                 Alma = AlmaColorScheme.golden_yellow,
-                Celia = CeliaColorScheme.royal_blue,
-                Delita = DelitaColorScheme.forest_green,
-                Lettie = LettieColorScheme.magenta,
-                Malak = MalakColorScheme.silver_steel,
-                Rafa = RafaColorScheme.ocean_blue,
-                Reis = ReisColorScheme.violet
+                Cloud = CloudColorScheme.knights_round
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create themed sprite files in the unit directory
+            CreateThemedSprite("aguri", "ash_dark");
             CreateThemedSprite("aruma", "golden_yellow");
-            CreateThemedSprite("seria", "royal_blue");
-            CreateThemedSprite("dily", "forest_green");
-            CreateThemedSprite("ledy", "magenta");
-            CreateThemedSprite("mara", "silver_steel");
-            CreateThemedSprite("rafa", "ocean_blue");
-            CreateThemedSprite("reze", "violet");
+            CreateThemedSprite("cloud", "knights_round");
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -135,22 +127,14 @@ namespace Tests.Utilities
             _spriteManager.ApplyConfiguration();
 
             // Assert - all should copy to base names
+            VerifyBaseSpriteExists("aguri", shouldExist: true);
             VerifyBaseSpriteExists("aruma", shouldExist: true);
-            VerifyBaseSpriteExists("seria", shouldExist: true);
-            VerifyBaseSpriteExists("dily", shouldExist: true);
-            VerifyBaseSpriteExists("ledy", shouldExist: true);
-            VerifyBaseSpriteExists("mara", shouldExist: true);
-            VerifyBaseSpriteExists("rafa", shouldExist: true);
-            VerifyBaseSpriteExists("reze", shouldExist: true);
+            VerifyBaseSpriteExists("cloud", shouldExist: true);
 
             // Verify NO themed files are created
+            VerifyThemedSpriteDoesNotExist("aguri", "ash_dark");
             VerifyThemedSpriteDoesNotExist("aruma", "golden_yellow");
-            VerifyThemedSpriteDoesNotExist("seria", "royal_blue");
-            VerifyThemedSpriteDoesNotExist("dily", "forest_green");
-            VerifyThemedSpriteDoesNotExist("ledy", "magenta");
-            VerifyThemedSpriteDoesNotExist("mara", "silver_steel");
-            VerifyThemedSpriteDoesNotExist("rafa", "ocean_blue");
-            VerifyThemedSpriteDoesNotExist("reze", "violet");
+            VerifyThemedSpriteDoesNotExist("cloud", "knights_round");
         }
 
         [Fact]
@@ -159,15 +143,15 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Malak = MalakColorScheme.original,
-                Rafa = RafaColorScheme.original
+                Agrias = AgriasColorScheme.original,
+                Cloud = CloudColorScheme.original
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Even if themed files exist, they should not be copied when theme is "original"
-            CreateThemedSprite("mara", "coral");
-            CreateThemedSprite("rafa", "crimson_red");
+            CreateThemedSprite("aguri", "ash_dark");
+            CreateThemedSprite("cloud", "knights_round");
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -176,11 +160,11 @@ namespace Tests.Utilities
             _spriteManager.ApplyConfiguration();
 
             // Assert - no files should be created when theme is "original"
-            var maraBase = Path.Combine(_unitPath, "battle_mara_spr.bin");
-            var rafaBase = Path.Combine(_unitPath, "battle_rafa_spr.bin");
+            var agriasBase = Path.Combine(_unitPath, "battle_aguri_spr.bin");
+            var cloudBase = Path.Combine(_unitPath, "battle_cloud_spr.bin");
 
-            File.Exists(maraBase).Should().BeFalse("Malak base sprite should not be created when theme is original");
-            File.Exists(rafaBase).Should().BeFalse("Rafa base sprite should not be created when theme is original");
+            File.Exists(agriasBase).Should().BeFalse("Agrias base sprite should not be created when theme is original");
+            File.Exists(cloudBase).Should().BeFalse("Cloud base sprite should not be created when theme is original");
         }
 
         [Fact]
@@ -189,7 +173,7 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Malak = MalakColorScheme.coral // Selected but file doesn't exist
+                Agrias = AgriasColorScheme.ash_dark // Selected but file doesn't exist
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
@@ -201,7 +185,7 @@ namespace Tests.Utilities
             _spriteManager.Invoking(x => x.ApplyConfiguration())
                 .Should().NotThrow("Should handle missing sprite files gracefully");
 
-            var baseSpriteFile = Path.Combine(_unitPath, "battle_mara_spr.bin");
+            var baseSpriteFile = Path.Combine(_unitPath, "battle_aguri_spr.bin");
             File.Exists(baseSpriteFile).Should().BeFalse("Should not create file when source doesn't exist");
         }
 

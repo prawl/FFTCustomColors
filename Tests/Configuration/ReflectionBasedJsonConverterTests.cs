@@ -15,7 +15,7 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config();
             config.Alma = AlmaColorScheme.original;
-            config.Malak = MalakColorScheme.golden_yellow;
+            config.Agrias = AgriasColorScheme.ash_dark;
 
             var converter = new ReflectionBasedConfigJsonConverter();
             var settings = new JsonSerializerSettings();
@@ -27,7 +27,7 @@ namespace FFTColorMod.Tests
 
             // Assert
             Assert.Equal(AlmaColorScheme.original, deserializedConfig.Alma);
-            Assert.Equal(MalakColorScheme.golden_yellow, deserializedConfig.Malak);
+            Assert.Equal(AgriasColorScheme.ash_dark, deserializedConfig.Agrias);
         }
 
         [Fact]
@@ -39,9 +39,7 @@ namespace FFTColorMod.Tests
             // Set various story characters to non-default values using valid enum values
             config.Agrias = AgriasColorScheme.ash_dark;
             config.Cloud = CloudColorScheme.sephiroth_black;
-            config.Reis = ReisColorScheme.forest_green;
-            config.Celia = CeliaColorScheme.sunset_orange;
-            config.Lettie = LettieColorScheme.royal_blue;
+            config.Alma = AlmaColorScheme.golden_yellow;
             config.Delita = DelitaColorScheme.midnight_black;
 
             var converter = new ReflectionBasedConfigJsonConverter();
@@ -55,9 +53,7 @@ namespace FFTColorMod.Tests
             // Assert - All story characters should be deserialized correctly
             Assert.Equal(AgriasColorScheme.ash_dark, deserializedConfig.Agrias);
             Assert.Equal(CloudColorScheme.sephiroth_black, deserializedConfig.Cloud);
-            Assert.Equal(ReisColorScheme.forest_green, deserializedConfig.Reis);
-            Assert.Equal(CeliaColorScheme.sunset_orange, deserializedConfig.Celia);
-            Assert.Equal(LettieColorScheme.royal_blue, deserializedConfig.Lettie);
+            Assert.Equal(AlmaColorScheme.golden_yellow, deserializedConfig.Alma);
             Assert.Equal(DelitaColorScheme.midnight_black, deserializedConfig.Delita);
         }
 

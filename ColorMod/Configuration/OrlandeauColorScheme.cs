@@ -3,7 +3,7 @@ using ColorMod.Registry;
 
 namespace FFTColorMod.Configuration
 {
-    [StoryCharacter(SpriteNames = new[] { "oru", "goru", "voru" }, DefaultTheme = "thunder_god")]
+    [StoryCharacter(SpriteNames = new[] { "oru", "goru" }, DefaultTheme = "thunder_god")]
     public enum OrlandeauColorScheme
     {
         [Description("Original")]
