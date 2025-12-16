@@ -109,16 +109,16 @@ namespace Tests.Utilities
             var config = new Config
             {
                 Agrias = AgriasColorScheme.ash_dark,
-                Alma = AlmaColorScheme.golden_yellow,
-                Cloud = CloudColorScheme.knights_round
+                Cloud = CloudColorScheme.knights_round,
+                Orlandeau = OrlandeauColorScheme.thunder_god
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create themed sprite files in the unit directory
             CreateThemedSprite("aguri", "ash_dark");
-            CreateThemedSprite("aruma", "golden_yellow");
             CreateThemedSprite("cloud", "knights_round");
+            CreateThemedSprite("oru", "thunder_god");
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -128,13 +128,13 @@ namespace Tests.Utilities
 
             // Assert - all should copy to base names
             VerifyBaseSpriteExists("aguri", shouldExist: true);
-            VerifyBaseSpriteExists("aruma", shouldExist: true);
             VerifyBaseSpriteExists("cloud", shouldExist: true);
+            VerifyBaseSpriteExists("oru", shouldExist: true);
 
             // Verify NO themed files are created
             VerifyThemedSpriteDoesNotExist("aguri", "ash_dark");
-            VerifyThemedSpriteDoesNotExist("aruma", "golden_yellow");
             VerifyThemedSpriteDoesNotExist("cloud", "knights_round");
+            VerifyThemedSpriteDoesNotExist("oru", "thunder_god");
         }
 
         [Fact]

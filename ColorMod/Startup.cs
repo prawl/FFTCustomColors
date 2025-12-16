@@ -7,8 +7,9 @@ using FFTColorMod.Configuration;
 
 namespace FFTColorMod;
 
-// Minimal implementation to make the test pass
-public class Startup : IMod
+// Disabled - functionality moved to Mod.cs
+// This class is no longer used as the main mod entry point
+public class Startup_DISABLED
 {
     private Mod _mod = null!;
     private Thread? _hotkeyThread;
@@ -18,7 +19,7 @@ public class Startup : IMod
     private IModConfigV1 _modConfig = null!;
     private Config _configuration = null!;
 
-    public Startup()
+    public Startup_DISABLED()
     {
         // Initialize core components
     }
@@ -107,38 +108,8 @@ public class Startup : IMod
 
             while (_running)
             {
-                // Check for F1 key only (0x70)
-                if ((GetAsyncKeyState(0x70) & 0x8000) != 0)
-                {
-                    // Simple cycling through schemes
-                    _currentScheme = _currentScheme switch
-                    {
-                        "original" => "corpse_brigade",
-                        "corpse_brigade" => "lucavi",
-                        "lucavi" => "northern_sky",
-                        "northern_sky" => "southern_sky",
-                        "southern_sky" => "crimson_red",
-                        "crimson_red" => "royal_purple",
-                        "royal_purple" => "phoenix_flame",
-                        "phoenix_flame" => "frost_knight",
-                        "frost_knight" => "silver_knight",
-                        "silver_knight" => "emerald_dragon",
-                        "emerald_dragon" => "rose_gold",
-                        "rose_gold" => "ocean_depths",
-                        "ocean_depths" => "golden_templar",
-                        "golden_templar" => "blood_moon",
-                        "blood_moon" => "celestial",
-                        "celestial" => "volcanic",
-                        "volcanic" => "amethyst",
-                        "amethyst" => "original",
-                        _ => "original"
-                    };
-
-                    Console.WriteLine($"[FFTColorMod] Cycled to {_currentScheme} colors - sprites will update in real-time!");
-
-                    // Debounce
-                    Thread.Sleep(500);
-                }
+                // F1 hotkey handling disabled - handled by Mod.cs instead
+                // The main mod handles F1 to open the configuration UI
 
                 Thread.Sleep(50);
             }

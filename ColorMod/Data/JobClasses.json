@@ -1,0 +1,308 @@
+{
+  "jobClasses": [
+    {
+      "name": "Knight_Male",
+      "displayName": "Knight (Male)",
+      "spriteName": "battle_knight_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Knight"
+    },
+    {
+      "name": "Knight_Female",
+      "displayName": "Knight (Female)",
+      "spriteName": "battle_knight_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Knight"
+    },
+    {
+      "name": "Archer_Male",
+      "displayName": "Archer (Male)",
+      "spriteName": "battle_yumi_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Archer"
+    },
+    {
+      "name": "Archer_Female",
+      "displayName": "Archer (Female)",
+      "spriteName": "battle_yumi_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Archer"
+    },
+    {
+      "name": "Chemist_Male",
+      "displayName": "Chemist (Male)",
+      "spriteName": "battle_item_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Chemist"
+    },
+    {
+      "name": "Chemist_Female",
+      "displayName": "Chemist (Female)",
+      "spriteName": "battle_item_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Chemist"
+    },
+    {
+      "name": "Monk_Male",
+      "displayName": "Monk (Male)",
+      "spriteName": "battle_monk_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Monk"
+    },
+    {
+      "name": "Monk_Female",
+      "displayName": "Monk (Female)",
+      "spriteName": "battle_monk_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Monk"
+    },
+    {
+      "name": "WhiteMage_Male",
+      "displayName": "White Mage (Male)",
+      "spriteName": "battle_siro_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "WhiteMage"
+    },
+    {
+      "name": "WhiteMage_Female",
+      "displayName": "White Mage (Female)",
+      "spriteName": "battle_siro_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "WhiteMage"
+    },
+    {
+      "name": "BlackMage_Male",
+      "displayName": "Black Mage (Male)",
+      "spriteName": "battle_kuro_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "BlackMage"
+    },
+    {
+      "name": "BlackMage_Female",
+      "displayName": "Black Mage (Female)",
+      "spriteName": "battle_kuro_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "BlackMage"
+    },
+    {
+      "name": "Thief_Male",
+      "displayName": "Thief (Male)",
+      "spriteName": "battle_thief_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Thief"
+    },
+    {
+      "name": "Thief_Female",
+      "displayName": "Thief (Female)",
+      "spriteName": "battle_thief_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Thief"
+    },
+    {
+      "name": "Ninja_Male",
+      "displayName": "Ninja (Male)",
+      "spriteName": "battle_ninja_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Ninja"
+    },
+    {
+      "name": "Ninja_Female",
+      "displayName": "Ninja (Female)",
+      "spriteName": "battle_ninja_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Ninja"
+    },
+    {
+      "name": "Squire_Male",
+      "displayName": "Squire (Male)",
+      "spriteName": "battle_mina_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Squire"
+    },
+    {
+      "name": "Squire_Female",
+      "displayName": "Squire (Female)",
+      "spriteName": "battle_mina_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Squire"
+    },
+    {
+      "name": "TimeMage_Male",
+      "displayName": "Time Mage (Male)",
+      "spriteName": "battle_toki_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "TimeMage"
+    },
+    {
+      "name": "TimeMage_Female",
+      "displayName": "Time Mage (Female)",
+      "spriteName": "battle_toki_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "TimeMage"
+    },
+    {
+      "name": "Summoner_Male",
+      "displayName": "Summoner (Male)",
+      "spriteName": "battle_syou_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Summoner"
+    },
+    {
+      "name": "Summoner_Female",
+      "displayName": "Summoner (Female)",
+      "spriteName": "battle_syou_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Summoner"
+    },
+    {
+      "name": "Samurai_Male",
+      "displayName": "Samurai (Male)",
+      "spriteName": "battle_samu_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Samurai"
+    },
+    {
+      "name": "Samurai_Female",
+      "displayName": "Samurai (Female)",
+      "spriteName": "battle_samu_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Samurai"
+    },
+    {
+      "name": "Dragoon_Male",
+      "displayName": "Dragoon (Male)",
+      "spriteName": "battle_ryu_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Dragoon"
+    },
+    {
+      "name": "Dragoon_Female",
+      "displayName": "Dragoon (Female)",
+      "spriteName": "battle_ryu_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Dragoon"
+    },
+    {
+      "name": "Geomancer_Male",
+      "displayName": "Geomancer (Male)",
+      "spriteName": "battle_fusui_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Geomancer"
+    },
+    {
+      "name": "Geomancer_Female",
+      "displayName": "Geomancer (Female)",
+      "spriteName": "battle_fusui_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Geomancer"
+    },
+    {
+      "name": "Mystic_Male",
+      "displayName": "Mystic (Male)",
+      "spriteName": "battle_onmyo_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Mystic"
+    },
+    {
+      "name": "Mystic_Female",
+      "displayName": "Mystic (Female)",
+      "spriteName": "battle_onmyo_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Mystic"
+    },
+    {
+      "name": "Mediator_Male",
+      "displayName": "Mediator (Male)",
+      "spriteName": "battle_waju_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Mediator"
+    },
+    {
+      "name": "Mediator_Female",
+      "displayName": "Mediator (Female)",
+      "spriteName": "battle_waju_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Mediator"
+    },
+    {
+      "name": "Dancer_Female",
+      "displayName": "Dancer",
+      "spriteName": "battle_odori_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Dancer"
+    },
+    {
+      "name": "Bard_Male",
+      "displayName": "Bard",
+      "spriteName": "battle_gin_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Bard"
+    },
+    {
+      "name": "Mime_Male",
+      "displayName": "Mime (Male)",
+      "spriteName": "battle_mono_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Mime"
+    },
+    {
+      "name": "Mime_Female",
+      "displayName": "Mime (Female)",
+      "spriteName": "battle_mono_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Mime"
+    },
+    {
+      "name": "Calculator_Male",
+      "displayName": "Calculator (Male)",
+      "spriteName": "battle_san_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "Calculator"
+    },
+    {
+      "name": "Calculator_Female",
+      "displayName": "Calculator (Female)",
+      "spriteName": "battle_san_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "Calculator"
+    }
+  ]
+}

@@ -15,12 +15,14 @@ namespace FFTColorMod.Configuration
         private readonly Config _config;
         private readonly GenericCharacterRegistry _genericRegistry;
         private readonly CharacterDefinitionService _characterService;
+        private readonly JobClassDefinitionService _jobClassService;
 
         public SpriteNameMapper(Config config)
         {
             _config = config;
             _genericRegistry = GenericCharacterRegistry.Instance;
             _characterService = CharacterServiceSingleton.Instance;
+            _jobClassService = JobClassServiceSingleton.Instance;
         }
 
         /// <summary>
@@ -31,7 +33,14 @@ namespace FFTColorMod.Configuration
             if (string.IsNullOrEmpty(spriteName))
                 return null;
 
-            // Try generic characters first
+            // Try job class service first (new centralized system)
+            var jobClass = _jobClassService.GetJobClassBySpriteName(spriteName);
+            if (jobClass != null)
+            {
+                return jobClass.Name;
+            }
+
+            // Fall back to generic registry for backward compatibility
             var genericCharacter = _genericRegistry.GetCharacterBySpriteName(spriteName);
             if (genericCharacter != null)
             {

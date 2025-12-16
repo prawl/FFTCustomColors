@@ -142,7 +142,7 @@ public class Mod : IMod, IConfigurable
         _hotkeyHandler.StartMonitoring();
 
         ModLogger.Log("Loaded successfully!");
-        ModLogger.Log("Press F1 (previous) or F2 (next) to cycle through color schemes");
+        ModLogger.Log("Press F1 to open the Configuration UI");
         File.AppendAllText(logPath, $"[{DateTime.Now}] FFT Color Mod loaded successfully!\n");
     }
 
@@ -414,7 +414,9 @@ public class Mod : IMod, IConfigurable
     {
         try
         {
-            ModLogger.Log("Opening configuration UI...");
+            ModLogger.Log("=== OpenConfigurationUI called ===");
+            ModLogger.Log($"Configuration manager initialized: {_configurationManager != null}");
+            ModLogger.Log($"Mod path: {_modPath}");
 
             // Load current configuration
             if (_configurationManager != null)
@@ -506,6 +508,11 @@ public class Mod : IMod, IConfigurable
         StoryCharacterRegistry.AutoDiscoverCharacters();
 
         ModLogger.Log($"Registry initialized with {StoryCharacterRegistry.GetAllCharacterNames().Count()} story characters");
+
+        // Initialize job class service with mod path
+        JobClassServiceSingleton.Initialize(_modPath);
+        var jobClassService = JobClassServiceSingleton.Instance;
+        ModLogger.Log($"Loaded {jobClassService.GetAllJobClasses().Count()} generic job classes from JobClasses.json");
     }
 
     private void InitializeStoryCharacterThemes(Config config)

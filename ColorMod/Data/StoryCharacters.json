@@ -4,15 +4,8 @@
       "name": "Agrias",
       "spriteNames": ["aguri", "kanba"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "ash_dark"],
-      "enumType": "AgriasColorScheme"
-    },
-    {
-      "name": "Alma",
-      "spriteNames": ["aruma"],
-      "defaultTheme": "original",
       "availableThemes": ["original", "dark"],
-      "enumType": "AlmaColorScheme"
+      "enumType": "AgriasColorScheme"
     },
     {
       "name": "Cloud",
@@ -20,13 +13,6 @@
       "defaultTheme": "original",
       "availableThemes": ["original", "dark"],
       "enumType": "CloudColorScheme"
-    },
-    {
-      "name": "Delita",
-      "spriteNames": ["dily", "dily2", "dily3"],
-      "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "DelitaColorScheme"
     },
     {
       "name": "Mustadio",
@@ -48,6 +34,41 @@
       "defaultTheme": "original",
       "availableThemes": ["original", "dark"],
       "enumType": "ReisColorScheme"
+    },
+    {
+      "name": "Rapha",
+      "spriteNames": ["g79"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "RaphaColorScheme"
+    },
+    {
+      "name": "Marach",
+      "spriteNames": ["mara"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "MarachColorScheme"
+    },
+    {
+      "name": "Beowulf",
+      "spriteNames": ["beio"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "BeowulfColorScheme"
+    },
+    {
+      "name": "Construct8",
+      "spriteNames": ["hasyu"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "Construct8ColorScheme"
+    },
+    {
+      "name": "Meliadoul",
+      "spriteNames": ["h85"],
+      "defaultTheme": "original",
+      "availableThemes": ["original", "dark"],
+      "enumType": "MeliadoulColorScheme"
     }
   ]
 }

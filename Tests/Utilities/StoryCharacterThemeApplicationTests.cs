@@ -34,20 +34,20 @@ namespace Tests.Utilities
         }
 
         [Fact]
-        public void ApplyConfiguration_Should_Apply_Alma_Theme()
+        public void ApplyConfiguration_Should_Apply_Agrias_Theme()
         {
             // Arrange
             var config = new Config
             {
-                Alma = AlmaColorScheme.crimson_red,
+                Agrias = AgriasColorScheme.ash_dark,
                 Squire_Male = FFTColorMod.Configuration.ColorScheme.original // Include a generic for comparison
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create source sprite files - new format: themed sprites are in unit directory
-            var almaSpriteSource = Path.Combine(_sourceUnitPath, "battle_aruma_crimson_red_spr.bin");
-            File.WriteAllBytes(almaSpriteSource, new byte[] { 1, 2, 3 });
+            var agriasSpriteSource = Path.Combine(_sourceUnitPath, "battle_aguri_ash_dark_spr.bin");
+            File.WriteAllBytes(agriasSpriteSource, new byte[] { 1, 2, 3 });
 
             // Create generic sprite for comparison
             var originalDir = Path.Combine(_sourceUnitPath, "sprites_original");
@@ -62,9 +62,9 @@ namespace Tests.Utilities
             _spriteManager.ApplyConfiguration();
 
             // Assert - theme should be copied to base sprite name
-            var almaDest = Path.Combine(_unitPath, "battle_aruma_spr.bin");
-            File.Exists(almaDest).Should().BeTrue("Alma's crimson_red theme should overwrite base sprite");
-            File.ReadAllBytes(almaDest).Should().Equal(new byte[] { 1, 2, 3 });
+            var agriasDest = Path.Combine(_unitPath, "battle_aguri_spr.bin");
+            File.Exists(agriasDest).Should().BeTrue("Agrias's ash_dark theme should overwrite base sprite");
+            File.ReadAllBytes(agriasDest).Should().Equal(new byte[] { 1, 2, 3 });
         }
 
         [Fact]
@@ -73,21 +73,17 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Alma = AlmaColorScheme.golden_yellow,
                 Agrias = AgriasColorScheme.ash_dark,
                 Cloud = CloudColorScheme.knights_round,
-                Delita = DelitaColorScheme.forest_green,
-                Reis = ReisColorScheme.violet
+                Orlandeau = OrlandeauColorScheme.thunder_god
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create source directories and files for each character
-            CreateStoryCharacterSprite("alma", "golden_yellow", "aruma");
             CreateStoryCharacterSprite("agrias", "ash_dark", "aguri");
             CreateStoryCharacterSprite("cloud", "knights_round", "cloud");
-            CreateStoryCharacterSprite("delita", "forest_green", "dily");
-            CreateStoryCharacterSprite("reis", "violet", "reze");
+            CreateStoryCharacterSprite("orlandeau", "thunder_god", "oru");
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -95,12 +91,10 @@ namespace Tests.Utilities
             // Act
             _spriteManager.ApplyConfiguration();
 
-            // Assert
-            VerifyStoryCharacterSprite("aruma", "golden_yellow");
+            // Assert - only non-original themes should be applied
             VerifyStoryCharacterSprite("aguri", "ash_dark");
             VerifyStoryCharacterSprite("cloud", "knights_round");
-            VerifyStoryCharacterSprite("dily", "forest_green");
-            VerifyStoryCharacterSprite("reze", "violet");
+            VerifyStoryCharacterSprite("oru", "thunder_god");
         }
 
         [Fact]
@@ -109,15 +103,15 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Alma = AlmaColorScheme.original,
-                Agrias = AgriasColorScheme.original
+                Agrias = AgriasColorScheme.original,
+                Cloud = CloudColorScheme.original
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create theme files that should NOT be copied when theme is "original"
-            CreateStoryCharacterSprite("alma", "crimson_red", "aruma");
             CreateStoryCharacterSprite("agrias", "ash_dark", "aguri");
+            CreateStoryCharacterSprite("cloud", "knights_round", "cloud");
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -126,11 +120,11 @@ namespace Tests.Utilities
             _spriteManager.ApplyConfiguration();
 
             // Assert - when theme is original, base sprites should NOT be created/overwritten
-            var almaBase = Path.Combine(_unitPath, "battle_aruma_spr.bin");
             var agriasBase = Path.Combine(_unitPath, "battle_aguri_spr.bin");
+            var cloudBase = Path.Combine(_unitPath, "battle_cloud_spr.bin");
 
-            File.Exists(almaBase).Should().BeFalse("Alma base sprite should not be created when theme is original");
             File.Exists(agriasBase).Should().BeFalse("Agrias base sprite should not be created when theme is original");
+            File.Exists(cloudBase).Should().BeFalse("Cloud base sprite should not be created when theme is original");
         }
 
         [Fact]
@@ -139,7 +133,7 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Alma = AlmaColorScheme.original // Theme selected but file doesn't exist
+                Agrias = AgriasColorScheme.original // Theme selected but file doesn't exist
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
@@ -161,7 +155,7 @@ namespace Tests.Utilities
                 // Generic character
                 Knight_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade,
                 // Story character
-                Alma = AlmaColorScheme.crimson_red
+                Agrias = AgriasColorScheme.ash_dark
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
@@ -172,7 +166,7 @@ namespace Tests.Utilities
             File.WriteAllBytes(Path.Combine(corpseDir, "battle_knight_m_spr.bin"), new byte[] { 1 });
 
             // Create story character sprite
-            CreateStoryCharacterSprite("alma", "crimson_red", "aruma");
+            CreateStoryCharacterSprite("agrias", "ash_dark", "aguri");
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -182,10 +176,10 @@ namespace Tests.Utilities
 
             // Assert
             var knightDest = Path.Combine(_unitPath, "battle_knight_m_spr.bin");
-            var almaDest = Path.Combine(_unitPath, "battle_aruma_spr.bin");
+            var agriasDest = Path.Combine(_unitPath, "battle_aguri_spr.bin");
 
             File.Exists(knightDest).Should().BeTrue("Generic knight sprite should be applied");
-            File.Exists(almaDest).Should().BeTrue("Story character Alma base sprite should be overwritten with theme");
+            File.Exists(agriasDest).Should().BeTrue("Story character Agrias base sprite should be overwritten with theme");
         }
 
         private void CreateStoryCharacterSprite(string character, string theme, string spriteName)
