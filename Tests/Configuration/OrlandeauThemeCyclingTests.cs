@@ -103,7 +103,7 @@ namespace FFTColorMod.Tests
             var wrappedTheme = manager.GetCurrentOrlandeauTheme();
 
             // Assert
-            wrappedTheme.Should().Be(OrlandeauColorScheme.thunder_god,
+            wrappedTheme.Should().Be(OrlandeauColorScheme.original,
                 "Should wrap back to first theme after cycling through all");
         }
 

@@ -49,8 +49,8 @@ namespace Tests
             // Arrange
             var manager = new StoryCharacterThemeManager();
 
-            // Act & Assert - Default should be ash_dark
-            Assert.Equal(AgriasColorScheme.ash_dark, manager.GetCurrentAgriasTheme());
+            // Act & Assert - Default should be original
+            Assert.Equal(AgriasColorScheme.original, manager.GetCurrentAgriasTheme());
 
             // Change theme and verify
             manager.SetCurrentAgriasTheme(AgriasColorScheme.ash_dark);

@@ -425,22 +425,13 @@ namespace FFTColorMod.Configuration
         public CloudColorScheme Cloud { get; set; } = CloudColorScheme.original;
         public MustadioColorScheme Mustadio { get; set; } = MustadioColorScheme.original;
         public ReisColorScheme Reis { get; set; } = ReisColorScheme.original;
-        public MalakColorScheme Malak { get; set; } = MalakColorScheme.original;
-        public RafaColorScheme Rafa { get; set; } = RafaColorScheme.original;
         public DelitaColorScheme Delita { get; set; } = DelitaColorScheme.original;
         public AlmaColorScheme Alma { get; set; } = AlmaColorScheme.original;
         public WiegrafColorScheme Wiegraf { get; set; } = WiegrafColorScheme.original;
-        public CeliaColorScheme Celia { get; set; } = CeliaColorScheme.original;
-        public LettieColorScheme Lettie { get; set; } = LettieColorScheme.original;
 
         // Additional Story Characters
         public OveliaColorScheme Ovelia { get; set; } = OveliaColorScheme.original;
-        public SimonColorScheme Simon { get; set; } = SimonColorScheme.original;
-        public GaffgarionColorScheme Gaffgarion { get; set; } = GaffgarionColorScheme.original;
-        public ElmdoreColorScheme Elmdore { get; set; } = ElmdoreColorScheme.original;
-        public VormavColorScheme Vormav { get; set; } = VormavColorScheme.original;
         public ZalbagColorScheme Zalbag { get; set; } = ZalbagColorScheme.original;
-        public ZalmoColorScheme Zalmo { get; set; } = ZalmoColorScheme.original;
 
         // Custom JSON serialization to maintain compatibility
         public Dictionary<string, object> ToJsonDictionary()
@@ -461,20 +452,11 @@ namespace FFTColorMod.Configuration
             result["Cloud"] = Cloud.ToString();
             result["Mustadio"] = Mustadio.ToString();
             result["Reis"] = Reis.ToString();
-            result["Malak"] = Malak.ToString();
-            result["Rafa"] = Rafa.ToString();
             result["Delita"] = Delita.ToString();
             result["Alma"] = Alma.ToString();
             result["Wiegraf"] = Wiegraf.ToString();
-            result["Celia"] = Celia.ToString();
-            result["Lettie"] = Lettie.ToString();
             result["Ovelia"] = Ovelia.ToString();
-            result["Simon"] = Simon.ToString();
-            result["Gaffgarion"] = Gaffgarion.ToString();
-            result["Elmdore"] = Elmdore.ToString();
-            result["Vormav"] = Vormav.ToString();
             result["Zalbag"] = Zalbag.ToString();
-            result["Zalmo"] = Zalmo.ToString();
 
             return result;
         }

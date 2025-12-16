@@ -70,14 +70,14 @@ if ($LASTEXITCODE -eq 0) {
             Write-Host "Copied $(Get-ChildItem ColorMod/FFTIVC/data/enhanced/*.pac | Measure-Object).Count PAC files" -ForegroundColor Green
         }
 
-        # Copy individual sprite files to fftpack/unit directory
+        # Copy original sprite files to fftpack/unit directory
         $spritePath = "$modPath/FFTIVC/data/enhanced/fftpack/unit"
-        if (Test-Path "ColorMod/FFTIVC/data/enhanced/fftpack/unit") {
-            Write-Host "Copying individual sprite files..." -ForegroundColor Cyan
+        if (Test-Path "ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_original") {
+            Write-Host "Copying original sprite files..." -ForegroundColor Cyan
             New-Item -ItemType Directory -Force -Path $spritePath | Out-Null
-            Copy-Item "ColorMod/FFTIVC/data/enhanced/fftpack/unit/*.bin" $spritePath -Force
-            $spriteCount = (Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/*.bin" | Measure-Object).Count
-            Write-Host "Copied $spriteCount sprite files to fftpack/unit" -ForegroundColor Green
+            Copy-Item "ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_original/*.bin" $spritePath -Force
+            $spriteCount = (Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_original/*.bin" | Measure-Object).Count
+            Write-Host "Copied $spriteCount original sprite files to fftpack/unit" -ForegroundColor Green
 
             # Theme directories are no longer deployed - mod reads directly from git repo
             Write-Host "Theme directories: Reading from git repo (not deployed)" -ForegroundColor Green

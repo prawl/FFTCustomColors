@@ -133,24 +133,14 @@ namespace FFTColorMod.Utilities
         {
             // Apply each story character's theme if it's not original
             ApplyStoryCharacterTheme("alma", "aruma", config.Alma);
-            ApplyStoryCharacterTheme("celia", "seria", config.Celia);
             ApplyStoryCharacterTheme("delita", "dily", config.Delita);
-            ApplyStoryCharacterTheme("lettie", "ledy", config.Lettie);
-            ApplyStoryCharacterTheme("malak", "mara", config.Malak);
-            ApplyStoryCharacterTheme("rafa", "rafa", config.Rafa);
             ApplyStoryCharacterTheme("reis", "reze", config.Reis);
 
-            // New story characters
-            ApplyStoryCharacterTheme("gaffgarion", "baruna", config.Gaffgarion);
             // TODO: Add these when themes are created:
             // ApplyStoryCharacterTheme("ovelia", "???", config.Ovelia);
-            // ApplyStoryCharacterTheme("simon", "???", config.Simon);
             // ApplyStoryCharacterTheme("zalbag", "???", config.Zalbag);
             // ApplyStoryCharacterTheme("wiegraf", "???", config.Wiegraf);
             // ApplyStoryCharacterTheme("mustadio", "garu", config.Mustadio);
-            // ApplyStoryCharacterTheme("zalmo", "???", config.Zalmo);
-            // ApplyStoryCharacterTheme("elmdore", "???", config.Elmdore);
-            // ApplyStoryCharacterTheme("vormav", "???", config.Vormav);
 
             // The original three story characters (already handled elsewhere)
             // ApplyStoryCharacterTheme("agrias", "aguri", config.Agrias);
@@ -161,6 +151,12 @@ namespace FFTColorMod.Utilities
         private void ApplyStoryCharacterTheme<T>(string characterName, string spriteName, T theme) where T : Enum
         {
             var themeName = theme.ToString().ToLower();
+
+            // Add detailed logging for Rapha debugging
+            if (characterName.ToLower() == "rafa" || characterName.ToLower() == "rapha")
+            {
+                ModLogger.Log($"[RAPHA DEBUG] Applying theme for character: {characterName}, sprite: {spriteName}, theme: {themeName}");
+            }
 
             // Skip if it's set to original
             if (themeName == "original")
@@ -175,6 +171,15 @@ namespace FFTColorMod.Utilities
 
             // Also check the flat file structure for backward compatibility (e.g., battle_baruna_blackguard_gold_spr.bin)
             var sourceFlatPath = Path.Combine(_sourceUnitPath, $"battle_{spriteName}_{themeName}_spr.bin");
+
+            // More debugging for Rapha
+            if (characterName.ToLower() == "rafa" || characterName.ToLower() == "rapha")
+            {
+                ModLogger.Log($"[RAPHA DEBUG] Checking directory path: {sourceDirPath}");
+                ModLogger.Log($"[RAPHA DEBUG] Directory exists: {File.Exists(sourceDirPath)}");
+                ModLogger.Log($"[RAPHA DEBUG] Checking flat path: {sourceFlatPath}");
+                ModLogger.Log($"[RAPHA DEBUG] Flat file exists: {File.Exists(sourceFlatPath)}");
+            }
 
             string sourceFile;
             if (File.Exists(sourceDirPath))
@@ -199,16 +204,34 @@ namespace FFTColorMod.Utilities
             // This overwrites the original sprite with the themed version
             var destFile = Path.Combine(_unitPath, $"battle_{spriteName}_spr.bin");
 
+            // More debugging for Rapha
+            if (characterName.ToLower() == "rafa" || characterName.ToLower() == "rapha")
+            {
+                ModLogger.Log($"[RAPHA DEBUG] Destination path: {destFile}");
+                ModLogger.Log($"[RAPHA DEBUG] _unitPath: {_unitPath}");
+            }
+
             if (File.Exists(sourceFile))
             {
                 try
                 {
                     File.Copy(sourceFile, destFile, true);
                     ModLogger.LogSuccess($"Applied {characterName} theme: {themeName} - copied to {Path.GetFileName(destFile)}");
+
+                    // Verify copy for Rapha
+                    if (characterName.ToLower() == "rafa" || characterName.ToLower() == "rapha")
+                    {
+                        ModLogger.Log($"[RAPHA DEBUG] Copy successful! File now exists at: {destFile}");
+                        ModLogger.Log($"[RAPHA DEBUG] File size: {new FileInfo(destFile).Length} bytes");
+                    }
                 }
                 catch (Exception ex)
                 {
                     ModLogger.LogError($"Error copying {characterName} sprite: {ex.Message}");
+                    if (characterName.ToLower() == "rafa" || characterName.ToLower() == "rapha")
+                    {
+                        ModLogger.LogError($"[RAPHA DEBUG] Copy failed with exception: {ex}");
+                    }
                 }
             }
             else

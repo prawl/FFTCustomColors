@@ -13,13 +13,10 @@ namespace FFTColorMod.Configuration
     {
         private readonly Config _config;
         private readonly GenericCharacterRegistry _genericRegistry;
-        private readonly StoryCharacterConfig _storyCharacterConfig;
-
         public SpriteNameMapper(Config config)
         {
             _config = config;
             _genericRegistry = GenericCharacterRegistry.Instance;
-            _storyCharacterConfig = new StoryCharacterConfig(config);
 
             // Ensure story characters are discovered
             if (!StoryCharacterRegistry.GetAllCharacterNames().Any())
@@ -98,8 +95,20 @@ namespace FFTColorMod.Configuration
 
         private string GetStoryCharacterColor(string characterName, string spriteName)
         {
-            // Use the StoryCharacterConfig to get the sprite path format
-            return _storyCharacterConfig.GetSpritePathFormat(characterName);
+            // Get the color scheme for the story character directly from config
+            var property = typeof(Config).GetProperty(characterName);
+            if (property != null)
+            {
+                var value = property.GetValue(_config);
+                if (value != null)
+                {
+                    var colorScheme = value.ToString().ToLower();
+                    if (colorScheme == "original")
+                        return "sprites_original";
+                    return $"sprites_{characterName.ToLower()}_{colorScheme}";
+                }
+            }
+            return "sprites_original";
         }
     }
 }

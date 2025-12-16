@@ -5,18 +5,14 @@ namespace FFTColorMod
 {
     public class StoryCharacterThemeManager
     {
-        private OrlandeauColorScheme _currentOrlandeauTheme = OrlandeauColorScheme.thunder_god;
-        private AgriasColorScheme _currentAgriasTheme = AgriasColorScheme.ash_dark;
-        private CloudColorScheme _currentCloudTheme = CloudColorScheme.sephiroth_black;
+        private OrlandeauColorScheme _currentOrlandeauTheme = OrlandeauColorScheme.original;
+        private AgriasColorScheme _currentAgriasTheme = AgriasColorScheme.original;
+        private CloudColorScheme _currentCloudTheme = CloudColorScheme.original;
         private MustadioColorScheme _currentMustadioTheme = MustadioColorScheme.original;
         private ReisColorScheme _currentReisTheme = ReisColorScheme.original;
-        private MalakColorScheme _currentMalakTheme = MalakColorScheme.original;
-        private RafaColorScheme _currentRafaTheme = RafaColorScheme.original;
         private DelitaColorScheme _currentDelitaTheme = DelitaColorScheme.original;
         private AlmaColorScheme _currentAlmaTheme = AlmaColorScheme.original;
         private WiegrafColorScheme _currentWiegrafTheme = WiegrafColorScheme.original;
-        private CeliaColorScheme _currentCeliaTheme = CeliaColorScheme.original;
-        private LettieColorScheme _currentLettieTheme = LettieColorScheme.original;
 
         public OrlandeauColorScheme GetCurrentOrlandeauTheme()
         {
@@ -99,29 +95,6 @@ namespace FFTColorMod
             return _currentReisTheme;
         }
 
-        // Malak methods
-        public MalakColorScheme GetCurrentMalakTheme() => _currentMalakTheme;
-        public void SetCurrentMalakTheme(MalakColorScheme theme) => _currentMalakTheme = theme;
-        public MalakColorScheme CycleMalakTheme()
-        {
-            var values = Enum.GetValues<MalakColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentMalakTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentMalakTheme = values[nextIndex];
-            return _currentMalakTheme;
-        }
-
-        // Rafa methods
-        public RafaColorScheme GetCurrentRafaTheme() => _currentRafaTheme;
-        public void SetCurrentRafaTheme(RafaColorScheme theme) => _currentRafaTheme = theme;
-        public RafaColorScheme CycleRafaTheme()
-        {
-            var values = Enum.GetValues<RafaColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentRafaTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentRafaTheme = values[nextIndex];
-            return _currentRafaTheme;
-        }
 
         // Delita methods
         public DelitaColorScheme GetCurrentDelitaTheme() => _currentDelitaTheme;
@@ -159,29 +132,6 @@ namespace FFTColorMod
             return _currentWiegrafTheme;
         }
 
-        // Celia methods
-        public CeliaColorScheme GetCurrentCeliaTheme() => _currentCeliaTheme;
-        public void SetCurrentCeliaTheme(CeliaColorScheme theme) => _currentCeliaTheme = theme;
-        public CeliaColorScheme CycleCeliaTheme()
-        {
-            var values = Enum.GetValues<CeliaColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentCeliaTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentCeliaTheme = values[nextIndex];
-            return _currentCeliaTheme;
-        }
-
-        // Lettie methods
-        public LettieColorScheme GetCurrentLettieTheme() => _currentLettieTheme;
-        public void SetCurrentLettieTheme(LettieColorScheme theme) => _currentLettieTheme = theme;
-        public LettieColorScheme CycleLettieTheme()
-        {
-            var values = Enum.GetValues<LettieColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentLettieTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentLettieTheme = values[nextIndex];
-            return _currentLettieTheme;
-        }
     }
 
     public class F2ThemeHandler
