@@ -104,14 +104,7 @@ namespace FFTColorMod.Utilities
 
                 var themeName = themeValue.ToString()?.ToLower() ?? "original";
 
-                // Skip if it's set to original
-                if (themeName == "original")
-                {
-                    ModLogger.Log($"Skipping {character.Name} - theme is original");
-                    continue;
-                }
-
-                // Apply theme for each sprite name
+                // Apply theme for each sprite name (including original)
                 foreach (var spriteName in character.SpriteNames)
                 {
                     ApplyStoryCharacterTheme(character.Name.ToLower(), spriteName, themeName);

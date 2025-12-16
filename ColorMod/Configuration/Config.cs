@@ -408,54 +408,63 @@ namespace FFTColorMod.Configuration
         }
 
         // Story Character Properties (string-based themes)
+        [Newtonsoft.Json.JsonProperty("Agrias")]
         public string Agrias
         {
             get => GetStoryCharacterTheme("Agrias");
             set => SetStoryCharacterTheme("Agrias", value);
         }
 
+        [Newtonsoft.Json.JsonProperty("Orlandeau")]
         public string Orlandeau
         {
             get => GetStoryCharacterTheme("Orlandeau");
             set => SetStoryCharacterTheme("Orlandeau", value);
         }
 
+        [Newtonsoft.Json.JsonProperty("Cloud")]
         public string Cloud
         {
             get => GetStoryCharacterTheme("Cloud");
             set => SetStoryCharacterTheme("Cloud", value);
         }
 
+        [Newtonsoft.Json.JsonProperty("Mustadio")]
         public string Mustadio
         {
             get => GetStoryCharacterTheme("Mustadio");
             set => SetStoryCharacterTheme("Mustadio", value);
         }
 
+        [Newtonsoft.Json.JsonProperty("Reis")]
         public string Reis
         {
             get => GetStoryCharacterTheme("Reis");
             set => SetStoryCharacterTheme("Reis", value);
         }
 
+        [Newtonsoft.Json.JsonProperty("Rapha")]
         public string Rapha
         {
             get => GetStoryCharacterTheme("Rapha");
             set => SetStoryCharacterTheme("Rapha", value);
         }
 
+        [Newtonsoft.Json.JsonProperty("Marach")]
         public string Marach
         {
             get => GetStoryCharacterTheme("Marach");
             set => SetStoryCharacterTheme("Marach", value);
         }
 
+        [Newtonsoft.Json.JsonProperty("Beowulf")]
         public string Beowulf
         {
             get => GetStoryCharacterTheme("Beowulf");
             set => SetStoryCharacterTheme("Beowulf", value);
         }
 
+        [Newtonsoft.Json.JsonProperty("Meliadoul")]
         public string Meliadoul
         {
             get => GetStoryCharacterTheme("Meliadoul");
