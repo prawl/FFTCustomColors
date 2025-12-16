@@ -60,8 +60,8 @@ namespace FFTColorMod.Tests
         {
             // Arrange
             var config = new Config();
-            config.Knight_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
-            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
+            config.Knight_Male = "corpse_brigade";
+            config.Knight_Female = "corpse_brigade";
             // All other jobs remain as original
             _configManager.SaveConfig(config);
 
@@ -83,9 +83,9 @@ namespace FFTColorMod.Tests
         {
             // Arrange
             var config = new Config();
-            config.Knight_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
-            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.lucavi;
-            config.Monk_Male = FFTColorMod.Configuration.ColorScheme.original;
+            config.Knight_Male = "corpse_brigade";
+            config.Knight_Female = "lucavi";
+            config.Monk_Male = "original";
             _configManager.SaveConfig(config);
 
             // Act
@@ -103,8 +103,8 @@ namespace FFTColorMod.Tests
         {
             // Arrange - First add some schemes
             var initialConfig = new Config();
-            initialConfig.Knight_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
-            initialConfig.Monk_Male = FFTColorMod.Configuration.ColorScheme.lucavi;
+            initialConfig.Knight_Male = "corpse_brigade";
+            initialConfig.Monk_Male = "lucavi";
             _configManager.SaveConfig(initialConfig);
             _loader.PrepareSpritesForConfig();
 
@@ -114,7 +114,7 @@ namespace FFTColorMod.Tests
 
             // Now change config to only use corpse_brigade
             var newConfig = new Config();
-            newConfig.Knight_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
+            newConfig.Knight_Male = "corpse_brigade";
             // All others are original
             _configManager.SaveConfig(newConfig);
 
@@ -131,7 +131,7 @@ namespace FFTColorMod.Tests
         {
             // Arrange
             var config = new Config();
-            config.Knight_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
+            config.Knight_Male = "corpse_brigade";
             _configManager.SaveConfig(config);
 
             // Act
@@ -162,16 +162,16 @@ namespace FFTColorMod.Tests
         {
             // Arrange
             var config = new Config();
-            config.Knight_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
-            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
-            config.Monk_Male = FFTColorMod.Configuration.ColorScheme.lucavi;
-            config.Monk_Female = FFTColorMod.Configuration.ColorScheme.lucavi;
+            config.Knight_Male = "corpse_brigade";
+            config.Knight_Female = "corpse_brigade";
+            config.Monk_Male = "lucavi";
+            config.Monk_Female = "lucavi";
             _configManager.SaveConfig(config);
 
             // Debug: verify the config was saved correctly
             var loadedConfig = _configManager.LoadConfig();
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.corpse_brigade, loadedConfig.Knight_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.lucavi, loadedConfig.Monk_Male);
+            Assert.Equal("corpse_brigade", loadedConfig.Knight_Male);
+            Assert.Equal("lucavi", loadedConfig.Monk_Male);
 
             // Act
             var schemes = _loader.GetRequiredSchemes();
@@ -192,7 +192,7 @@ namespace FFTColorMod.Tests
             File.WriteAllBytes(Path.Combine(testThemeDir, "test.bin"), new byte[] { 1 });
 
             var config = new Config();
-            config.Knight_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
+            config.Knight_Male = "corpse_brigade";
             _configManager.SaveConfig(config);
 
             // Act

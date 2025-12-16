@@ -72,7 +72,7 @@ namespace FFTColorMod.Tests
             // Set a unique color for each property to verify correct mapping
             var propertyInfo = typeof(Config).GetProperty(expectedProperty);
             Assert.NotNull(propertyInfo); // Verify the property exists
-            propertyInfo.SetValue(config, (FFTColorMod.Configuration.ColorScheme)1); // Use ColorScheme enum value
+            propertyInfo.SetValue(config, "corpse_brigade"); // Use string enum value
 
             // Act
             var mapper = new SpriteNameMapper(config);
@@ -105,45 +105,45 @@ namespace FFTColorMod.Tests
             // Arrange & Act
             var config = new Config();
 
-            // Assert - verify all job properties are initialized to FFTColorMod.Configuration.ColorScheme.original
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Knight_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Knight_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Archer_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Archer_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Monk_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Monk_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.WhiteMage_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.WhiteMage_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.BlackMage_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.BlackMage_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Thief_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Thief_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Ninja_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Ninja_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Squire_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Squire_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.TimeMage_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.TimeMage_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Summoner_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Summoner_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Samurai_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Samurai_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Dragoon_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Dragoon_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Chemist_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Chemist_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Geomancer_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Geomancer_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Mystic_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Mystic_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Mediator_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Mediator_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Dancer_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Bard_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Mime_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Mime_Female);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Calculator_Male);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Calculator_Female);
+            // Assert - verify all job properties are initialized to "original"
+            Assert.Equal("original", config.Knight_Male);
+            Assert.Equal("original", config.Knight_Female);
+            Assert.Equal("original", config.Archer_Male);
+            Assert.Equal("original", config.Archer_Female);
+            Assert.Equal("original", config.Monk_Male);
+            Assert.Equal("original", config.Monk_Female);
+            Assert.Equal("original", config.WhiteMage_Male);
+            Assert.Equal("original", config.WhiteMage_Female);
+            Assert.Equal("original", config.BlackMage_Male);
+            Assert.Equal("original", config.BlackMage_Female);
+            Assert.Equal("original", config.Thief_Male);
+            Assert.Equal("original", config.Thief_Female);
+            Assert.Equal("original", config.Ninja_Male);
+            Assert.Equal("original", config.Ninja_Female);
+            Assert.Equal("original", config.Squire_Male);
+            Assert.Equal("original", config.Squire_Female);
+            Assert.Equal("original", config.TimeMage_Male);
+            Assert.Equal("original", config.TimeMage_Female);
+            Assert.Equal("original", config.Summoner_Male);
+            Assert.Equal("original", config.Summoner_Female);
+            Assert.Equal("original", config.Samurai_Male);
+            Assert.Equal("original", config.Samurai_Female);
+            Assert.Equal("original", config.Dragoon_Male);
+            Assert.Equal("original", config.Dragoon_Female);
+            Assert.Equal("original", config.Chemist_Male);
+            Assert.Equal("original", config.Chemist_Female);
+            Assert.Equal("original", config.Geomancer_Male);
+            Assert.Equal("original", config.Geomancer_Female);
+            Assert.Equal("original", config.Mystic_Male);
+            Assert.Equal("original", config.Mystic_Female);
+            Assert.Equal("original", config.Mediator_Male);
+            Assert.Equal("original", config.Mediator_Female);
+            Assert.Equal("original", config.Dancer_Female);
+            Assert.Equal("original", config.Bard_Male);
+            Assert.Equal("original", config.Mime_Male);
+            Assert.Equal("original", config.Mime_Female);
+            Assert.Equal("original", config.Calculator_Male);
+            Assert.Equal("original", config.Calculator_Female);
         }
     }
 }

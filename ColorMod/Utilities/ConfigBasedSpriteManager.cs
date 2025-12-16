@@ -58,13 +58,12 @@ namespace FFTColorMod.Utilities
         {
             // Get all properties of Config that represent job colors
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(Configuration.ColorScheme) &&
+                .Where(p => p.PropertyType == typeof(string) &&
                            (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
 
             foreach (var property in properties)
             {
-                var colorSchemeEnum = property.GetValue(config) as Configuration.ColorScheme?;
-                var colorScheme = colorSchemeEnum?.ToString().ToLower() ?? "original";
+                var colorScheme = property.GetValue(config) as string ?? "original";
 
                 // Log what we're applying
                 ModLogger.Log($"Applying {property.Name}: {colorScheme}");
@@ -82,7 +81,7 @@ namespace FFTColorMod.Utilities
         {
             foreach (var character in _characterService.GetAllCharacters())
             {
-                if (string.IsNullOrEmpty(character.EnumType) || character.SpriteNames.Length == 0)
+                if (character.SpriteNames.Length == 0)
                     continue;
 
                 // Get the config property for this character
@@ -176,14 +175,13 @@ namespace FFTColorMod.Utilities
                 return originalPath;
             }
 
-            var colorSchemeEnum = propertyInfo.GetValue(config);
-            if (colorSchemeEnum == null || !(colorSchemeEnum is Configuration.ColorScheme))
+            var colorSchemeValue = propertyInfo.GetValue(config);
+            if (colorSchemeValue == null || !(colorSchemeValue is string))
             {
                 ModLogger.LogWarning($"No color scheme for: {jobProperty}");
                 return originalPath;
             }
 
-            var colorSchemeValue = ((Configuration.ColorScheme)colorSchemeEnum);
             var colorScheme = colorSchemeValue.ToString().ToLower();
             ModLogger.Log($"{jobProperty} configured as: {colorScheme}");
 
@@ -232,8 +230,25 @@ namespace FFTColorMod.Utilities
             if (propertyInfo == null)
                 return "Original";
 
-            var colorSchemeEnum = propertyInfo.GetValue(config) as Configuration.ColorScheme?;
-            return colorSchemeEnum?.GetDescription() ?? "Original";
+            var colorSchemeValue = propertyInfo.GetValue(config) as string;
+            var themeName = colorSchemeValue ?? "original";
+
+            // Convert to display name for backward compatibility with tests
+            return ConvertThemeNameToDisplayName(themeName);
+        }
+
+        /// <summary>
+        /// Converts internal theme name (e.g., "lucavi", "corpse_brigade") to display name (e.g., "Lucavi", "Corpse Brigade")
+        /// </summary>
+        private string ConvertThemeNameToDisplayName(string themeName)
+        {
+            if (string.IsNullOrEmpty(themeName))
+                return "Original";
+
+            // Replace underscores with spaces and convert to title case
+            return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(
+                themeName.Replace('_', ' ')
+            );
         }
 
         public void SetColorForJob(string jobProperty, string colorScheme)

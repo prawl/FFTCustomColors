@@ -52,7 +52,7 @@ namespace FFTColorMod.Tests
             // even when the config path points to a different directory (User config directory)
 
             // Arrange
-            var config = new Config { Agrias = AgriasColorScheme.original, Orlandeau = OrlandeauColorScheme.original };
+            var config = new Config { Agrias = "original", Orlandeau = "original" };
 
             // The config path and mod path should be different directories
             _testConfigPath.Should().NotBe(_testModPath, "Config and mod should be in different directories");
@@ -98,7 +98,7 @@ namespace FFTColorMod.Tests
             // the form tries to derive mod path from config path, which fails when config is in User directory
 
             // Arrange
-            var config = new Config { Agrias = AgriasColorScheme.original, Orlandeau = OrlandeauColorScheme.original };
+            var config = new Config { Agrias = "original", Orlandeau = "original" };
 
             // Act - Create form with only config path (simulating the bug scenario)
             // Without the fix, it would try to derive mod path from config path
@@ -137,7 +137,7 @@ namespace FFTColorMod.Tests
             var pictureBox1 = new PictureBox();
             try
             {
-                correctManager.UpdateStoryCharacterPreview(pictureBox1, "Agrias", "original");
+                correctManager.UpdateStoryCharacterPreview(pictureBox1, "agrias", "original");
                 pictureBox1.Image.Should().NotBeNull(
                     "PreviewImageManager should load images from mod path");
             }
@@ -152,7 +152,7 @@ namespace FFTColorMod.Tests
             var pictureBox2 = new PictureBox();
             try
             {
-                wrongManager.UpdateStoryCharacterPreview(pictureBox2, "Agrias", "original");
+                wrongManager.UpdateStoryCharacterPreview(pictureBox2, "agrias", "original");
                 pictureBox2.Image.Should().BeNull(
                     "PreviewImageManager should NOT find images in config directory");
             }

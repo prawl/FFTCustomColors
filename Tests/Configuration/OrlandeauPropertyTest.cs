@@ -17,7 +17,7 @@ namespace FFTColorMod.Tests.Configuration
 
             // Assert
             Assert.NotNull(property);
-            Assert.Equal(typeof(OrlandeauColorScheme), property.PropertyType);
+            Assert.Equal(typeof(string), property.PropertyType);
         }
 
         [Fact]
@@ -27,15 +27,15 @@ namespace FFTColorMod.Tests.Configuration
             var config = new Config();
 
             // Act
-            config.Orlandeau = OrlandeauColorScheme.thunder_god;
+            config.Orlandeau = "thunder_god";
 
             // Assert
-            Assert.Equal(OrlandeauColorScheme.thunder_god, config.Orlandeau);
+            Assert.Equal("thunder_god", config.Orlandeau);
 
             // Also check via reflection
             var property = typeof(Config).GetProperty("Orlandeau");
             var value = property.GetValue(config);
-            Assert.Equal(OrlandeauColorScheme.thunder_god, value);
+            Assert.Equal("thunder_god", value);
         }
 
         [Fact]
@@ -43,7 +43,7 @@ namespace FFTColorMod.Tests.Configuration
         {
             // Arrange
             var config = new Config();
-            config.Orlandeau = OrlandeauColorScheme.thunder_god;
+            config.Orlandeau = "thunder_god";
 
             // Act
             var mapper = new SpriteNameMapper(config);

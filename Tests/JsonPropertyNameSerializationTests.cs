@@ -30,9 +30,9 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                Squire_Male = FFTColorMod.Configuration.ColorScheme.southern_sky,
-                Knight_Female = FFTColorMod.Configuration.ColorScheme.emerald_dragon,
-                WhiteMage_Male = FFTColorMod.Configuration.ColorScheme.northern_sky
+                Squire_Male = "southern_sky",
+                Knight_Female = "emerald_dragon",
+                WhiteMage_Male = "northern_sky"
             };
 
             // Act - Serialize to JSON

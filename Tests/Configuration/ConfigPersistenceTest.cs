@@ -25,9 +25,9 @@ namespace FFTColorMod.Tests
             // Arrange - Create a config file with custom values
             var customConfig = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)2,  // lucavi
-                Squire_Female = (FFTColorMod.Configuration.ColorScheme)1, // corpse_brigade
-                Knight_Male = (FFTColorMod.Configuration.ColorScheme)3   // northern_sky
+                Squire_Male = "lucavi",  // lucavi
+                Squire_Female = "corpse_brigade", // corpse_brigade
+                Knight_Male = "northern_sky"   // northern_sky
             };
 
             // Save the custom config to disk using same serialization as Config uses
@@ -52,9 +52,9 @@ namespace FFTColorMod.Tests
                 Configurable<Config>.SerializerOptions);
 
             // Assert - The custom values should still be there, not overwritten with defaults
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, reloadedConfig.Squire_Male);  // lucavi
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)1, reloadedConfig.Squire_Female); // corpse_brigade
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)3, reloadedConfig.Knight_Male);   // northern_sky
+            Assert.Equal("lucavi", reloadedConfig.Squire_Male);  // lucavi
+            Assert.Equal("corpse_brigade", reloadedConfig.Squire_Female); // corpse_brigade
+            Assert.Equal("northern_sky", reloadedConfig.Knight_Male);   // northern_sky
         }
 
         [Fact]
@@ -64,8 +64,8 @@ namespace FFTColorMod.Tests
             var manager = new ConfigurationManager(_testConfigPath);
             var customConfig = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)2,  // lucavi
-                Knight_Male = (FFTColorMod.Configuration.ColorScheme)1   // corpse_brigade
+                Squire_Male = "lucavi",  // lucavi
+                Knight_Male = "corpse_brigade"   // corpse_brigade
             };
             manager.SaveConfig(customConfig);
 
@@ -74,8 +74,8 @@ namespace FFTColorMod.Tests
             var loadedConfig = newManager.LoadConfig();
 
             // Assert - Values should be preserved
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, loadedConfig.Squire_Male);  // lucavi
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)1, loadedConfig.Knight_Male);  // corpse_brigade
+            Assert.Equal("lucavi", loadedConfig.Squire_Male);  // lucavi
+            Assert.Equal("corpse_brigade", loadedConfig.Knight_Male);  // corpse_brigade
         }
 
         [Fact]
@@ -84,8 +84,8 @@ namespace FFTColorMod.Tests
             // Arrange - Create existing config with custom values
             var customConfig = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)2,    // lucavi
-                Archer_Female = (FFTColorMod.Configuration.ColorScheme)3   // northern_sky
+                Squire_Male = "lucavi",    // lucavi
+                Archer_Female = "northern_sky"   // northern_sky
             };
             var json = System.Text.Json.JsonSerializer.Serialize(customConfig,
                 Configurable<Config>.SerializerOptions);
@@ -96,11 +96,11 @@ namespace FFTColorMod.Tests
             var config = configurator.GetConfiguration<Config>(0);
 
             // Assert - Should have loaded the existing values, not defaults
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, config.Squire_Male);    // lucavi
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)3, config.Archer_Female);  // northern_sky
+            Assert.Equal("lucavi", config.Squire_Male);    // lucavi
+            Assert.Equal("northern_sky", config.Archer_Female);  // northern_sky
 
             // Other values should be default
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Knight_Male);    // original
+            Assert.Equal("original", config.Knight_Male);    // original
         }
 
         public void Dispose()

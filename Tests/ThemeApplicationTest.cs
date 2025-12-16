@@ -61,9 +61,9 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = (FFTColorMod.Configuration.ColorScheme)2,    // lucavi
-                Archer_Female = (FFTColorMod.Configuration.ColorScheme)1,  // corpse_brigade
-                Monk_Male = (FFTColorMod.Configuration.ColorScheme)3       // northern_sky
+                Knight_Male = "lucavi",    // lucavi
+                Archer_Female = "corpse_brigade",  // corpse_brigade
+                Monk_Male = "northern_sky"       // northern_sky
             };
 
             var configManager = new ConfigurationManager(_testConfigPath);
@@ -143,7 +143,7 @@ namespace FFTColorMod.Tests
 
             // Also verify the config was saved
             var savedConfig = configManager.LoadConfig();
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, savedConfig.Knight_Male);
+            Assert.Equal("lucavi", savedConfig.Knight_Male);
         }
 
         [Fact]
@@ -152,7 +152,7 @@ namespace FFTColorMod.Tests
             // Arrange - Create config but delete source files
             var config = new Config
             {
-                Knight_Male = (FFTColorMod.Configuration.ColorScheme)99 // Non-existent theme
+                Knight_Male = "original" // Non-existent theme
             };
 
             var configManager = new ConfigurationManager(_testConfigPath);

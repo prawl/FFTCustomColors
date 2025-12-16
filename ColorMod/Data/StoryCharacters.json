@@ -4,64 +4,82 @@
       "name": "Agrias",
       "spriteNames": ["aguri", "kanba"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "AgriasColorScheme"
+      "availableThemes": ["original", "ash_dark"]
     },
     {
       "name": "Cloud",
       "spriteNames": ["cloud"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "CloudColorScheme"
+      "availableThemes": ["original", "knights_round", "sephiroth_black"]
     },
     {
       "name": "Mustadio",
       "spriteNames": ["musu"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "MustadioColorScheme"
+      "availableThemes": ["original"]
     },
     {
       "name": "Orlandeau",
       "spriteNames": ["oru", "goru", "voru"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "OrlandeauColorScheme"
+      "availableThemes": ["original", "thunder_god"]
     },
     {
       "name": "Reis",
       "spriteNames": ["reze", "reze_d"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "ReisColorScheme"
+      "availableThemes": [
+        "original",
+        "bronze_armor",
+        "copper_shine",
+        "coral",
+        "crimson_red",
+        "deep_purple",
+        "desert_sand",
+        "electric_blue",
+        "forest_green",
+        "golden_yellow",
+        "iron_gray",
+        "lavender",
+        "lime_green",
+        "magenta",
+        "midnight_black",
+        "mint_green",
+        "moss_green",
+        "ocean_blue",
+        "orange_flame",
+        "platinum",
+        "rose_pink",
+        "royal_blue",
+        "silver_steel",
+        "sunset_orange",
+        "turquoise",
+        "violet"
+      ]
     },
     {
       "name": "Rapha",
       "spriteNames": ["h79"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "RaphaColorScheme"
+      "availableThemes": ["original", "twilight_blend"]
     },
     {
       "name": "Marach",
       "spriteNames": ["mara"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "MarachColorScheme"
+      "availableThemes": ["original", "nightmare_armor"]
     },
     {
       "name": "Beowulf",
       "spriteNames": ["beio"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "BeowulfColorScheme"
+      "availableThemes": ["original"]
     },
     {
       "name": "Meliadoul",
       "spriteNames": ["h85"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "dark"],
-      "enumType": "MeliadoulColorScheme"
+      "availableThemes": ["original", "void_black"]
     }
   ]
 }

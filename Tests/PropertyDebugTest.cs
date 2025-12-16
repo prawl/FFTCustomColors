@@ -20,11 +20,11 @@ namespace FFTColorMod.Tests
         public void ListAllColorSchemeProperties()
         {
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(FFTColorMod.Configuration.ColorScheme))
+                .Where(p => p.PropertyType == typeof(string))
                 .OrderBy(p => p.Name)
                 .ToList();
 
-            _output.WriteLine($"Total ColorScheme properties: {properties.Count}");
+            _output.WriteLine($"Total string properties: {properties.Count}");
             _output.WriteLine("Property names:");
 
             foreach (var prop in properties)

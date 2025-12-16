@@ -44,8 +44,8 @@ namespace FFTColorMod.Tests
             // Create initial config in User directory (where Reloaded-II actually loads from)
             var initialConfig = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)9,  // frost_knight
-                Knight_Female = (FFTColorMod.Configuration.ColorScheme)0  // original
+                Squire_Male = "original",  // frost_knight
+                Knight_Female = "original"  // original
             };
 
             var json = JsonSerializer.Serialize(initialConfig, Configurable<Config>.SerializerOptions);
@@ -54,8 +54,8 @@ namespace FFTColorMod.Tests
             // Simulate what our CURRENT broken code does
             var updatedConfig = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)7,   // royal_purple
-                Knight_Female = (FFTColorMod.Configuration.ColorScheme)12 // emerald_dragon
+                Squire_Male = "golden_templar",   // royal_purple
+                Knight_Female = "emerald_dragon" // emerald_dragon
             };
 
             // Act - This is what our current OnConfigurationUpdated does (WRONG!)
@@ -72,8 +72,8 @@ namespace FFTColorMod.Tests
 
             Assert.NotNull(savedUserConfig);
             // BUG: User config wasn't updated!
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)9, savedUserConfig.Squire_Male);   // Still frost_knight!
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, savedUserConfig.Knight_Female); // Still original!
+            Assert.Equal("original", savedUserConfig.Squire_Male);   // Still frost_knight!
+            Assert.Equal("original", savedUserConfig.Knight_Female); // Still original!
 
             // The mod directory has the new config (but Reloaded-II doesn't read from there!)
             Assert.True(File.Exists(_modConfigPath));
@@ -81,8 +81,8 @@ namespace FFTColorMod.Tests
             var modDirConfig = JsonSerializer.Deserialize<Config>(modDirJson, Configurable<Config>.SerializerOptions);
 
             Assert.NotNull(modDirConfig);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)7, modDirConfig.Squire_Male);   // royal_purple (wrong place!)
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)12, modDirConfig.Knight_Female); // emerald_dragon (wrong place!)
+            Assert.Equal("golden_templar", modDirConfig.Squire_Male);   // royal_purple (wrong place!)
+            Assert.Equal("emerald_dragon", modDirConfig.Knight_Female); // emerald_dragon (wrong place!)
         }
 
         [Fact]

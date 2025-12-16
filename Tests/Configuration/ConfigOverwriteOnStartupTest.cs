@@ -46,8 +46,8 @@ namespace FFTColorMod.Tests
 
             // Assert - Config file should not have been overwritten
             Assert.Equal(originalContent, afterLoadContent);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.lucavi, configuration.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.lucavi, configuration.Squire_Female);
+            Assert.Equal("lucavi", configuration.Squire_Male);
+            Assert.Equal("lucavi", configuration.Squire_Female);
             // Note: The loaded config might have defaults for unspecified fields, but that's OK
             // The key is that the file itself shouldn't be overwritten
         }
@@ -57,9 +57,9 @@ namespace FFTColorMod.Tests
         {
             // Arrange - Create config with custom values
             var config = FFTColorMod.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
-            config.Squire_Male = FFTColorMod.Configuration.ColorScheme.lucavi;
-            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.northern_sky;
-            config.Ninja_Male = FFTColorMod.Configuration.ColorScheme.original;
+            config.Squire_Male = "lucavi";
+            config.Knight_Female = "northern_sky";
+            config.Ninja_Male = "original";
             config.Save();
 
             // Verify it was saved correctly
@@ -80,9 +80,9 @@ namespace FFTColorMod.Tests
             mod.ConfigurationUpdated(loadedConfig);
 
             // Assert - The config values should NOT have been reset
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.lucavi, loadedConfig.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.northern_sky, loadedConfig.Knight_Female);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, loadedConfig.Ninja_Male);
+            Assert.Equal("lucavi", loadedConfig.Squire_Male);
+            Assert.Equal("northern_sky", loadedConfig.Knight_Female);
+            Assert.Equal("original", loadedConfig.Ninja_Male);
 
             // Also verify the file wasn't overwritten with defaults
             var afterUpdateJson = File.ReadAllText(_testConfigPath);
@@ -118,9 +118,9 @@ namespace FFTColorMod.Tests
             Assert.Equal(originalModTime, newModTime);
 
             // Config values should be preserved
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.silver_knight, loadedConfig.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.ocean_depths, loadedConfig.Archer_Female);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.golden_templar, loadedConfig.WhiteMage_Male);
+            Assert.Equal("silver_knight", loadedConfig.Squire_Male);
+            Assert.Equal("ocean_depths", loadedConfig.Archer_Female);
+            Assert.Equal("golden_templar", loadedConfig.WhiteMage_Male);
         }
 
         public void Dispose()

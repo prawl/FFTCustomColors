@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using Xunit;
 using ColorMod.Registry;
+using FFTColorMod.Utilities;
 
 namespace Tests.Registry
 {
@@ -49,12 +50,12 @@ namespace Tests.Registry
             Assert.Equal("lightning_blue", character.DefaultTheme);
 
             // The theme manager works automatically
-            var currentTheme = _themeManager.GetTheme<NewCharacterColorScheme>("NewCharacter");
-            Assert.Equal(NewCharacterColorScheme.lightning_blue, currentTheme);
+            var currentTheme = _themeManager.GetCurrentTheme("NewCharacter");
+            Assert.Equal("lightning_blue", currentTheme);
 
             // Cycling works automatically
-            var nextTheme = _themeManager.CycleTheme<NewCharacterColorScheme>("NewCharacter");
-            Assert.Equal(NewCharacterColorScheme.shadow_black, nextTheme);
+            var nextTheme = _themeManager.CycleTheme("NewCharacter");
+            Assert.Equal("shadow_black", nextTheme);
         }
 
         [Fact]
@@ -90,7 +91,7 @@ namespace Tests.Registry
             Assert.True(StoryCharacterRegistry.HasCharacter("NewCharacter"));
 
             // - Theme cycling works
-            var theme = _themeManager.GetTheme<NewCharacterColorScheme>("NewCharacter");
+            var theme = _themeManager.GetCurrentTheme("NewCharacter");
             Assert.NotNull(theme);
 
             // - Sprite mapping works

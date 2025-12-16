@@ -22,10 +22,9 @@ namespace FFTColorMod.Tests
                 var config = new Config
                 {
                     // Set some story characters
-                    Alma = AlmaColorScheme.crimson_red,
-                    Agrias = AgriasColorScheme.ash_dark,
-                    Delita = DelitaColorScheme.midnight_black,
-                    Cloud = CloudColorScheme.sephiroth_black
+                    Agrias = "ash_dark",
+                    Cloud = "sephiroth_black",
+                    Orlandeau = "thunder_god"
                 };
 
                 // Act
@@ -34,10 +33,9 @@ namespace FFTColorMod.Tests
                 var jsonObject = JObject.Parse(jsonContent);
 
                 // Assert - All story characters should be saved
-                Assert.Equal("crimson_red", jsonObject["Alma"]?.ToString());
                 Assert.Equal("ash_dark", jsonObject["Agrias"]?.ToString());
-                Assert.Equal("midnight_black", jsonObject["Delita"]?.ToString());
                 Assert.Equal("sephiroth_black", jsonObject["Cloud"]?.ToString());
+                Assert.Equal("thunder_god", jsonObject["Orlandeau"]?.ToString());
             }
             finally
             {
@@ -58,11 +56,11 @@ namespace FFTColorMod.Tests
             {
                 // Create a config file with story characters
                 var jsonContent = @"{
-                    ""Alma"": ""crimson_red"",
                     ""Agrias"": ""ash_dark"",
-                    ""Delita"": ""midnight_black"",
                     ""Cloud"": ""sephiroth_black"",
-                    ""Orlandeau"": ""original""
+                    ""Orlandeau"": ""original"",
+                    ""Mustadio"": ""original"",
+                    ""Reis"": ""original""
                 }";
                 File.WriteAllText(configPath, jsonContent);
 
@@ -72,11 +70,11 @@ namespace FFTColorMod.Tests
                 var config = configManager.LoadConfig();
 
                 // Assert - All story characters should be loaded correctly
-                Assert.Equal(AlmaColorScheme.crimson_red, config.Alma);
-                Assert.Equal(AgriasColorScheme.ash_dark, config.Agrias);
-                Assert.Equal(DelitaColorScheme.midnight_black, config.Delita);
-                Assert.Equal(CloudColorScheme.sephiroth_black, config.Cloud);
-                Assert.Equal(OrlandeauColorScheme.original, config.Orlandeau);
+                Assert.Equal("ash_dark", config.Agrias);
+                Assert.Equal("sephiroth_black", config.Cloud);
+                Assert.Equal("original", config.Orlandeau);
+                Assert.Equal("original", config.Mustadio);
+                Assert.Equal("original", config.Reis);
             }
             finally
             {

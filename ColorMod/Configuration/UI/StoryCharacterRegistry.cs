@@ -22,10 +22,12 @@ namespace FFTColorMod.Configuration.UI
             public GetValueDelegate GetValue { get; set; }
             public SetValueDelegate SetValue { get; set; }
             public string PreviewName { get; set; }
+            public string[] AvailableThemes { get; set; } = Array.Empty<string>();
         }
 
         /// <summary>
         /// Auto-discovers all character enums with StoryCharacter attribute
+        /// Note: After refactoring, this primarily serves as a fallback when JSON loading fails
         /// </summary>
         public static void AutoDiscoverCharacters(CharacterDefinitionService service)
         {
@@ -45,7 +47,7 @@ namespace FFTColorMod.Configuration.UI
                     Name = enumType.Name.Replace("ColorScheme", ""),
                     SpriteNames = attribute.SpriteNames ?? Array.Empty<string>(),
                     DefaultTheme = attribute.DefaultTheme ?? "original",
-                    EnumType = enumType.Name
+                    EnumType = "string" // Updated to use string instead of enum
                 };
 
                 // Get available themes from enum values
@@ -54,6 +56,9 @@ namespace FFTColorMod.Configuration.UI
 
                 service.AddCharacter(character);
             }
+
+            // Note: After refactoring to remove ColorScheme enums, this method will find 0 attributes
+            // The primary character loading now happens from StoryCharacters.json via CharacterServiceSingleton
         }
 
         /// <summary>
@@ -66,28 +71,23 @@ namespace FFTColorMod.Configuration.UI
 
             foreach (var character in service.GetAllCharacters())
             {
-                if (string.IsNullOrEmpty(character.EnumType))
+                // Skip characters without names
+                if (string.IsNullOrEmpty(character.Name))
                     continue;
 
-                // Get the enum type
-                var enumType = Assembly.GetAssembly(typeof(Config))
-                    ?.GetType($"FFTColorMod.Configuration.{character.EnumType}");
-
-                if (enumType == null)
-                    continue;
-
-                // Get the property from Config
+                // Get the property from Config (for story characters like Agrias, Cloud, etc.)
                 var configProperty = typeof(Config).GetProperty(character.Name);
-                if (configProperty == null)
+                if (configProperty == null || configProperty.PropertyType != typeof(string))
                     continue;
 
                 result[character.Name] = new StoryCharacterConfig
                 {
                     Name = character.Name,
-                    EnumType = enumType,
-                    GetValue = () => configProperty.GetValue(config),
-                    SetValue = (v) => configProperty.SetValue(config, v),
-                    PreviewName = character.Name
+                    EnumType = typeof(string), // Now using string instead of enum
+                    GetValue = () => configProperty.GetValue(config) ?? character.DefaultTheme,
+                    SetValue = (v) => configProperty.SetValue(config, v?.ToString() ?? character.DefaultTheme),
+                    PreviewName = character.Name,
+                    AvailableThemes = character.AvailableThemes
                 };
             }
 
@@ -111,9 +111,8 @@ namespace FFTColorMod.Configuration.UI
             var characters = GetStoryCharacters(config);
             foreach (var character in characters.Values)
             {
-                // Get the "original" enum value for this character's enum type
-                var originalValue = Enum.Parse(character.EnumType, "original");
-                character.SetValue(originalValue);
+                // Set to "original" theme string
+                character.SetValue("original");
             }
         }
     }

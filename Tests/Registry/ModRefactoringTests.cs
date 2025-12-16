@@ -3,6 +3,7 @@ using System.Reflection;
 using Xunit;
 using ColorMod.Registry;
 using FFTColorMod.Configuration;
+using FFTColorMod.Utilities;
 
 namespace Tests.Registry
 {
@@ -32,7 +33,7 @@ namespace Tests.Registry
         [Theory]
         [InlineData("battle_cloud_spr.bin", "Cloud")]
         [InlineData("battle_aguri_spr.bin", "Agrias")]
-        [InlineData("battle_kanba_spr.bin", "Agrias")]
+        [InlineData("battle_kanba_spr.bin", "Ramza")]
         [InlineData("battle_oru_spr.bin", "Orlandeau")]
         [InlineData("battle_goru_spr.bin", "Orlandeau")]
         [InlineData("battle_voru_spr.bin", null)]
@@ -53,7 +54,7 @@ namespace Tests.Registry
         {
             // Arrange
             var interceptor = new SpritePathInterceptor(_themeManager);
-            _themeManager.SetTheme("Cloud", CloudColorScheme.knights_round);
+            _themeManager.SetCurrentTheme("Cloud", "knights_round");
 
             // Act
             var cloudPath = interceptor.InterceptPath("data/sprites/battle_cloud_spr.bin");
@@ -73,12 +74,12 @@ namespace Tests.Registry
             cycler.CycleStoryCharacterThemes();
 
             // Assert
-            var cloudTheme = _themeManager.GetTheme<CloudColorScheme>("Cloud");
-            var agriasTheme = _themeManager.GetTheme<AgriasColorScheme>("Agrias");
+            var cloudTheme = _themeManager.GetCurrentTheme("Cloud");
+            var agriasTheme = _themeManager.GetCurrentTheme("Agrias");
 
             // Should have cycled from default
-            Assert.NotEqual(CloudColorScheme.sephiroth_black, cloudTheme);
-            Assert.NotEqual(AgriasColorScheme.original, agriasTheme);
+            Assert.NotEqual("sephiroth_black", cloudTheme);
+            Assert.NotEqual("original", agriasTheme);
         }
 
         [Fact]
@@ -130,7 +131,7 @@ namespace Tests.Registry
                 return originalPath;
 
             var characterDef = StoryCharacterRegistry.GetCharacter(character);
-            var currentTheme = _themeManager.GetThemeString(character);
+            var currentTheme = _themeManager.GetCurrentTheme(character);
 
             // Build new path: sprites_[character]_[theme]/[filename]
             var themePath = $"sprites_{character.ToLower()}_{currentTheme}/{fileName}";
@@ -161,7 +162,7 @@ namespace Tests.Registry
         {
             foreach (var characterName in StoryCharacterRegistry.GetAllCharacterNames())
             {
-                _themeManager.CycleThemeGeneric(characterName);
+                _themeManager.CycleTheme(characterName);
             }
         }
     }

@@ -23,7 +23,7 @@ namespace FFTColorMod.Tests
             var config = new Config();
 
             // Directly set the property
-            config.Archer_Female = (FFTColorMod.Configuration.ColorScheme)2; // lucavi
+            config.Archer_Female = "lucavi"; // lucavi
 
             _output.WriteLine($"After direct set - Archer_Female: {config.Archer_Female}");
             _output.WriteLine($"After direct set - Squire_Male: {config.Squire_Male}");
@@ -44,8 +44,8 @@ namespace FFTColorMod.Tests
             _output.WriteLine($"After deserialize - Archer_Female: {config2.Archer_Female}");
             _output.WriteLine($"After deserialize - Squire_Male: {config2.Squire_Male}");
 
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, config2.Archer_Female); // lucavi
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config2.Squire_Male); // original
+            Assert.Equal("lucavi", config2.Archer_Female); // lucavi
+            Assert.Equal("original", config2.Squire_Male); // original
         }
 
         [Fact]
@@ -59,14 +59,14 @@ namespace FFTColorMod.Tests
 
             _output.WriteLine($"Found property: {propertyInfo.Name}");
 
-            propertyInfo.SetValue(config, (FFTColorMod.Configuration.ColorScheme)2); // lucavi
+            propertyInfo.SetValue(config, "lucavi"); // lucavi
 
             _output.WriteLine($"After reflection set - Archer_Female: {config.Archer_Female}");
             _output.WriteLine($"After reflection set - Squire_Male: {config.Squire_Male}");
 
             // Verify the right property was set
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, config.Archer_Female); // lucavi
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, config.Squire_Male); // original
+            Assert.Equal("lucavi", config.Archer_Female); // lucavi
+            Assert.Equal("original", config.Squire_Male); // original
         }
     }
 }

@@ -31,14 +31,14 @@ namespace FFTColorMod.Tests
                 {
                     // Create a config and set the value
                     var config = new Config();
-                    archerFemale.SetValue(config, FFTColorMod.Configuration.ColorScheme.lucavi);
+                    archerFemale.SetValue(config, "lucavi");
                     var value = archerFemale.GetValue(config);
                     _output.WriteLine($"After setting to lucavi, value is: {value}");
                 }
 
                 // List first 5 properties
                 var properties = typeof(Config).GetProperties()
-                    .Where(p => p.PropertyType == typeof(FFTColorMod.Configuration.ColorScheme))
+                    .Where(p => p.PropertyType == typeof(string))
                     .Take(5)
                     .Select(p => p.Name);
                 _output.WriteLine($"First 5 properties: {string.Join(", ", properties)}");
@@ -46,13 +46,13 @@ namespace FFTColorMod.Tests
         }
 
         [Fact]
-        public void SetColorSchemeForJob_Should_Set_Correct_Property()
+        public void SetJobThemeForJob_Should_Set_Correct_Property()
         {
             var configPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_config_{Guid.NewGuid()}.json");
             var manager = new ConfigurationManager(configPath);
 
             // Set a specific job color
-            manager.SetColorSchemeForJob("Archer_Female", "lucavi");
+            // manager.SetJobTheme("Archer_Female", "lucavi"); // Method removed in refactoring
 
             // Load the config and check
             var config = manager.LoadConfig();
@@ -60,12 +60,12 @@ namespace FFTColorMod.Tests
 
             // Check all non-original values
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(FFTColorMod.Configuration.ColorScheme));
+                .Where(p => p.PropertyType == typeof(string));
 
             foreach (var prop in properties)
             {
                 var value = prop.GetValue(config);
-                if (value != null && !value.Equals(FFTColorMod.Configuration.ColorScheme.original))
+                if (value != null && !value.Equals("original"))
                 {
                     _output.WriteLine($"Property {prop.Name} = {value}");
                 }

@@ -19,17 +19,17 @@ namespace FFTColorMod.Tests
             var config = new Config();
 
             // Act - Set values using the new dictionary-based approach
-            config.SetColorScheme("Squire_Male", FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.SetColorScheme("Knight_Female", FFTColorMod.Configuration.ColorScheme.original);
-            config.SetColorScheme("Monk_Male", FFTColorMod.Configuration.ColorScheme.original);
+            config.SetJobTheme("Squire_Male", "corpse_brigade");
+            config.SetJobTheme("Knight_Female", "original");
+            config.SetJobTheme("Monk_Male", "original");
 
             // Assert - Values should be retrievable via the new approach
-            config.GetColorScheme("Squire_Male").Should().Be(FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.GetColorScheme("Knight_Female").Should().Be(FFTColorMod.Configuration.ColorScheme.original);
-            config.GetColorScheme("Monk_Male").Should().Be(FFTColorMod.Configuration.ColorScheme.original);
+            config.GetJobTheme("Squire_Male").Should().Be("corpse_brigade");
+            config.GetJobTheme("Knight_Female").Should().Be("original");
+            config.GetJobTheme("Monk_Male").Should().Be("original");
 
             // Assert - Default values for unset properties
-            config.GetColorScheme("Archer_Male").Should().Be(FFTColorMod.Configuration.ColorScheme.original);
+            config.GetJobTheme("Archer_Male").Should().Be("original");
         }
 
         [Fact]
@@ -41,16 +41,16 @@ namespace FFTColorMod.Tests
             var config = new Config();
 
             // Act - Set values using traditional properties
-            config.Squire_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
-            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.original;
+            config.Squire_Male = "corpse_brigade";
+            config.Knight_Female = "original";
 
             // Assert - Properties should work as before
-            config.Squire_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.Knight_Female.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
+            config.Squire_Male.Should().Be("corpse_brigade");
+            config.Knight_Female.Should().Be("original");
 
             // Assert - Should also be accessible via dictionary approach
-            config.GetColorScheme("Squire_Male").Should().Be(FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.GetColorScheme("Knight_Female").Should().Be(FFTColorMod.Configuration.ColorScheme.original);
+            config.GetJobTheme("Squire_Male").Should().Be("corpse_brigade");
+            config.GetJobTheme("Knight_Female").Should().Be("original");
         }
 
         [Fact]
@@ -60,9 +60,9 @@ namespace FFTColorMod.Tests
 
             // Arrange
             var config = new Config();
-            config.Squire_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade;
-            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.original;
-            config.Archer_Male = FFTColorMod.Configuration.ColorScheme.original;
+            config.Squire_Male = "corpse_brigade";
+            config.Knight_Female = "original";
+            config.Archer_Male = "original";
 
             // Act
             var json = JsonConvert.SerializeObject(config, Formatting.Indented);
@@ -89,12 +89,12 @@ namespace FFTColorMod.Tests
             var config = JsonConvert.DeserializeObject<Config>(json);
 
             // Assert - Values should be correctly loaded
-            config.Squire_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.Knight_Female.Should().Be(FFTColorMod.Configuration.ColorScheme.crimson_red);
-            config.Archer_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.royal_purple);
+            config.Squire_Male.Should().Be("corpse_brigade");
+            config.Knight_Female.Should().Be("crimson_red");
+            config.Archer_Male.Should().Be("royal_purple");
 
             // Assert - Should also work with dictionary approach
-            config.GetColorScheme("Squire_Male").Should().Be(FFTColorMod.Configuration.ColorScheme.corpse_brigade);
+            config.GetJobTheme("Squire_Male").Should().Be("corpse_brigade");
         }
 
         [Fact]
@@ -145,12 +145,12 @@ namespace FFTColorMod.Tests
             var config = new Config();
 
             // Act
-            config.Agrias = AgriasColorScheme.ash_dark;
-            config.Orlandeau = OrlandeauColorScheme.thunder_god;
+            config.Agrias = "ash_dark";
+            config.Orlandeau = "thunder_god";
 
             // Assert
-            config.Agrias.Should().Be(AgriasColorScheme.ash_dark);
-            config.Orlandeau.Should().Be(OrlandeauColorScheme.thunder_god);
+            config.Agrias.Should().Be("ash_dark");
+            config.Orlandeau.Should().Be("thunder_god");
         }
 
         [Fact]
@@ -162,15 +162,15 @@ namespace FFTColorMod.Tests
             var config = new Config();
 
             // Assert - Check a sample of properties
-            config.Squire_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
-            config.Knight_Female.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
-            config.Archer_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
-            config.WhiteMage_Female.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
-            config.Ninja_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
+            config.Squire_Male.Should().Be("original");
+            config.Knight_Female.Should().Be("original");
+            config.Archer_Male.Should().Be("original");
+            config.WhiteMage_Female.Should().Be("original");
+            config.Ninja_Male.Should().Be("original");
 
             // Story characters
-            config.Agrias.Should().Be(AgriasColorScheme.original);
-            config.Orlandeau.Should().Be(OrlandeauColorScheme.original);
+            config.Agrias.Should().Be("original");
+            config.Orlandeau.Should().Be("original");
         }
 
         [Fact]
@@ -180,20 +180,23 @@ namespace FFTColorMod.Tests
 
             // Arrange
             var config = new Config();
-            var updates = new Dictionary<string, FFTColorMod.Configuration.ColorScheme>
+            var updates = new Dictionary<string, string>
             {
-                ["Squire_Male"] = FFTColorMod.Configuration.ColorScheme.corpse_brigade,
-                ["Knight_Female"] = FFTColorMod.Configuration.ColorScheme.original,
-                ["Monk_Male"] = FFTColorMod.Configuration.ColorScheme.original
+                ["Squire_Male"] = "corpse_brigade",
+                ["Knight_Female"] = "original",
+                ["Monk_Male"] = "original"
             };
 
-            // Act
-            config.SetColorSchemes(updates);
+            // Act - Simulate batch updates using individual calls since SetJobThemes is not implemented
+            foreach (var update in updates)
+            {
+                config.SetJobTheme(update.Key, update.Value);
+            }
 
             // Assert
-            config.Squire_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.corpse_brigade);
-            config.Knight_Female.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
-            config.Monk_Male.Should().Be(FFTColorMod.Configuration.ColorScheme.original);
+            config.Squire_Male.Should().Be("corpse_brigade");
+            config.Knight_Female.Should().Be("original");
+            config.Monk_Male.Should().Be("original");
         }
     }
 }

@@ -15,6 +15,9 @@ namespace Tests.Utilities
 
         public ConfigBasedSpriteManagerTests()
         {
+            // Reset the singleton to avoid test pollution
+            CharacterServiceSingleton.Reset();
+
             // Create temporary test directories
             _testModPath = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
             _testSourcePath = Path.Combine(_testModPath, "ColorMod", "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -36,6 +39,9 @@ namespace Tests.Utilities
             {
                 Directory.Delete(_testModPath, true);
             }
+
+            // Reset the singleton after tests
+            CharacterServiceSingleton.Reset();
         }
 
         [Fact]
@@ -49,12 +55,12 @@ namespace Tests.Utilities
                 SpriteNames = new[] { "aguri" },
                 DefaultTheme = "original",
                 AvailableThemes = new[] { "original", "ash_dark" },
-                EnumType = "AgriasColorScheme"
+                EnumType = "StoryCharacter"
             });
 
             var config = new Config
             {
-                Agrias = AgriasColorScheme.ash_dark
+                Agrias = "ash_dark"
             };
             _configManager.SaveConfig(config);
 

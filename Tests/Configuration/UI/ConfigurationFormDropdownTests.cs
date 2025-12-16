@@ -7,6 +7,8 @@ using FluentAssertions;
 using System.Drawing;
 using System.IO;
 using System.Reflection;
+using System.Text.Json;
+using FFTColorMod.Services;
 
 namespace Tests.Configuration.UI
 {
@@ -18,18 +20,53 @@ namespace Tests.Configuration.UI
         private Config _config;
         private ConfigurationForm _form;
         private string _tempConfigPath;
+        private string _tempDataPath;
 
         public ConfigurationFormDropdownTests()
         {
             _config = new Config();
             _tempConfigPath = Path.Combine(Path.GetTempPath(), "test_config.json");
+            _tempDataPath = Path.Combine(Path.GetTempPath(), "TestData_" + Guid.NewGuid());
+
+            // Set up test data directory with JobClasses.json
+            SetupTestData();
+        }
+
+        private void SetupTestData()
+        {
+            // Create test data directory structure
+            var tempRoot = Path.Combine(Path.GetTempPath(), "TestMod_" + Guid.NewGuid());
+            Directory.CreateDirectory(tempRoot);
+            _tempDataPath = Path.Combine(tempRoot, "Data");
+            Directory.CreateDirectory(_tempDataPath);
+
+            // Create JobClasses.json with test themes
+            var jobClassesPath = Path.Combine(_tempDataPath, "JobClasses.json");
+            var jobClassesData = new
+            {
+                availableThemes = new[]
+                {
+                    "original",
+                    "corpse_brigade",
+                    "lucavi",
+                    "northern_sky",
+                    "southern_sky"
+                },
+                jobClasses = new object[] { }
+            };
+
+            File.WriteAllText(jobClassesPath, JsonSerializer.Serialize(jobClassesData, new JsonSerializerOptions { WriteIndented = true }));
+
+            // Initialize the JobClassServiceSingleton with our test data path
+            // Pass the parent of Data directory as modPath
+            JobClassServiceSingleton.Initialize(tempRoot);
         }
 
         [Fact]
         public void GenericCharacter_Dropdown_Should_Save_Selection_When_Changed()
         {
             // Arrange
-            _config.Squire_Male = ColorScheme.original;
+            _config.Squire_Male = "original";
             _form = new ConfigurationForm(_config, _tempConfigPath);
 
             // Set _isInitializing to false to allow events to work
@@ -42,18 +79,28 @@ namespace Tests.Configuration.UI
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             isFullyLoadedField?.SetValue(_form, true);
 
+            // Force handle creation and ensure form is ready
+            var handle = _form.Handle; // This forces handle creation
+            // No need to show the form for testing - just force handle creation
+            Application.DoEvents(); // Process all pending form events
+
             // Find the Squire Male dropdown
             var squireDropdown = FindDropdownForCharacter("Squire (Male)");
             squireDropdown.Should().NotBeNull("Squire Male dropdown should exist");
 
+            // Verify dropdown has correct themes available
+            squireDropdown.DataSource.Should().NotBeNull("Dropdown should have data source");
+            var themes = squireDropdown.DataSource as List<string>;
+            themes.Should().Contain("corpse_brigade", "Themes should include corpse_brigade");
+
             // Act - Change selection
-            squireDropdown.SelectedItem = ColorScheme.corpse_brigade;
+            squireDropdown.SelectedItem = "corpse_brigade";
 
             // Force the event handler to fire (simulate user interaction)
             Application.DoEvents();
 
             // Assert - Config should be updated
-            _config.Squire_Male.Should().Be(ColorScheme.corpse_brigade,
+            _config.Squire_Male.Should().Be("corpse_brigade",
                 "Config should be updated when dropdown selection changes");
         }
 
@@ -61,7 +108,7 @@ namespace Tests.Configuration.UI
         public void StoryCharacter_Dropdown_Should_Save_Selection_When_Changed()
         {
             // Arrange
-            _config.Agrias = AgriasColorScheme.original;
+            _config.Agrias = "original";
             _form = new ConfigurationForm(_config, _tempConfigPath);
 
             // Set _isInitializing to false to allow events to work
@@ -79,21 +126,13 @@ namespace Tests.Configuration.UI
             agriasDropdown.Should().NotBeNull("Agrias dropdown should exist");
 
             // Act - Change selection
-            // We need to simulate the actual selection change with proper index
-            var values = Enum.GetValues(typeof(AgriasColorScheme));
-            for (int i = 0; i < values.Length; i++)
-            {
-                if (values.GetValue(i).ToString() == AgriasColorScheme.ash_dark.ToString())
-                {
-                    agriasDropdown.SelectedIndex = i;
-                    break;
-                }
-            }
+            // Set selection directly to the theme value
+            agriasDropdown.SelectedItem = "ash_dark";
 
             Application.DoEvents();
 
             // Assert - Config should be updated
-            _config.Agrias.Should().Be(AgriasColorScheme.ash_dark,
+            _config.Agrias.Should().Be("ash_dark",
                 "Config should be updated when story character dropdown changes");
         }
 
@@ -101,17 +140,17 @@ namespace Tests.Configuration.UI
         public void Dropdown_Should_Not_Save_During_Initialization()
         {
             // Arrange
-            _config.Knight_Male = ColorScheme.original;
-            _config.Knight_Female = ColorScheme.original;
+            _config.Knight_Male = "original";
+            _config.Knight_Female = "original";
 
             // Act - Create form (initialization)
             _form = new ConfigurationForm(_config, _tempConfigPath);
             // Do NOT call Show() yet - form is still initializing
 
             // Assert - Config should remain unchanged during initialization
-            _config.Knight_Male.Should().Be(ColorScheme.original,
+            _config.Knight_Male.Should().Be("original",
                 "Config should not change during form initialization");
-            _config.Knight_Female.Should().Be(ColorScheme.original,
+            _config.Knight_Female.Should().Be("original",
                 "Config should not change during form initialization");
         }
 
@@ -119,7 +158,7 @@ namespace Tests.Configuration.UI
         public void Dropdown_Should_Only_Save_After_Form_Is_Shown()
         {
             // Arrange
-            _config.Archer_Male = ColorScheme.original;
+            _config.Archer_Male = "original";
             _form = new ConfigurationForm(_config, _tempConfigPath);
 
             // Initialize form without showing it
@@ -132,11 +171,11 @@ namespace Tests.Configuration.UI
             archerDropdown.Should().NotBeNull();
 
             // Try to change before Show
-            archerDropdown.SelectedItem = ColorScheme.lucavi;
+            archerDropdown.SelectedItem = "lucavi";
             Application.DoEvents();
 
             // Should not save yet
-            _config.Archer_Male.Should().Be(ColorScheme.original,
+            _config.Archer_Male.Should().Be("original",
                 "Config should not update before form is shown");
 
             // Now simulate form being shown
@@ -146,11 +185,11 @@ namespace Tests.Configuration.UI
             Application.DoEvents();
 
             // Change again after Show
-            archerDropdown.SelectedItem = ColorScheme.northern_sky;
+            archerDropdown.SelectedItem = "northern_sky";
             Application.DoEvents();
 
             // Assert - Now it should save
-            _config.Archer_Male.Should().Be(ColorScheme.northern_sky,
+            _config.Archer_Male.Should().Be("northern_sky",
                 "Config should update after form is shown");
         }
 
@@ -158,7 +197,7 @@ namespace Tests.Configuration.UI
         public void Preview_Image_Should_Update_When_Dropdown_Changes()
         {
             // Arrange
-            _config.Monk_Male = ColorScheme.original;
+            _config.Monk_Male = "original";
             _form = new ConfigurationForm(_config, _tempConfigPath);
 
             // Set _isInitializing to false to allow events to work
@@ -181,7 +220,7 @@ namespace Tests.Configuration.UI
             var initialImage = monkPreview.Image;
 
             // Act - Change selection
-            monkDropdown.SelectedItem = ColorScheme.lucavi;
+            monkDropdown.SelectedItem = "lucavi";
             Application.DoEvents();
 
             // Assert - Preview should update
@@ -194,9 +233,9 @@ namespace Tests.Configuration.UI
         public void All_Generic_Characters_Should_Save_Correctly()
         {
             // Arrange - Set all to original
-            _config.Squire_Male = ColorScheme.original;
-            _config.Chemist_Female = ColorScheme.original;
-            _config.Knight_Male = ColorScheme.original;
+            _config.Squire_Male = "original";
+            _config.Chemist_Female = "original";
+            _config.Knight_Male = "original";
 
             _form = new ConfigurationForm(_config, _tempConfigPath);
 
@@ -210,6 +249,11 @@ namespace Tests.Configuration.UI
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             isFullyLoadedField?.SetValue(_form, true);
 
+            // Force handle creation and ensure form is ready
+            var handle = _form.Handle; // This forces handle creation
+            // No need to show the form for testing - just force handle creation
+            Application.DoEvents(); // Process all pending form events
+
             // Act - Change multiple selections
             var squireDropdown = FindDropdownForCharacter("Squire (Male)");
             var chemistDropdown = FindDropdownForCharacter("Chemist (Female)");
@@ -219,18 +263,28 @@ namespace Tests.Configuration.UI
             chemistDropdown.Should().NotBeNull("Chemist dropdown should be found");
             knightDropdown.Should().NotBeNull("Knight dropdown should be found");
 
+            // Check available themes
+            squireDropdown.DataSource.Should().NotBeNull("Squire dropdown should have data source");
+            var themes = squireDropdown.DataSource as List<string>;
+            themes.Should().Contain("corpse_brigade", "Themes should include corpse_brigade");
+
             // Set new values
-            squireDropdown.SelectedItem = ColorScheme.corpse_brigade;
-            chemistDropdown.SelectedItem = ColorScheme.lucavi;
-            knightDropdown.SelectedItem = ColorScheme.northern_sky;
+            squireDropdown.SelectedItem = "corpse_brigade";
+            Application.DoEvents(); // Process this change
+
+            chemistDropdown.SelectedItem = "lucavi";
+            Application.DoEvents(); // Process this change
+
+            knightDropdown.SelectedItem = "northern_sky";
+            Application.DoEvents(); // Process this change
 
             // Force the events to process
             Application.DoEvents();
 
             // Assert - All should be updated
-            _config.Squire_Male.Should().Be(ColorScheme.corpse_brigade);
-            _config.Chemist_Female.Should().Be(ColorScheme.lucavi);
-            _config.Knight_Male.Should().Be(ColorScheme.northern_sky);
+            _config.Squire_Male.Should().Be("corpse_brigade");
+            _config.Chemist_Female.Should().Be("lucavi");
+            _config.Knight_Male.Should().Be("northern_sky");
         }
 
         [Fact]
@@ -302,10 +356,26 @@ namespace Tests.Configuration.UI
 
         public void Dispose()
         {
-            _form?.Dispose();
+            if (_form != null)
+            {
+                if (_form.Visible)
+                {
+                    _form.Hide();
+                }
+                _form.Dispose();
+            }
             if (File.Exists(_tempConfigPath))
             {
                 File.Delete(_tempConfigPath);
+            }
+            if (Directory.Exists(_tempDataPath))
+            {
+                // Delete the parent directory of Data
+                var parentDir = Path.GetDirectoryName(_tempDataPath);
+                if (Directory.Exists(parentDir))
+                {
+                    Directory.Delete(parentDir, true);
+                }
             }
         }
     }

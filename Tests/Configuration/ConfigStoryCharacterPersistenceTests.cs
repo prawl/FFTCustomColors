@@ -32,7 +32,7 @@ namespace Tests.Configuration
             // Arrange
             var config = new Config
             {
-                Cloud = CloudColorScheme.knights_round
+                Cloud = "knights_round"
             };
 
             // Act
@@ -58,9 +58,9 @@ namespace Tests.Configuration
 
             // Assert
             Assert.NotNull(config);
-            Assert.Equal(CloudColorScheme.knights_round, config.Cloud);
-            Assert.Equal(AgriasColorScheme.ash_dark, config.Agrias);
-            Assert.Equal(OrlandeauColorScheme.thunder_god, config.Orlandeau);
+            Assert.Equal("knights_round", config.Cloud);
+            Assert.Equal("ash_dark", config.Agrias);
+            Assert.Equal("thunder_god", config.Orlandeau);
         }
 
         [Fact]
@@ -118,9 +118,9 @@ namespace Tests.Configuration
             var config = manager.LoadConfig();
 
             // Assert
-            Assert.Equal(CloudColorScheme.sephiroth_black, config.Cloud);
-            Assert.Equal(AgriasColorScheme.ash_dark, config.Agrias);
-            Assert.Equal(OrlandeauColorScheme.thunder_god, config.Orlandeau);
+            Assert.Equal("sephiroth_black", config.Cloud);
+            Assert.Equal("ash_dark", config.Agrias);
+            Assert.Equal("thunder_god", config.Orlandeau);
         }
 
         [Fact]
@@ -130,9 +130,9 @@ namespace Tests.Configuration
             var manager = new ConfigurationManager(_tempConfigPath);
             var config = new Config
             {
-                Cloud = CloudColorScheme.knights_round,
-                Agrias = AgriasColorScheme.original,
-                Orlandeau = OrlandeauColorScheme.original
+                Cloud = "knights_round",
+                Agrias = "original",
+                Orlandeau = "original"
             };
 
             // Act - Save
@@ -142,9 +142,9 @@ namespace Tests.Configuration
             var reloaded = manager.LoadConfig();
 
             // Assert
-            Assert.Equal(CloudColorScheme.knights_round, reloaded.Cloud);
-            Assert.Equal(AgriasColorScheme.original, reloaded.Agrias);
-            Assert.Equal(OrlandeauColorScheme.original, reloaded.Orlandeau);
+            Assert.Equal("knights_round", reloaded.Cloud);
+            Assert.Equal("original", reloaded.Agrias);
+            Assert.Equal("original", reloaded.Orlandeau);
         }
     }
 }

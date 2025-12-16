@@ -49,7 +49,7 @@ namespace Tests
 
             var discrepancies = new[]
             {
-                new { Expected = "battle_oran_spr.bin", Actual = "battle_oru_spr.bin", Character = "Orlandeau" }
+                new { Expected = "battle_oran_spr.bin", Actual = "battle_oru_spr.bin", Character = "" }
                 // Add more discrepancies as we discover them
             };
 

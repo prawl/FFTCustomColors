@@ -82,11 +82,11 @@ namespace FFTColorMod.Configuration
             var genericCharacter = _genericRegistry.GetCharacter(characterKey);
             if (genericCharacter != null)
             {
-                var colorScheme = _config.GetColorScheme(characterKey);
-                // Convert enum to sprite path format
-                if (colorScheme == ColorScheme.original)
+                var colorScheme = _config.GetJobTheme(characterKey);
+                // Convert to sprite path format
+                if (colorScheme == "original")
                     return "sprites_original";
-                return $"sprites_{colorScheme.ToString().ToLower()}";
+                return $"sprites_{colorScheme.ToLower()}";
             }
 
             // Handle story characters

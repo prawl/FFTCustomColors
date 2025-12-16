@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using ColorMod.Registry;
 using FFTColorMod.Utilities;
 
 namespace FFTColorMod.Services
@@ -13,7 +12,7 @@ namespace FFTColorMod.Services
 
         public ThemeManager(string sourcePath, string modPath)
         {
-            _storyCharacterManager = new StoryCharacterThemeManager();
+            _storyCharacterManager = new StoryCharacterThemeManager(sourcePath);
             _sourcePath = sourcePath;
             _modPath = modPath;
         }
@@ -32,36 +31,36 @@ namespace FFTColorMod.Services
 
         public void CycleOrlandeauTheme()
         {
-            var nextTheme = _storyCharacterManager.CycleOrlandeauTheme();
+            var nextTheme = _storyCharacterManager.CycleTheme("Orlandeau");
             ModLogger.Log($"Orlandeau theme: {nextTheme}");
-            ApplyOrlandeauTheme(nextTheme.ToString());
+            ApplyOrlandeauTheme(nextTheme);
         }
 
         public void CycleAgriasTheme()
         {
-            var nextTheme = _storyCharacterManager.CycleAgriasTheme();
+            var nextTheme = _storyCharacterManager.CycleTheme("Agrias");
             ModLogger.Log($"================================================");
             ModLogger.Log($"    AGRIAS THEME CHANGED TO: {nextTheme}");
             ModLogger.Log($"================================================");
-            ApplyAgriasTheme(nextTheme.ToString());
+            ApplyAgriasTheme(nextTheme);
         }
 
         public void CycleCloudTheme()
         {
-            var nextTheme = _storyCharacterManager.CycleCloudTheme();
+            var nextTheme = _storyCharacterManager.CycleTheme("Cloud");
             ModLogger.Log($"================================================");
             ModLogger.Log($"    CLOUD THEME CHANGED TO: {nextTheme}");
             ModLogger.Log($"================================================");
-            ApplyCloudTheme(nextTheme.ToString());
+            ApplyCloudTheme(nextTheme);
         }
 
         private void ApplyInitialOrlandeauTheme()
         {
             try
             {
-                var currentTheme = _storyCharacterManager.GetCurrentOrlandeauTheme();
+                var currentTheme = _storyCharacterManager.GetCurrentTheme("Orlandeau");
                 ModLogger.Log($"Applying initial Orlandeau theme: {currentTheme}");
-                ApplyOrlandeauTheme(currentTheme.ToString());
+                ApplyOrlandeauTheme(currentTheme);
             }
             catch (Exception ex)
             {
@@ -116,9 +115,9 @@ namespace FFTColorMod.Services
         {
             try
             {
-                var currentTheme = _storyCharacterManager.GetCurrentAgriasTheme();
+                var currentTheme = _storyCharacterManager.GetCurrentTheme("Agrias");
                 ModLogger.Log($"Applying initial Agrias theme: {currentTheme}");
-                ApplyAgriasTheme(currentTheme.ToString());
+                ApplyAgriasTheme(currentTheme);
             }
             catch (Exception ex)
             {
@@ -159,9 +158,9 @@ namespace FFTColorMod.Services
         {
             try
             {
-                var currentTheme = _storyCharacterManager.GetCurrentCloudTheme();
+                var currentTheme = _storyCharacterManager.GetCurrentTheme("Cloud");
                 ModLogger.Log($"Applying initial Cloud theme: {currentTheme}");
-                ApplyCloudTheme(currentTheme.ToString());
+                ApplyCloudTheme(currentTheme);
             }
             catch (Exception ex)
             {

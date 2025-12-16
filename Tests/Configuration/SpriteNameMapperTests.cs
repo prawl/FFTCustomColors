@@ -52,7 +52,7 @@ namespace Tests.Configuration
         {
             // Arrange
             var config = new Config();
-            config.Knight_Male = ColorScheme.corpse_brigade;
+            config.Knight_Male = "corpse_brigade";
             var mapper = new SpriteNameMapper(config);
 
             // Act
@@ -67,7 +67,7 @@ namespace Tests.Configuration
         {
             // Arrange
             var config = new Config();
-            config.Agrias = AgriasColorScheme.ash_dark;
+            config.Agrias = "ash_dark";
 
             // Create mapper AFTER setting config
             var mapper = new SpriteNameMapper(config);
@@ -94,12 +94,12 @@ namespace Tests.Configuration
         }
 
         [Theory]
-        [InlineData("battle_oru_spr.bin", OrlandeauColorScheme.thunder_god, "sprites_orlandeau_thunder_god")]
-        [InlineData("battle_oru_spr.bin", OrlandeauColorScheme.original, "sprites_original")]
-        [InlineData("battle_cloud_spr.bin", CloudColorScheme.sephiroth_black, "sprites_cloud_sephiroth_black")]
-        [InlineData("battle_cloud_spr.bin", CloudColorScheme.original, "sprites_original")]
-        public void SpriteNameMapper_Should_Handle_Special_Story_Character_Formatting<T>(
-            string spriteName, T colorScheme, string expectedDescription) where T : System.Enum
+        [InlineData("battle_oru_spr.bin", "thunder_god", "sprites_orlandeau_thunder_god")]
+        [InlineData("battle_oru_spr.bin", "original", "sprites_original")]
+        [InlineData("battle_cloud_spr.bin", "sephiroth_black", "sprites_cloud_sephiroth_black")]
+        [InlineData("battle_cloud_spr.bin", "original", "sprites_original")]
+        public void SpriteNameMapper_Should_Handle_Special_Story_Character_Formatting(
+            string spriteName, string colorScheme, string expectedDescription)
         {
             // Arrange
             var config = new Config();
@@ -108,11 +108,11 @@ namespace Tests.Configuration
             // Set the appropriate property based on sprite name
             if (spriteName.Contains("oru"))
             {
-                config.Orlandeau = (OrlandeauColorScheme)(object)colorScheme;
+                config.Orlandeau = (string)(object)colorScheme;
             }
             else if (spriteName.Contains("cloud"))
             {
-                config.Cloud = (CloudColorScheme)(object)colorScheme;
+                config.Cloud = (string)(object)colorScheme;
             }
 
             // Act

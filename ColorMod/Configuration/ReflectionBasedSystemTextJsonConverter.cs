@@ -21,7 +21,11 @@ namespace FFTColorMod.Configuration
                 throw new JsonException();
             }
 
-            var properties = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            // Get non-ignored properties for story characters (they're directly serializable)
+            var storyCharacterProperties = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.GetCustomAttribute<Newtonsoft.Json.JsonIgnoreAttribute>() == null &&
+                           p.GetCustomAttribute<System.Text.Json.Serialization.JsonIgnoreAttribute>() == null)
+                .ToArray();
 
             while (reader.Read())
             {
@@ -38,25 +42,29 @@ namespace FFTColorMod.Configuration
                 var propertyName = reader.GetString();
                 reader.Read();
 
-                // Handle both formats: with underscores (Archer_Female) and without (ArcherFemale)
-                var configProperty = properties.FirstOrDefault(p =>
-                    p.Name == propertyName ||
-                    p.Name.Replace("_", "") == propertyName);
-
-                if (configProperty != null && configProperty.CanWrite)
+                if (reader.TokenType == JsonTokenType.String)
                 {
-                    var propertyType = configProperty.PropertyType;
-                    if (propertyType.IsEnum && reader.TokenType == JsonTokenType.String)
+                    var value = reader.GetString();
+                    if (!string.IsNullOrEmpty(value))
                     {
-                        var value = reader.GetString();
-                        try
+                        // First, try to find a direct story character property
+                        var storyCharProperty = storyCharacterProperties.FirstOrDefault(p => p.Name == propertyName);
+                        if (storyCharProperty != null)
                         {
-                            var enumValue = Enum.Parse(propertyType, value);
-                            configProperty.SetValue(config, enumValue);
+                            storyCharProperty.SetValue(config, value);
+                            continue;
                         }
-                        catch
+
+                        // Then, try to map to job themes using metadata
+                        var jobKeys = config.GetAllJobKeys();
+                        foreach (var jobKey in jobKeys)
                         {
-                            // If parsing fails, leave as default (original)
+                            var metadata = config.GetJobMetadata(jobKey);
+                            if (metadata != null && metadata.JsonPropertyName == propertyName)
+                            {
+                                config.SetJobTheme(jobKey, value);
+                                break;
+                            }
                         }
                     }
                 }
@@ -69,22 +77,24 @@ namespace FFTColorMod.Configuration
         {
             writer.WriteStartObject();
 
-            var properties = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-
-            foreach (var property in properties)
+            // Write all job themes using their JSON property names
+            foreach (var jobKey in value.GetAllJobKeys())
             {
-                // Skip FilePath and other non-serializable properties
-                if (property.Name == "FilePath")
-                    continue;
-
-                var propertyValue = property.GetValue(value);
-                if (propertyValue != null)
+                var metadata = value.GetJobMetadata(jobKey);
+                if (metadata != null)
                 {
-                    // Write property name without underscores for compatibility
-                    var jsonPropertyName = property.Name.Replace("_", "");
-                    writer.WritePropertyName(jsonPropertyName);
-                    writer.WriteStringValue(propertyValue.ToString());
+                    var theme = value.GetJobTheme(jobKey);
+                    writer.WritePropertyName(metadata.JsonPropertyName);
+                    writer.WriteStringValue(theme);
                 }
+            }
+
+            // Write all story character themes
+            foreach (var characterName in value.GetAllStoryCharacters())
+            {
+                var theme = value.GetStoryCharacterTheme(characterName);
+                writer.WritePropertyName(characterName);
+                writer.WriteStringValue(theme);
             }
 
             writer.WriteEndObject();

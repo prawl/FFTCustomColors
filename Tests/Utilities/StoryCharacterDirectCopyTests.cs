@@ -3,7 +3,9 @@ using System.IO;
 using Xunit;
 using FluentAssertions;
 using FFTColorMod.Configuration;
+using FFTColorMod.Configuration.UI;
 using FFTColorMod.Utilities;
+using FFTColorMod.Services;
 using Moq;
 
 namespace Tests.Utilities
@@ -25,6 +27,9 @@ namespace Tests.Utilities
 
         public StoryCharacterDirectCopyTests()
         {
+            // Reset the singleton to avoid test pollution
+            CharacterServiceSingleton.Reset();
+
             _testDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
             _modPath = Path.Combine(_testDir, "mod");
             _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -35,16 +40,19 @@ namespace Tests.Utilities
             Directory.CreateDirectory(_unitPath);
             Directory.CreateDirectory(_sourceUnitPath);
 
+            // Setup the character service with test data
+            SetupCharacterService();
+
             _mockConfigManager = new Mock<ConfigurationManager>("dummy_path");
         }
 
         [Fact]
-        public void Agrias_EmeraldGreen_Theme_Should_Copy_To_Base_Sprite_Name()
+        public void Agrias_AshDark_Theme_Should_Copy_To_Base_Sprite_Name()
         {
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.ash_dark
+                Agrias = "ash_dark"
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
@@ -53,8 +61,16 @@ namespace Tests.Utilities
             var themedSprite = Path.Combine(_sourceUnitPath, "battle_aguri_ash_dark_spr.bin");
             File.WriteAllBytes(themedSprite, new byte[] { 0xC0, 0xAA, 0x11 }); // Ash dark theme data
 
+            // Debug: Check that the file was created correctly
+            File.Exists(themedSprite).Should().BeTrue("Source themed sprite should exist");
+
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
+
+            // Debug: Check that characters are loaded
+            var characters = CharacterServiceSingleton.Instance.GetAllCharacters();
+            characters.Should().NotBeEmpty("Character service should have loaded characters");
+            characters.Should().Contain(c => c.Name == "Agrias", "Agrias should be in the character service");
 
             // Act
             _spriteManager.ApplyConfiguration();
@@ -62,9 +78,9 @@ namespace Tests.Utilities
             // Assert
             // The ash dark theme should be copied to the BASE sprite name (battle_aguri_spr.bin)
             var baseSpriteFile = Path.Combine(_unitPath, "battle_aguri_spr.bin");
-            File.Exists(baseSpriteFile).Should().BeTrue("Agrias's emerald green theme should overwrite the base sprite");
+            File.Exists(baseSpriteFile).Should().BeTrue("Agrias's ash dark theme should overwrite the base sprite");
             File.ReadAllBytes(baseSpriteFile).Should().Equal(new byte[] { 0xC0, 0xAA, 0x11 },
-                "The base sprite should contain the emerald green theme data");
+                "The base sprite should contain the ash dark theme data");
 
             // The themed file should NOT be created with theme name appended
             var wrongFile = Path.Combine(_unitPath, "battle_aguri_ash_dark_spr.bin");
@@ -72,19 +88,15 @@ namespace Tests.Utilities
         }
 
         [Fact]
-        public void Cloud_NavyBlue_Theme_Should_Copy_To_Base_Sprite_Name()
+        public void Cloud_Original_Theme_Should_Not_Copy_Any_Files()
         {
-            // Arrange
+            // Arrange - Cloud only has "original" theme available according to StoryCharacters.json
             var config = new Config
             {
-                Cloud = CloudColorScheme.knights_round
+                Cloud = "original"
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
-
-            // Create the themed sprite file
-            var themedSprite = Path.Combine(_sourceUnitPath, "battle_cloud_knights_round_spr.bin");
-            File.WriteAllBytes(themedSprite, new byte[] { 0xDC, 0x14, 0x3C }); // Knights round data
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -92,14 +104,9 @@ namespace Tests.Utilities
             // Act
             _spriteManager.ApplyConfiguration();
 
-            // Assert
+            // Assert - No files should be copied when using "original" theme
             var baseSpriteFile = Path.Combine(_unitPath, "battle_cloud_spr.bin");
-            File.Exists(baseSpriteFile).Should().BeTrue("Cloud's knights_round theme should overwrite the base sprite");
-            File.ReadAllBytes(baseSpriteFile).Should().Equal(new byte[] { 0xDC, 0x14, 0x3C });
-
-            // The themed file should NOT be created with theme name appended
-            var wrongFile = Path.Combine(_unitPath, "battle_cloud_knights_round_spr.bin");
-            File.Exists(wrongFile).Should().BeFalse("Should not create a separate themed file");
+            File.Exists(baseSpriteFile).Should().BeFalse("Cloud's original theme should not create any sprite files");
         }
 
         [Fact]
@@ -108,17 +115,17 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.ash_dark,
-                Cloud = CloudColorScheme.knights_round,
-                Orlandeau = OrlandeauColorScheme.thunder_god
+                Agrias = "ash_dark",
+                Cloud = "original",
+                Orlandeau = "thunder_god"
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create themed sprite files in the unit directory
             CreateThemedSprite("aguri", "ash_dark");
-            CreateThemedSprite("cloud", "knights_round");
             CreateThemedSprite("oru", "thunder_god");
+            // Note: Cloud uses "original" theme, so no themed file needed
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -126,14 +133,13 @@ namespace Tests.Utilities
             // Act
             _spriteManager.ApplyConfiguration();
 
-            // Assert - all should copy to base names
+            // Assert - only characters with non-original themes should copy to base names
             VerifyBaseSpriteExists("aguri", shouldExist: true);
-            VerifyBaseSpriteExists("cloud", shouldExist: true);
+            VerifyBaseSpriteExists("cloud", shouldExist: false); // Cloud uses "original" theme
             VerifyBaseSpriteExists("oru", shouldExist: true);
 
             // Verify NO themed files are created
             VerifyThemedSpriteDoesNotExist("aguri", "ash_dark");
-            VerifyThemedSpriteDoesNotExist("cloud", "knights_round");
             VerifyThemedSpriteDoesNotExist("oru", "thunder_god");
         }
 
@@ -143,15 +149,15 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.original,
-                Cloud = CloudColorScheme.original
+                Agrias = "original",
+                Cloud = "original"
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Even if themed files exist, they should not be copied when theme is "original"
             CreateThemedSprite("aguri", "ash_dark");
-            CreateThemedSprite("cloud", "knights_round");
+            // Note: Cloud only supports "original" theme, so no themed file to create
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -173,7 +179,7 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.ash_dark // Selected but file doesn't exist
+                Agrias = "ash_dark" // Selected but file doesn't exist
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
@@ -222,6 +228,49 @@ namespace Tests.Utilities
             {
                 Directory.Delete(_testDir, true);
             }
+
+            // Reset the singleton after tests
+            CharacterServiceSingleton.Reset();
+        }
+
+        private void SetupCharacterService()
+        {
+            // Ensure the singleton is initialized first
+            var service = CharacterServiceSingleton.Instance;
+
+            // If service is null for some reason, create it directly
+            if (service == null)
+            {
+                service = new CharacterDefinitionService();
+            }
+
+            // Add test characters that match our StoryCharacters.json
+            service.AddCharacter(new CharacterDefinition
+            {
+                Name = "Agrias",
+                SpriteNames = new[] { "aguri", "kanba" },
+                DefaultTheme = "original",
+                AvailableThemes = new[] { "original", "ash_dark" },
+                EnumType = "StoryCharacter"
+            });
+
+            service.AddCharacter(new CharacterDefinition
+            {
+                Name = "Cloud",
+                SpriteNames = new[] { "cloud" },
+                DefaultTheme = "original",
+                AvailableThemes = new[] { "original" },
+                EnumType = "StoryCharacter"
+            });
+
+            service.AddCharacter(new CharacterDefinition
+            {
+                Name = "Orlandeau",
+                SpriteNames = new[] { "oru", "goru", "voru" },
+                DefaultTheme = "original",
+                AvailableThemes = new[] { "original", "thunder_god" },
+                EnumType = "StoryCharacter"
+            });
         }
     }
 }

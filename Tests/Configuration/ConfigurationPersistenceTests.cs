@@ -56,9 +56,9 @@ namespace FFTColorMod.Tests
             Assert.NotNull(config);
 
             // Act - Update the configuration
-            config.Squire_Male = (FFTColorMod.Configuration.ColorScheme)6;  // crimson_red
-            config.Knight_Male = (FFTColorMod.Configuration.ColorScheme)13;  // rose_gold
-            config.Knight_Female = (FFTColorMod.Configuration.ColorScheme)12;  // emerald_dragon
+            config.Squire_Male = "ocean_depths";  // crimson_red
+            config.Knight_Male = "rose_gold";  // rose_gold
+            config.Knight_Female = "emerald_dragon";  // emerald_dragon
 
             // Save the configuration
             config.Save();
@@ -73,9 +73,9 @@ namespace FFTColorMod.Tests
             });
 
             Assert.NotNull(savedConfig);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)6, savedConfig.Squire_Male);  // crimson_red
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)13, savedConfig.Knight_Male);  // rose_gold
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)12, savedConfig.Knight_Female);  // emerald_dragon
+            Assert.Equal("ocean_depths", savedConfig.Squire_Male);  // crimson_red
+            Assert.Equal("rose_gold", savedConfig.Knight_Male);  // rose_gold
+            Assert.Equal("emerald_dragon", savedConfig.Knight_Female);  // emerald_dragon
         }
 
         [Fact]
@@ -84,8 +84,8 @@ namespace FFTColorMod.Tests
             // Arrange - Create a config file with specific values
             var existingConfig = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)1,  // corpse_brigade
-                Dragoon_Female = (FFTColorMod.Configuration.ColorScheme)2  // lucavi
+                Squire_Male = "corpse_brigade",  // corpse_brigade
+                Dragoon_Female = "lucavi"  // lucavi
             };
 
             Directory.CreateDirectory(_testConfigDir);
@@ -103,9 +103,9 @@ namespace FFTColorMod.Tests
 
             // Assert
             Assert.NotNull(loadedConfig);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)1, loadedConfig.Squire_Male);  // corpse_brigade
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)2, loadedConfig.Dragoon_Female);  // lucavi
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, loadedConfig.Knight_Male); // original - default
+            Assert.Equal("corpse_brigade", loadedConfig.Squire_Male);  // corpse_brigade
+            Assert.Equal("lucavi", loadedConfig.Dragoon_Female);  // lucavi
+            Assert.Equal("original", loadedConfig.Knight_Male); // original - default
         }
 
         [Fact]
@@ -116,8 +116,8 @@ namespace FFTColorMod.Tests
             var config = configurator.GetConfiguration<Config>(0);
 
             // Act - Modify configuration
-            config.Squire_Male = (FFTColorMod.Configuration.ColorScheme)16;  // blood_moon
-            config.Archer_Female = (FFTColorMod.Configuration.ColorScheme)17;  // celestial
+            config.Squire_Male = "blood_moon";  // blood_moon
+            config.Archer_Female = "celestial";  // celestial
 
             // Save through the Configurator
             configurator.Save();
@@ -130,8 +130,8 @@ namespace FFTColorMod.Tests
             });
 
             Assert.NotNull(savedConfig);
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)16, savedConfig.Squire_Male);  // blood_moon
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)17, savedConfig.Archer_Female);  // celestial
+            Assert.Equal("blood_moon", savedConfig.Squire_Male);  // blood_moon
+            Assert.Equal("celestial", savedConfig.Archer_Female);  // celestial
         }
     }
 }

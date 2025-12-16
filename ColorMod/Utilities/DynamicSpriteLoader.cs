@@ -65,19 +65,19 @@ namespace FFTColorMod.Utilities
             // Always need original
             schemes.Add("original");
 
-            // Get all color scheme properties
+            // Get all color scheme properties (now strings)
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(Configuration.ColorScheme));
+                .Where(p => p.PropertyType == typeof(string) &&
+                           (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
 
             foreach (var property in properties)
             {
                 var value = property.GetValue(config);
-                if (value is Configuration.ColorScheme colorScheme)
+                if (value is string colorScheme)
                 {
-                    var schemeName = colorScheme.ToString();
-                    if (schemeName != "original")
+                    if (colorScheme != "original")
                     {
-                        schemes.Add(schemeName);
+                        schemes.Add(colorScheme);
                     }
                 }
             }

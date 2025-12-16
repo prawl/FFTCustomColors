@@ -14,8 +14,8 @@ namespace FFTColorMod.Tests
         {
             // Arrange
             var config = new Config();
-            config.Alma = AlmaColorScheme.original;
-            config.Agrias = AgriasColorScheme.ash_dark;
+            // config.Alma removed in refactoring
+            config.Agrias = "ash_dark";
 
             var converter = new ReflectionBasedConfigJsonConverter();
             var settings = new JsonSerializerSettings();
@@ -26,8 +26,7 @@ namespace FFTColorMod.Tests
             var deserializedConfig = JsonConvert.DeserializeObject<Config>(json, settings);
 
             // Assert
-            Assert.Equal(AlmaColorScheme.original, deserializedConfig.Alma);
-            Assert.Equal(AgriasColorScheme.ash_dark, deserializedConfig.Agrias);
+            Assert.Equal("ash_dark", deserializedConfig.Agrias);
         }
 
         [Fact]
@@ -37,10 +36,10 @@ namespace FFTColorMod.Tests
             var config = new Config();
 
             // Set various story characters to non-default values using valid enum values
-            config.Agrias = AgriasColorScheme.ash_dark;
-            config.Cloud = CloudColorScheme.sephiroth_black;
-            config.Alma = AlmaColorScheme.golden_yellow;
-            config.Delita = DelitaColorScheme.midnight_black;
+            config.Agrias = "ash_dark";
+            config.Cloud = "sephiroth_black";
+            // config.Alma removed in refactoring
+            // config.Delita removed in refactoring
 
             var converter = new ReflectionBasedConfigJsonConverter();
             var settings = new JsonSerializerSettings();
@@ -51,10 +50,8 @@ namespace FFTColorMod.Tests
             var deserializedConfig = JsonConvert.DeserializeObject<Config>(json, settings);
 
             // Assert - All story characters should be deserialized correctly
-            Assert.Equal(AgriasColorScheme.ash_dark, deserializedConfig.Agrias);
-            Assert.Equal(CloudColorScheme.sephiroth_black, deserializedConfig.Cloud);
-            Assert.Equal(AlmaColorScheme.golden_yellow, deserializedConfig.Alma);
-            Assert.Equal(DelitaColorScheme.midnight_black, deserializedConfig.Delita);
+            Assert.Equal("ash_dark", deserializedConfig.Agrias);
+            Assert.Equal("sephiroth_black", deserializedConfig.Cloud);
         }
 
     }

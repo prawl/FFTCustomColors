@@ -19,7 +19,7 @@ namespace Tests.Configuration
             var handle = comboBox.Handle;
 
             // Now set the DataSource
-            var values = Enum.GetValues(typeof(AgriasColorScheme));
+            var values = new string[] { "original", "ash_dark", "corpse_brigade", "lucavi" };
             comboBox.DataSource = values;
 
             // Act - Try setting by index
@@ -27,7 +27,7 @@ namespace Tests.Configuration
 
             // Assert
             Assert.Equal(1, comboBox.SelectedIndex);
-            Assert.Equal(AgriasColorScheme.ash_dark, comboBox.SelectedItem);
+            Assert.Equal("ash_dark", comboBox.SelectedItem);
 
             form.Dispose();
         }
@@ -37,7 +37,7 @@ namespace Tests.Configuration
         {
             // Arrange
             var comboBox = new ComboBox();
-            var values = Enum.GetValues(typeof(AgriasColorScheme));
+            var values = new string[] { "original", "ash_dark", "corpse_brigade", "lucavi" };
             comboBox.DataSource = values;
 
             // Act & Assert - Without handle, items aren't populated
@@ -52,7 +52,7 @@ namespace Tests.Configuration
             var comboBox = new ComboBox();
             form.Controls.Add(comboBox);
 
-            var values = Enum.GetValues(typeof(AgriasColorScheme));
+            var values = new string[] { "original", "ash_dark", "corpse_brigade", "lucavi" };
             comboBox.DataSource = values;
 
             // Act - Create handle
@@ -60,7 +60,7 @@ namespace Tests.Configuration
 
             // Assert - Now items are populated
             Assert.True(comboBox.Items.Count > 0);
-            Assert.Equal(2, comboBox.Items.Count); // original and ash_dark
+            Assert.Equal(4, comboBox.Items.Count); // original, ash_dark, corpse_brigade, lucavi
         }
 
         [Fact]
@@ -74,10 +74,10 @@ namespace Tests.Configuration
             form.Controls.Add(panel);
 
             var comboBox = new ComboBox();
-            object currentTheme = AgriasColorScheme.ash_dark;
+            object currentTheme = "ash_dark";
 
             // Set DataSource
-            var values = Enum.GetValues(typeof(AgriasColorScheme));
+            var values = new string[] { "original", "ash_dark", "corpse_brigade", "lucavi" };
             comboBox.DataSource = values;
 
             // Add to parent first (this is important!)
@@ -89,7 +89,7 @@ namespace Tests.Configuration
             // Now find and set the selection
             for (int i = 0; i < values.Length; i++)
             {
-                if (values.GetValue(i).Equals(currentTheme))
+                if (values[i].Equals(currentTheme))
                 {
                     comboBox.SelectedIndex = i;
                     break;
@@ -97,7 +97,7 @@ namespace Tests.Configuration
             }
 
             // Assert
-            Assert.Equal(AgriasColorScheme.ash_dark, comboBox.SelectedItem);
+            Assert.Equal("ash_dark", comboBox.SelectedItem);
 
             form.Dispose();
         }

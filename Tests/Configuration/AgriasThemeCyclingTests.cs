@@ -1,6 +1,7 @@
 using System;
 using FFTColorMod;
 using FFTColorMod.Configuration;
+using FFTColorMod.Utilities;
 using Xunit;
 
 namespace Tests
@@ -11,7 +12,7 @@ namespace Tests
         public void AgriasColorScheme_HasCorrectNumberOfThemes()
         {
             // Arrange & Act
-            var themes = Enum.GetValues<AgriasColorScheme>();
+            var themes = new[] { "original", "ash_dark" };
 
             // Assert - We expect 2 themes: original, ash_dark
             Assert.Equal(2, themes.Length);
@@ -21,11 +22,11 @@ namespace Tests
         public void AgriasColorScheme_ContainsExpectedThemes()
         {
             // Arrange
-            var themes = Enum.GetValues<AgriasColorScheme>();
+            var themes = new[] { "original", "ash_dark" };
 
             // Act & Assert
-            Assert.Contains(AgriasColorScheme.original, themes);
-            Assert.Contains(AgriasColorScheme.ash_dark, themes);
+            Assert.Contains("original", themes);
+            Assert.Contains("ash_dark", themes);
         }
 
         [Fact]
@@ -33,14 +34,14 @@ namespace Tests
         {
             // Arrange
             var manager = new StoryCharacterThemeManager();
-            manager.SetCurrentAgriasTheme(AgriasColorScheme.original);
+            manager.SetCurrentTheme("Agrias", "original");
 
             // Act & Assert - Cycle through all themes
-            var firstCycle = manager.CycleAgriasTheme();
-            Assert.Equal(AgriasColorScheme.ash_dark, firstCycle);
+            var firstCycle = manager.CycleTheme("Agrias");
+            Assert.Equal("ash_dark", firstCycle);
 
-            var secondCycle = manager.CycleAgriasTheme();
-            Assert.Equal(AgriasColorScheme.original, secondCycle); // Should wrap back to original
+            var secondCycle = manager.CycleTheme("Agrias");
+            Assert.Equal("original", secondCycle); // Should wrap back to original
         }
 
         [Fact]
@@ -50,11 +51,11 @@ namespace Tests
             var manager = new StoryCharacterThemeManager();
 
             // Act & Assert - Default should be original
-            Assert.Equal(AgriasColorScheme.original, manager.GetCurrentAgriasTheme());
+            Assert.Equal("original", manager.GetCurrentTheme("Agrias"));
 
             // Change theme and verify
-            manager.SetCurrentAgriasTheme(AgriasColorScheme.ash_dark);
-            Assert.Equal(AgriasColorScheme.ash_dark, manager.GetCurrentAgriasTheme());
+            manager.SetCurrentTheme("Agrias", "ash_dark");
+            Assert.Equal("ash_dark", manager.GetCurrentTheme("Agrias"));
         }
 
         [Fact]
@@ -64,10 +65,10 @@ namespace Tests
             var manager = new StoryCharacterThemeManager();
 
             // Act
-            manager.SetCurrentAgriasTheme(AgriasColorScheme.ash_dark);
+            manager.SetCurrentTheme("Agrias", "ash_dark");
 
             // Assert
-            Assert.Equal(AgriasColorScheme.ash_dark, manager.GetCurrentAgriasTheme());
+            Assert.Equal("ash_dark", manager.GetCurrentTheme("Agrias"));
         }
 
         [Fact]
@@ -77,19 +78,19 @@ namespace Tests
             var manager = new StoryCharacterThemeManager();
 
             // Act - Set different themes for each character
-            manager.SetCurrentAgriasTheme(AgriasColorScheme.ash_dark);
-            manager.SetCurrentOrlandeauTheme(OrlandeauColorScheme.thunder_god);
+            manager.SetCurrentTheme("Agrias", "ash_dark");
+            manager.SetCurrentTheme("Orlandeau", "thunder_god");
 
             // Assert - Each character maintains their own theme
-            Assert.Equal(AgriasColorScheme.ash_dark, manager.GetCurrentAgriasTheme());
-            Assert.Equal(OrlandeauColorScheme.thunder_god, manager.GetCurrentOrlandeauTheme());
+            Assert.Equal("ash_dark", manager.GetCurrentTheme("Agrias"));
+            Assert.Equal("thunder_god", manager.GetCurrentTheme("Orlandeau"));
 
             // Act - Cycle one character's theme
-            manager.CycleAgriasTheme();
+            manager.CycleTheme("Agrias");
 
             // Assert - Only Agrias theme changes, others remain the same
-            Assert.Equal(AgriasColorScheme.original, manager.GetCurrentAgriasTheme());
-            Assert.Equal(OrlandeauColorScheme.thunder_god, manager.GetCurrentOrlandeauTheme());
+            Assert.Equal("original", manager.GetCurrentTheme("Agrias"));
+            Assert.Equal("thunder_god", manager.GetCurrentTheme("Orlandeau"));
         }
     }
 }

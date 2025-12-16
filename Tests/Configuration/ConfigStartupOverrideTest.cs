@@ -23,9 +23,9 @@ namespace FFTColorMod.Tests
             // Arrange
             var config = new FFTColorMod.Configuration.Config
             {
-                Squire_Male = FFTColorMod.Configuration.ColorScheme.original,
-                Knight_Male = FFTColorMod.Configuration.ColorScheme.original,
-                Archer_Female = FFTColorMod.Configuration.ColorScheme.original
+                Squire_Male = "original",
+                Knight_Male = "original",
+                Archer_Female = "original"
             };
 
             // Act - Simulate what Configurable.Save() does
@@ -58,10 +58,10 @@ namespace FFTColorMod.Tests
             var loadedConfig = configurator.GetConfiguration<FFTColorMod.Configuration.Config>(0);
 
             // Assert - User settings should be preserved
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, loadedConfig.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, loadedConfig.Knight_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, loadedConfig.Archer_Female);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, loadedConfig.WhiteMage_Male);
+            Assert.Equal("original", loadedConfig.Squire_Male);
+            Assert.Equal("original", loadedConfig.Knight_Male);
+            Assert.Equal("original", loadedConfig.Archer_Female);
+            Assert.Equal("original", loadedConfig.WhiteMage_Male);
         }
 
         [Fact]
@@ -69,18 +69,18 @@ namespace FFTColorMod.Tests
         {
             // Arrange - Create config with non-original values
             var config = FFTColorMod.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
-            config.Squire_Male = FFTColorMod.Configuration.ColorScheme.original;
-            config.Knight_Female = FFTColorMod.Configuration.ColorScheme.original;
-            config.Monk_Male = FFTColorMod.Configuration.ColorScheme.original;
+            config.Squire_Male = "original";
+            config.Knight_Female = "original";
+            config.Monk_Male = "original";
             config.Save();
 
             // Act - Reload the config (simulating game startup)
             var reloadedConfig = FFTColorMod.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
 
             // Assert - Values should NOT reset to original
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, reloadedConfig.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, reloadedConfig.Knight_Female);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, reloadedConfig.Monk_Male);
+            Assert.Equal("original", reloadedConfig.Squire_Male);
+            Assert.Equal("original", reloadedConfig.Knight_Female);
+            Assert.Equal("original", reloadedConfig.Monk_Male);
 
             // Also verify the JSON doesn't contain FilePath/ConfigName
             var jsonContent = File.ReadAllText(_testConfigPath);
@@ -94,9 +94,9 @@ namespace FFTColorMod.Tests
             // Arrange - Create a user config file
             var userConfig = new FFTColorMod.Configuration.Config
             {
-                Squire_Male = FFTColorMod.Configuration.ColorScheme.original,
-                Ninja_Female = FFTColorMod.Configuration.ColorScheme.original,
-                Agrias = FFTColorMod.Configuration.AgriasColorScheme.ash_dark
+                Squire_Male = "original",
+                Ninja_Female = "original",
+                Agrias = "ash_dark"
             };
 
             // Save it using the proper serialization
@@ -113,9 +113,9 @@ namespace FFTColorMod.Tests
             Assert.Equal(originalContent, newContent);
 
             // Config values should match what was saved
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, config.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, config.Ninja_Female);
-            Assert.Equal(FFTColorMod.Configuration.AgriasColorScheme.ash_dark, config.Agrias);
+            Assert.Equal("original", config.Squire_Male);
+            Assert.Equal("original", config.Ninja_Female);
+            Assert.Equal("ash_dark", config.Agrias);
         }
 
         [Fact]
@@ -127,8 +127,8 @@ namespace FFTColorMod.Tests
             // Arrange - Create user config
             var userConfig = new FFTColorMod.Configuration.Config
             {
-                Squire_Male = FFTColorMod.Configuration.ColorScheme.original,
-                WhiteMage_Female = FFTColorMod.Configuration.ColorScheme.ocean_depths
+                Squire_Male = "original",
+                WhiteMage_Female = "ocean_depths"
             };
             var json = JsonSerializer.Serialize(userConfig, FFTColorMod.Configuration.Configurable<FFTColorMod.Configuration.Config>.SerializerOptions);
             File.WriteAllText(_testConfigPath, json);
@@ -147,8 +147,8 @@ namespace FFTColorMod.Tests
 
             // Assert
             Assert.Equal(json, afterLoadJson); // File unchanged
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, configuration.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.ocean_depths, configuration.WhiteMage_Female);
+            Assert.Equal("original", configuration.Squire_Male);
+            Assert.Equal("ocean_depths", configuration.WhiteMage_Female);
         }
 
         public void Dispose()

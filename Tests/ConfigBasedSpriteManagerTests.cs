@@ -3,6 +3,7 @@ using System.IO;
 using Xunit;
 using FFTColorMod.Configuration;
 using FFTColorMod.Utilities;
+using FFTColorMod.Services;
 
 namespace Tests
 {
@@ -12,9 +13,13 @@ namespace Tests
         private string _testSourcePath;
         private ConfigurationManager _configManager;
         private ConfigBasedSpriteManager _spriteManager;
+        private CharacterDefinitionService _characterService;
 
         public ConfigBasedSpriteManagerTests()
         {
+            // Reset the singleton to avoid test pollution
+            CharacterServiceSingleton.Reset();
+
             // Create temporary test directories
             _testModPath = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
             _testSourcePath = Path.Combine(_testModPath, "ColorMod", "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -28,9 +33,22 @@ namespace Tests
             var configPath = Path.Combine(_testModPath, "Config.json");
             _configManager = new ConfigurationManager(configPath);
 
+            // Create character service and add test characters
+            _characterService = new CharacterDefinitionService();
+
+            // Add Agrias as a test character
+            _characterService.AddCharacter(new CharacterDefinition
+            {
+                Name = "Agrias",
+                SpriteNames = new[] { "aguri", "kanba" },
+                DefaultTheme = "original",
+                AvailableThemes = new[] { "original", "ash_dark" },
+                EnumType = "StoryCharacter" // Add this so it's not skipped
+            });
+
             // Create sprite manager - pass the source path's parent as third parameter (ColorMod directory)
             var sourceBasePath = Path.Combine(_testModPath, "ColorMod");
-            _spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, sourceBasePath);
+            _spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, _characterService, sourceBasePath);
         }
 
         public void Dispose()
@@ -40,6 +58,9 @@ namespace Tests
             {
                 Directory.Delete(_testModPath, true);
             }
+
+            // Reset the singleton after tests
+            CharacterServiceSingleton.Reset();
         }
 
         [Fact]
@@ -48,7 +69,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.ash_dark
+                Agrias = "ash_dark"
             };
             _configManager.SaveConfig(config);
 
@@ -81,7 +102,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.original
+                Agrias = "original"
             };
             _configManager.SaveConfig(config);
 
@@ -116,7 +137,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.ash_dark
+                Agrias = "ash_dark"
             };
             _configManager.SaveConfig(config);
 
@@ -141,7 +162,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.ash_dark
+                Agrias = "ash_dark"
             };
             _configManager.SaveConfig(config);
 
@@ -170,7 +191,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.ash_dark
+                Agrias = "ash_dark"
             };
             _configManager.SaveConfig(config);
 

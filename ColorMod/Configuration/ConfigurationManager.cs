@@ -2,11 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using FFTColorMod.Utilities;
 using System.Threading;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 
 namespace FFTColorMod.Configuration
@@ -15,8 +13,8 @@ namespace FFTColorMod.Configuration
     {
         private readonly string _configPath;
         private Config _cachedConfig;
+        private DateTime _lastFileWriteTime;
         private readonly object _lockObject = new object();
-        private DateTime _lastFileWriteTime = DateTime.MinValue;
 
         // Use consistent JSON settings with reflection-based converter
         // IMPORTANT: Use default naming (not camelCase) to match property names exactly
@@ -66,7 +64,7 @@ namespace FFTColorMod.Configuration
                     var json = File.ReadAllText(_configPath);
                     ModLogger.Log($"Read JSON: {json.Substring(0, Math.Min(200, json.Length))}...");
                     _cachedConfig = JsonConvert.DeserializeObject<Config>(json, _jsonSettings) ?? new Config();
-                    ModLogger.Log($"Loaded config - Squire_Male: {_cachedConfig.Squire_Male} (value: {(int)_cachedConfig.Squire_Male})");
+                    ModLogger.Log($"Loaded config - Squire_Male: {_cachedConfig.Squire_Male}");
                     _lastFileWriteTime = File.GetLastWriteTime(_configPath);
                     return _cachedConfig;
                 }
@@ -157,12 +155,13 @@ namespace FFTColorMod.Configuration
                 // Log current config state BEFORE change
                 ModLogger.Log($"BEFORE - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
 
-                // Debug: List all ColorScheme properties
+                // Debug: List all theme properties
                 var allProperties = typeof(Config).GetProperties()
-                    .Where(p => p.PropertyType == typeof(Configuration.ColorScheme))
+                    .Where(p => p.PropertyType == typeof(string) &&
+                               (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")))
                     .Select(p => p.Name)
                     .ToList();
-                ModLogger.Log($"Available ColorScheme properties (first 10): {string.Join(", ", allProperties.Take(10))}");
+                ModLogger.Log($"Available theme properties (first 10): {string.Join(", ", allProperties.Take(10))}");
 
                 ModLogger.Log($"Looking for property: '{jobProperty}'");
                 var propertyInfo = typeof(Config).GetProperty(jobProperty);
@@ -171,49 +170,41 @@ namespace FFTColorMod.Configuration
                 {
                     ModLogger.Log($"Property found: {propertyInfo.Name}, Type: {propertyInfo.PropertyType}");
 
-                    if (propertyInfo.PropertyType == typeof(Configuration.ColorScheme))
+                    if (propertyInfo.PropertyType == typeof(string))
                     {
-                        // Parse the string to ColorScheme enum
-                        if (Enum.TryParse<Configuration.ColorScheme>(colorScheme, true, out var colorSchemeEnum))
-                        {
-                            ModLogger.Log($"About to set property '{propertyInfo.Name}' on config object");
-                            ModLogger.Log($"Config object type: {config.GetType().FullName}");
-                            ModLogger.Log($"Setting value to: {colorSchemeEnum} (enum value: {(int)colorSchemeEnum})");
+                        ModLogger.Log($"About to set property '{propertyInfo.Name}' on config object");
+                        ModLogger.Log($"Config object type: {config.GetType().FullName}");
+                        ModLogger.Log($"Setting value to: {colorScheme}");
 
-                            // Get value before setting
-                            var beforeValue = propertyInfo.GetValue(config);
-                            ModLogger.Log($"Property value BEFORE: {beforeValue}");
+                        // Get value before setting
+                        var beforeValue = propertyInfo.GetValue(config);
+                        ModLogger.Log($"Property value BEFORE: {beforeValue}");
 
-                            propertyInfo.SetValue(config, colorSchemeEnum);
+                        propertyInfo.SetValue(config, colorScheme);
 
-                            // Get value after setting
-                            var afterValue = propertyInfo.GetValue(config);
-                            ModLogger.Log($"Property value AFTER: {afterValue}");
+                        // Get value after setting
+                        var afterValue = propertyInfo.GetValue(config);
+                        ModLogger.Log($"Property value AFTER: {afterValue}");
 
-                            // Debug: Check if other properties were accidentally modified
-                            ModLogger.Log($"After setting {jobProperty}, checking other properties:");
-                            ModLogger.Log($"Squire_Male: {config.Squire_Male}");
-                            ModLogger.Log($"Archer_Female: {config.Archer_Female}");
-                            ModLogger.Log($"Knight_Female: {config.Knight_Female}");
+                        // Debug: Check if other properties were accidentally modified
+                        ModLogger.Log($"After setting {jobProperty}, checking other properties:");
+                        ModLogger.Log($"Squire_Male: {config.Squire_Male}");
+                        ModLogger.Log($"Archer_Female: {config.Archer_Female}");
+                        ModLogger.Log($"Knight_Female: {config.Knight_Female}");
 
-                            // Log state AFTER setting property but BEFORE save
-                            ModLogger.Log($"AFTER SET - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
+                        // Log state AFTER setting property but BEFORE save
+                        ModLogger.Log($"AFTER SET - Squire_Male: {config.Squire_Male}, Archer_Female: {config.Archer_Female}, WhiteMage_Male: {config.WhiteMage_Male}");
 
-                            SaveConfig(config);
+                        SaveConfig(config);
 
-                            // Verify it was set (use cached config which was updated by SaveConfig)
-                            var verifyValue = propertyInfo.GetValue(_cachedConfig);
-                            ModLogger.Log($"AFTER SAVE - Squire_Male: {_cachedConfig.Squire_Male}, Archer_Female: {_cachedConfig.Archer_Female}, WhiteMage_Male: {_cachedConfig.WhiteMage_Male}");
-                            ModLogger.Log($"Verification - {jobProperty} is now: {verifyValue}");
-                        }
-                        else
-                        {
-                            ModLogger.Log($"Failed to parse color scheme: {colorScheme}");
-                        }
+                        // Verify it was set (use cached config which was updated by SaveConfig)
+                        var verifyValue = propertyInfo.GetValue(_cachedConfig);
+                        ModLogger.Log($"AFTER SAVE - Squire_Male: {_cachedConfig.Squire_Male}, Archer_Female: {_cachedConfig.Archer_Female}, WhiteMage_Male: {_cachedConfig.WhiteMage_Male}");
+                        ModLogger.Log($"Verification - {jobProperty} is now: {verifyValue}");
                     }
                     else
                     {
-                        ModLogger.Log($"Property type mismatch. Expected: {typeof(Configuration.ColorScheme)}, Got: {propertyInfo.PropertyType}");
+                        ModLogger.Log($"Property type mismatch. Expected: {typeof(string)}, Got: {propertyInfo.PropertyType}");
                     }
                 }
                 else
@@ -226,28 +217,10 @@ namespace FFTColorMod.Configuration
 
         public List<string> GetAvailableColorSchemes()
         {
-            // Return the list of known color schemes
-            return new List<string>
-            {
-                "original",
-                "corpse_brigade",
-                "lucavi",
-                "northern_sky",
-                "southern_sky",
-                "crimson_red",
-                "royal_purple",
-                "phoenix_flame",
-                "frost_knight",
-                "silver_knight",
-                "emerald_dragon",
-                "rose_gold",
-                "ocean_depths",
-                "golden_templar",
-                "blood_moon",
-                "celestial",
-                "volcanic",
-                "amethyst"
-            };
+            // Get themes from the JobClassDefinitionService
+            // This allows for easy configuration via JSON
+            var jobClassService = Services.JobClassServiceSingleton.Instance;
+            return jobClassService.GetAvailableThemes();
         }
 
         public void ResetToDefaults()
@@ -257,14 +230,15 @@ namespace FFTColorMod.Configuration
             // Create a new default config with all properties explicitly set to original
             var defaultConfig = new Config();
 
-            // Explicitly verify all properties are set to original (ColorScheme.original = 0)
+            // Explicitly verify all properties are set to original
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(ColorScheme));
+                .Where(p => p.PropertyType == typeof(string) &&
+                      (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
 
             foreach (var prop in properties)
             {
-                // Ensure each property is set to ColorScheme.original
-                prop.SetValue(defaultConfig, ColorScheme.original);
+                // Ensure each property is set to "original"
+                prop.SetValue(defaultConfig, "original");
             }
 
             // Log what we're about to save

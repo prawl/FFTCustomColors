@@ -39,8 +39,8 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.ash_dark,
-                Squire_Male = FFTColorMod.Configuration.ColorScheme.original // Include a generic for comparison
+                Agrias = "ash_dark",
+                Squire_Male = "original" // Include a generic for comparison
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
@@ -73,16 +73,14 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.ash_dark,
-                Cloud = CloudColorScheme.knights_round,
-                Orlandeau = OrlandeauColorScheme.thunder_god
+                Agrias = "ash_dark",
+                Orlandeau = "thunder_god"
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create source directories and files for each character
             CreateStoryCharacterSprite("agrias", "ash_dark", "aguri");
-            CreateStoryCharacterSprite("cloud", "knights_round", "cloud");
             CreateStoryCharacterSprite("orlandeau", "thunder_god", "oru");
 
             var sourcePath = Path.Combine(_testDir, "source");
@@ -93,7 +91,6 @@ namespace Tests.Utilities
 
             // Assert - only non-original themes should be applied
             VerifyStoryCharacterSprite("aguri", "ash_dark");
-            VerifyStoryCharacterSprite("cloud", "knights_round");
             VerifyStoryCharacterSprite("oru", "thunder_god");
         }
 
@@ -103,15 +100,15 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.original,
-                Cloud = CloudColorScheme.original
+                Agrias = "original",
+                Orlandeau = "original"
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
 
             // Create theme files that should NOT be copied when theme is "original"
             CreateStoryCharacterSprite("agrias", "ash_dark", "aguri");
-            CreateStoryCharacterSprite("cloud", "knights_round", "cloud");
+            CreateStoryCharacterSprite("orlandeau", "thunder_god", "oru");
 
             var sourcePath = Path.Combine(_testDir, "source");
             _spriteManager = new ConfigBasedSpriteManager(_modPath, _mockConfigManager.Object, sourcePath);
@@ -121,10 +118,10 @@ namespace Tests.Utilities
 
             // Assert - when theme is original, base sprites should NOT be created/overwritten
             var agriasBase = Path.Combine(_unitPath, "battle_aguri_spr.bin");
-            var cloudBase = Path.Combine(_unitPath, "battle_cloud_spr.bin");
+            var orlandeauBase = Path.Combine(_unitPath, "battle_oru_spr.bin");
 
             File.Exists(agriasBase).Should().BeFalse("Agrias base sprite should not be created when theme is original");
-            File.Exists(cloudBase).Should().BeFalse("Cloud base sprite should not be created when theme is original");
+            File.Exists(orlandeauBase).Should().BeFalse("Orlandeau base sprite should not be created when theme is original");
         }
 
         [Fact]
@@ -133,7 +130,7 @@ namespace Tests.Utilities
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.original // Theme selected but file doesn't exist
+                Agrias = "original" // Theme selected but file doesn't exist
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);
@@ -153,9 +150,9 @@ namespace Tests.Utilities
             var config = new Config
             {
                 // Generic character
-                Knight_Male = FFTColorMod.Configuration.ColorScheme.corpse_brigade,
+                Knight_Male = "corpse_brigade",
                 // Story character
-                Agrias = AgriasColorScheme.ash_dark
+                Agrias = "ash_dark"
             };
 
             _mockConfigManager.Setup(x => x.LoadConfig()).Returns(config);

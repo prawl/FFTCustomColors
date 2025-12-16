@@ -28,7 +28,7 @@ namespace FFTColorMod.Tests
             try
             {
                 // Act
-                manager.UpdateStoryCharacterPreview(pictureBox, "Agrias", "original");
+                manager.UpdateStoryCharacterPreview(pictureBox, "agrias", "original");
 
                 // Assert
                 pictureBox.Image.Should().NotBeNull("Preview image should be loaded for Agrias original theme");
@@ -58,7 +58,7 @@ namespace FFTColorMod.Tests
             try
             {
                 // Act
-                manager.UpdateStoryCharacterPreview(pictureBox, "Agrias", "ash_dark");
+                manager.UpdateStoryCharacterPreview(pictureBox, "agrias", "ash_dark");
 
                 // Assert
                 pictureBox.Image.Should().NotBeNull("Preview image should be loaded for Agrias ash_dark theme");
@@ -88,7 +88,7 @@ namespace FFTColorMod.Tests
             try
             {
                 // Act
-                manager.UpdateStoryCharacterPreview(pictureBox, "Orlandeau", "original");
+                manager.UpdateStoryCharacterPreview(pictureBox, "orlandeau", "original");
 
                 // Assert
                 pictureBox.Image.Should().NotBeNull("Preview image should be loaded for Orlandeau original theme");
@@ -118,7 +118,7 @@ namespace FFTColorMod.Tests
             try
             {
                 // Act
-                manager.UpdateStoryCharacterPreview(pictureBox, "Orlandeau", "thunder_god");
+                manager.UpdateStoryCharacterPreview(pictureBox, "orlandeau", "thunder_god");
 
                 // Assert
                 pictureBox.Image.Should().NotBeNull("Preview image should be loaded for Orlandeau thunder_god theme");

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using FFTColorMod.Utilities;
+using FFTColorMod.Services;
 
 namespace FFTColorMod.Configuration.UI
 {
@@ -17,6 +18,7 @@ namespace FFTColorMod.Configuration.UI
         private readonly Func<bool> _isInitializing;
         private readonly List<Control> _genericCharacterControls;
         private readonly List<Control> _storyCharacterControls;
+        private readonly JobClassDefinitionService _jobClassService;
 
         public CharacterRowBuilder(
             TableLayoutPanel mainPanel,
@@ -30,12 +32,13 @@ namespace FFTColorMod.Configuration.UI
             _isInitializing = isInitializing;
             _genericCharacterControls = genericCharacterControls;
             _storyCharacterControls = storyCharacterControls;
+            _jobClassService = JobClassServiceSingleton.Instance;
         }
 
-        public void AddGenericCharacterRow(int row, string jobName, ColorScheme currentTheme,
-            Action<ColorScheme> setter, Func<bool> isFullyLoaded)
+        public void AddGenericCharacterRow(int row, string jobName, string currentTheme,
+            Action<string> setter, Func<bool> isFullyLoaded)
         {
-            ModLogger.Log($"AddJobRow: {jobName} = {currentTheme} (enum value: {(int)currentTheme})");
+            ModLogger.Log($"AddJobRow: {jobName} = {currentTheme}");
 
             // Create label
             var label = ConfigUIComponentFactory.CreateCharacterLabel(jobName);
@@ -44,7 +47,9 @@ namespace FFTColorMod.Configuration.UI
 
             // Create combo box
             var comboBox = ConfigUIComponentFactory.CreateThemeComboBox();
-            comboBox.DataSource = Enum.GetValues(typeof(ColorScheme));
+            // Get available themes from the job class service
+            var themes = GetAvailableGenericThemes();
+            comboBox.DataSource = themes;
             comboBox.SelectedItem = currentTheme;
 
             // Create preview picture box
@@ -71,7 +76,7 @@ namespace FFTColorMod.Configuration.UI
                 // Check if form is fully loaded using the provided function
                 if (isFullyLoaded != null && isFullyLoaded() && comboBox.SelectedItem != null)
                 {
-                    var newTheme = (ColorScheme)comboBox.SelectedItem;
+                    var newTheme = (string)comboBox.SelectedItem;
                     ModLogger.Log($"Selection changed: {jobName} = {newTheme}");
                     setter(newTheme);
                     UpdateGenericPreviewImage(pictureBox, jobName, newTheme);
@@ -90,9 +95,11 @@ namespace FFTColorMod.Configuration.UI
             var comboBox = ConfigUIComponentFactory.CreateThemeComboBox();
             var pictureBox = ConfigUIComponentFactory.CreatePreviewPictureBox();
 
-            // Get enum values
-            var values = Enum.GetValues(characterConfig.EnumType);
-            comboBox.DataSource = values;
+            // Get available themes for this story character
+            var availableThemes = characterConfig.AvailableThemes?.Length > 0
+                ? characterConfig.AvailableThemes
+                : new[] { "original" }; // fallback if no themes available
+            comboBox.DataSource = availableThemes;
 
             // Setup event handler
             comboBox.SelectedIndexChanged += (s, e) =>
@@ -125,14 +132,14 @@ namespace FFTColorMod.Configuration.UI
             if (comboBox.Items.Count == 0)
             {
                 comboBox.DataSource = null;
-                comboBox.DataSource = values;
+                comboBox.DataSource = availableThemes;
                 handle = comboBox.Handle;
             }
 
             // Set selection
-            for (int i = 0; i < values.Length; i++)
+            for (int i = 0; i < availableThemes.Length; i++)
             {
-                if (values.GetValue(i).ToString() == currentValue.ToString())
+                if (availableThemes[i] == currentValue.ToString())
                 {
                     comboBox.SelectedIndex = i;
                     break;
@@ -144,7 +151,14 @@ namespace FFTColorMod.Configuration.UI
             _storyCharacterControls.Add(pictureBox);
         }
 
-        private void UpdateGenericPreviewImage(PictureBox pictureBox, string jobName, ColorScheme theme)
+        private List<string> GetAvailableGenericThemes()
+        {
+            // Get themes from the JobClassDefinitionService
+            // This could later be loaded from a JSON file for easier configuration
+            return _jobClassService.GetAvailableThemes();
+        }
+
+        private void UpdateGenericPreviewImage(PictureBox pictureBox, string jobName, string theme)
         {
             string fileName = jobName.ToLower()
                 .Replace(" (male)", "_male")
@@ -153,7 +167,7 @@ namespace FFTColorMod.Configuration.UI
                 .Replace("(", "")
                 .Replace(")", "");
 
-            string resourceName = $"FFTColorMod.Resources.Previews.{fileName}_{theme.ToString().ToLower()}.png";
+            string resourceName = $"FFTColorMod.Resources.Previews.{fileName}_{theme.ToLower()}.png";
 
             ModLogger.LogDebug($"Looking for embedded resource: {resourceName}");
 

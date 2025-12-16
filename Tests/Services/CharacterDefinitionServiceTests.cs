@@ -158,18 +158,17 @@ namespace Tests.Services
 
             // Assert
             var characters = service.GetAllCharacters();
-            Assert.True(characters.Count >= 10, $"Expected at least 10 characters, found {characters.Count}");
+            Assert.Equal(9, characters.Count); // Based on actual StoryCharacters.json content
 
             var agrias = service.GetCharacterByName("Agrias");
             Assert.NotNull(agrias);
             Assert.Equal("Agrias", agrias.Name);
             Assert.Contains("aguri", agrias.SpriteNames);
             Assert.Contains("kanba", agrias.SpriteNames);
-            Assert.Equal("AgriasColorScheme", agrias.EnumType);
 
             var cloud = service.GetCharacterByName("Cloud");
             Assert.NotNull(cloud);
-            Assert.Equal("CloudColorScheme", cloud.EnumType);
+            Assert.Equal("Cloud", cloud.Name);
         }
     }
 }

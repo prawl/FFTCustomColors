@@ -14,12 +14,14 @@ namespace FFTColorMod.Services
     {
         private readonly Dictionary<string, JobClassDefinition> _jobClasses;
         private readonly Dictionary<string, JobClassDefinition> _jobClassesBySprite;
+        private readonly List<string> _availableThemes;
         private readonly string _dataPath;
 
         public JobClassDefinitionService(string modPath = null)
         {
             _jobClasses = new Dictionary<string, JobClassDefinition>();
             _jobClassesBySprite = new Dictionary<string, JobClassDefinition>();
+            _availableThemes = new List<string>();
 
             // Determine path to Data directory
             if (string.IsNullOrEmpty(modPath))
@@ -53,6 +55,20 @@ namespace FFTColorMod.Services
                 var jsonContent = File.ReadAllText(jsonPath);
                 var document = JsonDocument.Parse(jsonContent);
                 var root = document.RootElement;
+
+                // Load available themes from JSON
+                if (root.TryGetProperty("availableThemes", out var themesArray))
+                {
+                    foreach (var theme in themesArray.EnumerateArray())
+                    {
+                        var themeName = theme.GetString();
+                        if (!string.IsNullOrEmpty(themeName))
+                        {
+                            _availableThemes.Add(themeName);
+                        }
+                    }
+                    ModLogger.Log($"Loaded {_availableThemes.Count} available themes from JobClasses.json");
+                }
 
                 if (root.TryGetProperty("jobClasses", out var jobClassesArray))
                 {
@@ -92,30 +108,15 @@ namespace FFTColorMod.Services
         /// <summary>
         /// Get available themes for generic job classes
         /// </summary>
-        private List<string> GetAvailableThemes()
+        public List<string> GetAvailableThemes()
         {
-            // All generic jobs use the same ColorScheme enum
-            return new List<string>
+            // Return themes loaded from JobClasses.json
+            // If no themes were loaded, return a default set
+            if (_availableThemes.Count == 0)
             {
-                "original",
-                "corpse_brigade",
-                "lucavi",
-                "northern_sky",
-                "southern_sky",
-                "crimson_red",
-                "royal_purple",
-                "phoenix_flame",
-                "frost_knight",
-                "silver_knight",
-                "emerald_dragon",
-                "rose_gold",
-                "ocean_depths",
-                "golden_templar",
-                "blood_moon",
-                "celestial",
-                "volcanic",
-                "amethyst"
-            };
+                return new List<string> { "original" };
+            }
+            return new List<string>(_availableThemes);
         }
 
         /// <summary>

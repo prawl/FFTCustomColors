@@ -1,141 +1,206 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
 using FFTColorMod.Configuration;
 
-namespace FFTColorMod
+namespace FFTColorMod.Utilities
 {
+    /// <summary>
+    /// Generic theme manager for story characters using string-based themes
+    /// </summary>
     public class StoryCharacterThemeManager
     {
-        private OrlandeauColorScheme _currentOrlandeauTheme = OrlandeauColorScheme.original;
-        private AgriasColorScheme _currentAgriasTheme = AgriasColorScheme.original;
-        private CloudColorScheme _currentCloudTheme = CloudColorScheme.original;
-        private MustadioColorScheme _currentMustadioTheme = MustadioColorScheme.original;
-        private ReisColorScheme _currentReisTheme = ReisColorScheme.original;
-        private DelitaColorScheme _currentDelitaTheme = DelitaColorScheme.original;
-        private AlmaColorScheme _currentAlmaTheme = AlmaColorScheme.original;
+        private readonly Dictionary<string, string> _currentThemes = new();
+        private readonly Dictionary<string, List<string>> _availableThemes = new();
+        private readonly string _dataPath;
 
-        public OrlandeauColorScheme GetCurrentOrlandeauTheme()
+        public StoryCharacterThemeManager(string modPath = null)
         {
-            return _currentOrlandeauTheme;
-        }
-
-        public void SetCurrentOrlandeauTheme(OrlandeauColorScheme theme)
-        {
-            _currentOrlandeauTheme = theme;
-        }
-
-        public OrlandeauColorScheme CycleOrlandeauTheme()
-        {
-            var values = Enum.GetValues<OrlandeauColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentOrlandeauTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentOrlandeauTheme = values[nextIndex];
-            return _currentOrlandeauTheme;
-        }
-
-        public AgriasColorScheme GetCurrentAgriasTheme()
-        {
-            return _currentAgriasTheme;
-        }
-
-        public void SetCurrentAgriasTheme(AgriasColorScheme theme)
-        {
-            _currentAgriasTheme = theme;
-        }
-
-        public AgriasColorScheme CycleAgriasTheme()
-        {
-            var values = Enum.GetValues<AgriasColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentAgriasTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentAgriasTheme = values[nextIndex];
-            return _currentAgriasTheme;
-        }
-
-        public CloudColorScheme GetCurrentCloudTheme()
-        {
-            return _currentCloudTheme;
-        }
-
-        public void SetCurrentCloudTheme(CloudColorScheme theme)
-        {
-            _currentCloudTheme = theme;
-        }
-
-        public CloudColorScheme CycleCloudTheme()
-        {
-            var values = Enum.GetValues<CloudColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentCloudTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentCloudTheme = values[nextIndex];
-            return _currentCloudTheme;
-        }
-
-        // Mustadio methods
-        public MustadioColorScheme GetCurrentMustadioTheme() => _currentMustadioTheme;
-        public void SetCurrentMustadioTheme(MustadioColorScheme theme) => _currentMustadioTheme = theme;
-        public MustadioColorScheme CycleMustadioTheme()
-        {
-            var values = Enum.GetValues<MustadioColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentMustadioTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentMustadioTheme = values[nextIndex];
-            return _currentMustadioTheme;
-        }
-
-        // Reis methods
-        public ReisColorScheme GetCurrentReisTheme() => _currentReisTheme;
-        public void SetCurrentReisTheme(ReisColorScheme theme) => _currentReisTheme = theme;
-        public ReisColorScheme CycleReisTheme()
-        {
-            var values = Enum.GetValues<ReisColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentReisTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentReisTheme = values[nextIndex];
-            return _currentReisTheme;
-        }
-
-
-        // Delita methods
-        public DelitaColorScheme GetCurrentDelitaTheme() => _currentDelitaTheme;
-        public void SetCurrentDelitaTheme(DelitaColorScheme theme) => _currentDelitaTheme = theme;
-        public DelitaColorScheme CycleDelitaTheme()
-        {
-            var values = Enum.GetValues<DelitaColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentDelitaTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentDelitaTheme = values[nextIndex];
-            return _currentDelitaTheme;
-        }
-
-        // Alma methods
-        public AlmaColorScheme GetCurrentAlmaTheme() => _currentAlmaTheme;
-        public void SetCurrentAlmaTheme(AlmaColorScheme theme) => _currentAlmaTheme = theme;
-        public AlmaColorScheme CycleAlmaTheme()
-        {
-            var values = Enum.GetValues<AlmaColorScheme>();
-            var currentIndex = Array.IndexOf(values, _currentAlmaTheme);
-            var nextIndex = (currentIndex + 1) % values.Length;
-            _currentAlmaTheme = values[nextIndex];
-            return _currentAlmaTheme;
-        }
-
-    }
-
-    public class F2ThemeHandler
-    {
-        private readonly StoryCharacterThemeManager _storyManager = new();
-
-        public string HandleF2Press(string spriteName)
-        {
-            // Check if this is Orlandeau
-            if (spriteName.Contains("oru"))
+            // Determine path to Data directory
+            if (string.IsNullOrEmpty(modPath))
             {
-                var theme = _storyManager.CycleOrlandeauTheme();
-                return $"sprites_orlandeau_{theme.ToString().ToLower()}";
+                _dataPath = Path.Combine(@"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod", "Data");
+            }
+            else
+            {
+                _dataPath = Path.Combine(modPath, "Data");
             }
 
-            // For generic sprites, return standard theme cycling (not implemented here)
-            return "sprites_original";
+            LoadStoryCharacterThemes();
+        }
+
+        private void LoadStoryCharacterThemes()
+        {
+            try
+            {
+                var jsonPath = Path.Combine(_dataPath, "StoryCharacters.json");
+
+                if (!File.Exists(jsonPath))
+                {
+                    ModLogger.LogWarning($"StoryCharacters.json not found at: {jsonPath}");
+                    return;
+                }
+
+                var jsonContent = File.ReadAllText(jsonPath);
+                var document = JsonDocument.Parse(jsonContent);
+                var root = document.RootElement;
+
+                if (root.TryGetProperty("characters", out var charactersArray))
+                {
+                    foreach (var character in charactersArray.EnumerateArray())
+                    {
+                        var name = character.GetProperty("name").GetString() ?? "";
+                        var defaultTheme = character.GetProperty("defaultTheme").GetString() ?? "original";
+
+                        _currentThemes[name] = defaultTheme;
+
+                        if (character.TryGetProperty("availableThemes", out var themes))
+                        {
+                            _availableThemes[name] = new List<string>();
+                            foreach (var theme in themes.EnumerateArray())
+                            {
+                                _availableThemes[name].Add(theme.GetString() ?? "original");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"Failed to load StoryCharacters.json: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Get the current theme for a character
+        /// </summary>
+        public string GetCurrentTheme(string characterName)
+        {
+            // First check if we have a theme loaded from JSON
+            if (_currentThemes.ContainsKey(characterName))
+            {
+                return _currentThemes[characterName];
+            }
+
+            // Fallback: check old registry for backward compatibility with tests
+            var registeredCharacter = ColorMod.Registry.StoryCharacterRegistry.GetCharacter(characterName);
+
+            if (registeredCharacter != null)
+            {
+                return registeredCharacter.DefaultTheme ?? "original";
+            }
+
+            // Default fallback
+            return "original";
+        }
+
+        /// <summary>
+        /// Set the current theme for a character
+        /// </summary>
+        public void SetCurrentTheme(string characterName, string theme)
+        {
+            bool isValidTheme = false;
+
+            // First check themes loaded from JSON
+            if (_availableThemes.ContainsKey(characterName) &&
+                _availableThemes[characterName].Contains(theme))
+            {
+                isValidTheme = true;
+            }
+            else
+            {
+                // Fallback: check old registry enum for backward compatibility
+                var registeredCharacter = ColorMod.Registry.StoryCharacterRegistry.GetCharacter(characterName);
+                if (registeredCharacter?.EnumType != null && registeredCharacter.EnumType.IsEnum)
+                {
+                    var availableThemes = Enum.GetNames(registeredCharacter.EnumType);
+                    isValidTheme = availableThemes.Contains(theme);
+                }
+            }
+
+            if (isValidTheme)
+            {
+                _currentThemes[characterName] = theme;
+            }
+            else
+            {
+                ModLogger.LogWarning($"Theme '{theme}' not available for character '{characterName}'");
+            }
+        }
+
+        /// <summary>
+        /// Cycle to the next theme for a character
+        /// </summary>
+        public string CycleTheme(string characterName)
+        {
+            List<string> themes;
+
+            // First try to get themes from JSON data
+            if (_availableThemes.ContainsKey(characterName) && _availableThemes[characterName].Any())
+            {
+                themes = _availableThemes[characterName];
+            }
+            else
+            {
+                // Fallback: get themes from old registry enum for backward compatibility
+                var registeredCharacter = ColorMod.Registry.StoryCharacterRegistry.GetCharacter(characterName);
+                if (registeredCharacter?.EnumType != null && registeredCharacter.EnumType.IsEnum)
+                {
+                    themes = Enum.GetNames(registeredCharacter.EnumType).ToList();
+                }
+                else
+                {
+                    return "original";
+                }
+            }
+
+            var currentTheme = GetCurrentTheme(characterName);
+            var currentIndex = themes.IndexOf(currentTheme);
+
+            if (currentIndex == -1)
+            {
+                currentIndex = 0;
+            }
+            else
+            {
+                currentIndex = (currentIndex + 1) % themes.Count;
+            }
+
+            var newTheme = themes[currentIndex];
+            _currentThemes[characterName] = newTheme;
+
+            return newTheme;
+        }
+
+        /// <summary>
+        /// Get available themes for a character
+        /// </summary>
+        public List<string> GetAvailableThemes(string characterName)
+        {
+            return _availableThemes.GetValueOrDefault(characterName, new List<string> { "original" });
+        }
+
+        /// <summary>
+        /// Check if a character has a specific theme available
+        /// </summary>
+        public bool HasTheme(string characterName, string theme)
+        {
+            return _availableThemes.ContainsKey(characterName) &&
+                   _availableThemes[characterName].Contains(theme);
+        }
+
+        /// <summary>
+        /// Reset all characters to their default theme
+        /// </summary>
+        public void ResetAllToDefault()
+        {
+            foreach (var characterName in _currentThemes.Keys.ToList())
+            {
+                _currentThemes[characterName] = "original";
+            }
         }
     }
+
 }

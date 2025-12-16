@@ -20,10 +20,10 @@ namespace FFTColorMod.Tests
         {
             var configType = typeof(FFTColorMod.Configuration.Config);
             var properties = configType.GetProperties()
-                .Where(p => p.PropertyType == typeof(FFTColorMod.Configuration.ColorScheme))
+                .Where(p => p.PropertyType == typeof(string))
                 .OrderBy(p => p.Name);
 
-            _output.WriteLine("Config properties of type ColorScheme:");
+            _output.WriteLine("Config properties of type string:");
             foreach (var prop in properties)
             {
                 _output.WriteLine($"  Property Name: {prop.Name}");

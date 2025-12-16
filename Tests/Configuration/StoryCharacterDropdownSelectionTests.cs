@@ -8,21 +8,21 @@ namespace Tests.Configuration
     public class StoryCharacterDropdownSelectionTests
     {
         [Fact]
-        public void ComboBox_Should_Select_Correct_Item_When_DataSource_Is_Different_Enum_Type()
+        public void ComboBox_Should_Select_Correct_Item_When_DataSource_Is_String_Array()
         {
             // This test documents that SelectedItem doesn't work without Handle
             // Our fix uses SelectedIndex after Handle creation instead
 
             // Arrange
             var comboBox = new ComboBox();
-            object currentTheme = AgriasColorScheme.ash_dark;
+            string currentTheme = "ash_dark";
 
-            // Act - Simulate what AddStoryCharacterRow does
-            var values = Enum.GetValues(typeof(AgriasColorScheme));
-            comboBox.DataSource = values;
+            // Act - Simulate what AddStoryCharacterRow does with string themes
+            var availableThemes = new string[] { "original", "ash_dark" };
+            comboBox.DataSource = availableThemes;
 
             // Without Handle, SelectedItem fails
-            comboBox.SelectedItem = (AgriasColorScheme)currentTheme;
+            comboBox.SelectedItem = currentTheme;
 
             // Assert - This fails without Handle creation
             Assert.Null(comboBox.SelectedItem); // Expected: fails without Handle
@@ -35,16 +35,15 @@ namespace Tests.Configuration
 
             // Arrange
             var comboBox = new ComboBox();
-            object currentTheme = AgriasColorScheme.ash_dark;
+            string currentTheme = "ash_dark";
 
             // Act - Use string comparison to find the matching item
-            var values = Enum.GetValues(typeof(AgriasColorScheme));
-            comboBox.DataSource = values;
+            var availableThemes = new string[] { "original", "ash_dark" };
+            comboBox.DataSource = availableThemes;
 
-            string themeString = currentTheme.ToString();
-            foreach (var item in values)
+            foreach (var item in availableThemes)
             {
-                if (item.ToString() == themeString)
+                if (item == currentTheme)
                 {
                     comboBox.SelectedItem = item;
                     break;
@@ -56,16 +55,16 @@ namespace Tests.Configuration
         }
 
         [Fact]
-        public void All_Story_Character_Enums_Should_Select_Correctly_With_Handle()
+        public void All_Story_Character_Themes_Should_Select_Correctly_With_Handle()
         {
-            // Test Agrias with Handle
-            TestEnumSelectionWithHandle(AgriasColorScheme.ash_dark, typeof(AgriasColorScheme));
+            // Test Agrias themes with Handle
+            TestThemeSelectionWithHandle("ash_dark", new string[] { "original", "ash_dark" });
 
-            // Test Orlandeau with Handle
-            TestEnumSelectionWithHandle(OrlandeauColorScheme.thunder_god, typeof(OrlandeauColorScheme));
+            // Test Orlandeau themes with Handle
+            TestThemeSelectionWithHandle("thunder_god", new string[] { "original", "thunder_god" });
 
-            // Test Cloud with Handle
-            TestEnumSelectionWithHandle(CloudColorScheme.knights_round, typeof(CloudColorScheme));
+            // Test default theme selection
+            TestThemeSelectionWithHandle("original", new string[] { "original" });
         }
 
         [Fact]
@@ -79,11 +78,11 @@ namespace Tests.Configuration
             form.Controls.Add(panel);
 
             var comboBox = new ComboBox();
-            object currentTheme = AgriasColorScheme.ash_dark;
+            string currentTheme = "ash_dark";
 
             // Set DataSource first
-            var values = Enum.GetValues(typeof(AgriasColorScheme));
-            comboBox.DataSource = values;
+            var availableThemes = new string[] { "original", "ash_dark" };
+            comboBox.DataSource = availableThemes;
 
             // Add to panel
             panel.Controls.Add(comboBox);
@@ -92,9 +91,9 @@ namespace Tests.Configuration
             var handle = comboBox.Handle;
 
             // Now find the correct index and set it
-            for (int i = 0; i < values.Length; i++)
+            for (int i = 0; i < availableThemes.Length; i++)
             {
-                if (values.GetValue(i).ToString() == currentTheme.ToString())
+                if (availableThemes[i] == currentTheme)
                 {
                     comboBox.SelectedIndex = i;
                     break;
@@ -102,13 +101,65 @@ namespace Tests.Configuration
             }
 
             // Assert
-            Assert.Equal(AgriasColorScheme.ash_dark, comboBox.SelectedItem);
+            Assert.Equal("ash_dark", comboBox.SelectedItem);
             Assert.Equal(1, comboBox.SelectedIndex); // ash_dark is at index 1
 
             form.Dispose();
         }
 
-        private void TestEnumSelectionWithHandle(object themeValue, Type enumType)
+        [Fact]
+        public void ComboBox_Should_Handle_Empty_Theme_List()
+        {
+            // Test edge case with no available themes
+
+            // Arrange
+            var form = new Form();
+            var panel = new TableLayoutPanel();
+            form.Controls.Add(panel);
+
+            var comboBox = new ComboBox();
+            var availableThemes = new string[0]; // Empty array
+
+            // Act
+            comboBox.DataSource = availableThemes;
+            panel.Controls.Add(comboBox);
+            var handle = comboBox.Handle;
+
+            // Assert
+            Assert.Null(comboBox.SelectedItem);
+            Assert.Equal(-1, comboBox.SelectedIndex);
+
+            form.Dispose();
+        }
+
+        [Fact]
+        public void ComboBox_Should_Handle_Single_Theme()
+        {
+            // Test typical case where character has only default theme
+
+            // Arrange
+            var form = new Form();
+            var panel = new TableLayoutPanel();
+            form.Controls.Add(panel);
+
+            var comboBox = new ComboBox();
+            var availableThemes = new string[] { "original" };
+
+            // Act
+            comboBox.DataSource = availableThemes;
+            panel.Controls.Add(comboBox);
+            var handle = comboBox.Handle;
+
+            comboBox.SelectedIndex = 0;
+
+            // Assert
+            Assert.Equal("original", comboBox.SelectedItem);
+            Assert.Equal(0, comboBox.SelectedIndex);
+
+            form.Dispose();
+        }
+
+        private void TestThemeSelectionWithHandle(string themeValue, string[] availableThemes)
         {
             // Arrange
             var form = new Form();
@@ -116,18 +167,16 @@ namespace Tests.Configuration
             form.Controls.Add(panel);
 
             var comboBox = new ComboBox();
-            var values = Enum.GetValues(enumType);
-            comboBox.DataSource = values;
+            comboBox.DataSource = availableThemes;
 
             // Add to panel and force Handle creation
             panel.Controls.Add(comboBox);
             var handle = comboBox.Handle;
 
             // Act - Use index-based selection after Handle creation
-            string themeString = themeValue.ToString();
-            for (int i = 0; i < values.Length; i++)
+            for (int i = 0; i < availableThemes.Length; i++)
             {
-                if (values.GetValue(i).ToString() == themeString)
+                if (availableThemes[i] == themeValue)
                 {
                     comboBox.SelectedIndex = i;
                     break;
@@ -136,7 +185,7 @@ namespace Tests.Configuration
 
             // Assert
             Assert.NotNull(comboBox.SelectedItem);
-            Assert.Equal(themeString, comboBox.SelectedItem.ToString());
+            Assert.Equal(themeValue, comboBox.SelectedItem.ToString());
 
             form.Dispose();
         }

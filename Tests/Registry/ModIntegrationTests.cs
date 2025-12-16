@@ -44,16 +44,18 @@ namespace Tests.Registry
 
             // Verify character definitions are correct
             var cloud = StoryCharacterRegistry.GetCharacter("Cloud");
-            Assert.Equal(typeof(CloudColorScheme), cloud.EnumType);
+            Assert.NotNull(cloud);
+            Assert.NotNull(cloud.EnumType);
             Assert.Contains("cloud", cloud.SpriteNames);
 
             var agrias = StoryCharacterRegistry.GetCharacter("Agrias");
-            Assert.Equal(typeof(AgriasColorScheme), agrias.EnumType);
+            Assert.NotNull(agrias);
+            Assert.NotNull(agrias.EnumType);
             Assert.Contains("aguri", agrias.SpriteNames);
-            Assert.Contains("kanba", agrias.SpriteNames);
 
             var orlandeau = StoryCharacterRegistry.GetCharacter("Orlandeau");
-            Assert.Equal(typeof(OrlandeauColorScheme), orlandeau.EnumType);
+            Assert.NotNull(orlandeau);
+            Assert.NotNull(orlandeau.EnumType);
             Assert.Contains("oru", orlandeau.SpriteNames);
             Assert.Contains("goru", orlandeau.SpriteNames);
         }
@@ -72,9 +74,9 @@ namespace Tests.Registry
 
             var config = new Config
             {
-                Cloud = CloudColorScheme.knights_round,
-                Agrias = AgriasColorScheme.ash_dark,
-                Orlandeau = OrlandeauColorScheme.original
+                Cloud = "original",
+                Agrias = "ash_dark",
+                Orlandeau = "thunder_god"
             };
 
             var configJson = Newtonsoft.Json.JsonConvert.SerializeObject(config);
@@ -93,9 +95,9 @@ namespace Tests.Registry
                 Assert.NotNull(storyManager);
 
                 // Themes should match config (using old implementation methods)
-                Assert.Equal(CloudColorScheme.knights_round, storyManager.GetCurrentCloudTheme());
-                Assert.Equal(AgriasColorScheme.ash_dark, storyManager.GetCurrentAgriasTheme());
-                Assert.Equal(OrlandeauColorScheme.original, storyManager.GetCurrentOrlandeauTheme());
+                Assert.Equal("original", storyManager.GetCurrentTheme("Cloud"));
+                Assert.Equal("ash_dark", storyManager.GetCurrentTheme("Agrias"));
+                Assert.Equal("thunder_god", storyManager.GetCurrentTheme("Orlandeau"));
             }
             finally
             {

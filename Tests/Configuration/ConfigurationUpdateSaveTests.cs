@@ -35,9 +35,9 @@ namespace FFTColorMod.Tests
             Assert.NotNull(config);
 
             // Act - Modify config and save
-            config.Squire_Male = FFTColorMod.Configuration.ColorScheme.southern_sky;
-            config.Dragoon_Female = FFTColorMod.Configuration.ColorScheme.lucavi;
-            config.Ninja_Male = FFTColorMod.Configuration.ColorScheme.emerald_dragon;
+            config.Squire_Male = "southern_sky";
+            config.Dragoon_Female = "lucavi";
+            config.Ninja_Male = "emerald_dragon";
 
             config.Save();
 

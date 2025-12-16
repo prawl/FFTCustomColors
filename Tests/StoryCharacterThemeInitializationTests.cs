@@ -24,6 +24,7 @@ namespace Tests
             Directory.CreateDirectory(_testModPath);
             Directory.CreateDirectory(Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit"));
             Directory.CreateDirectory(Path.Combine(_testSourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit"));
+            Directory.CreateDirectory(Path.Combine(_testSourcePath, "Data"));
 
             // Create theme directories for Agrias
             var agriasOriginalDir = Path.Combine(_testSourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_agrias_original");
@@ -35,14 +36,30 @@ namespace Tests
             File.WriteAllText(Path.Combine(agriasOriginalDir, "battle_aguri_spr.bin"), "original_theme");
             File.WriteAllText(Path.Combine(agriasAshDir, "battle_aguri_spr.bin"), "ash_dark_theme");
 
-            // Create theme directories for Cloud
+            // Create theme directories for Cloud - only original is available
             var cloudOriginalDir = Path.Combine(_testSourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_cloud_original");
-            var cloudKnightsDir = Path.Combine(_testSourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_cloud_knights_round");
             Directory.CreateDirectory(cloudOriginalDir);
-            Directory.CreateDirectory(cloudKnightsDir);
 
             File.WriteAllText(Path.Combine(cloudOriginalDir, "battle_cloud_spr.bin"), "original_theme");
-            File.WriteAllText(Path.Combine(cloudKnightsDir, "battle_cloud_spr.bin"), "knights_round_theme");
+
+            // Create StoryCharacters.json file
+            var storyCharactersJson = @"{
+  ""characters"": [
+    {
+      ""name"": ""Agrias"",
+      ""spriteNames"": [""aguri"", ""kanba""],
+      ""defaultTheme"": ""original"",
+      ""availableThemes"": [""original"", ""ash_dark""]
+    },
+    {
+      ""name"": ""Cloud"",
+      ""spriteNames"": [""cloud""],
+      ""defaultTheme"": ""original"",
+      ""availableThemes"": [""original""]
+    }
+  ]
+}";
+            File.WriteAllText(Path.Combine(_testSourcePath, "Data", "StoryCharacters.json"), storyCharactersJson);
 
             // Setup config manager
             _configPath = Path.Combine(_testModPath, "Config.json");
@@ -66,9 +83,9 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.original,  // Config says original
-                Cloud = CloudColorScheme.knights_round,  // Config says blacksteel_red
-                Orlandeau = OrlandeauColorScheme.original
+                Agrias = "original",  // Config says original
+                Cloud = "original",  // Only original is available for Cloud
+                Orlandeau = "original"
             };
             _configManager.SaveConfig(config);
 
@@ -80,8 +97,8 @@ namespace Tests
 
             // Then load config and set themes (too late - themes already copied)
             var storyManager = themeManager.GetStoryCharacterManager();
-            storyManager.SetCurrentAgriasTheme(config.Agrias);
-            storyManager.SetCurrentCloudTheme(config.Cloud);
+            storyManager.SetCurrentTheme("Agrias", config.Agrias);
+            storyManager.SetCurrentTheme("Cloud", config.Cloud);
 
             // Check what was actually copied to deployment
             var deployedAgriasSprite = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_aguri_spr.bin");
@@ -105,8 +122,8 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = AgriasColorScheme.original,
-                Cloud = CloudColorScheme.knights_round
+                Agrias = "ash_dark",
+                Cloud = "original"
             };
             _configManager.SaveConfig(config);
 
@@ -115,8 +132,8 @@ namespace Tests
             var storyManager = themeManager.GetStoryCharacterManager();
 
             // Set themes from config FIRST
-            storyManager.SetCurrentAgriasTheme(config.Agrias);
-            storyManager.SetCurrentCloudTheme(config.Cloud);
+            storyManager.SetCurrentTheme("Agrias", config.Agrias);
+            storyManager.SetCurrentTheme("Cloud", config.Cloud);
 
             // THEN apply themes
             themeManager.ApplyInitialThemes();
@@ -128,11 +145,11 @@ namespace Tests
             // Assert - Now themes should match config
             Assert.True(File.Exists(deployedAgriasSprite), "Agrias sprite should be deployed");
             var agriasContent = File.ReadAllText(deployedAgriasSprite);
-            Assert.Equal("original_theme", agriasContent); // Should pass when themes are set before applying
+            Assert.Equal("ash_dark_theme", agriasContent); // Should pass when themes are set before applying
 
             Assert.True(File.Exists(deployedCloudSprite), "Cloud sprite should be deployed");
             var cloudContent = File.ReadAllText(deployedCloudSprite);
-            Assert.Equal("knights_round_theme", cloudContent);
+            Assert.Equal("original_theme", cloudContent);
         }
     }
 }

@@ -26,9 +26,9 @@ namespace FFTColorMod.Tests
             // Arrange - Create a config with custom themes
             var userConfig = new FFTColorMod.Configuration.Config
             {
-                Squire_Male = FFTColorMod.Configuration.ColorScheme.lucavi,
-                Knight_Female = FFTColorMod.Configuration.ColorScheme.northern_sky,
-                Archer_Male = FFTColorMod.Configuration.ColorScheme.original
+                Squire_Male = "lucavi",
+                Knight_Female = "northern_sky",
+                Archer_Male = "original"
             };
 
             // Save the config
@@ -48,9 +48,9 @@ namespace FFTColorMod.Tests
 
             // Assert - Verify the themes are applied (not just loaded)
             // We need to check that ApplyConfiguration was called with the correct values
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.lucavi, loadedConfig.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.northern_sky, loadedConfig.Knight_Female);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, loadedConfig.Archer_Male);
+            Assert.Equal("lucavi", loadedConfig.Squire_Male);
+            Assert.Equal("northern_sky", loadedConfig.Knight_Female);
+            Assert.Equal("original", loadedConfig.Archer_Male);
 
             // Also verify the config file wasn't overwritten with defaults
             var savedJson = File.ReadAllText(_testConfigPath);
@@ -102,9 +102,9 @@ namespace FFTColorMod.Tests
             // Arrange - Create a config with specific themes
             var config = new FFTColorMod.Configuration.Config
             {
-                Monk_Male = FFTColorMod.Configuration.ColorScheme.original,
-                Thief_Female = FFTColorMod.Configuration.ColorScheme.rose_gold,
-                Dragoon_Male = FFTColorMod.Configuration.ColorScheme.volcanic
+                Monk_Male = "original",
+                Thief_Female = "rose_gold",
+                Dragoon_Male = "volcanic"
             };
 
             config.FilePath = _testConfigPath;
@@ -124,9 +124,9 @@ namespace FFTColorMod.Tests
 
             // Assert - The configuration should be applied with correct values
             var loadedConfig = configManager.LoadConfig();
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, loadedConfig.Monk_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.rose_gold, loadedConfig.Thief_Female);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.volcanic, loadedConfig.Dragoon_Male);
+            Assert.Equal("original", loadedConfig.Monk_Male);
+            Assert.Equal("rose_gold", loadedConfig.Thief_Female);
+            Assert.Equal("volcanic", loadedConfig.Dragoon_Male);
         }
 
         public void Dispose()

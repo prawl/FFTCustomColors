@@ -56,7 +56,19 @@ namespace FFTColorMod.Configuration
                 if (configProperty != null && configProperty.CanWrite)
                 {
                     var propertyType = configProperty.PropertyType;
-                    if (propertyType.IsEnum)
+                    if (propertyType == typeof(string))
+                    {
+                        try
+                        {
+                            var stringValue = property.Value.ToString();
+                            configProperty.SetValue(config, stringValue);
+                        }
+                        catch
+                        {
+                            // If parsing fails, leave as default (original)
+                        }
+                    }
+                    else if (propertyType.IsEnum)
                     {
                         try
                         {

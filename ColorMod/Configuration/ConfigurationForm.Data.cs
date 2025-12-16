@@ -145,7 +145,7 @@ namespace FFTColorMod.Configuration
             }
         }
 
-        private void AddJobRow(int row, string jobName, ColorScheme currentTheme, Action<ColorScheme> setter)
+        private void AddJobRow(int row, string jobName, string currentTheme, Action<string> setter)
         {
             _rowBuilder.AddGenericCharacterRow(row, jobName, currentTheme, setter,
                 () => _isFullyLoaded);
@@ -154,44 +154,44 @@ namespace FFTColorMod.Configuration
         private void ResetAllCharacters()
         {
             // Reset all generic characters
-            _config.Squire_Male = ColorScheme.original;
-            _config.Squire_Female = ColorScheme.original;
-            _config.Chemist_Male = ColorScheme.original;
-            _config.Chemist_Female = ColorScheme.original;
-            _config.Knight_Male = ColorScheme.original;
-            _config.Knight_Female = ColorScheme.original;
-            _config.Archer_Male = ColorScheme.original;
-            _config.Archer_Female = ColorScheme.original;
-            _config.Monk_Male = ColorScheme.original;
-            _config.Monk_Female = ColorScheme.original;
-            _config.WhiteMage_Male = ColorScheme.original;
-            _config.WhiteMage_Female = ColorScheme.original;
-            _config.BlackMage_Male = ColorScheme.original;
-            _config.BlackMage_Female = ColorScheme.original;
-            _config.TimeMage_Male = ColorScheme.original;
-            _config.TimeMage_Female = ColorScheme.original;
-            _config.Summoner_Male = ColorScheme.original;
-            _config.Summoner_Female = ColorScheme.original;
-            _config.Thief_Male = ColorScheme.original;
-            _config.Thief_Female = ColorScheme.original;
-            _config.Mediator_Male = ColorScheme.original;
-            _config.Mediator_Female = ColorScheme.original;
-            _config.Mystic_Male = ColorScheme.original;
-            _config.Mystic_Female = ColorScheme.original;
-            _config.Geomancer_Male = ColorScheme.original;
-            _config.Geomancer_Female = ColorScheme.original;
-            _config.Dragoon_Male = ColorScheme.original;
-            _config.Dragoon_Female = ColorScheme.original;
-            _config.Samurai_Male = ColorScheme.original;
-            _config.Samurai_Female = ColorScheme.original;
-            _config.Ninja_Male = ColorScheme.original;
-            _config.Ninja_Female = ColorScheme.original;
-            _config.Calculator_Male = ColorScheme.original;
-            _config.Calculator_Female = ColorScheme.original;
-            _config.Bard_Male = ColorScheme.original;
-            _config.Dancer_Female = ColorScheme.original;
-            _config.Mime_Male = ColorScheme.original;
-            _config.Mime_Female = ColorScheme.original;
+            _config.Squire_Male = "original";
+            _config.Squire_Female = "original";
+            _config.Chemist_Male = "original";
+            _config.Chemist_Female = "original";
+            _config.Knight_Male = "original";
+            _config.Knight_Female = "original";
+            _config.Archer_Male = "original";
+            _config.Archer_Female = "original";
+            _config.Monk_Male = "original";
+            _config.Monk_Female = "original";
+            _config.WhiteMage_Male = "original";
+            _config.WhiteMage_Female = "original";
+            _config.BlackMage_Male = "original";
+            _config.BlackMage_Female = "original";
+            _config.TimeMage_Male = "original";
+            _config.TimeMage_Female = "original";
+            _config.Summoner_Male = "original";
+            _config.Summoner_Female = "original";
+            _config.Thief_Male = "original";
+            _config.Thief_Female = "original";
+            _config.Mediator_Male = "original";
+            _config.Mediator_Female = "original";
+            _config.Mystic_Male = "original";
+            _config.Mystic_Female = "original";
+            _config.Geomancer_Male = "original";
+            _config.Geomancer_Female = "original";
+            _config.Dragoon_Male = "original";
+            _config.Dragoon_Female = "original";
+            _config.Samurai_Male = "original";
+            _config.Samurai_Female = "original";
+            _config.Ninja_Male = "original";
+            _config.Ninja_Female = "original";
+            _config.Calculator_Male = "original";
+            _config.Calculator_Female = "original";
+            _config.Bard_Male = "original";
+            _config.Dancer_Female = "original";
+            _config.Mime_Male = "original";
+            _config.Mime_Female = "original";
 
             // Reset all story characters using the registry
             StoryCharacterRegistry.ResetAllStoryCharacters(_config);

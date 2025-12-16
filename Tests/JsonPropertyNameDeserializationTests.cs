@@ -40,14 +40,14 @@ namespace FFTColorMod.Tests
 
             // Assert - Properties should be correctly set
             Assert.NotNull(config);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.southern_sky, config.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.emerald_dragon, config.Knight_Female);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.corpse_brigade, config.Archer_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.northern_sky, config.WhiteMage_Male);
+            Assert.Equal("southern_sky", config.Squire_Male);
+            Assert.Equal("emerald_dragon", config.Knight_Female);
+            Assert.Equal("corpse_brigade", config.Archer_Male);
+            Assert.Equal("northern_sky", config.WhiteMage_Male);
 
             // Other properties should have default values
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, config.Knight_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.original, config.Monk_Female);
+            Assert.Equal("original", config.Knight_Male);
+            Assert.Equal("original", config.Monk_Female);
         }
     }
 }

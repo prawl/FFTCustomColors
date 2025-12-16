@@ -62,7 +62,7 @@ namespace FFTColorMod.Tests
             // it should derive the mod root path from that config path, not from Assembly.GetExecutingAssembly().Location
 
             // Arrange
-            var config = new Config { Agrias = AgriasColorScheme.original, Orlandeau = OrlandeauColorScheme.original };
+            var config = new Config { Agrias = "original", Orlandeau = "original" };
 
             // The bug is in ConfigurationForm line 69:
             // string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
@@ -122,7 +122,7 @@ namespace FFTColorMod.Tests
 
             try
             {
-                correctManager.UpdateStoryCharacterPreview(pictureBox, "Agrias", "original");
+                correctManager.UpdateStoryCharacterPreview(pictureBox, "agrias", "original");
 
                 // Assert - With correct path, image should load
                 pictureBox.Image.Should().NotBeNull(
@@ -140,7 +140,7 @@ namespace FFTColorMod.Tests
 
             try
             {
-                wrongManager.UpdateStoryCharacterPreview(pictureBox2, "Agrias", "original");
+                wrongManager.UpdateStoryCharacterPreview(pictureBox2, "agrias", "original");
 
                 // Assert - With wrong path, image won't load
                 pictureBox2.Image.Should().BeNull(

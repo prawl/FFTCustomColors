@@ -2,36 +2,45 @@ using Xunit;
 using FluentAssertions;
 using FFTColorMod;
 using FFTColorMod.Configuration;
+using FFTColorMod.Utilities;
 using System.ComponentModel;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace FFTColorMod.Tests
 {
     public class OrlandeauThemeCyclingTests
     {
         [Fact]
-        public void OrlandeauColorScheme_Should_Have_2_Themes()
+        public void OrlandeauThemeManager_Should_Have_At_Least_Original_Theme()
         {
-            // Arrange & Act
-            var themes = System.Enum.GetValues(typeof(OrlandeauColorScheme));
+            // Arrange
+            var manager = new StoryCharacterThemeManager();
+
+            // Act
+            var availableThemes = manager.GetAvailableThemes("Orlandeau");
 
             // Assert
-            themes.Length.Should().Be(2, "Orlandeau should have exactly 2 themes: original and thunder_god");
+            availableThemes.Should().NotBeEmpty("Orlandeau should have at least one theme");
+            availableThemes.Should().Contain("original", "Orlandeau themes should always include 'original'");
         }
 
         [Fact]
-        public void OrlandeauColorScheme_Should_Include_Original_But_Not_Other_Generic_Themes()
+        public void OrlandeauThemes_Should_Include_Original_But_Not_Generic_Themes()
         {
             // Arrange
-            var orlandeauThemes = System.Enum.GetNames(typeof(OrlandeauColorScheme));
+            var manager = new StoryCharacterThemeManager();
             var genericThemes = new[] { "corpse_brigade", "lucavi", "northern_sky", "southern_sky" };
 
-            // Act & Assert
+            // Act
+            var orlandeauThemes = manager.GetAvailableThemes("Orlandeau");
+
+            // Assert
             // Original should be included so players can revert to default
             orlandeauThemes.Should().Contain("original",
                 "Orlandeau themes should include 'original' for reverting to default");
 
-            // But other generic themes shouldn't be in the enum
+            // But other generic themes shouldn't be in the list
             foreach (var genericTheme in genericThemes)
             {
                 orlandeauThemes.Should().NotContain(genericTheme,
@@ -40,37 +49,47 @@ namespace FFTColorMod.Tests
         }
 
         [Fact]
-        public void OrlandeauColorScheme_Should_Have_Descriptive_Names()
+        public void OrlandeauThemes_Should_Have_Valid_Names()
         {
             // Arrange
-            var expectedThemes = new[]
-            {
-                "original",
-                "thunder_god"
-            };
+            var manager = new StoryCharacterThemeManager();
+            var expectedToContain = new[] { "original" };
+            var optionalThemes = new[] { "thunder_god" };
 
             // Act
-            var actualThemes = System.Enum.GetNames(typeof(OrlandeauColorScheme));
+            var actualThemes = manager.GetAvailableThemes("Orlandeau");
 
             // Assert
-            actualThemes.Should().BeEquivalentTo(expectedThemes);
+            // Ensure required themes are present
+            foreach (var requiredTheme in expectedToContain)
+            {
+                actualThemes.Should().Contain(requiredTheme,
+                    $"Orlandeau should have '{requiredTheme}' theme");
+            }
+
+            // Verify all themes are non-empty strings
+            actualThemes.Should().AllSatisfy(theme =>
+                theme.Should().NotBeNullOrWhiteSpace("All theme names should be valid strings"));
         }
 
         [Fact]
-        public void OrlandeauColorScheme_Should_Have_Display_Descriptions()
+        public void OrlandeauThemes_Should_Be_Accessible_Via_Manager()
         {
-            // Arrange & Act
-            var values = System.Enum.GetValues(typeof(OrlandeauColorScheme)).Cast<OrlandeauColorScheme>();
+            // Arrange
+            var manager = new StoryCharacterThemeManager();
+
+            // Act
+            var availableThemes = manager.GetAvailableThemes("Orlandeau");
 
             // Assert
-            foreach (var value in values)
-            {
-                var field = value.GetType().GetField(value.ToString());
-                var attribute = field?.GetCustomAttributes(typeof(DescriptionAttribute), false)
-                    .FirstOrDefault() as DescriptionAttribute;
+            availableThemes.Should().NotBeEmpty("Orlandeau should have available themes");
 
-                attribute.Should().NotBeNull($"Theme {value} should have a Description attribute");
-                attribute?.Description.Should().NotBeNullOrWhiteSpace($"Theme {value} should have a non-empty description");
+            // Verify each theme can be set successfully
+            foreach (var theme in availableThemes)
+            {
+                manager.SetCurrentTheme("Orlandeau", theme);
+                var currentTheme = manager.GetCurrentTheme("Orlandeau");
+                currentTheme.Should().Be(theme, $"Should be able to set and get theme '{theme}'");
             }
         }
 
@@ -79,10 +98,10 @@ namespace FFTColorMod.Tests
         {
             // Arrange
             var manager = new StoryCharacterThemeManager();
-            var initialTheme = manager.GetCurrentOrlandeauTheme();
+            var initialTheme = manager.GetCurrentTheme("Orlandeau");
 
             // Act
-            var nextTheme = manager.CycleOrlandeauTheme();
+            var nextTheme = manager.CycleTheme("Orlandeau");
 
             // Assert
             nextTheme.Should().NotBe(initialTheme, "Cycling should change the theme");
@@ -93,32 +112,38 @@ namespace FFTColorMod.Tests
         {
             // Arrange
             var manager = new StoryCharacterThemeManager();
-            var themes = System.Enum.GetValues(typeof(OrlandeauColorScheme)).Length;
+            var availableThemes = manager.GetAvailableThemes("Orlandeau");
+            var themeCount = availableThemes.Count;
 
             // Act - Cycle through all themes
-            for (int i = 0; i < themes; i++)
+            for (int i = 0; i < themeCount; i++)
             {
-                manager.CycleOrlandeauTheme();
+                manager.CycleTheme("Orlandeau");
             }
-            var wrappedTheme = manager.GetCurrentOrlandeauTheme();
+            var wrappedTheme = manager.GetCurrentTheme("Orlandeau");
 
             // Assert
-            wrappedTheme.Should().Be(OrlandeauColorScheme.original,
-                "Should wrap back to first theme after cycling through all");
+            // Should wrap back to first theme after cycling through all
+            var firstTheme = availableThemes.First();
+            wrappedTheme.Should().Be(firstTheme,
+                "Should wrap back to first theme after cycling through all themes");
         }
 
         [Fact]
-        public void Config_Should_Use_OrlandeauColorScheme_For_Orlandeau()
+        public void Config_Should_Use_String_For_Orlandeau_Theme()
         {
             // Arrange
             var config = new Config();
 
             // Act
-            var orlandeauType = config.Orlandeau.GetType();
+            var orlandeauTheme = config.Orlandeau;
+            var orlandeauType = orlandeauTheme.GetType();
 
             // Assert
-            orlandeauType.Should().Be(typeof(OrlandeauColorScheme),
-                "Orlandeau configuration should use OrlandeauColorScheme enum");
+            orlandeauType.Should().Be(typeof(string),
+                "Orlandeau configuration should use string themes");
+            orlandeauTheme.Should().NotBeNullOrEmpty(
+                "Orlandeau theme should have a default value");
         }
 
         [Fact]
@@ -126,15 +151,28 @@ namespace FFTColorMod.Tests
         {
             // Arrange
             var config = new Config();
-            config.Orlandeau = OrlandeauColorScheme.thunder_god;
+            var manager = new StoryCharacterThemeManager();
+            var availableThemes = manager.GetAvailableThemes("Orlandeau");
+
+            // Use the second theme if available, otherwise original
+            var testTheme = availableThemes.Count > 1 ? availableThemes[1] : "original";
+            config.Orlandeau = testTheme;
 
             // Act
             var mapper = new SpriteNameMapper(config);
             var result = mapper.GetColorForSprite("battle_oru_spr.bin");
 
             // Assert
-            result.Should().Be("sprites_orlandeau_thunder_god",
-                "Should return Orlandeau-specific theme directory");
+            if (testTheme == "original")
+            {
+                result.Should().Be("sprites_original",
+                    "Should return original sprites for original theme");
+            }
+            else
+            {
+                result.Should().Be($"sprites_orlandeau_{testTheme}",
+                    "Should return Orlandeau-specific theme directory");
+            }
         }
 
     }

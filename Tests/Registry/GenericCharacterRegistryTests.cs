@@ -138,11 +138,11 @@ namespace Tests.Registry
             var registry = GenericCharacterRegistry.Instance;
 
             // Act - Set value through property
-            config.Squire_Male = ColorScheme.corpse_brigade;
+            config.Squire_Male = "corpse_brigade";
 
             // Assert - Value should be in dictionary
             var squireDefinition = registry.GetCharacter("Squire_Male");
-            config.GetColorScheme("Squire_Male").Should().Be(ColorScheme.corpse_brigade);
+            config.GetJobTheme("Squire_Male").Should().Be("corpse_brigade");
         }
     }
 }

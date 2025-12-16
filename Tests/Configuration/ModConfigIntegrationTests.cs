@@ -137,8 +137,8 @@ namespace FFTColorMod.Tests
             // Arrange - Create a config file first
             var config = new Config
             {
-                Knight_Male = (FFTColorMod.Configuration.ColorScheme)2,    // lucavi
-                Monk_Female = (FFTColorMod.Configuration.ColorScheme)1     // corpse_brigade
+                Knight_Male = "lucavi",    // lucavi
+                Monk_Female = "corpse_brigade"     // corpse_brigade
             };
 
             var configManager = new ConfigurationManager(_testConfigPath);

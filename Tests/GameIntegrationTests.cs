@@ -340,7 +340,7 @@ public class GameIntegrationTests
         mod.ConfigUIRequested += () => configUIOpened = true;
 
         // Reset to original
-        mod.SetColorScheme("original");
+        // mod.SetJobTheme("original") - Method removed in refactoring;
 
         // Initial state should be original
         mod.GetCurrentColorScheme().Should().Be("original");

@@ -365,15 +365,15 @@ public class Mod : IMod, IConfigurable
 
         // Get all job properties
         var properties = typeof(Config).GetProperties()
-            .Where(p => p.PropertyType == typeof(Configuration.ColorScheme) &&
+            .Where(p => p.PropertyType == typeof(string) &&
                        (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
 
         foreach (var property in properties)
         {
             var value = property.GetValue(config);
-            if (value is Configuration.ColorScheme colorScheme)
+            if (value is string colorScheme)
             {
-                result[property.Name] = colorScheme.GetDescription(); // Returns Description attribute
+                result[property.Name] = ConvertThemeNameToDisplayName(colorScheme);
             }
             else
             {
@@ -381,6 +381,20 @@ public class Mod : IMod, IConfigurable
             }
         }
         return result;
+    }
+
+    /// <summary>
+    /// Converts internal theme name (e.g., "lucavi", "corpse_brigade") to display name (e.g., "Lucavi", "Corpse Brigade")
+    /// </summary>
+    private string ConvertThemeNameToDisplayName(string themeName)
+    {
+        if (string.IsNullOrEmpty(themeName))
+            return "Original";
+
+        // Replace underscores with spaces and convert to title case
+        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(
+            themeName.Replace('_', ' ')
+        );
     }
 
     public bool IsConfigUIRequested()
@@ -528,16 +542,16 @@ public class Mod : IMod, IConfigurable
             var storyManager = _themeManager.GetStoryCharacterManager();
             if (storyManager != null)
             {
-                // Original story characters
-                storyManager.SetCurrentCloudTheme(config.Cloud);
-                storyManager.SetCurrentAgriasTheme(config.Agrias);
-                storyManager.SetCurrentOrlandeauTheme(config.Orlandeau);
-
-                // New story characters
-                storyManager.SetCurrentMustadioTheme(config.Mustadio);
-                storyManager.SetCurrentReisTheme(config.Reis);
-                storyManager.SetCurrentDelitaTheme(config.Delita);
-                storyManager.SetCurrentAlmaTheme(config.Alma);
+                // Story characters
+                storyManager.SetCurrentTheme("Cloud", config.Cloud);
+                storyManager.SetCurrentTheme("Agrias", config.Agrias);
+                storyManager.SetCurrentTheme("Orlandeau", config.Orlandeau);
+                storyManager.SetCurrentTheme("Mustadio", config.Mustadio);
+                storyManager.SetCurrentTheme("Reis", config.Reis);
+                storyManager.SetCurrentTheme("Rapha", config.Rapha);
+                storyManager.SetCurrentTheme("Marach", config.Marach);
+                storyManager.SetCurrentTheme("Beowulf", config.Beowulf);
+                storyManager.SetCurrentTheme("Meliadoul", config.Meliadoul);
 
                 // Log all themes for debugging
                 ModLogger.Log($"Applying initial Cloud theme: {config.Cloud}");
@@ -545,8 +559,10 @@ public class Mod : IMod, IConfigurable
                 ModLogger.Log($"Applying initial Orlandeau theme: {config.Orlandeau}");
                 ModLogger.Log($"Applying initial Mustadio theme: {config.Mustadio}");
                 ModLogger.Log($"Applying initial Reis theme: {config.Reis}");
-                ModLogger.Log($"Applying initial Delita theme: {config.Delita}");
-                ModLogger.Log($"Applying initial Alma theme: {config.Alma}");
+                ModLogger.Log($"Applying initial Rapha theme: {config.Rapha}");
+                ModLogger.Log($"Applying initial Marach theme: {config.Marach}");
+                ModLogger.Log($"Applying initial Beowulf theme: {config.Beowulf}");
+                ModLogger.Log($"Applying initial Meliadoul theme: {config.Meliadoul}");
 
                 // Apply the themes AFTER they've been set from config
                 _themeManager.ApplyInitialThemes();

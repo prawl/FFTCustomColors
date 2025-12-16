@@ -44,7 +44,7 @@ namespace Tests.Integration
                 SpriteNames = new[] { "aguri", "kanba" },
                 DefaultTheme = "original",
                 AvailableThemes = new[] { "original", "ash_dark" },
-                EnumType = "AgriasColorScheme"
+                EnumType = "string"
             });
 
             characterService.AddCharacter(new CharacterDefinition
@@ -53,7 +53,7 @@ namespace Tests.Integration
                 SpriteNames = new[] { "cloud" },
                 DefaultTheme = "original",
                 AvailableThemes = new[] { "original", "dark" },
-                EnumType = "CloudColorScheme"
+                EnumType = "string"
             });
 
             // Setup test sprite files - need to be in the source unit path
@@ -86,9 +86,11 @@ namespace Tests.Integration
             StoryCharacterRegistry.AutoDiscoverCharacters(characterService);
             var registryCharacters = StoryCharacterRegistry.GetStoryCharactersFromService(config, characterService);
             Assert.True(registryCharacters.Count > 0);
+            Assert.True(registryCharacters.ContainsKey("Agrias"));
+            Assert.True(registryCharacters.ContainsKey("Cloud"));
 
             // 5. Verify the complete system can apply configurations
-            config.Agrias = AgriasColorScheme.ash_dark;
+            config.Agrias = "ash_dark";
             _configManager.SaveConfig(config);
 
             // Create destination directory for sprite manager
@@ -118,7 +120,7 @@ namespace Tests.Integration
                 SpriteNames = new[] { "newhero_sprite" },
                 DefaultTheme = "original",
                 AvailableThemes = new[] { "original", "special" },
-                EnumType = "NewHeroColorScheme"
+                EnumType = "string"
             };
             characterService.AddCharacter(newCharacter);
 

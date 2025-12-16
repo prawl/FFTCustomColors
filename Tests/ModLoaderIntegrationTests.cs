@@ -27,14 +27,14 @@ namespace FFTColorMod.Tests
         }
 
         [Fact]
-        public void SetColorScheme_Should_Update_Active_Color_Scheme()
+        public void SetJobTheme_Should_Update_Active_Color_Scheme()
         {
-            // TLDR: SetColorScheme changes the current active color scheme
+            // TLDR: SetJobTheme changes the current active color scheme
             var integration = new ModLoaderIntegration();
 
-            integration.SetColorScheme(ColorScheme.OceanBlue);
+            integration.SetColorScheme(FFTColorMod.ColorScheme.OceanBlue);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue);
+            integration.CurrentColorScheme.Should().Be(FFTColorMod.ColorScheme.OceanBlue);
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace FFTColorMod.Tests
 
             integration.ProcessHotkey(System.Windows.Forms.Keys.F1);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.WhiteSilver);
+            integration.CurrentColorScheme.Should().Be(FFTColorMod.ColorScheme.WhiteSilver);
         }
 
 
@@ -54,11 +54,11 @@ namespace FFTColorMod.Tests
         {
             // TLDR: F7 is not assigned to any color scheme
             var integration = new ModLoaderIntegration();
-            integration.SetColorScheme(ColorScheme.OceanBlue);
+            integration.SetColorScheme(FFTColorMod.ColorScheme.OceanBlue);
 
             integration.ProcessHotkey(System.Windows.Forms.Keys.F7);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue); // Should remain unchanged
+            integration.CurrentColorScheme.Should().Be(FFTColorMod.ColorScheme.OceanBlue); // Should remain unchanged
         }
 
         [Fact]
@@ -66,11 +66,11 @@ namespace FFTColorMod.Tests
         {
             // TLDR: F8 is not assigned to any color scheme
             var integration = new ModLoaderIntegration();
-            integration.SetColorScheme(ColorScheme.OceanBlue);
+            integration.SetColorScheme(FFTColorMod.ColorScheme.OceanBlue);
 
             integration.ProcessHotkey(System.Windows.Forms.Keys.F8);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue); // Should remain unchanged
+            integration.CurrentColorScheme.Should().Be(FFTColorMod.ColorScheme.OceanBlue); // Should remain unchanged
         }
 
         [Fact]
@@ -90,23 +90,23 @@ namespace FFTColorMod.Tests
         {
             // TLDR: Unassigned keys don't change color scheme
             var integration = new ModLoaderIntegration();
-            integration.SetColorScheme(ColorScheme.OceanBlue);
+            integration.SetColorScheme(FFTColorMod.ColorScheme.OceanBlue);
 
             integration.ProcessHotkey(System.Windows.Forms.Keys.F10);
 
-            integration.CurrentColorScheme.Should().Be(ColorScheme.OceanBlue);
+            integration.CurrentColorScheme.Should().Be(FFTColorMod.ColorScheme.OceanBlue);
         }
 
         [Fact]
-        public void SetColorScheme_Should_Update_FileRedirector()
+        public void SetJobTheme_Should_Update_FileRedirector()
         {
             // TLDR: Setting color scheme updates connected FileRedirector
             var integration = new ModLoaderIntegration();
 
-            integration.SetColorScheme(ColorScheme.WhiteSilver);
+            integration.SetColorScheme(FFTColorMod.ColorScheme.WhiteSilver);
 
             integration.FileRedirector.Should().NotBeNull();
-            integration.FileRedirector.ActiveScheme.Should().Be(ColorScheme.WhiteSilver);
+            integration.FileRedirector.ActiveScheme.Should().Be(FFTColorMod.ColorScheme.WhiteSilver);
         }
 
         [Fact]
@@ -114,7 +114,7 @@ namespace FFTColorMod.Tests
         {
             // TLDR: Registering redirects creates appropriate color variant mapping
             var integration = new ModLoaderIntegration();
-            integration.SetColorScheme(ColorScheme.OceanBlue);
+            integration.SetColorScheme(FFTColorMod.ColorScheme.OceanBlue);
             var originalPath = "sprites/ramza.pac";
 
             var result = integration.RegisterFileRedirect(originalPath, null);

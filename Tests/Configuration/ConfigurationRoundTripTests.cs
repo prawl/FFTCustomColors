@@ -48,9 +48,9 @@ namespace FFTColorMod.Tests
             Assert.NotNull(config);
 
             // Verify it loaded correctly
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.southern_sky, config.Squire_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.rose_gold, config.Knight_Male);
-            Assert.Equal(FFTColorMod.Configuration.ColorScheme.emerald_dragon, config.Knight_Female);
+            Assert.Equal("southern_sky", config.Squire_Male);
+            Assert.Equal("rose_gold", config.Knight_Male);
+            Assert.Equal("emerald_dragon", config.Knight_Female);
 
             // Save it back
             config.Save();

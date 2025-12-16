@@ -1,8 +1,11 @@
 using System;
+using System.IO;
 using System.Linq;
 using Xunit;
 using ColorMod.Registry;
 using FFTColorMod.Configuration;
+using FFTColorMod.Utilities;
+using FFTColorMod.Services;
 
 namespace Tests.Registry
 {
@@ -10,13 +13,18 @@ namespace Tests.Registry
     public class ExistingCharacterMigrationTests : IDisposable
     {
         private StoryCharacterThemeManager _themeManager;
+        private CharacterDefinitionService _characterService;
         private static readonly object _testLock = new object();
 
         public ExistingCharacterMigrationTests()
         {
             System.Threading.Monitor.Enter(_testLock);
+            _characterService = new CharacterDefinitionService();
             _themeManager = new StoryCharacterThemeManager();
             StoryCharacterRegistry.Clear();
+
+            // Load characters from JSON file
+            LoadCharactersFromJson();
         }
 
         public void Dispose()
@@ -25,55 +33,70 @@ namespace Tests.Registry
             System.Threading.Monitor.Exit(_testLock);
         }
 
-        [Fact]
-        public void CloudCharacter_ShouldBeDiscoverable_WithAttribute()
+        private void LoadCharactersFromJson()
         {
-            // Act - Auto-discover Cloud
-            StoryCharacterRegistry.AutoDiscoverCharacters();
+            // Use absolute path to the known JSON file location
+            var jsonPath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Data\StoryCharacters.json";
 
+            if (File.Exists(jsonPath))
+            {
+                _characterService.LoadFromJson(jsonPath);
+
+                // Register characters in the old registry for backward compatibility
+                foreach (var character in _characterService.GetAllCharacters())
+                {
+                    var definition = new StoryCharacterDefinition
+                    {
+                        Name = character.Name,
+                        EnumType = typeof(string), // Updated to string
+                        SpriteNames = character.SpriteNames,
+                        DefaultTheme = character.DefaultTheme
+                    };
+                    StoryCharacterRegistry.Register(definition);
+                }
+            }
+        }
+
+        [Fact]
+        public void CloudCharacter_ShouldBeDiscoverable_FromJson()
+        {
             // Assert - Cloud should be registered
             Assert.True(StoryCharacterRegistry.HasCharacter("Cloud"),
                 "Cloud character not found. Available: " + string.Join(", ", StoryCharacterRegistry.GetAllCharacterNames()));
 
             var cloud = StoryCharacterRegistry.GetCharacter("Cloud");
             Assert.Equal("Cloud", cloud.Name);
-            Assert.Equal(typeof(CloudColorScheme), cloud.EnumType);
+            Assert.Equal(typeof(string), cloud.EnumType);
             Assert.Contains("cloud", cloud.SpriteNames);
-            Assert.Equal("sephiroth_black", cloud.DefaultTheme);
+            Assert.Equal("original", cloud.DefaultTheme); // Updated to match JSON
         }
 
         [Fact]
         public void CloudThemeCycling_ShouldWork_WithNewSystem()
         {
-            // Arrange
-            StoryCharacterRegistry.AutoDiscoverCharacters();
+            // Act - Cycle through Cloud themes (Cloud now has 'original', 'knights_round', 'sephiroth_black' in JSON)
+            var theme1 = _themeManager.GetCurrentTheme("Cloud");
+            var theme2 = _themeManager.CycleTheme("Cloud");
+            var theme3 = _themeManager.CycleTheme("Cloud");
+            var theme4 = _themeManager.CycleTheme("Cloud");
 
-            // Act - Cycle through Cloud themes
-            var theme1 = _themeManager.GetTheme<CloudColorScheme>("Cloud");
-            var theme2 = _themeManager.CycleTheme<CloudColorScheme>("Cloud");
-            var theme3 = _themeManager.CycleTheme<CloudColorScheme>("Cloud");
-            var theme4 = _themeManager.CycleTheme<CloudColorScheme>("Cloud"); // Should wrap
-
-            // Assert
-            Assert.Equal(CloudColorScheme.sephiroth_black, theme1); // Default
-            Assert.Equal(CloudColorScheme.original, theme2);
-            Assert.Equal(CloudColorScheme.knights_round, theme3);
-            Assert.Equal(CloudColorScheme.sephiroth_black, theme4); // Wrapped
+            // Assert - Cloud has 3 themes available in JSON
+            Assert.Equal("original", theme1); // Default
+            Assert.Equal("knights_round", theme2); // Second theme
+            Assert.Equal("sephiroth_black", theme3); // Third theme
+            Assert.Equal("original", theme4); // Wraps back to original
         }
 
         [Fact]
-        public void AgriasCharacter_ShouldBeDiscoverable_WithAttribute()
+        public void AgriasCharacter_ShouldBeDiscoverable_FromJson()
         {
-            // Act - Auto-discover Agrias
-            StoryCharacterRegistry.AutoDiscoverCharacters();
-
             // Assert - Agrias should be registered
             Assert.True(StoryCharacterRegistry.HasCharacter("Agrias"),
                 "Agrias character not found. Available: " + string.Join(", ", StoryCharacterRegistry.GetAllCharacterNames()));
 
             var agrias = StoryCharacterRegistry.GetCharacter("Agrias");
             Assert.Equal("Agrias", agrias.Name);
-            Assert.Equal(typeof(AgriasColorScheme), agrias.EnumType);
+            Assert.Equal(typeof(string), agrias.EnumType);
             Assert.Contains("aguri", agrias.SpriteNames);
             Assert.Contains("kanba", agrias.SpriteNames);
             Assert.Equal("original", agrias.DefaultTheme);

@@ -46,8 +46,8 @@ namespace FFTColorMod.Tests
             // User directory has the ACTUAL user settings (what user configured)
             var userConfig = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)1,  // corpse_brigade
-                Knight_Female = (FFTColorMod.Configuration.ColorScheme)12 // emerald_dragon
+                Squire_Male = "corpse_brigade",  // corpse_brigade
+                Knight_Female = "emerald_dragon" // emerald_dragon
             };
             var userJson = JsonSerializer.Serialize(userConfig, Configurable<Config>.SerializerOptions);
             File.WriteAllText(_userConfigPath, userJson);
@@ -55,8 +55,8 @@ namespace FFTColorMod.Tests
             // Mod directory has DEFAULT settings (should NOT be used)
             var modConfig = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)0,  // original (default)
-                Knight_Female = (FFTColorMod.Configuration.ColorScheme)0 // original (default)
+                Squire_Male = "original",  // original (default)
+                Knight_Female = "original" // original (default)
             };
             var modJson = JsonSerializer.Serialize(modConfig, Configurable<Config>.SerializerOptions);
             File.WriteAllText(_modConfigPath, modJson);
@@ -69,8 +69,8 @@ namespace FFTColorMod.Tests
             // Assert
             Assert.NotNull(loadedConfig);
             // Should have the USER configured values, not defaults
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)1, loadedConfig.Squire_Male);   // corpse_brigade
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)12, loadedConfig.Knight_Female); // emerald_dragon
+            Assert.Equal("corpse_brigade", loadedConfig.Squire_Male);   // corpse_brigade
+            Assert.Equal("emerald_dragon", loadedConfig.Knight_Female); // emerald_dragon
         }
 
         [Fact]
@@ -80,8 +80,8 @@ namespace FFTColorMod.Tests
             // User directory has what the user actually configured
             var userConfig = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)1,  // corpse_brigade
-                Knight_Female = (FFTColorMod.Configuration.ColorScheme)12 // emerald_dragon
+                Squire_Male = "corpse_brigade",  // corpse_brigade
+                Knight_Female = "emerald_dragon" // emerald_dragon
             };
             var userJson = JsonSerializer.Serialize(userConfig, Configurable<Config>.SerializerOptions);
             File.WriteAllText(_userConfigPath, userJson);
@@ -89,8 +89,8 @@ namespace FFTColorMod.Tests
             // Mod directory has defaults (this is what's incorrectly being loaded)
             var modConfig = new Config
             {
-                Squire_Male = (FFTColorMod.Configuration.ColorScheme)0,  // original
-                Knight_Female = (FFTColorMod.Configuration.ColorScheme)0 // original
+                Squire_Male = "original",  // original
+                Knight_Female = "original" // original
             };
             var modJson = JsonSerializer.Serialize(modConfig, Configurable<Config>.SerializerOptions);
             File.WriteAllText(_modConfigPath, modJson);
@@ -103,12 +103,12 @@ namespace FFTColorMod.Tests
             // Assert - This demonstrates the bug
             Assert.NotNull(loadedConfig);
             // BUG: Gets default values instead of user configured values!
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, loadedConfig.Squire_Male);   // original (WRONG!)
-            Assert.Equal((FFTColorMod.Configuration.ColorScheme)0, loadedConfig.Knight_Female); // original (WRONG!)
+            Assert.Equal("original", loadedConfig.Squire_Male);   // original (WRONG!)
+            Assert.Equal("original", loadedConfig.Knight_Female); // original (WRONG!)
 
             // These values SHOULD have been loaded but weren't:
-            Assert.NotEqual((FFTColorMod.Configuration.ColorScheme)1, loadedConfig.Squire_Male);   // Should be corpse_brigade
-            Assert.NotEqual((FFTColorMod.Configuration.ColorScheme)12, loadedConfig.Knight_Female); // Should be emerald_dragon
+            Assert.NotEqual("corpse_brigade", loadedConfig.Squire_Male);   // Should be corpse_brigade
+            Assert.NotEqual("emerald_dragon", loadedConfig.Knight_Female); // Should be emerald_dragon
         }
     }
 }

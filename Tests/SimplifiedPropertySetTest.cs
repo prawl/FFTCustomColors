@@ -31,9 +31,9 @@ namespace FFTColorMod.Tests
             // Create a config instance
             var config = new ConfigurationNamespace.Config();
 
-            // Get all ColorScheme properties
+            // Get all string properties
             var properties = typeof(ConfigurationNamespace.Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(FFTColorMod.Configuration.ColorScheme))
+                .Where(p => p.PropertyType == typeof(string))
                 .OrderBy(p => p.Name)
                 .ToList();
 
@@ -50,7 +50,7 @@ namespace FFTColorMod.Tests
                 _output.WriteLine($"Can write: {archerProp.CanWrite}");
 
                 // Set value
-                archerProp.SetValue(config, (FFTColorMod.Configuration.ColorScheme)2); // lucavi is enum value 2
+                archerProp.SetValue(config, "lucavi"); // lucavi is enum value 2
 
                 // Get value back
                 var getValue = archerProp.GetValue(config);
@@ -62,29 +62,33 @@ namespace FFTColorMod.Tests
                 _output.WriteLine($"config.Squire_Male: {config.Squire_Male}");
                 _output.WriteLine($"config.Knight_Male: {config.Knight_Male}");
 
-                Assert.True(config.Archer_Female == (FFTColorMod.Configuration.ColorScheme)2); // lucavi
-                Assert.True(config.Squire_Male == (FFTColorMod.Configuration.ColorScheme)0); // original
+                Assert.Equal("lucavi", config.Archer_Female);
+                Assert.Equal("original", config.Squire_Male);
             }
         }
 
         [Fact]
-        public void Test_ConfigurationManager_SetColorSchemeForJob()
+        public void Test_ConfigurationManager_SetJobTheme()
         {
-            _output.WriteLine("=== ConfigurationManager SetColorSchemeForJob Test ===\n");
+            _output.WriteLine("=== ConfigurationManager Property Setting Test ===\n");
 
             var configPath = Path.Combine(_testPath, "Config.json");
             var manager = new ConfigurationNamespace.ConfigurationManager(configPath);
 
-            // Set Archer_Female to lucavi
-            _output.WriteLine("Calling SetColorSchemeForJob('Archer_Female', 'lucavi')");
-            manager.SetColorSchemeForJob("Archer_Female", "lucavi");
-
-            // Load config and check
+            // Load config and manually set property
             var config = manager.LoadConfig();
+            config.Archer_Female = "lucavi";
+
+            // Save the updated config
+            manager.SaveConfig(config);
+            _output.WriteLine("Set Archer_Female to 'lucavi' and saved config");
+
+            // Reload config to verify persistence
+            var reloadedConfig = manager.LoadConfig();
             _output.WriteLine($"\nAfter setting:");
-            _output.WriteLine($"config.Archer_Female: {config.Archer_Female}");
-            _output.WriteLine($"config.Squire_Male: {config.Squire_Male}");
-            _output.WriteLine($"config.Knight_Male: {config.Knight_Male}");
+            _output.WriteLine($"config.Archer_Female: {reloadedConfig.Archer_Female}");
+            _output.WriteLine($"config.Squire_Male: {reloadedConfig.Squire_Male}");
+            _output.WriteLine($"config.Knight_Male: {reloadedConfig.Knight_Male}");
 
             // Read the JSON file directly
             if (File.Exists(configPath))
@@ -94,7 +98,8 @@ namespace FFTColorMod.Tests
                 _output.WriteLine(json.Substring(0, Math.Min(300, json.Length)));
             }
 
-            Assert.True(config.Archer_Female == (FFTColorMod.Configuration.ColorScheme)2); // lucavi
+            Assert.Equal("lucavi", reloadedConfig.Archer_Female);
+            Assert.Equal("original", reloadedConfig.Squire_Male); // Should remain default
         }
 
         [Fact]
@@ -104,7 +109,7 @@ namespace FFTColorMod.Tests
 
             var configType = typeof(ConfigurationNamespace.Config);
             var properties = configType.GetProperties()
-                .Where(p => p.PropertyType == typeof(FFTColorMod.Configuration.ColorScheme))
+                .Where(p => p.PropertyType == typeof(string))
                 .ToList();
 
             // Get properties in different orders
@@ -149,22 +154,28 @@ namespace FFTColorMod.Tests
             var configPath = Path.Combine(_testPath, "Config.json");
             var manager = new ConfigurationNamespace.ConfigurationManager(configPath);
 
+            // Load config and set multiple properties
+            var config = manager.LoadConfig();
+
             // Perform multiple rapid sets
             _output.WriteLine("Setting multiple properties rapidly:");
-            manager.SetColorSchemeForJob("Knight_Male", "corpse_brigade");
-            manager.SetColorSchemeForJob("Archer_Female", "lucavi");
-            manager.SetColorSchemeForJob("Monk_Male", "northern_sky");
+            config.Knight_Male = "corpse_brigade";
+            config.Archer_Female = "lucavi";
+            config.Monk_Male = "northern_sky";
 
-            // Load and check
-            var config = manager.LoadConfig();
+            // Save all changes at once
+            manager.SaveConfig(config);
+
+            // Reload and check
+            var reloadedConfig = manager.LoadConfig();
             _output.WriteLine($"\nResults:");
-            _output.WriteLine($"Knight_Male: {config.Knight_Male} (expected: corpse_brigade)");
-            _output.WriteLine($"Archer_Female: {config.Archer_Female} (expected: lucavi)");
-            _output.WriteLine($"Monk_Male: {config.Monk_Male} (expected: northern_sky)");
+            _output.WriteLine($"Knight_Male: {reloadedConfig.Knight_Male} (expected: corpse_brigade)");
+            _output.WriteLine($"Archer_Female: {reloadedConfig.Archer_Female} (expected: lucavi)");
+            _output.WriteLine($"Monk_Male: {reloadedConfig.Monk_Male} (expected: northern_sky)");
 
-            Assert.True(config.Knight_Male == (FFTColorMod.Configuration.ColorScheme)1); // corpse_brigade
-            Assert.True(config.Archer_Female == (FFTColorMod.Configuration.ColorScheme)2); // lucavi
-            Assert.True(config.Monk_Male == (FFTColorMod.Configuration.ColorScheme)3); // northern_sky
+            Assert.Equal("corpse_brigade", reloadedConfig.Knight_Male);
+            Assert.Equal("lucavi", reloadedConfig.Archer_Female);
+            Assert.Equal("northern_sky", reloadedConfig.Monk_Male);
         }
 
         public void Dispose()
