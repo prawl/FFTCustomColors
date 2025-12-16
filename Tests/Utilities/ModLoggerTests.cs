@@ -19,6 +19,7 @@ namespace FFTColorMod.Tests.Utilities
                 try
                 {
                     action();
+                    Console.Out.Flush(); // Ensure all output is written
                     return stringWriter.ToString();
                 }
                 finally
