@@ -9,6 +9,161 @@ This directory contains Python scripts for creating and managing color themes fo
 2. Applying to all variants (battle_oru_spr.bin, battle_goru_spr.bin, battle_voru_spr.bin)
 3. This happens in the mod's constructor, before the game fully loads
 
+## Adding a Single New Theme to a Story Character - Complete Guide
+
+**Example: Adding Twilight Blend theme to Rapha (2024-12-15)**
+
+This section documents the complete process to add ONE new theme to an existing story character.
+
+### Prerequisites
+- The character's original sprite file (e.g., `battle_h79_spr.bin` for Rapha)
+- Python environment with required libraries
+- Access to the mod's source code
+
+### Step-by-Step Implementation
+
+#### Step 1: Generate the Theme
+Create a Python script to generate the themed .bin file:
+
+```python
+# Example: generate_rapha_themes.py
+# Key components:
+- rgb_to_fft_color() function to convert RGB to FFT's 16-bit format
+- darken_color() and lighten_color() for shading variations
+- Apply colors to specific palette indices (3-10 for main colors)
+- Save as .bin file with descriptive name
+```
+
+Run the script to generate:
+- Themed .bin file (e.g., `rapha_twilight_blend.bin`)
+- Preview PNG using `convert_sprite_sw.py --preview`
+
+#### Step 2: Prepare Theme Files
+1. Create theme folder in mod directory:
+   ```bash
+   mkdir ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_[character]_[theme]
+   ```
+
+2. Copy themed .bin with correct sprite name:
+   ```bash
+   cp themed_file.bin sprites_[character]_[theme]/battle_[sprite]_spr.bin
+   # Example: cp rapha_twilight_blend.bin sprites_rapha_twilight_blend/battle_h79_spr.bin
+   ```
+
+3. Ensure original sprite exists:
+   ```bash
+   mkdir sprites_[character]_original
+   cp original_sprite.bin sprites_[character]_original/battle_[sprite]_spr.bin
+   ```
+
+#### Step 3: Generate Preview Images
+Create 64x64 preview PNGs for Config UI:
+```bash
+python scripts/convert_sprite_sw.py input.bin output.png --preview
+# Creates 64x64 PNG with transparent background
+```
+
+Place previews in:
+- `ColorMod/Resources/Previews/[character]_original.png`
+- `ColorMod/Resources/Previews/[character]_[theme].png`
+
+#### Step 4: Update Character Enum
+Edit or create `ColorMod/Configuration/[Character]ColorScheme.cs`:
+
+```csharp
+using System.ComponentModel;
+using ColorMod.Registry;
+
+namespace FFTColorMod.Configuration
+{
+    [StoryCharacter(SpriteNames = new[] { "sprite_name" }, DefaultTheme = "original")]
+    public enum CharacterColorScheme
+    {
+        [Description("Original")]
+        original,
+
+        [Description("Theme Display Name")]
+        theme_name,
+    }
+}
+```
+
+**IMPORTANT**:
+- Enum name must match pattern: `[Character]ColorScheme`
+- Theme names use underscores, descriptions use spaces
+- SpriteNames array contains the sprite identifier (e.g., "h79" for Rapha)
+
+#### Step 5: Ensure Config.cs Property Exists
+Verify `ColorMod/Configuration/Config.cs` has the character property:
+
+```csharp
+public RaphaColorScheme Rapha { get; set; } = RaphaColorScheme.original;
+```
+
+**Note**: With the reflection-based system, this is usually auto-discovered if the enum exists.
+
+#### Step 6: Deploy the Mod
+Run the build script to compile and deploy:
+```bash
+powershell -ExecutionPolicy Bypass -File BuildLinked.ps1
+```
+
+This will:
+- Compile the C# mod
+- Copy all theme folders
+- Copy preview images
+- Deploy to Reloaded-II mods folder
+
+#### Step 7: Test in Config UI
+1. Launch Reloaded-II
+2. Open mod configuration
+3. Find the character in Story Characters section
+4. Verify new theme appears in dropdown
+5. Check preview image updates when theme is selected
+6. Save configuration and test in-game
+
+### File Structure After Implementation
+```
+ColorMod/
+├── Configuration/
+│   └── [Character]ColorScheme.cs (updated enum)
+├── FFTIVC/data/enhanced/fftpack/unit/
+│   ├── sprites_[character]_original/
+│   │   └── battle_[sprite]_spr.bin
+│   └── sprites_[character]_[theme]/
+│       └── battle_[sprite]_spr.bin
+└── Resources/Previews/
+    ├── [character]_original.png
+    └── [character]_[theme].png
+```
+
+### Common Issues and Solutions
+
+**Theme not appearing in dropdown:**
+- Check enum is properly formatted with Description attribute
+- Ensure character property exists in Config.cs
+- Rebuild and redeploy the mod
+
+**Preview image not showing:**
+- Verify PNG is 64x64 pixels
+- Check filename matches pattern: `[character]_[theme].png`
+- Ensure PNG has transparent background
+
+**Theme not applying in game:**
+- Verify .bin file is in correct folder structure
+- Check sprite filename matches expected pattern
+- Ensure theme folder follows naming convention
+
+### Example: Rapha Twilight Blend Implementation
+1. Generated theme with gradient style (indigo to deep pink)
+2. Created `sprites_rapha_twilight_blend/` folder
+3. Placed `battle_h79_spr.bin` in theme folder
+4. Generated `rapha_twilight_blend.png` preview
+5. Updated `RaphaColorScheme.cs` enum
+6. Deployed and tested successfully
+
+---
+
 ## Story Character Themes Status
 
 **Completed Story Characters with Full Themes (2024-12-15)**:
@@ -19,7 +174,7 @@ This directory contains Python scripts for creating and managing color themes fo
 - ✅ **Mustadio** - 25 custom themes (removed from precision work)
 - ✅ **Reis** - 25 custom themes
 - ✅ **Malak** - 25 custom themes
-- ✅ **Rafa** - 25 custom themes
+- ✅ **Rapha** - Twilight Blend theme (gradient style with indigo to deep pink)
 - ✅ **Delita** - 22 custom themes (3 removed)
 - ✅ **Alma** - 25 custom themes
 - ✅ **Wiegraf** - 25 custom themes (removed for precision work)
