@@ -1,4 +1,4 @@
-# GitHub Actions workflow for FFT Color Mod
+# GitHub Actions workflow for FFT Color Customizer
 # Builds and publishes the mod for Reloaded-II
 # Based on the Reloaded-II template by Sewer56
 
@@ -8,7 +8,7 @@
 #   - Automatic changelog generation
 #   - Optional: NuGet package, GameBanana upload
 
-name: Build and Publish FFT Color Mod
+name: Build and Publish FFT Color Customizer
 
 on:
   push:
@@ -69,8 +69,8 @@ jobs:
         }
 
     - name: Run Tests
-      run: dotnet test Tests/FFTColorMod.Tests.csproj --verbosity minimal
-      continue-on-error: true  # Don't fail build if tests fail (for now)
+      run: dotnet test Tests/FFTColorCustomizer.Tests.csproj --verbosity minimal
+      # continue-on-error: true  # Commented out - workflow will now fail if tests fail
 
     - name: Build and Package
       run: ./Publish.ps1 -ChangelogPath "$env:PUBLISH_CHANGELOG_PATH"
@@ -78,7 +78,7 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: FFT-Color-Mod-${{ github.sha }}
+        name: FFTColorCustomizer-${{ github.sha }}
         path: |
           ${{ env.PUBLISH_GITHUB_PATH }}/*
         retention-days: 30
@@ -94,7 +94,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       if: env.IS_RELEASE == 'true'
       with:
-        name: FFT Color Mod ${{ env.RELEASE_TAG }}
+        name: FFT Color Customizer ${{ env.RELEASE_TAG }}
         body_path: ${{ env.PUBLISH_CHANGELOG_PATH }}
         files: |
           ${{ env.PUBLISH_GITHUB_PATH }}/*
@@ -117,5 +117,5 @@ jobs:
 
     - name: Run Tests with Coverage
       run: |
-        dotnet test Tests/FFTColorMod.Tests.csproj --logger "console;verbosity=detailed"
-      continue-on-error: true
+        dotnet test Tests/FFTColorCustomizer.Tests.csproj --logger "console;verbosity=detailed"
+      # continue-on-error: true  # Commented out - workflow will now fail if tests fail

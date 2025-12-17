@@ -3,7 +3,7 @@
   "ModName": "FFT Color Customizer",
   "ModAuthor": "Paxtrick",
   "ModVersion": "1.0.0",
-  "ModDescription": "Custom color themes for FFT characters. Features Thunder God Orlandeau theme and F2 cycling for all characters.",
+  "ModDescription": "Customize your FFT experience with unique color themes. Features in-game config menu by pressing F1.",
   "ModDll": "FFTColorCustomizer.dll",
   "ModIcon": "Preview.png",
   "ModR2RManagedDll32": "x86/FFTColorCustomizer.dll",
@@ -11,7 +11,7 @@
   "ModNativeDll32": "",
   "ModNativeDll64": "",
   "HasExports": false,
-  "CanUnload": false,
+"CanUnload": false,
   "IsLibrary": false,
   "ReleaseMetadataFileName": "FFTColorCustomizer.ReleaseMetadata.json",
   "IgnoreRegexes": [
