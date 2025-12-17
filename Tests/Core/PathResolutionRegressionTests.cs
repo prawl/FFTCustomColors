@@ -23,7 +23,7 @@ namespace FFTColorCustomizer.Tests.Core
             // from a User config path to the mod installation path
 
             // Test case 1: User config path should resolve to mod installation
-            var userConfigPath = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json";
+            var userConfigPath = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json";
             var expectedModPath = @"C:\Reloaded\Mods\FFTColorCustomizer";
 
             var actualModPath = TestGetActualModPath(userConfigPath);
@@ -45,13 +45,13 @@ namespace FFTColorCustomizer.Tests.Core
             // Test both Windows backslash and Unix forward slash paths
 
             // Windows style path
-            var windowsPath = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json";
+            var windowsPath = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json";
             var actualModPath = TestGetActualModPath(windowsPath);
             actualModPath.Should().EndWith(Path.Combine("Mods", "FFTColorCustomizer"),
                 "Windows-style path should resolve correctly");
 
             // Unix style path (forward slashes)
-            var unixPath = @"C:/Reloaded/User/Mods/ptyra.fft.colorcustomizer/Config.json";
+            var unixPath = @"C:/Reloaded/User/Mods/paxtrick.fft.colorcustomizer/Config.json";
             actualModPath = TestGetActualModPath(unixPath);
             actualModPath.Should().EndWith(Path.Combine("Mods", "FFTColorCustomizer"),
                 "Unix-style path should resolve correctly");
@@ -77,7 +77,7 @@ namespace FFTColorCustomizer.Tests.Core
             var modPath = @"C:\Reloaded\Mods\FFTColorCustomizer";
 
             // The User config path should be calculated correctly
-            var expectedUserPath = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json";
+            var expectedUserPath = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json";
 
             // Simulate the path calculation logic
             var parent = Path.GetDirectoryName(modPath); // C:\Reloaded\Mods
@@ -86,7 +86,7 @@ namespace FFTColorCustomizer.Tests.Core
             var grandParent = Path.GetDirectoryName(parent); // C:\Reloaded
             grandParent.Should().NotBeNull();
 
-            var calculatedUserPath = Path.Combine(grandParent, "User", "Mods", "ptyra.fft.colorcustomizer", "Config.json");
+            var calculatedUserPath = Path.Combine(grandParent, "User", "Mods", "paxtrick.fft.colorcustomizer", "Config.json");
             calculatedUserPath.Should().Be(expectedUserPath,
                 "User config path should be calculated correctly from mod installation path");
         }
@@ -97,7 +97,7 @@ namespace FFTColorCustomizer.Tests.Core
             // This test ensures that ConfigurationCoordinator passes the correct
             // mod installation path to the sprite manager, not the User config path
 
-            var userConfigPath = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json";
+            var userConfigPath = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json";
             var expectedModPath = @"C:\Reloaded\Mods\FFTColorCustomizer";
 
             // The GetActualModPath method should resolve to the mod installation
@@ -115,7 +115,7 @@ namespace FFTColorCustomizer.Tests.Core
             // This test validates that preview images are loaded from the mod installation
             // directory, not from the User config directory
 
-            var userConfigPath = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json";
+            var userConfigPath = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json";
             var modInstallPath = @"C:\Reloaded\Mods\FFTColorCustomizer";
 
             // Preview images should be in the mod installation directory

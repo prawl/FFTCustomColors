@@ -1,7 +1,7 @@
 {
-  "ModId": "ptyra.fft.colorcustomizer",
+  "ModId": "paxtrick.fft.colorcustomizer",
   "ModName": "FFT Color Customizer",
-  "ModAuthor": "ptyRa",
+  "ModAuthor": "Paxtrick",
   "ModVersion": "1.0.0",
   "ModDescription": "Custom color themes for FFT characters. Features Thunder God Orlandeau theme and F2 cycling for all characters.",
   "ModDll": "FFTColorCustomizer.dll",

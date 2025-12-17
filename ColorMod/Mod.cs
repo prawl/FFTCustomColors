@@ -213,7 +213,7 @@ public class Mod : IMod, IConfigurable
 
     private string GetUserConfigPath()
     {
-        // Navigate from Mods/FFTColorCustomizer to User/Mods/ptyra.fft.colorcustomizer
+        // Navigate from Mods/FFTColorCustomizer to User/Mods/paxtrick.fft.colorcustomizer
         var parent = Directory.GetParent(_modPath);
         if (parent != null)
         {
@@ -221,7 +221,7 @@ public class Mod : IMod, IConfigurable
             if (grandParent != null)
             {
                 var reloadedRoot = grandParent.FullName;
-                var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "ptyra.fft.colorcustomizer", ConfigFileName);
+                var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "paxtrick.fft.colorcustomizer", ConfigFileName);
 
                 ModLogger.LogDebug($"Looking for user config at: {userConfigPath}");
 

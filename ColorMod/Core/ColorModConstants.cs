@@ -46,8 +46,8 @@ namespace FFTColorCustomizer.Core
         // Mod metadata
         public const string ModId = "FFTColorCustomizer";
         public const string ModName = "FFT Color Customizer";
-        public const string ModAuthor = "ptyra";
-        public const string ModNamespace = "ptyra.fft.colorcustomizer";
+        public const string ModAuthor = "Paxtrick";
+        public const string ModNamespace = "paxtrick.fft.colorcustomizer";
 
         // Git repository paths (for development)
         public const string DevSourcePath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod";

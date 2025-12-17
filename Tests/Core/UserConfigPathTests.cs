@@ -11,18 +11,18 @@ namespace FFTColorCustomizer.Tests.Core
         [Fact]
         public void Mod_Should_Use_User_Config_Not_Mod_Config()
         {
-            // TLDR: The mod MUST load the User config from Reloaded/User/Mods/ptyra.fft.colorcustomizer/Config.json
+            // TLDR: The mod MUST load the User config from Reloaded/User/Mods/paxtrick.fft.colorcustomizer/Config.json
             // NOT from the mod installation directory Reloaded/Mods/FFTColorCustomizer/Config.json
             // This ensures user's personal settings are preserved and loaded correctly
 
             // Simulate the Reloaded directory structure
             var reloadedRoot = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded";
             var modPath = Path.Combine(reloadedRoot, "Mods", "FFTColorCustomizer");
-            var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "ptyra.fft.colorcustomizer", "Config.json");
+            var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "paxtrick.fft.colorcustomizer", "Config.json");
             var modConfigPath = Path.Combine(modPath, "Config.json");
 
             // The correct path should be the User config
-            userConfigPath.Should().Contain(@"User\Mods\ptyra.fft.colorcustomizer",
+            userConfigPath.Should().Contain(@"User\Mods\paxtrick.fft.colorcustomizer",
                 "Config must be loaded from User directory for persistent user settings");
 
             // The wrong path would be the mod installation config
@@ -38,7 +38,7 @@ namespace FFTColorCustomizer.Tests.Core
             // Setup test directory structure
             var testRoot = Path.Combine(Path.GetTempPath(), $"ReloadedTest_{Guid.NewGuid()}");
             var modsDir = Path.Combine(testRoot, "Mods", "FFTColorCustomizer");
-            var userModsDir = Path.Combine(testRoot, "User", "Mods", "ptyra.fft.colorcustomizer");
+            var userModsDir = Path.Combine(testRoot, "User", "Mods", "paxtrick.fft.colorcustomizer");
 
             try
             {
@@ -81,7 +81,7 @@ namespace FFTColorCustomizer.Tests.Core
             // Setup test directory structure
             var testRoot = Path.Combine(Path.GetTempPath(), $"ReloadedTest_{Guid.NewGuid()}");
             var modsDir = Path.Combine(testRoot, "Mods", "FFTColorCustomizer");
-            var userModsDir = Path.Combine(testRoot, "User", "Mods", "ptyra.fft.colorcustomizer");
+            var userModsDir = Path.Combine(testRoot, "User", "Mods", "paxtrick.fft.colorcustomizer");
 
             try
             {
@@ -115,10 +115,10 @@ namespace FFTColorCustomizer.Tests.Core
             // to ConfigurationForm, not the Config directory path
 
             // Given a config path in the User directory
-            var userConfigPath = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json";
+            var userConfigPath = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json";
 
             // The mod path passed to ConfigurationForm should be the parent of Config directory
-            var expectedModPath = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer";
+            var expectedModPath = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer";
 
             // NOT just the directory of the config file
             var incorrectModPath = Path.GetDirectoryName(userConfigPath);
@@ -127,7 +127,7 @@ namespace FFTColorCustomizer.Tests.Core
 
             // The preview images would be in Resources/Previews relative to mod path
             var previewPath = Path.Combine(expectedModPath, "Resources", "Previews");
-            previewPath.Should().Be(@"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Resources\Previews",
+            previewPath.Should().Be(@"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Resources\Previews",
                 "Preview path should be relative to the User mod directory when using User config");
         }
 
@@ -137,7 +137,7 @@ namespace FFTColorCustomizer.Tests.Core
             // TLDR: The config used when opening UI outside game (via Reloaded launcher)
             // and the config used when pressing F1 in-game MUST be the same file
 
-            var userConfigPath = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json";
+            var userConfigPath = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json";
 
             // When opened from Reloaded launcher (outside game)
             var configPathFromLauncher = userConfigPath;
@@ -164,7 +164,7 @@ namespace FFTColorCustomizer.Tests.Core
                 if (grandParent != null)
                 {
                     var reloadedRoot = grandParent.FullName;
-                    var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "ptyra.fft.colorcustomizer", "Config.json");
+                    var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "paxtrick.fft.colorcustomizer", "Config.json");
 
                     if (File.Exists(userConfigPath))
                     {

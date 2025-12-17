@@ -24,7 +24,7 @@ namespace FFTColorCustomizer.Tests.Utilities
 
             // The constructor signature itself enforces the separation of concerns
             var modPath = @"C:\Reloaded\Mods\FFTColorCustomizer";
-            var configPath = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json";
+            var configPath = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json";
             var devSourcePath = @"C:\Dev\FFTColorCustomizer";
 
             // This demonstrates the correct usage pattern:
@@ -48,19 +48,19 @@ namespace FFTColorCustomizer.Tests.Utilities
             {
                 new
                 {
-                    Input = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json",
+                    Input = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json",
                     Expected = @"C:\Reloaded\Mods\FFTColorCustomizer",
                     Description = "User config path resolves to mod installation"
                 },
                 new
                 {
-                    Input = @"C:\Game\User\Mods\ptyra.fft.colorcustomizer\Config.json",
+                    Input = @"C:\Game\User\Mods\paxtrick.fft.colorcustomizer\Config.json",
                     Expected = @"C:\Game\Mods\FFTColorCustomizer",
                     Description = "Different root path still resolves correctly"
                 },
                 new
                 {
-                    Input = @"D:\Steam\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json",
+                    Input = @"D:\Steam\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json",
                     Expected = @"D:\Steam\Reloaded\Mods\FFTColorCustomizer",
                     Description = "Different drive letter works correctly"
                 }
@@ -80,7 +80,7 @@ namespace FFTColorCustomizer.Tests.Utilities
             // - Configuration is stored in User directory (user-specific settings)
             // - Sprites are stored in mod installation (shared resources)
 
-            var userConfigDir = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer";
+            var userConfigDir = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer";
             var modInstallDir = @"C:\Reloaded\Mods\FFTColorCustomizer";
 
             // Config location
@@ -125,8 +125,8 @@ namespace FFTColorCustomizer.Tests.Utilities
         {
             // Test that the path resolution works with both slash types
 
-            var windowsPath = @"C:\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json";
-            var unixPath = @"C:/Reloaded/User/Mods/ptyra.fft.colorcustomizer/Config.json";
+            var windowsPath = @"C:\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json";
+            var unixPath = @"C:/Reloaded/User/Mods/paxtrick.fft.colorcustomizer/Config.json";
 
             var windowsResult = GetActualModPath(windowsPath);
             var unixResult = GetActualModPath(unixPath);

@@ -76,7 +76,7 @@ namespace FFTColorCustomizer.Services
                 return envConfigPath;
             }
 
-            // Navigate from Mods/FFTColorCustomizer to User/Mods/ptyra.fft.colorcustomizer
+            // Navigate from Mods/FFTColorCustomizer to User/Mods/paxtrick.fft.colorcustomizer
             var parent = Directory.GetParent(_modPath);
             if (parent != null)
             {
