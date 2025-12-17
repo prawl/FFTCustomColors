@@ -14,6 +14,7 @@ namespace FFTColorCustomizer.Tests.Utilities
         private string CaptureConsoleOutput(Action action)
         {
             var originalOutput = Console.Out;
+            string result;
             using (var stringWriter = new StringWriter())
             {
                 Console.SetOut(stringWriter);
@@ -21,13 +22,14 @@ namespace FFTColorCustomizer.Tests.Utilities
                 {
                     action();
                     Console.Out.Flush(); // Ensure all output is written
-                    return stringWriter.ToString();
+                    result = stringWriter.ToString(); // Capture before disposal
                 }
                 finally
                 {
                     Console.SetOut(originalOutput);
                 }
             }
+            return result;
         }
 
         [Fact]

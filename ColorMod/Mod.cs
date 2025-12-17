@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Core;
 using FFTColorCustomizer.Core.ModComponents;
 using FFTColorCustomizer.Interfaces;
 using FFTColorCustomizer.Services;
@@ -39,6 +40,10 @@ public class Mod : IMod, IConfigurable
 
     public Mod(ModContext context, IInputSimulator? inputSimulator = null, IHotkeyHandler? hotkeyHandler = null)
     {
+        // Initialize ModLogger with ConsoleLogger
+        ModLogger.Reset();
+        ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
+        ModLogger.LogLevel = Interfaces.LogLevel.Info;
         ModLogger.Log("Mod constructor called");
 
         _inputSimulator = inputSimulator;
@@ -56,7 +61,12 @@ public class Mod : IMod, IConfigurable
 
     public Mod()
     {
-        Console.WriteLine("[FFT Color Mod] Default constructor called");
+        // Initialize ModLogger with ConsoleLogger
+        ModLogger.Reset();
+        ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
+        ModLogger.LogLevel = Interfaces.LogLevel.Info; // Set to Info for normal operation (Debug for verbose)
+
+        ModLogger.Log("Default constructor called");
 
         // Initialize paths first
         _modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
@@ -68,16 +78,14 @@ public class Mod : IMod, IConfigurable
         _hotkeyHandler = new HotkeyHandler(ProcessHotkeyPress);
         _isTestEnvironment = false;
 
-        Console.WriteLine($"[FFT Color Mod] HotkeyHandler created: {_hotkeyHandler != null}");
-        Console.WriteLine($"[FFT Color Mod] InputSimulator created: {_inputSimulator != null}");
-
-        ModLogger.Log("Mod constructor called");
+        ModLogger.LogDebug($"HotkeyHandler created: {_hotkeyHandler != null}");
+        ModLogger.LogDebug($"InputSimulator created: {_inputSimulator != null}");
 
         // Initialize components
         InitializeComponents();
 
         // Since Start is not being called by Reloaded-II, call it manually
-        Console.WriteLine("[FFT Color Mod] Calling Start manually from constructor");
+        ModLogger.LogDebug("Calling Start manually from constructor");
         Start(null);
     }
 
@@ -165,15 +173,15 @@ public class Mod : IMod, IConfigurable
 
     public void Start(IModLoader? modLoader)
     {
-        Console.WriteLine("[FFT Color Mod] Start method called");
-        Console.WriteLine($"[FFT Color Mod] _hotkeyHandler exists: {_hotkeyHandler != null}");
-        Console.WriteLine($"[FFT Color Mod] _inputSimulator exists: {_inputSimulator != null}");
-        Console.WriteLine($"[FFT Color Mod] _configCoordinator exists: {_configCoordinator != null}");
+        ModLogger.Log("Start method called");
+        ModLogger.LogDebug($"_hotkeyHandler exists: {_hotkeyHandler != null}");
+        ModLogger.LogDebug($"_inputSimulator exists: {_inputSimulator != null}");
+        ModLogger.LogDebug($"_configCoordinator exists: {_configCoordinator != null}");
 
         // Ensure configuration is initialized
         EnsureConfigurationInitialized();
-        Console.WriteLine($"[FFT Color Mod] After EnsureConfig - _configCoordinator exists: {_configCoordinator != null}");
-        Console.WriteLine($"[FFT Color Mod] After EnsureConfig - _hotkeyManager exists: {_hotkeyManager != null}");
+        ModLogger.LogDebug($"After EnsureConfig - _configCoordinator exists: {_configCoordinator != null}");
+        ModLogger.LogDebug($"After EnsureConfig - _hotkeyManager exists: {_hotkeyManager != null}");
 
         // Apply initial themes from configuration
         var configuration = GetConfiguration();
@@ -185,12 +193,12 @@ public class Mod : IMod, IConfigurable
         // Start hotkey monitoring
         if (_hotkeyHandler != null)
         {
-            Console.WriteLine("[FFT Color Mod] Starting hotkey monitoring");
+            ModLogger.Log("Starting hotkey monitoring");
             _hotkeyHandler.StartMonitoring();
         }
         else
         {
-            Console.WriteLine("[FFT Color Mod] ERROR: HotkeyHandler is null, cannot start monitoring!");
+            ModLogger.LogError("HotkeyHandler is null, cannot start monitoring!");
         }
     }
 
@@ -215,24 +223,24 @@ public class Mod : IMod, IConfigurable
                 var reloadedRoot = grandParent.FullName;
                 var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "ptyra.fft.colorcustomizer", ConfigFileName);
 
-                Console.WriteLine($"[FFT Color Mod] Looking for user config at: {userConfigPath}");
+                ModLogger.LogDebug($"Looking for user config at: {userConfigPath}");
 
                 // Use User config if it exists
                 if (File.Exists(userConfigPath))
                 {
-                    Console.WriteLine($"[FFT Color Mod] Using user config: {userConfigPath}");
+                    ModLogger.Log($"Using user config: {userConfigPath}");
                     return userConfigPath;
                 }
                 else
                 {
-                    Console.WriteLine($"[FFT Color Mod] User config not found, falling back to mod config");
+                    ModLogger.LogDebug("User config not found, falling back to mod config");
                 }
             }
         }
 
         // Fallback to mod directory config
         var fallbackPath = Path.Combine(_modPath, ConfigFileName);
-        Console.WriteLine($"[FFT Color Mod] Using fallback config: {fallbackPath}");
+        ModLogger.Log($"Using fallback config: {fallbackPath}");
         return fallbackPath;
     }
 
@@ -324,10 +332,10 @@ public class Mod : IMod, IConfigurable
 
     public void ProcessHotkeyPress(int vkCode)
     {
-        Console.WriteLine($"[FFT Color Mod] ProcessHotkeyPress called with vkCode: 0x{vkCode:X}");
+        ModLogger.LogDebug($"ProcessHotkeyPress called with vkCode: 0x{vkCode:X}");
         // Ensure configuration is initialized before processing hotkeys
         EnsureConfigurationInitialized();
-        Console.WriteLine($"[FFT Color Mod] _hotkeyManager exists: {_hotkeyManager != null}");
+        ModLogger.LogDebug($"_hotkeyManager exists: {_hotkeyManager != null}");
         _hotkeyManager?.ProcessHotkeyPress(vkCode);
     }
 

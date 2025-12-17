@@ -137,5 +137,21 @@ namespace FFTColorCustomizer.Utilities
         {
             Instance = NullLogger.Instance;
         }
+
+        /// <summary>
+        /// Disables all logging by setting LogLevel to None
+        /// </summary>
+        public static void DisableLogging()
+        {
+            LogLevel = Interfaces.LogLevel.None;
+        }
+
+        /// <summary>
+        /// Enables logging with the specified level (defaults to Info)
+        /// </summary>
+        public static void EnableLogging(Interfaces.LogLevel level = Interfaces.LogLevel.Info)
+        {
+            LogLevel = level;
+        }
     }
 }
