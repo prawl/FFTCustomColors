@@ -33,11 +33,11 @@ namespace FFTColorMod.Utilities
             _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             _sourceUnitPath = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
-            Console.WriteLine($"[FFT Color Mod] ConfigBasedSpriteManager initialized:");
-            Console.WriteLine($"[FFT Color Mod]   Mod path: {_modPath}");
-            Console.WriteLine($"[FFT Color Mod]   Source path: {_sourcePath}");
-            Console.WriteLine($"[FFT Color Mod]   Unit path (destination): {_unitPath}");
-            Console.WriteLine($"[FFT Color Mod]   Source unit path: {_sourceUnitPath}");
+            ModLogger.Log("ConfigBasedSpriteManager initialized:");
+            ModLogger.Log($"  Mod path: {_modPath}");
+            ModLogger.Log($"  Source path: {_sourcePath}");
+            ModLogger.Log($"  Unit path (destination): {_unitPath}");
+            ModLogger.Log($"  Source unit path: {_sourceUnitPath}");
         }
 
         // Backward compatibility constructor using singleton
@@ -51,7 +51,7 @@ namespace FFTColorMod.Utilities
 
         public void ApplyConfiguration()
         {
-            Console.WriteLine($"[FFT Color Mod] ApplyConfiguration called");
+            ModLogger.Log("ApplyConfiguration called");
             var config = _configManager.LoadConfig();
 
             // Apply generic job class themes
@@ -74,7 +74,7 @@ namespace FFTColorMod.Utilities
                 var colorScheme = property.GetValue(config) as string ?? "original";
 
                 // Log what we're applying
-                Console.WriteLine($"[FFT Color Mod] Applying {property.Name}: {colorScheme}");
+                ModLogger.Log($"Applying {property.Name}: {colorScheme}");
 
                 // Get the sprite name for this job/gender
                 var spriteName = GetSpriteNameForJob(property.Name);
