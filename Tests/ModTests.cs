@@ -162,6 +162,9 @@ namespace FFTColorCustomizer.Tests
                 {
                     var mod = new Mod(context, null, new NullHotkeyHandler());
 
+                    // After mod is created, set ModLogger to Debug level to capture debug messages
+                    ModLogger.LogLevel = FFTColorCustomizer.Interfaces.LogLevel.Debug;
+
                     // Act
                     mod.Start(null);
 
@@ -174,16 +177,17 @@ namespace FFTColorCustomizer.Tests
                         "ApplyInitialThemes should only be called once during startup to prevent overwriting configured themes with defaults");
 
                     // Verify that the configured themes were applied (not reset to 'original')
-                    output.Should().Contain("ApplyInitialCloudTheme - theme: sephiroth_black",
+                    // Check that the themes were actually applied, not the debug messages which may not always appear
+                    output.Should().Contain("Applying initial Cloud theme: sephiroth_black",
                         "Cloud's configured theme should be applied");
-                    output.Should().Contain("ApplyInitialOrlandeauTheme - theme: thunder_god",
+                    output.Should().Contain("Applying initial Orlandeau theme: thunder_god",
                         "Orlandeau's configured theme should be applied");
-                    output.Should().Contain("ApplyInitialAgriasTheme - theme: ash_dark",
+                    output.Should().Contain("Applying initial Agrias theme: ash_dark",
                         "Agrias' configured theme should be applied");
 
                     // Should NOT reset to original after initial configuration
-                    var lastCloudTheme = GetLastThemeFromOutput(output, "ApplyInitialCloudTheme - theme:");
-                    var lastOrlandeauTheme = GetLastThemeFromOutput(output, "ApplyInitialOrlandeauTheme - theme:");
+                    var lastCloudTheme = GetLastThemeFromOutput(output, "Applying initial Cloud theme:");
+                    var lastOrlandeauTheme = GetLastThemeFromOutput(output, "Applying initial Orlandeau theme:");
 
                     lastCloudTheme.Should().Be("sephiroth_black", "Cloud's theme should not be reset to original");
                     lastOrlandeauTheme.Should().Be("thunder_god", "Orlandeau's theme should not be reset to original");

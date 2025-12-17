@@ -15,14 +15,15 @@ namespace FFTColorCustomizer.Tests
         {
             var type = typeof(IModLoaderV1);
 
-            Console.WriteLine($"Interface: {type.FullName}");
-            Console.WriteLine($"Methods:");
+            // Console output disabled to avoid test failures with closed TextWriter
+            // Console.WriteLine($"Interface: {type.FullName}");
+            // Console.WriteLine($"Methods:");
 
             foreach (var method in type.GetMethods())
             {
                 var parameters = method.GetParameters();
                 var paramStr = string.Join(", ", parameters.Select(p => $"{p.ParameterType.Name} {p.Name}"));
-                Console.WriteLine($"  - {method.ReturnType.Name} {method.Name}({paramStr})");
+                // Console.WriteLine($"  - {method.ReturnType.Name} {method.Name}({paramStr})");
             }
 
             // Check for extension methods
@@ -38,12 +39,12 @@ namespace FFTColorCustomizer.Tests
 
                 if (extensionMethods.Any())
                 {
-                    Console.WriteLine($"\nExtension methods in {extType.Name}:");
+                    // Console.WriteLine($"\nExtension methods in {extType.Name}:");
                     foreach (var method in extensionMethods)
                     {
                         var parameters = method.GetParameters().Skip(1);
                         var paramStr = string.Join(", ", parameters.Select(p => $"{p.ParameterType.Name} {p.Name}"));
-                        Console.WriteLine($"  - {method.ReturnType.Name} {method.Name}({paramStr})");
+                        // Console.WriteLine($"  - {method.ReturnType.Name} {method.Name}({paramStr})");
                     }
                 }
             }

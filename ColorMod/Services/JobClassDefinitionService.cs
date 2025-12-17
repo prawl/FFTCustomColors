@@ -46,18 +46,18 @@ namespace FFTColorCustomizer.Services
             try
             {
                 var jsonPath = Path.Combine(_dataPath, "JobClasses.json");
-                Console.WriteLine($"[FFT Color Mod] Looking for JobClasses.json at: {jsonPath}");
+                ModLogger.LogDebug($"Looking for JobClasses.json at: {jsonPath}");
 
                 if (!File.Exists(jsonPath))
                 {
-                    Console.WriteLine($"[FFT Color Mod] JobClasses.json not found at: {jsonPath}");
+                    ModLogger.LogDebug($"JobClasses.json not found at: {jsonPath}");
                     ModLogger.LogWarning($"JobClasses.json not found at: {jsonPath}");
 
                     // Try fallback to source location
                     var fallbackPath = Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory, ColorModConstants.JobClassesFile);
                     if (File.Exists(fallbackPath))
                     {
-                        Console.WriteLine($"[FFT Color Mod] Using fallback JobClasses.json at: {fallbackPath}");
+                        ModLogger.LogDebug($"Using fallback JobClasses.json at: {fallbackPath}");
                         jsonPath = fallbackPath;
                     }
                     else
@@ -81,7 +81,7 @@ namespace FFTColorCustomizer.Services
                             _availableThemes.Add(themeName);
                         }
                     }
-                    Console.WriteLine($"[FFT Color Mod] Loaded {_availableThemes.Count} available themes from JobClasses.json: {string.Join(", ", _availableThemes)}");
+                    ModLogger.Log($"Loaded {_availableThemes.Count} available themes from JobClasses.json: {string.Join(", ", _availableThemes)}");
                     ModLogger.Log($"Loaded {_availableThemes.Count} available themes from JobClasses.json");
                 }
 
