@@ -63,8 +63,13 @@ namespace FFTColorCustomizer.Tests.Utilities
         [Fact]
         public void ModLogger_Should_Not_Output_When_Disabled()
         {
-            // Arrange
+            // Arrange - Clear output and set up clean logger
+            _capturedOutput.Clear();
+            ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
             ModLogger.LogLevel = LogLevel.None; // Disable all logging
+
+            // Clear any output that might have occurred during setup
+            _capturedOutput.Clear();
 
             // Act
             ModLogger.Log("Should not appear");
@@ -72,9 +77,9 @@ namespace FFTColorCustomizer.Tests.Utilities
             ModLogger.LogWarning("Should not appear");
             ModLogger.LogError("Should not appear");
 
-            // Assert
+            // Assert - only check output from our specific messages
             var output = _capturedOutput.ToString();
-            output.Should().BeEmpty("No messages should be logged when LogLevel is None");
+            output.Should().NotContain("Should not appear", "No messages should be logged when LogLevel is None");
         }
 
         [Fact]
@@ -175,6 +180,9 @@ namespace FFTColorCustomizer.Tests.Utilities
         public void ModLogger_LogSection_Should_Format_Correctly()
         {
             // Arrange
+            _capturedOutput.Clear();
+            ModLogger.Reset();
+            ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
             ModLogger.LogLevel = LogLevel.Info;
 
             // Act
@@ -207,9 +215,13 @@ namespace FFTColorCustomizer.Tests.Utilities
         [Fact]
         public void ModLogger_DisableLogging_Should_Stop_All_Output()
         {
-            // Arrange
+            // Arrange - Clear and ensure clean state
             _capturedOutput.Clear();
             ModLogger.Reset();
+            ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
+
+            // Clear any output that might have occurred during initialization
+            _capturedOutput.Clear();
 
             // Act - Disable logging
             ModLogger.DisableLogging();

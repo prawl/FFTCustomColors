@@ -192,10 +192,10 @@ namespace FFTColorCustomizer.Core.ModComponents
                     // not the User config directory. The mod is installed in Mods/FFTColorCustomizer
                     string actualModPath = GetActualModPath(_configPath);
 
-                    Console.WriteLine($"[DEBUG] OpenConfigurationUI - configPath: {_configPath}");
-                    Console.WriteLine($"[DEBUG] OpenConfigurationUI - actualModPath: {actualModPath}");
-                    Console.WriteLine($"[DEBUG] Resources/Previews path: {Path.Combine(actualModPath, "Resources", "Previews")}");
-                    Console.WriteLine($"[DEBUG] Directory exists: {Directory.Exists(Path.Combine(actualModPath, "Resources", "Previews"))}");
+                    ModLogger.LogDebug($"OpenConfigurationUI - configPath: {_configPath}");
+                    ModLogger.LogDebug($"OpenConfigurationUI - actualModPath: {actualModPath}");
+                    ModLogger.LogDebug($"Resources/Previews path: {Path.Combine(actualModPath, "Resources", "Previews")}");
+                    ModLogger.LogDebug($"Directory exists: {Directory.Exists(Path.Combine(actualModPath, "Resources", "Previews"))}");
 
                     var form = new ConfigurationForm(config, _configPath, actualModPath);
 

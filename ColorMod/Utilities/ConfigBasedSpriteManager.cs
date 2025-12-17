@@ -60,7 +60,7 @@ namespace FFTColorCustomizer.Utilities
 
             // Apply story character themes using CharacterDefinitionService
             ApplyStoryCharacterThemes(config);
-            Console.WriteLine($"[FFT Color Mod] ApplyConfiguration completed");
+            ModLogger.Log("ApplyConfiguration completed");
         }
 
         private void ApplyGenericJobThemes(Config config)
@@ -340,16 +340,16 @@ namespace FFTColorCustomizer.Utilities
                 try
                 {
                     File.Copy(sourceFile, destFile, true);
-                    Console.WriteLine($"[FFT Color Mod] SUCCESS: Copied {colorScheme} theme to {destFile}");
+                    ModLogger.LogSuccess($"Copied {colorScheme} theme to {destFile}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[FFT Color Mod] ERROR copying sprite: {ex.Message}");
+                    ModLogger.LogError($"ERROR copying sprite: {ex.Message}");
                 }
             }
             else
             {
-                Console.WriteLine($"[FFT Color Mod] WARNING: Source sprite not found at {sourceFile}");
+                ModLogger.LogWarning($"Source sprite not found at {sourceFile}");
             }
         }
     }

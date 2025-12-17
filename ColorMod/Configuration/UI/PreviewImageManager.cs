@@ -13,12 +13,10 @@ namespace FFTColorCustomizer.Configuration.UI
         public PreviewImageManager(string modPath)
         {
             _modPath = modPath;
-            Console.WriteLine($"[FFT Color Mod] PreviewImageManager initialized with modPath: {modPath}");
-
             // Log what preview path we'll be looking in
             var previewPath = Path.Combine(modPath, "Resources", "Previews");
-            Console.WriteLine($"[FFT Color Mod] Will look for previews in: {previewPath}");
-            ModLogger.Log($"PreviewImageManager initialized with path: {modPath}");
+            ModLogger.Log($"PreviewImageManager initialized with modPath: {modPath}");
+            ModLogger.Log($"Will look for previews in: {previewPath}");
         }
 
         public void UpdateJobPreview(PictureBox pictureBox, string jobName, string theme)
@@ -61,7 +59,6 @@ namespace FFTColorCustomizer.Configuration.UI
             try
             {
                 string imagePath = GetStoryCharacterPreviewPath(characterName, theme);
-                Console.WriteLine($"[FFT Color Mod] Looking for story character preview at: {imagePath}");
                 ModLogger.LogDebug($"Looking for story character preview at: {imagePath}");
 
                 if (File.Exists(imagePath))

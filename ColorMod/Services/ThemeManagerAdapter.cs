@@ -39,7 +39,7 @@ namespace FFTColorCustomizer.Services
 
         public void ApplyInitialThemes()
         {
-            Console.WriteLine("ThemeManagerAdapter.ApplyInitialThemes() called");
+            ModLogger.LogDebug("ThemeManagerAdapter.ApplyInitialThemes() called");
             ApplyInitialOrlandeauTheme();
             ApplyInitialAgriasTheme();
             ApplyInitialCloudTheme();
@@ -74,21 +74,21 @@ namespace FFTColorCustomizer.Services
         private void ApplyInitialOrlandeauTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Orlandeau");
-            Console.WriteLine($"ApplyInitialOrlandeauTheme - theme: {theme}");
+            ModLogger.LogDebug($"ApplyInitialOrlandeauTheme - theme: {theme}");
             ApplyOrlandeauTheme(theme);
         }
 
         private void ApplyInitialAgriasTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Agrias");
-            Console.WriteLine($"ApplyInitialAgriasTheme - theme: {theme}");
+            ModLogger.LogDebug($"ApplyInitialAgriasTheme - theme: {theme}");
             ApplyAgriasTheme(theme);
         }
 
         private void ApplyInitialCloudTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Cloud");
-            Console.WriteLine($"ApplyInitialCloudTheme - theme: {theme}");
+            ModLogger.LogDebug($"ApplyInitialCloudTheme - theme: {theme}");
             ApplyCloudTheme(theme);
         }
 

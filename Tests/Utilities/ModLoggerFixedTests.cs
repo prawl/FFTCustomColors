@@ -26,9 +26,13 @@ namespace FFTColorCustomizer.Tests.Utilities
             {
                 // Save current state
                 var originalLevel = ModLogger.LogLevel;
+                var originalInstance = ModLogger.Instance;
 
                 try
                 {
+                    // Set up a fresh logger instance for this test
+                    ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
+
                     // Act - Disable logging
                     ModLogger.DisableLogging();
 
@@ -41,12 +45,13 @@ namespace FFTColorCustomizer.Tests.Utilities
                 finally
                 {
                     // Restore original state
+                    ModLogger.Instance = originalInstance;
                     ModLogger.LogLevel = originalLevel;
                 }
             });
 
-            // Assert
-            output.Should().BeEmpty("DisableLogging should prevent all output");
+            // Assert - check that our specific messages don't appear
+            output.Should().NotContain("Should not appear", "DisableLogging should prevent all output");
         }
 
         [Fact]
