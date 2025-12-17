@@ -20,7 +20,7 @@
     },
     {
       "name": "Orlandeau",
-      "spriteNames": ["oru", "goru", "voru"],
+      "spriteNames": ["oru"],
       "defaultTheme": "original",
       "availableThemes": ["original", "thunder_god"]
     },
