@@ -112,15 +112,38 @@ namespace FFTColorMod.Services
             // This implementation would use SpriteService
             // For now, copy files directly to maintain compatibility
             var spriteNames = GetSpriteNamesForCharacter(character);
+
             foreach (var spriteName in spriteNames)
             {
-                var sourcePath = Path.Combine(_sourcePath, $"sprites_{theme}", spriteName);
-                var destPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", spriteName);
-
-                if (File.Exists(sourcePath))
+                // Try multiple directory structures for compatibility
+                var possiblePaths = new[]
                 {
+                    // Character-specific theme directories (e.g., sprites_agrias_original)
+                    Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
+                        $"sprites_{character.ToLowerInvariant()}_{theme}", spriteName),
+                    // Generic theme directories (e.g., sprites_original)
+                    Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
+                        $"sprites_{theme}", spriteName),
+                    // Direct sprites path
+                    Path.Combine(_sourcePath, $"sprites_{theme}", spriteName)
+                };
+
+                string sourcePath = null;
+                foreach (var path in possiblePaths)
+                {
+                    if (File.Exists(path))
+                    {
+                        sourcePath = path;
+                        break;
+                    }
+                }
+
+                if (sourcePath != null)
+                {
+                    var destPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", spriteName);
                     Directory.CreateDirectory(Path.GetDirectoryName(destPath));
                     File.Copy(sourcePath, destPath, true);
+                    ModLogger.Log($"Copied {character} sprite from {sourcePath} to {destPath}");
                 }
             }
         }
