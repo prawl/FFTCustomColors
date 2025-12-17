@@ -45,12 +45,13 @@ namespace FFTColorCustomizer.Configuration.UI
             _mainPanel.Controls.Add(label, 0, row);
             _genericCharacterControls.Add(label);
 
-            // Create combo box
-            var comboBox = ConfigUIComponentFactory.CreateThemeComboBox();
+            // Create theme combo box with formatted display
+            var comboBox = new ThemeComboBox();
+            ConfigUIComponentFactory.ApplyThemeComboBoxStyling(comboBox);
             // Get available themes from the job class service
             var themes = GetAvailableGenericThemes();
-            comboBox.DataSource = themes;
-            comboBox.SelectedItem = currentTheme;
+            comboBox.SetThemes(themes);
+            comboBox.SelectedThemeValue = currentTheme;
 
             // Create preview picture box
             var pictureBox = ConfigUIComponentFactory.CreatePreviewPictureBox();
@@ -69,14 +70,13 @@ namespace FFTColorCustomizer.Configuration.UI
             comboBox.Tag = new { JobName = jobName, ExpectedValue = currentTheme, Setter = setter };
 
             // Setup event handler
-            comboBox.SelectedIndexChanged += (s, e) =>
+            comboBox.SelectedThemeChanged += (s, newTheme) =>
             {
                 if (_isInitializing != null && _isInitializing()) return;
 
                 // Check if form is fully loaded using the provided function
-                if (isFullyLoaded != null && isFullyLoaded() && comboBox.SelectedItem != null)
+                if (isFullyLoaded != null && isFullyLoaded() && !string.IsNullOrEmpty(newTheme))
                 {
-                    var newTheme = (string)comboBox.SelectedItem;
                     ModLogger.Log($"Selection changed: {jobName} = {newTheme}");
                     setter(newTheme);
                     UpdateGenericPreviewImage(pictureBox, jobName, newTheme);
@@ -91,8 +91,9 @@ namespace FFTColorCustomizer.Configuration.UI
             _mainPanel.Controls.Add(label, 0, row);
             _storyCharacterControls.Add(label);
 
-            // Create combo box
-            var comboBox = ConfigUIComponentFactory.CreateThemeComboBox();
+            // Create theme combo box with formatted display
+            var comboBox = new ThemeComboBox();
+            ConfigUIComponentFactory.ApplyThemeComboBoxStyling(comboBox);
             var pictureBox = ConfigUIComponentFactory.CreatePreviewPictureBox();
 
             // Get available themes for this story character
@@ -101,20 +102,20 @@ namespace FFTColorCustomizer.Configuration.UI
                 : new[] { "original" }; // fallback if no themes available
 
             ModLogger.LogDebug($"Story character {characterConfig.Name} has {availableThemes.Length} themes: {string.Join(", ", availableThemes)}");
-            comboBox.DataSource = availableThemes;
+            comboBox.SetThemes(availableThemes);
 
             // Setup event handler
-            comboBox.SelectedIndexChanged += (s, e) =>
+            comboBox.SelectedThemeChanged += (s, newTheme) =>
             {
                 if (_isInitializing != null && _isInitializing()) return;
 
                 // Also check if form is loaded for story characters
                 // We need to get the form's _isFullyLoaded state
                 // For now, we'll check if the control's handle is created
-                if (comboBox.IsHandleCreated && comboBox.SelectedItem != null)
+                if (comboBox.IsHandleCreated && !string.IsNullOrEmpty(newTheme))
                 {
-                    characterConfig.SetValue(comboBox.SelectedItem);
-                    UpdateStoryCharacterPreview(pictureBox, characterConfig.PreviewName, comboBox.SelectedItem.ToString());
+                    characterConfig.SetValue(newTheme);
+                    UpdateStoryCharacterPreview(pictureBox, characterConfig.PreviewName, newTheme);
                 }
             };
 
@@ -130,23 +131,8 @@ namespace FFTColorCustomizer.Configuration.UI
             // Force Handle creation
             var handle = comboBox.Handle;
 
-            // Refresh if needed
-            if (comboBox.Items.Count == 0)
-            {
-                comboBox.DataSource = null;
-                comboBox.DataSource = availableThemes;
-                handle = comboBox.Handle;
-            }
-
-            // Set selection
-            for (int i = 0; i < availableThemes.Length; i++)
-            {
-                if (availableThemes[i] == currentValue.ToString())
-                {
-                    comboBox.SelectedIndex = i;
-                    break;
-                }
-            }
+            // Set the initial selection using the internal value
+            comboBox.SelectedThemeValue = currentValue.ToString();
 
             // Track controls
             _storyCharacterControls.Add(comboBox);

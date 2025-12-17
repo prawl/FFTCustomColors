@@ -22,6 +22,16 @@ namespace FFTColorCustomizer.Configuration.UI
             };
         }
 
+        public static void ApplyThemeComboBoxStyling(ComboBox comboBox)
+        {
+            comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBox.Dock = DockStyle.Fill;
+            comboBox.MaxDropDownItems = UIConfiguration.MaxDropDownItems;
+            comboBox.BackColor = UIConfiguration.ComboBoxBackground;
+            comboBox.ForeColor = UIConfiguration.TextColor;
+            comboBox.FlatStyle = FlatStyle.Flat;
+        }
+
         public static PictureBox CreatePreviewPictureBox()
         {
             return new PictureBox

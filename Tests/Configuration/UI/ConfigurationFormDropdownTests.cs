@@ -90,12 +90,35 @@ namespace Tests.Configuration.UI
             squireDropdown.Should().NotBeNull("Squire Male dropdown should exist");
 
             // Verify dropdown has correct themes available
-            squireDropdown.DataSource.Should().NotBeNull("Dropdown should have data source");
-            var themes = squireDropdown.DataSource as List<string>;
-            themes.Should().Contain("corpse_brigade", "Themes should include corpse_brigade");
+            if (squireDropdown is ThemeComboBox themeComboBox)
+            {
+                // For ThemeComboBox, check Items instead of DataSource
+                themeComboBox.Items.Count.Should().BeGreaterThan(0, "Dropdown should have themes");
+                // Check if the formatted name exists
+                bool hasCorpseBrigade = false;
+                foreach (var item in themeComboBox.Items)
+                {
+                    if (item.ToString() == "Corpse Brigade")
+                    {
+                        hasCorpseBrigade = true;
+                        break;
+                    }
+                }
+                hasCorpseBrigade.Should().BeTrue("Themes should include Corpse Brigade (formatted)");
 
-            // Act - Change selection
-            squireDropdown.SelectedItem = "corpse_brigade";
+                // Act - Change selection using the internal value
+                themeComboBox.SelectedThemeValue = "corpse_brigade";
+            }
+            else
+            {
+                // Fallback for regular ComboBox (shouldn't happen with new code)
+                squireDropdown.DataSource.Should().NotBeNull("Dropdown should have data source");
+                var themes = squireDropdown.DataSource as List<string>;
+                themes.Should().Contain("corpse_brigade", "Themes should include corpse_brigade");
+
+                // Act - Change selection
+                squireDropdown.SelectedItem = "corpse_brigade";
+            }
 
             // Force the event handler to fire (simulate user interaction)
             Application.DoEvents();
@@ -128,7 +151,14 @@ namespace Tests.Configuration.UI
 
             // Act - Change selection
             // Set selection directly to the theme value
-            agriasDropdown.SelectedItem = "ash_dark";
+            if (agriasDropdown is ThemeComboBox themeComboBox)
+            {
+                themeComboBox.SelectedThemeValue = "ash_dark";
+            }
+            else
+            {
+                agriasDropdown.SelectedItem = "ash_dark";
+            }
 
             Application.DoEvents();
 
@@ -172,7 +202,14 @@ namespace Tests.Configuration.UI
             archerDropdown.Should().NotBeNull();
 
             // Try to change before Show
-            archerDropdown.SelectedItem = "lucavi";
+            if (archerDropdown is ThemeComboBox themeComboBox)
+            {
+                themeComboBox.SelectedThemeValue = "lucavi";
+            }
+            else
+            {
+                archerDropdown.SelectedItem = "lucavi";
+            }
             Application.DoEvents();
 
             // Should not save yet
@@ -221,7 +258,14 @@ namespace Tests.Configuration.UI
             var initialImage = monkPreview.Image;
 
             // Act - Change selection
-            monkDropdown.SelectedItem = "lucavi";
+            if (monkDropdown is ThemeComboBox themeComboBox)
+            {
+                themeComboBox.SelectedThemeValue = "lucavi";
+            }
+            else
+            {
+                monkDropdown.SelectedItem = "lucavi";
+            }
             Application.DoEvents();
 
             // Assert - Preview should update
@@ -264,19 +308,39 @@ namespace Tests.Configuration.UI
             chemistDropdown.Should().NotBeNull("Chemist dropdown should be found");
             knightDropdown.Should().NotBeNull("Knight dropdown should be found");
 
-            // Check available themes
-            squireDropdown.DataSource.Should().NotBeNull("Squire dropdown should have data source");
-            var themes = squireDropdown.DataSource as List<string>;
-            themes.Should().Contain("corpse_brigade", "Themes should include corpse_brigade");
-
-            // Set new values
-            squireDropdown.SelectedItem = "corpse_brigade";
+            // Set new values based on dropdown type
+            if (squireDropdown is ThemeComboBox squireTheme)
+            {
+                squireTheme.Items.Count.Should().BeGreaterThan(0, "Squire dropdown should have themes");
+                squireTheme.SelectedThemeValue = "corpse_brigade";
+            }
+            else
+            {
+                squireDropdown.DataSource.Should().NotBeNull("Squire dropdown should have data source");
+                var themes = squireDropdown.DataSource as List<string>;
+                themes.Should().Contain("corpse_brigade", "Themes should include corpse_brigade");
+                squireDropdown.SelectedItem = "corpse_brigade";
+            }
             Application.DoEvents(); // Process this change
 
-            chemistDropdown.SelectedItem = "lucavi";
+            if (chemistDropdown is ThemeComboBox chemistTheme)
+            {
+                chemistTheme.SelectedThemeValue = "lucavi";
+            }
+            else
+            {
+                chemistDropdown.SelectedItem = "lucavi";
+            }
             Application.DoEvents(); // Process this change
 
-            knightDropdown.SelectedItem = "northern_sky";
+            if (knightDropdown is ThemeComboBox knightTheme)
+            {
+                knightTheme.SelectedThemeValue = "northern_sky";
+            }
+            else
+            {
+                knightDropdown.SelectedItem = "northern_sky";
+            }
             Application.DoEvents(); // Process this change
 
             // Force the events to process
