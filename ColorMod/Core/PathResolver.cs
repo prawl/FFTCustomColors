@@ -30,7 +30,7 @@ namespace FFTColorMod.Core
             var service = new CharacterDefinitionService();
 
             // Try to load from JSON file
-            var jsonPath = GetDataPath("StoryCharacters.json");
+            var jsonPath = GetDataPath(ColorModConstants.StoryCharactersFile);
             if (File.Exists(jsonPath))
             {
                 service.LoadFromJson(jsonPath);
@@ -41,32 +41,32 @@ namespace FFTColorMod.Core
 
         public string GetDataPath(string relativePath)
         {
-            return Path.Combine(ModRootPath, "Data", relativePath);
+            return Path.Combine(ModRootPath, ColorModConstants.DataDirectory, relativePath);
         }
 
         public string GetSpritePath(string characterName, string themeName, string spriteFileName)
         {
-            return Path.Combine(SourcePath, "FFTIVC", "data", "enhanced",
-                "fftpack", "unit", themeName, spriteFileName);
+            return Path.Combine(SourcePath, ColorModConstants.FFTIVCPath, "data", ColorModConstants.EnhancedPath,
+                ColorModConstants.FFTPackPath, ColorModConstants.UnitPath, themeName, spriteFileName);
         }
 
         public string GetThemeDirectory(string characterName, string themeName)
         {
-            return Path.Combine(SourcePath, "FFTIVC", "data", "enhanced",
-                "fftpack", "unit", themeName);
+            return Path.Combine(SourcePath, ColorModConstants.FFTIVCPath, "data", ColorModConstants.EnhancedPath,
+                ColorModConstants.FFTPackPath, ColorModConstants.UnitPath, themeName);
         }
 
         public string GetConfigPath()
         {
-            return Path.Combine(UserConfigPath, "Config.json");
+            return Path.Combine(UserConfigPath, ColorModConstants.ConfigFileName);
         }
 
         public string GetPreviewImagePath(string characterName, string themeName)
         {
             var characterLower = characterName.ToLowerInvariant();
-            var fileName = $"preview_{characterLower}_{themeName}.png";
-            return Path.Combine(SourcePath, "FFTIVC", "data", "enhanced",
-                "fftpack", "unit", themeName, fileName);
+            var fileName = $"{ColorModConstants.PreviewPrefix}{characterLower}_{themeName}{ColorModConstants.PngExtension}";
+            return Path.Combine(SourcePath, ColorModConstants.FFTIVCPath, "data", ColorModConstants.EnhancedPath,
+                ColorModConstants.FFTPackPath, ColorModConstants.UnitPath, themeName, fileName);
         }
 
         public string ResolveFirstExistingPath(params string[] candidates)
@@ -83,7 +83,8 @@ namespace FFTColorMod.Core
 
         public IEnumerable<string> GetAvailableThemes(string characterName)
         {
-            var unitPath = Path.Combine(SourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var unitPath = Path.Combine(SourcePath, ColorModConstants.FFTIVCPath, "data",
+                ColorModConstants.EnhancedPath, ColorModConstants.FFTPackPath, ColorModConstants.UnitPath);
 
             if (!Directory.Exists(unitPath))
             {
@@ -117,7 +118,7 @@ namespace FFTColorMod.Core
             }
 
             // Check if any files match the character's sprite pattern
-            var files = Directory.GetFiles(themeDirectory, $"{spritePrefix}*.bmp");
+            var files = Directory.GetFiles(themeDirectory, $"{spritePrefix}*{ColorModConstants.BitmapExtension}");
             return files.Length > 0;
         }
 
@@ -128,7 +129,7 @@ namespace FFTColorMod.Core
             if (character != null && character.SpriteNames != null && character.SpriteNames.Length > 0)
             {
                 // Use the first sprite name and add battle_ prefix
-                return $"battle_{character.SpriteNames[0]}";
+                return $"{ColorModConstants.BattlePrefix}{character.SpriteNames[0]}";
             }
 
             // Fallback for job classes if needed

@@ -27,7 +27,15 @@ namespace FFTColorMod.Utilities
         {
             if (LogLevel <= LogLevel.Info)
             {
-                Console.WriteLine($"{PREFIX} {message ?? string.Empty}");
+                try
+                {
+                    Console.WriteLine($"{PREFIX} {message ?? string.Empty}");
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Console has been disposed (common in tests)
+                    // Silently ignore
+                }
             }
         }
 
