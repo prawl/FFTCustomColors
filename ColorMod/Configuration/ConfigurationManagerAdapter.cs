@@ -102,12 +102,6 @@ namespace FFTColorMod.Configuration
             if (string.IsNullOrEmpty(spriteName))
                 return null;
 
-            // Remove common prefixes/suffixes
-            var normalized = spriteName
-                .Replace("battle_", "")
-                .Replace("_spr", "")
-                .Replace(".bin", "");
-
             // Map specific sprite names to job properties
             var mappings = new Dictionary<string, string>
             {
@@ -129,12 +123,58 @@ namespace FFTColorMod.Configuration
                 // Black Mages (kuro)
                 ["kuro_m"] = "BlackMage_Male",
                 ["kuro_w"] = "BlackMage_Female",
-                // Squires
-                ["squire_m"] = "Squire_Male",
-                ["squire_w"] = "Squire_Female"
+                // Thieves
+                ["thief_m"] = "Thief_Male",
+                ["thief_w"] = "Thief_Female",
+                // Ninjas
+                ["ninja_m"] = "Ninja_Male",
+                ["ninja_w"] = "Ninja_Female",
+                // Squires (mina)
+                ["mina_m"] = "Squire_Male",
+                ["mina_w"] = "Squire_Female",
+                // Time Mages (toki)
+                ["toki_m"] = "TimeMage_Male",
+                ["toki_w"] = "TimeMage_Female",
+                // Summoners (syou)
+                ["syou_m"] = "Summoner_Male",
+                ["syou_w"] = "Summoner_Female",
+                // Samurai (samu)
+                ["samu_m"] = "Samurai_Male",
+                ["samu_w"] = "Samurai_Female",
+                // Dragoons (ryu)
+                ["ryu_m"] = "Dragoon_Male",
+                ["ryu_w"] = "Dragoon_Female",
+                // Geomancers (fusui)
+                ["fusui_m"] = "Geomancer_Male",
+                ["fusui_w"] = "Geomancer_Female",
+                // Oracles/Mystics (onmyo)
+                ["onmyo_m"] = "Mystic_Male",
+                ["onmyo_w"] = "Mystic_Female",
+                // Mediators/Orators (waju)
+                ["waju_m"] = "Mediator_Male",
+                ["waju_w"] = "Mediator_Female",
+                // Dancers (odori - female only)
+                ["odori_w"] = "Dancer_Female",
+                // Bards (gin - male only)
+                ["gin_m"] = "Bard_Male",
+                // Mimes (mono)
+                ["mono_m"] = "Mime_Male",
+                ["mono_w"] = "Mime_Female",
+                // Calculators (san)
+                ["san_m"] = "Calculator_Male",
+                ["san_w"] = "Calculator_Female"
             };
 
-            return mappings.TryGetValue(normalized, out var result) ? result : null;
+            // Check if any mapping key is contained in the sprite name
+            foreach (var mapping in mappings)
+            {
+                if (spriteName.Contains(mapping.Key))
+                {
+                    return mapping.Value;
+                }
+            }
+
+            return null;
         }
 
         public string GetColorSchemeForSprite(string spriteName)
