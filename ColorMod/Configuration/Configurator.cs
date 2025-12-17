@@ -209,6 +209,46 @@ namespace FFTColorCustomizer.Configuration
                     // The ConfigurationManager.SaveConfig already saved the file
                     ModLogger.Log("Config saved via ConfigurationManager");
 
+                    // Apply sprite changes for generic characters
+                    try
+                    {
+                        ModLogger.Log("Applying sprite changes for generic characters...");
+
+                        // Get the actual mod installation path (not the User config path)
+                        string actualModPath = ModFolder ?? string.Empty;
+                        if (saveConfigPath.Contains(@"User\Mods") || saveConfigPath.Contains(@"User/Mods"))
+                        {
+                            // Navigate from User config to actual mod installation
+                            var configDir = Path.GetDirectoryName(saveConfigPath);
+                            if (configDir != null)
+                            {
+                                var userModsIdx = configDir.IndexOf(@"User\Mods", StringComparison.OrdinalIgnoreCase);
+                                if (userModsIdx == -1)
+                                    userModsIdx = configDir.IndexOf(@"User/Mods", StringComparison.OrdinalIgnoreCase);
+
+                                if (userModsIdx >= 0)
+                                {
+                                    var reloadedRoot = configDir.Substring(0, userModsIdx);
+                                    actualModPath = Path.Combine(reloadedRoot, "Mods", "FFTColorCustomizer");
+                                    ModLogger.Log($"Using actual mod path for sprites: {actualModPath}");
+                                }
+                            }
+                        }
+
+                        // Initialize sprite manager and apply configuration
+                        var spriteManager = new Utilities.ConfigBasedSpriteManager(
+                            actualModPath,
+                            saveConfigManager,
+                            @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod");
+
+                        spriteManager.UpdateConfiguration(config);
+                        ModLogger.Log("Sprite changes applied successfully");
+                    }
+                    catch (Exception spriteEx)
+                    {
+                        ModLogger.LogError($"applying sprites: {spriteEx.Message}");
+                    }
+
                     // Notify Mod instance if it exists to update sprite manager
                     // This ensures the mod is aware of configuration changes made from Reloaded-II menu
                     ModLogger.Log("Configuration save process completed");

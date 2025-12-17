@@ -84,7 +84,7 @@ public class Mod : IMod, IConfigurable
     public Mod(IServiceContainer container) : this(new ModContext())
     {
         // Initialize configuration immediately when using DI
-        var configPath = Path.Combine(_modPath, ConfigFileName);
+        var configPath = GetUserConfigPath();
         InitializeConfiguration(configPath);
     }
 
@@ -198,9 +198,42 @@ public class Mod : IMod, IConfigurable
     {
         if (_configCoordinator == null)
         {
-            var configPath = Path.Combine(_modPath, ConfigFileName);
+            var configPath = GetUserConfigPath();
             InitializeConfiguration(configPath);
         }
+    }
+
+    private string GetUserConfigPath()
+    {
+        // Navigate from Mods/FFTColorCustomizer to User/Mods/ptyra.fft.colorcustomizer
+        var parent = Directory.GetParent(_modPath);
+        if (parent != null)
+        {
+            var grandParent = Directory.GetParent(parent.FullName);
+            if (grandParent != null)
+            {
+                var reloadedRoot = grandParent.FullName;
+                var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "ptyra.fft.colorcustomizer", ConfigFileName);
+
+                Console.WriteLine($"[FFT Color Mod] Looking for user config at: {userConfigPath}");
+
+                // Use User config if it exists
+                if (File.Exists(userConfigPath))
+                {
+                    Console.WriteLine($"[FFT Color Mod] Using user config: {userConfigPath}");
+                    return userConfigPath;
+                }
+                else
+                {
+                    Console.WriteLine($"[FFT Color Mod] User config not found, falling back to mod config");
+                }
+            }
+        }
+
+        // Fallback to mod directory config
+        var fallbackPath = Path.Combine(_modPath, ConfigFileName);
+        Console.WriteLine($"[FFT Color Mod] Using fallback config: {fallbackPath}");
+        return fallbackPath;
     }
 
     public void Suspend() => ModLogger.Log("Mod suspended");

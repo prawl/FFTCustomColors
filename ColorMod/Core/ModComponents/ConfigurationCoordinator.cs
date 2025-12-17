@@ -23,9 +23,33 @@ namespace FFTColorCustomizer.Core.ModComponents
             _configPath = configPath ?? throw new ArgumentNullException(nameof(configPath));
             _configManager = new ConfigurationManager(_configPath);
 
-            // Initialize sprite manager
-            var modPath = Path.GetDirectoryName(_configPath);
+            // Initialize sprite manager with the actual mod installation path
+            var modPath = GetActualModPath(_configPath);
             _spriteManager = new ConfigBasedSpriteManager(modPath, _configManager, DevSourcePath);
+        }
+
+        private string GetActualModPath(string configPath)
+        {
+            // If config path is in User directory, find the actual mod installation
+            if (configPath.Contains(@"User\Mods") || configPath.Contains(@"User/Mods"))
+            {
+                var configDir = Path.GetDirectoryName(configPath);
+                if (configDir != null)
+                {
+                    var userModsIdx = configDir.IndexOf(@"User\Mods", StringComparison.OrdinalIgnoreCase);
+                    if (userModsIdx == -1)
+                        userModsIdx = configDir.IndexOf(@"User/Mods", StringComparison.OrdinalIgnoreCase);
+
+                    if (userModsIdx >= 0)
+                    {
+                        var reloadedRoot = configDir.Substring(0, userModsIdx);
+                        return Path.Combine(reloadedRoot, "Mods", "FFTColorCustomizer");
+                    }
+                }
+            }
+
+            // Fallback to config directory
+            return Path.GetDirectoryName(configPath);
         }
 
         /// <summary>
@@ -164,8 +188,16 @@ namespace FFTColorCustomizer.Core.ModComponents
                 var config = GetConfiguration();
                 if (config != null)
                 {
-                    var modPath = Path.GetDirectoryName(_configPath) ?? string.Empty;
-                    var form = new ConfigurationForm(config, _configPath, modPath);
+                    // For resources like preview images, we need the actual mod installation path,
+                    // not the User config directory. The mod is installed in Mods/FFTColorCustomizer
+                    string actualModPath = GetActualModPath(_configPath);
+
+                    Console.WriteLine($"[DEBUG] OpenConfigurationUI - configPath: {_configPath}");
+                    Console.WriteLine($"[DEBUG] OpenConfigurationUI - actualModPath: {actualModPath}");
+                    Console.WriteLine($"[DEBUG] Resources/Previews path: {Path.Combine(actualModPath, "Resources", "Previews")}");
+                    Console.WriteLine($"[DEBUG] Directory exists: {Directory.Exists(Path.Combine(actualModPath, "Resources", "Previews"))}");
+
+                    var form = new ConfigurationForm(config, _configPath, actualModPath);
 
                     if (form.ShowDialog() == DialogResult.OK)
                     {
