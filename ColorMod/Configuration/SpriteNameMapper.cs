@@ -25,6 +25,14 @@ namespace FFTColorMod.Configuration
             _jobClassService = JobClassServiceSingleton.Instance;
         }
 
+        public SpriteNameMapper(CharacterDefinitionService characterService, JobClassDefinitionService jobClassService)
+        {
+            _config = new Config(); // Default config
+            _genericRegistry = GenericCharacterRegistry.Instance;
+            _characterService = characterService ?? throw new ArgumentNullException(nameof(characterService));
+            _jobClassService = jobClassService ?? throw new ArgumentNullException(nameof(jobClassService));
+        }
+
         /// <summary>
         /// Gets the character key for a given sprite name
         /// </summary>
