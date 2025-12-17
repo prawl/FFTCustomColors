@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using FFTColorCustomizer.Core;
 using FFTColorCustomizer.Utilities;
 
 namespace FFTColorCustomizer.Services
@@ -27,7 +28,7 @@ namespace FFTColorCustomizer.Services
             if (string.IsNullOrEmpty(modPath))
             {
                 // Use source path during development
-                _dataPath = Path.Combine(@"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod", "Data");
+                _dataPath = Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory);
             }
             else
             {
@@ -53,7 +54,7 @@ namespace FFTColorCustomizer.Services
                     ModLogger.LogWarning($"JobClasses.json not found at: {jsonPath}");
 
                     // Try fallback to source location
-                    var fallbackPath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Data\JobClasses.json";
+                    var fallbackPath = Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory, ColorModConstants.JobClassesFile);
                     if (File.Exists(fallbackPath))
                     {
                         Console.WriteLine($"[FFT Color Mod] Using fallback JobClasses.json at: {fallbackPath}");

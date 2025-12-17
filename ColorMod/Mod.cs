@@ -122,7 +122,9 @@ public class Mod : IMod, IConfigurable
 
             // Initialize coordinators and managers
             _configCoordinator = new ConfigurationCoordinator(configPath);
-            var themeManager = _initializer?.InitializeThemeManager();
+
+            // Get the theme manager from the coordinator (use the same instance everywhere)
+            var themeManager = _themeCoordinator?.GetThemeManager();
 
             // Setup hotkey handling
             if (themeManager != null)
@@ -173,8 +175,12 @@ public class Mod : IMod, IConfigurable
         Console.WriteLine($"[FFT Color Mod] After EnsureConfig - _configCoordinator exists: {_configCoordinator != null}");
         Console.WriteLine($"[FFT Color Mod] After EnsureConfig - _hotkeyManager exists: {_hotkeyManager != null}");
 
-        // Apply initial themes
-        _themeCoordinator?.InitializeThemes();
+        // Apply initial themes from configuration
+        var configuration = GetConfiguration();
+        if (configuration != null)
+        {
+            ApplyConfigurationThemes(configuration);
+        }
 
         // Start hotkey monitoring
         if (_hotkeyHandler != null)

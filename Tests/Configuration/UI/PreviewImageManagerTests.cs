@@ -17,7 +17,7 @@ namespace FFTColorCustomizer.Tests
             // This test verifies the fix for preview images showing as empty boxes
 
             // Arrange
-            var testModPath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Resources";
+            var testModPath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Resources";
             var manager = new PreviewImageManager(testModPath);
             var pictureBox = new PictureBox();
 
@@ -47,7 +47,7 @@ namespace FFTColorCustomizer.Tests
             // TLDR: Agrias ash_dark preview should load from the correct path
 
             // Arrange
-            var testModPath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Resources";
+            var testModPath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Resources";
             var manager = new PreviewImageManager(testModPath);
             var pictureBox = new PictureBox();
 
@@ -77,7 +77,7 @@ namespace FFTColorCustomizer.Tests
             // TLDR: Orlandeau original preview should load from the correct path
 
             // Arrange
-            var testModPath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Resources";
+            var testModPath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Resources";
             var manager = new PreviewImageManager(testModPath);
             var pictureBox = new PictureBox();
 
@@ -107,7 +107,7 @@ namespace FFTColorCustomizer.Tests
             // TLDR: Orlandeau thunder_god preview should load from the correct path
 
             // Arrange
-            var testModPath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Resources";
+            var testModPath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Resources";
             var manager = new PreviewImageManager(testModPath);
             var pictureBox = new PictureBox();
 

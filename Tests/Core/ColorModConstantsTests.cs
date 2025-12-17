@@ -46,8 +46,8 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Assert
             Assert.Equal("FFTColorCustomizer", ColorModConstants.ModId);
-            Assert.Equal("FFT Color Mod", ColorModConstants.ModName);
-            Assert.Equal("ptyra.fft.colormod", ColorModConstants.ModNamespace);
+            Assert.Equal("FFT Color Customizer", ColorModConstants.ModName);
+            Assert.Equal("ptyra.fft.colorcustomizer", ColorModConstants.ModNamespace);
         }
 
         [Fact]

@@ -25,11 +25,11 @@ namespace FFTColorCustomizer.Tests
             _testRoot = Path.Combine(Path.GetTempPath(), $"test_startup_{Guid.NewGuid()}");
 
             // Mod installation directory
-            _testModDir = Path.Combine(_testRoot, "Mods", "FFT_Color_Mod");
+            _testModDir = Path.Combine(_testRoot, "Mods", "FFTColorCustomizer");
             _modConfigPath = Path.Combine(_testModDir, "Config.json");
 
             // User configuration directory
-            _testUserDir = Path.Combine(_testRoot, "User", "Mods", "ptyra.fft.colormod");
+            _testUserDir = Path.Combine(_testRoot, "User", "Mods", "ptyra.fft.colorcustomizer");
             _userConfigPath = Path.Combine(_testUserDir, "Config.json");
 
             Directory.CreateDirectory(_testModDir);
@@ -65,7 +65,7 @@ namespace FFTColorCustomizer.Tests
 
             // Calculate the User config directory (like Startup.cs does now)
             var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modDirectory));
-            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colormod");
+            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colorcustomizer");
 
             var configurator = new Configurator(userConfigDir);  // Now using User directory!
             var config = configurator.GetConfiguration<Config>(0);
@@ -82,14 +82,14 @@ namespace FFTColorCustomizer.Tests
         public void ConfigDirectory_PathCalculation_IsCorrect()
         {
             // Given a mod installed at standard Reloaded location
-            var modDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFT_Color_Mod";
+            var modDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFTColorCustomizer";
 
             // The user config should be at
-            var expectedUserDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\ptyra.fft.colormod";
+            var expectedUserDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\ptyra.fft.colorcustomizer";
 
             // Calculate it the way we do in code
             var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modDir));
-            var actualUserDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colormod");
+            var actualUserDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colorcustomizer");
 
             Assert.Equal(expectedUserDir, actualUserDir);
         }

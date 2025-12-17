@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Core;
 
 namespace FFTColorCustomizer.Utilities
 {
@@ -21,7 +22,7 @@ namespace FFTColorCustomizer.Utilities
             // Determine path to Data directory
             if (string.IsNullOrEmpty(modPath))
             {
-                _dataPath = Path.Combine(@"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod", "Data");
+                _dataPath = Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory);
             }
             else
             {

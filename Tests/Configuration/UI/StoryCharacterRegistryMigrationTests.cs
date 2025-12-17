@@ -156,7 +156,7 @@ namespace Tests.Configuration.UI
                 System.IO.Path.Combine(currentDir, "ColorMod", "Data", "StoryCharacters.json"),
 
                 // Absolute path as fallback
-                @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Data\StoryCharacters.json"
+                @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\StoryCharacters.json"
             };
 
             foreach (var path in possiblePaths)
@@ -179,7 +179,7 @@ namespace Tests.Configuration.UI
             }
 
             // If nothing found, return the absolute path so we get a meaningful error
-            var fallbackPath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Data\StoryCharacters.json";
+            var fallbackPath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\StoryCharacters.json";
             System.Console.WriteLine($"No JSON file found, returning fallback: {fallbackPath}");
             return fallbackPath;
         }

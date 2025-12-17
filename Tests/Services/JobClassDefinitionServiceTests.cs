@@ -83,7 +83,7 @@ namespace FFTColorCustomizer.Tests.Services
             Directory.CreateDirectory(tempModPath);
 
             // Ensure the fallback location has the file (this test assumes the dev environment)
-            var fallbackPath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Data\JobClasses.json";
+            var fallbackPath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\JobClasses.json";
 
             // Only run this test if the fallback file exists
             if (File.Exists(fallbackPath))

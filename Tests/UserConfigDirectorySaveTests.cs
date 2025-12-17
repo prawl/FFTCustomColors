@@ -19,11 +19,11 @@ namespace FFTColorCustomizer.Tests
             var testRoot = Path.Combine(Path.GetTempPath(), $"test_reloaded_{Guid.NewGuid()}");
 
             // Mod installation directory
-            _testModDir = Path.Combine(testRoot, "Mods", "FFT_Color_Mod");
+            _testModDir = Path.Combine(testRoot, "Mods", "FFTColorCustomizer");
             _modConfigPath = Path.Combine(_testModDir, "Config.json");
 
             // User configuration directory (where Reloaded-II actually stores user configs)
-            _testUserDir = Path.Combine(testRoot, "User", "Mods", "ptyra.fft.colormod");
+            _testUserDir = Path.Combine(testRoot, "User", "Mods", "ptyra.fft.colorcustomizer");
             _userConfigPath = Path.Combine(_testUserDir, "Config.json");
 
             Directory.CreateDirectory(_testModDir);
@@ -89,18 +89,18 @@ namespace FFTColorCustomizer.Tests
         public void FindUserConfigDirectory_ShouldConstructCorrectPath()
         {
             // Arrange
-            // Given the mod is installed at: .../Reloaded/Mods/FFT_Color_Mod
-            var modInstallPath = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFT_Color_Mod";
+            // Given the mod is installed at: .../Reloaded/Mods/FFTColorCustomizer
+            var modInstallPath = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFTColorCustomizer";
 
             // Act
-            // The User config should be at: .../Reloaded/User/Mods/ptyra.fft.colormod/Config.json
+            // The User config should be at: .../Reloaded/User/Mods/ptyra.fft.colorcustomizer/Config.json
             var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modInstallPath));
-            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colormod");
+            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colorcustomizer");
             var userConfigPath = Path.Combine(userConfigDir, "Config.json");
 
             // Assert
-            Assert.Equal(@"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\ptyra.fft.colormod", userConfigDir);
-            Assert.Equal(@"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\ptyra.fft.colormod\Config.json", userConfigPath);
+            Assert.Equal(@"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\ptyra.fft.colorcustomizer", userConfigDir);
+            Assert.Equal(@"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json", userConfigPath);
         }
     }
 }

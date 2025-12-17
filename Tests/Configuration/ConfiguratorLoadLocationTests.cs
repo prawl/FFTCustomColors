@@ -19,7 +19,7 @@ namespace FFTColorCustomizer.Tests
             var testRoot = Path.Combine(Path.GetTempPath(), $"test_configurator_{Guid.NewGuid()}");
 
             // Mod installation directory
-            _testModDir = Path.Combine(testRoot, "Mods", "FFT_Color_Mod");
+            _testModDir = Path.Combine(testRoot, "Mods", "FFTColorCustomizer");
             _modConfigPath = Path.Combine(_testModDir, "Config.json");
 
             // User configuration directory (where Reloaded-II actually stores user configs)

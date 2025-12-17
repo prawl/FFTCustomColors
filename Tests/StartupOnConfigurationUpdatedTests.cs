@@ -14,8 +14,8 @@ namespace FFTColorCustomizer.Tests
             var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
 
             // Simulate the Reloaded directory structure
-            var modDir = Path.Combine(tempDir, "Mods", "FFT_Color_Mod");
-            var userDir = Path.Combine(tempDir, "User", "Mods", "ptyra.fft.colormod");
+            var modDir = Path.Combine(tempDir, "Mods", "FFTColorCustomizer");
+            var userDir = Path.Combine(tempDir, "User", "Mods", "ptyra.fft.colorcustomizer");
             Directory.CreateDirectory(modDir);
             Directory.CreateDirectory(userDir);
 
@@ -77,7 +77,7 @@ namespace FFTColorCustomizer.Tests
         {
             var modPath = _modDirectory;
             var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modPath));
-            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colormod");
+            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "ptyra.fft.colorcustomizer");
             var userConfigPath = Path.Combine(userConfigDir, "Config.json");
 
             // Use ConfigurationUpdater to handle merge logic

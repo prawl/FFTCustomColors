@@ -115,3 +115,92 @@ Created focused coordinator classes to handle specific domains:
 
 ## Conclusion
 This refactoring session successfully transformed Mod.cs from a monolithic class handling everything into a thin orchestrator that delegates to specialized components. The architecture is now cleaner, more testable, and easier to maintain. The coordinator pattern provides clear boundaries and responsibilities, making the codebase more approachable for future development.
+
+---
+
+## Session: 2024-12-17 - Project Rename and Bug Fixes
+
+### Overview
+Fixed critical issues after renaming project from FFT_Color_Mod to FFTColorCustomizer. Resolved configuration persistence problems and duplicate theme initialization that was resetting character themes.
+
+## Major Issues Fixed
+
+### 1. Project Rename Path Issues
+- **Problem**: After renaming from FFT_Color_Mod to FFTColorCustomizer, hardcoded paths throughout the codebase were broken
+- **Solution**: Updated all hardcoded paths to use ColorModConstants
+- **Files Fixed**:
+  - StoryCharacterThemeManager.cs
+  - ConfigBasedSpriteManager.cs
+  - JobClassDefinitionService.cs
+  - CharacterServiceSingleton.cs
+  - ModInitializer.cs
+  - BuildLinked.ps1
+  - Multiple test files
+
+### 2. Configuration Not Persisting at Startup
+- **Problem**: Story character themes (Cloud, Orlandeau) weren't being applied at game startup despite being saved correctly
+- **Root Cause**:
+  1. Config was loading from wrong path (mod installation instead of User directory)
+  2. ApplyInitialThemes() was being called twice - second call reset themes to "original"
+- **Solution**:
+  1. Fixed config path resolution to use User directory (ptyra.fft.colorcustomizer)
+  2. Removed duplicate _themeCoordinator?.InitializeThemes() call in Start method
+  3. Added proper config application at startup
+
+### 3. Missing Data Files in Deployment
+- **Problem**: StoryCharacters.json and JobClasses.json weren't being deployed with the mod
+- **Solution**: Updated BuildLinked.ps1 to copy Data directory with JSON files
+
+## Code Changes
+
+### Key Fixes Applied
+1. **Mod.cs**:
+   - Fixed DetermineUserConfigPath() to properly navigate to User config
+   - Removed duplicate InitializeThemes() call that was resetting configurations
+   - Added proper initialization order in ApplyInitialConfiguration()
+
+2. **ConfigurationCoordinator.cs**:
+   - Fixed to receive both config path and mod installation path separately
+   - Ensured preview images load from correct mod installation directory
+
+3. **BuildLinked.ps1**:
+   - Added Data directory copying to deployment script
+   - Ensures StoryCharacters.json and JobClasses.json are included
+
+4. **Constants Usage**:
+   - Replaced all instances of "FFT_Color_Mod" with ColorModConstants.DevSourcePath
+   - Updated mod namespace from "ptyra.fft.colormod" to "ptyra.fft.colorcustomizer"
+
+## Test Results
+- **Initial state**: 16 failing tests after project rename
+- **After path fixes**: 9 failing tests
+- **Final state**: Tests pending full update of test file paths
+
+### Tests Written
+- Added `Start_Should_Call_ApplyInitialThemes_Only_Once()` test to prevent regression
+
+## Technical Details
+
+### Configuration Loading Flow (Fixed)
+1. Mod starts → Start() method called
+2. EnsureConfigurationInitialized() determines User config path
+3. Configuration loaded from: `Reloaded\User\Mods\ptyra.fft.colorcustomizer\Config.json`
+4. ApplyInitialConfiguration() called once (not twice)
+5. Themes applied correctly without being reset
+
+### Sprite Path Resolution (Fixed)
+- Source sprites: `C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\FFTIVC\...`
+- Destination: `Reloaded\Mods\FFTColorCustomizer\FFTIVC\...` (not User directory)
+- Original sprites: All use common `sprites_original/` directory
+
+## Remaining Work
+- Complete fixing all test file references to FFT_Color_Mod
+- Update remaining scripts (RenameProject.ps1, Publish.ps1, etc.)
+- Full test suite validation after all path updates
+
+## Lessons Learned
+1. **Use constants everywhere**: Hardcoded paths cause major issues during refactoring
+2. **Trace initialization flow**: Duplicate calls in initialization can override configurations
+3. **Separate concerns**: Config path ≠ mod installation path
+4. **Deploy all required files**: Missing data files break functionality silently
+5. **Test thoroughly after renames**: Path issues may not be immediately obvious

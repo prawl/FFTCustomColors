@@ -22,10 +22,10 @@ namespace FFTColorCustomizer.Tests
             // - Mod installation directory with Resources/Previews
             // - User config directory (different location) with Config.json
 
-            // Mod installation path (like Reloaded\Mods\FFT_Color_Mod)
+            // Mod installation path (like Reloaded\Mods\FFTColorCustomizer)
             _testModPath = Path.Combine(Path.GetTempPath(), $"FFTColorCustomizerTest_Mod_{Guid.NewGuid()}");
 
-            // User config path (like Reloaded\UserData\FFT_Color_Mod\Config)
+            // User config path (like Reloaded\UserData\FFTColorCustomizer\Config)
             var userDataPath = Path.Combine(Path.GetTempPath(), $"FFTColorCustomizerTest_User_{Guid.NewGuid()}");
             var userConfigDir = Path.Combine(userDataPath, "Config");
             _testConfigPath = Path.Combine(userConfigDir, "Config.json");

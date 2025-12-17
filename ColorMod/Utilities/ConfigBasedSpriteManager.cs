@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Core;
 using FFTColorCustomizer.Services;
 
 namespace FFTColorCustomizer.Utilities
@@ -27,7 +28,7 @@ namespace FFTColorCustomizer.Utilities
             string sourcePath = null)
         {
             _modPath = modPath;
-            _sourcePath = sourcePath ?? @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
+            _sourcePath = sourcePath ?? ColorModConstants.DevSourcePath;
             _configManager = configManager;
             _characterService = characterService;
             _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");

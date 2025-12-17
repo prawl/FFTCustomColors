@@ -4,6 +4,7 @@ using System.Linq;
 using Xunit;
 using ColorMod.Registry;
 using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Core;
 using FFTColorCustomizer.Utilities;
 using FFTColorCustomizer.Services;
 
@@ -36,7 +37,7 @@ namespace Tests.Registry
         private void LoadCharactersFromJson()
         {
             // Use absolute path to the known JSON file location
-            var jsonPath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Data\StoryCharacters.json";
+            var jsonPath = Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile);
 
             if (File.Exists(jsonPath))
             {

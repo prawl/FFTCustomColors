@@ -161,7 +161,7 @@ def batch_generate_theme_previews(theme_name, job_list=None):
         theme_name: Name of the theme (e.g., 'crimson_red', 'original')
         job_list: Optional list of specific jobs to process
     """
-    base_dir = r"C:\Users\ptyRa\Dev\FFT_Color_Mod"
+    base_dir = r"C:\Users\ptyRa\Dev\FFTColorCustomizer"
     sprites_dir = os.path.join(base_dir, "ColorMod", "FFTIVC", "data", "enhanced", "fftpack", "unit", f"sprites_{theme_name}")
     preview_dir = os.path.join(base_dir, "ColorMod", "Resources", "Previews")
 

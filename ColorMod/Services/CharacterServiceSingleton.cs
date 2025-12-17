@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Core;
 
 namespace FFTColorCustomizer.Services
 {
@@ -70,11 +71,11 @@ namespace FFTColorCustomizer.Services
             // Try different possible locations for the JSON file
             var possiblePaths = new[]
             {
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ColorMod", "Data", "StoryCharacters.json"),
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "StoryCharacters.json"),
-                Path.Combine(Directory.GetCurrentDirectory(), "ColorMod", "Data", "StoryCharacters.json"),
-                Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "ColorMod", "Data", "StoryCharacters.json"),
-                @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Data\StoryCharacters.json" // Fallback to known location
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile),
+                Path.Combine(Directory.GetCurrentDirectory(), "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile),
+                Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile),
+                Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile) // Fallback to known location
             };
 
             foreach (var path in possiblePaths)

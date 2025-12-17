@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using Reloaded.Mod.Interfaces;
 using Reloaded.Mod.Interfaces.Internal;
 using FFTColorCustomizer.Utilities;
+using Moq;
 
 namespace FFTColorCustomizer.Tests
 {
@@ -112,6 +113,130 @@ namespace FFTColorCustomizer.Tests
                 if (Directory.Exists(tempAppData))
                     Directory.Delete(tempAppData, recursive: true);
             }
+        }
+
+        [Fact]
+        public void Start_Should_Call_ApplyInitialThemes_Only_Once()
+        {
+            // Arrange
+            var tempAppData = Path.Combine(Path.GetTempPath(), $"TestAppData_{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempAppData);
+            var originalAppData = Environment.GetEnvironmentVariable("APPDATA");
+            Environment.SetEnvironmentVariable("APPDATA", tempAppData);
+
+            try
+            {
+                // Create a test config file with specific theme values
+                // The Mod will look for Config.json in its own directory (where the test assembly is)
+                var testAssemblyLocation = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                var modConfigPath = Path.Combine(testAssemblyLocation, "Config.json");
+
+                // Clean up any existing config file from previous tests
+                if (File.Exists(modConfigPath))
+                {
+                    File.Delete(modConfigPath);
+                    // Wait a moment to ensure file system has processed the deletion
+                    System.Threading.Thread.Sleep(100);
+                }
+
+                var testConfig = new Config
+                {
+                    Cloud = "sephiroth_black",
+                    Orlandeau = "thunder_god",
+                    Agrias = "ash_dark"
+                };
+                File.WriteAllText(modConfigPath, System.Text.Json.JsonSerializer.Serialize(testConfig));
+
+                // Create mod instance with tracking
+                var context = new ModContext();
+                var applyThemesCallCount = 0;
+                var lastAppliedThemes = new List<string>();
+
+                // We need to track calls to ApplyInitialThemes
+                // Since we can't easily mock the internal components, we'll use the console output
+                var originalOut = Console.Out;
+                var stringWriter = new System.IO.StringWriter();
+                Console.SetOut(stringWriter);
+
+                try
+                {
+                    var mod = new Mod(context, null, new NullHotkeyHandler());
+
+                    // Act
+                    mod.Start(null);
+
+                    // Assert - Check console output for duplicate calls
+                    var output = stringWriter.ToString();
+                    var applyInitialThemesCount = CountOccurrences(output, "ThemeManagerAdapter.ApplyInitialThemes() called");
+
+                    // Should be called exactly once during startup
+                    applyInitialThemesCount.Should().Be(1,
+                        "ApplyInitialThemes should only be called once during startup to prevent overwriting configured themes with defaults");
+
+                    // Verify that the configured themes were applied (not reset to 'original')
+                    output.Should().Contain("ApplyInitialCloudTheme - theme: sephiroth_black",
+                        "Cloud's configured theme should be applied");
+                    output.Should().Contain("ApplyInitialOrlandeauTheme - theme: thunder_god",
+                        "Orlandeau's configured theme should be applied");
+                    output.Should().Contain("ApplyInitialAgriasTheme - theme: ash_dark",
+                        "Agrias' configured theme should be applied");
+
+                    // Should NOT reset to original after initial configuration
+                    var lastCloudTheme = GetLastThemeFromOutput(output, "ApplyInitialCloudTheme - theme:");
+                    var lastOrlandeauTheme = GetLastThemeFromOutput(output, "ApplyInitialOrlandeauTheme - theme:");
+
+                    lastCloudTheme.Should().Be("sephiroth_black", "Cloud's theme should not be reset to original");
+                    lastOrlandeauTheme.Should().Be("thunder_god", "Orlandeau's theme should not be reset to original");
+                }
+                finally
+                {
+                    Console.SetOut(originalOut);
+                }
+            }
+            finally
+            {
+                // Cleanup
+                Environment.SetEnvironmentVariable("APPDATA", originalAppData);
+                if (Directory.Exists(tempAppData))
+                    Directory.Delete(tempAppData, recursive: true);
+
+                // Clean up the config file we created
+                var testAssemblyLocation = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                var modConfigPath = Path.Combine(testAssemblyLocation, "Config.json");
+                if (File.Exists(modConfigPath))
+                {
+                    File.Delete(modConfigPath);
+                }
+            }
+        }
+
+        private int CountOccurrences(string text, string pattern)
+        {
+            int count = 0;
+            int index = 0;
+            while ((index = text.IndexOf(pattern, index)) != -1)
+            {
+                index += pattern.Length;
+                count++;
+            }
+            return count;
+        }
+
+        private string GetLastThemeFromOutput(string output, string prefix)
+        {
+            var lines = output.Split('\n');
+            for (int i = lines.Length - 1; i >= 0; i--)
+            {
+                if (lines[i].Contains(prefix))
+                {
+                    var parts = lines[i].Split(':');
+                    if (parts.Length > 1)
+                    {
+                        return parts[parts.Length - 1].Trim();
+                    }
+                }
+            }
+            return "not_found";
         }
     }
 

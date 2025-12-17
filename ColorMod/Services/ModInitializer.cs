@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Diagnostics;
 using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Core;
 using FFTColorCustomizer.Utilities;
 
 namespace FFTColorCustomizer.Services
@@ -75,7 +76,7 @@ namespace FFTColorCustomizer.Services
                 return envConfigPath;
             }
 
-            // Navigate from Mods/FFT_Color_Mod to User/Mods/ptyra.fft.colormod
+            // Navigate from Mods/FFTColorCustomizer to User/Mods/ptyra.fft.colorcustomizer
             var parent = Directory.GetParent(_modPath);
             if (parent != null)
             {
@@ -83,20 +84,20 @@ namespace FFTColorCustomizer.Services
                 if (grandParent != null)
                 {
                     var reloadedRoot = grandParent.FullName;
-                    var configPath = Path.Combine(reloadedRoot, "User", "Mods", "ptyra.fft.colormod", "Config.json");
+                    var configPath = Path.Combine(reloadedRoot, ColorModConstants.UserDirectory, ColorModConstants.ModsDirectory, ColorModConstants.ModNamespace, ColorModConstants.ConfigFileName);
 
                     // Fallback if User config doesn't exist
                     if (!File.Exists(configPath))
                     {
                         ModLogger.Log($"User config not found at: {configPath}");
-                        configPath = Path.Combine(_modPath, "Config.json");
+                        configPath = Path.Combine(_modPath, ColorModConstants.ConfigFileName);
                     }
 
                     return configPath;
                 }
             }
 
-            return Path.Combine(_modPath, "Config.json");
+            return Path.Combine(_modPath, ColorModConstants.ConfigFileName);
         }
 
         private ConfigurationManager? InitializeConfigurationManager(string configPath)

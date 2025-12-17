@@ -55,7 +55,7 @@ namespace Tests.Configuration.UI
             var config = new Config();
 
             // Load characters directly from JSON to test the new system
-            var jsonPath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Data\StoryCharacters.json";
+            var jsonPath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\StoryCharacters.json";
             if (System.IO.File.Exists(jsonPath))
             {
                 service.LoadFromJson(jsonPath);
