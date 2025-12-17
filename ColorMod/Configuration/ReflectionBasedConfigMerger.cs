@@ -36,10 +36,6 @@ namespace FFTColorMod.Configuration
                 if (!property.PropertyType.IsEnum || property.Name == "FilePath")
                     continue;
 
-                // Skip properties that are ColorScheme (handled above)
-                if (property.PropertyType == typeof(ColorScheme))
-                    continue;
-
                 // This is a story character property
                 var incomingValue = property.GetValue(incomingConfig);
                 var existingValue = property.GetValue(existingConfig);

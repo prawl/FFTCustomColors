@@ -18,7 +18,6 @@ namespace FFTColorMod;
 /// </summary>
 public class Mod : IMod, IConfigurable
 {
-    private GameIntegration? _gameIntegration;
     private IHotkeyHandler? _hotkeyHandler;
     private SpriteFileManager? _spriteFileManager;
     private ConfigBasedSpriteManager? _configBasedSpriteManager;
@@ -27,7 +26,7 @@ public class Mod : IMod, IConfigurable
     private DynamicSpriteLoader? _dynamicSpriteLoader;
     private Process? _gameProcess;
     private string _currentColorScheme = "original";
-    private ColorSchemeCycler _colorCycler;
+    private ColorSchemeCycler? _colorCycler;
     private IInputSimulator? _inputSimulator;
     private string _modPath;
     private string _sourcePath; // Path to git repo for theme sources
@@ -115,7 +114,6 @@ public class Mod : IMod, IConfigurable
         _configurationManager = initResult.ConfigurationManager;
         _configBasedSpriteManager = initResult.ConfigBasedSpriteManager;
         _dynamicSpriteLoader = initResult.DynamicSpriteLoader;
-        _gameIntegration = initResult.GameIntegration;
 
         // Initialize theme manager (themes will be applied after config is loaded)
         _themeManager = new ThemeManager(_sourcePath, _modPath);
@@ -216,39 +214,6 @@ public class Mod : IMod, IConfigurable
 
     public Action Disposing { get; } = () => { };
 
-    public void InitializeGameIntegration()
-    {
-        // TLDR: Initialize GameIntegration for file hooks
-        if (_gameIntegration == null)
-        {
-            _gameIntegration = new GameIntegration();
-        }
-
-        // Initialize SpriteFileManager if not already done
-        if (_spriteFileManager == null)
-        {
-            string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
-            // Source path is the git repo location for reading theme files
-            string sourcePath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
-            _spriteFileManager = new SpriteFileManager(modPath, sourcePath);
-        }
-
-        // Always initialize file hooks when this method is called
-        _gameIntegration.InitializeFileHook();
-        _gameIntegration.RegisterFileHookWithModLoader();
-    }
-
-    public bool HasGameIntegration()
-    {
-        // TLDR: Check if GameIntegration is initialized
-        return _gameIntegration != null;
-    }
-
-    public bool IsFileRedirectionActive()
-    {
-        // TLDR: Check if file redirection is active
-        return _gameIntegration?.IsFileHookActive ?? false;
-    }
 
     public void SetColorScheme(string scheme)
     {

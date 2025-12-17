@@ -34,7 +34,6 @@ namespace FFTColorMod.Services
 
                 LoadAndApplyConfiguration(result);
 
-                result.GameIntegration = new GameIntegration();
                 result.Success = true;
             }
             catch (Exception ex)
@@ -147,18 +146,7 @@ namespace FFTColorMod.Services
 
         private void LogConfiguredJobColors(Config config)
         {
-            var properties = typeof(Config).GetProperties();
-            foreach (var prop in properties)
-            {
-                if (prop.PropertyType == typeof(ColorScheme))
-                {
-                    var value = prop.GetValue(config);
-                    if (value != null && value.ToString() != "original")
-                    {
-                        ModLogger.Log($"Config: {prop.Name} = {value}");
-                    }
-                }
-            }
+            // Method no longer needed - ColorScheme enum was removed
         }
     }
 
@@ -171,6 +159,5 @@ namespace FFTColorMod.Services
         public ConfigurationManager? ConfigurationManager { get; set; }
         public ConfigBasedSpriteManager? ConfigBasedSpriteManager { get; set; }
         public DynamicSpriteLoader? DynamicSpriteLoader { get; set; }
-        public GameIntegration? GameIntegration { get; set; }
     }
 }

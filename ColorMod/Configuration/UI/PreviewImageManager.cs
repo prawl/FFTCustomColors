@@ -21,7 +21,7 @@ namespace FFTColorMod.Configuration.UI
             ModLogger.Log($"PreviewImageManager initialized with path: {modPath}");
         }
 
-        public void UpdateJobPreview(PictureBox pictureBox, string jobName, ColorScheme theme)
+        public void UpdateJobPreview(PictureBox pictureBox, string jobName, string theme)
         {
             try
             {
@@ -95,10 +95,10 @@ namespace FFTColorMod.Configuration.UI
             }
         }
 
-        private string GetJobPreviewPath(string jobName, ColorScheme theme)
+        private string GetJobPreviewPath(string jobName, string theme)
         {
             string baseName = jobName.ToLower().Replace(" ", "_");
-            string themeName = theme.ToString().ToLower();
+            string themeName = theme.ToLower();
 
             // Try different patterns for the preview image (flat structure in Resources/Previews)
             string[] patterns = {
