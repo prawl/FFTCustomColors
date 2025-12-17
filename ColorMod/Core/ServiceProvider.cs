@@ -56,7 +56,8 @@ namespace FFTColorMod.Core
             container.RegisterSingleton<ConfigurationManager>(() =>
             {
                 var pathResolver = container.Resolve<IPathResolver>();
-                return new ConfigurationManager(pathResolver.GetConfigPath());
+                var jobClassService = container.Resolve<JobClassDefinitionService>();
+                return new ConfigurationManager(pathResolver.GetConfigPath(), jobClassService);
             });
 
             // Register character and job services (replace singletons)

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using FFTColorMod.Services;
 using FFTColorMod.Utilities;
 using System.Threading;
 using Newtonsoft.Json;
@@ -25,9 +26,17 @@ namespace FFTColorMod.Configuration
             ContractResolver = new DefaultContractResolver() // Use exact property names
         };
 
+        private readonly JobClassDefinitionService? _jobClassService;
+
         public ConfigurationManager(string configPath)
         {
             _configPath = configPath;
+        }
+
+        public ConfigurationManager(string configPath, JobClassDefinitionService jobClassService)
+        {
+            _configPath = configPath;
+            _jobClassService = jobClassService;
         }
 
         public virtual Config LoadConfig()
@@ -219,7 +228,7 @@ namespace FFTColorMod.Configuration
         {
             // Get themes from the JobClassDefinitionService
             // This allows for easy configuration via JSON
-            var jobClassService = Services.JobClassServiceSingleton.Instance;
+            var jobClassService = _jobClassService ?? Services.JobClassServiceSingleton.Instance;
             return jobClassService.GetAvailableThemes();
         }
 
