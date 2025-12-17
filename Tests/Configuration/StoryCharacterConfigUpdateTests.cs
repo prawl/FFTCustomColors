@@ -2,12 +2,12 @@ using System;
 using System.IO;
 using System.Windows.Forms;
 using Xunit;
-using FFTColorMod.Configuration;
-using FFTColorMod.Configuration.UI;
-using FFTColorMod.Services;
-using FFTColorMod.Tests.Helpers;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Tests.Helpers;
 using FluentAssertions;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Utilities;
 
 namespace Tests.Configuration
 {

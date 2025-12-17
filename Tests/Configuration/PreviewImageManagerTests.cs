@@ -2,11 +2,11 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
-using FFTColorMod.Configuration.UI;
+using FFTColorCustomizer.Configuration.UI;
 using FluentAssertions;
 using Xunit;
 
-namespace FFTColorMod.Tests.Configuration
+namespace FFTColorCustomizer.Tests.Configuration
 {
     public class PreviewImageManagerTests : IDisposable
     {
@@ -17,7 +17,7 @@ namespace FFTColorMod.Tests.Configuration
         public PreviewImageManagerTests()
         {
             // Create test directory structure matching production layout
-            _testModPath = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            _testModPath = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid());
 
             // Create Resources/Previews directory to match production structure
             _testPreviewsPath = Path.Combine(_testModPath, "Resources", "Previews");

@@ -1,11 +1,11 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFTColorMod", "ColorMod\FFTColorMod.csproj", "{A9E500BF-14F5-4540-BF83-F972A9AF05C9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFTColorCustomizer", "ColorMod\FFTColorCustomizer.csproj", "{A9E500BF-14F5-4540-BF83-F972A9AF05C9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFTColorMod.Tests", "FFTColorMod.Tests.csproj", "{601D965B-D53F-4648-B084-7ED94D50AE4B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FFTColorCustomizer.Tests", "FFTColorCustomizer.Tests.csproj", "{601D965B-D53F-4648-B084-7ED94D50AE4B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,3 +26,4 @@ Global
 		{601D965B-D53F-4648-B084-7ED94D50AE4B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
+

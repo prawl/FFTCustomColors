@@ -1,6 +1,6 @@
 using ColorMod.Registry;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     [StoryCharacter(SpriteNames = new[] { "cloud" }, DefaultTheme = "sephiroth_black")]
     public enum CloudColorScheme

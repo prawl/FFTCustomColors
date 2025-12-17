@@ -1,7 +1,7 @@
 using System.IO;
 using System.Text.Json;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     public class ConfigurationUpdater
     {

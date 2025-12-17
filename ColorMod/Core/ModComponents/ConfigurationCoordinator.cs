@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using FFTColorMod.Configuration;
-using FFTColorMod.Utilities;
-using static FFTColorMod.Core.ColorModConstants;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Utilities;
+using static FFTColorCustomizer.Core.ColorModConstants;
 
-namespace FFTColorMod.Core.ModComponents
+namespace FFTColorCustomizer.Core.ModComponents
 {
     /// <summary>
     /// Coordinates all configuration-related operations

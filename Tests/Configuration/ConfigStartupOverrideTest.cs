@@ -3,7 +3,7 @@ using System.IO;
 using System.Text.Json;
 using Xunit;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigStartupOverrideTest
     {
@@ -12,7 +12,7 @@ namespace FFTColorMod.Tests
 
         public ConfigStartupOverrideTest()
         {
-            _testConfigDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            _testConfigDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid());
             _testConfigPath = Path.Combine(_testConfigDir, "Config.json");
             Directory.CreateDirectory(_testConfigDir);
         }
@@ -21,7 +21,7 @@ namespace FFTColorMod.Tests
         public void Config_ShouldNotAddFilePathAndConfigName_WhenSerialized()
         {
             // Arrange
-            var config = new FFTColorMod.Configuration.Config
+            var config = new FFTColorCustomizer.Configuration.Config
             {
                 Squire_Male = "original",
                 Knight_Male = "original",
@@ -29,7 +29,7 @@ namespace FFTColorMod.Tests
             };
 
             // Act - Simulate what Configurable.Save() does
-            var json = JsonSerializer.Serialize(config, FFTColorMod.Configuration.Configurable<FFTColorMod.Configuration.Config>.SerializerOptions);
+            var json = JsonSerializer.Serialize(config, FFTColorCustomizer.Configuration.Configurable<FFTColorCustomizer.Configuration.Config>.SerializerOptions);
             File.WriteAllText(_testConfigPath, json);
 
             // Assert - Verify FilePath and ConfigName are NOT in the JSON
@@ -54,8 +54,8 @@ namespace FFTColorMod.Tests
             File.WriteAllText(_testConfigPath, userJson);
 
             // Act - Load config as Startup.cs does
-            var configurator = new FFTColorMod.Configuration.Configurator(_testConfigDir);
-            var loadedConfig = configurator.GetConfiguration<FFTColorMod.Configuration.Config>(0);
+            var configurator = new FFTColorCustomizer.Configuration.Configurator(_testConfigDir);
+            var loadedConfig = configurator.GetConfiguration<FFTColorCustomizer.Configuration.Config>(0);
 
             // Assert - User settings should be preserved
             Assert.Equal("original", loadedConfig.Squire_Male);
@@ -68,14 +68,14 @@ namespace FFTColorMod.Tests
         public void Config_ShouldNotResetToOriginal_AfterLoading()
         {
             // Arrange - Create config with non-original values
-            var config = FFTColorMod.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
+            var config = FFTColorCustomizer.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
             config.Squire_Male = "original";
             config.Knight_Female = "original";
             config.Monk_Male = "original";
             config.Save();
 
             // Act - Reload the config (simulating game startup)
-            var reloadedConfig = FFTColorMod.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
+            var reloadedConfig = FFTColorCustomizer.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
 
             // Assert - Values should NOT reset to original
             Assert.Equal("original", reloadedConfig.Squire_Male);
@@ -92,7 +92,7 @@ namespace FFTColorMod.Tests
         public void Configurator_ShouldNotOverwriteExistingConfig_OnLoad()
         {
             // Arrange - Create a user config file
-            var userConfig = new FFTColorMod.Configuration.Config
+            var userConfig = new FFTColorCustomizer.Configuration.Config
             {
                 Squire_Male = "original",
                 Ninja_Female = "original",
@@ -100,13 +100,13 @@ namespace FFTColorMod.Tests
             };
 
             // Save it using the proper serialization
-            var json = JsonSerializer.Serialize(userConfig, FFTColorMod.Configuration.Configurable<FFTColorMod.Configuration.Config>.SerializerOptions);
+            var json = JsonSerializer.Serialize(userConfig, FFTColorCustomizer.Configuration.Configurable<FFTColorCustomizer.Configuration.Config>.SerializerOptions);
             File.WriteAllText(_testConfigPath, json);
             var originalContent = File.ReadAllText(_testConfigPath);
 
             // Act - Load through Configurator (should NOT overwrite)
-            var configurator = new FFTColorMod.Configuration.Configurator(_testConfigDir);
-            var config = configurator.GetConfiguration<FFTColorMod.Configuration.Config>(0);
+            var configurator = new FFTColorCustomizer.Configuration.Configurator(_testConfigDir);
+            var config = configurator.GetConfiguration<FFTColorCustomizer.Configuration.Config>(0);
 
             // Assert - File should not be overwritten with defaults
             var newContent = File.ReadAllText(_testConfigPath);
@@ -125,17 +125,17 @@ namespace FFTColorMod.Tests
             // trigger a save that would reset user settings
 
             // Arrange - Create user config
-            var userConfig = new FFTColorMod.Configuration.Config
+            var userConfig = new FFTColorCustomizer.Configuration.Config
             {
                 Squire_Male = "original",
                 WhiteMage_Female = "ocean_depths"
             };
-            var json = JsonSerializer.Serialize(userConfig, FFTColorMod.Configuration.Configurable<FFTColorMod.Configuration.Config>.SerializerOptions);
+            var json = JsonSerializer.Serialize(userConfig, FFTColorCustomizer.Configuration.Configurable<FFTColorCustomizer.Configuration.Config>.SerializerOptions);
             File.WriteAllText(_testConfigPath, json);
 
             // Act - Simulate Startup.cs initialization
-            var configurator = new FFTColorMod.Configuration.Configurator(_testConfigDir);
-            var configuration = configurator.GetConfiguration<FFTColorMod.Configuration.Config>(0);
+            var configurator = new FFTColorCustomizer.Configuration.Configurator(_testConfigDir);
+            var configuration = configurator.GetConfiguration<FFTColorCustomizer.Configuration.Config>(0);
 
             // This line in Startup.cs line 62 should NOT trigger a save
             // It should only notify the mod, not save defaults over user config

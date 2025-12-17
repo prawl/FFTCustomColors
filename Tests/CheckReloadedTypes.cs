@@ -1,9 +1,9 @@
 using System;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using System.Linq;
 using Xunit;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class CheckReloadedTypes
     {

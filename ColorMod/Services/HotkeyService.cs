@@ -1,7 +1,7 @@
 using System;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Services
+namespace FFTColorCustomizer.Services
 {
     public class HotkeyService
     {

@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-using FFTColorMod.Interfaces;
+using FFTColorCustomizer.Interfaces;
 
-namespace FFTColorMod.Core
+namespace FFTColorCustomizer.Core
 {
     /// <summary>
     /// Simple dependency injection container implementation

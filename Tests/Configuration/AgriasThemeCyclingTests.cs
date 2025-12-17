@@ -1,7 +1,7 @@
 using System;
-using FFTColorMod;
-using FFTColorMod.Configuration;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Utilities;
 using Xunit;
 
 namespace Tests

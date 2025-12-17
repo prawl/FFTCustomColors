@@ -1,12 +1,12 @@
 using System;
 using System.IO;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using Newtonsoft.Json;
 using Xunit;
 using Xunit.Abstractions;
 
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class DirectPropertyTest
     {

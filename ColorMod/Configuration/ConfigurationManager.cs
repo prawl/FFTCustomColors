@@ -1,6 +1,6 @@
-using FFTColorMod.Services;
+using FFTColorCustomizer.Services;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
     /// ConfigurationManager now uses the new service architecture internally

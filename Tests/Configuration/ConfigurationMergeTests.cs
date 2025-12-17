@@ -1,10 +1,10 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using Xunit;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigurationMergeTests
     {

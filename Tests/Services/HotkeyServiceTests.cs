@@ -1,10 +1,10 @@
 using System;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
 using FluentAssertions;
 using Xunit;
 
-namespace FFTColorMod.Tests.Services
+namespace FFTColorCustomizer.Tests.Services
 {
     public class HotkeyServiceTests
     {

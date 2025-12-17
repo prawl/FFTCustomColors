@@ -1,11 +1,11 @@
 using System;
 using System.IO;
 using Xunit;
-using FFTColorMod;
-using FFTColorMod.Configuration;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ModConfigIntegrationTests : IDisposable
     {

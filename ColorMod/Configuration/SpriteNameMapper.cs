@@ -1,10 +1,10 @@
 using System;
 using System.Linq;
-using FFTColorMod.Registry;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Registry;
+using FFTColorCustomizer.Services;
 using ColorMod.Registry;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
     /// Maps sprite file names to character keys and color scheme descriptions

@@ -1,4 +1,4 @@
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
     /// Metadata for a job/character configuration

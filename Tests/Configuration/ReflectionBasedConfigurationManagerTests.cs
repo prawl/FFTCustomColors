@@ -1,10 +1,10 @@
 using System.IO;
 using Newtonsoft.Json.Linq;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using Xunit;
 using System;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ReflectionBasedConfigurationManagerTests
     {

@@ -2,10 +2,10 @@ using System;
 using System.IO;
 using Xunit;
 using FluentAssertions;
-using FFTColorMod.Configuration;
-using FFTColorMod.Configuration.UI;
-using FFTColorMod.Utilities;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Utilities;
+using FFTColorCustomizer.Services;
 using Moq;
 
 namespace Tests.Utilities
@@ -30,7 +30,7 @@ namespace Tests.Utilities
             // Reset the singleton to avoid test pollution
             CharacterServiceSingleton.Reset();
 
-            _testDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            _testDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid());
             _modPath = Path.Combine(_testDir, "mod");
             _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 

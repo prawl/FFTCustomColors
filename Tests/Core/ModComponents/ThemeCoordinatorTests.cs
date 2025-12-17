@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using Xunit;
 using FluentAssertions;
-using FFTColorMod.Core.ModComponents;
+using FFTColorCustomizer.Core.ModComponents;
 
-namespace FFTColorMod.Tests.Core.ModComponents
+namespace FFTColorCustomizer.Tests.Core.ModComponents
 {
     public class ThemeCoordinatorTests : IDisposable
     {

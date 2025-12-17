@@ -1,11 +1,11 @@
 using System;
 using System.IO;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
 using Xunit;
 using FluentAssertions;
 
-namespace FFTColorMod.Tests.Services
+namespace FFTColorCustomizer.Tests.Services
 {
     /// <summary>
     /// Tests to ensure ThemeManagerAdapter maintains backward compatibility

@@ -1,14 +1,14 @@
 using System;
 using System.IO;
-using FFTColorMod.Configuration;
-using FFTColorMod.Configuration.UI;
-using FFTColorMod.Core;
-using FFTColorMod.Interfaces;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Core;
+using FFTColorCustomizer.Interfaces;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
 using Xunit;
 
-namespace FFTColorMod.Tests.Refactoring
+namespace FFTColorCustomizer.Tests.Refactoring
 {
     /// <summary>
     /// Tests to ensure all classes can work with DI instead of singletons

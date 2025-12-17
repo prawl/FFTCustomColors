@@ -1,7 +1,7 @@
 using System.Windows.Forms;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Tests.Helpers
+namespace FFTColorCustomizer.Tests.Helpers
 {
     /// <summary>
     /// A test-specific version of ConfigurationForm that prevents the form from showing.

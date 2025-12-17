@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace FFTColorMod.Configuration.UI
+namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
     /// Centralized UI configuration constants and colors

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace FFTColorMod.Registry
+namespace FFTColorCustomizer.Registry
 {
     /// <summary>
     /// Registry for all generic (non-story) characters in FFT

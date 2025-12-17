@@ -4,12 +4,12 @@ using System.Reflection;
 using System.Linq;
 using System.Windows.Forms;
 using Xunit;
-using FFTColorMod.Configuration;
-using FFTColorMod.Configuration.UI;
-using FFTColorMod.Tests.Helpers;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Tests.Helpers;
 using FluentAssertions;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigurationFormPathResolutionTests : IDisposable
     {
@@ -26,7 +26,7 @@ namespace FFTColorMod.Tests
             //     Previews/
             //       agrias_original.png
             //       orlandeau_original.png
-            _testModPath = Path.Combine(Path.GetTempPath(), $"FFTColorModTest_{Guid.NewGuid()}");
+            _testModPath = Path.Combine(Path.GetTempPath(), $"FFTColorCustomizerTest_{Guid.NewGuid()}");
             var configDir = Path.Combine(_testModPath, "Config");
             _testConfigPath = Path.Combine(configDir, "Config.json");
 

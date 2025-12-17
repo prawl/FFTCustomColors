@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Services
+namespace FFTColorCustomizer.Services
 {
     /// <summary>
     /// Service for managing job class definitions loaded from JobClasses.json

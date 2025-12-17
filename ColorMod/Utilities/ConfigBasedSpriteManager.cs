@@ -2,10 +2,10 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using FFTColorMod.Configuration;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Services;
 
-namespace FFTColorMod.Utilities
+namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
     /// Refactored sprite manager that uses CharacterDefinitionService for centralized character management

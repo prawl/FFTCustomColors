@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using FFTColorMod.Configuration;
-using FFTColorMod.Core;
-using FFTColorMod.Interfaces;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Core;
+using FFTColorCustomizer.Interfaces;
 using Xunit;
 
-namespace FFTColorMod.Tests.Core
+namespace FFTColorCustomizer.Tests.Core
 {
     /// <summary>
     /// Tests for the consolidated service architecture

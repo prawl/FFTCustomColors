@@ -1,15 +1,15 @@
 using System;
 using System.Windows.Forms;
 using Xunit;
-using FFTColorMod.Configuration;
-using FFTColorMod.Configuration.UI;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Configuration.UI;
 using FluentAssertions;
 using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
-using FFTColorMod.Services;
-using FFTColorMod.Tests.Helpers;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Tests.Helpers;
 
 namespace Tests.Configuration.UI
 {

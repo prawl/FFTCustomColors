@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 using Reloaded.Mod.Interfaces;
 using Newtonsoft.Json;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     public class Configurable<TParentType> : IUpdatableConfigurable where TParentType : Configurable<TParentType>, new()
     {

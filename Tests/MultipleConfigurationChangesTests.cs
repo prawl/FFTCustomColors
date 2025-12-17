@@ -1,9 +1,9 @@
 using System.IO;
 using System.Text.Json;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using Xunit;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class MultipleConfigurationChangesTests
     {

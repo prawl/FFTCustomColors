@@ -1,11 +1,11 @@
 using System;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using System.Linq;
 using System.Reflection;
 using Xunit;
 using Reloaded.Mod.Interfaces;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class InterfaceInspectionTest
     {

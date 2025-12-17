@@ -2,12 +2,12 @@ using System;
 using System.IO;
 using System.Linq;
 using ColorMod.Registry;
-using FFTColorMod.Configuration;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
-using static FFTColorMod.Core.ColorModConstants;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
+using static FFTColorCustomizer.Core.ColorModConstants;
 
-namespace FFTColorMod.Core.ModComponents
+namespace FFTColorCustomizer.Core.ModComponents
 {
     /// <summary>
     /// Handles initialization of mod components and dependencies

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Utilities
+namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
     /// Generic theme manager for story characters using string-based themes

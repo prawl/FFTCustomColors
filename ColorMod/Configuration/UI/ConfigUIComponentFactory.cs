@@ -2,7 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace FFTColorMod.Configuration.UI
+namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
     /// Factory for creating consistent UI components

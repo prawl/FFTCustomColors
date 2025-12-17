@@ -1,4 +1,4 @@
-# FFT Color Mod Scripts
+# FFT Color Customizer Scripts
 
 This directory contains Python scripts for creating and managing color themes for Final Fantasy Tactics sprites.
 
@@ -74,7 +74,7 @@ Edit or create `ColorMod/Configuration/[Character]ColorScheme.cs`:
 using System.ComponentModel;
 using ColorMod.Registry;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     [StoryCharacter(SpriteNames = new[] { "sprite_name" }, DefaultTheme = "original")]
     public enum CharacterColorScheme
@@ -186,7 +186,7 @@ ColorMod/
 ## Complete Story Character Implementation Process (December 2024)
 
 ### Overview
-Successfully added 9 new story characters with 170 custom color themes to the FFT Color Mod system.
+Successfully added 9 new story characters with 170 custom color themes to the FFT Color Customizer system.
 
 ### Implementation Steps
 
@@ -521,7 +521,7 @@ Create a new file `ColorMod/Configuration/[CharacterName]ColorScheme.cs`:
 using System.ComponentModel;
 using ColorMod.Registry;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     [StoryCharacter(SpriteNames = new[] { "sprite_name" }, DefaultTheme = "original")]
     public enum MustadioColorScheme
@@ -579,7 +579,7 @@ Create a new file `ColorMod/Configuration/[CharacterName]ColorScheme.cs`:
 using System.ComponentModel;
 using ColorMod.Registry;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     [StoryCharacter(SpriteNames = new[] { "sprite_name" }, DefaultTheme = "original")]
     public enum YourCharacterColorScheme
@@ -688,7 +688,7 @@ Create `ColorMod/Configuration/[Character]ColorScheme.cs`:
 ```csharp
 using System.ComponentModel;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     public enum BeowulfColorScheme
     {
@@ -787,7 +787,7 @@ Update F2 handler in Mod.cs to cycle the character's themes:
 ```csharp
 // Cycle Beowulf theme
 var nextBeowulfTheme = _storyCharacterManager.CycleBeowulfTheme();
-Console.WriteLine($"[FFT Color Mod] Cycling Beowulf to {nextBeowulfTheme}");
+Console.WriteLine($"[FFT Color Customizer] Cycling Beowulf to {nextBeowulfTheme}");
 ```
 
 ### Step 9: Test and Verify

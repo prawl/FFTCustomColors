@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using FFTColorMod.Configuration;
-using FFTColorMod.Core.ModComponents;
-using FFTColorMod.Interfaces;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Core.ModComponents;
+using FFTColorCustomizer.Interfaces;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
 using Reloaded.Mod.Interfaces;
-using static FFTColorMod.Core.ColorModConstants;
+using static FFTColorCustomizer.Core.ColorModConstants;
 
-namespace FFTColorMod;
+namespace FFTColorCustomizer;
 
 /// <summary>
 /// Thin orchestrator for FFT Color Mod - delegates to specialized components

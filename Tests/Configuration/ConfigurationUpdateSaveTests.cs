@@ -3,9 +3,9 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using Xunit;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigurationUpdateSaveTests : IDisposable
     {

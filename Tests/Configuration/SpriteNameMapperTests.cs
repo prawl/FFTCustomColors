@@ -1,6 +1,6 @@
 using Xunit;
 using FluentAssertions;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
 namespace Tests.Configuration
 {

@@ -1,10 +1,10 @@
 using System;
 using System.IO;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using Xunit;
 using FluentAssertions;
 
-namespace FFTColorMod.Tests.Configuration
+namespace FFTColorCustomizer.Tests.Configuration
 {
     /// <summary>
     /// Tests to ensure ConfigurationManagerAdapter maintains backward compatibility

@@ -1,14 +1,14 @@
 using Xunit;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using FluentAssertions;
 using System.IO;
 using System;
 using System.Collections.Generic;
 using Reloaded.Mod.Interfaces;
 using Reloaded.Mod.Interfaces.Internal;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ModTests
     {
@@ -35,7 +35,7 @@ namespace FFTColorMod.Tests
                 // Check that mod properly identifies itself for other mods
                 var modId = mod.GetType().GetProperty("ModId")?.GetValue(mod);
                 modId.Should().NotBeNull();
-                modId.Should().Be("FFTColorMod");
+                modId.Should().Be("FFTColorCustomizer");
             }
             finally
             {

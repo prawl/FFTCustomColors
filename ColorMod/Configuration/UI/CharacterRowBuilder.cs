@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using FFTColorMod.Utilities;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Utilities;
+using FFTColorCustomizer.Services;
 
-namespace FFTColorMod.Configuration.UI
+namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
     /// Builds character rows for the configuration form

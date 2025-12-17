@@ -1,11 +1,11 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class PropertyDebugTest
     {

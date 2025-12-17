@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using FFTColorMod.Configuration;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Services
+namespace FFTColorCustomizer.Services
 {
     /// <summary>
     /// Validates that theme files exist for configured story characters

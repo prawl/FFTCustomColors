@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Interfaces
+namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
     /// Service for managing themes and their application

@@ -1,6 +1,6 @@
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Interfaces
+namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
     /// Service for managing mod configuration

@@ -1,4 +1,4 @@
-namespace FFTColorMod.Services
+namespace FFTColorCustomizer.Services
 {
     /// <summary>
     /// Singleton instance of JobClassDefinitionService for global access

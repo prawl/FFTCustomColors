@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using System.Text.Json;
 using Xunit;
-using FFTColorMod.Configuration;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Services;
 using Newtonsoft.Json;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigurationManagerTests : IDisposable
     {

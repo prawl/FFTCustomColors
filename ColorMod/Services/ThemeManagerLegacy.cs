@@ -1,8 +1,8 @@
 using System;
 using System.IO;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Services
+namespace FFTColorCustomizer.Services
 {
     public class ThemeManagerLegacy
     {

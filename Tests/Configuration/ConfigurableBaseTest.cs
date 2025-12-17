@@ -1,9 +1,9 @@
 using System;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using System.Reflection;
 using Xunit;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigurableBaseTest
     {
@@ -11,7 +11,7 @@ namespace FFTColorMod.Tests
         public void CheckConfigurableClass()
         {
             // Try to find the Configurable<T> class
-            var configurableType = typeof(FFTColorMod.Configuration.Configurable<>);
+            var configurableType = typeof(FFTColorCustomizer.Configuration.Configurable<>);
 
             Console.WriteLine($"Found type: {configurableType.FullName}");
             Console.WriteLine($"Assembly: {configurableType.Assembly.FullName}");

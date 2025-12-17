@@ -1,4 +1,4 @@
-namespace FFTColorMod.Core
+namespace FFTColorCustomizer.Core
 {
     /// <summary>
     /// Centralized constants for the FFT Color Mod
@@ -44,13 +44,13 @@ namespace FFTColorMod.Core
         public const string FemaleSuffix = "_Female";
 
         // Mod metadata
-        public const string ModId = "FFTColorMod";
-        public const string ModName = "FFT Color Mod";
+        public const string ModId = "FFTColorCustomizer";
+        public const string ModName = "FFT Color Customizer";
         public const string ModAuthor = "ptyra";
-        public const string ModNamespace = "ptyra.fft.colormod";
+        public const string ModNamespace = "ptyra.fft.colorcustomizer";
 
         // Git repository paths (for development)
-        public const string DevSourcePath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
+        public const string DevSourcePath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod";
 
         // Common directory names
         public const string ResourcesDirectory = "Resources";

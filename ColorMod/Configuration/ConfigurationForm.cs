@@ -4,10 +4,10 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using FFTColorMod.Configuration.UI;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
     /// Refactored configuration form using partial classes and helper components

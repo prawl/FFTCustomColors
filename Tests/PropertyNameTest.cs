@@ -4,7 +4,7 @@ using System.Reflection;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class PropertyNameTest
     {
@@ -18,7 +18,7 @@ namespace FFTColorMod.Tests
         [Fact]
         public void ListAllConfigProperties()
         {
-            var configType = typeof(FFTColorMod.Configuration.Config);
+            var configType = typeof(FFTColorCustomizer.Configuration.Config);
             var properties = configType.GetProperties()
                 .Where(p => p.PropertyType == typeof(string))
                 .OrderBy(p => p.Name);

@@ -1,8 +1,8 @@
 using Xunit;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using System.Reflection;
 
-namespace FFTColorMod.Tests.Configuration
+namespace FFTColorCustomizer.Tests.Configuration
 {
     public class OrlandeauPropertyTest
     {

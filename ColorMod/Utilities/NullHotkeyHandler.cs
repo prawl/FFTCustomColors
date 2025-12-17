@@ -1,6 +1,6 @@
-using FFTColorMod.Interfaces;
+using FFTColorCustomizer.Interfaces;
 
-namespace FFTColorMod.Utilities
+namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
     /// A no-op implementation of IHotkeyHandler for use in tests.

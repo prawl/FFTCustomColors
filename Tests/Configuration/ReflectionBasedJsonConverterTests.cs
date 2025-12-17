@@ -2,10 +2,10 @@ using System;
 using System.Reflection;
 using Newtonsoft.Json;
 using Xunit;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using System.Linq;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ReflectionBasedJsonConverterTests
     {

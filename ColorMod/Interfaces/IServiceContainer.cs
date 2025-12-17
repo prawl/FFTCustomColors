@@ -1,6 +1,6 @@
 using System;
 
-namespace FFTColorMod.Interfaces
+namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
     /// Defines a dependency injection container for service registration and resolution

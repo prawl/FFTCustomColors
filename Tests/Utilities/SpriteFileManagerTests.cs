@@ -1,10 +1,10 @@
 using Xunit;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using FluentAssertions;
 using System.IO;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class SpriteFileManagerTests
     {
@@ -15,7 +15,7 @@ namespace FFTColorMod.Tests
             // This test catches the bug where we were filtering out files containing "sprites_"
 
             // Arrange
-            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Path.GetRandomFileName());
+            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Path.GetRandomFileName());
             Directory.CreateDirectory(tempDir);
 
             var unitDir = Path.Combine(tempDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -57,7 +57,7 @@ namespace FFTColorMod.Tests
             // TLDR: Ensure all sprite files in a variant directory are copied
 
             // Arrange
-            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Path.GetRandomFileName());
+            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Path.GetRandomFileName());
             Directory.CreateDirectory(tempDir);
 
             var unitDir = Path.Combine(tempDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -97,7 +97,7 @@ namespace FFTColorMod.Tests
             // TLDR: Original scheme should handle missing directory gracefully
 
             // Arrange
-            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Path.GetRandomFileName());
+            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Path.GetRandomFileName());
             Directory.CreateDirectory(tempDir);
 
             var manager = new SpriteFileManager(tempDir);
@@ -125,7 +125,7 @@ namespace FFTColorMod.Tests
             // This was the exact issue we just fixed - files in sprites_corpse_brigade were being excluded
 
             // Arrange
-            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Path.GetRandomFileName());
+            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Path.GetRandomFileName());
             Directory.CreateDirectory(tempDir);
 
             var unitDir = Path.Combine(tempDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");

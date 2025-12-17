@@ -1,12 +1,12 @@
 using System;
 using System.IO;
-using FFTColorMod;
-using FFTColorMod.Core;
-using FFTColorMod.Interfaces;
-using FFTColorMod.Services;
+using FFTColorCustomizer;
+using FFTColorCustomizer.Core;
+using FFTColorCustomizer.Interfaces;
+using FFTColorCustomizer.Services;
 using Xunit;
 
-namespace FFTColorMod.Tests.Refactoring
+namespace FFTColorCustomizer.Tests.Refactoring
 {
     /// <summary>
     /// Tests to verify that the Mod class can work with dependency injection
@@ -45,9 +45,9 @@ namespace FFTColorMod.Tests.Refactoring
             Assert.NotNull(_container.Resolve<IPathResolver>());
             Assert.NotNull(_container.Resolve<CharacterDefinitionService>());
             Assert.NotNull(_container.Resolve<JobClassDefinitionService>());
-            Assert.NotNull(_container.Resolve<FFTColorMod.Configuration.ConfigurationManager>());
+            Assert.NotNull(_container.Resolve<FFTColorCustomizer.Configuration.ConfigurationManager>());
             Assert.NotNull(_container.Resolve<ThemeManager>());
-            Assert.NotNull(_container.Resolve<FFTColorMod.Utilities.ConfigBasedSpriteManager>());
+            Assert.NotNull(_container.Resolve<FFTColorCustomizer.Utilities.ConfigBasedSpriteManager>());
         }
 
         [Fact]
@@ -102,7 +102,7 @@ namespace FFTColorMod.Tests.Refactoring
         {
             // Arrange
             var container = ServiceProvider.ConfigureServices(_testPath);
-            var configManager = container.Resolve<FFTColorMod.Configuration.ConfigurationManager>();
+            var configManager = container.Resolve<FFTColorCustomizer.Configuration.ConfigurationManager>();
 
             // Act
             var config = configManager.LoadConfig();

@@ -1,19 +1,19 @@
 {
-  "ModId": "ptyra.fft.colormod",
-  "ModName": "FFT Custom Colors",
+  "ModId": "ptyra.fft.colorcustomizer",
+  "ModName": "FFT Color Customizer",
   "ModAuthor": "ptyRa",
   "ModVersion": "1.0.0",
   "ModDescription": "Custom color themes for FFT characters. Features Thunder God Orlandeau theme and F2 cycling for all characters.",
-  "ModDll": "FFTColorMod.dll",
+  "ModDll": "FFTColorCustomizer.dll",
   "ModIcon": "Preview.png",
-  "ModR2RManagedDll32": "x86/FFTColorMod.dll",
-  "ModR2RManagedDll64": "x64/FFTColorMod.dll",
+  "ModR2RManagedDll32": "x86/FFTColorCustomizer.dll",
+  "ModR2RManagedDll64": "x64/FFTColorCustomizer.dll",
   "ModNativeDll32": "",
   "ModNativeDll64": "",
   "HasExports": false,
   "CanUnload": false,
   "IsLibrary": false,
-  "ReleaseMetadataFileName": "FFTColorMod.ReleaseMetadata.json",
+  "ReleaseMetadataFileName": "FFTColorCustomizer.ReleaseMetadata.json",
   "IgnoreRegexes": [
     ".*\\.json"
   ],
@@ -31,5 +31,5 @@
   "OptionalDependencies": [],
   "SupportedAppId": ["fft_enhanced.exe", "fft_classic.exe"],
   "ProjectUrl": "",
-  "ModConfig": "FFTColorMod.Configuration.Configurator"
+  "ModConfig": "FFTColorCustomizer.Configuration.Configurator"
 }

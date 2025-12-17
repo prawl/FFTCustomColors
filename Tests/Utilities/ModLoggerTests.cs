@@ -3,10 +3,10 @@ using System.IO;
 using System.Linq;
 using Xunit;
 using FluentAssertions;
-using FFTColorMod.Utilities;
-using FFTColorMod.Interfaces;
+using FFTColorCustomizer.Utilities;
+using FFTColorCustomizer.Interfaces;
 
-namespace FFTColorMod.Tests.Utilities
+namespace FFTColorCustomizer.Tests.Utilities
 {
     [Collection("Sequential")]  // Ensures tests run sequentially, not in parallel
     public class ModLoggerTests

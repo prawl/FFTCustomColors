@@ -1,12 +1,12 @@
 using System;
 using System.IO;
-using FFTColorMod.Configuration;
-using FFTColorMod.Core;
-using FFTColorMod.Interfaces;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Core;
+using FFTColorCustomizer.Interfaces;
+using FFTColorCustomizer.Services;
 using Xunit;
 
-namespace FFTColorMod.Tests.Refactoring
+namespace FFTColorCustomizer.Tests.Refactoring
 {
     /// <summary>
     /// Tests to verify that classes can work with dependency injection instead of singletons
@@ -110,7 +110,7 @@ namespace FFTColorMod.Tests.Refactoring
             var characterService = _container.Resolve<CharacterDefinitionService>();
 
             // Act - Already has a constructor that accepts the service
-            var spriteManager = new FFTColorMod.Utilities.ConfigBasedSpriteManager(
+            var spriteManager = new FFTColorCustomizer.Utilities.ConfigBasedSpriteManager(
                 _testPath,
                 configManager,
                 characterService,

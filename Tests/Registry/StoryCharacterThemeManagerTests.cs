@@ -1,7 +1,7 @@
 using System;
 using Xunit;
 using ColorMod.Registry;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Utilities;
 
 namespace Tests.Registry
 {

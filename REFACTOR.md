@@ -1,4 +1,4 @@
-# FFT Color Mod - Comprehensive Refactoring Analysis
+# FFT Color Customizer - Comprehensive Refactoring Analysis
 
 ## Executive Summary
 After removing legacy Reloaded-II integration code (1,088 lines), the codebase is cleaner but still exhibits significant architectural issues that need addressing. The main concerns are: excessive coupling, inconsistent patterns, redundant abstractions, and poor separation of concerns.
@@ -43,9 +43,9 @@ public interface IServiceProvider
 **Problem**: Hardcoded paths throughout codebase
 ```csharp
 // Found in multiple files:
-_sourcePath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
+_sourcePath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod";
 // CharacterServiceSingleton.cs:77
-@"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod\Data\StoryCharacters.json"
+@"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\StoryCharacters.json"
 ```
 
 **Recommendation**: Centralized path resolver

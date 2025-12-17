@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using Xunit;
 using FluentAssertions;
-using FFTColorMod.Core.ModComponents;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Core.ModComponents;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Tests.Core.ModComponents
+namespace FFTColorCustomizer.Tests.Core.ModComponents
 {
     public class ConfigurationCoordinatorTests : IDisposable
     {

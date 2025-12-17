@@ -1,6 +1,6 @@
 using System;
 
-namespace FFTColorMod.Services
+namespace FFTColorCustomizer.Services
 {
     public class CharacterDefinition
     {

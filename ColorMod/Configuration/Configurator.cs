@@ -3,8 +3,8 @@ using System.IO;
 using System.Threading;
 using Reloaded.Mod.Interfaces;
 
-using FFTColorMod.Utilities;
-namespace FFTColorMod.Configuration
+using FFTColorCustomizer.Utilities;
+namespace FFTColorCustomizer.Configuration
 {
     public class Configurator : IConfiguratorV3
     {

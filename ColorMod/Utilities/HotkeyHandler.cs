@@ -2,9 +2,9 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using FFTColorMod.Interfaces;
+using FFTColorCustomizer.Interfaces;
 
-namespace FFTColorMod.Utilities
+namespace FFTColorCustomizer.Utilities
 {
 public class HotkeyHandler : IHotkeyHandler
 {

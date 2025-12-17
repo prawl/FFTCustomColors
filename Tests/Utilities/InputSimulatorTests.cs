@@ -1,10 +1,10 @@
 using System;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using System.Threading;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Utilities;
 using Xunit;
 
-namespace FFTColorMod.Tests;
+namespace FFTColorCustomizer.Tests;
 
 public class InputSimulatorTests
 {

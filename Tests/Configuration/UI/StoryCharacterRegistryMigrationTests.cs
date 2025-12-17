@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
 using Xunit;
-using FFTColorMod.Configuration;
-using FFTColorMod.Configuration.UI;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Services;
 
 namespace Tests.Configuration.UI
 {

@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Services;
 using Newtonsoft.Json;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
     /// Dynamic configuration system for story characters that doesn't require

@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using FFTColorMod.Core;
-using FFTColorMod.Interfaces;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
-using static FFTColorMod.Core.ColorModConstants;
+using FFTColorCustomizer.Core;
+using FFTColorCustomizer.Interfaces;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
+using static FFTColorCustomizer.Core.ColorModConstants;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
     /// Adapter class that maintains backward compatibility with ConfigurationManager

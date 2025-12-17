@@ -1,8 +1,8 @@
 using Xunit;
 using FluentAssertions;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfiguratorTests
     {

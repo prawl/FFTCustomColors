@@ -1,11 +1,11 @@
 using System;
 using System.IO;
-using FFTColorMod.Configuration;
-using FFTColorMod.Core;
-using FFTColorMod.Interfaces;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Core;
+using FFTColorCustomizer.Interfaces;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Services
+namespace FFTColorCustomizer.Services
 {
     /// <summary>
     /// Adapter that maintains backward compatibility with ThemeManager

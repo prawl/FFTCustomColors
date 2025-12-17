@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace FFTColorMod.Configuration.UI
+namespace FFTColorCustomizer.Configuration.UI
 {
     public class CustomTitleBar : Panel
     {

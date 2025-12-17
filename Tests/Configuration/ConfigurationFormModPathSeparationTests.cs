@@ -3,12 +3,12 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Xunit;
-using FFTColorMod.Configuration;
-using FFTColorMod.Configuration.UI;
-using FFTColorMod.Tests.Helpers;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Tests.Helpers;
 using FluentAssertions;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigurationFormModPathSeparationTests : IDisposable
     {
@@ -23,10 +23,10 @@ namespace FFTColorMod.Tests
             // - User config directory (different location) with Config.json
 
             // Mod installation path (like Reloaded\Mods\FFT_Color_Mod)
-            _testModPath = Path.Combine(Path.GetTempPath(), $"FFTColorModTest_Mod_{Guid.NewGuid()}");
+            _testModPath = Path.Combine(Path.GetTempPath(), $"FFTColorCustomizerTest_Mod_{Guid.NewGuid()}");
 
             // User config path (like Reloaded\UserData\FFT_Color_Mod\Config)
-            var userDataPath = Path.Combine(Path.GetTempPath(), $"FFTColorModTest_User_{Guid.NewGuid()}");
+            var userDataPath = Path.Combine(Path.GetTempPath(), $"FFTColorCustomizerTest_User_{Guid.NewGuid()}");
             var userConfigDir = Path.Combine(userDataPath, "Config");
             _testConfigPath = Path.Combine(userConfigDir, "Config.json");
             _testUserConfigPath = userConfigDir;

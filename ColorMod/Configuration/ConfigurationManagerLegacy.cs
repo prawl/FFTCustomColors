@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
 using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     public class ConfigurationManagerLegacy
     {

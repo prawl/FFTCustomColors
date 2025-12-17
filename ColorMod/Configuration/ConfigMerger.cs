@@ -1,9 +1,9 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     public static class ConfigMerger
     {

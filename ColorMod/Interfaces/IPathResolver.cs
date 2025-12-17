@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace FFTColorMod.Interfaces
+namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
     /// Provides centralized path resolution for all file system operations

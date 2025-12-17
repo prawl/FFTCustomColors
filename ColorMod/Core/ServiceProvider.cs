@@ -1,11 +1,11 @@
 using System;
 using System.IO;
-using FFTColorMod.Configuration;
-using FFTColorMod.Interfaces;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Interfaces;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Core
+namespace FFTColorCustomizer.Core
 {
     /// <summary>
     /// Configures and provides dependency injection services for the mod

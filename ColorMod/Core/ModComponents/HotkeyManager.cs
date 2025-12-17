@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Core.ModComponents
+namespace FFTColorCustomizer.Core.ModComponents
 {
     /// <summary>
     /// Manages hotkey processing and actions

@@ -1,11 +1,11 @@
 using System;
 using System.IO;
 using System.Linq;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Services;
 using FluentAssertions;
 using Xunit;
 
-namespace FFTColorMod.Tests.Services
+namespace FFTColorCustomizer.Tests.Services
 {
     public class JobClassDefinitionServiceTests : IDisposable
     {
@@ -14,7 +14,7 @@ namespace FFTColorMod.Tests.Services
 
         public JobClassDefinitionServiceTests()
         {
-            _testModPath = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            _testModPath = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid());
             _testDataPath = Path.Combine(_testModPath, "Data");
             Directory.CreateDirectory(_testDataPath);
         }

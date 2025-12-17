@@ -3,7 +3,7 @@ using System.IO;
 using System.Text.Json;
 using Xunit;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ThemeApplicationOnStartupTest : IDisposable
     {
@@ -13,7 +13,7 @@ namespace FFTColorMod.Tests
 
         public ThemeApplicationOnStartupTest()
         {
-            _testConfigDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            _testConfigDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid());
             _testConfigPath = Path.Combine(_testConfigDir, "Config.json");
             _testModPath = Path.Combine(_testConfigDir, "mod");
             Directory.CreateDirectory(_testConfigDir);
@@ -24,7 +24,7 @@ namespace FFTColorMod.Tests
         public void Mod_ShouldApplyThemesFromConfig_OnStartup()
         {
             // Arrange - Create a config with custom themes
-            var userConfig = new FFTColorMod.Configuration.Config
+            var userConfig = new FFTColorCustomizer.Configuration.Config
             {
                 Squire_Male = "lucavi",
                 Knight_Female = "northern_sky",
@@ -36,12 +36,12 @@ namespace FFTColorMod.Tests
             userConfig.Save();
 
             // Act - Create a Mod instance (simulating startup)
-            var modContext = new FFTColorMod.ModContext();
-            var mod = new FFTColorMod.Mod(modContext);
+            var modContext = new FFTColorCustomizer.ModContext();
+            var mod = new FFTColorCustomizer.Mod(modContext);
 
             // Load the saved config
-            var configurator = new FFTColorMod.Configuration.Configurator(_testConfigDir);
-            var loadedConfig = configurator.GetConfiguration<FFTColorMod.Configuration.Config>(0);
+            var configurator = new FFTColorCustomizer.Configuration.Configurator(_testConfigDir);
+            var loadedConfig = configurator.GetConfiguration<FFTColorCustomizer.Configuration.Config>(0);
 
             // This simulates what Startup.cs does - notify the mod about the config
             mod.ConfigurationUpdated(loadedConfig);
@@ -74,11 +74,11 @@ namespace FFTColorMod.Tests
             File.WriteAllText(_testConfigPath, userJson);
 
             // Act - Create mod and load config
-            var modContext = new FFTColorMod.ModContext();
-            var mod = new FFTColorMod.Mod(modContext);
+            var modContext = new FFTColorCustomizer.ModContext();
+            var mod = new FFTColorCustomizer.Mod(modContext);
 
             // Load the config
-            var configManager = new FFTColorMod.Configuration.ConfigurationManager(_testConfigPath);
+            var configManager = new FFTColorCustomizer.Configuration.ConfigurationManager(_testConfigPath);
             var loadedConfig = configManager.LoadConfig();
 
             // Call ConfigurationUpdated (this is what Startup.cs does)
@@ -100,7 +100,7 @@ namespace FFTColorMod.Tests
         public void ApplyConfiguration_ShouldBeCalledWithCorrectValues_AfterConfigLoad()
         {
             // Arrange - Create a config with specific themes
-            var config = new FFTColorMod.Configuration.Config
+            var config = new FFTColorCustomizer.Configuration.Config
             {
                 Monk_Male = "original",
                 Thief_Female = "rose_gold",
@@ -111,10 +111,10 @@ namespace FFTColorMod.Tests
             config.Save();
 
             // Create ConfigurationManager
-            var configManager = new FFTColorMod.Configuration.ConfigurationManager(_testConfigPath);
+            var configManager = new FFTColorCustomizer.Configuration.ConfigurationManager(_testConfigPath);
 
             // Act - Create ConfigBasedSpriteManager and apply configuration
-            var spriteManager = new FFTColorMod.Utilities.ConfigBasedSpriteManager(
+            var spriteManager = new FFTColorCustomizer.Utilities.ConfigBasedSpriteManager(
                 _testModPath,
                 configManager,
                 _testModPath // sourcePath

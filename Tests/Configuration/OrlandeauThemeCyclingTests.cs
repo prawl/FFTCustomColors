@@ -1,13 +1,13 @@
 using Xunit;
 using FluentAssertions;
-using FFTColorMod;
-using FFTColorMod.Configuration;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Utilities;
 using System.ComponentModel;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class OrlandeauThemeCyclingTests
     {

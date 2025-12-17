@@ -1,10 +1,10 @@
 using System;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using System.IO;
 using Xunit;
 using FluentAssertions;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ColorSchemeCyclerTests : IDisposable
     {

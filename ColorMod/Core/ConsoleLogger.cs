@@ -1,7 +1,7 @@
 using System;
-using FFTColorMod.Interfaces;
+using FFTColorCustomizer.Interfaces;
 
-namespace FFTColorMod.Core
+namespace FFTColorCustomizer.Core
 {
     /// <summary>
     /// Console-based implementation of ILogger

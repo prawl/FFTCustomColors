@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using Xunit;
 using FluentAssertions;
 using Newtonsoft.Json;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigRefactoringTests
     {

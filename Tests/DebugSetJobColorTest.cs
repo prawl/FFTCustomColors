@@ -3,7 +3,7 @@ using System.IO;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class DebugSetJobColorTest : IDisposable
     {
@@ -41,8 +41,8 @@ namespace FFTColorMod.Tests
             _output.WriteLine($"Test config path: {_testConfigPath}");
 
             // Create managers directly without going through Mod
-            var configManager = new FFTColorMod.Configuration.ConfigurationManager(_testConfigPath);
-            var configBasedSpriteManager = new FFTColorMod.Utilities.ConfigBasedSpriteManager(
+            var configManager = new FFTColorCustomizer.Configuration.ConfigurationManager(_testConfigPath);
+            var configBasedSpriteManager = new FFTColorCustomizer.Utilities.ConfigBasedSpriteManager(
                 _testModPath, configManager, null);
 
             // Set a job color
@@ -54,7 +54,7 @@ namespace FFTColorMod.Tests
 
             // Try loading config directly with a fresh ConfigurationManager to verify persistence
             _output.WriteLine($"Creating fresh ConfigurationManager with path: {_testConfigPath}");
-            var freshConfigManager = new FFTColorMod.Configuration.ConfigurationManager(_testConfigPath);
+            var freshConfigManager = new FFTColorCustomizer.Configuration.ConfigurationManager(_testConfigPath);
             var diskConfig = freshConfigManager.LoadConfig();
             _output.WriteLine($"Direct config load from disk - Archer_Female enum value: {diskConfig.Archer_Female}");
             _output.WriteLine($"Direct config load from disk - Archer_Female int value: {0 /* cast from string removed */}");
@@ -79,7 +79,7 @@ namespace FFTColorMod.Tests
             _output.WriteLine($"Test config path: {_testConfigPath}");
 
             // Create a ConfigurationManager directly
-            var configManager = new FFTColorMod.Configuration.ConfigurationManager(_testConfigPath);
+            var configManager = new FFTColorCustomizer.Configuration.ConfigurationManager(_testConfigPath);
 
             // Set a job color
             // configManager.SetJobTheme("Archer_Female", "lucavi"); // Method removed in refactoring
@@ -88,7 +88,7 @@ namespace FFTColorMod.Tests
             configManager.SaveConfig(config);
 
             // Load the config with a fresh manager
-            var freshManager = new FFTColorMod.Configuration.ConfigurationManager(_testConfigPath);
+            var freshManager = new FFTColorCustomizer.Configuration.ConfigurationManager(_testConfigPath);
             var loadedConfig = freshManager.LoadConfig();
 
             _output.WriteLine($"Archer_Female value: {loadedConfig.Archer_Female}");

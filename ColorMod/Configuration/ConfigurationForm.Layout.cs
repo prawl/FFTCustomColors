@@ -1,9 +1,9 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using FFTColorMod.Configuration.UI;
+using FFTColorCustomizer.Configuration.UI;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     public partial class ConfigurationForm
     {

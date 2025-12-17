@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using Xunit;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Services;
 
 namespace Tests.Services
 {

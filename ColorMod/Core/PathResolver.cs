@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using FFTColorMod.Interfaces;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Interfaces;
+using FFTColorCustomizer.Services;
 
-namespace FFTColorMod.Core
+namespace FFTColorCustomizer.Core
 {
     /// <summary>
     /// Implementation of IPathResolver for centralized path management

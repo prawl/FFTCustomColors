@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using Xunit;
-using FFTColorMod.Configuration;
-using FFTColorMod.Utilities;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Utilities;
+using FFTColorCustomizer.Services;
 
 namespace Tests.Utilities
 {
@@ -19,7 +19,7 @@ namespace Tests.Utilities
             CharacterServiceSingleton.Reset();
 
             // Create temporary test directories
-            _testModPath = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            _testModPath = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid());
             _testSourcePath = Path.Combine(_testModPath, "ColorMod", "FFTIVC", "data", "enhanced", "fftpack", "unit");
             Directory.CreateDirectory(_testSourcePath);
 

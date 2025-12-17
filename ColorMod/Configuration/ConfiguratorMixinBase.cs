@@ -1,7 +1,7 @@
 using System.IO;
 using Reloaded.Mod.Interfaces;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     public class ConfiguratorMixinBase
     {

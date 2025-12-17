@@ -3,10 +3,10 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using Xunit;
-using FFTColorMod.Configuration.UI;
+using FFTColorCustomizer.Configuration.UI;
 using FluentAssertions;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class PreviewImageManagerTests
     {

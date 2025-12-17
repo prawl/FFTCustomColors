@@ -1,7 +1,7 @@
 using System;
-using FFTColorMod.Interfaces;
+using FFTColorCustomizer.Interfaces;
 
-namespace FFTColorMod.Core
+namespace FFTColorCustomizer.Core
 {
     /// <summary>
     /// Null object pattern implementation of ILogger that does nothing.

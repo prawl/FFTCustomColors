@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Text.Json;
 using Xunit;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class JsonPropertyNameSerializationTests : IDisposable
     {

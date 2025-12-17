@@ -16,7 +16,7 @@ Split-Path $MyInvocation.MyCommand.Path | Push-Location
 Write-Host "Building FFT Color Mod (DEV MODE)..." -ForegroundColor Green
 
 # Clean existing installation
-$modPath = "$env:RELOADEDIIMODS/FFT_Color_Mod"
+$modPath = "$env:RELOADEDIIMODS/FFTColorCustomizer"
 if (Test-Path $modPath) {
     Write-Host "Removing existing mod installation..." -ForegroundColor Yellow
     Remove-Item "$modPath/*" -Force -Recurse -ErrorAction SilentlyContinue
@@ -24,7 +24,7 @@ if (Test-Path $modPath) {
 
 # Build and publish with IL trimming for smaller size
 Write-Host "Publishing to Reloaded-II mods folder..." -ForegroundColor Cyan
-dotnet publish "./ColorMod/FFTColorMod.csproj" -c Release -o "$modPath" /p:OutputPath="./bin/Release" /p:ReloadedILLink="true"
+dotnet publish "./ColorMod/FFTColorCustomizer.csproj" -c Release -o "$modPath" /p:OutputPath="./bin/Release" /p:ReloadedILLink="true"
 
 if ($LASTEXITCODE -eq 0) {
     # TLDR: Copy ModConfig.json so Reloaded recognizes the mod
@@ -38,7 +38,7 @@ if ($LASTEXITCODE -eq 0) {
     }
 
     # Create User config directory and copy configs there
-    $userConfigPath = "$gamePath\Reloaded\User\Mods\FFT_Color_Mod"
+    $userConfigPath = "$gamePath\Reloaded\User\Mods\FFTColorCustomizer"
     Write-Host "Creating User config directory..." -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $userConfigPath -Force | Out-Null
 

@@ -1,8 +1,8 @@
 using System;
-using FFTColorMod.Core;
-using FFTColorMod.Interfaces;
+using FFTColorCustomizer.Core;
+using FFTColorCustomizer.Interfaces;
 
-namespace FFTColorMod.Utilities
+namespace FFTColorCustomizer.Utilities
 {
     /// <summary>
     /// Static logging facade for FFT Color Mod that maintains backward compatibility

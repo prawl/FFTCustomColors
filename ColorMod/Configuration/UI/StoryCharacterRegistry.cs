@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using ColorMod.Registry;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Services;
 
-namespace FFTColorMod.Configuration.UI
+namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
     /// Registry that uses CharacterDefinitionService for centralized character management

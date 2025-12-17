@@ -2,8 +2,8 @@ using System;
 using System.Reflection;
 using Xunit;
 using ColorMod.Registry;
-using FFTColorMod.Configuration;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Utilities;
 
 namespace Tests.Registry
 {

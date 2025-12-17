@@ -5,9 +5,9 @@ using System.Reflection;
 using System.Threading;
 using Xunit;
 using Xunit.Abstractions;
-using ConfigurationNamespace = FFTColorMod.Configuration;
+using ConfigurationNamespace = FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class SimplifiedPropertySetTest : IDisposable
     {

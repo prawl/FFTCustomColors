@@ -1,11 +1,11 @@
 using System;
 using System.IO;
 using System.Text.Json;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 using Reloaded.Mod.Interfaces;
 using Xunit;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigPersistenceTest : IDisposable
     {

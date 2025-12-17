@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace FFTColorMod.Utilities
+namespace FFTColorCustomizer.Utilities
 {
 
 public class SpriteFileManager

@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using FFTColorMod.Core;
-using FFTColorMod.Interfaces;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Core;
+using FFTColorCustomizer.Interfaces;
+using FFTColorCustomizer.Services;
 using Xunit;
 
-namespace FFTColorMod.Tests.Core
+namespace FFTColorCustomizer.Tests.Core
 {
     public class PathResolverTests : IDisposable
     {
@@ -18,7 +18,7 @@ namespace FFTColorMod.Tests.Core
 
         public PathResolverTests()
         {
-            _testRoot = Path.Combine(Path.GetTempPath(), $"FFTColorModTest_{Guid.NewGuid()}");
+            _testRoot = Path.Combine(Path.GetTempPath(), $"FFTColorCustomizerTest_{Guid.NewGuid()}");
             _testSourcePath = Path.Combine(_testRoot, "source");
             _testUserPath = Path.Combine(_testRoot, "user");
 

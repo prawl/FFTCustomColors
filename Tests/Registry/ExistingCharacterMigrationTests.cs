@@ -3,9 +3,9 @@ using System.IO;
 using System.Linq;
 using Xunit;
 using ColorMod.Registry;
-using FFTColorMod.Configuration;
-using FFTColorMod.Utilities;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Utilities;
+using FFTColorCustomizer.Services;
 
 namespace Tests.Registry
 {

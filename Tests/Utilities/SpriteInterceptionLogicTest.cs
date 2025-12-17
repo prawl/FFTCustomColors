@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using System.Reflection;
 using Xunit;
-using FFTColorMod;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer;
+using FFTColorCustomizer.Utilities;
 
 namespace Tests
 {
@@ -15,7 +15,7 @@ namespace Tests
             // This test verifies the LOGIC of sprite interception without requiring actual files
             // It tests what WOULD happen if the files existed
 
-            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid());
 
             try
             {

@@ -3,7 +3,7 @@ using System.IO;
 using System.Text.Json;
 using Xunit;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigOverwriteOnStartupTest : IDisposable
     {
@@ -12,7 +12,7 @@ namespace FFTColorMod.Tests
 
         public ConfigOverwriteOnStartupTest()
         {
-            _testConfigDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            _testConfigDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid());
             _testConfigPath = Path.Combine(_testConfigDir, "Config.json");
             Directory.CreateDirectory(_testConfigDir);
         }
@@ -35,8 +35,8 @@ namespace FFTColorMod.Tests
             var originalContent = File.ReadAllText(_testConfigPath);
 
             // Act - Simulate what Startup.cs does
-            var configurator = new FFTColorMod.Configuration.Configurator(_testConfigDir);
-            var configuration = configurator.GetConfiguration<FFTColorMod.Configuration.Config>(0);
+            var configurator = new FFTColorCustomizer.Configuration.Configurator(_testConfigDir);
+            var configuration = configurator.GetConfiguration<FFTColorCustomizer.Configuration.Config>(0);
 
             // This is what line 62 of Startup.cs does - it should NOT trigger a save
             // _mod?.ConfigurationUpdated(_configuration);
@@ -56,7 +56,7 @@ namespace FFTColorMod.Tests
         public void ModConfigurationUpdated_ShouldNotResetToDefaults()
         {
             // Arrange - Create config with custom values
-            var config = FFTColorMod.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
+            var config = FFTColorCustomizer.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
             config.Squire_Male = "lucavi";
             config.Knight_Female = "northern_sky";
             config.Ninja_Male = "original";
@@ -70,11 +70,11 @@ namespace FFTColorMod.Tests
 
             // Act - Create a Mod instance and call ConfigurationUpdated
             // This simulates what happens when Startup.cs calls _mod?.ConfigurationUpdated(_configuration)
-            var modContext = new FFTColorMod.ModContext();
-            var mod = new FFTColorMod.Mod(modContext);
+            var modContext = new FFTColorCustomizer.ModContext();
+            var mod = new FFTColorCustomizer.Mod(modContext);
 
             // Load the config fresh (like Startup does)
-            var loadedConfig = FFTColorMod.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
+            var loadedConfig = FFTColorCustomizer.Configuration.Config.FromFile(_testConfigPath, "TestConfig");
 
             // This is the critical call that might be resetting values
             mod.ConfigurationUpdated(loadedConfig);
@@ -110,7 +110,7 @@ namespace FFTColorMod.Tests
             System.Threading.Thread.Sleep(100); // Ensure time difference
 
             // Act - Create ConfigurationManager and load config
-            var configManager = new FFTColorMod.Configuration.ConfigurationManager(_testConfigPath);
+            var configManager = new FFTColorCustomizer.Configuration.ConfigurationManager(_testConfigPath);
             var loadedConfig = configManager.LoadConfig();
 
             // Assert - File should NOT have been modified (no save on load)

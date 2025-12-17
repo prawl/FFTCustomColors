@@ -2,10 +2,10 @@ using System;
 using System.IO;
 using Xunit;
 using ColorMod.Registry;
-using FFTColorMod;
-using FFTColorMod.Configuration;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
 
 namespace Tests.Registry
 {

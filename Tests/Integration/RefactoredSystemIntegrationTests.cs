@@ -2,10 +2,10 @@ using System;
 using System.IO;
 using System.Linq;
 using Xunit;
-using FFTColorMod.Configuration;
-using FFTColorMod.Configuration.UI;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
 
 namespace Tests.Integration
 {

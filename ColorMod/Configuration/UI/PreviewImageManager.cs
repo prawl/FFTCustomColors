@@ -2,9 +2,9 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Configuration.UI
+namespace FFTColorCustomizer.Configuration.UI
 {
     public class PreviewImageManager
     {

@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 
-namespace FFTColorMod.Services
+namespace FFTColorCustomizer.Services
 {
     public class CharacterDefinitionService
     {

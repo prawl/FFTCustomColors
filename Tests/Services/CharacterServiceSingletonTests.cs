@@ -1,6 +1,6 @@
 using System;
 using Xunit;
-using FFTColorMod.Services;
+using FFTColorCustomizer.Services;
 
 namespace Tests.Services
 {

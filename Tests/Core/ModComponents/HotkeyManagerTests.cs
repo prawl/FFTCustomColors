@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using Xunit;
 using FluentAssertions;
-using FFTColorMod.Core.ModComponents;
-using FFTColorMod.Services;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Core.ModComponents;
+using FFTColorCustomizer.Services;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Tests.Core.ModComponents
+namespace FFTColorCustomizer.Tests.Core.ModComponents
 {
     public class HotkeyManagerTests : IDisposable
     {

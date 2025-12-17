@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
-using FFTColorMod.Configuration.UI;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Utilities;
 
-namespace FFTColorMod.Configuration
+namespace FFTColorCustomizer.Configuration
 {
     public partial class ConfigurationForm
     {

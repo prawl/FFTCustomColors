@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Configuration;
 
-namespace FFTColorMod.Utilities
+namespace FFTColorCustomizer.Utilities
 {
     public class DynamicSpriteLoader
     {

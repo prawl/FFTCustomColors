@@ -1,12 +1,12 @@
 using Xunit;
 using FluentAssertions;
-using FFTColorMod.Utilities;
-using FFTColorMod.Configuration;
+using FFTColorCustomizer.Utilities;
+using FFTColorCustomizer.Configuration;
 using System.IO;
 using System;
 using System.Collections.Generic;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class DynamicSpriteLoaderTests : IDisposable
     {
@@ -17,7 +17,7 @@ namespace FFTColorMod.Tests
         public DynamicSpriteLoaderTests()
         {
             // Create a temporary test directory
-            _testModPath = Path.Combine(Path.GetTempPath(), $"FFTColorModTest_{Guid.NewGuid()}");
+            _testModPath = Path.Combine(Path.GetTempPath(), $"FFTColorCustomizerTest_{Guid.NewGuid()}");
             _testDataPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             Directory.CreateDirectory(_testDataPath);
 

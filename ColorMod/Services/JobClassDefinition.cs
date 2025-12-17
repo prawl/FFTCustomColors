@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace FFTColorMod.Services
+namespace FFTColorCustomizer.Services
 {
     /// <summary>
     /// Represents a generic job class definition loaded from JobClasses.json

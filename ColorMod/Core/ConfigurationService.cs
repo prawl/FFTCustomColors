@@ -1,11 +1,11 @@
 using System;
 using System.IO;
 using System.Text.Json;
-using FFTColorMod.Configuration;
-using FFTColorMod.Interfaces;
-using static FFTColorMod.Core.ColorModConstants;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Interfaces;
+using static FFTColorCustomizer.Core.ColorModConstants;
 
-namespace FFTColorMod.Core
+namespace FFTColorCustomizer.Core
 {
     /// <summary>
     /// Service for managing mod configuration

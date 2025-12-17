@@ -1,10 +1,10 @@
 using System;
 using System.IO;
 using System.Linq;
-using FFTColorMod.Configuration;
-using FFTColorMod.Interfaces;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Interfaces;
 
-namespace FFTColorMod.Core
+namespace FFTColorCustomizer.Core
 {
     /// <summary>
     /// Service for managing sprite operations

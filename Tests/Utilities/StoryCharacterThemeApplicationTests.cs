@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using Xunit;
 using FluentAssertions;
-using FFTColorMod.Configuration;
-using FFTColorMod.Utilities;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Utilities;
 using Moq;
 
 namespace Tests.Utilities
@@ -19,7 +19,7 @@ namespace Tests.Utilities
 
         public StoryCharacterThemeApplicationTests()
         {
-            _testDir = Path.Combine(Path.GetTempPath(), "FFTColorModTest_" + Guid.NewGuid());
+            _testDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid());
             _modPath = Path.Combine(_testDir, "mod");
             _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 

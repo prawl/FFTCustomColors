@@ -1,9 +1,9 @@
 using System;
-using FFTColorMod.Core;
-using FFTColorMod.Interfaces;
+using FFTColorCustomizer.Core;
+using FFTColorCustomizer.Interfaces;
 using Xunit;
 
-namespace FFTColorMod.Tests.Core
+namespace FFTColorCustomizer.Tests.Core
 {
     public class ServiceContainerTests
     {

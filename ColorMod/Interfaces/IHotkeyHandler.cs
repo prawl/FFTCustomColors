@@ -1,6 +1,6 @@
 using System;
 
-namespace FFTColorMod.Interfaces
+namespace FFTColorCustomizer.Interfaces
 {
     public interface IHotkeyHandler
     {

@@ -1,9 +1,9 @@
 using System.Windows.Forms;
-using FFTColorMod.Configuration;
-using FFTColorMod.Tests.Helpers;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Tests.Helpers;
 using Xunit;
 
-namespace FFTColorMod.Tests
+namespace FFTColorCustomizer.Tests
 {
     public class ConfigWindowTopMostTests
     {

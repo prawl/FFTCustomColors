@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using System.Threading;
-using FFTColorMod.Configuration.UI;
+using FFTColorCustomizer.Configuration.UI;
 
-namespace FFTColorMod.Services
+namespace FFTColorCustomizer.Services
 {
     /// <summary>
     /// Singleton wrapper for CharacterDefinitionService to provide global access

@@ -1,6 +1,6 @@
 using System;
 
-namespace FFTColorMod.Interfaces
+namespace FFTColorCustomizer.Interfaces
 {
     /// <summary>
     /// Defines logging operations for the application

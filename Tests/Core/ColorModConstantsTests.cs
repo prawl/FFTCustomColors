@@ -1,7 +1,7 @@
-using FFTColorMod.Core;
+using FFTColorCustomizer.Core;
 using Xunit;
 
-namespace FFTColorMod.Tests.Core
+namespace FFTColorCustomizer.Tests.Core
 {
     public class ColorModConstantsTests
     {
@@ -45,7 +45,7 @@ namespace FFTColorMod.Tests.Core
         public void ModMetadata_ShouldBeCorrect()
         {
             // Assert
-            Assert.Equal("FFTColorMod", ColorModConstants.ModId);
+            Assert.Equal("FFTColorCustomizer", ColorModConstants.ModId);
             Assert.Equal("FFT Color Mod", ColorModConstants.ModName);
             Assert.Equal("ptyra.fft.colormod", ColorModConstants.ModNamespace);
         }
