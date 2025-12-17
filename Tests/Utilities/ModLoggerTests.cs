@@ -4,6 +4,7 @@ using System.Linq;
 using Xunit;
 using FluentAssertions;
 using FFTColorMod.Utilities;
+using FFTColorMod.Interfaces;
 
 namespace FFTColorMod.Tests.Utilities
 {

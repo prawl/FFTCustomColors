@@ -1,42 +1,71 @@
 using System;
+using FFTColorMod.Core;
+using FFTColorMod.Interfaces;
 
 namespace FFTColorMod.Utilities
 {
     /// <summary>
-    /// Centralized logging utility for FFT Color Mod
-    /// Provides consistent formatting and log level control
+    /// Static logging facade for FFT Color Mod that maintains backward compatibility
+    /// while delegating to the new ILogger interface
     /// </summary>
     public static class ModLogger
     {
-        private const string PREFIX = "[FFT Color Mod]";
+        private static ILogger _logger;
+        private static readonly object _lock = new object();
 
         /// <summary>
-        /// Gets or sets whether debug logging is enabled
+        /// Gets or sets the underlying logger implementation.
+        /// Defaults to ConsoleLogger if not set.
         /// </summary>
-        public static bool EnableDebugLogging { get; set; } = true;
+        public static ILogger Instance
+        {
+            get
+            {
+                if (_logger == null)
+                {
+                    lock (_lock)
+                    {
+                        if (_logger == null)
+                        {
+                            _logger = new ConsoleLogger(ColorModConstants.LogPrefix);
+                        }
+                    }
+                }
+                return _logger;
+            }
+            set
+            {
+                lock (_lock)
+                {
+                    _logger = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets whether debug logging is enabled (for backward compatibility)
+        /// </summary>
+        public static bool EnableDebugLogging
+        {
+            get => Instance.LogLevel <= Interfaces.LogLevel.Debug;
+            set => Instance.LogLevel = value ? Interfaces.LogLevel.Debug : Interfaces.LogLevel.Info;
+        }
 
         /// <summary>
         /// Gets or sets the minimum log level to output
         /// </summary>
-        public static LogLevel LogLevel { get; set; } = LogLevel.Debug;
+        public static Interfaces.LogLevel LogLevel
+        {
+            get => Instance.LogLevel;
+            set => Instance.LogLevel = value;
+        }
 
         /// <summary>
         /// Logs a standard information message
         /// </summary>
         public static void Log(string message)
         {
-            if (LogLevel <= LogLevel.Info)
-            {
-                try
-                {
-                    Console.WriteLine($"{PREFIX} {message ?? string.Empty}");
-                }
-                catch (ObjectDisposedException)
-                {
-                    // Console has been disposed (common in tests)
-                    // Silently ignore
-                }
-            }
+            Instance.Log(message);
         }
 
         /// <summary>
@@ -44,10 +73,7 @@ namespace FFTColorMod.Utilities
         /// </summary>
         public static void LogError(string message)
         {
-            if (LogLevel <= LogLevel.Error)
-            {
-                Console.WriteLine($"{PREFIX} ERROR: {message ?? string.Empty}");
-            }
+            Instance.LogError(message);
         }
 
         /// <summary>
@@ -55,21 +81,15 @@ namespace FFTColorMod.Utilities
         /// </summary>
         public static void LogWarning(string message)
         {
-            if (LogLevel <= LogLevel.Warning)
-            {
-                Console.WriteLine($"{PREFIX} WARNING: {message ?? string.Empty}");
-            }
+            Instance.LogWarning(message);
         }
 
         /// <summary>
-        /// Logs a debug message (only if debug logging is enabled)
+        /// Logs a debug message
         /// </summary>
         public static void LogDebug(string message)
         {
-            if (EnableDebugLogging && LogLevel <= LogLevel.Debug)
-            {
-                Console.WriteLine($"{PREFIX} DEBUG: {message ?? string.Empty}");
-            }
+            Instance.LogDebug(message);
         }
 
         /// <summary>
@@ -77,18 +97,7 @@ namespace FFTColorMod.Utilities
         /// </summary>
         public static void LogException(string message, Exception exception)
         {
-            if (LogLevel <= LogLevel.Error)
-            {
-                Console.WriteLine($"{PREFIX} ERROR: {message ?? string.Empty}");
-                if (exception != null)
-                {
-                    Console.WriteLine($"  {exception.GetType().Name}: {exception.Message}");
-                    if (!string.IsNullOrEmpty(exception.StackTrace))
-                    {
-                        Console.WriteLine($"  Stack Trace: {exception.StackTrace}");
-                    }
-                }
-            }
+            Instance.LogError(message, exception);
         }
 
         /// <summary>
@@ -96,10 +105,7 @@ namespace FFTColorMod.Utilities
         /// </summary>
         public static void LogSuccess(string message)
         {
-            if (LogLevel <= LogLevel.Info)
-            {
-                Console.WriteLine($"{PREFIX} ✓ {message ?? string.Empty}");
-            }
+            Instance.Log($"✓ {message}");
         }
 
         /// <summary>
@@ -107,24 +113,29 @@ namespace FFTColorMod.Utilities
         /// </summary>
         public static void LogSection(string sectionName)
         {
-            if (LogLevel <= LogLevel.Info)
+            Instance.Log(string.Empty);
+            Instance.Log("========================================");
+            Instance.Log($"  {sectionName}");
+            Instance.Log("========================================");
+        }
+
+        /// <summary>
+        /// Resets the logger to default (useful for testing)
+        /// </summary>
+        public static void Reset()
+        {
+            lock (_lock)
             {
-                Console.WriteLine();
-                Console.WriteLine("========================================");
-                Console.WriteLine($"  {sectionName}");
-                Console.WriteLine("========================================");
+                _logger = null;
             }
         }
-    }
 
-    /// <summary>
-    /// Defines the available log levels
-    /// </summary>
-    public enum LogLevel
-    {
-        Debug = 0,
-        Info = 1,
-        Warning = 2,
-        Error = 3
+        /// <summary>
+        /// Sets the logger to use a null logger (useful for testing)
+        /// </summary>
+        public static void UseNullLogger()
+        {
+            Instance = NullLogger.Instance;
+        }
     }
 }
