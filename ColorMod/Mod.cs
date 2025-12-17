@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using ColorMod.Registry;
 using FFTColorMod.Configuration;
+using FFTColorMod.Core;
 using FFTColorMod.Services;
 using FFTColorMod.Utilities;
 using FFTColorMod.Interfaces;
@@ -18,6 +19,7 @@ namespace FFTColorMod;
 /// </summary>
 public class Mod : IMod, IConfigurable
 {
+    private IServiceContainer? _container;
     private IHotkeyHandler? _hotkeyHandler;
     private SpriteFileManager? _spriteFileManager;
     private ConfigBasedSpriteManager? _configBasedSpriteManager;
@@ -85,6 +87,21 @@ public class Mod : IMod, IConfigurable
     // TLDR: Keep parameterless constructor for backward compatibility
     public Mod() : this(new ModContext())
     {
+    }
+
+    // Constructor for dependency injection
+    public Mod(IServiceContainer container) : this(new ModContext())
+    {
+        _container = container;
+    }
+
+    public Config? GetConfiguration()
+    {
+        if (_configurationManager == null && _container != null)
+        {
+            _configurationManager = _container.Resolve<ConfigurationManager>();
+        }
+        return _configurationManager?.LoadConfig();
     }
 
     private void InitializeModBasics()
