@@ -18,10 +18,15 @@ namespace FFTColorMod.Core
 
         // Sprite paths
         public const string FFTIVCPath = "FFTIVC";
+        public const string DataPath = "data";
         public const string EnhancedPath = "enhanced";
         public const string FFTPackPath = "fftpack";
         public const string UnitPath = "unit";
         public const string SpritesRelativePath = @"FFTIVC\data\enhanced\fftpack\unit";
+        public const string SpritesPrefix = "sprites_";
+        public const string SpriteFileExtension = ".bin";
+        public const string OutFileExtension = "_out.bin";
+        public const string SprFileExtension = "_spr.bin";
 
         // File patterns
         public const string BattlePrefix = "battle_";
@@ -43,6 +48,13 @@ namespace FFTColorMod.Core
         public const string ModName = "FFT Color Mod";
         public const string ModAuthor = "ptyra";
         public const string ModNamespace = "ptyra.fft.colormod";
+
+        // Git repository paths (for development)
+        public const string DevSourcePath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
+
+        // Common directory names
+        public const string ResourcesDirectory = "Resources";
+        public const string PreviewsDirectory = "Previews";
 
         // Logging
         public const string LogPrefix = "[FFT Color Mod]";

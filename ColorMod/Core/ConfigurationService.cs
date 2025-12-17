@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using FFTColorMod.Configuration;
 using FFTColorMod.Interfaces;
+using static FFTColorMod.Core.ColorModConstants;
 
 namespace FFTColorMod.Core
 {
@@ -76,7 +77,7 @@ namespace FFTColorMod.Core
             {
                 if (property.PropertyType == typeof(string) && property.CanWrite)
                 {
-                    property.SetValue(config, "original");
+                    property.SetValue(config, DefaultTheme);
                 }
             }
 

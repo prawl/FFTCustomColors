@@ -6,6 +6,7 @@ using FFTColorMod.Core;
 using FFTColorMod.Interfaces;
 using FFTColorMod.Services;
 using FFTColorMod.Utilities;
+using static FFTColorMod.Core.ColorModConstants;
 
 namespace FFTColorMod.Configuration
 {
@@ -60,7 +61,7 @@ namespace FFTColorMod.Configuration
             // We'll need to get this from somewhere else or hardcode for now
             var schemes = new List<string>
             {
-                "original", "corpse_brigade", "lucavi", "northern_sky", "southern_sky",
+                OriginalTheme, CorpseBrigadeTheme, LucaviTheme, "northern_sky", "southern_sky",
                 "crimson_red", "royal_purple", "phoenix_flame", "frost_knight", "silver_knight",
                 "emerald_dragon", "rose_gold", "ocean_depths", "golden_templar", "blood_moon",
                 "celestial", "volcanic", "amethyst"
@@ -198,24 +199,24 @@ namespace FFTColorMod.Configuration
             }
 
             public string ModRootPath => _modRootPath;
-            public string SourcePath => @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
+            public string SourcePath => DevSourcePath;
             public string UserConfigPath => Path.GetDirectoryName(_configPath) ?? _modRootPath;
 
             public string GetDataPath(string relativePath)
             {
-                return Path.Combine(_modRootPath, "Data", relativePath);
+                return Path.Combine(_modRootPath, DataDirectory, relativePath);
             }
 
             public string GetSpritePath(string characterName, string themeName, string spriteFileName)
             {
-                return Path.Combine(SourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
-                    $"sprites_{themeName}", spriteFileName);
+                return Path.Combine(SourcePath, FFTIVCPath, DataPath, EnhancedPath, FFTPackPath, UnitPath,
+                    $"{SpritesPrefix}{themeName}", spriteFileName);
             }
 
             public string GetThemeDirectory(string characterName, string themeName)
             {
-                return Path.Combine(SourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
-                    $"sprites_{themeName}");
+                return Path.Combine(SourcePath, FFTIVCPath, DataPath, EnhancedPath, FFTPackPath, UnitPath,
+                    $"{SpritesPrefix}{themeName}");
             }
 
             public string GetConfigPath()
@@ -225,8 +226,8 @@ namespace FFTColorMod.Configuration
 
             public string GetPreviewImagePath(string characterName, string themeName)
             {
-                return Path.Combine(_modRootPath, "Resources", "Previews",
-                    $"{characterName}_{themeName}.png");
+                return Path.Combine(_modRootPath, ResourcesDirectory, PreviewsDirectory,
+                    $"{characterName}_{themeName}{PngExtension}");
             }
 
             public string ResolveFirstExistingPath(params string[] candidates)

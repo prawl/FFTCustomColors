@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using FFTColorMod.Configuration;
 using FFTColorMod.Interfaces;
+using static FFTColorMod.Core.ColorModConstants;
 
 namespace FFTColorMod.Core
 {
@@ -71,7 +72,7 @@ namespace FFTColorMod.Core
             if (string.IsNullOrWhiteSpace(characterName))
                 throw new ArgumentException("Character name cannot be empty", nameof(characterName));
 
-            return _currentThemes.TryGetValue(characterName, out var theme) ? theme : "original";
+            return _currentThemes.TryGetValue(characterName, out var theme) ? theme : DefaultTheme;
         }
 
         /// <inheritdoc />
@@ -101,7 +102,7 @@ namespace FFTColorMod.Core
 
         private List<string> LoadAvailableThemes()
         {
-            var themes = new List<string> { "original" };
+            var themes = new List<string> { DefaultTheme };
 
             try
             {
@@ -111,10 +112,10 @@ namespace FFTColorMod.Core
 
                 if (!string.IsNullOrEmpty(parentPath))
                 {
-                    var spritesDirs = Directory.GetDirectories(parentPath, "sprites_*");
+                    var spritesDirs = Directory.GetDirectories(parentPath, $"{SpritesPrefix}*");
                     foreach (var dir in spritesDirs)
                     {
-                        var themeName = Path.GetFileName(dir).Replace("sprites_", "");
+                        var themeName = Path.GetFileName(dir).Replace(SpritesPrefix, "");
                         if (!string.IsNullOrWhiteSpace(themeName) && !themes.Contains(themeName))
                         {
                             themes.Add(themeName);

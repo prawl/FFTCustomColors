@@ -11,6 +11,7 @@ using FFTColorMod.Services;
 using FFTColorMod.Utilities;
 using FFTColorMod.Interfaces;
 using Reloaded.Mod.Interfaces;
+using static FFTColorMod.Core.ColorModConstants;
 
 namespace FFTColorMod;
 
@@ -27,7 +28,7 @@ public class Mod : IMod, IConfigurable
     private ConfigurationManager? _configurationManager;
     private DynamicSpriteLoader? _dynamicSpriteLoader;
     private Process? _gameProcess;
-    private string _currentColorScheme = "original";
+    private string _currentColorScheme = DefaultTheme;
     private ColorSchemeCycler? _colorCycler;
     private IInputSimulator? _inputSimulator;
     private string _modPath;
@@ -49,10 +50,10 @@ public class Mod : IMod, IConfigurable
         _modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;
 
         // Set the source path to the git repo location (hardcoded for now, could be made configurable)
-        _sourcePath = @"C:\Users\ptyRa\Dev\FFT_Color_Mod\ColorMod";
+        _sourcePath = DevSourcePath;
 
         // Use source path for detecting themes (from git repo)
-        string spritesPath = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+        string spritesPath = Path.Combine(_sourcePath, FFTIVCPath, DataPath, EnhancedPath, FFTPackPath, UnitPath);
 
         _colorCycler = new ColorSchemeCycler(spritesPath);
         var schemes = _colorCycler.GetAvailableSchemes();
