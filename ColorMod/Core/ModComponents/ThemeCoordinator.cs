@@ -19,16 +19,32 @@ namespace FFTColorMod.Core.ModComponents
         private readonly ThemeManager _themeManager;
         private string _currentColorScheme;
 
-        // Job sprite patterns
+        // Job sprite patterns (includes both generic jobs and story characters)
         private readonly string[] _jobSpritePatterns = new[]
         {
+            // Generic job classes
             "knight", "archer", "monk", "whitemage", "blackmage",
             "thief", "squire", "chemist", "ninja", "samurai",
             "dragoon", "summoner", "timemage", "geomancer",
             "mystic", "mediator", "dancer", "bard", "mime",
             "calculator", "kuro", "siro", "yumi", "item",
             "mina", "toki", "syou", "samu", "ryu", "fusui",
-            "onmyo", "waju", "odori", "gin", "mono", "san"
+            "onmyo", "waju", "odori", "gin", "mono", "san",
+
+            // Story characters
+            "musu",     // Mustadio
+            "aguri",    // Agrias
+            "kanba",    // Agrias second sprite
+            "oru",      // Orlandeau (correct name, NOT "oran")
+            "dily",     // Delita (all chapters)
+            "dily2",    // Delita chapter 2
+            "dily3",    // Delita chapter 3
+            "aruma",    // Alma
+            "rafa",     // Rafa
+            "mara",     // Malak/Marach
+            "cloud",    // Cloud
+            "reze",     // Reis human
+            "reze_d"    // Reis dragon
         };
 
         public ThemeCoordinator(string sourcePath, string modPath)

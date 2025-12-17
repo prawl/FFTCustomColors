@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Windows.Forms;
 using FFTColorMod.Configuration;
 using FFTColorMod.Utilities;
 using static FFTColorMod.Core.ColorModConstants;
@@ -151,6 +152,31 @@ namespace FFTColorMod.Core.ModComponents
         public ConfigurationManager GetConfigurationManager()
         {
             return _configManager;
+        }
+
+        /// <summary>
+        /// Open configuration UI
+        /// </summary>
+        public void OpenConfigurationUI(Action<Config> onConfigUpdated)
+        {
+            try
+            {
+                var config = GetConfiguration();
+                if (config != null)
+                {
+                    var modPath = Path.GetDirectoryName(_configPath) ?? string.Empty;
+                    var form = new ConfigurationForm(config, _configPath, modPath);
+
+                    if (form.ShowDialog() == DialogResult.OK)
+                    {
+                        onConfigUpdated?.Invoke(form.Configuration);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"Failed to open configuration UI: {ex.Message}");
+            }
         }
 
         /// <summary>

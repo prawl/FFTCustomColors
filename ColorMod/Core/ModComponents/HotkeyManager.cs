@@ -44,13 +44,7 @@ namespace FFTColorMod.Core.ModComponents
             // Initialize hotkey actions
             _hotkeyActions = new Dictionary<int, Action>
             {
-                [VK_F1] = CycleMustadioTheme,
-                [VK_F2] = CycleMustadioTheme, // F1 and F2 both cycle Mustadio
-                [VK_F3] = CycleOrlandeauTheme,
-                [VK_F4] = CycleAgriasTheme,
-                [VK_F5] = CycleCloudTheme,
-                [VK_F10] = () => _openConfigUI(),
-                [VK_F11] = () => _resetColors()
+                [VK_F1] = () => _openConfigUI()  // F1 opens configuration UI
             };
         }
 

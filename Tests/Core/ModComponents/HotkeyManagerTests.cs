@@ -84,72 +84,78 @@ namespace FFTColorMod.Tests.Core.ModComponents
         }
 
         [Fact]
-        public void ProcessHotkeyPress_F1_ShouldCycleMustadioTheme()
+        public void ProcessHotkeyPress_F1_ShouldOpenConfigUI()
         {
-            // For now, we'll just test that it doesn't throw
-            // Since Mustadio uses StoryCharacterThemeManager which we can't easily test
-            // Act & Assert - Should not throw
-            _hotkeyManager.Invoking(h => h.ProcessHotkeyPress(VK_F1))
-                .Should().NotThrow();
-        }
-
-        [Fact]
-        public void ProcessHotkeyPress_F3_ShouldCycleOrlandeauTheme()
-        {
-            // Arrange
-            var testManager = (TestThemeManager)_themeManager;
-
+            // F1 now opens the configuration UI
             // Act
-            _hotkeyManager.ProcessHotkeyPress(VK_F3);
-
-            // Assert
-            testManager.CycleOrlandeauCount.Should().Be(1);
-        }
-
-        [Fact]
-        public void ProcessHotkeyPress_F4_ShouldCycleAgriasTheme()
-        {
-            // Arrange
-            var testManager = (TestThemeManager)_themeManager;
-
-            // Act
-            _hotkeyManager.ProcessHotkeyPress(VK_F4);
-
-            // Assert
-            testManager.CycleAgriasCount.Should().Be(1);
-        }
-
-        [Fact]
-        public void ProcessHotkeyPress_F5_ShouldCycleCloudTheme()
-        {
-            // Arrange
-            var testManager = (TestThemeManager)_themeManager;
-
-            // Act
-            _hotkeyManager.ProcessHotkeyPress(VK_F5);
-
-            // Assert
-            testManager.CycleCloudCount.Should().Be(1);
-        }
-
-        [Fact]
-        public void ProcessHotkeyPress_F10_ShouldOpenConfigUI()
-        {
-            // Act
-            _hotkeyManager.ProcessHotkeyPress(VK_F10);
+            _hotkeyManager.ProcessHotkeyPress(VK_F1);
 
             // Assert
             _configUIOpened.Should().BeTrue();
         }
 
         [Fact]
-        public void ProcessHotkeyPress_F11_ShouldResetColors()
+        public void ProcessHotkeyPress_F3_ShouldDoNothing_NoLongerRegistered()
         {
+            // F3 is no longer registered
+            // Arrange
+            var testManager = (TestThemeManager)_themeManager;
+
+            // Act
+            _hotkeyManager.ProcessHotkeyPress(VK_F3);
+
+            // Assert - Should do nothing
+            testManager.CycleOrlandeauCount.Should().Be(0);
+        }
+
+        [Fact]
+        public void ProcessHotkeyPress_F4_ShouldDoNothing_NoLongerRegistered()
+        {
+            // F4 is no longer registered
+            // Arrange
+            var testManager = (TestThemeManager)_themeManager;
+
+            // Act
+            _hotkeyManager.ProcessHotkeyPress(VK_F4);
+
+            // Assert - Should do nothing
+            testManager.CycleAgriasCount.Should().Be(0);
+        }
+
+        [Fact]
+        public void ProcessHotkeyPress_F5_ShouldDoNothing_NoLongerRegistered()
+        {
+            // F5 is no longer registered
+            // Arrange
+            var testManager = (TestThemeManager)_themeManager;
+
+            // Act
+            _hotkeyManager.ProcessHotkeyPress(VK_F5);
+
+            // Assert - Should do nothing
+            testManager.CycleCloudCount.Should().Be(0);
+        }
+
+        [Fact]
+        public void ProcessHotkeyPress_F10_ShouldDoNothing_NoLongerRegistered()
+        {
+            // F10 is no longer registered
+            // Act
+            _hotkeyManager.ProcessHotkeyPress(VK_F10);
+
+            // Assert - Should do nothing
+            _configUIOpened.Should().BeFalse();
+        }
+
+        [Fact]
+        public void ProcessHotkeyPress_F11_ShouldDoNothing_NoLongerRegistered()
+        {
+            // F11 is no longer registered
             // Act
             _hotkeyManager.ProcessHotkeyPress(VK_F11);
 
-            // Assert
-            _colorsReset.Should().BeTrue();
+            // Assert - Should do nothing
+            _colorsReset.Should().BeFalse();
         }
 
         [Fact]
@@ -197,8 +203,11 @@ namespace FFTColorMod.Tests.Core.ModComponents
         [Fact]
         public void IsHotkeyRegistered_ShouldReturnCorrectValue()
         {
-            // Assert - F10 is registered by default
-            _hotkeyManager.IsHotkeyRegistered(VK_F10).Should().BeTrue();
+            // Assert - F1 is the only registered key
+            _hotkeyManager.IsHotkeyRegistered(VK_F1).Should().BeTrue();
+
+            // Assert - F10 is no longer registered
+            _hotkeyManager.IsHotkeyRegistered(VK_F10).Should().BeFalse();
 
             // Assert - Random key is not registered
             _hotkeyManager.IsHotkeyRegistered(0x99).Should().BeFalse();

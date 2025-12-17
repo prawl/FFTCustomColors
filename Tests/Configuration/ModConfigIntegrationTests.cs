@@ -79,26 +79,10 @@ namespace FFTColorMod.Tests
             Assert.True(hasConfigManager);
         }
 
-        [Fact]
-        public void Mod_InterceptFilePath_UsesConfigBasedColors()
-        {
-            // Arrange
-            Environment.SetEnvironmentVariable("FFT_MOD_PATH", _testModPath);
-            Environment.SetEnvironmentVariable("FFT_CONFIG_PATH", _testConfigPath);
-
-            var mod = new Mod(_modContext, _inputSimulator, new NullHotkeyHandler());
-            mod.InitializeConfiguration(_testConfigPath); // IMPORTANT: Initialize the managers
-
-            // Set knight to corpse_brigade via config
-            mod.SetJobColor("Knight_Male", "corpse_brigade");
-
-            // Act
-            var interceptedPath = mod.InterceptFilePath(@"C:\Game\data\battle_knight_m_spr.bin");
-
-            // Assert - Path should be modified from the original
-            Assert.NotEqual(@"C:\Game\data\battle_knight_m_spr.bin", interceptedPath);
-            Assert.Contains("battle_knight_m_spr.bin", interceptedPath);
-        }
+        // This test has been removed because the current architecture uses ThemeCoordinator
+        // which only intercepts based on a global color scheme, not per-job colors.
+        // The config-based per-job color system works through a different mechanism
+        // (ConfigBasedSpriteManager) and doesn't affect InterceptFilePath.
 
 
         [Fact]

@@ -94,11 +94,13 @@ namespace FFTColorMod.Tests.Core.ModComponents
         [Fact]
         public void IsJobSprite_ShouldIdentifyJobSprites()
         {
-            // Assert
+            // Assert - both generic jobs and story characters should be recognized
             _coordinator.IsJobSprite("battle_knight_m_spr.bin").Should().BeTrue();
             _coordinator.IsJobSprite("battle_archer_f_spr.bin").Should().BeTrue();
-            _coordinator.IsJobSprite("battle_aguri_spr.bin").Should().BeFalse(); // Story character
+            _coordinator.IsJobSprite("battle_aguri_spr.bin").Should().BeTrue(); // Story character (Agrias)
+            _coordinator.IsJobSprite("battle_oru_spr.bin").Should().BeTrue(); // Story character (Orlandeau)
             _coordinator.IsJobSprite("random_file.bin").Should().BeFalse();
+            _coordinator.IsJobSprite("not_a_sprite.txt").Should().BeFalse();
         }
 
         [Fact]

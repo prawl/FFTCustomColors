@@ -33,6 +33,11 @@ namespace FFTColorMod.Configuration
         private bool _storyCharactersCollapsed = false;
         private List<Control> _storyCharacterControls = new List<Control>();
 
+        /// <summary>
+        /// Gets the current configuration
+        /// </summary>
+        public Config Configuration => _config;
+
         public ConfigurationForm(Config config, string configPath = null, string modPath = null)
         {
             _config = config;
