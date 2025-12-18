@@ -131,18 +131,18 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
         }
 
         [Fact]
-        public void MouseEnter_Should_Show_Navigation_Arrows()
+        public void ShowArrows_Method_Exists_For_Compatibility()
         {
             // Arrange
             var image1 = new System.Drawing.Bitmap(64, 64);
             var image2 = new System.Drawing.Bitmap(64, 64);
             _carousel.SetImages(new[] { image1, image2 });
 
-            // Act - Use public method to simulate hover
+            // Act - ShowArrows exists but arrows are always visible
             _carousel.ShowArrows();
 
-            // Assert
-            _carousel.ShowNavigationArrows.Should().BeTrue("Navigation arrows should show on mouse hover");
+            // Assert - Arrows remain visible (always true in current implementation)
+            _carousel.ShowNavigationArrows.Should().BeTrue("Navigation arrows are always visible");
 
             // Cleanup
             image1.Dispose();
