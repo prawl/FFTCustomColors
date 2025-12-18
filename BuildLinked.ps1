@@ -97,7 +97,7 @@ if ($LASTEXITCODE -eq 0) {
             # Copy generic job themed folders (e.g., sprites_crimson_red, sprites_lucavi)
             Write-Host "Copying generic job themed sprites..." -ForegroundColor Cyan
             $genericThemeFolders = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/" -Directory |
-                Where-Object { $_.Name -match "^sprites_[^_]+$" -or $_.Name -match "^sprites_(crimson_red|lucavi|northern_sky|southern_sky|amethyst|celestial|corpse_brigade|emerald_dragon|frost_knight|golden_templar|blood_moon|volcanic|ocean_depths)" }
+                Where-Object { $_.Name -match "^sprites_[^_]+$" -or $_.Name -match "^sprites_(crimson_red|lucavi|northern_sky|southern_sky|amethyst|celestial|corpse_brigade|emerald_dragon|frost_knight|golden_templar|blood_moon|volcanic|ocean_depths|royal_purple|phoenix_flame|rose_gold|silver_knight|shadow_assassin)" }
 
             foreach ($folder in $genericThemeFolders) {
                 $destFolder = "$spritePath/$($folder.Name)"

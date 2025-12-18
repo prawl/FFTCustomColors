@@ -16,7 +16,7 @@ namespace FFTColorCustomizer.Configuration.UI
         public const int ButtonPadding = 10;
 
         // Preview dimensions
-        public const int PreviewSize = 64;
+        public const int PreviewSize = 96;  // Matches sprite width for 96x120 previews
 
         // Layout settings
         public const int MainPanelPadding = 10;

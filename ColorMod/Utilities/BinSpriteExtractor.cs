@@ -30,9 +30,9 @@ namespace FFTColorCustomizer.Utilities
         // The sprite sheet is 256 pixels wide
         private const int SheetWidth = 256;
 
-        // Display size for extracted sprites (scaled up to match PNG preview size)
-        private const int DisplayWidth = 64;
-        private const int DisplayHeight = 80;  // Maintain aspect ratio: 32x40 -> 64x80
+        // Display size for extracted sprites (scaled 3x from 32x40 for better visibility)
+        private const int DisplayWidth = 96;
+        private const int DisplayHeight = 120;  // Maintain aspect ratio: 32x40 -> 96x120
 
         // Cache for extracted sprites: key is "spriteIndex_paletteIndex_dataHash"
         private readonly Dictionary<string, Bitmap> _spriteCache = new Dictionary<string, Bitmap>();
@@ -195,14 +195,14 @@ namespace FFTColorCustomizer.Utilities
                 }
             }
 
-            // Scale up to display size (64x80) to match PNG preview size
-            // The sprite is 32x40, scaled 2x to 64x80
+            // Scale up to display size for better visibility in preview carousel
+            // The sprite is 32x40, scaled 3x to 96x120
             var displayBitmap = new Bitmap(DisplayWidth, DisplayHeight);
             using (var g = Graphics.FromImage(displayBitmap))
             {
                 g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
                 g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
-                // Scale 2x from 32x40 to 64x80
+                // Scale 3x from 32x40 to 96x120
                 g.DrawImage(bitmap, 0, 0, DisplayWidth, DisplayHeight);
             }
 
