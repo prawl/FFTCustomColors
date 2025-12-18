@@ -27,8 +27,9 @@ namespace FFTColorCustomizer.Configuration.UI
             if (string.IsNullOrEmpty(_modPath))
                 return false;
 
-            var previewPath = Path.Combine(_modPath, "Resources", "Previews");
-            return Directory.Exists(previewPath);
+            // Check for FFTIVC directory which contains the BIN files we extract from
+            var fftivcPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            return Directory.Exists(fftivcPath);
         }
 
         public void UpdateJobPreview(PictureBox pictureBox, string jobName, string theme)

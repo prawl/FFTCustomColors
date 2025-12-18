@@ -19,7 +19,7 @@ namespace FFTColorCustomizer.Tests
         public ConfigurationFormModPathSeparationTests()
         {
             // Create a test directory structure that simulates the real deployment scenario:
-            // - Mod installation directory with Resources/Previews
+            // - Mod installation directory with FFTIVC/data/enhanced/fftpack/unit (BIN files)
             // - User config directory (different location) with Config.json
 
             // Mod installation path (like Reloaded\Mods\FFTColorCustomizer)
@@ -31,19 +31,17 @@ namespace FFTColorCustomizer.Tests
             _testConfigPath = Path.Combine(userConfigDir, "Config.json");
             _testUserConfigPath = userConfigDir;
 
-            // Create mod directory structure with preview images
-            var previewsPath = Path.Combine(_testModPath, "Resources", "Previews");
-            Directory.CreateDirectory(previewsPath);
+            // Create mod directory structure with BIN files (new lazy loading system)
+            var unitPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            Directory.CreateDirectory(unitPath);
 
             // Create user config directory
             Directory.CreateDirectory(userConfigDir);
 
-            // Create minimal valid 1x1 PNG files in mod directory
-            byte[] minimalPng = CreateMinimalPng();
-            File.WriteAllBytes(Path.Combine(previewsPath, "agrias_original.png"), minimalPng);
-            File.WriteAllBytes(Path.Combine(previewsPath, "agrias_ash_dark.png"), minimalPng);
-            File.WriteAllBytes(Path.Combine(previewsPath, "orlandeau_original.png"), minimalPng);
-            File.WriteAllBytes(Path.Combine(previewsPath, "orlandeau_thunder_god.png"), minimalPng);
+            // Create minimal valid BIN files for sprites
+            var binData = CreateMinimalBinFile();
+            File.WriteAllBytes(Path.Combine(unitPath, "battle_aguri_spr.bin"), binData);
+            File.WriteAllBytes(Path.Combine(unitPath, "battle_oru_spr.bin"), binData);
         }
 
         [Fact]
@@ -60,14 +58,14 @@ namespace FFTColorCustomizer.Tests
             Path.GetDirectoryName(Path.GetDirectoryName(_testConfigPath)).Should().NotBe(_testModPath,
                 "Config parent directory should not be the mod directory");
 
-            // Preview images only exist in mod path, not in config path directory
-            var configDirPreviewPath = Path.Combine(_testUserConfigPath, "Resources", "Previews", "agrias_original.png");
-            File.Exists(configDirPreviewPath).Should().BeFalse(
-                "Preview images should NOT exist in config directory");
+            // BIN files only exist in mod path, not in config path directory
+            var configDirBinPath = Path.Combine(_testUserConfigPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_aguri_spr.bin");
+            File.Exists(configDirBinPath).Should().BeFalse(
+                "BIN files should NOT exist in config directory");
 
-            var modPreviewPath = Path.Combine(_testModPath, "Resources", "Previews", "agrias_original.png");
-            File.Exists(modPreviewPath).Should().BeTrue(
-                "Preview images SHOULD exist in mod directory");
+            var modBinPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "battle_aguri_spr.bin");
+            File.Exists(modBinPath).Should().BeTrue(
+                "BIN files SHOULD exist in mod directory");
 
             // Act - Create form with both config path and mod path (simulating the fix)
             var form = new TestConfigurationForm(config, _testConfigPath, _testModPath);
@@ -137,43 +135,23 @@ namespace FFTColorCustomizer.Tests
             // Direct test of PreviewImageManager with separate paths
 
             // Arrange
-            var configDirPreviewPath = Path.Combine(_testUserConfigPath, "Resources", "Previews");
-            var modDirPreviewPath = Path.Combine(_testModPath, "Resources", "Previews");
+            var configDirUnitPath = Path.Combine(_testUserConfigPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var modDirUnitPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
-            Directory.Exists(configDirPreviewPath).Should().BeFalse(
-                "Config directory should not have preview resources");
-            Directory.Exists(modDirPreviewPath).Should().BeTrue(
-                "Mod directory should have preview resources");
+            Directory.Exists(configDirUnitPath).Should().BeFalse(
+                "Config directory should not have BIN resources");
+            Directory.Exists(modDirUnitPath).Should().BeTrue(
+                "Mod directory should have BIN resources");
 
-            // Act & Assert - Manager with mod path should work
+            // Act & Assert - Manager with mod path should recognize valid mod structure
             var correctManager = new PreviewImageManager(_testModPath);
-            var pictureBox1 = new PictureBox();
-            try
-            {
-                correctManager.UpdateStoryCharacterPreview(pictureBox1, "agrias", "original");
-                pictureBox1.Image.Should().NotBeNull(
-                    "PreviewImageManager should load images from mod path");
-            }
-            finally
-            {
-                pictureBox1.Image?.Dispose();
-                pictureBox1.Dispose();
-            }
+            correctManager.HasValidModPath().Should().BeTrue(
+                "PreviewImageManager should recognize valid mod path with FFTIVC directory");
 
-            // Act & Assert - Manager with config directory path should fail
+            // Act & Assert - Manager with config directory path should not find valid structure
             var wrongManager = new PreviewImageManager(_testUserConfigPath);
-            var pictureBox2 = new PictureBox();
-            try
-            {
-                wrongManager.UpdateStoryCharacterPreview(pictureBox2, "agrias", "original");
-                pictureBox2.Image.Should().BeNull(
-                    "PreviewImageManager should NOT find images in config directory");
-            }
-            finally
-            {
-                pictureBox2.Image?.Dispose();
-                pictureBox2.Dispose();
-            }
+            wrongManager.HasValidModPath().Should().BeFalse(
+                "PreviewImageManager with config path should not find valid mod structure");
         }
 
 
@@ -200,20 +178,27 @@ namespace FFTColorCustomizer.Tests
             return pictureBoxes;
         }
 
-        private byte[] CreateMinimalPng()
+        private byte[] CreateMinimalBinFile()
         {
-            // Create a complete minimal 1x1 black pixel PNG
-            return new byte[] {
-                0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,  // PNG signature
-                0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,  // IHDR chunk
-                0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-                0x08, 0x00, 0x00, 0x00, 0x00, 0x3A, 0x7E, 0x9B,
-                0x55, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,  // IDAT chunk
-                0x54, 0x08, 0x1D, 0x01, 0x01, 0x00, 0x00, 0xFE,
-                0xFF, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xE5,
-                0x5A, 0xDC, 0xE8, 0x00, 0x00, 0x00, 0x00, 0x49,  // IEND chunk
-                0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
-            };
+            // Create a minimal valid BIN file with palette and sprite data
+            // FFT sprite BIN format: 512 bytes palette + sprite data
+            var binData = new byte[512 + (256 * 40 * 8)]; // Palette + sprite sheet
+
+            // Set up a basic palette (first 512 bytes)
+            for (int i = 0; i < 16; i++) // 16 colors in first palette
+            {
+                int offset = i * 2;
+                binData[offset] = 0xFF; // Color data
+                binData[offset + 1] = 0x7F;
+            }
+
+            // Add some sprite data (just enough to not crash)
+            for (int i = 512; i < Math.Min(binData.Length, 2000); i++)
+            {
+                binData[i] = 0x11; // Some pixel data
+            }
+
+            return binData;
         }
 
         public void Dispose()

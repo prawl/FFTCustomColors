@@ -673,8 +673,10 @@ namespace FFTColorCustomizer.Configuration.UI
                 case "Mime (Female)": return "battle_mono_w_spr.bin";
 
                 // Gender-specific Jobs
-                case "Bard": return "battle_gin_m_spr.bin";
-                case "Dancer": return "battle_odori_w_spr.bin";
+                case "Bard":
+                case "Bard (Male)": return "battle_gin_m_spr.bin";
+                case "Dancer":
+                case "Dancer (Female)": return "battle_odori_w_spr.bin";
 
                 // Fallback to old logic if not found
                 default:
