@@ -4,7 +4,7 @@
       "name": "Agrias",
       "spriteNames": ["aguri", "kanba"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "gun_slinger", "crimson_assassin", "shadow_dancer", "royal_commander"]
+      "availableThemes": ["original", "gun_slinger", "crimson_assassin", "shadow_dancer", "royal_commander", "temple_commander"]
     },
     {
       "name": "Cloud",
@@ -80,7 +80,7 @@
       "name": "Meliadoul",
       "spriteNames": ["h85"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "holy_divine", "night_blade", "shadow_strike", "royal_crusader", "engineer_knight"]
+      "availableThemes": ["original", "holy_divine", "night_blade", "shadow_strike", "royal_crusader", "engineer_knight", "temple_divine"]
     }
   ]
 }
