@@ -32,34 +32,44 @@ namespace FFTColorCustomizer.Configuration.UI
                 AutoSize = true
             };
 
-            // Close button
+            // Close button - Make it more visible with white background initially
             _closeButton = new Button
             {
                 Text = "✕",
                 ForeColor = Color.White,
-                BackColor = Color.FromArgb(20, 20, 20),
+                BackColor = Color.Transparent,  // Transparent background
                 FlatStyle = FlatStyle.Flat,
-                Size = new Size(30, 25),
-                Location = new Point(parentForm.Width - 35, 2),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                Size = new Size(35, 26),
+                Location = new Point(this.Width - 40, 2),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Font = new Font("Segoe UI", 12, FontStyle.Regular),  // Clean, regular font
+                Cursor = Cursors.Hand
             };
-            _closeButton.FlatAppearance.BorderSize = 0;
-            _closeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(232, 17, 35);  // Red on hover
-            _closeButton.Click += (s, e) => parentForm.Close();
+            _closeButton.FlatAppearance.BorderSize = 0;  // No border
+            _closeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(232, 17, 35);  // Bright red on hover
+            _closeButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(180, 17, 35);  // Darker red on click
+            _closeButton.Click += (s, e) =>
+            {
+                parentForm.DialogResult = DialogResult.Cancel;
+                parentForm.Close();
+            };
 
             // Minimize button
             _minimizeButton = new Button
             {
                 Text = "─",
                 ForeColor = Color.White,
-                BackColor = Color.FromArgb(20, 20, 20),
+                BackColor = Color.Transparent,  // Transparent background
                 FlatStyle = FlatStyle.Flat,
-                Size = new Size(30, 25),
-                Location = new Point(parentForm.Width - 70, 2),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                Size = new Size(35, 26),
+                Location = new Point(this.Width - 80, 2),  // Position to the left of close button
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Font = new Font("Segoe UI", 12, FontStyle.Regular),
+                Cursor = Cursors.Hand
             };
-            _minimizeButton.FlatAppearance.BorderSize = 0;
-            _minimizeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(50, 50, 50);
+            _minimizeButton.FlatAppearance.BorderSize = 0;  // No border
+            _minimizeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(100, 50, 50);  // Darker red on hover
+            _minimizeButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(80, 40, 40);  // Even darker on click
             _minimizeButton.Click += (s, e) => parentForm.WindowState = FormWindowState.Minimized;
 
             Controls.Add(_titleLabel);
