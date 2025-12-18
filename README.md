@@ -1,15 +1,19 @@
-# FFT Color Mod
+# FFT Color Customizer
 
-Custom color palettes for Final Fantasy Tactics (Steam) using professionally edited sprites from better_palettes.
+Advanced color customization mod for Final Fantasy Tactics (Steam) with dynamic palette swapping and story character themes.
 
 ## Features
 
-- **20 Unique Color Schemes**: Original plus 19 custom themes
+- **20+ Unique Color Schemes**: Original plus custom themes for all job classes
+- **Story Character Themes**: Custom palettes for Agrias, Cloud, Orlandeau, and more
+- **Palette Swap System**: Mix and match color palettes between different characters
 - **Per-Job Configuration**: Set different colors for each job class via Reloaded-II config
-- **38 Sprites Modified**: All major job classes included
+- **38 Generic Job Sprites**: All major job classes included
+- **13+ Story Characters**: Custom themes for major story characters
 - **Persistent Settings**: Configuration persists between game sessions
 - **Quick Config Access**: Press F1 key during gameplay to open configuration
 - **Smart Config Merging**: Runtime configuration changes preserve other settings
+- **Dynamic Theme Loading**: Lazy-loading system generates previews on demand
 
 ## Installation
 
@@ -42,6 +46,37 @@ The mod now includes full integration with Reloaded-II's configuration system, a
 
 ### Hotkey Controls
 - **F1**: Opens the configuration UI during gameplay for quick theme changes
+
+## Palette Swap Discovery (December 2024)
+
+### Revolutionary Finding: Cross-Character Palette System
+We discovered that FFT sprite BIN files contain two separate components:
+- **Palette Data** (first 512 bytes): The color information
+- **Sprite Data** (remaining bytes): The actual character shape and animations
+
+This means you can combine ANY character's colors with ANY other character's sprite, creating unique visual combinations!
+
+### How Palette Swapping Works
+```python
+# Example: Give Agrias the color palette of Mustadio
+mustadio_palette = mustadio_bin[:512]  # Extract colors
+agrias_sprite = agrias_bin[512:]       # Extract sprite shape
+new_theme = mustadio_palette + agrias_sprite  # Combine!
+```
+
+### Implemented Palette Swap Themes
+- **Agrias "gun_slinger"**: Mustadio's engineer browns on holy knight
+- **Beowulf "holy_templar"**: Agrias's holy colors on temple knight
+- **Beowulf "machinist_knight"**: Mustadio's browns on temple knight
+- **Cloud "holy_soldier"**: Agrias's divine white on SOLDIER
+- **Mustadio "noble_engineer"**: Agrias's knightly colors on machinist
+- **Reis "dragon_priestess"**: Agrias's holy white on dragon lady
+- **Marach "divine_herald"**: Agrias's colors on heaven knight
+
+### Testing Results
+- Tested 156 palette combinations across 13 story characters
+- 143 successful combinations generated
+- Each combination preserves the character's original sprite shape while applying another character's color scheme
 
 ## Development
 

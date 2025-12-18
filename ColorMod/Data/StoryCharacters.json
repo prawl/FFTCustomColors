@@ -4,7 +4,7 @@
       "name": "Agrias",
       "spriteNames": ["aguri", "kanba"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "gun_slinger"]
+      "availableThemes": ["original", "gun_slinger", "crimson_assassin", "shadow_dancer", "royal_commander"]
     },
     {
       "name": "Cloud",
@@ -16,13 +16,13 @@
       "name": "Mustadio",
       "spriteNames": ["musu"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "noble_engineer"]
+      "availableThemes": ["original", "noble_engineer", "crimson_engineer", "shadow_machinist", "royal_gunner", "divine_artificer"]
     },
     {
       "name": "Orlandeau",
       "spriteNames": ["oru"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "thunder_god"]
+      "availableThemes": ["original", "thunder_god", "divine_thunder"]
     },
     {
       "name": "Reis",
@@ -62,25 +62,25 @@
       "name": "Rapha",
       "spriteNames": ["h79"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "twilight_blend"]
+      "availableThemes": ["original", "twilight_blend", "thunder_maiden"]
     },
     {
       "name": "Marach",
       "spriteNames": ["mara"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "nightmare_armor", "divine_herald"]
+      "availableThemes": ["original", "nightmare_armor", "divine_herald", "storm_herald", "heaven_twin"]
     },
     {
       "name": "Beowulf",
       "spriteNames": ["beio"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "holy_templar", "machinist_knight"]
+      "availableThemes": ["original", "holy_templar", "machinist_knight", "twilight_templar", "shadow_knight", "noble_guardian", "divine_blade"]
     },
     {
       "name": "Meliadoul",
       "spriteNames": ["h85"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "void_black"]
+      "availableThemes": ["original", "holy_divine", "night_blade", "shadow_strike", "royal_crusader", "engineer_knight"]
     }
   ]
 }
