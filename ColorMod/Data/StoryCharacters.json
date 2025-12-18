@@ -4,7 +4,7 @@
       "name": "Agrias",
       "spriteNames": ["aguri", "kanba"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "ash_dark"]
+      "availableThemes": ["original", "gun_slinger"]
     },
     {
       "name": "Cloud",
