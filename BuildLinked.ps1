@@ -31,6 +31,15 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "Copying ModConfig.json..." -ForegroundColor Cyan
     Copy-Item "ColorMod/ModConfig.json" "$modPath/ModConfig.json" -Force
 
+    # Copy mod icon from Images directory
+    if (Test-Path "ColorMod/Images/thunder_god.png") {
+        Write-Host "Copying mod icon (thunder_god.png)..." -ForegroundColor Cyan
+        Copy-Item "ColorMod/Images/thunder_god.png" "$modPath/Preview.png" -Force
+    } elseif (Test-Path "ColorMod/Preview.png") {
+        Write-Host "Copying Preview.png (mod icon)..." -ForegroundColor Cyan
+        Copy-Item "ColorMod/Preview.png" "$modPath/Preview.png" -Force
+    }
+
     # Copy Config.json for configuration settings
     if (Test-Path "ColorMod/Config.json") {
         Write-Host "Copying Config.json..." -ForegroundColor Cyan
