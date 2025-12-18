@@ -69,9 +69,21 @@ namespace FFTColorCustomizer.Configuration
             _resetAllButton.Location = new Point(UIConfiguration.ButtonPadding, 5);
             _resetAllButton.Click += ResetAllButton_Click;
 
+            // Create tip label
+            var tipLabel = new Label
+            {
+                Text = "Tip: Scroll your mouse wheel while hovering over a drop down list",
+                AutoSize = true,
+                ForeColor = Color.FromArgb(180, 180, 180), // Light gray for subtle text
+                Font = new Font("Segoe UI", 8F, FontStyle.Italic),
+                Location = new Point(-100, 10), // Centered position
+                Anchor = AnchorStyles.Top
+            };
+
             buttonPanel.Controls.Add(_cancelButton);
             buttonPanel.Controls.Add(_saveButton);
             buttonPanel.Controls.Add(_resetAllButton);
+            buttonPanel.Controls.Add(tipLabel);
 
             Controls.Add(buttonPanel);
         }
