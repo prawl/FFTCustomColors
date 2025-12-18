@@ -10,13 +10,13 @@
       "name": "Cloud",
       "spriteNames": ["cloud"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "knights_round", "sephiroth_black"]
+      "availableThemes": ["original", "knights_round", "sephiroth_black", "holy_soldier"]
     },
     {
       "name": "Mustadio",
       "spriteNames": ["musu"],
       "defaultTheme": "original",
-      "availableThemes": ["original"]
+      "availableThemes": ["original", "noble_engineer"]
     },
     {
       "name": "Orlandeau",
@@ -54,7 +54,8 @@
         "silver_steel",
         "sunset_orange",
         "turquoise",
-        "violet"
+        "violet",
+        "dragon_priestess"
       ]
     },
     {
@@ -67,13 +68,13 @@
       "name": "Marach",
       "spriteNames": ["mara"],
       "defaultTheme": "original",
-      "availableThemes": ["original", "nightmare_armor"]
+      "availableThemes": ["original", "nightmare_armor", "divine_herald"]
     },
     {
       "name": "Beowulf",
       "spriteNames": ["beio"],
       "defaultTheme": "original",
-      "availableThemes": ["original"]
+      "availableThemes": ["original", "holy_templar", "machinist_knight"]
     },
     {
       "name": "Meliadoul",
