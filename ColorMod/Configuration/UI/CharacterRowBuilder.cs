@@ -21,6 +21,9 @@ namespace FFTColorCustomizer.Configuration.UI
         private readonly BinSpriteExtractor _binExtractor;
         private readonly List<Control> _storyCharacterControls;
         private readonly JobClassDefinitionService _jobClassService;
+        private readonly List<PreviewCarousel> _allCarousels = new List<PreviewCarousel>();
+
+        public IReadOnlyList<PreviewCarousel> AllCarousels => _allCarousels;
 
         public CharacterRowBuilder(
             TableLayoutPanel mainPanel,
@@ -57,10 +60,24 @@ namespace FFTColorCustomizer.Configuration.UI
             comboBox.SetThemes(themes);
             comboBox.SelectedThemeValue = currentTheme;
 
-            // Create preview carousel
+            // Create preview carousel with lazy loading
             var carousel = ConfigUIComponentFactory.CreatePreviewPictureBox();
-            UpdateGenericPreviewImages(carousel, jobName, currentTheme);
-            carousel.Tag = new { JobName = jobName, Setter = setter };
+
+            // Store data for lazy loading
+            carousel.Tag = new { JobName = jobName, Theme = currentTheme, Setter = setter };
+
+            // Set up lazy loading callback
+            carousel.LoadImagesCallback = (c) => {
+                var tag = c.Tag as dynamic;
+                if (tag != null)
+                {
+                    ModLogger.Log($"[LAZY] Loading images for {tag.JobName}");
+                    UpdateGenericPreviewImages(c as PreviewCarousel, tag.JobName.ToString(), tag.Theme.ToString());
+                }
+            };
+
+            // Track carousel for lazy loading
+            _allCarousels.Add(carousel);
 
             // Add controls to panel
             _mainPanel.Controls.Add(comboBox, 1, row);
@@ -83,7 +100,15 @@ namespace FFTColorCustomizer.Configuration.UI
                 {
                     ModLogger.Log($"Selection changed: {jobName} = {newTheme}");
                     setter(newTheme);
-                    UpdateGenericPreviewImages(carousel, jobName, newTheme);
+
+                    // Update tag for lazy loading
+                    carousel.Tag = new { JobName = jobName, Theme = newTheme, Setter = setter };
+
+                    // Only update images if already loaded
+                    if (carousel.HasImagesLoaded)
+                    {
+                        UpdateGenericPreviewImages(carousel, jobName, newTheme);
+                    }
                 }
             };
         }
@@ -99,6 +124,9 @@ namespace FFTColorCustomizer.Configuration.UI
             var comboBox = new ThemeComboBox();
             ConfigUIComponentFactory.ApplyThemeComboBoxStyling(comboBox);
             var carousel = ConfigUIComponentFactory.CreatePreviewPictureBox();
+
+            // Set up for lazy loading
+            _allCarousels.Add(carousel);
 
             // Get available themes for this story character
             var availableThemes = characterConfig.AvailableThemes?.Length > 0
@@ -120,14 +148,39 @@ namespace FFTColorCustomizer.Configuration.UI
                 {
                     ModLogger.Log($"[THEME CHANGE] Story character {characterConfig.Name} changing to theme: {newTheme}");
                     characterConfig.SetValue(newTheme);
-                    UpdateStoryCharacterPreview(carousel, characterConfig.PreviewName, newTheme);
+
+                    // Update tag for lazy loading
+                    carousel.Tag = new {
+                        CharacterName = characterConfig.PreviewName,
+                        Theme = newTheme,
+                        Config = characterConfig
+                    };
+
+                    // Only update images if already loaded
+                    if (carousel.HasImagesLoaded)
+                    {
+                        UpdateStoryCharacterPreview(carousel, characterConfig.PreviewName, newTheme);
+                    }
                 }
             };
 
-            // Set initial preview
+            // Set initial preview data for lazy loading
             var currentValue = characterConfig.GetValue();
-            UpdateStoryCharacterPreview(carousel, characterConfig.PreviewName, currentValue.ToString());
-            carousel.Tag = new { JobName = characterConfig.PreviewName };
+            carousel.Tag = new {
+                CharacterName = characterConfig.PreviewName,
+                Theme = currentValue.ToString(),
+                Config = characterConfig
+            };
+
+            // Set up lazy loading callback
+            carousel.LoadImagesCallback = (c) => {
+                var tag = c.Tag as dynamic;
+                if (tag != null)
+                {
+                    ModLogger.Log($"[LAZY] Loading story character images for {tag.CharacterName}");
+                    UpdateStoryCharacterPreview(c as PreviewCarousel, tag.CharacterName.ToString(), tag.Theme.ToString());
+                }
+            };
 
             // Add to panel
             _mainPanel.Controls.Add(comboBox, 1, row);

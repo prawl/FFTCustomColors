@@ -24,6 +24,11 @@ namespace FFTColorCustomizer.Configuration.UI
 
         public bool SupportsNavigation => _images != null && _images.Length > 1;
 
+        // Lazy loading support
+        public bool HasImagesLoaded { get; set; } = false;
+        public bool ShouldLoadImmediately { get; set; } = false;
+        public Action<PreviewCarousel> LoadImagesCallback { get; set; }
+
         public PreviewCarousel()
         {
             // Track when mouse enters/leaves the control

@@ -82,6 +82,18 @@ namespace FFTColorCustomizer.Tests
             agriasBox.Should().NotBeNull("Agrias picture box should exist");
             orlandeauBox.Should().NotBeNull("Orlandeau picture box should exist");
 
+            // With lazy loading, we need to trigger the load callback
+            if (agriasBox is PreviewCarousel agriasCarousel)
+            {
+                // Trigger the lazy loading callback if it exists
+                agriasCarousel.LoadImagesCallback?.Invoke(agriasCarousel);
+            }
+            if (orlandeauBox is PreviewCarousel orlandeauCarousel)
+            {
+                // Trigger the lazy loading callback if it exists
+                orlandeauCarousel.LoadImagesCallback?.Invoke(orlandeauCarousel);
+            }
+
             // The fix ensures images load from mod path, not config path
             agriasBox?.Image.Should().NotBeNull(
                 "Agrias preview should load from mod path when both paths are provided");

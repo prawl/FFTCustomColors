@@ -84,6 +84,16 @@ namespace FFTColorCustomizer.Tests
             agriasBox.Should().NotBeNull("Agrias picture box should exist");
             orlandeauBox.Should().NotBeNull("Orlandeau picture box should exist");
 
+            // With lazy loading, we need to trigger the load callback
+            if (agriasBox is FFTColorCustomizer.Configuration.UI.PreviewCarousel agriasCarousel)
+            {
+                agriasCarousel.LoadImagesCallback?.Invoke(agriasCarousel);
+            }
+            if (orlandeauBox is FFTColorCustomizer.Configuration.UI.PreviewCarousel orlandeauCarousel)
+            {
+                orlandeauCarousel.LoadImagesCallback?.Invoke(orlandeauCarousel);
+            }
+
             // The real bug: images won't load because form looks in wrong directory
             agriasBox?.Image.Should().NotBeNull(
                 "Agrias preview image should be loaded when config path is provided");

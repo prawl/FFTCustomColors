@@ -28,7 +28,7 @@ namespace FFTColorCustomizer.Configuration
         private void CreateMainContentPanel()
         {
             // Create main content panel that will be below the title bar
-            var contentPanel = new Panel
+            _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = UIConfiguration.DarkBackground,
@@ -44,8 +44,8 @@ namespace FFTColorCustomizer.Configuration
             _mainPanel.SetColumnSpan(headerLabel, 3);
             _mainPanel.Controls.Add(headerLabel, 0, 0);
 
-            contentPanel.Controls.Add(_mainPanel);
-            Controls.Add(contentPanel);
+            _contentPanel.Controls.Add(_mainPanel);
+            Controls.Add(_contentPanel);
         }
 
         private void CreateButtonPanel()

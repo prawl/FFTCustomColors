@@ -23,6 +23,8 @@ namespace FFTColorCustomizer.Configuration
         private Button _resetAllButton;
         private CustomTitleBar _titleBar;
         private PreviewImageManager _previewManager;
+        private LazyLoadingManager _lazyLoadingManager;
+        private Panel _contentPanel;
 
         private bool _isFullyLoaded = false;
         private bool _isInitializing = true;
@@ -76,8 +78,44 @@ namespace FFTColorCustomizer.Configuration
             CreateMainContentPanel();
             CreateButtonPanel();
 
-            // Force image refresh after form loads
-            this.Load += (s, e) => RefreshAllPreviews();
+            // Set up lazy loading after form loads
+            this.Load += (s, e) =>
+            {
+                InitializeLazyLoading();
+            };
+        }
+
+        private void InitializeLazyLoading()
+        {
+            if (_contentPanel == null || _rowBuilder == null)
+            {
+                ModLogger.Log("[LAZY] Skipping lazy loading initialization - controls not ready");
+                return;
+            }
+
+            ModLogger.Log($"[LAZY] Initializing lazy loading for {_rowBuilder.AllCarousels.Count} carousels");
+
+            // Create lazy loading manager with the scrollable content panel
+            // Load more items initially to ensure both generic and story characters are covered
+            // Increased to 10 to ensure Story Characters are included when visible
+            _lazyLoadingManager = new LazyLoadingManager(_contentPanel, maxImmediateLoad: 10);
+
+            // Register all carousels from the row builder
+            foreach (var carousel in _rowBuilder.AllCarousels)
+            {
+                _lazyLoadingManager.RegisterCarousel(carousel);
+            }
+
+            // Initialize to load first 10 immediately
+            _lazyLoadingManager.Initialize();
+
+            // Force a refresh to catch any visible items
+            this.BeginInvoke(new Action(() =>
+            {
+                _lazyLoadingManager.CheckAllCarouselsVisibility();
+            }));
+
+            ModLogger.Log("[LAZY] Lazy loading initialization complete");
         }
 
         private void InitializePreviewManager()
@@ -117,6 +155,20 @@ namespace FFTColorCustomizer.Configuration
 
             _mainPanel.ResumeLayout(true);
             this.ResumeLayout(true);
+
+            // Check visibility immediately and after a small delay
+            _lazyLoadingManager?.CheckAllCarouselsVisibility();
+
+            // Also check after layout settles
+            System.Windows.Forms.Timer delayTimer = new System.Windows.Forms.Timer();
+            delayTimer.Interval = 100; // 100ms delay
+            delayTimer.Tick += (s, e) =>
+            {
+                delayTimer.Stop();
+                delayTimer.Dispose();
+                _lazyLoadingManager?.CheckAllCarouselsVisibility();
+            };
+            delayTimer.Start();
         }
 
         private void ToggleStoryCharactersVisibility(Label header)
@@ -131,6 +183,20 @@ namespace FFTColorCustomizer.Configuration
 
             _mainPanel.ResumeLayout(true);
             this.ResumeLayout(true);
+
+            // Check visibility immediately and after a small delay
+            _lazyLoadingManager?.CheckAllCarouselsVisibility();
+
+            // Also check after layout settles
+            System.Windows.Forms.Timer delayTimer = new System.Windows.Forms.Timer();
+            delayTimer.Interval = 100; // 100ms delay
+            delayTimer.Tick += (s, e) =>
+            {
+                delayTimer.Stop();
+                delayTimer.Dispose();
+                _lazyLoadingManager?.CheckAllCarouselsVisibility();
+            };
+            delayTimer.Start();
         }
 
         private void SetControlsVisibility(List<Control> controls, bool visible)
@@ -161,6 +227,12 @@ namespace FFTColorCustomizer.Configuration
                     }
                 }
             }
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            _lazyLoadingManager?.Dispose();
+            base.OnFormClosed(e);
         }
 
         private void RefreshPreviewForCharacter(PictureBox pictureBox, ComboBox comboBox, dynamic tag)
