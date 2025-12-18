@@ -124,10 +124,10 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
         }
 
         [Fact]
-        public void ShowNavigationArrows_Should_Be_False_By_Default()
+        public void ShowNavigationArrows_Should_Be_True_Always()
         {
-            // Assert
-            _carousel.ShowNavigationArrows.Should().BeFalse("Navigation arrows should not show by default");
+            // Assert - Arrows are always visible in current implementation
+            _carousel.ShowNavigationArrows.Should().BeTrue("Navigation arrows are always visible in current implementation");
         }
 
         [Fact]
@@ -161,8 +161,8 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             // Act - Use public method to simulate leave
             _carousel.HideArrows();
 
-            // Assert
-            _carousel.ShowNavigationArrows.Should().BeFalse("Navigation arrows should hide on mouse leave");
+            // Assert - Arrows remain visible (always true in current implementation)
+            _carousel.ShowNavigationArrows.Should().BeTrue("Navigation arrows are always visible, HideArrows is a compatibility method");
 
             // Cleanup
             image1.Dispose();
@@ -331,7 +331,7 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             _carousel.Should().NotBeNull();
             _carousel.CurrentViewIndex.Should().Be(0);
             _carousel.ImageCount.Should().Be(0);
-            _carousel.ShowNavigationArrows.Should().BeFalse();
+            _carousel.ShowNavigationArrows.Should().BeTrue("Navigation arrows are always visible in current implementation");
             _carousel.SupportsNavigation.Should().BeFalse("No images loaded yet");
 
             // Verify all public methods exist

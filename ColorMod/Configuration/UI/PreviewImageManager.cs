@@ -19,6 +19,18 @@ namespace FFTColorCustomizer.Configuration.UI
             ModLogger.Log($"Will look for previews in: {previewPath}");
         }
 
+        /// <summary>
+        /// Checks if the manager has a valid mod path with Resources/Previews directory
+        /// </summary>
+        public bool HasValidModPath()
+        {
+            if (string.IsNullOrEmpty(_modPath))
+                return false;
+
+            var previewPath = Path.Combine(_modPath, "Resources", "Previews");
+            return Directory.Exists(previewPath);
+        }
+
         public void UpdateJobPreview(PictureBox pictureBox, string jobName, string theme)
         {
             try

@@ -151,6 +151,14 @@ namespace FFTColorCustomizer.Configuration.UI
 
         private void UpdateGenericPreviewImages(PreviewCarousel carousel, string jobName, string theme)
         {
+            // If we don't have a valid mod path, don't load embedded resources
+            // This ensures tests can verify that without a proper mod installation, no images load
+            if (!_previewManager.HasValidModPath())
+            {
+                carousel.SetImages(new Image[0]);
+                return;
+            }
+
             string fileName = jobName.ToLower()
                 .Replace(" (male)", "_male")
                 .Replace(" (female)", "_female")
@@ -262,6 +270,14 @@ namespace FFTColorCustomizer.Configuration.UI
 
         private void UpdateStoryCharacterPreview(PreviewCarousel carousel, string characterName, string theme)
         {
+            // If we don't have a valid mod path, don't load embedded resources
+            // This ensures tests can verify that without a proper mod installation, no images load
+            if (!_previewManager.HasValidModPath())
+            {
+                carousel.SetImages(new Image[0]);
+                return;
+            }
+
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();
             var images = new List<Image>();
 

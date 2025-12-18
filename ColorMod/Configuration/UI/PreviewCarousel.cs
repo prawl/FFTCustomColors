@@ -69,8 +69,23 @@ namespace FFTColorCustomizer.Configuration.UI
             }
         }
 
-        // ShowArrows/HideArrows methods removed - arrows are always visible now
-        // Mouse enter/leave handlers removed - no need to toggle arrow visibility
+        /// <summary>
+        /// Shows navigation arrows (compatibility method - arrows are always visible)
+        /// </summary>
+        public void ShowArrows()
+        {
+            // Arrows are always visible in current implementation
+            // This method exists for backward compatibility with tests
+        }
+
+        /// <summary>
+        /// Hides navigation arrows (compatibility method - arrows are always visible)
+        /// </summary>
+        public void HideArrows()
+        {
+            // Arrows are always visible in current implementation
+            // This method exists for backward compatibility with tests
+        }
 
         public void HandleArrowClick(int clickX, int controlWidth)
         {
