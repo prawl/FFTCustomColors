@@ -554,7 +554,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 case "orlandeau":
                     return "oru";
                 case "rapha":
-                    return "rafa";
+                    return "h79";
                 case "marach":
                     return "mara";
                 case "mustadio":

@@ -40,7 +40,8 @@ namespace FFTColorCustomizer.Core.ModComponents
             "dily2",    // Delita chapter 2
             "dily3",    // Delita chapter 3
             "aruma",    // Alma
-            "rafa",     // Rafa
+            "rafa",     // Rafa (old name)
+            "h79",      // Rapha (actual sprite name)
             "mara",     // Malak/Marach
             "cloud",    // Cloud
             "reze",     // Reis human
