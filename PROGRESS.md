@@ -342,3 +342,149 @@ Implemented significant UI improvements including proper theme name formatting i
 
 ## Conclusion
 Successfully improved the configuration UI with better theme name display and created a fully-functional preview carousel control using strict TDD. The carousel is ready for integration with multiple sprite views, which will significantly enhance the user experience when selecting character themes. The TDD approach ensured high quality, comprehensive test coverage, and a clean, minimal implementation.
+
+---
+
+## Session: 2024-12-17 - Preview Carousel Implementation Complete
+
+### Overview
+Implemented a complete 4-corner preview carousel system for character selection, allowing users to rotate through different viewing angles (SW, SE, NE, NW) for all job classes and most story characters.
+
+## Major Achievements
+
+### 1. Custom PreviewCarousel Control
+- **Extends PictureBox**: Drop-in replacement with full backward compatibility
+- **Click Navigation**: Left/right third of image for previous/next view
+- **Visual Indicators**: Always-visible navigation arrows (14px, clean design)
+- **No Dots**: Removed view indicators for minimalist interface
+- **TDD Development**: 15 comprehensive tests written first
+
+### 2. Sprite Extraction System
+- **8-Direction Extraction**: Created Python script to extract all directional views
+- **Sprite Mapping Fixed**: Corrected sprite sheet positions (W, SW, S, NW, N at indices 0-4)
+- **Mirroring Implementation**: East/NE/SE created by flipping West/NW/SW sprites
+- **4-Corner Optimization**: Reduced to SW, SE, NE, NW for storage efficiency
+
+### 3. Massive Sprite Generation
+- **2,764+ Corner Sprites**: Generated across all characters and themes
+- **42 Job Classes**: All generic jobs with male/female variants
+- **Story Characters**: Agrias, Cloud, Orlandeau, Alma, Marach, Rapha, Celia, Reis
+- **Mediator Fix**: Resolved orator/mediator naming mismatch
+- **Organized Structure**: Each character has dedicated folder with all theme variants
+
+### 4. Storage Optimization
+- **Initial Concern**: Full 8-direction would be ~6.5MB
+- **Optimized Solution**: 4-corner approach reduced to ~3.2MB
+- **Future Path**: .bin extraction for zero storage increase
+
+## Technical Implementation
+
+### File Structure
+```
+Resources/Previews/
+├── knight_male/
+│   ├── knight_male_original_sw.png
+│   ├── knight_male_original_se.png
+│   ├── knight_male_original_ne.png
+│   ├── knight_male_original_nw.png
+│   └── ... (all themes)
+├── knight_female/
+├── squire_male/
+└── ... (42 job folders + story characters)
+```
+
+### Carousel Integration
+- **CharacterRowBuilder.cs**: Updated to load 4 corner sprites
+- **Embedded Resources**: All sprites included via `**\*.png` pattern
+- **Fallback System**: Single image support for characters without corners
+
+## Known Limitations
+- **Beowulf, Meliadoul, Mustadio**: No dedicated sprite files (single image only)
+- **Cardinal Directions**: N, S, E, W not included (planned for .bin extraction)
+
+## Test Results
+- **PreviewCarousel Tests**: 15/15 passing
+- **Integration**: Working with all job classes
+- **Performance**: Instant switching, no memory issues
+
+## Next Steps for Solution #4 (.bin Extraction)
+
+### Why .bin Extraction?
+- **Zero Storage**: Uses existing sprite files already in mod
+- **All 8 Directions**: Can extract N, S, E, W in addition to corners
+- **Dynamic**: No pre-generation needed
+- **Scalable**: Any new themes automatically supported
+
+### Implementation Plan (TDD Approach)
+1. **Create Test Suite First**:
+   - Test palette reading (BGR555 → RGB888)
+   - Test sprite position extraction
+   - Test image composition
+   - Test caching system
+
+2. **Port Python Logic to C#**:
+   - `BinSpriteExtractor` class
+   - Palette parsing methods
+   - Sprite extraction by index
+   - Image mirroring for E/NE/SE
+
+3. **Caching System**:
+   - In-memory cache during session
+   - Lazy loading on first view
+   - ~50ms extraction time (acceptable)
+
+4. **Integration**:
+   - Update CharacterRowBuilder
+   - Remove embedded PNG resources
+   - Test with all characters
+
+### Code Structure (Planned)
+```csharp
+public interface IBinSpriteExtractor
+{
+    Image[] ExtractAllDirections(string binPath);
+    Image ExtractSprite(byte[] data, int index, int paletteIndex = 0);
+}
+
+public class BinSpriteExtractor : IBinSpriteExtractor
+{
+    private readonly Dictionary<string, Image[]> _cache;
+
+    public Image[] ExtractAllDirections(string binPath)
+    {
+        if (_cache.ContainsKey(binPath))
+            return _cache[binPath];
+
+        var data = File.ReadAllBytes(binPath);
+        var palette = ReadPalette(data, 0);
+        var sprites = new Image[8];
+
+        // Extract base sprites
+        for (int i = 0; i < 5; i++)
+        {
+            sprites[i] = ExtractSprite(data, i, palette);
+        }
+
+        // Mirror for East directions
+        sprites[5] = MirrorImage(sprites[3]); // NE from NW
+        sprites[6] = MirrorImage(sprites[0]); // E from W
+        sprites[7] = MirrorImage(sprites[1]); // SE from SW
+
+        _cache[binPath] = sprites;
+        return sprites;
+    }
+}
+```
+
+## Commits Made This Session
+1. `feat: Add 4-corner preview carousel for character selection`
+2. `fix: Add missing mediator and story character corner sprites`
+3. `fix: Add Reis corner sprites and handle missing story character sprites`
+
+## File Changes Summary
+- **Created**: PreviewCarousel.cs, extraction scripts, 2,764+ PNG files
+- **Modified**: CharacterRowBuilder.cs, FFTColorCustomizer.csproj
+- **Tests**: 15 new PreviewCarousel tests, all passing
+
+## Conclusion
+The preview carousel is fully functional and provides an excellent user experience with rotational character views. The implementation is clean, well-tested, and optimized for storage. The foundation is laid for the final improvement: dynamic .bin extraction that will provide all 8 directions with zero storage overhead.
