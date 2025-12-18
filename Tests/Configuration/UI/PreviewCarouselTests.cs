@@ -150,15 +150,14 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
         }
 
         [Fact]
-        public void MouseLeave_Should_Hide_Navigation_Arrows()
+        public void HideArrows_Method_Exists_For_Compatibility()
         {
             // Arrange
             var image1 = new System.Drawing.Bitmap(64, 64);
             var image2 = new System.Drawing.Bitmap(64, 64);
             _carousel.SetImages(new[] { image1, image2 });
-            _carousel.ShowArrows(); // First show the arrows
 
-            // Act - Use public method to simulate leave
+            // Act - HideArrows exists but arrows remain visible
             _carousel.HideArrows();
 
             // Assert - Arrows remain visible (always true in current implementation)
