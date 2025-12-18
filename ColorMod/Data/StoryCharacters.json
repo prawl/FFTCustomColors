@@ -2,31 +2,79 @@
   "characters": [
     {
       "name": "Agrias",
-      "spriteNames": ["aguri", "kanba"],
+      "spriteNames": [
+        "aguri",
+        "kanba"
+      ],
       "defaultTheme": "original",
-      "availableThemes": ["original", "gun_slinger", "crimson_assassin", "shadow_dancer", "royal_commander", "temple_commander"]
+      "availableThemes": [
+        "original",
+        "gun_slinger",
+        "crimson_assassin",
+        "shadow_dancer",
+        "royal_commander",
+        "temple_commander",
+        "grand_duke",
+        "temple_engineer",
+        "demon_hunter",
+        "mysterious_knight",
+        "mime_dancer",
+        "diplomat_blade"
+      ]
     },
     {
       "name": "Cloud",
-      "spriteNames": ["cloud"],
+      "spriteNames": [
+        "cloud"
+      ],
       "defaultTheme": "original",
-      "availableThemes": ["original", "knights_round", "sephiroth_black", "holy_soldier"]
+      "availableThemes": [
+        "original",
+        "holy_soldier",
+        "young_soldier",
+        "sky_pirate",
+        "academy_scholar",
+        "merchant_blade",
+        "valkyrie_soldier"
+      ]
     },
     {
       "name": "Mustadio",
-      "spriteNames": ["musu"],
+      "spriteNames": [
+        "musu",
+        "garu"
+      ],
       "defaultTheme": "original",
-      "availableThemes": ["original", "noble_engineer", "crimson_engineer", "shadow_machinist", "royal_gunner", "divine_artificer"]
+      "availableThemes": [
+        "original",
+        "noble_engineer",
+        "crimson_engineer",
+        "shadow_machinist",
+        "royal_gunner",
+        "divine_artificer",
+        "mourning_gun",
+        "white_rose"
+      ]
     },
     {
       "name": "Orlandeau",
-      "spriteNames": ["oru"],
+      "spriteNames": [
+        "oru"
+      ],
       "defaultTheme": "original",
-      "availableThemes": ["original", "thunder_god", "divine_thunder"]
+      "availableThemes": [
+        "original",
+        "thunder_god",
+        "divine_thunder",
+        "demon_god"
+      ]
     },
     {
       "name": "Reis",
-      "spriteNames": ["reze", "reze_d"],
+      "spriteNames": [
+        "reze",
+        "reze_d"
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
@@ -60,27 +108,80 @@
     },
     {
       "name": "Rapha",
-      "spriteNames": ["h79"],
+      "spriteNames": [
+        "h79"
+      ],
       "defaultTheme": "original",
-      "availableThemes": ["original", "twilight_blend", "thunder_maiden"]
+      "availableThemes": [
+        "original",
+        "twilight_blend",
+        "thunder_maiden",
+        "fallen_oracle",
+        "ancient_witch",
+        "shadow_oracle"
+      ]
     },
     {
       "name": "Marach",
-      "spriteNames": ["mara"],
+      "spriteNames": [
+        "mara"
+      ],
       "defaultTheme": "original",
-      "availableThemes": ["original", "nightmare_armor", "divine_herald", "storm_herald", "heaven_twin"]
+      "availableThemes": [
+        "original",
+        "nightmare_armor",
+        "divine_herald",
+        "storm_herald",
+        "heaven_twin",
+        "temple_artificer",
+        "void_herald",
+        "enigma_caster",
+        "dragon_sage",
+        "dragon_priestess",
+        "scholar_prophet"
+      ]
     },
     {
       "name": "Beowulf",
-      "spriteNames": ["beio"],
+      "spriteNames": [
+        "beio"
+      ],
       "defaultTheme": "original",
-      "availableThemes": ["original", "holy_templar", "machinist_knight", "twilight_templar", "shadow_knight", "noble_guardian", "divine_blade"]
+      "availableThemes": [
+        "original",
+        "holy_templar",
+        "machinist_knight",
+        "twilight_templar",
+        "shadow_knight",
+        "noble_guardian",
+        "divine_blade",
+        "forge_templar",
+        "demon_slayer",
+        "vampire_lord",
+        "ancient_guardian"
+      ]
     },
     {
       "name": "Meliadoul",
-      "spriteNames": ["h85"],
+      "spriteNames": [
+        "h80",
+        "h85"
+      ],
       "defaultTheme": "original",
-      "availableThemes": ["original", "holy_divine", "night_blade", "shadow_strike", "royal_crusader", "engineer_knight", "temple_divine"]
+      "availableThemes": [
+        "original",
+        "holy_divine",
+        "night_blade",
+        "shadow_strike",
+        "royal_crusader",
+        "engineer_knight",
+        "temple_divine",
+        "elder_wisdom",
+        "siege_engineer",
+        "funeral_knight",
+        "plague_knight",
+        "dragon_general"
+      ]
     }
   ]
 }
