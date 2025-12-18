@@ -262,43 +262,60 @@ namespace FFTColorCustomizer.Configuration.UI
 
         private void UpdateStoryCharacterPreview(PreviewCarousel carousel, string characterName, string theme)
         {
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
             var images = new List<Image>();
 
-            // Try to load multiple directional views for story characters
-            if (_previewManager != null)
-            {
-                // Directional suffixes to try (empty string for main view)
-                string[] directions = { "", "_n", "_ne", "_e", "_se", "_s", "_sw", "_w", "_nw" };
+            // First try to load 4 corner sprites from embedded resources (same as generic characters)
+            string[] corners = { "_sw", "_se", "_ne", "_nw" };  // SW default, then clockwise
 
-                foreach (var direction in directions)
+            foreach (var corner in corners)
+            {
+                // Resource name format: FFTColorCustomizer.Resources.Previews.{character_folder}.{character}_{theme}_{corner}.png
+                string resourceName = $"FFTColorCustomizer.Resources.Previews.{characterName.ToLower()}.{characterName.ToLower()}_{theme.ToLower()}{corner}.png";
+
+                using (var stream = assembly.GetManifestResourceStream(resourceName))
                 {
-                    // For story characters, we'll try to load directional views if they exist
-                    // This is a placeholder for now - when directional sprites are available,
-                    // the PreviewImageManager will need to be updated to support them
-                    using (var tempPictureBox = new PictureBox())
+                    if (stream != null)
                     {
-                        _previewManager.UpdateStoryCharacterPreview(tempPictureBox, characterName, theme);
-                        if (tempPictureBox.Image != null && direction == "")
+                        try
                         {
-                            // For now, just add the main image
-                            // When directional sprites are available, we'll load them properly
-                            images.Add(tempPictureBox.Image);
-                            break; // Only use main image for now
+                            var image = Image.FromStream(stream);
+                            images.Add(image);
+                            ModLogger.LogDebug($"Loaded corner sprite: {corner} for {characterName}_{theme}");
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogDebug($"Failed to load corner {corner}: {ex.Message}");
                         }
                     }
                 }
             }
 
-            // Set the images in the carousel
+            // If we loaded corner sprites, use them
             if (images.Count > 0)
             {
                 carousel.SetImages(images.ToArray());
-                ModLogger.LogDebug($"Loaded {images.Count} view(s) for story character {characterName} - {theme}");
+                ModLogger.LogSuccess($"Loaded {images.Count} corner views for story character {characterName} - {theme}");
+                return;
             }
-            else
+
+            // Fall back to single image loading using PreviewImageManager
+            if (_previewManager != null)
             {
-                carousel.SetImages(new Image[0]);
-                ModLogger.LogDebug($"No preview images found for story character {characterName} - {theme}");
+                using (var tempPictureBox = new PictureBox())
+                {
+                    _previewManager.UpdateStoryCharacterPreview(tempPictureBox, characterName, theme);
+                    if (tempPictureBox.Image != null)
+                    {
+                        carousel.SetImages(new Image[] { tempPictureBox.Image });
+                        ModLogger.LogDebug($"Loaded single view for story character {characterName} - {theme}");
+                    }
+                    else
+                    {
+                        carousel.SetImages(new Image[0]);
+                        ModLogger.LogDebug($"No preview images found for story character {characterName} - {theme}");
+                    }
+                }
             }
         }
     }
