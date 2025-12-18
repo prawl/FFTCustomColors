@@ -231,51 +231,59 @@ namespace FFTColorCustomizer.Configuration
         {
             var debugInfo = new System.Text.StringBuilder();
 
-            // Check embedded resources first
-            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-            var resources = assembly.GetManifestResourceNames();
+            // Add theme loading debug info
+            debugInfo.AppendLine("=== THEME LOADING DEBUG ===");
+            debugInfo.AppendLine("\nStory Character Theme Folders:");
 
-            debugInfo.AppendLine("=== EMBEDDED RESOURCES CHECK ===");
-            var squireOriginal = resources.Where(r => r.Contains("squire_male_original")).ToList();
-            debugInfo.AppendLine($"Squire Male Original resources found: {squireOriginal.Count}");
-
-            foreach (var resource in squireOriginal.OrderBy(r => r))
+            string unitPath = Path.Combine(_modPath ?? "", "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            if (Directory.Exists(unitPath))
             {
-                debugInfo.AppendLine($"  - {resource}");
-            }
-
-            // Check for directional sprites
-            var directionalCount = squireOriginal.Count(r =>
-                r.Contains("_n.png") || r.Contains("_ne.png") ||
-                r.Contains("_e.png") || r.Contains("_se.png") ||
-                r.Contains("_s.png") || r.Contains("_sw.png") ||
-                r.Contains("_w.png") || r.Contains("_nw.png"));
-
-            debugInfo.AppendLine($"Directional sprites found: {directionalCount}");
-
-            debugInfo.AppendLine("\n=== CAROUSEL DEBUG INFO ===");
-            debugInfo.AppendLine($"Total controls in panel: {_mainPanel.Controls.Count}");
-
-            int carouselCount = 0;
-            foreach (Control control in _mainPanel.Controls)
-            {
-                if (control is PreviewCarousel carousel)
+                var themeFolders = Directory.GetDirectories(unitPath, "sprites_*");
+                foreach (var folder in themeFolders.Take(20)) // Show first 20 to avoid too much output
                 {
-                    carouselCount++;
-                    debugInfo.AppendLine($"\nCarousel #{carouselCount}:");
-                    debugInfo.AppendLine($"  - Location: {carousel.Location}");
-                    debugInfo.AppendLine($"  - Size: {carousel.Size}");
-                    debugInfo.AppendLine($"  - Images loaded: {carousel.ImageCount}");
-                    debugInfo.AppendLine($"  - Current index: {carousel.CurrentViewIndex}");
-                    debugInfo.AppendLine($"  - Supports navigation: {carousel.SupportsNavigation}");
-                    debugInfo.AppendLine($"  - Showing arrows: {carousel.ShowNavigationArrows}");
-                    debugInfo.AppendLine($"  - Tag: {carousel.Tag}");
-                    debugInfo.AppendLine($"  - Visible: {carousel.Visible}");
-                    debugInfo.AppendLine($"  - Has image: {carousel.Image != null}");
+                    var folderName = Path.GetFileName(folder);
+                    var files = Directory.GetFiles(folder, "*.bin");
+                    debugInfo.AppendLine($"  {folderName}: {files.Length} files");
+                    if (files.Length > 0 && files.Length <= 3) // Show file names if there are few
+                    {
+                        foreach (var file in files)
+                        {
+                            debugInfo.AppendLine($"    - {Path.GetFileName(file)}");
+                        }
+                    }
                 }
             }
+            else
+            {
+                debugInfo.AppendLine($"  Unit path not found: {unitPath}");
+            }
 
-            debugInfo.AppendLine($"\nTotal carousels found: {carouselCount}");
+            // Show current configuration for story characters
+            debugInfo.AppendLine("\n=== CURRENT STORY CHARACTER CONFIG ===");
+            if (Configuration != null)
+            {
+                debugInfo.AppendLine($"Cloud: {Configuration.Cloud}");
+                debugInfo.AppendLine($"Agrias: {Configuration.Agrias}");
+                debugInfo.AppendLine($"Orlandeau: {Configuration.Orlandeau}");
+                debugInfo.AppendLine($"Rapha: {Configuration.Rapha}");
+                debugInfo.AppendLine($"Marach: {Configuration.Marach}");
+            }
+
+            // Test specific path lookups
+            debugInfo.AppendLine("\n=== TEST PATH LOOKUPS ===");
+            string[] testCases = new[] {
+                "sprites_cloud_sephiroth_black/battle_cloud_spr.bin",
+                "sprites_cloud_knights_round/battle_cloud_spr.bin",
+                "sprites_agrias_ash_dark/battle_aguri_spr.bin",
+                "sprites_orlandeau_thunder_god/battle_oru_spr.bin"
+            };
+
+            foreach (var testCase in testCases)
+            {
+                string testPath = Path.Combine(unitPath, testCase);
+                bool exists = File.Exists(testPath);
+                debugInfo.AppendLine($"{testCase}: {(exists ? "FOUND" : "NOT FOUND")}");
+            }
 
             // Show debug info in a message box
             MessageBox.Show(debugInfo.ToString(), "Carousel Debug Information",

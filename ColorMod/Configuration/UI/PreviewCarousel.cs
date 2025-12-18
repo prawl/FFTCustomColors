@@ -18,11 +18,11 @@ namespace FFTColorCustomizer.Configuration.UI
 
         public int CurrentViewIndex { get; private set; } = 0;
 
-        public int ImageCount => _images.Length;
+        public int ImageCount => _images?.Length ?? 0;
 
         public bool ShowNavigationArrows { get; private set; } = true;  // Always show arrows
 
-        public bool SupportsNavigation => _images.Length > 1;
+        public bool SupportsNavigation => _images != null && _images.Length > 1;
 
         public PreviewCarousel()
         {
@@ -43,9 +43,36 @@ namespace FFTColorCustomizer.Configuration.UI
 
         public void SetImages(Image[] images)
         {
-            // Store the current orientation before changing images
-            var previousIndex = CurrentViewIndex;
-            _images = images ?? new Image[0];
+            try
+            {
+                // Clear current display first
+                this.Image = null;
+
+                // Dispose ALL old images immediately
+                if (_images != null)
+                {
+                    for (int i = 0; i < _images.Length; i++)
+                    {
+                        if (_images[i] != null)
+                        {
+                            try
+                            {
+                                _images[i].Dispose();
+                                _images[i] = null;
+                            }
+                            catch { }
+                        }
+                    }
+                    _images = null;
+                }
+
+                // Force immediate cleanup
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+
+                // Store the current orientation before changing images
+                var previousIndex = CurrentViewIndex;
+                _images = images ?? new Image[0];
 
             if (_images.Length > 0)
             {
@@ -80,6 +107,22 @@ namespace FFTColorCustomizer.Configuration.UI
                 // No images, reset index
                 CurrentViewIndex = 0;
                 this.Image = null;
+            }
+
+                System.Diagnostics.Debug.WriteLine($"[PreviewCarousel] SetImages completed successfully with {_images.Length} images");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PreviewCarousel] SetImages FAILED: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[PreviewCarousel] Stack: {ex.StackTrace}");
+
+                // Try to at least clear the display
+                try
+                {
+                    this.Image = null;
+                    _images = new Image[0];
+                }
+                catch { }
             }
         }
 
@@ -177,10 +220,10 @@ namespace FFTColorCustomizer.Configuration.UI
             base.OnPaint(e);
 
             // Debug output
-            System.Diagnostics.Debug.WriteLine($"PreviewCarousel OnPaint: SupportsNavigation={SupportsNavigation}, ShowArrows={ShowNavigationArrows}, Images={_images.Length}");
+            System.Diagnostics.Debug.WriteLine($"PreviewCarousel OnPaint: SupportsNavigation={SupportsNavigation}, ShowArrows={ShowNavigationArrows}, Images={_images?.Length ?? 0}");
 
             // Only draw arrows if we support navigation and should show them
-            if (!SupportsNavigation || !ShowNavigationArrows)
+            if (!SupportsNavigation || !ShowNavigationArrows || _images == null)
             {
                 System.Diagnostics.Debug.WriteLine($"PreviewCarousel OnPaint: Not drawing arrows (support={SupportsNavigation}, show={ShowNavigationArrows})");
                 return;

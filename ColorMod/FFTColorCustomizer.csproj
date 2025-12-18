@@ -45,4 +45,8 @@
     <EmbeddedResource Include="Resources\Previews\**\*.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Data\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -79,8 +79,35 @@ if ($LASTEXITCODE -eq 0) {
             $spriteCount = (Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_original/*.bin" | Measure-Object).Count
             Write-Host "Copied $spriteCount original sprite files to fftpack/unit" -ForegroundColor Green
 
-            # Theme directories are no longer deployed - mod reads directly from git repo
-            Write-Host "Theme directories: Reading from git repo (not deployed)" -ForegroundColor Green
+            # Copy story character themed folders (e.g., sprites_cloud_sephiroth_black)
+            Write-Host "Copying story character themed sprites..." -ForegroundColor Cyan
+            $storyCharacterFolders = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/" -Directory |
+                Where-Object { $_.Name -match "sprites_(cloud|agrias|orlandeau|rapha|marach|reis|mustadio|meliadoul|beowulf)_" }
+
+            foreach ($folder in $storyCharacterFolders) {
+                $destFolder = "$spritePath/$($folder.Name)"
+                New-Item -ItemType Directory -Force -Path $destFolder | Out-Null
+                Copy-Item "$($folder.FullName)/*.bin" $destFolder -Force
+                Write-Host "  Copied $($folder.Name)" -ForegroundColor Gray
+            }
+
+            $storyFolderCount = $storyCharacterFolders.Count
+            Write-Host "Copied $storyFolderCount story character theme folders" -ForegroundColor Green
+
+            # Copy generic job themed folders (e.g., sprites_crimson_red, sprites_lucavi)
+            Write-Host "Copying generic job themed sprites..." -ForegroundColor Cyan
+            $genericThemeFolders = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/" -Directory |
+                Where-Object { $_.Name -match "^sprites_[^_]+$" -or $_.Name -match "^sprites_(crimson_red|lucavi|northern_sky|southern_sky|amethyst|celestial|corpse_brigade|emerald_dragon|frost_knight|golden_templar|blood_moon|volcanic|ocean_depths)" }
+
+            foreach ($folder in $genericThemeFolders) {
+                $destFolder = "$spritePath/$($folder.Name)"
+                New-Item -ItemType Directory -Force -Path $destFolder | Out-Null
+                Copy-Item "$($folder.FullName)/*.bin" $destFolder -Force
+                Write-Host "  Copied $($folder.Name)" -ForegroundColor Gray
+            }
+
+            $genericFolderCount = $genericThemeFolders.Count
+            Write-Host "Copied $genericFolderCount generic job theme folders" -ForegroundColor Green
         }
     }
 

@@ -51,8 +51,8 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             _carousel.Image.Should().Be(secondSet[3], "Should display NW image from new set");
 
             // Cleanup
-            foreach (var img in firstSet) img.Dispose();
-            foreach (var img in secondSet) img.Dispose();
+            foreach (var img in firstSet) img?.Dispose();
+            foreach (var img in secondSet) img?.Dispose();
         }
 
         [Fact]
@@ -86,8 +86,8 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             _carousel.CurrentViewIndex.Should().BeLessThanOrEqualTo(1, "Should clamp to valid range");
 
             // Cleanup
-            foreach (var img in firstSet) img.Dispose();
-            foreach (var img in secondSet) img.Dispose();
+            foreach (var img in firstSet) img?.Dispose();
+            foreach (var img in secondSet) img?.Dispose();
         }
 
         [Fact]
@@ -114,7 +114,7 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             _carousel.CurrentViewIndex.Should().Be(0, "Should reset to 0 with null");
 
             // Cleanup
-            foreach (var img in images) img.Dispose();
+            foreach (var img in images) img?.Dispose();
         }
 
 
