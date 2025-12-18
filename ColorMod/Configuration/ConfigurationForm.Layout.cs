@@ -69,24 +69,9 @@ namespace FFTColorCustomizer.Configuration
             _resetAllButton.Location = new Point(UIConfiguration.ButtonPadding, 5);
             _resetAllButton.Click += ResetAllButton_Click;
 
-            // Create Debug button for testing carousel
-            var debugButton = new Button
-            {
-                Text = "Debug Carousel",
-                Size = new Size(100, 30),
-                Location = new Point(200, 5),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(60, 60, 60),
-                ForeColor = Color.Yellow,
-                Font = new Font("Segoe UI", 9F)
-            };
-            debugButton.FlatAppearance.BorderColor = Color.Yellow;
-            debugButton.Click += (s, e) => DebugCarousel();
-
             buttonPanel.Controls.Add(_cancelButton);
             buttonPanel.Controls.Add(_saveButton);
             buttonPanel.Controls.Add(_resetAllButton);
-            buttonPanel.Controls.Add(debugButton);
 
             Controls.Add(buttonPanel);
         }
