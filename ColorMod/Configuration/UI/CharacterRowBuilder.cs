@@ -38,6 +38,7 @@ namespace FFTColorCustomizer.Configuration.UI
             _binExtractor = new BinSpriteExtractor();
         }
 
+
         public void AddGenericCharacterRow(int row, string jobName, string currentTheme,
             Action<string> setter, Func<bool> isFullyLoaded)
         {
@@ -432,28 +433,24 @@ namespace FFTColorCustomizer.Configuration.UI
                 byte[] binData = File.ReadAllBytes(binPath);
                 ModLogger.LogDebug($"Loaded bin file: {binPath}, Size: {binData.Length} bytes");
 
-                // Extract all 8 directional sprites for complete rotation
+                // Extract only 4 corner directions for faster loading
                 // Themed sprites should use palette 0 (they have their own color data)
                 // Only use different palettes for generic job sprites with palette swaps
                 int paletteIndex = 0; // Story character themed sprites have their colors baked in
-                var sprites = _binExtractor.ExtractAllDirections(binData, 0, paletteIndex);
-                ModLogger.LogDebug($"Extracted {sprites.Length} sprites from bin file using palette {paletteIndex} for theme '{theme}'");
+                var sprites = _binExtractor.ExtractCornerDirections(binData, 0, paletteIndex);
+                ModLogger.LogDebug($"Extracted {sprites.Length} corner sprites from bin file using palette {paletteIndex} for theme '{theme}'");
 
-                // Return in carousel order starting with SW (the default preview angle)
-                // SW first, then go clockwise: SW, W, NW, N, NE, E, SE, S
+                // Return 4 corner sprites: NE, SE, SW, NW (for smooth rotation)
                 var carouselImages = new Image[]
                 {
-                    sprites[5], // SW (default - matches PNG previews)
-                    sprites[6], // W
-                    sprites[7], // NW
-                    sprites[0], // N (facing away)
-                    sprites[1], // NE
-                    sprites[2], // E
-                    sprites[3], // SE
-                    sprites[4]  // S (facing camera)
+                    sprites[2], // SW (default - matches PNG previews)
+                    sprites[3], // NW
+                    sprites[0], // NE
+                    sprites[1]  // SE
                 };
 
-                ModLogger.LogDebug($"Successfully loaded all 8 directional sprites from .bin: {binPath}");
+                ModLogger.LogDebug($"Successfully loaded 4 corner sprites from .bin: {binPath}");
+
                 return carouselImages;
             }
             catch (Exception ex)
@@ -512,26 +509,22 @@ namespace FFTColorCustomizer.Configuration.UI
                 // For themed sprites, use palette 0 (they have the theme colors baked in)
                 int paletteIndex = 0;
 
-                var allSprites = _binExtractor.ExtractAllDirections(binData, 0, paletteIndex);
+                var cornerSprites = _binExtractor.ExtractCornerDirections(binData, 0, paletteIndex);
 
-                // Return in carousel order starting with SW: SW, W, NW, N, NE, E, SE, S
+                // Return 4 corner sprites for faster loading
                 var carouselSprites = new Image[]
                 {
-                    allSprites[5], // SW (default preview angle)
-                    allSprites[6], // W
-                    allSprites[7], // NW
-                    allSprites[0], // N (facing away)
-                    allSprites[1], // NE
-                    allSprites[2], // E
-                    allSprites[3], // SE
-                    allSprites[4]  // S (facing camera)
+                    cornerSprites[2], // SW (default preview angle)
+                    cornerSprites[3], // NW
+                    cornerSprites[0], // NE
+                    cornerSprites[1]  // SE
                 };
 
                 ModLogger.Log($"[GENERIC THEME] Job: '{jobName}', Theme: '{theme}', Using themed sprite file");
-                ModLogger.LogDebug($"Extracted all 8 directional sprites from themed bin file");
+                ModLogger.LogDebug($"Extracted 4 corner sprites from themed bin file");
 
-                // Return all 8 sprites for carousel
-                ModLogger.Log($"[TryLoadGenericFromBinFile] Success - returning 8 sprites");
+                // Return 4 corner sprites for carousel
+                ModLogger.Log($"[TryLoadGenericFromBinFile] Success - returning 4 corner sprites");
                 return carouselSprites;
             }
             catch (Exception ex)

@@ -110,11 +110,11 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             updateMethod.Invoke(_builder, new object[] { carousel, "cloud", "original" });
 
             // Assert
-            carousel.ImageCount.Should().Be(8, "Should load all 8 directional sprites from .bin file");
+            carousel.ImageCount.Should().Be(4, "Should load 4 corner sprites from .bin file for faster loading");
             carousel.CurrentViewIndex.Should().Be(0, "Should start at first image");
 
             // Verify images are loaded
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 4; i++)
             {
                 carousel.NextView();
                 carousel.Image.Should().NotBeNull($"Image {i} should be loaded");

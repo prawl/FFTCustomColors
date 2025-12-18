@@ -90,8 +90,8 @@ namespace FFTColorCustomizer.Tests.Utilities
 
             // Assert
             sprite.Should().NotBeNull();
-            sprite.Width.Should().Be(64, "Sprites are scaled to 64 pixels wide");
-            sprite.Height.Should().Be(80, "Sprites are scaled to 80 pixels tall");
+            sprite.Width.Should().Be(96, "Sprites are scaled to 96 pixels wide");
+            sprite.Height.Should().Be(120, "Sprites are scaled to 120 pixels tall");
 
             // Check that at least one pixel has the color we set (green)
             var pixelColor = sprite.GetPixel(0, 0);
@@ -127,12 +127,12 @@ namespace FFTColorCustomizer.Tests.Utilities
             sprites.Should().NotBeNull();
             sprites.Should().HaveCount(8, "FFT characters have 8 directional sprites");
 
-            // All sprites should be 64x80 (scaled up from 32x40)
+            // All sprites should be 96x120 (scaled up 3x from 32x40)
             foreach (var sprite in sprites)
             {
                 sprite.Should().NotBeNull();
-                sprite.Width.Should().Be(64);
-                sprite.Height.Should().Be(80);
+                sprite.Width.Should().Be(96);
+                sprite.Height.Should().Be(120);
             }
 
             // Sprites should be different (different patterns)
@@ -193,12 +193,12 @@ namespace FFTColorCustomizer.Tests.Utilities
             sprites.Should().NotBeNull();
             sprites.Should().HaveCount(4, "Should return 4 cardinal direction sprites");
 
-            // All sprites should be 64x80 (scaled up from 32x40)
+            // All sprites should be 96x120 (scaled up 3x from 32x40)
             foreach (var sprite in sprites)
             {
                 sprite.Should().NotBeNull();
-                sprite.Width.Should().Be(64);
-                sprite.Height.Should().Be(80);
+                sprite.Width.Should().Be(96);
+                sprite.Height.Should().Be(120);
             }
 
             // Sprites should be different (different patterns)
@@ -230,12 +230,12 @@ namespace FFTColorCustomizer.Tests.Utilities
             sprites.Should().NotBeNull();
             sprites.Should().HaveCount(4, "Should return 4 corner direction sprites");
 
-            // All sprites should be 64x80 (scaled up from 32x40)
+            // All sprites should be 96x120 (scaled up 3x from 32x40)
             foreach (var sprite in sprites)
             {
                 sprite.Should().NotBeNull();
-                sprite.Width.Should().Be(64);
-                sprite.Height.Should().Be(80);
+                sprite.Width.Should().Be(96);
+                sprite.Height.Should().Be(120);
             }
 
             // Sprites should be different (different patterns)
