@@ -225,5 +225,64 @@ namespace FFTColorCustomizer.Configuration
                 this.Cursor = previousCursor;
             }
         }
+
+        private void DebugCarousel()
+        {
+            var debugInfo = new System.Text.StringBuilder();
+
+            // Check embedded resources first
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var resources = assembly.GetManifestResourceNames();
+
+            debugInfo.AppendLine("=== EMBEDDED RESOURCES CHECK ===");
+            var squireOriginal = resources.Where(r => r.Contains("squire_male_original")).ToList();
+            debugInfo.AppendLine($"Squire Male Original resources found: {squireOriginal.Count}");
+
+            foreach (var resource in squireOriginal.OrderBy(r => r))
+            {
+                debugInfo.AppendLine($"  - {resource}");
+            }
+
+            // Check for directional sprites
+            var directionalCount = squireOriginal.Count(r =>
+                r.Contains("_n.png") || r.Contains("_ne.png") ||
+                r.Contains("_e.png") || r.Contains("_se.png") ||
+                r.Contains("_s.png") || r.Contains("_sw.png") ||
+                r.Contains("_w.png") || r.Contains("_nw.png"));
+
+            debugInfo.AppendLine($"Directional sprites found: {directionalCount}");
+
+            debugInfo.AppendLine("\n=== CAROUSEL DEBUG INFO ===");
+            debugInfo.AppendLine($"Total controls in panel: {_mainPanel.Controls.Count}");
+
+            int carouselCount = 0;
+            foreach (Control control in _mainPanel.Controls)
+            {
+                if (control is PreviewCarousel carousel)
+                {
+                    carouselCount++;
+                    debugInfo.AppendLine($"\nCarousel #{carouselCount}:");
+                    debugInfo.AppendLine($"  - Location: {carousel.Location}");
+                    debugInfo.AppendLine($"  - Size: {carousel.Size}");
+                    debugInfo.AppendLine($"  - Images loaded: {carousel.ImageCount}");
+                    debugInfo.AppendLine($"  - Current index: {carousel.CurrentViewIndex}");
+                    debugInfo.AppendLine($"  - Supports navigation: {carousel.SupportsNavigation}");
+                    debugInfo.AppendLine($"  - Showing arrows: {carousel.ShowNavigationArrows}");
+                    debugInfo.AppendLine($"  - Tag: {carousel.Tag}");
+                    debugInfo.AppendLine($"  - Visible: {carousel.Visible}");
+                    debugInfo.AppendLine($"  - Has image: {carousel.Image != null}");
+                }
+            }
+
+            debugInfo.AppendLine($"\nTotal carousels found: {carouselCount}");
+
+            // Show debug info in a message box
+            MessageBox.Show(debugInfo.ToString(), "Carousel Debug Information",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            // Also output to console/debug
+            System.Diagnostics.Debug.WriteLine(debugInfo.ToString());
+            Console.WriteLine(debugInfo.ToString());
+        }
     }
 }

@@ -32,9 +32,9 @@ namespace FFTColorCustomizer.Configuration.UI
             comboBox.FlatStyle = FlatStyle.Flat;
         }
 
-        public static PictureBox CreatePreviewPictureBox()
+        public static PreviewCarousel CreatePreviewPictureBox()
         {
-            return new PictureBox
+            return new PreviewCarousel
             {
                 Size = new Size(UIConfiguration.PreviewSize, UIConfiguration.PreviewSize),
                 SizeMode = PictureBoxSizeMode.Zoom,
