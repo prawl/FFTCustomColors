@@ -38,6 +38,7 @@ namespace FFTColorCustomizer.Configuration
         /// </summary>
         public Config Configuration => _config;
 
+
         public ConfigurationForm(Config config, string configPath = null, string modPath = null)
         {
             _config = config;

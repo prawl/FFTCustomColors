@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -13,6 +14,7 @@ namespace FFTColorCustomizer.Configuration.UI
         private readonly Color _arrowColor = Color.FromArgb(200, 255, 255, 255);
         private readonly Color _arrowHoverColor = Color.FromArgb(255, 255, 255, 255);
         private readonly Color _arrowShadow = Color.FromArgb(100, 0, 0, 0);
+        private bool _mouseIsOver = false;
 
         public int CurrentViewIndex { get; private set; } = 0;
 
@@ -22,17 +24,47 @@ namespace FFTColorCustomizer.Configuration.UI
 
         public bool SupportsNavigation => _images.Length > 1;
 
+        public PreviewCarousel()
+        {
+            // Track when mouse enters/leaves the control
+            this.MouseEnter += OnMouseEnter;
+            this.MouseLeave += OnMouseLeave;
+        }
+
+        private void OnMouseEnter(object sender, EventArgs e)
+        {
+            _mouseIsOver = true;
+        }
+
+        private void OnMouseLeave(object sender, EventArgs e)
+        {
+            _mouseIsOver = false;
+        }
+
         public void SetImages(Image[] images)
         {
+            // Store the current orientation before changing images
+            var previousIndex = CurrentViewIndex;
             _images = images ?? new Image[0];
 
             if (_images.Length > 0)
             {
-                CurrentViewIndex = 0;
-                this.Image = _images[0];
+                // Preserve orientation if possible, otherwise reset to 0
+                if (previousIndex < _images.Length)
+                {
+                    // Previous index is still valid, preserve it
+                    CurrentViewIndex = previousIndex;
+                    this.Image = _images[CurrentViewIndex];
+                }
+                else
+                {
+                    // Previous index is out of bounds, reset to 0
+                    CurrentViewIndex = 0;
+                    this.Image = _images[0];
+                }
 
                 // Log for debugging
-                System.Diagnostics.Debug.WriteLine($"PreviewCarousel: Set {_images.Length} images. SupportsNavigation: {SupportsNavigation}");
+                System.Diagnostics.Debug.WriteLine($"PreviewCarousel: Set {_images.Length} images. CurrentIndex: {CurrentViewIndex}, SupportsNavigation: {SupportsNavigation}");
 
                 // Check if images are actually different
                 for (int i = 0; i < _images.Length; i++)
@@ -42,6 +74,12 @@ namespace FFTColorCustomizer.Configuration.UI
                         System.Diagnostics.Debug.WriteLine($"  Image[{i}]: Size={_images[i].Size}, Hash={_images[i].GetHashCode()}");
                     }
                 }
+            }
+            else
+            {
+                // No images, reset index
+                CurrentViewIndex = 0;
+                this.Image = null;
             }
         }
 
@@ -120,6 +158,7 @@ namespace FFTColorCustomizer.Configuration.UI
             OnMouseClick(e);
         }
 
+
         protected override void OnMouseClick(System.Windows.Forms.MouseEventArgs e)
         {
             base.OnMouseClick(e);
@@ -130,6 +169,8 @@ namespace FFTColorCustomizer.Configuration.UI
                 HandleArrowClick(e.X, this.Width);
             }
         }
+
+        // Mouse wheel scrolling removed - caused conflicts with form scrolling
 
         protected override void OnPaint(PaintEventArgs e)
         {
