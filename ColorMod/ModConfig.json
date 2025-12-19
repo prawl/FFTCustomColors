@@ -3,7 +3,7 @@
   "ModName": "FFT Color Customizer",
   "ModAuthor": "Paxtrick",
   "ModVersion": "1.0.0",
-  "ModDescription": "Customize your FFT experience with unique color themes. Features in-game config menu by pressing F1.",
+  "ModDescription": "Customize your FFT experience with over 210+ unique color themes. Features in-game config menu by pressing F1.",
   "ModDll": "FFTColorCustomizer.dll",
   "ModIcon": "Preview.png",
   "ModR2RManagedDll32": "x86/FFTColorCustomizer.dll",
