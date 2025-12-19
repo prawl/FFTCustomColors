@@ -81,7 +81,9 @@ namespace FFTColorCustomizer.Utilities
                 var spriteName = GetSpriteNameForJob(property.Name);
                 if (spriteName != null)
                 {
-                    CopySpriteForJob(spriteName, colorScheme);
+                    // Extract job type from property name (e.g., "Mediator_Male" -> "mediator")
+                    var jobType = property.Name.Replace("_Male", "").Replace("_Female", "").ToLower();
+                    CopySpriteForJobWithType(spriteName, colorScheme, jobType);
                 }
             }
         }
@@ -327,6 +329,46 @@ namespace FFTColorCustomizer.Utilities
                 "Calculator_Female" => "battle_san_w_spr.bin",
                 _ => null
             };
+        }
+
+        private void CopySpriteForJobWithType(string spriteName, string colorScheme, string jobType)
+        {
+            // First check for job-specific theme directory (e.g., sprites_mediator_holy_knight)
+            var jobSpecificDir = Path.Combine(_sourceUnitPath, $"sprites_{jobType}_{colorScheme}");
+            var jobSpecificFile = Path.Combine(jobSpecificDir, spriteName);
+
+            // Then check for generic theme directory (e.g., sprites_corpse_brigade)
+            var genericDir = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}");
+            var genericFile = Path.Combine(genericDir, spriteName);
+
+            var destFile = Path.Combine(_unitPath, spriteName);
+
+            string sourceFile;
+            if (File.Exists(jobSpecificFile))
+            {
+                sourceFile = jobSpecificFile;
+                ModLogger.Log($"Using job-specific theme: sprites_{jobType}_{colorScheme}");
+            }
+            else if (File.Exists(genericFile))
+            {
+                sourceFile = genericFile;
+                ModLogger.Log($"Using generic theme: sprites_{colorScheme}");
+            }
+            else
+            {
+                ModLogger.LogWarning($"Theme not found: tried sprites_{jobType}_{colorScheme} and sprites_{colorScheme}");
+                return;
+            }
+
+            try
+            {
+                File.Copy(sourceFile, destFile, true);
+                ModLogger.LogSuccess($"Copied {colorScheme} theme for {jobType} to {destFile}");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"ERROR copying sprite: {ex.Message}");
+            }
         }
 
         private void CopySpriteForJob(string spriteName, string colorScheme)

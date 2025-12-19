@@ -111,7 +111,7 @@ if ($LASTEXITCODE -eq 0) {
             # Copy job-specific themed folders (e.g., sprites_knight_h78)
             Write-Host "Copying job-specific themed sprites..." -ForegroundColor Cyan
             $jobSpecificFolders = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/" -Directory |
-                Where-Object { $_.Name -match "^sprites_(knight|squire|monk|priest|wizard|timemage|summoner|thief|mediator|oracle|geomancer|dragoon|samurai|ninja|calculator|bard|dancer|mime|archer|chemist|lancer)_" -and $_.Name -notmatch "(agrias|cloud|orlandeau|rapha|marach|reis|mustadio|meliadoul|beowulf)" }
+                Where-Object { $_.Name -match "^sprites_(knight|squire|monk|whitemage|blackmage|timemage|summoner|thief|mediator|mystic|geomancer|dragoon|samurai|ninja|calculator|bard|dancer|mime|archer|chemist)_" -and $_.Name -notmatch "(agrias|cloud|orlandeau|rapha|marach|reis|mustadio|meliadoul|beowulf)" }
 
             foreach ($folder in $genericThemeFolders) {
                 $destFolder = "$spritePath/$($folder.Name)"
