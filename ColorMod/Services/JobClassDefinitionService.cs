@@ -70,8 +70,8 @@ namespace FFTColorCustomizer.Services
                 var document = JsonDocument.Parse(jsonContent);
                 var root = document.RootElement;
 
-                // Load available themes from JSON
-                if (root.TryGetProperty("availableThemes", out var themesArray))
+                // Load shared themes from JSON (changed from "availableThemes" to "sharedThemes")
+                if (root.TryGetProperty("sharedThemes", out var themesArray))
                 {
                     foreach (var theme in themesArray.EnumerateArray())
                     {
@@ -81,8 +81,7 @@ namespace FFTColorCustomizer.Services
                             _availableThemes.Add(themeName);
                         }
                     }
-                    ModLogger.Log($"Loaded {_availableThemes.Count} available themes from JobClasses.json: {string.Join(", ", _availableThemes)}");
-                    ModLogger.Log($"Loaded {_availableThemes.Count} available themes from JobClasses.json");
+                    ModLogger.Log($"Loaded {_availableThemes.Count} shared themes from JobClasses.json: {string.Join(", ", _availableThemes)}");
                 }
 
                 if (root.TryGetProperty("jobClasses", out var jobClassesArray))
@@ -99,8 +98,22 @@ namespace FFTColorCustomizer.Services
                             JobType = jobElement.GetProperty("jobType").GetString() ?? ""
                         };
 
-                        // Add available themes (all generic jobs use ColorScheme enum)
-                        jobClass.AvailableThemes = GetAvailableThemes();
+                        // Load job-specific themes if present
+                        jobClass.JobSpecificThemes = new List<string>();
+                        if (jobElement.TryGetProperty("jobSpecificThemes", out var jobThemesArray))
+                        {
+                            foreach (var theme in jobThemesArray.EnumerateArray())
+                            {
+                                var themeName = theme.GetString();
+                                if (!string.IsNullOrEmpty(themeName))
+                                {
+                                    jobClass.JobSpecificThemes.Add(themeName);
+                                }
+                            }
+                        }
+
+                        // Set available themes to shared themes (will be combined with job-specific later)
+                        jobClass.AvailableThemes = new List<string>(_availableThemes);
 
                         _jobClasses[jobClass.Name] = jobClass;
 
@@ -121,17 +134,46 @@ namespace FFTColorCustomizer.Services
         }
 
         /// <summary>
-        /// Get available themes for generic job classes
+        /// Get available shared themes for generic job classes
         /// </summary>
         public List<string> GetAvailableThemes()
         {
-            // Return themes loaded from JobClasses.json
+            // Return shared themes loaded from JobClasses.json
             // If no themes were loaded, return a default set
             if (_availableThemes.Count == 0)
             {
                 return new List<string> { "original" };
             }
             return new List<string>(_availableThemes);
+        }
+
+        /// <summary>
+        /// Get all available themes for a specific job (original first, then job-specific, then other shared)
+        /// </summary>
+        public List<string> GetAvailableThemesForJob(string jobName)
+        {
+            var themes = new List<string>();
+
+            // Always add "original" first
+            themes.Add("original");
+
+            // Add job-specific themes if the job exists
+            if (_jobClasses.TryGetValue(jobName, out var jobClass) && jobClass.JobSpecificThemes != null)
+            {
+                themes.AddRange(jobClass.JobSpecificThemes);
+            }
+
+            // Then add other shared themes (excluding "original" since it's already first)
+            var sharedThemes = GetAvailableThemes();
+            foreach (var theme in sharedThemes)
+            {
+                if (theme != "original")
+                {
+                    themes.Add(theme);
+                }
+            }
+
+            return themes;
         }
 
         /// <summary>

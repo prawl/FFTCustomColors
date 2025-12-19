@@ -12,9 +12,9 @@ namespace Tests
         public void AgriasColorScheme_HasCorrectNumberOfThemes()
         {
             // Arrange & Act
-            var themes = new[] { "original", "ash_dark" };
+            var themes = new[] { "original", "gun_slinger" };
 
-            // Assert - We expect 2 themes: original, ash_dark
+            // Assert - We expect 2 themes: original, gun_slinger
             Assert.Equal(2, themes.Length);
         }
 
@@ -22,11 +22,11 @@ namespace Tests
         public void AgriasColorScheme_ContainsExpectedThemes()
         {
             // Arrange
-            var themes = new[] { "original", "ash_dark" };
+            var themes = new[] { "original", "gun_slinger" };
 
             // Act & Assert
             Assert.Contains("original", themes);
-            Assert.Contains("ash_dark", themes);
+            Assert.Contains("gun_slinger", themes);
         }
 
         [Fact]
@@ -36,12 +36,15 @@ namespace Tests
             var manager = new StoryCharacterThemeManager();
             manager.SetCurrentTheme("Agrias", "original");
 
-            // Act & Assert - Cycle through all themes
+            // Act & Assert - Cycle through some themes (Agrias has 12 themes)
             var firstCycle = manager.CycleTheme("Agrias");
-            Assert.Equal("ash_dark", firstCycle);
+            Assert.Equal("gun_slinger", firstCycle);
 
             var secondCycle = manager.CycleTheme("Agrias");
-            Assert.Equal("original", secondCycle); // Should wrap back to original
+            Assert.Equal("crimson_assassin", secondCycle); // Third theme
+
+            var thirdCycle = manager.CycleTheme("Agrias");
+            Assert.Equal("shadow_dancer", thirdCycle); // Fourth theme
         }
 
         [Fact]
@@ -54,8 +57,8 @@ namespace Tests
             Assert.Equal("original", manager.GetCurrentTheme("Agrias"));
 
             // Change theme and verify
-            manager.SetCurrentTheme("Agrias", "ash_dark");
-            Assert.Equal("ash_dark", manager.GetCurrentTheme("Agrias"));
+            manager.SetCurrentTheme("Agrias", "gun_slinger");
+            Assert.Equal("gun_slinger", manager.GetCurrentTheme("Agrias"));
         }
 
         [Fact]
@@ -65,10 +68,10 @@ namespace Tests
             var manager = new StoryCharacterThemeManager();
 
             // Act
-            manager.SetCurrentTheme("Agrias", "ash_dark");
+            manager.SetCurrentTheme("Agrias", "gun_slinger");
 
             // Assert
-            Assert.Equal("ash_dark", manager.GetCurrentTheme("Agrias"));
+            Assert.Equal("gun_slinger", manager.GetCurrentTheme("Agrias"));
         }
 
         [Fact]
@@ -78,18 +81,18 @@ namespace Tests
             var manager = new StoryCharacterThemeManager();
 
             // Act - Set different themes for each character
-            manager.SetCurrentTheme("Agrias", "ash_dark");
+            manager.SetCurrentTheme("Agrias", "gun_slinger");
             manager.SetCurrentTheme("Orlandeau", "thunder_god");
 
             // Assert - Each character maintains their own theme
-            Assert.Equal("ash_dark", manager.GetCurrentTheme("Agrias"));
+            Assert.Equal("gun_slinger", manager.GetCurrentTheme("Agrias"));
             Assert.Equal("thunder_god", manager.GetCurrentTheme("Orlandeau"));
 
             // Act - Cycle one character's theme
             manager.CycleTheme("Agrias");
 
             // Assert - Only Agrias theme changes, others remain the same
-            Assert.Equal("original", manager.GetCurrentTheme("Agrias"));
+            Assert.Equal("crimson_assassin", manager.GetCurrentTheme("Agrias")); // Next theme after gun_slinger
             Assert.Equal("thunder_god", manager.GetCurrentTheme("Orlandeau"));
         }
     }

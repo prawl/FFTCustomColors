@@ -164,6 +164,7 @@ public class Mod : IMod, IConfigurable
         if (config != null)
         {
             _initializer?.InitializeStoryCharacterThemes(config, themeManager);
+            themeManager.ApplyInitialThemes();
         }
     }
 
@@ -276,7 +277,7 @@ public class Mod : IMod, IConfigurable
         if (themeManager != null)
         {
             _initializer?.InitializeStoryCharacterThemes(configuration, themeManager);
-            themeManager.ApplyInitialThemes();
+            // Don't call ApplyInitialThemes here - it's already called in ApplyInitialConfiguration during startup
         }
     }
 

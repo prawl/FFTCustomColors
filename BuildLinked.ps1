@@ -108,6 +108,11 @@ if ($LASTEXITCODE -eq 0) {
             $genericThemeFolders = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/" -Directory |
                 Where-Object { $_.Name -match "^sprites_[^_]+$" -or $_.Name -match "^sprites_(crimson_red|lucavi|northern_sky|southern_sky|amethyst|celestial|corpse_brigade|emerald_dragon|frost_knight|golden_templar|blood_moon|volcanic|ocean_depths|royal_purple|phoenix_flame|rose_gold|silver_knight|shadow_assassin)" }
 
+            # Copy job-specific themed folders (e.g., sprites_knight_h78)
+            Write-Host "Copying job-specific themed sprites..." -ForegroundColor Cyan
+            $jobSpecificFolders = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/" -Directory |
+                Where-Object { $_.Name -match "^sprites_(knight|squire|monk|priest|wizard|timemage|summoner|thief|mediator|oracle|geomancer|dragoon|samurai|ninja|calculator|bard|dancer|mime|archer|chemist|lancer)_" -and $_.Name -notmatch "(agrias|cloud|orlandeau|rapha|marach|reis|mustadio|meliadoul|beowulf)" }
+
             foreach ($folder in $genericThemeFolders) {
                 $destFolder = "$spritePath/$($folder.Name)"
                 New-Item -ItemType Directory -Force -Path $destFolder | Out-Null
@@ -117,6 +122,16 @@ if ($LASTEXITCODE -eq 0) {
 
             $genericFolderCount = $genericThemeFolders.Count
             Write-Host "Copied $genericFolderCount generic job theme folders" -ForegroundColor Green
+
+            foreach ($folder in $jobSpecificFolders) {
+                $destFolder = "$spritePath/$($folder.Name)"
+                New-Item -ItemType Directory -Force -Path $destFolder | Out-Null
+                Copy-Item "$($folder.FullName)/*.bin" $destFolder -Force
+                Write-Host "  Copied $($folder.Name)" -ForegroundColor Gray
+            }
+
+            $jobSpecificCount = $jobSpecificFolders.Count
+            Write-Host "Copied $jobSpecificCount job-specific theme folders" -ForegroundColor Green
         }
     }
 

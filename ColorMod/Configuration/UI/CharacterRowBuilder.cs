@@ -55,8 +55,8 @@ namespace FFTColorCustomizer.Configuration.UI
             // Create theme combo box with formatted display
             var comboBox = new ThemeComboBox();
             ConfigUIComponentFactory.ApplyThemeComboBoxStyling(comboBox);
-            // Get available themes from the job class service
-            var themes = GetAvailableGenericThemes();
+            // Get available themes for this specific job (shared + job-specific)
+            var themes = GetAvailableGenericThemesForJob(jobName);
             comboBox.SetThemes(themes);
             comboBox.SelectedThemeValue = currentTheme;
 
@@ -199,10 +199,23 @@ namespace FFTColorCustomizer.Configuration.UI
 
         private List<string> GetAvailableGenericThemes()
         {
-            // Get themes from the JobClassDefinitionService
+            // Get shared themes from the JobClassDefinitionService
             // This could later be loaded from a JSON file for easier configuration
             var themes = _jobClassService.GetAvailableThemes();
             ModLogger.Log($"GetAvailableGenericThemes returned {themes.Count} themes: {string.Join(", ", themes)}");
+            return themes;
+        }
+
+        private List<string> GetAvailableGenericThemesForJob(string jobName)
+        {
+            // Get themes for specific job (shared + job-specific)
+            // Need to convert display name to internal name (e.g., "Knight (Male)" -> "Knight_Male")
+            var internalName = jobName.Replace(" (Male)", "_Male")
+                                     .Replace(" (Female)", "_Female")
+                                     .Replace(" ", "");
+
+            var themes = _jobClassService.GetAvailableThemesForJob(internalName);
+            ModLogger.Log($"GetAvailableGenericThemesForJob({jobName}) returned {themes.Count} themes: {string.Join(", ", themes)}");
             return themes;
         }
 
@@ -533,12 +546,23 @@ namespace FFTColorCustomizer.Configuration.UI
                 // e.g., "Knight (Male)" -> "battle_knight_m_spr.bin"
                 string spriteFileName = ConvertJobNameToSpriteFile(jobName);
 
-                // Look for themed sprite files first (e.g., sprites_crimson_red/battle_knight_m_spr.bin)
-                string themeFolderName = $"sprites_{theme.ToLower().Replace(" ", "_")}";
+                // Look for themed sprite files
+                // First check if this is a job-specific theme (e.g., sprites_knight_h78/battle_knight_m_spr.bin)
+                string jobType = jobName.Replace(" (Male)", "").Replace(" (Female)", "").Replace(" ", "").ToLower();
+                string jobSpecificFolderName = $"sprites_{jobType}_{theme.ToLower().Replace(" ", "_")}";
                 string binPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
-                    themeFolderName, spriteFileName);
+                    jobSpecificFolderName, spriteFileName);
 
-                ModLogger.LogDebug($"Looking for themed generic sprite at: {binPath}");
+                ModLogger.LogDebug($"Looking for job-specific themed sprite at: {binPath}");
+
+                // If job-specific doesn't exist, try generic theme folder (e.g., sprites_crimson_red/battle_knight_m_spr.bin)
+                if (!File.Exists(binPath))
+                {
+                    string themeFolderName = $"sprites_{theme.ToLower().Replace(" ", "_")}";
+                    binPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
+                        themeFolderName, spriteFileName);
+                    ModLogger.LogDebug($"Job-specific not found, trying generic themed sprite at: {binPath}");
+                }
 
                 // If themed version doesn't exist, fall back to main unit folder
                 if (!File.Exists(binPath))

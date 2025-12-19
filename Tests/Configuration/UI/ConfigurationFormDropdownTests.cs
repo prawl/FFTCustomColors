@@ -41,11 +41,11 @@ namespace Tests.Configuration.UI
             _tempDataPath = Path.Combine(tempRoot, "Data");
             Directory.CreateDirectory(_tempDataPath);
 
-            // Create JobClasses.json with test themes
+            // Create JobClasses.json with test themes (using sharedThemes)
             var jobClassesPath = Path.Combine(_tempDataPath, "JobClasses.json");
             var jobClassesData = new
             {
-                availableThemes = new[]
+                sharedThemes = new[]
                 {
                     "original",
                     "corpse_brigade",

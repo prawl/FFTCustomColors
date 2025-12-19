@@ -20,11 +20,11 @@ namespace FFTColorCustomizer.Tests.Services
         }
 
         [Fact]
-        public void GetAvailableThemes_Should_Load_Themes_From_JobClasses_Json()
+        public void GetAvailableThemes_Should_Load_SharedThemes_From_JobClasses_Json()
         {
-            // Arrange
+            // Arrange - Note: using "sharedThemes" as in actual JSON file
             var jsonContent = @"{
-                ""availableThemes"": [
+                ""sharedThemes"": [
                     ""original"",
                     ""corpse_brigade"",
                     ""lucavi"",
@@ -106,7 +106,7 @@ namespace FFTColorCustomizer.Tests.Services
         {
             // Arrange
             var jsonContent = @"{
-                ""availableThemes"": [],
+                ""sharedThemes"": [],
                 ""jobClasses"": []
             }";
 
@@ -122,11 +122,82 @@ namespace FFTColorCustomizer.Tests.Services
         }
 
         [Fact]
+        public void GetAvailableThemesForJob_Should_Put_Original_First_Then_JobSpecific_Then_Other_Shared()
+        {
+            // Arrange
+            var jsonContent = @"{
+                ""sharedThemes"": [
+                    ""original"",
+                    ""corpse_brigade"",
+                    ""lucavi""
+                ],
+                ""jobClasses"": [
+                    {
+                        ""name"": ""Knight_Male"",
+                        ""displayName"": ""Knight (Male)"",
+                        ""spriteName"": ""battle_knight_m_spr.bin"",
+                        ""defaultTheme"": ""original"",
+                        ""gender"": ""Male"",
+                        ""jobType"": ""Knight"",
+                        ""jobSpecificThemes"": [
+                            ""holy_guard"",
+                            ""divine_blade""
+                        ]
+                    }
+                ]
+            }";
+
+            File.WriteAllText(Path.Combine(_testDataPath, "JobClasses.json"), jsonContent);
+
+            // Act
+            var service = new JobClassDefinitionService(_testModPath);
+            var themes = service.GetAvailableThemesForJob("Knight_Male");
+
+            // Assert - Should have 1 original + 2 job-specific + 2 other shared = 5 themes
+            themes.Should().HaveCount(5);
+
+            // "original" should ALWAYS come first
+            themes[0].Should().Be("original", "Original theme should always be first");
+
+            // Job-specific themes should come second
+            themes[1].Should().Be("holy_guard", "Job-specific themes should come after original");
+            themes[2].Should().Be("divine_blade", "Job-specific themes should come after original");
+
+            // Other shared themes should come last
+            themes[3].Should().Be("corpse_brigade", "Other shared themes should come after job-specific");
+            themes[4].Should().Be("lucavi", "Other shared themes should come after job-specific");
+        }
+
+        [Fact]
+        public void GetAvailableThemesForJob_Should_Return_Only_SharedThemes_For_Unknown_Job()
+        {
+            // Arrange
+            var jsonContent = @"{
+                ""sharedThemes"": [
+                    ""original"",
+                    ""corpse_brigade""
+                ],
+                ""jobClasses"": []
+            }";
+
+            File.WriteAllText(Path.Combine(_testDataPath, "JobClasses.json"), jsonContent);
+
+            // Act
+            var service = new JobClassDefinitionService(_testModPath);
+            var themes = service.GetAvailableThemesForJob("UnknownJob");
+
+            // Assert - Should return only shared themes
+            themes.Should().HaveCount(2);
+            themes.Should().Contain("original");
+            themes.Should().Contain("corpse_brigade");
+        }
+
+        [Fact]
         public void JobClassDefinitionService_Should_Load_Job_Classes_From_Json()
         {
             // Arrange
             var jsonContent = @"{
-                ""availableThemes"": [""original""],
+                ""sharedThemes"": [""original""],
                 ""jobClasses"": [
                     {
                         ""name"": ""Squire_Male"",

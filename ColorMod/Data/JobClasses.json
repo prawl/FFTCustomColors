@@ -1,5 +1,5 @@
 {
-  "availableThemes": [
+  "sharedThemes": [
     "original",
     "corpse_brigade",
     "lucavi",
@@ -26,7 +26,14 @@
       "spriteName": "battle_knight_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Knight"
+      "jobType": "Knight",
+      "jobSpecificThemes": [
+        "holy_guard",
+        "divine_blade",
+        "dark_knight",
+        "thunder_general",
+        "summoner_sage"
+      ]
     },
     {
       "name": "Knight_Female",
@@ -34,7 +41,15 @@
       "spriteName": "battle_knight_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Knight"
+      "jobType": "Knight",
+      "jobSpecificThemes": [
+        "iron_legion",
+        "western_knight",
+        "minstrel",
+        "divine_blade",
+        "dragon_knight",
+        "thunder_general"
+      ]
     },
     {
       "name": "Archer_Male",
@@ -42,7 +57,14 @@
       "spriteName": "battle_yumi_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Archer"
+      "jobType": "Archer",
+      "jobSpecificThemes": [
+        "soldier_first",
+        "rebel_captain",
+        "alchemist",
+        "spirit_medium",
+        "sky_pirate"
+      ]
     },
     {
       "name": "Archer_Female",
@@ -50,7 +72,16 @@
       "spriteName": "battle_yumi_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Archer"
+      "jobType": "Archer",
+      "jobSpecificThemes": [
+        "southern_blade",
+        "phoenix_flame",
+        "minstrel",
+        "goblin_chief",
+        "golem_heart",
+        "princess_guard",
+        "dark_knight"
+      ]
     },
     {
       "name": "Chemist_Male",
@@ -58,7 +89,14 @@
       "spriteName": "battle_item_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Chemist"
+      "jobType": "Chemist",
+      "jobSpecificThemes": [
+        "holy_commander",
+        "soldier_first",
+        "rebel_captain",
+        "noble_scion",
+        "thunder_general"
+      ]
     },
     {
       "name": "Chemist_Female",
@@ -66,7 +104,15 @@
       "spriteName": "battle_item_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Chemist"
+      "jobType": "Chemist",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "temple_maiden",
+        "assassin_master",
+        "dragon_tamer",
+        "mystic_sage",
+        "valkyrie"
+      ]
     },
     {
       "name": "Monk_Male",
@@ -74,7 +120,14 @@
       "spriteName": "battle_monk_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Monk"
+      "jobType": "Monk",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "holy_commander",
+        "western_knight",
+        "dragon_tamer",
+        "kunoichi"
+      ]
     },
     {
       "name": "Monk_Female",
@@ -82,7 +135,18 @@
       "spriteName": "battle_monk_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Monk"
+      "jobType": "Monk",
+      "jobSpecificThemes": [
+        "templar_lord",
+        "dragon_tamer",
+        "temple_guard",
+        "valkyrie",
+        "kunoichi",
+        "dragon_soul",
+        "dragon_knight",
+        "diplomat",
+        "peacekeeper"
+      ]
     },
     {
       "name": "WhiteMage_Male",
@@ -90,7 +154,15 @@
       "spriteName": "battle_siro_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "WhiteMage"
+      "jobType": "WhiteMage",
+      "jobSpecificThemes": [
+        "western_knight",
+        "heaven_knight",
+        "holy_guard",
+        "dark_knight",
+        "sky_lancer",
+        "diplomat"
+      ]
     },
     {
       "name": "WhiteMage_Female",
@@ -98,7 +170,19 @@
       "spriteName": "battle_siro_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "WhiteMage"
+      "jobType": "WhiteMage",
+      "jobSpecificThemes": [
+        "white_prophet",
+        "eastern_warrior",
+        "heaven_knight",
+        "illusion_weaver",
+        "sky_lancer",
+        "azure_witch",
+        "shadow_runner",
+        "time_walker",
+        "void_touched",
+        "diplomat"
+      ]
     },
     {
       "name": "BlackMage_Male",
@@ -106,7 +190,14 @@
       "spriteName": "battle_kuro_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "BlackMage"
+      "jobType": "BlackMage",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "holy_commander",
+        "western_knight",
+        "crystal_blessed",
+        "ghost_touched"
+      ]
     },
     {
       "name": "BlackMage_Female",
@@ -114,7 +205,18 @@
       "spriteName": "battle_kuro_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "BlackMage"
+      "jobType": "BlackMage",
+      "jobSpecificThemes": [
+        "holy_commander",
+        "western_knight",
+        "holy_guard",
+        "divine_herald",
+        "battle_dancer",
+        "blood_dancer",
+        "azure_witch",
+        "diplomat",
+        "ghost_touched"
+      ]
     },
     {
       "name": "Thief_Male",
@@ -122,7 +224,14 @@
       "spriteName": "battle_thief_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Thief"
+      "jobType": "Thief",
+      "jobSpecificThemes": [
+        "shadow_brigade",
+        "holy_commander",
+        "western_knight",
+        "desert_nomad",
+        "sky_herald"
+      ]
     },
     {
       "name": "Thief_Female",
@@ -130,7 +239,16 @@
       "spriteName": "battle_thief_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Thief"
+      "jobType": "Thief",
+      "jobSpecificThemes": [
+        "eastern_warrior",
+        "shadow_thief",
+        "martial_master",
+        "arithmancer",
+        "priestess",
+        "void_touched",
+        "peacekeeper"
+      ]
     },
     {
       "name": "Ninja_Male",
@@ -138,7 +256,14 @@
       "spriteName": "battle_ninja_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Ninja"
+      "jobType": "Ninja",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "silver_company",
+        "arc_knight",
+        "western_knight",
+        "desert_nomad"
+      ]
     },
     {
       "name": "Ninja_Female",
@@ -146,7 +271,17 @@
       "spriteName": "battle_ninja_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Ninja"
+      "jobType": "Ninja",
+      "jobSpecificThemes": [
+        "assassin_master",
+        "princess_guard",
+        "battle_dancer",
+        "dark_knight",
+        "thunder_general",
+        "priestess",
+        "void_touched",
+        "diplomat"
+      ]
     },
     {
       "name": "Squire_Male",
@@ -154,7 +289,14 @@
       "spriteName": "battle_mina_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Squire"
+      "jobType": "Squire",
+      "jobSpecificThemes": [
+        "iron_legion",
+        "assassin_master",
+        "mystic_sage",
+        "dragon_knight",
+        "forest_archer"
+      ]
     },
     {
       "name": "Squire_Female",
@@ -162,7 +304,21 @@
       "spriteName": "battle_mina_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Squire"
+      "jobType": "Squire",
+      "jobSpecificThemes": [
+        "shadow_thief",
+        "crimson_witch",
+        "battle_dancer",
+        "illusion_weaver",
+        "sky_lancer",
+        "sword_maiden",
+        "azure_witch",
+        "high_priest",
+        "shadow_runner",
+        "void_touched",
+        "diplomat",
+        "peacekeeper"
+      ]
     },
     {
       "name": "TimeMage_Male",
@@ -170,7 +326,14 @@
       "spriteName": "battle_toki_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "TimeMage"
+      "jobType": "TimeMage",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "holy_commander",
+        "eastern_warrior",
+        "desert_nomad",
+        "dragon_tamer"
+      ]
     },
     {
       "name": "TimeMage_Female",
@@ -178,7 +341,14 @@
       "spriteName": "battle_toki_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "TimeMage"
+      "jobType": "TimeMage",
+      "jobSpecificThemes": [
+        "white_prophet",
+        "assassin_master",
+        "western_knight",
+        "alchemist",
+        "bird_keeper"
+      ]
     },
     {
       "name": "Summoner_Male",
@@ -186,7 +356,14 @@
       "spriteName": "battle_syou_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Summoner"
+      "jobType": "Summoner",
+      "jobSpecificThemes": [
+        "southern_blade",
+        "alchemist",
+        "crusader",
+        "dark_knight",
+        "dragon_knight"
+      ]
     },
     {
       "name": "Summoner_Female",
@@ -194,7 +371,15 @@
       "spriteName": "battle_syou_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Summoner"
+      "jobType": "Summoner",
+      "jobSpecificThemes": [
+        "heaven_knight",
+        "crimson_witch",
+        "spirit_medium",
+        "high_priest",
+        "diplomat",
+        "forest_archer"
+      ]
     },
     {
       "name": "Samurai_Male",
@@ -202,7 +387,14 @@
       "spriteName": "battle_samu_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Samurai"
+      "jobType": "Samurai",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "templar_lord",
+        "nether_herald",
+        "divine_herald",
+        "divine_blade"
+      ]
     },
     {
       "name": "Samurai_Female",
@@ -210,7 +402,14 @@
       "spriteName": "battle_samu_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Samurai"
+      "jobType": "Samurai",
+      "jobSpecificThemes": [
+        "arc_knight",
+        "western_knight",
+        "kunoichi",
+        "arithmancer",
+        "thunder_general"
+      ]
     },
     {
       "name": "Dragoon_Male",
@@ -218,7 +417,14 @@
       "spriteName": "battle_ryu_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Dragoon"
+      "jobType": "Dragoon",
+      "jobSpecificThemes": [
+        "shadow_brigade",
+        "assassin_master",
+        "rebel_captain",
+        "desert_nomad",
+        "temple_guard"
+      ]
     },
     {
       "name": "Dragoon_Female",
@@ -226,7 +432,18 @@
       "spriteName": "battle_ryu_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Dragoon"
+      "jobType": "Dragoon",
+      "jobSpecificThemes": [
+        "minstrel",
+        "battle_dancer",
+        "illusion_weaver",
+        "dark_knight",
+        "azure_witch",
+        "priestess",
+        "shadow_runner",
+        "time_walker",
+        "diplomat"
+      ]
     },
     {
       "name": "Geomancer_Male",
@@ -234,7 +451,14 @@
       "spriteName": "battle_fusui_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Geomancer"
+      "jobType": "Geomancer",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "holy_commander",
+        "scholar_prince",
+        "western_knight",
+        "monk_elder"
+      ]
     },
     {
       "name": "Geomancer_Female",
@@ -242,7 +466,18 @@
       "spriteName": "battle_fusui_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Geomancer"
+      "jobType": "Geomancer",
+      "jobSpecificThemes": [
+        "southern_blade",
+        "crimson_witch",
+        "number_witch",
+        "azure_witch",
+        "summoner_sage",
+        "time_walker",
+        "void_touched",
+        "diplomat",
+        "peacekeeper"
+      ]
     },
     {
       "name": "Mystic_Male",
@@ -250,7 +485,14 @@
       "spriteName": "battle_onmyo_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Mystic"
+      "jobType": "Mystic",
+      "jobSpecificThemes": [
+        "scholar_prince",
+        "western_knight",
+        "divine_herald",
+        "temple_guard",
+        "battle_dancer"
+      ]
     },
     {
       "name": "Mystic_Female",
@@ -258,7 +500,16 @@
       "spriteName": "battle_onmyo_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Mystic"
+      "jobType": "Mystic",
+      "jobSpecificThemes": [
+        "soldier_first",
+        "southern_blade",
+        "alchemist",
+        "crusader",
+        "noble_scion",
+        "eidolon_caller",
+        "sky_pirate"
+      ]
     },
     {
       "name": "Mediator_Male",
@@ -266,7 +517,15 @@
       "spriteName": "battle_waju_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Mediator"
+      "jobType": "Mediator",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "holy_commander",
+        "western_knight",
+        "engineer_genius",
+        "illusion_weaver",
+        "high_priest"
+      ]
     },
     {
       "name": "Mediator_Female",
@@ -274,7 +533,15 @@
       "spriteName": "battle_waju_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Mediator"
+      "jobType": "Mediator",
+      "jobSpecificThemes": [
+        "illusion_weaver",
+        "machinist_hero",
+        "sky_lancer",
+        "arithmancer",
+        "shadow_runner",
+        "night_dancer"
+      ]
     },
     {
       "name": "Dancer_Female",
@@ -282,7 +549,8 @@
       "spriteName": "battle_odori_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Dancer"
+      "jobType": "Dancer",
+      "jobSpecificThemes": []
     },
     {
       "name": "Bard_Male",
@@ -290,7 +558,13 @@
       "spriteName": "battle_gin_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Bard"
+      "jobType": "Bard",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "holy_commander",
+        "arc_knight",
+        "western_knight"
+      ]
     },
     {
       "name": "Mime_Male",
@@ -298,7 +572,14 @@
       "spriteName": "battle_mono_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Mime"
+      "jobType": "Mime",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "holy_commander",
+        "arc_knight",
+        "noble_scion",
+        "dragon_knight"
+      ]
     },
     {
       "name": "Mime_Female",
@@ -306,7 +587,16 @@
       "spriteName": "battle_mono_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Mime"
+      "jobType": "Mime",
+      "jobSpecificThemes": [
+        "northern_guard",
+        "crimson_witch",
+        "azure_witch",
+        "priestess",
+        "void_touched",
+        "diplomat",
+        "peacekeeper"
+      ]
     },
     {
       "name": "Calculator_Male",
@@ -314,7 +604,14 @@
       "spriteName": "battle_san_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Calculator"
+      "jobType": "Calculator",
+      "jobSpecificThemes": [
+        "royal_knight",
+        "templar_lord",
+        "western_knight",
+        "nature_walker",
+        "heaven_knight"
+      ]
     },
     {
       "name": "Calculator_Female",
@@ -322,7 +619,16 @@
       "spriteName": "battle_san_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Calculator"
+      "jobType": "Calculator",
+      "jobSpecificThemes": [
+        "divine_seer",
+        "martial_master",
+        "dark_knight",
+        "time_walker",
+        "diplomat",
+        "peacekeeper",
+        "demon_pact"
+      ]
     }
   ]
 }
