@@ -59,7 +59,6 @@
       "gender": "Male",
       "jobType": "Archer",
       "jobSpecificThemes": [
-        "sky_soldier",
         "desert_nomad",
         "merchant_lord",
         "moon_oracle",
@@ -74,7 +73,6 @@
       "gender": "Female",
       "jobType": "Archer",
       "jobSpecificThemes": [
-        "sky_soldier",
         "desert_nomad",
         "merchant_lord",
         "moon_oracle",
@@ -89,10 +87,7 @@
       "gender": "Male",
       "jobType": "Chemist",
       "jobSpecificThemes": [
-        "holy_knight",
-        "sky_soldier",
         "desert_nomad",
-        "sun_priest",
         "scholar_sage"
       ]
     },
@@ -104,10 +99,7 @@
       "gender": "Female",
       "jobType": "Chemist",
       "jobSpecificThemes": [
-        "holy_knight",
-        "sky_soldier",
         "desert_nomad",
-        "sun_priest",
         "scholar_sage"
       ]
     },
@@ -272,10 +264,8 @@
       "jobType": "Squire",
       "jobSpecificThemes": [
         "town_guard",
-        "steel_warrior",
         "frost_mage",
-        "dragon_knight",
-        "master_archer"
+        "dragon_knight"
       ]
     },
     {
@@ -287,10 +277,8 @@
       "jobType": "Squire",
       "jobSpecificThemes": [
         "town_guard",
-        "steel_warrior",
         "frost_mage",
-        "dragon_knight",
-        "master_archer"
+        "dragon_knight"
       ]
     },
     {
@@ -547,7 +535,6 @@
         "young_maiden",
         "holy_knight",
         "forest_ranger",
-        "sun_priest",
         "dragon_knight"
       ]
     },
@@ -562,7 +549,6 @@
         "young_maiden",
         "holy_knight",
         "forest_ranger",
-        "sun_priest",
         "dragon_knight"
       ]
     },
