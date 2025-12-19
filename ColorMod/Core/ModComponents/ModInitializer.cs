@@ -47,7 +47,9 @@ namespace FFTColorCustomizer.Core.ModComponents
         /// </summary>
         public ColorSchemeCycler InitializeColorSchemeCycler()
         {
-            string spritesPath = Path.Combine(_sourcePath, FFTIVCPath, DataPath, EnhancedPath, FFTPackPath, UnitPath);
+            // Use the deployed mod directory, not the source directory
+            // This ensures we only detect themes that were actually deployed
+            string spritesPath = Path.Combine(_modPath, FFTIVCPath, DataPath, EnhancedPath, FFTPackPath, UnitPath);
             var colorCycler = new ColorSchemeCycler(spritesPath);
             var schemes = colorCycler.GetAvailableSchemes();
 
