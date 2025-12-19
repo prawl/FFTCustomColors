@@ -71,12 +71,7 @@
       "defaultTheme": "original",
       "gender": "Female",
       "jobType": "Archer",
-      "jobSpecificThemes": [
-        "desert_nomad",
-        "merchant_lord",
-        "moon_oracle",
-        "beast_tamer"
-      ]
+      "jobSpecificThemes": []
     },
     {
       "name": "Chemist_Male",
@@ -138,15 +133,8 @@
       "spriteName": "battle_siro_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Priest",
-      "jobSpecificThemes": [
-        "shadow_monk",
-        "twilight_sage",
-        "holy_bishop",
-        "battle_cleric",
-        "dragon_priestess",
-        "diplomat_sage"
-      ]
+      "jobType": "WhiteMage",
+      "jobSpecificThemes": []
     },
     {
       "name": "WhiteMage_Female",
@@ -154,15 +142,8 @@
       "spriteName": "battle_siro_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Priest",
-      "jobSpecificThemes": [
-        "shadow_monk",
-        "twilight_sage",
-        "holy_bishop",
-        "battle_cleric",
-        "dragon_priestess",
-        "diplomat_sage"
-      ]
+      "jobType": "WhiteMage",
+      "jobSpecificThemes": []
     },
     {
       "name": "BlackMage_Male",
@@ -170,14 +151,8 @@
       "spriteName": "battle_kuro_m_spr.bin",
       "defaultTheme": "original",
       "gender": "Male",
-      "jobType": "Wizard",
-      "jobSpecificThemes": [
-        "young_maiden",
-        "holy_knight",
-        "shadow_monk",
-        "golden_wizard",
-        "phantom_mage"
-      ]
+      "jobType": "BlackMage",
+      "jobSpecificThemes": []
     },
     {
       "name": "BlackMage_Female",
@@ -185,14 +160,8 @@
       "spriteName": "battle_kuro_w_spr.bin",
       "defaultTheme": "original",
       "gender": "Female",
-      "jobType": "Wizard",
-      "jobSpecificThemes": [
-        "young_maiden",
-        "holy_knight",
-        "shadow_monk",
-        "golden_wizard",
-        "phantom_mage"
-      ]
+      "jobType": "BlackMage",
+      "jobSpecificThemes": []
     },
     {
       "name": "Thief_Male",
@@ -288,11 +257,11 @@
       "gender": "Male",
       "jobType": "TimeMage",
       "jobSpecificThemes": [
-        "royal_knight",
-        "holy_commander",
-        "eastern_warrior",
-        "desert_nomad",
-        "dragon_tamer"
+        "young_maiden",
+        "holy_knight",
+        "crimson_monk",
+        "royal_guard",
+        "dragon_priest"
       ]
     },
     {
@@ -302,13 +271,7 @@
       "defaultTheme": "original",
       "gender": "Female",
       "jobType": "TimeMage",
-      "jobSpecificThemes": [
-        "royal_knight",
-        "holy_commander",
-        "eastern_warrior",
-        "desert_nomad",
-        "dragon_tamer"
-      ]
+      "jobSpecificThemes": []
     },
     {
       "name": "Summoner_Male",
@@ -317,14 +280,7 @@
       "defaultTheme": "original",
       "gender": "Male",
       "jobType": "Summoner",
-      "jobSpecificThemes": [
-        "heaven_knight",
-        "crimson_witch",
-        "spirit_medium",
-        "high_priest",
-        "diplomat",
-        "forest_archer"
-      ]
+      "jobSpecificThemes": []
     },
     {
       "name": "Summoner_Female",
@@ -333,14 +289,7 @@
       "defaultTheme": "original",
       "gender": "Female",
       "jobType": "Summoner",
-      "jobSpecificThemes": [
-        "heaven_knight",
-        "crimson_witch",
-        "spirit_medium",
-        "high_priest",
-        "diplomat",
-        "forest_archer"
-      ]
+      "jobSpecificThemes": []
     },
     {
       "name": "Samurai_Male",
@@ -364,13 +313,7 @@
       "defaultTheme": "original",
       "gender": "Female",
       "jobType": "Samurai",
-      "jobSpecificThemes": [
-        "young_maiden",
-        "ocean_templar",
-        "blade_master",
-        "storm_caller",
-        "honor_guard"
-      ]
+      "jobSpecificThemes": []
     },
     {
       "name": "Dragoon_Male",
@@ -439,13 +382,7 @@
       "defaultTheme": "original",
       "gender": "Male",
       "jobType": "Oracle",
-      "jobSpecificThemes": [
-        "mystic_wanderer",
-        "shadow_monk",
-        "storm_caller",
-        "dragon_slayer",
-        "spirit_dancer"
-      ]
+      "jobSpecificThemes": []
     },
     {
       "name": "Mystic_Female",
@@ -454,13 +391,7 @@
       "defaultTheme": "original",
       "gender": "Female",
       "jobType": "Oracle",
-      "jobSpecificThemes": [
-        "mystic_wanderer",
-        "shadow_monk",
-        "storm_caller",
-        "dragon_slayer",
-        "spirit_dancer"
-      ]
+      "jobSpecificThemes": []
     },
     {
       "name": "Mediator_Male",
@@ -547,8 +478,7 @@
       "jobSpecificThemes": [
         "young_maiden",
         "holy_knight",
-        "forest_ranger",
-        "dragon_knight"
+        "forest_ranger"
       ]
     },
     {

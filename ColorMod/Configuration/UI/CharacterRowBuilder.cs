@@ -553,6 +553,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 string binPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
                     jobSpecificFolderName, spriteFileName);
 
+                ModLogger.Log($"[DEBUG] Job: '{jobName}' → JobType: '{jobType}' → Folder: '{jobSpecificFolderName}'");
                 ModLogger.LogDebug($"Looking for job-specific themed sprite at: {binPath}");
 
                 // If job-specific doesn't exist, try generic theme folder (e.g., sprites_crimson_red/battle_knight_m_spr.bin)
