@@ -21,6 +21,8 @@ namespace FFTColorCustomizer.Utilities
         private readonly string _unitPath;
         private readonly string _sourceUnitPath;
 
+        public string GetModPath() => _modPath;
+
         public ConfigBasedSpriteManager(
             string modPath,
             ConfigurationManager configManager,

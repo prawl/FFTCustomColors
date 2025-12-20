@@ -18,15 +18,16 @@ namespace FFTColorCustomizer.Core.ModComponents
         private readonly ConfigurationManager _configManager;
         private readonly ConfigBasedSpriteManager _spriteManager;
 
-        public ConfigurationCoordinator(string configPath)
+        public ConfigurationCoordinator(string configPath, string modPath = null)
         {
             _configPath = configPath ?? throw new ArgumentNullException(nameof(configPath));
             _configManager = new ConfigurationManager(_configPath);
 
-            // Initialize sprite manager with the actual mod installation path
-            var modPath = GetActualModPath(_configPath);
+            // Use provided mod path if available, otherwise try to detect it
+            var actualModPath = modPath ?? GetActualModPath(_configPath);
+            ModLogger.Log($"ConfigurationCoordinator using mod path: {actualModPath}");
             // In deployment, source path is the same as mod path
-            _spriteManager = new ConfigBasedSpriteManager(modPath, _configManager, modPath);
+            _spriteManager = new ConfigBasedSpriteManager(actualModPath, _configManager, actualModPath);
         }
 
         private string GetActualModPath(string configPath)
@@ -224,9 +225,8 @@ namespace FFTColorCustomizer.Core.ModComponents
                 var config = GetConfiguration();
                 if (config != null)
                 {
-                    // For resources like preview images, we need the actual mod installation path,
-                    // not the User config directory. The mod is installed in Mods/FFTColorCustomizer
-                    string actualModPath = GetActualModPath(_configPath);
+                    // Use the already determined actual mod path instead of trying to resolve it again
+                    string actualModPath = _spriteManager.GetModPath();
 
                     ModLogger.LogDebug($"OpenConfigurationUI - configPath: {_configPath}");
                     ModLogger.LogDebug($"OpenConfigurationUI - actualModPath: {actualModPath}");

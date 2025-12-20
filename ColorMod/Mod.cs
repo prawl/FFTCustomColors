@@ -141,8 +141,8 @@ public class Mod : IMod, IConfigurable
             // Also initialize JobClassServiceSingleton with the mod path
             Services.JobClassServiceSingleton.Initialize(_modPath);
 
-            // Initialize coordinators and managers
-            _configCoordinator = new ConfigurationCoordinator(configPath);
+            // Initialize coordinators and managers - pass actual mod path to avoid path resolution issues
+            _configCoordinator = new ConfigurationCoordinator(configPath, _modPath);
 
             // Get the theme manager from the coordinator (use the same instance everywhere)
             var themeManager = _themeCoordinator?.GetThemeManager();
