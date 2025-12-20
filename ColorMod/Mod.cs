@@ -197,12 +197,8 @@ public class Mod : IMod, IConfigurable
         ModLogger.LogDebug($"After EnsureConfig - _configCoordinator exists: {_configCoordinator != null}");
         ModLogger.LogDebug($"After EnsureConfig - _hotkeyManager exists: {_hotkeyManager != null}");
 
-        // Apply initial themes from configuration
-        var configuration = GetConfiguration();
-        if (configuration != null)
-        {
-            ApplyConfigurationThemes(configuration);
-        }
+        // Configuration themes are already applied in ApplyInitialConfiguration
+        // No need to apply them again here
 
         // Start hotkey monitoring
         if (_hotkeyHandler != null)
@@ -290,7 +286,9 @@ public class Mod : IMod, IConfigurable
         if (themeManager != null)
         {
             _initializer?.InitializeStoryCharacterThemes(configuration, themeManager);
-            // Don't call ApplyInitialThemes here - it's already called in ApplyInitialConfiguration during startup
+            // Apply themes when configuration is updated externally (from Reloaded-II UI)
+            // This ensures the sprite files are actually copied to the correct locations
+            themeManager.ApplyInitialThemes();
         }
     }
 
