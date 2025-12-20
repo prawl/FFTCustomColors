@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using FFTColorCustomizer.Configuration;
 using FFTColorCustomizer.Core;
 using FFTColorCustomizer.Core.ModComponents;
@@ -43,8 +44,8 @@ public class Mod : IMod, IConfigurable
         // Initialize ModLogger with ConsoleLogger
         ModLogger.Reset();
         ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
-        ModLogger.LogLevel = Interfaces.LogLevel.Info;
-        ModLogger.Log("Mod constructor called");
+        ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD - Maximum verbosity
+        ModLogger.Log("Mod constructor called - DEBUG BUILD v1.2.2-debug");
 
         _inputSimulator = inputSimulator;
         _hotkeyHandler = hotkeyHandler;
@@ -68,7 +69,7 @@ public class Mod : IMod, IConfigurable
         // Initialize ModLogger with ConsoleLogger
         ModLogger.Reset();
         ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
-        ModLogger.LogLevel = Interfaces.LogLevel.Info; // Set to Info for normal operation (Debug for verbose)
+        ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD - Maximum verbosity for troubleshooting
 
         ModLogger.Log("Default constructor called");
 
@@ -91,6 +92,10 @@ public class Mod : IMod, IConfigurable
 
         // Initialize components
         InitializeComponents();
+
+        // Initialize configuration immediately to ensure it's ready
+        var configPath = GetUserConfigPath();
+        InitializeConfiguration(configPath);
 
         // Since Start is not being called by Reloaded-II, call it manually
         ModLogger.LogDebug("Calling Start manually from constructor");
@@ -197,8 +202,30 @@ public class Mod : IMod, IConfigurable
         ModLogger.LogDebug($"After EnsureConfig - _configCoordinator exists: {_configCoordinator != null}");
         ModLogger.LogDebug($"After EnsureConfig - _hotkeyManager exists: {_hotkeyManager != null}");
 
-        // Configuration themes are already applied in ApplyInitialConfiguration
-        // No need to apply them again here
+        // Apply themes after a short delay to ensure mod loader is ready
+        // This fixes the race condition where themes aren't applied on initial load
+        if (_configCoordinator != null && _themeCoordinator != null)
+        {
+            ModLogger.Log("Scheduling initial theme application after delay...");
+            System.Threading.Tasks.Task.Run(async () =>
+            {
+                // Wait for mod loader to be fully initialized
+                await System.Threading.Tasks.Task.Delay(500);
+
+                ModLogger.Log("Applying initial themes after delay...");
+                var config = _configCoordinator.GetConfiguration();
+                if (config != null)
+                {
+                    var themeManager = _themeCoordinator.GetThemeManager();
+                    if (themeManager != null)
+                    {
+                        _initializer?.InitializeStoryCharacterThemes(config, themeManager);
+                        themeManager.ApplyInitialThemes();
+                        ModLogger.Log("Initial themes applied successfully after delay");
+                    }
+                }
+            });
+        }
 
         // Start hotkey monitoring
         if (_hotkeyHandler != null)
@@ -216,8 +243,13 @@ public class Mod : IMod, IConfigurable
     {
         if (_configCoordinator == null)
         {
+            ModLogger.Log("Configuration coordinator is null, initializing...");
             var configPath = GetUserConfigPath();
             InitializeConfiguration(configPath);
+        }
+        else
+        {
+            ModLogger.LogDebug("Configuration coordinator already initialized");
         }
     }
 

@@ -148,20 +148,67 @@ namespace FFTColorCustomizer.Utilities
                 .Where(p => p.PropertyType == typeof(string) &&
                            (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
 
-            foreach (var property in properties)
+            // Debug: Log all properties found
+            var propList = properties.ToList();
+            ModLogger.Log($"[DEBUG] Found {propList.Count} job properties to process");
+            foreach (var prop in propList)
             {
-                var colorScheme = property.GetValue(config) as string ?? "original";
+                ModLogger.Log($"[DEBUG]   - Property: {prop.Name}, Type: {prop.PropertyType.Name}");
+            }
 
-                // Log what we're applying
-                ModLogger.Log($"Applying {property.Name}: {colorScheme}");
+            // Additional debug: Check specifically for Archer properties
+            var allProps = typeof(Config).GetProperties();
+            var archerProps = allProps.Where(p => p.Name.Contains("Archer")).ToList();
+            ModLogger.Log($"[DEBUG] Archer-specific properties found: {archerProps.Count}");
+            foreach (var ap in archerProps)
+            {
+                ModLogger.Log($"[DEBUG]   - Archer prop: {ap.Name}, CanRead: {ap.CanRead}, CanWrite: {ap.CanWrite}");
+            }
 
-                // Get the sprite name for this job/gender
-                var spriteName = GetSpriteNameForJob(property.Name);
-                if (spriteName != null)
+            foreach (var property in propList)
+            {
+                try
                 {
-                    // Extract job type from property name (e.g., "Mediator_Male" -> "mediator")
-                    var jobType = property.Name.Replace("_Male", "").Replace("_Female", "").ToLower();
-                    CopySpriteForJobWithType(spriteName, colorScheme, jobType);
+                    var colorScheme = property.GetValue(config) as string ?? "original";
+
+                    // Log what we're applying
+                    ModLogger.Log($"Applying {property.Name}: {colorScheme}");
+
+                    // Special debug for Archer
+                    if (property.Name.Contains("Archer"))
+                    {
+                        ModLogger.Log($"[DEBUG] Processing Archer property: {property.Name}");
+                        ModLogger.Log($"[DEBUG]   Value retrieved: {colorScheme}");
+                    }
+
+                    // Get the sprite name for this job/gender
+                    var spriteName = GetSpriteNameForJob(property.Name);
+
+                    // Special debug for Archer
+                    if (property.Name.Contains("Archer"))
+                    {
+                        ModLogger.Log($"[DEBUG]   Sprite name returned: {spriteName ?? "NULL"}");
+                    }
+
+                    if (spriteName != null)
+                    {
+                        // Extract job type from property name (e.g., "Mediator_Male" -> "mediator")
+                        var jobType = property.Name.Replace("_Male", "").Replace("_Female", "").ToLower();
+
+                        // Special debug for Archer
+                        if (property.Name.Contains("Archer"))
+                        {
+                            ModLogger.Log($"[DEBUG]   Job type: {jobType}");
+                            ModLogger.Log($"[DEBUG]   Calling CopySpriteForJobWithType({spriteName}, {colorScheme}, {jobType})");
+                        }
+
+                        CopySpriteForJobWithType(spriteName, colorScheme, jobType);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogError($"[DEBUG] Error processing property {property.Name}: {ex.Message}");
+                    ModLogger.LogError($"[DEBUG] Stack trace: {ex.StackTrace}");
                 }
             }
         }
@@ -197,10 +244,31 @@ namespace FFTColorCustomizer.Utilities
         {
             ModLogger.Log($"Applying theme for character: {characterName}, sprite: {spriteName}, theme: {themeName}");
 
-            // Skip copying for "original" theme - it uses the game's default sprites
+            // For "original" theme, restore the original sprite by copying from sprites_original directory
             if (themeName.ToLower() == "original")
             {
-                ModLogger.Log($"Skipping copy for {characterName}/{spriteName} - using original game sprites");
+                ModLogger.Log($"Restoring original sprite for {characterName}/{spriteName}");
+
+                var originalDir = Path.Combine(_sourceUnitPath, "sprites_original");
+                var originalFile = Path.Combine(originalDir, $"battle_{spriteName}_spr.bin");
+                var storyDestFile = Path.Combine(_unitPath, $"battle_{spriteName}_spr.bin");
+
+                if (File.Exists(originalFile))
+                {
+                    try
+                    {
+                        File.Copy(originalFile, storyDestFile, true);
+                        ModLogger.Log($"✓ Restored original sprite for {characterName}: {spriteName}");
+                    }
+                    catch (Exception ex)
+                    {
+                        ModLogger.LogError($"Failed to restore original sprite for {characterName}/{spriteName}: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    ModLogger.LogWarning($"Original sprite not found for {characterName}: {originalFile}");
+                }
                 return;
             }
 
@@ -426,10 +494,32 @@ namespace FFTColorCustomizer.Utilities
 
         private void CopySpriteForJobWithType(string spriteName, string colorScheme, string jobType)
         {
-            // Skip copying for "original" theme - it uses the game's default sprites
+            // For "original" theme, we need to restore the original sprite by copying from sprites_original directory
             if (colorScheme.ToLower() == "original")
             {
-                ModLogger.Log($"Skipping copy for {spriteName} - using original game sprites");
+                ModLogger.Log($"Restoring original sprite for {spriteName}");
+
+                // Copy from sprites_original directory to ensure we overwrite any custom theme
+                var originalDir = Path.Combine(_sourceUnitPath, "sprites_original");
+                var originalFile = Path.Combine(originalDir, spriteName);
+                var originalDestFile = Path.Combine(_unitPath, spriteName);
+
+                if (File.Exists(originalFile))
+                {
+                    try
+                    {
+                        File.Copy(originalFile, originalDestFile, true);
+                        ModLogger.Log($"✓ Restored original sprite: {spriteName}");
+                    }
+                    catch (Exception ex)
+                    {
+                        ModLogger.LogError($"Failed to restore original sprite {spriteName}: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    ModLogger.LogWarning($"Original sprite not found: {originalFile}");
+                }
                 return;
             }
 
