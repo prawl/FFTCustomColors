@@ -32,7 +32,8 @@ namespace FFTColorCustomizer.Utilities
             _configManager = configManager;
             _characterService = characterService;
             _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
-            _sourceUnitPath = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            // CRITICAL FIX: Use _modPath for deployed environment, not _sourcePath
+            _sourceUnitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
             ModLogger.Log("ConfigBasedSpriteManager initialized:");
             ModLogger.Log($"  Mod path: {_modPath}");

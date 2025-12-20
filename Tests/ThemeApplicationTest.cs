@@ -34,14 +34,13 @@ namespace FFTColorCustomizer.Tests
             var modUnitPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             Directory.CreateDirectory(modUnitPath);
 
-            // Create source/git directory (where theme sprites are stored)
-            var sourceUnitPath = Path.Combine(_testSourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
-
-            // Create theme directories with sprite files
+            // CRITICAL FIX: After the path fix, themes should be in mod path, not source path
+            // ConfigBasedSpriteManager now looks for themes in _modPath/FFTIVC/...
+            // So we need to create theme directories in the mod path
             var themes = new[] { "original", "corpse_brigade", "lucavi", "northern_sky" };
             foreach (var theme in themes)
             {
-                var themeDir = Path.Combine(sourceUnitPath, $"sprites_{theme}");
+                var themeDir = Path.Combine(modUnitPath, $"sprites_{theme}");
                 Directory.CreateDirectory(themeDir);
 
                 // Create test sprite files with content that identifies the theme

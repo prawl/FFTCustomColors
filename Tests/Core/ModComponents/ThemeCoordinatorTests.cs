@@ -22,8 +22,8 @@ namespace FFTColorCustomizer.Tests.Core.ModComponents
             Directory.CreateDirectory(_sourcePath);
             Directory.CreateDirectory(_modPath);
 
-            // Create test theme directories
-            var unitsPath = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            // Create test theme directories in MOD path (not source path) since we fixed the bug
+            var unitsPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             Directory.CreateDirectory(unitsPath);
             Directory.CreateDirectory(Path.Combine(unitsPath, "sprites_original"));
             Directory.CreateDirectory(Path.Combine(unitsPath, "sprites_lucavi"));

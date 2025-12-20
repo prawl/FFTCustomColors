@@ -64,8 +64,10 @@ namespace Tests.Utilities
             };
             _configManager.SaveConfig(config);
 
-            // Create theme directory structure
-            var themeDir = Path.Combine(_testSourcePath, "sprites_agrias_ash_dark");
+            // CRITICAL FIX: Create theme in deployed path, not source path
+            // After the fix, ConfigBasedSpriteManager looks for themes in mod path
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var themeDir = Path.Combine(deployedPath, "sprites_agrias_ash_dark");
             Directory.CreateDirectory(themeDir);
 
             // Create a dummy sprite file in the theme directory

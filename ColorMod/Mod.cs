@@ -316,10 +316,29 @@ public class Mod : IMod, IConfigurable
 
     public string InterceptFilePath(string originalPath)
     {
-        var result = _themeCoordinator?.InterceptFilePath(originalPath) ?? originalPath;
+        // Add diagnostic logging to debug why themes aren't loading
+        ModLogger.LogDebug($"[INTERCEPT] Called with path: {originalPath}");
+
+        // Ensure configuration and theme coordinator are initialized
+        if (_themeCoordinator == null)
+        {
+            ModLogger.LogError("[INTERCEPT] ThemeCoordinator is null! Themes will not load!");
+            return originalPath;
+        }
+
+        var result = _themeCoordinator.InterceptFilePath(originalPath);
         if (result != originalPath)
         {
+            ModLogger.LogSuccess($"[INTERCEPT] Redirected: {Path.GetFileName(originalPath)} -> {Path.GetFileName(result)}");
             Console.WriteLine($"[FFT Color Mod] Intercepted: {Path.GetFileName(originalPath)} -> {Path.GetFileName(result)}");
+        }
+        else
+        {
+            // Log why interception didn't happen
+            if (originalPath.Contains(".bin") && originalPath.Contains("battle_"))
+            {
+                ModLogger.LogDebug($"[INTERCEPT] No redirect for sprite: {Path.GetFileName(originalPath)}");
+            }
         }
         return result;
     }

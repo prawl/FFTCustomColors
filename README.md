@@ -383,13 +383,109 @@ After extensive testing with color-coded sprites, we've definitively mapped the 
 - **F1 not working**: Check if another mod is using F1 hotkey
 - **Missing sprites**: Run BuildLinked.ps1 to verify deployment
 
+## Production Deployment Steps
+
+### Creating a Production Release
+
+1. **Update Version Number**:
+   ```powershell
+   # Update version in Publish/Release/ModConfig.json
+   # Change "ModVersion": "1.0.x" to new version (e.g., "1.0.3")
+   ```
+
+2. **Build and Deploy Using BuildLinked.ps1**:
+   ```powershell
+   # This script builds the DLLs and copies ALL themes (210+) to Publish/Release
+   ./BuildLinked.ps1
+   # This is CRITICAL - it copies the FFTIVC directory with all BIN files
+   ```
+
+3. **Verify Theme Inclusion**:
+   ```powershell
+   # IMPORTANT: Verify FFTIVC directory with all themes is in Publish/Release/
+   ls Publish/Release/FFTIVC/data/enhanced/fftpack/unit/ | measure
+   # Should show 210+ directories
+
+   # Verify BIN files are present (CRITICAL!)
+   ls Publish/Release/FFTIVC/data/enhanced/fftpack/unit/sprites_*/*.bin | measure
+   # Should show 900+ BIN files
+   ```
+
+4. **Create Release Package**:
+   ```powershell
+   # Navigate to project root
+   cd C:/Users/ptyRa/Dev/FFTColorCustomizer
+
+   # Create compressed archive (update version number!)
+   powershell -Command "Compress-Archive -Path 'Publish/Release/*' -DestinationPath 'C:/Users/ptyRa/Downloads/FFTColorCustomizer_v1.0.3.zip' -Force"
+   ```
+
+5. **Verify Package Contents**:
+   ```bash
+   # Check package has DLLs
+   unzip -l FFTColorCustomizer_v1.0.3.zip | grep -c "\.dll"
+   # Should show 10+ DLL files
+
+   # CRITICAL: Check package has BIN files
+   unzip -l FFTColorCustomizer_v1.0.3.zip | grep -c "\.bin"
+   # Should show 968 BIN files (THIS IS CRITICAL!)
+
+   # Check package size
+   ls -lh FFTColorCustomizer_v1.0.3.zip
+   # Should be approximately 15MB (if smaller, BIN files are missing!)
+   ```
+
+6. **Test Installation**:
+   - Remove existing mod from Reloaded-II
+   - Extract package to Reloaded mods directory
+   - Verify mod loads and F1 config menu works
+   - Test theme switching
+
+7. **Upload to Nexus Mods**:
+   - Log into Nexus Mods
+   - Go to mod page
+   - Upload new main file with version number
+   - Mark previous version as old/archived
+   - Update description if features added
+
+### Critical Files for Production
+
+**Must Include**:
+- `FFTColorCustomizer.dll` - Main mod DLL
+- All dependency DLLs (Newtonsoft.Json, Reloaded.*, etc.)
+- `ModConfig.json` - Mod metadata
+- `Config.json` - Default configuration
+- `Preview.png` - Mod preview image
+- `Data/` directory with JobClasses.json and StoryCharacters.json
+- `FFTIVC/` directory with all 210+ theme folders
+
+**Package Structure**:
+```
+FFTColorCustomizer_v1.0.x.zip
+├── FFTColorCustomizer.dll
+├── [Other DLL files...]
+├── ModConfig.json
+├── Config.json
+├── Preview.png
+├── Data/
+│   ├── JobClasses.json
+│   └── StoryCharacters.json
+└── FFTIVC/
+    └── data/enhanced/fftpack/unit/
+        ├── sprites_amethyst/
+        ├── sprites_archer_beast_tamer/
+        └── [210+ theme directories...]
+```
+
 ## Development Status
 
-- ✅ 38 job sprites with 20 color variants each
+- ✅ 38 job sprites with 210+ color variants
 - ✅ Male and female variants for all classes
 - ✅ Custom color creation system developed
+- ✅ In-game configuration menu (F1)
+- ✅ Production deployment process documented
 - ⬜ Enemy unit color variants (planned)
-- ⬜ Configuration UI (planned)
+- ⬜ Additional UI improvements (planned)
 
 ## Credits
 

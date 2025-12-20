@@ -24,23 +24,24 @@ namespace Tests.Configuration
             var unitPath = Path.Combine(_testPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             Directory.CreateDirectory(unitPath);
 
-            // Create source path for themes
-            var sourcePath = Path.Combine(_testPath, "Source", "FFTIVC", "data", "enhanced", "fftpack", "unit");
-            Directory.CreateDirectory(sourcePath);
+            // CRITICAL FIX: After the path fix, sprites should be in mod path (_testPath), not source path
+            // ConfigBasedSpriteManager now looks in _modPath for theme files
+            var modSpritePath = Path.Combine(_testPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            Directory.CreateDirectory(modSpritePath);
 
-            // Create shared theme folders
-            Directory.CreateDirectory(Path.Combine(sourcePath, "sprites_emerald_dragon"));
-            Directory.CreateDirectory(Path.Combine(sourcePath, "sprites_original"));
+            // Create shared theme folders in mod path
+            Directory.CreateDirectory(Path.Combine(modSpritePath, "sprites_emerald_dragon"));
+            Directory.CreateDirectory(Path.Combine(modSpritePath, "sprites_original"));
 
-            // Create job-specific theme folders for Mediator
-            Directory.CreateDirectory(Path.Combine(sourcePath, "sprites_mediator_holy_knight"));
-            Directory.CreateDirectory(Path.Combine(sourcePath, "sprites_mediator_wind_dancer"));
+            // Create job-specific theme folders for Mediator in mod path
+            Directory.CreateDirectory(Path.Combine(modSpritePath, "sprites_mediator_holy_knight"));
+            Directory.CreateDirectory(Path.Combine(modSpritePath, "sprites_mediator_wind_dancer"));
 
-            // Create dummy sprite files
-            CreateDummySprite(Path.Combine(sourcePath, "sprites_original", "battle_waju_m_spr.bin"), "original");
-            CreateDummySprite(Path.Combine(sourcePath, "sprites_emerald_dragon", "battle_waju_m_spr.bin"), "emerald_dragon");
-            CreateDummySprite(Path.Combine(sourcePath, "sprites_mediator_holy_knight", "battle_waju_m_spr.bin"), "mediator_holy_knight");
-            CreateDummySprite(Path.Combine(sourcePath, "sprites_mediator_wind_dancer", "battle_waju_m_spr.bin"), "mediator_wind_dancer");
+            // Create dummy sprite files in mod path
+            CreateDummySprite(Path.Combine(modSpritePath, "sprites_original", "battle_waju_m_spr.bin"), "original");
+            CreateDummySprite(Path.Combine(modSpritePath, "sprites_emerald_dragon", "battle_waju_m_spr.bin"), "emerald_dragon");
+            CreateDummySprite(Path.Combine(modSpritePath, "sprites_mediator_holy_knight", "battle_waju_m_spr.bin"), "mediator_holy_knight");
+            CreateDummySprite(Path.Combine(modSpritePath, "sprites_mediator_wind_dancer", "battle_waju_m_spr.bin"), "mediator_wind_dancer");
 
             // Create JobClassDefinitionService for ConfigurationManager
             var dataPath = Path.Combine(_testPath, "Data");

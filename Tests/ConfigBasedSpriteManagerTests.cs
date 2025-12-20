@@ -73,8 +73,10 @@ namespace Tests
             };
             _configManager.SaveConfig(config);
 
-            // Create the theme directory structure
-            var themeDir = Path.Combine(_testSourcePath, "sprites_agrias_ash_dark");
+            // CRITICAL FIX: Create theme in the mod path (deployed location), not source path
+            // After the fix, ConfigBasedSpriteManager looks for themes in mod path
+            var modUnitPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var themeDir = Path.Combine(modUnitPath, "sprites_agrias_ash_dark");
             Directory.CreateDirectory(themeDir);
 
             // Create a dummy sprite file in the theme directory
@@ -107,7 +109,9 @@ namespace Tests
             _configManager.SaveConfig(config);
 
             // Create the theme directory structure (shouldn't be used)
-            var themeDir = Path.Combine(_testSourcePath, "sprites_agrias_ash_dark");
+            // CRITICAL FIX: Use mod path instead of source path
+            var modUnitPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var themeDir = Path.Combine(modUnitPath, "sprites_agrias_ash_dark");
             Directory.CreateDirectory(themeDir);
 
             // Create a dummy sprite file in the theme directory
@@ -166,8 +170,10 @@ namespace Tests
             };
             _configManager.SaveConfig(config);
 
-            // Create a flat file structure (backward compatibility)
-            var flatThemeFile = Path.Combine(_testSourcePath, "battle_aguri_ash_dark_spr.bin");
+            // CRITICAL FIX: Create flat file in deployed path, not source path
+            // After the fix, ConfigBasedSpriteManager looks for themes in mod path
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var flatThemeFile = Path.Combine(deployedPath, "battle_aguri_ash_dark_spr.bin");
             File.WriteAllText(flatThemeFile, "flat_ash_dark_content");
 
             // Create the destination directory - match ConfigBasedSpriteManager expectations
@@ -196,7 +202,9 @@ namespace Tests
             _configManager.SaveConfig(config);
 
             // Create both directory structure and flat file
-            var themeDir = Path.Combine(_testSourcePath, "sprites_agrias_ash_dark");
+            // CRITICAL FIX: Use mod path instead of source path
+            var modUnitPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var themeDir = Path.Combine(modUnitPath, "sprites_agrias_ash_dark");
             Directory.CreateDirectory(themeDir);
 
             var dirSpriteFile = Path.Combine(themeDir, "battle_aguri_spr.bin");

@@ -53,8 +53,8 @@ namespace FFTColorCustomizer.Core.ModComponents
             _sourcePath = sourcePath ?? throw new ArgumentNullException(nameof(sourcePath));
             _modPath = modPath ?? throw new ArgumentNullException(nameof(modPath));
 
-            // Initialize color cycler
-            string spritesPath = Path.Combine(_sourcePath, FFTIVCPath, DataPath, EnhancedPath, FFTPackPath, UnitPath);
+            // Initialize color cycler - use _modPath for deployed environment
+            string spritesPath = Path.Combine(_modPath, FFTIVCPath, DataPath, EnhancedPath, FFTPackPath, UnitPath);
             _colorCycler = new ColorSchemeCycler(spritesPath);
 
             var schemes = _colorCycler.GetAvailableSchemes();
@@ -146,8 +146,8 @@ namespace FFTColorCustomizer.Core.ModComponents
                 return originalPath;
             }
 
-            // Build the themed sprite path
-            var themedDir = Path.Combine(_sourcePath, FFTIVCPath, DataPath, EnhancedPath,
+            // Build the themed sprite path - use _modPath for deployed environment, not _sourcePath
+            var themedDir = Path.Combine(_modPath, FFTIVCPath, DataPath, EnhancedPath,
                 FFTPackPath, UnitPath, $"{SpritesPrefix}{_currentColorScheme}");
             var themedPath = Path.Combine(themedDir, fileName);
 

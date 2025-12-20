@@ -109,13 +109,14 @@ namespace Tests.Utilities
             _configManager.SaveConfig(config);
 
             // Create the job-specific theme directory and file
-            var jobSpecificDir = Path.Combine(_sourceUnitPath, "sprites_mediator_holy_knight");
+            // CRITICAL FIX: Use mod path (_unitPath) instead of source path
+            var jobSpecificDir = Path.Combine(_unitPath, "sprites_mediator_holy_knight");
             Directory.CreateDirectory(jobSpecificDir);
             var jobSpecificSprite = Path.Combine(jobSpecificDir, "battle_waju_m_spr.bin");
             File.WriteAllText(jobSpecificSprite, "holy_knight_mediator_content");
 
             // Also create generic theme directory (which should NOT be used)
-            var genericDir = Path.Combine(_sourceUnitPath, "sprites_holy_knight");
+            var genericDir = Path.Combine(_unitPath, "sprites_holy_knight");
             Directory.CreateDirectory(genericDir);
             var genericSprite = Path.Combine(genericDir, "battle_waju_m_spr.bin");
             File.WriteAllText(genericSprite, "generic_holy_knight_content");
@@ -139,7 +140,8 @@ namespace Tests.Utilities
             _configManager.SaveConfig(config);
 
             // Create only the generic theme directory
-            var genericDir = Path.Combine(_sourceUnitPath, "sprites_corpse_brigade");
+            // CRITICAL FIX: Use mod path (_unitPath) instead of source path
+            var genericDir = Path.Combine(_unitPath, "sprites_corpse_brigade");
             Directory.CreateDirectory(genericDir);
             var genericSprite = Path.Combine(genericDir, "battle_waju_m_spr.bin");
             File.WriteAllText(genericSprite, "corpse_brigade_content");
@@ -162,8 +164,8 @@ namespace Tests.Utilities
             config.Mediator_Female = "young_maiden"; // Job-specific theme for female Mediator
             _configManager.SaveConfig(config);
 
-            // Create the job-specific theme directory and file
-            var jobSpecificDir = Path.Combine(_sourceUnitPath, "sprites_mediator_young_maiden");
+            // CRITICAL FIX: After the path fix, themes should be in mod path (_unitPath), not source path
+            var jobSpecificDir = Path.Combine(_unitPath, "sprites_mediator_young_maiden");
             Directory.CreateDirectory(jobSpecificDir);
             var jobSpecificSprite = Path.Combine(jobSpecificDir, "battle_waju_w_spr.bin");
             File.WriteAllText(jobSpecificSprite, "young_maiden_mediator_female_content");
