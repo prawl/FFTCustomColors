@@ -43,6 +43,12 @@ namespace FFTColorCustomizer.Services
             ApplyInitialOrlandeauTheme();
             ApplyInitialAgriasTheme();
             ApplyInitialCloudTheme();
+            ApplyInitialMustadioTheme();
+            ApplyInitialMarachTheme();
+            ApplyInitialBeowulfTheme();
+            ApplyInitialMeliadoulTheme();
+            ApplyInitialRaphaTheme();
+            ApplyInitialReisTheme();
         }
 
         public void CycleOrlandeauTheme()
@@ -71,6 +77,54 @@ namespace FFTColorCustomizer.Services
             ApplyCloudTheme(nextTheme);
         }
 
+        public void CycleMustadioTheme()
+        {
+            var nextTheme = _themeService.CycleTheme("Mustadio");
+            _storyCharacterManager.SetCurrentTheme("Mustadio", nextTheme);
+            ModLogger.Log($"Mustadio theme: {nextTheme}");
+            ApplyMustadioTheme(nextTheme);
+        }
+
+        public void CycleMarachTheme()
+        {
+            var nextTheme = _themeService.CycleTheme("Marach");
+            _storyCharacterManager.SetCurrentTheme("Marach", nextTheme);
+            ModLogger.Log($"Marach theme: {nextTheme}");
+            ApplyMarachTheme(nextTheme);
+        }
+
+        public void CycleBeowulfTheme()
+        {
+            var nextTheme = _themeService.CycleTheme("Beowulf");
+            _storyCharacterManager.SetCurrentTheme("Beowulf", nextTheme);
+            ModLogger.Log($"Beowulf theme: {nextTheme}");
+            ApplyBeowulfTheme(nextTheme);
+        }
+
+        public void CycleMeliadoulTheme()
+        {
+            var nextTheme = _themeService.CycleTheme("Meliadoul");
+            _storyCharacterManager.SetCurrentTheme("Meliadoul", nextTheme);
+            ModLogger.Log($"Meliadoul theme: {nextTheme}");
+            ApplyMeliadoulTheme(nextTheme);
+        }
+
+        public void CycleRaphaTheme()
+        {
+            var nextTheme = _themeService.CycleTheme("Rapha");
+            _storyCharacterManager.SetCurrentTheme("Rapha", nextTheme);
+            ModLogger.Log($"Rapha theme: {nextTheme}");
+            ApplyRaphaTheme(nextTheme);
+        }
+
+        public void CycleReisTheme()
+        {
+            var nextTheme = _themeService.CycleTheme("Reis");
+            _storyCharacterManager.SetCurrentTheme("Reis", nextTheme);
+            ModLogger.Log($"Reis theme: {nextTheme}");
+            ApplyReisTheme(nextTheme);
+        }
+
         private void ApplyInitialOrlandeauTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Orlandeau");
@@ -92,6 +146,48 @@ namespace FFTColorCustomizer.Services
             ApplyCloudTheme(theme);
         }
 
+        private void ApplyInitialMustadioTheme()
+        {
+            var theme = _storyCharacterManager.GetCurrentTheme("Mustadio");
+            ModLogger.LogDebug($"ApplyInitialMustadioTheme - theme: {theme}");
+            ApplyMustadioTheme(theme);
+        }
+
+        private void ApplyInitialMarachTheme()
+        {
+            var theme = _storyCharacterManager.GetCurrentTheme("Marach");
+            ModLogger.LogDebug($"ApplyInitialMarachTheme - theme: {theme}");
+            ApplyMarachTheme(theme);
+        }
+
+        private void ApplyInitialBeowulfTheme()
+        {
+            var theme = _storyCharacterManager.GetCurrentTheme("Beowulf");
+            ModLogger.LogDebug($"ApplyInitialBeowulfTheme - theme: {theme}");
+            ApplyBeowulfTheme(theme);
+        }
+
+        private void ApplyInitialMeliadoulTheme()
+        {
+            var theme = _storyCharacterManager.GetCurrentTheme("Meliadoul");
+            ModLogger.LogDebug($"ApplyInitialMeliadoulTheme - theme: {theme}");
+            ApplyMeliadoulTheme(theme);
+        }
+
+        private void ApplyInitialRaphaTheme()
+        {
+            var theme = _storyCharacterManager.GetCurrentTheme("Rapha");
+            ModLogger.LogDebug($"ApplyInitialRaphaTheme - theme: {theme}");
+            ApplyRaphaTheme(theme);
+        }
+
+        private void ApplyInitialReisTheme()
+        {
+            var theme = _storyCharacterManager.GetCurrentTheme("Reis");
+            ModLogger.LogDebug($"ApplyInitialReisTheme - theme: {theme}");
+            ApplyReisTheme(theme);
+        }
+
         private void ApplyOrlandeauTheme(string theme)
         {
             _themeService.ApplyTheme("Orlandeau", theme);
@@ -109,6 +205,42 @@ namespace FFTColorCustomizer.Services
         {
             _themeService.ApplyTheme("Cloud", theme);
             CopyCharacterSprites("Cloud", theme);
+        }
+
+        private void ApplyMustadioTheme(string theme)
+        {
+            _themeService.ApplyTheme("Mustadio", theme);
+            CopyCharacterSprites("Mustadio", theme);
+        }
+
+        private void ApplyMarachTheme(string theme)
+        {
+            _themeService.ApplyTheme("Marach", theme);
+            CopyCharacterSprites("Marach", theme);
+        }
+
+        private void ApplyBeowulfTheme(string theme)
+        {
+            _themeService.ApplyTheme("Beowulf", theme);
+            CopyCharacterSprites("Beowulf", theme);
+        }
+
+        private void ApplyMeliadoulTheme(string theme)
+        {
+            _themeService.ApplyTheme("Meliadoul", theme);
+            CopyCharacterSprites("Meliadoul", theme);
+        }
+
+        private void ApplyRaphaTheme(string theme)
+        {
+            _themeService.ApplyTheme("Rapha", theme);
+            CopyCharacterSprites("Rapha", theme);
+        }
+
+        private void ApplyReisTheme(string theme)
+        {
+            _themeService.ApplyTheme("Reis", theme);
+            CopyCharacterSprites("Reis", theme);
         }
 
         private void CopyCharacterSprites(string character, string theme)
@@ -159,6 +291,12 @@ namespace FFTColorCustomizer.Services
                 "Orlandeau" => new[] { "battle_oru_spr.bin", "battle_oru_out.bin" },
                 "Agrias" => new[] { "battle_aguri_spr.bin", "battle_aguri_out.bin" },
                 "Cloud" => new[] { "battle_cloud_spr.bin", "battle_cloud_out.bin" },
+                "Mustadio" => new[] { "battle_musu_spr.bin", "battle_garu_spr.bin" },
+                "Marach" => new[] { "battle_mara_spr.bin", "battle_mara_out.bin" },
+                "Beowulf" => new[] { "battle_beo_spr.bin", "battle_beo_out.bin" },
+                "Meliadoul" => new[] { "battle_h80_spr.bin", "battle_h80_out.bin" },
+                "Rapha" => new[] { "battle_h79_spr.bin", "battle_h79_out.bin" },
+                "Reis" => new[] { "battle_reis_spr.bin", "battle_reis_out.bin" },
                 _ => Array.Empty<string>()
             };
         }

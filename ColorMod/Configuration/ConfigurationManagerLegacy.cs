@@ -239,19 +239,32 @@ namespace FFTColorCustomizer.Configuration
             // Create a new default config with all properties explicitly set to original
             var defaultConfig = new Config();
 
-            // Explicitly verify all properties are set to original
-            var properties = typeof(Config).GetProperties()
+            // Get all job class properties (ending with _Male or _Female)
+            var jobProperties = typeof(Config).GetProperties()
                 .Where(p => p.PropertyType == typeof(string) &&
                       (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
 
-            foreach (var prop in properties)
+            foreach (var prop in jobProperties)
             {
                 // Ensure each property is set to "original"
                 prop.SetValue(defaultConfig, "original");
             }
 
+            // Also reset story character properties to original
+            var storyCharacters = new[] { "Agrias", "Orlandeau", "Cloud", "Mustadio", "Reis", "Rapha", "Marach", "Beowulf", "Meliadoul" };
+            foreach (var characterName in storyCharacters)
+            {
+                var prop = typeof(Config).GetProperty(characterName);
+                if (prop != null && prop.PropertyType == typeof(string))
+                {
+                    prop.SetValue(defaultConfig, "original");
+                    ModLogger.Log($"Reset story character {characterName} to original");
+                }
+            }
+
             // Log what we're about to save
             ModLogger.Log($"Default config - Knight_Male: {defaultConfig.Knight_Male}, Archer_Female: {defaultConfig.Archer_Female}");
+            ModLogger.Log($"Story characters - Mustadio: {defaultConfig.Mustadio}, Rapha: {defaultConfig.Rapha}, Meliadoul: {defaultConfig.Meliadoul}");
 
             // Now save to disk using SaveConfig which properly updates the cache
             // SaveConfig has its own lock, so we don't need to lock here
