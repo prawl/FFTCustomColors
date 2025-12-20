@@ -15,10 +15,20 @@ Split-Path $MyInvocation.MyCommand.Path | Push-Location
 
 Write-Host "Building FFT Color Mod (DEV MODE)..." -ForegroundColor Green
 
-# Clean existing installation
-$modPath = "$env:RELOADEDIIMODS/FFTColorCustomizer"
+# Clean ALL FFTColorCustomizer installations to prevent conflicts
+Write-Host "Cleaning up all FFTColorCustomizer installations..." -ForegroundColor Yellow
+$modsDir = "$env:RELOADEDIIMODS"
+
+# Remove any versioned folders (FFTColorCustomizer_v*)
+Get-ChildItem "$modsDir" -Filter "FFTColorCustomizer_v*" -Directory | ForEach-Object {
+    Write-Host "  Removing versioned installation: $($_.Name)" -ForegroundColor Yellow
+    Remove-Item $_.FullName -Force -Recurse -ErrorAction SilentlyContinue
+}
+
+# Clean existing dev installation
+$modPath = "$modsDir/FFTColorCustomizer"
 if (Test-Path $modPath) {
-    Write-Host "Removing existing mod installation..." -ForegroundColor Yellow
+    Write-Host "  Removing existing dev installation..." -ForegroundColor Yellow
     Remove-Item "$modPath/*" -Force -Recurse -ErrorAction SilentlyContinue
 }
 

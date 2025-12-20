@@ -57,6 +57,17 @@ function Clean-BuildDirectories {
     }
 }
 
+function Clean-DevInstallations {
+    Write-Status "Removing dev build to prevent conflicts..." "Yellow"
+
+    # Remove the linked dev build if it exists
+    $devModPath = "$env:RELOADEDIIMODS/FFTColorCustomizer"
+    if (Test-Path $devModPath) {
+        Write-Host "  -> Removing dev build from Reloaded-II mods folder..." -ForegroundColor Yellow
+        Remove-Item $devModPath -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+}
+
 function Build-Project {
     Write-Status "Building FFT Color Customizer in Release mode..." "Cyan"
 
@@ -305,6 +316,7 @@ Split-Path $MyInvocation.MyCommand.Path | Push-Location
 try {
     # Step 1: Clean
     Clean-BuildDirectories
+    Clean-DevInstallations
 
     # Step 2: Build
     Build-Project
