@@ -138,6 +138,8 @@ public class Mod : IMod, IConfigurable
 
             // Set the mod path for CharacterServiceSingleton to find StoryCharacters.json
             Services.CharacterServiceSingleton.SetModPath(_modPath);
+            // Also initialize JobClassServiceSingleton with the mod path
+            Services.JobClassServiceSingleton.Initialize(_modPath);
 
             // Initialize coordinators and managers
             _configCoordinator = new ConfigurationCoordinator(configPath);

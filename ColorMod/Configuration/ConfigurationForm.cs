@@ -55,6 +55,8 @@ namespace FFTColorCustomizer.Configuration
                 ModLogger.Log($"Mod path set to: {modPath}");
                 // Set the mod path for CharacterServiceSingleton to find StoryCharacters.json
                 Services.CharacterServiceSingleton.SetModPath(modPath);
+                // Also initialize JobClassServiceSingleton with the mod path
+                Services.JobClassServiceSingleton.Initialize(modPath);
             }
 
             _isInitializing = true;

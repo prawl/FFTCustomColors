@@ -58,6 +58,13 @@ namespace FFTColorCustomizer.Configuration.UI
                 _themeItems = themes.Select(t => new ThemeItem(t)).ToList();
                 Items.Clear();
                 Items.AddRange(_themeItems.ToArray());
+
+                // Debug logging
+                Utilities.ModLogger.LogDebug($"[ThemeComboBox] SetThemes called with {_themeItems.Count} themes");
+                if (_themeItems.Count <= 5)
+                {
+                    Utilities.ModLogger.LogDebug($"[ThemeComboBox] Themes: {string.Join(", ", _themeItems.Select(t => t.Value))}");
+                }
             }
             finally
             {
