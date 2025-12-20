@@ -36,16 +36,19 @@ namespace FFTColorCustomizer.Tests.Configuration
         }
 
         [Fact]
-        public void UpdateStoryCharacterPreview_Should_Find_Preview_In_Mod_Previews_Directory()
+        public void UpdateStoryCharacterPreview_Should_Clear_Preview()
         {
             // Arrange
             var pictureBox = new PictureBox();
+            // Set an initial image to verify it gets cleared
+            pictureBox.Image = new Bitmap(1, 1);
 
             // Act
             _manager.UpdateStoryCharacterPreview(pictureBox, "agrias", "ash_dark");
 
-            // Assert
-            pictureBox.Image.Should().NotBeNull("Preview image should be loaded");
+            // Assert - our simplified version always clears the preview
+            pictureBox.Image.Should().BeNull("Preview should be cleared since we no longer load PNG files");
+            pictureBox.BackColor.Should().Be(Color.FromArgb(45, 45, 45), "Background should be set to dark gray");
         }
 
         [Fact]
@@ -63,32 +66,48 @@ namespace FFTColorCustomizer.Tests.Configuration
         }
 
         [Fact]
-        public void GetStoryCharacterPreviewPath_Should_Return_Correct_Path()
+        public void PreviewImageManager_Should_Clear_Preview_Box()
         {
             // Arrange
-            // The primary location is Resources/Previews as per production code
-            var expectedPath = Path.Combine(_testModPath, "Resources", "Previews", "agrias_ash_dark.png");
+            var manager = new PreviewImageManager(_testModPath);
+            var pictureBox = new PictureBox();
 
-            // Act
-            var actualPath = GetStoryCharacterPreviewPathViaReflection("agrias", "ash_dark");
+            // Set an initial image to verify it gets cleared
+            using (var bitmap = new Bitmap(1, 1))
+            {
+                pictureBox.Image = bitmap;
+                pictureBox.BackColor = Color.White;
 
-            // Assert
-            actualPath.Should().Be(expectedPath);
+                // Act
+                manager.UpdateStoryCharacterPreview(pictureBox, "agrias", "ash_dark");
+
+                // Assert - should clear the preview since we no longer load PNG files
+                pictureBox.Image.Should().BeNull("Preview should be cleared");
+                pictureBox.BackColor.Should().Be(Color.FromArgb(45, 45, 45), "Background should be set to dark gray");
+            }
         }
 
         [Fact]
-        public void PreviewImageManager_Should_Look_In_Correct_Preview_Directory()
+        public void PreviewImageManager_Should_Check_FFTIVC_Path()
         {
             // Arrange
             var manager = new PreviewImageManager(_testModPath);
 
             // Act
-            var path = GetStoryCharacterPreviewPathViaReflection("agrias", "ash_dark");
+            var hasValidPath = manager.HasValidModPath();
 
-            // Assert
-            // Should use Resources/Previews as the primary location when file doesn't exist
-            var expectedPath = Path.Combine(_testModPath, "Resources", "Previews", "agrias_ash_dark.png");
-            path.Should().Be(expectedPath, "Should look in Resources/Previews directory first");
+            // Assert - should return false since our test path doesn't have FFTIVC folder
+            hasValidPath.Should().BeFalse("Test path doesn't have FFTIVC folder");
+
+            // Now create the FFTIVC folder structure
+            var fftivcPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            Directory.CreateDirectory(fftivcPath);
+
+            // Act again
+            hasValidPath = manager.HasValidModPath();
+
+            // Assert - should now return true
+            hasValidPath.Should().BeTrue("FFTIVC folder now exists");
         }
 
         private void CreateTestPreviewImage(string filename)
@@ -101,16 +120,6 @@ namespace FFTColorCustomizer.Tests.Configuration
                 bitmap.SetPixel(0, 0, Color.Red);
                 bitmap.Save(filepath, System.Drawing.Imaging.ImageFormat.Png);
             }
-        }
-
-        private string GetStoryCharacterPreviewPathViaReflection(string characterName, string theme)
-        {
-            // Use reflection to call the private GetStoryCharacterPreviewPath method
-            var method = typeof(PreviewImageManager).GetMethod(
-                "GetStoryCharacterPreviewPath",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            return (string)method.Invoke(_manager, new object[] { characterName, theme });
         }
 
         public void Dispose()

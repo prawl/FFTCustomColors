@@ -100,6 +100,17 @@ function Copy-ModAssets {
         Copy-Item $sourcePreview -Destination $BuildOutputPath -Force
     }
 
+    # Copy Data folder with StoryCharacters.json and JobClasses.json
+    $sourceData = "ColorMod/Data"
+    if (Test-Path $sourceData) {
+        Write-Host "  -> Copying Data folder..."
+        $destData = "$BuildOutputPath/Data"
+        Copy-Item $sourceData -Destination $BuildOutputPath -Recurse -Force
+        Write-Host "  -> Data folder copied" -ForegroundColor Green
+    } else {
+        Write-Host "  -> Warning: Data folder not found at: $sourceData" -ForegroundColor Yellow
+    }
+
     # Copy FFTIVC folder with all sprite themes
     $sourceFFTIVC = "ColorMod/FFTIVC"
     if (Test-Path $sourceFFTIVC) {
@@ -244,11 +255,14 @@ function Verify-Package {
         $requiredFiles = @(
             "ModConfig.json",
             "FFTColorCustomizer.dll",
-            "Preview.png"
+            "Preview.png",
+            "Data/StoryCharacters.json",
+            "Data/JobClasses.json"
         )
 
         $requiredPaths = @(
-            "FFTIVC/data/enhanced/fftpack/unit"
+            "FFTIVC/data/enhanced/fftpack/unit",
+            "Data"
         )
 
         foreach ($file in $requiredFiles) {

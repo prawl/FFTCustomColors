@@ -25,7 +25,8 @@ namespace FFTColorCustomizer.Core.ModComponents
 
             // Initialize sprite manager with the actual mod installation path
             var modPath = GetActualModPath(_configPath);
-            _spriteManager = new ConfigBasedSpriteManager(modPath, _configManager, DevSourcePath);
+            // In deployment, source path is the same as mod path
+            _spriteManager = new ConfigBasedSpriteManager(modPath, _configManager, modPath);
         }
 
         private string GetActualModPath(string configPath)
@@ -43,7 +44,42 @@ namespace FFTColorCustomizer.Core.ModComponents
                     if (userModsIdx >= 0)
                     {
                         var reloadedRoot = configDir.Substring(0, userModsIdx);
-                        return Path.Combine(reloadedRoot, "Mods", "FFTColorCustomizer");
+                        var modsDir = Path.Combine(reloadedRoot, "Mods");
+
+                        // First try the non-versioned path
+                        var directPath = Path.Combine(modsDir, "FFTColorCustomizer");
+                        if (Directory.Exists(directPath))
+                        {
+                            return directPath;
+                        }
+
+                        // Look for versioned directories and use the highest version
+                        try
+                        {
+                            var versionedDirs = Directory.GetDirectories(modsDir, "FFTColorCustomizer_v*")
+                                .OrderByDescending(dir =>
+                                {
+                                    var dirName = Path.GetFileName(dir);
+                                    var versionStr = dirName.Substring(dirName.LastIndexOf('v') + 1);
+                                    if (int.TryParse(versionStr, out int version))
+                                        return version;
+                                    return 0;
+                                })
+                                .ToArray();
+
+                            if (versionedDirs.Length > 0)
+                            {
+                                ModLogger.Log($"Found versioned mod directory: {versionedDirs[0]}");
+                                return versionedDirs[0];
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogWarning($"Error searching for versioned directories: {ex.Message}");
+                        }
+
+                        // Fallback to non-versioned path
+                        return directPath;
                     }
                 }
             }

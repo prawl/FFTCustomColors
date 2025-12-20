@@ -45,7 +45,7 @@ namespace FFTColorCustomizer.Tests
         public void ConfigBasedSpriteManager_Should_Use_ModPath_Not_SourcePath_For_Themes()
         {
             // Arrange - create theme files ONLY in mod path (deployed location)
-            var modThemeDir = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_agrias_original");
+            var modThemeDir = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_agrias_lucavi");
             Directory.CreateDirectory(modThemeDir);
 
             var testSpriteFile = Path.Combine(modThemeDir, "battle_aguri_spr.bin");
@@ -62,7 +62,7 @@ namespace FFTColorCustomizer.Tests
             var method = typeof(ConfigBasedSpriteManager).GetMethod("ApplyStoryCharacterTheme",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-            method.Invoke(manager, new object[] { "agrias", "aguri", "original" });
+            method.Invoke(manager, new object[] { "agrias", "aguri", "lucavi" });
 
             // Assert - the theme file should be copied to the destination
             var destFile = Path.Combine(destDir, "battle_aguri_spr.bin");
@@ -106,7 +106,7 @@ namespace FFTColorCustomizer.Tests
             var nonExistentSource = Path.Combine(_testPath, "NonExistent", "Path");
 
             // Create theme in mod path
-            var modThemeDir = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_cloud_original");
+            var modThemeDir = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_cloud_soldier_blue");
             Directory.CreateDirectory(modThemeDir);
 
             var testSpriteFile = Path.Combine(modThemeDir, "battle_cloud_spr.bin");
@@ -120,7 +120,7 @@ namespace FFTColorCustomizer.Tests
             var method = typeof(ConfigBasedSpriteManager).GetMethod("ApplyStoryCharacterTheme",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-            method.Invoke(manager, new object[] { "cloud", "cloud", "original" });
+            method.Invoke(manager, new object[] { "cloud", "cloud", "soldier_blue" });
 
             // Assert
             var destFile = Path.Combine(destDir, "battle_cloud_spr.bin");

@@ -36,10 +36,28 @@ namespace Tests.Registry
 
         private void LoadCharactersFromJson()
         {
-            // Use absolute path to the known JSON file location
-            var jsonPath = Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile);
+            // Try multiple paths to find the JSON file
+            var possiblePaths = new[]
+            {
+                // Direct path for development
+                @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\StoryCharacters.json",
+                // Relative from test output
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "ColorMod", "Data", "StoryCharacters.json"),
+                // Alternative relative path
+                Path.Combine(Directory.GetCurrentDirectory(), "ColorMod", "Data", "StoryCharacters.json"),
+            };
 
-            if (File.Exists(jsonPath))
+            string jsonPath = null;
+            foreach (var path in possiblePaths)
+            {
+                if (File.Exists(path))
+                {
+                    jsonPath = path;
+                    break;
+                }
+            }
+
+            if (jsonPath != null && File.Exists(jsonPath))
             {
                 _characterService.LoadFromJson(jsonPath);
 

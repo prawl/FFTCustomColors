@@ -28,18 +28,93 @@ namespace FFTColorCustomizer.Utilities
             string sourcePath = null)
         {
             _modPath = modPath;
-            _sourcePath = sourcePath ?? ColorModConstants.DevSourcePath;
+            // In deployment, source path should be the mod path
+            _sourcePath = sourcePath ?? _modPath;
             _configManager = configManager;
             _characterService = characterService;
-            _unitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
-            // CRITICAL FIX: Use _modPath for deployed environment, not _sourcePath
-            _sourceUnitPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+
+            // Try to find FFTIVC folder - it might be in a versioned directory
+            _sourceUnitPath = FindFFTIVCPath(_modPath);
+
+            // Destination path: where we copy themes to (can be the same for now since we're intercepting)
+            _unitPath = _sourceUnitPath;
 
             ModLogger.Log("ConfigBasedSpriteManager initialized:");
             ModLogger.Log($"  Mod path: {_modPath}");
             ModLogger.Log($"  Source path: {_sourcePath}");
             ModLogger.Log($"  Unit path (destination): {_unitPath}");
             ModLogger.Log($"  Source unit path: {_sourceUnitPath}");
+
+            // Check if the FFTIVC folder exists
+            if (Directory.Exists(_sourceUnitPath))
+            {
+                ModLogger.Log($"  FFTIVC folder EXISTS at: {_sourceUnitPath}");
+                var themeDirs = Directory.GetDirectories(_sourceUnitPath, "sprites_*");
+                ModLogger.Log($"  Found {themeDirs.Length} theme directories");
+            }
+            else
+            {
+                ModLogger.LogError($"  FFTIVC folder MISSING at: {_sourceUnitPath}");
+                ModLogger.Log($"  Checking parent directory: {_modPath}");
+                if (Directory.Exists(_modPath))
+                {
+                    var contents = Directory.GetDirectories(_modPath);
+                    ModLogger.Log($"  Contents of mod directory ({contents.Length} items):");
+                    foreach (var dir in contents.Take(10))
+                    {
+                        ModLogger.Log($"    - {Path.GetFileName(dir)}");
+                    }
+                }
+            }
+        }
+
+        private string FindFFTIVCPath(string modPath)
+        {
+            // First try the direct path
+            var directPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            if (Directory.Exists(directPath))
+            {
+                ModLogger.Log($"Found FFTIVC at direct path: {directPath}");
+                return directPath;
+            }
+
+            // If not found, check if we're in a subdirectory and FFTIVC is in a versioned parent
+            var parentDir = Path.GetDirectoryName(modPath);
+            if (!string.IsNullOrEmpty(parentDir))
+            {
+                // Look for FFTColorCustomizer_v* directories and use the highest version
+                try
+                {
+                    var versionedDirs = Directory.GetDirectories(parentDir, "FFTColorCustomizer_v*")
+                        .OrderByDescending(dir =>
+                        {
+                            var dirName = Path.GetFileName(dir);
+                            var versionStr = dirName.Substring(dirName.LastIndexOf('v') + 1);
+                            if (int.TryParse(versionStr, out int version))
+                                return version;
+                            return 0;
+                        })
+                        .ToArray();
+
+                    foreach (var versionedDir in versionedDirs)
+                    {
+                        var versionedPath = Path.Combine(versionedDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+                        if (Directory.Exists(versionedPath))
+                        {
+                            ModLogger.Log($"Found FFTIVC in versioned directory: {versionedPath}");
+                            return versionedPath;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogWarning($"Error searching for versioned directories: {ex.Message}");
+                }
+            }
+
+            // As a fallback, return the expected path even if it doesn't exist
+            ModLogger.LogWarning($"FFTIVC not found, using expected path: {directPath}");
+            return directPath;
         }
 
         // Backward compatibility constructor using singleton
@@ -120,6 +195,13 @@ namespace FFTColorCustomizer.Utilities
         {
             ModLogger.Log($"Applying theme for character: {characterName}, sprite: {spriteName}, theme: {themeName}");
 
+            // Skip copying for "original" theme - it uses the game's default sprites
+            if (themeName.ToLower() == "original")
+            {
+                ModLogger.Log($"Skipping copy for {characterName}/{spriteName} - using original game sprites");
+                return;
+            }
+
             // First try the directory-based structure
             var themeDir = $"sprites_{characterName}_{themeName}";
             var sourceDirPath = Path.Combine(_sourceUnitPath, themeDir, $"battle_{spriteName}_spr.bin");
@@ -151,6 +233,14 @@ namespace FFTColorCustomizer.Utilities
 
             try
             {
+                // Ensure the destination directory exists
+                var destDir = Path.GetDirectoryName(destFile);
+                if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+                {
+                    Directory.CreateDirectory(destDir);
+                    ModLogger.LogDebug($"Created destination directory: {destDir}");
+                }
+
                 File.Copy(sourceFile, destFile, true);
                 ModLogger.LogSuccess($"Applied {characterName} theme: {themeName} - copied to {Path.GetFileName(destFile)}");
             }
@@ -334,6 +424,17 @@ namespace FFTColorCustomizer.Utilities
 
         private void CopySpriteForJobWithType(string spriteName, string colorScheme, string jobType)
         {
+            // Skip copying for "original" theme - it uses the game's default sprites
+            if (colorScheme.ToLower() == "original")
+            {
+                ModLogger.Log($"Skipping copy for {spriteName} - using original game sprites");
+                return;
+            }
+
+            // Log the paths being used
+            ModLogger.Log($"CopySpriteForJobWithType: Looking for {spriteName} with theme {colorScheme}");
+            ModLogger.Log($"  _sourceUnitPath: {_sourceUnitPath}");
+
             // First check for job-specific theme directory (e.g., sprites_mediator_holy_knight)
             var jobSpecificDir = Path.Combine(_sourceUnitPath, $"sprites_{jobType}_{colorScheme}");
             var jobSpecificFile = Path.Combine(jobSpecificDir, spriteName);
@@ -343,6 +444,10 @@ namespace FFTColorCustomizer.Utilities
             var genericFile = Path.Combine(genericDir, spriteName);
 
             var destFile = Path.Combine(_unitPath, spriteName);
+
+            ModLogger.Log($"  Checking job-specific: {jobSpecificFile}");
+            ModLogger.Log($"  Checking generic: {genericFile}");
+            ModLogger.Log($"  Destination: {destFile}");
 
             string sourceFile;
             if (File.Exists(jobSpecificFile))
@@ -358,11 +463,33 @@ namespace FFTColorCustomizer.Utilities
             else
             {
                 ModLogger.LogWarning($"Theme not found: tried sprites_{jobType}_{colorScheme} and sprites_{colorScheme}");
+                // Log what files actually exist in the source directory for debugging
+                if (Directory.Exists(_sourceUnitPath))
+                {
+                    var dirs = Directory.GetDirectories(_sourceUnitPath, "sprites_*");
+                    ModLogger.LogDebug($"  Available theme directories: {dirs.Length} found");
+                    foreach (var dir in dirs.Take(5))
+                    {
+                        ModLogger.LogDebug($"    - {Path.GetFileName(dir)}");
+                    }
+                }
+                else
+                {
+                    ModLogger.LogError($"  Source unit path does not exist: {_sourceUnitPath}");
+                }
                 return;
             }
 
             try
             {
+                // Ensure the destination directory exists
+                var destDir = Path.GetDirectoryName(destFile);
+                if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+                {
+                    Directory.CreateDirectory(destDir);
+                    ModLogger.LogDebug($"Created destination directory: {destDir}");
+                }
+
                 File.Copy(sourceFile, destFile, true);
                 ModLogger.LogSuccess($"Copied {colorScheme} theme for {jobType} to {destFile}");
             }
@@ -374,6 +501,13 @@ namespace FFTColorCustomizer.Utilities
 
         private void CopySpriteForJob(string spriteName, string colorScheme)
         {
+            // Skip copying for "original" theme - it uses the game's default sprites
+            if (colorScheme.ToLower() == "original")
+            {
+                ModLogger.Log($"Skipping copy for {spriteName} - using original game sprites");
+                return;
+            }
+
             var sourceDir = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}");
             var sourceFile = Path.Combine(sourceDir, spriteName);
             var destFile = Path.Combine(_unitPath, spriteName);

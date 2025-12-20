@@ -2,7 +2,7 @@
   "ModId": "paxtrick.fft.colorcustomizer",
   "ModName": "FFT Color Customizer",
   "ModAuthor": "Paxtrick",
-  "ModVersion": "1.0.0",
+  "ModVersion": "1.1.4",
   "ModDescription": "Customize your FFT experience with over 210+ unique color themes. Features in-game config menu by pressing F1.",
   "ModDll": "FFTColorCustomizer.dll",
   "ModIcon": "Preview.png",
@@ -14,13 +14,8 @@
 "CanUnload": false,
   "IsLibrary": false,
   "ReleaseMetadataFileName": "FFTColorCustomizer.ReleaseMetadata.json",
-  "IgnoreRegexes": [
-    ".*\\.json"
-  ],
-  "IncludeRegexes": [
-    "\\.deps\\.json",
-    "\\.runtimeconfig\\.json"
-  ],
+  "IgnoreRegexes": [],
+  "IncludeRegexes": [],
   "PluginData": {},
   "IsUniversalMod": false,
   "ModDependencies": [

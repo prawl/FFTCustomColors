@@ -74,7 +74,7 @@ namespace FFTColorCustomizer.Tests.Core
 
             // Assert
             Assert.Contains(ColorModConstants.PreviewPrefix, previewPath);
-            Assert.EndsWith(ColorModConstants.PngExtension, previewPath);
+            Assert.EndsWith(".png", previewPath);
         }
     }
 }

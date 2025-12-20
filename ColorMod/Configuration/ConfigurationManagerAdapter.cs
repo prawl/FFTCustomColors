@@ -199,7 +199,7 @@ namespace FFTColorCustomizer.Configuration
             }
 
             public string ModRootPath => _modRootPath;
-            public string SourcePath => DevSourcePath;
+            public string SourcePath => _modRootPath; // In deployment, source and mod path are the same
             public string UserConfigPath => Path.GetDirectoryName(_configPath) ?? _modRootPath;
 
             public string GetDataPath(string relativePath)
@@ -226,8 +226,8 @@ namespace FFTColorCustomizer.Configuration
 
             public string GetPreviewImagePath(string characterName, string themeName)
             {
-                return Path.Combine(_modRootPath, ResourcesDirectory, PreviewsDirectory,
-                    $"{characterName}_{themeName}{PngExtension}");
+                return Path.Combine(_modRootPath, "Resources", PreviewsDirectory,
+                    $"{characterName}_{themeName}.png");
             }
 
             public string ResolveFirstExistingPath(params string[] candidates)

@@ -27,8 +27,8 @@ namespace FFTColorCustomizer.Services
             // Determine path to Data directory
             if (string.IsNullOrEmpty(modPath))
             {
-                // Use source path during development
-                _dataPath = Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory);
+                // Fall back to current directory if no mod path provided
+                _dataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
             }
             else
             {
@@ -52,18 +52,7 @@ namespace FFTColorCustomizer.Services
                 {
                     ModLogger.LogDebug($"JobClasses.json not found at: {jsonPath}");
                     ModLogger.LogWarning($"JobClasses.json not found at: {jsonPath}");
-
-                    // Try fallback to source location
-                    var fallbackPath = Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory, ColorModConstants.JobClassesFile);
-                    if (File.Exists(fallbackPath))
-                    {
-                        ModLogger.LogDebug($"Using fallback JobClasses.json at: {fallbackPath}");
-                        jsonPath = fallbackPath;
-                    }
-                    else
-                    {
-                        return;
-                    }
+                    return;
                 }
 
                 var jsonContent = File.ReadAllText(jsonPath);

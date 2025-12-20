@@ -19,10 +19,12 @@ namespace FFTColorCustomizer.Utilities
 
         public StoryCharacterThemeManager(string modPath = null)
         {
-            // Determine path to Data directory
+            // Always use the provided mod path for Data directory
+            // If no mod path provided, Data folder is expected to be in current directory
             if (string.IsNullOrEmpty(modPath))
             {
-                _dataPath = Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory);
+                // Fall back to current directory if no mod path provided
+                _dataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
             }
             else
             {

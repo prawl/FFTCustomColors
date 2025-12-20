@@ -51,7 +51,11 @@ namespace FFTColorCustomizer.Configuration
             if (!string.IsNullOrEmpty(configPath))
                 ModLogger.Log($"Config path set to: {configPath}");
             if (!string.IsNullOrEmpty(modPath))
+            {
                 ModLogger.Log($"Mod path set to: {modPath}");
+                // Set the mod path for CharacterServiceSingleton to find StoryCharacters.json
+                Services.CharacterServiceSingleton.SetModPath(modPath);
+            }
 
             _isInitializing = true;
             InitializeForm();

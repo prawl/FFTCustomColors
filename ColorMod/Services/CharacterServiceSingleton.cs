@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using FFTColorCustomizer.Configuration.UI;
@@ -13,6 +14,20 @@ namespace FFTColorCustomizer.Services
     {
         private static readonly object _lock = new object();
         private static CharacterDefinitionService? _instance;
+        private static string? _modPath;
+
+        /// <summary>
+        /// Sets the mod path for loading StoryCharacters.json
+        /// </summary>
+        public static void SetModPath(string modPath)
+        {
+            lock (_lock)
+            {
+                _modPath = modPath;
+                // Reset instance to force reload with new path
+                _instance = null;
+            }
+        }
 
         /// <summary>
         /// Gets the singleton instance of CharacterDefinitionService
@@ -68,15 +83,24 @@ namespace FFTColorCustomizer.Services
 
         private static string? FindStoryCharactersJson()
         {
-            // Try different possible locations for the JSON file
-            var possiblePaths = new[]
+            var possiblePaths = new List<string>();
+
+            // First check the mod path if set
+            if (!string.IsNullOrEmpty(_modPath))
+            {
+                possiblePaths.Add(Path.Combine(_modPath, ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile));
+                possiblePaths.Add(Path.Combine(_modPath, "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile));
+            }
+
+            // Then try other possible locations for the JSON file
+            possiblePaths.AddRange(new[]
             {
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile),
                 Path.Combine(Directory.GetCurrentDirectory(), "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile),
-                Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile),
-                Path.Combine(ColorModConstants.DevSourcePath, ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile) // Fallback to known location
-            };
+                Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.StoryCharactersFile)
+                // Removed DevSourcePath reference - should use mod directory instead
+            });
 
             foreach (var path in possiblePaths)
             {

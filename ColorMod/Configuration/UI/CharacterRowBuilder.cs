@@ -41,6 +41,51 @@ namespace FFTColorCustomizer.Configuration.UI
             _binExtractor = new BinSpriteExtractor();
         }
 
+        private string FindActualUnitPath(string modPath)
+        {
+            // First try the direct path
+            var directPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            if (Directory.Exists(directPath))
+            {
+                return directPath;
+            }
+
+            // If not found, look for versioned directories
+            var parentDir = Path.GetDirectoryName(modPath);
+            if (!string.IsNullOrEmpty(parentDir))
+            {
+                try
+                {
+                    var versionedDirs = Directory.GetDirectories(parentDir, "FFTColorCustomizer_v*")
+                        .OrderByDescending(dir =>
+                        {
+                            var dirName = Path.GetFileName(dir);
+                            var versionStr = dirName.Substring(dirName.LastIndexOf('v') + 1);
+                            if (int.TryParse(versionStr, out int version))
+                                return version;
+                            return 0;
+                        })
+                        .ToArray();
+
+                    foreach (var versionedDir in versionedDirs)
+                    {
+                        var versionedPath = Path.Combine(versionedDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+                        if (Directory.Exists(versionedPath))
+                        {
+                            ModLogger.Log($"Found FFTIVC for previews in versioned directory: {versionedPath}");
+                            return versionedPath;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogWarning($"Error searching for versioned directories: {ex.Message}");
+                }
+            }
+
+            // Return the expected path even if it doesn't exist
+            return directPath;
+        }
 
         public void AddGenericCharacterRow(int row, string jobName, string currentTheme,
             Action<string> setter, Func<bool> isFullyLoaded)
@@ -465,9 +510,11 @@ namespace FFTColorCustomizer.Configuration.UI
                     .Replace(" ", "_")  // Replace spaces with underscores
                     .Replace("__", "_"); // Clean up any double underscores
 
+                // Find the actual FFTIVC path (handles versioned directories)
+                string unitPath = FindActualUnitPath(modPath);
+
                 string characterThemeFolder = $"sprites_{characterName.ToLower()}_{themeFolderName}";
-                binPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
-                    characterThemeFolder, spriteFileName);
+                binPath = Path.Combine(unitPath, characterThemeFolder, spriteFileName);
                 ModLogger.Log($"[THEME LOADING] Character: '{characterName}', Theme: '{theme}', Folder: '{characterThemeFolder}', File: '{spriteFileName}'");
                 ModLogger.Log($"[THEME LOADING] Full path: {binPath}");
                 ModLogger.Log($"[THEME LOADING] File exists: {File.Exists(binPath)}");
@@ -476,16 +523,14 @@ namespace FFTColorCustomizer.Configuration.UI
                 if (!File.Exists(binPath))
                 {
                     string genericThemeFolder = $"sprites_{themeFolderName}";
-                    binPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
-                        genericThemeFolder, spriteFileName);
+                    binPath = Path.Combine(unitPath, genericThemeFolder, spriteFileName);
                     ModLogger.LogDebug($"Not found, trying generic theme folder: {binPath}");
                 }
 
                 // Finally, try the main unit folder (for original sprites)
                 if (!File.Exists(binPath))
                 {
-                    binPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
-                        spriteFileName);
+                    binPath = Path.Combine(unitPath, spriteFileName);
                     ModLogger.LogDebug($"Not found, trying main unit folder: {binPath}");
                 }
 
@@ -547,11 +592,13 @@ namespace FFTColorCustomizer.Configuration.UI
                 string spriteFileName = ConvertJobNameToSpriteFile(jobName);
 
                 // Look for themed sprite files
+                // Find the actual FFTIVC path (handles versioned directories)
+                string unitPath = FindActualUnitPath(modPath);
+
                 // First check if this is a job-specific theme (e.g., sprites_knight_h78/battle_knight_m_spr.bin)
                 string jobType = jobName.Replace(" (Male)", "").Replace(" (Female)", "").Replace(" ", "").ToLower();
                 string jobSpecificFolderName = $"sprites_{jobType}_{theme.ToLower().Replace(" ", "_")}";
-                string binPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
-                    jobSpecificFolderName, spriteFileName);
+                string binPath = Path.Combine(unitPath, jobSpecificFolderName, spriteFileName);
 
                 ModLogger.Log($"[DEBUG] Job: '{jobName}' → JobType: '{jobType}' → Folder: '{jobSpecificFolderName}'");
                 ModLogger.LogDebug($"Looking for job-specific themed sprite at: {binPath}");
@@ -560,16 +607,14 @@ namespace FFTColorCustomizer.Configuration.UI
                 if (!File.Exists(binPath))
                 {
                     string themeFolderName = $"sprites_{theme.ToLower().Replace(" ", "_")}";
-                    binPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
-                        themeFolderName, spriteFileName);
+                    binPath = Path.Combine(unitPath, themeFolderName, spriteFileName);
                     ModLogger.LogDebug($"Job-specific not found, trying generic themed sprite at: {binPath}");
                 }
 
                 // If themed version doesn't exist, fall back to main unit folder
                 if (!File.Exists(binPath))
                 {
-                    binPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit",
-                        spriteFileName);
+                    binPath = Path.Combine(unitPath, spriteFileName);
                     ModLogger.LogDebug($"Themed sprite not found, trying main unit folder: {binPath}");
                 }
 

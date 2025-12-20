@@ -21,7 +21,8 @@ namespace FFTColorCustomizer.Core.ModComponents
         public ModInitializer(string modPath, bool isTestEnvironment = false)
         {
             _modPath = modPath ?? throw new ArgumentNullException(nameof(modPath));
-            _sourcePath = DevSourcePath;
+            // In deployment, source and mod path are the same
+            _sourcePath = _modPath;
             _isTestEnvironment = isTestEnvironment;
         }
 

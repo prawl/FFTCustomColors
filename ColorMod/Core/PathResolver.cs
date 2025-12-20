@@ -64,7 +64,7 @@ namespace FFTColorCustomizer.Core
         public string GetPreviewImagePath(string characterName, string themeName)
         {
             var characterLower = characterName.ToLowerInvariant();
-            var fileName = $"{ColorModConstants.PreviewPrefix}{characterLower}_{themeName}{ColorModConstants.PngExtension}";
+            var fileName = $"{ColorModConstants.PreviewPrefix}{characterLower}_{themeName}.png";
             return Path.Combine(SourcePath, ColorModConstants.FFTIVCPath, "data", ColorModConstants.EnhancedPath,
                 ColorModConstants.FFTPackPath, ColorModConstants.UnitPath, themeName, fileName);
         }

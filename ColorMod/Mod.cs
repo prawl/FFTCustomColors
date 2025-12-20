@@ -53,7 +53,11 @@ public class Mod : IMod, IConfigurable
         // Initialize paths
         _modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
             ?? Environment.CurrentDirectory;
-        _sourcePath = DevSourcePath;
+        // In deployment, source and mod path are the same (sprites are in the mod directory)
+        _sourcePath = _modPath;
+
+        ModLogger.Log($"Mod initialized with path: {_modPath}");
+        ModLogger.Log($"Assembly location: {System.Reflection.Assembly.GetExecutingAssembly().Location}");
 
         // Initialize components
         InitializeComponents();
@@ -71,7 +75,11 @@ public class Mod : IMod, IConfigurable
         // Initialize paths first
         _modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
             ?? Environment.CurrentDirectory;
-        _sourcePath = DevSourcePath;
+        // In deployment, source and mod path are the same (sprites are in the mod directory)
+        _sourcePath = _modPath;
+
+        ModLogger.Log($"Mod initialized with path: {_modPath}");
+        ModLogger.Log($"Assembly location: {System.Reflection.Assembly.GetExecutingAssembly().Location}");
 
         // Set up production components
         _inputSimulator = new InputSimulator();
@@ -127,6 +135,9 @@ public class Mod : IMod, IConfigurable
         try
         {
             ModLogger.Log($"Initializing configuration at: {configPath}");
+
+            // Set the mod path for CharacterServiceSingleton to find StoryCharacters.json
+            Services.CharacterServiceSingleton.SetModPath(_modPath);
 
             // Initialize coordinators and managers
             _configCoordinator = new ConfigurationCoordinator(configPath);

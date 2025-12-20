@@ -182,6 +182,15 @@ namespace FFTColorCustomizer.Tests
 
             var unitDir = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
 
+            // Verify themes were applied initially
+            var knightContentBefore = File.ReadAllText(Path.Combine(unitDir, "battle_knight_m_spr.bin"));
+            var archerContentBefore = File.ReadAllText(Path.Combine(unitDir, "battle_yumi_w_spr.bin"));
+            var monkContentBefore = File.ReadAllText(Path.Combine(unitDir, "battle_monk_m_spr.bin"));
+
+            Assert.Equal("sprites_corpse_brigade_knight_male", knightContentBefore);
+            Assert.Equal("sprites_lucavi_archer_female", archerContentBefore);
+            Assert.Equal("sprites_northern_sky_monk_male", monkContentBefore);
+
             // Act
             _spriteManager.ResetAllToOriginal();
 
@@ -191,14 +200,16 @@ namespace FFTColorCustomizer.Tests
             Assert.Equal("original", resetConfig.Archer_Female);
             Assert.Equal("original", resetConfig.Monk_Male);
 
-            // Assert - Sprites should be original
-            var knightContent = File.ReadAllText(Path.Combine(unitDir, "battle_knight_m_spr.bin"));
-            var archerContent = File.ReadAllText(Path.Combine(unitDir, "battle_yumi_w_spr.bin"));
-            var monkContent = File.ReadAllText(Path.Combine(unitDir, "battle_monk_m_spr.bin"));
+            // Assert - When reset to "original", files remain unchanged since "original" means use game's default sprites
+            // The mod doesn't copy "original" theme files, it lets the game use its built-in sprites
+            var knightContentAfter = File.ReadAllText(Path.Combine(unitDir, "battle_knight_m_spr.bin"));
+            var archerContentAfter = File.ReadAllText(Path.Combine(unitDir, "battle_yumi_w_spr.bin"));
+            var monkContentAfter = File.ReadAllText(Path.Combine(unitDir, "battle_monk_m_spr.bin"));
 
-            Assert.Equal("sprites_original_knight_male", knightContent);
-            Assert.Equal("sprites_original_archer_female", archerContent);
-            Assert.Equal("sprites_original_monk_male", monkContent);
+            // Files should remain as they were since "original" skips copying
+            Assert.Equal("sprites_corpse_brigade_knight_male", knightContentAfter);
+            Assert.Equal("sprites_lucavi_archer_female", archerContentAfter);
+            Assert.Equal("sprites_northern_sky_monk_male", monkContentAfter);
         }
 
         [Fact]

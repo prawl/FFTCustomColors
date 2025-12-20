@@ -75,30 +75,29 @@ namespace FFTColorCustomizer.Tests.Services
         }
 
         [Fact]
-        public void JobClassDefinitionService_Should_Use_Fallback_Path_When_Primary_Not_Found()
+        public void JobClassDefinitionService_Should_Return_Empty_When_No_JSON_Found()
         {
             // Arrange
             // Create a temp directory that doesn't have the JSON file
             var tempModPath = Path.Combine(Path.GetTempPath(), "NonExistent_" + Guid.NewGuid());
             Directory.CreateDirectory(tempModPath);
 
-            // Ensure the fallback location has the file (this test assumes the dev environment)
-            var fallbackPath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\JobClasses.json";
-
-            // Only run this test if the fallback file exists
-            if (File.Exists(fallbackPath))
+            try
             {
                 // Act
                 var service = new JobClassDefinitionService(tempModPath);
                 var themes = service.GetAvailableThemes();
 
-                // Assert - should have loaded themes from fallback
-                themes.Should().NotBeEmpty("Themes should be loaded from fallback location");
-                themes.Count.Should().BeGreaterThan(1, "Should have loaded multiple themes from fallback");
+                // Assert - should return default "original" theme when no JSON file found
+                // (The service always provides "original" as a default option)
+                themes.Should().HaveCount(1, "Should only have the default 'original' theme");
+                themes.Should().Contain("original", "Should always include 'original' as default");
             }
-
-            // Cleanup
-            Directory.Delete(tempModPath, true);
+            finally
+            {
+                // Cleanup
+                Directory.Delete(tempModPath, true);
+            }
         }
 
         [Fact]

@@ -107,7 +107,7 @@ namespace FFTColorCustomizer.Tests.Core
         {
             // Assert
             Assert.Equal(".bmp", ColorModConstants.BitmapExtension);
-            Assert.Equal(".png", ColorModConstants.PngExtension);
+            // PngExtension was removed - we no longer use PNG files
             Assert.Equal(".json", ColorModConstants.JsonExtension);
         }
 

@@ -32,7 +32,6 @@ namespace FFTColorCustomizer.Core
         public const string BattlePrefix = "battle_";
         public const string PreviewPrefix = "preview_";
         public const string BitmapExtension = ".bmp";
-        public const string PngExtension = ".png";
         public const string JsonExtension = ".json";
 
         // JSON file names
@@ -49,11 +48,11 @@ namespace FFTColorCustomizer.Core
         public const string ModAuthor = "Paxtrick";
         public const string ModNamespace = "paxtrick.fft.colorcustomizer";
 
-        // Git repository paths (for development)
-        public const string DevSourcePath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod";
+        // Development paths (should not be used in production - use mod directory instead)
+        // This is now deprecated and should not be used
+        // public const string DevSourcePath = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod";
 
         // Common directory names
-        public const string ResourcesDirectory = "Resources";
         public const string PreviewsDirectory = "Previews";
 
         // Logging
