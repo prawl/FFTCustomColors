@@ -377,39 +377,42 @@ After extensive testing with color-coded sprites, we've definitively mapped the 
 - This occurs because different armor pieces reference different colors within the palettes
 - Solution: Need more aggressive color conversion that catches all blue/green/gray shades
 
-### 🚨 CRITICAL DISCOVERY (2024-12-21): Enemy Palette System
+### 🚨 CRITICAL DISCOVERY (2024-12-21): Enemy Palette System [FIXED]
 
-**Important Finding**: The mod currently affects BOTH player and enemy units, which is unintended behavior.
+**Important Finding**: The mod was affecting BOTH player and enemy units - this has been FIXED for all job-specific themes.
 
 **Palette Usage in FFT**:
-- **Palettes 0-4**: Contain valid color data for different unit variations
-  - Palette 0: Brown/beige (player default colors)
+- **Palette 0**: Player units (brown/beige default)
+- **Palettes 1-4**: Enemy team colors (used by the game for enemy units)
   - Palette 1: Blue variant
-  - Palette 2: Red/orange variant (often used for enemies)
+  - Palette 2: Red/orange variant
   - Palette 3: Green variant
-  - Palette 4: Purple variant (often used for enemies)
-- **Palettes 5-7**: ALL BLACK (zeros) in original game files
-  - These palettes are likely meant for enemy units
-  - The game normally applies enemy colors dynamically at runtime
-  - When the mod intercepts sprites, enemies try to use these black palettes and appear corrupted
+  - Palette 4: Purple variant
+- **Palettes 5-7**: Unused (all zeros/black in original files)
 
-**Current Issues**:
-1. **Black Enemy Sprites**: Enemy units (Monks, Knights, likely all classes) appear pure black because palettes 5-7 are empty
-2. **Enemy Color Override**: When not black, enemies use player-selected colors instead of maintaining distinct enemy colors
-3. **Loss of Team Distinction**: Can't visually distinguish between player and enemy teams
+**The Problem & Solution**:
+1. **Generic themes** (corpse_brigade, lucavi, etc.) worked correctly because they had palettes 0-4 populated
+2. **Job-specific themes** (knight_holy_guard, monk_shadow_assassin, etc.) only had palette 0, causing enemies to appear black or use wrong colors
+3. **The Fix**: All 72 job-specific themes now have palettes 1-4 copied from original sprites, ensuring enemies always display with standard enemy colors
 
-**Why This Happens**:
-- The mod intercepts ALL sprite file requests at the filesystem level
-- No distinction is made between player unit requests and enemy unit requests
-- The same modified sprite is served for both teams
-- The game's runtime enemy color application is bypassed
+**Maintenance Scripts**:
+- `scripts/fix_enemy_palettes.py` - Fixes job-specific themes by copying enemy palettes from originals
+- `scripts/verify_enemy_palettes.py` - Verifies all themes have correct enemy palettes
 
-**Planned Fix**:
-- Populate palettes 5-7 with appropriate enemy color variations
-- Implement team detection to serve different sprites for enemies
-- Preserve the tactical clarity of team colors
-
-See [KNOWN_BUGS.md](KNOWN_BUGS.md) for detailed technical information and tracking
+**Important Sprite Name Mappings** (from JobClasses.json):
+```
+bard → battle_gin_m_spr.bin (male only)
+calculator → battle_san_[m/w]_spr.bin
+chemist → battle_item_[m/w]_spr.bin
+dancer → battle_odori_w_spr.bin (female only)
+dragoon → battle_ryu_[m/w]_spr.bin
+geomancer → battle_fusui_[m/w]_spr.bin
+mediator → battle_waju_[m/w]_spr.bin
+mime → battle_mono_[m/w]_spr.bin
+samurai → battle_samu_[m/w]_spr.bin
+squire → battle_mina_[m/w]_spr.bin
+timemage → battle_toki_[m/w]_spr.bin
+```
 
 ## Troubleshooting
 
