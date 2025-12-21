@@ -377,6 +377,40 @@ After extensive testing with color-coded sprites, we've definitively mapped the 
 - This occurs because different armor pieces reference different colors within the palettes
 - Solution: Need more aggressive color conversion that catches all blue/green/gray shades
 
+### 🚨 CRITICAL DISCOVERY (2024-12-21): Enemy Palette System
+
+**Important Finding**: The mod currently affects BOTH player and enemy units, which is unintended behavior.
+
+**Palette Usage in FFT**:
+- **Palettes 0-4**: Contain valid color data for different unit variations
+  - Palette 0: Brown/beige (player default colors)
+  - Palette 1: Blue variant
+  - Palette 2: Red/orange variant (often used for enemies)
+  - Palette 3: Green variant
+  - Palette 4: Purple variant (often used for enemies)
+- **Palettes 5-7**: ALL BLACK (zeros) in original game files
+  - These palettes are likely meant for enemy units
+  - The game normally applies enemy colors dynamically at runtime
+  - When the mod intercepts sprites, enemies try to use these black palettes and appear corrupted
+
+**Current Issues**:
+1. **Black Enemy Sprites**: Enemy units (Monks, Knights, likely all classes) appear pure black because palettes 5-7 are empty
+2. **Enemy Color Override**: When not black, enemies use player-selected colors instead of maintaining distinct enemy colors
+3. **Loss of Team Distinction**: Can't visually distinguish between player and enemy teams
+
+**Why This Happens**:
+- The mod intercepts ALL sprite file requests at the filesystem level
+- No distinction is made between player unit requests and enemy unit requests
+- The same modified sprite is served for both teams
+- The game's runtime enemy color application is bypassed
+
+**Planned Fix**:
+- Populate palettes 5-7 with appropriate enemy color variations
+- Implement team detection to serve different sprites for enemies
+- Preserve the tactical clarity of team colors
+
+See [KNOWN_BUGS.md](KNOWN_BUGS.md) for detailed technical information and tracking
+
 ## Troubleshooting
 
 - **Mod not loading**: Ensure Reloaded-II is properly installed and FFT is launched through it
