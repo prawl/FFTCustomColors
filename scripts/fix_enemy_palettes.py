@@ -220,7 +220,20 @@ class EnemyPaletteFixer:
             # ALWAYS replace palettes 1-4 for job-specific themes, even if they have data
             # This ensures we get standard enemy colors, not custom theme colors
             # Job-specific themes have format: jobclass_themename (e.g., monk_shadow_assassin)
-            is_job_theme = theme_name and '_' in theme_name and not theme_name in ['corpse_brigade', 'lucavi', 'original']
+
+            # List of all job classes that can have job-specific themes
+            job_classes = ['knight', 'monk', 'archer', 'squire', 'chemist', 'thief',
+                          'ninja', 'samurai', 'dragoon', 'geomancer', 'mediator',
+                          'timemage', 'bard', 'dancer', 'calculator', 'mime']
+
+            # Check if this is a job-specific theme (starts with a job class name)
+            is_job_theme = False
+            if theme_name:
+                for job in job_classes:
+                    if theme_name.startswith(job + '_'):
+                        is_job_theme = True
+                        break
+
             if sprite_file and (is_job_specific or is_job_theme):
                 # Get the original sprite path
                 original_dir = self.sprite_dir / "sprites_original"
@@ -305,11 +318,49 @@ class EnemyPaletteFixer:
             method: Fix method to use
             backup: Whether to backup original files
         """
+        # Mapping of job class names to actual sprite file names
+        JOB_TO_SPRITE = {
+            'bard': 'gin',
+            'calculator': 'san',
+            'chemist': 'item',
+            'dancer': 'odori',
+            'dragoon': 'ryu',
+            'geomancer': 'fusui',
+            'mediator': 'waju',
+            'mime': 'mono',
+            'ninja': 'ninja',
+            'samurai': 'samu',
+            'squire': 'mina',
+            'thief': 'thief',
+            'timemage': 'toki',
+            'knight': 'knight',
+            'monk': 'monk',
+            'archer': 'yumi',
+            'whitemage': 'siro',
+            'blackmage': 'kuro',
+            'summoner': 'syou',
+            'mystic': 'onmyo',
+            'oracle': 'onmyo'
+        }
+
+        # Get the actual sprite name, default to job_class if not in mapping
+        sprite_name = JOB_TO_SPRITE.get(job_class.lower(), job_class.lower())
+
         # Sprite file patterns for the job class
-        sprite_patterns = [
-            f"battle_{job_class}_m_spr.bin",  # Male battle sprite
-            f"battle_{job_class}_w_spr.bin",  # Female battle sprite
-        ]
+        # Special case: Dancer only has female sprites, Bard only has male
+        if job_class.lower() == 'dancer':
+            sprite_patterns = [
+                f"battle_{sprite_name}_w_spr.bin",  # Female only
+            ]
+        elif job_class.lower() == 'bard':
+            sprite_patterns = [
+                f"battle_{sprite_name}_m_spr.bin",  # Male only
+            ]
+        else:
+            sprite_patterns = [
+                f"battle_{sprite_name}_m_spr.bin",  # Male battle sprite
+                f"battle_{sprite_name}_w_spr.bin",  # Female battle sprite
+            ]
 
         processed_count = 0
 
