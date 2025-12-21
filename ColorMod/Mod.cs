@@ -182,7 +182,10 @@ public class Mod : IMod, IConfigurable
         if (config != null)
         {
             _initializer?.InitializeStoryCharacterThemes(config, themeManager);
-            themeManager.ApplyInitialThemes();
+            // Don't apply themes here - let the Start method handle it with proper delay
+            // This prevents duplicate calls to ApplyInitialThemes
+
+            // Note: Generic job themes will be applied in Start method after delay
         }
     }
 
@@ -202,17 +205,13 @@ public class Mod : IMod, IConfigurable
         ModLogger.LogDebug($"After EnsureConfig - _configCoordinator exists: {_configCoordinator != null}");
         ModLogger.LogDebug($"After EnsureConfig - _hotkeyManager exists: {_hotkeyManager != null}");
 
-        // Apply themes after a short delay to ensure mod loader is ready
-        // This fixes the race condition where themes aren't applied on initial load
+        // Apply themes - immediately in test environment, with delay in production
         if (_configCoordinator != null && _themeCoordinator != null)
         {
-            ModLogger.Log("Scheduling initial theme application after delay...");
-            System.Threading.Tasks.Task.Run(async () =>
+            if (_isTestEnvironment)
             {
-                // Wait for mod loader to be fully initialized
-                await System.Threading.Tasks.Task.Delay(500);
-
-                ModLogger.Log("Applying initial themes after delay...");
+                // In test environment, apply themes immediately (synchronously)
+                ModLogger.Log("Applying initial themes immediately (test environment)...");
                 var config = _configCoordinator.GetConfiguration();
                 if (config != null)
                 {
@@ -221,10 +220,61 @@ public class Mod : IMod, IConfigurable
                     {
                         _initializer?.InitializeStoryCharacterThemes(config, themeManager);
                         themeManager.ApplyInitialThemes();
-                        ModLogger.Log("Initial themes applied successfully after delay");
+
+                        // CRITICAL: Also apply generic job themes
+                        _configCoordinator?.ApplyConfiguration();
+
+                        ModLogger.Log("Initial themes applied successfully (test environment)");
                     }
                 }
-            });
+            }
+            else
+            {
+                // In production, apply themes after a delay to ensure mod loader is ready
+                ModLogger.Log("Scheduling initial theme application after delay...");
+                System.Threading.Tasks.Task.Run(async () =>
+                {
+                    try
+                    {
+                        // Wait for mod loader to be fully initialized
+                        await System.Threading.Tasks.Task.Delay(500);
+
+                        ModLogger.Log("Applying initial themes after delay...");
+                        var config = _configCoordinator.GetConfiguration();
+                        if (config != null)
+                        {
+                            ModLogger.Log($"Config loaded, applying themes for {config.GetType().GetProperties().Length} properties");
+                            var themeManager = _themeCoordinator.GetThemeManager();
+                            if (themeManager != null)
+                            {
+                                _initializer?.InitializeStoryCharacterThemes(config, themeManager);
+                                themeManager.ApplyInitialThemes();
+
+                                // CRITICAL: Also apply generic job themes after delay
+                                _configCoordinator?.ApplyConfiguration();
+
+                                ModLogger.Log("Initial themes applied successfully after delay");
+                            }
+                            else
+                            {
+                                ModLogger.LogWarning("ThemeManager is null after delay, cannot apply themes");
+                            }
+                        }
+                        else
+                        {
+                            ModLogger.LogWarning("Configuration is null after delay, cannot apply themes");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ModLogger.LogError($"Failed to apply initial themes after delay: {ex.Message}");
+                    }
+                });
+            }
+        }
+        else
+        {
+            ModLogger.LogWarning($"Cannot schedule theme application: configCoordinator={_configCoordinator != null}, themeCoordinator={_themeCoordinator != null}");
         }
 
         // Start hotkey monitoring
@@ -322,9 +372,17 @@ public class Mod : IMod, IConfigurable
             // This ensures the sprite files are actually copied to the correct locations
             themeManager.ApplyInitialThemes();
         }
+
+        // CRITICAL: Also apply generic job themes (knights, monks, archers, etc.)
+        // This was missing and why generic characters didn't get themed on startup
+        _configCoordinator?.ApplyConfiguration();
     }
 
-    public Action Save => () => _configCoordinator?.SaveConfiguration();
+    public Action Save => () =>
+    {
+        _configCoordinator?.SaveConfiguration();
+        ApplyConfigurationThemes(GetConfiguration());
+    };
 
     #endregion
 

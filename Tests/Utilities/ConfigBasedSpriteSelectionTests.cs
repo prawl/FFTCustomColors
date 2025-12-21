@@ -200,16 +200,16 @@ namespace FFTColorCustomizer.Tests
             Assert.Equal("original", resetConfig.Archer_Female);
             Assert.Equal("original", resetConfig.Monk_Male);
 
-            // Assert - When reset to "original", files remain unchanged since "original" means use game's default sprites
-            // The mod doesn't copy "original" theme files, it lets the game use its built-in sprites
+            // Assert - When reset to "original", the original theme files are applied
+            // After our fix, ApplyConfiguration now properly applies themes even for "original"
             var knightContentAfter = File.ReadAllText(Path.Combine(unitDir, "battle_knight_m_spr.bin"));
             var archerContentAfter = File.ReadAllText(Path.Combine(unitDir, "battle_yumi_w_spr.bin"));
             var monkContentAfter = File.ReadAllText(Path.Combine(unitDir, "battle_monk_m_spr.bin"));
 
-            // Files should remain as they were since "original" skips copying
-            Assert.Equal("sprites_corpse_brigade_knight_male", knightContentAfter);
-            Assert.Equal("sprites_lucavi_archer_female", archerContentAfter);
-            Assert.Equal("sprites_northern_sky_monk_male", monkContentAfter);
+            // Files should now contain the original theme sprites after reset
+            Assert.Equal("sprites_original_knight_male", knightContentAfter);
+            Assert.Equal("sprites_original_archer_female", archerContentAfter);
+            Assert.Equal("sprites_original_monk_male", monkContentAfter);
         }
 
         [Fact]
