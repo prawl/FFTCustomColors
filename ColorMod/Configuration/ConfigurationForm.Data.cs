@@ -139,9 +139,15 @@ namespace FFTColorCustomizer.Configuration
 
             // Load all available story characters from the registry
             // The registry automatically loads from StoryCharacters.json
-            // Put Ramza first, then sort the rest alphabetically
+            // Put Ramza characters first (in chapter order), then sort the rest alphabetically
             var sortedCharacters = _storyCharacters.Values
-                .OrderBy(c => c.Name == "Ramza" ? "0" : c.Name);
+                .OrderBy(c =>
+                {
+                    if (c.Name == "RamzaChapter1") return "0_1";
+                    if (c.Name == "RamzaChapter2") return "0_2";
+                    if (c.Name == "RamzaChapter34") return "0_3";
+                    return c.Name;
+                });
 
             foreach (var characterConfig in sortedCharacters)
             {
