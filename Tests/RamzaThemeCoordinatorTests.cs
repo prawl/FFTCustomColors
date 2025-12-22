@@ -74,19 +74,23 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var coordinator = new RamzaThemeCoordinator(_testSourcePath, _testModPath);
 
-            // Create themed tex files
-            string themeDir = Path.Combine(_testSourcePath, "FFTIVC", "data", "enhanced", "system", "ffto", "g2d", "white_heretic");
+            // Create themed tex files in RamzaThemes directory
+            string themeDir = Path.Combine(_testSourcePath, "RamzaThemes", "white_heretic");
             Directory.CreateDirectory(themeDir);
 
             byte[] themedData = new byte[131072];
             themedData[0] = 0xAA; // Marker
             File.WriteAllBytes(Path.Combine(themeDir, "tex_830.bin"), themedData);
 
+            // Create game g2d directory
+            string gameG2dPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "system", "ffto", "g2d");
+            Directory.CreateDirectory(gameG2dPath);
+
             // Act
             coordinator.ApplyRamzaTheme("white_heretic");
 
             // Assert
-            string gameFile = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "system", "ffto", "g2d", "tex_830.bin");
+            string gameFile = Path.Combine(gameG2dPath, "tex_830.bin");
             Assert.True(File.Exists(gameFile));
 
             byte[] swappedData = File.ReadAllBytes(gameFile);

@@ -24,8 +24,8 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var swapper = new RamzaTexSwapper(_testBasePath, _testGamePath);
 
-            // Create themed tex files
-            string themeDir = Path.Combine(_testBasePath, "white_heretic");
+            // Create themed tex files in RamzaThemes subdirectory
+            string themeDir = Path.Combine(_testBasePath, "RamzaThemes", "white_heretic");
             Directory.CreateDirectory(themeDir);
 
             byte[] themedData = new byte[131072];
@@ -44,31 +44,27 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void RestoreOriginalTexFiles_ShouldCopyOriginalFilesToGamePath()
+        public void RestoreOriginalTexFiles_ShouldRemoveAllTexFiles()
         {
             // Arrange
             var swapper = new RamzaTexSwapper(_testBasePath, _testGamePath);
 
-            // Create original backup files
-            string backupDir = Path.Combine(_testBasePath, "original_backup");
-            Directory.CreateDirectory(backupDir);
+            // Put tex files in game path
+            File.WriteAllBytes(Path.Combine(_testGamePath, "tex_830.bin"), new byte[131072]);
+            File.WriteAllBytes(Path.Combine(_testGamePath, "tex_835.bin"), new byte[118784]);
 
-            byte[] originalData = new byte[131072];
-            originalData[0] = 0xFF; // Marker for original
-            File.WriteAllBytes(Path.Combine(backupDir, "tex_830.bin"), originalData);
-
-            // Put modified file in game path first
-            byte[] modifiedData = new byte[131072];
-            modifiedData[0] = 0xAA;
-            File.WriteAllBytes(Path.Combine(_testGamePath, "tex_830.bin"), modifiedData);
+            // Create some theme subdirectories
+            Directory.CreateDirectory(Path.Combine(_testGamePath, "white_heretic"));
+            Directory.CreateDirectory(Path.Combine(_testGamePath, "active_theme"));
 
             // Act
             swapper.RestoreOriginalTexFiles();
 
-            // Assert
-            string gameFile = Path.Combine(_testGamePath, "tex_830.bin");
-            byte[] restoredData = File.ReadAllBytes(gameFile);
-            Assert.Equal(0xFF, restoredData[0]); // Should have original marker
+            // Assert - tex files should be removed to let game use built-in textures
+            Assert.False(File.Exists(Path.Combine(_testGamePath, "tex_830.bin")));
+            Assert.False(File.Exists(Path.Combine(_testGamePath, "tex_835.bin")));
+            Assert.False(Directory.Exists(Path.Combine(_testGamePath, "white_heretic")));
+            Assert.False(Directory.Exists(Path.Combine(_testGamePath, "active_theme")));
         }
 
         public void Dispose()

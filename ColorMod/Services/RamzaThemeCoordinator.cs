@@ -31,10 +31,10 @@ namespace FFTColorCustomizer.Services
 
         public void ApplyRamzaTheme(string themeName)
         {
-            string sourceBasePath = Path.Combine(_sourcePath, "FFTIVC", "data", "enhanced", "system", "ffto", "g2d");
+            // RamzaTexSwapper expects mod root path (contains RamzaThemes folder), not g2d path
             string gameBasePath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "system", "ffto", "g2d");
 
-            var swapper = new RamzaTexSwapper(sourceBasePath, gameBasePath);
+            var swapper = new RamzaTexSwapper(_sourcePath, gameBasePath);
             swapper.SwapTexFilesForTheme(themeName);
         }
     }
