@@ -37,7 +37,7 @@ function Write-Status {
     Write-Host "`n==> $Message" -ForegroundColor $Color
 }
 
-function Write-Error {
+function Write-ErrorMessage {
     param($Message)
     Write-Host "`n[ERROR] $Message" -ForegroundColor Red
     exit 1
@@ -88,7 +88,7 @@ function Build-Project {
         /p:OutputPath="$TempBuildPath"
 
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "Build failed!"
+        Write-ErrorMessage "Build failed!"
     }
 
     Write-Host "  -> Build completed successfully!" -ForegroundColor Green
@@ -144,14 +144,47 @@ function Copy-ModAssets {
         $result = robocopy @robocopyArgs
 
         if ($LASTEXITCODE -ge 8) {
-            Write-Error "Failed to copy FFTIVC folder!"
+            Write-ErrorMessage "Failed to copy FFTIVC folder!"
+        }
+
+        # Clean up unwanted files from g2d directory but keep it for modloader scanning
+        $g2dPath = "$destFFTIVC/data/enhanced/system/ffto/g2d"
+        if (Test-Path $g2dPath) {
+            Write-Host "  -> Cleaning g2d directory (keeping for modloader)..."
+            # Remove test directories but keep the g2d folder and white_heretic
+            $testDirs = @("black_variant", "red_variant", "test_variant", "themes", "original_backup")
+            foreach ($dir in $testDirs) {
+                $dirPath = "$g2dPath/$dir"
+                if (Test-Path $dirPath) {
+                    Remove-Item $dirPath -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            }
+            # Remove any loose tex files from development testing
+            Get-ChildItem "$g2dPath/tex_*.bin" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
         }
 
         # Count sprite files
         $binFiles = Get-ChildItem -Path $destFFTIVC -Filter "*.bin" -Recurse
         Write-Host "  -> Copied $($binFiles.Count) sprite files" -ForegroundColor Green
     } else {
-        Write-Error "FFTIVC folder not found at: $sourceFFTIVC"
+        Write-ErrorMessage "FFTIVC folder not found at: $sourceFFTIVC"
+    }
+
+    # Copy RamzaThemes folder with tex themes
+    $ramzaThemesSource = "ColorMod/FFTIVC/data/enhanced/system/ffto/g2d"
+    if (Test-Path $ramzaThemesSource) {
+        Write-Host "  -> Copying Ramza tex themes to RamzaThemes folder..."
+        $ramzaThemesDest = "$BuildOutputPath/RamzaThemes"
+
+        # Copy white_heretic theme if it exists
+        $whiteHereticPath = "$ramzaThemesSource/white_heretic"
+        if (Test-Path $whiteHereticPath) {
+            $whiteHereticDest = "$ramzaThemesDest/white_heretic"
+            New-Item -ItemType Directory -Force -Path $whiteHereticDest | Out-Null
+            Copy-Item "$whiteHereticPath/*.bin" -Destination $whiteHereticDest -Force
+            $texCount = (Get-ChildItem "$whiteHereticDest/*.bin" | Measure-Object).Count
+            Write-Host "    -> Copied $texCount tex files for white_heretic theme" -ForegroundColor Green
+        }
     }
 }
 
@@ -166,7 +199,7 @@ function Update-Version {
             Write-Host "  -> Using version from ModConfig.json: $currentVersion"
             return $currentVersion
         } else {
-            Write-Error "No version specified and ModConfig.json not found!"
+            Write-ErrorMessage "No version specified and ModConfig.json not found!"
         }
     }
 
@@ -178,7 +211,7 @@ function Update-Version {
         $config | ConvertTo-Json -Depth 10 | Set-Content $ModConfigPath
         Write-Host "  -> Updated ModConfig.json version to $NewVersion"
     } else {
-        Write-Error "ModConfig.json not found at: $ModConfigPath"
+        Write-ErrorMessage "ModConfig.json not found at: $ModConfigPath"
     }
 
     return $NewVersion
@@ -199,10 +232,19 @@ function Clean-BuildOutput {
     )
 
     foreach ($pattern in $patterns) {
-        $files = Get-ChildItem -Path $BuildOutputPath -Filter $pattern -Recurse -ErrorAction SilentlyContinue
-        if ($files) {
-            Write-Host "  -> Removing $($files.Count) $pattern files..."
-            $files | Remove-Item -Force -ErrorAction SilentlyContinue
+        try {
+            $files = @(Get-ChildItem -Path $BuildOutputPath -Filter $pattern -Recurse -ErrorAction SilentlyContinue)
+            if ($files -and $files.Count -gt 0) {
+                Write-Host "  -> Removing $($files.Count) $pattern files..."
+                $files | ForEach-Object {
+                    if ($_ -and (Test-Path $_.FullName)) {
+                        Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue
+                    }
+                }
+            }
+        }
+        catch {
+            # Silently continue if there's an issue with specific patterns
         }
     }
 
@@ -226,31 +268,64 @@ function Create-Package {
         Remove-Item $packagePath -Force
     }
 
+    # Ensure output directory exists
+    if (-not (Test-Path $OutputPath)) {
+        Write-Host "  -> Creating output directory: $OutputPath"
+        New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null
+    }
+
+    # Ensure build directory exists
+    if (-not (Test-Path $BuildOutputPath)) {
+        Write-ErrorMessage "Build output directory not found: $BuildOutputPath"
+        return $null
+    }
+
     # Create ZIP using .NET compression
     Write-Host "  -> Compressing to: $packagePath"
 
-    Add-Type -Assembly System.IO.Compression.FileSystem
+    # Load assembly properly
+    try {
+        Add-Type -Assembly System.IO.Compression.FileSystem -ErrorAction Stop
+    }
+    catch {
+        Write-Host "  -> Loading compression assembly using alternative method..."
+        [Reflection.Assembly]::LoadWithPartialName("System.IO.Compression.FileSystem") | Out-Null
+    }
 
     try {
+        # Convert paths to absolute
+        $absoluteBuildPath = (Get-Item $BuildOutputPath).FullName
+        $absolutePackagePath = [System.IO.Path]::GetFullPath($packagePath)
+
+        Write-Host "  -> Source: $absoluteBuildPath"
+        Write-Host "  -> Target: $absolutePackagePath"
+
         [System.IO.Compression.ZipFile]::CreateFromDirectory(
-            $BuildOutputPath,
-            $packagePath,
+            $absoluteBuildPath,
+            $absolutePackagePath,
             [System.IO.Compression.CompressionLevel]::Optimal,
             $false
         )
 
-        $packageInfo = Get-Item $packagePath
-        $sizeMB = [math]::Round($packageInfo.Length / 1MB, 2)
+        if (Test-Path $absolutePackagePath) {
+            $packageInfo = Get-Item $absolutePackagePath
+            $sizeMB = [math]::Round($packageInfo.Length / 1MB, 2)
 
-        Write-Host "  -> Package created successfully!" -ForegroundColor Green
-        Write-Host "  -> Size: $sizeMB MB" -ForegroundColor Cyan
-        Write-Host "  -> Location: $packagePath" -ForegroundColor Cyan
+            Write-Host "  -> Package created successfully!" -ForegroundColor Green
+            Write-Host "  -> Size: $sizeMB MB" -ForegroundColor Cyan
+            Write-Host "  -> Location: $absolutePackagePath" -ForegroundColor Cyan
+            return $absolutePackagePath
+        }
+        else {
+            Write-ErrorMessage "Package was not created at: $absolutePackagePath"
+            return $null
+        }
     }
     catch {
-        Write-Error "Failed to create ZIP package: $_"
+        Write-Host "`n[ERROR] Failed to create ZIP package: $_" -ForegroundColor Red
+        Write-Host "  -> Error details: $($_.Exception.Message)" -ForegroundColor Red
+        return $null
     }
-
-    return $packagePath
 }
 
 function Verify-Package {
@@ -258,7 +333,12 @@ function Verify-Package {
 
     Write-Status "Verifying package contents..." "Cyan"
 
-    Add-Type -Assembly System.IO.Compression.FileSystem
+    if (-not $PackagePath -or -not (Test-Path $PackagePath)) {
+        Write-Host "  -> Package not found for verification" -ForegroundColor Red
+        return
+    }
+
+    Add-Type -Assembly System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
 
     try {
         $zip = [System.IO.Compression.ZipFile]::OpenRead($PackagePath)
@@ -298,7 +378,7 @@ function Verify-Package {
         $zip.Dispose()
     }
     catch {
-        Write-Error "Failed to verify package: $_"
+        Write-Host "`n[ERROR] Failed to verify package: $_" -ForegroundColor Red
     }
 }
 
@@ -333,17 +413,24 @@ try {
     # Step 6: Create Package
     $packagePath = Create-Package -ModVersion $finalVersion
 
-    # Step 7: Verify
-    Verify-Package -PackagePath $packagePath
+    if ($packagePath) {
+        # Step 7: Verify
+        Verify-Package -PackagePath $packagePath
 
-    Write-Status "Publishing completed successfully!" "Green"
-    Write-Host "`n=====================================" -ForegroundColor Magenta
-    Write-Host "Package ready at: $packagePath" -ForegroundColor Yellow
-    Write-Host "Version: $finalVersion" -ForegroundColor Yellow
-    Write-Host "=====================================" -ForegroundColor Magenta
+        Write-Status "Publishing completed successfully!" "Green"
+        Write-Host "`n=====================================" -ForegroundColor Magenta
+        Write-Host "Package ready at: $packagePath" -ForegroundColor Yellow
+        Write-Host "Version: $finalVersion" -ForegroundColor Yellow
+        Write-Host "=====================================" -ForegroundColor Magenta
+    }
+    else {
+        Write-Status "Publishing failed - package creation unsuccessful" "Red"
+        exit 1
+    }
 }
 catch {
-    Write-Error "An unexpected error occurred: $_"
+    Write-Host "`n[ERROR] An unexpected error occurred: $_" -ForegroundColor Red
+    Write-Host "Stack Trace: $($_.ScriptStackTrace)" -ForegroundColor Red
 }
 finally {
     # Restore original directory

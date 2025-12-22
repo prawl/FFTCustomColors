@@ -11,7 +11,7 @@ namespace FFTColorCustomizer.Services
     {
         private readonly string _modRootPath;
         private readonly string _gameTexPath;
-        private readonly int[] _ramzaTexNumbers = { 830, 831, 832, 833, 834, 835, 836, 837, 838, 839 };
+        private readonly int[] _ramzaTexNumbers = { 830, 831, 832, 833, 834, 835 };
 
         public RamzaTexSwapper(string modRootPath, string gameTexPath)
         {
@@ -34,6 +34,13 @@ namespace FFTColorCustomizer.Services
             {
                 ModLogger.LogError($"Theme directory does not exist: {themeSourceDir}");
                 return;
+            }
+
+            // Ensure g2d directory exists (it might not in production builds)
+            if (!Directory.Exists(_gameTexPath))
+            {
+                ModLogger.LogDebug($"Creating g2d directory: {_gameTexPath}");
+                Directory.CreateDirectory(_gameTexPath);
             }
 
             // Copy tex files directly to the g2d directory
