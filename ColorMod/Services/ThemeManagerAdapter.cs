@@ -136,8 +136,25 @@ namespace FFTColorCustomizer.Services
 
         private void ApplyInitialRamzaTheme()
         {
-            var theme = _storyCharacterManager.GetCurrentTheme("Ramza");
-            ModLogger.LogDebug($"ApplyInitialRamzaTheme - theme: {theme}");
+            // Get the actual configured theme from ConfigurationService
+            var pathResolver = new SimplePathResolver(_sourcePath, _modPath);
+            var configService = new ConfigurationService(pathResolver);
+            var config = configService.LoadConfig();
+
+            // Try to get RamzaChapter1 theme from config
+            var theme = config?.RamzaChapter1 ?? "original";
+
+            // If not found in config, fall back to StoryCharacterThemeManager
+            if (string.IsNullOrEmpty(theme))
+            {
+                theme = _storyCharacterManager.GetCurrentTheme("RamzaChapter1");
+                if (string.IsNullOrEmpty(theme))
+                {
+                    theme = _storyCharacterManager.GetCurrentTheme("Ramza");
+                }
+            }
+
+            ModLogger.LogDebug($"ApplyInitialRamzaTheme - theme from config: {theme}");
             ApplyRamzaTheme(theme);
         }
 
@@ -207,9 +224,29 @@ namespace FFTColorCustomizer.Services
         private void ApplyRamzaTheme(string theme)
         {
             _themeService.ApplyTheme("Ramza", theme);
-            // Ramza uses tex files instead of sprite files
-            var texFileManager = new TexFileManager();
-            texFileManager.CopyTexFilesForTheme("Ramza", theme, _modPath);
+
+            // Ramza uses tex files - themes are stored in RamzaThemes folder at mod root
+            // - modRootPath: Root of the deployed mod (contains RamzaThemes folder)
+            // - gameTexPath: Where the game reads tex files from (g2d directory)
+            var modRootPath = _modPath;
+            var gameTexPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "system", "ffto", "g2d");
+
+            ModLogger.LogDebug($"Applying Ramza tex theme: {theme}");
+            ModLogger.LogDebug($"Mod root: {modRootPath}");
+            ModLogger.LogDebug($"Game tex path: {gameTexPath}");
+
+            var texSwapper = new RamzaTexSwapper(modRootPath, gameTexPath);
+
+            if (theme == "original")
+            {
+                texSwapper.RestoreOriginalTexFiles();
+                ModLogger.Log($"Restored original Ramza tex files from original_backup/");
+            }
+            else
+            {
+                texSwapper.SwapTexFilesForTheme(theme);
+                ModLogger.Log($"Swapped Ramza tex files to theme: {theme} from {theme}/");
+            }
         }
 
         private void ApplyOrlandeauTheme(string theme)
@@ -344,7 +381,20 @@ namespace FFTColorCustomizer.Services
 
             public string GetConfigPath()
             {
-                return Path.Combine(_modPath, "Config.json");
+                // First try User/Mods/paxtrick.fft.colorcustomizer directory (where user's config is saved)
+                var reloadedDir = Path.GetDirectoryName(Path.GetDirectoryName(_modPath)); // Go up to Reloaded directory
+                var userConfigPath = Path.Combine(reloadedDir, "User", "Mods", "paxtrick.fft.colorcustomizer", "Config.json");
+
+                if (File.Exists(userConfigPath))
+                {
+                    ModLogger.LogDebug($"Loading config from User directory: {userConfigPath}");
+                    return userConfigPath;
+                }
+
+                // Fall back to mod directory
+                var modConfigPath = Path.Combine(_modPath, "Config.json");
+                ModLogger.LogDebug($"Loading config from mod directory: {modConfigPath}");
+                return modConfigPath;
             }
 
             public string GetDataPath(string relativePath)

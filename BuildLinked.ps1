@@ -50,10 +50,14 @@ if ($LASTEXITCODE -eq 0) {
         Copy-Item "ColorMod/Preview.png" "$modPath/Preview.png" -Force
     }
 
-    # Copy Config.json for configuration settings
+    # Copy Config.json only if it doesn't exist (don't overwrite user's config)
     if (Test-Path "ColorMod/Config.json") {
-        Write-Host "Copying Config.json..." -ForegroundColor Cyan
-        Copy-Item "ColorMod/Config.json" "$modPath/Config.json" -Force
+        if (!(Test-Path "$modPath/Config.json")) {
+            Write-Host "Copying default Config.json..." -ForegroundColor Cyan
+            Copy-Item "ColorMod/Config.json" "$modPath/Config.json" -Force
+        } else {
+            Write-Host "Config.json already exists, preserving user settings..." -ForegroundColor Yellow
+        }
     }
 
     # Create User config directory and copy configs there
@@ -116,22 +120,44 @@ if ($LASTEXITCODE -eq 0) {
             # Copy system/ffto/g2d tex files if they exist
             $g2dSourcePath = "ColorMod/FFTIVC/data/enhanced/system/ffto/g2d"
             if (Test-Path $g2dSourcePath) {
-                Write-Host "Copying G2D tex files..." -ForegroundColor Cyan
+                Write-Host "Setting up G2D directory..." -ForegroundColor Cyan
                 $g2dDestPath = "$modPath/FFTIVC/data/enhanced/system/ffto/g2d"
                 New-Item -ItemType Directory -Force -Path $g2dDestPath | Out-Null
-                Copy-Item "$g2dSourcePath/*.bin" $g2dDestPath -Force
-                $texCount = (Get-ChildItem "$g2dSourcePath/*.bin" 2>$null | Measure-Object).Count
-                Write-Host "Copied $texCount G2D tex files" -ForegroundColor Green
 
-                # Copy tex theme directories (for Ramza themes)
-                $themesPath = "$g2dSourcePath/themes"
-                if (Test-Path $themesPath) {
-                    Write-Host "Copying G2D theme directories..." -ForegroundColor Cyan
-                    $themesDestPath = "$g2dDestPath/themes"
-                    New-Item -ItemType Directory -Force -Path $themesDestPath | Out-Null
-                    Copy-Item "$themesPath/*" $themesDestPath -Recurse -Force
-                    $themeCount = (Get-ChildItem "$themesPath" -Directory | Measure-Object).Count
-                    Write-Host "Copied $themeCount G2D theme directories" -ForegroundColor Green
+                # Don't copy Ramza tex files (830-835) to root - let game use built-in for original theme
+                # Only copy other tex files if they exist
+                $nonRamzaFiles = Get-ChildItem "$g2dSourcePath/*.bin" -File | Where-Object {
+                    $_.Name -notmatch "tex_83[0-5]\.bin"
+                }
+                if ($nonRamzaFiles) {
+                    $nonRamzaFiles | Copy-Item -Destination $g2dDestPath -Force
+                    $texCount = ($nonRamzaFiles | Measure-Object).Count
+                    Write-Host "Copied $texCount non-Ramza G2D tex files" -ForegroundColor Green
+                } else {
+                    Write-Host "No tex files to copy (using game built-in for Ramza)" -ForegroundColor Gray
+                }
+
+                # Check user's config and copy appropriate Ramza tex files
+                $userConfigPath = "C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json"
+                if (Test-Path $userConfigPath) {
+                    $userConfig = Get-Content $userConfigPath | ConvertFrom-Json
+                    $ramzaTheme = $userConfig.RamzaChapter1
+
+                    if ($ramzaTheme -and $ramzaTheme -ne "original") {
+                        Write-Host "  Deploying Ramza tex files for theme: $ramzaTheme" -ForegroundColor Cyan
+
+                        # Copy tex files from source theme directory
+                        $themeTexPath = "$g2dSourcePath/$ramzaTheme"
+                        if (Test-Path $themeTexPath) {
+                            Copy-Item "$themeTexPath/tex_83*.bin" $g2dDestPath -Force
+                            $texCount = (Get-ChildItem "$g2dDestPath/tex_83*.bin" | Measure-Object).Count
+                            Write-Host "  Copied $texCount Ramza tex files for $ramzaTheme theme" -ForegroundColor Green
+                        }
+                    } else {
+                        Write-Host "  Ramza set to original theme - no tex files deployed" -ForegroundColor Gray
+                    }
+                } else {
+                    Write-Host "  No user config found - tex themes will be managed at runtime" -ForegroundColor Yellow
                 }
             }
 
@@ -181,6 +207,36 @@ if ($LASTEXITCODE -eq 0) {
             $verificationErrors += "No sprite files in main directory: $mainSpriteDir"
         } else {
             Write-Host "  [OK] Main sprite directory has $mainSpriteCount files" -ForegroundColor Green
+        }
+    }
+
+    # Copy Ramza theme tex files to RamzaThemes folder (outside game scan path)
+    Write-Host "Copying Ramza theme tex files to RamzaThemes folder..." -ForegroundColor Cyan
+    $ramzaThemesSource = "$PSScriptRoot/ColorMod/FFTIVC/data/enhanced/system/ffto/g2d"
+    $ramzaThemesDest = "$modPath/RamzaThemes"
+
+    if (Test-Path $ramzaThemesSource) {
+        # Copy white_heretic theme if it exists
+        $whiteHereticPath = "$ramzaThemesSource/white_heretic"
+        if (Test-Path $whiteHereticPath) {
+            $whiteHereticDest = "$ramzaThemesDest/white_heretic"
+            New-Item -ItemType Directory -Force -Path $whiteHereticDest | Out-Null
+            Copy-Item "$whiteHereticPath/*.bin" -Destination $whiteHereticDest -Force
+            $texCount = (Get-ChildItem "$whiteHereticDest/*.bin" | Measure-Object).Count
+            Write-Host "  Copied $texCount tex files for white_heretic theme" -ForegroundColor Green
+        }
+
+        # Copy any other theme directories (black_variant, red_variant, etc.)
+        $otherThemes = @("black_variant", "red_variant", "test_variant")
+        foreach ($themeName in $otherThemes) {
+            $themePath = "$ramzaThemesSource/$themeName"
+            if (Test-Path $themePath) {
+                $themeDest = "$ramzaThemesDest/$themeName"
+                New-Item -ItemType Directory -Force -Path $themeDest | Out-Null
+                Copy-Item "$themePath/*.bin" -Destination $themeDest -Force
+                $texCount = (Get-ChildItem "$themeDest/*.bin" | Measure-Object).Count
+                Write-Host "  Copied $texCount tex files for $themeName theme" -ForegroundColor Green
+            }
         }
     }
 
