@@ -260,8 +260,20 @@ namespace FFTColorCustomizer.Utilities
                         File.Copy(originalFile, storyDestFile, true);
                         ModLogger.Log($"✓ Restored original sprite for {characterName}: {spriteName}");
                     }
+                    catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
+                    {
+                        // File is locked by the game - this is expected during runtime
+                        // The InterceptFilePath will handle the redirection
+                        ModLogger.LogDebug($"Sprite {spriteName} is in use, skipping restoration (will use path redirection)");
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        // Permission issue - likely the file is read-only or locked
+                        ModLogger.LogDebug($"Cannot overwrite {spriteName} (access denied), using path redirection");
+                    }
                     catch (Exception ex)
                     {
+                        // Other unexpected errors should still be logged as errors
                         ModLogger.LogError($"Failed to restore original sprite for {characterName}/{spriteName}: {ex.Message}");
                     }
                 }
@@ -314,8 +326,18 @@ namespace FFTColorCustomizer.Utilities
                 File.Copy(sourceFile, destFile, true);
                 ModLogger.LogSuccess($"Applied {characterName} theme: {themeName} - copied to {Path.GetFileName(destFile)}");
             }
+            catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
+            {
+                // File is locked by the game - this is expected during runtime
+                ModLogger.LogDebug($"Sprite {spriteName} is in use, theme will be applied via path redirection");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                ModLogger.LogDebug($"Cannot overwrite {spriteName} (access denied), using path redirection");
+            }
             catch (Exception ex)
             {
+                // Log other unexpected errors
                 ModLogger.LogError($"Error copying {characterName} sprite: {ex.Message}");
             }
         }
@@ -507,8 +529,20 @@ namespace FFTColorCustomizer.Utilities
                         File.Copy(originalFile, originalDestFile, true);
                         ModLogger.Log($"✓ Restored original sprite: {spriteName}");
                     }
+                    catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
+                    {
+                        // File is locked by the game - this is expected during runtime
+                        // The InterceptFilePath will handle the redirection
+                        ModLogger.LogDebug($"Sprite {spriteName} is in use, skipping restoration (will use path redirection)");
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        // Permission issue - likely the file is read-only or locked
+                        ModLogger.LogDebug($"Cannot overwrite {spriteName} (access denied), using path redirection");
+                    }
                     catch (Exception ex)
                     {
+                        // Other unexpected errors should still be logged as errors
                         ModLogger.LogError($"Failed to restore original sprite {spriteName}: {ex.Message}");
                     }
                 }
@@ -580,6 +614,15 @@ namespace FFTColorCustomizer.Utilities
 
                 File.Copy(sourceFile, destFile, true);
                 ModLogger.LogSuccess($"Copied {colorScheme} theme for {jobType} to {destFile}");
+            }
+            catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
+            {
+                // File is locked by the game - this is expected during runtime
+                ModLogger.LogDebug($"Sprite {spriteName} is in use, theme will be applied via path redirection");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                ModLogger.LogDebug($"Cannot overwrite {spriteName} (access denied), using path redirection");
             }
             catch (Exception ex)
             {
