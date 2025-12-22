@@ -30,6 +30,7 @@ public class Mod : IMod, IConfigurable
     private readonly bool _isTestEnvironment;
     private readonly IInputSimulator? _inputSimulator;
     private readonly IHotkeyHandler? _hotkeyHandler;
+    private bool _hasStarted = false;
 
     // Events
     public event Action? ConfigUIRequested;
@@ -196,6 +197,15 @@ public class Mod : IMod, IConfigurable
     public void Start(IModLoader? modLoader)
     {
         ModLogger.Log("Start method called");
+
+        // Prevent duplicate initialization
+        if (_hasStarted)
+        {
+            ModLogger.LogDebug("Start already called, skipping duplicate initialization");
+            return;
+        }
+        _hasStarted = true;
+
         ModLogger.LogDebug($"_hotkeyHandler exists: {_hotkeyHandler != null}");
         ModLogger.LogDebug($"_inputSimulator exists: {_inputSimulator != null}");
         ModLogger.LogDebug($"_configCoordinator exists: {_configCoordinator != null}");
@@ -427,10 +437,38 @@ public class Mod : IMod, IConfigurable
             return originalPath;
         }
 
+        // First, try to use per-job configuration if available
+        // This fixes the hot reload issue where F1 config changes weren't being applied
+        if (_configCoordinator != null)
+        {
+            var fileName = Path.GetFileName(originalPath);
+
+            // Check if this is a job sprite that might have a per-job configuration
+            if (fileName.Contains("battle_") && fileName.EndsWith("_spr.bin"))
+            {
+                var jobColor = GetJobColorForSprite(fileName);
+                if (!string.IsNullOrEmpty(jobColor) && jobColor != "original")
+                {
+                    // Build the themed sprite path
+                    var themedDir = Path.Combine(_modPath, FFTIVCPath, DataPath, EnhancedPath,
+                        FFTPackPath, UnitPath, $"{SpritesPrefix}{jobColor}");
+                    var themedPath = Path.Combine(themedDir, fileName);
+
+                    // Return themed path if it exists
+                    if (File.Exists(themedPath))
+                    {
+                        ModLogger.LogSuccess($"[INTERCEPT] Per-job redirect: {Path.GetFileName(originalPath)} -> {jobColor}/{Path.GetFileName(themedPath)}");
+                        return themedPath;
+                    }
+                }
+            }
+        }
+
+        // Fall back to the original global theme behavior
         var result = _themeCoordinator.InterceptFilePath(originalPath);
         if (result != originalPath)
         {
-            ModLogger.LogSuccess($"[INTERCEPT] Redirected: {Path.GetFileName(originalPath)} -> {Path.GetFileName(result)}");
+            ModLogger.LogSuccess($"[INTERCEPT] Global redirect: {Path.GetFileName(originalPath)} -> {Path.GetFileName(result)}");
             Console.WriteLine($"[FFT Color Mod] Intercepted: {Path.GetFileName(originalPath)} -> {Path.GetFileName(result)}");
         }
         else
@@ -442,6 +480,27 @@ public class Mod : IMod, IConfigurable
             }
         }
         return result;
+    }
+
+    private string GetJobColorForSprite(string spriteName)
+    {
+        // Use JobClassService to get the job class from sprite name
+        // This uses the data from JobClasses.json instead of hardcoding
+        var jobClassService = Services.JobClassServiceSingleton.Instance;
+        if (jobClassService == null)
+        {
+            ModLogger.LogDebug($"JobClassService not initialized for sprite: {spriteName}");
+            return null;
+        }
+
+        var jobClass = jobClassService.GetJobClassBySpriteName(spriteName);
+        if (jobClass != null)
+        {
+            // jobClass.Name is the property name (e.g., "Knight_Male")
+            return GetJobColor(jobClass.Name);
+        }
+
+        return null;
     }
 
     public ThemeManager? GetThemeManager()
