@@ -40,6 +40,7 @@ namespace FFTColorCustomizer.Services
         public void ApplyInitialThemes()
         {
             ModLogger.LogDebug("ThemeManagerAdapter.ApplyInitialThemes() called");
+            ApplyInitialRamzaTheme();
             ApplyInitialOrlandeauTheme();
             ApplyInitialAgriasTheme();
             ApplyInitialCloudTheme();
@@ -49,6 +50,14 @@ namespace FFTColorCustomizer.Services
             ApplyInitialMeliadoulTheme();
             ApplyInitialRaphaTheme();
             ApplyInitialReisTheme();
+        }
+
+        public void CycleRamzaTheme()
+        {
+            var nextTheme = _themeService.CycleTheme("Ramza");
+            _storyCharacterManager.SetCurrentTheme("Ramza", nextTheme);
+            ModLogger.Log($"Ramza theme: {nextTheme}");
+            ApplyRamzaTheme(nextTheme);
         }
 
         public void CycleOrlandeauTheme()
@@ -125,6 +134,13 @@ namespace FFTColorCustomizer.Services
             ApplyReisTheme(nextTheme);
         }
 
+        private void ApplyInitialRamzaTheme()
+        {
+            var theme = _storyCharacterManager.GetCurrentTheme("Ramza");
+            ModLogger.LogDebug($"ApplyInitialRamzaTheme - theme: {theme}");
+            ApplyRamzaTheme(theme);
+        }
+
         private void ApplyInitialOrlandeauTheme()
         {
             var theme = _storyCharacterManager.GetCurrentTheme("Orlandeau");
@@ -186,6 +202,14 @@ namespace FFTColorCustomizer.Services
             var theme = _storyCharacterManager.GetCurrentTheme("Reis");
             ModLogger.LogDebug($"ApplyInitialReisTheme - theme: {theme}");
             ApplyReisTheme(theme);
+        }
+
+        private void ApplyRamzaTheme(string theme)
+        {
+            _themeService.ApplyTheme("Ramza", theme);
+            // Ramza uses tex files instead of sprite files
+            var texFileManager = new TexFileManager();
+            texFileManager.CopyTexFilesForTheme("Ramza", theme, _modPath);
         }
 
         private void ApplyOrlandeauTheme(string theme)
@@ -288,6 +312,7 @@ namespace FFTColorCustomizer.Services
         {
             return character switch
             {
+                "Ramza" => new[] { "battle_ramuza_spr.bin", "battle_ramuza2_spr.bin", "battle_ramuza3_spr.bin" },
                 "Orlandeau" => new[] { "battle_oru_spr.bin", "battle_oru_out.bin" },
                 "Agrias" => new[] { "battle_aguri_spr.bin", "battle_aguri_out.bin" },
                 "Cloud" => new[] { "battle_cloud_spr.bin", "battle_cloud_out.bin" },

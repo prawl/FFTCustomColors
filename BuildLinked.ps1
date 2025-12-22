@@ -113,6 +113,28 @@ if ($LASTEXITCODE -eq 0) {
             $storyFolderCount = $storyCharacterFolders.Count
             Write-Host "Copied $storyFolderCount story character theme folders" -ForegroundColor Green
 
+            # Copy system/ffto/g2d tex files if they exist
+            $g2dSourcePath = "ColorMod/FFTIVC/data/enhanced/system/ffto/g2d"
+            if (Test-Path $g2dSourcePath) {
+                Write-Host "Copying G2D tex files..." -ForegroundColor Cyan
+                $g2dDestPath = "$modPath/FFTIVC/data/enhanced/system/ffto/g2d"
+                New-Item -ItemType Directory -Force -Path $g2dDestPath | Out-Null
+                Copy-Item "$g2dSourcePath/*.bin" $g2dDestPath -Force
+                $texCount = (Get-ChildItem "$g2dSourcePath/*.bin" 2>$null | Measure-Object).Count
+                Write-Host "Copied $texCount G2D tex files" -ForegroundColor Green
+
+                # Copy tex theme directories (for Ramza themes)
+                $themesPath = "$g2dSourcePath/themes"
+                if (Test-Path $themesPath) {
+                    Write-Host "Copying G2D theme directories..." -ForegroundColor Cyan
+                    $themesDestPath = "$g2dDestPath/themes"
+                    New-Item -ItemType Directory -Force -Path $themesDestPath | Out-Null
+                    Copy-Item "$themesPath/*" $themesDestPath -Recurse -Force
+                    $themeCount = (Get-ChildItem "$themesPath" -Directory | Measure-Object).Count
+                    Write-Host "Copied $themeCount G2D theme directories" -ForegroundColor Green
+                }
+            }
+
             # Copy generic job themed folders (e.g., sprites_crimson_red, sprites_lucavi)
             Write-Host "Copying generic job themed sprites..." -ForegroundColor Cyan
             $genericThemeFolders = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/" -Directory |

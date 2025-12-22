@@ -160,8 +160,9 @@ namespace FFTColorCustomizer.Configuration.UI
 
         public void AddStoryCharacterRow(int row, StoryCharacterRegistry.StoryCharacterConfig characterConfig)
         {
-            // Create label
-            var label = ConfigUIComponentFactory.CreateCharacterLabel(characterConfig.Name);
+            // Create label with display name
+            var displayName = GetCharacterDisplayName(characterConfig.Name);
+            var label = ConfigUIComponentFactory.CreateCharacterLabel(displayName);
             _mainPanel.Controls.Add(label, 0, row);
             _storyCharacterControls.Add(label);
 
@@ -406,7 +407,8 @@ namespace FFTColorCustomizer.Configuration.UI
             }
 
             // First try to load from .bin file if it exists
-            var binImages = TryLoadFromBinFile(characterName, theme);
+            // For characters that use tex files (like Ramza), apply theme transformation
+            var binImages = TryLoadFromBinFileWithTheme(characterName, theme);
             if (binImages != null && binImages.Length > 0)
             {
                 carousel.SetImages(binImages);
@@ -476,6 +478,41 @@ namespace FFTColorCustomizer.Configuration.UI
                     }
                 }
             }
+        }
+
+        private Image[] TryLoadFromBinFileWithTheme(string characterName, string theme)
+        {
+            // Load the base sprites
+            var baseImages = TryLoadFromBinFile(characterName, theme);
+
+            if (baseImages == null || baseImages.Length == 0)
+                return null;
+
+            // Check if this character uses tex files (needs theme transformation)
+            var texFileManager = new TexFileManager();
+            if (texFileManager.UsesTexFiles(characterName))
+            {
+                // Apply theme transformation to the sprites
+                var transformer = new RamzaColorTransformer();
+                var transformedImages = new Image[baseImages.Length];
+
+                for (int i = 0; i < baseImages.Length; i++)
+                {
+                    if (baseImages[i] is Bitmap bitmap)
+                    {
+                        transformedImages[i] = transformer.TransformBitmap(bitmap, theme);
+                    }
+                    else
+                    {
+                        transformedImages[i] = baseImages[i];
+                    }
+                }
+
+                return transformedImages;
+            }
+
+            // No transformation needed
+            return baseImages;
         }
 
         private Image[] TryLoadFromBinFile(string characterName, string theme)
@@ -658,11 +695,34 @@ namespace FFTColorCustomizer.Configuration.UI
             }
         }
 
+        private string GetCharacterDisplayName(string characterName)
+        {
+            switch (characterName)
+            {
+                case "RamzaChapter1":
+                    return "Ramza (Chapter 1)";
+                case "RamzaChapter2":
+                    return "Ramza (Chapter 2)";
+                case "RamzaChapter34":
+                    return "Ramza (Chapter 3 & 4)";
+                default:
+                    return characterName;
+            }
+        }
+
         private string GetInternalSpriteName(string characterName)
         {
             // Map display names to internal FFT sprite file names
             switch (characterName.ToLower())
             {
+                case "ramza":
+                    return "ramuza";
+                case "ramzachapter1":
+                    return "ramuza";
+                case "ramzachapter2":
+                    return "ramuza2";
+                case "ramzachapter34":
+                    return "ramuza3";
                 case "agrias":
                     return "aguri";
                 case "cloud":

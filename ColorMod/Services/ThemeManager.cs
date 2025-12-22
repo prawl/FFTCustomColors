@@ -13,6 +13,7 @@ namespace FFTColorCustomizer.Services
         }
 
         // Make methods virtual for testing
+        public new virtual void CycleRamzaTheme() => base.CycleRamzaTheme();
         public new virtual void CycleOrlandeauTheme() => base.CycleOrlandeauTheme();
         public new virtual void CycleAgriasTheme() => base.CycleAgriasTheme();
         public new virtual void CycleCloudTheme() => base.CycleCloudTheme();

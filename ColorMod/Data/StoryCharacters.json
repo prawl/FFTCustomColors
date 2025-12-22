@@ -1,6 +1,39 @@
 {
   "characters": [
     {
+      "name": "RamzaChapter1",
+      "spriteNames": [
+        "ramuza"
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original",
+        "white_heretic"
+      ]
+    },
+    {
+      "name": "RamzaChapter2",
+      "spriteNames": [
+        "ramuza2"
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original",
+        "white_heretic"
+      ]
+    },
+    {
+      "name": "RamzaChapter34",
+      "spriteNames": [
+        "ramuza3"
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original",
+        "white_heretic"
+      ]
+    },
+    {
       "name": "Agrias",
       "spriteNames": [
         "aguri",
@@ -164,8 +197,7 @@
     {
       "name": "Meliadoul",
       "spriteNames": [
-        "h80",
-        "h85"
+        "h80"
       ],
       "defaultTheme": "original",
       "availableThemes": [

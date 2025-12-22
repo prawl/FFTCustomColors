@@ -408,6 +408,27 @@ namespace FFTColorCustomizer.Configuration
         }
 
         // Story Character Properties (string-based themes)
+        [Newtonsoft.Json.JsonProperty("RamzaChapter1")]
+        public string RamzaChapter1
+        {
+            get => GetStoryCharacterTheme("RamzaChapter1");
+            set => SetStoryCharacterTheme("RamzaChapter1", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("RamzaChapter2")]
+        public string RamzaChapter2
+        {
+            get => GetStoryCharacterTheme("RamzaChapter2");
+            set => SetStoryCharacterTheme("RamzaChapter2", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("RamzaChapter34")]
+        public string RamzaChapter34
+        {
+            get => GetStoryCharacterTheme("RamzaChapter34");
+            set => SetStoryCharacterTheme("RamzaChapter34", value);
+        }
+
         [Newtonsoft.Json.JsonProperty("Agrias")]
         public string Agrias
         {
@@ -475,6 +496,21 @@ namespace FFTColorCustomizer.Configuration
         public JobMetadata GetJobMetadata(string jobKey)
         {
             return _jobMetadata.GetValueOrDefault(jobKey);
+        }
+
+        public string GetDisplayName(string characterName)
+        {
+            switch (characterName)
+            {
+                case "RamzaChapter1":
+                    return "Ramza (Chapter 1)";
+                case "RamzaChapter2":
+                    return "Ramza (Chapter 2)";
+                case "RamzaChapter34":
+                    return "Ramza (Chapter 3 & 4)";
+                default:
+                    return characterName;
+            }
         }
 
         public IEnumerable<string> GetAllJobKeys()

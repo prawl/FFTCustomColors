@@ -134,6 +134,24 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
+        /// Get the display name for a character
+        /// </summary>
+        public string GetCharacterDisplayName(string characterName)
+        {
+            switch (characterName)
+            {
+                case "RamzaChapter1":
+                    return "Ramza (Chapter 1)";
+                case "RamzaChapter2":
+                    return "Ramza (Chapter 2)";
+                case "RamzaChapter34":
+                    return "Ramza (Chapter 3 & 4)";
+                default:
+                    return characterName;
+            }
+        }
+
+        /// <summary>
         /// Cycle to the next theme for a character
         /// </summary>
         public string CycleTheme(string characterName)

@@ -139,7 +139,11 @@ namespace FFTColorCustomizer.Configuration
 
             // Load all available story characters from the registry
             // The registry automatically loads from StoryCharacters.json
-            foreach (var characterConfig in _storyCharacters.Values.OrderBy(c => c.Name))
+            // Put Ramza first, then sort the rest alphabetically
+            var sortedCharacters = _storyCharacters.Values
+                .OrderBy(c => c.Name == "Ramza" ? "0" : c.Name);
+
+            foreach (var characterConfig in sortedCharacters)
             {
                 _rowBuilder.AddStoryCharacterRow(row++, characterConfig);
             }
