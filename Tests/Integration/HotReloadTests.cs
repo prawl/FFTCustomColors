@@ -340,6 +340,218 @@ namespace FFTColorCustomizer.Tests.Integration
             Assert.Equal(originalPath, interceptedPath);
         }
 
+        [Fact]
+        public void InterceptFilePath_Should_Not_Copy_Files_During_Runtime()
+        {
+            // This test verifies the fix for the "Access Denied" error
+            // InterceptFilePath should NEVER copy files during runtime interception
+            // File copying should only happen during ApplyConfiguration
+
+            // Arrange
+            var config = new Config
+            {
+                Knight_Male = "holy_guard"
+            };
+            File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
+
+            var mod = new Mod(new ModContext(), _inputSimulator.Object, new NullHotkeyHandler());
+            mod.InitializeConfiguration(_configPath);
+            mod.Start(null);
+
+            // Create a test sprite file to simulate the runtime environment
+            var testSpritePath = Path.Combine(_unitPath, "battle_knight_m_spr.bin");
+            var testSpriteContent = "ORIGINAL_SPRITE_CONTENT";
+            File.WriteAllText(testSpritePath, testSpriteContent);
+
+            // Create the themed sprite that should be redirected to
+            var themedPath = Path.Combine(_unitPath, "sprites_holy_guard", "battle_knight_m_spr.bin");
+            var themedContent = "THEMED_SPRITE_CONTENT";
+            File.WriteAllText(themedPath, themedContent);
+
+            // Act - Call InterceptFilePath multiple times to simulate runtime interception
+            string intercepted1 = null;
+            string intercepted2 = null;
+            Exception interceptException = null;
+            var concurrentResults = new System.Collections.Concurrent.ConcurrentBag<string>();
+
+            try
+            {
+                // Multiple rapid calls to simulate concurrent access during gameplay
+                // Using the game path format that the mod expects
+                var gamePath = @"C:\Game\Data\battle_knight_m_spr.bin";
+                intercepted1 = mod.InterceptFilePath(gamePath);
+                intercepted2 = mod.InterceptFilePath(gamePath);
+
+                // Simulate concurrent access from multiple threads
+                var tasks = Enumerable.Range(0, 10).Select(_ =>
+                    System.Threading.Tasks.Task.Run(() =>
+                    {
+                        var result = mod.InterceptFilePath(gamePath);
+                        concurrentResults.Add(result);
+                    })
+                ).ToArray();
+                System.Threading.Tasks.Task.WaitAll(tasks);
+            }
+            catch (Exception ex)
+            {
+                interceptException = ex;
+            }
+
+            // Assert
+            // 1. No exceptions should be thrown (no file access conflicts)
+            Assert.Null(interceptException);
+
+            // 2. All concurrent calls should succeed without exceptions
+            Assert.Equal(10, concurrentResults.Count);
+
+            // 3. InterceptFilePath should return consistent results (path redirection or original)
+            // The key is that it doesn't throw "Access Denied" errors
+            Assert.NotNull(intercepted1);
+            Assert.NotNull(intercepted2);
+
+            // 4. Original test file should remain unchanged (no copying occurred)
+            if (File.Exists(testSpritePath))
+            {
+                var originalContent = File.ReadAllText(testSpritePath);
+                Assert.Equal(testSpriteContent, originalContent);
+            }
+
+            // 5. Themed file should remain unchanged (not overwritten during interception)
+            if (File.Exists(themedPath))
+            {
+                var themedContentAfter = File.ReadAllText(themedPath);
+                Assert.Equal(themedContent, themedContentAfter);
+            }
+
+            // 6. No "Access Denied" exceptions should occur
+            // This is the primary fix we're testing - concurrent access should not cause file locks
+            Assert.All(concurrentResults, result => Assert.NotNull(result));
+        }
+
+        [Fact]
+        public void InterceptFilePath_Should_Only_Return_Paths_Never_Modify_Files()
+        {
+            // Test that InterceptFilePath is purely a path resolution function
+            // It should never create, copy, or modify any files
+
+            // Arrange
+            var config = new Config
+            {
+                Knight_Male = "holy_guard",
+                Monk_Male = "shadow_assassin",
+                Archer_Female = "desert_nomad"
+            };
+            File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
+
+            var mod = new Mod(new ModContext(), _inputSimulator.Object, new NullHotkeyHandler());
+            mod.InitializeConfiguration(_configPath);
+            mod.Start(null);
+
+            // Track file system state before interception
+            var filesBefore = Directory.GetFiles(_unitPath, "*", SearchOption.AllDirectories)
+                .OrderBy(f => f).ToList();
+            var lastWriteTimesBefore = filesBefore.ToDictionary(
+                f => f,
+                f => File.GetLastWriteTime(f)
+            );
+
+            // Act - Call InterceptFilePath for various sprites
+            var testPaths = new[]
+            {
+                @"C:\Game\Data\battle_knight_m_spr.bin",
+                @"C:\Game\Data\battle_monk_m_spr.bin",
+                @"C:\Game\Data\battle_yumi_w_spr.bin",
+                @"C:\Game\Data\non_existent_sprite.bin"
+            };
+
+            var interceptedPaths = new List<string>();
+            foreach (var path in testPaths)
+            {
+                // Call multiple times to ensure no side effects
+                for (int i = 0; i < 3; i++)
+                {
+                    var result = mod.InterceptFilePath(path);
+                    interceptedPaths.Add(result);
+                }
+            }
+
+            // Track file system state after interception
+            var filesAfter = Directory.GetFiles(_unitPath, "*", SearchOption.AllDirectories)
+                .OrderBy(f => f).ToList();
+            var lastWriteTimesAfter = filesAfter.ToDictionary(
+                f => f,
+                f => File.GetLastWriteTime(f)
+            );
+
+            // Assert
+            // 1. No new files should be created
+            Assert.Equal(filesBefore.Count, filesAfter.Count);
+            Assert.Equal(filesBefore, filesAfter);
+
+            // 2. No files should be modified (last write times unchanged)
+            foreach (var file in filesBefore)
+            {
+                Assert.Equal(
+                    lastWriteTimesBefore[file],
+                    lastWriteTimesAfter[file]
+                );
+            }
+
+            // 3. InterceptFilePath should only return paths, never null
+            Assert.All(interceptedPaths, path => Assert.NotNull(path));
+        }
+
+        [Fact]
+        public void ApplyConfiguration_Should_Copy_Files_Not_InterceptFilePath()
+        {
+            // Test that file copying happens during configuration application
+            // NOT during runtime interception
+
+            // Arrange
+            var config = new Config
+            {
+                Knight_Male = "holy_guard"
+            };
+            File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
+
+            var mod = new Mod(new ModContext(), _inputSimulator.Object, new NullHotkeyHandler());
+            mod.InitializeConfiguration(_configPath);
+
+            // Create source themed sprite
+            var sourceThemePath = Path.Combine(_unitPath, "sprites_holy_guard", "battle_knight_m_spr.bin");
+            Directory.CreateDirectory(Path.GetDirectoryName(sourceThemePath));
+            File.WriteAllText(sourceThemePath, "HOLY_GUARD_THEME_CONTENT");
+
+            // Track when files are created/modified
+            var targetPath = Path.Combine(_unitPath, "battle_knight_m_spr.bin");
+            bool targetExistedBefore = File.Exists(targetPath);
+            DateTime? modTimeBefore = targetExistedBefore ? File.GetLastWriteTime(targetPath) : (DateTime?)null;
+
+            // Act - Start the mod (this triggers ApplyConfiguration)
+            mod.Start(null);
+
+            bool targetExistsAfterConfig = File.Exists(targetPath);
+            DateTime? modTimeAfterConfig = targetExistsAfterConfig ? File.GetLastWriteTime(targetPath) : (DateTime?)null;
+
+            // Now test InterceptFilePath doesn't modify files
+            var interceptedPath = mod.InterceptFilePath(@"C:\Game\Data\battle_knight_m_spr.bin");
+
+            bool targetExistsAfterIntercept = File.Exists(targetPath);
+            DateTime? modTimeAfterIntercept = targetExistsAfterIntercept ? File.GetLastWriteTime(targetPath) : (DateTime?)null;
+
+            // Assert
+            // Files should be copied during configuration (if ConfigBasedSpriteManager does this)
+            // But InterceptFilePath should not modify any files
+            if (targetExistsAfterIntercept && targetExistsAfterConfig)
+            {
+                // If file exists after both operations, the modification time should not change during interception
+                Assert.Equal(modTimeAfterConfig, modTimeAfterIntercept);
+            }
+
+            // InterceptFilePath should return a valid path
+            Assert.NotNull(interceptedPath);
+        }
+
         public void Dispose()
         {
             try

@@ -355,28 +355,24 @@ namespace FFTColorCustomizer.Utilities
                 return originalPath;
             }
 
-            // Build new path with color scheme
-            var sourceVariantPath = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}", fileName);
-
-            if (File.Exists(sourceVariantPath))
-            {
-                var deploymentPath = Path.Combine(_unitPath, fileName);
-                try
-                {
-                    File.Copy(sourceVariantPath, deploymentPath, true);
-                    ModLogger.Log($"Copied theme file from {sourceVariantPath} to {deploymentPath}");
-                }
-                catch (Exception ex)
-                {
-                    ModLogger.LogError($"Failed to copy theme file: {ex.Message}");
-                }
-                return deploymentPath;
-            }
-
+            // Build path to the themed sprite
+            // DO NOT copy files during interception - this causes "Access Denied" errors
+            // Files should already be copied when configuration is applied
             var variantPath = Path.Combine(_unitPath, $"sprites_{colorScheme}", fileName);
             if (File.Exists(variantPath))
             {
+                ModLogger.LogDebug($"Redirecting {fileName} to themed variant: {colorScheme}");
                 return variantPath;
+            }
+
+            // If the themed file doesn't exist in the expected location,
+            // check if it exists in the source location (but don't copy it)
+            var sourceVariantPath = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}", fileName);
+            if (File.Exists(sourceVariantPath))
+            {
+                ModLogger.LogDebug($"Theme file exists in source but not deployed: {colorScheme}/{fileName}");
+                // Return original path since we can't copy during interception
+                return originalPath;
             }
 
             if (originalPath.Contains("sprites_"))
