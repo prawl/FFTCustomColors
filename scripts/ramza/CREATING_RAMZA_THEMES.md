@@ -11,6 +11,82 @@ Ramza's color themes require **TEX files** (texture/UV mapping files), not just 
   - These are the actual texture files that define Ramza's colors
   - Different numbered files correspond to different Ramza chapters/appearances
 
+## Ramza Sprite Color Reference (Complete Analysis)
+
+### Chapter-Specific Color Mappings
+
+#### Chapter 1 Ramza
+**What Each Color Controls:**
+- **Armor (Blues)** → Main armor (chest/arms)
+  - RGB(48, 72, 104) - Main armor
+  - RGB(56, 96, 136) - Light armor parts
+  - RGB(40, 56, 80) - Dark armor shadows
+  - RGB(80, 128, 184) - Bright armor highlights
+
+- **Hair/Skin (Browns)** → Hair/face/under armor shirt/knee centers/back stripes
+  - RGB(72, 48, 40) - Dark brown hair
+  - RGB(104, 72, 24) - Medium brown
+  - RGB(104, 64, 32) - Brown shadows
+  - RGB(160, 104, 40) - Light brown
+  - RGB(144, 80, 40) - Medium brown
+
+- **Accessories (Golds)** → Gloves/legs/feet
+  - RGB(216, 160, 72) - Gold trim
+  - RGB(200, 136, 80) - Dark gold
+  - RGB(232, 192, 128) - Light gold
+
+- **Outlines (Grays)** → Outlines (hands/feet/legs/eyebrows)
+  - RGB(40, 40, 32) - Dark gray/metal
+  - RGB(224, 224, 216) - Light gray/silver
+
+#### Chapter 2 Ramza
+**What Each Color Controls:**
+- **Armor (Purples)** → Main armor (chest/arms)
+  - RGB(48, 40, 80) - Dark purple armor
+  - RGB(88, 64, 120) - Medium purple armor
+  - RGB(128, 96, 200) - Light purple armor
+
+- **Main Features (Browns/Tans)** → Hair/face/gloves
+  - RGB(216, 160, 72) - Gold/tan
+  - RGB(200, 136, 80) - Dark gold/tan
+  - RGB(232, 192, 128) - Light gold/tan
+  - RGB(176, 160, 136) - Tan
+  - RGB(184, 120, 40) - Brown
+  - RGB(72, 64, 48) - Dark brown
+
+- **Accents (Other Browns)** → Accent colors (hair/gloves/legs)
+  - RGB(72, 40, 8) - Dark brown accent
+  - RGB(112, 88, 24) - Brown accent
+
+- **Outlines (Grays)** → Body outlines (shoulders/arms/legs/feet)
+  - RGB(40, 40, 32) - Dark gray
+  - RGB(224, 216, 192) - Light gray
+
+#### Chapter 3/4 Ramza
+**What Each Color Controls:**
+- **Armor (Teals)** → Shoulders/arms/hands/legs/boots
+  - RGB(32, 64, 88) - Dark teal armor
+  - RGB(40, 96, 120) - Medium teal armor
+  - RGB(64, 136, 152) - Light teal armor
+
+- **Main Features (Browns)** → Hair/face/chest under armor
+  - RGB(64, 56, 56) - Main brown
+  - RGB(72, 40, 8) - Dark brown hair
+  - RGB(104, 72, 24) - Medium brown
+  - RGB(112, 96, 80) - Under armor brown
+  - RGB(128, 56, 8) - Dark tan
+
+- **Accents (Light Browns)** → Hair tips/pelvic under armor/thong/ankle stripes
+  - RGB(184, 120, 40) - Hair tips
+  - RGB(200, 136, 80) - Under armor accent
+  - RGB(232, 192, 128) - Light accent
+  - RGB(176, 160, 136) - Pale accent
+  - RGB(216, 160, 72) - Bright accent
+
+- **Outlines (Grays)** → Outlines (hands/legs/feet)
+  - RGB(40, 40, 32) - Dark gray
+  - RGB(224, 224, 216) - Light gray
+
 ## Step-by-Step Process
 
 ### 1. Extract Original Sprites

@@ -216,27 +216,54 @@ if ($LASTEXITCODE -eq 0) {
     $ramzaThemesDest = "$modPath/RamzaThemes"
 
     if (Test-Path $ramzaThemesSource) {
-        # Copy white_heretic theme if it exists
-        $whiteHereticPath = "$ramzaThemesSource/white_heretic"
-        if (Test-Path $whiteHereticPath) {
-            $whiteHereticDest = "$ramzaThemesDest/white_heretic"
-            New-Item -ItemType Directory -Force -Path $whiteHereticDest | Out-Null
-            Copy-Item "$whiteHereticPath/*.bin" -Destination $whiteHereticDest -Force
-            $texCount = (Get-ChildItem "$whiteHereticDest/*.bin" | Measure-Object).Count
-            Write-Host "  Copied $texCount tex files for white_heretic theme" -ForegroundColor Green
-        }
+        # Define all valid Ramza themes (only keep the main ones, not duplicates)
+        $validRamzaThemes = @(
+            "azure_knight",
+            "black_variant",
+            "blue_knight",
+            "crimson_knight",
+            "dark_knight",      # The fixed dark knight theme
+            "emerald_knight_custom",
+            "forest_ranger",
+            "holy_knight",
+            "red_variant",
+            "shadow_assassin",
+            "test_variant",
+            "violet_knight_custom",
+            "white_heretic"
+        )
 
-        # Copy any other theme directories (black_variant, red_variant, etc.)
-        $otherThemes = @("black_variant", "red_variant", "test_variant")
-        foreach ($themeName in $otherThemes) {
+        $copiedCount = 0
+        foreach ($themeName in $validRamzaThemes) {
             $themePath = "$ramzaThemesSource/$themeName"
             if (Test-Path $themePath) {
-                $themeDest = "$ramzaThemesDest/$themeName"
-                New-Item -ItemType Directory -Force -Path $themeDest | Out-Null
-                Copy-Item "$themePath/*.bin" -Destination $themeDest -Force
-                $texCount = (Get-ChildItem "$themeDest/*.bin" | Measure-Object).Count
-                Write-Host "  Copied $texCount tex files for $themeName theme" -ForegroundColor Green
+                # Check if theme has all 6 required Ramza TEX files
+                $ramzaTexFiles = @()
+                foreach ($num in 830..835) {
+                    $texFile = "$themePath/tex_$num.bin"
+                    if (Test-Path $texFile) {
+                        $ramzaTexFiles += $texFile
+                    }
+                }
+
+                if ($ramzaTexFiles.Count -eq 6) {
+                    $themeDest = "$ramzaThemesDest/$themeName"
+                    New-Item -ItemType Directory -Force -Path $themeDest | Out-Null
+                    foreach ($texFile in $ramzaTexFiles) {
+                        Copy-Item $texFile -Destination $themeDest -Force
+                    }
+                    Write-Host "  Copied Ramza tex files for $themeName theme" -ForegroundColor Green
+                    $copiedCount++
+                } elseif ($ramzaTexFiles.Count -gt 0) {
+                    Write-Host "  Warning: $themeName has incomplete tex files (found $($ramzaTexFiles.Count)/6)" -ForegroundColor Yellow
+                }
             }
+        }
+
+        if ($copiedCount -gt 0) {
+            Write-Host "Successfully deployed $copiedCount Ramza themes to RamzaThemes folder" -ForegroundColor Green
+        } else {
+            Write-Host "No valid Ramza themes found to deploy" -ForegroundColor Yellow
         }
     }
 
