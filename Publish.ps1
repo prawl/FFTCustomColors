@@ -151,9 +151,10 @@ function Copy-ModAssets {
         $g2dPath = "$destFFTIVC/data/enhanced/system/ffto/g2d"
         if (Test-Path $g2dPath) {
             Write-Host "  -> Cleaning g2d directory (keeping for modloader)..."
-            # Remove test directories but keep the g2d folder and white_heretic
-            $testDirs = @("black_variant", "red_variant", "test_variant", "themes", "original_backup")
-            foreach ($dir in $testDirs) {
+            # Remove ALL theme directories - themes will be in RamzaThemes folder instead
+            $allDirs = @("black_variant", "red_variant", "test_variant", "themes", "original_backup",
+                         "white_heretic", "dark_knight", "crimson_blade")
+            foreach ($dir in $allDirs) {
                 $dirPath = "$g2dPath/$dir"
                 if (Test-Path $dirPath) {
                     Remove-Item $dirPath -Recurse -Force -ErrorAction SilentlyContinue
