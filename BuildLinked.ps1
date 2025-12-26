@@ -219,7 +219,8 @@ if ($LASTEXITCODE -eq 0) {
         # Define all valid Ramza themes (only keep the main ones, not duplicates)
         $validRamzaThemes = @(
             "dark_knight",      # The fixed dark knight theme
-            "white_heretic"     # The perfect white armor theme
+            "white_heretic",    # The perfect white armor theme
+            "crimson_blade"     # The new red/crimson theme
         )
 
         $copiedCount = 0
