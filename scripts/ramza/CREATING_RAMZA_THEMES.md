@@ -98,52 +98,155 @@ Use the FFT Sprite Modding Toolkit from Nexus Mods:
 4. Look for files named: 830_Ramuza_Ch1_hd.png through 835_Ramuza_Ch4_hd.png
 ```
 
-### 2. Modify Sprite Colors
-Create a Python script to recolor the sprites:
+**IMPORTANT**: You also need the original BMP sprite sheets from:
+```
+C:/Users/[username]/OneDrive/Desktop/FFT_Original_Sprites/
+- 830_Ramuza_Ch1_hd.bmp through 835_Ramuza_Ch4_hd.bmp
+```
+
+### 2. Create Your Custom Single Sprite (60x74 pixels)
+First, create or modify a single Ramza sprite with your desired colors:
+- Extract a single sprite from position (62, 2) in the sprite sheet
+- Modify colors as desired
+- Save as a 60x74 PNG (or 240x296 if 4x scaled)
+
+### 3. Build Color Mapping from Single Sprite to Full Sheet
+**This is the critical step for perfect color matching:**
+
 ```python
 from PIL import Image
 
-def recolor_sprite(input_path, output_path, color_map):
-    img = Image.open(input_path)
-    if img.mode != 'RGBA':
-        img = img.convert('RGBA')
+def extract_sprite_from_sheet(sheet_path, position=(62, 2)):
+    """Extract a single sprite from a sprite sheet."""
+    sheet = Image.open(sheet_path).convert('RGBA')
+    sprite = sheet.crop((position[0], position[1], position[0] + 60, position[1] + 74))
+    return sprite
 
-    pixels = img.load()
-    width, height = img.size
+def build_color_mapping_from_sprites(original_sprite, perfect_sprite):
+    """Build exact color mapping by comparing two sprites pixel by pixel."""
+
+    # Resize perfect sprite if needed (from 240x296 to 60x74)
+    if perfect_sprite.size == (240, 296):
+        perfect_sprite = perfect_sprite.resize((60, 74), Image.NEAREST)
+
+    color_map = {}
+    orig_pixels = original_sprite.load()
+    perf_pixels = perfect_sprite.load()
+
+    for y in range(74):
+        for x in range(60):
+            orig_r, orig_g, orig_b, orig_a = orig_pixels[x, y]
+            perf_r, perf_g, perf_b, perf_a = perf_pixels[x, y]
+
+            if orig_a > 0 and perf_a > 0:
+                orig_color = (orig_r, orig_g, orig_b)
+                perf_color = (perf_r, perf_g, perf_b)
+
+                # Store the mapping
+                if orig_color not in color_map:
+                    color_map[orig_color] = perf_color
+
+    return color_map
+```
+
+### 4. Apply Color Mapping to Full Sprite Sheet
+Apply the exact pixel-by-pixel color mapping to the entire sprite sheet:
+
+```python
+def apply_perfect_mapping(original_sheet_path, perfect_sprite_path, output_path):
+    """Apply the perfect color mapping to entire sprite sheet."""
+
+    # Extract original sprite from sheet
+    original_sprite = extract_sprite_from_sheet(original_sheet_path)
+
+    # Load perfect sprite
+    perfect_sprite = Image.open(perfect_sprite_path).convert('RGBA')
+
+    # Build the color mapping
+    color_map = build_color_mapping_from_sprites(original_sprite, perfect_sprite)
+
+    # Apply to full sheet
+    sheet = Image.open(original_sheet_path).convert('RGBA')
+    pixels = sheet.load()
+    width, height = sheet.size
 
     for y in range(height):
         for x in range(width):
             r, g, b, a = pixels[x, y]
-            old_color = (r, g, b)
-            if old_color in color_map:
-                new_color = color_map[old_color]
+
+            if a == 0:
+                continue
+
+            current_color = (r, g, b)
+            if current_color in color_map:
+                new_color = color_map[current_color]
                 pixels[x, y] = (*new_color, a)
 
-    img.save(output_path)
+    sheet.save(output_path, 'PNG')
+    return sheet
 ```
 
-Define your color mappings (example for blue theme):
+### 5. Process All Chapter Sprite Sheets
+Apply the mapping to all 6 sprite sheets (2 per chapter):
+
 ```python
-blue_knight_map = {
-    # Browns (hair) -> Dark Blue
-    (72, 48, 40): (20, 30, 80),
-    (144, 80, 40): (30, 50, 120),
-    # Add more color mappings as needed
+# Example for white_heretic theme
+perfect_sprites = {
+    1: "MBG_073_Contrast_3.png",           # Chapter 1 white sprite
+    2: "Ramza_Ch23_WhiteArmor_NoDots.png", # Chapter 2-3 white sprite
+    4: "Ramza_Ch4_WhiteArmor_BlackUnder.png" # Chapter 4 white sprite
 }
+
+sheets = [
+    ("830_Ramuza_Ch1_hd.bmp", "830_Ramuza_Ch1_white_heretic.png", 1),
+    ("831_Ramuza_Ch1_hd.bmp", "831_Ramuza_Ch1_white_heretic.png", 1),
+    ("832_Ramuza_Ch23_hd.bmp", "832_Ramuza_Ch23_white_heretic.png", 2),
+    ("833_Ramuza_Ch23_hd.bmp", "833_Ramuza_Ch23_white_heretic.png", 2),
+    ("834_Ramuza_Ch4_hd.bmp", "834_Ramuza_Ch4_white_heretic.png", 4),
+    ("835_Ramuza_Ch4_hd.bmp", "835_Ramuza_Ch4_white_heretic.png", 4),
+]
+
+for original_path, output_path, chapter in sheets:
+    apply_perfect_mapping(original_path, perfect_sprites[chapter], output_path)
 ```
 
-### 3. Convert Modified Sprites to Game Format
+### 6. Convert Modified Sprite Sheets to Game Format
 The FFT Sprite Toolkit should handle this conversion:
-1. Place modified PNG files in the toolkit's working directory
-2. Use the toolkit's "Create Mod Package" feature
-3. The toolkit will generate the necessary TEX and palette files
+1. Place the 6 modified PNG sprite sheets in the toolkit's working directory
+2. Name them exactly as the originals (830_Ramuza_Ch1_hd.png, etc.)
+3. Use the toolkit's "Create Mod Package" feature
+4. The toolkit will generate the necessary TEX files
 
-### 4. Locate Generated Files
+### 7. Locate Generated Files
 After the toolkit creates the mod package, find:
 - TEX files in: `[ModName]/FFTIVC/data/enhanced/system/ffto/g2d/`
 - Files needed: tex_830.bin through tex_839.bin
 
-### 5. Integrate into FFTColorCustomizer
+## Key Discoveries for Perfect Color Matching
+
+### The Problem
+When creating custom Ramza sprites, the colors in your individual sprite PNG may not match the full sprite sheet due to:
+- Color mapping issues
+- Brightness differences
+- Incorrect color detection
+
+### The Solution: Pixel-Perfect Color Mapping
+1. **Extract the exact sprite** from position (62, 2) in the original sprite sheet
+2. **Compare pixel-by-pixel** with your custom sprite
+3. **Build an exact color mapping table** (original RGB → new RGB)
+4. **Apply this exact mapping** to every pixel in the entire sprite sheet
+
+This ensures that the colors in the full sprite sheet match your custom sprite EXACTLY.
+
+### Example Color Mappings (white_heretic theme)
+```
+Chapter 2-3 Purple to White:
+- RGB(48, 40, 80) → RGB(105, 105, 105)   # Dark purple to dark gray
+- RGB(88, 64, 120) → RGB(189, 189, 189)  # Medium purple to light gray
+- RGB(128, 96, 200) → RGB(255, 255, 255) # Light purple to pure white
+```
+
+### 8. Integrate into FFTColorCustomizer
 
 #### A. Add Theme to Source Files
 1. Create theme directory:

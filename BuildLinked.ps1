@@ -218,19 +218,8 @@ if ($LASTEXITCODE -eq 0) {
     if (Test-Path $ramzaThemesSource) {
         # Define all valid Ramza themes (only keep the main ones, not duplicates)
         $validRamzaThemes = @(
-            "azure_knight",
-            "black_variant",
-            "blue_knight",
-            "crimson_knight",
             "dark_knight",      # The fixed dark knight theme
-            "emerald_knight_custom",
-            "forest_ranger",
-            "holy_knight",
-            "red_variant",
-            "shadow_assassin",
-            "test_variant",
-            "violet_knight_custom",
-            "white_heretic"
+            "white_heretic"     # The perfect white armor theme
         )
 
         $copiedCount = 0
