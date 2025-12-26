@@ -50,7 +50,7 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void CharacterRowBuilder_Should_Map_RamzaChapter2_To_Ramuza2_Sprite()
+        public void CharacterRowBuilder_Should_Map_RamzaChapter23_To_Ramuza2_Sprite()
         {
             // Arrange
             var tempDir = Path.Combine(Path.GetTempPath(), $"RamzaPreviewTest_{Guid.NewGuid()}");
@@ -70,7 +70,7 @@ namespace FFTColorCustomizer.Tests
                 // Act - Use reflection to test the internal sprite name mapping
                 var method = typeof(CharacterRowBuilder).GetMethod("GetInternalSpriteName",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                var internalName = method.Invoke(rowBuilder, new object[] { "RamzaChapter2" });
+                var internalName = method.Invoke(rowBuilder, new object[] { "RamzaChapter23" });
 
                 // Assert
                 internalName.Should().Be("ramuza2");
@@ -83,7 +83,7 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void CharacterRowBuilder_Should_Map_RamzaChapter34_To_Ramuza3_Sprite()
+        public void CharacterRowBuilder_Should_Map_RamzaChapter4_To_Ramuza3_Sprite()
         {
             // Arrange
             var tempDir = Path.Combine(Path.GetTempPath(), $"RamzaPreviewTest_{Guid.NewGuid()}");
@@ -103,7 +103,7 @@ namespace FFTColorCustomizer.Tests
                 // Act - Use reflection to test the internal sprite name mapping
                 var method = typeof(CharacterRowBuilder).GetMethod("GetInternalSpriteName",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                var internalName = method.Invoke(rowBuilder, new object[] { "RamzaChapter34" });
+                var internalName = method.Invoke(rowBuilder, new object[] { "RamzaChapter4" });
 
                 // Assert
                 internalName.Should().Be("ramuza3");

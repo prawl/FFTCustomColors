@@ -40,7 +40,7 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void StoryCharacters_Should_Have_RamzaChapter2_Entry()
+        public void StoryCharacters_Should_Have_RamzaChapter23_Entry()
         {
             // Arrange - Create a temp directory with StoryCharacters.json to test
             var tempDir = Path.Combine(Path.GetTempPath(), $"StoryTest_{Guid.NewGuid()}");
@@ -56,12 +56,12 @@ namespace FFTColorCustomizer.Tests
             {
                 // Act
                 var manager = new StoryCharacterThemeManager(tempDir);
-                var themes = manager.GetAvailableThemes("RamzaChapter2");
+                var themes = manager.GetAvailableThemes("RamzaChapter23");
 
                 // Assert
-                themes.Should().NotBeNull("RamzaChapter2 should exist in StoryCharacters.json");
-                themes.Should().Contain("original", "RamzaChapter2 should have original theme");
-                themes.Should().Contain("white_heretic", "RamzaChapter2 should have white_heretic theme");
+                themes.Should().NotBeNull("RamzaChapter23 should exist in StoryCharacters.json");
+                themes.Should().Contain("original", "RamzaChapter23 should have original theme");
+                themes.Should().Contain("white_heretic", "RamzaChapter23 should have white_heretic theme");
             }
             finally
             {
@@ -71,7 +71,7 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void StoryCharacters_Should_Have_RamzaChapter34_Entry()
+        public void StoryCharacters_Should_Have_RamzaChapter4_Entry()
         {
             // Arrange - Create a temp directory with StoryCharacters.json to test
             var tempDir = Path.Combine(Path.GetTempPath(), $"StoryTest_{Guid.NewGuid()}");
@@ -87,12 +87,12 @@ namespace FFTColorCustomizer.Tests
             {
                 // Act
                 var manager = new StoryCharacterThemeManager(tempDir);
-                var themes = manager.GetAvailableThemes("RamzaChapter34");
+                var themes = manager.GetAvailableThemes("RamzaChapter4");
 
                 // Assert
-                themes.Should().NotBeNull("RamzaChapter34 should exist in StoryCharacters.json");
-                themes.Should().Contain("original", "RamzaChapter34 should have original theme");
-                themes.Should().Contain("white_heretic", "RamzaChapter34 should have white_heretic theme");
+                themes.Should().NotBeNull("RamzaChapter4 should exist in StoryCharacters.json");
+                themes.Should().Contain("original", "RamzaChapter4 should have original theme");
+                themes.Should().Contain("white_heretic", "RamzaChapter4 should have white_heretic theme");
             }
             finally
             {

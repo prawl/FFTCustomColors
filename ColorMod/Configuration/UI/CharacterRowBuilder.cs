@@ -406,7 +406,43 @@ namespace FFTColorCustomizer.Configuration.UI
                 return;
             }
 
-            // First try to load from .bin file if it exists
+            // First try to load from sprite sheets for Ramza characters
+            if (characterName.StartsWith("RamzaChapter"))
+            {
+                // Get the mod path from PreviewImageManager
+                var modPathField = _previewManager.GetType().GetField("_modPath",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (modPathField != null)
+                {
+                    var modPath = modPathField.GetValue(_previewManager) as string;
+                    if (!string.IsNullOrEmpty(modPath))
+                    {
+                        var spriteSheetLoader = new SpriteSheetPreviewLoader(modPath);
+                        var spriteImages = spriteSheetLoader.LoadPreviewsWithExtractor(characterName, theme);
+
+                        if (spriteImages != null && spriteImages.Count > 0)
+                        {
+                            // Convert Bitmap list to Image array for carousel
+                            var spriteImageArray = spriteImages.Cast<Image>().ToArray();
+                            carousel.SetImages(spriteImageArray);
+                            carousel.Invalidate();
+                            carousel.Refresh();
+                            ModLogger.LogSuccess($"Loaded {spriteImageArray.Length} sprites from sprite sheet for {characterName} - {theme}");
+                            return;
+                        }
+                        else
+                        {
+                            // For Ramza, if no sprite sheet found for this theme, show empty preview
+                            ModLogger.LogDebug($"No sprite sheet found for {characterName} - {theme}, showing empty preview");
+                            carousel.SetImages(new Image[0]);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // For non-Ramza characters, fall back to loading from .bin file if it exists
             // For characters that use tex files (like Ramza), apply theme transformation
             var binImages = TryLoadFromBinFileWithTheme(characterName, theme);
             if (binImages != null && binImages.Length > 0)
@@ -500,7 +536,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 {
                     if (baseImages[i] is Bitmap bitmap)
                     {
-                        transformedImages[i] = transformer.TransformBitmap(bitmap, theme);
+                        transformedImages[i] = transformer.TransformBitmap(bitmap, theme, characterName);
                     }
                     else
                     {
@@ -701,10 +737,10 @@ namespace FFTColorCustomizer.Configuration.UI
             {
                 case "RamzaChapter1":
                     return "Ramza (Chapter 1)";
-                case "RamzaChapter2":
-                    return "Ramza (Chapter 2)";
-                case "RamzaChapter34":
-                    return "Ramza (Chapter 3 & 4)";
+                case "RamzaChapter23":
+                    return "Ramza (Chapter 2 & 3)";
+                case "RamzaChapter4":
+                    return "Ramza (Chapter 4)";
                 default:
                     return characterName;
             }
@@ -719,9 +755,9 @@ namespace FFTColorCustomizer.Configuration.UI
                     return "ramuza";
                 case "ramzachapter1":
                     return "ramuza";
-                case "ramzachapter2":
+                case "ramzachapter23":
                     return "ramuza2";
-                case "ramzachapter34":
+                case "ramzachapter4":
                     return "ramuza3";
                 case "agrias":
                     return "aguri";

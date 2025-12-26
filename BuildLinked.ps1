@@ -281,6 +281,40 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "Copied $previewCount preview images"
     }
 
+    # Copy sprite sheet images for Ramza chapters
+    Write-Host "Copying Ramza sprite sheet images..." -ForegroundColor Cyan
+    $imagesSource = "$PSScriptRoot/ColorMod/Images"
+    $imagesDest = "$modPath/Images"
+
+    if (Test-Path $imagesSource) {
+        # Copy the entire Images directory structure including all image files
+        Write-Host "  Creating Images directory structure..." -ForegroundColor Gray
+        New-Item -ItemType Directory -Force -Path $imagesDest | Out-Null
+
+        # Copy all Ramza chapter folders with their theme subfolders and sprite sheets
+        $ramzaFolders = Get-ChildItem "$imagesSource" -Directory | Where-Object { $_.Name -match "^Ramza" }
+
+        foreach ($folder in $ramzaFolders) {
+            $destFolder = "$imagesDest/$($folder.Name)"
+            Write-Host "  Copying $($folder.Name)..." -ForegroundColor Gray
+
+            # Copy the entire folder structure including all subdirectories and image files
+            Copy-Item $folder.FullName $destFolder -Recurse -Force
+
+            # Count image files copied (both PNG and BMP)
+            $bmpCount = (Get-ChildItem "$destFolder" -Recurse -Filter "*.bmp" | Measure-Object).Count
+            $pngCount = (Get-ChildItem "$destFolder" -Recurse -Filter "*.png" | Measure-Object).Count
+            Write-Host "    Copied $bmpCount BMP sprite sheets and $pngCount PNG images" -ForegroundColor Green
+        }
+
+        # Copy any PNG files in the root Images directory (like thunder_god.png for the mod icon)
+        Copy-Item "$imagesSource/*.png" $imagesDest -Force -ErrorAction SilentlyContinue
+
+        $totalBmpCount = (Get-ChildItem "$imagesDest" -Recurse -Filter "*.bmp" | Measure-Object).Count
+        $totalPngCount = (Get-ChildItem "$imagesDest" -Recurse -Filter "*.png" | Measure-Object).Count
+        Write-Host "Total images copied: $totalBmpCount BMP files and $totalPngCount PNG files" -ForegroundColor Green
+    }
+
     # Theme directories are no longer deployed - they're read from git repo
 
     # Check ModConfig.json

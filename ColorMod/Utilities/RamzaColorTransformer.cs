@@ -9,49 +9,29 @@ namespace FFTColorCustomizer.Utilities
     /// </summary>
     public class RamzaColorTransformer
     {
-        // Define color mappings for each theme
-        private readonly Dictionary<string, Dictionary<Color, Color>> _themeMappings;
-
         public RamzaColorTransformer()
         {
-            _themeMappings = new Dictionary<string, Dictionary<Color, Color>>();
-            InitializeThemeMappings();
         }
 
-        private void InitializeThemeMappings()
+        public Color TransformColor(Color originalColor, string themeName, string characterName)
         {
-            // White Heretic theme - transforms brown/purple armor to white
-            _themeMappings["white_heretic"] = new Dictionary<Color, Color>();
+            // Skip transparent pixels
+            if (originalColor.A < 10) return originalColor;
 
-            // We'll define specific color ranges to transform
-            // This is simplified - in reality we'd need to handle color ranges
-        }
-
-        public Color TransformColor(Color originalColor, string themeName)
-        {
-            // For white_heretic theme, transform brownish colors to white
-            if (themeName == "white_heretic")
+            switch (themeName.ToLower())
             {
-                // If it's a brownish/purplish color (armor), make it white
-                if (IsBrownishColor(originalColor))
-                {
-                    // Calculate brightness to maintain shading
-                    int brightness = (originalColor.R + originalColor.G + originalColor.B) / 3;
-
-                    // Map to white/light gray range while preserving some depth
-                    // Darker browns become light gray, lighter browns become white
-                    int newValue = 180 + (brightness / 2); // Range from 180-220
-                    newValue = Math.Min(240, newValue); // Cap at 240 to keep some contrast
-
-                    return Color.FromArgb(originalColor.A, newValue, newValue, newValue);
-                }
+                case "white_heretic":
+                    return TransformToWhite(originalColor, characterName);
+                case "crimson_blade":
+                    return TransformToCrimson(originalColor, characterName);
+                case "dark_knight":
+                    return TransformToDarkKnight(originalColor, characterName);
+                default:
+                    return originalColor;
             }
-
-            // Default: return original color
-            return originalColor;
         }
 
-        public Bitmap TransformBitmap(Bitmap originalBitmap, string themeName)
+        public Bitmap TransformBitmap(Bitmap originalBitmap, string themeName, string characterName = "RamzaChapter1")
         {
             var transformedBitmap = new Bitmap(originalBitmap.Width, originalBitmap.Height);
 
@@ -60,7 +40,7 @@ namespace FFTColorCustomizer.Utilities
                 for (int y = 0; y < originalBitmap.Height; y++)
                 {
                     var originalColor = originalBitmap.GetPixel(x, y);
-                    var transformedColor = TransformColor(originalColor, themeName);
+                    var transformedColor = TransformColor(originalColor, themeName, characterName);
                     transformedBitmap.SetPixel(x, y, transformedColor);
                 }
             }
@@ -68,32 +48,182 @@ namespace FFTColorCustomizer.Utilities
             return transformedBitmap;
         }
 
-        private bool IsBrownishColor(Color color)
+        private Color TransformToWhite(Color originalColor, string characterName)
+        {
+            // Transform armor colors to white/gray
+            if (IsArmorColor(originalColor, characterName))
+            {
+                int brightness = (originalColor.R + originalColor.G + originalColor.B) / 3;
+
+                // Map to white/gray range
+                int newValue;
+                if (brightness > 150)
+                    newValue = 255; // Pure white
+                else if (brightness > 100)
+                    newValue = 189; // Light gray
+                else if (brightness > 60)
+                    newValue = 126; // Medium gray
+                else
+                    newValue = 105; // Dark gray
+
+                return Color.FromArgb(originalColor.A, newValue, newValue, newValue);
+            }
+
+            return originalColor;
+        }
+
+        private Color TransformToCrimson(Color originalColor, string characterName)
+        {
+            // Transform armor colors to crimson red
+            if (IsArmorColor(originalColor, characterName))
+            {
+                int brightness = (originalColor.R + originalColor.G + originalColor.B) / 3;
+
+                // Map to crimson red range (avoiding orange)
+                int red, green, blue;
+                if (characterName == "RamzaChapter1")
+                {
+                    // Brighter reds for Chapter 1 to avoid brown
+                    if (brightness > 180)
+                    {
+                        red = 240; green = 0; blue = 0;
+                    }
+                    else if (brightness > 140)
+                    {
+                        red = 220; green = 0; blue = 0;
+                    }
+                    else if (brightness > 100)
+                    {
+                        red = 200; green = 0; blue = 0;
+                    }
+                    else if (brightness > 70)
+                    {
+                        red = 180; green = 0; blue = 0;
+                    }
+                    else if (brightness > 50)
+                    {
+                        red = 160; green = 0; blue = 0;
+                    }
+                    else if (brightness > 30)
+                    {
+                        red = 120; green = 0; blue = 0;
+                    }
+                    else
+                    {
+                        red = 80; green = 0; blue = 0;
+                    }
+                }
+                else if (characterName == "RamzaChapter2")
+                {
+                    // Vibrant reds for Chapter 2-3
+                    if (brightness > 150)
+                    {
+                        red = 220; green = 20; blue = 20;
+                    }
+                    else if (brightness > 100)
+                    {
+                        red = 180; green = 10; blue = 10;
+                    }
+                    else if (brightness > 50)
+                    {
+                        red = 136; green = 16; blue = 0;
+                    }
+                    else
+                    {
+                        red = 72; green = 8; blue = 8;
+                    }
+                }
+                else // Chapter 3-4
+                {
+                    // Crimson armor colors
+                    if (brightness > 150)
+                    {
+                        red = 208; green = 26; blue = 52;
+                    }
+                    else if (brightness > 100)
+                    {
+                        red = 144; green = 18; blue = 36;
+                    }
+                    else if (brightness > 50)
+                    {
+                        red = 80; green = 10; blue = 20;
+                    }
+                    else
+                    {
+                        red = 40; green = 5; blue = 10;
+                    }
+                }
+
+                return Color.FromArgb(originalColor.A, red, green, blue);
+            }
+
+            // Keep very dark colors (under armor) as dark gray
+            if (originalColor.R < 30 && originalColor.G < 30 && originalColor.B < 30)
+            {
+                return Color.FromArgb(originalColor.A, 20, 20, 20);
+            }
+
+            return originalColor;
+        }
+
+        private Color TransformToDarkKnight(Color originalColor, string characterName)
+        {
+            // Transform armor colors to dark blue/black
+            if (IsArmorColor(originalColor, characterName))
+            {
+                int brightness = (originalColor.R + originalColor.G + originalColor.B) / 3;
+
+                // Map to dark blue/black range
+                int value;
+                if (brightness > 150)
+                {
+                    // Dark blue for highlights
+                    return Color.FromArgb(originalColor.A, 40, 50, 80);
+                }
+                else if (brightness > 100)
+                {
+                    // Darker blue
+                    return Color.FromArgb(originalColor.A, 30, 40, 60);
+                }
+                else if (brightness > 60)
+                {
+                    // Very dark blue
+                    return Color.FromArgb(originalColor.A, 20, 25, 40);
+                }
+                else
+                {
+                    // Near black
+                    return Color.FromArgb(originalColor.A, 10, 10, 20);
+                }
+            }
+
+            return originalColor;
+        }
+
+        private bool IsArmorColor(Color color, string characterName)
         {
             // Skip transparent pixels
             if (color.A < 10) return false;
 
-            // Check if color is in the brownish/purplish range
-            // Ramza's armor is typically dark brown/purple
-            // We need to be more selective to avoid changing skin/hair
-
-            // Brown/purple armor colors have these characteristics:
-            // - Red component is higher than blue
-            // - Green is usually between red and blue
-            // - Overall darker tones
-
-            bool isBrownish = color.R >= 50 && color.R <= 100 &&
-                              color.G >= 30 && color.G <= 70 &&
-                              color.B >= 20 && color.B <= 60 &&
-                              color.R > color.B; // Brown has more red than blue
-
-            // Also check for darker purple shades in the armor
-            bool isPurplish = color.R >= 60 && color.R <= 90 &&
-                              color.G >= 40 && color.G <= 70 &&
-                              color.B >= 50 && color.B <= 80 &&
-                              Math.Abs(color.R - color.B) < 30; // Purple has similar red and blue
-
-            return isBrownish || isPurplish;
+            // Different armor detection for each chapter
+            if (characterName == "RamzaChapter1")
+            {
+                // Chapter 1: Blue armor
+                return (color.B > color.R && color.B > color.G) ||
+                       (color.R < 100 && color.G < 140 && color.B > 70);
+            }
+            else if (characterName == "RamzaChapter2")
+            {
+                // Chapter 2-3: Purple armor
+                return (color.R > 30 && color.B > 50 && color.B > color.G) ||
+                       (color.R > 40 && color.R < 130 && color.B > 70);
+            }
+            else // Chapter 3-4
+            {
+                // Chapter 3-4: Teal armor
+                return (color.B > color.R && color.G > color.R * 0.7) ||
+                       (color.G > 60 && color.B > 70 && color.R < 50);
+            }
         }
     }
 }

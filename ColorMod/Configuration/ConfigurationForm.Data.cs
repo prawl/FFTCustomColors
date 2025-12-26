@@ -144,8 +144,8 @@ namespace FFTColorCustomizer.Configuration
                 .OrderBy(c =>
                 {
                     if (c.Name == "RamzaChapter1") return "0_1";
-                    if (c.Name == "RamzaChapter2") return "0_2";
-                    if (c.Name == "RamzaChapter34") return "0_3";
+                    if (c.Name == "RamzaChapter23") return "0_2";
+                    if (c.Name == "RamzaChapter4") return "0_3";
                     return c.Name;
                 });
 

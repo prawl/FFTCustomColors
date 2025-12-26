@@ -23,29 +23,29 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void Config_Should_Have_Display_Name_For_RamzaChapter2()
+        public void Config_Should_Have_Display_Name_For_RamzaChapter23()
         {
             // Arrange
             var config = new Config();
 
             // Act
-            var displayName = config.GetDisplayName("RamzaChapter2");
+            var displayName = config.GetDisplayName("RamzaChapter23");
 
             // Assert
-            displayName.Should().Be("Ramza (Chapter 2)");
+            displayName.Should().Be("Ramza (Chapter 2 & 3)");
         }
 
         [Fact]
-        public void Config_Should_Have_Display_Name_For_RamzaChapter34()
+        public void Config_Should_Have_Display_Name_For_RamzaChapter4()
         {
             // Arrange
             var config = new Config();
 
             // Act
-            var displayName = config.GetDisplayName("RamzaChapter34");
+            var displayName = config.GetDisplayName("RamzaChapter4");
 
             // Assert
-            displayName.Should().Be("Ramza (Chapter 3 & 4)");
+            displayName.Should().Be("Ramza (Chapter 4)");
         }
 
         [Fact]

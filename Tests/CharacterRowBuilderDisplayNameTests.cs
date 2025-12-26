@@ -58,7 +58,7 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void CharacterRowBuilder_Should_Create_Label_With_Display_Name_Chapter2()
+        public void CharacterRowBuilder_Should_Create_Label_With_Display_Name_Chapter23()
         {
             // Arrange
             var tempDir = Path.Combine(Path.GetTempPath(), $"RowBuilderTest_{Guid.NewGuid()}");
@@ -82,7 +82,7 @@ namespace FFTColorCustomizer.Tests
 
                 var characterConfig = new FFTColorCustomizer.Configuration.UI.StoryCharacterRegistry.StoryCharacterConfig
                 {
-                    Name = "RamzaChapter2",
+                    Name = "RamzaChapter23",
                     EnumType = typeof(object),
                     SetValue = (s) => { },
                     GetValue = () => "original"
@@ -94,7 +94,7 @@ namespace FFTColorCustomizer.Tests
                 // Assert
                 var label = mainPanel.GetControlFromPosition(0, 1) as Label;
                 label.Should().NotBeNull();
-                label.Text.Should().Be("Ramza (Chapter 2)");
+                label.Text.Should().Be("Ramza (Chapter 2 & 3)");
             }
             finally
             {
@@ -104,7 +104,7 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void CharacterRowBuilder_Should_Create_Label_With_Display_Name_Chapter34()
+        public void CharacterRowBuilder_Should_Create_Label_With_Display_Name_Chapter4()
         {
             // Arrange
             var tempDir = Path.Combine(Path.GetTempPath(), $"RowBuilderTest_{Guid.NewGuid()}");
@@ -128,7 +128,7 @@ namespace FFTColorCustomizer.Tests
 
                 var characterConfig = new FFTColorCustomizer.Configuration.UI.StoryCharacterRegistry.StoryCharacterConfig
                 {
-                    Name = "RamzaChapter34",
+                    Name = "RamzaChapter4",
                     EnumType = typeof(object),
                     SetValue = (s) => { },
                     GetValue = () => "original"
@@ -140,7 +140,7 @@ namespace FFTColorCustomizer.Tests
                 // Assert
                 var label = mainPanel.GetControlFromPosition(0, 1) as Label;
                 label.Should().NotBeNull();
-                label.Text.Should().Be("Ramza (Chapter 3 & 4)");
+                label.Text.Should().Be("Ramza (Chapter 4)");
             }
             finally
             {

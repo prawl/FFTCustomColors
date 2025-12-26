@@ -22,31 +22,31 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void Config_Should_Have_RamzaChapter2_Property()
+        public void Config_Should_Have_RamzaChapter23_Property()
         {
             // Arrange
             var config = new Config();
 
             // Act
-            var property = config.GetType().GetProperty("RamzaChapter2");
+            var property = config.GetType().GetProperty("RamzaChapter23");
 
             // Assert
-            property.Should().NotBeNull("Config should have RamzaChapter2 property");
-            property.PropertyType.Should().Be(typeof(string), "RamzaChapter2 should be a string property");
+            property.Should().NotBeNull("Config should have RamzaChapter23 property");
+            property.PropertyType.Should().Be(typeof(string), "RamzaChapter23 should be a string property");
         }
 
         [Fact]
-        public void Config_Should_Have_RamzaChapter34_Property()
+        public void Config_Should_Have_RamzaChapter4_Property()
         {
             // Arrange
             var config = new Config();
 
             // Act
-            var property = config.GetType().GetProperty("RamzaChapter34");
+            var property = config.GetType().GetProperty("RamzaChapter4");
 
             // Assert
-            property.Should().NotBeNull("Config should have RamzaChapter34 property");
-            property.PropertyType.Should().Be(typeof(string), "RamzaChapter34 should be a string property");
+            property.Should().NotBeNull("Config should have RamzaChapter4 property");
+            property.PropertyType.Should().Be(typeof(string), "RamzaChapter4 should be a string property");
         }
     }
 }
