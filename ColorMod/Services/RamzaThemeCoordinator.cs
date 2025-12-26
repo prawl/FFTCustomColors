@@ -35,7 +35,16 @@ namespace FFTColorCustomizer.Services
             string gameBasePath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "system", "ffto", "g2d");
 
             var swapper = new RamzaTexSwapper(_sourcePath, gameBasePath);
-            swapper.SwapTexFilesForTheme(themeName);
+
+            // Handle "original" theme specially - restore original tex files instead of swapping
+            if (themeName == "original")
+            {
+                swapper.RestoreOriginalTexFiles();
+            }
+            else
+            {
+                swapper.SwapTexFilesForTheme(themeName);
+            }
         }
     }
 }

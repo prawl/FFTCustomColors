@@ -97,6 +97,94 @@ namespace FFTColorCustomizer.Tests
             Assert.Equal(0xAA, swappedData[0]);
         }
 
+        [Fact]
+        public void ApplyRamzaTheme_WithOriginalTheme_ShouldNotCopyFiles()
+        {
+            // This test demonstrates the bug: calling ApplyRamzaTheme("original")
+            // tries to access RamzaThemes/original/ which doesn't exist
+            // The method logs an error but doesn't throw an exception
+            // Bug: It should handle "original" specially by calling RestoreOriginalTexFiles
+
+            // Arrange
+            var coordinator = new RamzaThemeCoordinator(_testSourcePath, _testModPath);
+
+            // Create RamzaThemes directory with test themes (but NOT "original")
+            string ramzaThemesPath = Path.Combine(_testSourcePath, "RamzaThemes");
+            Directory.CreateDirectory(ramzaThemesPath);
+
+            // Create other themes but NOT original
+            CreateTestTheme(ramzaThemesPath, "dark_knight");
+            CreateTestTheme(ramzaThemesPath, "white_heretic");
+
+            // Create game g2d directory
+            string gameG2dPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "system", "ffto", "g2d");
+            Directory.CreateDirectory(gameG2dPath);
+
+            // First apply a valid theme to put some files in place
+            coordinator.ApplyRamzaTheme("dark_knight");
+            string tex830Path = Path.Combine(gameG2dPath, "tex_830.bin");
+            Assert.True(File.Exists(tex830Path), "Should have tex file after applying dark_knight");
+
+            // Act - Apply "original" theme - this currently fails silently (logs error but doesn't throw)
+            var exception = Record.Exception(() => coordinator.ApplyRamzaTheme("original"));
+
+            // Assert - No exception is thrown
+            Assert.Null(exception);
+
+            // After fix: The tex files should be removed for "original" theme
+            Assert.False(File.Exists(tex830Path), "Tex files should be removed for original theme");
+        }
+
+        [Fact]
+        public void ApplyRamzaTheme_WithOriginalTheme_ShouldRemoveTexFiles()
+        {
+            // This test verifies that "original" theme properly removes tex files
+            // to let the game use built-in textures
+
+            // Arrange
+            var coordinator = new RamzaThemeCoordinator(_testSourcePath, _testModPath);
+
+            // Create RamzaThemes directory with a valid theme
+            string ramzaThemesPath = Path.Combine(_testSourcePath, "RamzaThemes");
+            Directory.CreateDirectory(ramzaThemesPath);
+            CreateTestTheme(ramzaThemesPath, "dark_knight");
+
+            // Create game g2d directory
+            string gameG2dPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "system", "ffto", "g2d");
+            Directory.CreateDirectory(gameG2dPath);
+
+            // First apply a custom theme to put tex files in place
+            coordinator.ApplyRamzaTheme("dark_knight");
+
+            // Verify tex files exist
+            string tex830Path = Path.Combine(gameG2dPath, "tex_830.bin");
+            Assert.True(File.Exists(tex830Path), "Tex file should exist after applying dark_knight theme");
+
+            // Act - Apply "original" theme (should now work with the fix)
+            var exception = Record.Exception(() => coordinator.ApplyRamzaTheme("original"));
+
+            // Assert - With fix applied:
+            // - Should not throw exception
+            // - Should remove tex files
+            Assert.Null(exception);
+            Assert.False(File.Exists(tex830Path), "Tex files should be removed for original theme");
+        }
+
+        private void CreateTestTheme(string ramzaThemesPath, string themeName)
+        {
+            string themePath = Path.Combine(ramzaThemesPath, themeName);
+            Directory.CreateDirectory(themePath);
+
+            // Create dummy tex files for chapters 1-3 (830-835)
+            for (int i = 830; i <= 835; i++)
+            {
+                string texFile = Path.Combine(themePath, $"tex_{i}.bin");
+                byte[] dummyData = new byte[131072]; // Standard tex file size
+                dummyData[0] = 0xAA; // Marker byte
+                File.WriteAllBytes(texFile, dummyData);
+            }
+        }
+
         public void Dispose()
         {
             if (Directory.Exists(_testModPath))
