@@ -185,6 +185,48 @@ function Copy-ModAssets {
             $texCount = (Get-ChildItem "$whiteHereticDest/*.bin" | Measure-Object).Count
             Write-Host "    -> Copied $texCount tex files for white_heretic theme" -ForegroundColor Green
         }
+
+        # Copy dark_knight theme if it exists
+        $darkKnightPath = "$ramzaThemesSource/dark_knight"
+        if (Test-Path $darkKnightPath) {
+            $darkKnightDest = "$ramzaThemesDest/dark_knight"
+            New-Item -ItemType Directory -Force -Path $darkKnightDest | Out-Null
+            Copy-Item "$darkKnightPath/*.bin" -Destination $darkKnightDest -Force
+            $texCount = (Get-ChildItem "$darkKnightDest/*.bin" | Measure-Object).Count
+            Write-Host "    -> Copied $texCount tex files for dark_knight theme" -ForegroundColor Green
+        }
+
+        # Copy crimson_blade theme if it exists
+        $crimsonBladePath = "$ramzaThemesSource/crimson_blade"
+        if (Test-Path $crimsonBladePath) {
+            $crimsonBladeDest = "$ramzaThemesDest/crimson_blade"
+            New-Item -ItemType Directory -Force -Path $crimsonBladeDest | Out-Null
+            Copy-Item "$crimsonBladePath/*.bin" -Destination $crimsonBladeDest -Force
+            $texCount = (Get-ChildItem "$crimsonBladeDest/*.bin" | Measure-Object).Count
+            Write-Host "    -> Copied $texCount tex files for crimson_blade theme" -ForegroundColor Green
+        }
+    }
+
+    # Copy Images folder with Ramza sprite sheet previews
+    $imagesSource = "ColorMod/Images"
+    if (Test-Path $imagesSource) {
+        Write-Host "  -> Copying Images folder with Ramza sprite previews..."
+        $imagesDest = "$BuildOutputPath/Images"
+        New-Item -ItemType Directory -Force -Path $imagesDest | Out-Null
+
+        # Copy Ramza chapter folders with sprite sheets
+        $ramzaFolders = Get-ChildItem "$imagesSource" -Directory | Where-Object { $_.Name -match "^Ramza" }
+        foreach ($folder in $ramzaFolders) {
+            $destFolder = "$imagesDest/$($folder.Name)"
+            Copy-Item $folder.FullName $destFolder -Recurse -Force
+        }
+
+        # Copy any root PNG files (like thunder_god.png)
+        Copy-Item "$imagesSource/*.png" $imagesDest -Force -ErrorAction SilentlyContinue
+
+        $totalBmpCount = (Get-ChildItem "$imagesDest" -Recurse -Filter "*.bmp" -ErrorAction SilentlyContinue | Measure-Object).Count
+        $totalPngCount = (Get-ChildItem "$imagesDest" -Recurse -Filter "*.png" -ErrorAction SilentlyContinue | Measure-Object).Count
+        Write-Host "    -> Copied $totalBmpCount BMP sprite sheets and $totalPngCount PNG previews" -ForegroundColor Green
     }
 }
 
@@ -353,7 +395,9 @@ function Verify-Package {
 
         $requiredPaths = @(
             "FFTIVC/data/enhanced/fftpack/unit",
-            "Data"
+            "Data",
+            "Images",
+            "RamzaThemes"
         )
 
         foreach ($file in $requiredFiles) {
