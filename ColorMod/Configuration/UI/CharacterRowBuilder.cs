@@ -163,8 +163,46 @@ namespace FFTColorCustomizer.Configuration.UI
             // Create label with display name
             var displayName = GetCharacterDisplayName(characterConfig.Name);
             var label = ConfigUIComponentFactory.CreateCharacterLabel(displayName);
-            _mainPanel.Controls.Add(label, 0, row);
-            _storyCharacterControls.Add(label);
+
+            // For Ramza characters, add warning text to the label
+            if (characterConfig.Name.StartsWith("RamzaChapter"))
+            {
+                // Create a panel to hold both the name and warning
+                var labelPanel = new Panel
+                {
+                    AutoSize = true,
+                    BackColor = Color.Transparent,
+                    Padding = new Padding(0)
+                };
+
+                // Adjust the main label
+                label.AutoSize = true;
+                label.Location = new Point(0, 0);
+
+                // Create warning label
+                var warningLabel = new Label
+                {
+                    Text = "Requires a full game restart",
+                    ForeColor = Color.FromArgb(255, 100, 100), // Red color
+                    BackColor = Color.Transparent,
+                    Font = new Font("Segoe UI", 7, FontStyle.Italic),
+                    AutoSize = true,
+                    Location = new Point(0, label.Height - 2)
+                };
+
+                // Add both to the panel
+                labelPanel.Controls.Add(label);
+                labelPanel.Controls.Add(warningLabel);
+                labelPanel.Height = label.Height + warningLabel.Height - 2;
+
+                _mainPanel.Controls.Add(labelPanel, 0, row);
+                _storyCharacterControls.Add(labelPanel);
+            }
+            else
+            {
+                _mainPanel.Controls.Add(label, 0, row);
+                _storyCharacterControls.Add(label);
+            }
 
             // Create theme combo box with formatted display
             var comboBox = new ThemeComboBox();
