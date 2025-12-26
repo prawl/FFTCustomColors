@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using System.Collections.Generic;
 using System.IO;
 using System;
+using System.Linq;
 
 namespace FFTColorCustomizer.Tests
 {
@@ -46,9 +47,25 @@ namespace FFTColorCustomizer.Tests
                 rowBuilder.AddStoryCharacterRow(1, characterConfig);
 
                 // Assert
-                var label = mainPanel.GetControlFromPosition(0, 1) as Label;
-                label.Should().NotBeNull();
-                label.Text.Should().Be("Ramza (Chapter 1)");
+                // For Ramza characters, a Panel is added that contains the label
+                var control = mainPanel.GetControlFromPosition(0, 1);
+                control.Should().NotBeNull();
+
+                if (control is Panel panel)
+                {
+                    // Find the label within the panel
+                    var label = panel.Controls.OfType<Label>().FirstOrDefault(l => l.Text == "Ramza (Chapter 1)");
+                    label.Should().NotBeNull();
+                    label.Text.Should().Be("Ramza (Chapter 1)");
+                }
+                else if (control is Label label)
+                {
+                    label.Text.Should().Be("Ramza (Chapter 1)");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Expected Panel or Label, but got {control?.GetType().Name}");
+                }
             }
             finally
             {
@@ -92,9 +109,25 @@ namespace FFTColorCustomizer.Tests
                 rowBuilder.AddStoryCharacterRow(1, characterConfig);
 
                 // Assert
-                var label = mainPanel.GetControlFromPosition(0, 1) as Label;
-                label.Should().NotBeNull();
-                label.Text.Should().Be("Ramza (Chapter 2 & 3)");
+                // For Ramza characters, a Panel is added that contains the label
+                var control = mainPanel.GetControlFromPosition(0, 1);
+                control.Should().NotBeNull();
+
+                if (control is Panel panel)
+                {
+                    // Find the label within the panel
+                    var label = panel.Controls.OfType<Label>().FirstOrDefault(l => l.Text == "Ramza (Chapter 2 & 3)");
+                    label.Should().NotBeNull();
+                    label.Text.Should().Be("Ramza (Chapter 2 & 3)");
+                }
+                else if (control is Label label)
+                {
+                    label.Text.Should().Be("Ramza (Chapter 2 & 3)");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Expected Panel or Label, but got {control?.GetType().Name}");
+                }
             }
             finally
             {
@@ -138,9 +171,25 @@ namespace FFTColorCustomizer.Tests
                 rowBuilder.AddStoryCharacterRow(1, characterConfig);
 
                 // Assert
-                var label = mainPanel.GetControlFromPosition(0, 1) as Label;
-                label.Should().NotBeNull();
-                label.Text.Should().Be("Ramza (Chapter 4)");
+                // For Ramza characters, a Panel is added that contains the label
+                var control = mainPanel.GetControlFromPosition(0, 1);
+                control.Should().NotBeNull();
+
+                if (control is Panel panel)
+                {
+                    // Find the label within the panel
+                    var label = panel.Controls.OfType<Label>().FirstOrDefault(l => l.Text == "Ramza (Chapter 4)");
+                    label.Should().NotBeNull();
+                    label.Text.Should().Be("Ramza (Chapter 4)");
+                }
+                else if (control is Label label)
+                {
+                    label.Text.Should().Be("Ramza (Chapter 4)");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Expected Panel or Label, but got {control?.GetType().Name}");
+                }
             }
             finally
             {
