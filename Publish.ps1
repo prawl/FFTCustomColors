@@ -184,7 +184,7 @@ function Copy-ModAssets {
     }
 
     # Copy RamzaThemes folder with tex themes
-    $ramzaThemesSource = "ColorMod/FFTIVC/data/enhanced/system/ffto/g2d"
+    $ramzaThemesSource = "ColorMod/RamzaThemes"
     if (Test-Path $ramzaThemesSource) {
         Write-Host "  -> Copying Ramza tex themes to RamzaThemes folder..."
         $ramzaThemesDest = "$BuildOutputPath/RamzaThemes"
