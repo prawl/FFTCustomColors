@@ -69,7 +69,7 @@ jobs:
         }
 
     - name: Run Tests
-      run: dotnet test Tests/FFTColorCustomizer.Tests.csproj --verbosity minimal
+      run: dotnet test FFTColorCustomizer.Tests.csproj --verbosity minimal
       # continue-on-error: true  # Commented out - workflow will now fail if tests fail
 
     - name: Build and Package
@@ -117,5 +117,5 @@ jobs:
 
     - name: Run Tests with Coverage
       run: |
-        dotnet test Tests/FFTColorCustomizer.Tests.csproj --logger "console;verbosity=detailed"
+        dotnet test FFTColorCustomizer.Tests.csproj --logger "console;verbosity=detailed"
       # continue-on-error: true  # Commented out - workflow will now fail if tests fail
