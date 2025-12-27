@@ -90,3 +90,4 @@ test_*/
 !ColorMod/FFTIVC/data/enhanced/fftpack/unit/**/*.bin
 !ColorMod/FFTIVC/data/enhanced/system/ffto/g2d/**/*.bin
 
+!RamzaThemes/**/*.bin

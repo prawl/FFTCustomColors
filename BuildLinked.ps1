@@ -118,7 +118,7 @@ if ($LASTEXITCODE -eq 0) {
             Write-Host "Copied $storyFolderCount story character theme folders" -ForegroundColor Green
 
             # Copy system/ffto/g2d tex files if they exist
-            $g2dSourcePath = "ColorMod/FFTIVC/data/enhanced/system/ffto/g2d"
+            $g2dSourcePath = "RamzaThemes"
             if (Test-Path $g2dSourcePath) {
                 Write-Host "Setting up G2D directory..." -ForegroundColor Cyan
                 $g2dDestPath = "$modPath/FFTIVC/data/enhanced/system/ffto/g2d"
@@ -212,7 +212,7 @@ if ($LASTEXITCODE -eq 0) {
 
     # Copy Ramza theme tex files to RamzaThemes folder (outside game scan path)
     Write-Host "Copying Ramza theme tex files to RamzaThemes folder..." -ForegroundColor Cyan
-    $ramzaThemesSource = "$PSScriptRoot/ColorMod/FFTIVC/data/enhanced/system/ffto/g2d"
+    $ramzaThemesSource = "$PSScriptRoot/ColorMod/RamzaThemes"
     $ramzaThemesDest = "$modPath/RamzaThemes"
 
     if (Test-Path $ramzaThemesSource) {
