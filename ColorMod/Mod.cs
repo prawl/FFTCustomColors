@@ -46,7 +46,7 @@ public class Mod : IMod, IConfigurable
         ModLogger.Reset();
         ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
         ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD - Maximum verbosity
-        ModLogger.Log("Mod constructor called - DEBUG BUILD v1.2.2-debug");
+        ModLogger.Log("Mod constructor called - DEBUG BUILD v2.0.2-debug");
 
         _inputSimulator = inputSimulator;
         _hotkeyHandler = hotkeyHandler;
