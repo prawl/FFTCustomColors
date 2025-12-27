@@ -239,7 +239,7 @@ namespace FFTColorCustomizer.Configuration
                         var spriteManager = new Utilities.ConfigBasedSpriteManager(
                             actualModPath,
                             saveConfigManager,
-                            @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod");
+                            actualModPath);
 
                         spriteManager.UpdateConfiguration(config);
                         ModLogger.Log("Sprite changes applied successfully");

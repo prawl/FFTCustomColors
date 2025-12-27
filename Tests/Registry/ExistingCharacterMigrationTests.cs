@@ -39,12 +39,12 @@ namespace Tests.Registry
             // Try multiple paths to find the JSON file
             var possiblePaths = new[]
             {
-                // Direct path for development
-                @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\StoryCharacters.json",
                 // Relative from test output
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "ColorMod", "Data", "StoryCharacters.json"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "ColorMod", "Data", "StoryCharacters.json"),
                 // Alternative relative path
                 Path.Combine(Directory.GetCurrentDirectory(), "ColorMod", "Data", "StoryCharacters.json"),
+                // GitHub Actions path
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ColorMod", "Data", "StoryCharacters.json"),
             };
 
             string jsonPath = null;

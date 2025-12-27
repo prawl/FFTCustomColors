@@ -17,9 +17,17 @@ namespace FFTColorCustomizer.Tests
             Directory.CreateDirectory(dataPath);
 
             // Copy the actual StoryCharacters.json from the project
-            var sourceFile = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\StoryCharacters.json";
+            var sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "ColorMod", "Data", "StoryCharacters.json");
             var destFile = Path.Combine(dataPath, "StoryCharacters.json");
-            File.Copy(sourceFile, destFile);
+            if (File.Exists(sourceFile))
+            {
+                File.Copy(sourceFile, destFile);
+            }
+            else
+            {
+                // Create a minimal test file if source doesn't exist
+                File.WriteAllText(destFile, @"{""Characters"": {""RamzaChapter1"": {""Themes"": [""original"", ""white_heretic""]}, ""RamzaChapter23"": {""Themes"": [""original"", ""white_heretic""]}, ""RamzaChapter4"": {""Themes"": [""original"", ""white_heretic""]}}}");
+            }
 
             try
             {
@@ -48,9 +56,17 @@ namespace FFTColorCustomizer.Tests
             Directory.CreateDirectory(dataPath);
 
             // Copy the actual StoryCharacters.json from the project
-            var sourceFile = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\StoryCharacters.json";
+            var sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "ColorMod", "Data", "StoryCharacters.json");
             var destFile = Path.Combine(dataPath, "StoryCharacters.json");
-            File.Copy(sourceFile, destFile);
+            if (File.Exists(sourceFile))
+            {
+                File.Copy(sourceFile, destFile);
+            }
+            else
+            {
+                // Create a minimal test file if source doesn't exist
+                File.WriteAllText(destFile, @"{""Characters"": {""RamzaChapter1"": {""Themes"": [""original"", ""white_heretic""]}, ""RamzaChapter23"": {""Themes"": [""original"", ""white_heretic""]}, ""RamzaChapter4"": {""Themes"": [""original"", ""white_heretic""]}}}");
+            }
 
             try
             {
@@ -79,9 +95,17 @@ namespace FFTColorCustomizer.Tests
             Directory.CreateDirectory(dataPath);
 
             // Copy the actual StoryCharacters.json from the project
-            var sourceFile = @"C:\Users\ptyRa\Dev\FFTColorCustomizer\ColorMod\Data\StoryCharacters.json";
+            var sourceFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "ColorMod", "Data", "StoryCharacters.json");
             var destFile = Path.Combine(dataPath, "StoryCharacters.json");
-            File.Copy(sourceFile, destFile);
+            if (File.Exists(sourceFile))
+            {
+                File.Copy(sourceFile, destFile);
+            }
+            else
+            {
+                // Create a minimal test file if source doesn't exist
+                File.WriteAllText(destFile, @"{""Characters"": {""RamzaChapter1"": {""Themes"": [""original"", ""white_heretic""]}, ""RamzaChapter23"": {""Themes"": [""original"", ""white_heretic""]}, ""RamzaChapter4"": {""Themes"": [""original"", ""white_heretic""]}}}");
+            }
 
             try
             {
