@@ -118,7 +118,7 @@ if ($LASTEXITCODE -eq 0) {
             Write-Host "Copied $storyFolderCount story character theme folders" -ForegroundColor Green
 
             # Copy system/ffto/g2d tex files if they exist
-            $g2dSourcePath = "RamzaThemes"
+            $g2dSourcePath = "ColorMod/RamzaThemes"
             if (Test-Path $g2dSourcePath) {
                 Write-Host "Setting up G2D directory..." -ForegroundColor Cyan
                 $g2dDestPath = "$modPath/FFTIVC/data/enhanced/system/ffto/g2d"
