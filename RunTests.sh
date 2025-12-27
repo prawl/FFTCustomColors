@@ -6,7 +6,7 @@
 set -e  # Exit on any error
 
 echo -e "\033[33m[1/3] Restoring packages...\033[0m"
-dotnet restore FFTColorCustomizer.Tests.csproj
+dotnet restore FFTColorCustomizer.Tests.csproj --nologo
 if [ $? -ne 0 ]; then
     echo -e "\033[31mERROR: Failed to restore packages\033[0m"
     exit 1
