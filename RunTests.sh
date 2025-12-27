@@ -13,14 +13,14 @@ if [ $? -ne 0 ]; then
 fi
 
 echo -e "\033[33m[2/3] Building test project...\033[0m"
-dotnet build FFTColorCustomizer.Tests.csproj
+dotnet build FFTColorCustomizer.Tests.csproj --nologo -p:WarningLevel=0
 if [ $? -ne 0 ]; then
     echo -e "\033[31mERROR: Failed to build test project\033[0m"
     exit 1
 fi
 
 echo -e "\033[32m[3/3] Running tests...\033[0m"
-dotnet test FFTColorCustomizer.Tests.csproj --no-build --verbosity normal
+dotnet test FFTColorCustomizer.Tests.csproj --no-build --verbosity normal --nologo -p:WarningLevel=0
 TEST_RESULT=$?
 
 if [ $TEST_RESULT -ne 0 ]; then
