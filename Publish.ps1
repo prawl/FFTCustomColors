@@ -22,7 +22,7 @@
 [cmdletbinding()]
 param (
     [string]$Version = "",
-    [string]$OutputPath = "C:\Users\ptyRa\Downloads"
+    [string]$OutputPath = ""
 )
 
 ## => Configuration <= ##
@@ -30,6 +30,18 @@ $ProjectPath = "ColorMod/FFTColorCustomizer.csproj"
 $BuildOutputPath = "Publish/Release"
 $TempBuildPath = "Publish/TempBuild"
 $ModConfigPath = "$BuildOutputPath/ModConfig.json"
+
+# Set default output path based on environment
+if (-not $OutputPath) {
+    if ($env:GITHUB_ACTIONS) {
+        # GitHub Actions - output to workspace
+        $OutputPath = "."
+    }
+    else {
+        # Local build - output to Downloads
+        $OutputPath = "C:\Users\ptyRa\Downloads"
+    }
+}
 
 ## => Functions <= ##
 function Write-Status {

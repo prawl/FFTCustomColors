@@ -21,7 +21,7 @@ on:
 
 env:
   PUBLISH_PATH: ./Publish
-  PUBLISH_GITHUB_PATH: ./Publish/ToUpload/Generic
+  PUBLISH_GITHUB_PATH: .
   PUBLISH_CHANGELOG_PATH: ./Publish/Changelog.md
 
   # Set RELOADEDIIMODS to current directory for build
@@ -34,6 +34,8 @@ env:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write  # Need write permission to create releases
     defaults:
       run:
         shell: pwsh
@@ -80,7 +82,7 @@ jobs:
       with:
         name: FFTColorCustomizer-${{ github.sha }}
         path: |
-          ${{ env.PUBLISH_GITHUB_PATH }}/*
+          FFTColorCustomizer_*.zip
         retention-days: 30
 
     - name: Upload Changelog
@@ -97,7 +99,7 @@ jobs:
         name: FFT Color Customizer ${{ env.RELEASE_TAG }}
         body_path: ${{ env.PUBLISH_CHANGELOG_PATH }}
         files: |
-          ${{ env.PUBLISH_GITHUB_PATH }}/*
+          FFTColorCustomizer_*.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
 
