@@ -467,18 +467,21 @@ try {
         Write-Host "Package ready at: $packagePath" -ForegroundColor Yellow
         Write-Host "Version: $finalVersion" -ForegroundColor Yellow
         Write-Host "=====================================" -ForegroundColor Magenta
+        $exitCode = 0
     }
     else {
         Write-Status "Publishing failed - package creation unsuccessful" "Red"
-        exit 1
+        $exitCode = 1
     }
 }
 catch {
     Write-Host "`n[ERROR] An unexpected error occurred: $_" -ForegroundColor Red
     Write-Host "Stack Trace: $($_.ScriptStackTrace)" -ForegroundColor Red
+    $exitCode = 1
 }
 finally {
     # Restore original directory
     Pop-Location
     Set-Location $originalLocation
+    exit $exitCode
 }
