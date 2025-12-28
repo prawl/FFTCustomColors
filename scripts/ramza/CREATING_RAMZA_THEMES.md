@@ -211,11 +211,43 @@ for original_path, output_path, chapter in sheets:
 ```
 
 ### 6. Convert Modified Sprite Sheets to Game Format
-The FFT Sprite Toolkit should handle this conversion:
-1. Place the 6 modified PNG sprite sheets in the toolkit's working directory
-2. Name them exactly as the originals (830_Ramuza_Ch1_hd.png, etc.)
-3. Use the toolkit's "Create Mod Package" feature
-4. The toolkit will generate the necessary TEX files
+
+#### IMPORTANT: Correct File Placement for FFT Sprite Toolkit
+The toolkit looks for BMP files in the `extracted_sprites` directory, NOT PNG files:
+
+**Correct Directory:**
+```
+C:\Users\[username]\AppData\Local\FFTSpriteToolkit\working\extracted_sprites\
+```
+
+**File Format and Naming:**
+- Use BMP format (not PNG)
+- The toolkit accepts TWO naming conventions:
+  - Standard: `830_Ramuza_Ch1.bmp`, `831_Ramuza_Ch1.bmp`, etc.
+  - HD variant: `830_Ramuza_Ch1_hd.bmp`, `831_Ramuza_Ch1_hd.bmp`, etc.
+- **IMPORTANT**: Copy to BOTH filenames to ensure the toolkit uses your custom sprites
+
+**Complete File List for All Chapters:**
+```
+Chapter 1:
+- 830_Ramuza_Ch1.bmp (and 830_Ramuza_Ch1_hd.bmp)
+- 831_Ramuza_Ch1.bmp (and 831_Ramuza_Ch1_hd.bmp)
+
+Chapter 2-3:
+- 832_Ramuza_Ch23.bmp (and 832_Ramuza_Ch23_hd.bmp)
+- 833_Ramuza_Ch23.bmp (and 833_Ramuza_Ch23_hd.bmp)
+
+Chapter 4:
+- 834_Ramuza_Ch4.bmp (and 834_Ramuza_Ch4_hd.bmp)
+- 835_Ramuza_Ch4.bmp (and 835_Ramuza_Ch4_hd.bmp)
+```
+
+**Conversion Steps:**
+1. Copy your modified BMP files to both standard and _hd filenames in the extracted_sprites directory
+2. Open FFT Sprite Toolkit
+3. Create a new project or select existing one
+4. Use the toolkit's "Create Mod Package" feature
+5. The toolkit will generate the necessary TEX files
 
 ### 7. Locate Generated Files
 After the toolkit creates the mod package, find:
@@ -346,6 +378,8 @@ FFTColorCustomizer/
 - **Theme doesn't appear in menu**: Check that StoryCharacters.json was updated correctly
 - **Colors look wrong**: The original color detection in your script may need adjustment
 - **Game crashes**: TEX files may be corrupted or wrong format - regenerate from toolkit
+- **Toolkit shows wrong colors**: Ensure you copy BMPs to BOTH standard AND _hd filenames in extracted_sprites directory
+- **White theme appearing instead**: Delete any white theme project from toolkit and verify crimson BMPs are in place
 
 ## Working Example: Blue Knight Theme
 Successfully tested configuration:
