@@ -866,46 +866,62 @@ When importing, block with error message if:
 
 ### Phase 0: Research & Tooling
 - [x] Create `scripts/diagnostic_sprite.py` script
-- [ ] Run diagnostic on Squire Male sprite, document findings
-- [ ] Run diagnostic on Squire Female sprite, document findings
-- [ ] Create `ColorMod/Data/SectionMappings/` directory
-- [ ] Create first mapping JSON (Squire_Male.json)
-- [ ] Create second mapping JSON (Squire_Female.json)
+- [x] Run diagnostic on Squire Male sprite, document findings
+- [x] Create `ColorMod/Data/SectionMappings/` directory
+- [x] Create first mapping JSON (Squire_Male.json)
 
 ### Phase 1: Core Palette Engine
-- [ ] Create `PaletteModifier.cs` class
-  - [ ] `LoadTemplate(string binPath)` - load sprite into memory
-  - [ ] `SetPaletteColor(int index, Color color)` - RGB to BGR555 conversion
-  - [ ] `GetPreview(int spriteIndex)` - render with modified palette
-  - [ ] `Reset()` - restore original palette
-  - [ ] `GetModifiedPalette()` - export palette bytes
-- [ ] Create `HslColor.cs` helper struct
-  - [ ] RGB ↔ HSL conversion methods
-  - [ ] Auto-shade generation (shadow, highlight, outline from base)
-- [ ] Create `SectionMapping.cs` model classes
-  - [ ] `SectionMappingLoader` - load JSON mappings from embedded resources
-  - [ ] `JobSection` - name, indices, roles
+- [x] Create `PaletteModifier.cs` class
+  - [x] `LoadTemplate(string binPath)` - load sprite into memory
+  - [x] `SetPaletteColor(int index, Color color)` - RGB to BGR555 conversion
+  - [x] `GetPreview(int spriteIndex)` - render with modified palette
+  - [x] `Reset()` - restore original palette
+  - [x] `GetModifiedPalette()` - export palette bytes
+  - [x] `ApplySectionColor(section, baseColor)` - apply shades to section indices
+  - [x] `SaveToFile(outputPath)` - save modified sprite to file
+- [x] Create `HslColor.cs` helper struct
+  - [x] RGB ↔ HSL conversion methods
+  - [x] Auto-shade generation (shadow, highlight from base)
+  - [x] `ColorShades` struct for returning shade variants
+- [x] Create `SectionMapping.cs` model classes
+  - [x] `SectionMappingLoader` - load JSON mappings from files
+  - [x] `SectionMappingLoader.GetAvailableJobs()` - discover available mappings
+  - [x] `SectionMappingLoader.LoadFromFile()` - load mapping from file
+  - [x] `JobSection` - name, displayName, indices, roles
+  - [x] `SectionMapping` - job, sprite, sections
 
 ### Phase 2: Theme Editor UI
-- [ ] Add "Theme Editor" tab to ConfigurationForm
-- [ ] Create template dropdown (job selector)
-  - [ ] Filter to only jobs with mapping files
-  - [ ] Load mapping on selection change
-- [ ] Create sprite preview panel
+- [x] Add "Theme Editor" tab to ConfigurationForm
+- [x] Create ThemeEditorPanel component
+  - [x] Template dropdown (job selector)
+  - [x] Filter to only jobs with mapping files
+  - [x] Load mapping on selection change
+  - [x] Pass mappings directory from ConfigurationForm
+  - [x] Layout controls with proper positioning
+  - [x] Set minimum height (400px)
+- [x] Create sprite preview panel (PictureBox)
   - [ ] Integrate with PaletteModifier
-  - [ ] Add rotation arrows (◄ ►) for 8 directions
+  - [x] Add rotation arrows (◄ ►) for 8 directions
+  - [x] Set proper size (96x120 for 3x scale)
   - [ ] Wire up real-time preview updates
-- [ ] Create HSL color picker component
-  - [ ] Hue slider (rainbow gradient)
-  - [ ] Saturation slider (dynamic gradient based on hue)
-  - [ ] Lightness slider (dynamic gradient based on hue)
+- [x] Create HSL color picker component (HslColorPicker.cs)
+  - [x] Hue slider (0-360)
+  - [x] Saturation slider (0-100)
+  - [x] Lightness slider (0-100)
+  - [x] H/S/L properties (get/set)
+  - [x] CurrentColor property (returns RGB)
+  - [x] SetColor(Color) method (RGB to HSL)
+  - [x] ColorChanged event
+  - [x] SectionName property
   - [ ] Color preview swatch
   - [ ] Hex code display/input
   - [ ] Copy/Paste buttons
-- [ ] Generate section color pickers dynamically from mapping
-- [ ] Add scrolling for jobs with many sections
-- [ ] Add theme name input field
-- [ ] Add Save/Reset/Cancel buttons
+- [x] Create section color pickers panel (container)
+- [x] Generate section color pickers dynamically from mapping
+- [x] Add scrolling for section color pickers panel
+- [x] Add theme name input field
+- [x] Add Save/Reset/Cancel buttons
+- [x] Add ThemeEditorPanel to ConfigurationForm (visible when expanded)
 
 ### Phase 3: Theme Persistence
 - [ ] Create `UserThemeService.cs`

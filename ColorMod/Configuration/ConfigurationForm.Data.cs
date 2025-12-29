@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.ThemeEditor;
 using FFTColorCustomizer.Utilities;
 
 namespace FFTColorCustomizer.Configuration
@@ -50,6 +51,31 @@ namespace FFTColorCustomizer.Configuration
 
             // Load story characters using the registry
             LoadStoryCharacters(ref row);
+
+            // Add header for theme editor
+            var themeEditorHeader = CreateCollapsibleHeader("Theme Editor", _themeEditorCollapsed, row++);
+            themeEditorHeader.Click += (sender, e) => ToggleThemeEditorVisibility(themeEditorHeader);
+
+            // Add theme editor panel with mappings and sprites directories
+            string? mappingsDirectory = null;
+            string? spritesDirectory = null;
+            if (!string.IsNullOrEmpty(_modPath))
+            {
+                mappingsDirectory = System.IO.Path.Combine(_modPath, "Data", "SectionMappings");
+                spritesDirectory = System.IO.Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_original");
+            }
+            var themeEditorPanel = new ThemeEditorPanel(mappingsDirectory, spritesDirectory);
+            themeEditorPanel.Dock = DockStyle.Fill;
+            _mainPanel.Controls.Add(themeEditorPanel, 0, row);
+            _mainPanel.SetColumnSpan(themeEditorPanel, 3);
+            _themeEditorControls.Add(themeEditorPanel);
+
+            // Apply initial collapsed state
+            if (_themeEditorCollapsed)
+            {
+                themeEditorPanel.Visible = false;
+            }
+            row++;
         }
 
         private void LoadGenericCharacters(ref int row)

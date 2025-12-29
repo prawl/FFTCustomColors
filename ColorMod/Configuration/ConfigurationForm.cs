@@ -34,6 +34,8 @@ namespace FFTColorCustomizer.Configuration
         private int _genericCharacterEndRow = -1;
         private bool _storyCharactersCollapsed = false;
         private List<Control> _storyCharacterControls = new List<Control>();
+        private bool _themeEditorCollapsed = false;
+        private List<Control> _themeEditorControls = new List<Control>();
 
         /// <summary>
         /// Gets the current configuration
@@ -203,6 +205,20 @@ namespace FFTColorCustomizer.Configuration
                 _lazyLoadingManager?.CheckAllCarouselsVisibility();
             };
             delayTimer.Start();
+        }
+
+        private void ToggleThemeEditorVisibility(Label header)
+        {
+            _mainPanel.SuspendLayout();
+            this.SuspendLayout();
+
+            _themeEditorCollapsed = !_themeEditorCollapsed;
+            header.Text = _themeEditorCollapsed ? "▶ Theme Editor" : "▼ Theme Editor";
+
+            SetControlsVisibility(_themeEditorControls, !_themeEditorCollapsed);
+
+            _mainPanel.ResumeLayout(true);
+            this.ResumeLayout(true);
         }
 
         private void SetControlsVisibility(List<Control> controls, bool visible)

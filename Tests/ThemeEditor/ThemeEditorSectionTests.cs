@@ -1,0 +1,1607 @@
+using System;
+using System.Linq;
+using System.Windows.Forms;
+using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.ThemeEditor;
+using Xunit;
+
+namespace FFTColorCustomizer.Tests.ThemeEditor
+{
+    public class ThemeEditorSectionTests
+    {
+        [Fact]
+        [STAThread]
+        public void ConfigurationForm_HasThemeEditorSection_WithCollapsibleHeader()
+        {
+            // Arrange
+            var config = new Config();
+
+            // Act
+            using var form = new ConfigurationForm(config);
+
+            // Assert - Find the Theme Editor header label
+            var mainPanel = form.Controls.OfType<Panel>()
+                .SelectMany(p => p.Controls.OfType<TableLayoutPanel>())
+                .FirstOrDefault();
+
+            Assert.NotNull(mainPanel);
+
+            var themeEditorHeader = mainPanel.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Text.Contains("Theme Editor"));
+
+            Assert.NotNull(themeEditorHeader);
+            Assert.Contains("Theme Editor", themeEditorHeader.Text);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasTemplateDropdown_WithAvailableJobs()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have a template ComboBox
+            var templateDropdown = panel.Controls.OfType<ComboBox>()
+                .FirstOrDefault(c => c.Name == "TemplateDropdown");
+
+            Assert.NotNull(templateDropdown);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_TemplateDropdown_PopulatedFromMappingsDirectory()
+        {
+            // Arrange - create temp directory with test mapping files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(tempDir);
+            try
+            {
+                // Need valid JSON since Squire_Male will be auto-selected and parsed
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "Squire_Male.json"), @"{""job"":""Squire_Male"",""sprite"":""battle_mina_m_spr.bin"",""sections"":[]}");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "Knight_Female.json"), @"{""job"":""Knight_Female"",""sprite"":""battle_knight_w_spr.bin"",""sections"":[]}");
+
+                // Act
+                using var panel = new ThemeEditorPanel(tempDir);
+
+                // Assert
+                var templateDropdown = panel.Controls.OfType<ComboBox>()
+                    .FirstOrDefault(c => c.Name == "TemplateDropdown");
+
+                Assert.NotNull(templateDropdown);
+                Assert.Equal(2, templateDropdown.Items.Count);
+                Assert.Contains("Knight Female", templateDropdown.Items.Cast<string>());
+                Assert.Contains("Squire Male", templateDropdown.Items.Cast<string>());
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasSpritePreviewPictureBox()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have a PictureBox for sprite preview
+            var previewBox = panel.Controls.OfType<PictureBox>()
+                .FirstOrDefault(c => c.Name == "SpritePreview");
+
+            Assert.NotNull(previewBox);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasThemeNameTextBox()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have a TextBox for theme name input
+            var themeNameBox = panel.Controls.OfType<TextBox>()
+                .FirstOrDefault(c => c.Name == "ThemeNameInput");
+
+            Assert.NotNull(themeNameBox);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasSaveResetCancelButtons()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have Save, Reset, and Cancel buttons
+            var saveButton = panel.Controls.OfType<Button>()
+                .FirstOrDefault(c => c.Name == "SaveButton");
+            var resetButton = panel.Controls.OfType<Button>()
+                .FirstOrDefault(c => c.Name == "ResetButton");
+            var cancelButton = panel.Controls.OfType<Button>()
+                .FirstOrDefault(c => c.Name == "CancelButton");
+
+            Assert.NotNull(saveButton);
+            Assert.NotNull(resetButton);
+            Assert.NotNull(cancelButton);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasSectionColorPickersPanel()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have a panel to contain section color pickers
+            var colorPickersPanel = panel.Controls.OfType<Panel>()
+                .FirstOrDefault(c => c.Name == "SectionColorPickersPanel");
+
+            Assert.NotNull(colorPickersPanel);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_WhenTemplateSelected_LoadsSectionMapping()
+        {
+            // Arrange - create temp directory with a valid mapping file
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(tempDir);
+            try
+            {
+                var mappingJson = @"{
+                    ""job"": ""Knight_Male"",
+                    ""sprite"": ""battle_knight_m_spr.bin"",
+                    ""sections"": [
+                        {
+                            ""name"": ""Cape"",
+                            ""displayName"": ""Cape"",
+                            ""indices"": [3, 4, 5],
+                            ""roles"": [""shadow"", ""base"", ""highlight""]
+                        },
+                        {
+                            ""name"": ""Boots"",
+                            ""displayName"": ""Boots"",
+                            ""indices"": [6, 7],
+                            ""roles"": [""base"", ""highlight""]
+                        }
+                    ]
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "Knight_Male.json"), mappingJson);
+
+                using var panel = new ThemeEditorPanel(tempDir);
+                var templateDropdown = panel.Controls.OfType<ComboBox>()
+                    .First(c => c.Name == "TemplateDropdown");
+
+                // Act - select the template
+                templateDropdown.SelectedItem = "Knight Male";
+
+                // Assert - CurrentMapping should be loaded
+                Assert.NotNull(panel.CurrentMapping);
+                Assert.Equal("Knight_Male", panel.CurrentMapping.Job);
+                Assert.Equal("battle_knight_m_spr.bin", panel.CurrentMapping.Sprite);
+                Assert.Equal(2, panel.CurrentMapping.Sections.Length);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasRotationArrowButtons()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have left and right rotation buttons
+            var leftArrow = panel.Controls.OfType<Button>()
+                .FirstOrDefault(c => c.Name == "RotateLeftButton");
+            var rightArrow = panel.Controls.OfType<Button>()
+                .FirstOrDefault(c => c.Name == "RotateRightButton");
+
+            Assert.NotNull(leftArrow);
+            Assert.NotNull(rightArrow);
+            Assert.Equal("◄", leftArrow.Text);
+            Assert.Equal("►", rightArrow.Text);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_RotateRight_CyclesClockwise()
+        {
+            // Arrange
+            using var panel = new ThemeEditorPanel();
+            var rightArrow = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "RotateRightButton");
+
+            // Act - click right arrow (starting from SW = 5)
+            Assert.Equal(5, panel.CurrentSpriteDirection); // SW
+            rightArrow.PerformClick();
+
+            // Assert - should go clockwise to S = 4
+            Assert.Equal(4, panel.CurrentSpriteDirection);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_RotateLeft_CyclesCounterClockwise()
+        {
+            // Arrange
+            using var panel = new ThemeEditorPanel();
+            var leftArrow = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "RotateLeftButton");
+
+            // Starting at SW(5)
+            Assert.Equal(5, panel.CurrentSpriteDirection); // SW
+
+            // Act - click left arrow (counter-clockwise)
+            leftArrow.PerformClick();
+
+            // Assert - should go counter-clockwise to W(6)
+            Assert.Equal(6, panel.CurrentSpriteDirection);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_RotateRight_CyclesThroughAll8Directions()
+        {
+            // Arrange
+            using var panel = new ThemeEditorPanel();
+            var rightArrow = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "RotateRightButton");
+
+            // Direction cycle (clockwise): SW(5) → S(4) → SE(3) → E(2) → NE(1) → N(0) → NW(7) → W(6) → SW(5)
+            Assert.Equal(5, panel.CurrentSpriteDirection); // SW
+
+            rightArrow.PerformClick();
+            Assert.Equal(4, panel.CurrentSpriteDirection); // S
+
+            rightArrow.PerformClick();
+            Assert.Equal(3, panel.CurrentSpriteDirection); // SE
+
+            rightArrow.PerformClick();
+            Assert.Equal(2, panel.CurrentSpriteDirection); // E
+
+            rightArrow.PerformClick();
+            Assert.Equal(1, panel.CurrentSpriteDirection); // NE
+
+            rightArrow.PerformClick();
+            Assert.Equal(0, panel.CurrentSpriteDirection); // N
+
+            rightArrow.PerformClick();
+            Assert.Equal(7, panel.CurrentSpriteDirection); // NW
+
+            rightArrow.PerformClick();
+            Assert.Equal(6, panel.CurrentSpriteDirection); // W
+
+            rightArrow.PerformClick();
+            Assert.Equal(5, panel.CurrentSpriteDirection); // Back to SW
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_WhenTemplateSelected_LoadsSpriteIntoPaletteModifier()
+        {
+            // Arrange - create temp directories with mapping and sprite files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesDir);
+
+            try
+            {
+                // Create mapping file
+                var mappingJson = @"{
+                    ""job"": ""Knight_Male"",
+                    ""sprite"": ""battle_knight_m_spr.bin"",
+                    ""sections"": []
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(mappingsDir, "Knight_Male.json"), mappingJson);
+
+                // Create a minimal sprite file (needs at least 512 bytes for palette)
+                var spriteData = new byte[1024];
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+                var templateDropdown = panel.Controls.OfType<ComboBox>()
+                    .First(c => c.Name == "TemplateDropdown");
+
+                // Act - select the template
+                templateDropdown.SelectedItem = "Knight Male";
+
+                // Assert - PaletteModifier should be loaded
+                Assert.NotNull(panel.PaletteModifier);
+                Assert.True(panel.PaletteModifier.IsLoaded);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasHueSaturationLightnessSliders()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            // Assert - Should have three track bars for H, S, L
+            var hueSlider = picker.Controls.OfType<TrackBar>()
+                .FirstOrDefault(c => c.Name == "HueSlider");
+            var saturationSlider = picker.Controls.OfType<TrackBar>()
+                .FirstOrDefault(c => c.Name == "SaturationSlider");
+            var lightnessSlider = picker.Controls.OfType<TrackBar>()
+                .FirstOrDefault(c => c.Name == "LightnessSlider");
+
+            Assert.NotNull(hueSlider);
+            Assert.NotNull(saturationSlider);
+            Assert.NotNull(lightnessSlider);
+
+            // Hue: 0-360, Saturation: 0-100, Lightness: 0-100
+            Assert.Equal(0, hueSlider.Minimum);
+            Assert.Equal(360, hueSlider.Maximum);
+            Assert.Equal(0, saturationSlider.Minimum);
+            Assert.Equal(100, saturationSlider.Maximum);
+            Assert.Equal(0, lightnessSlider.Minimum);
+            Assert.Equal(100, lightnessSlider.Maximum);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_ExposesHslProperties()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+
+            // Act - set slider values
+            var hueSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "HueSlider");
+            var saturationSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "SaturationSlider");
+            var lightnessSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "LightnessSlider");
+
+            hueSlider.Value = 180;
+            saturationSlider.Value = 75;
+            lightnessSlider.Value = 50;
+
+            // Assert - properties reflect slider values
+            Assert.Equal(180, picker.Hue);
+            Assert.Equal(75, picker.Saturation);
+            Assert.Equal(50, picker.Lightness);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_CanSetHslPropertiesProgrammatically()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+
+            // Act - set properties directly
+            picker.Hue = 240;
+            picker.Saturation = 80;
+            picker.Lightness = 60;
+
+            // Assert - sliders should reflect the new values
+            var hueSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "HueSlider");
+            var saturationSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "SaturationSlider");
+            var lightnessSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "LightnessSlider");
+
+            Assert.Equal(240, hueSlider.Value);
+            Assert.Equal(80, saturationSlider.Value);
+            Assert.Equal(60, lightnessSlider.Value);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_CurrentColor_ReturnsRgbFromHslValues()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+
+            // Act - set to pure red (H=0, S=100, L=50)
+            picker.Hue = 0;
+            picker.Saturation = 100;
+            picker.Lightness = 50;
+
+            // Assert - should be pure red
+            var color = picker.CurrentColor;
+            Assert.Equal(255, color.R);
+            Assert.Equal(0, color.G);
+            Assert.Equal(0, color.B);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_SetColor_UpdatesHslSlidersFromRgb()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+
+            // Act - set color to pure green
+            picker.SetColor(Color.FromArgb(0, 255, 0));
+
+            // Assert - should be H=120, S=100, L=50 for pure green
+            Assert.Equal(120, picker.Hue);
+            Assert.Equal(100, picker.Saturation);
+            Assert.Equal(50, picker.Lightness);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_RaisesColorChangedEvent_WhenSliderChanges()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+            var eventRaised = false;
+            picker.ColorChanged += (sender, e) => eventRaised = true;
+
+            // Act - change hue slider
+            picker.Hue = 180;
+
+            // Assert
+            Assert.True(eventRaised);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_RaisesColorChangedEvent_WhenSaturationChanges()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+            var eventRaised = false;
+            picker.ColorChanged += (sender, e) => eventRaised = true;
+
+            // Act - change saturation slider
+            picker.Saturation = 75;
+
+            // Assert
+            Assert.True(eventRaised);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_RaisesColorChangedEvent_WhenLightnessChanges()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+            var eventRaised = false;
+            picker.ColorChanged += (sender, e) => eventRaised = true;
+
+            // Act - change lightness slider
+            picker.Lightness = 25;
+
+            // Assert
+            Assert.True(eventRaised);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasSectionNameProperty()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+            picker.SectionName = "Cape";
+
+            // Assert
+            Assert.Equal("Cape", picker.SectionName);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_RaisesColorChangedEvent_WhenSliderDragged()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+            var eventRaised = false;
+            picker.ColorChanged += (sender, e) => eventRaised = true;
+
+            // Act - simulate user dragging the slider by directly changing TrackBar value
+            var hueSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "HueSlider");
+            hueSlider.Value = 180;
+
+            // Assert
+            Assert.True(eventRaised);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_SetColorSilent_DoesNotRaiseColorChangedEvent()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+            var eventRaised = false;
+            picker.ColorChanged += (sender, e) => eventRaised = true;
+
+            // Act - set color silently (for initialization)
+            picker.SetColorSilent(Color.FromArgb(255, 0, 0)); // Red
+
+            // Assert - event should NOT be raised
+            Assert.False(eventRaised);
+            // But the color should be set correctly
+            Assert.Equal(0, picker.Hue);
+            Assert.Equal(100, picker.Saturation);
+            Assert.Equal(50, picker.Lightness);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_SlidersAreVerticallyStacked()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            // Assert - sliders should have different Top positions (not overlapping)
+            var hueSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "HueSlider");
+            var satSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "SaturationSlider");
+            var lightSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "LightnessSlider");
+
+            // Each slider should be at a different vertical position
+            Assert.True(satSlider.Top > hueSlider.Top, "Saturation slider should be below Hue slider");
+            Assert.True(lightSlider.Top > satSlider.Top, "Lightness slider should be below Saturation slider");
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasLabelsForEachSlider()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            // Assert - should have labels for Hue, Saturation, and Lightness (plus section header = 4 total)
+            var labels = picker.Controls.OfType<Label>().ToList();
+            Assert.Equal(4, labels.Count);
+            Assert.Contains(labels, l => l.Text == "Hue");
+            Assert.Contains(labels, l => l.Text == "Saturation");
+            Assert.Contains(labels, l => l.Text == "Lightness");
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_DisplaysSectionNameAsHeader()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+            picker.SectionName = "Cape";
+
+            // Assert - should have a section header label displaying the section name
+            var sectionHeader = picker.Controls.OfType<Label>().FirstOrDefault(l => l.Name == "SectionHeaderLabel");
+            Assert.NotNull(sectionHeader);
+            Assert.Equal("Cape", sectionHeader.Text);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_WhenTemplateSelected_InitializesColorPickersFromPalette()
+        {
+            // Arrange - create temp directories with mapping and sprite files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesDir);
+
+            try
+            {
+                // Create mapping file with a section that uses index 3 as base
+                var mappingJson = @"{
+                    ""job"": ""Knight_Male"",
+                    ""sprite"": ""battle_knight_m_spr.bin"",
+                    ""sections"": [
+                        {
+                            ""name"": ""Cape"",
+                            ""displayName"": ""Cape"",
+                            ""indices"": [3, 4, 5],
+                            ""roles"": [""shadow"", ""base"", ""highlight""]
+                        }
+                    ]
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(mappingsDir, "Knight_Male.json"), mappingJson);
+
+                // Create sprite file with a known color at palette index 4 (base role for Cape)
+                // Palette is 16 colors x 2 bytes = 32 bytes for palette 0
+                // Index 4 = bytes 8-9
+                var spriteData = new byte[2048];
+                // Set index 4 to pure red (BGR555: R=31, G=0, B=0 = 0x001F)
+                spriteData[8] = 0x1F; // Low byte
+                spriteData[9] = 0x00; // High byte
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+                var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
+
+                // Act - select the template
+                templateDropdown.SelectedItem = "Knight Male";
+
+                // Assert - the Cape color picker should be initialized with the color from palette
+                var sectionPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
+                var capePicker = sectionPanel.Controls.OfType<HslColorPicker>().First(c => c.SectionName == "Cape");
+
+                // The color should not be black (L=0) - it should have been initialized from palette
+                Assert.True(capePicker.Lightness > 0, "Color picker should be initialized from palette, not left at default black");
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_WhenTemplateSelected_UpdatesSpritePreview()
+        {
+            // Arrange - create temp directories with mapping and sprite files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesDir);
+
+            try
+            {
+                // Create mapping file
+                var mappingJson = @"{
+                    ""job"": ""Knight_Male"",
+                    ""sprite"": ""battle_knight_m_spr.bin"",
+                    ""sections"": []
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(mappingsDir, "Knight_Male.json"), mappingJson);
+
+                // Create a minimal sprite file (needs at least 512 bytes for palette + some sprite data)
+                // Minimum for BinSpriteExtractor to work: 512 palette + sprite pixel data
+                var spriteData = new byte[2048];
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+                var templateDropdown = panel.Controls.OfType<ComboBox>()
+                    .First(c => c.Name == "TemplateDropdown");
+                var spritePreview = panel.Controls.OfType<PictureBox>()
+                    .First(c => c.Name == "SpritePreview");
+
+                // Assert - preview should be null before selection
+                Assert.Null(spritePreview.Image);
+
+                // Act - select the template
+                templateDropdown.SelectedItem = "Knight Male";
+
+                // Assert - preview should now have an image
+                Assert.NotNull(spritePreview.Image);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_RotateButtons_UpdateSpritePreview()
+        {
+            // Arrange - create temp directories with mapping and sprite files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesDir);
+
+            try
+            {
+                // Create mapping file
+                var mappingJson = @"{
+                    ""job"": ""Knight_Male"",
+                    ""sprite"": ""battle_knight_m_spr.bin"",
+                    ""sections"": []
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(mappingsDir, "Knight_Male.json"), mappingJson);
+
+                // Create a minimal sprite file
+                var spriteData = new byte[2048];
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+                var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
+                var spritePreview = panel.Controls.OfType<PictureBox>().First(c => c.Name == "SpritePreview");
+                var rotateRightButton = panel.Controls.OfType<Button>().First(c => c.Name == "RotateRightButton");
+
+                // Select template to load sprite
+                templateDropdown.SelectedItem = "Knight Male";
+                var initialImage = spritePreview.Image;
+                Assert.NotNull(initialImage);
+
+                // Act - rotate right
+                rotateRightButton.PerformClick();
+
+                // Assert - image instance should be different (new bitmap for new direction)
+                Assert.NotNull(spritePreview.Image);
+                Assert.NotSame(initialImage, spritePreview.Image);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_DefaultDirection_IsSouthwest()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - default direction should be Southwest (index 5 in the sprite array)
+            Assert.Equal(5, panel.CurrentSpriteDirection);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_ColorPickerChange_UpdatesPreview()
+        {
+            // Arrange - create temp directories with mapping and sprite files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesDir);
+
+            try
+            {
+                // Create mapping file with a section
+                var mappingJson = @"{
+                    ""job"": ""Knight_Male"",
+                    ""sprite"": ""battle_knight_m_spr.bin"",
+                    ""sections"": [
+                        {
+                            ""name"": ""Cape"",
+                            ""displayName"": ""Cape"",
+                            ""indices"": [3, 4, 5],
+                            ""roles"": [""shadow"", ""base"", ""highlight""]
+                        }
+                    ]
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(mappingsDir, "Knight_Male.json"), mappingJson);
+
+                // Create sprite file (needs at least 512 bytes for palette + sprite data)
+                var spriteData = new byte[2048];
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+                var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
+                var spritePreview = panel.Controls.OfType<PictureBox>().First(c => c.Name == "SpritePreview");
+
+                // Select template to load sprite and generate color pickers
+                templateDropdown.SelectedItem = "Knight Male";
+                Assert.NotNull(panel.PaletteModifier);
+                Assert.True(panel.PaletteModifier.IsLoaded);
+
+                // Get the color picker for Cape section
+                var sectionPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
+                var capePicker = sectionPanel.Controls.OfType<HslColorPicker>().First(c => c.SectionName == "Cape");
+
+                var initialImage = spritePreview.Image;
+                Assert.NotNull(initialImage);
+
+                // Act - change the color picker value
+                capePicker.Hue = 200; // Change hue to trigger ColorChanged event
+
+                // Assert - preview should have been updated (new bitmap instance)
+                Assert.NotNull(spritePreview.Image);
+                // The image should be different because palette was modified
+                Assert.NotSame(initialImage, spritePreview.Image);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ConfigurationForm_ThemeEditorPanel_HasSpritesDirectory()
+        {
+            // Arrange
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(tempDir);
+
+            // Create mock directory structure
+            var mappingsDir = System.IO.Path.Combine(tempDir, "Data", "SectionMappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_original");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesDir);
+
+            // Create a mapping file and sprite file
+            System.IO.File.WriteAllText(
+                System.IO.Path.Combine(mappingsDir, "Squire_Male.json"),
+                "{\"job\":\"Squire_Male\",\"sprite\":\"battle_mina_m_spr.bin\",\"sections\":[]}"
+            );
+            System.IO.File.WriteAllBytes(
+                System.IO.Path.Combine(spritesDir, "battle_mina_m_spr.bin"),
+                new byte[2048]
+            );
+
+            try
+            {
+                var config = new Config();
+
+                // Act
+                using var form = new ConfigurationForm(config, null, tempDir);
+                var themeEditorPanel = FindControlRecursive<ThemeEditorPanel>(form);
+
+                Assert.NotNull(themeEditorPanel);
+
+                // Select the template
+                var dropdown = themeEditorPanel.Controls.OfType<ComboBox>()
+                    .First(c => c.Name == "TemplateDropdown");
+                dropdown.SelectedItem = "Squire Male";
+
+                // Assert - PaletteModifier should be loaded
+                Assert.NotNull(themeEditorPanel.PaletteModifier);
+                Assert.True(themeEditorPanel.PaletteModifier.IsLoaded);
+
+                // Assert - sprite preview should have an image
+                var spritePreview = themeEditorPanel.Controls.OfType<PictureBox>()
+                    .First(c => c.Name == "SpritePreview");
+                Assert.NotNull(spritePreview.Image);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_WhenTemplateSelected_GeneratesColorPickersForEachSection()
+        {
+            // Arrange - create temp directories with mapping and sprite files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesDir);
+
+            try
+            {
+                // Create mapping file with 3 sections
+                var mappingJson = @"{
+                    ""job"": ""Knight_Male"",
+                    ""sprite"": ""battle_knight_m_spr.bin"",
+                    ""sections"": [
+                        { ""name"": ""Cape"", ""displayName"": ""Cape"", ""indices"": [3, 4, 5], ""roles"": [""shadow"", ""base"", ""highlight""] },
+                        { ""name"": ""Boots"", ""displayName"": ""Boots"", ""indices"": [6, 7], ""roles"": [""base"", ""highlight""] },
+                        { ""name"": ""Armor"", ""displayName"": ""Armor"", ""indices"": [8, 9, 10], ""roles"": [""shadow"", ""base"", ""highlight""] }
+                    ]
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(mappingsDir, "Knight_Male.json"), mappingJson);
+
+                // Create minimal sprite file
+                var spriteData = new byte[1024];
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+                var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
+
+                // Act - select the template
+                templateDropdown.SelectedItem = "Knight Male";
+
+                // Assert - should have 3 HslColorPickers in the section panel
+                var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
+                var colorPickers = colorPickersPanel.Controls.OfType<HslColorPicker>().ToList();
+
+                Assert.Equal(3, colorPickers.Count);
+                Assert.Contains(colorPickers, p => p.SectionName == "Cape");
+                Assert.Contains(colorPickers, p => p.SectionName == "Boots");
+                Assert.Contains(colorPickers, p => p.SectionName == "Armor");
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_LinkedSections_ShowsOnlyPrimaryPicker()
+        {
+            // Arrange - create temp directories with mapping file containing linked sections
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesDir);
+
+            try
+            {
+                // Create mapping with Hood linking to ArmBands (like Squire)
+                var mappingJson = @"{
+                    ""job"": ""Squire_Male"",
+                    ""sprite"": ""battle_mina_m_spr.bin"",
+                    ""sections"": [
+                        {
+                            ""name"": ""Hood"",
+                            ""displayName"": ""Hood and Arm Bands"",
+                            ""indices"": [8, 9, 10],
+                            ""roles"": [""shadow"", ""base"", ""highlight""],
+                            ""linkedTo"": ""ArmBands""
+                        },
+                        {
+                            ""name"": ""ArmBands"",
+                            ""displayName"": ""Arm Bands"",
+                            ""indices"": [4],
+                            ""roles"": [""base""],
+                            ""linkedTo"": ""Hood""
+                        }
+                    ]
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(mappingsDir, "Squire_Male.json"), mappingJson);
+
+                // Create minimal sprite file
+                var spriteData = new byte[2048];
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_mina_m_spr.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+                var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
+
+                // Act - select the template
+                templateDropdown.SelectedItem = "Squire Male";
+
+                // Assert - should have only 1 picker (Hood) since ArmBands is linked
+                var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
+                var colorPickers = colorPickersPanel.Controls.OfType<HslColorPicker>().ToList();
+
+                Assert.Single(colorPickers);
+                Assert.Equal("Hood and Arm Bands", colorPickers[0].SectionName);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ConfigurationForm_ThemeEditorSection_ContainsThemeEditorPanel()
+        {
+            // Arrange
+            var config = new Config();
+
+            // Act
+            using var form = new ConfigurationForm(config);
+
+            // Assert - Find the ThemeEditorPanel in the form's control hierarchy
+            var themeEditorPanel = FindControlRecursive<ThemeEditorPanel>(form);
+            Assert.NotNull(themeEditorPanel);
+        }
+
+        [Fact]
+        public void ThemeEditorPanel_HasProperLayout_WithMinimumHeight()
+        {
+            // Arrange & Act
+            var panel = new ThemeEditorPanel();
+
+            // Assert - Panel should have a reasonable minimum height for all components
+            Assert.True(panel.MinimumSize.Height >= 400, "ThemeEditorPanel should have minimum height of 400px");
+        }
+
+        [Fact]
+        public void ThemeEditorPanel_TemplateDropdown_HasVisibleSize()
+        {
+            // Arrange & Act
+            var panel = new ThemeEditorPanel();
+            var dropdown = panel.Controls.Find("TemplateDropdown", false).FirstOrDefault() as ComboBox;
+
+            // Assert - Dropdown should have reasonable visible dimensions
+            Assert.NotNull(dropdown);
+            Assert.True(dropdown.Width >= 150, "Template dropdown should have width of at least 150px");
+        }
+
+        [Fact]
+        public void ThemeEditorPanel_SpritePreview_HasVisibleSize()
+        {
+            // Arrange & Act
+            var panel = new ThemeEditorPanel();
+            var preview = panel.Controls.Find("SpritePreview", false).FirstOrDefault() as PictureBox;
+
+            // Assert - Sprite preview should be sized for 6x scaled sprite (32x40 -> 192x240)
+            // This makes the preview take up approximately 1/3 of a typical panel width
+            Assert.NotNull(preview);
+            Assert.True(preview.Width >= 192, "Sprite preview should have width of at least 192px (6x scale)");
+            Assert.True(preview.Height >= 240, "Sprite preview should have height of at least 240px (6x scale)");
+        }
+
+        [Fact]
+        public void ThemeEditorPanel_ThemeNameInput_HasVisibleWidth()
+        {
+            // Arrange & Act
+            var panel = new ThemeEditorPanel();
+            var input = panel.Controls.Find("ThemeNameInput", false).FirstOrDefault() as TextBox;
+
+            // Assert - Theme name input should have reasonable width
+            Assert.NotNull(input);
+            Assert.True(input.Width >= 200, "Theme name input should have width of at least 200px");
+        }
+
+        [Fact]
+        public void ThemeEditorPanel_ControlsArePositioned()
+        {
+            // Arrange & Act
+            var panel = new ThemeEditorPanel();
+            var dropdown = panel.Controls.Find("TemplateDropdown", false).FirstOrDefault();
+            var preview = panel.Controls.Find("SpritePreview", false).FirstOrDefault();
+            var colorPickersPanel = panel.Controls.Find("SectionColorPickersPanel", false).FirstOrDefault();
+
+            // Assert - Controls should have explicit positions set
+            Assert.NotNull(dropdown);
+            Assert.NotNull(preview);
+            Assert.NotNull(colorPickersPanel);
+
+            // Dropdown should be at the top
+            Assert.True(dropdown.Top >= 0 && dropdown.Top <= 20, "Template dropdown should be near the top");
+
+            // Preview should be below dropdown on the left
+            Assert.True(preview.Top > dropdown.Bottom, "Sprite preview should be below dropdown");
+
+            // Color pickers panel should be to the right of the preview
+            Assert.True(colorPickersPanel.Left > preview.Left, "Color pickers panel should be to the right of sprite preview");
+        }
+
+        [Fact]
+        public void ConfigurationForm_ThemeEditorPanel_HasMappingsDirectory()
+        {
+            // Arrange
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "FFTColorCustomizerTest_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(tempDir);
+
+            // Create a mock SectionMappings directory with a mapping file
+            var mappingsDir = System.IO.Path.Combine(tempDir, "Data", "SectionMappings");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.File.WriteAllText(
+                System.IO.Path.Combine(mappingsDir, "Squire_Male.json"),
+                "{\"job\":\"Squire_Male\",\"sprite\":\"battle_mina_m_spr.bin\",\"sections\":[]}"
+            );
+
+            try
+            {
+                var config = new Config();
+
+                // Act
+                using var form = new ConfigurationForm(config, null, tempDir);
+                var themeEditorPanel = FindControlRecursive<ThemeEditorPanel>(form);
+
+                // Assert
+                Assert.NotNull(themeEditorPanel);
+                var dropdown = themeEditorPanel.Controls.Find("TemplateDropdown", false).FirstOrDefault() as ComboBox;
+                Assert.NotNull(dropdown);
+                Assert.True(dropdown.Items.Count > 0, "Template dropdown should have items when mappings directory exists");
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_TemplateDropdown_DisplaysHumanReadableNames()
+        {
+            // Arrange - create temp directory with test mapping files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(tempDir);
+            try
+            {
+                // Need valid JSON since Squire_Male will be auto-selected and parsed
+                var validMappingJson = @"{""job"":""Squire_Male"",""sprite"":""battle_mina_m_spr.bin"",""sections"":[]}";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "Squire_Male.json"), validMappingJson);
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "Knight_Female.json"), @"{""job"":""Knight_Female"",""sprite"":""battle_knight_w_spr.bin"",""sections"":[]}");
+
+                // Act
+                using var panel = new ThemeEditorPanel(tempDir);
+
+                // Assert - dropdown should show human-readable names, not snake_case
+                var templateDropdown = panel.Controls.OfType<ComboBox>()
+                    .FirstOrDefault(c => c.Name == "TemplateDropdown");
+
+                Assert.NotNull(templateDropdown);
+                Assert.Equal(2, templateDropdown.Items.Count);
+                Assert.Contains("Knight Female", templateDropdown.Items.Cast<string>());
+                Assert.Contains("Squire Male", templateDropdown.Items.Cast<string>());
+                // Should NOT contain snake_case versions
+                Assert.DoesNotContain("Knight_Female", templateDropdown.Items.Cast<string>());
+                Assert.DoesNotContain("Squire_Male", templateDropdown.Items.Cast<string>());
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasTemplateLabelBeforeDropdown()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have "Template:" label
+            var templateLabel = panel.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Text == "Template:");
+
+            Assert.NotNull(templateLabel);
+
+            // Label should be to the left of the dropdown
+            var dropdown = panel.Controls.OfType<ComboBox>()
+                .First(c => c.Name == "TemplateDropdown");
+            Assert.True(templateLabel.Left < dropdown.Left, "Template label should be to the left of dropdown");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasImportFromClipboardButton()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have Import from Clipboard button
+            var importButton = panel.Controls.OfType<Button>()
+                .FirstOrDefault(b => b.Name == "ImportClipboardButton");
+
+            Assert.NotNull(importButton);
+            Assert.Equal("Import from Clipboard", importButton.Text);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasThemeNameLabelBeforeInput()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have "Theme Name:" label
+            var themeNameLabel = panel.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Text == "Theme Name:");
+
+            Assert.NotNull(themeNameLabel);
+
+            // Label should be to the left of the input
+            var input = panel.Controls.OfType<TextBox>()
+                .First(c => c.Name == "ThemeNameInput");
+            Assert.True(themeNameLabel.Left < input.Left, "Theme Name label should be to the left of input");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasWarningLabel()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have warning label about themes being immutable
+            var warningLabel = panel.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Text.Contains("Once saved"));
+
+            Assert.NotNull(warningLabel);
+            Assert.Contains("cannot be edited", warningLabel.Text);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_RotationButtonsAreCenteredBelowPreview()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var preview = panel.Controls.OfType<PictureBox>()
+                .First(c => c.Name == "SpritePreview");
+            var leftButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "RotateLeftButton");
+            var rightButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "RotateRightButton");
+
+            // Assert - Buttons should be below the preview
+            Assert.True(leftButton.Top > preview.Bottom, "Rotate buttons should be below sprite preview");
+
+            // Buttons should be roughly centered under the preview
+            var previewCenter = preview.Left + (preview.Width / 2);
+            var buttonsCenter = leftButton.Left + ((rightButton.Right - leftButton.Left) / 2);
+            var tolerance = 20;
+            Assert.True(Math.Abs(previewCenter - buttonsCenter) <= tolerance,
+                $"Rotate buttons should be centered under preview. Preview center: {previewCenter}, Buttons center: {buttonsCenter}");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_SpritePreviewHasBorder()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var preview = panel.Controls.OfType<PictureBox>()
+                .First(c => c.Name == "SpritePreview");
+
+            // Assert - Preview should have a border style
+            Assert.Equal(BorderStyle.FixedSingle, preview.BorderStyle);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_ColorPickersPanelHasBorder()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var colorPickersPanel = panel.Controls.OfType<Panel>()
+                .First(c => c.Name == "SectionColorPickersPanel");
+
+            // Assert - Color pickers panel should have a border
+            Assert.Equal(BorderStyle.FixedSingle, colorPickersPanel.BorderStyle);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_ColorPickersPanel_ExpandsToFillRemainingWidth()
+        {
+            // Arrange - Create panel with a set width
+            using var panel = new ThemeEditorPanel();
+            panel.Width = 600;
+
+            // Act - Force layout
+            panel.PerformLayout();
+
+            // Assert
+            var preview = panel.Controls.OfType<PictureBox>()
+                .First(c => c.Name == "SpritePreview");
+            var colorPickersPanel = panel.Controls.OfType<Panel>()
+                .First(c => c.Name == "SectionColorPickersPanel");
+
+            // Color pickers panel should extend close to the right edge of the panel
+            // Allow some padding (20px) on the right
+            var expectedMinRight = panel.Width - 20;
+            Assert.True(colorPickersPanel.Right >= expectedMinRight,
+                $"Color pickers panel should extend to the right edge. Panel width: {panel.Width}, ColorPickersPanel.Right: {colorPickersPanel.Right}, Expected min: {expectedMinRight}");
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_ExpandsToFillParentWidth()
+        {
+            // Arrange - Create a parent panel with known width
+            using var parent = new Panel { Width = 400 };
+            using var picker = new HslColorPicker();
+            parent.Controls.Add(picker);
+
+            // Act - Set picker to dock fill or use anchoring
+            picker.Dock = DockStyle.Top;
+            parent.PerformLayout();
+
+            // Assert - Picker should fill the parent width
+            Assert.Equal(parent.ClientSize.Width, picker.Width);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_SlidersExpandToFillWidth()
+        {
+            // Arrange - Create picker with a wide width
+            using var picker = new HslColorPicker();
+            picker.Width = 400;
+
+            // Act - Force layout
+            picker.PerformLayout();
+
+            // Assert - Sliders should expand to fill available width (minus label space and padding)
+            var hueSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "HueSlider");
+            var satSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "SaturationSlider");
+            var lightSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "LightnessSlider");
+
+            // Sliders should extend close to the right edge (within 20px padding)
+            var expectedMinRight = picker.Width - 20;
+            Assert.True(hueSlider.Right >= expectedMinRight,
+                $"Hue slider should extend to right edge. Picker width: {picker.Width}, Slider.Right: {hueSlider.Right}");
+            Assert.True(satSlider.Right >= expectedMinRight,
+                $"Saturation slider should extend to right edge. Picker width: {picker.Width}, Slider.Right: {satSlider.Right}");
+            Assert.True(lightSlider.Right >= expectedMinRight,
+                $"Lightness slider should extend to right edge. Picker width: {picker.Width}, Slider.Right: {lightSlider.Right}");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_ColorPickers_AreDocked()
+        {
+            // Arrange - create temp directories with mapping and sprite files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesDir);
+
+            try
+            {
+                // Create mapping file with sections
+                var mappingJson = @"{
+                    ""job"": ""Knight_Male"",
+                    ""sprite"": ""battle_knight_m_spr.bin"",
+                    ""sections"": [
+                        { ""name"": ""Cape"", ""displayName"": ""Cape"", ""indices"": [3, 4, 5], ""roles"": [""shadow"", ""base"", ""highlight""] },
+                        { ""name"": ""Boots"", ""displayName"": ""Boots"", ""indices"": [6, 7], ""roles"": [""base"", ""highlight""] }
+                    ]
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(mappingsDir, "Knight_Male.json"), mappingJson);
+
+                // Create minimal sprite file
+                var spriteData = new byte[2048];
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+                panel.Width = 600;
+                panel.PerformLayout();
+
+                var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
+
+                // Act - select the template
+                templateDropdown.SelectedItem = "Knight Male";
+
+                // Assert - color pickers should be docked top to fill width
+                var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
+                var colorPickers = colorPickersPanel.Controls.OfType<HslColorPicker>().ToList();
+
+                Assert.Equal(2, colorPickers.Count);
+                foreach (var picker in colorPickers)
+                {
+                    Assert.Equal(DockStyle.Top, picker.Dock);
+                }
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_ColorPickersPanel_HasSufficientHeight()
+        {
+            // Arrange - create temp directories with mapping and sprite files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesDir);
+
+            try
+            {
+                // Create mapping file with 3 sections
+                var mappingJson = @"{
+                    ""job"": ""Knight_Male"",
+                    ""sprite"": ""battle_knight_m_spr.bin"",
+                    ""sections"": [
+                        { ""name"": ""Cape"", ""displayName"": ""Cape"", ""indices"": [3, 4, 5], ""roles"": [""shadow"", ""base"", ""highlight""] },
+                        { ""name"": ""Boots"", ""displayName"": ""Boots"", ""indices"": [6, 7], ""roles"": [""base"", ""highlight""] },
+                        { ""name"": ""Armor"", ""displayName"": ""Armor"", ""indices"": [8, 9, 10], ""roles"": [""shadow"", ""base"", ""highlight""] }
+                    ]
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(mappingsDir, "Knight_Male.json"), mappingJson);
+
+                // Create minimal sprite file
+                var spriteData = new byte[2048];
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+                panel.Width = 600;
+                panel.Height = 500;
+                panel.PerformLayout();
+
+                var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
+
+                // Act - select the template
+                templateDropdown.SelectedItem = "Knight Male";
+
+                // Assert - color pickers panel should be tall enough to show all pickers
+                var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
+                var colorPickers = colorPickersPanel.Controls.OfType<HslColorPicker>().ToList();
+
+                Assert.Equal(3, colorPickers.Count);
+
+                // Panel should have height to accommodate bottom controls (theme name, buttons, warning)
+                // and leave room for color pickers. Each picker is about 160px tall.
+                // With 3 pickers and scrolling enabled, the panel height should be reasonable
+                Assert.True(colorPickersPanel.Height >= 200,
+                    $"Color pickers panel should have reasonable height. Actual: {colorPickersPanel.Height}");
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_BottomControls_AreBelowColorPickersPanel()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var colorPickersPanel = panel.Controls.OfType<Panel>()
+                .First(c => c.Name == "SectionColorPickersPanel");
+            var themeNameLabel = panel.Controls.OfType<Label>()
+                .First(l => l.Text == "Theme Name:");
+            var saveButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "SaveButton");
+            var warningLabel = panel.Controls.OfType<Label>()
+                .First(l => l.Text.Contains("Once saved"));
+
+            // Assert - Bottom controls should be below the color pickers panel
+            Assert.True(themeNameLabel.Top >= colorPickersPanel.Bottom,
+                $"Theme Name label should be below color pickers panel. Label.Top: {themeNameLabel.Top}, Panel.Bottom: {colorPickersPanel.Bottom}");
+            Assert.True(saveButton.Top > themeNameLabel.Top,
+                $"Save button should be below Theme Name label. Button.Top: {saveButton.Top}, Label.Top: {themeNameLabel.Top}");
+            Assert.True(warningLabel.Top > saveButton.Top,
+                $"Warning label should be below Save button. Warning.Top: {warningLabel.Top}, Button.Top: {saveButton.Top}");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasPaddingBetweenColorPickersPanelAndThemeName()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var colorPickersPanel = panel.Controls.OfType<Panel>()
+                .First(c => c.Name == "SectionColorPickersPanel");
+            var themeNameLabel = panel.Controls.OfType<Label>()
+                .First(l => l.Text == "Theme Name:");
+
+            // Assert - There should be at least 15px padding between color pickers panel and theme name
+            var padding = themeNameLabel.Top - colorPickersPanel.Bottom;
+            Assert.True(padding >= 15,
+                $"Should have at least 15px padding between color pickers and Theme Name. Actual: {padding}px");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_ColorPickersPanelHeight_MatchesSpritePreviewHeight()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var preview = panel.Controls.OfType<PictureBox>()
+                .First(c => c.Name == "SpritePreview");
+            var colorPickersPanel = panel.Controls.OfType<Panel>()
+                .First(c => c.Name == "SectionColorPickersPanel");
+
+            // Assert - Color pickers panel should have the same height as sprite preview
+            // so they align visually on the same row
+            Assert.Equal(preview.Height, colorPickersPanel.Height);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_SpritePreview_UsesZoomSizeMode()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var preview = panel.Controls.OfType<PictureBox>()
+                .First(c => c.Name == "SpritePreview");
+
+            // Assert - Preview should use Zoom mode to scale the sprite to fill the box
+            Assert.Equal(PictureBoxSizeMode.Zoom, preview.SizeMode);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasPaddingBetweenDropdownAndColorPickersPanel()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var importButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "ImportClipboardButton");
+            var colorPickersPanel = panel.Controls.OfType<Panel>()
+                .First(c => c.Name == "SectionColorPickersPanel");
+
+            // Assert - There should be at least 10px padding between dropdown row and color pickers
+            var padding = colorPickersPanel.Top - importButton.Bottom;
+            Assert.True(padding >= 10,
+                $"Should have at least 10px padding between Import button and color pickers panel. Actual: {padding}px");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_BottomButtons_AreAnchoredToBottom()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var saveButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "SaveButton");
+            var resetButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "ResetButton");
+            var cancelButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "CancelButton");
+
+            // Assert - Buttons should be anchored to bottom left
+            Assert.True(saveButton.Anchor.HasFlag(AnchorStyles.Bottom),
+                "Save button should be anchored to bottom");
+            Assert.True(resetButton.Anchor.HasFlag(AnchorStyles.Bottom),
+                "Reset button should be anchored to bottom");
+            Assert.True(cancelButton.Anchor.HasFlag(AnchorStyles.Bottom),
+                "Cancel button should be anchored to bottom");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_WarningLabel_IsPositionedBelowRotateButtons()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var warningLabel = panel.Controls.OfType<Label>()
+                .First(l => l.Text.Contains("Once saved"));
+            var rotateRightButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "RotateRightButton");
+
+            // Assert - Warning label should be well below the rotate buttons
+            // Rotate buttons are at ~295, warning should be at ~425 (365 + 30 + 30)
+            Assert.True(warningLabel.Top > rotateRightButton.Bottom + 50,
+                $"Warning label should be well below rotate buttons. Warning.Top: {warningLabel.Top}, RotateButton.Bottom: {rotateRightButton.Bottom}");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_TemplateDropdown_IsDropDownListStyle()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Dropdown should be DropDownList style (not editable)
+            var templateDropdown = panel.Controls.OfType<ComboBox>()
+                .First(c => c.Name == "TemplateDropdown");
+
+            Assert.Equal(ComboBoxStyle.DropDownList, templateDropdown.DropDownStyle);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_TemplateDropdown_DefaultsToSquireMale()
+        {
+            // Arrange - create temp directory with Squire_Male and other mapping files
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(tempDir);
+            try
+            {
+                // Need valid JSON since Squire_Male will be auto-selected and parsed
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "Squire_Male.json"), @"{""job"":""Squire_Male"",""sprite"":""battle_mina_m_spr.bin"",""sections"":[]}");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "Knight_Female.json"), @"{""job"":""Knight_Female"",""sprite"":""battle_knight_w_spr.bin"",""sections"":[]}");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "Archer_Male.json"), @"{""job"":""Archer_Male"",""sprite"":""battle_archer_m_spr.bin"",""sections"":[]}");
+
+                // Act
+                using var panel = new ThemeEditorPanel(tempDir);
+
+                // Assert - Squire Male should be selected by default
+                var templateDropdown = panel.Controls.OfType<ComboBox>()
+                    .First(c => c.Name == "TemplateDropdown");
+
+                Assert.Equal("Squire Male", templateDropdown.SelectedItem);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        private T? FindControlRecursive<T>(Control parent) where T : Control
+        {
+            foreach (Control control in parent.Controls)
+            {
+                if (control is T found)
+                    return found;
+
+                var result = FindControlRecursive<T>(control);
+                if (result != null)
+                    return result;
+            }
+            return null;
+        }
+    }
+}

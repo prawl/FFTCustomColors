@@ -1,0 +1,12 @@
+{
+  "job": "Squire_Male",
+  "sprite": "battle_mina_m_spr.bin",
+  "sections": [
+    {
+      "name": "Hood",
+      "displayName": "Hood",
+      "indices": [10, 9, 8],
+      "roles": ["base", "highlight", "shadow"]
+    }
+  ]
+}
