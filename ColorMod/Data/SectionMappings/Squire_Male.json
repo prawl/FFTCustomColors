@@ -7,6 +7,12 @@
       "displayName": "Hood",
       "indices": [10, 9, 8],
       "roles": ["base", "highlight", "shadow"]
+    },
+    {
+      "name": "BootsGlovesHair",
+      "displayName": "Boots, Gloves & Hair",
+      "indices": [13, 12, 11],
+      "roles": ["base", "highlight", "shadow"]
     }
   ]
 }
