@@ -15,7 +15,9 @@ namespace FFTColorCustomizer.ThemeEditor
         private Label _sectionHeaderLabel;
         private Button _resetButton;
         private bool _suppressEvents;
-        private Color _originalColor;
+        private int _originalHue;
+        private int _originalSaturation;
+        private int _originalLightness;
 
         public event EventHandler ColorChanged;
 
@@ -175,17 +177,37 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private void OnResetClick(object? sender, EventArgs e)
         {
-            SetColorSilent(_originalColor);
+            // Check if values actually need to change
+            var hueChanged = _hueSlider.Value != _originalHue;
+            var satChanged = _saturationSlider.Value != _originalSaturation;
+            var lightChanged = _lightnessSlider.Value != _originalLightness;
+
+            if (!hueChanged && !satChanged && !lightChanged)
+                return; // Nothing to reset
+
+            _suppressEvents = true;
+            try
+            {
+                _hueSlider.Value = _originalHue;
+                _saturationSlider.Value = _originalSaturation;
+                _lightnessSlider.Value = _originalLightness;
+            }
+            finally
+            {
+                _suppressEvents = false;
+            }
             ColorChanged?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
-        /// Stores the current color as the original color for reset functionality.
+        /// Stores the current slider values as the original values for reset functionality.
         /// Call this after setting the initial color from the palette.
         /// </summary>
         public void StoreOriginalColor()
         {
-            _originalColor = CurrentColor;
+            _originalHue = _hueSlider.Value;
+            _originalSaturation = _saturationSlider.Value;
+            _originalLightness = _lightnessSlider.Value;
         }
 
         public int Hue
@@ -238,6 +260,7 @@ namespace FFTColorCustomizer.ThemeEditor
         /// <summary>
         /// Sets the color without raising the ColorChanged event.
         /// Use this for initialization to avoid triggering updates.
+        /// Also stores as the original color for reset functionality.
         /// </summary>
         public void SetColorSilent(Color color)
         {
@@ -248,6 +271,11 @@ namespace FFTColorCustomizer.ThemeEditor
                 _hueSlider.Value = (int)hsl.H;
                 _saturationSlider.Value = (int)(hsl.S * 100);
                 _lightnessSlider.Value = (int)(hsl.L * 100);
+
+                // Store as original values for reset
+                _originalHue = _hueSlider.Value;
+                _originalSaturation = _saturationSlider.Value;
+                _originalLightness = _lightnessSlider.Value;
             }
             finally
             {

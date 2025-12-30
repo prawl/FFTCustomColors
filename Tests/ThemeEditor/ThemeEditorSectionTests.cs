@@ -1564,6 +1564,85 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
+        public void HslColorPicker_StoreOriginalColor_StoresSliderValues_NotConvertedColor()
+        {
+            // Arrange - This test verifies the bug where StoreOriginalColor was reading
+            // from CurrentColor (which converts HSL->RGB) instead of storing slider values.
+            // The double conversion (RGB->HSL->RGB) causes precision loss.
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+            var originalColor = Color.FromArgb(128, 64, 32);
+
+            // Act - Store original immediately after setting (simulates real usage)
+            picker.SetColorSilent(originalColor);
+            picker.StoreOriginalColor();
+
+            // Now reset without changing anything - should get EXACT same sliders
+            var hueBeforeReset = picker.Hue;
+            var satBeforeReset = picker.Saturation;
+            var lightBeforeReset = picker.Lightness;
+
+            var resetButton = picker.Controls.OfType<Button>()
+                .First(c => c.Name == "ResetButton");
+            resetButton.PerformClick();
+
+            // Assert - Sliders should be EXACTLY the same (no drift from double conversion)
+            Assert.Equal(hueBeforeReset, picker.Hue);
+            Assert.Equal(satBeforeReset, picker.Saturation);
+            Assert.Equal(lightBeforeReset, picker.Lightness);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_SetColorSilent_AutomaticallyStoresOriginalColor()
+        {
+            // Arrange - When SetColorSilent is called, it should automatically store
+            // the original values so reset works correctly without explicit StoreOriginalColor call
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+            var originalColor = Color.FromArgb(128, 64, 32);
+
+            // Act - Set color (this simulates loading from palette)
+            picker.SetColorSilent(originalColor);
+
+            // Capture current values
+            var hueAfterSet = picker.Hue;
+            var satAfterSet = picker.Saturation;
+            var lightAfterSet = picker.Lightness;
+
+            // Click reset without having called StoreOriginalColor explicitly
+            var resetButton = picker.Controls.OfType<Button>()
+                .First(c => c.Name == "ResetButton");
+            resetButton.PerformClick();
+
+            // Assert - Should restore to the values set by SetColorSilent
+            Assert.Equal(hueAfterSet, picker.Hue);
+            Assert.Equal(satAfterSet, picker.Saturation);
+            Assert.Equal(lightAfterSet, picker.Lightness);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_ResetButton_DoesNotFireColorChanged_WhenValuesUnchanged()
+        {
+            // Arrange - The bug: Reset fires ColorChanged even when values haven't changed,
+            // which triggers ApplySectionColor and modifies the palette unnecessarily.
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+            var originalColor = Color.FromArgb(128, 64, 32);
+            picker.SetColorSilent(originalColor);
+
+            var eventCount = 0;
+            picker.ColorChanged += (s, e) => eventCount++;
+
+            // Act - Click reset when values are already at original (no user changes made)
+            var resetButton = picker.Controls.OfType<Button>()
+                .First(c => c.Name == "ResetButton");
+            resetButton.PerformClick();
+
+            // Assert - ColorChanged should NOT fire because values didn't change
+            Assert.Equal(0, eventCount);
+        }
+
+        [Fact]
+        [STAThread]
         public void HslColorPicker_HasBottomMargin_ForSectionSeparation()
         {
             // Arrange & Act
