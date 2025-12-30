@@ -89,6 +89,11 @@ namespace FFTColorCustomizer.ThemeEditor
             for (int i = 0; i < section.Indices.Length; i++)
             {
                 var role = section.Roles[i];
+
+                // Skip accent roles - they should preserve original palette colors
+                if (role == "accent" || role == "accent_shadow")
+                    continue;
+
                 var color = role switch
                 {
                     "shadow" => shades.Shadow,

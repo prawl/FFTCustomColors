@@ -132,6 +132,42 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         }
 
         [Fact]
+        public void ApplySectionColor_WithAccentRoles_DoesNotOverwriteAccents()
+        {
+            // Arrange - Bug: ApplySectionColor was treating accent roles as "base",
+            // which overwrites the original accent colors when reset is clicked.
+            var modifier = new PaletteModifier();
+            modifier.LoadTemplate(_testBinPath);
+
+            // Capture original colors at accent indices before any modification
+            var originalAccentColor = modifier.GetPaletteColor(2);
+            var originalAccentShadowColor = modifier.GetPaletteColor(1);
+
+            var section = new JobSection(
+                name: "MainArmor",
+                displayName: "Main Armor",
+                indices: new[] { 4, 5, 3, 2, 1 },
+                roles: new[] { "base", "highlight", "shadow", "accent", "accent_shadow" }
+            );
+            var baseColor = System.Drawing.Color.FromArgb(0, 100, 200); // Blue
+
+            // Act
+            modifier.ApplySectionColor(section, baseColor);
+
+            // Assert - Accent indices (2, 1) should NOT be overwritten
+            // They should remain unchanged from original
+            var afterAccentColor = modifier.GetPaletteColor(2);
+            var afterAccentShadowColor = modifier.GetPaletteColor(1);
+
+            Assert.Equal(originalAccentColor.R, afterAccentColor.R);
+            Assert.Equal(originalAccentColor.G, afterAccentColor.G);
+            Assert.Equal(originalAccentColor.B, afterAccentColor.B);
+            Assert.Equal(originalAccentShadowColor.R, afterAccentShadowColor.R);
+            Assert.Equal(originalAccentShadowColor.G, afterAccentShadowColor.G);
+            Assert.Equal(originalAccentShadowColor.B, afterAccentShadowColor.B);
+        }
+
+        [Fact]
         public void SaveToFile_AfterModification_WritesModifiedData()
         {
             // Arrange

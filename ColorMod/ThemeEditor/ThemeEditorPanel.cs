@@ -44,8 +44,8 @@ namespace FFTColorCustomizer.ThemeEditor
         {
             _mappingsDirectory = mappingsDirectory;
             _spritesDirectory = spritesDirectory;
-            MinimumSize = new System.Drawing.Size(0, 460);
-            Height = 460; // Set initial height so panel sizing works
+            MinimumSize = new System.Drawing.Size(0, 550);
+            Height = 550; // Set initial height so panel sizing works
             InitializeComponents();
         }
 
@@ -324,6 +324,8 @@ namespace FFTColorCustomizer.ThemeEditor
             if (CurrentMapping?.Sections == null)
                 return;
 
+            // Build list of sections to display (respecting link filtering)
+            var sectionsToDisplay = new System.Collections.Generic.List<JobSection>();
             foreach (var section in CurrentMapping.Sections)
             {
                 // Skip sections that are the target of another section's link,
@@ -339,7 +341,13 @@ namespace FFTColorCustomizer.ThemeEditor
                     if (linkerIndex < thisIndex)
                         continue;
                 }
+                sectionsToDisplay.Add(section);
+            }
 
+            // Add controls in reverse order so DockStyle.Top displays them in JSON order
+            for (int i = sectionsToDisplay.Count - 1; i >= 0; i--)
+            {
+                var section = sectionsToDisplay[i];
                 var picker = new HslColorPicker
                 {
                     SectionName = section.DisplayName,

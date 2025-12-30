@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using FFTColorCustomizer.Configuration;
@@ -1823,6 +1824,54 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var expectedMinBottom = panel.Height - 20;
             Assert.True(colorPickersPanel.Bottom >= expectedMinBottom,
                 $"Color pickers panel should extend to bottom. Panel.Height: {panel.Height}, ColorPickers.Bottom: {colorPickersPanel.Bottom}");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_SectionColorPickers_DisplayInJsonOrder()
+        {
+            // Arrange - The sections in the JSON should display in that exact order
+            // (first section in JSON = first/top picker in UI)
+            var tempDir = Path.Combine(Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid());
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Create a test mapping with specific order
+                var mappingJson = @"{
+                    ""job"": ""Test_Job"",
+                    ""sprite"": ""test.bin"",
+                    ""sections"": [
+                        { ""name"": ""First"", ""displayName"": ""First Section"", ""indices"": [1], ""roles"": [""base""] },
+                        { ""name"": ""Second"", ""displayName"": ""Second Section"", ""indices"": [2], ""roles"": [""base""] },
+                        { ""name"": ""Third"", ""displayName"": ""Third Section"", ""indices"": [3], ""roles"": [""base""] }
+                    ]
+                }";
+                File.WriteAllText(Path.Combine(tempDir, "Test_Job.json"), mappingJson);
+
+                using var panel = new ThemeEditorPanel(tempDir);
+
+                // Select the test job
+                var dropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
+                dropdown.SelectedIndex = dropdown.Items.IndexOf("Test Job");
+
+                // Get the color pickers panel
+                var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
+                var pickers = colorPickersPanel.Controls.OfType<HslColorPicker>().ToList();
+
+                // Assert - Should have 3 pickers in the correct visual order (top to bottom)
+                Assert.Equal(3, pickers.Count);
+
+                // Sort by Top position to get visual order
+                var orderedPickers = pickers.OrderBy(p => p.Top).ToList();
+                Assert.Equal("First Section", orderedPickers[0].SectionName);
+                Assert.Equal("Second Section", orderedPickers[1].SectionName);
+                Assert.Equal("Third Section", orderedPickers[2].SectionName);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
         }
     }
 }

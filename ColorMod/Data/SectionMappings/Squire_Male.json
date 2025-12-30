@@ -3,6 +3,12 @@
   "sprite": "battle_mina_m_spr.bin",
   "sections": [
     {
+      "name": "MainArmor",
+      "displayName": "Main Armor",
+      "indices": [4, 5, 3, 2, 1],
+      "roles": ["base", "highlight", "shadow", "accent", "accent_shadow"]
+    },
+    {
       "name": "Hood",
       "displayName": "Hood, Bracers",
       "indices": [10, 9, 8],
@@ -13,6 +19,12 @@
       "displayName": "Boots, Gloves & Hair",
       "indices": [13, 12, 11],
       "roles": ["base", "highlight", "shadow"]
+    },
+    {
+      "name": "Belt",
+      "displayName": "Belt",
+      "indices": [7, 6],
+      "roles": ["base", "shadow"]
     }
   ]
 }
