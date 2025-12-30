@@ -20,11 +20,10 @@ if [ $? -ne 0 ]; then
 fi
 
 echo -e "\033[32m[3/3] Running tests...\033[0m"
-dotnet test FFTColorCustomizer.Tests.csproj --no-build --verbosity normal --nologo -p:WarningLevel=0
+dotnet test FFTColorCustomizer.Tests.csproj --no-build --nologo -p:WarningLevel=0 --logger "console;verbosity=minimal"
 TEST_RESULT=$?
 
 if [ $TEST_RESULT -ne 0 ]; then
-    echo -e "\033[31mERROR: Tests failed\033[0m"
     exit 1
 fi
 

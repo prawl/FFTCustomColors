@@ -60,7 +60,7 @@ Highlight: L = min(L * 1.35, 0.95), S = S * 0.85
 - [x] Theme name input, Save/Reset/Cancel buttons
 - [x] Integrate preview with PaletteModifier (real-time updates)
 - [x] Per-section Reset button
-- [ ] Color preview swatch in HslColorPicker
+- [x] Color preview swatch in HslColorPicker
 - [ ] Hex code display/input
 - [ ] Copy/Paste buttons
 

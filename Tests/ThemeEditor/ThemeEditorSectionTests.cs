@@ -1873,5 +1873,104 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 Directory.Delete(tempDir, true);
             }
         }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasColorPreviewSwatch()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            // Assert - Should have a Panel for color preview swatch
+            var swatch = picker.Controls.OfType<Panel>()
+                .FirstOrDefault(c => c.Name == "ColorPreviewSwatch");
+
+            Assert.NotNull(swatch);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_ColorPreviewSwatch_IsPositionedBelowSliders()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            var lightnessSlider = picker.Controls.OfType<TrackBar>()
+                .First(c => c.Name == "LightnessSlider");
+            var swatch = picker.Controls.OfType<Panel>()
+                .First(c => c.Name == "ColorPreviewSwatch");
+
+            // Assert - Swatch should be below the lightness slider
+            Assert.True(swatch.Top > lightnessSlider.Bottom,
+                $"Swatch should be below lightness slider. Swatch.Top: {swatch.Top}, Slider.Bottom: {lightnessSlider.Bottom}");
+
+            // Assert - Swatch should be aligned with slider start (labelWidth = 70)
+            Assert.Equal(70, swatch.Left);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_ColorPreviewSwatch_HasVisibleSize()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            var swatch = picker.Controls.OfType<Panel>()
+                .First(c => c.Name == "ColorPreviewSwatch");
+
+            // Assert - Swatch should be a small square (30x30)
+            Assert.Equal(30, swatch.Width);
+            Assert.Equal(30, swatch.Height);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_ColorPreviewSwatch_DisplaysCurrentColor()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+
+            // Act - Set to pure red
+            picker.Hue = 0;
+            picker.Saturation = 100;
+            picker.Lightness = 50;
+
+            var swatch = picker.Controls.OfType<Panel>()
+                .First(c => c.Name == "ColorPreviewSwatch");
+
+            // Assert - Swatch background should be pure red
+            Assert.Equal(255, swatch.BackColor.R);
+            Assert.Equal(0, swatch.BackColor.G);
+            Assert.Equal(0, swatch.BackColor.B);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_ColorPreviewSwatch_HasBorder()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            var swatch = picker.Controls.OfType<Panel>()
+                .First(c => c.Name == "ColorPreviewSwatch");
+
+            // Assert - Swatch should have a border for visibility
+            Assert.Equal(BorderStyle.FixedSingle, swatch.BorderStyle);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_Height_AccommodatesSwatchWithoutClipping()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            var swatch = picker.Controls.OfType<Panel>()
+                .First(c => c.Name == "ColorPreviewSwatch");
+
+            // Assert - Panel height should be greater than swatch bottom to prevent clipping
+            Assert.True(picker.Height >= swatch.Bottom,
+                $"Picker height ({picker.Height}) must be >= swatch bottom ({swatch.Bottom}) to prevent clipping");
+        }
     }
 }

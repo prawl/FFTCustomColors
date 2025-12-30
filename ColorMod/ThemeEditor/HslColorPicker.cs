@@ -14,6 +14,7 @@ namespace FFTColorCustomizer.ThemeEditor
         private NoScrollTrackBar _lightnessSlider;
         private Label _sectionHeaderLabel;
         private Button _resetButton;
+        private Panel _colorPreviewSwatch;
         private bool _suppressEvents;
         private int _originalHue;
         private int _originalSaturation;
@@ -132,6 +133,17 @@ namespace FFTColorCustomizer.ThemeEditor
             };
             _lightnessSlider.ValueChanged += OnSliderValueChanged;
 
+            // Color preview swatch - positioned below sliders, aligned with slider start
+            _colorPreviewSwatch = new Panel
+            {
+                Name = "ColorPreviewSwatch",
+                Top = headerHeight + rowHeight * 3 + 5,
+                Left = labelWidth,
+                Width = 30,
+                Height = 30,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+
             Controls.Add(_sectionHeaderLabel);
             Controls.Add(_resetButton);
             Controls.Add(hueLabel);
@@ -140,10 +152,13 @@ namespace FFTColorCustomizer.ThemeEditor
             Controls.Add(_saturationSlider);
             Controls.Add(lightnessLabel);
             Controls.Add(_lightnessSlider);
+            Controls.Add(_colorPreviewSwatch);
 
-            // Set picker panel size to fit all controls plus bottom padding for separation
-            const int bottomPadding = 20;
-            Height = headerHeight + rowHeight * 3 + bottomPadding;
+            // Set picker panel size to fit all controls (including swatch) plus bottom padding
+            const int swatchHeight = 30;
+            const int swatchTopOffset = 5;
+            const int bottomPadding = 10;
+            Height = headerHeight + rowHeight * 3 + swatchTopOffset + swatchHeight + bottomPadding;
 
             // Update slider widths based on current width
             UpdateSliderWidths();
@@ -171,8 +186,14 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private void OnSliderValueChanged(object? sender, EventArgs e)
         {
+            UpdateSwatchColor();
             if (!_suppressEvents)
                 ColorChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void UpdateSwatchColor()
+        {
+            _colorPreviewSwatch.BackColor = CurrentColor;
         }
 
         private void OnResetClick(object? sender, EventArgs e)
