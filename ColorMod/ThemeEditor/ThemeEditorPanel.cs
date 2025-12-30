@@ -12,7 +12,8 @@ namespace FFTColorCustomizer.ThemeEditor
     {
         private Label _templateLabel;
         private ComboBox _templateDropdown;
-        private Button _importClipboardButton;
+        private Label _spritePreviewLabel;
+        private Label _colorSelectionLabel;
         private PictureBox _spritePreview;
         private Label _themeNameLabel;
         private TextBox _themeNameInput;
@@ -44,6 +45,7 @@ namespace FFTColorCustomizer.ThemeEditor
             _mappingsDirectory = mappingsDirectory;
             _spritesDirectory = spritesDirectory;
             MinimumSize = new System.Drawing.Size(0, 460);
+            Height = 460; // Set initial height so panel sizing works
             InitializeComponents();
         }
 
@@ -51,29 +53,28 @@ namespace FFTColorCustomizer.ThemeEditor
         {
             // Layout constants
             const int padding = 10;
-            const int dropdownTop = 10;
-            const int previewTop = 50; // Increased to add padding below dropdown row
+            const int row1Top = 10;
             const int previewWidth = 192;  // 6x scale (32 * 6)
             const int previewHeight = 240; // 6x scale (40 * 6)
             const int colorPickersLeft = 220;
-            const int colorPickersHeight = previewHeight; // Match preview height
             const int labelWidth = 65;
 
+            // === ROW 1: Template dropdown + Theme Name + Buttons ===
             _templateLabel = new Label
             {
                 Name = "TemplateLabel",
                 Text = "Template:",
                 Left = padding,
-                Top = dropdownTop + 3,
+                Top = row1Top + 3,
                 AutoSize = true
             };
 
             _templateDropdown = new ComboBox
             {
                 Name = "TemplateDropdown",
-                Width = 200,
+                Width = 140,
                 Left = padding + labelWidth,
-                Top = dropdownTop,
+                Top = row1Top,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             _templateDropdown.SelectedIndexChanged += OnTemplateSelected;
@@ -89,50 +90,113 @@ namespace FFTColorCustomizer.ThemeEditor
                 }
             }
 
-            _importClipboardButton = new Button
+            // Theme name input (to the right of template dropdown)
+            var themeNameLeft = padding + labelWidth + 150;
+            _themeNameLabel = new Label
             {
-                Name = "ImportClipboardButton",
-                Text = "Import from Clipboard",
-                Left = padding + labelWidth + 210,
-                Top = dropdownTop,
+                Name = "ThemeNameLabel",
+                Text = "Theme Name:",
+                Left = themeNameLeft,
+                Top = row1Top + 3,
                 AutoSize = true
             };
 
+            _themeNameInput = new TextBox
+            {
+                Name = "ThemeNameInput",
+                Width = 120,
+                Left = themeNameLeft + 85,
+                Top = row1Top
+            };
+
+            // Buttons (to the right of theme name)
+            var buttonsLeft = themeNameLeft + 85 + 130;
+            _saveButton = new Button
+            {
+                Name = "SaveButton",
+                Text = "Save",
+                Width = 50,
+                Left = buttonsLeft,
+                Top = row1Top
+            };
+
+            _resetButton = new Button
+            {
+                Name = "ResetButton",
+                Text = "Reset",
+                Width = 50,
+                Left = buttonsLeft + 55,
+                Top = row1Top
+            };
+
+            _cancelButton = new Button
+            {
+                Name = "CancelButton",
+                Text = "Cancel",
+                Width = 55,
+                Left = buttonsLeft + 110,
+                Top = row1Top
+            };
+
+            // Warning label (below the Save button, row 2)
+            const int row2Top = 40;
+            _warningLabel = new Label
+            {
+                Name = "WarningLabel",
+                Text = "⚠ Once saved, themes cannot be edited.",
+                Left = buttonsLeft,
+                Top = row2Top,
+                AutoSize = true
+            };
+
+            // === ROW 3: Section labels above the content panels ===
+            const int row3Top = 65;
+            const int labelHeight = 20;
+            const int contentTop = row3Top + labelHeight + 5; // 5px gap between label and content
+
+            _spritePreviewLabel = new Label
+            {
+                Name = "SpritePreviewLabel",
+                Text = "Sprite Preview",
+                Left = padding,
+                Top = row3Top,
+                AutoSize = true
+            };
+
+            _colorSelectionLabel = new Label
+            {
+                Name = "ColorSelectionLabel",
+                Text = "Color Selection",
+                Left = colorPickersLeft,
+                Top = row3Top,
+                AutoSize = true
+            };
+
+            // === ROW 4: Sprite preview (left) + Color pickers panel (right) ===
             _spritePreview = new PictureBox
             {
                 Name = "SpritePreview",
                 Width = previewWidth,
                 Height = previewHeight,
                 Left = padding,
-                Top = previewTop,
+                Top = contentTop,
                 BorderStyle = BorderStyle.FixedSingle,
                 SizeMode = PictureBoxSizeMode.Zoom
-            };
-
-            _sectionColorPickersPanel = new Panel
-            {
-                Name = "SectionColorPickersPanel",
-                AutoScroll = true,
-                Left = colorPickersLeft,
-                Top = previewTop,
-                Height = colorPickersHeight,
-                BorderStyle = BorderStyle.FixedSingle,
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
 
             // Center rotation buttons under the preview
             const int buttonWidth = 30;
             const int buttonGap = 5;
             var previewCenter = padding + (previewWidth / 2);
-            var buttonsLeftStart = previewCenter - buttonWidth - (buttonGap / 2);
+            var rotateButtonsLeftStart = previewCenter - buttonWidth - (buttonGap / 2);
 
             _rotateLeftButton = new Button
             {
                 Name = "RotateLeftButton",
                 Text = "◄",
                 Width = buttonWidth,
-                Left = buttonsLeftStart,
-                Top = previewTop + previewHeight + 5
+                Left = rotateButtonsLeftStart,
+                Top = contentTop + previewHeight + 5
             };
             _rotateLeftButton.Click += OnRotateLeft;
 
@@ -141,88 +205,39 @@ namespace FFTColorCustomizer.ThemeEditor
                 Name = "RotateRightButton",
                 Text = "►",
                 Width = buttonWidth,
-                Left = buttonsLeftStart + buttonWidth + buttonGap,
-                Top = previewTop + previewHeight + 5
+                Left = rotateButtonsLeftStart + buttonWidth + buttonGap,
+                Top = contentTop + previewHeight + 5
             };
             _rotateRightButton.Click += OnRotateRight;
 
-            // Position bottom controls from the bottom of the panel
-            // Warning label at bottom, buttons above it, theme name above buttons
-            const int bottomPadding = 10;
-            const int warningLabelHeight = 20;
-            const int buttonHeight = 25;
-            const int themeNameHeight = 25;
-
-            _warningLabel = new Label
+            // Color pickers panel - extends to bottom
+            _sectionColorPickersPanel = new Panel
             {
-                Name = "WarningLabel",
-                Text = "⚠ Once saved, themes cannot be edited. Export to modify.",
-                Left = padding,
-                AutoSize = true,
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
-            };
-
-            _saveButton = new Button
-            {
-                Name = "SaveButton",
-                Text = "Save Theme",
-                Width = 80,
-                Left = padding,
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
-            };
-
-            _resetButton = new Button
-            {
-                Name = "ResetButton",
-                Text = "Reset",
-                Width = 60,
-                Left = padding + 85,
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
-            };
-
-            _cancelButton = new Button
-            {
-                Name = "CancelButton",
-                Text = "Cancel",
-                Width = 60,
-                Left = padding + 150,
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
-            };
-
-            _themeNameLabel = new Label
-            {
-                Name = "ThemeNameLabel",
-                Text = "Theme Name:",
-                Left = padding,
-                AutoSize = true,
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
-            };
-
-            _themeNameInput = new TextBox
-            {
-                Name = "ThemeNameInput",
-                Width = 200,
-                Left = padding + 85,
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
+                Name = "SectionColorPickersPanel",
+                AutoScroll = true,
+                Left = colorPickersLeft,
+                Top = contentTop,
+                BorderStyle = BorderStyle.FixedSingle,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
             };
 
             Controls.Add(_templateLabel);
             Controls.Add(_templateDropdown);
-            Controls.Add(_importClipboardButton);
-            Controls.Add(_spritePreview);
-            Controls.Add(_rotateLeftButton);
-            Controls.Add(_rotateRightButton);
             Controls.Add(_themeNameLabel);
             Controls.Add(_themeNameInput);
             Controls.Add(_saveButton);
             Controls.Add(_resetButton);
             Controls.Add(_cancelButton);
             Controls.Add(_warningLabel);
+            Controls.Add(_spritePreviewLabel);
+            Controls.Add(_colorSelectionLabel);
+            Controls.Add(_spritePreview);
+            Controls.Add(_rotateLeftButton);
+            Controls.Add(_rotateRightButton);
             Controls.Add(_sectionColorPickersPanel);
 
-            // Set initial width for color pickers panel (will be updated on resize)
-            UpdateColorPickersPanelWidth();
-            PositionBottomControls();
+            // Set initial sizes for dynamic panels
+            UpdateColorPickersPanelSize();
 
             // Default to Squire Male if available (must be after all controls are initialized)
             var squireMaleIndex = _templateDropdown.Items.IndexOf("Squire Male");
@@ -235,36 +250,33 @@ namespace FFTColorCustomizer.ThemeEditor
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            UpdateColorPickersPanelWidth();
-            PositionBottomControls();
+            UpdateColorPickersPanelSize();
         }
 
-        private void PositionBottomControls()
+        private void UpdateColorPickersPanelSize()
         {
             // Guard against being called before controls are initialized
-            if (_warningLabel == null || _saveButton == null)
+            if (_sectionColorPickersPanel == null)
                 return;
 
-            // Position bottom controls at fixed location below the rotate buttons
-            // previewTop(50) + previewHeight(240) + rotateButtons(25) + padding(50) = 365
-            const int bottomControlsTop = 365;
-
-            _themeNameLabel.Top = bottomControlsTop;
-            _themeNameInput.Top = bottomControlsTop - 3;
-            _saveButton.Top = bottomControlsTop + 30;
-            _resetButton.Top = _saveButton.Top;
-            _cancelButton.Top = _saveButton.Top;
-            _warningLabel.Top = _saveButton.Top + 30;
-        }
-
-        private void UpdateColorPickersPanelWidth()
-        {
             const int colorPickersLeft = 220;
             const int padding = 10;
+            const int row3Top = 65;
+            const int labelHeight = 20;
+            const int contentTop = row3Top + labelHeight + 5; // Match the label offset
+
+            // Width: extend to right edge
             var newWidth = Width - colorPickersLeft - padding;
             if (newWidth > 0)
             {
                 _sectionColorPickersPanel.Width = newWidth;
+            }
+
+            // Height: extend to bottom edge
+            var newHeight = Height - contentTop - padding;
+            if (newHeight > 0)
+            {
+                _sectionColorPickersPanel.Height = newHeight;
             }
         }
 
@@ -340,6 +352,7 @@ namespace FFTColorCustomizer.ThemeEditor
                     var baseIndex = GetBaseIndexForSection(section);
                     var baseColor = PaletteModifier.GetPaletteColor(baseIndex);
                     picker.SetColorSilent(baseColor);
+                    picker.StoreOriginalColor(); // Store for reset functionality
                 }
 
                 picker.ColorChanged += OnColorPickerChanged;

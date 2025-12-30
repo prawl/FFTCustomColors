@@ -9,11 +9,13 @@ namespace FFTColorCustomizer.ThemeEditor
     /// </summary>
     public class HslColorPicker : Panel
     {
-        private TrackBar _hueSlider;
-        private TrackBar _saturationSlider;
-        private TrackBar _lightnessSlider;
+        private NoScrollTrackBar _hueSlider;
+        private NoScrollTrackBar _saturationSlider;
+        private NoScrollTrackBar _lightnessSlider;
         private Label _sectionHeaderLabel;
+        private Button _resetButton;
         private bool _suppressEvents;
+        private Color _originalColor;
 
         public event EventHandler ColorChanged;
 
@@ -31,6 +33,8 @@ namespace FFTColorCustomizer.ThemeEditor
 
         public HslColorPicker()
         {
+            // Add bottom margin for visual separation between sections
+            Margin = new Padding(0, 0, 0, 15);
             InitializeComponents();
         }
 
@@ -41,16 +45,30 @@ namespace FFTColorCustomizer.ThemeEditor
             const int labelWidth = 70;
             const int padding = 10;
 
-            // Section header label
+            // Section header label - larger, bold, dark red for visibility
             _sectionHeaderLabel = new Label
             {
                 Name = "SectionHeaderLabel",
                 Text = _sectionName ?? "",
-                Top = 0,
+                Top = 5,
                 Left = 0,
                 AutoSize = true,
-                Font = new System.Drawing.Font(System.Drawing.SystemFonts.DefaultFont, System.Drawing.FontStyle.Bold)
+                Font = new System.Drawing.Font("Segoe UI", 11f, System.Drawing.FontStyle.Bold),
+                ForeColor = Color.DarkRed
             };
+
+            // Reset button for this section
+            _resetButton = new Button
+            {
+                Name = "ResetButton",
+                Text = "Reset",
+                Width = 50,
+                Height = 22,
+                Top = 0,
+                Left = 200,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            _resetButton.Click += OnResetClick;
 
             // Hue row
             var hueLabel = new Label
@@ -60,13 +78,14 @@ namespace FFTColorCustomizer.ThemeEditor
                 Left = 0,
                 Width = labelWidth
             };
-            _hueSlider = new TrackBar
+            _hueSlider = new NoScrollTrackBar
             {
                 Name = "HueSlider",
                 Minimum = 0,
                 Maximum = 360,
                 Top = headerHeight,
                 Left = labelWidth,
+                TickStyle = TickStyle.None,
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             _hueSlider.ValueChanged += OnSliderValueChanged;
@@ -79,13 +98,14 @@ namespace FFTColorCustomizer.ThemeEditor
                 Left = 0,
                 Width = labelWidth
             };
-            _saturationSlider = new TrackBar
+            _saturationSlider = new NoScrollTrackBar
             {
                 Name = "SaturationSlider",
                 Minimum = 0,
                 Maximum = 100,
                 Top = headerHeight + rowHeight,
                 Left = labelWidth,
+                TickStyle = TickStyle.None,
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             _saturationSlider.ValueChanged += OnSliderValueChanged;
@@ -98,18 +118,20 @@ namespace FFTColorCustomizer.ThemeEditor
                 Left = 0,
                 Width = labelWidth
             };
-            _lightnessSlider = new TrackBar
+            _lightnessSlider = new NoScrollTrackBar
             {
                 Name = "LightnessSlider",
                 Minimum = 0,
                 Maximum = 100,
                 Top = headerHeight + rowHeight * 2,
                 Left = labelWidth,
+                TickStyle = TickStyle.None,
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             _lightnessSlider.ValueChanged += OnSliderValueChanged;
 
             Controls.Add(_sectionHeaderLabel);
+            Controls.Add(_resetButton);
             Controls.Add(hueLabel);
             Controls.Add(_hueSlider);
             Controls.Add(saturationLabel);
@@ -117,8 +139,9 @@ namespace FFTColorCustomizer.ThemeEditor
             Controls.Add(lightnessLabel);
             Controls.Add(_lightnessSlider);
 
-            // Set picker panel size to fit all controls
-            Height = headerHeight + rowHeight * 3;
+            // Set picker panel size to fit all controls plus bottom padding for separation
+            const int bottomPadding = 20;
+            Height = headerHeight + rowHeight * 3 + bottomPadding;
 
             // Update slider widths based on current width
             UpdateSliderWidths();
@@ -129,6 +152,7 @@ namespace FFTColorCustomizer.ThemeEditor
         {
             const int labelWidth = 70;
             const int padding = 10;
+            const int resetButtonWidth = 50;
             var sliderWidth = Width - labelWidth - padding;
             if (sliderWidth > 0)
             {
@@ -136,12 +160,32 @@ namespace FFTColorCustomizer.ThemeEditor
                 _saturationSlider.Width = sliderWidth;
                 _lightnessSlider.Width = sliderWidth;
             }
+            // Position reset button at right edge of panel
+            if (Width > resetButtonWidth + padding)
+            {
+                _resetButton.Left = Width - resetButtonWidth - padding;
+            }
         }
 
         private void OnSliderValueChanged(object? sender, EventArgs e)
         {
             if (!_suppressEvents)
                 ColorChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void OnResetClick(object? sender, EventArgs e)
+        {
+            SetColorSilent(_originalColor);
+            ColorChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Stores the current color as the original color for reset functionality.
+        /// Call this after setting the initial color from the palette.
+        /// </summary>
+        public void StoreOriginalColor()
+        {
+            _originalColor = CurrentColor;
         }
 
         public int Hue

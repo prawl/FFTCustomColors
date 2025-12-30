@@ -991,9 +991,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var panel = new ThemeEditorPanel();
             var dropdown = panel.Controls.Find("TemplateDropdown", false).FirstOrDefault() as ComboBox;
 
-            // Assert - Dropdown should have reasonable visible dimensions
+            // Assert - Dropdown should have reasonable visible dimensions (compact layout)
             Assert.NotNull(dropdown);
-            Assert.True(dropdown.Width >= 150, "Template dropdown should have width of at least 150px");
+            Assert.True(dropdown.Width >= 100, "Template dropdown should have width of at least 100px");
         }
 
         [Fact]
@@ -1017,9 +1017,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var panel = new ThemeEditorPanel();
             var input = panel.Controls.Find("ThemeNameInput", false).FirstOrDefault() as TextBox;
 
-            // Assert - Theme name input should have reasonable width
+            // Assert - Theme name input should have reasonable width (compact layout)
             Assert.NotNull(input);
-            Assert.True(input.Width >= 200, "Theme name input should have width of at least 200px");
+            Assert.True(input.Width >= 100, "Theme name input should have width of at least 100px");
         }
 
         [Fact]
@@ -1133,21 +1133,6 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var dropdown = panel.Controls.OfType<ComboBox>()
                 .First(c => c.Name == "TemplateDropdown");
             Assert.True(templateLabel.Left < dropdown.Left, "Template label should be to the left of dropdown");
-        }
-
-        [Fact]
-        [STAThread]
-        public void ThemeEditorPanel_HasImportFromClipboardButton()
-        {
-            // Arrange & Act
-            using var panel = new ThemeEditorPanel();
-
-            // Assert - Should have Import from Clipboard button
-            var importButton = panel.Controls.OfType<Button>()
-                .FirstOrDefault(b => b.Name == "ImportClipboardButton");
-
-            Assert.NotNull(importButton);
-            Assert.Equal("Import from Clipboard", importButton.Text);
         }
 
         [Fact]
@@ -1416,50 +1401,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
-        public void ThemeEditorPanel_BottomControls_AreBelowColorPickersPanel()
-        {
-            // Arrange & Act
-            using var panel = new ThemeEditorPanel();
-
-            var colorPickersPanel = panel.Controls.OfType<Panel>()
-                .First(c => c.Name == "SectionColorPickersPanel");
-            var themeNameLabel = panel.Controls.OfType<Label>()
-                .First(l => l.Text == "Theme Name:");
-            var saveButton = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "SaveButton");
-            var warningLabel = panel.Controls.OfType<Label>()
-                .First(l => l.Text.Contains("Once saved"));
-
-            // Assert - Bottom controls should be below the color pickers panel
-            Assert.True(themeNameLabel.Top >= colorPickersPanel.Bottom,
-                $"Theme Name label should be below color pickers panel. Label.Top: {themeNameLabel.Top}, Panel.Bottom: {colorPickersPanel.Bottom}");
-            Assert.True(saveButton.Top > themeNameLabel.Top,
-                $"Save button should be below Theme Name label. Button.Top: {saveButton.Top}, Label.Top: {themeNameLabel.Top}");
-            Assert.True(warningLabel.Top > saveButton.Top,
-                $"Warning label should be below Save button. Warning.Top: {warningLabel.Top}, Button.Top: {saveButton.Top}");
-        }
-
-        [Fact]
-        [STAThread]
-        public void ThemeEditorPanel_HasPaddingBetweenColorPickersPanelAndThemeName()
-        {
-            // Arrange & Act
-            using var panel = new ThemeEditorPanel();
-
-            var colorPickersPanel = panel.Controls.OfType<Panel>()
-                .First(c => c.Name == "SectionColorPickersPanel");
-            var themeNameLabel = panel.Controls.OfType<Label>()
-                .First(l => l.Text == "Theme Name:");
-
-            // Assert - There should be at least 15px padding between color pickers panel and theme name
-            var padding = themeNameLabel.Top - colorPickersPanel.Bottom;
-            Assert.True(padding >= 15,
-                $"Should have at least 15px padding between color pickers and Theme Name. Actual: {padding}px");
-        }
-
-        [Fact]
-        [STAThread]
-        public void ThemeEditorPanel_ColorPickersPanelHeight_MatchesSpritePreviewHeight()
+        public void ThemeEditorPanel_ColorPickersPanelTop_MatchesSpritePreviewTop()
         {
             // Arrange & Act
             using var panel = new ThemeEditorPanel();
@@ -1469,9 +1411,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var colorPickersPanel = panel.Controls.OfType<Panel>()
                 .First(c => c.Name == "SectionColorPickersPanel");
 
-            // Assert - Color pickers panel should have the same height as sprite preview
-            // so they align visually on the same row
-            Assert.Equal(preview.Height, colorPickersPanel.Height);
+            // Assert - Color pickers panel should start at the same vertical position as sprite preview
+            // so they align visually on the same row (height may differ due to scrolling needs)
+            Assert.Equal(preview.Top, colorPickersPanel.Top);
         }
 
         [Fact]
@@ -1486,65 +1428,6 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
             // Assert - Preview should use Zoom mode to scale the sprite to fill the box
             Assert.Equal(PictureBoxSizeMode.Zoom, preview.SizeMode);
-        }
-
-        [Fact]
-        [STAThread]
-        public void ThemeEditorPanel_HasPaddingBetweenDropdownAndColorPickersPanel()
-        {
-            // Arrange & Act
-            using var panel = new ThemeEditorPanel();
-
-            var importButton = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "ImportClipboardButton");
-            var colorPickersPanel = panel.Controls.OfType<Panel>()
-                .First(c => c.Name == "SectionColorPickersPanel");
-
-            // Assert - There should be at least 10px padding between dropdown row and color pickers
-            var padding = colorPickersPanel.Top - importButton.Bottom;
-            Assert.True(padding >= 10,
-                $"Should have at least 10px padding between Import button and color pickers panel. Actual: {padding}px");
-        }
-
-        [Fact]
-        [STAThread]
-        public void ThemeEditorPanel_BottomButtons_AreAnchoredToBottom()
-        {
-            // Arrange & Act
-            using var panel = new ThemeEditorPanel();
-
-            var saveButton = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "SaveButton");
-            var resetButton = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "ResetButton");
-            var cancelButton = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "CancelButton");
-
-            // Assert - Buttons should be anchored to bottom left
-            Assert.True(saveButton.Anchor.HasFlag(AnchorStyles.Bottom),
-                "Save button should be anchored to bottom");
-            Assert.True(resetButton.Anchor.HasFlag(AnchorStyles.Bottom),
-                "Reset button should be anchored to bottom");
-            Assert.True(cancelButton.Anchor.HasFlag(AnchorStyles.Bottom),
-                "Cancel button should be anchored to bottom");
-        }
-
-        [Fact]
-        [STAThread]
-        public void ThemeEditorPanel_WarningLabel_IsPositionedBelowRotateButtons()
-        {
-            // Arrange & Act
-            using var panel = new ThemeEditorPanel();
-
-            var warningLabel = panel.Controls.OfType<Label>()
-                .First(l => l.Text.Contains("Once saved"));
-            var rotateRightButton = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "RotateRightButton");
-
-            // Assert - Warning label should be well below the rotate buttons
-            // Rotate buttons are at ~295, warning should be at ~425 (365 + 30 + 30)
-            Assert.True(warningLabel.Top > rotateRightButton.Bottom + 50,
-                $"Warning label should be well below rotate buttons. Warning.Top: {warningLabel.Top}, RotateButton.Bottom: {rotateRightButton.Bottom}");
         }
 
         [Fact]
@@ -1602,6 +1485,265 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                     return result;
             }
             return null;
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_SectionLabel_HasLargerFont()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+
+            // Assert - Section label should have a larger font (at least 10pt)
+            var sectionLabel = picker.Controls.OfType<Label>()
+                .First(c => c.Name == "SectionHeaderLabel");
+
+            Assert.True(sectionLabel.Font.Size >= 10,
+                $"Section label font should be at least 10pt, was {sectionLabel.Font.Size}pt");
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_SectionLabel_HasRedForeColor()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+
+            // Assert - Section label should have red text color
+            var sectionLabel = picker.Controls.OfType<Label>()
+                .First(c => c.Name == "SectionHeaderLabel");
+
+            Assert.Equal(Color.DarkRed, sectionLabel.ForeColor);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasResetButton()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+
+            // Assert - Should have a reset button
+            var resetButton = picker.Controls.OfType<Button>()
+                .FirstOrDefault(c => c.Name == "ResetButton");
+
+            Assert.NotNull(resetButton);
+            Assert.Equal("Reset", resetButton.Text);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_ResetButton_RestoresOriginalColor()
+        {
+            // Arrange
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+            var originalColor = Color.FromArgb(128, 64, 32);
+            picker.SetColorSilent(originalColor);
+            picker.StoreOriginalColor(); // Store the original color
+
+            // Change the color
+            picker.Hue = 200;
+            picker.Saturation = 80;
+            picker.Lightness = 60;
+
+            // Act - Click reset
+            var resetButton = picker.Controls.OfType<Button>()
+                .First(c => c.Name == "ResetButton");
+            resetButton.PerformClick();
+
+            // Assert - Color should be restored to original
+            var restoredColor = picker.CurrentColor;
+            // Allow tolerance of 10 due to HSL conversion rounding (RGB->HSL->RGB loses precision)
+            Assert.True(Math.Abs(restoredColor.R - originalColor.R) <= 10,
+                $"Red channel should be close to original. Expected ~{originalColor.R}, got {restoredColor.R}");
+            Assert.True(Math.Abs(restoredColor.G - originalColor.G) <= 10,
+                $"Green channel should be close to original. Expected ~{originalColor.G}, got {restoredColor.G}");
+            Assert.True(Math.Abs(restoredColor.B - originalColor.B) <= 10,
+                $"Blue channel should be close to original. Expected ~{originalColor.B}, got {restoredColor.B}");
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasBottomMargin_ForSectionSeparation()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+
+            // Assert - Picker should have bottom margin/padding for visual separation
+            Assert.True(picker.Margin.Bottom >= 10,
+                $"HslColorPicker should have at least 10px bottom margin for section separation, was {picker.Margin.Bottom}px");
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_SectionHeader_HasTopPadding()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+
+            // Assert - Section header should have padding from the top to separate from previous section
+            var sectionLabel = picker.Controls.OfType<Label>()
+                .First(c => c.Name == "SectionHeaderLabel");
+
+            Assert.True(sectionLabel.Top >= 5,
+                $"Section header should have at least 5px top padding, was {sectionLabel.Top}px");
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_Sliders_HaveNoTickMarks()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+
+            // Assert - Sliders should not display tick marks (cleaner appearance)
+            var sliders = picker.Controls.OfType<TrackBar>().ToList();
+            Assert.Equal(3, sliders.Count);
+
+            foreach (var slider in sliders)
+            {
+                Assert.Equal(TickStyle.None, slider.TickStyle);
+            }
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_Sliders_IgnoreMouseWheel()
+        {
+            // Arrange
+            using var picker = new HslColorPicker { SectionName = "Hood" };
+            picker.Hue = 180;
+            picker.Saturation = 50;
+            picker.Lightness = 50;
+
+            var hueSlider = picker.Controls.OfType<NoScrollTrackBar>().First(c => c.Name == "HueSlider");
+
+            // Act - Simulate mouse wheel event
+            var wheelArgs = new MouseEventArgs(MouseButtons.None, 0, 0, 0, 120); // 120 = one notch up
+
+            // Use reflection to invoke OnMouseWheel since it's protected
+            var onMouseWheelMethod = typeof(Control).GetMethod("OnMouseWheel",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            onMouseWheelMethod?.Invoke(hueSlider, new object[] { wheelArgs });
+
+            // Assert - Value should NOT have changed (mouse wheel is disabled)
+            Assert.Equal(180, picker.Hue);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_SectionColorPickersPanel_HasAdequateHeight()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Color pickers panel should be tall enough for multiple sections
+            var colorPickersPanel = panel.Controls.OfType<Panel>()
+                .First(c => c.Name == "SectionColorPickersPanel");
+
+            Assert.True(colorPickersPanel.Height >= 300,
+                $"SectionColorPickersPanel should be at least 300px tall, was {colorPickersPanel.Height}px");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_ThemeNameAndButtons_AreInTopRow()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var templateDropdown = panel.Controls.OfType<ComboBox>()
+                .First(c => c.Name == "TemplateDropdown");
+            var themeNameInput = panel.Controls.OfType<TextBox>()
+                .First(c => c.Name == "ThemeNameInput");
+            var saveButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "SaveButton");
+
+            // Assert - Theme name and buttons should be in the same row as template dropdown
+            // (within 30px vertical tolerance for alignment)
+            Assert.True(Math.Abs(themeNameInput.Top - templateDropdown.Top) <= 30,
+                $"Theme name input should be in same row as template. Input.Top: {themeNameInput.Top}, Dropdown.Top: {templateDropdown.Top}");
+            Assert.True(Math.Abs(saveButton.Top - templateDropdown.Top) <= 30,
+                $"Save button should be in same row as template. Button.Top: {saveButton.Top}, Dropdown.Top: {templateDropdown.Top}");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_WarningLabel_IsBelowButtons()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            var saveButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "SaveButton");
+            var warningLabel = panel.Controls.OfType<Label>()
+                .First(l => l.Text.Contains("Once saved"));
+
+            // Assert - Warning label should be below the buttons row
+            Assert.True(warningLabel.Top > saveButton.Bottom,
+                $"Warning label should be below buttons. Warning.Top: {warningLabel.Top}, Button.Bottom: {saveButton.Bottom}");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasSpritePreviewLabel()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have "Sprite Preview" label
+            var spritePreviewLabel = panel.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Text == "Sprite Preview");
+
+            Assert.NotNull(spritePreviewLabel);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasColorSelectionLabel()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Should have "Color Selection" label
+            var colorSelectionLabel = panel.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Text == "Color Selection");
+
+            Assert.NotNull(colorSelectionLabel);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_NoImportFromClipboardButton()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Import from Clipboard button should not exist (removed for now)
+            var importButton = panel.Controls.OfType<Button>()
+                .FirstOrDefault(b => b.Name == "ImportClipboardButton");
+
+            Assert.Null(importButton);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_ColorPickersPanel_ExtendsToBottom()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+            panel.Height = 500;
+            // Force layout update by calling the resize logic
+            panel.Width = panel.Width; // Trigger layout
+
+            var colorPickersPanel = panel.Controls.OfType<Panel>()
+                .First(c => c.Name == "SectionColorPickersPanel");
+
+            // Assert - Color pickers panel should extend close to the bottom (within 20px padding)
+            // row3Top = 65, padding = 10, so expected height = 500 - 65 - 10 = 425
+            var expectedMinBottom = panel.Height - 20;
+            Assert.True(colorPickersPanel.Bottom >= expectedMinBottom,
+                $"Color pickers panel should extend to bottom. Panel.Height: {panel.Height}, ColorPickers.Bottom: {colorPickersPanel.Bottom}");
         }
     }
 }
