@@ -135,5 +135,45 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 File.Delete(tempFile);
             }
         }
+
+        [Fact]
+        public void SectionMappingLoader_GetAvailableJobs_SortsInJobClassOrder()
+        {
+            // Arrange - create temp directory with test mapping files in random order
+            var tempDir = Path.Combine(Path.GetTempPath(), "SectionMappingOrderTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            try
+            {
+                // Create files in alphabetical order (which is NOT the desired order)
+                File.WriteAllText(Path.Combine(tempDir, "Archer_Female.json"), "{}");
+                File.WriteAllText(Path.Combine(tempDir, "Archer_Male.json"), "{}");
+                File.WriteAllText(Path.Combine(tempDir, "Chemist_Female.json"), "{}");
+                File.WriteAllText(Path.Combine(tempDir, "Chemist_Male.json"), "{}");
+                File.WriteAllText(Path.Combine(tempDir, "Knight_Female.json"), "{}");
+                File.WriteAllText(Path.Combine(tempDir, "Knight_Male.json"), "{}");
+                File.WriteAllText(Path.Combine(tempDir, "Squire_Female.json"), "{}");
+                File.WriteAllText(Path.Combine(tempDir, "Squire_Male.json"), "{}");
+
+                // Act
+                var jobs = SectionMappingLoader.GetAvailableJobs(tempDir);
+
+                // Assert - should be sorted in job class order:
+                // Squire Male, Squire Female, Chemist Male, Chemist Female,
+                // Knight Male, Knight Female, Archer Male, Archer Female
+                Assert.Equal(8, jobs.Length);
+                Assert.Equal("Squire_Male", jobs[0]);
+                Assert.Equal("Squire_Female", jobs[1]);
+                Assert.Equal("Chemist_Male", jobs[2]);
+                Assert.Equal("Chemist_Female", jobs[3]);
+                Assert.Equal("Knight_Male", jobs[4]);
+                Assert.Equal("Knight_Female", jobs[5]);
+                Assert.Equal("Archer_Male", jobs[6]);
+                Assert.Equal("Archer_Female", jobs[7]);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
     }
 }
