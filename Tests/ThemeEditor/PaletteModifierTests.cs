@@ -132,39 +132,42 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         }
 
         [Fact]
-        public void ApplySectionColor_WithAccentRoles_DoesNotOverwriteAccents()
+        public void ApplySectionColor_WithAccentRoles_AppliesCalculatedAccentColors()
         {
-            // Arrange - Bug: ApplySectionColor was treating accent roles as "base",
-            // which overwrites the original accent colors when reset is clicked.
+            // Arrange - Accent colors should be calculated from the base color
             var modifier = new PaletteModifier();
             modifier.LoadTemplate(_testBinPath);
 
-            // Capture original colors at accent indices before any modification
-            var originalAccentColor = modifier.GetPaletteColor(2);
-            var originalAccentShadowColor = modifier.GetPaletteColor(1);
-
             var section = new JobSection(
-                name: "MainArmor",
-                displayName: "Main Armor",
-                indices: new[] { 4, 5, 3, 2, 1 },
+                name: "HeadbandArmsBoots",
+                displayName: "Headband, Arms & Boots",
+                indices: new[] { 4, 5, 3, 7, 6 },
                 roles: new[] { "base", "highlight", "shadow", "accent", "accent_shadow" }
             );
-            var baseColor = System.Drawing.Color.FromArgb(0, 100, 200); // Blue
+            var baseColor = System.Drawing.Color.FromArgb(0, 200, 100); // Green
 
             // Act
             modifier.ApplySectionColor(section, baseColor);
 
-            // Assert - Accent indices (2, 1) should NOT be overwritten
-            // They should remain unchanged from original
-            var afterAccentColor = modifier.GetPaletteColor(2);
-            var afterAccentShadowColor = modifier.GetPaletteColor(1);
+            // Assert - Accent indices (7, 6) should be modified with calculated colors
+            var palette = modifier.GetModifiedPalette();
 
-            Assert.Equal(originalAccentColor.R, afterAccentColor.R);
-            Assert.Equal(originalAccentColor.G, afterAccentColor.G);
-            Assert.Equal(originalAccentColor.B, afterAccentColor.B);
-            Assert.Equal(originalAccentShadowColor.R, afterAccentShadowColor.R);
-            Assert.Equal(originalAccentShadowColor.G, afterAccentShadowColor.G);
-            Assert.Equal(originalAccentShadowColor.B, afterAccentShadowColor.B);
+            // Index 7 (accent) and Index 6 (accent_shadow) should be non-zero
+            ushort accent = (ushort)(palette[14] | (palette[15] << 8));
+            ushort accentShadow = (ushort)(palette[12] | (palette[13] << 8));
+
+            Assert.NotEqual(0, accent);
+            Assert.NotEqual(0, accentShadow);
+
+            // Accent should be lighter than base (for decorative trim elements)
+            var accentColor = modifier.GetPaletteColor(7);
+            var accentShadowColor = modifier.GetPaletteColor(6);
+            var baseColorResult = modifier.GetPaletteColor(4);
+
+            Assert.True(accentColor.GetBrightness() > baseColorResult.GetBrightness(),
+                "Accent should be lighter than base");
+            Assert.True(accentShadowColor.GetBrightness() < accentColor.GetBrightness(),
+                "AccentShadow should be darker than accent");
         }
 
         [Fact]

@@ -49,5 +49,40 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             Assert.True(shades.Shadow.GetBrightness() < shades.Base.GetBrightness());
             Assert.True(shades.Base.GetBrightness() < shades.Highlight.GetBrightness());
         }
+
+        [Fact]
+        public void GenerateShades_FromBaseColor_ReturnsAccentColors()
+        {
+            // Arrange - a medium green (like the headband/arms/boots)
+            var baseColor = Color.FromArgb(0, 200, 100);
+
+            // Act
+            var shades = HslColor.GenerateShades(baseColor);
+
+            // Assert - accent colors should exist and be lighter than base (for trim/decorative elements)
+            Assert.True(shades.Accent.GetBrightness() > shades.Base.GetBrightness(),
+                "Accent should be lighter than base");
+            Assert.True(shades.AccentShadow.GetBrightness() > shades.Base.GetBrightness(),
+                "AccentShadow should be lighter than base");
+            Assert.True(shades.AccentShadow.GetBrightness() < shades.Accent.GetBrightness(),
+                "AccentShadow should be darker than accent");
+        }
+
+        [Fact]
+        public void GenerateShades_BrightnessOrder_AccentLighterThanBase()
+        {
+            // Arrange
+            var baseColor = Color.FromArgb(100, 150, 200);
+
+            // Act
+            var shades = HslColor.GenerateShades(baseColor);
+
+            // Assert - brightness order for main shades: Highlight > Base > Shadow
+            // Accent colors are lighter (for decorative trim elements)
+            Assert.True(shades.Highlight.GetBrightness() > shades.Base.GetBrightness(), "Highlight > Base");
+            Assert.True(shades.Base.GetBrightness() > shades.Shadow.GetBrightness(), "Base > Shadow");
+            Assert.True(shades.Accent.GetBrightness() > shades.Base.GetBrightness(), "Accent > Base");
+            Assert.True(shades.Accent.GetBrightness() > shades.AccentShadow.GetBrightness(), "Accent > AccentShadow");
+        }
     }
 }

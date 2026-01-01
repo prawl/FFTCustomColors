@@ -1,0 +1,19 @@
+{
+  "job": "Squire_Female",
+  "sprite": "battle_mina_w_spr.bin",
+  "_note_hair": "Hair indices: [13, 12, 11, 15, 14] = [primary, highlight, shadow, accent, accent_highlight]. Shares pixels with face - too complex for now.",
+  "sections": [
+    {
+      "name": "HeadbandArmsBoots",
+      "displayName": "Headband, Arms & Boots",
+      "indices": [4, 5, 3, 7, 6],
+      "roles": ["base", "highlight", "shadow", "accent", "accent_shadow"]
+    },
+    {
+      "name": "ChestArmor",
+      "displayName": "Chest Armor",
+      "indices": [10, 9, 8],
+      "roles": ["base", "highlight", "shadow"]
+    }
+  ]
+}

@@ -90,7 +90,13 @@ namespace FFTColorCustomizer.ThemeEditor
             // Highlight: lighter, slightly less saturated
             var highlight = new HslColor(hsl.H, hsl.S * 0.85, Math.Min(hsl.L * 1.35, 0.95));
 
-            return new ColorShades(shadow.ToRgb(), baseColor, highlight.ToRgb());
+            // Accent: lighter detail color for trim/decorative elements (like boot/arm stripes)
+            var accent = new HslColor(hsl.H, hsl.S * 0.7, Math.Min(hsl.L * 1.5, 0.90));
+
+            // AccentShadow: slightly darker version of accent for depth
+            var accentShadow = new HslColor(hsl.H, hsl.S * 0.8, Math.Min(hsl.L * 1.25, 0.80));
+
+            return new ColorShades(shadow.ToRgb(), baseColor, highlight.ToRgb(), accent.ToRgb(), accentShadow.ToRgb());
         }
     }
 
@@ -99,12 +105,16 @@ namespace FFTColorCustomizer.ThemeEditor
         public Color Shadow { get; }
         public Color Base { get; }
         public Color Highlight { get; }
+        public Color Accent { get; }
+        public Color AccentShadow { get; }
 
-        public ColorShades(Color shadow, Color baseColor, Color highlight)
+        public ColorShades(Color shadow, Color baseColor, Color highlight, Color accent, Color accentShadow)
         {
             Shadow = shadow;
             Base = baseColor;
             Highlight = highlight;
+            Accent = accent;
+            AccentShadow = accentShadow;
         }
     }
 }
