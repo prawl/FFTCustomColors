@@ -36,6 +36,8 @@ namespace FFTColorCustomizer.Configuration
         private List<Control> _storyCharacterControls = new List<Control>();
         private bool _themeEditorCollapsed = false;
         private List<Control> _themeEditorControls = new List<Control>();
+        private bool _myThemesCollapsed = false;
+        private List<Control> _myThemesControls = new List<Control>();
 
         /// <summary>
         /// Gets the current configuration
@@ -218,6 +220,20 @@ namespace FFTColorCustomizer.Configuration
             header.Text = _themeEditorCollapsed ? "▶ Theme Editor" : "▼ Theme Editor";
 
             SetControlsVisibility(_themeEditorControls, !_themeEditorCollapsed);
+
+            _mainPanel.ResumeLayout(true);
+            this.ResumeLayout(true);
+        }
+
+        private void ToggleMyThemesVisibility(Label header)
+        {
+            _mainPanel.SuspendLayout();
+            this.SuspendLayout();
+
+            _myThemesCollapsed = !_myThemesCollapsed;
+            header.Text = _myThemesCollapsed ? "▶ My Themes" : "▼ My Themes";
+
+            SetControlsVisibility(_myThemesControls, !_myThemesCollapsed);
 
             _mainPanel.ResumeLayout(true);
             this.ResumeLayout(true);

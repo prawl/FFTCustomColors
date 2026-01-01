@@ -277,5 +277,82 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             _comboBox.Items[4].ToString().Should().Be("New User Theme");
             _comboBox.SelectedThemeValue.Should().Be("original"); // Selection preserved
         }
+
+        [Fact]
+        public void RefreshUserThemes_Should_Remove_Deleted_UserTheme()
+        {
+            // Arrange
+            var builtInThemes = new List<string> { "original", "corpse_brigade" };
+            var userThemes = new List<string> { "my_custom_theme", "ocean_blue" };
+            _comboBox.SetThemesWithUserThemes(builtInThemes, userThemes);
+            _comboBox.SelectedThemeValue = "original";
+
+            // Act - Refresh with a user theme deleted
+            var updatedUserThemes = new List<string> { "my_custom_theme" }; // ocean_blue removed
+            _comboBox.RefreshUserThemes(updatedUserThemes);
+
+            // Assert - Should have: 2 built-in + 1 separator + 1 user theme = 4 items
+            _comboBox.Items.Count.Should().Be(4);
+            _comboBox.Items[3].ToString().Should().Be("My Custom Theme");
+            _comboBox.SelectedThemeValue.Should().Be("original"); // Selection preserved
+        }
+
+        [Fact]
+        public void RefreshUserThemes_Should_Remove_Separator_When_All_UserThemes_Deleted()
+        {
+            // Arrange
+            var builtInThemes = new List<string> { "original", "corpse_brigade" };
+            var userThemes = new List<string> { "my_custom_theme" };
+            _comboBox.SetThemesWithUserThemes(builtInThemes, userThemes);
+            _comboBox.SelectedThemeValue = "original";
+
+            // Act - Refresh with all user themes deleted
+            var updatedUserThemes = new List<string>(); // All user themes removed
+            _comboBox.RefreshUserThemes(updatedUserThemes);
+
+            // Assert - Should have only built-in themes, no separator
+            _comboBox.Items.Count.Should().Be(2);
+            _comboBox.Items[0].ToString().Should().Be("Original");
+            _comboBox.Items[1].ToString().Should().Be("Corpse Brigade");
+            _comboBox.SelectedThemeValue.Should().Be("original"); // Selection preserved
+        }
+
+        [Fact]
+        public void RefreshUserThemes_Should_Fallback_To_Original_When_Selected_UserTheme_Is_Deleted()
+        {
+            // Arrange
+            var builtInThemes = new List<string> { "original", "corpse_brigade" };
+            var userThemes = new List<string> { "my_custom_theme" };
+            _comboBox.SetThemesWithUserThemes(builtInThemes, userThemes);
+            _comboBox.SelectedThemeValue = "my_custom_theme"; // Select the user theme
+
+            // Act - Refresh with the selected user theme deleted
+            var updatedUserThemes = new List<string>(); // User theme removed
+            _comboBox.RefreshUserThemes(updatedUserThemes);
+
+            // Assert - Should have only built-in themes and selection should fall back to "original"
+            _comboBox.Items.Count.Should().Be(2);
+            _comboBox.SelectedThemeValue.Should().Be("original"); // Should NOT add deleted theme back
+        }
+
+        [Fact]
+        public void RefreshUserThemes_Should_Fire_SelectedThemeChanged_When_Falling_Back_To_Original()
+        {
+            // Arrange
+            var builtInThemes = new List<string> { "original", "corpse_brigade" };
+            var userThemes = new List<string> { "my_custom_theme" };
+            _comboBox.SetThemesWithUserThemes(builtInThemes, userThemes);
+            _comboBox.SelectedThemeValue = "my_custom_theme"; // Select the user theme
+
+            string receivedValue = null;
+            _comboBox.SelectedThemeChanged += (sender, value) => receivedValue = value;
+
+            // Act - Refresh with the selected user theme deleted
+            var updatedUserThemes = new List<string>(); // User theme removed
+            _comboBox.RefreshUserThemes(updatedUserThemes);
+
+            // Assert - Event should have fired with "original" to trigger preview refresh
+            receivedValue.Should().Be("original");
+        }
     }
 }

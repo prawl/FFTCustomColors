@@ -9,7 +9,7 @@ namespace FFTColorCustomizer.Configuration
     {
         private void InitializeFormProperties()
         {
-            Text = "FFT Color Mod - Configuration";
+            Text = "FFT Color Customizer - Configuration";
             Size = new Size(UIConfiguration.FormWidth, UIConfiguration.FormHeight);
             StartPosition = FormStartPosition.CenterScreen;
             AutoScroll = false;
@@ -21,7 +21,7 @@ namespace FFTColorCustomizer.Configuration
 
         private void CreateTitleBar()
         {
-            _titleBar = new CustomTitleBar(this, "FFT Color Mod - Configuration");
+            _titleBar = new CustomTitleBar(this, "FFT Color Customizer - Configuration");
             Controls.Add(_titleBar);
         }
 

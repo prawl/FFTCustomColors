@@ -12,6 +12,7 @@ namespace FFTColorCustomizer.Configuration
     {
         private CharacterRowBuilder _rowBuilder;
         private Dictionary<string, StoryCharacterRegistry.StoryCharacterConfig> _storyCharacters;
+        private MyThemesPanel _myThemesPanel;
 
         private void InitializeRowBuilder()
         {
@@ -79,6 +80,34 @@ namespace FFTColorCustomizer.Configuration
                 themeEditorPanel.Visible = false;
             }
             row++;
+
+            // Add header for My Themes
+            var myThemesHeader = CreateCollapsibleHeader("My Themes", _myThemesCollapsed, row++);
+            myThemesHeader.Click += (sender, e) => ToggleMyThemesVisibility(myThemesHeader);
+
+            // Add My Themes panel
+            _myThemesPanel = new MyThemesPanel(_modPath);
+            _myThemesPanel.Dock = DockStyle.Fill;
+            _mainPanel.Controls.Add(_myThemesPanel, 0, row);
+            _mainPanel.SetColumnSpan(_myThemesPanel, 3);
+            _myThemesControls.Add(_myThemesPanel);
+
+            // Wire up theme deleted event to refresh dropdowns
+            _myThemesPanel.ThemeDeleted += OnThemeDeleted;
+
+            // Apply initial collapsed state
+            if (_myThemesCollapsed)
+            {
+                _myThemesPanel.Visible = false;
+            }
+            row++;
+        }
+
+        private void OnThemeDeleted(object? sender, ThemeDeletedEventArgs e)
+        {
+            Utilities.ModLogger.Log($"[CONFIG_FORM] OnThemeDeleted received: Job={e.JobName}, Theme={e.ThemeName}");
+            // Refresh dropdowns for the job whose theme was deleted
+            RefreshDropdownsForJob(e.JobName);
         }
 
         private void OnThemeSaved(object? sender, EventArgs e)
@@ -94,7 +123,17 @@ namespace FFTColorCustomizer.Configuration
                 // Refresh dropdowns for the job that was saved
                 RefreshDropdownsForJob(args.JobName);
 
-                MessageBox.Show($"Theme '{args.ThemeName}' saved successfully!", "Theme Saved",
+                // Refresh the My Themes panel
+                _myThemesPanel?.RefreshThemes();
+
+                // Format job name for display (e.g., "Squire_Male" -> "Squire (Male)")
+                var displayJobName = args.JobName.Replace("_", " (") + ")";
+                if (!args.JobName.Contains("_"))
+                {
+                    displayJobName = args.JobName;
+                }
+
+                MessageBox.Show($"Theme '{args.ThemeName}' saved successfully!\n\nYou can select it under \"{displayJobName}\" in the \"Generic Characters\" section above.", "Theme Saved",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
@@ -111,32 +150,43 @@ namespace FFTColorCustomizer.Configuration
 
         private void RefreshDropdownsForJob(string jobName)
         {
+            Utilities.ModLogger.Log($"[REFRESH] RefreshDropdownsForJob called for: {jobName}");
             var userThemeService = new UserThemeService(_modPath!);
             var userThemes = userThemeService.GetUserThemes(jobName);
+            Utilities.ModLogger.Log($"[REFRESH] User themes for {jobName}: [{string.Join(", ", userThemes)}]");
+
+            int comboBoxCount = 0;
+            int matchCount = 0;
 
             // Find all ThemeComboBox controls for this job and refresh them
             foreach (Control control in _mainPanel.Controls)
             {
                 if (control is ThemeComboBox comboBox && comboBox.Tag != null)
                 {
+                    comboBoxCount++;
                     try
                     {
                         dynamic tag = comboBox.Tag;
                         if (tag.JobName != null)
                         {
                             var comboJobName = CharacterRowBuilder.ConvertJobNameToPropertyFormat(tag.JobName.ToString());
+                            Utilities.ModLogger.Log($"[REFRESH] Checking comboBox: tag.JobName={tag.JobName}, converted={comboJobName}, target={jobName}");
                             if (comboJobName == jobName)
                             {
+                                matchCount++;
+                                Utilities.ModLogger.Log($"[REFRESH] MATCH! Refreshing comboBox for {jobName}");
                                 comboBox.RefreshUserThemes(userThemes);
                             }
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Tag doesn't have expected structure, skip
+                        Utilities.ModLogger.Log($"[REFRESH] Error checking tag: {ex.Message}");
                     }
                 }
             }
+
+            Utilities.ModLogger.Log($"[REFRESH] Found {comboBoxCount} ThemeComboBox controls, {matchCount} matched {jobName}");
         }
 
         private void LoadGenericCharacters(ref int row)

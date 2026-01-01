@@ -333,6 +333,14 @@ namespace FFTColorCustomizer.ThemeEditor
             _originalLightness = _lightnessSlider.Value;
         }
 
+        /// <summary>
+        /// Resets the color picker to its original values.
+        /// </summary>
+        public void ResetToOriginal()
+        {
+            OnResetClick(this, EventArgs.Empty);
+        }
+
         public int Hue
         {
             get => _hueSlider.Value;

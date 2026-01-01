@@ -118,12 +118,14 @@ namespace FFTColorCustomizer.Configuration.UI
         public void RefreshUserThemes(IEnumerable<string> userThemes)
         {
             var currentSelection = SelectedThemeValue;
+            Utilities.ModLogger.Log($"[COMBO_REFRESH] RefreshUserThemes called, currentSelection={currentSelection}, _builtInThemes.Count={_builtInThemes.Count}");
 
             _isUpdating = true;
             try
             {
                 // Rebuild from built-in themes
                 _themeItems = _builtInThemes.Select(t => new ThemeItem(t)).ToList();
+                Utilities.ModLogger.Log($"[COMBO_REFRESH] Rebuilt _themeItems from built-in themes, count={_themeItems.Count}");
 
                 var userThemeList = userThemes.ToList();
                 if (userThemeList.Count > 0)
@@ -133,15 +135,36 @@ namespace FFTColorCustomizer.Configuration.UI
 
                     // Add user themes
                     _themeItems.AddRange(userThemeList.Select(t => new ThemeItem(t)));
+                    Utilities.ModLogger.Log($"[COMBO_REFRESH] Added {userThemeList.Count} user themes");
                 }
 
                 Items.Clear();
                 Items.AddRange(_themeItems.ToArray());
+                Utilities.ModLogger.Log($"[COMBO_REFRESH] Final Items.Count={Items.Count}");
 
-                // Restore selection
+                // Restore selection only if it still exists in the list
+                bool selectionChanged = false;
                 if (!string.IsNullOrEmpty(currentSelection))
                 {
-                    SelectedThemeValue = currentSelection;
+                    var selectionExists = _themeItems.Any(t => t.Value.Equals(currentSelection, StringComparison.OrdinalIgnoreCase));
+                    if (selectionExists)
+                    {
+                        SelectedThemeValue = currentSelection;
+                    }
+                    else
+                    {
+                        // Fall back to "original" if the selected theme was deleted
+                        SelectedThemeValue = "original";
+                        selectionChanged = true;
+                    }
+                }
+
+                // Fire event after _isUpdating is reset so preview updates
+                if (selectionChanged)
+                {
+                    _isUpdating = false;
+                    SelectedThemeChanged?.Invoke(this, "original");
+                    return;
                 }
             }
             finally

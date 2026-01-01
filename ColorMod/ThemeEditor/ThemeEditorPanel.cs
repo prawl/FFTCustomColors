@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using FFTColorCustomizer.Configuration.UI;
 
 namespace FFTColorCustomizer.ThemeEditor
 {
@@ -19,7 +21,6 @@ namespace FFTColorCustomizer.ThemeEditor
         private TextBox _themeNameInput;
         private Button _saveButton;
         private Button _resetButton;
-        private Button _cancelButton;
         private Button _rotateLeftButton;
         private Button _rotateRightButton;
         private Panel _sectionColorPickersPanel;
@@ -126,20 +127,16 @@ namespace FFTColorCustomizer.ThemeEditor
             _resetButton = new Button
             {
                 Name = "ResetButton",
-                Text = "Reset",
-                Width = 50,
+                Text = "Reset All",
+                Width = 70,
                 Left = buttonsLeft + 55,
-                Top = row1Top
+                Top = row1Top,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = UIConfiguration.ResetButtonColor,
+                ForeColor = Color.White
             };
-
-            _cancelButton = new Button
-            {
-                Name = "CancelButton",
-                Text = "Cancel",
-                Width = 55,
-                Left = buttonsLeft + 110,
-                Top = row1Top
-            };
+            _resetButton.FlatAppearance.BorderColor = UIConfiguration.ResetButtonBorder;
+            _resetButton.Click += OnResetAllClick;
 
             // Warning label (below the Save button, row 2)
             const int row2Top = 40;
@@ -149,7 +146,8 @@ namespace FFTColorCustomizer.ThemeEditor
                 Text = "⚠ Once saved, themes cannot be edited.",
                 Left = buttonsLeft,
                 Top = row2Top,
-                AutoSize = true
+                AutoSize = true,
+                ForeColor = Color.FromArgb(255, 200, 50)
             };
 
             // === ROW 3: Section labels above the content panels ===
@@ -169,7 +167,7 @@ namespace FFTColorCustomizer.ThemeEditor
             _colorSelectionLabel = new Label
             {
                 Name = "ColorSelectionLabel",
-                Text = "Color Selection",
+                Text = "Color Customizer",
                 Left = colorPickersLeft,
                 Top = row3Top,
                 AutoSize = true
@@ -230,7 +228,6 @@ namespace FFTColorCustomizer.ThemeEditor
             Controls.Add(_themeNameInput);
             Controls.Add(_saveButton);
             Controls.Add(_resetButton);
-            Controls.Add(_cancelButton);
             Controls.Add(_warningLabel);
             Controls.Add(_spritePreviewLabel);
             Controls.Add(_colorSelectionLabel);
@@ -451,6 +448,43 @@ namespace FFTColorCustomizer.ThemeEditor
 
             var args = new ThemeSavedEventArgs(jobName, themeName, paletteData);
             ThemeSaved?.Invoke(this, args);
+        }
+
+        private void OnResetAllClick(object? sender, EventArgs e)
+        {
+            // Confirm with user before resetting
+            var result = MessageBox.Show(
+                "Are you sure you want to reset all colors back to default? This will save immediately.",
+                "Reset All Colors",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result != DialogResult.Yes)
+                return;
+
+            // Clear theme name
+            _themeNameInput.Text = string.Empty;
+
+            // Reset all color pickers to their original colors
+            foreach (Control control in _sectionColorPickersPanel.Controls)
+            {
+                if (control is HslColorPicker picker)
+                {
+                    picker.ResetToOriginal();
+                }
+            }
+
+            // Reload the palette from scratch to reset the preview
+            if (_spritesDirectory != null && CurrentMapping != null)
+            {
+                var spritePath = Path.Combine(_spritesDirectory, CurrentMapping.Sprite);
+                if (File.Exists(spritePath))
+                {
+                    PaletteModifier = new PaletteModifier();
+                    PaletteModifier.LoadTemplate(spritePath);
+                    UpdateSpritePreview();
+                }
+            }
         }
 
         private string GetCurrentJobName()

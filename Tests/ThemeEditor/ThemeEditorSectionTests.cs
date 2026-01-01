@@ -110,22 +110,20 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
-        public void ThemeEditorPanel_HasSaveResetCancelButtons()
+        public void ThemeEditorPanel_HasSaveAndResetButtons()
         {
             // Arrange & Act
             using var panel = new ThemeEditorPanel();
 
-            // Assert - Should have Save, Reset, and Cancel buttons
+            // Assert - Should have Save and Reset All buttons
             var saveButton = panel.Controls.OfType<Button>()
                 .FirstOrDefault(c => c.Name == "SaveButton");
             var resetButton = panel.Controls.OfType<Button>()
                 .FirstOrDefault(c => c.Name == "ResetButton");
-            var cancelButton = panel.Controls.OfType<Button>()
-                .FirstOrDefault(c => c.Name == "CancelButton");
 
             Assert.NotNull(saveButton);
             Assert.NotNull(resetButton);
-            Assert.NotNull(cancelButton);
+            Assert.Equal("Reset All", resetButton.Text);
         }
 
         [Fact]
@@ -1781,16 +1779,16 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
-        public void ThemeEditorPanel_HasColorSelectionLabel()
+        public void ThemeEditorPanel_HasColorCustomizerLabel()
         {
             // Arrange & Act
             using var panel = new ThemeEditorPanel();
 
-            // Assert - Should have "Color Selection" label
-            var colorSelectionLabel = panel.Controls.OfType<Label>()
-                .FirstOrDefault(l => l.Text == "Color Selection");
+            // Assert - Should have "Color Customizer" label
+            var colorCustomizerLabel = panel.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Text == "Color Customizer");
 
-            Assert.NotNull(colorSelectionLabel);
+            Assert.NotNull(colorCustomizerLabel);
         }
 
         [Fact]
