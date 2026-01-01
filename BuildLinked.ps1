@@ -25,11 +25,47 @@ Get-ChildItem "$modsDir" -Filter "FFTColorCustomizer_v*" -Directory | ForEach-Ob
     Remove-Item $_.FullName -Force -Recurse -ErrorAction SilentlyContinue
 }
 
-# Clean existing dev installation
+# Clean existing dev installation (preserve user themes)
 $modPath = "$modsDir/FFTColorCustomizer"
 if (Test-Path $modPath) {
-    Write-Host "  Removing existing dev installation..." -ForegroundColor Yellow
+    Write-Host "  Cleaning existing dev installation (preserving user themes)..." -ForegroundColor Yellow
+
+    # Backup UserThemes folder and registry if they exist
+    $userThemesPath = "$modPath/UserThemes"
+    $userThemesJson = "$modPath/UserThemes.json"
+    $tempBackupPath = "$env:TEMP/FFTColorCustomizer_UserThemes_Backup"
+
+    if (Test-Path $userThemesPath) {
+        Write-Host "  Backing up UserThemes folder..." -ForegroundColor Cyan
+        if (Test-Path $tempBackupPath) { Remove-Item $tempBackupPath -Force -Recurse }
+        Copy-Item $userThemesPath $tempBackupPath -Recurse -Force
+    }
+    if (Test-Path $userThemesJson) {
+        Write-Host "  Backing up UserThemes.json..." -ForegroundColor Cyan
+        Copy-Item $userThemesJson "$tempBackupPath/UserThemes.json" -Force
+    }
+
+    # Remove everything
     Remove-Item "$modPath/*" -Force -Recurse -ErrorAction SilentlyContinue
+
+    # Restore UserThemes if backup exists
+    if (Test-Path $tempBackupPath) {
+        Write-Host "  Restoring user themes..." -ForegroundColor Green
+        if (Test-Path "$tempBackupPath/UserThemes.json") {
+            Copy-Item "$tempBackupPath/UserThemes.json" $userThemesJson -Force
+        }
+        # Copy UserThemes folder contents (excluding the backup json we stored there)
+        $userThemesFolders = Get-ChildItem $tempBackupPath -Directory
+        if ($userThemesFolders.Count -gt 0) {
+            New-Item -ItemType Directory -Force -Path $userThemesPath | Out-Null
+            foreach ($folder in $userThemesFolders) {
+                Copy-Item $folder.FullName "$userThemesPath/$($folder.Name)" -Recurse -Force
+            }
+            Write-Host "  Restored $($userThemesFolders.Count) user theme job(s)" -ForegroundColor Green
+        }
+        # Clean up temp backup
+        Remove-Item $tempBackupPath -Force -Recurse -ErrorAction SilentlyContinue
+    }
 }
 
 # Build and publish with IL trimming for smaller size

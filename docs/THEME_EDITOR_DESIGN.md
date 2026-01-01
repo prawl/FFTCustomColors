@@ -70,7 +70,7 @@ Highlight: L = min(L * 1.35, 0.95), S = S * 0.85
 - [x] Theme name validation (duplicates, reserved names, allowed chars)
 - [x] Wire Save button
 
-### Phase 4: Theme System Integration (In Progress)
+### Phase 4: Theme System Integration ✅
 - [x] `UserThemeService.GetAllUserThemes()` - returns themes grouped by job
 - [x] `UserThemeService.IsUserTheme()` - checks if theme is user-created
 - [x] `UserThemeService.GetUserThemePalettePath()` - path resolution for user themes
@@ -78,9 +78,9 @@ Highlight: L = min(L * 1.35, 0.95), S = S * 0.85
 - [x] `ThemeComboBox.IsSelectedItemSeparator` - detects separator selection
 - [x] `ThemeCoordinator.IsUserTheme()` - wrapper for UserThemeService
 - [x] `ThemeCoordinator.GetUserThemePalettePath()` - wrapper for UserThemeService
-- [x] `ConfigBasedSpriteManager.ApplyUserTheme()` - generates sprite with user palette in sprites_user_* directory
-- [ ] Wire CharacterRowBuilder to populate dropdowns with user themes
-- [x] Wire InterceptFilePath to redirect to user theme sprites (sprites_user_*)
+- [x] `ConfigBasedSpriteManager.ApplyUserTheme()` - generates sprite with user palette in base unit folder
+- [x] Wire CharacterRowBuilder to populate dropdowns with user themes
+- [x] ApplyConfiguration writes user theme sprites to base unit folder (FFTPack compatibility)
 
 ### Phase 5: Import/Export
 - [ ] Export button (JSON to clipboard)
