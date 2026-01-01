@@ -169,5 +169,80 @@ namespace FFTColorCustomizer.Tests.Core.ModComponents
             action.Should().Throw<ArgumentNullException>()
                 .WithParameterName("modPath");
         }
+
+        [Fact]
+        public void IsUserTheme_ShouldReturnTrue_ForSavedUserTheme()
+        {
+            // Arrange - Create a user theme
+            var userThemesPath = Path.Combine(_modPath, "UserThemes", "Knight_Male", "Ocean Blue");
+            Directory.CreateDirectory(userThemesPath);
+            File.WriteAllBytes(Path.Combine(userThemesPath, "palette.bin"), new byte[512]);
+
+            // Also create the registry
+            var registryPath = Path.Combine(_modPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Knight_Male\":[\"Ocean Blue\"]}");
+
+            // Act
+            var isUserTheme = _coordinator.IsUserTheme("Knight_Male", "Ocean Blue");
+
+            // Assert
+            isUserTheme.Should().BeTrue();
+        }
+
+        [Fact]
+        public void IsUserTheme_ShouldReturnFalse_ForBuiltInTheme()
+        {
+            // Act
+            var isUserTheme = _coordinator.IsUserTheme("Knight_Male", "lucavi");
+
+            // Assert
+            isUserTheme.Should().BeFalse();
+        }
+
+        [Fact]
+        public void GetUserThemePalettePath_ShouldReturnPath_ForExistingUserTheme()
+        {
+            // Arrange - Create a user theme
+            var userThemesPath = Path.Combine(_modPath, "UserThemes", "Knight_Male", "Ocean Blue");
+            Directory.CreateDirectory(userThemesPath);
+            File.WriteAllBytes(Path.Combine(userThemesPath, "palette.bin"), new byte[512]);
+
+            // Also create the registry
+            var registryPath = Path.Combine(_modPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Knight_Male\":[\"Ocean Blue\"]}");
+
+            // Act
+            var palettePath = _coordinator.GetUserThemePalettePath("Knight_Male", "Ocean Blue");
+
+            // Assert
+            palettePath.Should().NotBeNull();
+            palettePath.Should().EndWith("palette.bin");
+            File.Exists(palettePath).Should().BeTrue();
+        }
+
+        [Fact]
+        public void GetUserThemesForJob_ShouldReturnUserThemes_ForSpecificJob()
+        {
+            // Arrange - Create user themes for different jobs
+            var knightThemesPath = Path.Combine(_modPath, "UserThemes", "Knight_Male", "Ocean Blue");
+            Directory.CreateDirectory(knightThemesPath);
+            File.WriteAllBytes(Path.Combine(knightThemesPath, "palette.bin"), new byte[512]);
+
+            var archerThemesPath = Path.Combine(_modPath, "UserThemes", "Archer_Female", "Forest Green");
+            Directory.CreateDirectory(archerThemesPath);
+            File.WriteAllBytes(Path.Combine(archerThemesPath, "palette.bin"), new byte[512]);
+
+            // Create the registry
+            var registryPath = Path.Combine(_modPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Knight_Male\":[\"Ocean Blue\"],\"Archer_Female\":[\"Forest Green\"]}");
+
+            // Act
+            var knightThemes = _coordinator.GetUserThemesForJob("Knight_Male");
+
+            // Assert
+            knightThemes.Should().HaveCount(1);
+            knightThemes.Should().Contain("Ocean Blue");
+            knightThemes.Should().NotContain("Forest Green");
+        }
     }
 }

@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows.Forms;
 using FluentAssertions;
 using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.ThemeEditor;
 using Xunit;
 
 namespace FFTColorCustomizer.Tests.Configuration.UI
@@ -145,9 +146,79 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             carousel.Should().NotBeNull();
         }
 
+        [Fact]
+        public void TryLoadGenericFromBinFile_Should_Use_External_Palette_For_UserThemes()
+        {
+            // Arrange
+            // Create the unit path structure with sprites_original containing original sprite
+            var unitPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var originalDir = Path.Combine(unitPath, "sprites_original");
+            Directory.CreateDirectory(originalDir);
+
+            // Create original Knight sprite with red palette (color 1 = red)
+            var originalSpritePath = Path.Combine(originalDir, "battle_knight_m_spr.bin");
+            var originalBinData = new byte[512 + 5120];
+            // Set up red at color 1 in embedded palette
+            originalBinData[2] = 0x1F; originalBinData[3] = 0x00; // Color 1: Red (BGR555)
+            // Fill sprite data with color index 1
+            for (int i = 512; i < originalBinData.Length; i++)
+            {
+                originalBinData[i] = 0x11; // Color index 1
+            }
+            File.WriteAllBytes(originalSpritePath, originalBinData);
+
+            // Create user theme with blue palette
+            var userThemesDir = Path.Combine(_testModPath, "UserThemes", "Knight_Male", "Ocean Blue");
+            Directory.CreateDirectory(userThemesDir);
+            var userPalette = new byte[512];
+            // Color 1 = pure blue (BGR555: 0x7C00)
+            userPalette[2] = 0x00;
+            userPalette[3] = 0x7C;
+            File.WriteAllBytes(Path.Combine(userThemesDir, "palette.bin"), userPalette);
+
+            // Create user themes registry
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Knight_Male\":[\"Ocean Blue\"]}");
+
+            // Initialize the singleton with test mod path so CharacterRowBuilder can find user themes
+            UserThemeServiceSingleton.Initialize(_testModPath);
+
+            // Create a new builder that will use the initialized singleton
+            var testBuilder = new CharacterRowBuilder(
+                _testPanel,
+                _previewManager,
+                () => false,
+                new System.Collections.Generic.List<Control>(),
+                new System.Collections.Generic.List<Control>()
+            );
+
+            // Act
+            var tryLoadMethod = testBuilder.GetType().GetMethod("TryLoadGenericFromBinFile",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            tryLoadMethod.Should().NotBeNull("TryLoadGenericFromBinFile method should exist");
+
+            var result = tryLoadMethod.Invoke(testBuilder, new object[] { "Knight (Male)", "Ocean Blue" }) as Image[];
+
+            // Assert
+            result.Should().NotBeNull("Should return sprites for user theme");
+            result.Should().HaveCount(4, "Should return 4 corner sprites");
+
+            // Verify the first sprite uses the user's blue palette, not the original red
+            var firstSprite = result[0] as Bitmap;
+            firstSprite.Should().NotBeNull();
+
+            var pixelColor = firstSprite.GetPixel(0, 0);
+            pixelColor.B.Should().BeGreaterThan(200, "Pixel should be blue from user palette");
+            pixelColor.R.Should().BeLessThan(50, "Pixel should not be red from original palette");
+        }
+
         public void Dispose()
         {
             _testPanel?.Dispose();
+
+            // Reset singleton to avoid test pollution
+            UserThemeServiceSingleton.Reset();
 
             // Clean up test directory
             if (Directory.Exists(_testModPath))

@@ -70,12 +70,73 @@ namespace FFTColorCustomizer.Configuration
             _mainPanel.SetColumnSpan(themeEditorPanel, 3);
             _themeEditorControls.Add(themeEditorPanel);
 
+            // Wire up theme saved event
+            themeEditorPanel.ThemeSaved += OnThemeSaved;
+
             // Apply initial collapsed state
             if (_themeEditorCollapsed)
             {
                 themeEditorPanel.Visible = false;
             }
             row++;
+        }
+
+        private void OnThemeSaved(object? sender, EventArgs e)
+        {
+            if (e is not ThemeSavedEventArgs args)
+                return;
+
+            try
+            {
+                var userThemeService = new UserThemeService(_modPath!);
+                userThemeService.SaveTheme(args.JobName, args.ThemeName, args.PaletteData);
+
+                // Refresh dropdowns for the job that was saved
+                RefreshDropdownsForJob(args.JobName);
+
+                MessageBox.Show($"Theme '{args.ThemeName}' saved successfully!", "Theme Saved",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+            {
+                MessageBox.Show(ex.Message, "Theme Already Exists",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to save theme: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void RefreshDropdownsForJob(string jobName)
+        {
+            var userThemeService = new UserThemeService(_modPath!);
+            var userThemes = userThemeService.GetUserThemes(jobName);
+
+            // Find all ThemeComboBox controls for this job and refresh them
+            foreach (Control control in _mainPanel.Controls)
+            {
+                if (control is ThemeComboBox comboBox && comboBox.Tag != null)
+                {
+                    try
+                    {
+                        dynamic tag = comboBox.Tag;
+                        if (tag.JobName != null)
+                        {
+                            var comboJobName = CharacterRowBuilder.ConvertJobNameToPropertyFormat(tag.JobName.ToString());
+                            if (comboJobName == jobName)
+                            {
+                                comboBox.RefreshUserThemes(userThemes);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Tag doesn't have expected structure, skip
+                    }
+                }
+            }
         }
 
         private void LoadGenericCharacters(ref int row)

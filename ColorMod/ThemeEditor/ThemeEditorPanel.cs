@@ -32,6 +32,8 @@ namespace FFTColorCustomizer.ThemeEditor
         public int CurrentSpriteDirection { get; private set; } = 5; // Default to SW (Southwest)
         public PaletteModifier? PaletteModifier { get; private set; }
 
+        public event EventHandler? ThemeSaved;
+
         public ThemeEditorPanel() : this(null, null)
         {
         }
@@ -119,6 +121,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 Left = buttonsLeft,
                 Top = row1Top
             };
+            _saveButton.Click += OnSaveClick;
 
             _resetButton = new Button
             {
@@ -180,7 +183,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 Height = previewHeight,
                 Left = padding,
                 Top = contentTop,
-                BorderStyle = BorderStyle.FixedSingle,
+                BorderStyle = BorderStyle.None,
                 SizeMode = PictureBoxSizeMode.Zoom
             };
 
@@ -433,6 +436,31 @@ namespace FFTColorCustomizer.ThemeEditor
             currentIndex = (currentIndex + 1) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
             UpdateSpritePreview();
+        }
+
+        private void OnSaveClick(object? sender, EventArgs e)
+        {
+            var themeName = _themeNameInput.Text;
+
+            // Validate theme name is not empty
+            if (string.IsNullOrWhiteSpace(themeName))
+                return;
+
+            var jobName = GetCurrentJobName();
+            var paletteData = PaletteModifier?.GetModifiedPalette() ?? new byte[512];
+
+            var args = new ThemeSavedEventArgs(jobName, themeName, paletteData);
+            ThemeSaved?.Invoke(this, args);
+        }
+
+        private string GetCurrentJobName()
+        {
+            var displayName = _templateDropdown.SelectedItem?.ToString();
+            if (displayName != null && _displayNameToJobName.TryGetValue(displayName, out var jobName))
+            {
+                return jobName;
+            }
+            return string.Empty;
         }
     }
 }

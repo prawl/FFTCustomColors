@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Forms;
 using FFTColorCustomizer.Configuration;
 using FFTColorCustomizer.ThemeEditor;
@@ -1197,7 +1198,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
-        public void ThemeEditorPanel_SpritePreviewHasBorder()
+        public void ThemeEditorPanel_SpritePreviewHasNoBorder()
         {
             // Arrange & Act
             using var panel = new ThemeEditorPanel();
@@ -1205,8 +1206,8 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var preview = panel.Controls.OfType<PictureBox>()
                 .First(c => c.Name == "SpritePreview");
 
-            // Assert - Preview should have a border style
-            Assert.Equal(BorderStyle.FixedSingle, preview.BorderStyle);
+            // Assert - Preview should have no border for cleaner look
+            Assert.Equal(BorderStyle.None, preview.BorderStyle);
         }
 
         [Fact]
@@ -1971,6 +1972,319 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             // Assert - Panel height should be greater than swatch bottom to prevent clipping
             Assert.True(picker.Height >= swatch.Bottom,
                 $"Picker height ({picker.Height}) must be >= swatch bottom ({swatch.Bottom}) to prevent clipping");
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasHexInputTextBox()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            // Assert - Should have a TextBox for hex color input
+            var hexInput = picker.Controls.OfType<TextBox>()
+                .FirstOrDefault(c => c.Name == "HexInput");
+
+            Assert.NotNull(hexInput);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HexInput_DisplaysCurrentColorAsHex()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+
+            // Act - Set to pure red
+            picker.Hue = 0;
+            picker.Saturation = 100;
+            picker.Lightness = 50;
+
+            var hexInput = picker.Controls.OfType<TextBox>()
+                .First(c => c.Name == "HexInput");
+
+            // Assert - Should display #FF0000 for pure red
+            Assert.Equal("#FF0000", hexInput.Text);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HexInput_TypingValidHex_UpdatesSliders()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+            var hexInput = picker.Controls.OfType<TextBox>()
+                .First(c => c.Name == "HexInput");
+
+            // Act - Type a hex color (pure green)
+            hexInput.Text = "#00FF00";
+            // Simulate leaving the field (triggers validation)
+            hexInput.Focus();
+
+            // Assert - Sliders should reflect pure green (H=120, S=100, L=50)
+            Assert.Equal(120, picker.Hue);
+            Assert.Equal(100, picker.Saturation);
+            Assert.Equal(50, picker.Lightness);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HexInput_InvalidHex_DoesNotChangeSliders()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+            picker.Hue = 180;
+            picker.Saturation = 50;
+            picker.Lightness = 50;
+
+            var hexInput = picker.Controls.OfType<TextBox>()
+                .First(c => c.Name == "HexInput");
+
+            // Act - Type invalid hex
+            hexInput.Text = "invalid";
+
+            // Assert - Sliders should remain unchanged
+            Assert.Equal(180, picker.Hue);
+            Assert.Equal(50, picker.Saturation);
+            Assert.Equal(50, picker.Lightness);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasCopyButton()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            // Assert - Should have a Copy button
+            var copyButton = picker.Controls.OfType<Button>()
+                .FirstOrDefault(c => c.Name == "CopyButton");
+
+            Assert.NotNull(copyButton);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasPasteButton()
+        {
+            // Arrange & Act
+            using var picker = new HslColorPicker();
+
+            // Assert - Should have a Paste button
+            var pasteButton = picker.Controls.OfType<Button>()
+                .FirstOrDefault(c => c.Name == "PasteButton");
+
+            Assert.NotNull(pasteButton);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_GetHexColor_ReturnsCurrentColorAsHex()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+            picker.SetColorSilent(Color.FromArgb(255, 0, 0)); // Red
+
+            // Act
+            var hexColor = picker.GetHexColor();
+
+            // Assert
+            Assert.Equal("#FF0000", hexColor);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasCopyToClipboardMethod()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+
+            // Act - Verify the method exists via reflection
+            var method = typeof(HslColorPicker).GetMethod("CopyToClipboard");
+
+            // Assert - Method should exist and be public
+            Assert.NotNull(method);
+            Assert.True(method.IsPublic);
+            Assert.Equal(typeof(void), method.ReturnType);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasPasteFromClipboardMethod()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+
+            // Act - Verify the method exists via reflection
+            var method = typeof(HslColorPicker).GetMethod("PasteFromClipboard");
+
+            // Assert - Method should exist and be public
+            Assert.NotNull(method);
+            Assert.True(method.IsPublic);
+            Assert.Equal(typeof(void), method.ReturnType);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_PasteButton_HasClickHandler()
+        {
+            // Arrange
+            using var picker = new HslColorPicker();
+
+            var pasteButton = picker.Controls.OfType<Button>()
+                .First(c => c.Name == "PasteButton");
+
+            // Act - Verify the OnPasteClick handler exists via reflection
+            var method = typeof(HslColorPicker).GetMethod("OnPasteClick",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Assert - Handler method should exist
+            Assert.NotNull(method);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasThemeSavedEvent()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - Panel should have ThemeSaved event
+            var eventInfo = typeof(ThemeEditorPanel).GetEvent("ThemeSaved");
+            Assert.NotNull(eventInfo);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_SaveButton_Click_RaisesThemeSavedEvent()
+        {
+            // Arrange
+            using var panel = new ThemeEditorPanel();
+            var eventRaised = false;
+            panel.ThemeSaved += (sender, e) => eventRaised = true;
+
+            // Set theme name (required for save to work)
+            var themeNameInput = panel.Controls.OfType<TextBox>()
+                .First(c => c.Name == "ThemeNameInput");
+            themeNameInput.Text = "Test Theme";
+
+            var saveButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "SaveButton");
+
+            // Act
+            saveButton.PerformClick();
+
+            // Assert
+            Assert.True(eventRaised);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeSavedEventArgs_ContainsJobNameThemeNameAndPaletteData()
+        {
+            // Arrange & Act
+            var args = new ThemeSavedEventArgs("Knight_Male", "Ocean Blue", new byte[512]);
+
+            // Assert
+            Assert.Equal("Knight_Male", args.JobName);
+            Assert.Equal("Ocean Blue", args.ThemeName);
+            Assert.Equal(512, args.PaletteData.Length);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_ThemeSavedEvent_UsesThemeSavedEventArgs()
+        {
+            // Arrange
+            var mappingsDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "Data", "SectionMappings");
+            var spritesDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "Data", "Sprites");
+            using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+
+            // Set theme name
+            var themeNameInput = panel.Controls.OfType<TextBox>()
+                .First(c => c.Name == "ThemeNameInput");
+            themeNameInput.Text = "My Test Theme";
+
+            ThemeSavedEventArgs? receivedArgs = null;
+            panel.ThemeSaved += (sender, e) => receivedArgs = e as ThemeSavedEventArgs;
+
+            var saveButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "SaveButton");
+
+            // Act
+            saveButton.PerformClick();
+
+            // Assert
+            Assert.NotNull(receivedArgs);
+            Assert.Equal("My Test Theme", receivedArgs.ThemeName);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_SaveButton_DoesNotRaiseEvent_WhenThemeNameIsEmpty()
+        {
+            // Arrange
+            using var panel = new ThemeEditorPanel();
+            var eventRaised = false;
+            panel.ThemeSaved += (sender, e) => eventRaised = true;
+
+            var themeNameInput = panel.Controls.OfType<TextBox>()
+                .First(c => c.Name == "ThemeNameInput");
+            themeNameInput.Text = ""; // Empty theme name
+
+            var saveButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "SaveButton");
+
+            // Act
+            saveButton.PerformClick();
+
+            // Assert
+            Assert.False(eventRaised);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_ThemeSavedEvent_IncludesJobName()
+        {
+            // Arrange
+            var mappingsDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "Data", "SectionMappings");
+            var spritesDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "Data", "Sprites");
+            using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+
+            // Select a template
+            var templateDropdown = panel.Controls.OfType<ComboBox>()
+                .First(c => c.Name == "TemplateDropdown");
+            var squireMaleIndex = -1;
+            for (int i = 0; i < templateDropdown.Items.Count; i++)
+            {
+                if (templateDropdown.Items[i]?.ToString() == "Squire Male")
+                {
+                    squireMaleIndex = i;
+                    break;
+                }
+            }
+            if (squireMaleIndex >= 0)
+                templateDropdown.SelectedIndex = squireMaleIndex;
+
+            // Set theme name
+            var themeNameInput = panel.Controls.OfType<TextBox>()
+                .First(c => c.Name == "ThemeNameInput");
+            themeNameInput.Text = "My Test Theme";
+
+            ThemeSavedEventArgs? receivedArgs = null;
+            panel.ThemeSaved += (sender, e) => receivedArgs = e as ThemeSavedEventArgs;
+
+            var saveButton = panel.Controls.OfType<Button>()
+                .First(c => c.Name == "SaveButton");
+
+            // Act
+            saveButton.PerformClick();
+
+            // Assert
+            Assert.NotNull(receivedArgs);
+            Assert.Equal("Squire_Male", receivedArgs.JobName);
+            Assert.Equal("My Test Theme", receivedArgs.ThemeName);
+            Assert.Equal(512, receivedArgs.PaletteData.Length);
         }
     }
 }

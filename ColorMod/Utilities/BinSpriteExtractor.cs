@@ -114,6 +114,124 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
+        /// Extracts a single sprite from the bin data using an external palette
+        /// </summary>
+        /// <param name="data">The bin file data</param>
+        /// <param name="spriteIndex">Which sprite to extract (0-based)</param>
+        /// <param name="externalPalette">External palette data (512 bytes) to use instead of embedded palette</param>
+        /// <returns>A scaled bitmap (96x120 for display)</returns>
+        public Bitmap ExtractSpriteWithExternalPalette(byte[] data, int spriteIndex, byte[] externalPalette)
+        {
+            // Read palette from external data instead of embedded
+            var palette = ReadPaletteFromBytes(externalPalette, 0);
+
+            return ExtractSpriteWithPalette(data, spriteIndex, palette);
+        }
+
+        /// <summary>
+        /// Reads a 16-color palette from raw palette bytes
+        /// </summary>
+        /// <param name="paletteData">Raw palette data (512 bytes for 16 palettes)</param>
+        /// <param name="paletteIndex">Which palette to read (0-15)</param>
+        /// <returns>Array of 16 colors</returns>
+        public Color[] ReadPaletteFromBytes(byte[] paletteData, int paletteIndex)
+        {
+            var palette = new Color[16];
+            int offset = paletteIndex * 32; // Each palette is 16 colors * 2 bytes = 32 bytes
+
+            for (int i = 0; i < 16; i++)
+            {
+                int colorOffset = offset + (i * 2);
+
+                // Read BGR555 color (2 bytes, little-endian)
+                ushort bgr555 = (ushort)(paletteData[colorOffset] | (paletteData[colorOffset + 1] << 8));
+
+                // First color is always transparent
+                if (i == 0)
+                {
+                    palette[i] = Color.Transparent;
+                    continue;
+                }
+
+                // Extract 5-bit components
+                int r5 = bgr555 & 0x1F;
+                int g5 = (bgr555 >> 5) & 0x1F;
+                int b5 = (bgr555 >> 10) & 0x1F;
+
+                // Convert 5-bit to 8-bit (multiply by 255/31 ≈ 8.225)
+                int r8 = (r5 * 255) / 31;
+                int g8 = (g5 * 255) / 31;
+                int b8 = (b5 * 255) / 31;
+
+                palette[i] = Color.FromArgb(r8, g8, b8);
+            }
+
+            return palette;
+        }
+
+        /// <summary>
+        /// Extracts a single sprite from the bin data using a pre-parsed palette
+        /// </summary>
+        private Bitmap ExtractSpriteWithPalette(byte[] data, int spriteIndex, Color[] palette)
+        {
+            // Create the bitmap at actual sprite size
+            var bitmap = new Bitmap(SpriteWidth, SpriteHeight);
+
+            // Sprites are arranged horizontally in the sprite sheet
+            int xOffset = spriteIndex * SpriteWidth;
+            int yOffset = 0;
+
+            // Skip palette data (512 bytes)
+            int spriteDataStart = 512;
+
+            // Read the sprite data from the sheet
+            for (int y = 0; y < SpriteHeight; y++)
+            {
+                for (int x = 0; x < SpriteWidth; x++)
+                {
+                    // Calculate position in the full sprite sheet
+                    int sheetX = xOffset + x;
+                    int sheetY = yOffset + y;
+
+                    // Calculate pixel index in the sprite data (256-pixel wide sheet)
+                    int pixelIndex = (sheetY * SheetWidth) + sheetX;
+                    int byteIndex = spriteDataStart + (pixelIndex / 2);
+
+                    if (byteIndex >= data.Length)
+                        break;
+
+                    byte pixelData = data[byteIndex];
+
+                    // Get 4-bit value (alternate between low and high nibble)
+                    int colorIndex;
+                    if (pixelIndex % 2 == 0)
+                    {
+                        colorIndex = pixelData & 0x0F; // Low nibble
+                    }
+                    else
+                    {
+                        colorIndex = (pixelData >> 4) & 0x0F; // High nibble
+                    }
+
+                    // Set the pixel using the palette
+                    bitmap.SetPixel(x, y, palette[colorIndex]);
+                }
+            }
+
+            // Scale up to display size
+            var displayBitmap = new Bitmap(DisplayWidth, DisplayHeight);
+            using (var g = Graphics.FromImage(displayBitmap))
+            {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                g.DrawImage(bitmap, 0, 0, DisplayWidth, DisplayHeight);
+            }
+
+            bitmap.Dispose();
+            return displayBitmap;
+        }
+
+        /// <summary>
         /// Extracts a single sprite from the bin data
         /// </summary>
         /// <param name="data">The bin file data</param>
@@ -315,6 +433,40 @@ namespace FFTColorCustomizer.Utilities
                 allSprites[3], // SE
                 allSprites[5], // SW
                 allSprites[7]  // NW
+            };
+        }
+
+        /// <summary>
+        /// Extracts the 4 corner/diagonal direction sprites using an external palette
+        /// </summary>
+        /// <param name="data">The bin file data</param>
+        /// <param name="characterIndex">Which character (usually 0)</param>
+        /// <param name="externalPalette">External palette data (512 bytes) to use instead of embedded palette</param>
+        /// <returns>Array of 4 bitmaps for NE, SE, SW, NW directions</returns>
+        public Bitmap[] ExtractCornerDirectionsWithExternalPalette(byte[] data, int characterIndex, byte[] externalPalette)
+        {
+            var palette = ReadPaletteFromBytes(externalPalette, 0);
+
+            // Extract the base 5 directional sprites using external palette
+            var sprites = new Bitmap[8];
+            sprites[6] = ExtractSpriteWithPalette(data, 0, palette); // W (West)
+            sprites[5] = ExtractSpriteWithPalette(data, 1, palette); // SW (Southwest)
+            sprites[4] = ExtractSpriteWithPalette(data, 2, palette); // S (South)
+            sprites[7] = ExtractSpriteWithPalette(data, 3, palette); // NW (Northwest)
+            sprites[0] = ExtractSpriteWithPalette(data, 4, palette); // N (North)
+
+            // Mirror sprites to create the East directions
+            sprites[2] = MirrorBitmap(sprites[6]); // E from W
+            sprites[1] = MirrorBitmap(sprites[7]); // NE from NW
+            sprites[3] = MirrorBitmap(sprites[5]); // SE from SW
+
+            // Return corner directions: NE(1), SE(3), SW(5), NW(7)
+            return new Bitmap[]
+            {
+                sprites[1], // NE
+                sprites[3], // SE
+                sprites[5], // SW
+                sprites[7]  // NW
             };
         }
 

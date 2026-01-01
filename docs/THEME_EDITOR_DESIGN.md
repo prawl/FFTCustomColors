@@ -61,19 +61,26 @@ Highlight: L = min(L * 1.35, 0.95), S = S * 0.85
 - [x] Integrate preview with PaletteModifier (real-time updates)
 - [x] Per-section Reset button
 - [x] Color preview swatch in HslColorPicker
-- [ ] Hex code display/input
-- [ ] Copy/Paste buttons
+- [x] Hex code display/input
+- [x] Copy/Paste buttons
 
-### Phase 3: Theme Persistence
-- [ ] `UserThemeService.cs` - SaveTheme, LoadTheme, DeleteTheme, GetUserThemes
-- [ ] UserThemes.json registry
-- [ ] Theme name validation (duplicates, reserved names, allowed chars)
-- [ ] Wire Save button
+### Phase 3: Theme Persistence ✅
+- [x] `UserThemeService.cs` - SaveTheme, LoadTheme, DeleteTheme, GetUserThemes
+- [x] UserThemes.json registry
+- [x] Theme name validation (duplicates, reserved names, allowed chars)
+- [x] Wire Save button
 
-### Phase 4: Theme System Integration
-- [ ] Modify `ThemeService.cs` to discover UserThemes
-- [ ] Add user themes to dropdowns (after separator)
-- [ ] Theme resolution: user → built-in → original
+### Phase 4: Theme System Integration (In Progress)
+- [x] `UserThemeService.GetAllUserThemes()` - returns themes grouped by job
+- [x] `UserThemeService.IsUserTheme()` - checks if theme is user-created
+- [x] `UserThemeService.GetUserThemePalettePath()` - path resolution for user themes
+- [x] `ThemeComboBox.SetThemesWithUserThemes()` - displays user themes with separator
+- [x] `ThemeComboBox.IsSelectedItemSeparator` - detects separator selection
+- [x] `ThemeCoordinator.IsUserTheme()` - wrapper for UserThemeService
+- [x] `ThemeCoordinator.GetUserThemePalettePath()` - wrapper for UserThemeService
+- [x] `ConfigBasedSpriteManager.ApplyUserTheme()` - generates sprite with user palette in sprites_user_* directory
+- [ ] Wire CharacterRowBuilder to populate dropdowns with user themes
+- [x] Wire InterceptFilePath to redirect to user theme sprites (sprites_user_*)
 
 ### Phase 5: Import/Export
 - [ ] Export button (JSON to clipboard)

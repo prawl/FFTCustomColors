@@ -11,6 +11,7 @@ namespace FFTColorCustomizer.Configuration.UI
     public class ThemeComboBox : ComboBox
     {
         private List<ThemeItem> _themeItems = new List<ThemeItem>();
+        private List<string> _builtInThemes = new List<string>();
         private bool _isUpdating = false;
 
         /// <summary>
@@ -20,11 +21,20 @@ namespace FFTColorCustomizer.Configuration.UI
         {
             public string Value { get; set; }
             public string DisplayName { get; set; }
+            public bool IsSeparator { get; set; }
 
             public ThemeItem(string value)
             {
                 Value = value;
                 DisplayName = ThemeNameFormatter.FormatThemeName(value);
+                IsSeparator = false;
+            }
+
+            public ThemeItem(string value, string displayName, bool isSeparator)
+            {
+                Value = value;
+                DisplayName = displayName;
+                IsSeparator = isSeparator;
             }
 
             public override string ToString()
@@ -69,6 +79,86 @@ namespace FFTColorCustomizer.Configuration.UI
             finally
             {
                 _isUpdating = false;
+            }
+        }
+
+        /// <summary>
+        /// Sets the available themes including user-created themes with a separator
+        /// </summary>
+        public void SetThemesWithUserThemes(IEnumerable<string> builtInThemes, IEnumerable<string> userThemes)
+        {
+            _isUpdating = true;
+            try
+            {
+                _builtInThemes = builtInThemes.ToList();
+                _themeItems = _builtInThemes.Select(t => new ThemeItem(t)).ToList();
+
+                var userThemeList = userThemes.ToList();
+                if (userThemeList.Count > 0)
+                {
+                    // Add separator
+                    _themeItems.Add(new ThemeItem("__separator__", "── My Themes ──", isSeparator: true));
+
+                    // Add user themes
+                    _themeItems.AddRange(userThemeList.Select(t => new ThemeItem(t)));
+                }
+
+                Items.Clear();
+                Items.AddRange(_themeItems.ToArray());
+            }
+            finally
+            {
+                _isUpdating = false;
+            }
+        }
+
+        /// <summary>
+        /// Refreshes the user themes list while preserving the current selection
+        /// </summary>
+        public void RefreshUserThemes(IEnumerable<string> userThemes)
+        {
+            var currentSelection = SelectedThemeValue;
+
+            _isUpdating = true;
+            try
+            {
+                // Rebuild from built-in themes
+                _themeItems = _builtInThemes.Select(t => new ThemeItem(t)).ToList();
+
+                var userThemeList = userThemes.ToList();
+                if (userThemeList.Count > 0)
+                {
+                    // Add separator
+                    _themeItems.Add(new ThemeItem("__separator__", "── My Themes ──", isSeparator: true));
+
+                    // Add user themes
+                    _themeItems.AddRange(userThemeList.Select(t => new ThemeItem(t)));
+                }
+
+                Items.Clear();
+                Items.AddRange(_themeItems.ToArray());
+
+                // Restore selection
+                if (!string.IsNullOrEmpty(currentSelection))
+                {
+                    SelectedThemeValue = currentSelection;
+                }
+            }
+            finally
+            {
+                _isUpdating = false;
+            }
+        }
+
+        /// <summary>
+        /// Gets whether the currently selected item is a separator
+        /// </summary>
+        public bool IsSelectedItemSeparator
+        {
+            get
+            {
+                var selectedItem = SelectedItem as ThemeItem;
+                return selectedItem?.IsSeparator ?? false;
             }
         }
 

@@ -59,6 +59,8 @@ namespace FFTColorCustomizer.Configuration
                 Services.CharacterServiceSingleton.SetModPath(modPath);
                 // Also initialize JobClassServiceSingleton with the mod path
                 Services.JobClassServiceSingleton.Initialize(modPath);
+                // Initialize UserThemeServiceSingleton for user-created themes
+                ThemeEditor.UserThemeServiceSingleton.Initialize(modPath);
             }
 
             _isInitializing = true;

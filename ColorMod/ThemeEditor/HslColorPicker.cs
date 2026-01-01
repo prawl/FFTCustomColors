@@ -15,6 +15,9 @@ namespace FFTColorCustomizer.ThemeEditor
         private Label _sectionHeaderLabel;
         private Button _resetButton;
         private Panel _colorPreviewSwatch;
+        private TextBox _hexInput;
+        private Button _copyButton;
+        private Button _pasteButton;
         private bool _suppressEvents;
         private int _originalHue;
         private int _originalSaturation;
@@ -37,7 +40,7 @@ namespace FFTColorCustomizer.ThemeEditor
         public HslColorPicker()
         {
             // Add bottom margin for visual separation between sections
-            Margin = new Padding(0, 0, 0, 15);
+            Margin = new Padding(0, 0, 0, 35);
             InitializeComponents();
         }
 
@@ -144,6 +147,40 @@ namespace FFTColorCustomizer.ThemeEditor
                 BorderStyle = BorderStyle.FixedSingle
             };
 
+            // Hex color input - positioned next to the swatch
+            _hexInput = new TextBox
+            {
+                Name = "HexInput",
+                Top = headerHeight + rowHeight * 3 + 8,
+                Left = labelWidth + 40,
+                Width = 70
+            };
+            _hexInput.TextChanged += OnHexInputTextChanged;
+
+            // Copy button - positioned next to hex input
+            _copyButton = new Button
+            {
+                Name = "CopyButton",
+                Text = "Copy",
+                Top = headerHeight + rowHeight * 3 + 6,
+                Left = labelWidth + 115,
+                Width = 50,
+                Height = 22
+            };
+            _copyButton.Click += OnCopyClick;
+
+            // Paste button - positioned next to copy button
+            _pasteButton = new Button
+            {
+                Name = "PasteButton",
+                Text = "Paste",
+                Top = headerHeight + rowHeight * 3 + 6,
+                Left = labelWidth + 170,
+                Width = 50,
+                Height = 22
+            };
+            _pasteButton.Click += OnPasteClick;
+
             Controls.Add(_sectionHeaderLabel);
             Controls.Add(_resetButton);
             Controls.Add(hueLabel);
@@ -153,6 +190,9 @@ namespace FFTColorCustomizer.ThemeEditor
             Controls.Add(lightnessLabel);
             Controls.Add(_lightnessSlider);
             Controls.Add(_colorPreviewSwatch);
+            Controls.Add(_hexInput);
+            Controls.Add(_copyButton);
+            Controls.Add(_pasteButton);
 
             // Set picker panel size to fit all controls (including swatch) plus bottom padding
             const int swatchHeight = 30;
@@ -193,7 +233,69 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private void UpdateSwatchColor()
         {
-            _colorPreviewSwatch.BackColor = CurrentColor;
+            var color = CurrentColor;
+            _colorPreviewSwatch.BackColor = color;
+
+            // Only update hex input if we're not already suppressing events
+            // This prevents recursive updates and event firing issues
+            var wasSuppressed = _suppressEvents;
+            _suppressEvents = true;
+            try
+            {
+                _hexInput.Text = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+            }
+            finally
+            {
+                _suppressEvents = wasSuppressed;
+            }
+        }
+
+        private void OnHexInputTextChanged(object? sender, EventArgs e)
+        {
+            if (_suppressEvents) return;
+
+            var text = _hexInput.Text.Trim();
+            if (TryParseHexColor(text, out var color))
+            {
+                _suppressEvents = true;
+                try
+                {
+                    var hsl = HslColor.FromRgb(color);
+                    _hueSlider.Value = (int)hsl.H;
+                    _saturationSlider.Value = (int)(hsl.S * 100);
+                    _lightnessSlider.Value = (int)(hsl.L * 100);
+                    _colorPreviewSwatch.BackColor = color;
+                }
+                finally
+                {
+                    _suppressEvents = false;
+                }
+                ColorChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        private bool TryParseHexColor(string hex, out Color color)
+        {
+            color = Color.Empty;
+            if (string.IsNullOrEmpty(hex)) return false;
+
+            if (hex.StartsWith("#"))
+                hex = hex.Substring(1);
+
+            if (hex.Length != 6) return false;
+
+            try
+            {
+                var r = Convert.ToInt32(hex.Substring(0, 2), 16);
+                var g = Convert.ToInt32(hex.Substring(2, 2), 16);
+                var b = Convert.ToInt32(hex.Substring(4, 2), 16);
+                color = Color.FromArgb(r, g, b);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private void OnResetClick(object? sender, EventArgs e)
@@ -293,6 +395,10 @@ namespace FFTColorCustomizer.ThemeEditor
                 _saturationSlider.Value = (int)(hsl.S * 100);
                 _lightnessSlider.Value = (int)(hsl.L * 100);
 
+                // Update visual elements
+                _colorPreviewSwatch.BackColor = color;
+                _hexInput.Text = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+
                 // Store as original values for reset
                 _originalHue = _hueSlider.Value;
                 _originalSaturation = _saturationSlider.Value;
@@ -302,6 +408,48 @@ namespace FFTColorCustomizer.ThemeEditor
             {
                 _suppressEvents = false;
             }
+        }
+
+        /// <summary>
+        /// Returns the current color as a hex string (e.g., "#FF0000").
+        /// </summary>
+        public string GetHexColor()
+        {
+            var color = CurrentColor;
+            return $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+        }
+
+        /// <summary>
+        /// Copies the current color hex value to the clipboard.
+        /// </summary>
+        public void CopyToClipboard()
+        {
+            Clipboard.SetText(GetHexColor());
+        }
+
+        /// <summary>
+        /// Pastes a hex color value from the clipboard and updates the picker.
+        /// </summary>
+        public void PasteFromClipboard()
+        {
+            if (Clipboard.ContainsText())
+            {
+                var text = Clipboard.GetText();
+                if (TryParseHexColor(text, out var color))
+                {
+                    SetColor(color);
+                }
+            }
+        }
+
+        private void OnCopyClick(object? sender, EventArgs e)
+        {
+            CopyToClipboard();
+        }
+
+        private void OnPasteClick(object? sender, EventArgs e)
+        {
+            PasteFromClipboard();
         }
     }
 }

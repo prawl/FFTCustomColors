@@ -91,5 +91,241 @@ namespace Tests.Utilities
             var content = File.ReadAllText(expectedDestFile);
             Assert.Equal("ash_dark_theme_content", content);
         }
+
+        [Fact]
+        public void ApplyConfiguration_Should_GenerateUserThemeSprite_InBaseUnitFolder()
+        {
+            // Arrange
+            var service = new CharacterDefinitionService();
+
+            var config = new Config
+            {
+                Knight_Male = "Ocean Blue"  // User theme name
+            };
+            _configManager.SaveConfig(config);
+
+            // Create original sprite in sprites_original directory
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var originalDir = Path.Combine(deployedPath, "sprites_original");
+            Directory.CreateDirectory(originalDir);
+
+            // Create a minimal sprite file with known palette data (512 bytes palette + some sprite data)
+            var originalSprite = new byte[1024];
+            for (int i = 0; i < 512; i++)
+            {
+                originalSprite[i] = 0xFF; // Original palette: all 0xFF
+            }
+            for (int i = 512; i < 1024; i++)
+            {
+                originalSprite[i] = 0xAA; // Sprite data: all 0xAA
+            }
+            var originalSpriteFile = Path.Combine(originalDir, "battle_knight_m_spr.bin");
+            File.WriteAllBytes(originalSpriteFile, originalSprite);
+
+            // Create user theme with custom palette
+            var userThemesDir = Path.Combine(_testModPath, "UserThemes", "Knight_Male", "Ocean Blue");
+            Directory.CreateDirectory(userThemesDir);
+            var userPalette = new byte[512];
+            for (int i = 0; i < 512; i++)
+            {
+                userPalette[i] = 0x42; // User palette: all 0x42
+            }
+            File.WriteAllBytes(Path.Combine(userThemesDir, "palette.bin"), userPalette);
+
+            // Create user themes registry
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Knight_Male\":[\"Ocean Blue\"]}");
+
+            var spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, service);
+
+            // Act
+            spriteManager.ApplyConfiguration();
+
+            // Assert - Generated sprite should be in BASE unit folder (for FFTPack compatibility)
+            var generatedSpriteFile = Path.Combine(deployedPath, "battle_knight_m_spr.bin");
+            Assert.True(File.Exists(generatedSpriteFile), "User theme sprite should be generated in base unit folder");
+
+            var resultSprite = File.ReadAllBytes(generatedSpriteFile);
+
+            // Palette should be from user theme (0x42)
+            Assert.Equal(0x42, resultSprite[0]);
+            Assert.Equal(0x42, resultSprite[255]);
+            Assert.Equal(0x42, resultSprite[511]);
+
+            // Sprite data should be preserved from original (0xAA)
+            Assert.Equal(0xAA, resultSprite[512]);
+            Assert.Equal(0xAA, resultSprite[1023]);
+
+            // Original sprite in sprites_original should be UNCHANGED
+            var originalAfter = File.ReadAllBytes(originalSpriteFile);
+            Assert.Equal(0xFF, originalAfter[0]); // Palette unchanged
+            Assert.Equal(0xAA, originalAfter[512]); // Sprite data unchanged
+        }
+
+        [Fact]
+        public void InterceptFilePath_Should_ReturnOriginalPath_WhenUserThemeSelected()
+        {
+            // Arrange
+            // User themes are now written directly to the base unit folder by ApplyConfiguration,
+            // so InterceptFilePath doesn't need to redirect - the file is already in the right place.
+            var service = new CharacterDefinitionService();
+
+            var config = new Config
+            {
+                Knight_Male = "Ocean Blue"  // User theme name
+            };
+            _configManager.SaveConfig(config);
+
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            Directory.CreateDirectory(deployedPath);
+
+            // Create the user theme sprite file in the base folder (as if ApplyConfiguration already ran)
+            var userThemeSpriteFile = Path.Combine(deployedPath, "battle_knight_m_spr.bin");
+            File.WriteAllBytes(userThemeSpriteFile, new byte[] { 0x42 });
+
+            // Create user themes registry
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Knight_Male\":[\"Ocean Blue\"]}");
+
+            var spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, service);
+
+            // Act
+            var originalPath = Path.Combine(deployedPath, "battle_knight_m_spr.bin");
+            var interceptedPath = spriteManager.InterceptFilePath(originalPath);
+
+            // Assert - Should return original path since file is already in base folder
+            Assert.Equal(originalPath, interceptedPath);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_Should_CreateUserThemeSpriteFile_InBaseUnitFolder()
+        {
+            // Arrange
+            var service = new CharacterDefinitionService();
+
+            var config = new Config
+            {
+                Knight_Male = "Ocean Blue"  // User theme name
+            };
+            _configManager.SaveConfig(config);
+
+            // Create original sprite in sprites_original directory
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var originalDir = Path.Combine(deployedPath, "sprites_original");
+            Directory.CreateDirectory(originalDir);
+
+            // Create a minimal sprite file with known palette data (512 bytes palette + some sprite data)
+            var originalSprite = new byte[1024];
+            for (int i = 0; i < 512; i++)
+            {
+                originalSprite[i] = 0xFF; // Original palette: all 0xFF
+            }
+            for (int i = 512; i < 1024; i++)
+            {
+                originalSprite[i] = 0xAA; // Sprite data: all 0xAA
+            }
+            var originalSpriteFile = Path.Combine(originalDir, "battle_knight_m_spr.bin");
+            File.WriteAllBytes(originalSpriteFile, originalSprite);
+
+            // Create user theme with custom palette
+            var userThemesDir = Path.Combine(_testModPath, "UserThemes", "Knight_Male", "Ocean Blue");
+            Directory.CreateDirectory(userThemesDir);
+            var userPalette = new byte[512];
+            for (int i = 0; i < 512; i++)
+            {
+                userPalette[i] = 0x42; // User palette: all 0x42
+            }
+            File.WriteAllBytes(Path.Combine(userThemesDir, "palette.bin"), userPalette);
+
+            // Create user themes registry
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Knight_Male\":[\"Ocean Blue\"]}");
+
+            var spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, service);
+
+            // Act
+            spriteManager.ApplyConfiguration();
+
+            // Assert - Generated sprite should be in BASE unit folder (for FFTPack compatibility)
+            var generatedSpriteFile = Path.Combine(deployedPath, "battle_knight_m_spr.bin");
+
+            Assert.True(File.Exists(generatedSpriteFile), $"User theme sprite should be generated at: {generatedSpriteFile}");
+
+            var resultSprite = File.ReadAllBytes(generatedSpriteFile);
+
+            // Palette should be from user theme (0x42)
+            Assert.Equal(0x42, resultSprite[0]);
+            Assert.Equal(0x42, resultSprite[255]);
+            Assert.Equal(0x42, resultSprite[511]);
+
+            // Sprite data should be preserved from original (0xAA)
+            Assert.Equal(0xAA, resultSprite[512]);
+        }
+
+        [Fact]
+        public void ApplyUserTheme_Should_CopyToBaseUnitFolder_NotSubdirectory()
+        {
+            // Arrange
+            // This test verifies the FIX: user theme sprites must be copied to the BASE unit folder
+            // (just like regular themes) so the FFTPack mod loader can find them.
+            // Previously, user themes were written to sprites_user_* subdirectories which the
+            // mod loader didn't use for the main file mapping.
+            var service = new CharacterDefinitionService();
+
+            var config = new Config
+            {
+                Knight_Male = "Ocean Blue"
+            };
+            _configManager.SaveConfig(config);
+
+            // Create original sprite in sprites_original directory
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var originalDir = Path.Combine(deployedPath, "sprites_original");
+            Directory.CreateDirectory(originalDir);
+
+            var originalSprite = new byte[1024];
+            for (int i = 0; i < 512; i++)
+            {
+                originalSprite[i] = 0xFF;
+            }
+            for (int i = 512; i < 1024; i++)
+            {
+                originalSprite[i] = 0xAA;
+            }
+            File.WriteAllBytes(Path.Combine(originalDir, "battle_knight_m_spr.bin"), originalSprite);
+
+            // Create user theme
+            var userThemesDir = Path.Combine(_testModPath, "UserThemes", "Knight_Male", "Ocean Blue");
+            Directory.CreateDirectory(userThemesDir);
+            var userPalette = new byte[512];
+            for (int i = 0; i < 512; i++)
+            {
+                userPalette[i] = 0x42;
+            }
+            File.WriteAllBytes(Path.Combine(userThemesDir, "palette.bin"), userPalette);
+
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Knight_Male\":[\"Ocean Blue\"]}");
+
+            var spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, service);
+
+            // Act
+            spriteManager.ApplyConfiguration();
+
+            // Assert - The sprite should be in the BASE unit folder (not a subdirectory)
+            // This is where FFTPack looks for files when the game requests them
+            var baseUnitFile = Path.Combine(deployedPath, "battle_knight_m_spr.bin");
+            Assert.True(File.Exists(baseUnitFile),
+                $"User theme sprite MUST be in base unit folder for FFTPack: {baseUnitFile}");
+
+            var resultSprite = File.ReadAllBytes(baseUnitFile);
+
+            // Verify the palette was applied (user theme palette, not original)
+            Assert.Equal(0x42, resultSprite[0]);
+            Assert.Equal(0x42, resultSprite[511]);
+
+            // Verify sprite data preserved
+            Assert.Equal(0xAA, resultSprite[512]);
+        }
     }
 }

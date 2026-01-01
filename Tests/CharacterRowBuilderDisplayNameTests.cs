@@ -10,6 +10,24 @@ using System.Linq;
 
 namespace FFTColorCustomizer.Tests
 {
+    public class CharacterRowBuilderJobNameConversionTests
+    {
+        [Theory]
+        [InlineData("Knight (Male)", "Knight_Male")]
+        [InlineData("Knight (Female)", "Knight_Female")]
+        [InlineData("White Mage (Male)", "WhiteMage_Male")]
+        [InlineData("White Mage (Female)", "WhiteMage_Female")]
+        [InlineData("Squire (Male)", "Squire_Male")]
+        public void ConvertJobNameToPropertyFormat_Should_Convert_Display_Name_To_Property_Format(string displayName, string expected)
+        {
+            // Act
+            var result = CharacterRowBuilder.ConvertJobNameToPropertyFormat(displayName);
+
+            // Assert
+            result.Should().Be(expected);
+        }
+    }
+
     public class CharacterRowBuilderDisplayNameTests
     {
         [Fact]

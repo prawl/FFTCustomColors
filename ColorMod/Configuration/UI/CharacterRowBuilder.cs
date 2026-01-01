@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using FFTColorCustomizer.Utilities;
 using FFTColorCustomizer.Services;
+using FFTColorCustomizer.ThemeEditor;
 
 namespace FFTColorCustomizer.Configuration.UI
 {
@@ -22,6 +23,7 @@ namespace FFTColorCustomizer.Configuration.UI
         private readonly List<Control> _storyCharacterControls;
         private readonly JobClassDefinitionService _jobClassService;
         private readonly List<PreviewCarousel> _allCarousels = new List<PreviewCarousel>();
+        private readonly UserThemeService _userThemeService;
 
         public IReadOnlyList<PreviewCarousel> AllCarousels => _allCarousels;
 
@@ -38,6 +40,7 @@ namespace FFTColorCustomizer.Configuration.UI
             _genericCharacterControls = genericCharacterControls;
             _storyCharacterControls = storyCharacterControls;
             _jobClassService = JobClassServiceSingleton.Instance;
+            _userThemeService = UserThemeServiceSingleton.Instance;
             _binExtractor = new BinSpriteExtractor();
         }
 
@@ -101,8 +104,13 @@ namespace FFTColorCustomizer.Configuration.UI
             var comboBox = new ThemeComboBox();
             ConfigUIComponentFactory.ApplyThemeComboBoxStyling(comboBox);
             // Get available themes for this specific job (shared + job-specific)
-            var themes = GetAvailableGenericThemesForJob(jobName);
-            comboBox.SetThemes(themes);
+            var builtInThemes = GetAvailableGenericThemesForJob(jobName);
+
+            // Get user themes for this job - convert "Knight (Male)" to "Knight_Male"
+            var jobProperty = ConvertJobNameToPropertyFormat(jobName);
+            var userThemes = _userThemeService.GetUserThemes(jobProperty);
+
+            comboBox.SetThemesWithUserThemes(builtInThemes, userThemes);
             comboBox.SelectedThemeValue = currentTheme;
 
             // Create preview carousel with lazy loading
@@ -706,6 +714,13 @@ namespace FFTColorCustomizer.Configuration.UI
                 // Find the actual FFTIVC path (handles versioned directories)
                 string unitPath = FindActualUnitPath(modPath);
 
+                // Check if this is a user theme
+                var jobProperty = ConvertJobNameToPropertyFormat(jobName);
+                if (_userThemeService.IsUserTheme(jobProperty, theme))
+                {
+                    return TryLoadUserThemeFromBinFile(modPath, unitPath, spriteFileName, jobProperty, theme);
+                }
+
                 // First check if this is a job-specific theme (e.g., sprites_knight_h78/battle_knight_m_spr.bin)
                 string jobType = jobName.Replace(" (Male)", "").Replace(" (Female)", "").Replace(" ", "").ToLower();
                 string jobSpecificFolderName = $"sprites_{jobType}_{theme.ToLower().Replace(" ", "_")}";
@@ -769,6 +784,54 @@ namespace FFTColorCustomizer.Configuration.UI
             }
         }
 
+        private Image[] TryLoadUserThemeFromBinFile(string modPath, string unitPath, string spriteFileName, string jobProperty, string themeName)
+        {
+            ModLogger.Log($"[TryLoadUserThemeFromBinFile] Loading user theme '{themeName}' for {jobProperty}");
+
+            // Get the user theme palette path
+            var palettePath = _userThemeService.GetUserThemePalettePath(jobProperty, themeName);
+            if (string.IsNullOrEmpty(palettePath) || !File.Exists(palettePath))
+            {
+                ModLogger.LogWarning($"User theme palette not found: {palettePath}");
+                return null;
+            }
+
+            // Get the original sprite from sprites_original
+            var originalDir = Path.Combine(unitPath, "sprites_original");
+            var originalFile = Path.Combine(originalDir, spriteFileName);
+            if (!File.Exists(originalFile))
+            {
+                ModLogger.LogWarning($"Original sprite not found for user theme preview: {originalFile}");
+                return null;
+            }
+
+            // Read original sprite and user palette
+            var originalSprite = File.ReadAllBytes(originalFile);
+            var userPalette = File.ReadAllBytes(palettePath);
+
+            // Validate palette size
+            if (userPalette.Length != 512)
+            {
+                ModLogger.LogWarning($"Invalid user palette size: {userPalette.Length} (expected 512)");
+                return null;
+            }
+
+            // Extract sprites using the external user palette
+            var cornerSprites = _binExtractor.ExtractCornerDirectionsWithExternalPalette(originalSprite, 0, userPalette);
+
+            // Return 4 corner sprites for carousel
+            var carouselSprites = new Image[]
+            {
+                cornerSprites[2], // SW (default preview angle)
+                cornerSprites[3], // NW
+                cornerSprites[0], // NE
+                cornerSprites[1]  // SE
+            };
+
+            ModLogger.Log($"[USER THEME] Job: '{jobProperty}', Theme: '{themeName}', Using external palette");
+            return carouselSprites;
+        }
+
         private string GetCharacterDisplayName(string characterName)
         {
             switch (characterName)
@@ -823,6 +886,17 @@ namespace FFTColorCustomizer.Configuration.UI
                     // Fallback to the character name itself
                     return characterName.ToLower();
             }
+        }
+
+        /// <summary>
+        /// Converts a job display name like "Knight (Male)" to property format like "Knight_Male"
+        /// </summary>
+        public static string ConvertJobNameToPropertyFormat(string jobName)
+        {
+            return jobName
+                .Replace(" (Male)", "_Male")
+                .Replace(" (Female)", "_Female")
+                .Replace(" ", "");
         }
 
         private string ConvertJobNameToSpriteFile(string jobName)

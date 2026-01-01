@@ -270,6 +270,70 @@ namespace FFTColorCustomizer.Tests.Utilities
             sprites.Should().HaveCount(expectedCount, $"{mode} should return {expectedCount} sprites");
         }
 
+        [Fact]
+        public void ExtractSpriteWithExternalPalette_Should_Use_Provided_Palette_Instead_Of_Embedded()
+        {
+            // Arrange - Create sprite data that uses color index 1
+            for (int i = 512; i < 512 + 1344; i++)
+            {
+                _testBinData[i] = 0x11; // Use color index 1 for all pixels
+            }
+
+            // The embedded palette has red at index 1 (set in constructor)
+            // Create an external palette with blue at index 1
+            var externalPalette = new byte[512];
+            // Color 1 = pure blue (BGR555: 0x7C00)
+            externalPalette[2] = 0x00; // Low byte
+            externalPalette[3] = 0x7C; // High byte: blue=31
+
+            // Act - Extract sprite using external palette
+            var sprite = _extractor.ExtractSpriteWithExternalPalette(_testBinData, 0, externalPalette);
+
+            // Assert
+            sprite.Should().NotBeNull();
+            sprite.Width.Should().Be(96);
+            sprite.Height.Should().Be(120);
+
+            // The pixel should be blue (from external palette), not red (from embedded)
+            var pixelColor = sprite.GetPixel(0, 0);
+            pixelColor.B.Should().BeGreaterThan(200, "Pixel should be blue from external palette");
+            pixelColor.R.Should().BeLessThan(50, "Pixel should not be red from embedded palette");
+        }
+
+        [Fact]
+        public void ExtractCornerDirectionsWithExternalPalette_Should_Return_4_Sprites_With_External_Palette()
+        {
+            // Arrange - Make data big enough for 8 sprites
+            Array.Resize(ref _testBinData, 512 + (8 * 1344));
+
+            // Fill sprites with color index 1
+            for (int i = 512; i < _testBinData.Length; i++)
+            {
+                _testBinData[i] = 0x11;
+            }
+
+            // Create external palette with green at index 1
+            var externalPalette = new byte[512];
+            // Color 1 = pure green (BGR555: 0x03E0)
+            externalPalette[2] = 0xE0; // Low byte
+            externalPalette[3] = 0x03; // High byte: green=31
+
+            // Act
+            var sprites = _extractor.ExtractCornerDirectionsWithExternalPalette(_testBinData, 0, externalPalette);
+
+            // Assert
+            sprites.Should().NotBeNull();
+            sprites.Should().HaveCount(4, "Should return 4 corner direction sprites");
+
+            // All sprites should use the external palette (green)
+            foreach (var sprite in sprites)
+            {
+                sprite.Should().NotBeNull();
+                var pixelColor = sprite.GetPixel(0, 0);
+                pixelColor.G.Should().BeGreaterThan(200, "Pixel should be green from external palette");
+            }
+        }
+
         public void Dispose()
         {
             if (File.Exists(_testBinPath))

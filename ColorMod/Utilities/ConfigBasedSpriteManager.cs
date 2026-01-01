@@ -5,6 +5,7 @@ using System.Reflection;
 using FFTColorCustomizer.Configuration;
 using FFTColorCustomizer.Core;
 using FFTColorCustomizer.Services;
+using FFTColorCustomizer.ThemeEditor;
 
 namespace FFTColorCustomizer.Utilities
 {
@@ -20,6 +21,7 @@ namespace FFTColorCustomizer.Utilities
         private readonly CharacterDefinitionService _characterService;
         private readonly string _unitPath;
         private readonly string _sourceUnitPath;
+        private readonly UserThemeService _userThemeService;
 
         public string GetModPath() => _modPath;
 
@@ -40,6 +42,9 @@ namespace FFTColorCustomizer.Utilities
 
             // Destination path: where we copy themes to (can be the same for now since we're intercepting)
             _unitPath = _sourceUnitPath;
+
+            // Initialize user theme service
+            _userThemeService = new UserThemeService(_modPath);
 
             ModLogger.Log("ConfigBasedSpriteManager initialized:");
             ModLogger.Log($"  Mod path: {_modPath}");
@@ -369,11 +374,23 @@ namespace FFTColorCustomizer.Utilities
                 return originalPath;
             }
 
-            var colorScheme = colorSchemeValue.ToString().ToLower();
+            var colorSchemeOriginal = colorSchemeValue.ToString();
+            var colorScheme = colorSchemeOriginal.ToLower();
             ModLogger.Log($"{jobProperty} configured as: {colorScheme}");
 
             if (colorScheme == "original")
             {
+                return originalPath;
+            }
+
+            // User themes are now written directly to base unit folder by ApplyUserTheme,
+            // so no special interception is needed - the file is already in the right place.
+            // Just log for debugging purposes.
+            var isUserTheme = _userThemeService.IsUserTheme(jobProperty, colorSchemeOriginal);
+            if (isUserTheme)
+            {
+                ModLogger.Log($"[USER_THEME_CHECK] {jobProperty} uses user theme '{colorSchemeOriginal}' - file should be in base folder");
+                // Return original path - ApplyConfiguration already placed the themed sprite there
                 return originalPath;
             }
 
@@ -553,6 +570,21 @@ namespace FFTColorCustomizer.Utilities
                 return;
             }
 
+            // Convert jobType to job name format for user theme lookup (e.g., "knight" -> "Knight_Male")
+            var jobName = ConvertJobTypeToJobName(jobType, spriteName);
+            ModLogger.Log($"[COPY_SPRITE] jobType={jobType}, spriteName={spriteName} -> jobName={jobName}");
+
+            // Check if this is a user-created theme
+            var isUserTheme = _userThemeService.IsUserTheme(jobName, colorScheme);
+            ModLogger.Log($"[COPY_SPRITE] Checking user theme: jobName={jobName}, colorScheme={colorScheme}, isUserTheme={isUserTheme}");
+
+            if (isUserTheme)
+            {
+                ModLogger.Log($"[COPY_SPRITE] Calling ApplyUserTheme for {jobName}/{colorScheme}");
+                ApplyUserTheme(spriteName, colorScheme, jobName);
+                return;
+            }
+
             // Log the paths being used
             ModLogger.Log($"CopySpriteForJobWithType: Looking for {spriteName} with theme {colorScheme}");
             ModLogger.Log($"  _sourceUnitPath: {_sourceUnitPath}");
@@ -658,6 +690,86 @@ namespace FFTColorCustomizer.Utilities
             else
             {
                 ModLogger.LogWarning($"Source sprite not found at {sourceFile}");
+            }
+        }
+
+        /// <summary>
+        /// Converts job type (e.g., "knight") to job name format (e.g., "Knight_Male") based on sprite name
+        /// </summary>
+        private string ConvertJobTypeToJobName(string jobType, string spriteName)
+        {
+            // Determine gender from sprite name (_m_ = male, _w_ = female)
+            var gender = spriteName.Contains("_m_") ? "Male" : "Female";
+
+            // Convert to title case and combine
+            var titleCaseJob = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(jobType);
+            return $"{titleCaseJob}_{gender}";
+        }
+
+        /// <summary>
+        /// Applies a user-created theme by combining the original sprite with the user's palette
+        /// </summary>
+        private void ApplyUserTheme(string spriteName, string themeName, string jobName)
+        {
+            ModLogger.Log($"[APPLY_USER_THEME] START - sprite={spriteName}, theme={themeName}, job={jobName}");
+
+            // Get the user theme palette path
+            var palettePath = _userThemeService.GetUserThemePalettePath(jobName, themeName);
+            ModLogger.Log($"[APPLY_USER_THEME] Palette path: {palettePath}");
+
+            if (string.IsNullOrEmpty(palettePath))
+            {
+                ModLogger.LogWarning($"[APPLY_USER_THEME] Palette path is null/empty for {jobName}/{themeName}");
+                return;
+            }
+
+            if (!File.Exists(palettePath))
+            {
+                ModLogger.LogWarning($"[APPLY_USER_THEME] Palette file does not exist: {palettePath}");
+                return;
+            }
+
+            // Get the original sprite
+            var originalDir = Path.Combine(_sourceUnitPath, "sprites_original");
+            var originalFile = Path.Combine(originalDir, spriteName);
+            ModLogger.Log($"[APPLY_USER_THEME] Original sprite path: {originalFile}");
+            ModLogger.Log($"[APPLY_USER_THEME] Original sprite exists: {File.Exists(originalFile)}");
+
+            if (!File.Exists(originalFile))
+            {
+                ModLogger.LogWarning($"[APPLY_USER_THEME] Original sprite not found: {originalFile}");
+                return;
+            }
+
+            try
+            {
+                // Read original sprite and user palette
+                var originalSprite = File.ReadAllBytes(originalFile);
+                var userPalette = File.ReadAllBytes(palettePath);
+                ModLogger.Log($"[APPLY_USER_THEME] Original sprite size: {originalSprite.Length}, Palette size: {userPalette.Length}");
+
+                // Validate palette size (should be 512 bytes)
+                if (userPalette.Length != 512)
+                {
+                    ModLogger.LogWarning($"[APPLY_USER_THEME] Invalid palette size: {userPalette.Length} (expected 512)");
+                    return;
+                }
+
+                // Replace palette in sprite (first 512 bytes)
+                Array.Copy(userPalette, 0, originalSprite, 0, 512);
+
+                // Write directly to base unit folder (same as regular themes)
+                // This is required because FFTPack registers files at startup and uses the base folder
+                var destFile = Path.Combine(_unitPath, spriteName);
+                ModLogger.Log($"[APPLY_USER_THEME] Writing to base unit folder: {destFile}");
+                File.WriteAllBytes(destFile, originalSprite);
+
+                ModLogger.LogSuccess($"[APPLY_USER_THEME] SUCCESS - Created: {destFile}");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[APPLY_USER_THEME] FAILED: {ex.Message}");
+                ModLogger.LogError($"[APPLY_USER_THEME] Stack: {ex.StackTrace}");
             }
         }
     }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using FFTColorCustomizer.Services;
+using FFTColorCustomizer.ThemeEditor;
 using FFTColorCustomizer.Utilities;
 using static FFTColorCustomizer.Core.ColorModConstants;
 
@@ -17,6 +18,7 @@ namespace FFTColorCustomizer.Core.ModComponents
         private readonly string _modPath;
         private readonly ColorSchemeCycler _colorCycler;
         private readonly ThemeManager _themeManager;
+        private readonly UserThemeService _userThemeService;
         private string _currentColorScheme;
 
         // Job sprite patterns (includes both generic jobs and story characters)
@@ -72,6 +74,9 @@ namespace FFTColorCustomizer.Core.ModComponents
 
             // Initialize theme manager
             _themeManager = new ThemeManager(_sourcePath, _modPath);
+
+            // Initialize user theme service
+            _userThemeService = new UserThemeService(_modPath);
         }
 
         /// <summary>
@@ -179,6 +184,30 @@ namespace FFTColorCustomizer.Core.ModComponents
         public ThemeManager GetThemeManager()
         {
             return _themeManager;
+        }
+
+        /// <summary>
+        /// Check if a theme is a user-created theme
+        /// </summary>
+        public bool IsUserTheme(string jobName, string themeName)
+        {
+            return _userThemeService.IsUserTheme(jobName, themeName);
+        }
+
+        /// <summary>
+        /// Get the palette path for a user-created theme
+        /// </summary>
+        public string GetUserThemePalettePath(string jobName, string themeName)
+        {
+            return _userThemeService.GetUserThemePalettePath(jobName, themeName);
+        }
+
+        /// <summary>
+        /// Get all user-created themes for a specific job
+        /// </summary>
+        public List<string> GetUserThemesForJob(string jobName)
+        {
+            return _userThemeService.GetUserThemes(jobName);
         }
 
         /// <summary>
