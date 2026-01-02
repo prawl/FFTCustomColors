@@ -252,29 +252,29 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var rightArrow = panel.Controls.OfType<Button>()
                 .First(c => c.Name == "RotateRightButton");
 
-            // Direction cycle (clockwise): SW(5) → S(4) → SE(3) → E(2) → NE(1) → N(0) → NW(7) → W(6) → SW(5)
+            // Direction cycle (counter-clockwise): SW(5) → W(6) → NW(7) → N(0) → NE(1) → E(2) → SE(3) → S(4) → SW(5)
             Assert.Equal(5, panel.CurrentSpriteDirection); // SW
 
             rightArrow.PerformClick();
-            Assert.Equal(4, panel.CurrentSpriteDirection); // S
-
-            rightArrow.PerformClick();
-            Assert.Equal(3, panel.CurrentSpriteDirection); // SE
-
-            rightArrow.PerformClick();
-            Assert.Equal(2, panel.CurrentSpriteDirection); // E
-
-            rightArrow.PerformClick();
-            Assert.Equal(1, panel.CurrentSpriteDirection); // NE
-
-            rightArrow.PerformClick();
-            Assert.Equal(0, panel.CurrentSpriteDirection); // N
+            Assert.Equal(6, panel.CurrentSpriteDirection); // W
 
             rightArrow.PerformClick();
             Assert.Equal(7, panel.CurrentSpriteDirection); // NW
 
             rightArrow.PerformClick();
-            Assert.Equal(6, panel.CurrentSpriteDirection); // W
+            Assert.Equal(0, panel.CurrentSpriteDirection); // N
+
+            rightArrow.PerformClick();
+            Assert.Equal(1, panel.CurrentSpriteDirection); // NE
+
+            rightArrow.PerformClick();
+            Assert.Equal(2, panel.CurrentSpriteDirection); // E
+
+            rightArrow.PerformClick();
+            Assert.Equal(3, panel.CurrentSpriteDirection); // SE
+
+            rightArrow.PerformClick();
+            Assert.Equal(4, panel.CurrentSpriteDirection); // S
 
             rightArrow.PerformClick();
             Assert.Equal(5, panel.CurrentSpriteDirection); // Back to SW

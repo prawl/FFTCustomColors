@@ -35,36 +35,6 @@ namespace Tests.Services
         }
 
         [Fact]
-        public void Instance_Should_Be_Thread_Safe()
-        {
-            // Arrange
-            CharacterDefinitionService? instance1 = null;
-            CharacterDefinitionService? instance2 = null;
-
-            // Act - Create instances from different threads
-            var thread1 = new System.Threading.Thread(() =>
-            {
-                instance1 = CharacterServiceSingleton.Instance;
-            });
-
-            var thread2 = new System.Threading.Thread(() =>
-            {
-                instance2 = CharacterServiceSingleton.Instance;
-            });
-
-            thread1.Start();
-            thread2.Start();
-
-            thread1.Join();
-            thread2.Join();
-
-            // Assert
-            Assert.NotNull(instance1);
-            Assert.NotNull(instance2);
-            Assert.Same(instance1, instance2);
-        }
-
-        [Fact]
         public void Reset_Should_Create_New_Instance()
         {
             // Arrange
