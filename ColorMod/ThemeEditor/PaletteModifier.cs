@@ -96,6 +96,7 @@ namespace FFTColorCustomizer.ThemeEditor
                     "highlight" => shades.Highlight,
                     "accent" => shades.Accent,
                     "accent_shadow" => shades.AccentShadow,
+                    "outline" => shades.Outline,
                     _ => shades.Base // "base" or any other role
                 };
 
@@ -106,6 +107,18 @@ namespace FFTColorCustomizer.ThemeEditor
         public void SaveToFile(string outputPath)
         {
             File.WriteAllBytes(outputPath, _workingData);
+        }
+
+        /// <summary>
+        /// Copies the raw palette bytes for a specific index from another PaletteModifier.
+        /// This avoids precision loss from BGR555 to RGB conversion.
+        /// </summary>
+        public void CopyPaletteIndex(int index, PaletteModifier source)
+        {
+            int offset = index * 2;
+            var sourceData = source.GetModifiedPalette();
+            _workingData[offset] = sourceData[offset];
+            _workingData[offset + 1] = sourceData[offset + 1];
         }
     }
 }

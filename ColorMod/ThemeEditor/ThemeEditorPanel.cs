@@ -28,6 +28,7 @@ namespace FFTColorCustomizer.ThemeEditor
         private string? _mappingsDirectory;
         private string? _spritesDirectory;
         private Dictionary<string, string> _displayNameToJobName = new();
+        private bool _suppressColorChangedEvents;
 
         public SectionMapping? CurrentMapping { get; private set; }
         public int CurrentSpriteDirection { get; private set; } = 5; // Default to SW (Southwest)
@@ -364,6 +365,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 }
 
                 picker.ColorChanged += OnColorPickerChanged;
+                picker.ResetRequested += OnColorPickerResetRequested;
                 _sectionColorPickersPanel.Controls.Add(picker);
             }
         }
@@ -400,6 +402,36 @@ namespace FFTColorCustomizer.ThemeEditor
                 {
                     PaletteModifier.ApplySectionColor(linkedSection, picker.CurrentColor);
                 }
+            }
+
+            // Update the preview
+            UpdateSpritePreview();
+        }
+
+        private void OnColorPickerResetRequested(object? sender, EventArgs e)
+        {
+            // When a section's reset button is clicked, restore the original palette colors
+            // from the sprite file instead of regenerating shades from the base color
+            if (sender is not HslColorPicker picker || CurrentMapping == null || _spritesDirectory == null || PaletteModifier == null)
+                return;
+
+            var section = Array.Find(CurrentMapping.Sections, s => s.DisplayName == picker.SectionName);
+            if (section == null)
+                return;
+
+            var spritePath = Path.Combine(_spritesDirectory, CurrentMapping.Sprite);
+            if (!File.Exists(spritePath))
+                return;
+
+            // Load the original sprite file to get the original palette colors
+            var originalPalette = new PaletteModifier();
+            originalPalette.LoadTemplate(spritePath);
+
+            // Restore each index in this section from the original palette
+            // Use raw byte copy to avoid precision loss from BGR555/RGB conversion
+            foreach (var index in section.Indices)
+            {
+                PaletteModifier.CopyPaletteIndex(index, originalPalette);
             }
 
             // Update the preview

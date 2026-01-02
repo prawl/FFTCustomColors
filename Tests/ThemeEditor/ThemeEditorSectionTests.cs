@@ -2284,5 +2284,95 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             Assert.Equal("My Test Theme", receivedArgs.ThemeName);
             Assert.Equal(512, receivedArgs.PaletteData.Length);
         }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_SectionResetButton_RestoresOriginalPaletteColors()
+        {
+            // Arrange - Create panel with a real sprite file to test palette restoration
+            // The bug: clicking a section's Reset button only restores the base color,
+            // but the shadow/highlight/accent colors get regenerated instead of restored
+            var tempDir = Path.Combine(Path.GetTempPath(), "ThemeEditorResetTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Create test mapping with name that sorts first alphabetically
+                var mappingJson = @"{
+                    ""job"": ""Squire_Male"",
+                    ""sprite"": ""test_sprite.bin"",
+                    ""sections"": [
+                        {
+                            ""name"": ""TestSection"",
+                            ""displayName"": ""Test Section"",
+                            ""indices"": [4, 5, 3],
+                            ""roles"": [""base"", ""highlight"", ""shadow""]
+                        }
+                    ]
+                }";
+                File.WriteAllText(Path.Combine(tempDir, "Squire_Male.json"), mappingJson);
+
+                // Create a test sprite file with known palette values
+                var spriteData = new byte[512];
+                // Set index 3 (shadow) to a specific color: BGR555 value
+                spriteData[6] = 0x00; spriteData[7] = 0x40; // Some blue-ish color
+                // Set index 4 (base) to another color
+                spriteData[8] = 0x00; spriteData[9] = 0x7C; // Red-ish color
+                // Set index 5 (highlight) to another color
+                spriteData[10] = 0xE0; spriteData[11] = 0x03; // Green-ish color
+                File.WriteAllBytes(Path.Combine(tempDir, "test_sprite.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(tempDir, tempDir);
+
+                // Verify PaletteModifier was loaded
+                Assert.NotNull(panel.PaletteModifier);
+                Assert.True(panel.PaletteModifier.IsLoaded, "PaletteModifier should be loaded");
+
+                // Get the original palette values before any changes
+                var originalIndex3 = (ushort)(panel.PaletteModifier.GetModifiedPalette()[6] |
+                                              (panel.PaletteModifier.GetModifiedPalette()[7] << 8));
+                var originalIndex4 = (ushort)(panel.PaletteModifier.GetModifiedPalette()[8] |
+                                              (panel.PaletteModifier.GetModifiedPalette()[9] << 8));
+                var originalIndex5 = (ushort)(panel.PaletteModifier.GetModifiedPalette()[10] |
+                                              (panel.PaletteModifier.GetModifiedPalette()[11] << 8));
+
+                // Find the color picker and change its color
+                var colorPicker = panel.Controls.OfType<Panel>()
+                    .First(c => c.Name == "SectionColorPickersPanel")
+                    .Controls.OfType<HslColorPicker>()
+                    .First();
+
+                // Change the color (this will apply auto-generated shades)
+                colorPicker.Hue = 180; // Cyan hue
+                colorPicker.Saturation = 100;
+                colorPicker.Lightness = 50;
+
+                // Verify palette was modified
+                var modifiedIndex4 = (ushort)(panel.PaletteModifier.GetModifiedPalette()[8] |
+                                               (panel.PaletteModifier.GetModifiedPalette()[9] << 8));
+                Assert.NotEqual(originalIndex4, modifiedIndex4); // Should be different after change
+
+                // Act - Click the section's individual Reset button
+                var resetButton = colorPicker.Controls.OfType<Button>()
+                    .First(c => c.Name == "ResetButton");
+                resetButton.PerformClick();
+
+                // Assert - Palette should be restored to original values (not regenerated shades)
+                var resetIndex3 = (ushort)(panel.PaletteModifier.GetModifiedPalette()[6] |
+                                           (panel.PaletteModifier.GetModifiedPalette()[7] << 8));
+                var resetIndex4 = (ushort)(panel.PaletteModifier.GetModifiedPalette()[8] |
+                                           (panel.PaletteModifier.GetModifiedPalette()[9] << 8));
+                var resetIndex5 = (ushort)(panel.PaletteModifier.GetModifiedPalette()[10] |
+                                           (panel.PaletteModifier.GetModifiedPalette()[11] << 8));
+
+                Assert.Equal(originalIndex3, resetIndex3);
+                Assert.Equal(originalIndex4, resetIndex4);
+                Assert.Equal(originalIndex5, resetIndex5);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
     }
 }

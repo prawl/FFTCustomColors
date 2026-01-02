@@ -96,7 +96,10 @@ namespace FFTColorCustomizer.ThemeEditor
             // AccentShadow: slightly darker version of accent for depth
             var accentShadow = new HslColor(hsl.H, hsl.S * 0.8, Math.Min(hsl.L * 1.25, 0.80));
 
-            return new ColorShades(shadow.ToRgb(), baseColor, highlight.ToRgb(), accent.ToRgb(), accentShadow.ToRgb());
+            // Outline: darkest shade for edge outlines
+            var outline = new HslColor(hsl.H, Math.Min(hsl.S * 1.2, 1.0), hsl.L * 0.45);
+
+            return new ColorShades(shadow.ToRgb(), baseColor, highlight.ToRgb(), accent.ToRgb(), accentShadow.ToRgb(), outline.ToRgb());
         }
     }
 
@@ -107,14 +110,16 @@ namespace FFTColorCustomizer.ThemeEditor
         public Color Highlight { get; }
         public Color Accent { get; }
         public Color AccentShadow { get; }
+        public Color Outline { get; }
 
-        public ColorShades(Color shadow, Color baseColor, Color highlight, Color accent, Color accentShadow)
+        public ColorShades(Color shadow, Color baseColor, Color highlight, Color accent, Color accentShadow, Color outline)
         {
             Shadow = shadow;
             Base = baseColor;
             Highlight = highlight;
             Accent = accent;
             AccentShadow = accentShadow;
+            Outline = outline;
         }
     }
 }

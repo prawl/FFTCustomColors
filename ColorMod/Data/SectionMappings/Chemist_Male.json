@@ -1,0 +1,24 @@
+{
+  "job": "Chemist_Male",
+  "sprite": "battle_item_m_spr.bin",
+  "sections": [
+    {
+      "name": "HoodJacket",
+      "displayName": "Hood and Jacket",
+      "indices": [9, 10, 8],
+      "roles": ["base", "highlight", "shadow"]
+    },
+    {
+      "name": "Pants",
+      "displayName": "Pants",
+      "indices": [7, 6, 5, 4],
+      "roles": ["base", "shadow", "accent", "accent_shadow"]
+    },
+    {
+      "name": "BeltAccent",
+      "displayName": "Belt & Accent",
+      "indices": [4, 3, 2],
+      "roles": ["base", "accent", "accent_shadow"]
+    }
+  ]
+}

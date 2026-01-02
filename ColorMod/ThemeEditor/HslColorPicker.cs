@@ -24,6 +24,7 @@ namespace FFTColorCustomizer.ThemeEditor
         private int _originalLightness;
 
         public event EventHandler ColorChanged;
+        public event EventHandler ResetRequested;
 
         private string _sectionName;
         public string SectionName
@@ -319,7 +320,11 @@ namespace FFTColorCustomizer.ThemeEditor
             {
                 _suppressEvents = false;
             }
-            ColorChanged?.Invoke(this, EventArgs.Empty);
+
+            // Fire ResetRequested instead of ColorChanged so the panel can restore
+            // the original palette colors (shadow, highlight, accent) from the sprite file
+            // rather than regenerating them from the base color
+            ResetRequested?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
