@@ -72,7 +72,8 @@ namespace FFTColorCustomizer.ThemeEditor
             const int previewWidth = 192;  // 6x scale (32 * 6)
             const int previewHeight = 240; // 6x scale (40 * 6)
             const int colorPickersLeft = 220;
-            const int labelWidth = 65;
+            const int templateLabelWidth = 85;  // Width for "Template:" label
+            const int themeNameLabelWidth = 105; // Width for "Theme Name:" label
 
             // === ROW 1: Template dropdown + Theme Name + Buttons ===
             _templateLabel = new Label
@@ -88,7 +89,7 @@ namespace FFTColorCustomizer.ThemeEditor
             {
                 Name = "TemplateDropdown",
                 Width = 140,
-                Left = padding + labelWidth,
+                Left = padding + templateLabelWidth,
                 Top = row1Top,
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 MaxDropDownItems = 20
@@ -108,7 +109,7 @@ namespace FFTColorCustomizer.ThemeEditor
             }
 
             // Theme name input (to the right of template dropdown)
-            var themeNameLeft = padding + labelWidth + 150;
+            var themeNameLeft = padding + templateLabelWidth + 150;
             _themeNameLabel = new Label
             {
                 Name = "ThemeNameLabel",
@@ -122,12 +123,12 @@ namespace FFTColorCustomizer.ThemeEditor
             {
                 Name = "ThemeNameInput",
                 Width = 120,
-                Left = themeNameLeft + 85,
+                Left = themeNameLeft + themeNameLabelWidth,
                 Top = row1Top
             };
 
             // Buttons (to the right of theme name)
-            var buttonsLeft = themeNameLeft + 85 + 130;
+            var buttonsLeft = themeNameLeft + themeNameLabelWidth + 130;
             _saveButton = new Button
             {
                 Name = "SaveButton",
@@ -152,13 +153,13 @@ namespace FFTColorCustomizer.ThemeEditor
             _resetButton.FlatAppearance.BorderColor = UIConfiguration.ResetButtonBorder;
             _resetButton.Click += OnResetAllClick;
 
-            // Warning label (below the Save button, row 2)
+            // Warning label (below the Save button, row 2) - positioned to the left to avoid clipping
             const int row2Top = 40;
             _warningLabel = new Label
             {
                 Name = "WarningLabel",
                 Text = "⚠ Once saved, themes cannot be edited.",
-                Left = buttonsLeft,
+                Left = themeNameLeft,
                 Top = row2Top,
                 AutoSize = true,
                 ForeColor = Color.FromArgb(255, 200, 50)
