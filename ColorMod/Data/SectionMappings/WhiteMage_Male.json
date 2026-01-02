@@ -3,6 +3,12 @@
   "sprite": "battle_siro_m_spr.bin",
   "sections": [
     {
+      "name": "HairBootsGloves",
+      "displayName": "Hair, Boots, and Gloves",
+      "indices": [12, 11, 10],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
       "name": "Robe",
       "displayName": "Robe",
       "indices": [6, 5, 4, 3],
@@ -12,12 +18,6 @@
       "name": "Trim",
       "displayName": "Trim (Triangles)",
       "indices": [9, 8, 7],
-      "roles": ["base", "shadow", "outline"]
-    },
-    {
-      "name": "HairBootsGloves",
-      "displayName": "Hair, Boots, and Gloves",
-      "indices": [12, 11, 10],
       "roles": ["base", "shadow", "outline"]
     }
   ]

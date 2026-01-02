@@ -3,10 +3,10 @@
   "sprite": "battle_monk_m_spr.bin",
   "sections": [
     {
-      "name": "Pants",
-      "displayName": "Pants",
-      "indices": [6, 4, 5, 3],
-      "roles": ["base", "shadow", "shadow", "outline"]
+      "name": "HairBracersBoots",
+      "displayName": "Hair, Bracers, and Boots",
+      "indices": [12, 11, 10],
+      "roles": ["base", "shadow", "outline"]
     },
     {
       "name": "HeadbandVest",
@@ -15,10 +15,10 @@
       "roles": ["base", "shadow", "outline"]
     },
     {
-      "name": "HairBracersBoots",
-      "displayName": "Hair, Bracers, and Boots",
-      "indices": [12, 11, 10],
-      "roles": ["base", "shadow", "outline"]
+      "name": "Pants",
+      "displayName": "Pants",
+      "indices": [6, 4, 5, 3],
+      "roles": ["base", "shadow", "shadow", "outline"]
     }
   ]
 }

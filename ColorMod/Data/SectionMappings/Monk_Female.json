@@ -3,6 +3,12 @@
   "sprite": "battle_monk_w_spr.bin",
   "sections": [
     {
+      "name": "Hair",
+      "displayName": "Hair",
+      "indices": [12, 11, 13],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
       "name": "Underarmor",
       "displayName": "Underarmor",
       "indices": [6, 5, 4, 3],
@@ -13,12 +19,6 @@
       "displayName": "Arms, Feet, and Legs",
       "indices": [10, 8, 9, 7],
       "roles": ["base", "shadow", "shadow", "outline"]
-    },
-    {
-      "name": "Hair",
-      "displayName": "Hair",
-      "indices": [12, 11, 13],
-      "roles": ["base", "shadow", "outline"]
     }
   ]
 }

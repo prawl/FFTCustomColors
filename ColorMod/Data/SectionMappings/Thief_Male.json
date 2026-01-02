@@ -9,15 +9,15 @@
       "roles": ["base", "highlight", "shadow", "outline"]
     },
     {
-      "name": "Pants",
-      "displayName": "Pants",
-      "indices": [9, 8, 7],
-      "roles": ["base", "shadow", "outline"]
-    },
-    {
       "name": "BootsGloves",
       "displayName": "Boots and Gloves",
       "indices": [12, 11, 10],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "Pants",
+      "displayName": "Pants",
+      "indices": [9, 8, 7],
       "roles": ["base", "shadow", "outline"]
     }
   ]
