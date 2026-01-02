@@ -94,6 +94,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 MaxDropDownItems = 20
             };
             _templateDropdown.SelectedIndexChanged += OnTemplateSelected;
+            _templateDropdown.MouseWheel += (s, e) => ((HandledMouseEventArgs)e).Handled = true; // Disable mouse wheel scroll
 
             if (_mappingsDirectory != null)
             {
