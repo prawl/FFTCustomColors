@@ -4,7 +4,7 @@
   "sections": [
     {
       "name": "Hood",
-      "displayName": "Hood, Bracers",
+      "displayName": "Hood & Bracers",
       "indices": [10, 9, 8],
       "roles": ["base", "highlight", "shadow"]
     },
