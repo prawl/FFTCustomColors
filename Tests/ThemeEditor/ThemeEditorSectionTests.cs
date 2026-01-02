@@ -71,8 +71,8 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 Assert.NotNull(templateDropdown);
                 Assert.Equal(2, templateDropdown.Items.Count);
-                Assert.Contains("Knight Female", templateDropdown.Items.Cast<string>());
-                Assert.Contains("Squire Male", templateDropdown.Items.Cast<string>());
+                Assert.Contains("Knight (Female)", templateDropdown.Items.Cast<string>());
+                Assert.Contains("Squire (Male)", templateDropdown.Items.Cast<string>());
             }
             finally
             {
@@ -174,7 +174,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                     .First(c => c.Name == "TemplateDropdown");
 
                 // Act - select the template
-                templateDropdown.SelectedItem = "Knight Male";
+                templateDropdown.SelectedItem = "Knight (Male)";
 
                 // Assert - CurrentMapping should be loaded
                 Assert.NotNull(panel.CurrentMapping);
@@ -310,7 +310,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                     .First(c => c.Name == "TemplateDropdown");
 
                 // Act - select the template
-                templateDropdown.SelectedItem = "Knight Male";
+                templateDropdown.SelectedItem = "Knight (Male)";
 
                 // Assert - PaletteModifier should be loaded
                 Assert.NotNull(panel.PaletteModifier);
@@ -613,7 +613,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
 
                 // Act - select the template
-                templateDropdown.SelectedItem = "Knight Male";
+                templateDropdown.SelectedItem = "Knight (Male)";
 
                 // Assert - the Cape color picker should be initialized with the color from palette
                 var sectionPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
@@ -664,7 +664,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 Assert.Null(spritePreview.Image);
 
                 // Act - select the template
-                templateDropdown.SelectedItem = "Knight Male";
+                templateDropdown.SelectedItem = "Knight (Male)";
 
                 // Assert - preview should now have an image
                 Assert.NotNull(spritePreview.Image);
@@ -706,7 +706,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 var rotateRightButton = panel.Controls.OfType<Button>().First(c => c.Name == "RotateRightButton");
 
                 // Select template to load sprite
-                templateDropdown.SelectedItem = "Knight Male";
+                templateDropdown.SelectedItem = "Knight (Male)";
                 var initialImage = spritePreview.Image;
                 Assert.NotNull(initialImage);
 
@@ -771,7 +771,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 var spritePreview = panel.Controls.OfType<PictureBox>().First(c => c.Name == "SpritePreview");
 
                 // Select template to load sprite and generate color pickers
-                templateDropdown.SelectedItem = "Knight Male";
+                templateDropdown.SelectedItem = "Knight (Male)";
                 Assert.NotNull(panel.PaletteModifier);
                 Assert.True(panel.PaletteModifier.IsLoaded);
 
@@ -833,7 +833,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 // Select the template
                 var dropdown = themeEditorPanel.Controls.OfType<ComboBox>()
                     .First(c => c.Name == "TemplateDropdown");
-                dropdown.SelectedItem = "Squire Male";
+                dropdown.SelectedItem = "Squire (Male)";
 
                 // Assert - PaletteModifier should be loaded
                 Assert.NotNull(themeEditorPanel.PaletteModifier);
@@ -883,7 +883,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
 
                 // Act - select the template
-                templateDropdown.SelectedItem = "Knight Male";
+                templateDropdown.SelectedItem = "Knight (Male)";
 
                 // Assert - should have 3 HslColorPickers in the section panel
                 var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
@@ -944,7 +944,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
 
                 // Act - select the template
-                templateDropdown.SelectedItem = "Squire Male";
+                templateDropdown.SelectedItem = "Squire (Male)";
 
                 // Assert - should have only 1 picker (Hood) since ArmBands is linked
                 var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
@@ -1104,8 +1104,8 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 Assert.NotNull(templateDropdown);
                 Assert.Equal(2, templateDropdown.Items.Count);
-                Assert.Contains("Knight Female", templateDropdown.Items.Cast<string>());
-                Assert.Contains("Squire Male", templateDropdown.Items.Cast<string>());
+                Assert.Contains("Knight (Female)", templateDropdown.Items.Cast<string>());
+                Assert.Contains("Squire (Male)", templateDropdown.Items.Cast<string>());
                 // Should NOT contain snake_case versions
                 Assert.DoesNotContain("Knight_Female", templateDropdown.Items.Cast<string>());
                 Assert.DoesNotContain("Squire_Male", templateDropdown.Items.Cast<string>());
@@ -1324,7 +1324,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
 
                 // Act - select the template
-                templateDropdown.SelectedItem = "Knight Male";
+                templateDropdown.SelectedItem = "Knight (Male)";
 
                 // Assert - color pickers should be docked top to fill width
                 var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
@@ -1379,7 +1379,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
 
                 // Act - select the template
-                templateDropdown.SelectedItem = "Knight Male";
+                templateDropdown.SelectedItem = "Knight (Male)";
 
                 // Assert - color pickers panel should be tall enough to show all pickers
                 var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
@@ -1461,11 +1461,11 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 // Act
                 using var panel = new ThemeEditorPanel(tempDir);
 
-                // Assert - Squire Male should be selected by default
+                // Assert - Squire (Male) should be selected by default
                 var templateDropdown = panel.Controls.OfType<ComboBox>()
                     .First(c => c.Name == "TemplateDropdown");
 
-                Assert.Equal("Squire Male", templateDropdown.SelectedItem);
+                Assert.Equal("Squire (Male)", templateDropdown.SelectedItem);
             }
             finally
             {
@@ -1852,7 +1852,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 // Select the test job
                 var dropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
-                dropdown.SelectedIndex = dropdown.Items.IndexOf("Test Job");
+                dropdown.SelectedIndex = dropdown.Items.IndexOf("Test (Job)");
 
                 // Get the color pickers panel
                 var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
@@ -2255,7 +2255,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var squireMaleIndex = -1;
             for (int i = 0; i < templateDropdown.Items.Count; i++)
             {
-                if (templateDropdown.Items[i]?.ToString() == "Squire Male")
+                if (templateDropdown.Items[i]?.ToString() == "Squire (Male)")
                 {
                     squireMaleIndex = i;
                     break;

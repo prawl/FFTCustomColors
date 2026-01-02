@@ -252,8 +252,8 @@ namespace FFTColorCustomizer.ThemeEditor
             // Set initial sizes for dynamic panels
             UpdateColorPickersPanelSize();
 
-            // Default to Squire Male if available (must be after all controls are initialized)
-            var squireMaleIndex = _templateDropdown.Items.IndexOf("Squire Male");
+            // Default to Squire (Male) if available (must be after all controls are initialized)
+            var squireMaleIndex = _templateDropdown.Items.IndexOf("Squire (Male)");
             if (squireMaleIndex >= 0)
             {
                 _templateDropdown.SelectedIndex = squireMaleIndex;
@@ -295,6 +295,25 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private static string JobNameToDisplayName(string jobName)
         {
+            if (string.IsNullOrEmpty(jobName))
+                return jobName;
+
+            // Split on underscore
+            var parts = jobName.Split('_');
+
+            // If there's no underscore, return as-is
+            if (parts.Length == 1)
+                return jobName;
+
+            // If there are exactly 2 parts (Job_Gender format)
+            if (parts.Length == 2)
+            {
+                var jobClass = parts[0];
+                var gender = parts[1];
+                return $"{jobClass} ({gender})";
+            }
+
+            // Fallback: just replace underscores with spaces
             return jobName.Replace("_", " ");
         }
 
