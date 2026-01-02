@@ -12,7 +12,13 @@
       "name": "Pants",
       "displayName": "Pants",
       "indices": [7, 6, 5],
-      "roles": ["base", "highlight", "shadow"]
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "TestIndex6",
+      "displayName": "Test Index 6",
+      "indices": [6],
+      "roles": ["base"]
     },
     {
       "name": "BeltAccent",
