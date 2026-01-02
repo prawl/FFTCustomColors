@@ -90,7 +90,8 @@ namespace FFTColorCustomizer.ThemeEditor
                 Width = 140,
                 Left = padding + labelWidth,
                 Top = row1Top,
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                MaxDropDownItems = 20
             };
             _templateDropdown.SelectedIndexChanged += OnTemplateSelected;
 
