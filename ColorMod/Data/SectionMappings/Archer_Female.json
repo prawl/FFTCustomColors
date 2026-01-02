@@ -3,16 +3,16 @@
   "sprite": "battle_yumi_w_spr.bin",
   "sections": [
     {
-      "name": "GlovesHair",
-      "displayName": "Gloves and Hair",
-      "indices": [5, 3, 8, 13, 4],
-      "roles": ["base", "outline", "highlight", "shadow", "accent_shadow"]
+      "name": "HairGloves",
+      "displayName": "Hair and Gloves",
+      "indices": [5, 3, 13, 4],
+      "roles": ["base", "outline", "shadow", "shadow"]
     },
     {
       "name": "Tunic",
       "displayName": "Tunic",
-      "indices": [7, 6],
-      "roles": ["base", "shadow"]
+      "indices": [7, 8, 6],
+      "roles": ["base", "highlight", "shadow"]
     },
     {
       "name": "Boots",
