@@ -44,6 +44,18 @@ namespace FFTColorCustomizer.Configuration
         /// </summary>
         public Config Configuration => _config;
 
+        /// <summary>
+        /// Gets the theme editor panel
+        /// </summary>
+        public FFTColorCustomizer.ThemeEditor.ThemeEditorPanel? ThemeEditorPanel { get; private set; }
+
+        /// <summary>
+        /// Checks if there are unsaved changes in the theme editor
+        /// </summary>
+        public bool ShouldWarnAboutUnsavedChanges()
+        {
+            return ThemeEditorPanel?.HasUnsavedChanges ?? false;
+        }
 
         public ConfigurationForm(Config config, string configPath = null, string modPath = null)
         {
@@ -70,6 +82,9 @@ namespace FFTColorCustomizer.Configuration
             InitializeRowBuilder();
             LoadConfiguration();
             _isInitializing = false;
+
+            // Wire up FormClosing event to check for unsaved changes
+            this.FormClosing += OnFormClosing;
 
             // Defer enabling events until form is fully shown
             this.Shown += (s, e) =>
@@ -265,6 +280,26 @@ namespace FFTColorCustomizer.Configuration
                             RefreshPreviewForCharacter(pictureBox, comboBox, tag);
                         }
                     }
+                }
+            }
+        }
+
+        private void OnFormClosing(object? sender, FormClosingEventArgs e)
+        {
+            // Check if there are unsaved changes in the theme editor
+            if (ShouldWarnAboutUnsavedChanges())
+            {
+                // Show warning message
+                var result = MessageBox.Show(
+                    "You have unsaved changes in the Theme Editor. Are you sure you want to close?",
+                    "Unsaved Changes",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                // Cancel close if user clicks No
+                if (result == DialogResult.No)
+                {
+                    e.Cancel = true;
                 }
             }
         }

@@ -71,6 +71,9 @@ namespace FFTColorCustomizer.Configuration
             _mainPanel.SetColumnSpan(themeEditorPanel, 3);
             _themeEditorControls.Add(themeEditorPanel);
 
+            // Store reference to theme editor panel
+            ThemeEditorPanel = themeEditorPanel;
+
             // Wire up theme saved event
             themeEditorPanel.ThemeSaved += OnThemeSaved;
 

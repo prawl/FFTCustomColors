@@ -33,8 +33,19 @@ namespace FFTColorCustomizer.ThemeEditor
         public SectionMapping? CurrentMapping { get; private set; }
         public int CurrentSpriteDirection { get; private set; } = 5; // Default to SW (Southwest)
         public PaletteModifier? PaletteModifier { get; private set; }
+        public bool HasUnsavedChanges { get; private set; }
 
         public event EventHandler? ThemeSaved;
+
+        public void MarkAsModified()
+        {
+            HasUnsavedChanges = true;
+        }
+
+        public void ClearModified()
+        {
+            HasUnsavedChanges = false;
+        }
 
         public ThemeEditorPanel() : this(null, null)
         {
@@ -391,6 +402,9 @@ namespace FFTColorCustomizer.ThemeEditor
             if (section == null)
                 return;
 
+            // Mark as modified when colors change
+            MarkAsModified();
+
             // Apply the color to the palette
             PaletteModifier.ApplySectionColor(section, picker.CurrentColor);
 
@@ -480,6 +494,9 @@ namespace FFTColorCustomizer.ThemeEditor
 
             var args = new ThemeSavedEventArgs(jobName, themeName, paletteData);
             ThemeSaved?.Invoke(this, args);
+
+            // Clear the modified flag after saving
+            ClearModified();
         }
 
         private void OnResetAllClick(object? sender, EventArgs e)
