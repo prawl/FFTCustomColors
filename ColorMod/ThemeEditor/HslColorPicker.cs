@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using FFTColorCustomizer.Configuration.UI;
 
 namespace FFTColorCustomizer.ThemeEditor
 {
@@ -47,34 +48,41 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private void InitializeComponents()
         {
-            const int headerHeight = 25;
+            const int headerHeight = 50; // Increased to accommodate larger section label
             const int rowHeight = 45;
             const int labelWidth = 70;
             const int padding = 10;
 
-            // Section header label - larger, bold, dark red for visibility
+            // Section header label - larger, bold, white, centered for visibility
             _sectionHeaderLabel = new Label
             {
                 Name = "SectionHeaderLabel",
                 Text = _sectionName ?? "",
-                Top = 5,
+                Top = 10,
                 Left = 0,
-                AutoSize = true,
-                Font = new System.Drawing.Font("Segoe UI", 11f, System.Drawing.FontStyle.Bold),
-                ForeColor = Color.DarkRed
+                Height = 25,
+                Dock = DockStyle.Top,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new System.Drawing.Font("Segoe UI", 13f, System.Drawing.FontStyle.Bold),
+                ForeColor = Color.White,
+                Padding = new Padding(0, 5, 0, 5)
             };
 
-            // Reset button for this section
+            // Reset button - positioned below sliders, to the right of Paste button
             _resetButton = new Button
             {
                 Name = "ResetButton",
                 Text = "Reset",
                 Width = 50,
                 Height = 22,
-                Top = 0,
-                Left = 200,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                Top = headerHeight + rowHeight * 3 + 6,
+                Left = 0, // Will be positioned in UpdateSliderWidths
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = UIConfiguration.ResetButtonColor,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
             };
+            _resetButton.FlatAppearance.BorderColor = UIConfiguration.ResetButtonBorder;
             _resetButton.Click += OnResetClick;
 
             // Hue row

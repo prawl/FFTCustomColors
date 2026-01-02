@@ -175,14 +175,14 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             var image1 = new System.Drawing.Bitmap(64, 64);
             var image2 = new System.Drawing.Bitmap(64, 64);
             _carousel.SetImages(new[] { image1, image2 });
-            _carousel.NextView(); // Move to second image
+            // Start at first image (index 0)
 
-            // Act - Simulate click on left side (x=10 out of 64 width)
+            // Act - Simulate click on left side (x=10 out of 64 width) - now goes clockwise (next)
             _carousel.HandleArrowClick(10, _carousel.Width);
 
-            // Assert
-            _carousel.CurrentViewIndex.Should().Be(0, "Clicking left arrow should show previous image");
-            _carousel.Image.Should().Be(image1, "Should display first image");
+            // Assert - left arrow now advances to next image
+            _carousel.CurrentViewIndex.Should().Be(1, "Clicking left arrow should advance clockwise to next image");
+            _carousel.Image.Should().Be(image2, "Should display second image");
 
             // Cleanup
             image1.Dispose();
@@ -197,13 +197,14 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
             var image2 = new System.Drawing.Bitmap(64, 64);
             var image3 = new System.Drawing.Bitmap(64, 64);
             _carousel.SetImages(new[] { image1, image2, image3 });
+            _carousel.NextView(); // Move to second image (index 1)
 
-            // Act - Simulate click on right side (x=50 out of 64 width)
+            // Act - Simulate click on right side (x=50 out of 64 width) - now goes counter-clockwise (previous)
             _carousel.HandleArrowClick(50, 64);
 
-            // Assert
-            _carousel.CurrentViewIndex.Should().Be(1, "Clicking right arrow should show next image");
-            _carousel.Image.Should().Be(image2, "Should display second image");
+            // Assert - right arrow now goes to previous image
+            _carousel.CurrentViewIndex.Should().Be(0, "Clicking right arrow should go counter-clockwise to previous image");
+            _carousel.Image.Should().Be(image1, "Should display first image");
 
             // Cleanup
             image1.Dispose();

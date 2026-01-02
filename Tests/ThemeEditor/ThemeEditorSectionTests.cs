@@ -220,8 +220,8 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             Assert.Equal(5, panel.CurrentSpriteDirection); // SW
             rightArrow.PerformClick();
 
-            // Assert - should go clockwise to S = 4
-            Assert.Equal(4, panel.CurrentSpriteDirection);
+            // Assert - right arrow now goes counter-clockwise to W = 6
+            Assert.Equal(6, panel.CurrentSpriteDirection);
         }
 
         [Fact]
@@ -236,11 +236,11 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             // Starting at SW(5)
             Assert.Equal(5, panel.CurrentSpriteDirection); // SW
 
-            // Act - click left arrow (counter-clockwise)
+            // Act - click left arrow
             leftArrow.PerformClick();
 
-            // Assert - should go counter-clockwise to W(6)
-            Assert.Equal(6, panel.CurrentSpriteDirection);
+            // Assert - left arrow now goes clockwise to S = 4
+            Assert.Equal(4, panel.CurrentSpriteDirection);
         }
 
         [Fact]
@@ -1504,16 +1504,16 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
-        public void HslColorPicker_SectionLabel_HasRedForeColor()
+        public void HslColorPicker_SectionLabel_HasWhiteForeColor()
         {
             // Arrange & Act
             using var picker = new HslColorPicker { SectionName = "Hood" };
 
-            // Assert - Section label should have red text color
+            // Assert - Section label should have white text color
             var sectionLabel = picker.Controls.OfType<Label>()
                 .First(c => c.Name == "SectionHeaderLabel");
 
-            Assert.Equal(Color.DarkRed, sectionLabel.ForeColor);
+            Assert.Equal(Color.White, sectionLabel.ForeColor);
         }
 
         [Fact]
@@ -1664,8 +1664,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var sectionLabel = picker.Controls.OfType<Label>()
                 .First(c => c.Name == "SectionHeaderLabel");
 
-            Assert.True(sectionLabel.Top >= 5,
-                $"Section header should have at least 5px top padding, was {sectionLabel.Top}px");
+            // When using Dock, check Padding.Top instead of Top property
+            Assert.True(sectionLabel.Padding.Top >= 5,
+                $"Section header should have at least 5px top padding, was {sectionLabel.Padding.Top}px");
         }
 
         [Fact]

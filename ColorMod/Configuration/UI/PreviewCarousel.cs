@@ -183,17 +183,17 @@ namespace FFTColorCustomizer.Configuration.UI
                 return;
             }
 
-            // If click is on left third of control, go previous
-            // If click is on right third of control, go next
+            // If click is on left third of control, go next (clockwise)
+            // If click is on right third of control, go previous (counter-clockwise)
             if (clickX < controlWidth / 3)
             {
-                System.Diagnostics.Debug.WriteLine($"[CAROUSEL] Left third clicked");
-                PreviousView();
+                System.Diagnostics.Debug.WriteLine($"[CAROUSEL] Left third clicked - going clockwise");
+                NextView();
             }
             else if (clickX > controlWidth * 2 / 3)
             {
-                System.Diagnostics.Debug.WriteLine($"[CAROUSEL] Right third clicked");
-                NextView();
+                System.Diagnostics.Debug.WriteLine($"[CAROUSEL] Right third clicked - going counter-clockwise");
+                PreviousView();
             }
             else
             {

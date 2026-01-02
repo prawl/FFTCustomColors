@@ -384,7 +384,9 @@ namespace FFTColorCustomizer.ThemeEditor
                 var picker = new HslColorPicker
                 {
                     SectionName = section.DisplayName,
-                    Dock = DockStyle.Top
+                    Dock = DockStyle.Top,
+                    Margin = new Padding(0, 0, 0, 15), // Add spacing between sections
+                    BorderStyle = BorderStyle.FixedSingle // Add border to separate sections
                 };
 
                 // Initialize picker with base color from palette (before subscribing to events)
@@ -486,18 +488,20 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private void OnRotateLeft(object? sender, System.EventArgs e)
         {
+            // Left arrow now rotates clockwise
             var currentIndex = Array.IndexOf(DirectionsCycle, CurrentSpriteDirection);
             if (currentIndex == -1) currentIndex = 0; // Default to first if not found
-            currentIndex = (currentIndex + DirectionsCycle.Length - 1) % DirectionsCycle.Length;
+            currentIndex = (currentIndex + 1) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
             UpdateSpritePreview();
         }
 
         private void OnRotateRight(object? sender, System.EventArgs e)
         {
+            // Right arrow now rotates counter-clockwise
             var currentIndex = Array.IndexOf(DirectionsCycle, CurrentSpriteDirection);
             if (currentIndex == -1) currentIndex = 0; // Default to first if not found
-            currentIndex = (currentIndex + 1) % DirectionsCycle.Length;
+            currentIndex = (currentIndex + DirectionsCycle.Length - 1) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
             UpdateSpritePreview();
         }
