@@ -1,0 +1,36 @@
+{
+  "job": "Archer_Male",
+  "sprite": "battle_yumi_m_spr.bin",
+  "sections": [
+    {
+      "name": "CapeHood",
+      "displayName": "Cape, Hood & Underarmor",
+      "indices": [5],
+      "roles": ["base"]
+    },
+    {
+      "name": "Tunic",
+      "displayName": "Tunic",
+      "indices": [10, 9],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Underarmor",
+      "displayName": "Underarmor (Pants)",
+      "indices": [4, 3],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Boots",
+      "displayName": "Boots",
+      "indices": [7, 6],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "ArmsHair",
+      "displayName": "Arms & Hair",
+      "indices": [11, 12],
+      "roles": ["base", "shadow"]
+    }
+  ]
+}
