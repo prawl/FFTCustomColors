@@ -9,9 +9,10 @@ This document tracks the palette index mappings for each job sprite, identifying
 ### Completed ✅
 - Squire Female (battle_mina_w_spr.bin)
 - Chemist Female (battle_item_w_spr.bin)
+- Knight Male (battle_knight_m_spr.bin)
 
 ### In Progress 🚧
-- Knight Male (battle_knight_m_spr.bin)
+- (None currently)
 
 ### Not Started ❌
 - Squire Male (battle_mina_m_spr.bin)
@@ -70,9 +71,12 @@ This document tracks the palette index mappings for each job sprite, identifying
 *TODO: Document mappings*
 
 ### Knight Male (battle_knight_m_spr.bin)
-- **Cape**: indices [10, 9, 8] (base, highlight, shadow)
-- **Armor**: indices [5, 6, 4] (base, highlight, shadow)
-- **Helm**: indices [11, 12, 10] (base, highlight, shadow)
+- **Cape**: indices [9, 10, 8, 7] (base, highlight, shadow, accent_shadow)
+  - *Note: Unusual color arrangement where index 9 (cyan) is base, 10 (purple) is highlight, 8 (dark blue) is shadow, 7 (light blue) is accent_shadow*
+- **Underarmor and Sigil (on cape)**: indices [5, 6, 4, 3] (base, highlight, shadow, accent)
+  - *Includes yellow sigil on cape (index 3)*
+- **Hair, Boots, and Gloves**: indices [11, 12, 13] (base, highlight, shadow)
+- **Diagnostic**: `scripts/output/knight_m_diagnostic.png`
 
 ### Knight Female (battle_knight_w_spr.bin)
 *TODO: Document mappings*

@@ -5,8 +5,8 @@
     {
       "name": "MainArmor",
       "displayName": "Main Armor",
-      "indices": [4, 5, 3, 2, 1],
-      "roles": ["base", "highlight", "shadow", "accent", "accent_shadow"]
+      "indices": [4, 3, 5, 2, 1],
+      "roles": ["base", "shadow", "highlight", "accent_shadow", "outline"]
     },
     {
       "name": "Hood",
