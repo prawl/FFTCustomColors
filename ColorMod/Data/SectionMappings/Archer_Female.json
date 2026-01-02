@@ -1,0 +1,24 @@
+{
+  "job": "Archer_Female",
+  "sprite": "battle_yumi_w_spr.bin",
+  "sections": [
+    {
+      "name": "GlovesHair",
+      "displayName": "Gloves and Hair",
+      "indices": [5, 3, 8, 13, 4],
+      "roles": ["base", "outline", "highlight", "shadow", "accent_shadow"]
+    },
+    {
+      "name": "Tunic",
+      "displayName": "Tunic",
+      "indices": [7, 6],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Boots",
+      "displayName": "Boots",
+      "indices": [11, 12, 10, 9],
+      "roles": ["base", "highlight", "shadow", "outline"]
+    }
+  ]
+}
