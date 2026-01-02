@@ -6,13 +6,13 @@
       "name": "Cape",
       "displayName": "Cape",
       "indices": [9, 10, 8, 7],
-      "roles": ["base", "highlight", "shadow", "accent_shadow"]
+      "roles": ["base", "highlight", "shadow", "outline"]
     },
     {
       "name": "Underarmor",
       "displayName": "Underarmor and Sigil (on cape)",
       "indices": [5, 6, 4, 3],
-      "roles": ["base", "highlight", "shadow", "accent"]
+      "roles": ["base", "highlight", "shadow", "accent_shadow"]
     },
     {
       "name": "HairBootsGloves",
