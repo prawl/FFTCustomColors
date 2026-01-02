@@ -11,8 +11,8 @@
     {
       "name": "Pants",
       "displayName": "Pants",
-      "indices": [7, 6, 5, 4],
-      "roles": ["base", "shadow", "accent", "accent_shadow"]
+      "indices": [7, 6, 5],
+      "roles": ["base", "highlight", "shadow"]
     },
     {
       "name": "BeltAccent",
