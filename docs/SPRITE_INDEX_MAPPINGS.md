@@ -77,7 +77,10 @@ This document tracks the palette index mappings for each job sprite, identifying
 *TODO: Document mappings*
 
 ### Chemist Female (battle_item_w_spr.bin)
-*TODO: Document mappings*
+- **HoodArms**: indices [9, 10, 8] (base, highlight, shadow)
+- **Dress**: indices [5, 6, 7, 4] (base, highlight, accent, shadow)
+- **HairPouchBracersBoots**: indices [11, 12, 13] (base, highlight, shadow)
+- **Diagnostic**: `scripts/output/chemist_w_diagnostic.png`
 
 ### White Mage Male (battle_priest_m_spr.bin)
 *TODO: Document mappings*

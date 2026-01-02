@@ -1,0 +1,24 @@
+{
+  "job": "Chemist_Female",
+  "sprite": "battle_item_w_spr.bin",
+  "sections": [
+    {
+      "name": "HoodArms",
+      "displayName": "Hood and Arms",
+      "indices": [9, 10, 8],
+      "roles": ["base", "highlight", "shadow"]
+    },
+    {
+      "name": "Dress",
+      "displayName": "Dress",
+      "indices": [5, 6, 7, 4],
+      "roles": ["base", "highlight", "accent", "shadow"]
+    },
+    {
+      "name": "HairPouchBracersBoots",
+      "displayName": "Hair, Pouch, Bracers, and Boots",
+      "indices": [11, 12, 13],
+      "roles": ["base", "highlight", "shadow"]
+    }
+  ]
+}
