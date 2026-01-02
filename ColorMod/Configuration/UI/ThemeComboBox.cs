@@ -14,6 +14,10 @@ namespace FFTColorCustomizer.Configuration.UI
         private List<string> _builtInThemes = new List<string>();
         private bool _isUpdating = false;
 
+        public ThemeComboBox()
+        {
+        }
+
         /// <summary>
         /// Internal representation of a theme with display name and value
         /// </summary>
@@ -234,6 +238,19 @@ namespace FFTColorCustomizer.Configuration.UI
             {
                 SelectedThemeChanged?.Invoke(this, SelectedThemeValue);
             }
+        }
+
+        private const int WM_MOUSEWHEEL = 0x020A;
+
+        public override bool PreProcessMessage(ref Message msg)
+        {
+            // Intercept and consume mouse wheel messages to prevent accidental selection changes
+            if (msg.Msg == WM_MOUSEWHEEL)
+            {
+                return true; // Message processed, prevent further handling
+            }
+
+            return base.PreProcessMessage(ref msg);
         }
     }
 }

@@ -1,0 +1,24 @@
+{
+  "job": "Knight_Male",
+  "sprite": "battle_knight_m_spr.bin",
+  "sections": [
+    {
+      "name": "Cape",
+      "displayName": "Cape",
+      "indices": [9, 10, 8, 7],
+      "roles": ["base", "highlight", "shadow", "accent_shadow"]
+    },
+    {
+      "name": "Underarmor",
+      "displayName": "Underarmor and Sigil (on cape)",
+      "indices": [5, 6, 4, 3],
+      "roles": ["base", "highlight", "shadow", "accent"]
+    },
+    {
+      "name": "HairBootsGloves",
+      "displayName": "Hair, Boots, and Gloves",
+      "indices": [11, 12, 13],
+      "roles": ["base", "highlight", "shadow"]
+    }
+  ]
+}

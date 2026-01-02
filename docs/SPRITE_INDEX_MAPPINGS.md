@@ -4,6 +4,28 @@
 
 This document tracks the palette index mappings for each job sprite, identifying which palette indices correspond to which visual sections (armor, cape, hair, etc.).
 
+## TODO Tracking
+
+### Completed ✅
+- Squire Female (battle_mina_w_spr.bin)
+- Chemist Female (battle_item_w_spr.bin)
+
+### In Progress 🚧
+- Knight Male (battle_knight_m_spr.bin)
+
+### Not Started ❌
+- Squire Male (battle_mina_m_spr.bin)
+- Knight Female (battle_knight_w_spr.bin)
+- Archer Male (battle_archer_m_spr.bin)
+- Archer Female (battle_archer_w_spr.bin)
+- Monk Male (battle_monk_m_spr.bin)
+- Monk Female (battle_monk_w_spr.bin)
+- Thief Male (battle_thief_m_spr.bin)
+- Thief Female (battle_thief_w_spr.bin)
+- Chemist Male (battle_item_m_spr.bin)
+- White Mage Male (battle_priest_m_spr.bin)
+- White Mage Female (battle_priest_w_spr.bin)
+
 ## Mapping Discovery Process
 
 1. Run diagnostic tool: `python scripts/diagnostic_sprite.py input.bin output.bin`
