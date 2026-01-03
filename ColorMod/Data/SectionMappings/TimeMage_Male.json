@@ -1,0 +1,30 @@
+{
+  "job": "TimeMage_Male",
+  "sprite": "battle_toki_m_spr.bin",
+  "sections": [
+    {
+      "name": "Robe",
+      "displayName": "Robe, Hat Star, and Leg Stripes",
+      "indices": [2, 11, 10],
+      "roles": ["highlight", "shadow", "outline"]
+    },
+    {
+      "name": "Pants",
+      "displayName": "Pants and Waist",
+      "indices": [6, 5, 4, 3],
+      "roles": ["base", "shadow1", "shadow2", "outline"]
+    },
+    {
+      "name": "HatShoes",
+      "displayName": "Hat and Shoes",
+      "indices": [9, 8, 7],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "CuffsStripe",
+      "displayName": "Pants Cuffs Stripe",
+      "indices": [12, 13],
+      "roles": ["base", "outline"]
+    }
+  ]
+}
