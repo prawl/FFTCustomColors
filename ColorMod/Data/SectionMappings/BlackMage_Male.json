@@ -1,0 +1,30 @@
+{
+  "job": "BlackMage_Male",
+  "sprite": "battle_kuro_m_spr.bin",
+  "sections": [
+    {
+      "name": "Robe",
+      "displayName": "Robe",
+      "indices": [5, 6, 4, 3],
+      "roles": ["base", "highlight", "shadow", "outline"]
+    },
+    {
+      "name": "PantsAccent",
+      "displayName": "Pants Accent",
+      "indices": [8, 7],
+      "roles": ["base", "outline"]
+    },
+    {
+      "name": "HatBoots",
+      "displayName": "Hat and Boots",
+      "indices": [12, 11, 10, 9],
+      "roles": ["highlight", "base", "shadow", "outline"]
+    },
+    {
+      "name": "Pants",
+      "displayName": "Pants",
+      "indices": [15, 14],
+      "roles": ["base", "outline"]
+    }
+  ]
+}
