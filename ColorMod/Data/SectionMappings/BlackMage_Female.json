@@ -1,0 +1,30 @@
+{
+  "job": "BlackMage_Female",
+  "sprite": "battle_kuro_w_spr.bin",
+  "sections": [
+    {
+      "name": "Robe",
+      "displayName": "Robe",
+      "indices": [5, 6, 4, 3],
+      "roles": ["base", "highlight", "shadow", "outline"]
+    },
+    {
+      "name": "PantsAccent",
+      "displayName": "Pants Accent",
+      "indices": [8, 7],
+      "roles": ["base", "outline"]
+    },
+    {
+      "name": "HatBoots",
+      "displayName": "Hat and Hair",
+      "indices": [12, 11, 10, 9],
+      "roles": ["highlight", "base", "shadow", "outline"]
+    },
+    {
+      "name": "Pants",
+      "displayName": "Pants, Boots, Gloves, and Collar",
+      "indices": [15, 14],
+      "roles": ["base", "outline"]
+    }
+  ]
+}
