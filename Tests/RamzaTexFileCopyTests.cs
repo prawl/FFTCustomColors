@@ -28,7 +28,7 @@ namespace FFTColorCustomizer.Tests
                 File.WriteAllText(Path.Combine(themePath, "tex_835.bin"), "white_heretic_ch4_palette");
 
                 // Act - Call CopyTexFilesForTheme directly
-                texFileManager.CopyTexFilesForTheme("RamzaChapter34", "white_heretic", tempDir);
+                texFileManager.CopyTexFilesForTheme("RamzaChapter4", "white_heretic", tempDir);
 
                 // Assert - Verify tex files were copied to the g2d directory
                 var destPath = Path.Combine(tempDir, "ColorMod/FFTIVC/data/enhanced/system/ffto/g2d");

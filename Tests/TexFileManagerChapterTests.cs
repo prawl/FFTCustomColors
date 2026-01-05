@@ -23,13 +23,13 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void GetTexFilesForCharacter_RamzaChapter2_ReturnsCorrectTexFiles()
+        public void GetTexFilesForCharacter_RamzaChapter23_ReturnsCorrectTexFiles()
         {
             // Arrange
             var texFileManager = new TexFileManager();
 
             // Act
-            var texFiles = texFileManager.GetTexFilesForCharacter("RamzaChapter2");
+            var texFiles = texFileManager.GetTexFilesForCharacter("RamzaChapter23");
 
             // Assert
             texFiles.Should().NotBeNull();
@@ -38,13 +38,13 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void GetTexFilesForCharacter_RamzaChapter34_ReturnsCorrectTexFiles()
+        public void GetTexFilesForCharacter_RamzaChapter4_ReturnsCorrectTexFiles()
         {
             // Arrange
             var texFileManager = new TexFileManager();
 
             // Act
-            var texFiles = texFileManager.GetTexFilesForCharacter("RamzaChapter34");
+            var texFiles = texFileManager.GetTexFilesForCharacter("RamzaChapter4");
 
             // Assert
             texFiles.Should().NotBeNull();

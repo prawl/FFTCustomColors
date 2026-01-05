@@ -9,13 +9,13 @@ namespace FFTColorCustomizer.Tests
     public class TexFileManagerTests
     {
         [Fact]
-        public void GetTexFilesForCharacter_RamzaChapter34_ReturnsCorrectTexFiles()
+        public void GetTexFilesForCharacter_RamzaChapter4_ReturnsCorrectTexFiles()
         {
             // Arrange
             var texFileManager = new TexFileManager();
 
             // Act
-            var texFiles = texFileManager.GetTexFilesForCharacter("RamzaChapter34");
+            var texFiles = texFileManager.GetTexFilesForCharacter("RamzaChapter4");
 
             // Assert
             Assert.NotNull(texFiles);
@@ -24,26 +24,26 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void GetTexFilePathForTheme_RamzaChapter34WhiteKnight_ReturnsCorrectPath()
+        public void GetTexFilePathForTheme_RamzaChapter4WhiteKnight_ReturnsCorrectPath()
         {
             // Arrange
             var texFileManager = new TexFileManager();
 
             // Act
-            var path = texFileManager.GetTexFilePathForTheme("RamzaChapter34", "white_knight", "tex_834.bin");
+            var path = texFileManager.GetTexFilePathForTheme("RamzaChapter4", "white_knight", "tex_834.bin");
 
             // Assert
             Assert.Equal("system/ffto/g2d/themes/white_knight/tex_834.bin", path);
         }
 
         [Fact]
-        public void UsesTexFiles_RamzaChapter34_ReturnsTrue()
+        public void UsesTexFiles_RamzaChapter4_ReturnsTrue()
         {
             // Arrange
             var texFileManager = new TexFileManager();
 
             // Act
-            var usesTexFiles = texFileManager.UsesTexFiles("RamzaChapter34");
+            var usesTexFiles = texFileManager.UsesTexFiles("RamzaChapter4");
 
             // Assert
             Assert.True(usesTexFiles);
@@ -63,7 +63,7 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void CopyTexFilesForTheme_RamzaChapter34WhiteKnight_CopiesAllTexFiles()
+        public void CopyTexFilesForTheme_RamzaChapter4WhiteKnight_CopiesAllTexFiles()
         {
             // Arrange
             var texFileManager = new TexFileManager();
@@ -77,7 +77,7 @@ namespace FFTColorCustomizer.Tests
             File.WriteAllText(Path.Combine(sourcePath, "tex_835.bin"), "test");
 
             // Act
-            texFileManager.CopyTexFilesForTheme("RamzaChapter34", "white_knight", modPath);
+            texFileManager.CopyTexFilesForTheme("RamzaChapter4", "white_knight", modPath);
 
             // Assert
             Assert.True(File.Exists(Path.Combine(destPath, "tex_834.bin")));

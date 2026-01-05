@@ -26,14 +26,14 @@ namespace FFTColorCustomizer.Tests
                 File.WriteAllText(Path.Combine(themePath, "tex_834.bin"), "white_knight_data");
                 File.WriteAllText(Path.Combine(themePath, "tex_835.bin"), "white_knight_palette");
 
-                // Act - Check if RamzaChapter34 uses tex files
-                var usesTexFiles = texFileManager.UsesTexFiles("RamzaChapter34");
+                // Act - Check if RamzaChapter4 uses tex files
+                var usesTexFiles = texFileManager.UsesTexFiles("RamzaChapter4");
 
                 // Assert
-                usesTexFiles.Should().BeTrue("RamzaChapter34 should use tex files");
+                usesTexFiles.Should().BeTrue("RamzaChapter4 should use tex files");
 
-                // Act - Apply theme for RamzaChapter34
-                texFileManager.CopyTexFilesForTheme("RamzaChapter34", "white_knight", tempDir);
+                // Act - Apply theme for RamzaChapter4
+                texFileManager.CopyTexFilesForTheme("RamzaChapter4", "white_knight", tempDir);
 
                 // Verify tex files were copied
                 var destPath = Path.Combine(tempDir, "ColorMod/FFTIVC/data/enhanced/system/ffto/g2d");

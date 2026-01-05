@@ -142,10 +142,10 @@ namespace FFTColorCustomizer.Utilities
             {
                 case "RamzaChapter1":
                     return "Ramza (Chapter 1)";
-                case "RamzaChapter2":
-                    return "Ramza (Chapter 2)";
-                case "RamzaChapter34":
-                    return "Ramza (Chapter 3 & 4)";
+                case "RamzaChapter23":
+                    return "Ramza (Chapter 2 & 3)";
+                case "RamzaChapter4":
+                    return "Ramza (Chapter 4)";
                 default:
                     return characterName;
             }

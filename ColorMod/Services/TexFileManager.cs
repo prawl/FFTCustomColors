@@ -16,7 +16,7 @@ namespace FFTColorCustomizer.Services
                 };
             }
 
-            if (characterName == "RamzaChapter2")
+            if (characterName == "RamzaChapter23")
             {
                 return new List<string>
                 {
@@ -25,7 +25,7 @@ namespace FFTColorCustomizer.Services
                 };
             }
 
-            if (characterName == "RamzaChapter34")
+            if (characterName == "RamzaChapter4")
             {
                 return new List<string>
                 {
@@ -45,8 +45,8 @@ namespace FFTColorCustomizer.Services
         public bool UsesTexFiles(string characterName)
         {
             return characterName == "RamzaChapter1" ||
-                   characterName == "RamzaChapter2" ||
-                   characterName == "RamzaChapter34";
+                   characterName == "RamzaChapter23" ||
+                   characterName == "RamzaChapter4";
         }
 
         public void CopyTexFilesForTheme(string characterName, string themeName, string modPath)

@@ -35,7 +35,7 @@ namespace FFTColorCustomizer.Tests
                 var storyCharactersJson = @"{
                   ""characters"": [
                     {
-                      ""name"": ""RamzaChapter34"",
+                      ""name"": ""RamzaChapter4"",
                       ""spriteNames"": [""ramuza3""],
                       ""defaultTheme"": ""original"",
                       ""availableThemes"": [""original"", ""white_heretic""]
@@ -54,19 +54,19 @@ namespace FFTColorCustomizer.Tests
                 var storyManager = new StoryCharacterThemeManager(sourcePath);
 
                 // Get initial theme
-                var initialTheme = storyManager.GetCurrentTheme("RamzaChapter34");
+                var initialTheme = storyManager.GetCurrentTheme("RamzaChapter4");
                 _output.WriteLine($"Initial theme: {initialTheme}");
 
                 // Get available themes and cycle manually
-                var themes = storyManager.GetAvailableThemes("RamzaChapter34");
+                var themes = storyManager.GetAvailableThemes("RamzaChapter4");
                 var currentIndex = themes.IndexOf(initialTheme);
                 var nextIndex = (currentIndex + 1) % themes.Count;
                 var nextTheme = themes[nextIndex];
                 _output.WriteLine($"Next theme calculated: {nextTheme}");
 
                 // Update story manager
-                storyManager.SetCurrentTheme("RamzaChapter34", nextTheme);
-                _output.WriteLine($"Current theme after set: {storyManager.GetCurrentTheme("RamzaChapter34")}");
+                storyManager.SetCurrentTheme("RamzaChapter4", nextTheme);
+                _output.WriteLine($"Current theme after set: {storyManager.GetCurrentTheme("RamzaChapter4")}");
 
                 // Now apply the theme using TexFileManager
                 var texFileManager = new TexFileManager();
@@ -76,7 +76,7 @@ namespace FFTColorCustomizer.Tests
                 var sourceFile834 = Path.Combine(tempDir, "ColorMod/FFTIVC/data/enhanced/system/ffto/g2d/themes", nextTheme, "tex_834.bin");
                 _output.WriteLine($"Source tex_834.bin exists: {File.Exists(sourceFile834)} at {sourceFile834}");
 
-                texFileManager.CopyTexFilesForTheme("RamzaChapter34", nextTheme, tempDir);
+                texFileManager.CopyTexFilesForTheme("RamzaChapter4", nextTheme, tempDir);
 
                 // Check if files were copied
                 var destPath = Path.Combine(tempDir, "ColorMod/FFTIVC/data/enhanced/system/ffto/g2d");

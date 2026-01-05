@@ -20,29 +20,29 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void Should_Identify_RamzaChapter2_As_TexBased_Character()
+        public void Should_Identify_RamzaChapter23_As_TexBased_Character()
         {
             // Arrange
             var texFileManager = new TexFileManager();
 
             // Act
-            var usesTexFiles = texFileManager.UsesTexFiles("RamzaChapter2");
+            var usesTexFiles = texFileManager.UsesTexFiles("RamzaChapter23");
 
             // Assert
-            usesTexFiles.Should().BeTrue("RamzaChapter2 should be identified as using tex files");
+            usesTexFiles.Should().BeTrue("RamzaChapter23 should be identified as using tex files");
         }
 
         [Fact]
-        public void Should_Identify_RamzaChapter34_As_TexBased_Character()
+        public void Should_Identify_RamzaChapter4_As_TexBased_Character()
         {
             // Arrange
             var texFileManager = new TexFileManager();
 
             // Act
-            var usesTexFiles = texFileManager.UsesTexFiles("RamzaChapter34");
+            var usesTexFiles = texFileManager.UsesTexFiles("RamzaChapter4");
 
             // Assert
-            usesTexFiles.Should().BeTrue("RamzaChapter34 should be identified as using tex files");
+            usesTexFiles.Should().BeTrue("RamzaChapter4 should be identified as using tex files");
         }
 
         [Fact]
