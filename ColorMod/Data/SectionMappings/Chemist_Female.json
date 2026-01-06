@@ -19,6 +19,12 @@
       "displayName": "Dress",
       "indices": [5, 6, 7, 4],
       "roles": ["base", "highlight", "accent", "shadow"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }

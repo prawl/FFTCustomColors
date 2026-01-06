@@ -19,6 +19,12 @@
       "displayName": "Boots",
       "indices": [7, 6],
       "roles": ["base", "shadow"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }

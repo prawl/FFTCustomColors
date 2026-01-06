@@ -19,6 +19,12 @@
       "displayName": "Pants",
       "indices": [9, 8, 7],
       "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }

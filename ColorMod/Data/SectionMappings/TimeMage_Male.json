@@ -25,6 +25,12 @@
       "displayName": "Pants Cuffs Stripe",
       "indices": [12, 13],
       "roles": ["base", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }

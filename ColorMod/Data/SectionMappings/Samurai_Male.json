@@ -25,6 +25,12 @@
       "displayName": "Feet, Gloves and Head",
       "indices": [12, 11, 10],
       "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }

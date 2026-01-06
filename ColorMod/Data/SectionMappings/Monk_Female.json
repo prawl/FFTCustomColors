@@ -19,6 +19,12 @@
       "displayName": "Arms, Feet, and Legs",
       "indices": [10, 8, 9, 7],
       "roles": ["base", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }

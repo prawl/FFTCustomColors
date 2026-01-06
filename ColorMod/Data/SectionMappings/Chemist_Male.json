@@ -19,6 +19,12 @@
       "displayName": "Belt & Accent",
       "indices": [4, 3],
       "roles": ["base", "accent"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }

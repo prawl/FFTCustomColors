@@ -25,6 +25,12 @@
       "displayName": "Hair",
       "indices": [12, 11, 10],
       "roles": ["highlight", "base", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }

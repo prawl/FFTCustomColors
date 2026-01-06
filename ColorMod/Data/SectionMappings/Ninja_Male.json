@@ -19,6 +19,12 @@
       "displayName": "Gloves, Belt and Accent",
       "indices": [12, 13, 11, 10],
       "roles": ["base", "highlight", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }
