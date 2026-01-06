@@ -1,0 +1,24 @@
+{
+  "job": "Bard_Male",
+  "sprite": "battle_gin_m_spr.bin",
+  "sections": [
+    {
+      "name": "Outfit",
+      "displayName": "Outfit",
+      "indices": [5, 6, 4, 3],
+      "roles": ["base", "highlight", "shadow", "outline"]
+    },
+    {
+      "name": "HeadbandPants",
+      "displayName": "Headband and Pants",
+      "indices": [9, 8, 7],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "BootsGlovesHair",
+      "displayName": "Boots, Gloves and Hair",
+      "indices": [12, 11, 13, 10],
+      "roles": ["highlight", "base", "shadow", "outline"]
+    }
+  ]
+}
