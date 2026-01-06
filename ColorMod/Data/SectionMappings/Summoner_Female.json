@@ -1,0 +1,36 @@
+{
+  "job": "Summoner_Female",
+  "sprite": "battle_syou_w_spr.bin",
+  "sections": [
+    {
+      "name": "Horn",
+      "displayName": "Horn",
+      "indices": [4, 3],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "InnerRobe",
+      "displayName": "Inner Robe",
+      "indices": [6, 5],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "OuterRobe",
+      "displayName": "Outer Robe",
+      "indices": [10, 9, 8, 7],
+      "roles": ["base", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "HairAndRobeAccent",
+      "displayName": "Hair and Robe Accent",
+      "indices": [13, 12, 11],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
+    }
+  ]
+}
