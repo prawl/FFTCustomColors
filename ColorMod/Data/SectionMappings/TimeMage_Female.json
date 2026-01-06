@@ -1,0 +1,36 @@
+{
+  "job": "TimeMage_Female",
+  "sprite": "battle_toki_w_spr.bin",
+  "sections": [
+    {
+      "name": "RobeAccent",
+      "displayName": "Robe Accent",
+      "indices": [4, 3],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "ShoesAndHat",
+      "displayName": "Shoes and Hat",
+      "indices": [7, 6, 5],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "Robe",
+      "displayName": "Robe",
+      "indices": [11, 10, 9, 8],
+      "roles": ["base", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "Hair",
+      "displayName": "Hair",
+      "indices": [12, 14, 13],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15],
+      "roles": ["base"]
+    }
+  ]
+}
