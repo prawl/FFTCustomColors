@@ -19,12 +19,6 @@
       "displayName": "Belt & Accent",
       "indices": [4, 3, 2],
       "roles": ["base", "accent", "accent_shadow"]
-    },
-    {
-      "name": "TestIndex6",
-      "displayName": "Test Index 6",
-      "indices": [6],
-      "roles": ["base"]
     }
   ]
 }
