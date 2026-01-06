@@ -6,7 +6,7 @@
       "name": "Legs",
       "displayName": "Legs",
       "indices": [6, 5],
-      "roles": ["highlight", "outline"]
+      "roles": ["base", "shadow"]
     },
     {
       "name": "Underarmor",
@@ -18,13 +18,13 @@
       "name": "Armor",
       "displayName": "Main Armor",
       "indices": [9, 8, 7],
-      "roles": ["highlight", "shadow", "outline"]
+      "roles": ["base", "shadow", "outline"]
     },
     {
       "name": "Accent",
       "displayName": "Feet, Gloves and Head",
       "indices": [12, 11, 10],
-      "roles": ["highlight", "shadow", "outline"]
+      "roles": ["base", "shadow", "outline"]
     }
   ]
 }

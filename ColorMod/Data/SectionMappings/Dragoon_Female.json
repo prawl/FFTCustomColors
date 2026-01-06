@@ -18,7 +18,7 @@
       "name": "Hair",
       "displayName": "Hair and Dress Accent",
       "indices": [12, 14, 13],
-      "roles": ["highlight", "base", "outline"]
+      "roles": ["highlight", "base", "shadow"]
     }
   ]
 }

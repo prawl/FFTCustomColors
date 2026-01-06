@@ -5,14 +5,14 @@
     {
       "name": "Robe",
       "displayName": "Robe, Hat Star, and Leg Stripes",
-      "indices": [2, 11, 10],
-      "roles": ["highlight", "shadow", "outline"]
+      "indices": [11, 10],
+      "roles": ["base", "shadow"]
     },
     {
       "name": "Pants",
       "displayName": "Pants and Waist",
       "indices": [6, 5, 4, 3],
-      "roles": ["base", "shadow1", "shadow2", "outline"]
+      "roles": ["base", "shadow", "shadow", "outline"]
     },
     {
       "name": "HatShoes",
