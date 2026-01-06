@@ -29,8 +29,8 @@
     {
       "name": "SkinColor",
       "displayName": "Skin Color",
-      "indices": [14],
-      "roles": ["base"]
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }
