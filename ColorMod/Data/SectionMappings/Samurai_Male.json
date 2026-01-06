@@ -1,0 +1,30 @@
+{
+  "job": "Samurai_Male",
+  "sprite": "battle_samu_m_spr.bin",
+  "sections": [
+    {
+      "name": "Legs",
+      "displayName": "Legs",
+      "indices": [6, 5],
+      "roles": ["highlight", "outline"]
+    },
+    {
+      "name": "Underarmor",
+      "displayName": "Underarmor",
+      "indices": [4, 3],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Armor",
+      "displayName": "Main Armor",
+      "indices": [9, 8, 7],
+      "roles": ["highlight", "shadow", "outline"]
+    },
+    {
+      "name": "Accent",
+      "displayName": "Feet, Gloves and Head",
+      "indices": [12, 11, 10],
+      "roles": ["highlight", "shadow", "outline"]
+    }
+  ]
+}
