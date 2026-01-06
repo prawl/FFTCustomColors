@@ -1,0 +1,36 @@
+{
+  "job": "Summoner_Male",
+  "sprite": "battle_syou_m_spr.bin",
+  "sections": [
+    {
+      "name": "Pants",
+      "displayName": "Pants",
+      "indices": [4, 3],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Horn",
+      "displayName": "Horn",
+      "indices": [6, 5],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Robe",
+      "displayName": "Robe",
+      "indices": [10, 9, 8, 7],
+      "roles": ["base", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "ShoesAndHair",
+      "displayName": "Shoes and Hair",
+      "indices": [12, 11, 13],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
+    }
+  ]
+}
