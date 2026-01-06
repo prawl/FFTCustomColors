@@ -3,22 +3,28 @@
   "sprite": "battle_knight_w_spr.bin",
   "sections": [
     {
-      "name": "HairBootsGloves",
-      "displayName": "Hair, Boots, and Gloves",
-      "indices": [11, 12, 13],
-      "roles": ["base", "highlight", "shadow"]
+      "name": "Armor",
+      "displayName": "Armor",
+      "indices": [6, 5, 4, 3],
+      "roles": ["base", "shadow", "shadow", "outline"]
     },
     {
       "name": "Cape",
       "displayName": "Cape",
-      "indices": [9, 10, 8, 7],
-      "roles": ["base", "highlight", "shadow", "accent_shadow"]
+      "indices": [10, 9, 8, 7],
+      "roles": ["base", "shadow", "shadow", "outline"]
     },
     {
-      "name": "Underarmor",
-      "displayName": "Underarmor and Sigil (on cape)",
-      "indices": [5, 6, 4, 3],
-      "roles": ["base", "highlight", "shadow", "accent_shadow"]
+      "name": "HairGlovesBoots",
+      "displayName": "Hair, Gloves, and Boots",
+      "indices": [12, 11, 13],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
     }
   ]
 }
