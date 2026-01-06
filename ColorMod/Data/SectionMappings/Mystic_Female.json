@@ -1,0 +1,36 @@
+{
+  "job": "Mystic_Female",
+  "sprite": "battle_onmyo_w_spr.bin",
+  "sections": [
+    {
+      "name": "Ribbon",
+      "displayName": "Ribbon",
+      "indices": [4, 3],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Accessories",
+      "displayName": "Shoes, Hands, Hat",
+      "indices": [7, 6, 5],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "Dress",
+      "displayName": "Dress",
+      "indices": [10, 9, 8],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "Hair",
+      "displayName": "Hair",
+      "indices": [13, 12, 11],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
+    }
+  ]
+}
