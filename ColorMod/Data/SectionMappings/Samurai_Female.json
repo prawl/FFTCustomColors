@@ -1,0 +1,36 @@
+{
+  "job": "Samurai_Female",
+  "sprite": "battle_samu_w_spr.bin",
+  "sections": [
+    {
+      "name": "Dress",
+      "displayName": "Dress",
+      "indices": [6, 5, 4, 3],
+      "roles": ["base", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "Shoulders",
+      "displayName": "Shoulders",
+      "indices": [8, 7],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "GlovesAndHeadband",
+      "displayName": "Gloves and Headband",
+      "indices": [10, 9],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Hair",
+      "displayName": "Hair",
+      "indices": [12, 11, 14, 13],
+      "roles": ["base", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15],
+      "roles": ["base"]
+    }
+  ]
+}
