@@ -1,0 +1,30 @@
+{
+  "job": "Dancer_Female",
+  "sprite": "battle_odori_w_spr.bin",
+  "sections": [
+    {
+      "name": "Dress",
+      "displayName": "Dress",
+      "indices": [6, 5, 4, 3],
+      "roles": ["base", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "Feet",
+      "displayName": "Sandals",
+      "indices": [9, 8, 7],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "HairAndAccent",
+      "displayName": "Hair and Accent",
+      "indices": [12, 11, 10, 13],
+      "roles": ["base", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
+    }
+  ]
+}
