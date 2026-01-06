@@ -76,6 +76,19 @@ Skip indices for:
 
 These remain unchanged regardless of theme.
 
+**Note:** Indices 11-13 are NOT always skin/hair. They vary by job - verify each sprite individually.
+
+## Male vs Female Sprites
+
+Male and female versions of the same job often have **different** palette mappings:
+- Different number of sections (e.g., Male Ninja has 3 sections, Female Ninja has 3 but different groupings)
+- Same indices may serve different purposes (e.g., index 10 might be Armor highlight on female but Accent outline on male)
+- Always verify each gender separately - don't assume mappings transfer
+
+Example differences (Ninja):
+- **Male**: Outfit (3-6), Armor (7-9), Gloves/Belt/Accent (10-13)
+- **Female**: Outfit (3-6), Armor (7-10), Hair (11-13)
+
 ## Tips
 
 - Palette indices range from 0-15
