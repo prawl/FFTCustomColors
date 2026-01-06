@@ -1,0 +1,36 @@
+{
+  "job": "Mystic_Male",
+  "sprite": "battle_onmyo_m_spr.bin",
+  "sections": [
+    {
+      "name": "Belt",
+      "displayName": "Belt",
+      "indices": [4, 3],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "ShoesAndCuffs",
+      "displayName": "Shoes and Cuffs",
+      "indices": [6, 5],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Robe",
+      "displayName": "Robe",
+      "indices": [9, 8, 7],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "HatAndRobe",
+      "displayName": "Hat and Robe",
+      "indices": [12, 11, 10],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14, 13],
+      "roles": ["base", "shadow", "outline"]
+    }
+  ]
+}
