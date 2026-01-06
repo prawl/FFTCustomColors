@@ -327,5 +327,199 @@ namespace Tests.Utilities
             // Verify sprite data preserved
             Assert.Equal(0xAA, resultSprite[512]);
         }
+
+        [Fact]
+        public void ApplyConfiguration_Should_ApplyUserTheme_ForBlackMage()
+        {
+            // Arrange
+            // This test verifies that compound job names like BlackMage_Male work correctly.
+            // The bug: ConvertJobTypeToJobName converts "blackmage" to "Blackmage_Male" (ToTitleCase)
+            // but the registry stores themes under "BlackMage_Male" (with capital M in Mage).
+            var service = new CharacterDefinitionService();
+
+            var config = new Config
+            {
+                BlackMage_Male = "Dark Fire"  // User theme name
+            };
+            _configManager.SaveConfig(config);
+
+            // Create original sprite in sprites_original directory
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var originalDir = Path.Combine(deployedPath, "sprites_original");
+            Directory.CreateDirectory(originalDir);
+
+            var originalSprite = new byte[1024];
+            for (int i = 0; i < 512; i++)
+            {
+                originalSprite[i] = 0xFF; // Original palette
+            }
+            for (int i = 512; i < 1024; i++)
+            {
+                originalSprite[i] = 0xAA; // Sprite data
+            }
+            // BlackMage sprite name is battle_kuro_m_spr.bin
+            File.WriteAllBytes(Path.Combine(originalDir, "battle_kuro_m_spr.bin"), originalSprite);
+
+            // Create user theme with custom palette - stored under "BlackMage_Male" (capital M)
+            var userThemesDir = Path.Combine(_testModPath, "UserThemes", "BlackMage_Male", "Dark Fire");
+            Directory.CreateDirectory(userThemesDir);
+            var userPalette = new byte[512];
+            for (int i = 0; i < 512; i++)
+            {
+                userPalette[i] = 0x42; // User palette
+            }
+            File.WriteAllBytes(Path.Combine(userThemesDir, "palette.bin"), userPalette);
+
+            // Registry uses "BlackMage_Male" (capital M in Mage)
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"BlackMage_Male\":[\"Dark Fire\"]}");
+
+            var spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, service);
+
+            // Act
+            spriteManager.ApplyConfiguration();
+
+            // Assert - The user theme should be applied (palette replaced)
+            var generatedSpriteFile = Path.Combine(deployedPath, "battle_kuro_m_spr.bin");
+            Assert.True(File.Exists(generatedSpriteFile),
+                $"BlackMage user theme sprite should be generated at: {generatedSpriteFile}");
+
+            var resultSprite = File.ReadAllBytes(generatedSpriteFile);
+
+            // Palette should be from user theme (0x42), not original (0xFF)
+            Assert.Equal(0x42, resultSprite[0]);
+            Assert.Equal(0x42, resultSprite[511]);
+
+            // Sprite data should be preserved
+            Assert.Equal(0xAA, resultSprite[512]);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_Should_ApplyUserTheme_ForTimeMage()
+        {
+            // Arrange
+            // Same bug as BlackMage - TimeMage_Male stored in registry but lookup uses Timemage_Male
+            var service = new CharacterDefinitionService();
+
+            var config = new Config
+            {
+                TimeMage_Male = "Chrono"  // User theme name
+            };
+            _configManager.SaveConfig(config);
+
+            // Create original sprite in sprites_original directory
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var originalDir = Path.Combine(deployedPath, "sprites_original");
+            Directory.CreateDirectory(originalDir);
+
+            var originalSprite = new byte[1024];
+            for (int i = 0; i < 512; i++)
+            {
+                originalSprite[i] = 0xFF; // Original palette
+            }
+            for (int i = 512; i < 1024; i++)
+            {
+                originalSprite[i] = 0xAA; // Sprite data
+            }
+            // TimeMage sprite name is battle_toki_m_spr.bin
+            File.WriteAllBytes(Path.Combine(originalDir, "battle_toki_m_spr.bin"), originalSprite);
+
+            // Create user theme - stored under "TimeMage_Male" (capital M)
+            var userThemesDir = Path.Combine(_testModPath, "UserThemes", "TimeMage_Male", "Chrono");
+            Directory.CreateDirectory(userThemesDir);
+            var userPalette = new byte[512];
+            for (int i = 0; i < 512; i++)
+            {
+                userPalette[i] = 0x42; // User palette
+            }
+            File.WriteAllBytes(Path.Combine(userThemesDir, "palette.bin"), userPalette);
+
+            // Registry uses "TimeMage_Male" (capital M in Mage)
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"TimeMage_Male\":[\"Chrono\"]}");
+
+            var spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, service);
+
+            // Act
+            spriteManager.ApplyConfiguration();
+
+            // Assert - The user theme should be applied
+            var generatedSpriteFile = Path.Combine(deployedPath, "battle_toki_m_spr.bin");
+            Assert.True(File.Exists(generatedSpriteFile),
+                $"TimeMage user theme sprite should be generated at: {generatedSpriteFile}");
+
+            var resultSprite = File.ReadAllBytes(generatedSpriteFile);
+
+            // Palette should be from user theme (0x42), not original (0xFF)
+            Assert.Equal(0x42, resultSprite[0]);
+            Assert.Equal(0x42, resultSprite[511]);
+
+            // Sprite data should be preserved
+            Assert.Equal(0xAA, resultSprite[512]);
+        }
+
+        [Fact]
+        public void ApplyConfiguration_Should_ApplyUserTheme_ForWhiteMage()
+        {
+            // Arrange
+            // Same bug as BlackMage/TimeMage - WhiteMage_Male stored but lookup uses Whitemage_Male
+            var service = new CharacterDefinitionService();
+
+            var config = new Config
+            {
+                WhiteMage_Male = "Holy Light"  // User theme name
+            };
+            _configManager.SaveConfig(config);
+
+            // Create original sprite in sprites_original directory
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var originalDir = Path.Combine(deployedPath, "sprites_original");
+            Directory.CreateDirectory(originalDir);
+
+            var originalSprite = new byte[1024];
+            for (int i = 0; i < 512; i++)
+            {
+                originalSprite[i] = 0xFF; // Original palette
+            }
+            for (int i = 512; i < 1024; i++)
+            {
+                originalSprite[i] = 0xAA; // Sprite data
+            }
+            // WhiteMage sprite name is battle_siro_m_spr.bin
+            File.WriteAllBytes(Path.Combine(originalDir, "battle_siro_m_spr.bin"), originalSprite);
+
+            // Create user theme - stored under "WhiteMage_Male" (capital M)
+            var userThemesDir = Path.Combine(_testModPath, "UserThemes", "WhiteMage_Male", "Holy Light");
+            Directory.CreateDirectory(userThemesDir);
+            var userPalette = new byte[512];
+            for (int i = 0; i < 512; i++)
+            {
+                userPalette[i] = 0x42; // User palette
+            }
+            File.WriteAllBytes(Path.Combine(userThemesDir, "palette.bin"), userPalette);
+
+            // Registry uses "WhiteMage_Male" (capital M in Mage)
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"WhiteMage_Male\":[\"Holy Light\"]}");
+
+            var spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, service);
+
+            // Act
+            spriteManager.ApplyConfiguration();
+
+            // Assert - The user theme should be applied
+            var generatedSpriteFile = Path.Combine(deployedPath, "battle_siro_m_spr.bin");
+            Assert.True(File.Exists(generatedSpriteFile),
+                $"WhiteMage user theme sprite should be generated at: {generatedSpriteFile}");
+
+            var resultSprite = File.ReadAllBytes(generatedSpriteFile);
+
+            // Palette should be from user theme (0x42), not original (0xFF)
+            Assert.Equal(0x42, resultSprite[0]);
+            Assert.Equal(0x42, resultSprite[511]);
+
+            // Sprite data should be preserved
+            Assert.Equal(0xAA, resultSprite[512]);
+        }
     }
 }

@@ -701,9 +701,18 @@ namespace FFTColorCustomizer.Utilities
             // Determine gender from sprite name (_m_ = male, _w_ = female)
             var gender = spriteName.Contains("_m_") ? "Male" : "Female";
 
-            // Convert to title case and combine
-            var titleCaseJob = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(jobType);
-            return $"{titleCaseJob}_{gender}";
+            // Map compound job names that need special casing
+            // ToTitleCase only capitalizes the first letter, so "blackmage" becomes "Blackmage"
+            // but we need "BlackMage" to match the registry keys
+            var properJobName = jobType.ToLower() switch
+            {
+                "blackmage" => "BlackMage",
+                "whitemage" => "WhiteMage",
+                "timemage" => "TimeMage",
+                _ => System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(jobType)
+            };
+
+            return $"{properJobName}_{gender}";
         }
 
         /// <summary>
