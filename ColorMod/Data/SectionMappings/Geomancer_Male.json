@@ -1,0 +1,30 @@
+{
+  "job": "Geomancer_Male",
+  "sprite": "battle_fusui_m_spr.bin",
+  "sections": [
+    {
+      "name": "Accent1",
+      "displayName": "Accent 1",
+      "indices": [4, 3],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Accent2",
+      "displayName": "Accent 2",
+      "indices": [6, 5],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Armor",
+      "displayName": "Armor",
+      "indices": [9, 8, 7],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "BootsNecklaceHair",
+      "displayName": "Boots, Necklace, and Hair",
+      "indices": [15, 14, 12, 11, 13, 10],
+      "roles": ["accent", "accent_shadow", "highlight", "base", "shadow", "outline"]
+    }
+  ]
+}
