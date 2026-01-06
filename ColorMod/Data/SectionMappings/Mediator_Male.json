@@ -1,0 +1,30 @@
+{
+  "job": "Mediator_Male",
+  "sprite": "battle_waju_m_spr.bin",
+  "sections": [
+    {
+      "name": "Outfit",
+      "displayName": "Outfit",
+      "indices": [5, 6, 4, 3],
+      "roles": ["base", "highlight", "shadow", "outline"]
+    },
+    {
+      "name": "Pants",
+      "displayName": "Pants",
+      "indices": [9, 8, 7],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "Accessories",
+      "displayName": "Boots, Gloves, and Hat",
+      "indices": [12, 11, 10],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15, 14, 13],
+      "roles": ["base", "shadow", "outline"]
+    }
+  ]
+}
