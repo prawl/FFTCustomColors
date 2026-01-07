@@ -28,6 +28,7 @@ namespace FFTColorCustomizer.ThemeEditor
         private string? _mappingsDirectory;
         private string? _spritesDirectory;
         private Dictionary<string, string> _displayNameToJobName = new();
+        private Dictionary<string, bool> _isStoryCharacter = new();
         private bool _suppressColorChangedEvents;
 
         public SectionMapping? CurrentMapping { get; private set; }
@@ -99,12 +100,30 @@ namespace FFTColorCustomizer.ThemeEditor
 
             if (_mappingsDirectory != null)
             {
+                // Add generic jobs
                 var availableJobs = SectionMappingLoader.GetAvailableJobs(_mappingsDirectory);
                 foreach (var job in availableJobs)
                 {
                     var displayName = JobNameToDisplayName(job);
                     _displayNameToJobName[displayName] = job;
+                    _isStoryCharacter[displayName] = false;
                     _templateDropdown.Items.Add(displayName);
+                }
+
+                // Add story characters from Story/ subdirectory
+                var storyCharacters = SectionMappingLoader.GetAvailableStoryCharacters(_mappingsDirectory);
+                if (storyCharacters.Length > 0)
+                {
+                    // Add separator
+                    _templateDropdown.Items.Add("── Story Characters ──");
+
+                    foreach (var character in storyCharacters)
+                    {
+                        var displayName = character; // Story characters don't need formatting
+                        _displayNameToJobName[displayName] = character;
+                        _isStoryCharacter[displayName] = true;
+                        _templateDropdown.Items.Add(displayName);
+                    }
                 }
             }
 
@@ -325,10 +344,24 @@ namespace FFTColorCustomizer.ThemeEditor
                 return;
 
             var displayName = _templateDropdown.SelectedItem.ToString();
+
+            // Ignore separator selection
+            if (displayName == "── Story Characters ──")
+                return;
+
             if (displayName == null || !_displayNameToJobName.TryGetValue(displayName, out var selectedJob))
                 return;
 
-            var mappingPath = Path.Combine(_mappingsDirectory, $"{selectedJob}.json");
+            // Determine mapping path based on whether this is a story character
+            string mappingPath;
+            if (_isStoryCharacter.TryGetValue(displayName, out var isStory) && isStory)
+            {
+                mappingPath = Path.Combine(_mappingsDirectory, "Story", $"{selectedJob}.json");
+            }
+            else
+            {
+                mappingPath = Path.Combine(_mappingsDirectory, $"{selectedJob}.json");
+            }
 
             if (File.Exists(mappingPath))
             {
@@ -337,7 +370,18 @@ namespace FFTColorCustomizer.ThemeEditor
                 // Load sprite into PaletteModifier if sprites directory is set
                 if (_spritesDirectory != null && CurrentMapping != null)
                 {
-                    var spritePath = Path.Combine(_spritesDirectory, CurrentMapping.Sprite);
+                    // Resolve sprite path - story characters may have character-specific folders or fall back to sprites_original
+                    string spritePath;
+                    if (isStory)
+                    {
+                        spritePath = StoryCharacterSpritePathResolver.ResolveSpritePath(
+                            _spritesDirectory, selectedJob, CurrentMapping.Sprite);
+                    }
+                    else
+                    {
+                        spritePath = Path.Combine(_spritesDirectory, "sprites_original", CurrentMapping.Sprite);
+                    }
+
                     if (File.Exists(spritePath))
                     {
                         PaletteModifier = new PaletteModifier();
@@ -457,8 +501,8 @@ namespace FFTColorCustomizer.ThemeEditor
             if (section == null)
                 return;
 
-            var spritePath = Path.Combine(_spritesDirectory, CurrentMapping.Sprite);
-            if (!File.Exists(spritePath))
+            var spritePath = GetCurrentSpritePath();
+            if (spritePath == null || !File.Exists(spritePath))
                 return;
 
             // Load the original sprite file to get the original palette colors
@@ -550,15 +594,12 @@ namespace FFTColorCustomizer.ThemeEditor
             }
 
             // Reload the palette from scratch to reset the preview
-            if (_spritesDirectory != null && CurrentMapping != null)
+            var spritePath = GetCurrentSpritePath();
+            if (spritePath != null && File.Exists(spritePath))
             {
-                var spritePath = Path.Combine(_spritesDirectory, CurrentMapping.Sprite);
-                if (File.Exists(spritePath))
-                {
-                    PaletteModifier = new PaletteModifier();
-                    PaletteModifier.LoadTemplate(spritePath);
-                    UpdateSpritePreview();
-                }
+                PaletteModifier = new PaletteModifier();
+                PaletteModifier.LoadTemplate(spritePath);
+                UpdateSpritePreview();
             }
         }
 
@@ -570,6 +611,26 @@ namespace FFTColorCustomizer.ThemeEditor
                 return jobName;
             }
             return string.Empty;
+        }
+
+        private string? GetCurrentSpritePath()
+        {
+            if (_spritesDirectory == null || CurrentMapping == null)
+                return null;
+
+            var displayName = _templateDropdown.SelectedItem?.ToString();
+            if (displayName == null)
+                return null;
+
+            // Use resolver for story characters (handles fallback), simple path for generic jobs
+            if (_isStoryCharacter.TryGetValue(displayName, out var isStory) && isStory)
+            {
+                var jobName = GetCurrentJobName();
+                return StoryCharacterSpritePathResolver.ResolveSpritePath(
+                    _spritesDirectory, jobName, CurrentMapping.Sprite);
+            }
+
+            return Path.Combine(_spritesDirectory, "sprites_original", CurrentMapping.Sprite);
         }
     }
 }

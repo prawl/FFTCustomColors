@@ -220,6 +220,12 @@ namespace FFTColorCustomizer.Utilities
 
         private void ApplyStoryCharacterThemes(Config config)
         {
+            if (_characterService == null)
+            {
+                ModLogger.LogWarning("CharacterDefinitionService is null, skipping story character themes");
+                return;
+            }
+
             foreach (var character in _characterService.GetAllCharacters())
             {
                 if (character.SpriteNames.Length == 0)

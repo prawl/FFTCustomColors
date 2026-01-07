@@ -63,7 +63,8 @@ namespace FFTColorCustomizer.Configuration
             if (!string.IsNullOrEmpty(_modPath))
             {
                 mappingsDirectory = System.IO.Path.Combine(_modPath, "Data", "SectionMappings");
-                spritesDirectory = System.IO.Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_original");
+                // Pass the unit/ directory - ThemeEditorPanel will construct full path based on character type
+                spritesDirectory = System.IO.Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
             }
             var themeEditorPanel = new ThemeEditorPanel(mappingsDirectory, spritesDirectory);
             themeEditorPanel.Dock = DockStyle.Fill;

@@ -293,16 +293,16 @@ if ($LASTEXITCODE -eq 0) {
         }
     }
 
-    # Copy Data JSON files (StoryCharacters.json and JobClasses.json)
+    # Copy Data JSON files (StoryCharacters.json, JobClasses.json, SectionMappings/)
     Write-Host "Copying data files..."
     $dataSource = "$PSScriptRoot/ColorMod/Data"
     $dataDest = "$modPath/Data"
 
     if (Test-Path $dataSource) {
-        New-Item -ItemType Directory -Force -Path $dataDest | Out-Null
-        Copy-Item "$dataSource/*.json" -Destination $dataDest -Force
-        $dataCount = (Get-ChildItem "$dataDest/*.json").Count
-        Write-Host "Copied $dataCount data files"
+        # Copy entire Data directory structure including subdirectories
+        Copy-Item $dataSource -Destination $modPath -Recurse -Force
+        $dataCount = (Get-ChildItem "$dataDest" -Recurse -Filter "*.json").Count
+        Write-Host "Copied $dataCount data files (including subdirectories)"
     }
 
     # Copy preview images

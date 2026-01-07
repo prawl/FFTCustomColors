@@ -288,8 +288,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
             var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
             var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            var spritesOriginalDir = System.IO.Path.Combine(spritesDir, "sprites_original");
             System.IO.Directory.CreateDirectory(mappingsDir);
-            System.IO.Directory.CreateDirectory(spritesDir);
+            System.IO.Directory.CreateDirectory(spritesOriginalDir);
 
             try
             {
@@ -303,7 +304,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 // Create a minimal sprite file (needs at least 512 bytes for palette)
                 var spriteData = new byte[1024];
-                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesOriginalDir, "battle_knight_m_spr.bin"), spriteData);
 
                 using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
                 var templateDropdown = panel.Controls.OfType<ComboBox>()
@@ -580,8 +581,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
             var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
             var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            var spritesOriginalDir = System.IO.Path.Combine(spritesDir, "sprites_original");
             System.IO.Directory.CreateDirectory(mappingsDir);
-            System.IO.Directory.CreateDirectory(spritesDir);
+            System.IO.Directory.CreateDirectory(spritesOriginalDir);
 
             try
             {
@@ -607,7 +609,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 // Set index 4 to pure red (BGR555: R=31, G=0, B=0 = 0x001F)
                 spriteData[8] = 0x1F; // Low byte
                 spriteData[9] = 0x00; // High byte
-                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesOriginalDir, "battle_knight_m_spr.bin"), spriteData);
 
                 using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
@@ -636,8 +638,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
             var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
             var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            var spritesOriginalDir = System.IO.Path.Combine(spritesDir, "sprites_original");
             System.IO.Directory.CreateDirectory(mappingsDir);
-            System.IO.Directory.CreateDirectory(spritesDir);
+            System.IO.Directory.CreateDirectory(spritesOriginalDir);
 
             try
             {
@@ -652,7 +655,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 // Create a minimal sprite file (needs at least 512 bytes for palette + some sprite data)
                 // Minimum for BinSpriteExtractor to work: 512 palette + sprite pixel data
                 var spriteData = new byte[2048];
-                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesOriginalDir, "battle_knight_m_spr.bin"), spriteData);
 
                 using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
                 var templateDropdown = panel.Controls.OfType<ComboBox>()
@@ -683,8 +686,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
             var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
             var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            var spritesOriginalDir = System.IO.Path.Combine(spritesDir, "sprites_original");
             System.IO.Directory.CreateDirectory(mappingsDir);
-            System.IO.Directory.CreateDirectory(spritesDir);
+            System.IO.Directory.CreateDirectory(spritesOriginalDir);
 
             try
             {
@@ -698,7 +702,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 // Create a minimal sprite file
                 var spriteData = new byte[2048];
-                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesOriginalDir, "battle_knight_m_spr.bin"), spriteData);
 
                 using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
@@ -742,8 +746,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
             var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
             var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            var spritesOriginalDir = System.IO.Path.Combine(spritesDir, "sprites_original");
             System.IO.Directory.CreateDirectory(mappingsDir);
-            System.IO.Directory.CreateDirectory(spritesDir);
+            System.IO.Directory.CreateDirectory(spritesOriginalDir);
 
             try
             {
@@ -764,7 +769,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 // Create sprite file (needs at least 512 bytes for palette + sprite data)
                 var spriteData = new byte[2048];
-                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesOriginalDir, "battle_knight_m_spr.bin"), spriteData);
 
                 using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
@@ -858,8 +863,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
             var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
             var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            var spritesOriginalDir = System.IO.Path.Combine(spritesDir, "sprites_original");
             System.IO.Directory.CreateDirectory(mappingsDir);
-            System.IO.Directory.CreateDirectory(spritesDir);
+            System.IO.Directory.CreateDirectory(spritesOriginalDir);
 
             try
             {
@@ -877,7 +883,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 // Create minimal sprite file
                 var spriteData = new byte[1024];
-                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesOriginalDir, "battle_knight_m_spr.bin"), spriteData);
 
                 using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
@@ -908,8 +914,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
             var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
             var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            var spritesOriginalDir = System.IO.Path.Combine(spritesDir, "sprites_original");
             System.IO.Directory.CreateDirectory(mappingsDir);
-            System.IO.Directory.CreateDirectory(spritesDir);
+            System.IO.Directory.CreateDirectory(spritesOriginalDir);
 
             try
             {
@@ -938,7 +945,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 // Create minimal sprite file
                 var spriteData = new byte[2048];
-                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_mina_m_spr.bin"), spriteData);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesOriginalDir, "battle_mina_m_spr.bin"), spriteData);
 
                 using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
@@ -1297,8 +1304,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
             var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
             var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            var spritesOriginalDir = System.IO.Path.Combine(spritesDir, "sprites_original");
             System.IO.Directory.CreateDirectory(mappingsDir);
-            System.IO.Directory.CreateDirectory(spritesDir);
+            System.IO.Directory.CreateDirectory(spritesOriginalDir);
 
             try
             {
@@ -1315,7 +1323,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 // Create minimal sprite file
                 var spriteData = new byte[2048];
-                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesOriginalDir, "battle_knight_m_spr.bin"), spriteData);
 
                 using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
                 panel.Width = 600;
@@ -1350,8 +1358,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid().ToString("N"));
             var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
             var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            var spritesOriginalDir = System.IO.Path.Combine(spritesDir, "sprites_original");
             System.IO.Directory.CreateDirectory(mappingsDir);
-            System.IO.Directory.CreateDirectory(spritesDir);
+            System.IO.Directory.CreateDirectory(spritesOriginalDir);
 
             try
             {
@@ -1369,7 +1378,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 // Create minimal sprite file
                 var spriteData = new byte[2048];
-                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesDir, "battle_knight_m_spr.bin"), spriteData);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesOriginalDir, "battle_knight_m_spr.bin"), spriteData);
 
                 using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
                 panel.Width = 600;
@@ -2294,7 +2303,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             // The bug: clicking a section's Reset button only restores the base color,
             // but the shadow/highlight/accent colors get regenerated instead of restored
             var tempDir = Path.Combine(Path.GetTempPath(), "ThemeEditorResetTest_" + Guid.NewGuid().ToString("N"));
+            var spritesOriginalDir = Path.Combine(tempDir, "sprites_original");
             Directory.CreateDirectory(tempDir);
+            Directory.CreateDirectory(spritesOriginalDir);
 
             try
             {
@@ -2321,7 +2332,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 spriteData[8] = 0x00; spriteData[9] = 0x7C; // Red-ish color
                 // Set index 5 (highlight) to another color
                 spriteData[10] = 0xE0; spriteData[11] = 0x03; // Green-ish color
-                File.WriteAllBytes(Path.Combine(tempDir, "test_sprite.bin"), spriteData);
+                File.WriteAllBytes(Path.Combine(spritesOriginalDir, "test_sprite.bin"), spriteData);
 
                 using var panel = new ThemeEditorPanel(tempDir, tempDir);
 
