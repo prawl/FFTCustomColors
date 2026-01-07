@@ -97,5 +97,22 @@ namespace FFTColorCustomizer.ThemeEditor
             var json = File.ReadAllText(filePath);
             return ParseJson(json);
         }
+
+        public static SectionMapping LoadStoryCharacterMapping(string characterName, string basePath)
+        {
+            var filePath = Path.Combine(basePath, "Story", $"{characterName}.json");
+            return LoadFromFile(filePath);
+        }
+
+        public static string[] GetAvailableStoryCharacters(string basePath)
+        {
+            var storyPath = Path.Combine(basePath, "Story");
+            if (!Directory.Exists(storyPath))
+                return new string[0];
+
+            return Directory.GetFiles(storyPath, "*.json")
+                .Select(f => Path.GetFileNameWithoutExtension(f))
+                .ToArray();
+        }
     }
 }

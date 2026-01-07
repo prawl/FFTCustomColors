@@ -175,5 +175,131 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 Directory.Delete(tempDir, true);
             }
         }
+
+        [Fact]
+        public void SectionMappingLoader_LoadStoryCharacterMapping_ReturnsValidMapping()
+        {
+            // Arrange - create temp directory with Story subdirectory
+            var tempDir = Path.Combine(Path.GetTempPath(), "StoryMappingTest_" + Guid.NewGuid().ToString("N"));
+            var storyDir = Path.Combine(tempDir, "Story");
+            Directory.CreateDirectory(storyDir);
+            try
+            {
+                var json = @"{
+                    ""job"": ""Cloud"",
+                    ""sprite"": ""battle_cloud_spr.bin"",
+                    ""sections"": [
+                        {
+                            ""name"": ""Outfit"",
+                            ""displayName"": ""Outfit"",
+                            ""indices"": [5, 6, 7, 8],
+                            ""roles"": [""highlight"", ""base"", ""shadow"", ""outline""]
+                        }
+                    ]
+                }";
+                File.WriteAllText(Path.Combine(storyDir, "Cloud.json"), json);
+
+                // Act
+                var mapping = SectionMappingLoader.LoadStoryCharacterMapping("Cloud", tempDir);
+
+                // Assert
+                Assert.Equal("Cloud", mapping.Job);
+                Assert.Equal("battle_cloud_spr.bin", mapping.Sprite);
+                Assert.Single(mapping.Sections);
+                Assert.Equal("Outfit", mapping.Sections[0].Name);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void SectionMappingLoader_GetAvailableStoryCharacters_ReturnsCharacterNames()
+        {
+            // Arrange - create temp directory with Story subdirectory
+            var tempDir = Path.Combine(Path.GetTempPath(), "StoryCharListTest_" + Guid.NewGuid().ToString("N"));
+            var storyDir = Path.Combine(tempDir, "Story");
+            Directory.CreateDirectory(storyDir);
+            try
+            {
+                File.WriteAllText(Path.Combine(storyDir, "Cloud.json"), "{}");
+                File.WriteAllText(Path.Combine(storyDir, "Orlandeau.json"), "{}");
+                File.WriteAllText(Path.Combine(storyDir, "Beowulf.json"), "{}");
+
+                // Act
+                var characters = SectionMappingLoader.GetAvailableStoryCharacters(tempDir);
+
+                // Assert
+                Assert.Equal(3, characters.Length);
+                Assert.Contains("Cloud", characters);
+                Assert.Contains("Orlandeau", characters);
+                Assert.Contains("Beowulf", characters);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Theory]
+        [InlineData("Cloud", "battle_cloud_spr.bin")]
+        [InlineData("Orlandeau", "battle_oru_spr.bin")]
+        [InlineData("Rapha", "battle_h79_spr.bin")]
+        [InlineData("Marach", "battle_mara_spr.bin")]
+        [InlineData("Beowulf", "battle_beio_spr.bin")]
+        [InlineData("Meliadoul", "battle_h80_spr.bin")]
+        public void StoryCharacterMapping_ExistsAndLoads_ForEligibleCharacters(string characterName, string expectedSprite)
+        {
+            // Arrange - use the actual Data/SectionMappings path
+            var basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "SectionMappings");
+
+            // Act
+            var mapping = SectionMappingLoader.LoadStoryCharacterMapping(characterName, basePath);
+
+            // Assert
+            Assert.Equal(characterName, mapping.Job);
+            Assert.Equal(expectedSprite, mapping.Sprite);
+            Assert.NotEmpty(mapping.Sections);
+        }
+
+        [Theory]
+        [InlineData("Cloud")]
+        [InlineData("Orlandeau")]
+        [InlineData("Rapha")]
+        [InlineData("Marach")]
+        [InlineData("Beowulf")]
+        [InlineData("Meliadoul")]
+        public void StoryCharacterMapping_HasValidSectionStructure(string characterName)
+        {
+            // Arrange
+            var basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "SectionMappings");
+
+            // Act
+            var mapping = SectionMappingLoader.LoadStoryCharacterMapping(characterName, basePath);
+
+            // Assert - each section should have valid structure
+            foreach (var section in mapping.Sections)
+            {
+                Assert.False(string.IsNullOrEmpty(section.Name), $"Section name should not be empty for {characterName}");
+                Assert.False(string.IsNullOrEmpty(section.DisplayName), $"Section displayName should not be empty for {characterName}");
+                Assert.NotEmpty(section.Indices);
+                Assert.NotEmpty(section.Roles);
+                Assert.Equal(section.Indices.Length, section.Roles.Length);
+
+                // Validate indices are in valid palette range (0-15 for 16-color palettes)
+                foreach (var index in section.Indices)
+                {
+                    Assert.InRange(index, 0, 15);
+                }
+
+                // Validate roles are known values
+                var validRoles = new[] { "highlight", "base", "shadow", "outline", "accent", "accent_shadow" };
+                foreach (var role in section.Roles)
+                {
+                    Assert.Contains(role, validRoles);
+                }
+            }
+        }
     }
 }

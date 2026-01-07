@@ -403,12 +403,14 @@ function Verify-Package {
             "FFTColorCustomizer.dll",
             "Preview.png",
             "Data/StoryCharacters.json",
-            "Data/JobClasses.json"
+            "Data/JobClasses.json",
+            "Data/SectionMappings/Story/Cloud.json"
         )
 
         $requiredPaths = @(
             "FFTIVC/data/enhanced/fftpack/unit",
             "Data",
+            "Data/SectionMappings/Story",
             "Images",
             "RamzaThemes"
         )
