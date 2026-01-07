@@ -1,0 +1,10 @@
+{
+  "job": "Meliadoul",
+  "sprite": "battle_h80_spr.bin",
+  "sections": [
+    { "name": "Arms", "displayName": "Arms", "indices": [3, 4, 5, 6], "roles": ["shadow", "base", "base", "highlight"] },
+    { "name": "Dress", "displayName": "Dress", "indices": [7, 8, 9], "roles": ["shadow", "base", "highlight"] },
+    { "name": "Underarmor", "displayName": "Underarmor", "indices": [10, 11], "roles": ["shadow", "highlight"] },
+    { "name": "SkinColor", "displayName": "Skin Color", "indices": [13, 14, 15], "roles": ["shadow", "base", "highlight"] }
+  ]
+}
