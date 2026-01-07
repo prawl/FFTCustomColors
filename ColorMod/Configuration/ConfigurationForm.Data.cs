@@ -137,7 +137,11 @@ namespace FFTColorCustomizer.Configuration
                     displayJobName = args.JobName;
                 }
 
-                MessageBox.Show($"Theme '{args.ThemeName}' saved successfully!\n\nYou can select it under \"{displayJobName}\" in the \"Generic Characters\" section above.", "Theme Saved",
+                // Determine if this is a story character or generic character
+                var isStoryCharacter = _storyCharacters != null && _storyCharacters.ContainsKey(args.JobName);
+                var sectionName = isStoryCharacter ? "Story Characters" : "Generic Characters";
+
+                MessageBox.Show($"Theme '{args.ThemeName}' saved successfully!\n\nYou can select it under \"{displayJobName}\" in the \"{sectionName}\" section above.", "Theme Saved",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
