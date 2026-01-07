@@ -26,13 +26,36 @@ namespace FFTColorCustomizer.ThemeEditor
     public class SectionMapping
     {
         public string Job { get; }
-        public string Sprite { get; }
+        public string[] Sprites { get; }
         public JobSection[] Sections { get; }
 
+        /// <summary>
+        /// Returns the first sprite for backward compatibility.
+        /// </summary>
+        public string Sprite => Sprites[0];
+
+        /// <summary>
+        /// Returns true if this mapping has multiple sprites (e.g., Agrias has aguri and kanba).
+        /// </summary>
+        public bool HasMultipleSprites => Sprites.Length > 1;
+
+        /// <summary>
+        /// Creates a SectionMapping with a single sprite (backward compatible).
+        /// </summary>
         public SectionMapping(string job, string sprite, JobSection[] sections)
         {
             Job = job;
-            Sprite = sprite;
+            Sprites = new[] { sprite };
+            Sections = sections;
+        }
+
+        /// <summary>
+        /// Creates a SectionMapping with multiple sprites.
+        /// </summary>
+        public SectionMapping(string job, string[] sprites, JobSection[] sections)
+        {
+            Job = job;
+            Sprites = sprites;
             Sections = sections;
         }
     }
@@ -45,7 +68,18 @@ namespace FFTColorCustomizer.ThemeEditor
             var root = doc.RootElement;
 
             var job = root.GetProperty("job").GetString();
-            var sprite = root.GetProperty("sprite").GetString();
+
+            // Handle both "sprite" (single) and "sprites" (array) formats
+            string[] sprites;
+            if (root.TryGetProperty("sprites", out var spritesElement))
+            {
+                sprites = spritesElement.EnumerateArray().Select(s => s.GetString()).ToArray();
+            }
+            else
+            {
+                var sprite = root.GetProperty("sprite").GetString();
+                sprites = new[] { sprite };
+            }
 
             var sectionsArray = root.GetProperty("sections");
             var sections = sectionsArray.EnumerateArray().Select(s => new JobSection(
@@ -56,7 +90,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 s.TryGetProperty("linkedTo", out var linkedTo) ? linkedTo.GetString() : null
             )).ToArray();
 
-            return new SectionMapping(job, sprite, sections);
+            return new SectionMapping(job, sprites, sections);
         }
 
         // Canonical job class order (matching FFT job unlock progression)
