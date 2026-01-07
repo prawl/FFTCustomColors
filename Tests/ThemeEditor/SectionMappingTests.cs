@@ -301,5 +301,156 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 }
             }
         }
+
+        #region Multi-Sprite Support Tests
+
+        [Fact]
+        public void SectionMapping_CanBeCreated_WithMultipleSprites()
+        {
+            // Arrange
+            var sections = new[]
+            {
+                new JobSection("Armor", "Armor", new[] { 3, 4, 5 }, new[] { "shadow", "base", "highlight" })
+            };
+            var sprites = new[] { "battle_aguri_spr.bin", "battle_kanba_spr.bin" };
+
+            // Act
+            var mapping = new SectionMapping(
+                job: "Agrias",
+                sprites: sprites,
+                sections: sections
+            );
+
+            // Assert
+            Assert.Equal("Agrias", mapping.Job);
+            Assert.Equal(2, mapping.Sprites.Length);
+            Assert.Equal("battle_aguri_spr.bin", mapping.Sprites[0]);
+            Assert.Equal("battle_kanba_spr.bin", mapping.Sprites[1]);
+        }
+
+        [Fact]
+        public void SectionMapping_Sprites_ReturnsSingleSpriteAsArray_WhenCreatedWithSingleSprite()
+        {
+            // Arrange
+            var sections = new[]
+            {
+                new JobSection("Armor", "Armor", new[] { 3, 4, 5 }, new[] { "shadow", "base", "highlight" })
+            };
+
+            // Act - using the single sprite constructor
+            var mapping = new SectionMapping(
+                job: "Cloud",
+                sprite: "battle_cloud_spr.bin",
+                sections: sections
+            );
+
+            // Assert - Sprites property should still return an array with the single sprite
+            Assert.Single(mapping.Sprites);
+            Assert.Equal("battle_cloud_spr.bin", mapping.Sprites[0]);
+            Assert.Equal("battle_cloud_spr.bin", mapping.Sprite); // Backward compatible
+        }
+
+        [Fact]
+        public void SectionMapping_Sprite_ReturnsFirstSprite_WhenCreatedWithMultipleSprites()
+        {
+            // Arrange
+            var sections = new[]
+            {
+                new JobSection("Armor", "Armor", new[] { 3, 4, 5 }, new[] { "shadow", "base", "highlight" })
+            };
+            var sprites = new[] { "battle_aguri_spr.bin", "battle_kanba_spr.bin" };
+
+            // Act
+            var mapping = new SectionMapping(
+                job: "Agrias",
+                sprites: sprites,
+                sections: sections
+            );
+
+            // Assert - Sprite property returns first sprite for backward compatibility
+            Assert.Equal("battle_aguri_spr.bin", mapping.Sprite);
+        }
+
+        [Fact]
+        public void SectionMappingLoader_ParseJson_HandlesSpritesArray()
+        {
+            // Arrange
+            var json = @"{
+                ""job"": ""Agrias"",
+                ""sprites"": [""battle_aguri_spr.bin"", ""battle_kanba_spr.bin""],
+                ""sections"": [
+                    {
+                        ""name"": ""Armor"",
+                        ""displayName"": ""Armor"",
+                        ""indices"": [3, 4, 5],
+                        ""roles"": [""shadow"", ""base"", ""highlight""]
+                    }
+                ]
+            }";
+
+            // Act
+            var mapping = SectionMappingLoader.ParseJson(json);
+
+            // Assert
+            Assert.Equal("Agrias", mapping.Job);
+            Assert.Equal(2, mapping.Sprites.Length);
+            Assert.Equal("battle_aguri_spr.bin", mapping.Sprites[0]);
+            Assert.Equal("battle_kanba_spr.bin", mapping.Sprites[1]);
+        }
+
+        [Fact]
+        public void SectionMappingLoader_ParseJson_HandlesSingleSprite_BackwardCompatible()
+        {
+            // Arrange - using old format with single "sprite" field
+            var json = @"{
+                ""job"": ""Cloud"",
+                ""sprite"": ""battle_cloud_spr.bin"",
+                ""sections"": [
+                    {
+                        ""name"": ""Outfit"",
+                        ""displayName"": ""Outfit"",
+                        ""indices"": [5, 6, 7],
+                        ""roles"": [""shadow"", ""base"", ""highlight""]
+                    }
+                ]
+            }";
+
+            // Act
+            var mapping = SectionMappingLoader.ParseJson(json);
+
+            // Assert - should still work and expose via Sprites array
+            Assert.Equal("Cloud", mapping.Job);
+            Assert.Single(mapping.Sprites);
+            Assert.Equal("battle_cloud_spr.bin", mapping.Sprites[0]);
+            Assert.Equal("battle_cloud_spr.bin", mapping.Sprite);
+        }
+
+        [Fact]
+        public void SectionMapping_HasMultipleSprites_ReturnsTrueForMultiSprite()
+        {
+            // Arrange
+            var sections = new[]
+            {
+                new JobSection("Armor", "Armor", new[] { 3, 4, 5 }, new[] { "shadow", "base", "highlight" })
+            };
+
+            // Act
+            var multiSpriteMapping = new SectionMapping(
+                job: "Agrias",
+                sprites: new[] { "battle_aguri_spr.bin", "battle_kanba_spr.bin" },
+                sections: sections
+            );
+            var singleSpriteMapping = new SectionMapping(
+                job: "Cloud",
+                sprite: "battle_cloud_spr.bin",
+                sections: sections
+            );
+
+            // Assert
+            Assert.True(multiSpriteMapping.HasMultipleSprites);
+            Assert.False(singleSpriteMapping.HasMultipleSprites);
+        }
+
+        #endregion
     }
 }
