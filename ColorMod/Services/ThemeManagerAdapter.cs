@@ -345,20 +345,39 @@ namespace FFTColorCustomizer.Services
             }
         }
 
-        private string[] GetSpriteNamesForCharacter(string character)
+        /// <summary>
+        /// Gets sprite file names for a character. For multi-sprite characters (Agrias, Mustadio, Reis),
+        /// this returns all sprite files that need to be updated when applying a theme.
+        /// </summary>
+        public string[] GetSpriteNamesForCharacter(string character)
         {
+            // Try to load from section mapping first (supports multi-sprite characters)
+            var mappingsPath = Path.Combine(_modPath, "Data", "SectionMappings");
+            var storyMappingPath = Path.Combine(mappingsPath, "Story", $"{character}.json");
+
+            if (File.Exists(storyMappingPath))
+            {
+                try
+                {
+                    var mapping = ThemeEditor.SectionMappingLoader.LoadFromFile(storyMappingPath);
+                    return mapping.Sprites;
+                }
+                catch
+                {
+                    // Fall back to hardcoded values if mapping fails to load
+                }
+            }
+
+            // Fallback for characters without section mappings
             return character switch
             {
                 "Ramza" => new[] { "battle_ramuza_spr.bin", "battle_ramuza2_spr.bin", "battle_ramuza3_spr.bin" },
-                "Orlandeau" => new[] { "battle_oru_spr.bin", "battle_oru_out.bin" },
-                "Agrias" => new[] { "battle_aguri_spr.bin", "battle_aguri_out.bin" },
-                "Cloud" => new[] { "battle_cloud_spr.bin", "battle_cloud_out.bin" },
-                "Mustadio" => new[] { "battle_musu_spr.bin", "battle_garu_spr.bin" },
-                "Marach" => new[] { "battle_mara_spr.bin", "battle_mara_out.bin" },
-                "Beowulf" => new[] { "battle_beo_spr.bin", "battle_beo_out.bin" },
-                "Meliadoul" => new[] { "battle_h80_spr.bin", "battle_h80_out.bin" },
-                "Rapha" => new[] { "battle_h79_spr.bin", "battle_h79_out.bin" },
-                "Reis" => new[] { "battle_reis_spr.bin", "battle_reis_out.bin" },
+                "Orlandeau" => new[] { "battle_oru_spr.bin" },
+                "Cloud" => new[] { "battle_cloud_spr.bin" },
+                "Marach" => new[] { "battle_mara_spr.bin" },
+                "Beowulf" => new[] { "battle_beio_spr.bin" },
+                "Meliadoul" => new[] { "battle_h80_spr.bin" },
+                "Rapha" => new[] { "battle_h79_spr.bin" },
                 _ => Array.Empty<string>()
             };
         }

@@ -222,11 +222,20 @@ namespace FFTColorCustomizer.Configuration.UI
 
             // Get available themes for this story character
             var availableThemes = characterConfig.AvailableThemes?.Length > 0
-                ? characterConfig.AvailableThemes
-                : new[] { "original" }; // fallback if no themes available
+                ? characterConfig.AvailableThemes.ToList()
+                : new List<string> { "original" }; // fallback if no themes available
 
-            ModLogger.LogDebug($"Story character {characterConfig.Name} has {availableThemes.Length} themes: {string.Join(", ", availableThemes)}");
-            comboBox.SetThemes(availableThemes);
+            // Get user themes for this story character
+            var userThemes = _userThemeService.GetUserThemes(characterConfig.Name);
+
+            ModLogger.LogDebug($"Story character {characterConfig.Name} has {availableThemes.Count} built-in themes: {string.Join(", ", availableThemes)}");
+            ModLogger.LogDebug($"Story character {characterConfig.Name} has {userThemes.Count} user themes: {string.Join(", ", userThemes)}");
+            comboBox.SetThemesWithUserThemes(availableThemes, userThemes);
+
+            // Set Tag with JobName for RefreshDropdownsForJob to find this comboBox
+            // Also include ExpectedValue for VerifyAllSelections compatibility
+            var initialValue = characterConfig.GetValue();
+            comboBox.Tag = new { JobName = characterConfig.Name, ExpectedValue = initialValue?.ToString() ?? "original" };
 
             // Setup event handler
             comboBox.SelectedThemeChanged += (s, newTheme) =>
@@ -619,6 +628,15 @@ namespace FFTColorCustomizer.Configuration.UI
 
                 ModLogger.LogDebug($"Character name mapping: '{characterName}' -> '{internalName}' -> '{spriteFileName}'");
 
+                // Find the actual FFTIVC path (handles versioned directories)
+                string unitPath = FindActualUnitPath(modPath);
+
+                // Check if this is a user theme - if so, load from sprites_original with external palette
+                if (_userThemeService.IsUserTheme(characterName, theme))
+                {
+                    return TryLoadStoryCharacterUserThemeFromBinFile(modPath, unitPath, spriteFileName, characterName, theme);
+                }
+
                 // Story character sprites can be in themed folders (e.g., sprites_cloud_sephiroth_black)
                 // or in the main unit folder
                 string binPath = "";
@@ -628,9 +646,6 @@ namespace FFTColorCustomizer.Configuration.UI
                 string themeFolderName = theme.ToLower()
                     .Replace(" ", "_")  // Replace spaces with underscores
                     .Replace("__", "_"); // Clean up any double underscores
-
-                // Find the actual FFTIVC path (handles versioned directories)
-                string unitPath = FindActualUnitPath(modPath);
 
                 string characterThemeFolder = $"sprites_{characterName.ToLower()}_{themeFolderName}";
                 binPath = Path.Combine(unitPath, characterThemeFolder, spriteFileName);
@@ -688,6 +703,72 @@ namespace FFTColorCustomizer.Configuration.UI
                 ModLogger.LogDebug($"Failed to load from .bin file: {ex.Message}");
                 return null;
             }
+        }
+
+        private Image[] TryLoadStoryCharacterUserThemeFromBinFile(string modPath, string unitPath, string spriteFileName, string characterName, string themeName)
+        {
+            ModLogger.Log($"[TryLoadStoryCharacterUserThemeFromBinFile] Loading user theme '{themeName}' for {characterName}");
+
+            // Get the user theme palette path
+            var palettePath = _userThemeService.GetUserThemePalettePath(characterName, themeName);
+            if (string.IsNullOrEmpty(palettePath) || !File.Exists(palettePath))
+            {
+                ModLogger.LogWarning($"User theme palette not found: {palettePath}");
+                return null;
+            }
+
+            // For story characters, original sprites may be in character-specific folders
+            // e.g., sprites_rapha_original/ or sprites_meliadoul_original/
+            // Fall back to sprites_original/ if character-specific folder doesn't have the file
+            var characterOriginalDir = Path.Combine(unitPath, $"sprites_{characterName.ToLower()}_original");
+            var characterOriginalFile = Path.Combine(characterOriginalDir, spriteFileName);
+            var genericOriginalDir = Path.Combine(unitPath, "sprites_original");
+            var genericOriginalFile = Path.Combine(genericOriginalDir, spriteFileName);
+
+            string originalFile;
+            if (File.Exists(characterOriginalFile))
+            {
+                originalFile = characterOriginalFile;
+                ModLogger.Log($"[TryLoadStoryCharacterUserThemeFromBinFile] Using character-specific original: {originalFile}");
+            }
+            else if (File.Exists(genericOriginalFile))
+            {
+                originalFile = genericOriginalFile;
+                ModLogger.Log($"[TryLoadStoryCharacterUserThemeFromBinFile] Using generic original: {originalFile}");
+            }
+            else
+            {
+                ModLogger.LogWarning($"Original sprite not found for story character user theme preview:");
+                ModLogger.LogWarning($"  Character-specific: {characterOriginalFile}");
+                ModLogger.LogWarning($"  Generic: {genericOriginalFile}");
+                return null;
+            }
+
+            // Read original sprite and user palette
+            var originalSprite = File.ReadAllBytes(originalFile);
+            var userPalette = File.ReadAllBytes(palettePath);
+
+            // Validate palette size
+            if (userPalette.Length != 512)
+            {
+                ModLogger.LogWarning($"Invalid user palette size: {userPalette.Length} (expected 512)");
+                return null;
+            }
+
+            // Extract sprites using the external user palette
+            var cornerSprites = _binExtractor.ExtractCornerDirectionsWithExternalPalette(originalSprite, 0, userPalette);
+
+            // Return 4 corner sprites for carousel
+            var carouselSprites = new Image[]
+            {
+                cornerSprites[2], // SW (default preview angle)
+                cornerSprites[3], // NW
+                cornerSprites[0], // NE
+                cornerSprites[1]  // SE
+            };
+
+            ModLogger.Log($"[STORY USER THEME] Character: '{characterName}', Theme: '{themeName}', Using external palette");
+            return carouselSprites;
         }
 
         private Image[] TryLoadGenericFromBinFile(string jobName, string theme)

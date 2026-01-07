@@ -521,5 +521,79 @@ namespace Tests.Utilities
             // Sprite data should be preserved
             Assert.Equal(0xAA, resultSprite[512]);
         }
+
+        [Fact]
+        public void ApplyConfiguration_Should_ApplyUserTheme_ForStoryCharacter_Agrias()
+        {
+            // Arrange
+            // This test verifies that user themes work for story characters (e.g., Agrias)
+            // Story characters use ApplyStoryCharacterTheme which must check for user themes
+            var service = new CharacterDefinitionService();
+            service.AddCharacter(new CharacterDefinition
+            {
+                Name = "Agrias",
+                SpriteNames = new[] { "aguri" },
+                DefaultTheme = "original",
+                AvailableThemes = new[] { "original" },
+                EnumType = "StoryCharacter"
+            });
+
+            var config = new Config
+            {
+                Agrias = "Ocean Blue"  // User theme name
+            };
+            _configManager.SaveConfig(config);
+
+            // Create original sprite in sprites_original directory
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var originalDir = Path.Combine(deployedPath, "sprites_original");
+            Directory.CreateDirectory(originalDir);
+
+            var originalSprite = new byte[1024];
+            for (int i = 0; i < 512; i++)
+            {
+                originalSprite[i] = 0xFF; // Original palette
+            }
+            for (int i = 512; i < 1024; i++)
+            {
+                originalSprite[i] = 0xAA; // Sprite data
+            }
+            // Agrias sprite name is battle_aguri_spr.bin
+            File.WriteAllBytes(Path.Combine(originalDir, "battle_aguri_spr.bin"), originalSprite);
+
+            // Create user theme for Agrias
+            var userThemesDir = Path.Combine(_testModPath, "UserThemes", "Agrias", "Ocean Blue");
+            Directory.CreateDirectory(userThemesDir);
+            var userPalette = new byte[512];
+            for (int i = 0; i < 512; i++)
+            {
+                userPalette[i] = 0x42; // User palette
+            }
+            File.WriteAllBytes(Path.Combine(userThemesDir, "palette.bin"), userPalette);
+
+            // Registry uses "Agrias" (character name, not job format)
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Agrias\":[\"Ocean Blue\"]}");
+
+            var sourceBasePath = Path.Combine(_testModPath, "ColorMod");
+            var spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, service, sourceBasePath);
+
+            // Act
+            spriteManager.ApplyConfiguration();
+
+            // Assert - The user theme should be applied (palette replaced)
+            var generatedSpriteFile = Path.Combine(deployedPath, "battle_aguri_spr.bin");
+            Assert.True(File.Exists(generatedSpriteFile),
+                $"Agrias user theme sprite should be generated at: {generatedSpriteFile}");
+
+            var resultSprite = File.ReadAllBytes(generatedSpriteFile);
+
+            // Palette should be from user theme (0x42), not original (0xFF)
+            Assert.Equal(0x42, resultSprite[0]);
+            Assert.Equal(0x42, resultSprite[511]);
+
+            // Sprite data should be preserved
+            Assert.Equal(0xAA, resultSprite[512]);
+        }
     }
 }

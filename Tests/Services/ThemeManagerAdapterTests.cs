@@ -128,5 +128,53 @@ namespace FFTColorCustomizer.Tests.Services
             manager.Should().BeAssignableTo<ThemeManagerAdapter>();
             manager.Should().BeOfType<ThemeManager>();
         }
+
+        #region Multi-Sprite Character Tests
+
+        [Theory]
+        [InlineData("Agrias", new[] { "battle_aguri_spr.bin", "battle_kanba_spr.bin" })]
+        [InlineData("Mustadio", new[] { "battle_musu_spr.bin", "battle_garu_spr.bin" })]
+        [InlineData("Reis", new[] { "battle_reze_spr.bin", "battle_reze_d_spr.bin" })]
+        public void GetSpriteNamesForCharacter_ReturnsCorrectSprites_ForMultiSpriteCharacters(string characterName, string[] expectedSprites)
+        {
+            // Arrange - create section mapping files
+            var storyMappingsPath = Path.Combine(_modPath, "Data", "SectionMappings", "Story");
+            Directory.CreateDirectory(storyMappingsPath);
+
+            // Create mapping file with sprites array
+            var spritesJson = "[\"" + string.Join("\", \"", expectedSprites) + "\"]";
+            var json = $@"{{
+                ""job"": ""{characterName}"",
+                ""sprites"": {spritesJson},
+                ""sections"": []
+            }}";
+            File.WriteAllText(Path.Combine(storyMappingsPath, $"{characterName}.json"), json);
+
+            var adapter = new ThemeManagerAdapter(_sourcePath, _modPath);
+
+            // Act
+            var spriteNames = adapter.GetSpriteNamesForCharacter(characterName);
+
+            // Assert
+            spriteNames.Should().NotBeNull();
+            spriteNames.Should().HaveCount(expectedSprites.Length);
+            spriteNames.Should().BeEquivalentTo(expectedSprites);
+        }
+
+        [Fact]
+        public void GetSpriteNamesForCharacter_FallsBackToHardcoded_WhenMappingNotFound()
+        {
+            // Arrange - no mapping files created
+            var adapter = new ThemeManagerAdapter(_sourcePath, _modPath);
+
+            // Act
+            var spriteNames = adapter.GetSpriteNamesForCharacter("Cloud");
+
+            // Assert - should use fallback
+            spriteNames.Should().NotBeNull();
+            spriteNames.Should().Contain("battle_cloud_spr.bin");
+        }
+
+        #endregion
     }
 }

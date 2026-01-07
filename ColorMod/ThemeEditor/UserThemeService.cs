@@ -139,6 +139,100 @@ namespace FFTColorCustomizer.ThemeEditor
             return null;
         }
 
+        #region Multi-Sprite Support
+
+        /// <summary>
+        /// Saves a theme for a multi-sprite character, creating palette files for each sprite.
+        /// </summary>
+        public void SaveThemeForMultiSprite(string jobName, string themeName, byte[] paletteData, string[] spriteNames)
+        {
+            // Validate theme name
+            if (string.IsNullOrWhiteSpace(themeName))
+            {
+                throw new ArgumentException("Theme name cannot be empty");
+            }
+
+            // Check for reserved names
+            if (ReservedNames.Contains(themeName))
+            {
+                throw new ArgumentException($"'{themeName}' is a reserved theme name");
+            }
+
+            // Check for invalid path characters
+            var invalidChars = Path.GetInvalidFileNameChars();
+            if (themeName.IndexOfAny(invalidChars) >= 0)
+            {
+                throw new ArgumentException($"Theme name contains invalid characters");
+            }
+
+            // Check for duplicate theme name
+            var existingThemes = GetUserThemes(jobName);
+            if (existingThemes.Contains(themeName))
+            {
+                throw new InvalidOperationException($"Theme '{themeName}' already exists for {jobName}");
+            }
+
+            var themeDir = Path.Combine(_basePath, "UserThemes", jobName, themeName);
+            Directory.CreateDirectory(themeDir);
+
+            // Save primary palette.bin (for backward compatibility)
+            var palettePath = Path.Combine(themeDir, "palette.bin");
+            File.WriteAllBytes(palettePath, paletteData);
+
+            // Save palette for each sprite file
+            foreach (var spriteName in spriteNames)
+            {
+                var spriteBaseName = Path.GetFileNameWithoutExtension(spriteName);
+                var spritePalettePath = Path.Combine(themeDir, $"{spriteBaseName}_palette.bin");
+                File.WriteAllBytes(spritePalettePath, paletteData);
+            }
+
+            UpdateRegistry(jobName, themeName);
+        }
+
+        /// <summary>
+        /// Gets palette paths for all sprites of a multi-sprite theme.
+        /// </summary>
+        public string[]? GetUserThemePalettePaths(string jobName, string themeName, string[] spriteNames)
+        {
+            var themeDir = Path.Combine(_basePath, "UserThemes", jobName, themeName);
+            if (!Directory.Exists(themeDir))
+                return null;
+
+            var paths = new List<string>();
+            foreach (var spriteName in spriteNames)
+            {
+                var spriteBaseName = Path.GetFileNameWithoutExtension(spriteName);
+                var spritePalettePath = Path.Combine(themeDir, $"{spriteBaseName}_palette.bin");
+                if (File.Exists(spritePalettePath))
+                {
+                    paths.Add(spritePalettePath);
+                }
+            }
+
+            return paths.Count == spriteNames.Length ? paths.ToArray() : null;
+        }
+
+        /// <summary>
+        /// Loads palette data for all sprites of a multi-sprite theme.
+        /// </summary>
+        public byte[][]? LoadThemeForMultiSprite(string jobName, string themeName, string[] spriteNames)
+        {
+            var paths = GetUserThemePalettePaths(jobName, themeName, spriteNames);
+            if (paths == null)
+                return null;
+
+            var palettes = new byte[paths.Length][];
+            for (int i = 0; i < paths.Length; i++)
+            {
+                palettes[i] = File.ReadAllBytes(paths[i]);
+            }
+
+            return palettes;
+        }
+
+        #endregion
+
         private Dictionary<string, List<string>> LoadRegistry()
         {
             ModLogger.Log($"[USER_THEME_SVC] LoadRegistry from: {_registryPath}");
