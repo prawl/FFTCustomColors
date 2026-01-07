@@ -30,68 +30,98 @@ Section mapping files define how palette indices map to customizable sprite sect
 | `accent` | Light detail (L * 1.5) | Light accent colors |
 | `accent_shadow` | Slightly dark accent (L * 1.25) | Still lighter than base! |
 
-**Important:** `accent_shadow` is LIGHTER than base, not darker. For dark shades use `shadow` or `outline`.
-
-## Verification Process
-
-1. Add a single test index to the JSON:
-   ```json
-   { "name": "Index7", "displayName": "Index 7", "indices": [7], "roles": ["base"] }
-   ```
-
-2. Deploy and test in Theme Editor - note what sprite part changes
-
-3. Record the brightness level (lightest, darker, darkest, etc.)
-
-4. Continue with next index until you identify all indices for a section
-
-5. Group indices into sections with correct roles based on brightness order
+**Important:** `accent_shadow` is LIGHTER than base, not darker.
 
 ## Index Order in Sections
 
-Indices are NOT listed sequentially. They're ordered by role assignment:
-- First index gets first role, second index gets second role, etc.
+Indices are ordered by role assignment (first index gets first role):
 
 Example: `[12, 11, 13, 10]` with `["highlight", "base", "shadow", "outline"]`
-- Index 12 = highlight (lightest)
-- Index 11 = base
-- Index 13 = shadow
-- Index 10 = outline (darkest)
-
-## Common Patterns
-
-**4-index sections:**
-- `[base, highlight, shadow, outline]` - Standard with highlight
-- `[highlight, base, shadow, outline]` - When base isn't lightest
-
-**3-index sections:**
-- `[base, shadow, outline]` - No highlight
+- Index 12 = highlight, Index 11 = base, Index 13 = shadow, Index 10 = outline
 
 ## Skipped Indices
 
-Skip indices for:
-- Face/skin tones (usually 1, 13-15)
-- Eyes (usually 2)
-- Character outline (usually 1)
+- Eyes: usually index 2
+- Skin tones: usually indices 14-15
+- Character outline: usually index 1
 
-These remain unchanged regardless of theme.
+---
 
-**Note:** Indices 11-13 are NOT always skin/hair. They vary by job - verify each sprite individually.
+# Story Character Theme Editor - Implementation Plan
 
-## Male vs Female Sprites
+## Overview
 
-Male and female versions of the same job often have **different** palette mappings:
-- Different number of sections (e.g., Male Ninja has 3 sections, Female Ninja has 3 but different groupings)
-- Same indices may serve different purposes (e.g., index 10 might be Armor highlight on female but Accent outline on male)
-- Always verify each gender separately - don't assume mappings transfer
+Extend the existing Theme Editor to support story characters (Agrias, Mustadio, etc.).
 
-Example differences (Ninja):
-- **Male**: Outfit (3-6), Armor (7-9), Gloves/Belt/Accent (10-13)
-- **Female**: Outfit (3-6), Armor (7-10), Hair (11-13)
+## Current Architecture
 
-## Tips
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `ThemeEditorPanel.cs` | ThemeEditor/ | Main UI, template dropdown, color pickers |
+| `UserThemeService.cs` | ThemeEditor/ | Save/load user themes, path: `UserThemes/[job]/[theme]/` |
+| `PaletteModifier.cs` | ThemeEditor/ | Palette manipulation engine |
+| `SectionMapping.cs` | ThemeEditor/ | Model + JSON loader |
+| `StoryCharacters.json` | Data/ | Character definitions (names, sprites, themes) |
 
-- Palette indices range from 0-15
-- Deploy after each change to test in Theme Editor
-- The same index can appear in multiple visual areas
-- Document which body parts each index affects
+## Key Differences: Generic Jobs vs Story Characters
+
+| Aspect | Generic Jobs | Story Characters |
+|--------|--------------|------------------|
+| Naming | `Knight_Male` | `Agrias`, `Mustadio` |
+| Sprites | `battle_knight_m_spr.bin` | `battle_aguri_spr.bin` (no gender suffix) |
+| Theme folders | `sprites_[theme]/` | `sprites_[char]_[theme]/` |
+| Gender | Male/Female variants | Single variant per character |
+| Count | 38 jobs | 12 characters |
+
+## Implementation Phases
+
+### Phase 1: Section Mappings for Story Characters (~4 hrs)
+- Create `Data/SectionMappings/Story/` directory
+- Add JSON files: `Agrias.json`, `Mustadio.json`, `Orlandeau.json`, etc.
+- Same format as generic jobs, use verification process
+- Characters to map: Agrias, Cloud, Mustadio, Orlandeau, Reis, Rapha, Marach, Beowulf, Meliadoul
+
+### Phase 2: SectionMapping Loader Update (~1 hr)
+- `SectionMapping.cs` - Add `LoadStoryCharacterMapping(string charName)`
+- Look in `Data/SectionMappings/Story/[CharName].json`
+
+### Phase 3: ThemeEditorPanel Updates (~3 hrs)
+- Add character type toggle (Generic Jobs / Story Characters)
+- Populate dropdown from `StoryCharacters.json` when Story mode selected
+- Load correct mapping based on character name
+- Handle sprite path differences for preview
+
+### Phase 4: UserThemeService Extension (~2 hrs)
+- Update path resolution for story characters:
+  - Generic: `UserThemes/[Job]/[theme]/palette.bin`
+  - Story: `UserThemes/Story/[Character]/[theme]/palette.bin`
+- Update `SaveTheme`, `GetUserThemes`, `IsUserTheme`, `GetUserThemePalettePath`
+- Update registry format in `UserThemes.json`
+
+### Phase 5: Theme Application (~2 hrs)
+- `ConfigBasedSpriteManager.ApplyUserTheme()` - handle story character paths
+- Output to `sprites_[char]_[theme]/battle_[sprite]_spr.bin`
+- Integrate with existing theme dropdown in config form
+
+### Phase 6: Preview Images (~1 hr)
+- Ensure story character BMPs exist in `Images/` for preview
+- Update preview loader to find story character images
+
+## File Changes Summary
+
+| File | Change |
+|------|--------|
+| `Data/SectionMappings/Story/*.json` | NEW - 9-12 files |
+| `ThemeEditor/SectionMapping.cs` | Add story character loader |
+| `ThemeEditor/ThemeEditorPanel.cs` | Add character type toggle, update dropdown |
+| `ThemeEditor/UserThemeService.cs` | Add story character path handling |
+| `Utilities/ConfigBasedSpriteManager.cs` | Add story character sprite generation |
+
+## Estimated Total: 13-16 hours (~2-3 days)
+
+## Risks & Considerations
+
+1. **Ramza is special** - Uses TEX files, may need separate handling or exclusion
+2. **Multi-sprite characters** - Agrias has 2 sprites (aguri, kanba), Mustadio has 2 (musu, garu)
+3. **Preview images** - Need BMPs for all story characters
+4. **Testing** - Each character needs in-game verification
