@@ -249,6 +249,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         [InlineData("Marach", "battle_mara_spr.bin")]
         [InlineData("Beowulf", "battle_beio_spr.bin")]
         [InlineData("Meliadoul", "battle_h80_spr.bin")]
+        [InlineData("Agrias", "battle_aguri_spr.bin")]
+        [InlineData("Mustadio", "battle_musu_spr.bin")]
+        [InlineData("Reis", "battle_reze_spr.bin")]
         public void StoryCharacterMapping_ExistsAndLoads_ForEligibleCharacters(string characterName, string expectedSprite)
         {
             // Arrange - use the actual Data/SectionMappings path
@@ -270,6 +273,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         [InlineData("Marach")]
         [InlineData("Beowulf")]
         [InlineData("Meliadoul")]
+        [InlineData("Agrias")]
+        [InlineData("Mustadio")]
+        [InlineData("Reis")]
         public void StoryCharacterMapping_HasValidSectionStructure(string characterName)
         {
             // Arrange
@@ -449,6 +455,49 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             // Assert
             Assert.True(multiSpriteMapping.HasMultipleSprites);
             Assert.False(singleSpriteMapping.HasMultipleSprites);
+        }
+
+        [Theory]
+        [InlineData("Agrias", new[] { "battle_aguri_spr.bin", "battle_kanba_spr.bin" })]
+        [InlineData("Mustadio", new[] { "battle_musu_spr.bin", "battle_garu_spr.bin" })]
+        [InlineData("Reis", new[] { "battle_reze_spr.bin", "battle_reze_d_spr.bin" })]
+        public void MultiSpriteStoryCharacter_LoadsAllSprites(string characterName, string[] expectedSprites)
+        {
+            // Arrange - use the actual Data/SectionMappings path
+            var basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "SectionMappings");
+
+            // Act
+            var mapping = SectionMappingLoader.LoadStoryCharacterMapping(characterName, basePath);
+
+            // Assert
+            Assert.Equal(characterName, mapping.Job);
+            Assert.True(mapping.HasMultipleSprites, $"{characterName} should have multiple sprites");
+            Assert.Equal(expectedSprites.Length, mapping.Sprites.Length);
+            for (int i = 0; i < expectedSprites.Length; i++)
+            {
+                Assert.Equal(expectedSprites[i], mapping.Sprites[i]);
+            }
+        }
+
+        [Theory]
+        [InlineData("Cloud")]
+        [InlineData("Orlandeau")]
+        [InlineData("Rapha")]
+        [InlineData("Marach")]
+        [InlineData("Beowulf")]
+        [InlineData("Meliadoul")]
+        public void SingleSpriteStoryCharacter_HasSingleSprite(string characterName)
+        {
+            // Arrange - use the actual Data/SectionMappings path
+            var basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "SectionMappings");
+
+            // Act
+            var mapping = SectionMappingLoader.LoadStoryCharacterMapping(characterName, basePath);
+
+            // Assert
+            Assert.Equal(characterName, mapping.Job);
+            Assert.False(mapping.HasMultipleSprites, $"{characterName} should have single sprite");
+            Assert.Single(mapping.Sprites);
         }
 
         #endregion

@@ -395,5 +395,114 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 Directory.Delete(tempDir, true);
             }
         }
+
+        #region Multi-Sprite Theme Tests
+
+        [Fact]
+        public void SaveThemeForMultiSprite_SavesPaletteForAllSprites()
+        {
+            // Arrange
+            var tempDir = Path.Combine(Path.GetTempPath(), "UserThemeTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new UserThemeService(tempDir);
+                var paletteData = new byte[512];
+                paletteData[0] = 0xAB;
+                var spriteNames = new[] { "battle_aguri_spr.bin", "battle_kanba_spr.bin" };
+
+                // Act
+                service.SaveThemeForMultiSprite("Agrias", "Ocean Blue", paletteData, spriteNames);
+
+                // Assert - Palette files should exist for both sprites
+                var expectedDir = Path.Combine(tempDir, "UserThemes", "Agrias", "Ocean Blue");
+                Assert.True(Directory.Exists(expectedDir), $"Theme directory should exist at {expectedDir}");
+
+                // Primary palette file
+                var primaryPalette = Path.Combine(expectedDir, "palette.bin");
+                Assert.True(File.Exists(primaryPalette), "Primary palette.bin should exist");
+
+                // Additional sprite palette files
+                foreach (var spriteName in spriteNames)
+                {
+                    var spriteBaseName = Path.GetFileNameWithoutExtension(spriteName);
+                    var spritePalette = Path.Combine(expectedDir, $"{spriteBaseName}_palette.bin");
+                    Assert.True(File.Exists(spritePalette), $"Palette for {spriteName} should exist at {spritePalette}");
+                }
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void GetUserThemePalettePaths_ReturnsAllPalettePaths_ForMultiSpriteTheme()
+        {
+            // Arrange
+            var tempDir = Path.Combine(Path.GetTempPath(), "UserThemeTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new UserThemeService(tempDir);
+                var paletteData = new byte[512];
+                var spriteNames = new[] { "battle_aguri_spr.bin", "battle_kanba_spr.bin" };
+                service.SaveThemeForMultiSprite("Agrias", "Ocean Blue", paletteData, spriteNames);
+
+                // Act
+                var paths = service.GetUserThemePalettePaths("Agrias", "Ocean Blue", spriteNames);
+
+                // Assert
+                Assert.NotNull(paths);
+                Assert.Equal(spriteNames.Length, paths.Length);
+                foreach (var path in paths)
+                {
+                    Assert.True(File.Exists(path), $"Palette path should exist: {path}");
+                }
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void LoadThemeForMultiSprite_ReturnsPaletteDataForAllSprites()
+        {
+            // Arrange
+            var tempDir = Path.Combine(Path.GetTempPath(), "UserThemeTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var service = new UserThemeService(tempDir);
+                var paletteData = new byte[512];
+                paletteData[0] = 0xAB;
+                paletteData[511] = 0xCD;
+                var spriteNames = new[] { "battle_aguri_spr.bin", "battle_kanba_spr.bin" };
+                service.SaveThemeForMultiSprite("Agrias", "Ocean Blue", paletteData, spriteNames);
+
+                // Act
+                var loadedPalettes = service.LoadThemeForMultiSprite("Agrias", "Ocean Blue", spriteNames);
+
+                // Assert
+                Assert.NotNull(loadedPalettes);
+                Assert.Equal(spriteNames.Length, loadedPalettes.Length);
+                foreach (var loaded in loadedPalettes)
+                {
+                    Assert.Equal(512, loaded.Length);
+                    Assert.Equal(0xAB, loaded[0]);
+                    Assert.Equal(0xCD, loaded[511]);
+                }
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        #endregion
     }
 }

@@ -226,5 +226,204 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
                 Directory.Delete(_testModPath, true);
             }
         }
+
+        #region Story Character User Theme Tests
+
+        [Fact]
+        public void AddStoryCharacterRow_ShouldIncludeUserThemes_WhenUserThemesExist()
+        {
+            // Arrange
+            // Create user theme for story character "Agrias"
+            var userThemesDir = Path.Combine(_testModPath, "UserThemes", "Agrias", "Ocean Blue");
+            Directory.CreateDirectory(userThemesDir);
+            File.WriteAllBytes(Path.Combine(userThemesDir, "palette.bin"), new byte[512]);
+
+            // Create registry entry
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Agrias\":[\"Ocean Blue\"]}");
+
+            // Initialize the singleton with test mod path
+            UserThemeServiceSingleton.Initialize(_testModPath);
+
+            // Create test panel and builder with new instance
+            var testPanel = new TableLayoutPanel();
+            testPanel.ColumnCount = 3;
+            testPanel.RowCount = 10;
+            var genericControls = new System.Collections.Generic.List<Control>();
+            var storyControls = new System.Collections.Generic.List<Control>();
+
+            var testBuilder = new CharacterRowBuilder(
+                testPanel,
+                _previewManager,
+                () => false,
+                genericControls,
+                storyControls
+            );
+
+            // Create a story character config
+            var storyConfig = new StoryCharacterRegistry.StoryCharacterConfig
+            {
+                Name = "Agrias",
+                EnumType = typeof(string),
+                AvailableThemes = new[] { "original" },
+                PreviewName = "Agrias",
+                GetValue = () => "original",
+                SetValue = (v) => { }
+            };
+
+            // Act
+            testBuilder.AddStoryCharacterRow(0, storyConfig);
+
+            // Assert - Find the combo box and verify user themes are present
+            ThemeComboBox foundComboBox = null;
+            foreach (Control control in testPanel.Controls)
+            {
+                if (control is ThemeComboBox tcb)
+                {
+                    foundComboBox = tcb;
+                    break;
+                }
+            }
+
+            foundComboBox.Should().NotBeNull("ComboBox should be added to panel");
+
+            // Verify user theme "Ocean Blue" is in the combo box items
+            var items = new System.Collections.Generic.List<string>();
+            foreach (var item in foundComboBox.Items)
+            {
+                items.Add(item.ToString());
+            }
+
+            items.Should().Contain("Ocean Blue", "User theme should be included in story character dropdown");
+
+            testPanel.Dispose();
+        }
+
+        [Fact]
+        public void AddStoryCharacterRow_ShouldSetTagWithJobName_ForRefreshDropdowns()
+        {
+            // Arrange
+            UserThemeServiceSingleton.Initialize(_testModPath);
+
+            var testPanel = new TableLayoutPanel();
+            testPanel.ColumnCount = 3;
+            testPanel.RowCount = 10;
+            var genericControls = new System.Collections.Generic.List<Control>();
+            var storyControls = new System.Collections.Generic.List<Control>();
+
+            var testBuilder = new CharacterRowBuilder(
+                testPanel,
+                _previewManager,
+                () => false,
+                genericControls,
+                storyControls
+            );
+
+            var storyConfig = new StoryCharacterRegistry.StoryCharacterConfig
+            {
+                Name = "Agrias",
+                EnumType = typeof(string),
+                AvailableThemes = new[] { "original" },
+                PreviewName = "Agrias",
+                GetValue = () => "original",
+                SetValue = (v) => { }
+            };
+
+            // Act
+            testBuilder.AddStoryCharacterRow(0, storyConfig);
+
+            // Assert - Find the combo box and verify Tag has JobName
+            ThemeComboBox foundComboBox = null;
+            foreach (Control control in testPanel.Controls)
+            {
+                if (control is ThemeComboBox tcb)
+                {
+                    foundComboBox = tcb;
+                    break;
+                }
+            }
+
+            foundComboBox.Should().NotBeNull("ComboBox should be added to panel");
+            foundComboBox.Tag.Should().NotBeNull("ComboBox should have Tag set");
+
+            // Verify Tag has JobName property using reflection (anonymous types are internal to their assembly)
+            var tagType = foundComboBox.Tag.GetType();
+            var jobNameProperty = tagType.GetProperty("JobName");
+            jobNameProperty.Should().NotBeNull("Tag should have JobName property");
+
+            var jobName = jobNameProperty.GetValue(foundComboBox.Tag)?.ToString();
+            jobName.Should().Be("Agrias", "Tag.JobName should be set to character name for RefreshDropdownsForJob");
+
+            testPanel.Dispose();
+        }
+
+        [Fact]
+        public void TryLoadFromBinFile_ShouldUseExternalPalette_ForStoryCharacterUserThemes()
+        {
+            // Arrange
+            // Create the unit path structure with sprites_original containing original sprite
+            var unitPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var originalDir = Path.Combine(unitPath, "sprites_original");
+            Directory.CreateDirectory(originalDir);
+
+            // Create original Agrias sprite with red palette (color 1 = red)
+            var originalSpritePath = Path.Combine(originalDir, "battle_aguri_spr.bin");
+            var originalBinData = new byte[512 + 5120];
+            // Set up red at color 1 in embedded palette
+            originalBinData[2] = 0x1F; originalBinData[3] = 0x00; // Color 1: Red (BGR555)
+            // Fill sprite data with color index 1
+            for (int i = 512; i < originalBinData.Length; i++)
+            {
+                originalBinData[i] = 0x11; // Color index 1
+            }
+            File.WriteAllBytes(originalSpritePath, originalBinData);
+
+            // Create user theme with blue palette for Agrias
+            var userThemesDir = Path.Combine(_testModPath, "UserThemes", "Agrias", "Ocean Blue");
+            Directory.CreateDirectory(userThemesDir);
+            var userPalette = new byte[512];
+            // Color 1 = pure blue (BGR555: 0x7C00)
+            userPalette[2] = 0x00;
+            userPalette[3] = 0x7C;
+            File.WriteAllBytes(Path.Combine(userThemesDir, "palette.bin"), userPalette);
+
+            // Create user themes registry
+            var registryPath = Path.Combine(_testModPath, "UserThemes.json");
+            File.WriteAllText(registryPath, "{\"Agrias\":[\"Ocean Blue\"]}");
+
+            // Initialize the singleton with test mod path
+            UserThemeServiceSingleton.Initialize(_testModPath);
+
+            // Create a new builder that will use the initialized singleton
+            var testBuilder = new CharacterRowBuilder(
+                _testPanel,
+                _previewManager,
+                () => false,
+                new System.Collections.Generic.List<Control>(),
+                new System.Collections.Generic.List<Control>()
+            );
+
+            // Act - Call TryLoadFromBinFile directly via reflection
+            var tryLoadMethod = testBuilder.GetType().GetMethod("TryLoadFromBinFile",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            tryLoadMethod.Should().NotBeNull("TryLoadFromBinFile method should exist");
+
+            var result = tryLoadMethod.Invoke(testBuilder, new object[] { "Agrias", "Ocean Blue" }) as Image[];
+
+            // Assert
+            result.Should().NotBeNull("Should return sprites for story character user theme");
+            result.Should().HaveCount(4, "Should return 4 corner sprites");
+
+            // Verify the first sprite uses the user's blue palette, not the original red
+            var firstSprite = result[0] as Bitmap;
+            firstSprite.Should().NotBeNull();
+
+            var pixelColor = firstSprite.GetPixel(0, 0);
+            pixelColor.B.Should().BeGreaterThan(200, "Pixel should be blue from user palette");
+            pixelColor.R.Should().BeLessThan(50, "Pixel should not be red from original palette");
+        }
+
+        #endregion
     }
 }

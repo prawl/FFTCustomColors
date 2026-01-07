@@ -241,12 +241,13 @@ namespace FFTColorCustomizer.Utilities
                 if (themeValue == null)
                     continue;
 
-                var themeName = themeValue.ToString()?.ToLower() ?? "original";
+                // Keep original case for user theme lookup, but also pass lowercase for directory lookups
+                var themeNameOriginal = themeValue.ToString() ?? "original";
 
                 // Apply theme for each sprite name (including original)
                 foreach (var spriteName in character.SpriteNames)
                 {
-                    ApplyStoryCharacterTheme(character.Name.ToLower(), spriteName, themeName);
+                    ApplyStoryCharacterTheme(character.Name.ToLower(), spriteName, themeNameOriginal);
                 }
             }
         }
@@ -295,12 +296,26 @@ namespace FFTColorCustomizer.Utilities
                 return;
             }
 
-            // First try the directory-based structure
-            var themeDir = $"sprites_{characterName}_{themeName}";
+            // Check if this is a user-created theme (story characters use character name as job name)
+            // Convert characterName to proper case for user theme lookup (e.g., "agrias" -> "Agrias")
+            var properCharacterName = char.ToUpper(characterName[0]) + characterName.Substring(1);
+            var isUserTheme = _userThemeService.IsUserTheme(properCharacterName, themeName);
+            ModLogger.Log($"[STORY_CHAR_THEME] Checking user theme: character={properCharacterName}, theme={themeName}, isUserTheme={isUserTheme}");
+
+            if (isUserTheme)
+            {
+                ModLogger.Log($"[STORY_CHAR_THEME] Applying user theme for {properCharacterName}/{themeName}");
+                ApplyStoryCharacterUserTheme($"battle_{spriteName}_spr.bin", themeName, properCharacterName);
+                return;
+            }
+
+            // First try the directory-based structure (use lowercase for directory names)
+            var themeNameLower = themeName.ToLower();
+            var themeDir = $"sprites_{characterName}_{themeNameLower}";
             var sourceDirPath = Path.Combine(_sourceUnitPath, themeDir, $"battle_{spriteName}_spr.bin");
 
             // Also check the flat file structure for backward compatibility
-            var sourceFlatPath = Path.Combine(_sourceUnitPath, $"battle_{spriteName}_{themeName}_spr.bin");
+            var sourceFlatPath = Path.Combine(_sourceUnitPath, $"battle_{spriteName}_{themeNameLower}_spr.bin");
 
             string sourceFile;
             if (File.Exists(sourceDirPath))
@@ -785,6 +800,87 @@ namespace FFTColorCustomizer.Utilities
             {
                 ModLogger.LogError($"[APPLY_USER_THEME] FAILED: {ex.Message}");
                 ModLogger.LogError($"[APPLY_USER_THEME] Stack: {ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// Applies a user-created theme for a story character by combining the original sprite with the user's palette
+        /// </summary>
+        private void ApplyStoryCharacterUserTheme(string spriteName, string themeName, string characterName)
+        {
+            ModLogger.Log($"[APPLY_STORY_USER_THEME] START - sprite={spriteName}, theme={themeName}, character={characterName}");
+
+            // Get the user theme palette path (using character name as job name)
+            var palettePath = _userThemeService.GetUserThemePalettePath(characterName, themeName);
+            ModLogger.Log($"[APPLY_STORY_USER_THEME] Palette path: {palettePath}");
+
+            if (string.IsNullOrEmpty(palettePath))
+            {
+                ModLogger.LogWarning($"[APPLY_STORY_USER_THEME] Palette path is null/empty for {characterName}/{themeName}");
+                return;
+            }
+
+            if (!File.Exists(palettePath))
+            {
+                ModLogger.LogWarning($"[APPLY_STORY_USER_THEME] Palette file does not exist: {palettePath}");
+                return;
+            }
+
+            // For story characters, original sprites may be in character-specific folders
+            // e.g., sprites_rapha_original/ or sprites_meliadoul_original/
+            // Fall back to sprites_original/ if character-specific folder doesn't have the file
+            var characterOriginalDir = Path.Combine(_sourceUnitPath, $"sprites_{characterName.ToLower()}_original");
+            var characterOriginalFile = Path.Combine(characterOriginalDir, spriteName);
+            var genericOriginalDir = Path.Combine(_sourceUnitPath, "sprites_original");
+            var genericOriginalFile = Path.Combine(genericOriginalDir, spriteName);
+
+            string originalFile;
+            if (File.Exists(characterOriginalFile))
+            {
+                originalFile = characterOriginalFile;
+                ModLogger.Log($"[APPLY_STORY_USER_THEME] Using character-specific original: {originalFile}");
+            }
+            else if (File.Exists(genericOriginalFile))
+            {
+                originalFile = genericOriginalFile;
+                ModLogger.Log($"[APPLY_STORY_USER_THEME] Using generic original: {originalFile}");
+            }
+            else
+            {
+                ModLogger.LogWarning($"[APPLY_STORY_USER_THEME] Original sprite not found in either location:");
+                ModLogger.LogWarning($"[APPLY_STORY_USER_THEME]   Character-specific: {characterOriginalFile}");
+                ModLogger.LogWarning($"[APPLY_STORY_USER_THEME]   Generic: {genericOriginalFile}");
+                return;
+            }
+
+            try
+            {
+                // Read original sprite and user palette
+                var originalSprite = File.ReadAllBytes(originalFile);
+                var userPalette = File.ReadAllBytes(palettePath);
+                ModLogger.Log($"[APPLY_STORY_USER_THEME] Original sprite size: {originalSprite.Length}, Palette size: {userPalette.Length}");
+
+                // Validate palette size (should be 512 bytes)
+                if (userPalette.Length != 512)
+                {
+                    ModLogger.LogWarning($"[APPLY_STORY_USER_THEME] Invalid palette size: {userPalette.Length} (expected 512)");
+                    return;
+                }
+
+                // Replace palette in sprite (first 512 bytes)
+                Array.Copy(userPalette, 0, originalSprite, 0, 512);
+
+                // Write directly to base unit folder (same as regular themes)
+                var destFile = Path.Combine(_unitPath, spriteName);
+                ModLogger.Log($"[APPLY_STORY_USER_THEME] Writing to base unit folder: {destFile}");
+                File.WriteAllBytes(destFile, originalSprite);
+
+                ModLogger.LogSuccess($"[APPLY_STORY_USER_THEME] SUCCESS - Created: {destFile}");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[APPLY_STORY_USER_THEME] FAILED: {ex.Message}");
+                ModLogger.LogError($"[APPLY_STORY_USER_THEME] Stack: {ex.StackTrace}");
             }
         }
     }
