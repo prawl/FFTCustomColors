@@ -1,0 +1,11 @@
+{
+  "job": "Orlandeau",
+  "sprite": "battle_oru_spr.bin",
+  "sections": [
+    { "name": "Armor", "displayName": "Armor", "indices": [3, 4, 5, 6], "roles": ["shadow", "base", "base", "highlight"] },
+    { "name": "Hair", "displayName": "Hair", "indices": [7, 8, 2], "roles": ["shadow", "base", "highlight"] },
+    { "name": "Accent", "displayName": "Accent", "indices": [9, 10], "roles": ["shadow", "highlight"] },
+    { "name": "HoodCape", "displayName": "Hood & Cape", "indices": [11, 12, 13, 14], "roles": ["shadow", "base", "highlight", "highlight"] },
+    { "name": "SkinColor", "displayName": "Skin Color", "indices": [15], "roles": ["base"] }
+  ]
+}
