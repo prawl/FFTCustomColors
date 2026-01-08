@@ -2,10 +2,35 @@
   "job": "Agrias",
   "sprites": ["battle_aguri_spr.bin", "battle_kanba_spr.bin"],
   "sections": [
-    { "name": "ShoesPants", "displayName": "Shoes & Pants", "indices": [3, 4], "roles": ["shadow", "highlight"] },
-    { "name": "Armor", "displayName": "Armor", "indices": [5, 6], "roles": ["shadow", "highlight"] },
-    { "name": "Coat", "displayName": "Coat", "indices": [7, 8, 9], "roles": ["shadow", "base", "highlight"] },
-    { "name": "Hair", "displayName": "Hair", "indices": [10, 11, 12, 13], "roles": ["shadow", "accent_shadow", "accent", "highlight"] },
-    { "name": "SkinColor", "displayName": "Skin Color", "indices": [14, 15], "roles": ["shadow", "highlight"] }
+    {
+      "name": "ShoesPants",
+      "displayName": "Shoes & Pants",
+      "indices": [3, 4],
+      "roles": ["shadow", "highlight"]
+    },
+    {
+      "name": "Armor",
+      "displayName": "Armor",
+      "indices": [5, 6],
+      "roles": ["shadow", "highlight"]
+    },
+    {
+      "name": "Coat",
+      "displayName": "Coat",
+      "indices": [7, 8, 9],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "Hair",
+      "displayName": "Hair",
+      "indices": [10, 11, 12, 13],
+      "roles": ["shadow", "accent_shadow", "accent", "highlight"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [14, 15],
+      "roles": ["shadow", "highlight"]
+    }
   ]
 }

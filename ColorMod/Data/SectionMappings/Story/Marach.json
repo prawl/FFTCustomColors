@@ -2,11 +2,41 @@
   "job": "Marach",
   "sprite": "battle_mara_spr.bin",
   "sections": [
-    { "name": "Wrists", "displayName": "Wrists", "indices": [3], "roles": ["base"] },
-    { "name": "Armor", "displayName": "Armor", "indices": [4, 5, 6], "roles": ["shadow", "base", "highlight"] },
-    { "name": "Boots", "displayName": "Boots", "indices": [7, 8, 9], "roles": ["shadow", "base", "highlight"] },
-    { "name": "ChestAccent", "displayName": "Chest Accent", "indices": [10, 11], "roles": ["shadow", "highlight"] },
-    { "name": "Hair", "displayName": "Hair", "indices": [12, 13], "roles": ["shadow", "highlight"] },
-    { "name": "SkinColor", "displayName": "Skin Color", "indices": [14, 15], "roles": ["shadow", "highlight"] }
+    {
+      "name": "Wrists",
+      "displayName": "Wrists",
+      "indices": [3],
+      "roles": ["base"]
+    },
+    {
+      "name": "Armor",
+      "displayName": "Armor",
+      "indices": [4, 5, 6],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "Boots",
+      "displayName": "Boots",
+      "indices": [7, 8, 9],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "ChestAccent",
+      "displayName": "Chest Accent",
+      "indices": [10, 11],
+      "roles": ["shadow", "highlight"]
+    },
+    {
+      "name": "Hair",
+      "displayName": "Hair",
+      "indices": [12, 13],
+      "roles": ["shadow", "highlight"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [14, 15],
+      "roles": ["shadow", "highlight"]
+    }
   ]
 }

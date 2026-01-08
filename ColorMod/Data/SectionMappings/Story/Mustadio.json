@@ -2,9 +2,29 @@
   "job": "Mustadio",
   "sprites": ["battle_musu_spr.bin", "battle_garu_spr.bin"],
   "sections": [
-    { "name": "BootsGloves", "displayName": "Boots & Gloves", "indices": [3, 4, 5, 6], "roles": ["shadow", "accent_shadow", "accent", "highlight"] },
-    { "name": "PantsWaist", "displayName": "Pants & Waist", "indices": [7, 8, 9], "roles": ["shadow", "base", "highlight"] },
-    { "name": "ShirtHair", "displayName": "Shirt & Hair", "indices": [10, 11, 12, 13], "roles": ["shadow", "accent_shadow", "accent", "highlight"] },
-    { "name": "SkinColor", "displayName": "Skin Color", "indices": [14, 15], "roles": ["shadow", "highlight"] }
+    {
+      "name": "BootsGloves",
+      "displayName": "Boots & Gloves",
+      "indices": [3, 4, 5, 6],
+      "roles": ["shadow", "accent_shadow", "accent", "highlight"]
+    },
+    {
+      "name": "PantsWaist",
+      "displayName": "Pants & Waist",
+      "indices": [7, 8, 9],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "ShirtHair",
+      "displayName": "Shirt & Hair",
+      "indices": [1, 10, 11, 12, 13],
+      "roles": ["outline", "shadow", "accent_shadow", "accent", "highlight"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [14, 15],
+      "roles": ["shadow", "highlight"]
+    }
   ]
 }
