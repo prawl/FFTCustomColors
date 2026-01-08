@@ -2,11 +2,41 @@
   "job": "Rapha",
   "sprite": "battle_h79_spr.bin",
   "sections": [
-    { "name": "Headband", "displayName": "Headband", "indices": [3], "roles": ["base"] },
-    { "name": "Armor", "displayName": "Armor", "indices": [4, 5, 6], "roles": ["shadow", "base", "highlight"] },
-    { "name": "ShoesBelt", "displayName": "Shoes & Belt", "indices": [7, 8, 9], "roles": ["shadow", "base", "highlight"] },
-    { "name": "HeadbandBracers2", "displayName": "Headband & Bracers", "indices": [10, 11], "roles": ["shadow", "highlight"] },
-    { "name": "Hair", "displayName": "Hair", "indices": [12, 13], "roles": ["shadow", "highlight"] },
-    { "name": "SkinColor", "displayName": "Skin Color", "indices": [14, 15], "roles": ["shadow", "highlight"] }
+    {
+      "name": "Headband",
+      "displayName": "Headband",
+      "indices": [3],
+      "roles": ["base"]
+    },
+    {
+      "name": "Armor",
+      "displayName": "Armor",
+      "indices": [4, 5, 6],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "ShoesBelt",
+      "displayName": "Shoes & Belt",
+      "indices": [7, 8, 9],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "HeadbandBracers2",
+      "displayName": "Headband & Bracers",
+      "indices": [10, 11],
+      "roles": ["shadow", "highlight"]
+    },
+    {
+      "name": "Hair",
+      "displayName": "Hair",
+      "indices": [12, 13],
+      "roles": ["shadow", "highlight"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [14, 15],
+      "roles": ["shadow", "highlight"]
+    }
   ]
 }

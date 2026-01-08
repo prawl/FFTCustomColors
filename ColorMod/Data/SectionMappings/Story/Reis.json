@@ -2,10 +2,35 @@
   "job": "Reis",
   "sprites": ["battle_reze_spr.bin", "battle_reze_d_spr.bin"],
   "sections": [
-    { "name": "Dress", "displayName": "Dress", "indices": [3, 4, 5], "roles": ["shadow", "base", "highlight"] },
-    { "name": "Dress2", "displayName": "Dress 2", "indices": [6, 7, 8], "roles": ["shadow", "base", "highlight"] },
-    { "name": "Shirt", "displayName": "Shirt", "indices": [9, 10], "roles": ["shadow", "highlight"] },
-    { "name": "Hair", "displayName": "Hair", "indices": [11, 13, 14, 12], "roles": ["shadow", "accent_shadow", "accent", "highlight"] },
-    { "name": "SkinColor", "displayName": "Skin Color", "indices": [15], "roles": ["base"] }
+    {
+      "name": "Dress",
+      "displayName": "Dress",
+      "indices": [3, 4, 5],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "Dress2",
+      "displayName": "Dress 2",
+      "indices": [6, 7, 8],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "Shirt",
+      "displayName": "Shirt",
+      "indices": [9, 10],
+      "roles": ["shadow", "highlight"]
+    },
+    {
+      "name": "Hair",
+      "displayName": "Hair",
+      "indices": [11, 13, 14, 12],
+      "roles": ["shadow", "accent_shadow", "accent", "highlight"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15],
+      "roles": ["base"]
+    }
   ]
 }
