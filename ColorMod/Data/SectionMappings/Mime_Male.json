@@ -10,7 +10,7 @@
     },
     {
       "name": "LegsCuffs",
-      "displayName": "Legs Cuffs",
+      "displayName": "Leg Cuffs",
       "indices": [6, 5],
       "roles": ["base", "shadow"]
     },

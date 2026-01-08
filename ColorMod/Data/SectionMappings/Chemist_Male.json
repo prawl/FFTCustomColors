@@ -16,7 +16,7 @@
     },
     {
       "name": "BeltAccent",
-      "displayName": "Belt & Accent",
+      "displayName": "Belt and Accent",
       "indices": [4, 3],
       "roles": ["base", "accent"]
     },

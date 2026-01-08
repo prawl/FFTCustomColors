@@ -10,7 +10,7 @@
     },
     {
       "name": "HeadbandVest",
-      "displayName": "Headband & Vest",
+      "displayName": "Headband and Vest",
       "indices": [9, 8, 7],
       "roles": ["base", "shadow", "outline"]
     },

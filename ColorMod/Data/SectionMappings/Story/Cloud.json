@@ -10,7 +10,7 @@
     },
     {
       "name": "ShoesGloves",
-      "displayName": "Shoes & Gloves",
+      "displayName": "Shoes and Gloves",
       "indices": [5, 6, 7],
       "roles": ["shadow", "base", "highlight"]
     },
