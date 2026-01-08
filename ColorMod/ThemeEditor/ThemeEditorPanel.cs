@@ -451,6 +451,10 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private int GetBaseIndexForSection(JobSection section)
         {
+            // If primaryIndex is explicitly set, use it
+            if (section.PrimaryIndex.HasValue)
+                return section.PrimaryIndex.Value;
+
             // Find the index with "base" role, or use the first index if no base role
             for (int i = 0; i < section.Roles.Length; i++)
             {

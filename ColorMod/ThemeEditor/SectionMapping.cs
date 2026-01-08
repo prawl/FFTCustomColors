@@ -12,14 +12,16 @@ namespace FFTColorCustomizer.ThemeEditor
         public int[] Indices { get; }
         public string[] Roles { get; }
         public string? LinkedTo { get; }
+        public int? PrimaryIndex { get; }
 
-        public JobSection(string name, string displayName, int[] indices, string[] roles, string? linkedTo = null)
+        public JobSection(string name, string displayName, int[] indices, string[] roles, string? linkedTo = null, int? primaryIndex = null)
         {
             Name = name;
             DisplayName = displayName;
             Indices = indices;
             Roles = roles;
             LinkedTo = linkedTo;
+            PrimaryIndex = primaryIndex;
         }
     }
 
@@ -87,7 +89,8 @@ namespace FFTColorCustomizer.ThemeEditor
                 s.GetProperty("displayName").GetString(),
                 s.GetProperty("indices").EnumerateArray().Select(i => i.GetInt32()).ToArray(),
                 s.GetProperty("roles").EnumerateArray().Select(r => r.GetString()).ToArray(),
-                s.TryGetProperty("linkedTo", out var linkedTo) ? linkedTo.GetString() : null
+                s.TryGetProperty("linkedTo", out var linkedTo) ? linkedTo.GetString() : null,
+                s.TryGetProperty("primaryIndex", out var primaryIndex) ? primaryIndex.GetInt32() : (int?)null
             )).ToArray();
 
             return new SectionMapping(job, sprites, sections);

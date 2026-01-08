@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using FFTColorCustomizer.Utilities;
@@ -10,6 +11,7 @@ namespace FFTColorCustomizer.ThemeEditor
         private byte[] _originalData;
         private byte[] _workingData;
         private readonly BinSpriteExtractor _extractor = new BinSpriteExtractor();
+        private readonly Dictionary<string, RelativeShadeGenerator> _shadeGenerators = new Dictionary<string, RelativeShadeGenerator>();
 
         public bool IsLoaded { get; private set; }
 
@@ -38,12 +40,25 @@ namespace FFTColorCustomizer.ThemeEditor
         }
 
         /// <summary>
-        /// Gets the color at the specified palette index.
+        /// Gets the color at the specified palette index from the working data.
         /// </summary>
         public Color GetPaletteColor(int index)
         {
+            return GetColorFromData(_workingData, index);
+        }
+
+        /// <summary>
+        /// Gets the original color at the specified palette index (before any modifications).
+        /// </summary>
+        public Color GetOriginalPaletteColor(int index)
+        {
+            return GetColorFromData(_originalData, index);
+        }
+
+        private Color GetColorFromData(byte[] data, int index)
+        {
             int offset = index * 2;
-            ushort bgr555 = (ushort)(_workingData[offset] | (_workingData[offset + 1] << 8));
+            ushort bgr555 = (ushort)(data[offset] | (data[offset + 1] << 8));
 
             // Convert BGR555 to RGB
             int r5 = bgr555 & 0x1F;
@@ -67,6 +82,7 @@ namespace FFTColorCustomizer.ThemeEditor
         public void Reset()
         {
             _workingData = (byte[])_originalData.Clone();
+            _shadeGenerators.Clear();
         }
 
         /// <summary>
@@ -84,24 +100,59 @@ namespace FFTColorCustomizer.ThemeEditor
 
         public void ApplySectionColor(JobSection section, Color baseColor)
         {
-            var shades = HslColor.GenerateShades(baseColor);
+            // Get or create the shade generator for this section
+            var generator = GetOrCreateShadeGenerator(section);
 
-            for (int i = 0; i < section.Indices.Length; i++)
+            // Apply colors using the relative shade generator
+            foreach (var index in section.Indices)
             {
-                var role = section.Roles[i];
-
-                var color = role switch
-                {
-                    "shadow" => shades.Shadow,
-                    "highlight" => shades.Highlight,
-                    "accent" => shades.Accent,
-                    "accent_shadow" => shades.AccentShadow,
-                    "outline" => shades.Outline,
-                    _ => shades.Base // "base" or any other role
-                };
-
-                SetPaletteColor(section.Indices[i], color);
+                var color = generator.GenerateShade(index, baseColor);
+                SetPaletteColor(index, color);
             }
+        }
+
+        /// <summary>
+        /// Gets or creates a RelativeShadeGenerator for the section.
+        /// The generator captures the original color relationships from the sprite.
+        /// </summary>
+        private RelativeShadeGenerator GetOrCreateShadeGenerator(JobSection section)
+        {
+            if (_shadeGenerators.TryGetValue(section.Name, out var existing))
+                return existing;
+
+            // Build dictionary of original colors for this section
+            var originalColors = new Dictionary<int, Color>();
+            foreach (var index in section.Indices)
+            {
+                originalColors[index] = GetOriginalPaletteColor(index);
+            }
+
+            // Determine the primary index
+            int primaryIndex = GetPrimaryIndex(section);
+
+            var generator = new RelativeShadeGenerator(originalColors, primaryIndex);
+            _shadeGenerators[section.Name] = generator;
+            return generator;
+        }
+
+        /// <summary>
+        /// Gets the primary index for a section (used as the base for color relationships).
+        /// </summary>
+        private int GetPrimaryIndex(JobSection section)
+        {
+            // If primaryIndex is explicitly set, use it
+            if (section.PrimaryIndex.HasValue)
+                return section.PrimaryIndex.Value;
+
+            // Otherwise, find the index with "base" role
+            for (int i = 0; i < section.Roles.Length; i++)
+            {
+                if (section.Roles[i] == "base")
+                    return section.Indices[i];
+            }
+
+            // Fall back to first index
+            return section.Indices[0];
         }
 
         public void SaveToFile(string outputPath)
