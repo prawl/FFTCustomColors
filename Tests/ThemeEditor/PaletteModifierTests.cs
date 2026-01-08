@@ -132,9 +132,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         }
 
         [Fact]
-        public void ApplySectionColor_WithAccentRoles_AppliesCalculatedAccentColors()
+        public void ApplySectionColor_WithAccentRoles_PreservesOriginalRelationships()
         {
-            // Arrange - Accent colors should be calculated from the base color
+            // Arrange - RelativeShadeGenerator preserves original color relationships
             var modifier = new PaletteModifier();
             modifier.LoadTemplate(_testBinPath);
 
@@ -144,30 +144,43 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 indices: new[] { 4, 5, 3, 7, 6 },
                 roles: new[] { "base", "highlight", "shadow", "accent", "accent_shadow" }
             );
+
+            // Get original color relationships
+            var origBase = modifier.GetOriginalPaletteColor(4);
+            var origAccent = modifier.GetOriginalPaletteColor(7);
+            var origAccentShadow = modifier.GetOriginalPaletteColor(6);
+
+            var origBaseHsl = HslColor.FromRgb(origBase);
+            var origAccentHsl = HslColor.FromRgb(origAccent);
+            var origAccentShadowHsl = HslColor.FromRgb(origAccentShadow);
+
+            // Calculate original ratios
+            var origAccentLRatio = origBaseHsl.L > 0.001 ? origAccentHsl.L / origBaseHsl.L : 1.0;
+            var origAccentShadowLRatio = origBaseHsl.L > 0.001 ? origAccentShadowHsl.L / origBaseHsl.L : 1.0;
+
             var baseColor = System.Drawing.Color.FromArgb(0, 200, 100); // Green
 
             // Act
             modifier.ApplySectionColor(section, baseColor);
 
-            // Assert - Accent indices (7, 6) should be modified with calculated colors
-            var palette = modifier.GetModifiedPalette();
+            // Assert - Relationships should be preserved
+            var newBase = modifier.GetPaletteColor(4);
+            var newAccent = modifier.GetPaletteColor(7);
+            var newAccentShadow = modifier.GetPaletteColor(6);
 
-            // Index 7 (accent) and Index 6 (accent_shadow) should be non-zero
-            ushort accent = (ushort)(palette[14] | (palette[15] << 8));
-            ushort accentShadow = (ushort)(palette[12] | (palette[13] << 8));
+            var newBaseHsl = HslColor.FromRgb(newBase);
+            var newAccentHsl = HslColor.FromRgb(newAccent);
+            var newAccentShadowHsl = HslColor.FromRgb(newAccentShadow);
 
-            Assert.NotEqual(0, accent);
-            Assert.NotEqual(0, accentShadow);
+            // Calculate new ratios
+            var newAccentLRatio = newBaseHsl.L > 0.001 ? newAccentHsl.L / newBaseHsl.L : 1.0;
+            var newAccentShadowLRatio = newBaseHsl.L > 0.001 ? newAccentShadowHsl.L / newBaseHsl.L : 1.0;
 
-            // Accent should be lighter than base (for decorative trim elements)
-            var accentColor = modifier.GetPaletteColor(7);
-            var accentShadowColor = modifier.GetPaletteColor(6);
-            var baseColorResult = modifier.GetPaletteColor(4);
-
-            Assert.True(accentColor.GetBrightness() > baseColorResult.GetBrightness(),
-                "Accent should be lighter than base");
-            Assert.True(accentShadowColor.GetBrightness() < accentColor.GetBrightness(),
-                "AccentShadow should be darker than accent");
+            // Ratios should be preserved (within tolerance for rounding)
+            Assert.True(Math.Abs(newAccentLRatio - origAccentLRatio) < 0.15,
+                $"Accent lightness ratio should be preserved. Expected ~{origAccentLRatio}, got {newAccentLRatio}");
+            Assert.True(Math.Abs(newAccentShadowLRatio - origAccentShadowLRatio) < 0.15,
+                $"AccentShadow lightness ratio should be preserved. Expected ~{origAccentShadowLRatio}, got {newAccentShadowLRatio}");
         }
 
         [Fact]
