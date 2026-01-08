@@ -1880,3 +1880,151 @@ Result: UV coords point to same regions, but those regions now contain dark colo
 *Total research time: ~26 hours across 27 sessions*
 *Status: Texture modification method proven - partial Dark Knight theme working*
 *Documentation: Complete guide saved in TEXTURE_MODIFICATION_GUIDE.md*
+
+---
+
+## Session 28: January 7, 2026 - FFT Sprite Toolkit Analysis
+
+### BREAKTHROUGH: Understanding the Complete TEX Pipeline
+
+Analyzed the FFT Sprite Toolkit's operation logs to understand exactly how TEX files are created and converted.
+
+### Key Discovery: Three Different TEX Systems
+
+The toolkit handles THREE different file types with completely different methods:
+
+| File Type | Size | Format | Conversion Method |
+|-----------|------|--------|-------------------|
+| **Sprite TEX** (830-839) | 131KB | 4bpp indexed color | BMP → 4bpp palette-indexed |
+| **Portrait TEX** | Variable | DXT compressed | BCnEncoder.Net + FF16Tools.Files |
+| **SPR palettes** | 512 bytes | BGR555 palette | ACT → custom SPR format |
+
+### Critical Finding: Ramza's TEX Files Are NOT DXT Compressed
+
+From the toolkit logs:
+```
+Converting sprites to 4bpp...
+Converting 920 sprites to 4bpp format...
+```
+
+**Ramza's sprite TEX files (sprite.830-835) are:**
+1. **4bpp indexed color** (16 colors per palette)
+2. Stored as intermediate `sprites_rgba/tex_XXXX.bin`
+3. **NOT using BCnEncoder.Net** - only portraits use that library
+4. Extracted from g2d.dat as gzip-compressed entries
+
+### The Complete Toolkit Pipeline
+
+#### Extraction Phase:
+```
+1. Open 0007.pac archive
+2. Extract system/ffto/g2d.dat
+3. Decompress g2d.dat entries (gzip)
+4. sprite.830.gz → 131,072 bytes raw data
+5. Apply SPR palettes to colorize as BMP
+```
+
+#### Repacking Phase:
+```
+1. Read edited BMP from extracted_sprites/
+2. Convert BMP → 4bpp indexed format
+3. Apply reference palette (index-preserving mode)
+4. Output to sprites_rgba/tex_XXXX.bin
+5. Copy to mod package structure
+```
+
+### Important Toolkit Behavior: Ramza SPR Skipped!
+
+The toolkit log shows:
+```
+SKIPPED: battle_ramuza_spr.bin (Deluxe and Pre-Order Bonus Content overrides custom palettes)
+SKIPPED: battle_ramuza2_spr.bin (Deluxe and Pre-Order Bonus Content overrides custom palettes)
+SKIPPED: battle_ramuza3_spr.bin (Deluxe and Pre-Order Bonus Content overrides custom palettes)
+```
+
+**This confirms why Ramza needs TEX files instead of palette swaps** - the game's DLC content overrides standard SPR palettes for Ramza specifically.
+
+### Libraries Used by FFT Sprite Toolkit
+
+From analysis of the toolkit output:
+- **BCnEncoder.Net**: Only for portrait TEX files (DXT compression)
+- **FF16Tools.Files**: Portrait TEX container format
+- **Standard .NET**: gzip/deflate for g2d.dat entries
+- **Custom 4bpp converter**: For sprite TEX files
+
+### Implications for Native Implementation
+
+Since Ramza's TEX files are NOT DXT compressed, we could implement native generation:
+
+1. **We DON'T need BCnEncoder.Net** for Ramza themes
+2. **Existing TexFileModifier.cs** has most of the foundation
+3. **The format is simple**: Raw 256x256 16-bit BGR555 or 4bpp indexed
+
+### Native Implementation Approach
+
+**What we already have (TexFileModifier.cs):**
+- `DecompressTex()` - handles YOX decompression
+- `Rgb555ToRgb()` / `RgbToRgb555()` - color conversion
+- `TransformColor()` - theme-based color changes
+- `SaveCompressedTex()` - recompression
+
+**What we'd need to add:**
+1. Full sprite sheet color replacement (not just random pixels)
+2. Section mapping for Ramza (armor, hair, accessories)
+3. TEX file generation from user color selections
+4. Integration with theme editor UI
+
+### Research Conclusions
+
+| Question | Answer |
+|----------|--------|
+| Why can't we use palette swaps for Ramza? | DLC overrides SPR palettes |
+| Why does white_heretic theme work? | Pre-generated TEX files with edited sprite sheets |
+| What format are Ramza's TEX files? | 4bpp indexed or raw BGR555, NOT DXT compressed |
+| Can we generate TEX files natively? | YES - format is simple enough |
+| Do we need BCnEncoder.Net? | NO - that's only for portraits |
+
+---
+
+## Implementation Plan: Native Ramza Theme Editor
+
+### Phase 1: TEX File Format Handler
+- [ ] Create `RamzaTexFileHandler.cs` for reading/writing TEX format
+- [ ] Support both 4bpp indexed and raw BGR555 formats
+- [ ] Handle the 6 chapter-specific files (830-835)
+
+### Phase 2: Color Section Mapping
+- [ ] Create `Data/SectionMappings/Ramza/` directory
+- [ ] Define section mappings for each chapter variant:
+  - RamzaChapter1.json (armor, hair, accessories)
+  - RamzaChapter2.json (different armor colors)
+  - RamzaChapter34.json (teal armor variant)
+- [ ] Map pixel regions in sprite sheet to customizable sections
+
+### Phase 3: Sprite Sheet Color Replacement
+- [ ] Implement full sprite sheet color transformation
+- [ ] Replace entire armor color ranges (not individual pixels)
+- [ ] Preserve non-customizable colors (skin, eyes, outlines)
+
+### Phase 4: Theme Editor Integration
+- [ ] Add Ramza to story character dropdown in theme editor
+- [ ] Load section mappings for color picker display
+- [ ] Generate TEX files on theme save
+- [ ] Write to `RamzaThemes/{themeName}/tex_830-835.bin`
+
+### Phase 5: Testing & Validation
+- [ ] Test generated TEX files in-game
+- [ ] Verify all 6 chapter files work correctly
+- [ ] Compare with working white_heretic theme
+
+### Estimated Complexity: Medium-High
+- TEX format is understood and simple
+- Main challenge: Accurate color region mapping in sprite sheets
+- Secondary challenge: Ensuring all animation frames are consistently colored
+
+---
+
+*Research updated January 7, 2026*
+*Total research time: ~28 hours across 28 sessions*
+*Status: TEX format fully understood - native implementation feasible*
+*Next step: Implement RamzaTexFileHandler for native TEX generation*
