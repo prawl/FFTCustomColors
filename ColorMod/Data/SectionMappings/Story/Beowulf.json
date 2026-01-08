@@ -4,7 +4,7 @@
   "sections": [
     {
       "name": "KneesGloves",
-      "displayName": "Knees & Gloves",
+      "displayName": "Knees and Gloves",
       "indices": [3, 4, 5],
       "roles": ["shadow", "base", "highlight"]
     },
@@ -16,7 +16,7 @@
     },
     {
       "name": "LegsCape",
-      "displayName": "Legs & Cape",
+      "displayName": "Legs and Cape",
       "indices": [8, 9, 2],
       "roles": ["shadow", "base", "highlight"]
     },

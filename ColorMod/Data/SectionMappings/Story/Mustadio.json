@@ -4,20 +4,20 @@
   "sections": [
     {
       "name": "BootsGloves",
-      "displayName": "Boots & Gloves",
+      "displayName": "Boots and Gloves",
       "indices": [3, 4, 5, 6],
       "roles": ["shadow", "accent_shadow", "accent", "highlight"],
       "primaryIndex": 5
     },
     {
       "name": "PantsWaist",
-      "displayName": "Pants & Waist",
+      "displayName": "Pants and Waist",
       "indices": [7, 8, 9],
       "roles": ["shadow", "base", "highlight"]
     },
     {
       "name": "ShirtHair",
-      "displayName": "Shirt & Hair",
+      "displayName": "Shirt and Hair",
       "indices": [1, 10, 13, 11, 12],
       "roles": ["outline", "shadow", "accent_shadow", "accent", "highlight"],
       "primaryIndex": 12

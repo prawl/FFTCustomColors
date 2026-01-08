@@ -22,7 +22,7 @@
     },
     {
       "name": "HoodCape",
-      "displayName": "Hood & Cape",
+      "displayName": "Hood and Cape",
       "indices": [11, 12, 13, 14],
       "roles": ["shadow", "base", "highlight", "highlight"]
     },

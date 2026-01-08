@@ -16,13 +16,13 @@
     },
     {
       "name": "ShoesBelt",
-      "displayName": "Shoes & Belt",
+      "displayName": "Shoes and Belt",
       "indices": [7, 8, 9],
       "roles": ["shadow", "base", "highlight"]
     },
     {
       "name": "HeadbandBracers2",
-      "displayName": "Headband & Bracers",
+      "displayName": "Headband and Bracers",
       "indices": [10, 11],
       "roles": ["shadow", "highlight"]
     },

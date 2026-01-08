@@ -10,7 +10,7 @@
     },
     {
       "name": "Accessories",
-      "displayName": "Shoes, Hands, Hat",
+      "displayName": "Shoes, Hands, and Hat",
       "indices": [7, 6, 5],
       "roles": ["base", "shadow", "outline"]
     },

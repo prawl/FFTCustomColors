@@ -22,7 +22,7 @@
     },
     {
       "name": "BootsGlovesHair",
-      "displayName": "Boots, Gloves, Hair",
+      "displayName": "Boots, Gloves, and Hair",
       "indices": [12, 11, 13],
       "roles": ["base", "shadow", "outline"]
     },
