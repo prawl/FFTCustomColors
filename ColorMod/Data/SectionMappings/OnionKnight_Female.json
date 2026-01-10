@@ -1,0 +1,30 @@
+{
+  "job": "OnionKnight_Female",
+  "sprite": "spr_dst_bchr_tama_w_spr.bin",
+  "sections": [
+    {
+      "name": "Pants",
+      "displayName": "Pants",
+      "indices": [3, 4, 5],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "SkinColorCuffsBoots",
+      "displayName": "Skin Color, Cuffs, and Boots",
+      "indices": [6, 7, 8, 9, 10],
+      "roles": ["base", "shadow", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "ShouldersHelm",
+      "displayName": "Shoulders and Helm",
+      "indices": [11, 12, 13, 14],
+      "roles": ["base", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "Accent",
+      "displayName": "Accent",
+      "indices": [1, 2],
+      "roles": ["base", "shadow"]
+    }
+  ]
+}

@@ -70,9 +70,13 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                     .FirstOrDefault(c => c.Name == "TemplateDropdown");
 
                 Assert.NotNull(templateDropdown);
-                Assert.Equal(2, templateDropdown.Items.Count);
+                // 2 generic jobs + 1 WotL separator + 4 WotL characters = 7 items
+                Assert.Equal(7, templateDropdown.Items.Count);
                 Assert.Contains("Knight (Female)", templateDropdown.Items.Cast<string>());
                 Assert.Contains("Squire (Male)", templateDropdown.Items.Cast<string>());
+                // Without a mods directory, the WotL section shows "Mod Not Installed"
+                Assert.Contains("── WotL Characters (✗ Mod Not Installed) ──", templateDropdown.Items.Cast<string>());
+                Assert.Contains("Dark Knight (Male)", templateDropdown.Items.Cast<string>());
             }
             finally
             {
@@ -1110,7 +1114,8 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                     .FirstOrDefault(c => c.Name == "TemplateDropdown");
 
                 Assert.NotNull(templateDropdown);
-                Assert.Equal(2, templateDropdown.Items.Count);
+                // 2 generic jobs + 1 WotL separator + 4 WotL characters = 7 items
+                Assert.Equal(7, templateDropdown.Items.Count);
                 Assert.Contains("Knight (Female)", templateDropdown.Items.Cast<string>());
                 Assert.Contains("Squire (Male)", templateDropdown.Items.Cast<string>());
                 // Should NOT contain snake_case versions

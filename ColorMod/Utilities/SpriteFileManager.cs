@@ -114,6 +114,19 @@ public class SpriteFileManager
     }
 
 
+    /// <summary>
+    /// Gets the target unit directory for a sprite file.
+    /// WotL sprites (ankoku, tama) go to unit_psp, regular sprites go to unit.
+    /// </summary>
+    /// <param name="spriteFileName">The sprite file name</param>
+    /// <returns>The full path to the target unit directory</returns>
+    public string GetTargetUnitDirectory(string spriteFileName)
+    {
+        var isWotLSprite = spriteFileName.Contains("ankoku_") || spriteFileName.Contains("tama_");
+        var unitFolder = isWotLSprite ? "unit_psp" : "unit";
+        return Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", unitFolder);
+    }
+
     public string InterceptFilePath(string originalPath, string currentScheme)
     {
         // Don't intercept if using original scheme

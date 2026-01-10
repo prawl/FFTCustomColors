@@ -64,6 +64,12 @@ namespace FFTColorCustomizer.Tests
         // Calculators/Arithmeticians (san)
         [InlineData("battle_san_m_spr.bin", "Calculator_Male")]
         [InlineData("battle_san_w_spr.bin", "Calculator_Female")]
+        // WotL Jobs - Dark Knight (ankoku)
+        [InlineData("spr_dst_bchr_ankoku_m_spr.bin", "DarkKnight_Male")]
+        [InlineData("spr_dst_bchr_ankoku_w_spr.bin", "DarkKnight_Female")]
+        // WotL Jobs - Onion Knight (tama)
+        [InlineData("spr_dst_bchr_tama_m_spr.bin", "OnionKnight_Male")]
+        [InlineData("spr_dst_bchr_tama_w_spr.bin", "OnionKnight_Female")]
         public void GetColorForSprite_ShouldMapCorrectly(string spriteName, string expectedProperty)
         {
             // Arrange
@@ -144,6 +150,132 @@ namespace FFTColorCustomizer.Tests
             Assert.Equal("original", config.Mime_Female);
             Assert.Equal("original", config.Calculator_Male);
             Assert.Equal("original", config.Calculator_Female);
+
+            // WotL Jobs
+            Assert.Equal("original", config.DarkKnight_Male);
+            Assert.Equal("original", config.DarkKnight_Female);
+            Assert.Equal("original", config.OnionKnight_Male);
+            Assert.Equal("original", config.OnionKnight_Female);
+        }
+
+        [Fact]
+        public void Config_ShouldHaveDarkKnightMaleMetadata()
+        {
+            // Arrange
+            var config = new Config();
+
+            // Act
+            var metadata = config.GetJobMetadata("DarkKnight_Male");
+
+            // Assert
+            Assert.NotNull(metadata);
+            Assert.Equal("WotL Jobs", metadata.Category);
+            Assert.Equal("Male Dark Knight", metadata.DisplayName);
+            Assert.Equal("DarkKnightMale", metadata.JsonPropertyName);
+        }
+
+        [Fact]
+        public void Config_ShouldHaveDarkKnightFemaleMetadata()
+        {
+            // Arrange
+            var config = new Config();
+
+            // Act
+            var metadata = config.GetJobMetadata("DarkKnight_Female");
+
+            // Assert
+            Assert.NotNull(metadata);
+            Assert.Equal("WotL Jobs", metadata.Category);
+            Assert.Equal("Female Dark Knight", metadata.DisplayName);
+            Assert.Equal("DarkKnightFemale", metadata.JsonPropertyName);
+        }
+
+        [Fact]
+        public void Config_ShouldHaveOnionKnightMaleMetadata()
+        {
+            // Arrange
+            var config = new Config();
+
+            // Act
+            var metadata = config.GetJobMetadata("OnionKnight_Male");
+
+            // Assert
+            Assert.NotNull(metadata);
+            Assert.Equal("WotL Jobs", metadata.Category);
+            Assert.Equal("Male Onion Knight", metadata.DisplayName);
+            Assert.Equal("OnionKnightMale", metadata.JsonPropertyName);
+        }
+
+        [Fact]
+        public void Config_ShouldHaveOnionKnightFemaleMetadata()
+        {
+            // Arrange
+            var config = new Config();
+
+            // Act
+            var metadata = config.GetJobMetadata("OnionKnight_Female");
+
+            // Assert
+            Assert.NotNull(metadata);
+            Assert.Equal("WotL Jobs", metadata.Category);
+            Assert.Equal("Female Onion Knight", metadata.DisplayName);
+            Assert.Equal("OnionKnightFemale", metadata.JsonPropertyName);
+        }
+
+        [Fact]
+        public void Config_ShouldHaveDarkKnightMaleProperty()
+        {
+            // Arrange
+            var config = new Config();
+
+            // Assert - property exists and is initialized to original
+            Assert.Equal("original", config.DarkKnight_Male);
+
+            // Act - set and get works
+            config.DarkKnight_Male = "crimson";
+            Assert.Equal("crimson", config.DarkKnight_Male);
+        }
+
+        [Fact]
+        public void Config_ShouldHaveDarkKnightFemaleProperty()
+        {
+            // Arrange
+            var config = new Config();
+
+            // Assert - property exists and is initialized to original
+            Assert.Equal("original", config.DarkKnight_Female);
+
+            // Act - set and get works
+            config.DarkKnight_Female = "crimson";
+            Assert.Equal("crimson", config.DarkKnight_Female);
+        }
+
+        [Fact]
+        public void Config_ShouldHaveOnionKnightMaleProperty()
+        {
+            // Arrange
+            var config = new Config();
+
+            // Assert - property exists and is initialized to original
+            Assert.Equal("original", config.OnionKnight_Male);
+
+            // Act - set and get works
+            config.OnionKnight_Male = "azure";
+            Assert.Equal("azure", config.OnionKnight_Male);
+        }
+
+        [Fact]
+        public void Config_ShouldHaveOnionKnightFemaleProperty()
+        {
+            // Arrange
+            var config = new Config();
+
+            // Assert - property exists and is initialized to original
+            Assert.Equal("original", config.OnionKnight_Female);
+
+            // Act - set and get works
+            config.OnionKnight_Female = "azure";
+            Assert.Equal("azure", config.OnionKnight_Female);
         }
     }
 }

@@ -139,6 +139,18 @@ namespace FFTColorCustomizer.Registry
                 "Color scheme for all male chemists", "ChemistMale", new[] { "item_m" });
             RegisterCharacter("Chemist_Female", "Chemist (Female)", "Generic Characters",
                 "Color scheme for all female chemists", "ChemistFemale", new[] { "item_w" });
+
+            // WotL Jobs - Dark Knight (ankoku)
+            RegisterCharacter("DarkKnight_Male", "Dark Knight (Male)", "WotL Jobs",
+                "Color scheme for all male dark knights", "DarkKnightMale", new[] { "ankoku_m" });
+            RegisterCharacter("DarkKnight_Female", "Dark Knight (Female)", "WotL Jobs",
+                "Color scheme for all female dark knights", "DarkKnightFemale", new[] { "ankoku_w" });
+
+            // WotL Jobs - Onion Knight (tama)
+            RegisterCharacter("OnionKnight_Male", "Onion Knight (Male)", "WotL Jobs",
+                "Color scheme for all male onion knights", "OnionKnightMale", new[] { "tama_m" });
+            RegisterCharacter("OnionKnight_Female", "Onion Knight (Female)", "WotL Jobs",
+                "Color scheme for all female onion knights", "OnionKnightFemale", new[] { "tama_w" });
         }
 
         private void RegisterCharacter(string key, string displayName, string category,

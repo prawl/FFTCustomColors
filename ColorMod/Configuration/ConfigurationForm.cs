@@ -38,6 +38,8 @@ namespace FFTColorCustomizer.Configuration
         private List<Control> _themeEditorControls = new List<Control>();
         private bool _myThemesCollapsed = false;
         private List<Control> _myThemesControls = new List<Control>();
+        private bool _wotlJobsCollapsed = false;
+        private List<Control> _wotlJobsControls = new List<Control>();
 
         /// <summary>
         /// Gets the current configuration
@@ -252,6 +254,34 @@ namespace FFTColorCustomizer.Configuration
 
             _mainPanel.ResumeLayout(true);
             this.ResumeLayout(true);
+        }
+
+        private void ToggleWotLJobsVisibility(Label header)
+        {
+            _mainPanel.SuspendLayout();
+            this.SuspendLayout();
+
+            _wotlJobsCollapsed = !_wotlJobsCollapsed;
+            header.Text = _wotlJobsCollapsed ? "▶ WotL Jobs (Requires GenericJobs Mod)" : "▼ WotL Jobs (Requires GenericJobs Mod)";
+
+            SetControlsVisibility(_wotlJobsControls, !_wotlJobsCollapsed);
+
+            _mainPanel.ResumeLayout(true);
+            this.ResumeLayout(true);
+
+            // Check visibility immediately and after a small delay
+            _lazyLoadingManager?.CheckAllCarouselsVisibility();
+
+            // Also check after layout settles
+            System.Windows.Forms.Timer delayTimer = new System.Windows.Forms.Timer();
+            delayTimer.Interval = 100; // 100ms delay
+            delayTimer.Tick += (s, e) =>
+            {
+                delayTimer.Stop();
+                delayTimer.Dispose();
+                _lazyLoadingManager?.CheckAllCarouselsVisibility();
+            };
+            delayTimer.Start();
         }
 
         private void SetControlsVisibility(List<Control> controls, bool visible)

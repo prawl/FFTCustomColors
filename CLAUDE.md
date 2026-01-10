@@ -86,6 +86,10 @@ powershell.exe -ExecutionPolicy Bypass -File ./Publish.ps1
 - samurai → battle_samu
 - timemage → battle_toki
 
+### WotL Job Name Mappings (Requires GenericJobs Mod)
+- darkknight → spr_dst_bchr_ankoku (uses `unit_psp/` instead of `unit/`)
+- onionknight → spr_dst_bchr_tama (uses `unit_psp/` instead of `unit/`)
+
 ### Theme Discovery
 - Themes auto-detected from `sprites_*` directories
 - Each theme must contain complete set of 38 job sprites

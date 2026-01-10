@@ -522,6 +522,26 @@ namespace Tests.Utilities
             Assert.Equal(0xAA, resultSprite[512]);
         }
 
+        [Theory]
+        [InlineData("DarkKnight_Male", "spr_dst_bchr_ankoku_m_spr.bin")]
+        [InlineData("DarkKnight_Female", "spr_dst_bchr_ankoku_w_spr.bin")]
+        [InlineData("OnionKnight_Male", "spr_dst_bchr_tama_m_spr.bin")]
+        [InlineData("OnionKnight_Female", "spr_dst_bchr_tama_w_spr.bin")]
+        public void GetSpriteNameForJob_Should_Return_Correct_WotL_SpriteName(string jobProperty, string expectedSpriteName)
+        {
+            // Arrange
+            var service = new CharacterDefinitionService();
+            var spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, service);
+
+            // Act - Use reflection to test the private method
+            var method = typeof(ConfigBasedSpriteManager).GetMethod("GetSpriteNameForJob",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var result = method?.Invoke(spriteManager, new object[] { jobProperty }) as string;
+
+            // Assert
+            Assert.Equal(expectedSpriteName, result);
+        }
+
         [Fact]
         public void ApplyConfiguration_Should_ApplyUserTheme_ForStoryCharacter_Agrias()
         {

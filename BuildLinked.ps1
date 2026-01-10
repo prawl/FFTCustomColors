@@ -227,6 +227,24 @@ if ($LASTEXITCODE -eq 0) {
             $jobSpecificCount = $jobSpecificFolders.Count
             Write-Host "Copied $jobSpecificCount job-specific theme folders" -ForegroundColor Green
         }
+
+        # Copy WotL (unit_psp) sprite folders for Dark Knight and Onion Knight
+        $unitPspSource = "ColorMod/FFTIVC/data/enhanced/fftpack/unit_psp"
+        if (Test-Path $unitPspSource) {
+            Write-Host "Copying WotL (unit_psp) sprites..." -ForegroundColor Cyan
+            $unitPspDest = "$modPath/FFTIVC/data/enhanced/fftpack/unit_psp"
+
+            $wotlFolders = Get-ChildItem $unitPspSource -Directory
+            foreach ($folder in $wotlFolders) {
+                $destFolder = "$unitPspDest/$($folder.Name)"
+                New-Item -ItemType Directory -Force -Path $destFolder | Out-Null
+                Copy-Item "$($folder.FullName)/*.bin" $destFolder -Force
+                Write-Host "  Copied $($folder.Name)" -ForegroundColor Gray
+            }
+
+            $wotlFolderCount = $wotlFolders.Count
+            Write-Host "Copied $wotlFolderCount WotL theme folders to unit_psp" -ForegroundColor Green
+        }
     }
 
     # TLDR: Verify deployment succeeded

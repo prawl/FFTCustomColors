@@ -26,8 +26,8 @@ namespace Tests.Registry
             registry.GetCharacter("Dancer_Female").Should().NotBeNull();
             registry.GetCharacter("Mime_Male").Should().NotBeNull();
 
-            // Should have all 38 generic characters (some jobs are gender-specific)
-            registry.GetAllCharacters().Should().HaveCount(38);
+            // Should have all 42 characters: 38 generic + 4 WotL jobs (some jobs are gender-specific)
+            registry.GetAllCharacters().Should().HaveCount(42);
         }
 
         [Fact]
@@ -143,6 +143,82 @@ namespace Tests.Registry
             // Assert - Value should be in dictionary
             var squireDefinition = registry.GetCharacter("Squire_Male");
             config.GetJobTheme("Squire_Male").Should().Be("corpse_brigade");
+        }
+
+        [Fact]
+        public void GenericCharacterRegistry_Should_Register_DarkKnight_Male()
+        {
+            // Arrange
+            var registry = new GenericCharacterRegistry();
+
+            // Act
+            var darkKnightMale = registry.GetCharacter("DarkKnight_Male");
+
+            // Assert
+            darkKnightMale.Should().NotBeNull();
+            darkKnightMale.Key.Should().Be("DarkKnight_Male");
+            darkKnightMale.DisplayName.Should().Be("Dark Knight (Male)");
+            darkKnightMale.Category.Should().Be("WotL Jobs");
+            darkKnightMale.JsonPropertyName.Should().Be("DarkKnightMale");
+            darkKnightMale.SpritePatterns.Should().Contain("ankoku_m");
+            darkKnightMale.Description.Should().NotBeNullOrEmpty();
+        }
+
+        [Fact]
+        public void GenericCharacterRegistry_Should_Register_DarkKnight_Female()
+        {
+            // Arrange
+            var registry = new GenericCharacterRegistry();
+
+            // Act
+            var darkKnightFemale = registry.GetCharacter("DarkKnight_Female");
+
+            // Assert
+            darkKnightFemale.Should().NotBeNull();
+            darkKnightFemale.Key.Should().Be("DarkKnight_Female");
+            darkKnightFemale.DisplayName.Should().Be("Dark Knight (Female)");
+            darkKnightFemale.Category.Should().Be("WotL Jobs");
+            darkKnightFemale.JsonPropertyName.Should().Be("DarkKnightFemale");
+            darkKnightFemale.SpritePatterns.Should().Contain("ankoku_w");
+            darkKnightFemale.Description.Should().NotBeNullOrEmpty();
+        }
+
+        [Fact]
+        public void GenericCharacterRegistry_Should_Register_OnionKnight_Male()
+        {
+            // Arrange
+            var registry = new GenericCharacterRegistry();
+
+            // Act
+            var onionKnightMale = registry.GetCharacter("OnionKnight_Male");
+
+            // Assert
+            onionKnightMale.Should().NotBeNull();
+            onionKnightMale.Key.Should().Be("OnionKnight_Male");
+            onionKnightMale.DisplayName.Should().Be("Onion Knight (Male)");
+            onionKnightMale.Category.Should().Be("WotL Jobs");
+            onionKnightMale.JsonPropertyName.Should().Be("OnionKnightMale");
+            onionKnightMale.SpritePatterns.Should().Contain("tama_m");
+            onionKnightMale.Description.Should().NotBeNullOrEmpty();
+        }
+
+        [Fact]
+        public void GenericCharacterRegistry_Should_Register_OnionKnight_Female()
+        {
+            // Arrange
+            var registry = new GenericCharacterRegistry();
+
+            // Act
+            var onionKnightFemale = registry.GetCharacter("OnionKnight_Female");
+
+            // Assert
+            onionKnightFemale.Should().NotBeNull();
+            onionKnightFemale.Key.Should().Be("OnionKnight_Female");
+            onionKnightFemale.DisplayName.Should().Be("Onion Knight (Female)");
+            onionKnightFemale.Category.Should().Be("WotL Jobs");
+            onionKnightFemale.JsonPropertyName.Should().Be("OnionKnightFemale");
+            onionKnightFemale.SpritePatterns.Should().Contain("tama_w");
+            onionKnightFemale.Description.Should().NotBeNullOrEmpty();
         }
     }
 }

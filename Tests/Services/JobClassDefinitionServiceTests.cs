@@ -223,6 +223,248 @@ namespace FFTColorCustomizer.Tests.Services
             jobClass.JobType.Should().Be("Generic");
         }
 
+        [Fact]
+        public void JobClassDefinitionService_Should_Load_DarkKnight_Male_From_WotLClasses_Json()
+        {
+            // Arrange - WotL jobs should be in a separate WotLClasses.json file
+            var wotlJsonContent = @"{
+                ""sharedThemes"": [""original""],
+                ""jobClasses"": [
+                    {
+                        ""name"": ""DarkKnight_Male"",
+                        ""displayName"": ""Dark Knight (Male)"",
+                        ""spriteName"": ""spr_dst_bchr_ankoku_m_spr.bin"",
+                        ""defaultTheme"": ""original"",
+                        ""gender"": ""Male"",
+                        ""jobType"": ""DarkKnight"",
+                        ""jobSpecificThemes"": []
+                    }
+                ]
+            }";
+
+            File.WriteAllText(Path.Combine(_testDataPath, "WotLClasses.json"), wotlJsonContent);
+
+            // Act
+            var service = new JobClassDefinitionService(_testModPath);
+            var jobClass = service.GetJobClassByName("DarkKnight_Male");
+
+            // Assert
+            jobClass.Should().NotBeNull();
+            jobClass.DisplayName.Should().Be("Dark Knight (Male)");
+            jobClass.SpriteName.Should().Be("spr_dst_bchr_ankoku_m_spr.bin");
+            jobClass.Gender.Should().Be("Male");
+            jobClass.JobType.Should().Be("DarkKnight");
+        }
+
+        [Fact]
+        public void JobClassDefinitionService_Should_Load_DarkKnight_Female_From_WotLClasses_Json()
+        {
+            // Arrange
+            var wotlJsonContent = @"{
+                ""sharedThemes"": [""original""],
+                ""jobClasses"": [
+                    {
+                        ""name"": ""DarkKnight_Female"",
+                        ""displayName"": ""Dark Knight (Female)"",
+                        ""spriteName"": ""spr_dst_bchr_ankoku_w_spr.bin"",
+                        ""defaultTheme"": ""original"",
+                        ""gender"": ""Female"",
+                        ""jobType"": ""DarkKnight"",
+                        ""jobSpecificThemes"": []
+                    }
+                ]
+            }";
+
+            File.WriteAllText(Path.Combine(_testDataPath, "WotLClasses.json"), wotlJsonContent);
+
+            // Act
+            var service = new JobClassDefinitionService(_testModPath);
+            var jobClass = service.GetJobClassByName("DarkKnight_Female");
+
+            // Assert
+            jobClass.Should().NotBeNull();
+            jobClass.DisplayName.Should().Be("Dark Knight (Female)");
+            jobClass.SpriteName.Should().Be("spr_dst_bchr_ankoku_w_spr.bin");
+            jobClass.Gender.Should().Be("Female");
+            jobClass.JobType.Should().Be("DarkKnight");
+        }
+
+        [Fact]
+        public void JobClassDefinitionService_Should_Load_OnionKnight_Male_From_WotLClasses_Json()
+        {
+            // Arrange
+            var wotlJsonContent = @"{
+                ""sharedThemes"": [""original""],
+                ""jobClasses"": [
+                    {
+                        ""name"": ""OnionKnight_Male"",
+                        ""displayName"": ""Onion Knight (Male)"",
+                        ""spriteName"": ""spr_dst_bchr_tama_m_spr.bin"",
+                        ""defaultTheme"": ""original"",
+                        ""gender"": ""Male"",
+                        ""jobType"": ""OnionKnight"",
+                        ""jobSpecificThemes"": []
+                    }
+                ]
+            }";
+
+            File.WriteAllText(Path.Combine(_testDataPath, "WotLClasses.json"), wotlJsonContent);
+
+            // Act
+            var service = new JobClassDefinitionService(_testModPath);
+            var jobClass = service.GetJobClassByName("OnionKnight_Male");
+
+            // Assert
+            jobClass.Should().NotBeNull();
+            jobClass.DisplayName.Should().Be("Onion Knight (Male)");
+            jobClass.SpriteName.Should().Be("spr_dst_bchr_tama_m_spr.bin");
+            jobClass.Gender.Should().Be("Male");
+            jobClass.JobType.Should().Be("OnionKnight");
+        }
+
+        [Fact]
+        public void JobClassDefinitionService_Should_Load_OnionKnight_Female_From_WotLClasses_Json()
+        {
+            // Arrange
+            var wotlJsonContent = @"{
+                ""sharedThemes"": [""original""],
+                ""jobClasses"": [
+                    {
+                        ""name"": ""OnionKnight_Female"",
+                        ""displayName"": ""Onion Knight (Female)"",
+                        ""spriteName"": ""spr_dst_bchr_tama_w_spr.bin"",
+                        ""defaultTheme"": ""original"",
+                        ""gender"": ""Female"",
+                        ""jobType"": ""OnionKnight"",
+                        ""jobSpecificThemes"": []
+                    }
+                ]
+            }";
+
+            File.WriteAllText(Path.Combine(_testDataPath, "WotLClasses.json"), wotlJsonContent);
+
+            // Act
+            var service = new JobClassDefinitionService(_testModPath);
+            var jobClass = service.GetJobClassByName("OnionKnight_Female");
+
+            // Assert
+            jobClass.Should().NotBeNull();
+            jobClass.DisplayName.Should().Be("Onion Knight (Female)");
+            jobClass.SpriteName.Should().Be("spr_dst_bchr_tama_w_spr.bin");
+            jobClass.Gender.Should().Be("Female");
+            jobClass.JobType.Should().Be("OnionKnight");
+        }
+
+        [Fact]
+        public void GetAvailableThemesForJob_WotL_Job_Should_Only_Have_WotL_Themes_Not_Regular_Shared_Themes()
+        {
+            // Arrange - Create both JobClasses.json (regular jobs) and WotLClasses.json (WotL jobs)
+            var regularJsonContent = @"{
+                ""sharedThemes"": [
+                    ""original"",
+                    ""corpse_brigade"",
+                    ""lucavi"",
+                    ""northern_sky""
+                ],
+                ""jobClasses"": [
+                    {
+                        ""name"": ""Knight_Male"",
+                        ""displayName"": ""Knight (Male)"",
+                        ""spriteName"": ""battle_knight_m_spr.bin"",
+                        ""defaultTheme"": ""original"",
+                        ""gender"": ""Male"",
+                        ""jobType"": ""Knight"",
+                        ""jobSpecificThemes"": []
+                    }
+                ]
+            }";
+
+            var wotlJsonContent = @"{
+                ""sharedThemes"": [
+                    ""original""
+                ],
+                ""jobClasses"": [
+                    {
+                        ""name"": ""DarkKnight_Male"",
+                        ""displayName"": ""Dark Knight (Male)"",
+                        ""spriteName"": ""spr_dst_bchr_ankoku_m_spr.bin"",
+                        ""defaultTheme"": ""original"",
+                        ""gender"": ""Male"",
+                        ""jobType"": ""DarkKnight"",
+                        ""jobSpecificThemes"": []
+                    }
+                ]
+            }";
+
+            File.WriteAllText(Path.Combine(_testDataPath, "JobClasses.json"), regularJsonContent);
+            File.WriteAllText(Path.Combine(_testDataPath, "WotLClasses.json"), wotlJsonContent);
+
+            // Act
+            var service = new JobClassDefinitionService(_testModPath);
+            var wotlThemes = service.GetAvailableThemesForJob("DarkKnight_Male");
+
+            // Assert - WotL job should ONLY have "original", NOT "corpse_brigade", "lucavi", etc.
+            wotlThemes.Should().HaveCount(1, "WotL jobs should only have WotL-specific themes");
+            wotlThemes.Should().Contain("original");
+            wotlThemes.Should().NotContain("corpse_brigade", "WotL jobs should not inherit regular job themes");
+            wotlThemes.Should().NotContain("lucavi", "WotL jobs should not inherit regular job themes");
+            wotlThemes.Should().NotContain("northern_sky", "WotL jobs should not inherit regular job themes");
+        }
+
+        [Fact]
+        public void GetAvailableThemesForJob_Regular_Job_Should_Have_Regular_Themes()
+        {
+            // Arrange - Create both files
+            var regularJsonContent = @"{
+                ""sharedThemes"": [
+                    ""original"",
+                    ""corpse_brigade"",
+                    ""lucavi""
+                ],
+                ""jobClasses"": [
+                    {
+                        ""name"": ""Knight_Male"",
+                        ""displayName"": ""Knight (Male)"",
+                        ""spriteName"": ""battle_knight_m_spr.bin"",
+                        ""defaultTheme"": ""original"",
+                        ""gender"": ""Male"",
+                        ""jobType"": ""Knight"",
+                        ""jobSpecificThemes"": []
+                    }
+                ]
+            }";
+
+            var wotlJsonContent = @"{
+                ""sharedThemes"": [
+                    ""original""
+                ],
+                ""jobClasses"": [
+                    {
+                        ""name"": ""DarkKnight_Male"",
+                        ""displayName"": ""Dark Knight (Male)"",
+                        ""spriteName"": ""spr_dst_bchr_ankoku_m_spr.bin"",
+                        ""defaultTheme"": ""original"",
+                        ""gender"": ""Male"",
+                        ""jobType"": ""DarkKnight"",
+                        ""jobSpecificThemes"": []
+                    }
+                ]
+            }";
+
+            File.WriteAllText(Path.Combine(_testDataPath, "JobClasses.json"), regularJsonContent);
+            File.WriteAllText(Path.Combine(_testDataPath, "WotLClasses.json"), wotlJsonContent);
+
+            // Act
+            var service = new JobClassDefinitionService(_testModPath);
+            var regularThemes = service.GetAvailableThemesForJob("Knight_Male");
+
+            // Assert - Regular job should have all regular shared themes
+            regularThemes.Should().HaveCount(3);
+            regularThemes.Should().Contain("original");
+            regularThemes.Should().Contain("corpse_brigade");
+            regularThemes.Should().Contain("lucavi");
+        }
+
         public void Dispose()
         {
             // Clean up test directory

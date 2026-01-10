@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Services;
 using FFTColorCustomizer.ThemeEditor;
 using FFTColorCustomizer.Utilities;
 
@@ -53,6 +55,19 @@ namespace FFTColorCustomizer.Configuration
             // Load story characters using the registry
             LoadStoryCharacters(ref row);
 
+            // Add header for WotL Jobs
+            var wotlHeader = CreateCollapsibleHeader("WotL Jobs", _wotlJobsCollapsed, row++);
+            wotlHeader.Click += (sender, e) => ToggleWotLJobsVisibility(wotlHeader);
+
+            // Load WotL jobs
+            LoadWotLJobs(ref row);
+
+            // Apply initial collapsed state for WotL jobs
+            if (_wotlJobsCollapsed)
+            {
+                SetControlsVisibility(_wotlJobsControls, false);
+            }
+
             // Add header for theme editor
             var themeEditorHeader = CreateCollapsibleHeader("Theme Editor", _themeEditorCollapsed, row++);
             themeEditorHeader.Click += (sender, e) => ToggleThemeEditorVisibility(themeEditorHeader);
@@ -60,13 +75,16 @@ namespace FFTColorCustomizer.Configuration
             // Add theme editor panel with mappings and sprites directories
             string? mappingsDirectory = null;
             string? spritesDirectory = null;
+            string? modsDirectory = null;
             if (!string.IsNullOrEmpty(_modPath))
             {
                 mappingsDirectory = System.IO.Path.Combine(_modPath, "Data", "SectionMappings");
                 // Pass the unit/ directory - ThemeEditorPanel will construct full path based on character type
                 spritesDirectory = System.IO.Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+                // Mods directory is the parent of the mod path (for GenericJobs detection)
+                modsDirectory = System.IO.Path.GetDirectoryName(_modPath);
             }
-            var themeEditorPanel = new ThemeEditorPanel(mappingsDirectory, spritesDirectory);
+            var themeEditorPanel = new ThemeEditorPanel(mappingsDirectory, spritesDirectory, modsDirectory);
             themeEditorPanel.Dock = DockStyle.Fill;
             _mainPanel.Controls.Add(themeEditorPanel, 0, row);
             _mainPanel.SetColumnSpan(themeEditorPanel, 3);
@@ -137,9 +155,11 @@ namespace FFTColorCustomizer.Configuration
                     displayJobName = args.JobName;
                 }
 
-                // Determine if this is a story character or generic character
+                // Determine which section this job belongs to
+                var wotlJobs = new HashSet<string> { "DarkKnight_Male", "DarkKnight_Female", "OnionKnight_Male", "OnionKnight_Female" };
+                var isWotlJob = wotlJobs.Contains(args.JobName);
                 var isStoryCharacter = _storyCharacters != null && _storyCharacters.ContainsKey(args.JobName);
-                var sectionName = isStoryCharacter ? "Story Characters" : "Generic Characters";
+                var sectionName = isWotlJob ? "WotL Jobs" : (isStoryCharacter ? "Story Characters" : "Generic Characters");
 
                 MessageBox.Show($"Theme '{args.ThemeName}' saved successfully!\n\nYou can select it under \"{displayJobName}\" in the \"{sectionName}\" section above.", "Theme Saved",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -300,6 +320,91 @@ namespace FFTColorCustomizer.Configuration
             }
         }
 
+        private void LoadWotLJobs(ref int row)
+        {
+            // Detect GenericJobs mod state
+            var modsDirectory = System.IO.Path.GetDirectoryName(_modPath);
+            var modState = GenericJobsState.NotInstalled;
+            if (!string.IsNullOrEmpty(modsDirectory))
+            {
+                var detector = new GenericJobsDetector(modsDirectory);
+                modState = detector.State;
+            }
+
+            // Add download link
+            var downloadLink = new LinkLabel
+            {
+                Text = "GenericJobs Mod",
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                LinkColor = Color.FromArgb(100, 150, 255),
+                ActiveLinkColor = Color.FromArgb(150, 200, 255),
+                VisitedLinkColor = Color.FromArgb(100, 150, 255),
+                Padding = new Padding(5, 5, 0, 0)
+            };
+            downloadLink.LinkClicked += (s, e) =>
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "https://www.nexusmods.com/finalfantasytacticstheivalicechronicles/mods/34",
+                    UseShellExecute = true
+                });
+            };
+            _mainPanel.Controls.Add(downloadLink, 0, row);
+            _mainPanel.SetColumnSpan(downloadLink, 3);
+            _wotlJobsControls.Add(downloadLink);
+            row++;
+
+            // Determine status text and color based on state
+            string statusText;
+            Color statusColor;
+            switch (modState)
+            {
+                case GenericJobsState.InstalledAndEnabled:
+                    statusText = "✓ Generic Jobs Mod Enabled";
+                    statusColor = Color.FromArgb(100, 200, 100);  // Green
+                    break;
+                case GenericJobsState.InstalledButDisabled:
+                    statusText = "⚠ Generic Jobs Mod is installed but disabled - enable it in Reloaded-II";
+                    statusColor = Color.FromArgb(200, 180, 80);   // Yellow/Orange
+                    break;
+                default:
+                    statusText = "✗ Generic Jobs Mod not installed - these themes will not work";
+                    statusColor = Color.FromArgb(200, 100, 100);  // Red
+                    break;
+            }
+
+            // Add status label
+            var statusLabel = new Label
+            {
+                Text = statusText,
+                ForeColor = statusColor,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(5, 0, 0, 5)
+            };
+            _mainPanel.Controls.Add(statusLabel, 0, row);
+            _mainPanel.SetColumnSpan(statusLabel, 3);
+            _wotlJobsControls.Add(statusLabel);
+            row++;
+
+            // Dark Knight
+            AddWotLJobRow(row++, "Dark Knight (Male)", _config.DarkKnight_Male, v => _config.DarkKnight_Male = v);
+            AddWotLJobRow(row++, "Dark Knight (Female)", _config.DarkKnight_Female, v => _config.DarkKnight_Female = v);
+
+            // Onion Knight
+            AddWotLJobRow(row++, "Onion Knight (Male)", _config.OnionKnight_Male, v => _config.OnionKnight_Male = v);
+            AddWotLJobRow(row++, "Onion Knight (Female)", _config.OnionKnight_Female, v => _config.OnionKnight_Female = v);
+        }
+
+        private void AddWotLJobRow(int row, string jobName, string currentTheme, Action<string> setter)
+        {
+            _rowBuilder.AddGenericCharacterRow(row, jobName, currentTheme, setter,
+                () => _isFullyLoaded, _wotlJobsControls);
+        }
+
         private void AddJobRow(int row, string jobName, string currentTheme, Action<string> setter)
         {
             _rowBuilder.AddGenericCharacterRow(row, jobName, currentTheme, setter,
@@ -347,6 +452,12 @@ namespace FFTColorCustomizer.Configuration
             _config.Dancer_Female = "original";
             _config.Mime_Male = "original";
             _config.Mime_Female = "original";
+
+            // Reset WotL Jobs
+            _config.DarkKnight_Male = "original";
+            _config.DarkKnight_Female = "original";
+            _config.OnionKnight_Male = "original";
+            _config.OnionKnight_Female = "original";
 
             // Reset all story characters using the registry
             StoryCharacterRegistry.ResetAllStoryCharacters(_config);

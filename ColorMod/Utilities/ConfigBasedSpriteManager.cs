@@ -544,21 +544,34 @@ namespace FFTColorCustomizer.Utilities
                 "Mime_Female" => "battle_mono_w_spr.bin",
                 "Calculator_Male" => "battle_san_m_spr.bin",
                 "Calculator_Female" => "battle_san_w_spr.bin",
+                // WotL Jobs - Dark Knight (ankoku)
+                "DarkKnight_Male" => "spr_dst_bchr_ankoku_m_spr.bin",
+                "DarkKnight_Female" => "spr_dst_bchr_ankoku_w_spr.bin",
+                // WotL Jobs - Onion Knight (tama)
+                "OnionKnight_Male" => "spr_dst_bchr_tama_m_spr.bin",
+                "OnionKnight_Female" => "spr_dst_bchr_tama_w_spr.bin",
                 _ => null
             };
         }
 
         private void CopySpriteForJobWithType(string spriteName, string colorScheme, string jobType)
         {
+            // Convert jobType to job name format for getting correct unit path
+            var jobName = ConvertJobTypeToJobName(jobType, spriteName);
+
+            // Get the correct unit path for this job (WotL jobs use unit_psp)
+            var unitPath = GetUnitPathForJob(jobName);
+            ModLogger.Log($"[COPY_SPRITE] Using unit path: {unitPath} (IsWotL: {IsWotLJob(jobName)})");
+
             // For "original" theme, we need to restore the original sprite by copying from sprites_original directory
             if (colorScheme.ToLower() == "original")
             {
                 ModLogger.Log($"Restoring original sprite for {spriteName}");
 
                 // Copy from sprites_original directory to ensure we overwrite any custom theme
-                var originalDir = Path.Combine(_sourceUnitPath, "sprites_original");
+                var originalDir = Path.Combine(unitPath, "sprites_original");
                 var originalFile = Path.Combine(originalDir, spriteName);
-                var originalDestFile = Path.Combine(_unitPath, spriteName);
+                var originalDestFile = Path.Combine(unitPath, spriteName);
 
                 if (File.Exists(originalFile))
                 {
@@ -591,8 +604,6 @@ namespace FFTColorCustomizer.Utilities
                 return;
             }
 
-            // Convert jobType to job name format for user theme lookup (e.g., "knight" -> "Knight_Male")
-            var jobName = ConvertJobTypeToJobName(jobType, spriteName);
             ModLogger.Log($"[COPY_SPRITE] jobType={jobType}, spriteName={spriteName} -> jobName={jobName}");
 
             // Check if this is a user-created theme
@@ -608,17 +619,17 @@ namespace FFTColorCustomizer.Utilities
 
             // Log the paths being used
             ModLogger.Log($"CopySpriteForJobWithType: Looking for {spriteName} with theme {colorScheme}");
-            ModLogger.Log($"  _sourceUnitPath: {_sourceUnitPath}");
+            ModLogger.Log($"  unitPath: {unitPath}");
 
             // First check for job-specific theme directory (e.g., sprites_mediator_holy_knight)
-            var jobSpecificDir = Path.Combine(_sourceUnitPath, $"sprites_{jobType}_{colorScheme}");
+            var jobSpecificDir = Path.Combine(unitPath, $"sprites_{jobType}_{colorScheme}");
             var jobSpecificFile = Path.Combine(jobSpecificDir, spriteName);
 
             // Then check for generic theme directory (e.g., sprites_corpse_brigade)
-            var genericDir = Path.Combine(_sourceUnitPath, $"sprites_{colorScheme}");
+            var genericDir = Path.Combine(unitPath, $"sprites_{colorScheme}");
             var genericFile = Path.Combine(genericDir, spriteName);
 
-            var destFile = Path.Combine(_unitPath, spriteName);
+            var destFile = Path.Combine(unitPath, spriteName);
 
             ModLogger.Log($"  Checking job-specific: {jobSpecificFile}");
             ModLogger.Log($"  Checking generic: {genericFile}");
@@ -639,9 +650,9 @@ namespace FFTColorCustomizer.Utilities
             {
                 ModLogger.LogWarning($"Theme not found: tried sprites_{jobType}_{colorScheme} and sprites_{colorScheme}");
                 // Log what files actually exist in the source directory for debugging
-                if (Directory.Exists(_sourceUnitPath))
+                if (Directory.Exists(unitPath))
                 {
-                    var dirs = Directory.GetDirectories(_sourceUnitPath, "sprites_*");
+                    var dirs = Directory.GetDirectories(unitPath, "sprites_*");
                     ModLogger.LogDebug($"  Available theme directories: {dirs.Length} found");
                     foreach (var dir in dirs.Take(5))
                     {
@@ -650,7 +661,7 @@ namespace FFTColorCustomizer.Utilities
                 }
                 else
                 {
-                    ModLogger.LogError($"  Source unit path does not exist: {_sourceUnitPath}");
+                    ModLogger.LogError($"  Unit path does not exist: {unitPath}");
                 }
                 return;
             }
@@ -730,10 +741,32 @@ namespace FFTColorCustomizer.Utilities
                 "blackmage" => "BlackMage",
                 "whitemage" => "WhiteMage",
                 "timemage" => "TimeMage",
+                "darkknight" => "DarkKnight",
+                "onionknight" => "OnionKnight",
                 _ => System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(jobType)
             };
 
             return $"{properJobName}_{gender}";
+        }
+
+        /// <summary>
+        /// Checks if a job is a War of the Lions exclusive job (Dark Knight, Onion Knight)
+        /// </summary>
+        private bool IsWotLJob(string jobName)
+        {
+            return jobName.StartsWith("DarkKnight") || jobName.StartsWith("OnionKnight");
+        }
+
+        /// <summary>
+        /// Gets the unit path for a job. WotL jobs use unit_psp, regular jobs use unit.
+        /// </summary>
+        private string GetUnitPathForJob(string jobName)
+        {
+            if (IsWotLJob(jobName))
+            {
+                return Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit_psp");
+            }
+            return _sourceUnitPath;
         }
 
         /// <summary>
@@ -759,8 +792,12 @@ namespace FFTColorCustomizer.Utilities
                 return;
             }
 
+            // Get the correct unit path for this job (WotL jobs use unit_psp)
+            var unitPath = GetUnitPathForJob(jobName);
+            ModLogger.Log($"[APPLY_USER_THEME] Using unit path: {unitPath} (IsWotL: {IsWotLJob(jobName)})");
+
             // Get the original sprite
-            var originalDir = Path.Combine(_sourceUnitPath, "sprites_original");
+            var originalDir = Path.Combine(unitPath, "sprites_original");
             var originalFile = Path.Combine(originalDir, spriteName);
             ModLogger.Log($"[APPLY_USER_THEME] Original sprite path: {originalFile}");
             ModLogger.Log($"[APPLY_USER_THEME] Original sprite exists: {File.Exists(originalFile)}");
@@ -790,7 +827,7 @@ namespace FFTColorCustomizer.Utilities
 
                 // Write directly to base unit folder (same as regular themes)
                 // This is required because FFTPack registers files at startup and uses the base folder
-                var destFile = Path.Combine(_unitPath, spriteName);
+                var destFile = Path.Combine(unitPath, spriteName);
                 ModLogger.Log($"[APPLY_USER_THEME] Writing to base unit folder: {destFile}");
                 File.WriteAllBytes(destFile, originalSprite);
 

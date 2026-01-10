@@ -96,6 +96,14 @@ namespace FFTColorCustomizer.Configuration
             // Chemists
             ["Chemist_Male"] = new JobMetadata("Generic Characters", "Male Chemist", "Color scheme for all male chemists", "ChemistMale"),
             ["Chemist_Female"] = new JobMetadata("Generic Characters", "Female Chemist", "Color scheme for all female chemists", "ChemistFemale"),
+
+            // WotL Jobs - Dark Knight
+            ["DarkKnight_Male"] = new JobMetadata("WotL Jobs", "Male Dark Knight", "Color scheme for all male dark knights", "DarkKnightMale"),
+            ["DarkKnight_Female"] = new JobMetadata("WotL Jobs", "Female Dark Knight", "Color scheme for all female dark knights", "DarkKnightFemale"),
+
+            // WotL Jobs - Onion Knight
+            ["OnionKnight_Male"] = new JobMetadata("WotL Jobs", "Male Onion Knight", "Color scheme for all male onion knights", "OnionKnightMale"),
+            ["OnionKnight_Female"] = new JobMetadata("WotL Jobs", "Female Onion Knight", "Color scheme for all female onion knights", "OnionKnightFemale"),
         };
 
         public Config()
@@ -405,6 +413,35 @@ namespace FFTColorCustomizer.Configuration
         {
             get => GetJobTheme("Chemist_Female");
             set => SetJobTheme("Chemist_Female", value);
+        }
+
+        // WotL Jobs Properties
+        [Newtonsoft.Json.JsonIgnore]
+        public string DarkKnight_Male
+        {
+            get => GetJobTheme("DarkKnight_Male");
+            set => SetJobTheme("DarkKnight_Male", value);
+        }
+
+        [Newtonsoft.Json.JsonIgnore]
+        public string DarkKnight_Female
+        {
+            get => GetJobTheme("DarkKnight_Female");
+            set => SetJobTheme("DarkKnight_Female", value);
+        }
+
+        [Newtonsoft.Json.JsonIgnore]
+        public string OnionKnight_Male
+        {
+            get => GetJobTheme("OnionKnight_Male");
+            set => SetJobTheme("OnionKnight_Male", value);
+        }
+
+        [Newtonsoft.Json.JsonIgnore]
+        public string OnionKnight_Female
+        {
+            get => GetJobTheme("OnionKnight_Female");
+            set => SetJobTheme("OnionKnight_Female", value);
         }
 
         // Story Character Properties (string-based themes)

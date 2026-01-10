@@ -106,6 +106,28 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
+        /// Determines if a job property represents a War of the Lions exclusive job.
+        /// </summary>
+        /// <param name="jobProperty">The job property name (e.g., "DarkKnight_Male")</param>
+        /// <returns>True if the job is a WotL exclusive job, false otherwise</returns>
+        public bool IsWotLJob(string jobProperty)
+        {
+            return jobProperty.StartsWith("DarkKnight") || jobProperty.StartsWith("OnionKnight");
+        }
+
+        /// <summary>
+        /// Gets the unit directory path for a job property.
+        /// WotL jobs use unit_psp, regular jobs use unit.
+        /// </summary>
+        /// <param name="jobProperty">The job property name (e.g., "DarkKnight_Male")</param>
+        /// <returns>The full path to the unit directory</returns>
+        public string GetUnitDirectory(string jobProperty)
+        {
+            var unitFolder = IsWotLJob(jobProperty) ? "unit_psp" : "unit";
+            return Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", unitFolder);
+        }
+
+        /// <summary>
         /// Removes color schemes from data directory that are not in the required set.
         /// Preserves test themes (sprites_test_*).
         /// </summary>

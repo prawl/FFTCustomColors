@@ -91,14 +91,17 @@ namespace FFTColorCustomizer.Configuration.UI
         }
 
         public void AddGenericCharacterRow(int row, string jobName, string currentTheme,
-            Action<string> setter, Func<bool> isFullyLoaded)
+            Action<string> setter, Func<bool> isFullyLoaded, List<Control> controlsList = null)
         {
+            // Use provided controls list or default to generic character controls
+            var targetControlsList = controlsList ?? _genericCharacterControls;
+
             ModLogger.Log($"AddJobRow: {jobName} = {currentTheme}");
 
             // Create label
             var label = ConfigUIComponentFactory.CreateCharacterLabel(jobName);
             _mainPanel.Controls.Add(label, 0, row);
-            _genericCharacterControls.Add(label);
+            targetControlsList.Add(label);
 
             // Create theme combo box with formatted display
             var comboBox = new ThemeComboBox();
@@ -137,8 +140,8 @@ namespace FFTColorCustomizer.Configuration.UI
             _mainPanel.Controls.Add(carousel, 2, row);
 
             // Track controls
-            _genericCharacterControls.Add(comboBox);
-            _genericCharacterControls.Add(carousel);
+            targetControlsList.Add(comboBox);
+            targetControlsList.Add(carousel);
 
             // Store reference for verification
             comboBox.Tag = new { JobName = jobName, ExpectedValue = currentTheme, Setter = setter };
@@ -771,6 +774,57 @@ namespace FFTColorCustomizer.Configuration.UI
             return carouselSprites;
         }
 
+        private bool IsWotLJob(string jobName)
+        {
+            return jobName.StartsWith("Dark Knight") || jobName.StartsWith("Onion Knight");
+        }
+
+        private string FindActualUnitPspPath(string modPath)
+        {
+            // First try the direct path for unit_psp
+            var directPath = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit_psp");
+            if (Directory.Exists(directPath))
+            {
+                return directPath;
+            }
+
+            // If not found, look for versioned directories
+            var parentDir = Path.GetDirectoryName(modPath);
+            if (!string.IsNullOrEmpty(parentDir))
+            {
+                try
+                {
+                    var versionedDirs = Directory.GetDirectories(parentDir, "FFTColorCustomizer_v*")
+                        .OrderByDescending(dir =>
+                        {
+                            var dirName = Path.GetFileName(dir);
+                            var versionStr = dirName.Substring(dirName.LastIndexOf('v') + 1);
+                            if (int.TryParse(versionStr, out int version))
+                                return version;
+                            return 0;
+                        })
+                        .ToArray();
+
+                    foreach (var versionedDir in versionedDirs)
+                    {
+                        var versionedPath = Path.Combine(versionedDir, "FFTIVC", "data", "enhanced", "fftpack", "unit_psp");
+                        if (Directory.Exists(versionedPath))
+                        {
+                            ModLogger.Log($"Found FFTIVC unit_psp for WotL previews in versioned directory: {versionedPath}");
+                            return versionedPath;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogWarning($"Error searching for versioned directories: {ex.Message}");
+                }
+            }
+
+            // Return the expected path even if it doesn't exist
+            return directPath;
+        }
+
         private Image[] TryLoadGenericFromBinFile(string jobName, string theme)
         {
             try
@@ -793,7 +847,8 @@ namespace FFTColorCustomizer.Configuration.UI
 
                 // Look for themed sprite files
                 // Find the actual FFTIVC path (handles versioned directories)
-                string unitPath = FindActualUnitPath(modPath);
+                // For WotL jobs, use unit_psp instead of unit
+                string unitPath = IsWotLJob(jobName) ? FindActualUnitPspPath(modPath) : FindActualUnitPath(modPath);
 
                 // Check if this is a user theme
                 var jobProperty = ConvertJobNameToPropertyFormat(jobName);
@@ -1036,6 +1091,12 @@ namespace FFTColorCustomizer.Configuration.UI
                 case "Bard (Male)": return "battle_gin_m_spr.bin";
                 case "Dancer":
                 case "Dancer (Female)": return "battle_odori_w_spr.bin";
+
+                // WotL Jobs (unit_psp)
+                case "Dark Knight (Male)": return "spr_dst_bchr_ankoku_m_spr.bin";
+                case "Dark Knight (Female)": return "spr_dst_bchr_ankoku_w_spr.bin";
+                case "Onion Knight (Male)": return "spr_dst_bchr_tama_m_spr.bin";
+                case "Onion Knight (Female)": return "spr_dst_bchr_tama_w_spr.bin";
 
                 // Fallback to old logic if not found
                 default:
