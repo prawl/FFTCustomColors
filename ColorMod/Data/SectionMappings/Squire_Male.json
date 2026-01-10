@@ -16,13 +16,13 @@
     },
     {
       "name": "Hat",
-      "displayName": "Hat",
+      "displayName": "Hat and Bracers",
       "indices": [10, 9, 8],
       "roles": ["base", "shadow", "outline"]
     },
     {
       "name": "BootsAndHair",
-      "displayName": "Boots and Hair",
+      "displayName": "Boots, Gloves, and Hair",
       "indices": [12, 13, 11],
       "roles": ["base", "shadow", "outline"]
     },
