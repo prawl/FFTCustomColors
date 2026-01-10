@@ -157,5 +157,38 @@ namespace FFTColorCustomizer.Tests
                 }
             }
         }
+
+        [Theory]
+        [InlineData("spr_dst_bchr_ankoku_m_spr.bin", "unit_psp")]
+        [InlineData("spr_dst_bchr_ankoku_w_spr.bin", "unit_psp")]
+        [InlineData("spr_dst_bchr_tama_m_spr.bin", "unit_psp")]
+        [InlineData("spr_dst_bchr_tama_w_spr.bin", "unit_psp")]
+        [InlineData("battle_knight_m_spr.bin", "unit")]
+        [InlineData("battle_knight_w_spr.bin", "unit")]
+        public void GetTargetUnitDirectory_Should_Return_Correct_Path_For_Sprite(string spriteFileName, string expectedUnitDir)
+        {
+            // Arrange
+            var tempDir = Path.Combine(Path.GetTempPath(), "FFTColorCustomizerTest_" + Path.GetRandomFileName());
+            Directory.CreateDirectory(tempDir);
+
+            var manager = new SpriteFileManager(tempDir);
+
+            try
+            {
+                // Act
+                var result = manager.GetTargetUnitDirectory(spriteFileName);
+
+                // Assert
+                result.Should().EndWith(expectedUnitDir);
+            }
+            finally
+            {
+                // Cleanup
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, true);
+                }
+            }
+        }
     }
 }
