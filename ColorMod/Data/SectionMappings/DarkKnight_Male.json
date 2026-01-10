@@ -1,0 +1,30 @@
+{
+  "job": "DarkKnight_Male",
+  "sprite": "spr_dst_bchr_ankoku_m_spr.bin",
+  "sections": [
+    {
+      "name": "Armor",
+      "displayName": "Armor",
+      "indices": [3, 2, 1, 4, 5, 6],
+      "roles": ["base", "shadow", "shadow", "shadow", "shadow", "outline"]
+    },
+    {
+      "name": "ArmorAccent",
+      "displayName": "Armor Accent",
+      "indices": [15, 14],
+      "roles": ["base", "shadow"]
+    },
+    {
+      "name": "Pants",
+      "displayName": "Pants",
+      "indices": [9, 8, 7],
+      "roles": ["base", "shadow", "outline"]
+    },
+    {
+      "name": "AnklesTassel",
+      "displayName": "Ankles and Tassel",
+      "indices": [12, 11, 10, 13],
+      "roles": ["base", "shadow", "shadow", "outline"]
+    }
+  ]
+}

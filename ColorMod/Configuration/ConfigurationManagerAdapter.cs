@@ -163,7 +163,13 @@ namespace FFTColorCustomizer.Configuration
                 ["mono_w"] = "Mime_Female",
                 // Calculators (san)
                 ["san_m"] = "Calculator_Male",
-                ["san_w"] = "Calculator_Female"
+                ["san_w"] = "Calculator_Female",
+                // WotL Jobs - Dark Knight (ankoku)
+                ["ankoku_m"] = "DarkKnight_Male",
+                ["ankoku_w"] = "DarkKnight_Female",
+                // WotL Jobs - Onion Knight (tama)
+                ["tama_m"] = "OnionKnight_Male",
+                ["tama_w"] = "OnionKnight_Female"
             };
 
             // Check if any mapping key is contained in the sprite name

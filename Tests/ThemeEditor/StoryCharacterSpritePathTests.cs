@@ -90,5 +90,31 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 Directory.Delete(tempDir, true);
             }
         }
+
+        [Fact]
+        public void ResolveWotLSpritePath_ShouldReturnUnitPspPath()
+        {
+            // Arrange - create temp directory structure with unit_psp folder
+            var tempDir = Path.Combine(Path.GetTempPath(), "SpritePathTest_" + Guid.NewGuid().ToString("N"));
+            var unitPspFolder = Path.Combine(tempDir, "sprites_original");
+            Directory.CreateDirectory(unitPspFolder);
+            File.WriteAllText(Path.Combine(unitPspFolder, "spr_dst_bchr_ankoku_m_spr.bin"), "dummy");
+
+            try
+            {
+                // Act - WotL sprites should use unit_psp/sprites_original path
+                var result = StoryCharacterSpritePathResolver.ResolveWotLSpritePath(
+                    tempDir,
+                    "spr_dst_bchr_ankoku_m_spr.bin");
+
+                // Assert
+                var expected = Path.Combine(unitPspFolder, "spr_dst_bchr_ankoku_m_spr.bin");
+                Assert.Equal(expected, result);
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
     }
 }

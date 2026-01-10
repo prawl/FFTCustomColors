@@ -16,6 +16,8 @@ namespace FFTColorCustomizer.Services
         private readonly Dictionary<string, JobClassDefinition> _jobClasses;
         private readonly Dictionary<string, JobClassDefinition> _jobClassesBySprite;
         private readonly List<string> _availableThemes;
+        private readonly List<string> _wotlThemes;
+        private readonly HashSet<string> _wotlJobNames;
         private readonly string _dataPath;
 
         public JobClassDefinitionService(string modPath = null)
@@ -23,6 +25,8 @@ namespace FFTColorCustomizer.Services
             _jobClasses = new Dictionary<string, JobClassDefinition>();
             _jobClassesBySprite = new Dictionary<string, JobClassDefinition>();
             _availableThemes = new List<string>();
+            _wotlThemes = new List<string>();
+            _wotlJobNames = new HashSet<string>();
 
             // Determine path to Data directory
             if (string.IsNullOrEmpty(modPath))
@@ -39,19 +43,30 @@ namespace FFTColorCustomizer.Services
         }
 
         /// <summary>
-        /// Load job class definitions from JobClasses.json
+        /// Load job class definitions from JobClasses.json and WotLClasses.json
         /// </summary>
         private void LoadJobClasses()
         {
+            // Load main job classes
+            LoadJobClassesFromFile("JobClasses.json", isWotL: false);
+
+            // Load WotL job classes (separate file for cleaner organization)
+            LoadJobClassesFromFile("WotLClasses.json", isWotL: true);
+        }
+
+        /// <summary>
+        /// Load job class definitions from a specific JSON file
+        /// </summary>
+        private void LoadJobClassesFromFile(string fileName, bool isWotL = false)
+        {
             try
             {
-                var jsonPath = Path.Combine(_dataPath, "JobClasses.json");
-                ModLogger.LogDebug($"Looking for JobClasses.json at: {jsonPath}");
+                var jsonPath = Path.Combine(_dataPath, fileName);
+                ModLogger.LogDebug($"Looking for {fileName} at: {jsonPath}");
 
                 if (!File.Exists(jsonPath))
                 {
-                    ModLogger.LogDebug($"JobClasses.json not found at: {jsonPath}");
-                    ModLogger.LogWarning($"JobClasses.json not found at: {jsonPath}");
+                    ModLogger.LogDebug($"{fileName} not found at: {jsonPath}");
                     return;
                 }
 
@@ -60,21 +75,24 @@ namespace FFTColorCustomizer.Services
                 var root = document.RootElement;
 
                 // Load shared themes from JSON (changed from "availableThemes" to "sharedThemes")
+                // Store themes in appropriate list based on whether this is a WotL file
                 if (root.TryGetProperty("sharedThemes", out var themesArray))
                 {
+                    var targetThemeList = isWotL ? _wotlThemes : _availableThemes;
                     foreach (var theme in themesArray.EnumerateArray())
                     {
                         var themeName = theme.GetString();
-                        if (!string.IsNullOrEmpty(themeName))
+                        if (!string.IsNullOrEmpty(themeName) && !targetThemeList.Contains(themeName))
                         {
-                            _availableThemes.Add(themeName);
+                            targetThemeList.Add(themeName);
                         }
                     }
-                    ModLogger.Log($"Loaded {_availableThemes.Count} shared themes from JobClasses.json: {string.Join(", ", _availableThemes)}");
+                    ModLogger.Log($"Loaded {targetThemeList.Count} shared themes from {fileName}: {string.Join(", ", targetThemeList)}");
                 }
 
                 if (root.TryGetProperty("jobClasses", out var jobClassesArray))
                 {
+                    var loadedCount = 0;
                     foreach (var jobElement in jobClassesArray.EnumerateArray())
                     {
                         var jobClass = new JobClassDefinition
@@ -101,24 +119,33 @@ namespace FFTColorCustomizer.Services
                             }
                         }
 
-                        // Set available themes to shared themes (will be combined with job-specific later)
-                        jobClass.AvailableThemes = new List<string>(_availableThemes);
+                        // Set available themes based on whether this is a WotL job or regular job
+                        var themeSource = isWotL ? _wotlThemes : _availableThemes;
+                        jobClass.AvailableThemes = new List<string>(themeSource);
 
                         _jobClasses[jobClass.Name] = jobClass;
+
+                        // Track WotL job names for lookup
+                        if (isWotL)
+                        {
+                            _wotlJobNames.Add(jobClass.Name);
+                        }
 
                         // Also index by sprite name for quick lookup
                         if (!string.IsNullOrEmpty(jobClass.SpriteName))
                         {
                             _jobClassesBySprite[jobClass.SpriteName] = jobClass;
                         }
+
+                        loadedCount++;
                     }
 
-                    ModLogger.Log($"Loaded {_jobClasses.Count} job class definitions from JobClasses.json");
+                    ModLogger.Log($"Loaded {loadedCount} job class definitions from {fileName}");
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.LogError($"Failed to load JobClasses.json: {ex.Message}");
+                ModLogger.LogError($"Failed to load {fileName}: {ex.Message}");
             }
         }
 
@@ -138,6 +165,7 @@ namespace FFTColorCustomizer.Services
 
         /// <summary>
         /// Get all available themes for a specific job (original first, then job-specific, then other shared)
+        /// WotL jobs only get WotL themes, not regular job themes
         /// </summary>
         public List<string> GetAvailableThemesForJob(string jobName)
         {
@@ -152,8 +180,11 @@ namespace FFTColorCustomizer.Services
                 themes.AddRange(jobClass.JobSpecificThemes);
             }
 
+            // Determine which shared theme list to use based on job type
+            var isWotLJob = _wotlJobNames.Contains(jobName);
+            var sharedThemes = isWotLJob ? _wotlThemes : _availableThemes;
+
             // Then add other shared themes (excluding "original" since it's already first)
-            var sharedThemes = GetAvailableThemes();
             foreach (var theme in sharedThemes)
             {
                 if (theme != "original")

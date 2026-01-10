@@ -154,5 +154,22 @@ namespace FFTColorCustomizer.Tests.Configuration
             // Assert
             File.Exists(_configPath).Should().BeTrue();
         }
+
+        [Theory]
+        [InlineData("spr_dst_bchr_ankoku_m_spr.bin", "DarkKnight_Male")]
+        [InlineData("spr_dst_bchr_ankoku_w_spr.bin", "DarkKnight_Female")]
+        [InlineData("spr_dst_bchr_tama_m_spr.bin", "OnionKnight_Male")]
+        [InlineData("spr_dst_bchr_tama_w_spr.bin", "OnionKnight_Female")]
+        public void GetJobPropertyForSprite_Should_Return_Correct_WotL_JobProperty(string spriteName, string expectedJobProperty)
+        {
+            // Arrange
+            var adapter = new ConfigurationManagerAdapter(_configPath);
+
+            // Act
+            var result = adapter.GetJobPropertyForSprite(spriteName);
+
+            // Assert
+            result.Should().Be(expectedJobProperty);
+        }
     }
 }

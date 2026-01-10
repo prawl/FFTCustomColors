@@ -1,0 +1,43 @@
+{
+  "sharedThemes": [
+    "original"
+  ],
+  "jobClasses": [
+    {
+      "name": "DarkKnight_Male",
+      "displayName": "Dark Knight (Male)",
+      "spriteName": "spr_dst_bchr_ankoku_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "DarkKnight",
+      "jobSpecificThemes": []
+    },
+    {
+      "name": "DarkKnight_Female",
+      "displayName": "Dark Knight (Female)",
+      "spriteName": "spr_dst_bchr_ankoku_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "DarkKnight",
+      "jobSpecificThemes": []
+    },
+    {
+      "name": "OnionKnight_Male",
+      "displayName": "Onion Knight (Male)",
+      "spriteName": "spr_dst_bchr_tama_m_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Male",
+      "jobType": "OnionKnight",
+      "jobSpecificThemes": []
+    },
+    {
+      "name": "OnionKnight_Female",
+      "displayName": "Onion Knight (Female)",
+      "spriteName": "spr_dst_bchr_tama_w_spr.bin",
+      "defaultTheme": "original",
+      "gender": "Female",
+      "jobType": "OnionKnight",
+      "jobSpecificThemes": []
+    }
+  ]
+}

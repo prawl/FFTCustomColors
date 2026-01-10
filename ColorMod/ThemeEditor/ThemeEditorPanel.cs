@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using FFTColorCustomizer.Configuration.UI;
+using FFTColorCustomizer.Services;
 
 namespace FFTColorCustomizer.ThemeEditor
 {
@@ -27,8 +28,10 @@ namespace FFTColorCustomizer.ThemeEditor
         private Label _warningLabel;
         private string? _mappingsDirectory;
         private string? _spritesDirectory;
+        private string? _modsDirectory;
         private Dictionary<string, string> _displayNameToJobName = new();
         private Dictionary<string, bool> _isStoryCharacter = new();
+        private Dictionary<string, bool> _isWotLCharacter = new();
         private bool _suppressColorChangedEvents;
 
         public SectionMapping? CurrentMapping { get; private set; }
@@ -48,18 +51,23 @@ namespace FFTColorCustomizer.ThemeEditor
             HasUnsavedChanges = false;
         }
 
-        public ThemeEditorPanel() : this(null, null)
+        public ThemeEditorPanel() : this(null, null, null)
         {
         }
 
-        public ThemeEditorPanel(string? mappingsDirectory) : this(mappingsDirectory, null)
+        public ThemeEditorPanel(string? mappingsDirectory) : this(mappingsDirectory, null, null)
         {
         }
 
-        public ThemeEditorPanel(string? mappingsDirectory, string? spritesDirectory)
+        public ThemeEditorPanel(string? mappingsDirectory, string? spritesDirectory) : this(mappingsDirectory, spritesDirectory, null)
+        {
+        }
+
+        public ThemeEditorPanel(string? mappingsDirectory, string? spritesDirectory, string? modsDirectory)
         {
             _mappingsDirectory = mappingsDirectory;
             _spritesDirectory = spritesDirectory;
+            _modsDirectory = modsDirectory;
             MinimumSize = new System.Drawing.Size(0, 550);
             Height = 550; // Set initial height so panel sizing works
             InitializeComponents();
@@ -100,10 +108,17 @@ namespace FFTColorCustomizer.ThemeEditor
 
             if (_mappingsDirectory != null)
             {
+                // WotL jobs to exclude from generic jobs (they're listed separately)
+                var wotlJobs = new HashSet<string> { "DarkKnight_Male", "DarkKnight_Female", "OnionKnight_Male", "OnionKnight_Female" };
+
                 // Add generic jobs
                 var availableJobs = SectionMappingLoader.GetAvailableJobs(_mappingsDirectory);
                 foreach (var job in availableJobs)
                 {
+                    // Skip WotL jobs - they're listed in their own section
+                    if (wotlJobs.Contains(job))
+                        continue;
+
                     var displayName = JobNameToDisplayName(job);
                     _displayNameToJobName[displayName] = job;
                     _isStoryCharacter[displayName] = false;
@@ -125,6 +140,41 @@ namespace FFTColorCustomizer.ThemeEditor
                         _templateDropdown.Items.Add(displayName);
                     }
                 }
+
+                // Add WotL Characters section with mod detection status
+                var isGenericJobsInstalled = false;
+                if (!string.IsNullOrEmpty(_modsDirectory))
+                {
+                    var detector = new GenericJobsDetector(_modsDirectory);
+                    isGenericJobsInstalled = detector.IsGenericJobsInstalled;
+                }
+
+                var wotlSectionLabel = isGenericJobsInstalled
+                    ? "── WotL Characters (✓ Mod Detected) ──"
+                    : "── WotL Characters (✗ Mod Not Installed) ──";
+                _templateDropdown.Items.Add(wotlSectionLabel);
+
+                // Add Dark Knight (Male/Female)
+                _displayNameToJobName["Dark Knight (Male)"] = "DarkKnight_Male";
+                _isStoryCharacter["Dark Knight (Male)"] = false;
+                _isWotLCharacter["Dark Knight (Male)"] = true;
+                _templateDropdown.Items.Add("Dark Knight (Male)");
+
+                _displayNameToJobName["Dark Knight (Female)"] = "DarkKnight_Female";
+                _isStoryCharacter["Dark Knight (Female)"] = false;
+                _isWotLCharacter["Dark Knight (Female)"] = true;
+                _templateDropdown.Items.Add("Dark Knight (Female)");
+
+                // Add Onion Knight (Male/Female)
+                _displayNameToJobName["Onion Knight (Male)"] = "OnionKnight_Male";
+                _isStoryCharacter["Onion Knight (Male)"] = false;
+                _isWotLCharacter["Onion Knight (Male)"] = true;
+                _templateDropdown.Items.Add("Onion Knight (Male)");
+
+                _displayNameToJobName["Onion Knight (Female)"] = "OnionKnight_Female";
+                _isStoryCharacter["Onion Knight (Female)"] = false;
+                _isWotLCharacter["Onion Knight (Female)"] = true;
+                _templateDropdown.Items.Add("Onion Knight (Female)");
             }
 
             // Theme name input (to the right of template dropdown)
@@ -345,12 +395,15 @@ namespace FFTColorCustomizer.ThemeEditor
 
             var displayName = _templateDropdown.SelectedItem.ToString();
 
-            // Ignore separator selection
-            if (displayName == "── Story Characters ──")
+            // Ignore separator selections
+            if (displayName == "── Story Characters ──" || displayName == "── WotL Characters ──")
                 return;
 
             if (displayName == null || !_displayNameToJobName.TryGetValue(displayName, out var selectedJob))
                 return;
+
+            // Check if this is a WotL character
+            var isWotL = _isWotLCharacter.TryGetValue(displayName, out var wotl) && wotl;
 
             // Determine mapping path based on whether this is a story character
             string mappingPath;
@@ -370,12 +423,18 @@ namespace FFTColorCustomizer.ThemeEditor
                 // Load sprite into PaletteModifier if sprites directory is set
                 if (_spritesDirectory != null && CurrentMapping != null)
                 {
-                    // Resolve sprite path - story characters may have character-specific folders or fall back to sprites_original
+                    // Resolve sprite path based on character type
                     string spritePath;
                     if (isStory)
                     {
                         spritePath = StoryCharacterSpritePathResolver.ResolveSpritePath(
                             _spritesDirectory, selectedJob, CurrentMapping.Sprite);
+                    }
+                    else if (isWotL)
+                    {
+                        // WotL jobs use unit_psp directory instead of unit
+                        var unitPspPath = _spritesDirectory.Replace("unit", "unit_psp");
+                        spritePath = Path.Combine(unitPspPath, "sprites_original", CurrentMapping.Sprite);
                     }
                     else
                     {
@@ -632,6 +691,14 @@ namespace FFTColorCustomizer.ThemeEditor
                 var jobName = GetCurrentJobName();
                 return StoryCharacterSpritePathResolver.ResolveSpritePath(
                     _spritesDirectory, jobName, CurrentMapping.Sprite);
+            }
+
+            // WotL jobs use unit_psp directory instead of unit
+            if (_isWotLCharacter.TryGetValue(displayName, out var isWotL) && isWotL)
+            {
+                var unitPspPath = _spritesDirectory.Replace("unit", "unit_psp");
+                return StoryCharacterSpritePathResolver.ResolveWotLSpritePath(
+                    unitPspPath, CurrentMapping.Sprite);
             }
 
             return Path.Combine(_spritesDirectory, "sprites_original", CurrentMapping.Sprite);

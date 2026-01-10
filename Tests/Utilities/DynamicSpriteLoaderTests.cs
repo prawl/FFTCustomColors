@@ -174,6 +174,48 @@ namespace FFTColorCustomizer.Tests
             loader.IsDevMode().Should().BeFalse("Dev mode has been removed");
         }
 
+        [Theory]
+        [InlineData("DarkKnight_Male", true)]
+        [InlineData("DarkKnight_Female", true)]
+        [InlineData("OnionKnight_Male", true)]
+        [InlineData("OnionKnight_Female", true)]
+        [InlineData("Knight_Male", false)]
+        [InlineData("Knight_Female", false)]
+        [InlineData("Squire_Male", false)]
+        [InlineData("Archer_Female", false)]
+        public void IsWotLJob_Should_Return_Correct_Value(string jobProperty, bool expectedIsWotL)
+        {
+            // Arrange
+            var loader = new DynamicSpriteLoader(_testModPath, _configManager);
+
+            // Act
+            var result = loader.IsWotLJob(jobProperty);
+
+            // Assert
+            result.Should().Be(expectedIsWotL);
+        }
+
+        [Theory]
+        [InlineData("DarkKnight_Male", "unit_psp")]
+        [InlineData("DarkKnight_Female", "unit_psp")]
+        [InlineData("OnionKnight_Male", "unit_psp")]
+        [InlineData("OnionKnight_Female", "unit_psp")]
+        [InlineData("Knight_Male", "unit")]
+        [InlineData("Knight_Female", "unit")]
+        [InlineData("Squire_Male", "unit")]
+        [InlineData("Archer_Female", "unit")]
+        public void GetUnitDirectory_Should_Return_Correct_Path(string jobProperty, string expectedUnitDir)
+        {
+            // Arrange
+            var loader = new DynamicSpriteLoader(_testModPath, _configManager);
+
+            // Act
+            var result = loader.GetUnitDirectory(jobProperty);
+
+            // Assert
+            result.Should().EndWith(expectedUnitDir);
+        }
+
         public void Dispose()
         {
             // Clean up test directory
