@@ -1139,6 +1139,44 @@ For personal use only. Final Fantasy Tactics © Square Enix.# FFT Complete Sprit
 ## Overview
 The FFT game files contain **138 total sprite files**, far more than just the 38 generic job sprites that the color mod currently supports. This document maps ALL sprites found in the game.
 
+## WotL Jobs Support (Dark Knight & Onion Knight)
+
+### Overview
+FFT Color Customizer now supports theming for War of the Lions exclusive jobs:
+- **Dark Knight** (Male & Female)
+- **Onion Knight** (Male & Female)
+
+### Requirements
+These jobs require the **GenericJobs mod** to be installed:
+- Mod ID: `ffttic.jobs.genericjobs` v0.0.7+
+- The mod enables these PSP-exclusive jobs in the game
+
+### How It Works
+WotL job sprites are stored in a different location than regular generic jobs:
+- **Regular jobs**: `fftpack/unit/` directory
+- **WotL jobs**: `fftpack/unit_psp/` directory
+
+The Color Customizer automatically detects WotL jobs and routes their sprites to the correct `unit_psp` directory.
+
+### Sprite File Names
+| Job | Sprite File |
+|-----|-------------|
+| Dark Knight (Male) | `spr_dst_bchr_ankoku_m_spr.bin` |
+| Dark Knight (Female) | `spr_dst_bchr_ankoku_w_spr.bin` |
+| Onion Knight (Male) | `spr_dst_bchr_tama_m_spr.bin` |
+| Onion Knight (Female) | `spr_dst_bchr_tama_w_spr.bin` |
+
+### Creating Themes for WotL Jobs
+1. **Extract original sprites** from `unit_psp/` directory
+2. **Create theme using same process** as generic jobs (see scripts below)
+3. **Place themed sprites** in theme directory with correct filename
+4. Theme files go in: `sprites_[theme]/spr_dst_bchr_[job]_[m/w]_spr.bin`
+
+### Configuration UI
+WotL Jobs appear in a dedicated **"WotL Jobs"** section in the configuration form, located after the Story Characters section.
+
+---
+
 ## Sprite Categories Breakdown
 
 ### 1. Generic Job Sprites (38 sprites) - FULLY SUPPORTED BY COLOR MOD ✅
