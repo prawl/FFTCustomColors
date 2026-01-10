@@ -76,8 +76,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 Width = 50,
                 Height = 22,
                 Top = headerHeight + rowHeight * 3 + 6,
-                Left = 0, // Will be positioned in UpdateSliderWidths
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Left = labelWidth + 225, // Next to Paste button
                 BackColor = UIConfiguration.ResetButtonColor,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat
@@ -218,18 +217,12 @@ namespace FFTColorCustomizer.ThemeEditor
         {
             const int labelWidth = 70;
             const int padding = 10;
-            const int resetButtonWidth = 50;
             var sliderWidth = Width - labelWidth - padding;
             if (sliderWidth > 0)
             {
                 _hueSlider.Width = sliderWidth;
                 _saturationSlider.Width = sliderWidth;
                 _lightnessSlider.Width = sliderWidth;
-            }
-            // Position reset button at right edge of panel
-            if (Width > resetButtonWidth + padding)
-            {
-                _resetButton.Left = Width - resetButtonWidth - padding;
             }
         }
 
