@@ -262,7 +262,7 @@ namespace FFTColorCustomizer.Configuration
             this.SuspendLayout();
 
             _wotlJobsCollapsed = !_wotlJobsCollapsed;
-            header.Text = _wotlJobsCollapsed ? "▶ WotL Jobs (Requires GenericJobs Mod)" : "▼ WotL Jobs (Requires GenericJobs Mod)";
+            header.Text = _wotlJobsCollapsed ? "▶ WotL Jobs" : "▼ WotL Jobs";
 
             SetControlsVisibility(_wotlJobsControls, !_wotlJobsCollapsed);
 
