@@ -74,8 +74,7 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                 Assert.Equal(7, templateDropdown.Items.Count);
                 Assert.Contains("Knight (Female)", templateDropdown.Items.Cast<string>());
                 Assert.Contains("Squire (Male)", templateDropdown.Items.Cast<string>());
-                // Without a mods directory, the WotL section shows "Mod Not Installed"
-                Assert.Contains("── WotL Characters (✗ Mod Not Installed) ──", templateDropdown.Items.Cast<string>());
+                Assert.Contains("── WotL Characters ──", templateDropdown.Items.Cast<string>());
                 Assert.Contains("Dark Knight (Male)", templateDropdown.Items.Cast<string>());
             }
             finally

@@ -141,18 +141,8 @@ namespace FFTColorCustomizer.ThemeEditor
                     }
                 }
 
-                // Add WotL Characters section with mod detection status
-                var isGenericJobsInstalled = false;
-                if (!string.IsNullOrEmpty(_modsDirectory))
-                {
-                    var detector = new GenericJobsDetector(_modsDirectory);
-                    isGenericJobsInstalled = detector.IsGenericJobsInstalled;
-                }
-
-                var wotlSectionLabel = isGenericJobsInstalled
-                    ? "── WotL Characters (✓ Mod Detected) ──"
-                    : "── WotL Characters (✗ Mod Not Installed) ──";
-                _templateDropdown.Items.Add(wotlSectionLabel);
+                // Add WotL Characters section
+                _templateDropdown.Items.Add("── WotL Characters ──");
 
                 // Add Dark Knight (Male/Female)
                 _displayNameToJobName["Dark Knight (Male)"] = "DarkKnight_Male";
