@@ -10,7 +10,7 @@
       "defaultTheme": "original",
       "gender": "Male",
       "jobType": "DarkKnight",
-      "jobSpecificThemes": []
+      "jobSpecificThemes": ["crimson_baron", "paladin_of_dawn"]
     },
     {
       "name": "DarkKnight_Female",
@@ -19,7 +19,7 @@
       "defaultTheme": "original",
       "gender": "Female",
       "jobType": "DarkKnight",
-      "jobSpecificThemes": []
+      "jobSpecificThemes": ["crimson_baron", "paladin_of_dawn"]
     },
     {
       "name": "OnionKnight_Male",
@@ -28,7 +28,7 @@
       "defaultTheme": "original",
       "gender": "Male",
       "jobType": "OnionKnight",
-      "jobSpecificThemes": []
+      "jobSpecificThemes": ["azure_squire", "midnight_noble"]
     },
     {
       "name": "OnionKnight_Female",
@@ -37,7 +37,7 @@
       "defaultTheme": "original",
       "gender": "Female",
       "jobType": "OnionKnight",
-      "jobSpecificThemes": []
+      "jobSpecificThemes": ["azure_squire", "midnight_noble"]
     }
   ]
 }

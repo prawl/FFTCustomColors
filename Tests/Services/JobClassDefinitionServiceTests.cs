@@ -465,6 +465,39 @@ namespace FFTColorCustomizer.Tests.Services
             regularThemes.Should().Contain("lucavi");
         }
 
+        [Fact]
+        public void GetAvailableThemesForJob_DarkKnight_Male_Should_Include_Crimson_Baron_Theme()
+        {
+            // Arrange - WotL jobs with crimson_baron as a job-specific theme
+            var wotlJsonContent = @"{
+                ""sharedThemes"": [
+                    ""original""
+                ],
+                ""jobClasses"": [
+                    {
+                        ""name"": ""DarkKnight_Male"",
+                        ""displayName"": ""Dark Knight (Male)"",
+                        ""spriteName"": ""spr_dst_bchr_ankoku_m_spr.bin"",
+                        ""defaultTheme"": ""original"",
+                        ""gender"": ""Male"",
+                        ""jobType"": ""DarkKnight"",
+                        ""jobSpecificThemes"": [""crimson_baron""]
+                    }
+                ]
+            }";
+
+            File.WriteAllText(Path.Combine(_testDataPath, "WotLClasses.json"), wotlJsonContent);
+
+            // Act
+            var service = new JobClassDefinitionService(_testModPath);
+            var themes = service.GetAvailableThemesForJob("DarkKnight_Male");
+
+            // Assert - Should have original first, then crimson_baron
+            themes.Should().HaveCount(2);
+            themes[0].Should().Be("original", "Original should always be first");
+            themes[1].Should().Be("crimson_baron", "Job-specific theme should come after original");
+        }
+
         public void Dispose()
         {
             // Clean up test directory
