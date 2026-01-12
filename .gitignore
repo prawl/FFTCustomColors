@@ -88,6 +88,7 @@ test_*/
 *.bin
 !input_sprites/*.bin
 !ColorMod/FFTIVC/data/enhanced/fftpack/unit/**/*.bin
+!ColorMod/FFTIVC/data/enhanced/fftpack/unit_psp/**/*.bin
 !ColorMod/FFTIVC/data/enhanced/system/ffto/g2d/**/*.bin
 
 !RamzaThemes/**/*.bin
