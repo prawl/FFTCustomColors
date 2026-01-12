@@ -404,11 +404,13 @@ function Verify-Package {
             "Preview.png",
             "Data/StoryCharacters.json",
             "Data/JobClasses.json",
+            "Data/WotLClasses.json",
             "Data/SectionMappings/Story/Cloud.json"
         )
 
         $requiredPaths = @(
             "FFTIVC/data/enhanced/fftpack/unit",
+            "FFTIVC/data/enhanced/fftpack/unit_psp",
             "Data",
             "Data/SectionMappings/Story",
             "Images",
