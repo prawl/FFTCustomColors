@@ -509,35 +509,22 @@ The modloader/game has a fundamental issue where custom TEX files bypass the nor
 
 Previous attempts failed because we thought deploying custom TEX files would break the theme palette system. This was WRONG - deploying BOTH tex_992.bin AND tex_993.bin together allows themes to work correctly.
 
-### The Working Process
+### Quick Start: Apply to Any Job
 
-#### Step 1: Generate Base TEX Files via FFT Sprite Toolkit
+1. **Get TEX file numbers** from the mapping table below (e.g., Squire Female = 994, 995)
+2. **Get TEX files** from toolkit output: `C:\Users\ptyRa\AppData\Local\FFTSpriteToolkit\working\.FFTSpriteToolkit\sprites_rgba\`
+3. **Patch with script**: `python scripts/fix_hair_highlight_tex.py tex_994.bin tex_994.bin` (repeat for each file)
+4. **Deploy BOTH files** to `ColorMod/FFTIVC/data/enhanced/system/ffto/g2d/`
+5. **Copy to game folder**: `C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFTColorCustomizer\FFTIVC\data\enhanced\system\ffto\g2d\`
+6. **Test in-game**
 
-The toolkit location:
-```
-C:\Users\[username]\AppData\Local\FFTSpriteToolkit\working\extracted_sprites\
-```
+**Note**: You can also patch TEX files inline without the script - see Python code below.
 
-Source BMP files needed (from Desktop or toolkit):
-- `992_Squire_Male_hd.bmp` (512x512, 4-bit indexed, 16 colors)
-- `993_Squire_Male_hd.bmp` (512x464, 4-bit indexed, 16 colors)
+---
 
-**Important**: The toolkit does NOT use modified BMP pixel data directly. It regenerates TEX files from its own source. So we must patch the TEX files AFTER generation.
+### Technical Details
 
-#### Step 2: Run the Sprite Modding Tool
-
-1. Ensure BMP files are in the `extracted_sprites` folder
-2. Create/export a mod package
-3. Generated TEX files appear in:
-   ```
-   C:\Users\[username]\AppData\Local\FFTSpriteToolkit\working\.FFTSpriteToolkit\sprites_rgba\
-   ```
-
-#### Step 3: Patch TEX Files Directly
-
-After toolkit generates the TEX files, apply the hair highlight fix by remapping index 15 (skin) to index 12 (boots/hair) in the hair region only.
-
-**TEX File Format:**
+#### TEX File Format
 ```
 Offset 0x000-0x7FF: Header (2048 bytes, all zeros)
 Offset 0x800+:      4-bit indexed pixel data
@@ -588,15 +575,7 @@ for num in ['992', '993']:
         f.write(data)
 ```
 
-#### Step 4: Deploy BOTH TEX Files
-
-Copy both patched files to the mod's g2d folder:
-```
-ColorMod/FFTIVC/data/enhanced/system/ffto/g2d/tex_992.bin
-ColorMod/FFTIVC/data/enhanced/system/ffto/g2d/tex_993.bin
-```
-
-**CRITICAL**: Both files must be deployed together. The game loads them as a pair.
+**CRITICAL**: Deploy BOTH TEX files in each pair together. The game loads them as pairs.
 
 ### Results
 
@@ -626,14 +605,31 @@ Actual behavior:
 - ✅ The TEX files provide pixel indices, SPR files provide palette colors
 - ✅ Both systems work together when properly deployed
 
-### File Mapping
+### File Mapping (Generic Jobs)
 
 | Job | TEX Files | SPR File |
 |-----|-----------|----------|
 | Squire Male | 992, 993 | battle_mina_m_spr.bin |
 | Squire Female | 994, 995 | battle_mina_w_spr.bin |
+| Chemist Male | 996, 997 | battle_item_m_spr.bin |
+| Chemist Female | 998, 999 | battle_item_w_spr.bin |
 | Knight Male | 1000, 1001 | battle_knight_m_spr.bin |
-| etc. | N, N+1 | corresponding _spr.bin |
+| Knight Female | 1002, 1003 | battle_knight_w_spr.bin |
+| Archer Male | 1004, 1005 | battle_archer_m_spr.bin |
+| Archer Female | 1006, 1007 | battle_archer_w_spr.bin |
+| Monk Male | 1008, 1009 | battle_monk_m_spr.bin |
+| Monk Female | 1010, 1011 | battle_monk_w_spr.bin |
+| Priest Male | 1012, 1013 | battle_priest_m_spr.bin |
+| Priest Female | 1014, 1015 | battle_priest_w_spr.bin |
+| Black Mage Male | 1016, 1017 | battle_kuro_m_spr.bin |
+| Black Mage Female | 1018, 1019 | battle_kuro_w_spr.bin |
+| Time Mage Male | 1020, 1021 | battle_toki_m_spr.bin |
+| Time Mage Female | 1022, 1023 | battle_toki_w_spr.bin |
+| Summoner Male | 1024, 1025 | battle_sho_m_spr.bin |
+| Summoner Female | 1026, 1027 | battle_sho_w_spr.bin |
+| Thief Male | 1028, 1029 | battle_shi_m_spr.bin |
+
+**Pattern**: TEX files come in pairs (N, N+1). Get source TEX files from the FFT Sprite Toolkit output folder.
 
 ### Next Steps
 
