@@ -637,3 +637,80 @@ Actual behavior:
 2. [ ] Apply fix to other jobs (Knight, Monk, Archer, etc.)
 3. [ ] Create automated pipeline to patch all generic job TEX files
 4. [ ] Integrate into build process
+
+---
+
+## Phase 7: Config UI Preview Fix (2026-01-13)
+
+### Problem: Preview Shows Old Highlight
+
+After fixing the in-game hair highlight (Phase 6), the Config UI preview still showed the hair highlight using the skin color. This is because:
+
+- **In-game rendering**: Uses TEX files (from g2d folder) for pixel indices
+- **Config UI preview**: Uses SPR files (from fftpack/unit folder) via `BinSpriteExtractor.cs`
+
+The TEX fix doesn't affect the preview because `BinSpriteExtractor` reads pixel data directly from SPR files.
+
+### Solution: Patch SPR Files Too
+
+Created `scripts/fix_hair_highlight_spr.py` to apply the same index 15 → 12 remapping to SPR files.
+
+**SPR File Format (different from TEX!):**
+```
+Offset 0x000-0x1FF: Palette data (512 bytes, 16 palettes × 32 bytes)
+Offset 0x200+:      4-bit indexed pixel data
+                    Low nibble = first pixel (opposite of TEX!)
+                    High nibble = second pixel
+                    Sheet width: 256 pixels (vs 512 for TEX)
+                    Sprite height: 40 pixels
+```
+
+**Key Difference from TEX:**
+- TEX: High nibble = first pixel, low nibble = second pixel
+- SPR: Low nibble = first pixel, high nibble = second pixel
+
+### Usage
+
+```bash
+# Fix single SPR file
+python scripts/fix_hair_highlight_spr.py single battle_mina_m_spr.bin
+
+# Fix all theme variants of a sprite (recommended)
+python scripts/fix_hair_highlight_spr.py all ColorMod/FFTIVC battle_mina_m_spr.bin
+```
+
+### Results (Squire Male)
+
+Patched 21 theme variants (all themes in sprites_* folders):
+```
+sprites_amethyst: 306 pixels remapped, 221 kept
+sprites_blood_moon: 306 pixels remapped, 221 kept
+... (all 21 variants)
+Total: 6,426 pixels remapped
+```
+
+### Complete Fix Pipeline
+
+To fully fix hair highlight for any job:
+
+1. **Fix TEX files** (for in-game):
+   ```bash
+   python scripts/fix_hair_highlight_tex.py tex_992.bin tex_992.bin
+   python scripts/fix_hair_highlight_tex.py tex_993.bin tex_993.bin
+   # Copy to ColorMod/FFTIVC/data/enhanced/system/ffto/g2d/
+   ```
+
+2. **Fix SPR files** (for Config UI preview):
+   ```bash
+   python scripts/fix_hair_highlight_spr.py all ColorMod/FFTIVC battle_mina_m_spr.bin
+   python scripts/fix_hair_highlight_spr.py all Publish/Release/FFTIVC battle_mina_m_spr.bin
+   ```
+
+3. **Deploy**:
+   ```bash
+   powershell.exe -ExecutionPolicy Bypass -File ./BuildLinked.ps1
+   ```
+
+### Files Created
+
+- `scripts/fix_hair_highlight_spr.py` - SPR file patching script (supports single file or all themes)

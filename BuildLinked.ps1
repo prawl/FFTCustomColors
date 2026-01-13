@@ -155,11 +155,23 @@ if ($LASTEXITCODE -eq 0) {
 
             # Copy system/ffto/g2d tex files if they exist
             $g2dSourcePath = "ColorMod/RamzaThemes"
-            if (Test-Path $g2dSourcePath) {
-                Write-Host "Setting up G2D directory..." -ForegroundColor Cyan
-                $g2dDestPath = "$modPath/FFTIVC/data/enhanced/system/ffto/g2d"
-                New-Item -ItemType Directory -Force -Path $g2dDestPath | Out-Null
+            $genericG2dPath = "ColorMod/FFTIVC/data/enhanced/system/ffto/g2d"
 
+            Write-Host "Setting up G2D directory..." -ForegroundColor Cyan
+            $g2dDestPath = "$modPath/FFTIVC/data/enhanced/system/ffto/g2d"
+            New-Item -ItemType Directory -Force -Path $g2dDestPath | Out-Null
+
+            # Copy generic job TEX files (hair highlight fix) from FFTIVC g2d folder
+            if (Test-Path $genericG2dPath) {
+                $genericTexFiles = Get-ChildItem "$genericG2dPath/*.bin" -File -ErrorAction SilentlyContinue
+                if ($genericTexFiles) {
+                    $genericTexFiles | Copy-Item -Destination $g2dDestPath -Force
+                    $genericTexCount = ($genericTexFiles | Measure-Object).Count
+                    Write-Host "Copied $genericTexCount generic job G2D tex files (hair fix)" -ForegroundColor Green
+                }
+            }
+
+            if (Test-Path $g2dSourcePath) {
                 # Don't copy Ramza tex files (830-835) to root - let game use built-in for original theme
                 # Only copy other tex files if they exist
                 $nonRamzaFiles = Get-ChildItem "$g2dSourcePath/*.bin" -File | Where-Object {
