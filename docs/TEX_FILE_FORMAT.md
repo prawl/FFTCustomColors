@@ -91,13 +91,14 @@ TEX files come in pairs (N, N+1):
 | Summoner | 1024, 1025 | 1026, 1027 | battle_sho_[m/w]_spr.bin |
 | Thief | 1028, 1029 | 1030, 1031 | battle_shi_[m/w]_spr.bin |
 
-### Story Characters (830-920)
+### Story Characters (830-929)
 
 | Character | TEX Files | Notes |
 |-----------|-----------|-------|
 | Ramza Chapter 1 | 830, 831 | |
 | Ramza Chapter 2/3 | 832, 833 | |
 | Ramza Chapter 4 | 834, 835 | |
+| Delita | 836, 837 | |
 | Orlandeau | 854, 855 | |
 | Reis | 858, 859 | |
 | Rapha | 870, 871 | |
@@ -108,14 +109,39 @@ TEX files come in pairs (N, N+1):
 | Meliadoul | 905, 906 | |
 | Cloud | 910, 911 | |
 
-### Unknown Ranges
+### TEX Range Overview
 
-| Range | Possible Contents |
-|-------|-------------------|
-| 836-853 | Unknown story characters or monsters |
-| 860-869 | Unknown |
-| 1146-1551 | Unknown (gap before 1552+) |
-| 1552+ | Unknown (pal_*.bin files also exist here) |
+| Range | Size | Format | Contents |
+|-------|------|--------|----------|
+| 830-929 | 131KB/119KB pairs | 4-bit | Story/special characters (fully populated) |
+| 992-1145 | 131KB/119KB pairs | 4-bit | Generic job sprites |
+| 1146-1551 | Unknown | Unknown | Unknown (gap before 1552+) |
+| 1552+ | 262KB | 8-bit | Summon spell animations |
+
+### 8-bit TEX Files (1552+)
+
+These larger files use a different format:
+
+- **Size**: 262,144 bytes (double the normal size)
+- **Format**: 8-bit indexed (1 byte per pixel, 256 color palette)
+- **Palette**: Separate `pal_*.bin` files (512 bytes = 256 RGB555 colors)
+- **Contents**: Summon spell animations (e.g., tex_1552 = Moogle heal animation)
+- **Dimensions**: 512 x 504 pixels (same width, but 8-bit = more colors)
+
+```python
+# Reading 8-bit TEX with separate palette
+def read_palette(pal_path):
+    with open(pal_path, 'rb') as f:
+        data = f.read()
+    colors = []
+    for i in range(0, len(data), 2):
+        val = data[i] | (data[i + 1] << 8)  # Little-endian RGB555
+        r = ((val >> 0) & 0x1F) * 255 // 31
+        g = ((val >> 5) & 0x1F) * 255 // 31
+        b = ((val >> 10) & 0x1F) * 255 // 31
+        colors.append((r, g, b))
+    return colors
+```
 
 ## Pixel Manipulation Techniques
 
@@ -226,3 +252,7 @@ def count_neighbors(data, pixel_idx, target_indices):
   - Documented TEX file structure
   - Mapped story character TEX numbers
   - Tested cape removal and bald modifications
+  - Discovered 8-bit TEX format (1552+) with separate pal_*.bin palette files
+  - Identified tex_1552 as Moogle summon heal animation
+  - Confirmed 830-929 range is fully populated with story characters
+  - Added Delita to character mappings (836, 837)
