@@ -714,3 +714,128 @@ To fully fix hair highlight for any job:
 ### Files Created
 
 - `scripts/fix_hair_highlight_spr.py` - SPR file patching script (supports single file or all themes)
+
+---
+
+## Phase 8: Knight Female Fix - Advanced Techniques (2026-01-16)
+
+### Problem: Simple Y-Threshold Not Sufficient
+
+The Knight Female job required a more sophisticated approach than the simple `localY < 12` threshold used for Squire Male. Initial attempts with neighbor-based detection alone failed because:
+
+1. **Hair highlight pixels have more skin neighbors than hair neighbors** - They're at the edge of the face region
+2. **The highlight is visible during walking animation** - Affects tex_1002 (standing poses), not tex_1003 (animations) as initially assumed
+3. **X-position thresholds didn't help** - Highlight pixels were spread across all local X values
+
+### Key Discovery: Animation Uses First TEX File
+
+When testing Knight Female walking animation:
+- **tex_1002.bin** = Used for BOTH standing AND walking animations
+- **tex_1003.bin** = Used for other animation frames (attacks, etc.)
+
+Initial testing on tex_1003 showed "no change" because the walking animation actually uses tex_1002.
+
+### Working Solution: Hybrid Approach
+
+After extensive testing, the following algorithm successfully fixed Knight Female:
+
+```python
+# Two-tier approach:
+# Tier 1: min 3 hair neighbors - always convert (normal rule)
+# Tier 2: For localY <= 12 (top of sprite/head area) - convert if ANY hair neighbor
+
+for y in range(height):
+    for x in range(SHEET_WIDTH):
+        idx = get_pixel_index(data, x, y)
+        if idx not in REMAP:
+            continue
+
+        hair_n, skin_n = count_neighbors(data, x, y)
+        local_y = y % SPRITE_HEIGHT
+
+        # Tier 1: 3+ hair neighbors - always convert
+        if hair_n >= 3:
+            candidates.append((x, y, idx, REMAP[idx]))
+        # Tier 2: Top of sprite (head area) - convert if any hair neighbor
+        elif local_y <= 12 and hair_n >= 1:
+            candidates.append((x, y, idx, REMAP[idx]))
+```
+
+**Result:** 3954 pixels remapped, hair highlight fixed, face preserved.
+
+### Approaches Tested (Knight Female)
+
+| Approach | Pixels | Result |
+|----------|--------|--------|
+| min 3 hair neighbors, hair >= skin | 3227 | Face OK, highlight visible |
+| min 2 hair neighbors, hair >= skin | 3284 | No change |
+| min 1 hair neighbors, hair >= skin | 3299 | No change |
+| Strict min 4 hair neighbors | 3080 | No change |
+| Strict min 3 hair neighbors | 3723 | Highlight cut in half |
+| Strict min 2 hair neighbors | 4136 | Highlight gone, face affected |
+| Two-tier (min 3 + min 2 with hair > skin) | 3755 | Highlight back |
+| Two-tier (min 3 + min 2 with hair >= skin) | 3780 | Highlight back |
+| Convert all skin for localX >= 26 | 4038 | More face red, highlight there |
+| Convert all skin for localX <= 5 | 3931 | Less face red, highlight there |
+| **min 3 + localY <= 12 with min 1** | **3954** | **SUCCESS** |
+
+### Script Variations Created
+
+Multiple fix scripts with different algorithms:
+
+| Script | Algorithm | Use Case |
+|--------|-----------|----------|
+| `fix_hair_no_spread.py` | No spreading, configurable min neighbors + hair >= skin | Conservative approach |
+| `fix_hair_any_neighbor.py` | Any hair neighbor triggers conversion, multiple passes | Most aggressive |
+| `fix_hair_equal_neighbors.py` | hair >= skin with spreading | Aggressive with spreading |
+| `fix_hair_by_neighbor_ratio.py` | hair > skin with spreading | Moderate with spreading |
+| `fix_hair_highlight_strict.py` | Min neighbors only, no skin ratio check | Variable aggression |
+
+### Key Learnings
+
+1. **Different jobs need different approaches** - Squire Male worked with simple Y-threshold, Knight Female needed hybrid
+2. **Test on the correct TEX file** - Walking animation may use the "standing" TEX file
+3. **Verify deployed files** - Check that the game folder has the modified files with 0 remaining skin pixels
+4. **Hair pixels can have more skin than hair neighbors** - Pure neighbor ratio doesn't work for edge cases
+5. **Combining Y-threshold with neighbor detection works best** - Top of sprite (localY <= 12) + any hair neighbor
+
+### Jobs Status
+
+| Job | TEX Files | Status | Fix Used |
+|-----|-----------|--------|----------|
+| Squire Male | 992, 993 | ✅ Done | Simple Y < 12 |
+| Squire Female | 994, 995 | ✅ Done | Simple Y < 12 |
+| Chemist Male | 996, 997 | ✅ Done | Simple Y < 12 |
+| Chemist Female | 998, 999 | ✅ Done | Simple Y < 12 |
+| **Knight Female** | **1002, 1003** | **✅ Done** | **Hybrid (min 3 + localY <= 12)** |
+| Knight Male | 1000, 1001 | ❌ Not Done | - |
+| Archer Female | 1006, 1007 | ❌ Not Done | - |
+| Monk Female | 1010, 1011 | ❌ Not Done | - |
+| Summoner Female | 1026, 1027 | ❌ Not Done | - |
+| Mystic Female | 1038, 1039 | ❌ Not Done | - |
+| Ninja Female | 1054, 1055 | ❌ Not Done | - |
+| Bard Male | 1060, 1061 | ❌ Not Done | - |
+
+### Vanilla TEX File Location
+
+Original unmodified TEX files can be found at:
+```
+C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\original_squire_v2
+```
+
+### Recommended Fix Algorithm for Remaining Jobs
+
+Start with the Knight Female hybrid approach:
+
+```python
+# Tier 1: 3+ hair neighbors - always convert
+if hair_n >= 3:
+    convert()
+# Tier 2: Top of sprite (head area) - convert if any hair neighbor
+elif local_y <= 12 and hair_n >= 1:
+    convert()
+```
+
+Adjust parameters as needed:
+- If highlight still visible: Lower localY threshold or use min 2 in Tier 1
+- If face affected: Raise localY threshold or add skin neighbor check
