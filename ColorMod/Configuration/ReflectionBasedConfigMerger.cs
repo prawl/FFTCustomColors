@@ -58,7 +58,26 @@ namespace FFTColorCustomizer.Configuration
                 }
             }
 
+            // Handle RamzaColors - preserve existing if incoming is default
+            MergeRamzaColors(existingConfig, incomingConfig, mergedConfig);
+
             return mergedConfig;
+        }
+
+        private static void MergeRamzaColors(Config existingConfig, Config incomingConfig, Config mergedConfig)
+        {
+            MergeChapterSettings(existingConfig.RamzaColors.Chapter1, incomingConfig.RamzaColors.Chapter1, mergedConfig.RamzaColors.Chapter1);
+            MergeChapterSettings(existingConfig.RamzaColors.Chapter2, incomingConfig.RamzaColors.Chapter2, mergedConfig.RamzaColors.Chapter2);
+            MergeChapterSettings(existingConfig.RamzaColors.Chapter4, incomingConfig.RamzaColors.Chapter4, mergedConfig.RamzaColors.Chapter4);
+        }
+
+        private static void MergeChapterSettings(RamzaChapterHslSettings existing, RamzaChapterHslSettings incoming, RamzaChapterHslSettings merged)
+        {
+            // If incoming has non-default values, use them; otherwise preserve existing
+            merged.HueShift = incoming.HueShift != 0 ? incoming.HueShift : existing.HueShift;
+            merged.SaturationShift = incoming.SaturationShift != 0 ? incoming.SaturationShift : existing.SaturationShift;
+            merged.LightnessShift = incoming.LightnessShift != 0 ? incoming.LightnessShift : existing.LightnessShift;
+            merged.Enabled = incoming.Enabled || existing.Enabled;
         }
     }
 }

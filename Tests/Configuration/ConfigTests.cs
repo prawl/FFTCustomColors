@@ -277,5 +277,123 @@ namespace FFTColorCustomizer.Tests
             config.OnionKnight_Female = "azure";
             Assert.Equal("azure", config.OnionKnight_Female);
         }
+
+        [Fact]
+        public void Config_ShouldHaveRamzaColorsProperty()
+        {
+            // Arrange & Act
+            var config = new Config();
+
+            // Assert
+            Assert.NotNull(config.RamzaColors);
+            Assert.NotNull(config.RamzaColors.Chapter1);
+            Assert.NotNull(config.RamzaColors.Chapter2);
+            Assert.NotNull(config.RamzaColors.Chapter4);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(4)]
+        public void Config_GetRamzaChapterSettings_ShouldReturnCorrectChapter(int chapter)
+        {
+            // Arrange
+            var config = new Config();
+            config.RamzaColors.Chapter1.HueShift = 10;
+            config.RamzaColors.Chapter2.HueShift = 20;
+            config.RamzaColors.Chapter4.HueShift = 40;
+
+            // Act
+            var settings = config.GetRamzaChapterSettings(chapter);
+
+            // Assert
+            Assert.Equal(chapter * 10, settings.HueShift);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(4)]
+        public void Config_SetRamzaChapterSettings_ShouldUpdateCorrectChapter(int chapter)
+        {
+            // Arrange
+            var config = new Config();
+            var newSettings = new RamzaChapterHslSettings
+            {
+                HueShift = 99,
+                SaturationShift = 50,
+                LightnessShift = -25,
+                Enabled = true
+            };
+
+            // Act
+            config.SetRamzaChapterSettings(chapter, newSettings);
+
+            // Assert
+            var result = config.GetRamzaChapterSettings(chapter);
+            Assert.Equal(99, result.HueShift);
+            Assert.Equal(50, result.SaturationShift);
+            Assert.Equal(-25, result.LightnessShift);
+            Assert.True(result.Enabled);
+        }
+
+        [Fact]
+        public void Config_RamzaColors_ShouldSerializeAndDeserialize()
+        {
+            // Arrange
+            var config = new Config();
+            config.RamzaColors.Chapter1.HueShift = 45;
+            config.RamzaColors.Chapter1.SaturationShift = 20;
+            config.RamzaColors.Chapter1.Enabled = true;
+            config.RamzaColors.Chapter4.LightnessShift = -30;
+
+            // Act
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(config);
+            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<Config>(json);
+
+            // Assert
+            Assert.NotNull(deserialized.RamzaColors);
+            Assert.Equal(45, deserialized.RamzaColors.Chapter1.HueShift);
+            Assert.Equal(20, deserialized.RamzaColors.Chapter1.SaturationShift);
+            Assert.True(deserialized.RamzaColors.Chapter1.Enabled);
+            Assert.Equal(-30, deserialized.RamzaColors.Chapter4.LightnessShift);
+        }
+
+        [Fact]
+        public void Config_ShouldDeserializeOldConfigWithoutRamzaColors()
+        {
+            // Arrange - JSON from old config without RamzaColors
+            var oldJson = @"{""KnightMale"":""crimson"",""ArcherFemale"":""azure""}";
+
+            // Act
+            var config = Newtonsoft.Json.JsonConvert.DeserializeObject<Config>(oldJson);
+
+            // Assert - RamzaColors should exist with defaults
+            Assert.NotNull(config.RamzaColors);
+            Assert.Equal(0, config.RamzaColors.Chapter1.HueShift);
+            Assert.False(config.RamzaColors.Chapter1.Enabled);
+            // And the old values should be preserved
+            Assert.Equal("crimson", config.Knight_Male);
+            Assert.Equal("azure", config.Archer_Female);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(3)]
+        [InlineData(5)]
+        [InlineData(-1)]
+        [InlineData(100)]
+        public void Config_GetRamzaChapterSettings_WithInvalidChapter_ShouldReturnChapter1(int invalidChapter)
+        {
+            // Arrange
+            var config = new Config();
+            config.RamzaColors.Chapter1.HueShift = 42;
+
+            // Act
+            var settings = config.GetRamzaChapterSettings(invalidChapter);
+
+            // Assert - should default to Chapter1
+            Assert.Equal(42, settings.HueShift);
+        }
     }
 }

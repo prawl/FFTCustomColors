@@ -1,0 +1,36 @@
+{
+  "job": "RamzaCh23",
+  "sprite": "battle_ramuza2_spr.bin",
+  "sections": [
+    {
+      "name": "Armor",
+      "displayName": "Armor",
+      "indices": [3, 4, 5],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "LegsGloves",
+      "displayName": "Legs & Gloves",
+      "indices": [6, 7, 8],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "Underarmor",
+      "displayName": "Underarmor",
+      "indices": [9, 10],
+      "roles": ["shadow", "highlight"]
+    },
+    {
+      "name": "Hair",
+      "displayName": "Hair",
+      "indices": [11, 12, 13],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [14, 15],
+      "roles": ["shadow", "highlight"]
+    }
+  ]
+}

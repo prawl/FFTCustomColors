@@ -32,7 +32,15 @@ namespace FFTColorCustomizer.Configuration
                     // Write property name without underscores for compatibility
                     var jsonPropertyName = property.Name.Replace("_", "");
                     writer.WritePropertyName(jsonPropertyName);
-                    writer.WriteValue(propertyValue.ToString());
+
+                    if (property.PropertyType == typeof(RamzaHslSettings))
+                    {
+                        serializer.Serialize(writer, propertyValue);
+                    }
+                    else
+                    {
+                        writer.WriteValue(propertyValue.ToString());
+                    }
                 }
             }
 
@@ -66,6 +74,18 @@ namespace FFTColorCustomizer.Configuration
                         catch
                         {
                             // If parsing fails, leave as default (original)
+                        }
+                    }
+                    else if (propertyType == typeof(RamzaHslSettings))
+                    {
+                        try
+                        {
+                            var ramzaSettings = property.Value.ToObject<RamzaHslSettings>(serializer);
+                            configProperty.SetValue(config, ramzaSettings);
+                        }
+                        catch
+                        {
+                            // If parsing fails, leave as default
                         }
                     }
                     else if (propertyType.IsEnum)

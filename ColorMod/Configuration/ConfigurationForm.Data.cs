@@ -139,6 +139,15 @@ namespace FFTColorCustomizer.Configuration
 
             try
             {
+                // Check if this is a Ramza chapter - use NXD-based saving
+                var ramzaThemeSaver = new Services.RamzaThemeSaver();
+                if (ramzaThemeSaver.IsRamzaChapter(args.JobName))
+                {
+                    SaveRamzaTheme(args, ramzaThemeSaver);
+                    return;
+                }
+
+                // Standard theme saving for non-Ramza characters
                 var userThemeService = new UserThemeService(_modPath!);
                 userThemeService.SaveTheme(args.JobName, args.ThemeName, args.PaletteData);
 
@@ -173,6 +182,48 @@ namespace FFTColorCustomizer.Configuration
             {
                 MessageBox.Show($"Failed to save theme: {ex.Message}", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void SaveRamzaTheme(ThemeSavedEventArgs args, Services.RamzaThemeSaver ramzaThemeSaver)
+        {
+            var chapter = ramzaThemeSaver.GetChapterFromJobName(args.JobName);
+            var chapterDisplay = chapter == 2 ? "Chapter 2/3" : $"Chapter {chapter}";
+
+            // Normalize job name to canonical format for consistent storage
+            var normalizedJobName = ramzaThemeSaver.NormalizeJobName(args.JobName);
+
+            // Save the theme to UserThemes registry first (so it appears in dropdown)
+            var userThemeService = new UserThemeService(_modPath!);
+            userThemeService.SaveTheme(normalizedJobName, args.ThemeName, args.PaletteData);
+
+            // Save the theme using the NXD patcher (updates SQLite and patches NXD)
+            var success = ramzaThemeSaver.SaveTheme(args.JobName, args.PaletteData, _modPath!);
+
+            if (success)
+            {
+                // Refresh dropdowns for the job that was saved (use normalized name)
+                RefreshDropdownsForJob(normalizedJobName);
+
+                // Refresh the My Themes panel
+                _myThemesPanel?.RefreshThemes();
+
+                var nxdPath = ramzaThemeSaver.GetNxdDeploymentPath(_modPath!);
+                var message = $"Ramza {chapterDisplay} theme '{args.ThemeName}' saved successfully!\n\n" +
+                              $"The theme has been applied to charclut.nxd.\n\n" +
+                              $"You can select it under \"Ramza {chapterDisplay}\" in the Story Characters section.";
+
+                MessageBox.Show(message, "Ramza Theme Saved",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                Utilities.ModLogger.Log($"[RAMZA_THEME] Saved theme for {args.JobName}");
+            }
+            else
+            {
+                MessageBox.Show($"Failed to save Ramza {chapterDisplay} theme.\n\nCheck the mod logs for details.",
+                    "Save Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                Utilities.ModLogger.Log($"[RAMZA_THEME] Failed to save theme for {args.JobName}");
             }
         }
 

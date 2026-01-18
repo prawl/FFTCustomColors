@@ -335,6 +335,19 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "Copied $dataCount data files (including subdirectories)"
     }
 
+    # Deploy charclut.nxd to the game's NXD directory for Ramza color customization
+    Write-Host "Deploying charclut.nxd for Ramza customization..." -ForegroundColor Cyan
+    $nxdSource = "$PSScriptRoot/ColorMod/Data/nxd/charclut.nxd"
+    $nxdDestDir = "$modPath/FFTIVC/data/enhanced/nxd"
+
+    if (Test-Path $nxdSource) {
+        New-Item -ItemType Directory -Force -Path $nxdDestDir | Out-Null
+        Copy-Item $nxdSource -Destination "$nxdDestDir/charclut.nxd" -Force
+        Write-Host "  Deployed charclut.nxd to $nxdDestDir" -ForegroundColor Green
+    } else {
+        Write-Host "  Warning: charclut.nxd not found at $nxdSource" -ForegroundColor Yellow
+    }
+
     # Copy preview images
     Write-Host "Copying preview images..."
     $previewSource = "$PSScriptRoot/ColorMod/Resources/Previews"

@@ -32,6 +32,7 @@
     <PackageReference Include="Reloaded.Mod.Loader.IO" Version="2.5.0" />
     <PackageReference Include="Reloaded.SharedLib.Hooks" Version="1.9.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
   </ItemGroup>
 
 
@@ -43,10 +44,15 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\Previews\**\*.png" />
+    <EmbeddedResource Include="Images\RamzaChapter1\original\*.bmp" />
+    <EmbeddedResource Include="Images\RamzaChapter23\original\*.bmp" />
+    <EmbeddedResource Include="Images\RamzaChapter4\original\*.bmp" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="Data\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Data\nxd\charclut.nxd" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Data\nxd\charclut.sqlite" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -70,10 +70,12 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                     .FirstOrDefault(c => c.Name == "TemplateDropdown");
 
                 Assert.NotNull(templateDropdown);
-                // 2 generic jobs + 1 WotL separator + 4 WotL characters = 7 items
-                Assert.Equal(7, templateDropdown.Items.Count);
+                // 2 generic jobs + 1 Story separator + 1 WotL separator + 4 WotL characters = 8 items
+                // (Ramza chapters only appear when Story/ subdirectory exists with mapping files)
+                Assert.Equal(8, templateDropdown.Items.Count);
                 Assert.Contains("Knight (Female)", templateDropdown.Items.Cast<string>());
                 Assert.Contains("Squire (Male)", templateDropdown.Items.Cast<string>());
+                Assert.Contains("── Story Characters ──", templateDropdown.Items.Cast<string>());
                 Assert.Contains("── WotL Characters ──", templateDropdown.Items.Cast<string>());
                 Assert.Contains("Dark Knight (Male)", templateDropdown.Items.Cast<string>());
             }
@@ -1113,8 +1115,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
                     .FirstOrDefault(c => c.Name == "TemplateDropdown");
 
                 Assert.NotNull(templateDropdown);
-                // 2 generic jobs + 1 WotL separator + 4 WotL characters = 7 items
-                Assert.Equal(7, templateDropdown.Items.Count);
+                // 2 generic jobs + 1 Story separator + 1 WotL separator + 4 WotL characters = 8 items
+                // (Ramza chapters only appear when Story/ subdirectory exists with mapping files)
+                Assert.Equal(8, templateDropdown.Items.Count);
                 Assert.Contains("Knight (Female)", templateDropdown.Items.Cast<string>());
                 Assert.Contains("Squire (Male)", templateDropdown.Items.Cast<string>());
                 // Should NOT contain snake_case versions

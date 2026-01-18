@@ -1,0 +1,36 @@
+{
+  "job": "RamzaCh4",
+  "sprite": "battle_ramuza3_spr.bin",
+  "sections": [
+    {
+      "name": "ArmsLegs",
+      "displayName": "Arms & Legs",
+      "indices": [3, 4, 5],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "UnderarmorChest",
+      "displayName": "Underarmor (Chest)",
+      "indices": [6, 7, 8],
+      "roles": ["base", "shadow", "highlight"]
+    },
+    {
+      "name": "Accent",
+      "displayName": "Accent",
+      "indices": [9, 10],
+      "roles": ["shadow", "highlight"]
+    },
+    {
+      "name": "Hair",
+      "displayName": "Hair",
+      "indices": [11, 12, 13],
+      "roles": ["shadow", "base", "highlight"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [14, 15],
+      "roles": ["shadow", "highlight"]
+    }
+  ]
+}

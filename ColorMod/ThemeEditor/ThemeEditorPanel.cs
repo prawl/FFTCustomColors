@@ -124,21 +124,28 @@ namespace FFTColorCustomizer.ThemeEditor
                     _isStoryCharacter[displayName] = false;
                     _templateDropdown.Items.Add(displayName);
                 }
+            }
 
-                // Add story characters from Story/ subdirectory
+            // Add Story Characters section
+            _templateDropdown.Items.Add("── Story Characters ──");
+
+            if (_mappingsDirectory != null)
+            {
+                // Add story characters from Story/ subdirectory (includes Ramza chapters)
                 var storyCharacters = SectionMappingLoader.GetAvailableStoryCharacters(_mappingsDirectory);
-                if (storyCharacters.Length > 0)
+                foreach (var character in storyCharacters)
                 {
-                    // Add separator
-                    _templateDropdown.Items.Add("── Story Characters ──");
-
-                    foreach (var character in storyCharacters)
+                    // Map Ramza chapter job names to friendlier display names
+                    var displayName = character switch
                     {
-                        var displayName = character; // Story characters don't need formatting
-                        _displayNameToJobName[displayName] = character;
-                        _isStoryCharacter[displayName] = true;
-                        _templateDropdown.Items.Add(displayName);
-                    }
+                        "RamzaCh1" => "Ramza (Chapter 1)",
+                        "RamzaCh23" => "Ramza (Chapter 2/3)",
+                        "RamzaCh4" => "Ramza (Chapter 4)",
+                        _ => character // Other story characters use their name as-is
+                    };
+                    _displayNameToJobName[displayName] = character;
+                    _isStoryCharacter[displayName] = true;
+                    _templateDropdown.Items.Add(displayName);
                 }
 
                 // Add WotL Characters section
@@ -380,7 +387,7 @@ namespace FFTColorCustomizer.ThemeEditor
 
         private void OnTemplateSelected(object? sender, System.EventArgs e)
         {
-            if (_mappingsDirectory == null || _templateDropdown.SelectedItem == null)
+            if (_templateDropdown.SelectedItem == null)
                 return;
 
             var displayName = _templateDropdown.SelectedItem.ToString();
@@ -390,6 +397,10 @@ namespace FFTColorCustomizer.ThemeEditor
                 return;
 
             if (displayName == null || !_displayNameToJobName.TryGetValue(displayName, out var selectedJob))
+                return;
+
+            // We need mappings directory for all characters
+            if (_mappingsDirectory == null)
                 return;
 
             // Check if this is a WotL character

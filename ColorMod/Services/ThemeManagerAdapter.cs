@@ -3,6 +3,7 @@ using System.IO;
 using FFTColorCustomizer.Configuration;
 using FFTColorCustomizer.Core;
 using FFTColorCustomizer.Interfaces;
+using FFTColorCustomizer.ThemeEditor;
 using FFTColorCustomizer.Utilities;
 
 namespace FFTColorCustomizer.Services
@@ -241,11 +242,142 @@ namespace FFTColorCustomizer.Services
             {
                 texSwapper.RestoreOriginalTexFiles();
                 ModLogger.Log($"Restored original Ramza tex files from original_backup/");
+                // Restore original NXD palettes
+                ApplyBuiltInThemeToNxd("original");
             }
             else
             {
                 texSwapper.SwapTexFilesForTheme(theme);
                 ModLogger.Log($"Swapped Ramza tex files to theme: {theme} from {theme}/");
+
+                // Apply NXD palette for the theme
+                var builtInPalettes = new RamzaBuiltInThemePalettes();
+                if (builtInPalettes.IsBuiltInTheme(theme))
+                {
+                    // Built-in themes use computed palettes
+                    ApplyBuiltInThemeToNxd(theme);
+                }
+                else
+                {
+                    // User themes need their saved palette applied to NXD
+                    ApplyUserThemeToNxd(theme);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Applies a user-created Ramza theme's palette to the charclut.nxd file.
+        /// Loads the saved palette from UserThemes folder and patches the NXD.
+        /// </summary>
+        private void ApplyUserThemeToNxd(string theme)
+        {
+            try
+            {
+                var userThemeService = new UserThemeService(_modPath);
+                var themeSaver = new RamzaThemeSaver();
+
+                // Try to load palette for each Ramza chapter that has this theme
+                var chapters = new[] { ("RamzaChapter1", 1), ("RamzaChapter23", 2), ("RamzaChapter4", 4) };
+                bool anyApplied = false;
+
+                foreach (var (chapterName, chapterNum) in chapters)
+                {
+                    if (userThemeService.IsUserTheme(chapterName, theme))
+                    {
+                        var palettePath = userThemeService.GetUserThemePalettePath(chapterName, theme);
+                        if (!string.IsNullOrEmpty(palettePath) && File.Exists(palettePath))
+                        {
+                            var paletteData = File.ReadAllBytes(palettePath);
+                            ModLogger.Log($"Applying user theme '{theme}' palette for {chapterName} from {palettePath}");
+
+                            // Convert palette to CLUTData and apply to NXD
+                            var clutData = themeSaver.ConvertPaletteToClutData(paletteData);
+                            var success = themeSaver.ApplyClutData(chapterNum, clutData, _modPath);
+
+                            if (success)
+                            {
+                                ModLogger.Log($"Successfully applied user theme NXD palette for {chapterName}");
+                                anyApplied = true;
+                            }
+                            else
+                            {
+                                ModLogger.LogWarning($"Failed to apply user theme NXD palette for {chapterName}");
+                            }
+                        }
+                    }
+                }
+
+                if (!anyApplied)
+                {
+                    ModLogger.LogWarning($"No user theme palettes found for theme: {theme}");
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"Error applying user theme to NXD: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Applies a built-in Ramza theme's palette to the charclut.nxd file.
+        /// Only applies palettes for built-in themes (dark_knight, white_heretic, crimson_blade)
+        /// and "original". User-created themes already have their palettes applied when saved.
+        /// </summary>
+        private void ApplyBuiltInThemeToNxd(string theme)
+        {
+            try
+            {
+                var builtInPalettes = new RamzaBuiltInThemePalettes();
+
+                // Only update NXD for built-in themes and "original"
+                // User themes already have their palette applied when saved via SaveRamzaTheme
+                if (!builtInPalettes.IsBuiltInTheme(theme) && theme != "original")
+                {
+                    ModLogger.LogDebug($"Skipping NXD update for user theme: {theme}");
+                    return;
+                }
+
+                var themeSaver = new RamzaThemeSaver();
+
+                int[] chapter1Palette;
+                int[] chapter23Palette;
+                int[] chapter4Palette;
+
+                if (builtInPalettes.IsBuiltInTheme(theme))
+                {
+                    // Get transformed palettes for the built-in theme
+                    chapter1Palette = builtInPalettes.GetThemePalette(theme, 1);
+                    chapter23Palette = builtInPalettes.GetThemePalette(theme, 2);
+                    chapter4Palette = builtInPalettes.GetThemePalette(theme, 4);
+                    ModLogger.Log($"Applying {theme} palette to charclut.nxd");
+                }
+                else
+                {
+                    // "original" theme - restore original palettes
+                    chapter1Palette = builtInPalettes.GetOriginalPalette(1);
+                    chapter23Palette = builtInPalettes.GetOriginalPalette(2);
+                    chapter4Palette = builtInPalettes.GetOriginalPalette(4);
+                    ModLogger.Log($"Restoring original palette in charclut.nxd");
+                }
+
+                var success = themeSaver.ApplyAllChaptersClutData(
+                    chapter1Palette,
+                    chapter23Palette,
+                    chapter4Palette,
+                    _modPath);
+
+                if (success)
+                {
+                    ModLogger.Log($"Successfully updated charclut.nxd for theme: {theme}");
+                }
+                else
+                {
+                    ModLogger.LogWarning($"Failed to update charclut.nxd for theme: {theme}");
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"Error applying theme to NXD: {ex.Message}");
             }
         }
 

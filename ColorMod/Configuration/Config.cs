@@ -10,6 +10,9 @@ namespace FFTColorCustomizer.Configuration
     [JsonConverter(typeof(ReflectionBasedSystemTextJsonConverter))]
     public class Config : Configurable<Config>
     {
+        // Ramza HSL color settings
+        public RamzaHslSettings RamzaColors { get; set; } = new();
+
         // Dictionary to store all generic job themes
         private Dictionary<string, string> _jobThemes = new();
 
@@ -533,6 +536,33 @@ namespace FFTColorCustomizer.Configuration
         public JobMetadata GetJobMetadata(string jobKey)
         {
             return _jobMetadata.GetValueOrDefault(jobKey);
+        }
+
+        public RamzaChapterHslSettings GetRamzaChapterSettings(int chapter)
+        {
+            return chapter switch
+            {
+                1 => RamzaColors.Chapter1,
+                2 => RamzaColors.Chapter2,
+                4 => RamzaColors.Chapter4,
+                _ => RamzaColors.Chapter1
+            };
+        }
+
+        public void SetRamzaChapterSettings(int chapter, RamzaChapterHslSettings settings)
+        {
+            switch (chapter)
+            {
+                case 1:
+                    RamzaColors.Chapter1 = settings;
+                    break;
+                case 2:
+                    RamzaColors.Chapter2 = settings;
+                    break;
+                case 4:
+                    RamzaColors.Chapter4 = settings;
+                    break;
+            }
         }
 
         public string GetDisplayName(string characterName)

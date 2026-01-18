@@ -464,39 +464,48 @@ namespace FFTColorCustomizer.Configuration.UI
                 return;
             }
 
-            // First try to load from sprite sheets for Ramza characters
-            if (characterName.StartsWith("RamzaChapter"))
+            // Get the mod path from PreviewImageManager
+            var modPathField = _previewManager.GetType().GetField("_modPath",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var modPath = modPathField?.GetValue(_previewManager) as string;
+
+            // For Ramza characters, check if this is a user theme first
+            if (characterName.StartsWith("RamzaChapter") && !string.IsNullOrEmpty(modPath))
             {
-                // Get the mod path from PreviewImageManager
-                var modPathField = _previewManager.GetType().GetField("_modPath",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                if (modPathField != null)
+                // Check if this is a user theme - load from palette + original sprite
+                if (_userThemeService.IsUserTheme(characterName, theme))
                 {
-                    var modPath = modPathField.GetValue(_previewManager) as string;
-                    if (!string.IsNullOrEmpty(modPath))
+                    var userThemeImages = TryLoadRamzaUserThemePreview(modPath, characterName, theme);
+                    if (userThemeImages != null && userThemeImages.Length > 0)
                     {
-                        var spriteSheetLoader = new SpriteSheetPreviewLoader(modPath);
-                        var spriteImages = spriteSheetLoader.LoadPreviewsWithExtractor(characterName, theme);
-
-                        if (spriteImages != null && spriteImages.Count > 0)
-                        {
-                            // Convert Bitmap list to Image array for carousel
-                            var spriteImageArray = spriteImages.Cast<Image>().ToArray();
-                            carousel.SetImages(spriteImageArray);
-                            carousel.Invalidate();
-                            carousel.Refresh();
-                            ModLogger.LogSuccess($"Loaded {spriteImageArray.Length} sprites from sprite sheet for {characterName} - {theme}");
-                            return;
-                        }
-                        else
-                        {
-                            // For Ramza, if no sprite sheet found for this theme, show empty preview
-                            ModLogger.LogDebug($"No sprite sheet found for {characterName} - {theme}, showing empty preview");
-                            carousel.SetImages(new Image[0]);
-                            return;
-                        }
+                        carousel.SetImages(userThemeImages);
+                        carousel.Invalidate();
+                        carousel.Refresh();
+                        ModLogger.LogSuccess($"Loaded {userThemeImages.Length} sprites from user theme for {characterName} - {theme}");
+                        return;
                     }
+                }
+
+                // Try to load from pre-generated sprite sheets (for built-in themes)
+                var spriteSheetLoader = new SpriteSheetPreviewLoader(modPath);
+                var spriteImages = spriteSheetLoader.LoadPreviewsWithExtractor(characterName, theme);
+
+                if (spriteImages != null && spriteImages.Count > 0)
+                {
+                    // Convert Bitmap list to Image array for carousel
+                    var spriteImageArray = spriteImages.Cast<Image>().ToArray();
+                    carousel.SetImages(spriteImageArray);
+                    carousel.Invalidate();
+                    carousel.Refresh();
+                    ModLogger.LogSuccess($"Loaded {spriteImageArray.Length} sprites from sprite sheet for {characterName} - {theme}");
+                    return;
+                }
+                else
+                {
+                    // For Ramza, if no sprite sheet found for this theme, show empty preview
+                    ModLogger.LogDebug($"No sprite sheet found for {characterName} - {theme}, showing empty preview");
+                    carousel.SetImages(new Image[0]);
+                    return;
                 }
             }
 
@@ -965,6 +974,77 @@ namespace FFTColorCustomizer.Configuration.UI
             };
 
             ModLogger.Log($"[USER THEME] Job: '{jobProperty}', Theme: '{themeName}', Using external palette");
+            return carouselSprites;
+        }
+
+        private Image[] TryLoadRamzaUserThemePreview(string modPath, string characterName, string themeName)
+        {
+            ModLogger.Log($"[TryLoadRamzaUserThemePreview] Loading user theme '{themeName}' for {characterName}");
+
+            // Get the user theme palette path
+            var palettePath = _userThemeService.GetUserThemePalettePath(characterName, themeName);
+            if (string.IsNullOrEmpty(palettePath) || !File.Exists(palettePath))
+            {
+                ModLogger.LogWarning($"User theme palette not found: {palettePath}");
+                return null;
+            }
+
+            // Get the sprite file name based on character
+            string spriteFileName = characterName switch
+            {
+                "RamzaChapter1" => "battle_ramuza_spr.bin",
+                "RamzaChapter23" => "battle_ramuza2_spr.bin",
+                "RamzaChapter4" => "battle_ramuza3_spr.bin",
+                _ => null
+            };
+
+            if (spriteFileName == null)
+            {
+                ModLogger.LogWarning($"Unknown Ramza character: {characterName}");
+                return null;
+            }
+
+            // Find the unit path
+            string unitPath = FindActualUnitPath(modPath);
+            if (string.IsNullOrEmpty(unitPath))
+            {
+                ModLogger.LogWarning("Could not find unit path for Ramza preview");
+                return null;
+            }
+
+            // Get the original sprite from sprites_original
+            var originalDir = Path.Combine(unitPath, "sprites_original");
+            var originalFile = Path.Combine(originalDir, spriteFileName);
+            if (!File.Exists(originalFile))
+            {
+                ModLogger.LogWarning($"Original Ramza sprite not found: {originalFile}");
+                return null;
+            }
+
+            // Read original sprite and user palette
+            var originalSprite = File.ReadAllBytes(originalFile);
+            var userPalette = File.ReadAllBytes(palettePath);
+
+            // Validate palette size
+            if (userPalette.Length != 512)
+            {
+                ModLogger.LogWarning($"Invalid user palette size: {userPalette.Length} (expected 512)");
+                return null;
+            }
+
+            // Extract sprites using the external user palette
+            var cornerSprites = _binExtractor.ExtractCornerDirectionsWithExternalPalette(originalSprite, 0, userPalette);
+
+            // Return 4 corner sprites for carousel
+            var carouselSprites = new Image[]
+            {
+                cornerSprites[2], // SW (default preview angle)
+                cornerSprites[3], // NW
+                cornerSprites[0], // NE
+                cornerSprites[1]  // SE
+            };
+
+            ModLogger.Log($"[RAMZA USER THEME] Character: '{characterName}', Theme: '{themeName}', Using external palette");
             return carouselSprites;
         }
 

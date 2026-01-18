@@ -179,6 +179,16 @@ function Copy-ModAssets {
         # Count sprite files
         $binFiles = Get-ChildItem -Path $destFFTIVC -Filter "*.bin" -Recurse
         Write-Host "  -> Copied $($binFiles.Count) sprite files" -ForegroundColor Green
+
+        # Deploy charclut.nxd to the NXD directory for Ramza color customization
+        $nxdSource = "ColorMod/Data/nxd/charclut.nxd"
+        $nxdDestDir = "$destFFTIVC/data/enhanced/nxd"
+        if (Test-Path $nxdSource) {
+            Write-Host "  -> Deploying charclut.nxd for Ramza customization..."
+            New-Item -ItemType Directory -Force -Path $nxdDestDir | Out-Null
+            Copy-Item $nxdSource -Destination "$nxdDestDir/charclut.nxd" -Force
+            Write-Host "  -> Deployed charclut.nxd" -ForegroundColor Green
+        }
     } else {
         Write-ErrorMessage "FFTIVC folder not found at: $sourceFFTIVC"
     }

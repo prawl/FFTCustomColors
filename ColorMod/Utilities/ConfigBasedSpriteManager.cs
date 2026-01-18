@@ -297,8 +297,18 @@ namespace FFTColorCustomizer.Utilities
             }
 
             // Check if this is a user-created theme (story characters use character name as job name)
-            // Convert characterName to proper case for user theme lookup (e.g., "agrias" -> "Agrias")
-            var properCharacterName = char.ToUpper(characterName[0]) + characterName.Substring(1);
+            // Convert characterName to proper case for user theme lookup (e.g., "agrias" -> "Agrias", "ramzachapter4" -> "RamzaChapter4")
+            var properCharacterName = NormalizeCharacterName(characterName);
+
+            // For Ramza chapters, check if this is a built-in theme (dark_knight, white_heretic, crimson_blade)
+            // Built-in Ramza themes work via NXD palette patching, not sprite files
+            if (IsRamzaChapter(properCharacterName) && IsBuiltInRamzaTheme(themeName))
+            {
+                ModLogger.Log($"[STORY_CHAR_THEME] Applying built-in Ramza theme: {properCharacterName}/{themeName}");
+                ApplyBuiltInRamzaThemeToNxd(properCharacterName, themeName);
+                return;
+            }
+
             var isUserTheme = _userThemeService.IsUserTheme(properCharacterName, themeName);
             ModLogger.Log($"[STORY_CHAR_THEME] Checking user theme: character={properCharacterName}, theme={themeName}, isUserTheme={isUserTheme}");
 
@@ -726,6 +736,34 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
+        /// Normalizes character names to proper case for user theme lookups.
+        /// Handles multi-word names like "ramzachapter4" → "RamzaChapter4"
+        /// </summary>
+        private string NormalizeCharacterName(string characterName)
+        {
+            if (string.IsNullOrEmpty(characterName))
+                return characterName;
+
+            // Handle Ramza chapter variations
+            var lowerName = characterName.ToLower();
+            if (lowerName.StartsWith("ramzachapter") || lowerName.StartsWith("ramzach"))
+            {
+                // Extract the chapter number
+                if (lowerName.Contains("chapter1") || lowerName.EndsWith("ch1"))
+                    return "RamzaChapter1";
+                if (lowerName.Contains("chapter2") || lowerName.Contains("chapter23") || lowerName.EndsWith("ch2"))
+                    return "RamzaChapter23";
+                if (lowerName.Contains("chapter4") || lowerName.EndsWith("ch4"))
+                    return "RamzaChapter4";
+                // Default to Chapter1 if we can't determine
+                return "RamzaChapter1";
+            }
+
+            // For simple names, just capitalize the first letter
+            return char.ToUpper(characterName[0]) + characterName.Substring(1);
+        }
+
+        /// <summary>
         /// Converts job type (e.g., "knight") to job name format (e.g., "Knight_Male") based on sprite name
         /// </summary>
         private string ConvertJobTypeToJobName(string jobType, string spriteName)
@@ -913,11 +951,128 @@ namespace FFTColorCustomizer.Utilities
                 File.WriteAllBytes(destFile, originalSprite);
 
                 ModLogger.LogSuccess($"[APPLY_STORY_USER_THEME] SUCCESS - Created: {destFile}");
+
+                // For Ramza chapters, also patch the NXD with the user theme palette
+                if (IsRamzaChapter(characterName))
+                {
+                    ApplyRamzaUserThemeToNxd(characterName, userPalette);
+                }
             }
             catch (Exception ex)
             {
                 ModLogger.LogError($"[APPLY_STORY_USER_THEME] FAILED: {ex.Message}");
                 ModLogger.LogError($"[APPLY_STORY_USER_THEME] Stack: {ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// Checks if the character name is a Ramza chapter.
+        /// </summary>
+        private bool IsRamzaChapter(string characterName)
+        {
+            var lower = characterName.ToLower();
+            return lower == "ramzachapter1" || lower == "ramzachapter23" || lower == "ramzachapter4";
+        }
+
+        /// <summary>
+        /// Checks if the theme is a built-in Ramza theme (dark_knight, white_heretic, crimson_blade).
+        /// </summary>
+        private bool IsBuiltInRamzaTheme(string themeName)
+        {
+            var lower = themeName.ToLower();
+            return lower == "dark_knight" || lower == "white_heretic" || lower == "crimson_blade";
+        }
+
+        /// <summary>
+        /// Applies a built-in Ramza theme by patching the NXD with pre-computed palettes.
+        /// </summary>
+        private void ApplyBuiltInRamzaThemeToNxd(string characterName, string themeName)
+        {
+            try
+            {
+                ModLogger.Log($"[RAMZA_BUILTIN] Applying built-in theme '{themeName}' for {characterName}");
+
+                var builtInPalettes = new RamzaBuiltInThemePalettes();
+                var themeSaver = new RamzaThemeSaver();
+
+                // Get chapter number from character name
+                int chapter = characterName.ToLower() switch
+                {
+                    "ramzachapter1" => 1,
+                    "ramzachapter23" => 2,
+                    "ramzachapter4" => 4,
+                    _ => throw new ArgumentException($"Invalid Ramza chapter: {characterName}")
+                };
+
+                // Get the pre-computed palette for this theme and chapter
+                var clutData = builtInPalettes.GetThemePalette(themeName.ToLower(), chapter);
+                if (clutData == null)
+                {
+                    ModLogger.LogWarning($"[RAMZA_BUILTIN] No palette found for {themeName}/{chapter}");
+                    return;
+                }
+
+                // Log the armor colors being applied (indices 3-6)
+                ModLogger.Log($"[RAMZA_BUILTIN] Armor colors for {themeName}/Ch{chapter}:");
+                for (int i = 3; i <= 6; i++)
+                {
+                    int offset = i * 3;
+                    ModLogger.Log($"[RAMZA_BUILTIN]   Index {i}: RGB({clutData[offset]}, {clutData[offset + 1]}, {clutData[offset + 2]})");
+                }
+
+                var success = themeSaver.ApplyClutData(chapter, clutData, _modPath);
+
+                if (success)
+                {
+                    ModLogger.LogSuccess($"[RAMZA_BUILTIN] Successfully patched charclut.nxd for {characterName}/{themeName}");
+                }
+                else
+                {
+                    ModLogger.LogWarning($"[RAMZA_BUILTIN] Failed to patch charclut.nxd for {characterName}/{themeName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[RAMZA_BUILTIN] Error applying built-in theme: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Applies a Ramza user theme palette to the charclut.nxd file.
+        /// </summary>
+        private void ApplyRamzaUserThemeToNxd(string characterName, byte[] paletteData)
+        {
+            try
+            {
+                ModLogger.Log($"[RAMZA_NXD] Applying user theme NXD palette for {characterName}");
+
+                var themeSaver = new RamzaThemeSaver();
+
+                // Get chapter number from character name
+                int chapter = characterName.ToLower() switch
+                {
+                    "ramzachapter1" => 1,
+                    "ramzachapter23" => 2,
+                    "ramzachapter4" => 4,
+                    _ => throw new ArgumentException($"Invalid Ramza chapter: {characterName}")
+                };
+
+                // Convert palette to CLUTData and apply to NXD
+                var clutData = themeSaver.ConvertPaletteToClutData(paletteData);
+                var success = themeSaver.ApplyClutData(chapter, clutData, _modPath);
+
+                if (success)
+                {
+                    ModLogger.LogSuccess($"[RAMZA_NXD] Successfully patched charclut.nxd for {characterName}");
+                }
+                else
+                {
+                    ModLogger.LogWarning($"[RAMZA_NXD] Failed to patch charclut.nxd for {characterName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[RAMZA_NXD] Error patching NXD: {ex.Message}");
             }
         }
     }
