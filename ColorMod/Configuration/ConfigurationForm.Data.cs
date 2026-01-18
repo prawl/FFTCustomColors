@@ -208,9 +208,7 @@ namespace FFTColorCustomizer.Configuration
                 // Refresh the My Themes panel
                 _myThemesPanel?.RefreshThemes();
 
-                var nxdPath = ramzaThemeSaver.GetNxdDeploymentPath(_modPath!);
                 var message = $"Ramza {chapterDisplay} theme '{args.ThemeName}' saved successfully!\n\n" +
-                              $"The theme has been applied to charclut.nxd.\n\n" +
                               $"You can select it under \"Ramza {chapterDisplay}\" in the Story Characters section.";
 
                 MessageBox.Show(message, "Ramza Theme Saved",
