@@ -1,6 +1,7 @@
 # FFTColorCustomizer Refactoring Analysis
 
 **Analysis Date:** 2024-01-04
+**Last Updated:** 2025-01-19
 **Codebase Version:** Commit 825c31d (Add Time Mage Male Template Theme)
 **Analyst:** Claude Code Deep Dive
 
@@ -8,22 +9,22 @@
 
 ## Executive Summary
 
-**Overall Grade: B-/C+**
+**Overall Grade: B-/C+** (improving)
 
 | Category | Grade | Notes |
 |----------|-------|-------|
-| **Functionality** | A | Works, 867 passing tests, handles complex sprite theming |
-| **Test Coverage** | B+ | Comprehensive tests, some gaps in core services |
+| **Functionality** | A | Works, 1101 passing tests, handles complex sprite theming |
+| **Test Coverage** | A- | Comprehensive tests (1101), some gaps in core services |
 | **Architecture** | C | Good intentions, but God classes and unclear boundaries |
 | **Code Duplication** | C- | Significant DRY violations |
-| **Dependency Management** | D+ | Built DI container but uses static singletons instead |
+| **Dependency Management** | C | Static singletons now thread-safe; DI container still underused |
 | **Maintainability** | C | Hard to modify without touching multiple files |
 | **Naming/Consistency** | C | Manager vs Service vs Coordinator unclear |
 
 **Codebase Statistics:**
-- **109 C# source files** (~12,000 lines of code)
+- **~120 C# source files** (~12,000+ lines of code)
 - **84 classes**, **8 interfaces**
-- **151 test files** (867 tests passing)
+- **1101 tests passing** (up from 867)
 
 ---
 
@@ -145,32 +146,22 @@ A well-implemented IoC container exists but is barely used. Instead, 3 static si
 
 | Singleton | Thread-Safe? | Issue |
 |-----------|--------------|-------|
-| `CharacterServiceSingleton` | Yes (double-checked locking) | Should use DI |
-| `JobClassServiceSingleton` | **NO - Race condition!** | Critical bug |
-| `UserThemeServiceSingleton` | No | Should use DI |
+| `CharacterServiceSingleton` | ✅ Yes (double-checked locking) | Should use DI |
+| `JobClassServiceSingleton` | ✅ Yes (FIXED 2025-01-19) | Should use DI |
+| `UserThemeServiceSingleton` | ✅ Yes (FIXED 2025-01-19) | Should use DI |
 
 **Current Usage Pattern:**
 - ~30% Constructor Injection
 - ~70% Service Locator (static singletons)
 
-**JobClassServiceSingleton Race Condition:**
-```csharp
-// ColorMod/Services/JobClassServiceSingleton.cs:14-21
-public static JobClassDefinitionService Instance {
-    get {
-        if (_instance == null) {
-            _instance = new JobClassDefinitionService();  // Race condition!
-        }
-        return _instance;
-    }
-}
-```
+**Thread Safety Status:** All singletons now use proper double-checked locking pattern.
 
-**Recommendation:**
-1. Fix `JobClassServiceSingleton` thread safety immediately
-2. Eliminate all static singletons
-3. Register services in `ServiceContainer`
-4. Use constructor injection consistently
+**Remaining Recommendation:**
+1. ~~Fix `JobClassServiceSingleton` thread safety immediately~~ ✅ DONE
+2. ~~Fix `UserThemeServiceSingleton` thread safety~~ ✅ DONE
+3. Eliminate all static singletons (migrate to DI)
+4. Register services in `ServiceContainer`
+5. Use constructor injection consistently
 
 ---
 
@@ -562,7 +553,8 @@ Mod.cs
 
 | Task | Impact | Effort |
 |------|--------|--------|
-| Fix `JobClassServiceSingleton` thread safety | Critical | 15 min |
+| ~~Fix `JobClassServiceSingleton` thread safety~~ | ~~Critical~~ | ✅ DONE (2025-01-19) |
+| ~~Fix `UserThemeServiceSingleton` thread safety~~ | ~~Critical~~ | ✅ DONE (2025-01-19) |
 | Extract path resolution to `FFTIVCPathResolver` | High | 2 hours |
 | Parameterize character theme cycling | Medium | 1 hour |
 | Remove excessive debug logging | Low | 30 min |
@@ -571,7 +563,7 @@ Mod.cs
 
 | Task | Impact | Effort |
 |------|--------|--------|
-| Refactor `Config.cs` to dictionary-based | High | 4 hours |
+| Refactor `Config.cs` to dictionary-based | High | ~Partial (dictionaries added) |
 | Split `ConfigBasedSpriteManager` into 3-4 services | High | 1 day |
 | Extract `Mod.cs` logic to delegated components | High | 4 hours |
 | Eliminate static singletons, use DI | High | 1 day |
@@ -605,11 +597,12 @@ Mod.cs
 |--------|---------|--------|
 | God classes (>500 lines) | 4 | 0 |
 | Manager/Service/Coordinator classes | 30 | ~15 |
-| Static singletons | 3 | 0 |
+| Static singletons (thread-safe) | 3 | 0 |
 | Duplicate path resolution | 4+ copies | 1 |
 | Constructor injection rate | ~30% | 95%+ |
 | Average class size | 142 LOC | <100 LOC |
 | Test coverage for core services | ~60% | 80%+ |
+| Total tests | 1101 | - |
 
 ---
 

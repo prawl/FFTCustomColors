@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Build and Test
 ```bash
-# Run all tests (77 tests) - use this to validate changes
+# Run all tests (1101 tests) - use this to validate changes
 ./RunTests.sh
 
 # Build the mod (without tests)
