@@ -2,14 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using Microsoft.Data.Sqlite;
 
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
     /// Patches charclut.nxd files by updating CLUTData bytes in place.
-    /// This avoids the need to fully reimplement the NXD format - we just
-    /// read the SQLite, convert JSON to bytes, and patch the NXD template.
+    /// Uses known byte offsets to directly modify the NXD binary.
     /// </summary>
     public class NxdPatcher
     {
@@ -42,79 +40,6 @@ namespace FFTColorCustomizer.Services
         };
 
         private const int ClutDataSize = 48; // 16 colors × 3 RGB bytes
-
-        /// <summary>
-        /// Creates a patched NXD file from the SQLite database.
-        /// </summary>
-        /// <param name="templateNxdPath">Path to the template charclut.nxd</param>
-        /// <param name="sqlitePath">Path to the modified charclut.sqlite</param>
-        /// <param name="outputNxdPath">Path for the output NXD file</param>
-        /// <returns>True if patching was successful</returns>
-        public bool PatchNxdFromSqlite(string templateNxdPath, string sqlitePath, string outputNxdPath)
-        {
-            if (!File.Exists(templateNxdPath))
-                throw new FileNotFoundException("Template NXD file not found", templateNxdPath);
-
-            if (!File.Exists(sqlitePath))
-                throw new FileNotFoundException("SQLite database not found", sqlitePath);
-
-            // Read the template NXD
-            byte[] nxdBytes = File.ReadAllBytes(templateNxdPath);
-
-            // Verify it's a valid NXD file
-            if (nxdBytes.Length < 4 ||
-                nxdBytes[0] != 'N' || nxdBytes[1] != 'X' ||
-                nxdBytes[2] != 'D' || nxdBytes[3] != 'F')
-            {
-                throw new InvalidDataException("Invalid NXD file - missing NXDF magic");
-            }
-
-            try
-            {
-                // Read CLUTData from SQLite and patch into NXD
-                using var connection = new SqliteConnection($"Data Source={sqlitePath}");
-                connection.Open();
-
-                using var command = connection.CreateCommand();
-                command.CommandText = "SELECT Key, Key2, CLUTData FROM CharCLUT";
-
-                using var reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    int key = reader.GetInt32(0);
-                    int key2 = reader.GetInt32(1);
-                    string clutDataJson = reader.GetString(2);
-
-                    if (ClutDataOffsets.TryGetValue((key, key2), out int offset))
-                    {
-                        byte[] clutBytes = JsonToClutBytes(clutDataJson);
-                        if (clutBytes.Length == ClutDataSize)
-                        {
-                            Array.Copy(clutBytes, 0, nxdBytes, offset, ClutDataSize);
-                        }
-                    }
-                }
-
-                connection.Close();
-            }
-            finally
-            {
-                // Clear connection pool to release file handles
-                SqliteConnection.ClearAllPools();
-            }
-
-            // Ensure output directory exists
-            var outputDir = Path.GetDirectoryName(outputNxdPath);
-            if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
-            {
-                Directory.CreateDirectory(outputDir);
-            }
-
-            // Write the patched NXD
-            File.WriteAllBytes(outputNxdPath, nxdBytes);
-
-            return true;
-        }
 
         /// <summary>
         /// Patches a single CLUTData entry in an NXD file.

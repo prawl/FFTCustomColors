@@ -11,6 +11,9 @@ namespace FFTColorCustomizer.Tests.Services
         [InlineData("RamzaCh1", true)]
         [InlineData("RamzaCh23", true)]
         [InlineData("RamzaCh4", true)]
+        [InlineData("RamzaChapter1", true)]
+        [InlineData("RamzaChapter23", true)]
+        [InlineData("RamzaChapter4", true)]
         [InlineData("Squire_Male", false)]
         [InlineData("Knight_Female", false)]
         [InlineData("Agrias", false)]
@@ -31,6 +34,9 @@ namespace FFTColorCustomizer.Tests.Services
         [InlineData("RamzaCh1", 1)]
         [InlineData("RamzaCh23", 2)]
         [InlineData("RamzaCh4", 4)]
+        [InlineData("RamzaChapter1", 1)]
+        [InlineData("RamzaChapter23", 2)]
+        [InlineData("RamzaChapter4", 4)]
         public void GetChapterFromJobName_ReturnsCorrectChapter(string jobName, int expectedChapter)
         {
             // Arrange
@@ -115,20 +121,6 @@ namespace FFTColorCustomizer.Tests.Services
             Assert.Contains("nxd", result);
         }
 
-        [Fact]
-        public void GetSqliteTempPath_ReturnsTempPath()
-        {
-            // Arrange
-            var saver = new RamzaThemeSaver();
-
-            // Act
-            var result = saver.GetSqliteTempPath();
-
-            // Assert
-            Assert.Contains("charclut", result);
-            Assert.EndsWith(".sqlite", result);
-        }
-
         [Theory]
         [InlineData(1, 1, 0)]
         [InlineData(2, 2, 0)]
@@ -146,114 +138,35 @@ namespace FFTColorCustomizer.Tests.Services
             Assert.Equal(expectedKey2, key2);
         }
 
-        [Fact]
-        public void BuildUpdateSql_ReturnsValidSqlStatement()
-        {
-            // Arrange
-            var saver = new RamzaThemeSaver();
-            var clutDataJson = "[255,0,0,0,255,0]";
-            int key = 1;
-            int key2 = 0;
-
-            // Act
-            var sql = saver.BuildUpdateSql(key, key2, clutDataJson);
-
-            // Assert
-            Assert.Contains("UPDATE", sql);
-            Assert.Contains("CharCLUT", sql);
-            Assert.Contains("CLUTData", sql);
-            Assert.Contains(clutDataJson, sql);
-            Assert.Contains("Key = 1", sql);
-            Assert.Contains("Key2 = 0", sql);
-        }
-
-        [Fact]
-        public void UpdateSqliteDatabase_WithValidData_UpdatesDatabase()
-        {
-            // Arrange
-            var saver = new RamzaThemeSaver();
-
-            // Create a temp copy of the base SQLite database
-            var baseSqlitePath = GetBaseSqlitePath();
-            if (!File.Exists(baseSqlitePath))
-            {
-                // Skip test if base SQLite doesn't exist
-                return;
-            }
-
-            var tempSqlitePath = Path.Combine(Path.GetTempPath(), $"charclut_test_{Guid.NewGuid()}.sqlite");
-            File.Copy(baseSqlitePath, tempSqlitePath);
-
-            try
-            {
-                // Create test palette with red color
-                var paletteBytes = new byte[512];
-                paletteBytes[0] = 0x1F; // Red in BGR555
-                paletteBytes[1] = 0x00;
-
-                var clutData = saver.ConvertPaletteToClutData(paletteBytes);
-                var clutDataJson = saver.CreateClutDataJson(clutData);
-
-                // Act
-                var result = saver.UpdateSqliteDatabase(tempSqlitePath, 1, clutDataJson);
-
-                // Assert
-                Assert.True(result);
-
-                // Verify the update was applied
-                var readBack = saver.ReadClutDataFromSqlite(tempSqlitePath, 1, 0);
-                Assert.NotNull(readBack);
-                Assert.Contains("255", readBack); // Red value should be in the JSON
-            }
-            finally
-            {
-                // Cleanup
-                if (File.Exists(tempSqlitePath))
-                    File.Delete(tempSqlitePath);
-            }
-        }
-
-        [Fact]
-        public void ReadClutDataFromSqlite_WithValidKey_ReturnsClutData()
-        {
-            // Arrange
-            var saver = new RamzaThemeSaver();
-            var baseSqlitePath = GetBaseSqlitePath();
-
-            if (!File.Exists(baseSqlitePath))
-            {
-                // Skip test if base SQLite doesn't exist
-                return;
-            }
-
-            // Act - read Chapter 1 data (Key=1, Key2=0)
-            var clutDataJson = saver.ReadClutDataFromSqlite(baseSqlitePath, 1, 0);
-
-            // Assert
-            Assert.NotNull(clutDataJson);
-            Assert.StartsWith("[", clutDataJson);
-            Assert.EndsWith("]", clutDataJson);
-        }
-
-        [Fact]
-        public void GetBaseSqlitePath_ReturnsValidPath()
+        [Theory]
+        [InlineData("RamzaCh1", "RamzaChapter1")]
+        [InlineData("RamzaCh23", "RamzaChapter23")]
+        [InlineData("RamzaCh4", "RamzaChapter4")]
+        [InlineData("RamzaChapter1", "RamzaChapter1")]
+        [InlineData("Agrias", "Agrias")]
+        public void NormalizeJobName_ReturnsCanonicalFormat(string input, string expected)
         {
             // Arrange
             var saver = new RamzaThemeSaver();
 
             // Act
-            var path = saver.GetBaseSqlitePath();
+            var result = saver.NormalizeJobName(input);
 
             // Assert
-            Assert.EndsWith("charclut.sqlite", path);
+            Assert.Equal(expected, result);
         }
 
-        private string GetBaseSqlitePath()
+        [Fact]
+        public void GetBaseNxdPath_ReturnsValidPath()
         {
-            // Find the ColorMod/Data/nxd directory relative to test execution
-            var baseDir = Directory.GetCurrentDirectory();
-            var sqlitePath = Path.Combine(baseDir, "..", "..", "..", "..", "ColorMod", "Data", "nxd", "charclut.sqlite");
-            return Path.GetFullPath(sqlitePath);
+            // Arrange
+            var saver = new RamzaThemeSaver();
+
+            // Act
+            var path = saver.GetBaseNxdPath();
+
+            // Assert
+            Assert.EndsWith("charclut.nxd", path);
         }
     }
 }

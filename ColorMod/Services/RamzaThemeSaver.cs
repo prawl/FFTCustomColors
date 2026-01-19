@@ -1,13 +1,12 @@
 using System;
 using System.IO;
 using System.Text.Json;
-using Microsoft.Data.Sqlite;
 
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Saves Ramza theme data by converting SPR palette to NXD format.
-    /// This service handles the conversion from edited BIN palette to charclut.nxd.
+    /// Saves Ramza theme data by patching the charclut.nxd file directly.
+    /// This service handles the conversion from edited BIN palette to NXD format.
     /// </summary>
     public class RamzaThemeSaver
     {
@@ -88,14 +87,6 @@ namespace FFTColorCustomizer.Services
         }
 
         /// <summary>
-        /// Gets a temporary path for the SQLite database.
-        /// </summary>
-        public string GetSqliteTempPath()
-        {
-            return Path.Combine(Path.GetTempPath(), "charclut_fft.sqlite");
-        }
-
-        /// <summary>
         /// Gets the NXD Key and Key2 values for a chapter.
         /// Key maps: Ch1=1, Ch2/3=2, Ch4=3
         /// Key2 is always 0 for the base variant.
@@ -114,16 +105,17 @@ namespace FFTColorCustomizer.Services
         }
 
         /// <summary>
-        /// Builds the SQL UPDATE statement to modify CLUTData.
+        /// Gets the path to the base NXD template file bundled with the mod.
         /// </summary>
-        public string BuildUpdateSql(int key, int key2, string clutDataJson)
+        public string GetBaseNxdPath()
         {
-            return $"UPDATE CharCLUT SET CLUTData = '{clutDataJson}' WHERE Key = {key} AND Key2 = {key2}";
+            var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            var assemblyDir = Path.GetDirectoryName(assemblyLocation) ?? "";
+            return Path.Combine(assemblyDir, "Data", "nxd", "charclut.nxd");
         }
 
         /// <summary>
-        /// Saves a Ramza theme by converting the palette to NXD format.
-        /// This updates the SQLite database and patches the NXD file.
+        /// Saves a Ramza theme by converting the palette and patching the NXD file directly.
         /// </summary>
         /// <param name="jobName">Ramza job name (RamzaCh1, RamzaCh23, RamzaCh4)</param>
         /// <param name="paletteData">Palette bytes from the edited SPR file</param>
@@ -136,138 +128,13 @@ namespace FFTColorCustomizer.Services
 
             var chapter = GetChapterFromJobName(jobName);
             var clutData = ConvertPaletteToClutData(paletteData);
-            var clutDataJson = CreateClutDataJson(clutData);
 
-            // Get paths
-            var baseSqlitePath = GetBaseSqlitePath();
-            var workingSqlitePath = GetWorkingSqlitePath(modPath);
-            var baseNxdPath = GetBaseNxdPath();
-            var deployNxdPath = GetNxdDeploymentPath(modPath);
-
-            // Ensure the working SQLite exists (copy from base if needed)
-            EnsureWorkingSqliteExists(baseSqlitePath, workingSqlitePath);
-
-            // Update the SQLite database
-            if (!UpdateSqliteDatabase(workingSqlitePath, chapter, clutDataJson))
-                return false;
-
-            // Patch the NXD file from the updated SQLite
-            var patcher = new NxdPatcher();
-            return patcher.PatchNxdFromSqlite(baseNxdPath, workingSqlitePath, deployNxdPath);
-        }
-
-        /// <summary>
-        /// Gets the path to the working SQLite database in the mod directory.
-        /// </summary>
-        public string GetWorkingSqlitePath(string modPath)
-        {
-            return Path.Combine(modPath, "Data", "nxd", "charclut.sqlite");
-        }
-
-        /// <summary>
-        /// Gets the path to the base NXD template file.
-        /// </summary>
-        public string GetBaseNxdPath()
-        {
-            var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            var assemblyDir = Path.GetDirectoryName(assemblyLocation) ?? "";
-            return Path.Combine(assemblyDir, "Data", "nxd", "charclut.nxd");
-        }
-
-        /// <summary>
-        /// Ensures the working SQLite database exists by copying from base if needed.
-        /// </summary>
-        private void EnsureWorkingSqliteExists(string baseSqlitePath, string workingSqlitePath)
-        {
-            if (File.Exists(workingSqlitePath))
-                return;
-
-            var workingDir = Path.GetDirectoryName(workingSqlitePath);
-            if (!string.IsNullOrEmpty(workingDir) && !Directory.Exists(workingDir))
-            {
-                Directory.CreateDirectory(workingDir);
-            }
-
-            if (File.Exists(baseSqlitePath))
-            {
-                File.Copy(baseSqlitePath, workingSqlitePath);
-            }
-        }
-
-        /// <summary>
-        /// Gets the path to the base SQLite database bundled with the mod.
-        /// </summary>
-        public string GetBaseSqlitePath()
-        {
-            var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            var assemblyDir = Path.GetDirectoryName(assemblyLocation) ?? "";
-            return Path.Combine(assemblyDir, "Data", "nxd", "charclut.sqlite");
-        }
-
-        /// <summary>
-        /// Updates the CLUTData in a SQLite database for a specific chapter.
-        /// </summary>
-        /// <param name="sqlitePath">Path to the SQLite database file</param>
-        /// <param name="chapter">Chapter number (1, 2, or 4)</param>
-        /// <param name="clutDataJson">JSON array of CLUTData values</param>
-        /// <returns>True if update was successful</returns>
-        public bool UpdateSqliteDatabase(string sqlitePath, int chapter, string clutDataJson)
-        {
-            var (key, key2) = GetNxdKeyAndKey2(chapter);
-
-            try
-            {
-                using var connection = new SqliteConnection($"Data Source={sqlitePath}");
-                connection.Open();
-
-                using var command = connection.CreateCommand();
-                command.CommandText = "UPDATE CharCLUT SET CLUTData = @clutData WHERE Key = @key AND Key2 = @key2";
-                command.Parameters.AddWithValue("@clutData", clutDataJson);
-                command.Parameters.AddWithValue("@key", key);
-                command.Parameters.AddWithValue("@key2", key2);
-
-                var rowsAffected = command.ExecuteNonQuery();
-                connection.Close();
-                return rowsAffected > 0;
-            }
-            finally
-            {
-                SqliteConnection.ClearAllPools();
-            }
-        }
-
-        /// <summary>
-        /// Reads CLUTData from a SQLite database for a specific key.
-        /// </summary>
-        /// <param name="sqlitePath">Path to the SQLite database file</param>
-        /// <param name="key">Primary key value</param>
-        /// <param name="key2">Secondary key value</param>
-        /// <returns>JSON array string of CLUTData, or null if not found</returns>
-        public string? ReadClutDataFromSqlite(string sqlitePath, int key, int key2)
-        {
-            try
-            {
-                using var connection = new SqliteConnection($"Data Source={sqlitePath}");
-                connection.Open();
-
-                using var command = connection.CreateCommand();
-                command.CommandText = "SELECT CLUTData FROM CharCLUT WHERE Key = @key AND Key2 = @key2";
-                command.Parameters.AddWithValue("@key", key);
-                command.Parameters.AddWithValue("@key2", key2);
-
-                var result = command.ExecuteScalar();
-                connection.Close();
-                return result?.ToString();
-            }
-            finally
-            {
-                SqliteConnection.ClearAllPools();
-            }
+            return ApplyClutData(chapter, clutData, modPath);
         }
 
         /// <summary>
         /// Applies a pre-computed CLUTData palette for a specific chapter.
-        /// Used for built-in themes that have palettes computed from color transformations.
+        /// Patches the NXD file directly without using SQLite.
         /// </summary>
         /// <param name="chapter">Chapter number (1, 2, or 4)</param>
         /// <param name="clutData">Pre-computed CLUTData array (48 integers)</param>
@@ -276,26 +143,27 @@ namespace FFTColorCustomizer.Services
         public bool ApplyClutData(int chapter, int[] clutData, string modPath)
         {
             var clutDataJson = CreateClutDataJson(clutData);
+            var (key, key2) = GetNxdKeyAndKey2(chapter);
 
-            // Get paths
-            var baseSqlitePath = GetBaseSqlitePath();
-            var workingSqlitePath = GetWorkingSqlitePath(modPath);
             var baseNxdPath = GetBaseNxdPath();
             var deployNxdPath = GetNxdDeploymentPath(modPath);
 
-            // Ensure the working SQLite exists (copy from base if needed)
-            EnsureWorkingSqliteExists(baseSqlitePath, workingSqlitePath);
+            // Ensure the deployment directory exists
+            var deployDir = Path.GetDirectoryName(deployNxdPath);
+            if (!string.IsNullOrEmpty(deployDir) && !Directory.Exists(deployDir))
+            {
+                Directory.CreateDirectory(deployDir);
+            }
 
-            // Update the SQLite database (UpdateSqliteDatabase handles connection pooling)
-            if (!UpdateSqliteDatabase(workingSqlitePath, chapter, clutDataJson))
-                return false;
+            // If deploy NXD doesn't exist yet, copy from base template
+            if (!File.Exists(deployNxdPath) && File.Exists(baseNxdPath))
+            {
+                File.Copy(baseNxdPath, deployNxdPath);
+            }
 
-            // Clear pools before NXD patching to ensure file is released
-            SqliteConnection.ClearAllPools();
-
-            // Patch the NXD file from the updated SQLite
+            // Patch the NXD file directly
             var patcher = new NxdPatcher();
-            return patcher.PatchNxdFromSqlite(baseNxdPath, workingSqlitePath, deployNxdPath);
+            return patcher.PatchSingleEntry(deployNxdPath, key, key2, clutDataJson);
         }
 
         /// <summary>
@@ -307,84 +175,49 @@ namespace FFTColorCustomizer.Services
         /// <param name="chapter4ClutData">CLUTData for Chapter 4 (or null to skip)</param>
         /// <param name="modPath">Path to the mod directory</param>
         /// <returns>True if all updates were successful</returns>
-        public bool ApplyAllChaptersClutData(int[] chapter1ClutData, int[] chapter23ClutData, int[] chapter4ClutData, string modPath)
+        public bool ApplyAllChaptersClutData(int[]? chapter1ClutData, int[]? chapter23ClutData, int[]? chapter4ClutData, string modPath)
         {
-            // Get paths
-            var baseSqlitePath = GetBaseSqlitePath();
-            var workingSqlitePath = GetWorkingSqlitePath(modPath);
             var baseNxdPath = GetBaseNxdPath();
             var deployNxdPath = GetNxdDeploymentPath(modPath);
 
-            // Ensure the working SQLite exists (copy from base if needed)
-            EnsureWorkingSqliteExists(baseSqlitePath, workingSqlitePath);
-
-            // Update the SQLite database for each chapter using a single connection
-            bool allUpdatesSuccessful = true;
-
-            try
+            // Ensure the deployment directory exists
+            var deployDir = Path.GetDirectoryName(deployNxdPath);
+            if (!string.IsNullOrEmpty(deployDir) && !Directory.Exists(deployDir))
             {
-                using var connection = new SqliteConnection($"Data Source={workingSqlitePath}");
-                connection.Open();
-
-                if (chapter1ClutData != null)
-                {
-                    var json = CreateClutDataJson(chapter1ClutData);
-                    allUpdatesSuccessful &= UpdateSqliteDatabaseWithConnection(connection, 1, json);
-                }
-
-                if (chapter23ClutData != null)
-                {
-                    var json = CreateClutDataJson(chapter23ClutData);
-                    allUpdatesSuccessful &= UpdateSqliteDatabaseWithConnection(connection, 2, json);
-                }
-
-                if (chapter4ClutData != null)
-                {
-                    var json = CreateClutDataJson(chapter4ClutData);
-                    allUpdatesSuccessful &= UpdateSqliteDatabaseWithConnection(connection, 4, json);
-                }
-
-                connection.Close();
-            }
-            finally
-            {
-                // Clear the connection pool to release file handles
-                SqliteConnection.ClearAllPools();
+                Directory.CreateDirectory(deployDir);
             }
 
-            if (!allUpdatesSuccessful)
-                return false;
+            // If deploy NXD doesn't exist yet, copy from base template
+            if (!File.Exists(deployNxdPath) && File.Exists(baseNxdPath))
+            {
+                File.Copy(baseNxdPath, deployNxdPath);
+            }
 
-            // Patch the NXD file from the updated SQLite
             var patcher = new NxdPatcher();
-            return patcher.PatchNxdFromSqlite(baseNxdPath, workingSqlitePath, deployNxdPath);
-        }
+            bool allSuccessful = true;
 
-        /// <summary>
-        /// Updates CLUTData using an existing connection (avoids connection pooling issues).
-        /// </summary>
-        private bool UpdateSqliteDatabaseWithConnection(SqliteConnection connection, int chapter, string clutDataJson)
-        {
-            var (key, key2) = GetNxdKeyAndKey2(chapter);
+            if (chapter1ClutData != null)
+            {
+                var json = CreateClutDataJson(chapter1ClutData);
+                var (key, key2) = GetNxdKeyAndKey2(1);
+                allSuccessful &= patcher.PatchSingleEntry(deployNxdPath, key, key2, json);
+            }
 
-            using var command = connection.CreateCommand();
-            command.CommandText = "UPDATE CharCLUT SET CLUTData = @clutData WHERE Key = @key AND Key2 = @key2";
-            command.Parameters.AddWithValue("@clutData", clutDataJson);
-            command.Parameters.AddWithValue("@key", key);
-            command.Parameters.AddWithValue("@key2", key2);
+            if (chapter23ClutData != null)
+            {
+                var json = CreateClutDataJson(chapter23ClutData);
+                var (key, key2) = GetNxdKeyAndKey2(2);
+                allSuccessful &= patcher.PatchSingleEntry(deployNxdPath, key, key2, json);
+            }
 
-            var rowsAffected = command.ExecuteNonQuery();
-            return rowsAffected > 0;
-        }
+            if (chapter4ClutData != null)
+            {
+                var json = CreateClutDataJson(chapter4ClutData);
+                var (key, key2) = GetNxdKeyAndKey2(4);
+                allSuccessful &= patcher.PatchSingleEntry(deployNxdPath, key, key2, json);
+            }
 
-        /// <summary>
-        /// Makes the EnsureWorkingSqliteExists method accessible for external use.
-        /// </summary>
-        public void EnsureWorkingSqlite(string modPath)
-        {
-            var baseSqlitePath = GetBaseSqlitePath();
-            var workingSqlitePath = GetWorkingSqlitePath(modPath);
-            EnsureWorkingSqliteExists(baseSqlitePath, workingSqlitePath);
+            return allSuccessful;
         }
     }
 }
