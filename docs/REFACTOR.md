@@ -324,10 +324,16 @@ Files that should be removed or consolidated:
 
 | File | Lines | Status |
 |------|-------|--------|
-| `ThemeManagerLegacy.cs` | 196 | Should delete or merge |
-| `ConfigurationManagerLegacy.cs` | 352 | Should delete or merge |
+| ~~`ThemeManagerLegacy.cs`~~ | ~~196~~ | ✅ DELETED (2025-01-19) |
+| ~~`ConfigurationManagerLegacy.cs`~~ | ~~352~~ | ✅ DELETED (2025-01-19) |
+| ~~`DebugResources.cs`~~ | ~~32~~ | ✅ DELETED (2025-01-19) |
+| ~~`TestCarousel.cs`~~ | ~~67~~ | ✅ DELETED (2025-01-19) |
+| ~~`Services/ModInitializer.cs`~~ | ~~150~~ | ✅ DELETED (2025-01-19) - duplicate of Core/ModComponents/ModInitializer.cs |
 
-If they're legacy, remove them. If they're still needed, rename them.
+**Also cleaned up:**
+- Removed dead cache infrastructure from `BinSpriteExtractor.cs` (~30 lines)
+
+**Total dead code removed: ~827 lines**
 
 ---
 
@@ -573,7 +579,7 @@ Mod.cs
 
 | Task | Impact | Effort |
 |------|--------|--------|
-| Remove legacy code files | Low | 1 hour |
+| ~~Remove legacy code files~~ | ~~Low~~ | ✅ DONE (2025-01-19) - 827 lines removed |
 | Consolidate theme classes (7 → 2-3) | Medium | 1 day |
 | Add missing interfaces | Medium | 4 hours |
 | Add tests for untested services | Medium | 1 day |
@@ -610,16 +616,19 @@ Mod.cs
 
 ### Files Requiring Immediate Attention
 
-1. **ConfigBasedSpriteManager.cs** (776 lines) - Split immediately
+1. **ConfigBasedSpriteManager.cs** (~1079 lines) - Split immediately
 2. **Mod.cs** (554 lines) - Extract to delegated components
-3. **Config.cs** (547 lines) - Dictionary-based refactor
+3. **Config.cs** (~614 lines) - Dictionary-based refactor (partial progress)
 4. **ThemeManagerAdapter.cs** (444 lines) - Remove duplicate methods
-5. **JobClassServiceSingleton.cs** - Fix thread safety bug
+5. ~~**JobClassServiceSingleton.cs** - Fix thread safety bug~~ ✅ FIXED (2025-01-19)
 
-### Files to Delete
+### Files Deleted (2025-01-19)
 
-- `ThemeManagerLegacy.cs` (196 lines)
-- `ConfigurationManagerLegacy.cs` (352 lines)
+- ~~`ThemeManagerLegacy.cs`~~ (196 lines) ✅
+- ~~`ConfigurationManagerLegacy.cs`~~ (352 lines) ✅
+- ~~`DebugResources.cs`~~ (32 lines) ✅
+- ~~`TestCarousel.cs`~~ (67 lines) ✅
+- ~~`Services/ModInitializer.cs`~~ (150 lines) ✅ - duplicate
 
 ### Existing Interfaces (Good)
 

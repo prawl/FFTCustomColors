@@ -34,20 +34,6 @@ namespace FFTColorCustomizer.Utilities
         private const int DisplayWidth = 96;
         private const int DisplayHeight = 120;  // Maintain aspect ratio: 32x40 -> 96x120
 
-        // Cache for extracted sprites: key is "spriteIndex_paletteIndex_dataHash"
-        private readonly Dictionary<string, Bitmap> _spriteCache = new Dictionary<string, Bitmap>();
-
-        /// <summary>
-        /// Clears the sprite cache to force reloading
-        /// </summary>
-        public void ClearCache()
-        {
-            foreach (var sprite in _spriteCache.Values)
-            {
-                sprite?.Dispose();
-            }
-            _spriteCache.Clear();
-        }
 
         /// <summary>
         /// Reads a 16-color palette from the bin data
@@ -240,31 +226,6 @@ namespace FFTColorCustomizer.Utilities
         /// <returns>A scaled bitmap (48x56 for display)</returns>
         public Bitmap ExtractSprite(byte[] data, int spriteIndex, int paletteIndex)
         {
-            // Create a more unique hash that samples multiple parts of the file
-            int dataHash = data.Length;
-            // Sample bytes from different parts of the file for better uniqueness
-            if (data.Length >= 1024)
-            {
-                // Sample from palette area
-                dataHash ^= (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
-                // Sample from sprite data area
-                dataHash ^= (data[512] << 24) | (data[513] << 16) | (data[514] << 8) | data[515];
-                dataHash ^= (data[1020] << 24) | (data[1021] << 16) | (data[1022] << 8) | data[1023];
-                // Sample from middle of sprite data for better differentiation
-                if (data.Length >= 2048)
-                {
-                    dataHash ^= (data[2044] << 24) | (data[2045] << 16) | (data[2046] << 8) | data[2047];
-                }
-            }
-            string cacheKey = $"{spriteIndex}_{paletteIndex}_{dataHash}";
-
-            // Disable cache - it's causing theme switching issues
-            // The performance is fine without caching
-            // if (_spriteCache.TryGetValue(cacheKey, out var cachedSprite))
-            // {
-            //     return new Bitmap(cachedSprite); // Return a copy to avoid disposal issues
-            // }
-
             // Get the palette
             var palette = ReadPalette(data, paletteIndex);
 
@@ -326,9 +287,6 @@ namespace FFTColorCustomizer.Utilities
 
             // Dispose of the temporary bitmap
             bitmap.Dispose();
-
-            // Don't cache - it's causing theme switching issues
-            // _spriteCache[cacheKey] = displayBitmap;
 
             return displayBitmap;
         }
