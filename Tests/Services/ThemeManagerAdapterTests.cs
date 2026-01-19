@@ -176,5 +176,38 @@ namespace FFTColorCustomizer.Tests.Services
         }
 
         #endregion
+
+        #region Ramza Per-Chapter Theme Tests
+
+        [Fact]
+        public void GetChapterPalettes_ShouldReturnDifferentPalettesForDifferentThemes()
+        {
+            // This test verifies the NEW helper method GetChapterPalettes returns correct
+            // per-chapter palettes based on configured themes.
+            //
+            // Bug: ApplyBuiltInThemeToNxd used to apply the same theme to ALL chapters.
+            // Fix: New method GetChapterPalettes reads each chapter's theme from config.
+
+            // Arrange
+            var builtInPalettes = new RamzaBuiltInThemePalettes();
+            var ch1Theme = "white_heretic";
+            var ch23Theme = "dark_knight";
+            var ch4Theme = "original";
+
+            // Act - Call the new helper method that will be added to fix the bug
+            var (ch1Palette, ch23Palette, ch4Palette) = builtInPalettes.GetChapterPalettes(ch1Theme, ch23Theme, ch4Theme);
+
+            // Assert - Each chapter should have its configured theme's palette
+            // Ch1 = white_heretic (gray armor, R=105 at index 3)
+            ch1Palette[9].Should().Be(105, "Ch1 should have white_heretic gray armor");
+
+            // Ch23 = dark_knight (near-black armor, R=10 at index 3)
+            ch23Palette[9].Should().Be(10, "Ch23 should have dark_knight dark armor");
+
+            // Ch4 = original (teal armor, R=32 at index 3)
+            ch4Palette[9].Should().Be(32, "Ch4 should have original teal armor");
+        }
+
+        #endregion
     }
 }

@@ -120,6 +120,43 @@ namespace FFTColorCustomizer.Services
         }
 
         /// <summary>
+        /// Gets palettes for all three Ramza chapters based on their individual theme selections.
+        /// This fixes the bug where all chapters were getting the same theme applied.
+        /// </summary>
+        /// <param name="ch1Theme">Theme for Chapter 1</param>
+        /// <param name="ch23Theme">Theme for Chapter 2/3</param>
+        /// <param name="ch4Theme">Theme for Chapter 4</param>
+        /// <returns>Tuple of palettes for each chapter</returns>
+        public (int[] ch1Palette, int[] ch23Palette, int[] ch4Palette) GetChapterPalettes(
+            string ch1Theme, string ch23Theme, string ch4Theme)
+        {
+            var ch1Palette = GetPaletteForTheme(ch1Theme, 1);
+            var ch23Palette = GetPaletteForTheme(ch23Theme, 2);
+            var ch4Palette = GetPaletteForTheme(ch4Theme, 4);
+
+            return (ch1Palette, ch23Palette, ch4Palette);
+        }
+
+        /// <summary>
+        /// Gets the appropriate palette for a theme and chapter combination.
+        /// </summary>
+        private int[] GetPaletteForTheme(string theme, int chapter)
+        {
+            if (theme == "original" || string.IsNullOrEmpty(theme))
+            {
+                return GetOriginalPalette(chapter);
+            }
+
+            if (IsBuiltInTheme(theme))
+            {
+                return GetThemePalette(theme, chapter);
+            }
+
+            // For user themes, return original (user themes are applied separately)
+            return GetOriginalPalette(chapter);
+        }
+
+        /// <summary>
         /// Transforms a palette by applying theme-specific colors to armor indices.
         /// CLUTData palette indices vary by chapter:
         /// - Chapter 1: Armor is indices 3, 4, 5, 6 (all are blue/armor colors)

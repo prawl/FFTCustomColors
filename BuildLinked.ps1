@@ -77,6 +77,14 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "Copying ModConfig.json..." -ForegroundColor Cyan
     Copy-Item "ColorMod/ModConfig.json" "$modPath/ModConfig.json" -Force
 
+    # Copy SQLite native DLL to mod root for Reloaded-II compatibility
+    Write-Host "Copying SQLite native library to mod root..." -ForegroundColor Cyan
+    $sqliteNativePath = "$modPath/runtimes/win-x64/native/e_sqlite3.dll"
+    if (Test-Path $sqliteNativePath) {
+        Copy-Item $sqliteNativePath "$modPath/e_sqlite3.dll" -Force
+        Write-Host "  Copied e_sqlite3.dll (x64)" -ForegroundColor Green
+    }
+
     # Copy mod icon from Images directory
     if (Test-Path "ColorMod/Images/thunder_god.png") {
         Write-Host "Copying mod icon (thunder_god.png)..." -ForegroundColor Cyan
