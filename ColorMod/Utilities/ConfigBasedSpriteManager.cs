@@ -226,6 +226,10 @@ namespace FFTColorCustomizer.Utilities
                 return;
             }
 
+            // Apply all Ramza chapters' NXD palettes together FIRST
+            // This ensures each chapter gets its correct palette without overwriting others
+            ApplyAllRamzaChaptersToNxd(config);
+
             foreach (var character in _characterService.GetAllCharacters())
             {
                 if (character.SpriteNames.Length == 0)
@@ -245,14 +249,15 @@ namespace FFTColorCustomizer.Utilities
                 var themeNameOriginal = themeValue.ToString() ?? "original";
 
                 // Apply theme for each sprite name (including original)
+                // Skip NXD patching for Ramza - already handled above
                 foreach (var spriteName in character.SpriteNames)
                 {
-                    ApplyStoryCharacterTheme(character.Name.ToLower(), spriteName, themeNameOriginal);
+                    ApplyStoryCharacterTheme(character.Name.ToLower(), spriteName, themeNameOriginal, skipNxdForRamza: true);
                 }
             }
         }
 
-        private void ApplyStoryCharacterTheme(string characterName, string spriteName, string themeName)
+        private void ApplyStoryCharacterTheme(string characterName, string spriteName, string themeName, bool skipNxdForRamza = false)
         {
             ModLogger.Log($"Applying theme for character: {characterName}, sprite: {spriteName}, theme: {themeName}");
 
@@ -302,10 +307,18 @@ namespace FFTColorCustomizer.Utilities
 
             // For Ramza chapters, check if this is a built-in theme (dark_knight, white_heretic, crimson_blade)
             // Built-in Ramza themes work via NXD palette patching, not sprite files
+            // Skip NXD patching if already handled by ApplyAllRamzaChaptersToNxd
             if (IsRamzaChapter(properCharacterName) && IsBuiltInRamzaTheme(themeName))
             {
-                ModLogger.Log($"[STORY_CHAR_THEME] Applying built-in Ramza theme: {properCharacterName}/{themeName}");
-                ApplyBuiltInRamzaThemeToNxd(properCharacterName, themeName);
+                if (skipNxdForRamza)
+                {
+                    ModLogger.Log($"[STORY_CHAR_THEME] Skipping individual NXD patch for {properCharacterName}/{themeName} (handled by ApplyAllRamzaChaptersToNxd)");
+                }
+                else
+                {
+                    ModLogger.Log($"[STORY_CHAR_THEME] Applying built-in Ramza theme: {properCharacterName}/{themeName}");
+                    ApplyBuiltInRamzaThemeToNxd(properCharacterName, themeName);
+                }
                 return;
             }
 
@@ -984,7 +997,46 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
+        /// Applies all Ramza chapters' themes to the NXD at once.
+        /// This ensures each chapter maintains its own theme selection.
+        /// </summary>
+        private void ApplyAllRamzaChaptersToNxd(Config config)
+        {
+            try
+            {
+                var ch1Theme = config?.RamzaChapter1 ?? "original";
+                var ch23Theme = config?.RamzaChapter23 ?? "original";
+                var ch4Theme = config?.RamzaChapter4 ?? "original";
+
+                ModLogger.Log($"[RAMZA_ALL_CHAPTERS] Applying per-chapter themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
+
+                var builtInPalettes = new RamzaBuiltInThemePalettes();
+                var themeSaver = new RamzaThemeSaver();
+
+                // Get palettes for each chapter based on its configured theme
+                var (ch1Palette, ch23Palette, ch4Palette) = builtInPalettes.GetChapterPalettes(ch1Theme, ch23Theme, ch4Theme);
+
+                // Apply all chapters at once
+                var success = themeSaver.ApplyAllChaptersClutData(ch1Palette, ch23Palette, ch4Palette, _modPath);
+
+                if (success)
+                {
+                    ModLogger.LogSuccess($"[RAMZA_ALL_CHAPTERS] Successfully patched charclut.nxd with per-chapter themes");
+                }
+                else
+                {
+                    ModLogger.LogWarning($"[RAMZA_ALL_CHAPTERS] Failed to patch charclut.nxd");
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[RAMZA_ALL_CHAPTERS] Error applying themes: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Applies a built-in Ramza theme by patching the NXD with pre-computed palettes.
+        /// NOTE: This is the OLD method that patches one chapter at a time. Prefer ApplyAllRamzaChaptersToNxd.
         /// </summary>
         private void ApplyBuiltInRamzaThemeToNxd(string characterName, string themeName)
         {

@@ -67,6 +67,46 @@ namespace FFTColorCustomizer.Tests
             Assert.False(Directory.Exists(Path.Combine(_testGamePath, "active_theme")));
         }
 
+        /// <summary>
+        /// Tests that SwapTexFilesPerChapter only copies tex files for the themed chapter.
+        /// Ch1 = dark_knight, Ch23 = original, Ch4 = original
+        /// Only Ch1 tex files (830, 831) should be copied.
+        /// </summary>
+        [Fact]
+        public void SwapTexFilesPerChapter_OnlyCopiesCh1Files_WhenOnlyCh1IsThemed()
+        {
+            // Arrange
+            var swapper = new RamzaTexSwapper(_testBasePath, _testGamePath);
+
+            // Create a theme with ALL tex files
+            string themeDir = Path.Combine(_testBasePath, "RamzaThemes", "dark_knight");
+            Directory.CreateDirectory(themeDir);
+
+            byte[] ch1Data = new byte[1024]; ch1Data[0] = 0x01;
+            byte[] ch23Data = new byte[1024]; ch23Data[0] = 0x23;
+            byte[] ch4Data = new byte[1024]; ch4Data[0] = 0x04;
+
+            File.WriteAllBytes(Path.Combine(themeDir, "tex_830.bin"), ch1Data);
+            File.WriteAllBytes(Path.Combine(themeDir, "tex_831.bin"), ch1Data);
+            File.WriteAllBytes(Path.Combine(themeDir, "tex_832.bin"), ch23Data);
+            File.WriteAllBytes(Path.Combine(themeDir, "tex_833.bin"), ch23Data);
+            File.WriteAllBytes(Path.Combine(themeDir, "tex_834.bin"), ch4Data);
+            File.WriteAllBytes(Path.Combine(themeDir, "tex_835.bin"), ch4Data);
+
+            // Act - Use the NEW per-chapter method
+            swapper.SwapTexFilesPerChapter("dark_knight", "original", "original");
+
+            // Assert - Only Ch1 files should be copied
+            Assert.True(File.Exists(Path.Combine(_testGamePath, "tex_830.bin")), "Ch1 tex_830 should exist");
+            Assert.True(File.Exists(Path.Combine(_testGamePath, "tex_831.bin")), "Ch1 tex_831 should exist");
+
+            // Ch23 and Ch4 files should NOT exist (original = no tex files)
+            Assert.False(File.Exists(Path.Combine(_testGamePath, "tex_832.bin")), "Ch23 tex_832 should NOT exist");
+            Assert.False(File.Exists(Path.Combine(_testGamePath, "tex_833.bin")), "Ch23 tex_833 should NOT exist");
+            Assert.False(File.Exists(Path.Combine(_testGamePath, "tex_834.bin")), "Ch4 tex_834 should NOT exist");
+            Assert.False(File.Exists(Path.Combine(_testGamePath, "tex_835.bin")), "Ch4 tex_835 should NOT exist");
+        }
+
         public void Dispose()
         {
             if (Directory.Exists(_testBasePath))

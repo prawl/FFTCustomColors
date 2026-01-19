@@ -226,43 +226,48 @@ namespace FFTColorCustomizer.Services
         {
             _themeService.ApplyTheme("Ramza", theme);
 
-            // Ramza uses tex files - themes are stored in RamzaThemes folder at mod root
-            // - modRootPath: Root of the deployed mod (contains RamzaThemes folder)
-            // - gameTexPath: Where the game reads tex files from (g2d directory)
+            // Load config to get each chapter's theme selection
+            var pathResolver = new SimplePathResolver(_sourcePath, _modPath);
+            var configService = new ConfigurationService(pathResolver);
+            var config = configService.LoadConfig();
+
+            var ch1Theme = config?.RamzaChapter1 ?? "original";
+            var ch23Theme = config?.RamzaChapter23 ?? "original";
+            var ch4Theme = config?.RamzaChapter4 ?? "original";
+
+            ModLogger.LogDebug($"Applying Ramza themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
+
+            // Tex files are ONLY used for built-in themes (dark_knight, white_heretic, crimson_blade)
+            // User themes and "original" use NXD palettes only - tex files would interfere
+            var builtInPalettes = new RamzaBuiltInThemePalettes();
+            var hasBuiltInTheme = builtInPalettes.IsBuiltInTheme(ch1Theme) ||
+                                  builtInPalettes.IsBuiltInTheme(ch23Theme) ||
+                                  builtInPalettes.IsBuiltInTheme(ch4Theme);
+
             var modRootPath = _modPath;
             var gameTexPath = Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "system", "ffto", "g2d");
-
-            ModLogger.LogDebug($"Applying Ramza tex theme: {theme}");
-            ModLogger.LogDebug($"Mod root: {modRootPath}");
-            ModLogger.LogDebug($"Game tex path: {gameTexPath}");
-
             var texSwapper = new RamzaTexSwapper(modRootPath, gameTexPath);
 
-            if (theme == "original")
+            if (hasBuiltInTheme)
             {
-                texSwapper.RestoreOriginalTexFiles();
-                ModLogger.Log($"Restored original Ramza tex files from original_backup/");
-                // Restore original NXD palettes
-                ApplyBuiltInThemeToNxd("original");
+                // Only swap tex files for built-in themes
+                // For chapters with user themes or "original", pass "original" to remove their tex files
+                var ch1TexTheme = builtInPalettes.IsBuiltInTheme(ch1Theme) ? ch1Theme : "original";
+                var ch23TexTheme = builtInPalettes.IsBuiltInTheme(ch23Theme) ? ch23Theme : "original";
+                var ch4TexTheme = builtInPalettes.IsBuiltInTheme(ch4Theme) ? ch4Theme : "original";
+
+                ModLogger.LogDebug($"Tex themes (built-in only): Ch1={ch1TexTheme}, Ch23={ch23TexTheme}, Ch4={ch4TexTheme}");
+                texSwapper.SwapTexFilesPerChapter(ch1TexTheme, ch23TexTheme, ch4TexTheme);
             }
             else
             {
-                texSwapper.SwapTexFilesForTheme(theme);
-                ModLogger.Log($"Swapped Ramza tex files to theme: {theme} from {theme}/");
-
-                // Apply NXD palette for the theme
-                var builtInPalettes = new RamzaBuiltInThemePalettes();
-                if (builtInPalettes.IsBuiltInTheme(theme))
-                {
-                    // Built-in themes use computed palettes
-                    ApplyBuiltInThemeToNxd(theme);
-                }
-                else
-                {
-                    // User themes need their saved palette applied to NXD
-                    ApplyUserThemeToNxd(theme);
-                }
+                // No built-in themes - remove all tex files to let NXD palettes take effect
+                ModLogger.LogDebug("No built-in themes, removing all Ramza tex files");
+                texSwapper.RestoreOriginalTexFiles();
             }
+
+            // Apply NXD palettes for all chapters
+            ApplyBuiltInThemeToNxd(theme);
         }
 
         /// <summary>
@@ -319,9 +324,9 @@ namespace FFTColorCustomizer.Services
         }
 
         /// <summary>
-        /// Applies a built-in Ramza theme's palette to the charclut.nxd file.
-        /// Only applies palettes for built-in themes (dark_knight, white_heretic, crimson_blade)
-        /// and "original". User-created themes already have their palettes applied when saved.
+        /// Applies built-in Ramza theme palettes to the charclut.nxd file.
+        /// Reads each chapter's configured theme and applies the appropriate palette.
+        /// This ensures each chapter maintains its own theme selection.
         /// </summary>
         private void ApplyBuiltInThemeToNxd(string theme)
         {
@@ -337,29 +342,23 @@ namespace FFTColorCustomizer.Services
                     return;
                 }
 
+                // Load config to get each chapter's theme selection
+                var pathResolver = new SimplePathResolver(_sourcePath, _modPath);
+                var configService = new ConfigurationService(pathResolver);
+                var config = configService.LoadConfig();
+
+                // Get each chapter's configured theme (fallback to "original" if not set)
+                var ch1Theme = config?.RamzaChapter1 ?? "original";
+                var ch23Theme = config?.RamzaChapter23 ?? "original";
+                var ch4Theme = config?.RamzaChapter4 ?? "original";
+
+                ModLogger.LogDebug($"Applying per-chapter themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
+
+                // Get palettes for each chapter based on its configured theme
+                var (chapter1Palette, chapter23Palette, chapter4Palette) =
+                    builtInPalettes.GetChapterPalettes(ch1Theme, ch23Theme, ch4Theme);
+
                 var themeSaver = new RamzaThemeSaver();
-
-                int[] chapter1Palette;
-                int[] chapter23Palette;
-                int[] chapter4Palette;
-
-                if (builtInPalettes.IsBuiltInTheme(theme))
-                {
-                    // Get transformed palettes for the built-in theme
-                    chapter1Palette = builtInPalettes.GetThemePalette(theme, 1);
-                    chapter23Palette = builtInPalettes.GetThemePalette(theme, 2);
-                    chapter4Palette = builtInPalettes.GetThemePalette(theme, 4);
-                    ModLogger.Log($"Applying {theme} palette to charclut.nxd");
-                }
-                else
-                {
-                    // "original" theme - restore original palettes
-                    chapter1Palette = builtInPalettes.GetOriginalPalette(1);
-                    chapter23Palette = builtInPalettes.GetOriginalPalette(2);
-                    chapter4Palette = builtInPalettes.GetOriginalPalette(4);
-                    ModLogger.Log($"Restoring original palette in charclut.nxd");
-                }
-
                 var success = themeSaver.ApplyAllChaptersClutData(
                     chapter1Palette,
                     chapter23Palette,
@@ -368,11 +367,11 @@ namespace FFTColorCustomizer.Services
 
                 if (success)
                 {
-                    ModLogger.Log($"Successfully updated charclut.nxd for theme: {theme}");
+                    ModLogger.Log($"Successfully updated charclut.nxd with per-chapter themes");
                 }
                 else
                 {
-                    ModLogger.LogWarning($"Failed to update charclut.nxd for theme: {theme}");
+                    ModLogger.LogWarning($"Failed to update charclut.nxd");
                 }
             }
             catch (Exception ex)
