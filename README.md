@@ -1,54 +1,127 @@
 # FFT Color Customizer
 
-A Reloaded-II mod for **Final Fantasy Tactics: The Ivalice Chronicles** that lets you customize unit colors with 210+ unique themes.
+A Reloaded-II mod for **Final Fantasy Tactics: The Ivalice Chronicles** that lets you customize unit colors with 210+ unique themes and a built-in theme editor.
+
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/prawl/FFTCustomColors)
+
+---
+
+## What's New in v3.0
+
+### Built-in Theme Editor
+- Create your own custom color themes directly in-game
+- Real-time sprite preview as you design
+- Section-based color editing (Cape, Armor, Hair, Boots, etc.)
+- HSL color picker with auto-shade generation for shadows and highlights
+- Hex code input/output for precise color matching
+- Copy/Paste colors between sections
+- Themes automatically saved and available in the main configuration menu
+
+**How to Use:**
+1. Press `F1` → Select "Theme Editor" tab
+2. Choose a job class (Knight, Mage, etc.) and gender
+3. Click on sprite sections to edit their colors
+4. Preview updates in real-time with 8-directional sprite view
+5. Save your theme with a custom name
+6. Your themes appear in dropdowns alongside built-in themes
+
+### Ramza Customization System
+- **3 Unique Ramza Themes**: Dark Knight, White Heretic, Crimson Blade
+- Separate customization for all Ramza chapters (Ch1, Ch2-3, Ch4)
+- Visual sprite previews in configuration menu
+
+> **Note**: Ramza theme changes require game restart to take effect (technical limitation with TEX file loading)
+
+---
 
 ## Features
 
-- **210+ Color Themes** for generic jobs (Knight, Black Mage, Dragoon, etc.)
-- **Story Character Themes** for Agrias, Orlandeau, Ramza (per-chapter), and more
-- **In-Game Configuration** - Press `F1` to open the theme selector during gameplay
-- **Live Preview** - See theme previews before applying
-- **Per-Job Customization** - Set different themes for each job class
+### In-Game Theme Configuration
+- Press `F1` anytime to open the configuration menu
+- Real-time theme switching without game restart (except Ramza)
+- Individual customization for male/female variants
+- Preview system shows theme changes instantly
+
+### Dynamic Theme Switching
+The Color Customizer uses file-based sprite swapping, allowing real-time theme changes while playing!
+
+- Changes apply when the game reloads sprite data (opening party menu, viewing character status, etc.)
+- Mid-battle changes take effect in the next battle
+- **Quick refresh tip**: Open and close the party formation screen to see new colors immediately
+
+### Massive Theme Collection
+
+| Category | Examples |
+|----------|----------|
+| **Story Character Exclusives** | Thunder God (Orlandeau), Sky Pirate (Cloud), Shadow Oracle (Rapha) |
+| **Faction Themes** | Northern Sky, Southern Sky, Corpse Brigade, Lucavi |
+| **Fantasy Themes** | Dragon Knight, Holy Knight, Shadow Monk, Frost Mage |
+| **Special Themes** | Crimson Red, Royal Purple, Ocean Templar, Forest Ranger |
+| **Ramza Themes** | Dark Knight, White Heretic, Crimson Blade |
+| **Custom Themes** | Create unlimited themes with the built-in editor! |
+
+### Job-Specific Theme System
+Each job class can have unique themed variations:
+- **Knight** → Holy Guard, Dark Knight, Steel Warrior
+- **Mage** → Lucavi, Frost Mage, Shadow Caster
+- **Ninja** → Shadow Assassin, Forest Ranger
+- And many more combinations!
+
+### Key Features
+- **Individual Unit Customization** — Each job and character can have different themes
+- **Gender-Specific Options** — Male and female variants can use different themes
+- **Story Character Themes** — 9 unique characters with exclusive theme sets
+- **Built-in Theme Editor** — Create and save your own custom color themes
+- **No Sprite Replacement** — Works alongside other sprite mods
+- **Automatic Theme Detection** — Discovers and loads all available themes
+
+---
 
 ## Installation
 
 ### Requirements
 - [Reloaded-II](https://github.com/Reloaded-Project/Reloaded-II/releases)
-- [FFT:TIC Mod Loader](https://github.com/Nenkai/fftivc.utility.modloader) (fftivc.utility.modloader)
-- Reloaded.Memory.SigScan.ReloadedII
-- reloaded.sharedlib.hooks
+- [FFT:TIC Mod Loader](https://github.com/Nenkai/fftivc.utility.modloader)
 
-### Steps
-1. Install Reloaded-II and configure it for FFT
-2. Install the required dependencies from Reloaded-II's mod browser
-3. Download the latest release and extract to your Reloaded-II mods folder
-4. Enable the mod in Reloaded-II
+### Load Order
 
-## Usage
+> **IMPORTANT**: This mod must be placed **FIRST** in your mod load order!
 
-1. Launch FFT through Reloaded-II
-2. Press **F1** during gameplay to open the configuration menu
-3. Select themes for each job or story character
-4. Changes apply immediately (except Ramza, which requires a restart)
+```
+1. Mod Loader
+2. Color Customizer (THIS MOD - MUST BE FIRST)
+3. WotL Character
+4. Red and Blue Mages
+5. Dark Knight and Onion Knight
+6. FFT Level Scaling
+7. Other mods...
+```
 
-## Supported Jobs
+If the mod menu appears but colors don't change, check your load order.
 
-| Generic Jobs | Special Jobs |
-|-------------|--------------|
-| Squire, Knight, Archer | Dark Knight* |
-| Monk, Thief, Geomancer | Onion Knight* |
-| Dragoon, Samurai, Ninja | Bard (M), Dancer (F) |
-| Black Mage, White Mage | Mime, Calculator |
-| Time Mage, Summoner, Mediator | Chemist, Orator |
+---
 
-*Requires GenericJobs mod
+## Known Limitations
 
-## Story Characters
+| Limitation | Details |
+|------------|---------|
+| **Ramza Theme Changes** | Require game restart to take effect (TEX file loading timing) |
+| **Theme Editor** | Currently supports generic job classes only |
+| **Per-Unit Colors** | All units of the same job share the same theme |
 
-- Ramza (Chapter 1, Chapter 2/3, Chapter 4)
-- Agrias, Orlandeau, Delita, Ovelia
-- Mustadio, Rapha, Marach, Meliadoul
-- Beowulf, Reis, Construct 8, Cloud
+---
+
+## Technical Notes
+
+- Enhanced Edition tested (Classic untested)
+- Non-invasive color swapping system
+- Preserves original sprite structure
+- Config saved per-profile
+- Uses TEX file modification for Ramza themes
+- Uses BIN sprite swapping for all other characters
+- Custom themes stored in `%RELOADEDIIMODS%/FFTColorCustomizer/UserThemes/`
+
+---
 
 ## Building from Source
 
@@ -61,32 +134,17 @@ dotnet build ColorMod/FFTColorCustomizer.csproj -c Release
 
 # Deploy to Reloaded-II mods folder (dev)
 powershell -ExecutionPolicy Bypass -File ./BuildLinked.ps1
-
-# Create release package
-powershell -ExecutionPolicy Bypass -File ./Publish.ps1
 ```
 
-## Project Structure
+---
 
-```
-ColorMod/
-  Mod.cs              # Entry point
-  Config.cs           # User configuration model
-  Services/           # Theme management, sprite operations
-  Configuration/      # WPF config UI
-  FFTIVC/data/        # Theme sprite files (188 theme sets)
-  RamzaThemes/        # Ramza-specific TEX themes
-```
+## Support & Feedback
 
-## Technical Notes
+Questions, suggestions, or theme requests?
+- [GitHub Issues](https://github.com/prawl/FFTCustomColors/issues)
+- Nexus Mods Posts section
 
-- Generic jobs use **sprite file swapping** - all units of a job share the same theme
-- Ramza uses **charclut.nxd palette patching** for per-chapter theming
-- Configuration persists to `%RELOADEDIIMODS%/FFTColorCustomizer/Config.json`
-
-## License
-
-MIT
+---
 
 ## Credits
 
@@ -94,3 +152,7 @@ MIT
 - **Game**: Final Fantasy Tactics: The Ivalice Chronicles by Square Enix
 - **Mod Framework**: [Reloaded-II](https://reloaded-project.github.io/Reloaded-II/)
 - **NXD Tools**: [FF16Tools](https://github.com/Nenkai/FF16Tools) by Nenkai
+
+## License
+
+MIT

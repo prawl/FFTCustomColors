@@ -25,6 +25,5 @@
   ],
   "OptionalDependencies": [],
   "SupportedAppId": ["fft_enhanced.exe", "fft_classic.exe"],
-  "ProjectUrl": "",
-  "ModConfig": "FFTColorCustomizer.Configuration.Configurator"
+  "ProjectUrl": ""
 }
