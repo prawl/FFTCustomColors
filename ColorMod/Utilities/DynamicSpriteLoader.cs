@@ -65,9 +65,10 @@ namespace FFTColorCustomizer.Utilities
             // Always need original
             schemes.Add("original");
 
-            // Get all color scheme properties (now strings)
+            // Get all color scheme properties (now strings, skip indexers)
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(string) &&
+                .Where(p => p.GetIndexParameters().Length == 0 &&
+                           p.PropertyType == typeof(string) &&
                            (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
 
             foreach (var property in properties)

@@ -20,11 +20,19 @@ namespace FFTColorCustomizer.Core.ModComponents
         private readonly IInputSimulator? _inputSimulator;
         private readonly IHotkeyHandler? _hotkeyHandler;
 
+        // DI Container
+        private ServiceContainer? _serviceContainer;
+
         // Initialized components
         public ModInitializer? Initializer { get; private set; }
         public ConfigurationCoordinator? ConfigCoordinator { get; private set; }
         public ThemeCoordinator? ThemeCoordinator { get; private set; }
         public HotkeyManager? HotkeyManager { get; private set; }
+
+        /// <summary>
+        /// Gets the DI service container. Use this to resolve services.
+        /// </summary>
+        public ServiceContainer? Services => _serviceContainer;
 
         public string ModPath => _modPath;
         public string SourcePath => _sourcePath;
@@ -89,6 +97,10 @@ namespace FFTColorCustomizer.Core.ModComponents
             {
                 ModLogger.Log("Initializing core mod components");
 
+                // Initialize DI container and register all services
+                _serviceContainer = new ServiceContainer();
+                ServiceRegistry.ConfigureServices(_serviceContainer, _modPath);
+
                 // Create initializer and set up core components
                 Initializer = new ModInitializer(_modPath, _isTestEnvironment);
                 Initializer.InitializeRegistry();
@@ -115,12 +127,21 @@ namespace FFTColorCustomizer.Core.ModComponents
             {
                 ModLogger.Log($"Initializing configuration at: {configPath}");
 
-                // Set the mod path for singleton services
-                CharacterServiceSingleton.SetModPath(_modPath);
-                JobClassServiceSingleton.Initialize(_modPath);
+                // Services are already registered in InitializeCoreComponents via ServiceRegistry
+                // The ServiceRegistry also syncs with static singletons for backward compatibility
 
-                // Initialize configuration coordinator
-                ConfigCoordinator = new ConfigurationCoordinator(configPath, _modPath);
+                // Initialize configuration coordinator with injected services
+                if (_serviceContainer != null && _serviceContainer.TryResolve<JobClassDefinitionService>(out var jobClassService) && jobClassService != null)
+                {
+                    ConfigCoordinator = new ConfigurationCoordinator(configPath, _modPath, jobClassService);
+                    ModLogger.Log("ConfigurationCoordinator created with DI");
+                }
+                else
+                {
+                    // Fallback to singleton-based creation
+                    ConfigCoordinator = new ConfigurationCoordinator(configPath, _modPath);
+                    ModLogger.Log("ConfigurationCoordinator created with singleton fallback");
+                }
 
                 ModLogger.Log("Configuration initialized successfully");
             }
@@ -186,6 +207,25 @@ namespace FFTColorCustomizer.Core.ModComponents
         public string ResolveUserConfigPath()
         {
             return FFTIVCPathResolver.ResolveUserConfigPath(_modPath);
+        }
+
+        /// <summary>
+        /// Resolves a service from the DI container.
+        /// Falls back to static singletons if container is not initialized.
+        /// </summary>
+        public T GetService<T>() where T : class
+        {
+            return ServiceRegistry.ResolveWithFallback<T>(_serviceContainer);
+        }
+
+        /// <summary>
+        /// Tries to resolve a service from the DI container.
+        /// </summary>
+        public bool TryGetService<T>(out T? service) where T : class
+        {
+            service = null;
+            if (_serviceContainer == null) return false;
+            return _serviceContainer.TryResolve(out service);
         }
     }
 }

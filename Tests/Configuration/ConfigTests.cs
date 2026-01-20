@@ -170,7 +170,7 @@ namespace FFTColorCustomizer.Tests
             // Assert
             Assert.NotNull(metadata);
             Assert.Equal("WotL Jobs", metadata.Category);
-            Assert.Equal("Male Dark Knight", metadata.DisplayName);
+            Assert.Equal("Dark Knight (Male)", metadata.DisplayName);
             Assert.Equal("DarkKnightMale", metadata.JsonPropertyName);
         }
 
@@ -186,7 +186,7 @@ namespace FFTColorCustomizer.Tests
             // Assert
             Assert.NotNull(metadata);
             Assert.Equal("WotL Jobs", metadata.Category);
-            Assert.Equal("Female Dark Knight", metadata.DisplayName);
+            Assert.Equal("Dark Knight (Female)", metadata.DisplayName);
             Assert.Equal("DarkKnightFemale", metadata.JsonPropertyName);
         }
 
@@ -202,7 +202,7 @@ namespace FFTColorCustomizer.Tests
             // Assert
             Assert.NotNull(metadata);
             Assert.Equal("WotL Jobs", metadata.Category);
-            Assert.Equal("Male Onion Knight", metadata.DisplayName);
+            Assert.Equal("Onion Knight (Male)", metadata.DisplayName);
             Assert.Equal("OnionKnightMale", metadata.JsonPropertyName);
         }
 
@@ -218,7 +218,7 @@ namespace FFTColorCustomizer.Tests
             // Assert
             Assert.NotNull(metadata);
             Assert.Equal("WotL Jobs", metadata.Category);
-            Assert.Equal("Female Onion Knight", metadata.DisplayName);
+            Assert.Equal("Onion Knight (Female)", metadata.DisplayName);
             Assert.Equal("OnionKnightFemale", metadata.JsonPropertyName);
         }
 

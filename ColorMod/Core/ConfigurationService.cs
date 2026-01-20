@@ -75,6 +75,10 @@ namespace FFTColorCustomizer.Core
             var properties = typeof(Config).GetProperties();
             foreach (var property in properties)
             {
+                // Skip indexers (properties with parameters)
+                if (property.GetIndexParameters().Length > 0)
+                    continue;
+
                 if (property.PropertyType == typeof(string) && property.CanWrite)
                 {
                     property.SetValue(config, DefaultTheme);
@@ -101,6 +105,10 @@ namespace FFTColorCustomizer.Core
             var properties = typeof(Config).GetProperties();
             foreach (var property in properties)
             {
+                // Skip indexers (properties with parameters)
+                if (property.GetIndexParameters().Length > 0)
+                    continue;
+
                 if (property.PropertyType == typeof(string))
                 {
                     var value = property.GetValue(config) as string;

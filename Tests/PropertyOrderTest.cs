@@ -36,9 +36,9 @@ namespace FFTColorCustomizer.Tests
                     _output.WriteLine($"After setting to lucavi, value is: {value}");
                 }
 
-                // List first 5 properties
+                // List first 5 properties (skip indexers)
                 var properties = typeof(Config).GetProperties()
-                    .Where(p => p.PropertyType == typeof(string))
+                    .Where(p => p.GetIndexParameters().Length == 0 && p.PropertyType == typeof(string))
                     .Take(5)
                     .Select(p => p.Name);
                 _output.WriteLine($"First 5 properties: {string.Join(", ", properties)}");
@@ -58,9 +58,9 @@ namespace FFTColorCustomizer.Tests
             var config = manager.LoadConfig();
             _output.WriteLine($"Archer_Female value: {config.Archer_Female}");
 
-            // Check all non-original values
+            // Check all non-original values (skip indexers)
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(string));
+                .Where(p => p.GetIndexParameters().Length == 0 && p.PropertyType == typeof(string));
 
             foreach (var prop in properties)
             {

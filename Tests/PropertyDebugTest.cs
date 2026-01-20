@@ -20,7 +20,7 @@ namespace FFTColorCustomizer.Tests
         public void ListAllColorSchemeProperties()
         {
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(string))
+                .Where(p => p.GetIndexParameters().Length == 0 && p.PropertyType == typeof(string))
                 .OrderBy(p => p.Name)
                 .ToList();
 

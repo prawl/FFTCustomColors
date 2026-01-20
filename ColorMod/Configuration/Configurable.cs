@@ -110,6 +110,10 @@ namespace FFTColorCustomizer.Configuration
             var properties = GetType().GetProperties();
             foreach (var prop in properties)
             {
+                // Skip indexers (properties with parameters)
+                if (prop.GetIndexParameters().Length > 0)
+                    continue;
+
                 if (prop.Name != "FilePath" && prop.Name != "ConfigName" && prop.CanWrite && prop.CanRead)
                 {
                     prop.SetValue(copy, prop.GetValue(this));

@@ -103,10 +103,14 @@ namespace FFTColorCustomizer.Core
 
             try
             {
-                // Apply sprites based on configuration
+                // Apply sprites based on configuration (skip indexers)
                 var properties = typeof(Config).GetProperties();
                 foreach (var property in properties)
                 {
+                    // Skip indexers (properties with parameters)
+                    if (property.GetIndexParameters().Length > 0)
+                        continue;
+
                     if (property.PropertyType == typeof(string))
                     {
                         var themeName = property.GetValue(config) as string;

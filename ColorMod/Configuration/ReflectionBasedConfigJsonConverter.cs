@@ -26,6 +26,10 @@ namespace FFTColorCustomizer.Configuration
                 if (property.Name == "FilePath")
                     continue;
 
+                // Skip indexers (properties with parameters)
+                if (property.GetIndexParameters().Length > 0)
+                    continue;
+
                 var propertyValue = property.GetValue(value);
                 if (propertyValue != null)
                 {
@@ -52,7 +56,10 @@ namespace FFTColorCustomizer.Configuration
             var config = existingValue ?? new Config();
             var jo = JObject.Load(reader);
 
-            var properties = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            // Filter out indexers from properties
+            var properties = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.GetIndexParameters().Length == 0)
+                .ToArray();
 
             foreach (var property in jo.Properties())
             {

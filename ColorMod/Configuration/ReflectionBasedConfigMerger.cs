@@ -27,12 +27,14 @@ namespace FFTColorCustomizer.Configuration
                 }
             }
 
-            // Handle story characters using reflection
+            // Handle story characters using reflection (skip indexers)
             var properties = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
             foreach (var property in properties)
             {
-                // Skip non-enum properties and FilePath
+                // Skip indexers, non-enum properties and FilePath
+                if (property.GetIndexParameters().Length > 0)
+                    continue;
                 if (!property.PropertyType.IsEnum || property.Name == "FilePath")
                     continue;
 

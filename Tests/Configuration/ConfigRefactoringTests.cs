@@ -111,7 +111,7 @@ namespace FFTColorCustomizer.Tests
             // Assert
             metadata.Should().NotBeNull();
             metadata.Category.Should().Be("Generic Characters");
-            metadata.DisplayName.Should().Be("Male Squire");
+            metadata.DisplayName.Should().Be("Squire (Male)");
             metadata.Description.Should().Be("Color scheme for all male squires");
             metadata.JsonPropertyName.Should().Be("SquireMale");
         }

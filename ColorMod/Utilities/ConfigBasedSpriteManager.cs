@@ -80,7 +80,8 @@ namespace FFTColorCustomizer.Utilities
         private void ApplyGenericJobThemes(Config config)
         {
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(string) &&
+                .Where(p => p.GetIndexParameters().Length == 0 &&
+                           p.PropertyType == typeof(string) &&
                            (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
 
             foreach (var property in properties)

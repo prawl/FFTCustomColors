@@ -18,7 +18,23 @@ namespace FFTColorCustomizer.Core.ModComponents
         private readonly string _configPath;
         private readonly ConfigurationManager _configManager;
         private readonly ConfigBasedSpriteManager _spriteManager;
+        private readonly JobClassDefinitionService? _jobClassService;
 
+        /// <summary>
+        /// Creates a ConfigurationCoordinator with explicit dependencies (preferred for DI)
+        /// </summary>
+        public ConfigurationCoordinator(
+            string configPath,
+            string modPath,
+            JobClassDefinitionService jobClassService)
+            : this(configPath, modPath)
+        {
+            _jobClassService = jobClassService ?? throw new ArgumentNullException(nameof(jobClassService));
+        }
+
+        /// <summary>
+        /// Creates a ConfigurationCoordinator (falls back to singleton for backward compatibility)
+        /// </summary>
         public ConfigurationCoordinator(string configPath, string modPath = null)
         {
             _configPath = configPath ?? throw new ArgumentNullException(nameof(configPath));
@@ -64,9 +80,9 @@ namespace FFTColorCustomizer.Core.ModComponents
             var result = new Dictionary<string, string>();
             var config = GetConfiguration();
 
-            // Get all properties from Config class
+            // Get all properties from Config class (skip indexers)
             var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(string));
+                .Where(p => p.PropertyType == typeof(string) && p.GetIndexParameters().Length == 0);
 
             foreach (var property in properties)
             {
@@ -211,8 +227,8 @@ namespace FFTColorCustomizer.Core.ModComponents
         /// <returns>The configured color scheme for the job, or null if not found</returns>
         public string? GetJobColorForSprite(string spriteName)
         {
-            // Use JobClassService to get the job class from sprite name
-            var jobClassService = JobClassServiceSingleton.Instance;
+            // Use injected service if available, otherwise fall back to singleton
+            var jobClassService = _jobClassService ?? JobClassServiceSingleton.Instance;
             if (jobClassService == null)
             {
                 ModLogger.LogDebug($"JobClassService not initialized for sprite: {spriteName}");
