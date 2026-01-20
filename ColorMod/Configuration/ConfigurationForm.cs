@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using FFTColorCustomizer.Configuration.UI;
 using FFTColorCustomizer.Utilities;
@@ -14,6 +15,20 @@ namespace FFTColorCustomizer.Configuration
     /// </summary>
     public partial class ConfigurationForm : Form
     {
+        // Resize constants for borderless window
+        private const int WM_NCHITTEST = 0x84;
+        private const int HTCLIENT = 1;
+        private const int HTLEFT = 10;
+        private const int HTRIGHT = 11;
+        private const int HTTOP = 12;
+        private const int HTTOPLEFT = 13;
+        private const int HTTOPRIGHT = 14;
+        private const int HTBOTTOM = 15;
+        private const int HTBOTTOMLEFT = 16;
+        private const int HTBOTTOMRIGHT = 17;
+        private const int ResizeBorderWidth = 8;
+        private const int WS_THICKFRAME = 0x40000; // Enables resizing
+
         private Config _config;
         private string _configPath;
         private string _modPath;
@@ -345,6 +360,50 @@ namespace FFTColorCustomizer.Configuration
             // This would normally update the preview image based on the selection
             // Implementation details depend on the specific preview system
             ModLogger.LogDebug($"Refreshing preview for {tag.JobName}");
+        }
+
+        /// <summary>
+        /// Add WS_THICKFRAME style to enable native resize behavior
+        /// </summary>
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.Style |= WS_THICKFRAME;
+                return cp;
+            }
+        }
+
+        /// <summary>
+        /// Override WndProc to enable resizing on borderless form
+        /// </summary>
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+
+            if (m.Msg == WM_NCHITTEST && (int)m.Result == HTCLIENT)
+            {
+                // Get cursor position in screen coordinates from message
+                int x = (int)(m.LParam.ToInt64() & 0xFFFF);
+                int y = (int)((m.LParam.ToInt64() >> 16) & 0xFFFF);
+                Point cursor = PointToClient(new Point(x, y));
+
+                // Check edges for resize handles
+                bool left = cursor.X < ResizeBorderWidth;
+                bool right = cursor.X >= ClientSize.Width - ResizeBorderWidth;
+                bool top = cursor.Y < ResizeBorderWidth;
+                bool bottom = cursor.Y >= ClientSize.Height - ResizeBorderWidth;
+
+                if (top && left) m.Result = (IntPtr)HTTOPLEFT;
+                else if (top && right) m.Result = (IntPtr)HTTOPRIGHT;
+                else if (bottom && left) m.Result = (IntPtr)HTBOTTOMLEFT;
+                else if (bottom && right) m.Result = (IntPtr)HTBOTTOMRIGHT;
+                else if (left) m.Result = (IntPtr)HTLEFT;
+                else if (right) m.Result = (IntPtr)HTRIGHT;
+                else if (top) m.Result = (IntPtr)HTTOP;
+                else if (bottom) m.Result = (IntPtr)HTBOTTOM;
+            }
         }
 
         private void SaveButton_Click(object sender, EventArgs e)
