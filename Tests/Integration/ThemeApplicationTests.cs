@@ -36,17 +36,17 @@ namespace FFTColorCustomizer.Tests.Integration
             _testConfig = new Config
             {
                 // Story characters that exist in Config
-                Agrias = "divine_knight",
+                ["Agrias"] = "divine_knight",
 
                 // Generic job classes
-                Knight_Male = "holy_guard",
-                Monk_Male = "shadow_assassin",
-                Archer_Female = "desert_nomad",
-                WhiteMage_Female = "oracle",
-                BlackMage_Male = "archmage",
-                Thief_Male = "assassin",
-                Ninja_Female = "kunoichi",
-                Samurai_Male = "ronin"
+                ["Knight_Male"] = "holy_guard",
+                ["Monk_Male"] = "shadow_assassin",
+                ["Archer_Female"] = "desert_nomad",
+                ["WhiteMage_Female"] = "oracle",
+                ["BlackMage_Male"] = "archmage",
+                ["Thief_Male"] = "assassin",
+                ["Ninja_Female"] = "kunoichi",
+                ["Samurai_Male"] = "ronin"
             };
 
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(_testConfig));
@@ -133,16 +133,16 @@ namespace FFTColorCustomizer.Tests.Integration
 
             // Story character theme verification would go here if we had access to internal state
             // For now, we verify through the Config that themes are set
-            Assert.Equal("divine_knight", config.Agrias);
+            Assert.Equal("divine_knight", config["Agrias"]);
             Assert.NotNull(config);
-            Assert.Equal("holy_guard", config.Knight_Male);
-            Assert.Equal("shadow_assassin", config.Monk_Male);
-            Assert.Equal("desert_nomad", config.Archer_Female);
-            Assert.Equal("oracle", config.WhiteMage_Female);
-            Assert.Equal("archmage", config.BlackMage_Male);
-            Assert.Equal("assassin", config.Thief_Male);
-            Assert.Equal("kunoichi", config.Ninja_Female);
-            Assert.Equal("ronin", config.Samurai_Male);
+            Assert.Equal("holy_guard", config["Knight_Male"]);
+            Assert.Equal("shadow_assassin", config["Monk_Male"]);
+            Assert.Equal("desert_nomad", config["Archer_Female"]);
+            Assert.Equal("oracle", config["WhiteMage_Female"]);
+            Assert.Equal("archmage", config["BlackMage_Male"]);
+            Assert.Equal("assassin", config["Thief_Male"]);
+            Assert.Equal("kunoichi", config["Ninja_Female"]);
+            Assert.Equal("ronin", config["Samurai_Male"]);
         }
 
         [Fact]
@@ -158,14 +158,14 @@ namespace FFTColorCustomizer.Tests.Integration
             var updatedConfig = new Config
             {
                 // Update story characters
-                Agrias = "templar",
+                ["Agrias"] = "templar",
 
                 // Update generic jobs
-                Knight_Male = "crusader",
-                Monk_Male = "martial_artist",
-                Archer_Female = "sniper",
-                WhiteMage_Female = "healer",
-                BlackMage_Male = "sorcerer"
+                ["Knight_Male"] = "crusader",
+                ["Monk_Male"] = "martial_artist",
+                ["Archer_Female"] = "sniper",
+                ["WhiteMage_Female"] = "healer",
+                ["BlackMage_Male"] = "sorcerer"
             };
 
             // Act - Update configuration
@@ -176,14 +176,14 @@ namespace FFTColorCustomizer.Tests.Integration
             Assert.NotNull(config);
 
             // Story characters
-            Assert.Equal("templar", config.Agrias);
+            Assert.Equal("templar", config["Agrias"]);
 
             // Generic jobs
-            Assert.Equal("crusader", config.Knight_Male);
-            Assert.Equal("martial_artist", config.Monk_Male);
-            Assert.Equal("sniper", config.Archer_Female);
-            Assert.Equal("healer", config.WhiteMage_Female);
-            Assert.Equal("sorcerer", config.BlackMage_Male);
+            Assert.Equal("crusader", config["Knight_Male"]);
+            Assert.Equal("martial_artist", config["Monk_Male"]);
+            Assert.Equal("sniper", config["Archer_Female"]);
+            Assert.Equal("healer", config["WhiteMage_Female"]);
+            Assert.Equal("sorcerer", config["BlackMage_Male"]);
         }
 
         [Fact]
@@ -198,16 +198,16 @@ namespace FFTColorCustomizer.Tests.Integration
             // Create a new config with changes
             var updatedConfig = new Config
             {
-                Knight_Male = "paladin",
-                Monk_Male = "brawler",
-                Agrias = "templar",
+                ["Knight_Male"] = "paladin",
+                ["Monk_Male"] = "brawler",
+                ["Agrias"] = "templar",
                 // Keep other values from original config
-                Archer_Female = "desert_nomad",
-                WhiteMage_Female = "oracle",
-                BlackMage_Male = "archmage",
-                Thief_Male = "assassin",
-                Ninja_Female = "kunoichi",
-                Samurai_Male = "ronin"
+                ["Archer_Female"] = "desert_nomad",
+                ["WhiteMage_Female"] = "oracle",
+                ["BlackMage_Male"] = "archmage",
+                ["Thief_Male"] = "assassin",
+                ["Ninja_Female"] = "kunoichi",
+                ["Samurai_Male"] = "ronin"
             };
 
             // Update configuration through the proper channel
@@ -218,9 +218,9 @@ namespace FFTColorCustomizer.Tests.Integration
 
             // Assert - Verify themes are applied after save
             var savedConfig = mod.GetConfiguration();
-            Assert.Equal("paladin", savedConfig.Knight_Male);
-            Assert.Equal("brawler", savedConfig.Monk_Male);
-            Assert.Equal("templar", savedConfig.Agrias);
+            Assert.Equal("paladin", savedConfig["Knight_Male"]);
+            Assert.Equal("brawler", savedConfig["Monk_Male"]);
+            Assert.Equal("templar", savedConfig["Agrias"]);
         }
 
         [Fact]
@@ -250,9 +250,9 @@ namespace FFTColorCustomizer.Tests.Integration
             var config = mod.GetConfiguration();
 
             // These should match what we set in _testConfig
-            Assert.Equal("holy_guard", config.Knight_Male);
-            Assert.Equal("shadow_assassin", config.Monk_Male);
-            Assert.Equal("desert_nomad", config.Archer_Female);
+            Assert.Equal("holy_guard", config["Knight_Male"]);
+            Assert.Equal("shadow_assassin", config["Monk_Male"]);
+            Assert.Equal("desert_nomad", config["Archer_Female"]);
 
             // The fact that these are preserved means ApplyConfiguration was called
             configurationApplied = true;
@@ -273,12 +273,12 @@ namespace FFTColorCustomizer.Tests.Integration
             // Assert - No delay needed in test environment, themes should be applied immediately
             var config = mod.GetConfiguration();
             Assert.NotNull(config);
-            Assert.Equal("holy_guard", config.Knight_Male);
+            Assert.Equal("holy_guard", config["Knight_Male"]);
 
             var themeManager = mod.GetThemeManager();
             Assert.NotNull(themeManager);
             // Story character themes are applied internally
-            Assert.Equal("divine_knight", config.Agrias);
+            Assert.Equal("divine_knight", config["Agrias"]);
         }
 
         [Fact]
@@ -302,12 +302,12 @@ namespace FFTColorCustomizer.Tests.Integration
             // Assert - After delay, themes should be applied
             var config = mod.GetConfiguration();
             Assert.NotNull(config);
-            Assert.Equal("holy_guard", config.Knight_Male);
+            Assert.Equal("holy_guard", config["Knight_Male"]);
 
             var themeManager = mod.GetThemeManager();
             Assert.NotNull(themeManager);
             // Story character themes are applied internally
-            Assert.Equal("divine_knight", config.Agrias);
+            Assert.Equal("divine_knight", config["Agrias"]);
         }
 
         public void Dispose()

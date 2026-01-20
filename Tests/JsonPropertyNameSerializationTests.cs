@@ -30,9 +30,9 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config
             {
-                Squire_Male = "southern_sky",
-                Knight_Female = "emerald_dragon",
-                WhiteMage_Male = "northern_sky"
+                ["Squire_Male"] = "southern_sky",
+                ["Knight_Female"] = "emerald_dragon",
+                ["WhiteMage_Male"] = "northern_sky"
             };
 
             // Act - Serialize to JSON

@@ -81,8 +81,8 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = "corpse_brigade",
-                Archer_Female = "lucavi"
+                ["Knight_Male"] = "corpse_brigade",
+                ["Archer_Female"] = "lucavi"
             };
             _configManager.SaveConfig(config);
 
@@ -107,9 +107,9 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = "northern_sky",
-                Archer_Female = "corpse_brigade",
-                Monk_Male = "lucavi"
+                ["Knight_Male"] = "northern_sky",
+                ["Archer_Female"] = "corpse_brigade",
+                ["Monk_Male"] = "lucavi"
             };
             _configManager.SaveConfig(config);
             var unitDir = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -133,8 +133,8 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = "corpse_brigade",
-                Dragoon_Female = "northern_sky"
+                ["Knight_Male"] = "corpse_brigade",
+                ["Dragoon_Female"] = "northern_sky"
             };
             _configManager.SaveConfig(config);
 
@@ -160,7 +160,7 @@ namespace FFTColorCustomizer.Tests
 
             // Assert - Config should be updated
             var config = _configManager.LoadConfig();
-            Assert.Equal("lucavi", config.Knight_Male); // lucavi
+            Assert.Equal("lucavi", config["Knight_Male"]); // lucavi
 
             // Assert - Sprite should be swapped
             var knightContent = File.ReadAllText(Path.Combine(unitDir, "battle_knight_m_spr.bin"));
@@ -173,9 +173,9 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = "corpse_brigade",
-                Archer_Female = "lucavi",
-                Monk_Male = "northern_sky"
+                ["Knight_Male"] = "corpse_brigade",
+                ["Archer_Female"] = "lucavi",
+                ["Monk_Male"] = "northern_sky"
             };
             _configManager.SaveConfig(config);
             _spriteManager.ApplyConfiguration();
@@ -196,9 +196,9 @@ namespace FFTColorCustomizer.Tests
 
             // Assert - Config should be reset
             var resetConfig = _configManager.LoadConfig();
-            Assert.Equal("original", resetConfig.Knight_Male);
-            Assert.Equal("original", resetConfig.Archer_Female);
-            Assert.Equal("original", resetConfig.Monk_Male);
+            Assert.Equal("original", resetConfig["Knight_Male"]);
+            Assert.Equal("original", resetConfig["Archer_Female"]);
+            Assert.Equal("original", resetConfig["Monk_Male"]);
 
             // Assert - When reset to "original", the original theme files are applied
             // After our fix, ApplyConfiguration now properly applies themes even for "original"

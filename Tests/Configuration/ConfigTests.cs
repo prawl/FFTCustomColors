@@ -75,10 +75,8 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config();
 
-            // Set a unique color for each property to verify correct mapping
-            var propertyInfo = typeof(Config).GetProperty(expectedProperty);
-            Assert.NotNull(propertyInfo); // Verify the property exists
-            propertyInfo.SetValue(config, "corpse_brigade"); // Use string enum value
+            // Set a unique color for each property to verify correct mapping using indexer
+            config[expectedProperty] = "corpse_brigade"; // Use string theme value
 
             // Act
             var mapper = new SpriteNameMapper(config);
@@ -112,50 +110,50 @@ namespace FFTColorCustomizer.Tests
             var config = new Config();
 
             // Assert - verify all job properties are initialized to "original"
-            Assert.Equal("original", config.Knight_Male);
-            Assert.Equal("original", config.Knight_Female);
-            Assert.Equal("original", config.Archer_Male);
-            Assert.Equal("original", config.Archer_Female);
-            Assert.Equal("original", config.Monk_Male);
-            Assert.Equal("original", config.Monk_Female);
-            Assert.Equal("original", config.WhiteMage_Male);
-            Assert.Equal("original", config.WhiteMage_Female);
-            Assert.Equal("original", config.BlackMage_Male);
-            Assert.Equal("original", config.BlackMage_Female);
-            Assert.Equal("original", config.Thief_Male);
-            Assert.Equal("original", config.Thief_Female);
-            Assert.Equal("original", config.Ninja_Male);
-            Assert.Equal("original", config.Ninja_Female);
-            Assert.Equal("original", config.Squire_Male);
-            Assert.Equal("original", config.Squire_Female);
-            Assert.Equal("original", config.TimeMage_Male);
-            Assert.Equal("original", config.TimeMage_Female);
-            Assert.Equal("original", config.Summoner_Male);
-            Assert.Equal("original", config.Summoner_Female);
-            Assert.Equal("original", config.Samurai_Male);
-            Assert.Equal("original", config.Samurai_Female);
-            Assert.Equal("original", config.Dragoon_Male);
-            Assert.Equal("original", config.Dragoon_Female);
-            Assert.Equal("original", config.Chemist_Male);
-            Assert.Equal("original", config.Chemist_Female);
-            Assert.Equal("original", config.Geomancer_Male);
-            Assert.Equal("original", config.Geomancer_Female);
-            Assert.Equal("original", config.Mystic_Male);
-            Assert.Equal("original", config.Mystic_Female);
-            Assert.Equal("original", config.Mediator_Male);
-            Assert.Equal("original", config.Mediator_Female);
-            Assert.Equal("original", config.Dancer_Female);
-            Assert.Equal("original", config.Bard_Male);
-            Assert.Equal("original", config.Mime_Male);
-            Assert.Equal("original", config.Mime_Female);
-            Assert.Equal("original", config.Calculator_Male);
-            Assert.Equal("original", config.Calculator_Female);
+            Assert.Equal("original", config["Knight_Male"]);
+            Assert.Equal("original", config["Knight_Female"]);
+            Assert.Equal("original", config["Archer_Male"]);
+            Assert.Equal("original", config["Archer_Female"]);
+            Assert.Equal("original", config["Monk_Male"]);
+            Assert.Equal("original", config["Monk_Female"]);
+            Assert.Equal("original", config["WhiteMage_Male"]);
+            Assert.Equal("original", config["WhiteMage_Female"]);
+            Assert.Equal("original", config["BlackMage_Male"]);
+            Assert.Equal("original", config["BlackMage_Female"]);
+            Assert.Equal("original", config["Thief_Male"]);
+            Assert.Equal("original", config["Thief_Female"]);
+            Assert.Equal("original", config["Ninja_Male"]);
+            Assert.Equal("original", config["Ninja_Female"]);
+            Assert.Equal("original", config["Squire_Male"]);
+            Assert.Equal("original", config["Squire_Female"]);
+            Assert.Equal("original", config["TimeMage_Male"]);
+            Assert.Equal("original", config["TimeMage_Female"]);
+            Assert.Equal("original", config["Summoner_Male"]);
+            Assert.Equal("original", config["Summoner_Female"]);
+            Assert.Equal("original", config["Samurai_Male"]);
+            Assert.Equal("original", config["Samurai_Female"]);
+            Assert.Equal("original", config["Dragoon_Male"]);
+            Assert.Equal("original", config["Dragoon_Female"]);
+            Assert.Equal("original", config["Chemist_Male"]);
+            Assert.Equal("original", config["Chemist_Female"]);
+            Assert.Equal("original", config["Geomancer_Male"]);
+            Assert.Equal("original", config["Geomancer_Female"]);
+            Assert.Equal("original", config["Mystic_Male"]);
+            Assert.Equal("original", config["Mystic_Female"]);
+            Assert.Equal("original", config["Mediator_Male"]);
+            Assert.Equal("original", config["Mediator_Female"]);
+            Assert.Equal("original", config["Dancer_Female"]);
+            Assert.Equal("original", config["Bard_Male"]);
+            Assert.Equal("original", config["Mime_Male"]);
+            Assert.Equal("original", config["Mime_Female"]);
+            Assert.Equal("original", config["Calculator_Male"]);
+            Assert.Equal("original", config["Calculator_Female"]);
 
             // WotL Jobs
-            Assert.Equal("original", config.DarkKnight_Male);
-            Assert.Equal("original", config.DarkKnight_Female);
-            Assert.Equal("original", config.OnionKnight_Male);
-            Assert.Equal("original", config.OnionKnight_Female);
+            Assert.Equal("original", config["DarkKnight_Male"]);
+            Assert.Equal("original", config["DarkKnight_Female"]);
+            Assert.Equal("original", config["OnionKnight_Male"]);
+            Assert.Equal("original", config["OnionKnight_Female"]);
         }
 
         [Fact]
@@ -229,11 +227,11 @@ namespace FFTColorCustomizer.Tests
             var config = new Config();
 
             // Assert - property exists and is initialized to original
-            Assert.Equal("original", config.DarkKnight_Male);
+            Assert.Equal("original", config["DarkKnight_Male"]);
 
             // Act - set and get works
-            config.DarkKnight_Male = "crimson";
-            Assert.Equal("crimson", config.DarkKnight_Male);
+            config["DarkKnight_Male"] = "crimson";
+            Assert.Equal("crimson", config["DarkKnight_Male"]);
         }
 
         [Fact]
@@ -243,11 +241,11 @@ namespace FFTColorCustomizer.Tests
             var config = new Config();
 
             // Assert - property exists and is initialized to original
-            Assert.Equal("original", config.DarkKnight_Female);
+            Assert.Equal("original", config["DarkKnight_Female"]);
 
             // Act - set and get works
-            config.DarkKnight_Female = "crimson";
-            Assert.Equal("crimson", config.DarkKnight_Female);
+            config["DarkKnight_Female"] = "crimson";
+            Assert.Equal("crimson", config["DarkKnight_Female"]);
         }
 
         [Fact]
@@ -257,11 +255,11 @@ namespace FFTColorCustomizer.Tests
             var config = new Config();
 
             // Assert - property exists and is initialized to original
-            Assert.Equal("original", config.OnionKnight_Male);
+            Assert.Equal("original", config["OnionKnight_Male"]);
 
             // Act - set and get works
-            config.OnionKnight_Male = "azure";
-            Assert.Equal("azure", config.OnionKnight_Male);
+            config["OnionKnight_Male"] = "azure";
+            Assert.Equal("azure", config["OnionKnight_Male"]);
         }
 
         [Fact]
@@ -271,11 +269,11 @@ namespace FFTColorCustomizer.Tests
             var config = new Config();
 
             // Assert - property exists and is initialized to original
-            Assert.Equal("original", config.OnionKnight_Female);
+            Assert.Equal("original", config["OnionKnight_Female"]);
 
             // Act - set and get works
-            config.OnionKnight_Female = "azure";
-            Assert.Equal("azure", config.OnionKnight_Female);
+            config["OnionKnight_Female"] = "azure";
+            Assert.Equal("azure", config["OnionKnight_Female"]);
         }
 
         [Fact]
@@ -373,8 +371,8 @@ namespace FFTColorCustomizer.Tests
             Assert.Equal(0, config.RamzaColors.Chapter1.HueShift);
             Assert.False(config.RamzaColors.Chapter1.Enabled);
             // And the old values should be preserved
-            Assert.Equal("crimson", config.Knight_Male);
-            Assert.Equal("azure", config.Archer_Female);
+            Assert.Equal("crimson", config["Knight_Male"]);
+            Assert.Equal("azure", config["Archer_Female"]);
         }
 
         [Theory]

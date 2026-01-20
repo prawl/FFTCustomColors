@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -7,8 +6,8 @@ using System.Text.Json.Serialization;
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Reflection-based System.Text.Json converter that automatically handles all story character properties
-    /// without requiring manual updates for each new character
+    /// Dictionary-based System.Text.Json converter that serializes Config using
+    /// the underlying job and story character theme dictionaries directly.
     /// </summary>
     public class ReflectionBasedSystemTextJsonConverter : JsonConverter<Config>
     {
@@ -20,12 +19,6 @@ namespace FFTColorCustomizer.Configuration
             {
                 throw new JsonException();
             }
-
-            // Get non-ignored properties for story characters (they're directly serializable)
-            var storyCharacterProperties = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.GetCustomAttribute<Newtonsoft.Json.JsonIgnoreAttribute>() == null &&
-                           p.GetCustomAttribute<System.Text.Json.Serialization.JsonIgnoreAttribute>() == null)
-                .ToArray();
 
             while (reader.Read())
             {
@@ -47,23 +40,26 @@ namespace FFTColorCustomizer.Configuration
                     var value = reader.GetString();
                     if (!string.IsNullOrEmpty(value))
                     {
-                        // First, try to find a direct story character property
-                        var storyCharProperty = storyCharacterProperties.FirstOrDefault(p => p.Name == propertyName);
-                        if (storyCharProperty != null)
-                        {
-                            storyCharProperty.SetValue(config, value);
-                            continue;
-                        }
-
-                        // Then, try to map to job themes using metadata
-                        var jobKeys = config.GetAllJobKeys();
-                        foreach (var jobKey in jobKeys)
+                        // Try to map to job themes using metadata (JsonPropertyName like "KnightMale")
+                        bool matched = false;
+                        foreach (var jobKey in config.GetAllJobKeys())
                         {
                             var metadata = config.GetJobMetadata(jobKey);
                             if (metadata != null && metadata.JsonPropertyName == propertyName)
                             {
                                 config.SetJobTheme(jobKey, value);
+                                matched = true;
                                 break;
+                            }
+                        }
+
+                        // If not a job theme, try story character
+                        if (!matched)
+                        {
+                            var storyCharacters = config.GetAllStoryCharacters();
+                            if (storyCharacters.Contains(propertyName))
+                            {
+                                config.SetStoryCharacterTheme(propertyName, value);
                             }
                         }
                     }

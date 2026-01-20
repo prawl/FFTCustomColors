@@ -69,7 +69,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = "ash_dark"
+                ["Agrias"] = "ash_dark"
             };
             _configManager.SaveConfig(config);
 
@@ -104,7 +104,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = "original"
+                ["Agrias"] = "original"
             };
             _configManager.SaveConfig(config);
 
@@ -141,7 +141,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = "ash_dark"
+                ["Agrias"] = "ash_dark"
             };
             _configManager.SaveConfig(config);
 
@@ -166,7 +166,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = "ash_dark"
+                ["Agrias"] = "ash_dark"
             };
             _configManager.SaveConfig(config);
 
@@ -197,7 +197,7 @@ namespace Tests
             // Arrange
             var config = new Config
             {
-                Agrias = "ash_dark"
+                ["Agrias"] = "ash_dark"
             };
             _configManager.SaveConfig(config);
 

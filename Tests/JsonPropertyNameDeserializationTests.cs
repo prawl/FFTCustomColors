@@ -40,14 +40,14 @@ namespace FFTColorCustomizer.Tests
 
             // Assert - Properties should be correctly set
             Assert.NotNull(config);
-            Assert.Equal("southern_sky", config.Squire_Male);
-            Assert.Equal("emerald_dragon", config.Knight_Female);
-            Assert.Equal("corpse_brigade", config.Archer_Male);
-            Assert.Equal("northern_sky", config.WhiteMage_Male);
+            Assert.Equal("southern_sky", config["Squire_Male"]);
+            Assert.Equal("emerald_dragon", config["Knight_Female"]);
+            Assert.Equal("corpse_brigade", config["Archer_Male"]);
+            Assert.Equal("northern_sky", config["WhiteMage_Male"]);
 
             // Other properties should have default values
-            Assert.Equal("original", config.Knight_Male);
-            Assert.Equal("original", config.Monk_Female);
+            Assert.Equal("original", config["Knight_Male"]);
+            Assert.Equal("original", config["Monk_Female"]);
         }
     }
 }

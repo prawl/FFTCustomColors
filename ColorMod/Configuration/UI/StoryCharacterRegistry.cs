@@ -75,18 +75,17 @@ namespace FFTColorCustomizer.Configuration.UI
                 if (string.IsNullOrEmpty(character.Name))
                     continue;
 
-                // Get the property from Config (for story characters like Agrias, Cloud, etc.)
-                var configProperty = typeof(Config).GetProperty(character.Name);
-                if (configProperty == null || configProperty.PropertyType != typeof(string))
-                    continue;
+                // Capture the character name for closure
+                var characterName = character.Name;
+                var defaultTheme = character.DefaultTheme ?? "original";
 
-                result[character.Name] = new StoryCharacterConfig
+                result[characterName] = new StoryCharacterConfig
                 {
-                    Name = character.Name,
+                    Name = characterName,
                     EnumType = typeof(string), // Now using string instead of enum
-                    GetValue = () => configProperty.GetValue(config) ?? character.DefaultTheme,
-                    SetValue = (v) => configProperty.SetValue(config, v?.ToString() ?? character.DefaultTheme),
-                    PreviewName = character.Name,
+                    GetValue = () => config.GetStoryCharacterTheme(characterName) ?? defaultTheme,
+                    SetValue = (v) => config.SetStoryCharacterTheme(characterName, v?.ToString() ?? defaultTheme),
+                    PreviewName = characterName,
                     AvailableThemes = character.AvailableThemes
                 };
             }

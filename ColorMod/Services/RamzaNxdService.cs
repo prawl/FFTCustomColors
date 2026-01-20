@@ -41,9 +41,9 @@ namespace FFTColorCustomizer.Services
         {
             try
             {
-                var ch1Theme = config?.RamzaChapter1 ?? "original";
-                var ch23Theme = config?.RamzaChapter23 ?? "original";
-                var ch4Theme = config?.RamzaChapter4 ?? "original";
+                var ch1Theme = config?.GetStoryCharacterTheme("RamzaChapter1") ?? "original";
+                var ch23Theme = config?.GetStoryCharacterTheme("RamzaChapter23") ?? "original";
+                var ch4Theme = config?.GetStoryCharacterTheme("RamzaChapter4") ?? "original";
 
                 ModLogger.Log($"[RAMZA_ALL_CHAPTERS] Applying per-chapter themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
 

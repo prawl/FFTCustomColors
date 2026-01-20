@@ -30,8 +30,8 @@ namespace FFTColorCustomizer.Tests
             // Arrange - Simulate Reloaded-II creating a new Config object
             var updatedConfig = new Config
             {
-                Squire_Male = "golden_templar",  // royal_purple
-                Knight_Female = "silver_knight"  // southern_sky
+                ["Squire_Male"] = "golden_templar",  // royal_purple
+                ["Knight_Female"] = "silver_knight"  // southern_sky
             };
 
             // Act - Try to save (this is what happens in OnConfigurationUpdated)
@@ -48,8 +48,8 @@ namespace FFTColorCustomizer.Tests
             // Arrange - Create a new Config object
             var config = new Config
             {
-                Squire_Male = "golden_templar",  // royal_purple
-                Knight_Female = "silver_knight"  // southern_sky
+                ["Squire_Male"] = "golden_templar",  // royal_purple
+                ["Knight_Female"] = "silver_knight"  // southern_sky
             };
 
             // Act - We need a way to save to a specific path
@@ -64,8 +64,8 @@ namespace FFTColorCustomizer.Tests
             var reloadedConfig = JsonSerializer.Deserialize<Config>(savedJson, Configurable<Config>.SerializerOptions);
 
             Assert.NotNull(reloadedConfig);
-            Assert.Equal("golden_templar", reloadedConfig.Squire_Male);
-            Assert.Equal("silver_knight", reloadedConfig.Knight_Female);
+            Assert.Equal("golden_templar", reloadedConfig["Squire_Male"]);
+            Assert.Equal("silver_knight", reloadedConfig["Knight_Female"]);
         }
     }
 }

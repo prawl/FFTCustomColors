@@ -20,7 +20,7 @@ namespace FFTColorCustomizer.Tests
                 var configManager = new ConfigurationManager(configPath);
                 var config = new Config
                 {
-                    Squire_Male = "northern_sky"
+                    ["Squire_Male"] = "northern_sky"
                 };
 
                 // Act

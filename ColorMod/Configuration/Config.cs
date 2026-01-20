@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using FFTColorCustomizer.Services;
 
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Config class using string-based themes for all characters
+    /// Config class using string-based themes for all characters.
+    /// Uses dictionary-based storage with data-driven initialization from StoryCharacters.json.
     /// </summary>
     [Newtonsoft.Json.JsonConverter(typeof(ReflectionBasedConfigJsonConverter))]
     [JsonConverter(typeof(ReflectionBasedSystemTextJsonConverter))]
@@ -16,7 +18,7 @@ namespace FFTColorCustomizer.Configuration
         // Dictionary to store all generic job themes
         private Dictionary<string, string> _jobThemes = new();
 
-        // Dictionary to store all story character themes
+        // Dictionary to store all story character themes (initialized from StoryCharacters.json)
         private Dictionary<string, string> _storyCharacterThemes = new();
 
         // Metadata for each job
@@ -117,16 +119,44 @@ namespace FFTColorCustomizer.Configuration
                 _jobThemes[key] = "original";
             }
 
-            // Initialize story character themes
-            _storyCharacterThemes["Agrias"] = "original";
-            _storyCharacterThemes["Orlandeau"] = "original";
-            _storyCharacterThemes["Cloud"] = "original";
-            _storyCharacterThemes["Mustadio"] = "original";
-            _storyCharacterThemes["Reis"] = "original";
-            _storyCharacterThemes["Rapha"] = "original";
-            _storyCharacterThemes["Marach"] = "original";
-            _storyCharacterThemes["Beowulf"] = "original";
-            _storyCharacterThemes["Meliadoul"] = "original";
+            // Initialize story character themes from CharacterDefinitionService (StoryCharacters.json)
+            InitializeStoryCharacterThemes();
+        }
+
+        /// <summary>
+        /// Initialize story character themes from CharacterDefinitionService.
+        /// Falls back to hardcoded list if service is not available.
+        /// </summary>
+        private void InitializeStoryCharacterThemes()
+        {
+            try
+            {
+                var characters = CharacterServiceSingleton.Instance.GetAllCharacters();
+                if (characters.Count > 0)
+                {
+                    foreach (var character in characters)
+                    {
+                        _storyCharacterThemes[character.Name] = character.DefaultTheme ?? "original";
+                    }
+                    return;
+                }
+            }
+            catch
+            {
+                // Service not available, fall through to fallback
+            }
+
+            // Fallback: hardcoded story characters (for testing or when service unavailable)
+            var fallbackCharacters = new[]
+            {
+                "RamzaChapter1", "RamzaChapter23", "RamzaChapter4",
+                "Agrias", "Orlandeau", "Cloud", "Mustadio", "Reis",
+                "Rapha", "Marach", "Beowulf", "Meliadoul"
+            };
+            foreach (var name in fallbackCharacters)
+            {
+                _storyCharacterThemes[name] = "original";
+            }
         }
 
         // Generic job theme accessors
@@ -172,387 +202,6 @@ namespace FFTColorCustomizer.Configuration
                 else
                     SetStoryCharacterTheme(key, value);
             }
-        }
-
-        // Properties for backward compatibility with generic jobs
-        [Newtonsoft.Json.JsonIgnore]
-        public string Squire_Male
-        {
-            get => GetJobTheme("Squire_Male");
-            set => SetJobTheme("Squire_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Squire_Female
-        {
-            get => GetJobTheme("Squire_Female");
-            set => SetJobTheme("Squire_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Knight_Male
-        {
-            get => GetJobTheme("Knight_Male");
-            set => SetJobTheme("Knight_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Knight_Female
-        {
-            get => GetJobTheme("Knight_Female");
-            set => SetJobTheme("Knight_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Monk_Male
-        {
-            get => GetJobTheme("Monk_Male");
-            set => SetJobTheme("Monk_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Monk_Female
-        {
-            get => GetJobTheme("Monk_Female");
-            set => SetJobTheme("Monk_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Archer_Male
-        {
-            get => GetJobTheme("Archer_Male");
-            set => SetJobTheme("Archer_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Archer_Female
-        {
-            get => GetJobTheme("Archer_Female");
-            set => SetJobTheme("Archer_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string WhiteMage_Male
-        {
-            get => GetJobTheme("WhiteMage_Male");
-            set => SetJobTheme("WhiteMage_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string WhiteMage_Female
-        {
-            get => GetJobTheme("WhiteMage_Female");
-            set => SetJobTheme("WhiteMage_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string BlackMage_Male
-        {
-            get => GetJobTheme("BlackMage_Male");
-            set => SetJobTheme("BlackMage_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string BlackMage_Female
-        {
-            get => GetJobTheme("BlackMage_Female");
-            set => SetJobTheme("BlackMage_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string TimeMage_Male
-        {
-            get => GetJobTheme("TimeMage_Male");
-            set => SetJobTheme("TimeMage_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string TimeMage_Female
-        {
-            get => GetJobTheme("TimeMage_Female");
-            set => SetJobTheme("TimeMage_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Summoner_Male
-        {
-            get => GetJobTheme("Summoner_Male");
-            set => SetJobTheme("Summoner_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Summoner_Female
-        {
-            get => GetJobTheme("Summoner_Female");
-            set => SetJobTheme("Summoner_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Thief_Male
-        {
-            get => GetJobTheme("Thief_Male");
-            set => SetJobTheme("Thief_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Thief_Female
-        {
-            get => GetJobTheme("Thief_Female");
-            set => SetJobTheme("Thief_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Mediator_Male
-        {
-            get => GetJobTheme("Mediator_Male");
-            set => SetJobTheme("Mediator_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Mediator_Female
-        {
-            get => GetJobTheme("Mediator_Female");
-            set => SetJobTheme("Mediator_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Mystic_Male
-        {
-            get => GetJobTheme("Mystic_Male");
-            set => SetJobTheme("Mystic_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Mystic_Female
-        {
-            get => GetJobTheme("Mystic_Female");
-            set => SetJobTheme("Mystic_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Geomancer_Male
-        {
-            get => GetJobTheme("Geomancer_Male");
-            set => SetJobTheme("Geomancer_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Geomancer_Female
-        {
-            get => GetJobTheme("Geomancer_Female");
-            set => SetJobTheme("Geomancer_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Dragoon_Male
-        {
-            get => GetJobTheme("Dragoon_Male");
-            set => SetJobTheme("Dragoon_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Dragoon_Female
-        {
-            get => GetJobTheme("Dragoon_Female");
-            set => SetJobTheme("Dragoon_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Samurai_Male
-        {
-            get => GetJobTheme("Samurai_Male");
-            set => SetJobTheme("Samurai_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Samurai_Female
-        {
-            get => GetJobTheme("Samurai_Female");
-            set => SetJobTheme("Samurai_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Ninja_Male
-        {
-            get => GetJobTheme("Ninja_Male");
-            set => SetJobTheme("Ninja_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Ninja_Female
-        {
-            get => GetJobTheme("Ninja_Female");
-            set => SetJobTheme("Ninja_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Calculator_Male
-        {
-            get => GetJobTheme("Calculator_Male");
-            set => SetJobTheme("Calculator_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Calculator_Female
-        {
-            get => GetJobTheme("Calculator_Female");
-            set => SetJobTheme("Calculator_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Bard_Male
-        {
-            get => GetJobTheme("Bard_Male");
-            set => SetJobTheme("Bard_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Dancer_Female
-        {
-            get => GetJobTheme("Dancer_Female");
-            set => SetJobTheme("Dancer_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Mime_Male
-        {
-            get => GetJobTheme("Mime_Male");
-            set => SetJobTheme("Mime_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Mime_Female
-        {
-            get => GetJobTheme("Mime_Female");
-            set => SetJobTheme("Mime_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Chemist_Male
-        {
-            get => GetJobTheme("Chemist_Male");
-            set => SetJobTheme("Chemist_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Chemist_Female
-        {
-            get => GetJobTheme("Chemist_Female");
-            set => SetJobTheme("Chemist_Female", value);
-        }
-
-        // WotL Jobs Properties
-        [Newtonsoft.Json.JsonIgnore]
-        public string DarkKnight_Male
-        {
-            get => GetJobTheme("DarkKnight_Male");
-            set => SetJobTheme("DarkKnight_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string DarkKnight_Female
-        {
-            get => GetJobTheme("DarkKnight_Female");
-            set => SetJobTheme("DarkKnight_Female", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string OnionKnight_Male
-        {
-            get => GetJobTheme("OnionKnight_Male");
-            set => SetJobTheme("OnionKnight_Male", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string OnionKnight_Female
-        {
-            get => GetJobTheme("OnionKnight_Female");
-            set => SetJobTheme("OnionKnight_Female", value);
-        }
-
-        // Story Character Properties (string-based themes)
-        [Newtonsoft.Json.JsonProperty("RamzaChapter1")]
-        public string RamzaChapter1
-        {
-            get => GetStoryCharacterTheme("RamzaChapter1");
-            set => SetStoryCharacterTheme("RamzaChapter1", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("RamzaChapter23")]
-        public string RamzaChapter23
-        {
-            get => GetStoryCharacterTheme("RamzaChapter23");
-            set => SetStoryCharacterTheme("RamzaChapter23", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("RamzaChapter4")]
-        public string RamzaChapter4
-        {
-            get => GetStoryCharacterTheme("RamzaChapter4");
-            set => SetStoryCharacterTheme("RamzaChapter4", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("Agrias")]
-        public string Agrias
-        {
-            get => GetStoryCharacterTheme("Agrias");
-            set => SetStoryCharacterTheme("Agrias", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("Orlandeau")]
-        public string Orlandeau
-        {
-            get => GetStoryCharacterTheme("Orlandeau");
-            set => SetStoryCharacterTheme("Orlandeau", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("Cloud")]
-        public string Cloud
-        {
-            get => GetStoryCharacterTheme("Cloud");
-            set => SetStoryCharacterTheme("Cloud", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("Mustadio")]
-        public string Mustadio
-        {
-            get => GetStoryCharacterTheme("Mustadio");
-            set => SetStoryCharacterTheme("Mustadio", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("Reis")]
-        public string Reis
-        {
-            get => GetStoryCharacterTheme("Reis");
-            set => SetStoryCharacterTheme("Reis", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("Rapha")]
-        public string Rapha
-        {
-            get => GetStoryCharacterTheme("Rapha");
-            set => SetStoryCharacterTheme("Rapha", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("Marach")]
-        public string Marach
-        {
-            get => GetStoryCharacterTheme("Marach");
-            set => SetStoryCharacterTheme("Marach", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("Beowulf")]
-        public string Beowulf
-        {
-            get => GetStoryCharacterTheme("Beowulf");
-            set => SetStoryCharacterTheme("Beowulf", value);
-        }
-
-        [Newtonsoft.Json.JsonProperty("Meliadoul")]
-        public string Meliadoul
-        {
-            get => GetStoryCharacterTheme("Meliadoul");
-            set => SetStoryCharacterTheme("Meliadoul", value);
         }
 
         // Helper methods

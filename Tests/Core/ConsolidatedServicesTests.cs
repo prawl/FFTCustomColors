@@ -85,8 +85,8 @@ namespace FFTColorCustomizer.Tests.Core
 
             // Assert
             Assert.NotNull(defaultConfig);
-            Assert.Equal("original", defaultConfig.Knight_Male);
-            Assert.Equal("original", defaultConfig.Knight_Female);
+            Assert.Equal("original", defaultConfig["Knight_Male"]);
+            Assert.Equal("original", defaultConfig["Knight_Female"]);
         }
 
         [Fact]
@@ -98,7 +98,7 @@ namespace FFTColorCustomizer.Tests.Core
 
             // Modify config
             var config = configService.LoadConfig();
-            config.Knight_Male = "lucavi";
+            config["Knight_Male"] = "lucavi";
             configService.SaveConfig(config);
 
             // Act
@@ -106,7 +106,7 @@ namespace FFTColorCustomizer.Tests.Core
             var resetConfig = configService.LoadConfig();
 
             // Assert
-            Assert.Equal("original", resetConfig.Knight_Male);
+            Assert.Equal("original", resetConfig["Knight_Male"]);
         }
 
         #endregion
@@ -171,8 +171,8 @@ namespace FFTColorCustomizer.Tests.Core
 
             var config = new Config
             {
-                Knight_Male = "lucavi",
-                Archer_Female = "corpse_brigade"
+                ["Knight_Male"] = "lucavi",
+                ["Archer_Female"] = "corpse_brigade"
             };
 
             // Act
@@ -227,7 +227,7 @@ namespace FFTColorCustomizer.Tests.Core
 
             var config = new Config
             {
-                Knight_Male = "lucavi"
+                ["Knight_Male"] = "lucavi"
             };
 
             // Act & Assert - Should not throw
@@ -249,7 +249,7 @@ namespace FFTColorCustomizer.Tests.Core
 
             // Act
             var config = configService.LoadConfig();
-            config.Knight_Male = "lucavi";
+            config["Knight_Male"] = "lucavi";
             configService.SaveConfig(config);
 
             themeService.ApplyConfigurationThemes(config);
@@ -257,7 +257,7 @@ namespace FFTColorCustomizer.Tests.Core
 
             // Assert
             Assert.NotNull(config);
-            Assert.Equal("lucavi", config.Knight_Male);
+            Assert.Equal("lucavi", config["Knight_Male"]);
         }
 
         #endregion

@@ -82,7 +82,7 @@ namespace Tests.Configuration
         {
             // Arrange
             var config = new Config();
-            config.Mediator_Male = "emerald_dragon";
+            config["Mediator_Male"] = "emerald_dragon";
             _configManager.SaveConfig(config);
 
             // Act
@@ -101,7 +101,7 @@ namespace Tests.Configuration
         {
             // Arrange
             var config = new Config();
-            config.Mediator_Male = "holy_knight";  // This is a job-specific theme
+            config["Mediator_Male"] = "holy_knight";  // This is a job-specific theme
             _configManager.SaveConfig(config);
 
             // Act
@@ -120,7 +120,7 @@ namespace Tests.Configuration
         {
             // Arrange
             var config = new Config();
-            config.Mediator_Male = "wind_dancer";  // Another job-specific theme
+            config["Mediator_Male"] = "wind_dancer";  // Another job-specific theme
             _configManager.SaveConfig(config);
 
             // Act
@@ -148,7 +148,7 @@ namespace Tests.Configuration
             CreateDummySprite(Path.Combine(sourcePath, "sprites_holy_knight", "battle_waju_m_spr.bin"), "shared_holy_knight");
 
             var config = new Config();
-            config.Mediator_Male = "holy_knight";
+            config["Mediator_Male"] = "holy_knight";
             _configManager.SaveConfig(config);
 
             // Act
@@ -166,7 +166,7 @@ namespace Tests.Configuration
         {
             // Arrange
             var config = new Config();
-            config.Mediator_Male = "emerald_dragon";  // This is a shared theme, no job-specific version
+            config["Mediator_Male"] = "emerald_dragon";  // This is a shared theme, no job-specific version
             _configManager.SaveConfig(config);
 
             // Act

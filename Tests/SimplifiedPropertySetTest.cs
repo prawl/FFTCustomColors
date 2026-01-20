@@ -26,45 +26,35 @@ namespace FFTColorCustomizer.Tests
         [Fact]
         public void Test_Direct_Property_Setting()
         {
-            _output.WriteLine("=== Direct Property Setting Test ===\n");
+            _output.WriteLine("=== Direct Dictionary-Based Property Setting Test ===\n");
 
             // Create a config instance
             var config = new ConfigurationNamespace.Config();
 
-            // Get all string properties
-            var properties = typeof(ConfigurationNamespace.Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(string))
-                .OrderBy(p => p.Name)
-                .ToList();
+            // Get all job keys using dictionary-based access
+            var jobKeys = config.GetAllJobKeys().OrderBy(k => k).ToList();
 
-            _output.WriteLine($"Total properties: {properties.Count}");
-            _output.WriteLine($"First 5 properties: {string.Join(", ", properties.Take(5).Select(p => p.Name))}\n");
+            _output.WriteLine($"Total job keys: {jobKeys.Count}");
+            _output.WriteLine($"First 5 job keys: {string.Join(", ", jobKeys.Take(5))}\n");
 
-            // Test setting Archer_Female directly
-            var archerProp = typeof(ConfigurationNamespace.Config).GetProperty("Archer_Female");
-            _output.WriteLine($"GetProperty('Archer_Female'): {archerProp?.Name ?? "NULL"}");
+            // Test setting Archer_Female directly using indexer
+            _output.WriteLine($"Setting Archer_Female via indexer...");
 
-            if (archerProp != null)
-            {
-                _output.WriteLine($"Property type: {archerProp.PropertyType}");
-                _output.WriteLine($"Can write: {archerProp.CanWrite}");
+            // Set value using indexer
+            config["Archer_Female"] = "lucavi";
 
-                // Set value
-                archerProp.SetValue(config, "lucavi"); // lucavi is enum value 2
+            // Get value back
+            var getValue = config["Archer_Female"];
+            _output.WriteLine($"After SetValue - GetValue result: {getValue}");
+            _output.WriteLine($"Direct access - config[\"Archer_Female\"]: {config["Archer_Female"]}");
 
-                // Get value back
-                var getValue = archerProp.GetValue(config);
-                _output.WriteLine($"After SetValue - GetValue result: {getValue}");
-                _output.WriteLine($"Direct access - config.Archer_Female: {config.Archer_Female}");
+            // Check other properties to see if they were affected
+            _output.WriteLine($"\nChecking other properties:");
+            _output.WriteLine($"config[\"Squire_Male\"]: {config["Squire_Male"]}");
+            _output.WriteLine($"config[\"Knight_Male\"]: {config["Knight_Male"]}");
 
-                // Check other properties to see if they were affected
-                _output.WriteLine($"\nChecking other properties:");
-                _output.WriteLine($"config.Squire_Male: {config.Squire_Male}");
-                _output.WriteLine($"config.Knight_Male: {config.Knight_Male}");
-
-                Assert.Equal("lucavi", config.Archer_Female);
-                Assert.Equal("original", config.Squire_Male);
-            }
+            Assert.Equal("lucavi", config["Archer_Female"]);
+            Assert.Equal("original", config["Squire_Male"]);
         }
 
         [Fact]
@@ -77,7 +67,7 @@ namespace FFTColorCustomizer.Tests
 
             // Load config and manually set property
             var config = manager.LoadConfig();
-            config.Archer_Female = "lucavi";
+            config["Archer_Female"] = "lucavi";
 
             // Save the updated config
             manager.SaveConfig(config);
@@ -86,9 +76,9 @@ namespace FFTColorCustomizer.Tests
             // Reload config to verify persistence
             var reloadedConfig = manager.LoadConfig();
             _output.WriteLine($"\nAfter setting:");
-            _output.WriteLine($"config.Archer_Female: {reloadedConfig.Archer_Female}");
-            _output.WriteLine($"config.Squire_Male: {reloadedConfig.Squire_Male}");
-            _output.WriteLine($"config.Knight_Male: {reloadedConfig.Knight_Male}");
+            _output.WriteLine($"config[\"Archer_Female\"]: {reloadedConfig["Archer_Female"]}");
+            _output.WriteLine($"config[\"Squire_Male\"]: {reloadedConfig["Squire_Male"]}");
+            _output.WriteLine($"config[\"Knight_Male\"]: {reloadedConfig["Knight_Male"]}");
 
             // Read the JSON file directly
             if (File.Exists(configPath))
@@ -98,52 +88,52 @@ namespace FFTColorCustomizer.Tests
                 _output.WriteLine(json.Substring(0, Math.Min(300, json.Length)));
             }
 
-            Assert.Equal("lucavi", reloadedConfig.Archer_Female);
-            Assert.Equal("original", reloadedConfig.Squire_Male); // Should remain default
+            Assert.Equal("lucavi", reloadedConfig["Archer_Female"]);
+            Assert.Equal("original", reloadedConfig["Squire_Male"]); // Should remain default
         }
 
         [Fact]
-        public void Test_Property_Order_Issue()
+        public void Test_Job_Key_Order()
         {
-            _output.WriteLine("=== Testing Property Order Issue ===\n");
+            _output.WriteLine("=== Testing Job Key Order ===\n");
 
-            var configType = typeof(ConfigurationNamespace.Config);
-            var properties = configType.GetProperties()
-                .Where(p => p.PropertyType == typeof(string))
-                .ToList();
+            var config = new ConfigurationNamespace.Config();
+            var jobKeys = config.GetAllJobKeys().ToList();
 
-            // Get properties in different orders
-            var orderedByName = properties.OrderBy(p => p.Name).ToList();
-            var declaredOrder = properties.ToList();
+            // Get job keys in different orders
+            var orderedByName = jobKeys.OrderBy(k => k).ToList();
 
-            _output.WriteLine("First 10 properties (by name):");
-            foreach (var prop in orderedByName.Take(10))
+            _output.WriteLine("First 10 job keys (by name):");
+            foreach (var key in orderedByName.Take(10))
             {
-                _output.WriteLine($"  {prop.Name}");
+                _output.WriteLine($"  {key}");
             }
 
-            _output.WriteLine("\nFirst 10 properties (declaration order):");
-            foreach (var prop in declaredOrder.Take(10))
+            _output.WriteLine("\nFirst 10 job keys (dictionary order):");
+            foreach (var key in jobKeys.Take(10))
             {
-                _output.WriteLine($"  {prop.Name}");
+                _output.WriteLine($"  {key}");
             }
 
             // Find index of Archer_Female in both
-            var indexByName = orderedByName.FindIndex(p => p.Name == "Archer_Female");
-            var indexDeclared = declaredOrder.FindIndex(p => p.Name == "Archer_Female");
+            var indexByName = orderedByName.IndexOf("Archer_Female");
+            var indexDict = jobKeys.IndexOf("Archer_Female");
 
             _output.WriteLine($"\nArcher_Female index (by name): {indexByName}");
-            _output.WriteLine($"Archer_Female index (declared): {indexDeclared}");
+            _output.WriteLine($"Archer_Female index (dictionary): {indexDict}");
 
-            // What property is at index 0?
+            // What job key is at index 0?
             if (orderedByName.Count > 0)
             {
-                _output.WriteLine($"\nProperty at index 0 (by name): {orderedByName[0].Name}");
+                _output.WriteLine($"\nJob key at index 0 (by name): {orderedByName[0]}");
             }
-            if (declaredOrder.Count > 0)
+            if (jobKeys.Count > 0)
             {
-                _output.WriteLine($"Property at index 0 (declared): {declaredOrder[0].Name}");
+                _output.WriteLine($"Job key at index 0 (dictionary): {jobKeys[0]}");
             }
+
+            // Verify Archer_Female exists
+            Assert.Contains("Archer_Female", jobKeys);
         }
 
         [Fact]
@@ -159,9 +149,9 @@ namespace FFTColorCustomizer.Tests
 
             // Perform multiple rapid sets
             _output.WriteLine("Setting multiple properties rapidly:");
-            config.Knight_Male = "corpse_brigade";
-            config.Archer_Female = "lucavi";
-            config.Monk_Male = "northern_sky";
+            config["Knight_Male"] = "corpse_brigade";
+            config["Archer_Female"] = "lucavi";
+            config["Monk_Male"] = "northern_sky";
 
             // Save all changes at once
             manager.SaveConfig(config);
@@ -169,13 +159,13 @@ namespace FFTColorCustomizer.Tests
             // Reload and check
             var reloadedConfig = manager.LoadConfig();
             _output.WriteLine($"\nResults:");
-            _output.WriteLine($"Knight_Male: {reloadedConfig.Knight_Male} (expected: corpse_brigade)");
-            _output.WriteLine($"Archer_Female: {reloadedConfig.Archer_Female} (expected: lucavi)");
-            _output.WriteLine($"Monk_Male: {reloadedConfig.Monk_Male} (expected: northern_sky)");
+            _output.WriteLine($"Knight_Male: {reloadedConfig["Knight_Male"]} (expected: corpse_brigade)");
+            _output.WriteLine($"Archer_Female: {reloadedConfig["Archer_Female"]} (expected: lucavi)");
+            _output.WriteLine($"Monk_Male: {reloadedConfig["Monk_Male"]} (expected: northern_sky)");
 
-            Assert.Equal("corpse_brigade", reloadedConfig.Knight_Male);
-            Assert.Equal("lucavi", reloadedConfig.Archer_Female);
-            Assert.Equal("northern_sky", reloadedConfig.Monk_Male);
+            Assert.Equal("corpse_brigade", reloadedConfig["Knight_Male"]);
+            Assert.Equal("lucavi", reloadedConfig["Archer_Female"]);
+            Assert.Equal("northern_sky", reloadedConfig["Monk_Male"]);
         }
 
         public void Dispose()

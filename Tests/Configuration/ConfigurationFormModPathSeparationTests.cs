@@ -51,7 +51,7 @@ namespace FFTColorCustomizer.Tests
             // even when the config path points to a different directory (User config directory)
 
             // Arrange
-            var config = new Config { Agrias = "original", Orlandeau = "original" };
+            var config = new Config { ["Agrias"] = "original", ["Orlandeau"] = "original" };
 
             // The config path and mod path should be different directories
             _testConfigPath.Should().NotBe(_testModPath, "Config and mod should be in different directories");
@@ -109,7 +109,7 @@ namespace FFTColorCustomizer.Tests
             // the form tries to derive mod path from config path, which fails when config is in User directory
 
             // Arrange
-            var config = new Config { Agrias = "original", Orlandeau = "original" };
+            var config = new Config { ["Agrias"] = "original", ["Orlandeau"] = "original" };
 
             // Act - Create form with only config path (simulating the bug scenario)
             // Without the fix, it would try to derive mod path from config path

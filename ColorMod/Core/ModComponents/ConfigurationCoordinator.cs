@@ -80,17 +80,14 @@ namespace FFTColorCustomizer.Core.ModComponents
             var result = new Dictionary<string, string>();
             var config = GetConfiguration();
 
-            // Get all properties from Config class (skip indexers)
-            var properties = typeof(Config).GetProperties()
-                .Where(p => p.PropertyType == typeof(string) && p.GetIndexParameters().Length == 0);
-
-            foreach (var property in properties)
+            // Get all job themes using dictionary-based access
+            foreach (var jobKey in config.GetAllJobKeys())
             {
-                var value = property.GetValue(config) as string;
+                var value = config.GetJobTheme(jobKey);
                 if (!string.IsNullOrWhiteSpace(value))
                 {
                     // Convert to display name format
-                    result[property.Name] = ConvertThemeNameToDisplayName(value);
+                    result[jobKey] = ConvertThemeNameToDisplayName(value);
                 }
             }
 

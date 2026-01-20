@@ -92,9 +92,9 @@ namespace FFTColorCustomizer.Tests
 
             // Assert
             Assert.NotNull(config);
-            Assert.Equal("original", config.Knight_Male);
-            Assert.Equal("original", config.Archer_Female);
-            Assert.Equal("original", config.Monk_Male);
+            Assert.Equal("original", config["Knight_Male"]);
+            Assert.Equal("original", config["Archer_Female"]);
+            Assert.Equal("original", config["Monk_Male"]);
         }
 
         [Fact]
@@ -103,9 +103,9 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = "corpse_brigade",
-                Archer_Female = "lucavi",
-                Monk_Male = "northern_sky"
+                ["Knight_Male"] = "corpse_brigade",
+                ["Archer_Female"] = "lucavi",
+                ["Monk_Male"] = "northern_sky"
             };
 
             // Act
@@ -117,9 +117,9 @@ namespace FFTColorCustomizer.Tests
             // Load the config back using the ConfigurationManager to use the same JSON settings
             var loadedConfig = _configManager.LoadConfig();
 
-            Assert.Equal("corpse_brigade", loadedConfig.Knight_Male);
-            Assert.Equal("lucavi", loadedConfig.Archer_Female);
-            Assert.Equal("northern_sky", loadedConfig.Monk_Male);
+            Assert.Equal("corpse_brigade", loadedConfig["Knight_Male"]);
+            Assert.Equal("lucavi", loadedConfig["Archer_Female"]);
+            Assert.Equal("northern_sky", loadedConfig["Monk_Male"]);
         }
 
         [Fact]
@@ -128,9 +128,9 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var originalConfig = new Config
             {
-                Knight_Male = "southern_sky",
-                Archer_Female = "silver_knight",
-                WhiteMage_Male = "ocean_depths"
+                ["Knight_Male"] = "southern_sky",
+                ["Archer_Female"] = "silver_knight",
+                ["WhiteMage_Male"] = "ocean_depths"
             };
             _configManager.SaveConfig(originalConfig);
 
@@ -138,11 +138,11 @@ namespace FFTColorCustomizer.Tests
             var loadedConfig = _configManager.LoadConfig();
 
             // Assert
-            Assert.Equal("southern_sky", loadedConfig.Knight_Male);
-            Assert.Equal("silver_knight", loadedConfig.Archer_Female);
-            Assert.Equal("ocean_depths", loadedConfig.WhiteMage_Male);
+            Assert.Equal("southern_sky", loadedConfig["Knight_Male"]);
+            Assert.Equal("silver_knight", loadedConfig["Archer_Female"]);
+            Assert.Equal("ocean_depths", loadedConfig["WhiteMage_Male"]);
             // Other properties should still have default values
-            Assert.Equal("original", loadedConfig.BlackMage_Female); // original - default value
+            Assert.Equal("original", loadedConfig["BlackMage_Female"]); // original - default value
         }
 
         [Fact]
@@ -151,8 +151,8 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = "royal_purple",
-                Dragoon_Female = "phoenix_flame"
+                ["Knight_Male"] = "royal_purple",
+                ["Dragoon_Female"] = "phoenix_flame"
             };
             _configManager.SaveConfig(config);
 
@@ -181,9 +181,9 @@ namespace FFTColorCustomizer.Tests
             // Assert
             // Use ReloadConfig to force a fresh read from disk
             var updatedConfig = _configManager.ReloadConfig();
-            Assert.Equal("frost_knight", updatedConfig.Knight_Male);
-            Assert.Equal("silver_knight", updatedConfig.Archer_Female);
-            Assert.Equal("original", updatedConfig.Monk_Male);      // unchanged
+            Assert.Equal("frost_knight", updatedConfig["Knight_Male"]);
+            Assert.Equal("silver_knight", updatedConfig["Archer_Female"]);
+            Assert.Equal("original", updatedConfig["Monk_Male"]);      // unchanged
         }
 
         [Fact]
@@ -212,10 +212,10 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = "corpse_brigade",
-                Archer_Female = "lucavi",
-                Monk_Male = "northern_sky",
-                Thief_Female = "original"
+                ["Knight_Male"] = "corpse_brigade",
+                ["Archer_Female"] = "lucavi",
+                ["Monk_Male"] = "northern_sky",
+                ["Thief_Female"] = "original"
             };
             _configManager.SaveConfig(config);
 
@@ -224,10 +224,10 @@ namespace FFTColorCustomizer.Tests
 
             // Assert
             var resetConfig = _configManager.LoadConfig();
-            Assert.Equal("original", resetConfig.Knight_Male);
-            Assert.Equal("original", resetConfig.Archer_Female); // original
-            Assert.Equal("original", resetConfig.Monk_Male);     // original
-            Assert.Equal("original", resetConfig.Thief_Female);  // original
+            Assert.Equal("original", resetConfig["Knight_Male"]);
+            Assert.Equal("original", resetConfig["Archer_Female"]); // original
+            Assert.Equal("original", resetConfig["Monk_Male"]);     // original
+            Assert.Equal("original", resetConfig["Thief_Female"]);  // original
         }
 
         [Fact]
@@ -241,7 +241,7 @@ namespace FFTColorCustomizer.Tests
 
             // Assert
             Assert.NotNull(config);
-            Assert.Equal("original", config.Knight_Male); // Should return default config
+            Assert.Equal("original", config["Knight_Male"]); // Should return default config
         }
 
         [Fact]

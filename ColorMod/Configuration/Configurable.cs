@@ -105,22 +105,9 @@ namespace FFTColorCustomizer.Configuration
             if (!string.IsNullOrEmpty(directory))
                 Directory.CreateDirectory(directory);
 
-            // Create a copy without FilePath and ConfigName for serialization
-            var copy = (TParentType)Activator.CreateInstance(GetType())!;
-            var properties = GetType().GetProperties();
-            foreach (var prop in properties)
-            {
-                // Skip indexers (properties with parameters)
-                if (prop.GetIndexParameters().Length > 0)
-                    continue;
-
-                if (prop.Name != "FilePath" && prop.Name != "ConfigName" && prop.CanWrite && prop.CanRead)
-                {
-                    prop.SetValue(copy, prop.GetValue(this));
-                }
-            }
-
-            var json = System.Text.Json.JsonSerializer.Serialize(copy, GetType(), SerializerOptions);
+            // Serialize directly - FilePath and ConfigName are marked with [JsonIgnore]
+            // and the custom JsonConverter handles dictionary-based data correctly
+            var json = System.Text.Json.JsonSerializer.Serialize(this, GetType(), SerializerOptions);
             File.WriteAllText(FilePath, json);
         }
 

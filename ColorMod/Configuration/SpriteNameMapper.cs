@@ -110,19 +110,10 @@ namespace FFTColorCustomizer.Configuration
         private string GetStoryCharacterColor(string characterName, string spriteName)
         {
             // Get the color scheme for the story character directly from config
-            var property = typeof(Config).GetProperty(characterName);
-            if (property != null)
-            {
-                var value = property.GetValue(_config);
-                if (value != null)
-                {
-                    var colorScheme = value.ToString().ToLower();
-                    if (colorScheme == "original")
-                        return "sprites_original";
-                    return $"sprites_{characterName.ToLower()}_{colorScheme}";
-                }
-            }
-            return "sprites_original";
+            var colorScheme = _config.GetStoryCharacterTheme(characterName)?.ToLower() ?? "original";
+            if (colorScheme == "original")
+                return "sprites_original";
+            return $"sprites_{characterName.ToLower()}_{colorScheme}";
         }
     }
 }

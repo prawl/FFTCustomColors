@@ -65,7 +65,7 @@ namespace FFTColorCustomizer.Configuration
             _configPath = configPath;
             _modPath = modPath;
 
-            ModLogger.Log($"ConfigurationForm created with config - Squire_Male: {config.Squire_Male}");
+            ModLogger.Log($"ConfigurationForm created with config - Squire_Male: {config["Squire_Male"]}");
             if (!string.IsNullOrEmpty(configPath))
                 ModLogger.Log($"Config path set to: {configPath}");
             if (!string.IsNullOrEmpty(modPath))
@@ -96,7 +96,7 @@ namespace FFTColorCustomizer.Configuration
                 VerifyAllSelections();
             };
 
-            ModLogger.Log($"ConfigurationForm initialized - Squire_Male: {_config.Squire_Male}");
+            ModLogger.Log($"ConfigurationForm initialized - Squire_Male: {_config["Squire_Male"]}");
         }
 
         private void InitializeForm()
@@ -350,7 +350,7 @@ namespace FFTColorCustomizer.Configuration
         private void SaveButton_Click(object sender, EventArgs e)
         {
             ModLogger.Log($"Save button clicked");
-            ModLogger.Log($"Current config state - Squire_Male: {_config.Squire_Male}");
+            ModLogger.Log($"Current config state - Squire_Male: {_config["Squire_Male"]}");
 
             DialogResult = DialogResult.OK;
             Close();
@@ -439,11 +439,10 @@ namespace FFTColorCustomizer.Configuration
             debugInfo.AppendLine("\n=== CURRENT STORY CHARACTER CONFIG ===");
             if (Configuration != null)
             {
-                debugInfo.AppendLine($"Cloud: {Configuration.Cloud}");
-                debugInfo.AppendLine($"Agrias: {Configuration.Agrias}");
-                debugInfo.AppendLine($"Orlandeau: {Configuration.Orlandeau}");
-                debugInfo.AppendLine($"Rapha: {Configuration.Rapha}");
-                debugInfo.AppendLine($"Marach: {Configuration.Marach}");
+                foreach (var character in Configuration.GetAllStoryCharacters())
+                {
+                    debugInfo.AppendLine($"{character}: {Configuration.GetStoryCharacterTheme(character)}");
+                }
             }
 
             // Test specific path lookups

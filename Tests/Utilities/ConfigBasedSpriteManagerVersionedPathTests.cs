@@ -59,7 +59,7 @@ namespace Tests.Utilities
 
             // Assert - the constructor should have found the direct path
             // We can verify this by checking if ApplyConfiguration works without errors
-            var config = new Config { Knight_Male = "original" };
+            var config = new Config { ["Knight_Male"] = "original" };
             _configManager.SaveConfig(config);
 
             // Should not throw
@@ -95,7 +95,7 @@ namespace Tests.Utilities
             var spriteManager = new ConfigBasedSpriteManager(modPath, _configManager, _characterService);
 
             // Apply a configuration that would use the versioned directory
-            var config = new Config { Knight_Male = "corpse_brigade" };
+            var config = new Config { ["Knight_Male"] = "corpse_brigade" };
             _configManager.SaveConfig(config);
             spriteManager.ApplyConfiguration();
 
@@ -114,7 +114,7 @@ namespace Tests.Utilities
             var spriteManager = new ConfigBasedSpriteManager(modPath, _configManager, _characterService);
 
             // Assert - should not crash even with non-existent paths
-            var config = new Config { Knight_Male = "original" };
+            var config = new Config { ["Knight_Male"] = "original" };
             _configManager.SaveConfig(config);
 
             // Should not throw - original themes don't need files
@@ -135,10 +135,10 @@ namespace Tests.Utilities
             // Configure all jobs as "original"
             var config = new Config
             {
-                Knight_Male = "original",
-                Knight_Female = "original",
-                Squire_Male = "original",
-                Monk_Male = "original"
+                ["Knight_Male"] = "original",
+                ["Knight_Female"] = "original",
+                ["Squire_Male"] = "original",
+                ["Monk_Male"] = "original"
             };
             _configManager.SaveConfig(config);
 
@@ -166,7 +166,7 @@ namespace Tests.Utilities
 
             var spriteManager = new ConfigBasedSpriteManager(modPath, _configManager, _characterService);
 
-            var config = new Config { Knight_Male = "lucavi" };
+            var config = new Config { ["Knight_Male"] = "lucavi" };
             _configManager.SaveConfig(config);
 
             // Act
@@ -233,7 +233,7 @@ namespace Tests.Utilities
 
             var spriteManager = new ConfigBasedSpriteManager(modPath, _configManager, _characterService);
 
-            var config = new Config { Cloud = "original" };
+            var config = new Config { ["Cloud"] = "original" };
             _configManager.SaveConfig(config);
 
             // Act
@@ -264,7 +264,7 @@ namespace Tests.Utilities
             var spriteManager = new ConfigBasedSpriteManager(modPath, _configManager, _characterService);
 
             // Assert - should prefer the direct path when it exists
-            var config = new Config { Knight_Male = "original" };
+            var config = new Config { ["Knight_Male"] = "original" };
             _configManager.SaveConfig(config);
 
             var exception = Record.Exception(() => spriteManager.ApplyConfiguration());

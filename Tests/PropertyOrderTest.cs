@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Reflection;
 using FFTColorCustomizer.Configuration;
 using Xunit;
 using Xunit.Abstractions;
@@ -17,57 +16,50 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void Properties_Should_Be_Found_Consistently()
+        public void JobKeys_Should_Be_Found_Consistently()
         {
             // Run multiple times to check for consistency
             for (int i = 0; i < 5; i++)
             {
                 _output.WriteLine($"=== Run {i + 1} ===");
 
-                var archerFemale = typeof(Config).GetProperty("Archer_Female");
-                _output.WriteLine($"GetProperty('Archer_Female') returns: {archerFemale?.Name ?? "null"}");
+                var config = new Config();
+                var hasArcherFemale = config.GetAllJobKeys().Contains("Archer_Female");
+                _output.WriteLine($"Contains 'Archer_Female': {hasArcherFemale}");
 
-                if (archerFemale != null)
-                {
-                    // Create a config and set the value
-                    var config = new Config();
-                    archerFemale.SetValue(config, "lucavi");
-                    var value = archerFemale.GetValue(config);
-                    _output.WriteLine($"After setting to lucavi, value is: {value}");
-                }
+                // Create a config and set the value
+                config["Archer_Female"] = "lucavi";
+                var value = config["Archer_Female"];
+                _output.WriteLine($"After setting to lucavi, value is: {value}");
 
-                // List first 5 properties (skip indexers)
-                var properties = typeof(Config).GetProperties()
-                    .Where(p => p.GetIndexParameters().Length == 0 && p.PropertyType == typeof(string))
-                    .Take(5)
-                    .Select(p => p.Name);
-                _output.WriteLine($"First 5 properties: {string.Join(", ", properties)}");
+                // List first 5 job keys
+                var jobKeys = config.GetAllJobKeys().Take(5).ToList();
+                _output.WriteLine($"First 5 job keys: {string.Join(", ", jobKeys)}");
             }
         }
 
         [Fact]
-        public void SetJobThemeForJob_Should_Set_Correct_Property()
+        public void SetJobTheme_Should_Set_Correct_Value()
         {
             var configPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_config_{Guid.NewGuid()}.json");
             var manager = new ConfigurationManager(configPath);
 
-            // Set a specific job color
-            // manager.SetJobTheme("Archer_Female", "lucavi"); // Method removed in refactoring
-
-            // Load the config and check
+            // Load config, set a value, and save
             var config = manager.LoadConfig();
-            _output.WriteLine($"Archer_Female value: {config.Archer_Female}");
+            config["Archer_Female"] = "lucavi";
+            manager.SaveConfig(config);
 
-            // Check all non-original values (skip indexers)
-            var properties = typeof(Config).GetProperties()
-                .Where(p => p.GetIndexParameters().Length == 0 && p.PropertyType == typeof(string));
+            // Load the config again and check
+            var config2 = manager.LoadConfig();
+            _output.WriteLine($"Archer_Female value: {config2["Archer_Female"]}");
 
-            foreach (var prop in properties)
+            // Check all non-original values
+            foreach (var jobKey in config2.GetAllJobKeys())
             {
-                var value = prop.GetValue(config);
+                var value = config2.GetJobTheme(jobKey);
                 if (value != null && !value.Equals("original"))
                 {
-                    _output.WriteLine($"Property {prop.Name} = {value}");
+                    _output.WriteLine($"Job {jobKey} = {value}");
                 }
             }
 

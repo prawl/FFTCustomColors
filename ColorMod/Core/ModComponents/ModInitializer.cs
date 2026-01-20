@@ -109,27 +109,17 @@ namespace FFTColorCustomizer.Core.ModComponents
                 var storyManager = themeManager.GetStoryCharacterManager();
                 if (storyManager != null)
                 {
-                    // Story characters
-                    storyManager.SetCurrentTheme("Cloud", config.Cloud);
-                    storyManager.SetCurrentTheme("Agrias", config.Agrias);
-                    storyManager.SetCurrentTheme("Orlandeau", config.Orlandeau);
-                    storyManager.SetCurrentTheme("Mustadio", config.Mustadio);
-                    storyManager.SetCurrentTheme("Reis", config.Reis);
-                    storyManager.SetCurrentTheme("Rapha", config.Rapha);
-                    storyManager.SetCurrentTheme("Marach", config.Marach);
-                    storyManager.SetCurrentTheme("Beowulf", config.Beowulf);
-                    storyManager.SetCurrentTheme("Meliadoul", config.Meliadoul);
+                    // Story characters - use dictionary-based access
+                    foreach (var character in config.GetAllStoryCharacters())
+                    {
+                        // Skip Ramza chapters - they're handled separately
+                        if (character.StartsWith("Ramza"))
+                            continue;
 
-                    // Log all themes for debugging
-                    ModLogger.Log($"Applying initial Cloud theme: {config.Cloud}");
-                    ModLogger.Log($"Applying initial Agrias theme: {config.Agrias}");
-                    ModLogger.Log($"Applying initial Orlandeau theme: {config.Orlandeau}");
-                    ModLogger.Log($"Applying initial Mustadio theme: {config.Mustadio}");
-                    ModLogger.Log($"Applying initial Reis theme: {config.Reis}");
-                    ModLogger.Log($"Applying initial Rapha theme: {config.Rapha}");
-                    ModLogger.Log($"Applying initial Marach theme: {config.Marach}");
-                    ModLogger.Log($"Applying initial Beowulf theme: {config.Beowulf}");
-                    ModLogger.Log($"Applying initial Meliadoul theme: {config.Meliadoul}");
+                        var theme = config.GetStoryCharacterTheme(character);
+                        storyManager.SetCurrentTheme(character, theme);
+                        ModLogger.Log($"Applying initial {character} theme: {theme}");
+                    }
                 }
             }
         }

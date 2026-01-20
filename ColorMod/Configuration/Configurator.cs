@@ -183,7 +183,7 @@ namespace FFTColorCustomizer.Configuration
 
                 var configManager = new ConfigurationManager(configPath);
                 var config = configManager.LoadConfig();
-                ModLogger.Log($"Config loaded - Squire_Male: {config.Squire_Male}");
+                ModLogger.Log($"Config loaded - Squire_Male: {config["Squire_Male"]}");
 
                 ModLogger.Log("Creating configuration form...");
                 var formConfigPath = Path.Combine(ConfigFolder!, "Config.json");
@@ -197,7 +197,7 @@ namespace FFTColorCustomizer.Configuration
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
                     ModLogger.Log("User clicked Save - DialogResult.OK received");
-                    ModLogger.Log($"Config state before save - Squire_Male: {config.Squire_Male}");
+                    ModLogger.Log($"Config state before save - Squire_Male: {config["Squire_Male"]}");
 
                     // Always save directly to ensure consistency
                     var saveConfigPath = Path.Combine(ConfigFolder!, "Config.json");

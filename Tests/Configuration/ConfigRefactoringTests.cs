@@ -41,12 +41,12 @@ namespace FFTColorCustomizer.Tests
             var config = new Config();
 
             // Act - Set values using traditional properties
-            config.Squire_Male = "corpse_brigade";
-            config.Knight_Female = "original";
+            config["Squire_Male"] = "corpse_brigade";
+            config["Knight_Female"] = "original";
 
             // Assert - Properties should work as before
-            config.Squire_Male.Should().Be("corpse_brigade");
-            config.Knight_Female.Should().Be("original");
+            config["Squire_Male"].Should().Be("corpse_brigade");
+            config["Knight_Female"].Should().Be("original");
 
             // Assert - Should also be accessible via dictionary approach
             config.GetJobTheme("Squire_Male").Should().Be("corpse_brigade");
@@ -60,9 +60,9 @@ namespace FFTColorCustomizer.Tests
 
             // Arrange
             var config = new Config();
-            config.Squire_Male = "corpse_brigade";
-            config.Knight_Female = "original";
-            config.Archer_Male = "original";
+            config["Squire_Male"] = "corpse_brigade";
+            config["Knight_Female"] = "original";
+            config["Archer_Male"] = "original";
 
             // Act
             var json = JsonConvert.SerializeObject(config, Formatting.Indented);
@@ -89,9 +89,9 @@ namespace FFTColorCustomizer.Tests
             var config = JsonConvert.DeserializeObject<Config>(json);
 
             // Assert - Values should be correctly loaded
-            config.Squire_Male.Should().Be("corpse_brigade");
-            config.Knight_Female.Should().Be("crimson_red");
-            config.Archer_Male.Should().Be("royal_purple");
+            config["Squire_Male"].Should().Be("corpse_brigade");
+            config["Knight_Female"].Should().Be("crimson_red");
+            config["Archer_Male"].Should().Be("royal_purple");
 
             // Assert - Should also work with dictionary approach
             config.GetJobTheme("Squire_Male").Should().Be("corpse_brigade");
@@ -145,12 +145,12 @@ namespace FFTColorCustomizer.Tests
             var config = new Config();
 
             // Act
-            config.Agrias = "ash_dark";
-            config.Orlandeau = "thunder_god";
+            config["Agrias"] = "ash_dark";
+            config["Orlandeau"] = "thunder_god";
 
             // Assert
-            config.Agrias.Should().Be("ash_dark");
-            config.Orlandeau.Should().Be("thunder_god");
+            config["Agrias"].Should().Be("ash_dark");
+            config["Orlandeau"].Should().Be("thunder_god");
         }
 
         [Fact]
@@ -162,15 +162,15 @@ namespace FFTColorCustomizer.Tests
             var config = new Config();
 
             // Assert - Check a sample of properties
-            config.Squire_Male.Should().Be("original");
-            config.Knight_Female.Should().Be("original");
-            config.Archer_Male.Should().Be("original");
-            config.WhiteMage_Female.Should().Be("original");
-            config.Ninja_Male.Should().Be("original");
+            config["Squire_Male"].Should().Be("original");
+            config["Knight_Female"].Should().Be("original");
+            config["Archer_Male"].Should().Be("original");
+            config["WhiteMage_Female"].Should().Be("original");
+            config["Ninja_Male"].Should().Be("original");
 
             // Story characters
-            config.Agrias.Should().Be("original");
-            config.Orlandeau.Should().Be("original");
+            config["Agrias"].Should().Be("original");
+            config["Orlandeau"].Should().Be("original");
         }
 
         [Fact]
@@ -194,9 +194,9 @@ namespace FFTColorCustomizer.Tests
             }
 
             // Assert
-            config.Squire_Male.Should().Be("corpse_brigade");
-            config.Knight_Female.Should().Be("original");
-            config.Monk_Male.Should().Be("original");
+            config["Squire_Male"].Should().Be("corpse_brigade");
+            config["Knight_Female"].Should().Be("original");
+            config["Monk_Male"].Should().Be("original");
         }
     }
 }

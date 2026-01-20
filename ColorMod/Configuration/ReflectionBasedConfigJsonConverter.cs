@@ -1,15 +1,12 @@
 using System;
-using System.Reflection;
-using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using ColorMod.Registry;
 
 namespace FFTColorCustomizer.Configuration
 {
     /// <summary>
-    /// Reflection-based JSON converter that automatically handles all story character properties
-    /// without requiring manual updates for each new character
+    /// Dictionary-based JSON converter that serializes Config using the underlying
+    /// job and story character theme dictionaries directly.
     /// </summary>
     public class ReflectionBasedConfigJsonConverter : JsonConverter<Config>
     {
@@ -17,36 +14,29 @@ namespace FFTColorCustomizer.Configuration
         {
             writer.WriteStartObject();
 
-            // Use reflection to find all properties
-            var properties = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-
-            foreach (var property in properties)
+            // Write all job themes using their JSON property names
+            foreach (var jobKey in value.GetAllJobKeys())
             {
-                // Skip FilePath and other non-serializable properties
-                if (property.Name == "FilePath")
-                    continue;
-
-                // Skip indexers (properties with parameters)
-                if (property.GetIndexParameters().Length > 0)
-                    continue;
-
-                var propertyValue = property.GetValue(value);
-                if (propertyValue != null)
+                var metadata = value.GetJobMetadata(jobKey);
+                if (metadata != null)
                 {
-                    // Write property name without underscores for compatibility
-                    var jsonPropertyName = property.Name.Replace("_", "");
-                    writer.WritePropertyName(jsonPropertyName);
-
-                    if (property.PropertyType == typeof(RamzaHslSettings))
-                    {
-                        serializer.Serialize(writer, propertyValue);
-                    }
-                    else
-                    {
-                        writer.WriteValue(propertyValue.ToString());
-                    }
+                    var theme = value.GetJobTheme(jobKey);
+                    writer.WritePropertyName(metadata.JsonPropertyName);
+                    writer.WriteValue(theme);
                 }
             }
+
+            // Write all story character themes
+            foreach (var characterName in value.GetAllStoryCharacters())
+            {
+                var theme = value.GetStoryCharacterTheme(characterName);
+                writer.WritePropertyName(characterName);
+                writer.WriteValue(theme);
+            }
+
+            // Write RamzaColors
+            writer.WritePropertyName("RamzaColors");
+            serializer.Serialize(writer, value.RamzaColors);
 
             writer.WriteEndObject();
         }
@@ -56,55 +46,59 @@ namespace FFTColorCustomizer.Configuration
             var config = existingValue ?? new Config();
             var jo = JObject.Load(reader);
 
-            // Filter out indexers from properties
-            var properties = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.GetIndexParameters().Length == 0)
-                .ToArray();
-
             foreach (var property in jo.Properties())
             {
-                // Handle both formats: with underscores (Archer_Female) and without (ArcherFemale)
-                var configProperty = properties.FirstOrDefault(p =>
-                    p.Name == property.Name ||
-                    p.Name.Replace("_", "") == property.Name);
+                var propertyName = property.Name;
 
-                if (configProperty != null && configProperty.CanWrite)
+                // Handle RamzaColors specially
+                if (propertyName == "RamzaColors")
                 {
-                    var propertyType = configProperty.PropertyType;
-                    if (propertyType == typeof(string))
+                    try
                     {
-                        try
+                        var ramzaSettings = property.Value.ToObject<RamzaHslSettings>(serializer);
+                        if (ramzaSettings != null)
                         {
-                            var stringValue = property.Value.ToString();
-                            configProperty.SetValue(config, stringValue);
-                        }
-                        catch
-                        {
-                            // If parsing fails, leave as default (original)
+                            config.RamzaColors = ramzaSettings;
                         }
                     }
-                    else if (propertyType == typeof(RamzaHslSettings))
+                    catch
                     {
-                        try
-                        {
-                            var ramzaSettings = property.Value.ToObject<RamzaHslSettings>(serializer);
-                            configProperty.SetValue(config, ramzaSettings);
-                        }
-                        catch
-                        {
-                            // If parsing fails, leave as default
-                        }
+                        // If parsing fails, leave as default
                     }
-                    else if (propertyType.IsEnum)
+                    continue;
+                }
+
+                if (property.Value.Type != JTokenType.String)
+                    continue;
+
+                var value = property.Value.ToString();
+                if (string.IsNullOrEmpty(value))
+                    continue;
+
+                // Try to map to job themes using metadata (JsonPropertyName like "KnightMale")
+                bool matched = false;
+                foreach (var jobKey in config.GetAllJobKeys())
+                {
+                    var metadata = config.GetJobMetadata(jobKey);
+                    if (metadata != null && metadata.JsonPropertyName == propertyName)
                     {
-                        try
+                        config.SetJobTheme(jobKey, value);
+                        matched = true;
+                        break;
+                    }
+                }
+
+                // If not a job theme, try story character
+                if (!matched)
+                {
+                    // Check if it's a known story character
+                    var storyCharacters = config.GetAllStoryCharacters();
+                    foreach (var character in storyCharacters)
+                    {
+                        if (character == propertyName)
                         {
-                            var enumValue = Enum.Parse(propertyType, property.Value.ToString());
-                            configProperty.SetValue(config, enumValue);
-                        }
-                        catch
-                        {
-                            // If parsing fails, leave as default (original)
+                            config.SetStoryCharacterTheme(character, value);
+                            break;
                         }
                     }
                 }

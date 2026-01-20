@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Xunit;
 
 namespace FFTColorCustomizer.Tests
@@ -8,34 +9,40 @@ namespace FFTColorCustomizer.Tests
         [Fact]
         public void TestPropertyLookup()
         {
-            var configType = typeof(FFTColorCustomizer.Configuration.Config);
-
-            // Test exact property names
-            var archerFemaleUnderscore = configType.GetProperty("Archer_Female");
-            Assert.NotNull(archerFemaleUnderscore);
-            Assert.Equal("Archer_Female", archerFemaleUnderscore.Name);
-
-            // Verify it's the right type
-            Assert.Equal(typeof(string), archerFemaleUnderscore.PropertyType);
-
-            // Create a config and test setting the value
+            // Create a config instance
             var config = new FFTColorCustomizer.Configuration.Config();
 
-            // Set using reflection
-            var lucaviEnum = "lucavi";
-            archerFemaleUnderscore.SetValue(config, lucaviEnum);
+            // Test that Archer_Female exists as a job key
+            var jobKeys = config.GetAllJobKeys().ToList();
+            Assert.Contains("Archer_Female", jobKeys);
+
+            // Verify the default value
+            var defaultValue = config.GetJobTheme("Archer_Female");
+            Assert.Equal("original", defaultValue);
+
+            // Set using indexer
+            config["Archer_Female"] = "lucavi";
 
             // Verify it was set
-            Assert.Equal("lucavi", config.Archer_Female);
+            Assert.Equal("lucavi", config["Archer_Female"]);
+            Assert.Equal("lucavi", config.GetJobTheme("Archer_Female"));
 
-            // Test the actual method that's failing
-            var configManager = new FFTColorCustomizer.Configuration.ConfigurationManager("dummy_path.json");
+            // Test the ConfigurationManager can work with configs
+            var tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test_config_{Guid.NewGuid()}.json");
+            var configManager = new FFTColorCustomizer.Configuration.ConfigurationManager(tempPath);
 
-            // Check if the SetJobThemeForJob can find the property
-            // We can't fully test it without file I/O, but we can check the property lookup
-            var prop = typeof(FFTColorCustomizer.Configuration.Config).GetProperty("Archer_Female");
-            Assert.NotNull(prop);
-            Assert.Equal(typeof(string), prop.PropertyType);
+            // Load default config and set a value
+            var loadedConfig = configManager.LoadConfig();
+            loadedConfig["Archer_Female"] = "lucavi";
+            configManager.SaveConfig(loadedConfig);
+
+            // Reload and verify
+            var reloadedConfig = configManager.LoadConfig();
+            Assert.Equal("lucavi", reloadedConfig["Archer_Female"]);
+
+            // Cleanup
+            if (System.IO.File.Exists(tempPath))
+                System.IO.File.Delete(tempPath);
         }
     }
 }

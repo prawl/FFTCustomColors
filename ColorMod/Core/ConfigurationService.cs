@@ -18,11 +18,8 @@ namespace FFTColorCustomizer.Core
         public ConfigurationService(IPathResolver pathResolver)
         {
             _pathResolver = pathResolver ?? throw new ArgumentNullException(nameof(pathResolver));
-            _serializerOptions = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
+            // Use the same serializer options as Configurable to ensure custom converters are used
+            _serializerOptions = Configurable<Config>.SerializerOptions;
         }
 
         /// <inheritdoc />
@@ -69,23 +66,8 @@ namespace FFTColorCustomizer.Core
         /// <inheritdoc />
         public Config GetDefaultConfig()
         {
-            var config = new Config();
-
-            // Set all job properties to "original"
-            var properties = typeof(Config).GetProperties();
-            foreach (var property in properties)
-            {
-                // Skip indexers (properties with parameters)
-                if (property.GetIndexParameters().Length > 0)
-                    continue;
-
-                if (property.PropertyType == typeof(string) && property.CanWrite)
-                {
-                    property.SetValue(config, DefaultTheme);
-                }
-            }
-
-            return config;
+            // Config constructor already initializes all job and story character themes to "original"
+            return new Config();
         }
 
         /// <inheritdoc />
@@ -101,20 +83,20 @@ namespace FFTColorCustomizer.Core
             if (config == null)
                 return false;
 
-            // Basic validation - ensure all string properties have non-null values
-            var properties = typeof(Config).GetProperties();
-            foreach (var property in properties)
+            // Validate all job themes have non-null values
+            foreach (var jobKey in config.GetAllJobKeys())
             {
-                // Skip indexers (properties with parameters)
-                if (property.GetIndexParameters().Length > 0)
-                    continue;
+                var value = config.GetJobTheme(jobKey);
+                if (string.IsNullOrWhiteSpace(value))
+                    return false;
+            }
 
-                if (property.PropertyType == typeof(string))
-                {
-                    var value = property.GetValue(config) as string;
-                    if (string.IsNullOrWhiteSpace(value))
-                        return false;
-                }
+            // Validate all story character themes have non-null values
+            foreach (var character in config.GetAllStoryCharacters())
+            {
+                var value = config.GetStoryCharacterTheme(character);
+                if (string.IsNullOrWhiteSpace(value))
+                    return false;
             }
 
             return true;

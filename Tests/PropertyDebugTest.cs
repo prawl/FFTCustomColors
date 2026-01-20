@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Reflection;
 using FFTColorCustomizer.Configuration;
 using Xunit;
 using Xunit.Abstractions;
@@ -17,28 +16,26 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
-        public void ListAllColorSchemeProperties()
+        public void ListAllJobKeys()
         {
-            var properties = typeof(Config).GetProperties()
-                .Where(p => p.GetIndexParameters().Length == 0 && p.PropertyType == typeof(string))
-                .OrderBy(p => p.Name)
-                .ToList();
+            var config = new Config();
+            var jobKeys = config.GetAllJobKeys().OrderBy(k => k).ToList();
 
-            _output.WriteLine($"Total string properties: {properties.Count}");
-            _output.WriteLine("Property names:");
+            _output.WriteLine($"Total job keys: {jobKeys.Count}");
+            _output.WriteLine("Job key names:");
 
-            foreach (var prop in properties)
+            foreach (var key in jobKeys)
             {
-                _output.WriteLine($"  - {prop.Name}");
+                _output.WriteLine($"  - {key}");
             }
 
             // Specific check for Archer_Female
-            var archerFemale = typeof(Config).GetProperty("Archer_Female");
-            _output.WriteLine($"\nGetProperty('Archer_Female') returns: {archerFemale?.Name ?? "null"}");
+            var hasArcherFemale = jobKeys.Contains("Archer_Female");
+            _output.WriteLine($"\nContains 'Archer_Female': {hasArcherFemale}");
 
-            // Try without underscore
-            var archerFemaleNoUnderscore = typeof(Config).GetProperty("ArcherFemale");
-            _output.WriteLine($"GetProperty('ArcherFemale') returns: {archerFemaleNoUnderscore?.Name ?? "null"}");
+            // Check indexer access
+            var archerFemaleValue = config["Archer_Female"];
+            _output.WriteLine($"config[\"Archer_Female\"] returns: {archerFemaleValue}");
         }
     }
 }

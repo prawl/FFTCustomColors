@@ -65,21 +65,13 @@ namespace FFTColorCustomizer.Utilities
             // Always need original
             schemes.Add("original");
 
-            // Get all color scheme properties (now strings, skip indexers)
-            var properties = typeof(Config).GetProperties()
-                .Where(p => p.GetIndexParameters().Length == 0 &&
-                           p.PropertyType == typeof(string) &&
-                           (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
-
-            foreach (var property in properties)
+            // Get all job themes using dictionary-based access
+            foreach (var jobKey in config.GetAllJobKeys())
             {
-                var value = property.GetValue(config);
-                if (value is string colorScheme)
+                var colorScheme = config.GetJobTheme(jobKey);
+                if (!string.IsNullOrEmpty(colorScheme) && colorScheme != "original")
                 {
-                    if (colorScheme != "original")
-                    {
-                        schemes.Add(colorScheme);
-                    }
+                    schemes.Add(colorScheme);
                 }
             }
 

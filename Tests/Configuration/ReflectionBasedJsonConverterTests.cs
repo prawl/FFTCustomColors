@@ -15,7 +15,7 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config();
             // config.Alma removed in refactoring
-            config.Agrias = "ash_dark";
+            config["Agrias"] = "ash_dark";
 
             var converter = new ReflectionBasedConfigJsonConverter();
             var settings = new JsonSerializerSettings();
@@ -26,7 +26,7 @@ namespace FFTColorCustomizer.Tests
             var deserializedConfig = JsonConvert.DeserializeObject<Config>(json, settings);
 
             // Assert
-            Assert.Equal("ash_dark", deserializedConfig.Agrias);
+            Assert.Equal("ash_dark", deserializedConfig["Agrias"]);
         }
 
         [Fact]
@@ -36,8 +36,8 @@ namespace FFTColorCustomizer.Tests
             var config = new Config();
 
             // Set various story characters to non-default values using valid enum values
-            config.Agrias = "ash_dark";
-            config.Cloud = "sephiroth_black";
+            config["Agrias"] = "ash_dark";
+            config["Cloud"] = "sephiroth_black";
             // config.Alma removed in refactoring
             // config.Delita removed in refactoring
 
@@ -50,8 +50,8 @@ namespace FFTColorCustomizer.Tests
             var deserializedConfig = JsonConvert.DeserializeObject<Config>(json, settings);
 
             // Assert - All story characters should be deserialized correctly
-            Assert.Equal("ash_dark", deserializedConfig.Agrias);
-            Assert.Equal("sephiroth_black", deserializedConfig.Cloud);
+            Assert.Equal("ash_dark", deserializedConfig["Agrias"]);
+            Assert.Equal("sephiroth_black", deserializedConfig["Cloud"]);
         }
 
     }

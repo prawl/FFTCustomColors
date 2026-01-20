@@ -105,7 +105,7 @@ namespace Tests.Utilities
         {
             // Arrange
             var config = new Config();
-            config.Mediator_Male = "holy_knight"; // This is a job-specific theme for Mediator
+            config["Mediator_Male"] = "holy_knight"; // This is a job-specific theme for Mediator
             _configManager.SaveConfig(config);
 
             // Create the job-specific theme directory and file
@@ -136,7 +136,7 @@ namespace Tests.Utilities
         {
             // Arrange
             var config = new Config();
-            config.Mediator_Male = "corpse_brigade"; // This is a shared theme (not job-specific)
+            config["Mediator_Male"] = "corpse_brigade"; // This is a shared theme (not job-specific)
             _configManager.SaveConfig(config);
 
             // Create only the generic theme directory
@@ -161,7 +161,7 @@ namespace Tests.Utilities
         {
             // Arrange
             var config = new Config();
-            config.Mediator_Female = "young_maiden"; // Job-specific theme for female Mediator
+            config["Mediator_Female"] = "young_maiden"; // Job-specific theme for female Mediator
             _configManager.SaveConfig(config);
 
             // CRITICAL FIX: After the path fix, themes should be in mod path (_unitPath), not source path

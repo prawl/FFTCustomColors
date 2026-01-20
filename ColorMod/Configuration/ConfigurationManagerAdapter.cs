@@ -89,12 +89,8 @@ namespace FFTColorCustomizer.Configuration
         public void SetColorSchemeForJob(string jobProperty, string colorScheme)
         {
             var config = _configurationService.LoadConfig();
-            var property = typeof(Config).GetProperty(jobProperty);
-            if (property != null && property.PropertyType == typeof(string))
-            {
-                property.SetValue(config, colorScheme);
-                _configurationService.SaveConfig(config);
-            }
+            config[jobProperty] = colorScheme;
+            _configurationService.SaveConfig(config);
         }
 
         public string GetJobPropertyForSprite(string spriteName)

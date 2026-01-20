@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 
 namespace FFTColorCustomizer.Configuration
 {
@@ -27,36 +26,21 @@ namespace FFTColorCustomizer.Configuration
                 }
             }
 
-            // Handle story characters using reflection (skip indexers)
-            var properties = typeof(Config).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-
-            foreach (var property in properties)
+            // Handle story characters using dictionary approach
+            foreach (var characterName in mergedConfig.GetAllStoryCharacters())
             {
-                // Skip indexers, non-enum properties and FilePath
-                if (property.GetIndexParameters().Length > 0)
-                    continue;
-                if (!property.PropertyType.IsEnum || property.Name == "FilePath")
-                    continue;
+                var incomingValue = incomingConfig.GetStoryCharacterTheme(characterName);
+                var existingValue = existingConfig.GetStoryCharacterTheme(characterName);
 
-                // This is a story character property
-                var incomingValue = property.GetValue(incomingConfig);
-                var existingValue = property.GetValue(existingConfig);
-
-                if (incomingValue != null && existingValue != null)
+                // If incoming value is different from default (original), it was explicitly changed
+                if (incomingValue != "original")
                 {
-                    // Get the "original" value for this enum type
-                    var originalValue = Enum.Parse(property.PropertyType, "original");
-
-                    // If incoming value is different from default (original), it was explicitly changed
-                    if (!incomingValue.Equals(originalValue))
-                    {
-                        property.SetValue(mergedConfig, incomingValue);
-                    }
-                    else
-                    {
-                        // Otherwise preserve the existing value
-                        property.SetValue(mergedConfig, existingValue);
-                    }
+                    mergedConfig.SetStoryCharacterTheme(characterName, incomingValue);
+                }
+                else
+                {
+                    // Otherwise preserve the existing value
+                    mergedConfig.SetStoryCharacterTheme(characterName, existingValue);
                 }
             }
 

@@ -138,7 +138,7 @@ namespace Tests.Registry
             var registry = GenericCharacterRegistry.Instance;
 
             // Act - Set value through property
-            config.Squire_Male = "corpse_brigade";
+            config["Squire_Male"] = "corpse_brigade";
 
             // Assert - Value should be in dictionary
             var squireDefinition = registry.GetCharacter("Squire_Male");

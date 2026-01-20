@@ -127,7 +127,7 @@ namespace FFTColorCustomizer.Services
             var config = configService.LoadConfig();
 
             // Try to get RamzaChapter1 theme from config
-            var theme = config?.RamzaChapter1 ?? "original";
+            var theme = config?.GetStoryCharacterTheme("RamzaChapter1") ?? "original";
 
             // If not found in config, fall back to StoryCharacterThemeManager
             if (string.IsNullOrEmpty(theme))
@@ -152,9 +152,9 @@ namespace FFTColorCustomizer.Services
             var configService = new ConfigurationService(pathResolver);
             var config = configService.LoadConfig();
 
-            var ch1Theme = config?.RamzaChapter1 ?? "original";
-            var ch23Theme = config?.RamzaChapter23 ?? "original";
-            var ch4Theme = config?.RamzaChapter4 ?? "original";
+            var ch1Theme = config?.GetStoryCharacterTheme("RamzaChapter1") ?? "original";
+            var ch23Theme = config?.GetStoryCharacterTheme("RamzaChapter23") ?? "original";
+            var ch4Theme = config?.GetStoryCharacterTheme("RamzaChapter4") ?? "original";
 
             ModLogger.LogDebug($"Applying Ramza themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
 
@@ -269,9 +269,9 @@ namespace FFTColorCustomizer.Services
                 var config = configService.LoadConfig();
 
                 // Get each chapter's configured theme (fallback to "original" if not set)
-                var ch1Theme = config?.RamzaChapter1 ?? "original";
-                var ch23Theme = config?.RamzaChapter23 ?? "original";
-                var ch4Theme = config?.RamzaChapter4 ?? "original";
+                var ch1Theme = config?.GetStoryCharacterTheme("RamzaChapter1") ?? "original";
+                var ch23Theme = config?.GetStoryCharacterTheme("RamzaChapter23") ?? "original";
+                var ch4Theme = config?.GetStoryCharacterTheme("RamzaChapter4") ?? "original";
 
                 ModLogger.LogDebug($"Applying per-chapter themes: Ch1={ch1Theme}, Ch23={ch23Theme}, Ch4={ch4Theme}");
 

@@ -43,21 +43,12 @@ namespace FFTColorCustomizer.Utilities
 
             // Get the configured color for this job
             var config = _configManager.LoadConfig();
-            var propertyInfo = typeof(Config).GetProperty(jobProperty);
-            if (propertyInfo == null)
-            {
-                ModLogger.LogWarning($"Property not found: {jobProperty}");
-                return originalPath;
-            }
-
-            var colorSchemeValue = propertyInfo.GetValue(config);
-            if (colorSchemeValue == null || !(colorSchemeValue is string))
+            var colorSchemeOriginal = config[jobProperty];
+            if (string.IsNullOrEmpty(colorSchemeOriginal))
             {
                 ModLogger.LogWarning($"No color scheme for: {jobProperty}");
                 return originalPath;
             }
-
-            var colorSchemeOriginal = colorSchemeValue.ToString();
             var colorScheme = colorSchemeOriginal.ToLower();
             ModLogger.Log($"{jobProperty} configured as: {colorScheme}");
 
@@ -102,12 +93,7 @@ namespace FFTColorCustomizer.Utilities
         public string GetActiveColorForJob(string jobProperty)
         {
             var config = _configManager.LoadConfig();
-            var propertyInfo = typeof(Config).GetProperty(jobProperty);
-            if (propertyInfo == null)
-                return "Original";
-
-            var colorSchemeValue = propertyInfo.GetValue(config) as string;
-            var themeName = colorSchemeValue ?? "original";
+            var themeName = config[jobProperty] ?? "original";
 
             return _pathResolver.ConvertThemeNameToDisplayName(themeName);
         }

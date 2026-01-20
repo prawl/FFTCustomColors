@@ -22,9 +22,9 @@ namespace FFTColorCustomizer.Tests
                 var config = new Config
                 {
                     // Set some story characters
-                    Agrias = "ash_dark",
-                    Cloud = "sephiroth_black",
-                    Orlandeau = "thunder_god"
+                    ["Agrias"] = "ash_dark",
+                    ["Cloud"] = "sephiroth_black",
+                    ["Orlandeau"] = "thunder_god"
                 };
 
                 // Act
@@ -70,11 +70,11 @@ namespace FFTColorCustomizer.Tests
                 var config = configManager.LoadConfig();
 
                 // Assert - All story characters should be loaded correctly
-                Assert.Equal("ash_dark", config.Agrias);
-                Assert.Equal("sephiroth_black", config.Cloud);
-                Assert.Equal("original", config.Orlandeau);
-                Assert.Equal("original", config.Mustadio);
-                Assert.Equal("original", config.Reis);
+                Assert.Equal("ash_dark", config["Agrias"]);
+                Assert.Equal("sephiroth_black", config["Cloud"]);
+                Assert.Equal("original", config["Orlandeau"]);
+                Assert.Equal("original", config["Mustadio"]);
+                Assert.Equal("original", config["Reis"]);
             }
             finally
             {

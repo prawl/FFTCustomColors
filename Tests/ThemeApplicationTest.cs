@@ -60,9 +60,9 @@ namespace FFTColorCustomizer.Tests
             // Arrange
             var config = new Config
             {
-                Knight_Male = "lucavi",    // lucavi
-                Archer_Female = "corpse_brigade",  // corpse_brigade
-                Monk_Male = "northern_sky"       // northern_sky
+                ["Knight_Male"] = "lucavi",    // lucavi
+                ["Archer_Female"] = "corpse_brigade",  // corpse_brigade
+                ["Monk_Male"] = "northern_sky"       // northern_sky
             };
 
             var configManager = new ConfigurationManager(_testConfigPath);
@@ -142,17 +142,15 @@ namespace FFTColorCustomizer.Tests
 
             // Also verify the config was saved
             var savedConfig = configManager.LoadConfig();
-            Assert.Equal("lucavi", savedConfig.Knight_Male);
+            Assert.Equal("lucavi", savedConfig["Knight_Male"]);
         }
 
         [Fact]
         public void ApplyConfiguration_WhenSourceFilesDoNotExist_ShouldNotCrash()
         {
             // Arrange - Create config but delete source files
-            var config = new Config
-            {
-                Knight_Male = "original" // Non-existent theme
-            };
+            var config = new Config();
+            config["Knight_Male"] = "original"; // Non-existent theme
 
             var configManager = new ConfigurationManager(_testConfigPath);
             configManager.SaveConfig(config);

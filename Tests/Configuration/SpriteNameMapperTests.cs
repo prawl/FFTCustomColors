@@ -52,7 +52,7 @@ namespace Tests.Configuration
         {
             // Arrange
             var config = new Config();
-            config.Knight_Male = "corpse_brigade";
+            config["Knight_Male"] = "corpse_brigade";
             var mapper = new SpriteNameMapper(config);
 
             // Act
@@ -67,7 +67,7 @@ namespace Tests.Configuration
         {
             // Arrange
             var config = new Config();
-            config.Agrias = "ash_dark";
+            config["Agrias"] = "ash_dark";
 
             // Create mapper AFTER setting config
             var mapper = new SpriteNameMapper(config);
@@ -108,11 +108,11 @@ namespace Tests.Configuration
             // Set the appropriate property based on sprite name
             if (spriteName.Contains("oru"))
             {
-                config.Orlandeau = (string)(object)colorScheme;
+                config["Orlandeau"] = (string)(object)colorScheme;
             }
             else if (spriteName.Contains("cloud"))
             {
-                config.Cloud = (string)(object)colorScheme;
+                config["Cloud"] = (string)(object)colorScheme;
             }
 
             // Act

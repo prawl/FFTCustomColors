@@ -163,8 +163,8 @@ namespace FFTColorCustomizer.Tests
             // Arrange - Create a config file first
             var config = new Config
             {
-                Knight_Male = "lucavi",    // lucavi
-                Monk_Female = "corpse_brigade"     // corpse_brigade
+                ["Knight_Male"] = "lucavi",    // lucavi
+                ["Monk_Female"] = "corpse_brigade"     // corpse_brigade
             };
 
             var configManager = new ConfigurationManager(_testConfigPath);

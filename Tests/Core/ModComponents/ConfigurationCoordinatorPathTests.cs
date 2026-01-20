@@ -56,7 +56,7 @@ namespace Tests.Core.ModComponents
             var coordinator = new ConfigurationCoordinator(configPath);
 
             // Assert - constructor should have found the correct mod path
-            var config = new Config { Knight_Male = "original" };
+            var config = new Config { ["Knight_Male"] = "original" };
             var exception = Record.Exception(() => coordinator.UpdateConfiguration(config));
             Assert.Null(exception);
         }
@@ -84,7 +84,7 @@ namespace Tests.Core.ModComponents
             var coordinator = new ConfigurationCoordinator(configPath);
 
             // Assert - should find the actual mod path
-            var config = new Config { Knight_Male = "original" };
+            var config = new Config { ["Knight_Male"] = "original" };
             var exception = Record.Exception(() => coordinator.UpdateConfiguration(config));
             Assert.Null(exception);
         }
@@ -113,7 +113,7 @@ namespace Tests.Core.ModComponents
             var coordinator = new ConfigurationCoordinator(configPath);
 
             // Assert - should find v110 (highest version)
-            var config = new Config { Knight_Male = "original" };
+            var config = new Config { ["Knight_Male"] = "original" };
             var exception = Record.Exception(() => coordinator.UpdateConfiguration(config));
             Assert.Null(exception);
         }
@@ -130,7 +130,7 @@ namespace Tests.Core.ModComponents
             var coordinator = new ConfigurationCoordinator(configPath);
 
             // Assert - should not crash even with non-standard paths
-            var config = new Config { Knight_Male = "original" };
+            var config = new Config { ["Knight_Male"] = "original" };
             var exception = Record.Exception(() => coordinator.UpdateConfiguration(config));
             Assert.Null(exception);
         }
@@ -162,7 +162,7 @@ namespace Tests.Core.ModComponents
 
             // Act
             var coordinator = new ConfigurationCoordinator(configPath);
-            var config = new Config { Knight_Male = "lucavi" };
+            var config = new Config { ["Knight_Male"] = "lucavi" };
             coordinator.UpdateConfiguration(config);
 
             var exception = Record.Exception(() => coordinator.ApplyConfiguration());
@@ -231,7 +231,7 @@ namespace Tests.Core.ModComponents
             var coordinator = new ConfigurationCoordinator(configPath);
 
             // Assert - should prefer non-versioned when it exists
-            var config = new Config { Knight_Male = "original" };
+            var config = new Config { ["Knight_Male"] = "original" };
             var exception = Record.Exception(() => coordinator.UpdateConfiguration(config));
             Assert.Null(exception);
         }

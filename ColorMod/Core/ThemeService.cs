@@ -81,25 +81,27 @@ namespace FFTColorCustomizer.Core
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
 
-            // Apply themes from configuration (skip indexers)
-            var properties = typeof(Config).GetProperties();
-            foreach (var property in properties)
+            // Apply job themes
+            foreach (var jobKey in config.GetAllJobKeys())
             {
-                // Skip indexers (properties with parameters)
-                if (property.GetIndexParameters().Length > 0)
-                    continue;
-
-                if (property.PropertyType == typeof(string))
+                var themeName = config.GetJobTheme(jobKey);
+                if (!string.IsNullOrWhiteSpace(themeName))
                 {
-                    var themeName = property.GetValue(config) as string;
-                    if (!string.IsNullOrWhiteSpace(themeName))
+                    var characterName = ExtractCharacterName(jobKey);
+                    if (!string.IsNullOrWhiteSpace(characterName))
                     {
-                        var characterName = ExtractCharacterName(property.Name);
-                        if (!string.IsNullOrWhiteSpace(characterName))
-                        {
-                            ApplyTheme(characterName, themeName);
-                        }
+                        ApplyTheme(characterName, themeName);
                     }
+                }
+            }
+
+            // Apply story character themes
+            foreach (var character in config.GetAllStoryCharacters())
+            {
+                var themeName = config.GetStoryCharacterTheme(character);
+                if (!string.IsNullOrWhiteSpace(themeName))
+                {
+                    ApplyTheme(character, themeName);
                 }
             }
         }

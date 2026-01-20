@@ -103,22 +103,24 @@ namespace FFTColorCustomizer.Core
 
             try
             {
-                // Apply sprites based on configuration (skip indexers)
-                var properties = typeof(Config).GetProperties();
-                foreach (var property in properties)
+                // Apply job theme sprites
+                foreach (var jobKey in config.GetAllJobKeys())
                 {
-                    // Skip indexers (properties with parameters)
-                    if (property.GetIndexParameters().Length > 0)
-                        continue;
-
-                    if (property.PropertyType == typeof(string))
+                    var themeName = config.GetJobTheme(jobKey);
+                    if (!string.IsNullOrWhiteSpace(themeName))
                     {
-                        var themeName = property.GetValue(config) as string;
-                        if (!string.IsNullOrWhiteSpace(themeName))
-                        {
-                            var characterName = property.Name.Replace("_", "");
-                            CopySprites(themeName, characterName);
-                        }
+                        var characterName = jobKey.Replace("_", "");
+                        CopySprites(themeName, characterName);
+                    }
+                }
+
+                // Apply story character theme sprites
+                foreach (var character in config.GetAllStoryCharacters())
+                {
+                    var themeName = config.GetStoryCharacterTheme(character);
+                    if (!string.IsNullOrWhiteSpace(themeName))
+                    {
+                        CopySprites(themeName, character);
                     }
                 }
                 _logger.Log("Applied sprite configuration");

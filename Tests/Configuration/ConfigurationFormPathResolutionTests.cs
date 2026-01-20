@@ -67,7 +67,7 @@ namespace FFTColorCustomizer.Tests
             // it should derive the mod root path from that config path, not from Assembly.GetExecutingAssembly().Location
 
             // Arrange
-            var config = new Config { Agrias = "original", Orlandeau = "original" };
+            var config = new Config { ["Agrias"] = "original", ["Orlandeau"] = "original" };
 
             // The bug is in ConfigurationForm line 69:
             // string modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? Environment.CurrentDirectory;

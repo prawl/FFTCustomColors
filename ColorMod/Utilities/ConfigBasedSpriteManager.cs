@@ -79,28 +79,23 @@ namespace FFTColorCustomizer.Utilities
 
         private void ApplyGenericJobThemes(Config config)
         {
-            var properties = typeof(Config).GetProperties()
-                .Where(p => p.GetIndexParameters().Length == 0 &&
-                           p.PropertyType == typeof(string) &&
-                           (p.Name.EndsWith("_Male") || p.Name.EndsWith("_Female")));
-
-            foreach (var property in properties)
+            foreach (var jobKey in config.GetAllJobKeys())
             {
                 try
                 {
-                    var colorScheme = property.GetValue(config) as string ?? "original";
-                    ModLogger.LogDebug($"Applying {property.Name}: {colorScheme}");
+                    var colorScheme = config.GetJobTheme(jobKey) ?? "original";
+                    ModLogger.LogDebug($"Applying {jobKey}: {colorScheme}");
 
-                    var spriteName = _pathResolver.GetSpriteNameForJob(property.Name);
+                    var spriteName = _pathResolver.GetSpriteNameForJob(jobKey);
                     if (spriteName != null)
                     {
-                        var jobType = property.Name.Replace("_Male", "").Replace("_Female", "").ToLower();
-                        ApplyGenericJobTheme(spriteName, colorScheme, jobType, property.Name);
+                        var jobType = jobKey.Replace("_Male", "").Replace("_Female", "").ToLower();
+                        ApplyGenericJobTheme(spriteName, colorScheme, jobType, jobKey);
                     }
                 }
                 catch (Exception ex)
                 {
-                    ModLogger.LogError($"Error processing property {property.Name}: {ex.Message}");
+                    ModLogger.LogError($"Error processing job {jobKey}: {ex.Message}");
                 }
             }
         }
@@ -140,15 +135,7 @@ namespace FFTColorCustomizer.Utilities
                 if (character.SpriteNames.Length == 0)
                     continue;
 
-                var configProperty = typeof(Config).GetProperty(character.Name);
-                if (configProperty == null)
-                    continue;
-
-                var themeValue = configProperty.GetValue(config);
-                if (themeValue == null)
-                    continue;
-
-                var themeName = themeValue.ToString() ?? "original";
+                var themeName = config.GetStoryCharacterTheme(character.Name) ?? "original";
 
                 foreach (var spriteName in character.SpriteNames)
                 {

@@ -60,7 +60,7 @@ namespace Tests.Utilities
 
             var config = new Config
             {
-                Agrias = "ash_dark"
+                ["Agrias"] = "ash_dark"
             };
             _configManager.SaveConfig(config);
 
@@ -100,7 +100,7 @@ namespace Tests.Utilities
 
             var config = new Config
             {
-                Knight_Male = "Ocean Blue"  // User theme name
+                ["Knight_Male"] = "Ocean Blue"  // User theme name
             };
             _configManager.SaveConfig(config);
 
@@ -172,7 +172,7 @@ namespace Tests.Utilities
 
             var config = new Config
             {
-                Knight_Male = "Ocean Blue"  // User theme name
+                ["Knight_Male"] = "Ocean Blue"  // User theme name
             };
             _configManager.SaveConfig(config);
 
@@ -205,7 +205,7 @@ namespace Tests.Utilities
 
             var config = new Config
             {
-                Knight_Male = "Ocean Blue"  // User theme name
+                ["Knight_Male"] = "Ocean Blue"  // User theme name
             };
             _configManager.SaveConfig(config);
 
@@ -274,7 +274,7 @@ namespace Tests.Utilities
 
             var config = new Config
             {
-                Knight_Male = "Ocean Blue"
+                ["Knight_Male"] = "Ocean Blue"
             };
             _configManager.SaveConfig(config);
 
@@ -339,7 +339,7 @@ namespace Tests.Utilities
 
             var config = new Config
             {
-                BlackMage_Male = "Dark Fire"  // User theme name
+                ["BlackMage_Male"] = "Dark Fire"  // User theme name
             };
             _configManager.SaveConfig(config);
 
@@ -403,7 +403,7 @@ namespace Tests.Utilities
 
             var config = new Config
             {
-                TimeMage_Male = "Chrono"  // User theme name
+                ["TimeMage_Male"] = "Chrono"  // User theme name
             };
             _configManager.SaveConfig(config);
 
@@ -467,7 +467,7 @@ namespace Tests.Utilities
 
             var config = new Config
             {
-                WhiteMage_Male = "Holy Light"  // User theme name
+                ["WhiteMage_Male"] = "Holy Light"  // User theme name
             };
             _configManager.SaveConfig(config);
 
@@ -557,7 +557,7 @@ namespace Tests.Utilities
 
             var config = new Config
             {
-                Agrias = "Ocean Blue"  // User theme name
+                ["Agrias"] = "Ocean Blue"  // User theme name
             };
             _configManager.SaveConfig(config);
 

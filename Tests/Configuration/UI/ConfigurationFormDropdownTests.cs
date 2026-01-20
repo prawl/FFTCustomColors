@@ -67,7 +67,7 @@ namespace Tests.Configuration.UI
         public void GenericCharacter_Dropdown_Should_Save_Selection_When_Changed()
         {
             // Arrange
-            _config.Squire_Male = "original";
+            _config["Squire_Male"] = "original";
             _form = new TestConfigurationForm(_config, _tempConfigPath);
 
             // Set _isInitializing to false to allow events to work
@@ -124,7 +124,7 @@ namespace Tests.Configuration.UI
             Application.DoEvents();
 
             // Assert - Config should be updated
-            _config.Squire_Male.Should().Be("corpse_brigade",
+            _config["Squire_Male"].Should().Be("corpse_brigade",
                 "Config should be updated when dropdown selection changes");
         }
 
@@ -132,7 +132,7 @@ namespace Tests.Configuration.UI
         public void StoryCharacter_Dropdown_Should_Save_Selection_When_Changed()
         {
             // Arrange
-            _config.Agrias = "original";
+            _config["Agrias"] = "original";
             _form = new TestConfigurationForm(_config, _tempConfigPath);
 
             // Set _isInitializing to false to allow events to work
@@ -163,7 +163,7 @@ namespace Tests.Configuration.UI
             Application.DoEvents();
 
             // Assert - Config should be updated
-            _config.Agrias.Should().Be("ash_dark",
+            _config["Agrias"].Should().Be("ash_dark",
                 "Config should be updated when story character dropdown changes");
         }
 
@@ -171,17 +171,17 @@ namespace Tests.Configuration.UI
         public void Dropdown_Should_Not_Save_During_Initialization()
         {
             // Arrange
-            _config.Knight_Male = "original";
-            _config.Knight_Female = "original";
+            _config["Knight_Male"] = "original";
+            _config["Knight_Female"] = "original";
 
             // Act - Create form (initialization)
             _form = new TestConfigurationForm(_config, _tempConfigPath);
             // Do NOT call Show() yet - form is still initializing
 
             // Assert - Config should remain unchanged during initialization
-            _config.Knight_Male.Should().Be("original",
+            _config["Knight_Male"].Should().Be("original",
                 "Config should not change during form initialization");
-            _config.Knight_Female.Should().Be("original",
+            _config["Knight_Female"].Should().Be("original",
                 "Config should not change during form initialization");
         }
 
@@ -189,7 +189,7 @@ namespace Tests.Configuration.UI
         public void Dropdown_Should_Only_Save_After_Form_Is_Shown()
         {
             // Arrange
-            _config.Archer_Male = "original";
+            _config["Archer_Male"] = "original";
             _form = new TestConfigurationForm(_config, _tempConfigPath);
 
             // Initialize form without showing it
@@ -213,7 +213,7 @@ namespace Tests.Configuration.UI
             Application.DoEvents();
 
             // Should not save yet
-            _config.Archer_Male.Should().Be("original",
+            _config["Archer_Male"].Should().Be("original",
                 "Config should not update before form is shown");
 
             // Now simulate form being shown
@@ -227,7 +227,7 @@ namespace Tests.Configuration.UI
             Application.DoEvents();
 
             // Assert - Now it should save
-            _config.Archer_Male.Should().Be("northern_sky",
+            _config["Archer_Male"].Should().Be("northern_sky",
                 "Config should update after form is shown");
         }
 
@@ -235,7 +235,7 @@ namespace Tests.Configuration.UI
         public void Preview_Image_Should_Update_When_Dropdown_Changes()
         {
             // Arrange
-            _config.Monk_Male = "original";
+            _config["Monk_Male"] = "original";
             _form = new TestConfigurationForm(_config, _tempConfigPath);
 
             // Set _isInitializing to false to allow events to work
@@ -278,9 +278,9 @@ namespace Tests.Configuration.UI
         public void All_Generic_Characters_Should_Save_Correctly()
         {
             // Arrange - Set all to original
-            _config.Squire_Male = "original";
-            _config.Chemist_Female = "original";
-            _config.Knight_Male = "original";
+            _config["Squire_Male"] = "original";
+            _config["Chemist_Female"] = "original";
+            _config["Knight_Male"] = "original";
 
             _form = new TestConfigurationForm(_config, _tempConfigPath);
 
@@ -347,9 +347,9 @@ namespace Tests.Configuration.UI
             Application.DoEvents();
 
             // Assert - All should be updated
-            _config.Squire_Male.Should().Be("corpse_brigade");
-            _config.Chemist_Female.Should().Be("lucavi");
-            _config.Knight_Male.Should().Be("northern_sky");
+            _config["Squire_Male"].Should().Be("corpse_brigade");
+            _config["Chemist_Female"].Should().Be("lucavi");
+            _config["Knight_Male"].Should().Be("northern_sky");
         }
 
         [Fact]

@@ -24,9 +24,9 @@ namespace FFTColorCustomizer.Tests
             // Create existing config with multiple settings
             var existingConfig = new Config
             {
-                Squire_Male = "corpse_brigade",
-                Knight_Female = "lucavi",
-                Archer_Male = "northern_sky"
+                ["Squire_Male"] = "corpse_brigade",
+                ["Knight_Female"] = "lucavi",
+                ["Archer_Male"] = "northern_sky"
             };
             var existingJson = JsonSerializer.Serialize(existingConfig, Configurable<Config>.SerializerOptions);
             File.WriteAllText(configPath, existingJson);
@@ -39,7 +39,7 @@ namespace FFTColorCustomizer.Tests
                 // Simulate Reloaded-II sending an update with only one changed value
                 var incomingConfig = new Config
                 {
-                    Squire_Male = "original"
+                    ["Squire_Male"] = "original"
                     // All other values are defaults
                 };
 
@@ -50,9 +50,9 @@ namespace FFTColorCustomizer.Tests
                 var savedJson = File.ReadAllText(configPath);
                 var savedConfig = JsonSerializer.Deserialize<Config>(savedJson, Configurable<Config>.SerializerOptions);
 
-                Assert.Equal("corpse_brigade", savedConfig.Squire_Male); // Preserved since incoming is default
-                Assert.Equal("lucavi", savedConfig.Knight_Female); // Preserved
-                Assert.Equal("northern_sky", savedConfig.Archer_Male); // Preserved
+                Assert.Equal("corpse_brigade", savedConfig["Squire_Male"]); // Preserved since incoming is default
+                Assert.Equal("lucavi", savedConfig["Knight_Female"]); // Preserved
+                Assert.Equal("northern_sky", savedConfig["Archer_Male"]); // Preserved
             }
             finally
             {

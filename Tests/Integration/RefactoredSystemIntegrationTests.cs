@@ -90,7 +90,7 @@ namespace Tests.Integration
             Assert.True(registryCharacters.ContainsKey("Cloud"));
 
             // 5. Verify the complete system can apply configurations
-            config.Agrias = "ash_dark";
+            config["Agrias"] = "ash_dark";
             _configManager.SaveConfig(config);
 
             // Create destination directory for sprite manager

@@ -26,9 +26,9 @@ namespace FFTColorCustomizer.Tests
             // Arrange - Create a config with custom themes
             var userConfig = new FFTColorCustomizer.Configuration.Config
             {
-                Squire_Male = "lucavi",
-                Knight_Female = "northern_sky",
-                Archer_Male = "original"
+                ["Squire_Male"] = "lucavi",
+                ["Knight_Female"] = "northern_sky",
+                ["Archer_Male"] = "original"
             };
 
             // Save the config
@@ -48,9 +48,9 @@ namespace FFTColorCustomizer.Tests
 
             // Assert - Verify the themes are applied (not just loaded)
             // We need to check that ApplyConfiguration was called with the correct values
-            Assert.Equal("lucavi", loadedConfig.Squire_Male);
-            Assert.Equal("northern_sky", loadedConfig.Knight_Female);
-            Assert.Equal("original", loadedConfig.Archer_Male);
+            Assert.Equal("lucavi", loadedConfig["Squire_Male"]);
+            Assert.Equal("northern_sky", loadedConfig["Knight_Female"]);
+            Assert.Equal("original", loadedConfig["Archer_Male"]);
 
             // Also verify the config file wasn't overwritten with defaults
             var savedJson = File.ReadAllText(_testConfigPath);
@@ -100,12 +100,10 @@ namespace FFTColorCustomizer.Tests
         public void ApplyConfiguration_ShouldBeCalledWithCorrectValues_AfterConfigLoad()
         {
             // Arrange - Create a config with specific themes
-            var config = new FFTColorCustomizer.Configuration.Config
-            {
-                Monk_Male = "original",
-                Thief_Female = "rose_gold",
-                Dragoon_Male = "volcanic"
-            };
+            var config = new FFTColorCustomizer.Configuration.Config();
+            config["Monk_Male"] = "original";
+            config["Thief_Female"] = "rose_gold";
+            config["Dragoon_Male"] = "volcanic";
 
             config.FilePath = _testConfigPath;
             config.Save();
@@ -124,9 +122,9 @@ namespace FFTColorCustomizer.Tests
 
             // Assert - The configuration should be applied with correct values
             var loadedConfig = configManager.LoadConfig();
-            Assert.Equal("original", loadedConfig.Monk_Male);
-            Assert.Equal("rose_gold", loadedConfig.Thief_Female);
-            Assert.Equal("volcanic", loadedConfig.Dragoon_Male);
+            Assert.Equal("original", loadedConfig["Monk_Male"]);
+            Assert.Equal("rose_gold", loadedConfig["Thief_Female"]);
+            Assert.Equal("volcanic", loadedConfig["Dragoon_Male"]);
         }
 
         public void Dispose()

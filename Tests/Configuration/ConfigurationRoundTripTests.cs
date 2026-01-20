@@ -48,9 +48,9 @@ namespace FFTColorCustomizer.Tests
             Assert.NotNull(config);
 
             // Verify it loaded correctly
-            Assert.Equal("southern_sky", config.Squire_Male);
-            Assert.Equal("rose_gold", config.Knight_Male);
-            Assert.Equal("emerald_dragon", config.Knight_Female);
+            Assert.Equal("southern_sky", config["Squire_Male"]);
+            Assert.Equal("rose_gold", config["Knight_Male"]);
+            Assert.Equal("emerald_dragon", config["Knight_Female"]);
 
             // Save it back
             config.Save();
@@ -61,13 +61,13 @@ namespace FFTColorCustomizer.Tests
             var reloadedConfig = JsonSerializer.Deserialize<Config>(savedJson, Configurable<Config>.SerializerOptions);
 
             Assert.NotNull(reloadedConfig);
-            Assert.Equal(config.Squire_Male, reloadedConfig.Squire_Male);
-            Assert.Equal(config.Knight_Male, reloadedConfig.Knight_Male);
-            Assert.Equal(config.Knight_Female, reloadedConfig.Knight_Female);
-            Assert.Equal(config.Archer_Male, reloadedConfig.Archer_Male);
-            Assert.Equal(config.BlackMage_Female, reloadedConfig.BlackMage_Female);
-            Assert.Equal(config.Dragoon_Male, reloadedConfig.Dragoon_Male);
-            Assert.Equal(config.Ninja_Female, reloadedConfig.Ninja_Female);
+            Assert.Equal(config["Squire_Male"], reloadedConfig["Squire_Male"]);
+            Assert.Equal(config["Knight_Male"], reloadedConfig["Knight_Male"]);
+            Assert.Equal(config["Knight_Female"], reloadedConfig["Knight_Female"]);
+            Assert.Equal(config["Archer_Male"], reloadedConfig["Archer_Male"]);
+            Assert.Equal(config["BlackMage_Female"], reloadedConfig["BlackMage_Female"]);
+            Assert.Equal(config["Dragoon_Male"], reloadedConfig["Dragoon_Male"]);
+            Assert.Equal(config["Ninja_Female"], reloadedConfig["Ninja_Female"]);
 
             // Verify JSON still has correct format (no underscores)
             Assert.Contains("\"SquireMale\":", savedJson);

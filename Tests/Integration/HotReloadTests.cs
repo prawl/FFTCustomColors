@@ -116,9 +116,9 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange - Create mod with initial configuration
             var initialConfig = new Config
             {
-                Knight_Male = "original",
-                Monk_Male = "original",
-                Archer_Female = "original"
+                ["Knight_Male"] = "original",
+                ["Monk_Male"] = "original",
+                ["Archer_Female"] = "original"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(initialConfig));
 
@@ -130,9 +130,9 @@ namespace FFTColorCustomizer.Tests.Integration
             // Act - Update configuration to use different themes per job
             var updatedConfig = new Config
             {
-                Knight_Male = "holy_guard",
-                Monk_Male = "shadow_assassin",
-                Archer_Female = "desert_nomad"
+                ["Knight_Male"] = "holy_guard",
+                ["Monk_Male"] = "shadow_assassin",
+                ["Archer_Female"] = "desert_nomad"
             };
             mod.ConfigurationUpdated(updatedConfig);
 
@@ -153,8 +153,8 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange
             var config = new Config
             {
-                Knight_Male = "original",
-                Monk_Male = "original"
+                ["Knight_Male"] = "original",
+                ["Monk_Male"] = "original"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 
@@ -179,8 +179,8 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange - Start with original theme
             var config = new Config
             {
-                Knight_Male = "original",
-                Monk_Male = "original"
+                ["Knight_Male"] = "original",
+                ["Monk_Male"] = "original"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 
@@ -195,8 +195,8 @@ namespace FFTColorCustomizer.Tests.Integration
             // Act - Simulate F1 configuration change
             var updatedConfig = new Config
             {
-                Knight_Male = "holy_guard",
-                Monk_Male = "shadow_assassin"
+                ["Knight_Male"] = "holy_guard",
+                ["Monk_Male"] = "shadow_assassin"
             };
             mod.ConfigurationUpdated(updatedConfig);
 
@@ -218,7 +218,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange
             var config = new Config
             {
-                Knight_Male = "holy_guard"
+                ["Knight_Male"] = "holy_guard"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 
@@ -287,7 +287,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Test multiple config changes in succession without restart
 
             // Arrange
-            var config = new Config { Knight_Male = "original" };
+            var config = new Config { ["Knight_Male"] = "original" };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 
             var mod = new Mod(new ModContext(), _inputSimulator.Object, new NullHotkeyHandler());
@@ -296,22 +296,22 @@ namespace FFTColorCustomizer.Tests.Integration
 
             // Act & Assert - Multiple configuration changes
             // First change
-            mod.ConfigurationUpdated(new Config { Knight_Male = "holy_guard" });
+            mod.ConfigurationUpdated(new Config { ["Knight_Male"] = "holy_guard" });
             var theme1 = mod.GetJobColor("Knight_Male");
             Assert.Equal("Holy Guard", theme1);
 
             // Second change
-            mod.ConfigurationUpdated(new Config { Knight_Male = "shadow_assassin" });
+            mod.ConfigurationUpdated(new Config { ["Knight_Male"] = "shadow_assassin" });
             var theme2 = mod.GetJobColor("Knight_Male");
             Assert.Equal("Shadow Assassin", theme2);
 
             // Third change back to original
-            mod.ConfigurationUpdated(new Config { Knight_Male = "original" });
+            mod.ConfigurationUpdated(new Config { ["Knight_Male"] = "original" });
             var theme3 = mod.GetJobColor("Knight_Male");
             Assert.Equal("Original", theme3);
 
             // Fourth change
-            mod.ConfigurationUpdated(new Config { Knight_Male = "desert_nomad" });
+            mod.ConfigurationUpdated(new Config { ["Knight_Male"] = "desert_nomad" });
             var theme4 = mod.GetJobColor("Knight_Male");
             Assert.Equal("Desert Nomad", theme4);
         }
@@ -324,7 +324,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange
             var config = new Config
             {
-                Knight_Male = "non_existent_theme"
+                ["Knight_Male"] = "non_existent_theme"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 
@@ -350,7 +350,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange
             var config = new Config
             {
-                Knight_Male = "holy_guard"
+                ["Knight_Male"] = "holy_guard"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 
@@ -437,9 +437,9 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange
             var config = new Config
             {
-                Knight_Male = "holy_guard",
-                Monk_Male = "shadow_assassin",
-                Archer_Female = "desert_nomad"
+                ["Knight_Male"] = "holy_guard",
+                ["Monk_Male"] = "shadow_assassin",
+                ["Archer_Female"] = "desert_nomad"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 
@@ -510,7 +510,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange
             var config = new Config
             {
-                Knight_Male = "holy_guard"
+                ["Knight_Male"] = "holy_guard"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 

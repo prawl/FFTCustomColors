@@ -41,8 +41,8 @@ namespace FFTColorCustomizer.Tests.Configuration
 
             // Assert
             config.Should().NotBeNull();
-            config.Knight_Male.Should().Be("original");
-            config.Knight_Female.Should().Be("original");
+            config["Knight_Male"].Should().Be("original");
+            config["Knight_Female"].Should().Be("original");
         }
 
         [Fact]
@@ -52,8 +52,8 @@ namespace FFTColorCustomizer.Tests.Configuration
             var adapter = new ConfigurationManagerAdapter(_configPath);
             var config = new Config
             {
-                Knight_Male = "lucavi",
-                Archer_Female = "corpse_brigade"
+                ["Knight_Male"] = "lucavi",
+                ["Archer_Female"] = "corpse_brigade"
             };
 
             // Act
@@ -61,8 +61,8 @@ namespace FFTColorCustomizer.Tests.Configuration
             var loadedConfig = adapter.LoadConfig();
 
             // Assert
-            loadedConfig.Knight_Male.Should().Be("lucavi");
-            loadedConfig.Archer_Female.Should().Be("corpse_brigade");
+            loadedConfig["Knight_Male"].Should().Be("lucavi");
+            loadedConfig["Archer_Female"].Should().Be("corpse_brigade");
             File.Exists(_configPath).Should().BeTrue();
         }
 
@@ -77,15 +77,15 @@ namespace FFTColorCustomizer.Tests.Configuration
 
             // Assert
             defaultConfig.Should().NotBeNull();
-            defaultConfig.Knight_Male.Should().Be("original");
-            defaultConfig.Knight_Female.Should().Be("original");
-            defaultConfig.Squire_Male.Should().Be("original");
-            defaultConfig.Squire_Female.Should().Be("original");
+            defaultConfig["Knight_Male"].Should().Be("original");
+            defaultConfig["Knight_Female"].Should().Be("original");
+            defaultConfig["Squire_Male"].Should().Be("original");
+            defaultConfig["Squire_Female"].Should().Be("original");
 
             // Story characters should also be original
-            defaultConfig.Agrias.Should().Be("original");
-            defaultConfig.Cloud.Should().Be("original");
-            defaultConfig.Orlandeau.Should().Be("original");
+            defaultConfig["Agrias"].Should().Be("original");
+            defaultConfig["Cloud"].Should().Be("original");
+            defaultConfig["Orlandeau"].Should().Be("original");
         }
 
         [Fact]
@@ -94,8 +94,8 @@ namespace FFTColorCustomizer.Tests.Configuration
             // Arrange
             var adapter = new ConfigurationManagerAdapter(_configPath);
             var config = adapter.LoadConfig();
-            config.Knight_Male = "lucavi";
-            config.Archer_Female = "corpse_brigade";
+            config["Knight_Male"] = "lucavi";
+            config["Archer_Female"] = "corpse_brigade";
             adapter.SaveConfig(config);
 
             // Act
@@ -103,8 +103,8 @@ namespace FFTColorCustomizer.Tests.Configuration
             var resetConfig = adapter.LoadConfig();
 
             // Assert
-            resetConfig.Knight_Male.Should().Be("original");
-            resetConfig.Archer_Female.Should().Be("original");
+            resetConfig["Knight_Male"].Should().Be("original");
+            resetConfig["Archer_Female"].Should().Be("original");
         }
 
         [Fact]
@@ -132,14 +132,14 @@ namespace FFTColorCustomizer.Tests.Configuration
             var adapter1 = new ConfigurationManagerAdapter(_configPath);
             var adapter2 = new ConfigurationManagerAdapter(_configPath);
 
-            var config = new Config { Knight_Male = "lucavi" };
+            var config = new Config { ["Knight_Male"] = "lucavi" };
             adapter1.SaveConfig(config);
 
             // Act
             var loadedConfig = adapter2.LoadConfig();
 
             // Assert
-            loadedConfig.Knight_Male.Should().Be("lucavi");
+            loadedConfig["Knight_Male"].Should().Be("lucavi");
         }
 
         [Fact]

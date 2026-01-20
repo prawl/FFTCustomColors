@@ -56,9 +56,9 @@ namespace FFTColorCustomizer.Tests
             Assert.NotNull(config);
 
             // Act - Update the configuration
-            config.Squire_Male = "ocean_depths";  // crimson_red
-            config.Knight_Male = "rose_gold";  // rose_gold
-            config.Knight_Female = "emerald_dragon";  // emerald_dragon
+            config["Squire_Male"] = "ocean_depths";  // crimson_red
+            config["Knight_Male"] = "rose_gold";  // rose_gold
+            config["Knight_Female"] = "emerald_dragon";  // emerald_dragon
 
             // Save the configuration
             config.Save();
@@ -73,9 +73,9 @@ namespace FFTColorCustomizer.Tests
             });
 
             Assert.NotNull(savedConfig);
-            Assert.Equal("ocean_depths", savedConfig.Squire_Male);  // crimson_red
-            Assert.Equal("rose_gold", savedConfig.Knight_Male);  // rose_gold
-            Assert.Equal("emerald_dragon", savedConfig.Knight_Female);  // emerald_dragon
+            Assert.Equal("ocean_depths", savedConfig["Squire_Male"]);  // crimson_red
+            Assert.Equal("rose_gold", savedConfig["Knight_Male"]);  // rose_gold
+            Assert.Equal("emerald_dragon", savedConfig["Knight_Female"]);  // emerald_dragon
         }
 
         [Fact]
@@ -84,8 +84,8 @@ namespace FFTColorCustomizer.Tests
             // Arrange - Create a config file with specific values
             var existingConfig = new Config
             {
-                Squire_Male = "corpse_brigade",  // corpse_brigade
-                Dragoon_Female = "lucavi"  // lucavi
+                ["Squire_Male"] = "corpse_brigade",  // corpse_brigade
+                ["Dragoon_Female"] = "lucavi"  // lucavi
             };
 
             Directory.CreateDirectory(_testConfigDir);
@@ -103,9 +103,9 @@ namespace FFTColorCustomizer.Tests
 
             // Assert
             Assert.NotNull(loadedConfig);
-            Assert.Equal("corpse_brigade", loadedConfig.Squire_Male);  // corpse_brigade
-            Assert.Equal("lucavi", loadedConfig.Dragoon_Female);  // lucavi
-            Assert.Equal("original", loadedConfig.Knight_Male); // original - default
+            Assert.Equal("corpse_brigade", loadedConfig["Squire_Male"]);  // corpse_brigade
+            Assert.Equal("lucavi", loadedConfig["Dragoon_Female"]);  // lucavi
+            Assert.Equal("original", loadedConfig["Knight_Male"]); // original - default
         }
 
         [Fact]
@@ -116,8 +116,8 @@ namespace FFTColorCustomizer.Tests
             var config = configurator.GetConfiguration<Config>(0);
 
             // Act - Modify configuration
-            config.Squire_Male = "blood_moon";  // blood_moon
-            config.Archer_Female = "celestial";  // celestial
+            config["Squire_Male"] = "blood_moon";  // blood_moon
+            config["Archer_Female"] = "celestial";  // celestial
 
             // Save through the Configurator
             configurator.Save();
@@ -130,8 +130,8 @@ namespace FFTColorCustomizer.Tests
             });
 
             Assert.NotNull(savedConfig);
-            Assert.Equal("blood_moon", savedConfig.Squire_Male);  // blood_moon
-            Assert.Equal("celestial", savedConfig.Archer_Female);  // celestial
+            Assert.Equal("blood_moon", savedConfig["Squire_Male"]);  // blood_moon
+            Assert.Equal("celestial", savedConfig["Archer_Female"]);  // celestial
         }
     }
 }

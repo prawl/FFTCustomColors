@@ -39,8 +39,8 @@ namespace FFTColorCustomizer.Tests.Core.ModComponents
 
             // Assert
             config.Should().NotBeNull();
-            config.Knight_Male.Should().Be("original");
-            config.Archer_Female.Should().Be("original");
+            config["Knight_Male"].Should().Be("original");
+            config["Archer_Female"].Should().Be("original");
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace FFTColorCustomizer.Tests.Core.ModComponents
             var config = _coordinator.GetConfiguration();
 
             // Assert
-            config.Knight_Male.Should().Be("lucavi");
+            config["Knight_Male"].Should().Be("lucavi");
         }
 
         [Fact]
@@ -97,8 +97,8 @@ namespace FFTColorCustomizer.Tests.Core.ModComponents
             var config = _coordinator.GetConfiguration();
 
             // Assert
-            config.Knight_Male.Should().Be("original");
-            config.Monk_Female.Should().Be("original");
+            config["Knight_Male"].Should().Be("original");
+            config["Monk_Female"].Should().Be("original");
         }
 
         [Fact]
@@ -120,7 +120,7 @@ namespace FFTColorCustomizer.Tests.Core.ModComponents
         public void LoadConfiguration_ShouldRestoreFromFile()
         {
             // Arrange
-            var config = new Config { Knight_Male = "lucavi", Archer_Female = "corpse_brigade" };
+            var config = new Config { ["Knight_Male"] = "lucavi", ["Archer_Female"] = "corpse_brigade" };
             var json = System.Text.Json.JsonSerializer.Serialize(config, new System.Text.Json.JsonSerializerOptions
             {
                 WriteIndented = true,
@@ -133,8 +133,8 @@ namespace FFTColorCustomizer.Tests.Core.ModComponents
             var loadedConfig = coordinator.GetConfiguration();
 
             // Assert
-            loadedConfig.Knight_Male.Should().Be("lucavi");
-            loadedConfig.Archer_Female.Should().Be("corpse_brigade");
+            loadedConfig["Knight_Male"].Should().Be("lucavi");
+            loadedConfig["Archer_Female"].Should().Be("corpse_brigade");
         }
 
         [Fact]
@@ -143,8 +143,8 @@ namespace FFTColorCustomizer.Tests.Core.ModComponents
             // Arrange
             var newConfig = new Config
             {
-                Knight_Male = "northern_sky",
-                Squire_Female = "southern_sky"
+                ["Knight_Male"] = "northern_sky",
+                ["Squire_Female"] = "southern_sky"
             };
 
             // Act
@@ -152,8 +152,8 @@ namespace FFTColorCustomizer.Tests.Core.ModComponents
             var config = _coordinator.GetConfiguration();
 
             // Assert
-            config.Knight_Male.Should().Be("northern_sky");
-            config.Squire_Female.Should().Be("southern_sky");
+            config["Knight_Male"].Should().Be("northern_sky");
+            config["Squire_Female"].Should().Be("southern_sky");
         }
 
         [Fact]

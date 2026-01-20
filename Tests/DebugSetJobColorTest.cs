@@ -56,7 +56,7 @@ namespace FFTColorCustomizer.Tests
             _output.WriteLine($"Creating fresh ConfigurationManager with path: {_testConfigPath}");
             var freshConfigManager = new FFTColorCustomizer.Configuration.ConfigurationManager(_testConfigPath);
             var diskConfig = freshConfigManager.LoadConfig();
-            _output.WriteLine($"Direct config load from disk - Archer_Female enum value: {diskConfig.Archer_Female}");
+            _output.WriteLine($"Direct config load from disk - Archer_Female enum value: {diskConfig["Archer_Female"]}");
             _output.WriteLine($"Direct config load from disk - Archer_Female int value: {0 /* cast from string removed */}");
 
             // Check the raw file content
@@ -67,7 +67,7 @@ namespace FFTColorCustomizer.Tests
             }
 
             // Verify the config was actually persisted to disk with the correct value
-            Assert.Equal("lucavi", diskConfig.Archer_Female);
+            Assert.Equal("lucavi", diskConfig["Archer_Female"]);
 
             // Verify the GetJobColor method returns the correct display name
             Assert.Equal("Lucavi", color);
@@ -84,14 +84,14 @@ namespace FFTColorCustomizer.Tests
             // Set a job color
             // configManager.SetJobTheme("Archer_Female", "lucavi"); // Method removed in refactoring
             var config = configManager.LoadConfig();
-            config.Archer_Female = "lucavi";
+            config["Archer_Female"] = "lucavi";
             configManager.SaveConfig(config);
 
             // Load the config with a fresh manager
             var freshManager = new FFTColorCustomizer.Configuration.ConfigurationManager(_testConfigPath);
             var loadedConfig = freshManager.LoadConfig();
 
-            _output.WriteLine($"Archer_Female value: {loadedConfig.Archer_Female}");
+            _output.WriteLine($"Archer_Female value: {loadedConfig["Archer_Female"]}");
             _output.WriteLine($"Archer_Female int: {0 /* cast from string removed */}");
 
             // Check the raw file content
@@ -101,7 +101,7 @@ namespace FFTColorCustomizer.Tests
                 _output.WriteLine($"Raw config file (first 500 chars): {content.Substring(0, Math.Min(500, content.Length))}");
             }
 
-            Assert.Equal("lucavi", config.Archer_Female);
+            Assert.Equal("lucavi", config["Archer_Female"]);
         }
 
         public void Dispose()
