@@ -11,6 +11,7 @@ namespace FFTColorCustomizer.Configuration
         {
             Text = "FFT Color Customizer - Configuration";
             Size = new Size(UIConfiguration.FormWidth, UIConfiguration.FormHeight);
+            MinimumSize = new Size(400, 300);
             StartPosition = FormStartPosition.CenterScreen;
             AutoScroll = false;
             TopMost = true;
