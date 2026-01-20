@@ -19,6 +19,13 @@ namespace FFTColorCustomizer.Services
         private readonly string _sourcePath;
         private readonly string _modPath;
 
+        // Characters that use standard sprite-based theming (not Ramza which uses TEX files)
+        private static readonly string[] StandardCharacters = new[]
+        {
+            "Orlandeau", "Agrias", "Cloud", "Mustadio", "Marach",
+            "Beowulf", "Meliadoul", "Rapha", "Reis"
+        };
+
         public ThemeManagerAdapter(string sourcePath, string modPath)
         {
             _sourcePath = sourcePath;
@@ -42,16 +49,67 @@ namespace FFTColorCustomizer.Services
         {
             ModLogger.LogDebug("ThemeManagerAdapter.ApplyInitialThemes() called");
             ApplyInitialRamzaTheme();
-            ApplyInitialOrlandeauTheme();
-            ApplyInitialAgriasTheme();
-            ApplyInitialCloudTheme();
-            ApplyInitialMustadioTheme();
-            ApplyInitialMarachTheme();
-            ApplyInitialBeowulfTheme();
-            ApplyInitialMeliadoulTheme();
-            ApplyInitialRaphaTheme();
-            ApplyInitialReisTheme();
+
+            // Apply initial themes for all standard characters
+            foreach (var character in StandardCharacters)
+            {
+                ApplyInitialCharacterTheme(character);
+            }
         }
+
+        #region Generic Character Theme Methods
+
+        /// <summary>
+        /// Cycles the theme for a character and applies it.
+        /// This is the primary method - character-specific methods delegate to this.
+        /// </summary>
+        /// <param name="characterName">The character name (e.g., "Orlandeau", "Agrias")</param>
+        public void CycleCharacterTheme(string characterName)
+        {
+            if (characterName == "Ramza")
+            {
+                CycleRamzaTheme();
+                return;
+            }
+
+            var nextTheme = _themeService.CycleTheme(characterName);
+            _storyCharacterManager.SetCurrentTheme(characterName, nextTheme);
+            ModLogger.Log($"{characterName} theme: {nextTheme}");
+            ApplyCharacterTheme(characterName, nextTheme);
+        }
+
+        /// <summary>
+        /// Applies a theme to a character.
+        /// For standard characters, this applies the theme service and copies sprites.
+        /// </summary>
+        /// <param name="characterName">The character name</param>
+        /// <param name="theme">The theme to apply</param>
+        public void ApplyCharacterTheme(string characterName, string theme)
+        {
+            if (characterName == "Ramza")
+            {
+                ApplyRamzaTheme(theme);
+                return;
+            }
+
+            _themeService.ApplyTheme(characterName, theme);
+            CopyCharacterSprites(characterName, theme);
+        }
+
+        /// <summary>
+        /// Applies the initial theme for a character from stored configuration.
+        /// </summary>
+        /// <param name="characterName">The character name</param>
+        private void ApplyInitialCharacterTheme(string characterName)
+        {
+            var theme = _storyCharacterManager.GetCurrentTheme(characterName);
+            ModLogger.LogDebug($"ApplyInitial{characterName}Theme - theme: {theme}");
+            ApplyCharacterTheme(characterName, theme);
+        }
+
+        #endregion
+
+        #region Ramza-Specific Methods (Special TEX handling)
 
         public void CycleRamzaTheme()
         {
@@ -59,80 +117,6 @@ namespace FFTColorCustomizer.Services
             _storyCharacterManager.SetCurrentTheme("Ramza", nextTheme);
             ModLogger.Log($"Ramza theme: {nextTheme}");
             ApplyRamzaTheme(nextTheme);
-        }
-
-        public void CycleOrlandeauTheme()
-        {
-            var nextTheme = _themeService.CycleTheme("Orlandeau");
-            _storyCharacterManager.SetCurrentTheme("Orlandeau", nextTheme);
-            ModLogger.Log($"Orlandeau theme: {nextTheme}");
-            ApplyOrlandeauTheme(nextTheme);
-        }
-
-        public void CycleAgriasTheme()
-        {
-            var nextTheme = _themeService.CycleTheme("Agrias");
-            _storyCharacterManager.SetCurrentTheme("Agrias", nextTheme);
-            ModLogger.Log($"================================================");
-            ModLogger.Log($"    AGRIAS THEME CHANGED TO: {nextTheme}");
-            ModLogger.Log($"================================================");
-            ApplyAgriasTheme(nextTheme);
-        }
-
-        public void CycleCloudTheme()
-        {
-            var nextTheme = _themeService.CycleTheme("Cloud");
-            _storyCharacterManager.SetCurrentTheme("Cloud", nextTheme);
-            ModLogger.Log($"Cloud theme: {nextTheme}");
-            ApplyCloudTheme(nextTheme);
-        }
-
-        public void CycleMustadioTheme()
-        {
-            var nextTheme = _themeService.CycleTheme("Mustadio");
-            _storyCharacterManager.SetCurrentTheme("Mustadio", nextTheme);
-            ModLogger.Log($"Mustadio theme: {nextTheme}");
-            ApplyMustadioTheme(nextTheme);
-        }
-
-        public void CycleMarachTheme()
-        {
-            var nextTheme = _themeService.CycleTheme("Marach");
-            _storyCharacterManager.SetCurrentTheme("Marach", nextTheme);
-            ModLogger.Log($"Marach theme: {nextTheme}");
-            ApplyMarachTheme(nextTheme);
-        }
-
-        public void CycleBeowulfTheme()
-        {
-            var nextTheme = _themeService.CycleTheme("Beowulf");
-            _storyCharacterManager.SetCurrentTheme("Beowulf", nextTheme);
-            ModLogger.Log($"Beowulf theme: {nextTheme}");
-            ApplyBeowulfTheme(nextTheme);
-        }
-
-        public void CycleMeliadoulTheme()
-        {
-            var nextTheme = _themeService.CycleTheme("Meliadoul");
-            _storyCharacterManager.SetCurrentTheme("Meliadoul", nextTheme);
-            ModLogger.Log($"Meliadoul theme: {nextTheme}");
-            ApplyMeliadoulTheme(nextTheme);
-        }
-
-        public void CycleRaphaTheme()
-        {
-            var nextTheme = _themeService.CycleTheme("Rapha");
-            _storyCharacterManager.SetCurrentTheme("Rapha", nextTheme);
-            ModLogger.Log($"Rapha theme: {nextTheme}");
-            ApplyRaphaTheme(nextTheme);
-        }
-
-        public void CycleReisTheme()
-        {
-            var nextTheme = _themeService.CycleTheme("Reis");
-            _storyCharacterManager.SetCurrentTheme("Reis", nextTheme);
-            ModLogger.Log($"Reis theme: {nextTheme}");
-            ApplyReisTheme(nextTheme);
         }
 
         private void ApplyInitialRamzaTheme()
@@ -157,69 +141,6 @@ namespace FFTColorCustomizer.Services
 
             ModLogger.LogDebug($"ApplyInitialRamzaTheme - theme from config: {theme}");
             ApplyRamzaTheme(theme);
-        }
-
-        private void ApplyInitialOrlandeauTheme()
-        {
-            var theme = _storyCharacterManager.GetCurrentTheme("Orlandeau");
-            ModLogger.LogDebug($"ApplyInitialOrlandeauTheme - theme: {theme}");
-            ApplyOrlandeauTheme(theme);
-        }
-
-        private void ApplyInitialAgriasTheme()
-        {
-            var theme = _storyCharacterManager.GetCurrentTheme("Agrias");
-            ModLogger.LogDebug($"ApplyInitialAgriasTheme - theme: {theme}");
-            ApplyAgriasTheme(theme);
-        }
-
-        private void ApplyInitialCloudTheme()
-        {
-            var theme = _storyCharacterManager.GetCurrentTheme("Cloud");
-            ModLogger.LogDebug($"ApplyInitialCloudTheme - theme: {theme}");
-            ApplyCloudTheme(theme);
-        }
-
-        private void ApplyInitialMustadioTheme()
-        {
-            var theme = _storyCharacterManager.GetCurrentTheme("Mustadio");
-            ModLogger.LogDebug($"ApplyInitialMustadioTheme - theme: {theme}");
-            ApplyMustadioTheme(theme);
-        }
-
-        private void ApplyInitialMarachTheme()
-        {
-            var theme = _storyCharacterManager.GetCurrentTheme("Marach");
-            ModLogger.LogDebug($"ApplyInitialMarachTheme - theme: {theme}");
-            ApplyMarachTheme(theme);
-        }
-
-        private void ApplyInitialBeowulfTheme()
-        {
-            var theme = _storyCharacterManager.GetCurrentTheme("Beowulf");
-            ModLogger.LogDebug($"ApplyInitialBeowulfTheme - theme: {theme}");
-            ApplyBeowulfTheme(theme);
-        }
-
-        private void ApplyInitialMeliadoulTheme()
-        {
-            var theme = _storyCharacterManager.GetCurrentTheme("Meliadoul");
-            ModLogger.LogDebug($"ApplyInitialMeliadoulTheme - theme: {theme}");
-            ApplyMeliadoulTheme(theme);
-        }
-
-        private void ApplyInitialRaphaTheme()
-        {
-            var theme = _storyCharacterManager.GetCurrentTheme("Rapha");
-            ModLogger.LogDebug($"ApplyInitialRaphaTheme - theme: {theme}");
-            ApplyRaphaTheme(theme);
-        }
-
-        private void ApplyInitialReisTheme()
-        {
-            var theme = _storyCharacterManager.GetCurrentTheme("Reis");
-            ModLogger.LogDebug($"ApplyInitialReisTheme - theme: {theme}");
-            ApplyReisTheme(theme);
         }
 
         private void ApplyRamzaTheme(string theme)
@@ -380,60 +301,26 @@ namespace FFTColorCustomizer.Services
             }
         }
 
-        private void ApplyOrlandeauTheme(string theme)
-        {
-            _themeService.ApplyTheme("Orlandeau", theme);
-            // Copy sprite files as needed - this would use SpriteService
-            CopyCharacterSprites("Orlandeau", theme);
-        }
+        #endregion
 
-        private void ApplyAgriasTheme(string theme)
-        {
-            _themeService.ApplyTheme("Agrias", theme);
-            CopyCharacterSprites("Agrias", theme);
-        }
+        #region Backward Compatibility Methods (delegate to generic methods)
 
-        private void ApplyCloudTheme(string theme)
-        {
-            _themeService.ApplyTheme("Cloud", theme);
-            CopyCharacterSprites("Cloud", theme);
-        }
+        // These methods are kept for backward compatibility with existing code
+        // They all delegate to the generic CycleCharacterTheme method
 
-        private void ApplyMustadioTheme(string theme)
-        {
-            _themeService.ApplyTheme("Mustadio", theme);
-            CopyCharacterSprites("Mustadio", theme);
-        }
+        public void CycleOrlandeauTheme() => CycleCharacterTheme("Orlandeau");
+        public void CycleAgriasTheme() => CycleCharacterTheme("Agrias");
+        public void CycleCloudTheme() => CycleCharacterTheme("Cloud");
+        public void CycleMustadioTheme() => CycleCharacterTheme("Mustadio");
+        public void CycleMarachTheme() => CycleCharacterTheme("Marach");
+        public void CycleBeowulfTheme() => CycleCharacterTheme("Beowulf");
+        public void CycleMeliadoulTheme() => CycleCharacterTheme("Meliadoul");
+        public void CycleRaphaTheme() => CycleCharacterTheme("Rapha");
+        public void CycleReisTheme() => CycleCharacterTheme("Reis");
 
-        private void ApplyMarachTheme(string theme)
-        {
-            _themeService.ApplyTheme("Marach", theme);
-            CopyCharacterSprites("Marach", theme);
-        }
+        #endregion
 
-        private void ApplyBeowulfTheme(string theme)
-        {
-            _themeService.ApplyTheme("Beowulf", theme);
-            CopyCharacterSprites("Beowulf", theme);
-        }
-
-        private void ApplyMeliadoulTheme(string theme)
-        {
-            _themeService.ApplyTheme("Meliadoul", theme);
-            CopyCharacterSprites("Meliadoul", theme);
-        }
-
-        private void ApplyRaphaTheme(string theme)
-        {
-            _themeService.ApplyTheme("Rapha", theme);
-            CopyCharacterSprites("Rapha", theme);
-        }
-
-        private void ApplyReisTheme(string theme)
-        {
-            _themeService.ApplyTheme("Reis", theme);
-            CopyCharacterSprites("Reis", theme);
-        }
+        #region Sprite Operations
 
         private void CopyCharacterSprites(string character, string theme)
         {
@@ -513,6 +400,10 @@ namespace FFTColorCustomizer.Services
             };
         }
 
+        #endregion
+
+        #region SimplePathResolver
+
         // Simple path resolver for the adapter
         private class SimplePathResolver : IPathResolver
         {
@@ -590,5 +481,7 @@ namespace FFTColorCustomizer.Services
                 }
             }
         }
+
+        #endregion
     }
 }

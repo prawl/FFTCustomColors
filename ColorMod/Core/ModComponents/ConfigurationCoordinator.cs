@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.Services;
 using FFTColorCustomizer.Utilities;
 using static FFTColorCustomizer.Core.ColorModConstants;
 
@@ -24,69 +25,10 @@ namespace FFTColorCustomizer.Core.ModComponents
             _configManager = new ConfigurationManager(_configPath);
 
             // Use provided mod path if available, otherwise try to detect it
-            var actualModPath = modPath ?? GetActualModPath(_configPath);
+            var actualModPath = modPath ?? FFTIVCPathResolver.FindModPathFromConfigPath(_configPath) ?? Path.GetDirectoryName(_configPath);
             ModLogger.Log($"ConfigurationCoordinator using mod path: {actualModPath}");
             // In deployment, source path is the same as mod path
             _spriteManager = new ConfigBasedSpriteManager(actualModPath, _configManager, actualModPath);
-        }
-
-        private string GetActualModPath(string configPath)
-        {
-            // If config path is in User directory, find the actual mod installation
-            if (configPath.Contains(@"User\Mods") || configPath.Contains(@"User/Mods"))
-            {
-                var configDir = Path.GetDirectoryName(configPath);
-                if (configDir != null)
-                {
-                    var userModsIdx = configDir.IndexOf(@"User\Mods", StringComparison.OrdinalIgnoreCase);
-                    if (userModsIdx == -1)
-                        userModsIdx = configDir.IndexOf(@"User/Mods", StringComparison.OrdinalIgnoreCase);
-
-                    if (userModsIdx >= 0)
-                    {
-                        var reloadedRoot = configDir.Substring(0, userModsIdx);
-                        var modsDir = Path.Combine(reloadedRoot, "Mods");
-
-                        // First try the non-versioned path
-                        var directPath = Path.Combine(modsDir, "FFTColorCustomizer");
-                        if (Directory.Exists(directPath))
-                        {
-                            return directPath;
-                        }
-
-                        // Look for versioned directories and use the highest version
-                        try
-                        {
-                            var versionedDirs = Directory.GetDirectories(modsDir, "FFTColorCustomizer_v*")
-                                .OrderByDescending(dir =>
-                                {
-                                    var dirName = Path.GetFileName(dir);
-                                    var versionStr = dirName.Substring(dirName.LastIndexOf('v') + 1);
-                                    if (int.TryParse(versionStr, out int version))
-                                        return version;
-                                    return 0;
-                                })
-                                .ToArray();
-
-                            if (versionedDirs.Length > 0)
-                            {
-                                ModLogger.Log($"Found versioned mod directory: {versionedDirs[0]}");
-                                return versionedDirs[0];
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            ModLogger.LogWarning($"Error searching for versioned directories: {ex.Message}");
-                        }
-
-                        // Fallback to non-versioned path
-                        return directPath;
-                    }
-                }
-            }
-
-            // Fallback to config directory
-            return Path.GetDirectoryName(configPath);
         }
 
         /// <summary>

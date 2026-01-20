@@ -12,7 +12,8 @@ using FFTColorCustomizer.Configuration;
 namespace Tests.Configuration.UI
 {
     /// <summary>
-    /// Tests for versioned directory path detection in CharacterRowBuilder
+    /// Tests for versioned directory path detection using FFTIVCPathResolver.
+    /// Originally tested CharacterRowBuilder.FindActualUnitPath, now consolidated into FFTIVCPathResolver.
     /// </summary>
     public class CharacterRowBuilderPathTests : IDisposable
     {
@@ -57,18 +58,8 @@ namespace Tests.Configuration.UI
             Directory.CreateDirectory(Path.GetDirectoryName(testSprite));
             File.WriteAllBytes(testSprite, new byte[] { 0x01, 0x02, 0x03 });
 
-            // Act - Use reflection to test private method
-            // Create minimal required objects for constructor
-            var tablePanel = new TableLayoutPanel();
-            var previewManager = new PreviewImageManager(expectedPath);
-            Func<bool> isInitializing = () => false;
-            var genericControls = new List<Control>();
-            var storyControls = new List<Control>();
-
-            var builder = new CharacterRowBuilder(tablePanel, previewManager, isInitializing, genericControls, storyControls);
-            var builderType = typeof(CharacterRowBuilder);
-            var method = builderType.GetMethod("FindActualUnitPath", BindingFlags.NonPublic | BindingFlags.Instance);
-            var actualPath = (string)method.Invoke(builder, new object[] { modPath });
+            // Act - Use the new FFTIVCPathResolver
+            var actualPath = FFTIVCPathResolver.FindUnitPath(modPath);
 
             // Assert
             Assert.Equal(expectedPath, actualPath);
@@ -98,18 +89,8 @@ namespace Tests.Configuration.UI
             // Mod reports it's in non-versioned path (but it doesn't exist)
             var modPath = Path.Combine(modsPath, "FFTColorCustomizer");
 
-            // Act
-            var builderType = typeof(CharacterRowBuilder);
-            // Create minimal required objects for constructor
-            var tablePanel = new TableLayoutPanel();
-            var previewManager = new PreviewImageManager(modPath);
-            Func<bool> isInitializing = () => false;
-            var genericControls = new List<Control>();
-            var storyControls = new List<Control>();
-
-            var builder = new CharacterRowBuilder(tablePanel, previewManager, isInitializing, genericControls, storyControls);
-            var method = builderType.GetMethod("FindActualUnitPath", BindingFlags.NonPublic | BindingFlags.Instance);
-            var actualPath = (string)method.Invoke(builder, new object[] { modPath });
+            // Act - Use the new FFTIVCPathResolver
+            var actualPath = FFTIVCPathResolver.FindUnitPath(modPath);
 
             // Assert - should find v110 (highest version)
             Assert.Equal(v110Path, actualPath);
@@ -121,18 +102,8 @@ namespace Tests.Configuration.UI
             // Arrange
             var modPath = Path.Combine(_testRootPath, "NonExistentMod");
 
-            // Act
-            var builderType = typeof(CharacterRowBuilder);
-            // Create minimal required objects for constructor
-            var tablePanel = new TableLayoutPanel();
-            var previewManager = new PreviewImageManager(modPath);
-            Func<bool> isInitializing = () => false;
-            var genericControls = new List<Control>();
-            var storyControls = new List<Control>();
-
-            var builder = new CharacterRowBuilder(tablePanel, previewManager, isInitializing, genericControls, storyControls);
-            var method = builderType.GetMethod("FindActualUnitPath", BindingFlags.NonPublic | BindingFlags.Instance);
-            var actualPath = (string)method.Invoke(builder, new object[] { modPath });
+            // Act - Use the new FFTIVCPathResolver
+            var actualPath = FFTIVCPathResolver.FindUnitPath(modPath);
 
             // Assert - should return fallback path even if it doesn't exist
             var expectedFallback = Path.Combine(modPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
@@ -175,22 +146,10 @@ namespace Tests.Configuration.UI
                 EnumType = "StoryCharacter"
             });
 
-            // Act - This should use the versioned path internally
+            // Act - Test that FFTIVCPathResolver finds the versioned path
             var exception = Record.Exception(() =>
             {
-                // CharacterRowBuilder constructor requires more parameters
-                // We're just testing path detection, not the full builder
-                var builderType = typeof(CharacterRowBuilder);
-                // Create minimal required objects for constructor
-                var tablePanel = new TableLayoutPanel();
-                var previewManager = new PreviewImageManager(modPath);
-                Func<bool> isInitializing = () => false;
-                var genericControls = new List<Control>();
-                var storyControls = new List<Control>();
-
-                var builder = new CharacterRowBuilder(tablePanel, previewManager, isInitializing, genericControls, storyControls);
-                var method = builderType.GetMethod("FindActualUnitPath", BindingFlags.NonPublic | BindingFlags.Instance);
-                var actualPath = (string)method.Invoke(builder, new object[] { modPath });
+                var actualPath = FFTIVCPathResolver.FindUnitPath(modPath);
                 Assert.Equal(versionedPath, actualPath);
             });
 
@@ -222,22 +181,10 @@ namespace Tests.Configuration.UI
 
             var modPath = Path.Combine(modsPath, "FFTColorCustomizer");
 
-            // Act
+            // Act - Test that FFTIVCPathResolver finds the versioned path
             var exception = Record.Exception(() =>
             {
-                // CharacterRowBuilder constructor requires more parameters
-                // We're just testing path detection, not the full builder
-                var builderType = typeof(CharacterRowBuilder);
-                // Create minimal required objects for constructor
-                var tablePanel = new TableLayoutPanel();
-                var previewManager = new PreviewImageManager(modPath);
-                Func<bool> isInitializing = () => false;
-                var genericControls = new List<Control>();
-                var storyControls = new List<Control>();
-
-                var builder = new CharacterRowBuilder(tablePanel, previewManager, isInitializing, genericControls, storyControls);
-                var method = builderType.GetMethod("FindActualUnitPath", BindingFlags.NonPublic | BindingFlags.Instance);
-                var actualPath = (string)method.Invoke(builder, new object[] { modPath });
+                var actualPath = FFTIVCPathResolver.FindUnitPath(modPath);
                 Assert.Equal(versionedPath, actualPath);
             });
 
@@ -297,18 +244,8 @@ namespace Tests.Configuration.UI
 
             var modPath = Path.Combine(modsPath, "FFTColorCustomizer");
 
-            // Act
-            var builderType = typeof(CharacterRowBuilder);
-            // Create minimal required objects for constructor
-            var tablePanel = new TableLayoutPanel();
-            var previewManager = new PreviewImageManager(modPath);
-            Func<bool> isInitializing = () => false;
-            var genericControls = new List<Control>();
-            var storyControls = new List<Control>();
-
-            var builder = new CharacterRowBuilder(tablePanel, previewManager, isInitializing, genericControls, storyControls);
-            var method = builderType.GetMethod("FindActualUnitPath", BindingFlags.NonPublic | BindingFlags.Instance);
-            var actualPath = (string)method.Invoke(builder, new object[] { modPath });
+            // Act - Use the new FFTIVCPathResolver
+            var actualPath = FFTIVCPathResolver.FindUnitPath(modPath);
 
             // Assert - should prefer the direct path when it exists
             Assert.Equal(directPath, actualPath);
@@ -326,18 +263,8 @@ namespace Tests.Configuration.UI
 
             var modPath = Path.Combine(modsPath, "FFTColorCustomizer");
 
-            // Act
-            var builderType = typeof(CharacterRowBuilder);
-            // Create minimal required objects for constructor
-            var tablePanel = new TableLayoutPanel();
-            var previewManager = new PreviewImageManager(modPath);
-            Func<bool> isInitializing = () => false;
-            var genericControls = new List<Control>();
-            var storyControls = new List<Control>();
-
-            var builder = new CharacterRowBuilder(tablePanel, previewManager, isInitializing, genericControls, storyControls);
-            var method = builderType.GetMethod("FindActualUnitPath", BindingFlags.NonPublic | BindingFlags.Instance);
-            var actualPath = (string)method.Invoke(builder, new object[] { modPath });
+            // Act - Use the new FFTIVCPathResolver
+            var actualPath = FFTIVCPathResolver.FindUnitPath(modPath);
 
             // Assert
             Assert.Equal(versionedPath, actualPath);
@@ -361,18 +288,8 @@ namespace Tests.Configuration.UI
 
             var modPath = Path.Combine(modsPath, "FFTColorCustomizer");
 
-            // Act
-            var builderType = typeof(CharacterRowBuilder);
-            // Create minimal required objects for constructor
-            var tablePanel = new TableLayoutPanel();
-            var previewManager = new PreviewImageManager(modPath);
-            Func<bool> isInitializing = () => false;
-            var genericControls = new List<Control>();
-            var storyControls = new List<Control>();
-
-            var builder = new CharacterRowBuilder(tablePanel, previewManager, isInitializing, genericControls, storyControls);
-            var method = builderType.GetMethod("FindActualUnitPath", BindingFlags.NonPublic | BindingFlags.Instance);
-            var actualPath = (string)method.Invoke(builder, new object[] { modPath });
+            // Act - Use the new FFTIVCPathResolver
+            var actualPath = FFTIVCPathResolver.FindUnitPath(modPath);
 
             // Assert - should only find the valid versioned directory
             Assert.Equal(validPath, actualPath);

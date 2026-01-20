@@ -169,13 +169,19 @@ A well-implemented IoC container exists but is barely used. Instead, 3 static si
 
 #### Path Resolution (4+ copies of same logic)
 
-The same 40+ line pattern for finding FFTIVC paths exists in:
-- `ConfigBasedSpriteManager.FindFFTIVCPath()`
-- `CharacterRowBuilder.FindActualUnitPath()`
-- `ConfigurationCoordinator.GetActualModPath()`
-- `ThemeManagerAdapter.SimplePathResolver`
+~~The same 40+ line pattern for finding FFTIVC paths exists in:~~
+- ~~`ConfigBasedSpriteManager.FindFFTIVCPath()`~~ ✅ REMOVED
+- ~~`CharacterRowBuilder.FindActualUnitPath()`~~ ✅ REMOVED
+- ~~`CharacterRowBuilder.FindActualUnitPspPath()`~~ ✅ REMOVED
+- ~~`ConfigurationCoordinator.GetActualModPath()`~~ ✅ REMOVED
+- `ThemeManagerAdapter.SimplePathResolver` (different concern - implements IPathResolver interface)
 
-**Recommendation:** Create single `FFTIVCPathResolver` service
+**Status:** ✅ DONE (2025-01-19) - Created `FFTIVCPathResolver` static service class (~165 lines)
+- `FindUnitPath(modPath)` - finds FFTIVC unit directory
+- `FindUnitPspPath(modPath)` - finds FFTIVC unit_psp directory (WotL)
+- `FindModPathFromConfigPath(configPath)` - finds mod root from user config path
+
+**~200 lines of duplicate code consolidated into one reusable service**
 
 ---
 
@@ -561,9 +567,9 @@ Mod.cs
 |------|--------|--------|
 | ~~Fix `JobClassServiceSingleton` thread safety~~ | ~~Critical~~ | ✅ DONE (2025-01-19) |
 | ~~Fix `UserThemeServiceSingleton` thread safety~~ | ~~Critical~~ | ✅ DONE (2025-01-19) |
-| Extract path resolution to `FFTIVCPathResolver` | High | 2 hours |
-| Parameterize character theme cycling | Medium | 1 hour |
-| Remove excessive debug logging | Low | 30 min |
+| ~~Extract path resolution to `FFTIVCPathResolver`~~ | ~~High~~ | ✅ DONE (2025-01-19) |
+| ~~Parameterize character theme cycling~~ | ~~Medium~~ | ✅ DONE (2025-01-19) - ThemeManagerAdapter reduced ~100 lines |
+| ~~Remove excessive debug logging~~ | ~~Low~~ | ✅ DONE (2025-01-19) - ConfigBasedSpriteManager, CharacterRowBuilder |
 
 ### Phase 2: Core Architecture (1 week)
 
@@ -604,7 +610,7 @@ Mod.cs
 | God classes (>500 lines) | 4 | 0 |
 | Manager/Service/Coordinator classes | 30 | ~15 |
 | Static singletons (thread-safe) | 3 | 0 |
-| Duplicate path resolution | 4+ copies | 1 |
+| Duplicate path resolution | ~~4+ copies~~ 1 | 1 | ✅ DONE |
 | Constructor injection rate | ~30% | 95%+ |
 | Average class size | 142 LOC | <100 LOC |
 | Test coverage for core services | ~60% | 80%+ |
@@ -616,10 +622,10 @@ Mod.cs
 
 ### Files Requiring Immediate Attention
 
-1. **ConfigBasedSpriteManager.cs** (~1079 lines) - Split immediately
+1. **ConfigBasedSpriteManager.cs** (~1035 lines) - Split immediately
 2. **Mod.cs** (554 lines) - Extract to delegated components
 3. **Config.cs** (~614 lines) - Dictionary-based refactor (partial progress)
-4. **ThemeManagerAdapter.cs** (444 lines) - Remove duplicate methods
+4. ~~**ThemeManagerAdapter.cs** (444 → ~489 lines) - Remove duplicate methods~~ ✅ DONE (2025-01-19) - consolidated to generic methods
 5. ~~**JobClassServiceSingleton.cs** - Fix thread safety bug~~ ✅ FIXED (2025-01-19)
 
 ### Files Deleted (2025-01-19)
@@ -655,14 +661,17 @@ Mod.cs
 
 This codebase is **functional but has accumulated technical debt** through organic growth. The good news:
 
-1. **867 passing tests** provide a safety net for refactoring
+1. **1101 passing tests** provide a safety net for refactoring
 2. **Good instincts** - data-driven design, interfaces exist
 3. **Proper DI container** already built (just not used)
+4. **Phase 1 complete** - Thread safety fixed, path resolution consolidated, duplicate methods parameterized
 
 The main issues stem from:
 1. Static singletons instead of proper DI
 2. God classes doing too much
-3. Code duplication that should be consolidated
-4. Legacy code that should be removed
+3. ~~Code duplication that should be consolidated~~ Partially addressed (ThemeManagerAdapter)
+4. ~~Legacy code that should be removed~~ ✅ DONE
+
+**Progress:** Phase 1 (Quick Wins) is now complete. Ready to begin Phase 2 (Core Architecture).
 
 A focused refactoring effort could move this codebase from **B-/C+** to a solid **B+/A-**.

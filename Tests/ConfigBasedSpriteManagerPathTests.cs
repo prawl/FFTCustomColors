@@ -62,7 +62,7 @@ namespace FFTColorCustomizer.Tests
             var method = typeof(ConfigBasedSpriteManager).GetMethod("ApplyStoryCharacterTheme",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-            method.Invoke(manager, new object[] { "agrias", "aguri", "lucavi", false });
+            method.Invoke(manager, new object[] { "agrias", "aguri", "lucavi" });
 
             // Assert - the theme file should be copied to the destination
             var destFile = Path.Combine(destDir, "battle_aguri_spr.bin");
@@ -92,7 +92,7 @@ namespace FFTColorCustomizer.Tests
             var method = typeof(ConfigBasedSpriteManager).GetMethod("ApplyStoryCharacterTheme",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-            method.Invoke(manager, new object[] { "mustadio", "musu", "original", false });
+            method.Invoke(manager, new object[] { "mustadio", "musu", "original" });
 
             // Assert - no file should be copied because it only exists in source path
             var destFile = Path.Combine(destDir, "battle_musu_spr.bin");
@@ -120,7 +120,7 @@ namespace FFTColorCustomizer.Tests
             var method = typeof(ConfigBasedSpriteManager).GetMethod("ApplyStoryCharacterTheme",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-            method.Invoke(manager, new object[] { "cloud", "cloud", "soldier_blue", false });
+            method.Invoke(manager, new object[] { "cloud", "cloud", "soldier_blue" });
 
             // Assert
             var destFile = Path.Combine(destDir, "battle_cloud_spr.bin");
