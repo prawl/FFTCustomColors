@@ -565,11 +565,11 @@ Mod.cs
 
 | Task | Impact | Effort |
 |------|--------|--------|
-| Refactor `Config.cs` to dictionary-based | High | ~Partial (dictionaries added) |
+| ~~Refactor `Config.cs` to dictionary-based~~ | ~~High~~ | ✅ DONE (2025-01-20) - Reduced from 614 to ~286 lines |
 | ~~Split `ConfigBasedSpriteManager` into 3-4 services~~ | ~~High~~ | ✅ DONE (2025-01-19) - Split into 6 focused classes |
 | ~~Extract `Mod.cs` logic to delegated components~~ | ~~High~~ | ✅ DONE (2025-01-19) - Created ModBootstrapper, FileInterceptor |
 | ~~Eliminate static singletons, use DI~~ | ~~High~~ | ✅ IN PROGRESS (2025-01-19) - ServiceRegistry + DI foundation |
-| Implement `ICharacterThemeHandler` strategy | Medium | 4 hours |
+| ~~Implement `ICharacterThemeHandler` strategy~~ | ~~Medium~~ | ✅ DONE (2025-01-20) - Full Strategy pattern with tests |
 
 ### Phase 3: Cleanup (1 week)
 
@@ -597,14 +597,14 @@ Mod.cs
 
 | Metric | Current | Target |
 |--------|---------|--------|
-| God classes (>500 lines) | ~~3~~ 2 | 0 |
+| God classes (>500 lines) | ~~3~~ ~~2~~ 1 | 0 |
 | Manager/Service/Coordinator classes | 30 | ~15 |
 | Static singletons (thread-safe) | 3 (DI fallback) | 0 |
 | Duplicate path resolution | ~~4+ copies~~ 1 | 1 | ✅ DONE |
 | Constructor injection rate | ~30% | 95%+ |
 | Average class size | 142 LOC | <100 LOC |
 | Test coverage for core services | ~60% | 80%+ |
-| Total tests | 1098 | - |
+| Total tests | 1101+ | - |
 
 ---
 
@@ -637,6 +637,15 @@ Mod.cs
 
 - `ServiceRegistry.cs` (~130 lines) - Configures all services in DI container, manages singleton sync
 
+### Files Created (2025-01-20) - ICharacterThemeHandler Strategy Pattern
+
+- `ICharacterThemeHandler.cs` (~65 lines) - Strategy interface for character theme handling
+- `IMultiChapterCharacterHandler.cs` (in same file) - Extended interface for Ramza's multi-chapter system
+- `StandardCharacterThemeHandler.cs` (~135 lines) - Handler for standard characters (Orlandeau, Agrias, etc.)
+- `RamzaCharacterThemeHandler.cs` (~350 lines) - Handler for Ramza's multi-chapter TEX/NXD system
+- `CharacterThemeHandlerRegistry.cs` (~230 lines) - Registry to manage all character handlers
+- `CharacterThemeHandlerTests.cs` (~300 lines) - Comprehensive tests for handler classes
+
 ### Files Deleted (2025-01-19)
 
 - ~~`ThemeManagerLegacy.cs`~~ (196 lines) ✅
@@ -661,7 +670,7 @@ Mod.cs
 - `ISpriteManager` (for ConfigBasedSpriteManager)
 - `ICharacterDefinitionService`
 - `IJobClassDefinitionService`
-- `ICharacterThemeHandler`
+- ~~`ICharacterThemeHandler`~~ ✅ DONE (2025-01-20)
 - `IFileInterceptor`
 
 ---
@@ -681,11 +690,16 @@ The main issues stem from:
 3. ~~Code duplication that should be consolidated~~ Partially addressed (ThemeManagerAdapter)
 4. ~~Legacy code that should be removed~~ ✅ DONE
 
-**Progress:** Phase 1 (Quick Wins) complete. Phase 2 largely complete:
+**Progress:** Phase 1 (Quick Wins) complete. Phase 2 complete:
 - ✅ `ConfigBasedSpriteManager` split into 6 focused classes
 - ✅ `Mod.cs` refactored with `ModBootstrapper` and `FileInterceptor`
 - ✅ DI infrastructure added (`ServiceRegistry`, `ServiceContainer` integration)
+- ✅ `Config.cs` refactored to dictionary-based approach
+- ✅ `ICharacterThemeHandler` Strategy pattern implemented with full test coverage
+  - `StandardCharacterThemeHandler` for 9 standard characters
+  - `RamzaCharacterThemeHandler` for multi-chapter TEX/NXD system
+  - `CharacterThemeHandlerRegistry` for unified theme operations
 - Static singletons still exist as fallback but DI is now primary path
-- Remaining: Config.cs dictionary refactor, complete singleton elimination
+- Remaining: Complete singleton elimination, consolidate theme classes
 
 A focused refactoring effort could move this codebase from **B-/C+** to a solid **B+/A-**.
