@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Threading;
 using System.Windows.Forms;
 using FFTColorCustomizer.Configuration.UI;
 
@@ -438,7 +439,8 @@ namespace FFTColorCustomizer.ThemeEditor
         /// </summary>
         public void CopyToClipboard()
         {
-            Clipboard.SetText(GetHexColor());
+            var hexColor = GetHexColor();
+            RunOnStaThread(() => Clipboard.SetText(hexColor));
         }
 
         /// <summary>
@@ -446,13 +448,51 @@ namespace FFTColorCustomizer.ThemeEditor
         /// </summary>
         public void PasteFromClipboard()
         {
-            if (Clipboard.ContainsText())
+            string? text = null;
+            RunOnStaThread(() =>
             {
-                var text = Clipboard.GetText();
-                if (TryParseHexColor(text, out var color))
+                if (Clipboard.ContainsText())
                 {
-                    SetColor(color);
+                    text = Clipboard.GetText();
                 }
+            });
+
+            if (text != null && TryParseHexColor(text, out var color))
+            {
+                SetColor(color);
+            }
+        }
+
+        /// <summary>
+        /// Runs an action on a new STA thread. Required for clipboard operations.
+        /// </summary>
+        private static void RunOnStaThread(Action action)
+        {
+            if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
+            {
+                action();
+                return;
+            }
+
+            Exception? exception = null;
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    exception = ex;
+                }
+            });
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            thread.Join();
+
+            if (exception != null)
+            {
+                throw exception;
             }
         }
 
