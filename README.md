@@ -1,6 +1,6 @@
 # FFT Color Customizer
 
-A Reloaded-II mod for **Final Fantasy Tactics: The War of the Lions Remaster** that lets you customize unit colors with 210+ unique themes.
+A Reloaded-II mod for **Final Fantasy Tactics: The Ivalice Chronicles** that lets you customize unit colors with 210+ unique themes.
 
 ## Features
 
@@ -91,6 +91,6 @@ MIT
 ## Credits
 
 - **Author**: Paxtrick
-- **Game**: Final Fantasy Tactics: The War of the Lions Remaster by Square Enix
+- **Game**: Final Fantasy Tactics: The Ivalice Chronicles by Square Enix
 - **Mod Framework**: [Reloaded-II](https://reloaded-project.github.io/Reloaded-II/)
 - **NXD Tools**: [FF16Tools](https://github.com/Nenkai/FF16Tools) by Nenkai
