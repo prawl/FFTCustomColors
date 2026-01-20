@@ -14,179 +14,138 @@ using static FFTColorCustomizer.Core.ColorModConstants;
 namespace FFTColorCustomizer;
 
 /// <summary>
-/// Thin orchestrator for FFT Color Mod - delegates to specialized components
+/// Thin orchestrator for FFT Color Mod - delegates to specialized components.
+/// This class is the entry point loaded by Reloaded-II mod loader.
 /// </summary>
 public class Mod : IMod, IConfigurable
 {
-    // Core components
-    private Core.ModComponents.ModInitializer? _initializer;
-    private ConfigurationCoordinator? _configCoordinator;
-    private ThemeCoordinator? _themeCoordinator;
-    private HotkeyManager? _hotkeyManager;
+    // Core components (managed by ModBootstrapper)
+    private ModBootstrapper? _bootstrapper;
+    private FileInterceptor? _fileInterceptor;
+    private IHotkeyHandler? _hotkeyHandler;
 
     // State
-    private readonly string _modPath;
-    private readonly string _sourcePath;
-    private readonly bool _isTestEnvironment;
-    private readonly IInputSimulator? _inputSimulator;
-    private readonly IHotkeyHandler? _hotkeyHandler;
     private bool _hasStarted = false;
 
     // Events
     public event Action? ConfigUIRequested;
 
     // Properties
-    public string ModId => Core.ColorModConstants.ModId;
+    public string ModId => ColorModConstants.ModId;
 
     #region Constructors
 
+    /// <summary>
+    /// Test constructor with dependency injection
+    /// </summary>
     public Mod(ModContext context, IInputSimulator? inputSimulator = null, IHotkeyHandler? hotkeyHandler = null)
     {
-        // Initialize ModLogger with ConsoleLogger
-        ModLogger.Reset();
-        ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
-        ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD - Maximum verbosity
-        ModLogger.Log("Mod constructor called - DEBUG BUILD v2.0.2-debug");
+        InitializeLogger();
+        ModLogger.Log("Mod constructor called (test mode) - DEBUG BUILD v2.0.2-debug");
 
-        _inputSimulator = inputSimulator;
+        _bootstrapper = ModBootstrapper.CreateForTesting(context, inputSimulator, hotkeyHandler);
         _hotkeyHandler = hotkeyHandler;
-        _isTestEnvironment = hotkeyHandler is NullHotkeyHandler;
 
-        // Initialize paths
-        _modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
-            ?? Environment.CurrentDirectory;
-        // In deployment, source and mod path are the same (sprites are in the mod directory)
-        _sourcePath = _modPath;
-
-        ModLogger.Log($"Mod initialized with path: {_modPath}");
-        ModLogger.Log($"Assembly location: {System.Reflection.Assembly.GetExecutingAssembly().Location}");
-
-        // Initialize components
-        InitializeComponents();
+        LogAssemblyInfo();
+        InitializeFromBootstrapper();
     }
 
+    /// <summary>
+    /// Default constructor for Reloaded-II mod loader
+    /// </summary>
     public Mod()
     {
-        // Initialize ModLogger with ConsoleLogger
-        ModLogger.Reset();
-        ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
-        ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD - Maximum verbosity for troubleshooting
-
+        InitializeLogger();
         ModLogger.Log("Default constructor called");
 
-        // Initialize paths first
-        _modPath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
-            ?? Environment.CurrentDirectory;
-        // In deployment, source and mod path are the same (sprites are in the mod directory)
-        _sourcePath = _modPath;
-
-        ModLogger.Log($"Mod initialized with path: {_modPath}");
-        ModLogger.Log($"Assembly location: {System.Reflection.Assembly.GetExecutingAssembly().Location}");
-
-        // Set up production components
-        _inputSimulator = new InputSimulator();
+        _bootstrapper = ModBootstrapper.CreateForProduction();
         _hotkeyHandler = new HotkeyHandler(ProcessHotkeyPress);
-        _isTestEnvironment = false;
 
-        ModLogger.LogDebug($"HotkeyHandler created: {_hotkeyHandler != null}");
-        ModLogger.LogDebug($"InputSimulator created: {_inputSimulator != null}");
+        LogAssemblyInfo();
+        InitializeFromBootstrapper();
 
-        // Initialize components
-        InitializeComponents();
-
-        // Initialize configuration immediately to ensure it's ready
-        var configPath = GetUserConfigPath();
+        // Initialize and start immediately for production
+        var configPath = _bootstrapper.ResolveUserConfigPath();
         InitializeConfiguration(configPath);
 
-        // Since Start is not being called by Reloaded-II, call it manually
         ModLogger.LogDebug("Calling Start manually from constructor");
         Start(null);
     }
 
+    /// <summary>
+    /// DI constructor
+    /// </summary>
     public Mod(IServiceContainer container) : this(new ModContext())
     {
-        // Initialize configuration immediately when using DI
-        var configPath = GetUserConfigPath();
+        var configPath = _bootstrapper!.ResolveUserConfigPath();
         InitializeConfiguration(configPath);
     }
 
     #endregion
 
-    #region Component Initialization
+    #region Initialization Helpers
 
-    private void InitializeComponents()
+    private static void InitializeLogger()
     {
-        try
-        {
-            ModLogger.Log("Initializing mod components");
-
-            // Create initializer and set up core components
-            _initializer = new Core.ModComponents.ModInitializer(_modPath, _isTestEnvironment);
-            _initializer.InitializeRegistry();
-            _initializer.InitializeColorSchemeCycler();
-
-            // Initialize theme coordinator
-            _themeCoordinator = new ThemeCoordinator(_sourcePath, _modPath);
-
-            ModLogger.Log("Mod components initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            ModLogger.LogError($"Failed to initialize components: {ex.Message}");
-        }
+        ModLogger.Reset();
+        ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
+        ModLogger.LogLevel = Interfaces.LogLevel.Debug;
     }
+
+    private void LogAssemblyInfo()
+    {
+        ModLogger.Log($"Mod initialized with path: {_bootstrapper?.ModPath}");
+        ModLogger.Log($"Assembly location: {System.Reflection.Assembly.GetExecutingAssembly().Location}");
+    }
+
+    private void InitializeFromBootstrapper()
+    {
+        _bootstrapper?.InitializeCoreComponents();
+    }
+
+    #endregion
+
+    #region Configuration
 
     public void InitializeConfiguration(string configPath)
     {
         try
         {
-            ModLogger.Log($"Initializing configuration at: {configPath}");
+            _bootstrapper?.InitializeConfiguration(configPath);
 
-            // Set the mod path for CharacterServiceSingleton to find StoryCharacters.json
-            Services.CharacterServiceSingleton.SetModPath(_modPath);
-            // Also initialize JobClassServiceSingleton with the mod path
-            Services.JobClassServiceSingleton.Initialize(_modPath);
-
-            // Initialize coordinators and managers - pass actual mod path to avoid path resolution issues
-            _configCoordinator = new ConfigurationCoordinator(configPath, _modPath);
-
-            // Get the theme manager from the coordinator (use the same instance everywhere)
-            var themeManager = _themeCoordinator?.GetThemeManager();
-
-            // Setup hotkey handling
+            // Initialize hotkey handling
+            var themeManager = _bootstrapper?.ThemeCoordinator?.GetThemeManager();
             if (themeManager != null)
             {
-                _hotkeyManager = new HotkeyManager(
-                    _inputSimulator,
-                    themeManager,
-                    () => OpenConfigurationUI(),
-                    () => _configCoordinator?.ResetToDefaults()
+                _bootstrapper?.InitializeHotkeys(
+                    ProcessHotkeyPress,
+                    OpenConfigurationUI,
+                    () => _bootstrapper?.ConfigCoordinator?.ResetToDefaults()
+                );
+            }
+
+            // Create file interceptor
+            if (_bootstrapper?.ThemeCoordinator != null && _bootstrapper?.ConfigCoordinator != null)
+            {
+                _fileInterceptor = new FileInterceptor(
+                    _bootstrapper.ModPath,
+                    _bootstrapper.ThemeCoordinator,
+                    spriteName => _bootstrapper.ConfigCoordinator.GetJobColorForSprite(spriteName)
                 );
             }
 
             // Apply initial configuration themes
-            ApplyInitialConfiguration(themeManager);
+            var config = _bootstrapper?.ConfigCoordinator?.GetConfiguration();
+            if (config != null)
+            {
+                _bootstrapper?.ApplyInitialStoryCharacterThemes(config);
+            }
 
             ModLogger.Log("Configuration initialized successfully");
         }
         catch (Exception ex)
         {
             ModLogger.LogError($"Failed to initialize configuration: {ex.Message}");
-        }
-    }
-
-    private void ApplyInitialConfiguration(ThemeManager? themeManager)
-    {
-        if (_configCoordinator == null || themeManager == null) return;
-
-        var config = _configCoordinator.GetConfiguration();
-        if (config != null)
-        {
-            _initializer?.InitializeStoryCharacterThemes(config, themeManager);
-            // Don't apply themes here - let the Start method handle it with proper delay
-            // This prevents duplicate calls to ApplyInitialThemes
-
-            // Note: Generic job themes will be applied in Start method after delay
         }
     }
 
@@ -198,7 +157,6 @@ public class Mod : IMod, IConfigurable
     {
         ModLogger.Log("Start method called");
 
-        // Prevent duplicate initialization
         if (_hasStarted)
         {
             ModLogger.LogDebug("Start already called, skipping duplicate initialization");
@@ -206,88 +164,99 @@ public class Mod : IMod, IConfigurable
         }
         _hasStarted = true;
 
-        ModLogger.LogDebug($"_hotkeyHandler exists: {_hotkeyHandler != null}");
-        ModLogger.LogDebug($"_inputSimulator exists: {_inputSimulator != null}");
-        ModLogger.LogDebug($"_configCoordinator exists: {_configCoordinator != null}");
-
-        // Ensure configuration is initialized
         EnsureConfigurationInitialized();
-        ModLogger.LogDebug($"After EnsureConfig - _configCoordinator exists: {_configCoordinator != null}");
-        ModLogger.LogDebug($"After EnsureConfig - _hotkeyManager exists: {_hotkeyManager != null}");
+        ApplyThemesBasedOnEnvironment();
+        StartHotkeyMonitoring();
+    }
 
-        // Apply themes - immediately in test environment, with delay in production
-        if (_configCoordinator != null && _themeCoordinator != null)
+    private void EnsureConfigurationInitialized()
+    {
+        if (_bootstrapper?.ConfigCoordinator == null)
         {
-            if (_isTestEnvironment)
-            {
-                // In test environment, apply themes immediately (synchronously)
-                ModLogger.Log("Applying initial themes immediately (test environment)...");
-                var config = _configCoordinator.GetConfiguration();
-                if (config != null)
-                {
-                    var themeManager = _themeCoordinator.GetThemeManager();
-                    if (themeManager != null)
-                    {
-                        _initializer?.InitializeStoryCharacterThemes(config, themeManager);
-                        themeManager.ApplyInitialThemes();
+            ModLogger.Log("Configuration coordinator is null, initializing...");
+            var configPath = _bootstrapper?.ResolveUserConfigPath() ?? Path.Combine(Environment.CurrentDirectory, ConfigFileName);
+            InitializeConfiguration(configPath);
+        }
+    }
 
-                        // CRITICAL: Also apply generic job themes
-                        _configCoordinator?.ApplyConfiguration();
+    private void ApplyThemesBasedOnEnvironment()
+    {
+        var configCoordinator = _bootstrapper?.ConfigCoordinator;
+        var themeCoordinator = _bootstrapper?.ThemeCoordinator;
 
-                        ModLogger.Log("Initial themes applied successfully (test environment)");
-                    }
-                }
-            }
-            else
-            {
-                // In production, apply themes after a delay to ensure mod loader is ready
-                ModLogger.Log("Scheduling initial theme application after delay...");
-                System.Threading.Tasks.Task.Run(async () =>
-                {
-                    try
-                    {
-                        // Wait for mod loader to be fully initialized
-                        await System.Threading.Tasks.Task.Delay(500);
+        if (configCoordinator == null || themeCoordinator == null)
+        {
+            ModLogger.LogWarning("Cannot apply themes: coordinators not initialized");
+            return;
+        }
 
-                        ModLogger.Log("Applying initial themes after delay...");
-                        var config = _configCoordinator.GetConfiguration();
-                        if (config != null)
-                        {
-                            ModLogger.Log($"Config loaded, applying themes for {config.GetType().GetProperties().Length} properties");
-                            var themeManager = _themeCoordinator.GetThemeManager();
-                            if (themeManager != null)
-                            {
-                                _initializer?.InitializeStoryCharacterThemes(config, themeManager);
-                                themeManager.ApplyInitialThemes();
-
-                                // CRITICAL: Also apply generic job themes after delay
-                                _configCoordinator?.ApplyConfiguration();
-
-                                ModLogger.Log("Initial themes applied successfully after delay");
-                            }
-                            else
-                            {
-                                ModLogger.LogWarning("ThemeManager is null after delay, cannot apply themes");
-                            }
-                        }
-                        else
-                        {
-                            ModLogger.LogWarning("Configuration is null after delay, cannot apply themes");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        ModLogger.LogError($"Failed to apply initial themes after delay: {ex.Message}");
-                    }
-                });
-            }
+        if (_bootstrapper?.IsTestEnvironment == true)
+        {
+            ApplyThemesImmediately(configCoordinator, themeCoordinator);
         }
         else
         {
-            ModLogger.LogWarning($"Cannot schedule theme application: configCoordinator={_configCoordinator != null}, themeCoordinator={_themeCoordinator != null}");
+            ApplyThemesWithDelay(configCoordinator, themeCoordinator);
         }
+    }
 
-        // Start hotkey monitoring
+    private void ApplyThemesImmediately(ConfigurationCoordinator configCoordinator, ThemeCoordinator themeCoordinator)
+    {
+        ModLogger.Log("Applying initial themes immediately (test environment)...");
+
+        var config = configCoordinator.GetConfiguration();
+        if (config != null)
+        {
+            var themeManager = themeCoordinator.GetThemeManager();
+            if (themeManager != null)
+            {
+                _bootstrapper?.Initializer?.InitializeStoryCharacterThemes(config, themeManager);
+                themeManager.ApplyInitialThemes();
+                configCoordinator.ApplyConfiguration();
+                ModLogger.Log("Initial themes applied successfully (test environment)");
+            }
+        }
+    }
+
+    private void ApplyThemesWithDelay(ConfigurationCoordinator configCoordinator, ThemeCoordinator themeCoordinator)
+    {
+        ModLogger.Log("Scheduling initial theme application after delay...");
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(500);
+                ModLogger.Log("Applying initial themes after delay...");
+
+                var config = configCoordinator.GetConfiguration();
+                if (config == null)
+                {
+                    ModLogger.LogWarning("Configuration is null after delay");
+                    return;
+                }
+
+                var themeManager = themeCoordinator.GetThemeManager();
+                if (themeManager == null)
+                {
+                    ModLogger.LogWarning("ThemeManager is null after delay");
+                    return;
+                }
+
+                _bootstrapper?.Initializer?.InitializeStoryCharacterThemes(config, themeManager);
+                themeManager.ApplyInitialThemes();
+                configCoordinator.ApplyConfiguration();
+                ModLogger.Log("Initial themes applied successfully after delay");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"Failed to apply initial themes after delay: {ex.Message}");
+            }
+        });
+    }
+
+    private void StartHotkeyMonitoring()
+    {
         if (_hotkeyHandler != null)
         {
             ModLogger.Log("Starting hotkey monitoring");
@@ -297,53 +266,6 @@ public class Mod : IMod, IConfigurable
         {
             ModLogger.LogError("HotkeyHandler is null, cannot start monitoring!");
         }
-    }
-
-    private void EnsureConfigurationInitialized()
-    {
-        if (_configCoordinator == null)
-        {
-            ModLogger.Log("Configuration coordinator is null, initializing...");
-            var configPath = GetUserConfigPath();
-            InitializeConfiguration(configPath);
-        }
-        else
-        {
-            ModLogger.LogDebug("Configuration coordinator already initialized");
-        }
-    }
-
-    private string GetUserConfigPath()
-    {
-        // Navigate from Mods/FFTColorCustomizer to User/Mods/paxtrick.fft.colorcustomizer
-        var parent = Directory.GetParent(_modPath);
-        if (parent != null)
-        {
-            var grandParent = Directory.GetParent(parent.FullName);
-            if (grandParent != null)
-            {
-                var reloadedRoot = grandParent.FullName;
-                var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "paxtrick.fft.colorcustomizer", ConfigFileName);
-
-                ModLogger.LogDebug($"Looking for user config at: {userConfigPath}");
-
-                // Use User config if it exists
-                if (File.Exists(userConfigPath))
-                {
-                    ModLogger.Log($"Using user config: {userConfigPath}");
-                    return userConfigPath;
-                }
-                else
-                {
-                    ModLogger.LogDebug("User config not found, falling back to mod config");
-                }
-            }
-        }
-
-        // Fallback to mod directory config
-        var fallbackPath = Path.Combine(_modPath, ConfigFileName);
-        ModLogger.Log($"Using fallback config: {fallbackPath}");
-        return fallbackPath;
     }
 
     public void Suspend() => ModLogger.Log("Mod suspended");
@@ -360,151 +282,67 @@ public class Mod : IMod, IConfigurable
 
     public string? ConfigName { get; set; } = "FFT Color Mod Configuration";
 
-    public Config? GetConfiguration()
-        => _configCoordinator?.GetConfiguration();
+    public Config? GetConfiguration() => _bootstrapper?.ConfigCoordinator?.GetConfiguration();
 
     public void ConfigurationUpdated(Config configuration)
     {
         ModLogger.Log("Configuration updated from Reloaded-II UI");
-        _configCoordinator?.UpdateConfiguration(configuration);
+        _bootstrapper?.ConfigCoordinator?.UpdateConfiguration(configuration);
         ApplyConfigurationThemes(configuration);
     }
 
     private void ApplyConfigurationThemes(Config? configuration)
     {
-        if (configuration == null || _themeCoordinator == null) return;
+        if (configuration == null || _bootstrapper?.ThemeCoordinator == null) return;
 
-        var themeManager = _themeCoordinator.GetThemeManager();
+        var themeManager = _bootstrapper.ThemeCoordinator.GetThemeManager();
         if (themeManager != null)
         {
-            _initializer?.InitializeStoryCharacterThemes(configuration, themeManager);
-            // Apply themes when configuration is updated externally (from Reloaded-II UI)
-            // This ensures the sprite files are actually copied to the correct locations
+            _bootstrapper.Initializer?.InitializeStoryCharacterThemes(configuration, themeManager);
             themeManager.ApplyInitialThemes();
         }
 
-        // CRITICAL: Also apply generic job themes (knights, monks, archers, etc.)
-        // This was missing and why generic characters didn't get themed on startup
-        _configCoordinator?.ApplyConfiguration();
+        _bootstrapper.ConfigCoordinator?.ApplyConfiguration();
     }
 
     public Action Save => () =>
     {
-        _configCoordinator?.SaveConfiguration();
+        _bootstrapper?.ConfigCoordinator?.SaveConfiguration();
         ApplyConfigurationThemes(GetConfiguration());
     };
 
     #endregion
 
-    #region Configuration Operations
+    #region Public API
 
     public void SetJobColor(string jobProperty, string colorScheme)
-        => _configCoordinator?.SetJobColor(jobProperty, colorScheme);
+        => _bootstrapper?.ConfigCoordinator?.SetJobColor(jobProperty, colorScheme);
 
     public string GetJobColor(string jobProperty)
-        => _configCoordinator?.GetJobColor(jobProperty) ?? DefaultTheme;
+        => _bootstrapper?.ConfigCoordinator?.GetJobColor(jobProperty) ?? DefaultTheme;
 
     public Dictionary<string, string> GetAllJobColors()
-        => _configCoordinator?.GetAllJobColors() ?? new Dictionary<string, string>();
+        => _bootstrapper?.ConfigCoordinator?.GetAllJobColors() ?? new Dictionary<string, string>();
 
-    public void ResetAllColors()
-    {
-        _configCoordinator?.ResetToDefaults();
-    }
+    public void ResetAllColors() => _bootstrapper?.ConfigCoordinator?.ResetToDefaults();
 
-    public bool HasConfigurationManager()
-        => _configCoordinator?.HasConfigurationManager() ?? false;
+    public bool HasConfigurationManager() => _bootstrapper?.ConfigCoordinator?.HasConfigurationManager() ?? false;
 
-    #endregion
+    public void SetColorScheme(string scheme) => _bootstrapper?.ThemeCoordinator?.SetColorScheme(scheme);
 
-    #region Theme Operations
-
-    public void SetColorScheme(string scheme)
-        => _themeCoordinator?.SetColorScheme(scheme);
-
-    public string GetCurrentColorScheme()
-        => _themeCoordinator?.GetCurrentColorScheme() ?? DefaultTheme;
+    public string GetCurrentColorScheme() => _bootstrapper?.ThemeCoordinator?.GetCurrentColorScheme() ?? DefaultTheme;
 
     public string InterceptFilePath(string originalPath)
     {
-        // Add diagnostic logging to debug why themes aren't loading
-        ModLogger.LogDebug($"[INTERCEPT] Called with path: {originalPath}");
-
-        // Ensure configuration and theme coordinator are initialized
-        if (_themeCoordinator == null)
+        if (_fileInterceptor == null)
         {
-            ModLogger.LogError("[INTERCEPT] ThemeCoordinator is null! Themes will not load!");
+            ModLogger.LogError("[INTERCEPT] FileInterceptor is null!");
             return originalPath;
         }
-
-        // First, try to use per-job configuration if available
-        // This fixes the hot reload issue where F1 config changes weren't being applied
-        if (_configCoordinator != null)
-        {
-            var fileName = Path.GetFileName(originalPath);
-
-            // Check if this is a job sprite that might have a per-job configuration
-            if (fileName.Contains("battle_") && fileName.EndsWith("_spr.bin"))
-            {
-                var jobColor = GetJobColorForSprite(fileName);
-                if (!string.IsNullOrEmpty(jobColor) && jobColor != "original")
-                {
-                    // Build the themed sprite path
-                    var themedDir = Path.Combine(_modPath, FFTIVCPath, DataPath, EnhancedPath,
-                        FFTPackPath, UnitPath, $"{SpritesPrefix}{jobColor}");
-                    var themedPath = Path.Combine(themedDir, fileName);
-
-                    // Return themed path if it exists
-                    if (File.Exists(themedPath))
-                    {
-                        ModLogger.LogSuccess($"[INTERCEPT] Per-job redirect: {Path.GetFileName(originalPath)} -> {jobColor}/{Path.GetFileName(themedPath)}");
-                        return themedPath;
-                    }
-                }
-            }
-        }
-
-        // Fall back to the original global theme behavior
-        var result = _themeCoordinator.InterceptFilePath(originalPath);
-        if (result != originalPath)
-        {
-            ModLogger.LogSuccess($"[INTERCEPT] Global redirect: {Path.GetFileName(originalPath)} -> {Path.GetFileName(result)}");
-            Console.WriteLine($"[FFT Color Mod] Intercepted: {Path.GetFileName(originalPath)} -> {Path.GetFileName(result)}");
-        }
-        else
-        {
-            // Log why interception didn't happen
-            if (originalPath.Contains(".bin") && originalPath.Contains("battle_"))
-            {
-                ModLogger.LogDebug($"[INTERCEPT] No redirect for sprite: {Path.GetFileName(originalPath)}");
-            }
-        }
-        return result;
+        return _fileInterceptor.InterceptFilePath(originalPath);
     }
 
-    private string GetJobColorForSprite(string spriteName)
-    {
-        // Use JobClassService to get the job class from sprite name
-        // This uses the data from JobClasses.json instead of hardcoding
-        var jobClassService = Services.JobClassServiceSingleton.Instance;
-        if (jobClassService == null)
-        {
-            ModLogger.LogDebug($"JobClassService not initialized for sprite: {spriteName}");
-            return null;
-        }
-
-        var jobClass = jobClassService.GetJobClassBySpriteName(spriteName);
-        if (jobClass != null)
-        {
-            // jobClass.Name is the property name (e.g., "Knight_Male")
-            return GetJobColor(jobClass.Name);
-        }
-
-        return null;
-    }
-
-    public ThemeManager? GetThemeManager()
-        => _themeCoordinator?.GetThemeManager();
+    public ThemeManager? GetThemeManager() => _bootstrapper?.ThemeCoordinator?.GetThemeManager();
 
     #endregion
 
@@ -513,10 +351,8 @@ public class Mod : IMod, IConfigurable
     public void ProcessHotkeyPress(int vkCode)
     {
         ModLogger.LogDebug($"ProcessHotkeyPress called with vkCode: 0x{vkCode:X}");
-        // Ensure configuration is initialized before processing hotkeys
         EnsureConfigurationInitialized();
-        ModLogger.LogDebug($"_hotkeyManager exists: {_hotkeyManager != null}");
-        _hotkeyManager?.ProcessHotkeyPress(vkCode);
+        _bootstrapper?.HotkeyManager?.ProcessHotkeyPress(vkCode);
     }
 
     #endregion
@@ -528,25 +364,21 @@ public class Mod : IMod, IConfigurable
         ModLogger.Log("Opening configuration UI");
         ConfigUIRequested?.Invoke();
 
-        // Only open actual UI if not in test environment
-        if (!_isTestEnvironment)
+        if (_bootstrapper?.IsTestEnvironment != true)
         {
-            // Delegate UI handling to coordinator
-            _configCoordinator?.OpenConfigurationUI((config) => ConfigurationUpdated(config));
+            _bootstrapper?.ConfigCoordinator?.OpenConfigurationUI(config => ConfigurationUpdated(config));
         }
     }
 
     public bool IsConfigUIRequested()
-    {
-        return ConfigUIRequested != null && ConfigUIRequested.GetInvocationList().Length > 0;
-    }
+        => ConfigUIRequested != null && ConfigUIRequested.GetInvocationList().Length > 0;
 
     #endregion
 
     #region Internal Methods (for testing)
 
     internal bool IsJobSprite(string fileName)
-        => _themeCoordinator?.IsJobSprite(fileName) ?? false;
+        => _bootstrapper?.ThemeCoordinator?.IsJobSprite(fileName) ?? false;
 
     #endregion
 

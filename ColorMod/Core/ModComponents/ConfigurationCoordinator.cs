@@ -202,5 +202,31 @@ namespace FFTColorCustomizer.Core.ModComponents
                 themeName.Replace('_', ' ')
             );
         }
+
+        /// <summary>
+        /// Gets the job color for a specific sprite name.
+        /// Uses JobClassService to map sprite names to configuration properties.
+        /// </summary>
+        /// <param name="spriteName">The sprite filename (e.g., "battle_knight_m_spr.bin")</param>
+        /// <returns>The configured color scheme for the job, or null if not found</returns>
+        public string? GetJobColorForSprite(string spriteName)
+        {
+            // Use JobClassService to get the job class from sprite name
+            var jobClassService = JobClassServiceSingleton.Instance;
+            if (jobClassService == null)
+            {
+                ModLogger.LogDebug($"JobClassService not initialized for sprite: {spriteName}");
+                return null;
+            }
+
+            var jobClass = jobClassService.GetJobClassBySpriteName(spriteName);
+            if (jobClass != null)
+            {
+                // jobClass.Name is the property name (e.g., "Knight_Male")
+                return GetJobColor(jobClass.Name);
+            }
+
+            return null;
+        }
     }
 }

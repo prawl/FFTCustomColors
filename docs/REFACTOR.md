@@ -576,7 +576,7 @@ Mod.cs
 | Task | Impact | Effort |
 |------|--------|--------|
 | Refactor `Config.cs` to dictionary-based | High | ~Partial (dictionaries added) |
-| Split `ConfigBasedSpriteManager` into 3-4 services | High | 1 day |
+| ~~Split `ConfigBasedSpriteManager` into 3-4 services~~ | ~~High~~ | ✅ DONE (2025-01-19) - Split into 6 focused classes |
 | Extract `Mod.cs` logic to delegated components | High | 4 hours |
 | Eliminate static singletons, use DI | High | 1 day |
 | Implement `ICharacterThemeHandler` strategy | Medium | 4 hours |
@@ -607,14 +607,14 @@ Mod.cs
 
 | Metric | Current | Target |
 |--------|---------|--------|
-| God classes (>500 lines) | 4 | 0 |
+| God classes (>500 lines) | 3 | 0 |
 | Manager/Service/Coordinator classes | 30 | ~15 |
 | Static singletons (thread-safe) | 3 | 0 |
 | Duplicate path resolution | ~~4+ copies~~ 1 | 1 | ✅ DONE |
 | Constructor injection rate | ~30% | 95%+ |
 | Average class size | 142 LOC | <100 LOC |
 | Test coverage for core services | ~60% | 80%+ |
-| Total tests | 1101 | - |
+| Total tests | 1098 | - |
 
 ---
 
@@ -622,11 +622,20 @@ Mod.cs
 
 ### Files Requiring Immediate Attention
 
-1. **ConfigBasedSpriteManager.cs** (~1035 lines) - Split immediately
+1. ~~**ConfigBasedSpriteManager.cs** (~1035 lines) - Split immediately~~ ✅ DONE (2025-01-19) - Split into 6 classes
 2. **Mod.cs** (554 lines) - Extract to delegated components
 3. **Config.cs** (~614 lines) - Dictionary-based refactor (partial progress)
 4. ~~**ThemeManagerAdapter.cs** (444 → ~489 lines) - Remove duplicate methods~~ ✅ DONE (2025-01-19) - consolidated to generic methods
 5. ~~**JobClassServiceSingleton.cs** - Fix thread safety bug~~ ✅ FIXED (2025-01-19)
+
+### Files Created (2025-01-19) - ConfigBasedSpriteManager Refactor
+
+- `SpritePathResolver.cs` (~210 lines) - Path resolution, job name mapping, WotL detection
+- `SpriteFileCopier.cs` (~200 lines) - File copy operations with error handling
+- `UserThemeApplicator.cs` (~150 lines) - User theme palette merging
+- `SpriteFileInterceptor.cs` (~105 lines) - Runtime path interception
+- `RamzaNxdService.cs` (~160 lines) - Ramza NXD patching orchestration
+- `ConfigBasedSpriteManager.cs` (~260 lines) - Thin orchestrator (down from ~1035)
 
 ### Files Deleted (2025-01-19)
 
@@ -672,6 +681,6 @@ The main issues stem from:
 3. ~~Code duplication that should be consolidated~~ Partially addressed (ThemeManagerAdapter)
 4. ~~Legacy code that should be removed~~ ✅ DONE
 
-**Progress:** Phase 1 (Quick Wins) is now complete. Ready to begin Phase 2 (Core Architecture).
+**Progress:** Phase 1 (Quick Wins) complete. Phase 2 in progress - `ConfigBasedSpriteManager` split complete.
 
 A focused refactoring effort could move this codebase from **B-/C+** to a solid **B+/A-**.

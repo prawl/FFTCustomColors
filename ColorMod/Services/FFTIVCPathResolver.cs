@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using FFTColorCustomizer.Utilities;
+using static FFTColorCustomizer.Core.ColorModConstants;
 
 namespace FFTColorCustomizer.Services
 {
@@ -103,6 +104,45 @@ namespace FFTColorCustomizer.Services
             if (int.TryParse(versionStr, out int version))
                 return version;
             return 0;
+        }
+
+        /// <summary>
+        /// Resolves the user config path from the mod installation path.
+        /// Navigates from Mods/FFTColorCustomizer to User/Mods/paxtrick.fft.colorcustomizer/Config.json
+        /// </summary>
+        /// <param name="modPath">The mod installation path</param>
+        /// <returns>Path to the user config file (may not exist yet)</returns>
+        public static string ResolveUserConfigPath(string modPath)
+        {
+            // Navigate from Mods/FFTColorCustomizer to User/Mods/paxtrick.fft.colorcustomizer
+            var parent = Directory.GetParent(modPath);
+            if (parent != null)
+            {
+                var grandParent = Directory.GetParent(parent.FullName);
+                if (grandParent != null)
+                {
+                    var reloadedRoot = grandParent.FullName;
+                    var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "paxtrick.fft.colorcustomizer", ConfigFileName);
+
+                    ModLogger.LogDebug($"Looking for user config at: {userConfigPath}");
+
+                    // Use User config if it exists
+                    if (File.Exists(userConfigPath))
+                    {
+                        ModLogger.Log($"Using user config: {userConfigPath}");
+                        return userConfigPath;
+                    }
+                    else
+                    {
+                        ModLogger.LogDebug("User config not found, falling back to mod config");
+                    }
+                }
+            }
+
+            // Fallback to mod directory config
+            var fallbackPath = Path.Combine(modPath, ConfigFileName);
+            ModLogger.Log($"Using fallback config: {fallbackPath}");
+            return fallbackPath;
         }
 
         /// <summary>
