@@ -30,6 +30,12 @@ namespace FFTColorCustomizer.Registry
             RegisterCharacter("Squire_Female", "Squire (Female)", "Generic Characters",
                 "Color scheme for all female squires", "SquireFemale", new[] { "mina_w" });
 
+            // Chemists (item)
+            RegisterCharacter("Chemist_Male", "Chemist (Male)", "Generic Characters",
+                "Color scheme for all male chemists", "ChemistMale", new[] { "item_m" });
+            RegisterCharacter("Chemist_Female", "Chemist (Female)", "Generic Characters",
+                "Color scheme for all female chemists", "ChemistFemale", new[] { "item_w" });
+
             // Knights
             RegisterCharacter("Knight_Male", "Knight (Male)", "Generic Characters",
                 "Color scheme for all male knights", "KnightMale", new[] { "knight_m" });
@@ -133,12 +139,6 @@ namespace FFTColorCustomizer.Registry
                 "Color scheme for all male mimes", "MimeMale", new[] { "mono_m" });
             RegisterCharacter("Mime_Female", "Mime (Female)", "Generic Characters",
                 "Color scheme for all female mimes", "MimeFemale", new[] { "mono_w" });
-
-            // Chemists (item)
-            RegisterCharacter("Chemist_Male", "Chemist (Male)", "Generic Characters",
-                "Color scheme for all male chemists", "ChemistMale", new[] { "item_m" });
-            RegisterCharacter("Chemist_Female", "Chemist (Female)", "Generic Characters",
-                "Color scheme for all female chemists", "ChemistFemale", new[] { "item_w" });
 
             // WotL Jobs - Dark Knight (ankoku)
             RegisterCharacter("DarkKnight_Male", "Dark Knight (Male)", "WotL Jobs",

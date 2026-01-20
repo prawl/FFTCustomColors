@@ -28,6 +28,10 @@ namespace FFTColorCustomizer.Configuration
             ["Squire_Male"] = new JobMetadata("Generic Characters", "Squire (Male)", "Color scheme for all male squires", "SquireMale"),
             ["Squire_Female"] = new JobMetadata("Generic Characters", "Squire (Female)", "Color scheme for all female squires", "SquireFemale"),
 
+            // Chemists
+            ["Chemist_Male"] = new JobMetadata("Generic Characters", "Chemist (Male)", "Color scheme for all male chemists", "ChemistMale"),
+            ["Chemist_Female"] = new JobMetadata("Generic Characters", "Chemist (Female)", "Color scheme for all female chemists", "ChemistFemale"),
+
             // Knights
             ["Knight_Male"] = new JobMetadata("Generic Characters", "Knight (Male)", "Color scheme for all male knights", "KnightMale"),
             ["Knight_Female"] = new JobMetadata("Generic Characters", "Knight (Female)", "Color scheme for all female knights", "KnightFemale"),
@@ -97,10 +101,6 @@ namespace FFTColorCustomizer.Configuration
             // Mimes
             ["Mime_Male"] = new JobMetadata("Generic Characters", "Mime (Male)", "Color scheme for all male mimes", "MimeMale"),
             ["Mime_Female"] = new JobMetadata("Generic Characters", "Mime (Female)", "Color scheme for all female mimes", "MimeFemale"),
-
-            // Chemists
-            ["Chemist_Male"] = new JobMetadata("Generic Characters", "Chemist (Male)", "Color scheme for all male chemists", "ChemistMale"),
-            ["Chemist_Female"] = new JobMetadata("Generic Characters", "Chemist (Female)", "Color scheme for all female chemists", "ChemistFemale"),
 
             // WotL Jobs - Dark Knight
             ["DarkKnight_Male"] = new JobMetadata("WotL Jobs", "Dark Knight (Male)", "Color scheme for all male dark knights", "DarkKnightMale"),
