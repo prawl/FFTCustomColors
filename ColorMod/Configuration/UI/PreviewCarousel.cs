@@ -71,9 +71,8 @@ namespace FFTColorCustomizer.Configuration.UI
                     _images = null;
                 }
 
-                // Force immediate cleanup
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
+                // Note: Removed GC.Collect() and GC.WaitForPendingFinalizers()
+                // to avoid blocking the UI thread during theme changes
 
                 // Store the current orientation before changing images
                 var previousIndex = CurrentViewIndex;

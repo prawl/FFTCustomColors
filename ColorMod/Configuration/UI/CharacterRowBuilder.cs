@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using FFTColorCustomizer.Utilities;
 using FFTColorCustomizer.Services;
@@ -114,10 +115,10 @@ namespace FFTColorCustomizer.Configuration.UI
                     // Update tag for lazy loading
                     carousel.Tag = new { JobName = jobName, Theme = newTheme, Setter = setter };
 
-                    // Only update images if already loaded
+                    // Only update images if already loaded - load async to avoid UI freeze
                     if (carousel.HasImagesLoaded)
                     {
-                        UpdateGenericPreviewImages(carousel, jobName, newTheme);
+                        LoadGenericPreviewImagesAsync(carousel, jobName, newTheme);
                     }
                 }
             };
@@ -214,10 +215,10 @@ namespace FFTColorCustomizer.Configuration.UI
                         Config = characterConfig
                     };
 
-                    // Only update images if already loaded
+                    // Only update images if already loaded - load async to avoid UI freeze
                     if (carousel.HasImagesLoaded)
                     {
-                        UpdateStoryCharacterPreview(carousel, characterConfig.PreviewName, newTheme);
+                        LoadStoryCharacterPreviewAsync(carousel, characterConfig.PreviewName, newTheme);
                     }
                 }
             };
@@ -275,6 +276,217 @@ namespace FFTColorCustomizer.Configuration.UI
             var themes = _jobClassService.GetAvailableThemesForJob(internalName);
             ModLogger.Log($"GetAvailableGenericThemesForJob({jobName}) returned {themes.Count} themes: {string.Join(", ", themes)}");
             return themes;
+        }
+
+        /// <summary>
+        /// Loads generic preview images asynchronously to avoid blocking the UI thread
+        /// </summary>
+        private void LoadGenericPreviewImagesAsync(PreviewCarousel carousel, string jobName, string theme)
+        {
+            // Capture the theme at call time to handle rapid selection changes
+            var capturedTheme = theme;
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    // Load images on background thread
+                    var images = LoadGenericPreviewImagesBackground(jobName, capturedTheme);
+
+                    // Marshal back to UI thread to update carousel
+                    if (carousel.IsHandleCreated && !carousel.IsDisposed)
+                    {
+                        carousel.BeginInvoke(new Action(() =>
+                        {
+                            // Verify theme hasn't changed while we were loading
+                            var currentTag = carousel.Tag as dynamic;
+                            if (currentTag != null && currentTag.Theme == capturedTheme)
+                            {
+                                carousel.SetImages(images ?? new Image[0]);
+                            }
+                        }));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogError($"[LoadGenericPreviewImagesAsync] Failed for {jobName} - {capturedTheme}: {ex.Message}");
+                }
+            });
+        }
+
+        /// <summary>
+        /// Loads story character preview images asynchronously to avoid blocking the UI thread
+        /// </summary>
+        private void LoadStoryCharacterPreviewAsync(PreviewCarousel carousel, string characterName, string theme)
+        {
+            // Capture the theme at call time to handle rapid selection changes
+            var capturedTheme = theme;
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    // Load images on background thread
+                    var images = LoadStoryCharacterPreviewBackground(characterName, capturedTheme);
+
+                    // Marshal back to UI thread to update carousel
+                    if (carousel.IsHandleCreated && !carousel.IsDisposed)
+                    {
+                        carousel.BeginInvoke(new Action(() =>
+                        {
+                            // Verify theme hasn't changed while we were loading
+                            var currentTag = carousel.Tag as dynamic;
+                            if (currentTag != null && currentTag.Theme == capturedTheme)
+                            {
+                                carousel.SetImages(images ?? new Image[0]);
+                                carousel.Invalidate();
+                                carousel.Refresh();
+                            }
+                        }));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogError($"[LoadStoryCharacterPreviewAsync] Failed for {characterName} - {capturedTheme}: {ex.Message}");
+                }
+            });
+        }
+
+        /// <summary>
+        /// Background thread worker for loading generic preview images
+        /// </summary>
+        private Image[] LoadGenericPreviewImagesBackground(string jobName, string theme)
+        {
+            // If we don't have a valid mod path, return empty
+            if (!_previewManager.HasValidModPath())
+            {
+                return new Image[0];
+            }
+
+            // First try to load from .bin file if it exists (for generic jobs too)
+            var binImages = TryLoadGenericFromBinFile(jobName, theme);
+            if (binImages != null && binImages.Length > 0)
+            {
+                ModLogger.LogSuccess($"[Background] Loaded {binImages.Length} sprites from .bin file for {jobName} - {theme}");
+                return binImages;
+            }
+
+            // Fall back to embedded resources (existing logic)
+            return LoadGenericFromEmbeddedResources(jobName, theme);
+        }
+
+        /// <summary>
+        /// Background thread worker for loading story character preview images
+        /// </summary>
+        private Image[] LoadStoryCharacterPreviewBackground(string characterName, string theme)
+        {
+            // If we don't have a valid mod path, return empty
+            if (!_previewManager.HasValidModPath())
+            {
+                return new Image[0];
+            }
+
+            // Get the mod path from PreviewImageManager
+            var modPathField = _previewManager.GetType().GetField("_modPath",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var modPath = modPathField?.GetValue(_previewManager) as string;
+
+            // For Ramza characters, check if this is a user theme first
+            if (characterName.StartsWith("RamzaChapter") && !string.IsNullOrEmpty(modPath))
+            {
+                // Check if this is a user theme - load from palette + original sprite
+                if (_userThemeService.IsUserTheme(characterName, theme))
+                {
+                    var userThemeImages = TryLoadRamzaUserThemePreview(modPath, characterName, theme);
+                    if (userThemeImages != null && userThemeImages.Length > 0)
+                    {
+                        ModLogger.LogSuccess($"[Background] Loaded {userThemeImages.Length} sprites from user theme for {characterName} - {theme}");
+                        return userThemeImages;
+                    }
+                }
+
+                // Try to load from pre-generated sprite sheets (for built-in themes)
+                var spriteSheetLoader = new SpriteSheetPreviewLoader(modPath);
+                var spriteImages = spriteSheetLoader.LoadPreviewsWithExtractor(characterName, theme);
+
+                if (spriteImages != null && spriteImages.Count > 0)
+                {
+                    ModLogger.LogSuccess($"[Background] Loaded {spriteImages.Count} sprites from sprite sheet for {characterName} - {theme}");
+                    return spriteImages.Cast<Image>().ToArray();
+                }
+                else
+                {
+                    ModLogger.LogDebug($"[Background] No sprite sheet found for {characterName} - {theme}");
+                    return new Image[0];
+                }
+            }
+
+            // For non-Ramza characters, fall back to loading from .bin file
+            var binImages = TryLoadFromBinFileWithTheme(characterName, theme);
+            if (binImages != null && binImages.Length > 0)
+            {
+                return binImages;
+            }
+
+            return new Image[0];
+        }
+
+        /// <summary>
+        /// Loads generic preview images from embedded resources (fallback when bin file not available)
+        /// </summary>
+        private Image[] LoadGenericFromEmbeddedResources(string jobName, string theme)
+        {
+            string fileName = jobName.ToLower()
+                .Replace(" (male)", "_male")
+                .Replace(" (female)", "_female")
+                .Replace(" ", "_")
+                .Replace("(", "")
+                .Replace(")", "");
+
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var images = new List<Image>();
+
+            // Try to load all 8 directions from embedded resources
+            string[] directions = { "_s", "_sw", "_w", "_nw", "_n", "_ne", "_e", "_se" };
+
+            foreach (var direction in directions)
+            {
+                string resourceName = $"FFTColorCustomizer.Resources.Previews.{fileName}.{fileName}_{theme.ToLower()}{direction}.png";
+
+                using (var stream = assembly.GetManifestResourceStream(resourceName))
+                {
+                    if (stream != null)
+                    {
+                        try
+                        {
+                            var image = Image.FromStream(stream);
+                            images.Add(image);
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogDebug($"Failed to load direction {direction}: {ex.Message}");
+                        }
+                    }
+                }
+            }
+
+            if (images.Count > 0)
+            {
+                return images.ToArray();
+            }
+
+            // Fall back to single image
+            string singleResourceName = $"FFTColorCustomizer.Resources.Previews.{fileName}_{theme.ToLower()}.png";
+            using (var stream = assembly.GetManifestResourceStream(singleResourceName))
+            {
+                if (stream != null)
+                {
+                    images.Add(Image.FromStream(stream));
+                    return images.ToArray();
+                }
+            }
+
+            return new Image[0];
         }
 
         private void UpdateGenericPreviewImages(PreviewCarousel carousel, string jobName, string theme)
