@@ -45,6 +45,11 @@ namespace FFTColorCustomizer.Configuration.UI
         public static readonly Color CancelButtonHover = Color.FromArgb(70, 70, 70);
         public static readonly Color CancelButtonHoverBorder = Color.FromArgb(150, 150, 150);
 
+        public static readonly Color RandomizeButtonColor = Color.FromArgb(60, 40, 100);
+        public static readonly Color RandomizeButtonBorder = Color.FromArgb(120, 80, 180);
+        public static readonly Color RandomizeButtonHover = Color.FromArgb(80, 55, 130);
+        public static readonly Color RandomizeButtonHoverBorder = Color.FromArgb(150, 100, 220);
+
         // Text colors
         public static readonly Color TextColor = Color.White;
 

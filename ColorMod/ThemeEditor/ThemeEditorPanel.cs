@@ -22,6 +22,7 @@ namespace FFTColorCustomizer.ThemeEditor
         private TextBox _themeNameInput;
         private Button _saveButton;
         private Button _resetButton;
+        private Button _randomizeColorsButton;
         private Button _rotateLeftButton;
         private Button _rotateRightButton;
         private Panel _sectionColorPickersPanel;
@@ -219,6 +220,20 @@ namespace FFTColorCustomizer.ThemeEditor
             _resetButton.FlatAppearance.BorderColor = UIConfiguration.ResetButtonBorder;
             _resetButton.Click += OnResetAllClick;
 
+            _randomizeColorsButton = new Button
+            {
+                Name = "RandomizeColorsButton",
+                Text = "Randomize",
+                Width = 75,
+                Left = buttonsLeft + 130,
+                Top = row1Top,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = UIConfiguration.RandomizeButtonColor,
+                ForeColor = Color.White
+            };
+            _randomizeColorsButton.FlatAppearance.BorderColor = UIConfiguration.RandomizeButtonBorder;
+            _randomizeColorsButton.Click += OnRandomizeColorsClick;
+
             // Warning label (below the Save button, row 2) - positioned to the left to avoid clipping
             const int row2Top = 40;
             _warningLabel = new Label
@@ -309,6 +324,7 @@ namespace FFTColorCustomizer.ThemeEditor
             Controls.Add(_themeNameInput);
             Controls.Add(_saveButton);
             Controls.Add(_resetButton);
+            Controls.Add(_randomizeColorsButton);
             Controls.Add(_warningLabel);
             Controls.Add(_spritePreviewLabel);
             Controls.Add(_colorSelectionLabel);
@@ -665,6 +681,32 @@ namespace FFTColorCustomizer.ThemeEditor
                 PaletteModifier.LoadTemplate(spritePath);
                 UpdateSpritePreview();
             }
+        }
+
+        private void OnRandomizeColorsClick(object? sender, EventArgs e)
+        {
+            var random = new Random();
+
+            // Randomize all color pickers
+            foreach (Control control in _sectionColorPickersPanel.Controls)
+            {
+                if (control is HslColorPicker picker)
+                {
+                    // Generate random HSL values
+                    // Hue: 0-360 (full color wheel)
+                    // Saturation: 30-100 (avoid very desaturated/gray colors)
+                    // Lightness: 25-75 (avoid too dark or too light)
+                    var hue = random.Next(0, 361);
+                    var saturation = random.Next(30, 101);
+                    var lightness = random.Next(25, 76);
+
+                    var color = new HslColor(hue, saturation / 100.0, lightness / 100.0).ToRgb();
+                    picker.SetColor(color);
+                }
+            }
+
+            // Mark as modified
+            MarkAsModified();
         }
 
         private string GetCurrentJobName()
