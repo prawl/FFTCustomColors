@@ -18,6 +18,10 @@ namespace FFTColorCustomizer.ThemeEditor
         private Label _spritePreviewLabel;
         private Label _colorSelectionLabel;
         private PictureBox _spritePreview;
+        private Label _originalSpritePreviewLabel;
+        private PictureBox _originalSpritePreview;
+        private CheckBox _showOriginalCheckbox;
+        private PaletteModifier? _originalPaletteModifier;
         private Label _themeNameLabel;
         private TextBox _themeNameInput;
         private Button _saveButton;
@@ -254,7 +258,7 @@ namespace FFTColorCustomizer.ThemeEditor
             _spritePreviewLabel = new Label
             {
                 Name = "SpritePreviewLabel",
-                Text = "Sprite Preview",
+                Text = "Modified",
                 Left = padding,
                 Top = row3Top,
                 AutoSize = true
@@ -307,6 +311,51 @@ namespace FFTColorCustomizer.ThemeEditor
             };
             _rotateRightButton.Click += OnRotateRight;
 
+            // "Compare" checkbox to toggle showing original sprite
+            _showOriginalCheckbox = new CheckBox
+            {
+                Name = "ShowOriginalCheckbox",
+                Text = "Compare",
+                Left = padding,
+                Top = contentTop + previewHeight + 35,
+                Width = 80,
+                Height = 20,
+                ForeColor = Color.LightGray,
+                Font = new System.Drawing.Font("Segoe UI", 8f),
+                Cursor = Cursors.Hand
+            };
+            _showOriginalCheckbox.CheckedChanged += OnShowOriginalCheckedChanged;
+            var compareTip = new ToolTip();
+            compareTip.SetToolTip(_showOriginalCheckbox, "Show original sprite for comparison");
+
+            // Original sprite preview (hidden by default) - positioned to the right of modified preview
+            // When Compare is checked, both previews shrink to fit side-by-side
+            const int smallPreviewWidth = 96;   // 3x scale for side-by-side
+            const int smallPreviewHeight = 120; // 3x scale for side-by-side
+            const int previewGap = 10;
+
+            _originalSpritePreviewLabel = new Label
+            {
+                Name = "OriginalSpritePreviewLabel",
+                Text = "Original",
+                Left = padding + smallPreviewWidth + previewGap,
+                Top = row3Top,
+                AutoSize = true,
+                Visible = false
+            };
+
+            _originalSpritePreview = new PictureBox
+            {
+                Name = "OriginalSpritePreview",
+                Width = smallPreviewWidth,
+                Height = smallPreviewHeight,
+                Left = padding + smallPreviewWidth + previewGap,
+                Top = contentTop,
+                BorderStyle = BorderStyle.None,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Visible = false
+            };
+
             // Color pickers panel - extends to bottom
             _sectionColorPickersPanel = new Panel
             {
@@ -331,6 +380,9 @@ namespace FFTColorCustomizer.ThemeEditor
             Controls.Add(_spritePreview);
             Controls.Add(_rotateLeftButton);
             Controls.Add(_rotateRightButton);
+            Controls.Add(_showOriginalCheckbox);
+            Controls.Add(_originalSpritePreviewLabel);
+            Controls.Add(_originalSpritePreview);
             Controls.Add(_sectionColorPickersPanel);
 
             // Set initial sizes for dynamic panels
@@ -462,7 +514,13 @@ namespace FFTColorCustomizer.ThemeEditor
                     {
                         PaletteModifier = new PaletteModifier();
                         PaletteModifier.LoadTemplate(spritePath);
+
+                        // Also load original palette for comparison feature
+                        _originalPaletteModifier = new PaletteModifier();
+                        _originalPaletteModifier.LoadTemplate(spritePath);
+
                         UpdateSpritePreview();
+                        UpdateOriginalSpritePreview();
                     }
                 }
 
@@ -608,6 +666,90 @@ namespace FFTColorCustomizer.ThemeEditor
             _spritePreview.Image = PaletteModifier.GetPreview(CurrentSpriteDirection);
         }
 
+        private void UpdateOriginalSpritePreview()
+        {
+            if (_originalPaletteModifier == null || !_originalPaletteModifier.IsLoaded)
+                return;
+
+            _originalSpritePreview.Image = _originalPaletteModifier.GetPreview(CurrentSpriteDirection);
+        }
+
+        private void OnShowOriginalCheckedChanged(object? sender, EventArgs e)
+        {
+            var showOriginal = _showOriginalCheckbox.Checked;
+
+            const int padding = 10;
+            const int row3Top = 65;
+            const int labelHeight = 20;
+            const int contentTop = row3Top + labelHeight + 5;
+            const int fullPreviewWidth = 192;   // 6x scale
+            const int fullPreviewHeight = 240;  // 6x scale
+            const int smallPreviewWidth = 96;   // 3x scale
+            const int smallPreviewHeight = 120; // 3x scale
+            const int previewGap = 10;
+            const int buttonWidth = 30;
+            const int buttonGap = 5;
+
+            if (showOriginal)
+            {
+                // Shrink modified preview to fit side-by-side
+                _spritePreview.Width = smallPreviewWidth;
+                _spritePreview.Height = smallPreviewHeight;
+
+                // Position original preview on the left
+                _originalSpritePreviewLabel.Left = padding;
+                _originalSpritePreviewLabel.Top = row3Top;
+                _originalSpritePreview.Left = padding;
+                _originalSpritePreview.Top = contentTop;
+                _originalSpritePreview.Width = smallPreviewWidth;
+                _originalSpritePreview.Height = smallPreviewHeight;
+
+                // Move modified preview to the right
+                _spritePreviewLabel.Left = padding + smallPreviewWidth + previewGap;
+                _spritePreview.Left = padding + smallPreviewWidth + previewGap;
+
+                // Reposition rotation buttons to center under both previews
+                var totalWidth = smallPreviewWidth + previewGap + smallPreviewWidth;
+                var previewCenter = padding + (totalWidth / 2);
+                var rotateButtonsLeftStart = previewCenter - buttonWidth - (buttonGap / 2);
+                _rotateLeftButton.Left = rotateButtonsLeftStart;
+                _rotateLeftButton.Top = contentTop + smallPreviewHeight + 5;
+                _rotateRightButton.Left = rotateButtonsLeftStart + buttonWidth + buttonGap;
+                _rotateRightButton.Top = contentTop + smallPreviewHeight + 5;
+
+                // Reposition Compare checkbox
+                _showOriginalCheckbox.Top = contentTop + smallPreviewHeight + 35;
+
+                // Show original preview
+                _originalSpritePreviewLabel.Visible = true;
+                _originalSpritePreview.Visible = true;
+                UpdateOriginalSpritePreview();
+            }
+            else
+            {
+                // Restore modified preview to full size and original position
+                _spritePreview.Width = fullPreviewWidth;
+                _spritePreview.Height = fullPreviewHeight;
+                _spritePreview.Left = padding;
+                _spritePreviewLabel.Left = padding;
+
+                // Reposition rotation buttons to center under modified preview
+                var previewCenter = padding + (fullPreviewWidth / 2);
+                var rotateButtonsLeftStart = previewCenter - buttonWidth - (buttonGap / 2);
+                _rotateLeftButton.Left = rotateButtonsLeftStart;
+                _rotateLeftButton.Top = contentTop + fullPreviewHeight + 5;
+                _rotateRightButton.Left = rotateButtonsLeftStart + buttonWidth + buttonGap;
+                _rotateRightButton.Top = contentTop + fullPreviewHeight + 5;
+
+                // Reposition Compare checkbox
+                _showOriginalCheckbox.Top = contentTop + fullPreviewHeight + 35;
+
+                // Hide original preview
+                _originalSpritePreviewLabel.Visible = false;
+                _originalSpritePreview.Visible = false;
+            }
+        }
+
         // All 8 directions cycle (clockwise): SW(5) → S(4) → SE(3) → E(2) → NE(1) → N(0) → NW(7) → W(6) → SW(5)
         private static readonly int[] DirectionsCycle = { 5, 4, 3, 2, 1, 0, 7, 6 };
 
@@ -619,6 +761,8 @@ namespace FFTColorCustomizer.ThemeEditor
             currentIndex = (currentIndex + 1) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
             UpdateSpritePreview();
+            if (_showOriginalCheckbox.Checked)
+                UpdateOriginalSpritePreview();
         }
 
         private void OnRotateRight(object? sender, System.EventArgs e)
@@ -629,6 +773,8 @@ namespace FFTColorCustomizer.ThemeEditor
             currentIndex = (currentIndex + DirectionsCycle.Length - 1) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
             UpdateSpritePreview();
+            if (_showOriginalCheckbox.Checked)
+                UpdateOriginalSpritePreview();
         }
 
         private void OnSaveClick(object? sender, EventArgs e)
@@ -687,10 +833,10 @@ namespace FFTColorCustomizer.ThemeEditor
         {
             var random = new Random();
 
-            // Randomize all color pickers
+            // Randomize all color pickers (skip locked sections)
             foreach (Control control in _sectionColorPickersPanel.Controls)
             {
-                if (control is HslColorPicker picker)
+                if (control is HslColorPicker picker && !picker.IsLocked)
                 {
                     // Generate random HSL values
                     // Hue: 0-360 (full color wheel)

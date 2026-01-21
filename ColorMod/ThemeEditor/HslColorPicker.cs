@@ -20,10 +20,24 @@ namespace FFTColorCustomizer.ThemeEditor
         private TextBox _hexInput;
         private Button _copyButton;
         private Button _pasteButton;
+        private CheckBox _lockCheckbox;
         private bool _suppressEvents;
         private int _originalHue;
         private int _originalSaturation;
         private int _originalLightness;
+
+        /// <summary>
+        /// Gets or sets whether this section is locked from randomization.
+        /// </summary>
+        public bool IsLocked
+        {
+            get => _lockCheckbox?.Checked ?? false;
+            set
+            {
+                if (_lockCheckbox != null)
+                    _lockCheckbox.Checked = value;
+            }
+        }
 
         public event EventHandler ColorChanged;
         public event EventHandler ResetRequested;
@@ -68,6 +82,22 @@ namespace FFTColorCustomizer.ThemeEditor
                 ForeColor = Color.White,
                 Padding = new Padding(0, 5, 0, 5)
             };
+
+            // Lock checkbox - positioned below header, excludes section from randomization
+            _lockCheckbox = new CheckBox
+            {
+                Name = "LockCheckbox",
+                Text = "Skip Randomize",
+                Top = 30,
+                Left = 5,
+                Width = 100,
+                Height = 20,
+                ForeColor = Color.LightGray,
+                Font = new System.Drawing.Font("Segoe UI", 8f),
+                Cursor = Cursors.Hand
+            };
+            var lockTip = new ToolTip();
+            lockTip.SetToolTip(_lockCheckbox, "When checked, this section keeps its colors during Randomize");
 
             // Reset button - positioned below sliders, to the right of Paste button
             _resetButton = new Button
@@ -191,6 +221,7 @@ namespace FFTColorCustomizer.ThemeEditor
             _pasteButton.Click += OnPasteClick;
 
             Controls.Add(_sectionHeaderLabel);
+            Controls.Add(_lockCheckbox);
             Controls.Add(_resetButton);
             Controls.Add(hueLabel);
             Controls.Add(_hueSlider);

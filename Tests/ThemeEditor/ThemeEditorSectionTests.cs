@@ -1787,9 +1787,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             // Arrange & Act
             using var panel = new ThemeEditorPanel();
 
-            // Assert - Should have "Sprite Preview" label
+            // Assert - Should have "Modified" label (renamed from "Sprite Preview" for Compare feature)
             var spritePreviewLabel = panel.Controls.OfType<Label>()
-                .FirstOrDefault(l => l.Text == "Sprite Preview");
+                .FirstOrDefault(l => l.Text == "Modified");
 
             Assert.NotNull(spritePreviewLabel);
         }

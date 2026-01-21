@@ -8,7 +8,7 @@ namespace FFTColorCustomizer.Configuration.UI
     public static class UIConfiguration
     {
         // Form dimensions
-        public const int FormWidth = 700;
+        public const int FormWidth = 800;
         public const int FormHeight = 730;
         public const int ButtonPanelHeight = 40;
         public const int ButtonWidth = 80;
