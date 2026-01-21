@@ -21,6 +21,9 @@ namespace FFTColorCustomizer.ThemeEditor
         private Button _copyButton;
         private Button _pasteButton;
         private CheckBox _lockCheckbox;
+        private Label _hueValueLabel;
+        private Label _saturationValueLabel;
+        private Label _lightnessValueLabel;
         private bool _suppressEvents;
         private int _originalHue;
         private int _originalSaturation;
@@ -134,6 +137,17 @@ namespace FFTColorCustomizer.ThemeEditor
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             _hueSlider.ValueChanged += OnSliderValueChanged;
+            _hueValueLabel = new Label
+            {
+                Name = "HueValueLabel",
+                Text = "0°",
+                Top = headerHeight + 10,
+                Width = 35,
+                TextAlign = ContentAlignment.MiddleRight,
+                ForeColor = Color.LightGray,
+                Font = new System.Drawing.Font("Segoe UI", 8f),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
 
             // Saturation row
             var saturationLabel = new Label
@@ -154,6 +168,17 @@ namespace FFTColorCustomizer.ThemeEditor
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             _saturationSlider.ValueChanged += OnSliderValueChanged;
+            _saturationValueLabel = new Label
+            {
+                Name = "SaturationValueLabel",
+                Text = "0%",
+                Top = headerHeight + rowHeight + 10,
+                Width = 35,
+                TextAlign = ContentAlignment.MiddleRight,
+                ForeColor = Color.LightGray,
+                Font = new System.Drawing.Font("Segoe UI", 8f),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
 
             // Lightness row
             var lightnessLabel = new Label
@@ -174,6 +199,17 @@ namespace FFTColorCustomizer.ThemeEditor
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             _lightnessSlider.ValueChanged += OnSliderValueChanged;
+            _lightnessValueLabel = new Label
+            {
+                Name = "LightnessValueLabel",
+                Text = "0%",
+                Top = headerHeight + rowHeight * 2 + 10,
+                Width = 35,
+                TextAlign = ContentAlignment.MiddleRight,
+                ForeColor = Color.LightGray,
+                Font = new System.Drawing.Font("Segoe UI", 8f),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
 
             // Color preview swatch - positioned below sliders, aligned with slider start
             _colorPreviewSwatch = new Panel
@@ -225,10 +261,13 @@ namespace FFTColorCustomizer.ThemeEditor
             Controls.Add(_resetButton);
             Controls.Add(hueLabel);
             Controls.Add(_hueSlider);
+            Controls.Add(_hueValueLabel);
             Controls.Add(saturationLabel);
             Controls.Add(_saturationSlider);
+            Controls.Add(_saturationValueLabel);
             Controls.Add(lightnessLabel);
             Controls.Add(_lightnessSlider);
+            Controls.Add(_lightnessValueLabel);
             Controls.Add(_colorPreviewSwatch);
             Controls.Add(_hexInput);
             Controls.Add(_copyButton);
@@ -248,21 +287,36 @@ namespace FFTColorCustomizer.ThemeEditor
         private void UpdateSliderWidths()
         {
             const int labelWidth = 70;
+            const int valueLabelWidth = 35;
             const int padding = 10;
-            var sliderWidth = Width - labelWidth - padding;
+            var sliderWidth = Width - labelWidth - valueLabelWidth - padding;
             if (sliderWidth > 0)
             {
                 _hueSlider.Width = sliderWidth;
                 _saturationSlider.Width = sliderWidth;
                 _lightnessSlider.Width = sliderWidth;
+
+                // Position value labels to the right of sliders
+                var valueLabelLeft = labelWidth + sliderWidth + 5;
+                _hueValueLabel.Left = valueLabelLeft;
+                _saturationValueLabel.Left = valueLabelLeft;
+                _lightnessValueLabel.Left = valueLabelLeft;
             }
         }
 
         private void OnSliderValueChanged(object? sender, EventArgs e)
         {
+            UpdateValueLabels();
             UpdateSwatchColor();
             if (!_suppressEvents)
                 ColorChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void UpdateValueLabels()
+        {
+            _hueValueLabel.Text = $"{_hueSlider.Value}°";
+            _saturationValueLabel.Text = $"{_saturationSlider.Value}%";
+            _lightnessValueLabel.Text = $"{_lightnessSlider.Value}%";
         }
 
         private void UpdateSwatchColor()
@@ -442,6 +496,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 _lightnessSlider.Value = (int)(hsl.L * 100);
 
                 // Update visual elements
+                UpdateValueLabels();
                 _colorPreviewSwatch.BackColor = color;
                 _hexInput.Text = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 
