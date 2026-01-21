@@ -90,7 +90,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 Text = "Skip Randomize",
                 Top = 30,
                 Left = 5,
-                Width = 100,
+                Width = 115,
                 Height = 20,
                 ForeColor = Color.LightGray,
                 Font = new System.Drawing.Font("Segoe UI", 8f),
