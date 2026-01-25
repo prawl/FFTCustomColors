@@ -415,7 +415,9 @@ function Verify-Package {
             "Data/StoryCharacters.json",
             "Data/JobClasses.json",
             "Data/WotLClasses.json",
-            "Data/SectionMappings/Story/Cloud.json"
+            "Data/SectionMappings/Story/Cloud.json",
+            "Data/nxd/charclut.nxd",
+            "Data/nxd/charclut.sqlite"
         )
 
         $requiredPaths = @(
