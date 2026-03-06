@@ -1,13 +1,3 @@
-# Build outputs
-bin/
-!bin/FF16Tools.CLI.exe
-obj/
-__pycache__/
-*.pyc
-*.dll
-*.exe
-!bin/FF16Tools.CLI.exe
-*.pdb
 
 # Test results
 TestResults/
@@ -92,3 +82,9 @@ test_*/
 !ColorMod/FFTIVC/data/enhanced/system/ffto/g2d/**/*.bin
 
 !RamzaThemes/**/*.bin
+
+# FF16 CLI Tools (override global gitignore rules)
+!tools/
+!tools/**
+!tools/*.exe
+!tools/*.dll
