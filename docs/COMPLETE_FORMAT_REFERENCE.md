@@ -527,25 +527,102 @@ User themes stored as 512-byte `palette.bin` files under `UserThemes/{job}/{them
 
 ---
 
-## 8. Open Questions & Untested Hypotheses
+## 8. Resolved Investigations & Remaining Unknowns
 
-### 8.1 Enemy Palette Selection Algorithm
-How does the game pick palette 1 vs 2 vs 3 vs 4 for different enemy units of the same job? Possible factors: unit ID, recruitment order, party slot, deterministic hash. **Unknown.**
+### 8.1 Enemy Palette Selection Algorithm -- RESOLVED
 
-### 8.2 CharCLUT for Generic Jobs
-Can `charshape.nxd` be modified to assign `charclut+Id` values to generic jobs, routing them through the CharCLUT system instead of embedded BIN palettes? This would enable per-unit color control without full sprite replacement. **Untested -- documented as highest priority experiment.**
+**It is deterministic and comes from ENTD data.** In the original PSX FFT, each unit in the ENTD (Event Data) has a **Palette byte at offset 0x17** in its 40-byte per-unit structure:
 
-### 8.3 Keys 254/255 in CharCLUT
-These entries have `CharaColorSkinId=0` (not character-specific), suggesting the CLUT system was designed for broader use than just Ramza. **Purpose unknown.**
+| Value | Faction | Palette Slot |
+|-------|---------|-------------|
+| 0x00 | Player (default) | Palette 0 |
+| 0x01 | Hokuten (blue) | Palette 1 |
+| 0x02 | Nanten (red) | Palette 2 |
+| 0x03 | Death Corps | Palette 3 |
+| 0x04 | Glabados Church | Palette 4 |
 
-### 8.4 OverrideEntryData Binary Payloads
-The remaster's ENTD replacement (`overrideentrydata.nxd`) has 54+ columns including Spriteset overrides and undocumented binary payloads that may encode color data. **Not fully analyzed.**
+In the remaster, this maps to **`EntryUnknown1D`** in `OverrideEntryData.layout` -- the field at offset 0x18 which patches a byte field in the runtime unit data. Negative values (-1) mean "don't patch" (use default); values 0-4 select palette slots.
 
-### 8.5 Runtime Palette Caching
+**Three selection contexts:**
+- **Story battles:** Explicit per-unit palette values baked into ENTD data. A Hokuten Knight always gets palette 1 because the event data says so.
+- **Random battles:** Game engine assigns palette based on the generated unit's faction/team. This logic is in engine code at `FFT_enhanced.nso+7ba14`.
+- **Player units:** Always palette 0. Recruited former enemies switch to palette 0 upon recruitment.
+
+**Sources:** [FFHacktics ENTD Wiki](https://ffhacktics.com/wiki/ENTD), [Store Palette Data](https://ffhacktics.com/wiki/Store_Palette_data_for_each_unit)
+
+### 8.2 CharCLUT for Generic Jobs -- FEASIBLE, UNTESTED
+
+**Full feasibility analysis complete.** The entire NXD infrastructure chain is confirmed working and modifiable:
+
+```
+OverrideEntryData -> Spriteset -> CharShape -> charclut+Id -> CharCLUT -> CLUTData
+```
+
+**What we know works:**
+- GenericJobs mod already ships modified `charshape.nxd`, proving mods can override it
+- Keys 254/255 prove CharCLUT works without character-specific conditions (`CharaColorSkinId=0`)
+- `OverrideEntryData` can override any unit's `Spriteset` value per-unit
+- FF16Tools handles NXD row addition/modification via SQLite round-trip
+
+**The three-pronged approach to enable per-unit colors:**
+
+1. **charshape.nxd** -- Change generic job's `charclut+Id` from 0 to a custom value (e.g., 100)
+2. **charclut.nxd** -- Add new entries (Key=100, Key2=0-3) with desired RGB palettes
+3. **overrideentrydata.nxd** -- Patch individual units' Spriteset to differentiate colors per-unit
+
+**The single make-or-break question:** Does the game engine respect `charclut+Id` for generic units, or does it hardcode a "is this Ramza?" check? This can only be resolved by:
+1. Extracting `charshape.nxd` from the base game
+2. Finding the generic job entries and checking their current `charclut+Id` values
+3. Pointing one at key 254 (existing blue soldier palette) and testing in-game
+
+**Risks:** Game engine may hardcode CLUT bypass for non-Ramza; changing Spriteset may affect body model; CLUT and BIN palette systems may conflict if both are applied.
+
+### 8.3 Keys 254/255 in CharCLUT -- RESOLVED
+
+**Key 254 = Generic blue soldier CLUT palette.** Muted, desaturated blue armor with neutral gray-brown cloth and natural skin tones. Not Ramza-specific (`CharaColorSkinId=0`). Both Key2 variants (0 and 1) contain identical palette data. This is a rank-and-file NPC/soldier palette, likely referenced by one or more `CharShape` entries for story NPCs or cutscene units.
+
+**Key 254 palette (abbreviated):**
+```
+Indices 3-6:  Desaturated blue armor (48,48,72) -> (120,112,184)
+Indices 7-9:  Neutral gray-brown cloth
+Indices 13-15: Natural warm skin tones
+```
+
+**Key 255 = Debug/test palette.** Extreme purple-magenta colors where even skin tones are neon purple -- the classic "screaming purple" developer visualization palette used to verify CLUT pipeline correctness. Key2=1 is all zeros (null palette).
+
+**Key 255, Key2=0 palette (abbreviated):**
+```
+Indices 3-6:  Deep purple/violet progression
+Indices 13-15: Neon magenta/electric purple (176,0,240) -> (240,208,248)
+```
+
+**UnkBool14 analysis:** This is an **"enabled" flag**. The assembly reference (`0F 84` = `JE`) shows the game checks this boolean and branches. For keys 254/255, only Key2=0 is enabled (UnkBool14=1); Key2=1 is disabled (UnkBool14=0).
+
+**To determine which in-game units use these palettes**, `charshape.nxd` must be extracted from the base game files to find entries where `charclut+Id` points to 254 or 255.
+
+### 8.4 OverrideEntryData Palette Field -- RESOLVED
+
+The `EntryUnknown1D` column in OverrideEntryData is the remaster's palette selector, corresponding to the PSX ENTD palette byte at offset 0x17. See section 8.1 for details.
+
+### 8.5 Runtime Palette Caching -- STILL UNKNOWN
 The game caches palette data in memory. Modifying BIN files on disk does not force a redraw. Users must trigger a palette reload by entering party formation and hovering over the affected unit. **No known way to force runtime reload.**
 
-### 8.6 NXD Header Internals
+### 8.6 NXD Header Internals -- STILL UNKNOWN
 Bytes 0x0C through 0x378 of charclut.nxd contain key group descriptors, per-row metadata, and relative offset tables. The codebase bypasses full parsing by using hardcoded offsets. **Partially mapped but not fully reverse-engineered.**
+
+### 8.7 Validation Experiment -- HIGHEST PRIORITY
+
+To unlock per-unit color customization for generic jobs:
+
+1. Extract `charshape.nxd` from the base game using FF16Tools CLI
+2. Convert to SQLite: `FF16Tools.CLI nxd-to-sqlite -i <nxd_dir> -o output.db -g fft`
+3. Inspect all entries -- identify which keys correspond to generic jobs
+4. Check their `charclut+Id` values (expected: 0 for generics)
+5. Modify one generic job's `charclut+Id` to point at key 254 (existing blue soldier palette)
+6. Rebuild: `FF16Tools.CLI sqlite-to-nxd -i output.db -o <output_dir> -g fft`
+7. Deploy and enter battle with that job
+8. **If the unit changes color: the pipeline works for generics -- per-unit customization is achievable**
+9. **If no change: the game hardcodes CLUT bypass for non-Ramza units -- alternative approaches needed**
 
 ---
 
