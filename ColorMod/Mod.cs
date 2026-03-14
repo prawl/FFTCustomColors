@@ -23,6 +23,7 @@ public class Mod : IMod, IConfigurable
     private ModBootstrapper? _bootstrapper;
     private FileInterceptor? _fileInterceptor;
     private IHotkeyHandler? _hotkeyHandler;
+    private WotlCharacterSpawner? _wotlSpawner;
 
     // State
     private bool _hasStarted = false;
@@ -70,6 +71,9 @@ public class Mod : IMod, IConfigurable
 
         ModLogger.LogDebug("Calling Start manually from constructor");
         Start(null);
+
+        // Start WotL character spawner (auto-adds Balthier/Luso if WotL Characters mod is active)
+        _wotlSpawner = WotlCharacterSpawner.CreateAndStart();
     }
 
     /// <summary>
