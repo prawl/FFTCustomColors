@@ -49,6 +49,10 @@ namespace FFTColorCustomizer.Core.ModComponents
             "reze",     // Reis human
             "reze_d",   // Reis dragon
 
+            // WotL Jobs
+            "ankoku",      // Dark Knight
+            "tama",        // Onion Knight
+
             // WotL Characters
             "bulechange",  // Balthier
             "kaito"        // Luso

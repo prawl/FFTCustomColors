@@ -202,7 +202,7 @@ namespace FFTColorCustomizer.Tests.Services
         {
             var configPath = Path.Combine(_testModPath, "Config.json");
             File.WriteAllText(configPath, "{}");
-            var configManager = new ConfigurationManagerAdapter(configPath);
+            var configManager = new ConfigurationManager(configPath);
             var loader = new DynamicSpriteLoader(_testModPath, configManager);
 
             loader.IsWotLJob(jobProperty).Should().Be(expected);
@@ -216,7 +216,7 @@ namespace FFTColorCustomizer.Tests.Services
         {
             var configPath = Path.Combine(_testModPath, "Config.json");
             File.WriteAllText(configPath, "{}");
-            var configManager = new ConfigurationManagerAdapter(configPath);
+            var configManager = new ConfigurationManager(configPath);
             var loader = new DynamicSpriteLoader(_testModPath, configManager);
 
             loader.GetUnitDirectory(jobProperty).Should().EndWith(expectedDir);

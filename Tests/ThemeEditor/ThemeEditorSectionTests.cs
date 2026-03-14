@@ -556,9 +556,10 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             // Arrange & Act
             using var picker = new HslColorPicker();
 
-            // Assert - should have labels for Hue, Saturation, and Lightness (plus section header = 4 total)
+            // Assert - should have labels for Hue, Saturation, Lightness, section header,
+            // plus value labels (HueValueLabel, SaturationValueLabel, LightnessValueLabel) = 7 total
             var labels = picker.Controls.OfType<Label>().ToList();
-            Assert.Equal(4, labels.Count);
+            Assert.Equal(7, labels.Count);
             Assert.Contains(labels, l => l.Text == "Hue");
             Assert.Contains(labels, l => l.Text == "Saturation");
             Assert.Contains(labels, l => l.Text == "Lightness");
@@ -1293,8 +1294,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var satSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "SaturationSlider");
             var lightSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "LightnessSlider");
 
-            // Sliders should extend close to the right edge (within 20px padding)
-            var expectedMinRight = picker.Width - 20;
+            // Sliders should fill available width (minus label 70px, value label 35px, padding 10px)
+            // So slider right edge = 70 + (400 - 70 - 35 - 10) = 355
+            var expectedMinRight = picker.Width - 70;
             Assert.True(hueSlider.Right >= expectedMinRight,
                 $"Hue slider should extend to right edge. Picker width: {picker.Width}, Slider.Right: {hueSlider.Right}");
             Assert.True(satSlider.Right >= expectedMinRight,
