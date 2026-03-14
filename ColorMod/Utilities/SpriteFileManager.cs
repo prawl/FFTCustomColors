@@ -122,7 +122,8 @@ public class SpriteFileManager
     /// <returns>The full path to the target unit directory</returns>
     public string GetTargetUnitDirectory(string spriteFileName)
     {
-        var isWotLSprite = spriteFileName.Contains("ankoku_") || spriteFileName.Contains("tama_");
+        var isWotLSprite = spriteFileName.Contains("ankoku_") || spriteFileName.Contains("tama_") ||
+                           spriteFileName.Contains("bulechange_") || spriteFileName.Contains("kaito_");
         var unitFolder = isWotLSprite ? "unit_psp" : "unit";
         return Path.Combine(_modPath, "FFTIVC", "data", "enhanced", "fftpack", unitFolder);
     }

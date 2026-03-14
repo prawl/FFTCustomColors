@@ -37,6 +37,7 @@ namespace FFTColorCustomizer.Core
         // JSON file names
         public const string StoryCharactersFile = "StoryCharacters.json";
         public const string JobClassesFile = "JobClasses.json";
+        public const string WotLCharactersFile = "WotLCharacters.json";
 
         // Property suffixes
         public const string MaleSuffix = "_Male";

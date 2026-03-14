@@ -9,5 +9,6 @@ namespace FFTColorCustomizer.Services
         public string DefaultTheme { get; set; } = "original";
         public string[] AvailableThemes { get; set; } = Array.Empty<string>();
         public string? EnumType { get; set; }
+        public bool IsWotLCharacter { get; set; }
     }
 }

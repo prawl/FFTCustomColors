@@ -124,8 +124,9 @@ namespace FFTColorCustomizer.Configuration.UI
             };
         }
 
-        public void AddStoryCharacterRow(int row, StoryCharacterRegistry.StoryCharacterConfig characterConfig)
+        public void AddStoryCharacterRow(int row, StoryCharacterRegistry.StoryCharacterConfig characterConfig, List<Control> controlsList = null)
         {
+            var targetControlsList = controlsList ?? _storyCharacterControls;
             // Create label with display name
             var displayName = GetCharacterDisplayName(characterConfig.Name);
             var label = ConfigUIComponentFactory.CreateCharacterLabel(displayName);
@@ -162,12 +163,12 @@ namespace FFTColorCustomizer.Configuration.UI
                 labelPanel.Height = label.Height + warningLabel.Height - 2;
 
                 _mainPanel.Controls.Add(labelPanel, 0, row);
-                _storyCharacterControls.Add(labelPanel);
+                targetControlsList.Add(labelPanel);
             }
             else
             {
                 _mainPanel.Controls.Add(label, 0, row);
-                _storyCharacterControls.Add(label);
+                targetControlsList.Add(label);
             }
 
             // Create theme combo box with formatted display
@@ -252,8 +253,8 @@ namespace FFTColorCustomizer.Configuration.UI
             comboBox.SelectedThemeValue = currentValue.ToString();
 
             // Track controls
-            _storyCharacterControls.Add(comboBox);
-            _storyCharacterControls.Add(carousel);
+            targetControlsList.Add(comboBox);
+            targetControlsList.Add(carousel);
         }
 
         private List<string> GetAvailableGenericThemes()
@@ -951,7 +952,8 @@ namespace FFTColorCustomizer.Configuration.UI
 
         private bool IsWotLJob(string jobName)
         {
-            return jobName.StartsWith("Dark Knight") || jobName.StartsWith("Onion Knight");
+            return jobName.StartsWith("Dark Knight") || jobName.StartsWith("Onion Knight") ||
+                   jobName == "Balthier" || jobName == "Luso";
         }
 
         private Image[] TryLoadGenericFromBinFile(string jobName, string theme)
@@ -1296,6 +1298,10 @@ namespace FFTColorCustomizer.Configuration.UI
                 case "Dark Knight (Female)": return "spr_dst_bchr_ankoku_w_spr.bin";
                 case "Onion Knight (Male)": return "spr_dst_bchr_tama_m_spr.bin";
                 case "Onion Knight (Female)": return "spr_dst_bchr_tama_w_spr.bin";
+
+                // WotL Characters (unit_psp)
+                case "Balthier": return "spr_dst_bchr_bulechange_m_spr.bin";
+                case "Luso": return "spr_dst_bchr_kaito_m_spr.bin";
 
                 // Fallback to old logic if not found
                 default:

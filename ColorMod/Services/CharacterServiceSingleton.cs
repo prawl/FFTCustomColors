@@ -78,7 +78,41 @@ namespace FFTColorCustomizer.Services
                 StoryCharacterRegistry.AutoDiscoverCharacters(service);
             }
 
+            // Load WotL characters (Balthier, Luso)
+            var wotlJsonPath = FindWotLCharactersJson();
+            if (wotlJsonPath != null && File.Exists(wotlJsonPath))
+            {
+                service.LoadWotLCharactersFromJson(wotlJsonPath);
+            }
+
             return service;
+        }
+
+        private static string? FindWotLCharactersJson()
+        {
+            var possiblePaths = new List<string>();
+
+            if (!string.IsNullOrEmpty(_modPath))
+            {
+                possiblePaths.Add(Path.Combine(_modPath, ColorModConstants.DataDirectory, ColorModConstants.WotLCharactersFile));
+                possiblePaths.Add(Path.Combine(_modPath, "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.WotLCharactersFile));
+            }
+
+            possiblePaths.AddRange(new[]
+            {
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.WotLCharactersFile),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ColorModConstants.DataDirectory, ColorModConstants.WotLCharactersFile),
+                Path.Combine(Directory.GetCurrentDirectory(), "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.WotLCharactersFile),
+                Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "ColorMod", ColorModConstants.DataDirectory, ColorModConstants.WotLCharactersFile)
+            });
+
+            foreach (var path in possiblePaths)
+            {
+                if (File.Exists(path))
+                    return path;
+            }
+
+            return null;
         }
 
         private static string? FindStoryCharactersJson()

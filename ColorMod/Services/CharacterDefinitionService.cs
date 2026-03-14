@@ -44,6 +44,32 @@ namespace FFTColorCustomizer.Services
             }
         }
 
+        /// <summary>
+        /// Loads WotL character definitions from a JSON file and adds them to the character list.
+        /// Sets IsWotLCharacter = true on each loaded character.
+        /// </summary>
+        public void LoadWotLCharactersFromJson(string filePath)
+        {
+            if (!File.Exists(filePath))
+                return;
+
+            var json = File.ReadAllText(filePath);
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            var container = JsonSerializer.Deserialize<CharacterDefinitionsContainer>(json, options);
+            if (container?.Characters != null)
+            {
+                foreach (var character in container.Characters)
+                {
+                    character.IsWotLCharacter = true;
+                    _characters.Add(character);
+                }
+            }
+        }
+
         private class CharacterDefinitionsContainer
         {
             public List<CharacterDefinition> Characters { get; set; } = new List<CharacterDefinition>();

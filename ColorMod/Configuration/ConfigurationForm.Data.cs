@@ -68,6 +68,19 @@ namespace FFTColorCustomizer.Configuration
                 SetControlsVisibility(_wotlJobsControls, false);
             }
 
+            // Add header for WotL Characters
+            var wotlCharsHeader = CreateCollapsibleHeader("WotL Characters", _wotlCharactersCollapsed, row++);
+            wotlCharsHeader.Click += (sender, e) => ToggleWotLCharactersVisibility(wotlCharsHeader);
+
+            // Load WotL characters (Balthier, Luso)
+            LoadWotLCharacters(ref row);
+
+            // Apply initial collapsed state for WotL characters
+            if (_wotlCharactersCollapsed)
+            {
+                SetControlsVisibility(_wotlCharactersControls, false);
+            }
+
             // Add header for theme editor
             var themeEditorHeader = CreateCollapsibleHeader("Theme Editor", _themeEditorCollapsed, row++);
             themeEditorHeader.Click += (sender, e) => ToggleThemeEditorVisibility(themeEditorHeader);
@@ -166,9 +179,11 @@ namespace FFTColorCustomizer.Configuration
 
                 // Determine which section this job belongs to
                 var wotlJobs = new HashSet<string> { "DarkKnight_Male", "DarkKnight_Female", "OnionKnight_Male", "OnionKnight_Female" };
+                var wotlCharacters = new HashSet<string> { "Balthier", "Luso" };
                 var isWotlJob = wotlJobs.Contains(args.JobName);
+                var isWotlCharacter = wotlCharacters.Contains(args.JobName);
                 var isStoryCharacter = _storyCharacters != null && _storyCharacters.ContainsKey(args.JobName);
-                var sectionName = isWotlJob ? "WotL Jobs" : (isStoryCharacter ? "Story Characters" : "Generic Characters");
+                var sectionName = isWotlJob ? "WotL Jobs" : (isWotlCharacter ? "WotL Characters" : (isStoryCharacter ? "Story Characters" : "Generic Characters"));
 
                 MessageBox.Show($"Theme '{args.ThemeName}' saved successfully!\n\nYou can select it under \"{displayJobName}\" in the \"{sectionName}\" section above.", "Theme Saved",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -381,6 +396,98 @@ namespace FFTColorCustomizer.Configuration
                     var key = jobKey; // Capture for closure
                     AddWotLJobRow(row++, metadata.DisplayName, _config[key], v => _config[key] = v);
                 }
+            }
+        }
+
+        private void LoadWotLCharacters(ref int row)
+        {
+            // Detect WotL Characters mod state
+            var modsDirectory = System.IO.Path.GetDirectoryName(_modPath);
+            var modState = WotlCharactersState.NotInstalled;
+            if (!string.IsNullOrEmpty(modsDirectory))
+            {
+                var detector = new WotlCharactersDetector(modsDirectory);
+                modState = detector.State;
+            }
+
+            // Add download link
+            var downloadLink = new LinkLabel
+            {
+                Text = "WotL Characters Mod",
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                LinkColor = Color.FromArgb(100, 150, 255),
+                ActiveLinkColor = Color.FromArgb(150, 200, 255),
+                VisitedLinkColor = Color.FromArgb(100, 150, 255),
+                Padding = new Padding(5, 5, 0, 0)
+            };
+            downloadLink.LinkClicked += (s, e) =>
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "https://www.nexusmods.com/finalfantasytacticstheivalicechronicles/mods/34",
+                    UseShellExecute = true
+                });
+            };
+            _mainPanel.Controls.Add(downloadLink, 0, row);
+            _mainPanel.SetColumnSpan(downloadLink, 3);
+            _wotlCharactersControls.Add(downloadLink);
+            row++;
+
+            // Determine status text and color based on state
+            string statusText;
+            Color statusColor;
+            switch (modState)
+            {
+                case WotlCharactersState.InstalledAndEnabled:
+                    statusText = "✓ WotL Characters Mod Enabled";
+                    statusColor = Color.FromArgb(100, 200, 100);  // Green
+                    break;
+                case WotlCharactersState.InstalledButDisabled:
+                    statusText = "⚠ WotL Characters Mod is installed but disabled - enable it in Reloaded-II";
+                    statusColor = Color.FromArgb(200, 180, 80);   // Yellow/Orange
+                    break;
+                default:
+                    statusText = "✗ WotL Characters Mod not installed - these themes will not work";
+                    statusColor = Color.FromArgb(200, 100, 100);  // Red
+                    break;
+            }
+
+            // Add status label
+            var statusLabel = new Label
+            {
+                Text = statusText,
+                ForeColor = statusColor,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(5, 0, 0, 5)
+            };
+            _mainPanel.Controls.Add(statusLabel, 0, row);
+            _mainPanel.SetColumnSpan(statusLabel, 3);
+            _wotlCharactersControls.Add(statusLabel);
+            row++;
+
+            // Load WotL characters from CharacterDefinitionService
+            var service = CharacterServiceSingleton.Instance;
+            foreach (var character in service.GetAllCharacters())
+            {
+                if (!character.IsWotLCharacter)
+                    continue;
+
+                var characterName = character.Name;
+                var characterConfig = new StoryCharacterRegistry.StoryCharacterConfig
+                {
+                    Name = characterName,
+                    EnumType = typeof(string),
+                    GetValue = () => _config.GetStoryCharacterTheme(characterName) ?? "original",
+                    SetValue = (v) => _config.SetStoryCharacterTheme(characterName, v?.ToString() ?? "original"),
+                    PreviewName = characterName,
+                    AvailableThemes = character.AvailableThemes
+                };
+
+                _rowBuilder.AddStoryCharacterRow(row++, characterConfig, _wotlCharactersControls);
             }
         }
 

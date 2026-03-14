@@ -151,7 +151,8 @@ namespace FFTColorCustomizer.Configuration
             {
                 "RamzaChapter1", "RamzaChapter23", "RamzaChapter4",
                 "Agrias", "Orlandeau", "Cloud", "Mustadio", "Reis",
-                "Rapha", "Marach", "Beowulf", "Meliadoul"
+                "Rapha", "Marach", "Beowulf", "Meliadoul",
+                "Balthier", "Luso"
             };
             foreach (var name in fallbackCharacters)
             {

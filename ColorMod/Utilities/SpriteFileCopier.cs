@@ -147,12 +147,17 @@ namespace FFTColorCustomizer.Utilities
         {
             var themeNameLower = themeName.ToLower();
 
+            // Determine sprite filename (WotL sprites already include full name with _spr suffix)
+            var spriteFileName = spriteName.EndsWith("_spr") ? $"{spriteName}.bin" : $"battle_{spriteName}_spr.bin";
+
             // Try directory-based structure first
             var themeDir = $"sprites_{characterName}_{themeNameLower}";
-            var sourceDirPath = Path.Combine(unitPath, themeDir, $"battle_{spriteName}_spr.bin");
+            var sourceDirPath = Path.Combine(unitPath, themeDir, spriteFileName);
 
-            // Also check flat file structure for backward compatibility
-            var sourceFlatPath = Path.Combine(unitPath, $"battle_{spriteName}_{themeNameLower}_spr.bin");
+            // Also check flat file structure for backward compatibility (only for battle_ sprites)
+            var sourceFlatPath = spriteName.EndsWith("_spr")
+                ? string.Empty
+                : Path.Combine(unitPath, $"battle_{spriteName}_{themeNameLower}_spr.bin");
 
             string sourceFile;
             if (File.Exists(sourceDirPath))
@@ -160,7 +165,7 @@ namespace FFTColorCustomizer.Utilities
                 sourceFile = sourceDirPath;
                 ModLogger.Log($"Using directory-based theme: {themeDir}");
             }
-            else if (File.Exists(sourceFlatPath))
+            else if (!string.IsNullOrEmpty(sourceFlatPath) && File.Exists(sourceFlatPath))
             {
                 sourceFile = sourceFlatPath;
                 ModLogger.Log($"Using flat file theme: battle_{spriteName}_{themeName}_spr.bin");
@@ -169,11 +174,12 @@ namespace FFTColorCustomizer.Utilities
             {
                 ModLogger.Log($"Warning: Theme file not found for {characterName} - {themeName}");
                 ModLogger.Log($"  Tried: {sourceDirPath}");
-                ModLogger.Log($"  Tried: {sourceFlatPath}");
+                if (!string.IsNullOrEmpty(sourceFlatPath))
+                    ModLogger.Log($"  Tried: {sourceFlatPath}");
                 return false;
             }
 
-            var destFile = Path.Combine(unitPath, $"battle_{spriteName}_spr.bin");
+            var destFile = Path.Combine(unitPath, spriteFileName);
             var success = CopySpriteFile(sourceFile, destFile);
             if (success)
             {
@@ -187,9 +193,10 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         public bool RestoreStoryCharacterOriginalSprite(string characterName, string spriteName, string unitPath)
         {
+            var spriteFileName = spriteName.EndsWith("_spr") ? $"{spriteName}.bin" : $"battle_{spriteName}_spr.bin";
             var originalDir = Path.Combine(unitPath, "sprites_original");
-            var originalFile = Path.Combine(originalDir, $"battle_{spriteName}_spr.bin");
-            var destFile = Path.Combine(unitPath, $"battle_{spriteName}_spr.bin");
+            var originalFile = Path.Combine(originalDir, spriteFileName);
+            var destFile = Path.Combine(unitPath, spriteFileName);
 
             if (!File.Exists(originalFile))
             {

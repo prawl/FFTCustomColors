@@ -47,7 +47,11 @@ namespace FFTColorCustomizer.Core.ModComponents
             "mara",     // Malak/Marach
             "cloud",    // Cloud
             "reze",     // Reis human
-            "reze_d"    // Reis dragon
+            "reze_d",   // Reis dragon
+
+            // WotL Characters
+            "bulechange",  // Balthier
+            "kaito"        // Luso
         };
 
         public ThemeCoordinator(string sourcePath, string modPath)
@@ -127,8 +131,10 @@ namespace FFTColorCustomizer.Core.ModComponents
 
             var lowerFileName = fileName.ToLowerInvariant();
 
-            // Must be a battle sprite file
-            if (!lowerFileName.Contains("battle_") || !lowerFileName.EndsWith("_spr.bin"))
+            // Must be a battle or WotL sprite file
+            if (!lowerFileName.EndsWith("_spr.bin"))
+                return false;
+            if (!lowerFileName.Contains("battle_") && !lowerFileName.Contains("spr_dst_bchr_"))
                 return false;
 
             // Check if it matches any job sprite pattern

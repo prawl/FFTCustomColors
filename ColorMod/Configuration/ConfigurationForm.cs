@@ -55,6 +55,8 @@ namespace FFTColorCustomizer.Configuration
         private List<Control> _myThemesControls = new List<Control>();
         private bool _wotlJobsCollapsed = false;
         private List<Control> _wotlJobsControls = new List<Control>();
+        private bool _wotlCharactersCollapsed = false;
+        private List<Control> _wotlCharactersControls = new List<Control>();
 
         /// <summary>
         /// Gets the current configuration
@@ -280,6 +282,34 @@ namespace FFTColorCustomizer.Configuration
             header.Text = _wotlJobsCollapsed ? "▶ WotL Jobs" : "▼ WotL Jobs";
 
             SetControlsVisibility(_wotlJobsControls, !_wotlJobsCollapsed);
+
+            _mainPanel.ResumeLayout(true);
+            this.ResumeLayout(true);
+
+            // Check visibility immediately and after a small delay
+            _lazyLoadingManager?.CheckAllCarouselsVisibility();
+
+            // Also check after layout settles
+            System.Windows.Forms.Timer delayTimer = new System.Windows.Forms.Timer();
+            delayTimer.Interval = 100; // 100ms delay
+            delayTimer.Tick += (s, e) =>
+            {
+                delayTimer.Stop();
+                delayTimer.Dispose();
+                _lazyLoadingManager?.CheckAllCarouselsVisibility();
+            };
+            delayTimer.Start();
+        }
+
+        private void ToggleWotLCharactersVisibility(Label header)
+        {
+            _mainPanel.SuspendLayout();
+            this.SuspendLayout();
+
+            _wotlCharactersCollapsed = !_wotlCharactersCollapsed;
+            header.Text = _wotlCharactersCollapsed ? "▶ WotL Characters" : "▼ WotL Characters";
+
+            SetControlsVisibility(_wotlCharactersControls, !_wotlCharactersCollapsed);
 
             _mainPanel.ResumeLayout(true);
             this.ResumeLayout(true);

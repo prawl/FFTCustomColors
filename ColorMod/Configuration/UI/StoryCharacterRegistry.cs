@@ -75,6 +75,10 @@ namespace FFTColorCustomizer.Configuration.UI
                 if (string.IsNullOrEmpty(character.Name))
                     continue;
 
+                // Skip WotL characters (they have their own UI section)
+                if (character.IsWotLCharacter)
+                    continue;
+
                 // Capture the character name for closure
                 var characterName = character.Name;
                 var defaultTheme = character.DefaultTheme ?? "original";

@@ -105,7 +105,8 @@ namespace FFTColorCustomizer.Utilities
         /// <returns>True if the job is a WotL exclusive job, false otherwise</returns>
         public bool IsWotLJob(string jobProperty)
         {
-            return jobProperty.StartsWith("DarkKnight") || jobProperty.StartsWith("OnionKnight");
+            return jobProperty.StartsWith("DarkKnight") || jobProperty.StartsWith("OnionKnight") ||
+                   jobProperty == "Balthier" || jobProperty == "Luso";
         }
 
         /// <summary>
@@ -146,7 +147,8 @@ namespace FFTColorCustomizer.Utilities
                 var storyCharacters = new[] {
                     "orlandeau", "agrias", "cloud",
                     "mustadio", "reis", "malak", "rafa",
-                    "delita", "alma", "wiegraf", "celia", "lettie"
+                    "delita", "alma", "wiegraf", "celia", "lettie",
+                    "balthier", "luso"
                 };
 
                 bool isStoryCharacterTheme = false;

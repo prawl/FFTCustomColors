@@ -1,0 +1,24 @@
+{
+  "characters": [
+    {
+      "name": "Balthier",
+      "spriteNames": [
+        "spr_dst_bchr_bulechange_m_spr"
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Luso",
+      "spriteNames": [
+        "spr_dst_bchr_kaito_m_spr"
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    }
+  ]
+}

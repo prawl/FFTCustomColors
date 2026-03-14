@@ -66,8 +66,9 @@ namespace FFTColorCustomizer.Utilities
                 return originalPath;
             }
 
-            // Build path to the themed sprite
-            var variantPath = Path.Combine(_pathResolver.UnitPath, $"sprites_{colorScheme}", fileName);
+            // Build path to the themed sprite (use unit_psp for WotL characters)
+            var unitPath = _pathResolver.IsWotLJob(jobProperty) ? _pathResolver.UnitPspPath : _pathResolver.UnitPath;
+            var variantPath = Path.Combine(unitPath, $"sprites_{colorScheme}", fileName);
             if (File.Exists(variantPath))
             {
                 ModLogger.LogDebug($"Redirecting {fileName} to themed variant: {colorScheme}");

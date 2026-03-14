@@ -50,7 +50,9 @@ namespace FFTColorCustomizer.Utilities
         public bool IsWotLJob(string jobName)
         {
             return jobName.StartsWith("DarkKnight", StringComparison.OrdinalIgnoreCase) ||
-                   jobName.StartsWith("OnionKnight", StringComparison.OrdinalIgnoreCase);
+                   jobName.StartsWith("OnionKnight", StringComparison.OrdinalIgnoreCase) ||
+                   jobName.Equals("Balthier", StringComparison.OrdinalIgnoreCase) ||
+                   jobName.Equals("Luso", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -220,6 +222,8 @@ namespace FFTColorCustomizer.Utilities
                 "DarkKnight_Female" => "spr_dst_bchr_ankoku_w_spr.bin",
                 "OnionKnight_Male" => "spr_dst_bchr_tama_m_spr.bin",
                 "OnionKnight_Female" => "spr_dst_bchr_tama_w_spr.bin",
+                "Balthier" => "spr_dst_bchr_bulechange_m_spr.bin",
+                "Luso" => "spr_dst_bchr_kaito_m_spr.bin",
                 _ => null
             };
         }

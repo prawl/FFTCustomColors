@@ -165,7 +165,10 @@ namespace FFTColorCustomizer.Configuration
                 ["ankoku_w"] = "DarkKnight_Female",
                 // WotL Jobs - Onion Knight (tama)
                 ["tama_m"] = "OnionKnight_Male",
-                ["tama_w"] = "OnionKnight_Female"
+                ["tama_w"] = "OnionKnight_Female",
+                // WotL Characters
+                ["bulechange_m"] = "Balthier",
+                ["kaito_m"] = "Luso"
             };
 
             // Check if any mapping key is contained in the sprite name

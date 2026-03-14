@@ -148,7 +148,11 @@ namespace FFTColorCustomizer.Utilities
         {
             ModLogger.Log($"Applying theme for character: {characterName}, sprite: {spriteName}, theme: {themeName}");
 
-            var unitPath = _pathResolver.UnitPath;
+            // WotL characters use unit_psp path
+            var character = _characterService.GetCharacterByName(
+                _pathResolver.NormalizeCharacterName(characterName));
+            var isWotLCharacter = character?.IsWotLCharacter == true;
+            var unitPath = isWotLCharacter ? _pathResolver.UnitPspPath : _pathResolver.UnitPath;
 
             if (themeName.ToLower() == "original")
             {
@@ -167,8 +171,9 @@ namespace FFTColorCustomizer.Utilities
 
             if (_userThemeApplicator.IsUserTheme(properCharacterName, themeName))
             {
+                var spriteFileName = spriteName.EndsWith("_spr") ? $"{spriteName}.bin" : $"battle_{spriteName}_spr.bin";
                 var paletteData = _userThemeApplicator.ApplyStoryCharacterUserTheme(
-                    $"battle_{spriteName}_spr.bin", themeName, properCharacterName, unitPath);
+                    spriteFileName, themeName, properCharacterName, unitPath);
 
                 // For Ramza, also patch the NXD with the user theme palette
                 if (paletteData != null && _pathResolver.IsRamzaChapter(properCharacterName))

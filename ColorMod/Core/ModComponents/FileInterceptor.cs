@@ -46,14 +46,16 @@ namespace FFTColorCustomizer.Core.ModComponents
             var fileName = Path.GetFileName(originalPath);
 
             // Check if this is a job sprite that might have a per-job configuration
-            if (fileName.Contains("battle_") && fileName.EndsWith("_spr.bin"))
+            if ((fileName.Contains("battle_") || fileName.Contains("spr_dst_bchr_")) && fileName.EndsWith("_spr.bin"))
             {
                 var jobColor = _getJobColorFunc(fileName);
                 if (!string.IsNullOrEmpty(jobColor) && jobColor != "original")
                 {
-                    // Build the themed sprite path
+                    // Build the themed sprite path (use unit_psp for WotL character sprites)
+                    var isWotLSprite = fileName.Contains("spr_dst_bchr_");
+                    var unitDir = isWotLSprite ? "unit_psp" : UnitPath;
                     var themedDir = Path.Combine(_modPath, FFTIVCPath, DataPath, EnhancedPath,
-                        FFTPackPath, UnitPath, $"{SpritesPrefix}{jobColor}");
+                        FFTPackPath, unitDir, $"{SpritesPrefix}{jobColor}");
                     var themedPath = Path.Combine(themedDir, fileName);
 
                     // Return themed path if it exists
