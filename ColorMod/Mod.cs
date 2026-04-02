@@ -167,6 +167,8 @@ public class Mod : IMod, IConfigurable
         EnsureConfigurationInitialized();
         ApplyThemesBasedOnEnvironment();
         StartHotkeyMonitoring();
+        _bootstrapper?.InitializeCommandBridge();
+        _bootstrapper?.InitializeGameBridge();
     }
 
     private void EnsureConfigurationInitialized()
@@ -270,7 +272,12 @@ public class Mod : IMod, IConfigurable
 
     public void Suspend() => ModLogger.Log("Mod suspended");
     public void Resume() => ModLogger.Log("Mod resumed");
-    public void Unload() => ModLogger.Log("Mod unloading");
+    public void Unload()
+    {
+        _bootstrapper?.StateReporter?.Dispose();
+        _bootstrapper?.CommandWatcher?.Dispose();
+        ModLogger.Log("Mod unloading");
+    }
 
     public bool CanUnload() => false;
     public bool CanSuspend() => false;

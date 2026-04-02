@@ -84,6 +84,8 @@ public class MockInputSimulator : IInputSimulator
         return true;
     }
 
+    public bool SendKeyPressToWindow(nint hWnd, int vkCode) => SendKeyPress(vkCode);
+
     public bool SimulateMenuRefresh()
     {
         // Send Enter key
@@ -111,6 +113,8 @@ public class TimingMockInputSimulator : IInputSimulator
         System.Threading.Thread.Sleep(50);
         return true;
     }
+
+    public bool SendKeyPressToWindow(nint hWnd, int vkCode) => SendKeyPress(vkCode);
 
     public bool SimulateMenuRefresh()
     {
@@ -141,6 +145,8 @@ public class FailingMockInputSimulator : IInputSimulator
         // Return false for Enter key, true for others
         return vkCode != 0x0D;
     }
+
+    public bool SendKeyPressToWindow(nint hWnd, int vkCode) => SendKeyPress(vkCode);
 
     public bool SimulateMenuRefresh()
     {

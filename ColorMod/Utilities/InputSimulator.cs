@@ -9,6 +9,7 @@ namespace FFTColorCustomizer.Utilities
     public interface IInputSimulator
     {
         bool SendKeyPress(int vkCode);
+        bool SendKeyPressToWindow(IntPtr hWnd, int vkCode);
         bool SimulateMenuRefresh();
     }
 
@@ -123,6 +124,24 @@ namespace FFTColorCustomizer.Utilities
             uint result = SendInput(2, inputs, Marshal.SizeOf<INPUT>());
             ModLogger.LogDebug($"[InputSimulator] SendInput returned: {result} (expected 2)");
             return result == 2;
+        }
+
+        public virtual bool SendKeyPressToWindow(IntPtr hWnd, int vkCode)
+        {
+            ModLogger.LogDebug($"[InputSimulator] SendKeyPressToWindow called with hWnd: {hWnd}, vkCode: 0x{vkCode:X2}");
+
+            if (hWnd == IntPtr.Zero)
+            {
+                ModLogger.LogError("[InputSimulator] SendKeyPressToWindow: window handle is zero");
+                return false;
+            }
+
+            bool downResult = PostMessage(hWnd, WM_KEYDOWN, new IntPtr(vkCode), IntPtr.Zero);
+            Thread.Sleep(50);
+            bool upResult = PostMessage(hWnd, WM_KEYUP, new IntPtr(vkCode), IntPtr.Zero);
+
+            ModLogger.LogDebug($"[InputSimulator] SendKeyPressToWindow results - Down: {downResult}, Up: {upResult}");
+            return downResult && upResult;
         }
 
         public bool SimulateMenuRefresh()

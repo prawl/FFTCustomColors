@@ -213,6 +213,7 @@ namespace FFTColorCustomizer.Tests
     public class TestInputSimulator : IInputSimulator
     {
         public bool SendKeyPress(int vkCode) => true;
+        public bool SendKeyPressToWindow(nint hWnd, int vkCode) => true;
         public bool SimulateMenuRefresh() => true;
     }
 }

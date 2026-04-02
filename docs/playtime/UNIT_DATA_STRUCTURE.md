@@ -29,6 +29,13 @@ The pattern uses x86-64 RIP-relative addressing:
 | +0x00 | byte | spriteSet | Character Identity — determines which sprite the game renders. Story characters use fixed values (e.g., 128 for most story chars, 3 for Ramza Ch4). Generic units have spriteSet == job. |
 | +0x01 | byte | unitIndex | Party/roster index. `0xFF` = empty slot. Sequential for active units. |
 | +0x02 | byte | job | Current job ID. Determines abilities, stats, and job class. |
+| +0x07 | byte | secondaryAbility | Index into the character's personal unlocked ability list (not a universal ID). |
+| +0x08 | byte | reactionAbility | Ability ID for equipped reaction ability (e.g., Counter=0xBA, Parry=0xBD). |
+| +0x09 | byte | reactionEquipped | 0x01 when reaction slot has an ability equipped. |
+| +0x0A | byte | supportAbility | Ability ID for equipped support ability (e.g., Attack Boost=0xD1). |
+| +0x0B | byte | supportEquipped | 0x01 when support slot has an ability equipped. |
+| +0x0C | byte | movementAbility | Ability ID for equipped movement ability (e.g., Move+2=0xE7). |
+| +0x0D | byte | movementEquipped | 0x01 when movement slot has an ability equipped. |
 | +0x230 | uint16 LE | nameId | Indexes into the `CharaName-en` NXD table. Determines the character's displayed name. |
 
 ### spriteSet Values

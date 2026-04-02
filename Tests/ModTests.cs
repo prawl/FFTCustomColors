@@ -156,6 +156,11 @@ namespace FFTColorCustomizer.Tests
             return true;
         }
 
+        public bool SendKeyPressToWindow(nint hWnd, int vkCode)
+        {
+            return true;
+        }
+
         public bool SimulateMenuRefresh()
         {
             MenuRefreshCalled = true;

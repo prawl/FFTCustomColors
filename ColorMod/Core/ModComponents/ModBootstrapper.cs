@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using FFTColorCustomizer.Configuration;
+using FFTColorCustomizer.GameBridge;
 using FFTColorCustomizer.Interfaces;
 using FFTColorCustomizer.Services;
 using FFTColorCustomizer.Utilities;
@@ -28,6 +29,10 @@ namespace FFTColorCustomizer.Core.ModComponents
         public ConfigurationCoordinator? ConfigCoordinator { get; private set; }
         public ThemeCoordinator? ThemeCoordinator { get; private set; }
         public HotkeyManager? HotkeyManager { get; private set; }
+        public CommandWatcher? CommandWatcher { get; private set; }
+        public GameMemoryScanner? MemoryScanner { get; private set; }
+        public GameStateReporter? StateReporter { get; private set; }
+        public ScreenStateMachine? ScreenMachine { get; private set; }
 
         /// <summary>
         /// Gets the DI service container. Use this to resolve services.
@@ -190,6 +195,70 @@ namespace FFTColorCustomizer.Core.ModComponents
             if (themeManager != null)
             {
                 Initializer.InitializeStoryCharacterThemes(config, themeManager);
+            }
+        }
+
+        /// <summary>
+        /// Initialize the file-based command bridge for external control (e.g., Claude AI)
+        /// </summary>
+        public void InitializeCommandBridge()
+        {
+            if (_isTestEnvironment) return;
+
+            try
+            {
+                CommandWatcher = new CommandWatcher(_modPath, _inputSimulator ?? new InputSimulator());
+                CommandWatcher.Start();
+                ModLogger.Log("Command bridge initialized");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"Failed to initialize command bridge: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Initialize memory scanning and game state reporting for the Claude bridge.
+        /// </summary>
+        public void InitializeGameBridge()
+        {
+            if (_isTestEnvironment) return;
+
+            try
+            {
+                // Scan for unit data array
+                MemoryScanner = new GameMemoryScanner();
+                bool scanOk = MemoryScanner.Initialize();
+                ModLogger.Log($"[GameBridge] Memory scan: {(scanOk ? "SUCCESS" : "FAILED")}");
+
+                if (!scanOk) return;
+
+                var bridgeDir = System.IO.Path.Combine(_modPath, "claude_bridge");
+
+                // Start state reporter
+                StateReporter = new GameStateReporter(MemoryScanner, bridgeDir);
+                StateReporter.Start(2000);
+
+                // Create memory explorer
+                var explorer = new MemoryExplorer(MemoryScanner, bridgeDir);
+
+                // Create screen state machine
+                ScreenMachine = new ScreenStateMachine();
+                ScreenMachine.SetRosterCount(17); // Will be updated from state
+
+                // Wire into command watcher
+                if (CommandWatcher != null)
+                {
+                    CommandWatcher.StateReporter = StateReporter;
+                    CommandWatcher.Explorer = explorer;
+                    CommandWatcher.ScreenMachine = ScreenMachine;
+                }
+
+                ModLogger.Log("[GameBridge] Game bridge initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[GameBridge] Failed to initialize: {ex.Message}");
             }
         }
 
