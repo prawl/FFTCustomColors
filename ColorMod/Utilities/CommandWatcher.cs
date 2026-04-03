@@ -334,6 +334,7 @@ namespace FFTColorCustomizer.Utilities
                     case "battle_wait":
                     case "navigate":
                     case "travel":
+                    case "confirm_attack":
                         return ExecuteNavAction(command);
 
                     case "set_screen":
@@ -551,19 +552,22 @@ namespace FFTColorCustomizer.Utilities
                 {
                     if (!string.Equals(lastScreen.Name, waitUntilScreenNot, StringComparison.OrdinalIgnoreCase))
                     {
-                        // Screen changed — now settle: wait for 3 consecutive matching reads
+                        // Screen changed — now settle: wait for 10 consecutive matching
+                        // reads at 100ms intervals (1 second stable). Animations and
+                        // transient states (Battle_Acting during attacks) can persist
+                        // for several hundred milliseconds.
                         string newName = lastScreen.Name;
                         int stableCount = 0;
                         while (sw.ElapsedMilliseconds < timeoutMs)
                         {
-                            Thread.Sleep(50);
+                            Thread.Sleep(100);
                             var settled = DetectScreen();
                             if (settled == null) { stableCount = 0; continue; }
                             if (settled.Name == newName)
                             {
                                 stableCount++;
                                 lastScreen = settled;
-                                if (stableCount >= 3)
+                                if (stableCount >= 10)
                                     return (settled, false);
                             }
                             else if (string.Equals(settled.Name, waitUntilScreenNot, StringComparison.OrdinalIgnoreCase))

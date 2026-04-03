@@ -24,6 +24,7 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_LEFT = 0x25;
         private const int VK_RIGHT = 0x27;
         private const int VK_TAB = 0x09;
+        private const int VK_F = 0x46;
         private const int VK_T = 0x54;
         private const int VK_Q = 0x51;
         private const int VK_E = 0x45;
@@ -70,6 +71,9 @@ namespace FFTColorCustomizer.GameBridge
 
                     case "travel":
                         return Travel(response, command.LocationId);
+
+                    case "confirm_attack":
+                        return ConfirmAttack(response);
 
                     default:
                         response.Status = "failed";
@@ -348,6 +352,52 @@ namespace FFTColorCustomizer.GameBridge
 
             response.Status = "failed";
             response.Error = $"Could not find location {locationId} in any travel list tab";
+            return response;
+        }
+
+        /// <summary>
+        /// confirm_attack: Press F twice (select target + confirm), then poll until
+        /// the battle reaches a terminal state (Battle_MyTurn, Battle, GameOver, Battle_Paused).
+        /// The attack animation can last several seconds with transient Battle_Acting/Moving states.
+        /// </summary>
+        private CommandResponse ConfirmAttack(CommandResponse response)
+        {
+            var screen = _detectScreen();
+            if (screen == null || screen.Name != "Battle_Targeting")
+            {
+                response.Status = "failed";
+                response.Error = $"Not on Battle_Targeting screen (current: {screen?.Name ?? "null"})";
+                return response;
+            }
+
+            // Press F to select target
+            SendKey(VK_F);
+            Thread.Sleep(300);
+
+            // Press F again to confirm attack
+            SendKey(VK_F);
+            Thread.Sleep(500);
+
+            // Poll until we reach a terminal battle state
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 10000)
+            {
+                Thread.Sleep(200);
+                screen = _detectScreen();
+                if (screen == null) continue;
+
+                // Terminal states: the action has fully resolved
+                if (screen.Name == "Battle_MyTurn" ||
+                    screen.Name == "Battle" ||
+                    screen.Name == "GameOver" ||
+                    screen.Name == "Battle_Paused")
+                {
+                    response.Status = "completed";
+                    return response;
+                }
+            }
+
+            response.Status = "completed_timeout";
             return response;
         }
 
