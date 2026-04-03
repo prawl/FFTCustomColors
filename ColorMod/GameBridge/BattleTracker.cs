@@ -219,10 +219,14 @@ namespace FFTColorCustomizer.GameBridge
                 }
             }
 
+            // Get active unit position for distance calculations
+            int myX = state.ActiveUnit?.X ?? -1;
+            int myY = state.ActiveUnit?.Y ?? -1;
+
             foreach (var kvp in _units)
             {
                 var u = kvp.Value;
-                state.Units.Add(new BattleUnitState
+                var unitState = new BattleUnitState
                 {
                     Team = u.Team,
                     Level = u.Level,
@@ -236,7 +240,30 @@ namespace FFTColorCustomizer.GameBridge
                     MaxMp = u.MaxMp,
                     IsActive = kvp.Key == activeKey,
                     PositionKnown = u.X >= 0,
-                });
+                };
+
+                // Calculate distance and direction from active unit
+                if (myX >= 0 && myY >= 0 && u.X >= 0 && u.Y >= 0 && kvp.Key != activeKey)
+                {
+                    int dx = u.X - myX;
+                    int dy = u.Y - myY;
+                    unitState.Distance = Math.Abs(dx) + Math.Abs(dy);
+
+                    // Direction uses game cursor orientation:
+                    // Down = forward (increasing Y-ish), Up = backward
+                    string vertical = dy > 0 ? "down" : dy < 0 ? "up" : "";
+                    string horizontal = dx > 0 ? "right" : dx < 0 ? "left" : "";
+                    if (vertical != "" && horizontal != "")
+                        unitState.Direction = $"{vertical}-{horizontal}";
+                    else if (vertical != "")
+                        unitState.Direction = vertical;
+                    else if (horizontal != "")
+                        unitState.Direction = horizontal;
+                    else
+                        unitState.Direction = "same tile";
+                }
+
+                state.Units.Add(unitState);
             }
 
             return state;
@@ -600,5 +627,14 @@ namespace FFTColorCustomizer.GameBridge
 
         [JsonPropertyName("positionKnown")]
         public bool PositionKnown { get; set; }
+
+        /// <summary>Manhattan distance from active unit. -1 if position unknown.</summary>
+        [JsonPropertyName("distance")]
+        public int Distance { get; set; } = -1;
+
+        /// <summary>Direction from active unit (e.g. "down-left", "up"). Empty if unknown.</summary>
+        [JsonPropertyName("direction")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Direction { get; set; }
     }
 }

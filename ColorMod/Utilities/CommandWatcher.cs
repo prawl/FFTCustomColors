@@ -889,46 +889,48 @@ namespace FFTColorCustomizer.Utilities
         /// Tile list at 0x140C66315: 7 bytes per tile [X, Y, elev, flag, 0, 0, 0].
         /// Cursor index at 0x140C64E7C: byte index into tile list.
         /// </summary>
+        /// <summary>
+        /// Reads cursor grid position and available tiles during Battle_Moving/Battle_Targeting.
+        /// Cursor position at 0x140C65380 (X) and 0x140C65381 (Y) — local grid coordinates.
+        /// Tile list at 0x140C66315: 7 bytes per tile [X, Y, elev, flag, 0, 0, 0].
+        /// Direction mapping: Left=X-, Right=X+, Up=Y-, Down=Y+
+        /// </summary>
         private void PopulateBattleTileData(DetectedScreen screen)
         {
             if (Explorer == null) return;
 
             try
             {
-                // Read cursor index
-                var cursorIdx = Explorer.ReadAbsolute((nint)0x140C64E7C, 1);
-                int idx = cursorIdx != null ? (int)cursorIdx.Value.value : 0;
+                // Read cursor grid position
+                var reads = Explorer.ReadMultiple(new (nint, int)[]
+                {
+                    ((nint)0x140C65380, 1), // cursor X
+                    ((nint)0x140C65381, 1), // cursor Y
+                });
+                screen.CursorX = (int)reads[0];
+                screen.CursorY = (int)reads[1];
 
                 // Read tile list (up to 50 tiles × 7 bytes = 350 bytes)
-                var tileData = Explorer.Scanner.ReadBytes((nint)0x140C66315, 350);
-                if (tileData.Length < 7) return;
-
-                var tiles = new List<TilePosition>();
-                for (int i = 0; i < tileData.Length - 6; i += 7)
-                {
-                    int x = tileData[i];
-                    int y = tileData[i + 1];
-                    int flag = tileData[i + 3];
-
-                    // flag=0 terminates the list
-                    if (flag == 0) break;
-
-                    // Sanity check
-                    if (x > 30 || y > 30) break;
-
-                    tiles.Add(new TilePosition { X = x, Y = y });
-                }
-
-                // Set cursor position from the tile at cursor index
-                if (idx >= 0 && idx < tiles.Count)
-                {
-                    screen.CursorX = tiles[idx].X;
-                    screen.CursorY = tiles[idx].Y;
-                }
-
-                // Include tile list for Battle_Moving so Claude knows where it can go
                 if (screen.Name == "Battle_Moving")
-                    screen.Tiles = tiles;
+                {
+                    var tileData = Explorer.Scanner.ReadBytes((nint)0x140C66315, 350);
+                    if (tileData.Length >= 7)
+                    {
+                        var tiles = new List<TilePosition>();
+                        for (int i = 0; i < tileData.Length - 6; i += 7)
+                        {
+                            int x = tileData[i];
+                            int y = tileData[i + 1];
+                            int flag = tileData[i + 3];
+
+                            if (flag == 0) break;
+                            if (x > 30 || y > 30) break;
+
+                            tiles.Add(new TilePosition { X = x, Y = y });
+                        }
+                        screen.Tiles = tiles;
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -991,9 +993,9 @@ namespace FFTColorCustomizer.Utilities
                     screen.Name = "GameOver";
                 else if (inBattle && paused == 1)
                     screen.Name = "Battle_Paused";
-                else if (inBattle && screen.BattleTeam == 0 && moveMode == 255 && screen.BattleActed == 0)
+                else if (inBattle && moveMode == 255 && screen.BattleActed == 0)
                     screen.Name = "Battle_Moving";
-                else if (inBattle && screen.BattleTeam == 0 && moveMode == 255 && screen.BattleActed == 1)
+                else if (inBattle && moveMode == 255 && screen.BattleActed == 1)
                     screen.Name = "Battle_Targeting";
                 else if (inBattle && screen.BattleTeam == 0 && screen.BattleActed == 0 && screen.BattleMoved == 0)
                     screen.Name = "Battle_MyTurn";
