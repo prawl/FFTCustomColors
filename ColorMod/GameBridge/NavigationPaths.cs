@@ -1,0 +1,463 @@
+using System.Collections.Generic;
+using FFTColorCustomizer.Utilities;
+
+namespace FFTColorCustomizer.GameBridge
+{
+    /// <summary>
+    /// Returns valid navigation paths for each detected screen.
+    /// Each path is a command fragment that Claude can send verbatim to the bridge.
+    /// Keys use VK codes, waitForScreen ensures the response reflects settled state.
+    /// </summary>
+    public static class NavigationPaths
+    {
+        // VK codes
+        private const int VK_ENTER = 0x0D;
+        private const int VK_ESCAPE = 0x1B;
+        private const int VK_UP = 0x26;
+        private const int VK_DOWN = 0x28;
+        private const int VK_LEFT = 0x25;
+        private const int VK_RIGHT = 0x27;
+        private const int VK_SPACE = 0x20;
+        private const int VK_TAB = 0x09;
+        private const int VK_Q = 0x51;
+        private const int VK_E = 0x45;
+        private const int VK_T = 0x54;
+
+        public static Dictionary<string, PathEntry>? GetPaths(DetectedScreen screen)
+        {
+            if (screen == null) return null;
+
+            return screen.Name switch
+            {
+                "TitleScreen" => GetTitleScreenPaths(),
+                "WorldMap" => GetWorldMapPaths(),
+                "PartyMenu" => GetPartyMenuPaths(),
+                "CharacterStatus" => GetCharacterStatusPaths(screen),
+                "EquipmentScreen" => GetEquipmentScreenPaths(),
+                "EquipmentItemList" => GetEquipmentItemListPaths(),
+                "JobScreen" => GetJobScreenPaths(),
+                "JobActionMenu" => GetJobActionMenuPaths(),
+                "JobChangeConfirmation" => GetJobChangeConfirmationPaths(),
+                "TravelList" => GetTravelListPaths(),
+                "EncounterDialog" => GetEncounterDialogPaths(),
+                "Battle_MyTurn" => GetBattleMyTurnPaths(screen),
+                "Battle_Moving" => GetBattleMovingPaths(),
+                "Battle_Acting" => GetBattleActingPaths(),
+                "Battle_Paused" => GetBattlePausedPaths(),
+                "Battle" => GetBattleEnemyTurnPaths(),
+                _ => null
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetTitleScreenPaths()
+        {
+            return new()
+            {
+                ["Advance"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Advance through title/cutscene/load screen"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetWorldMapPaths()
+        {
+            return new()
+            {
+                ["PartyMenu"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "PartyMenu",
+                    Desc = "Open party menu"
+                },
+                ["TravelList"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_T, "T") },
+                    WaitForScreen = "TravelList",
+                    Desc = "Open travel list to select a destination"
+                },
+                ["EnterLocation"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    WaitUntilScreenNot = "WorldMap",
+                    WaitTimeoutMs = 5000,
+                    Desc = "Enter current location (may trigger encounter, settlement, or story event — wait for result)"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetPartyMenuPaths()
+        {
+            return new()
+            {
+                ["WorldMap"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "WorldMap",
+                    Desc = "Return to world map"
+                },
+                ["PrevTab"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Switch to previous tab" },
+                ["NextTab"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "Switch to next tab" },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down" },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move cursor left" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move cursor right" },
+                ["SelectUnit"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Open selected unit's status screen (Units tab only)"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetCharacterStatusPaths(DetectedScreen screen)
+        {
+            // Sidebar: 0=Equipment & Abilities, 1=Job, 2=Combat Sets
+            // We don't know sidebar index from memory, so offer all options
+            return new()
+            {
+                ["SidebarUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move sidebar up" },
+                ["SidebarDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move sidebar down" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Open selected sidebar item (Equipment & Abilities / Job / Combat Sets)"
+                },
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Back to party unit grid"
+                },
+                ["PrevUnit"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "View previous unit" },
+                ["NextUnit"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "View next unit" },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetEquipmentScreenPaths()
+        {
+            return new()
+            {
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up (Weapon/Shield/Helm/Armor/Accessory or Primary/Secondary/Reaction/Support/Movement)" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down" },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Switch to equipment column" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Switch to ability column" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Open item/ability selection list for this slot"
+                },
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Back to character status sidebar"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetEquipmentItemListPaths()
+        {
+            return new()
+            {
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Scroll up in list" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Scroll down in list" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Equip selected item (or unequip if already equipped)"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Close list without changing"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetJobScreenPaths()
+        {
+            return new()
+            {
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up in job grid" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down" },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move cursor left" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move cursor right" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Select job (opens Learn Abilities / Change Job menu)"
+                },
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Back to character status sidebar"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetJobActionMenuPaths()
+        {
+            return new()
+            {
+                ["LearnAbilities"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_LEFT, "Left"), Key(VK_ENTER, "Enter") },
+                    Desc = "Select Learn Abilities"
+                },
+                ["ChangeJob"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_RIGHT, "Right"), Key(VK_ENTER, "Enter") },
+                    Desc = "Change to this job"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Cancel, back to job grid"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetJobChangeConfirmationPaths()
+        {
+            return new()
+            {
+                ["Confirm"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Dismiss confirmation"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetTravelListPaths()
+        {
+            return new()
+            {
+                ["PrevTab"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Previous tab (Settlements/Battlegrounds/Misc)" },
+                ["NextTab"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "Next tab" },
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Scroll up in location list" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Scroll down in location list" },
+                ["SelectLocation"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    WaitForScreen = "WorldMap",
+                    WaitTimeoutMs = 2000,
+                    Desc = "Select highlighted location and close list (sets world map cursor, does NOT travel)"
+                },
+                ["Close"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "WorldMap",
+                    Desc = "Close travel list"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetEncounterDialogPaths()
+        {
+            return new()
+            {
+                ["Fight"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    WaitUntilScreenNot = "EncounterDialog",
+                    WaitTimeoutMs = 5000,
+                    Desc = "Accept fight (cursor defaults to Fight)"
+                },
+                ["Flee"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter") },
+                    WaitForScreen = "WorldMap",
+                    WaitTimeoutMs = 3000,
+                    Desc = "Flee from encounter"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetBattleMyTurnPaths(DetectedScreen screen)
+        {
+            var paths = new Dictionary<string, PathEntry>();
+            int cursor = screen.MenuCursor;
+
+            // Build key sequence to reach each menu option from current cursor position
+            // Menu: 0=Move, 1=Abilities, 2=Wait, 3=Status, 4=AutoBattle
+            paths["Move"] = MenuPath(cursor, 0, "Enter Move mode to select a tile");
+            paths["Abilities"] = MenuPath(cursor, 1, "Open abilities submenu (Attack, secondary)");
+            paths["Wait"] = new PathEntry
+            {
+                Action = "battle_wait",
+                Desc = "End turn (handles menu navigation, confirm, and facing)"
+            };
+            paths["Status"] = MenuPath(cursor, 3, "View unit status");
+            paths["AutoBattle"] = MenuPath(cursor, 4, "Toggle auto-battle");
+            paths["Pause"] = new PathEntry
+            {
+                Keys = new[] { Key(VK_TAB, "Tab") },
+                Desc = "Open pause menu"
+            };
+
+            return paths;
+        }
+
+        private static Dictionary<string, PathEntry> GetBattleMovingPaths()
+        {
+            return new()
+            {
+                ["Confirm"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Confirm move to selected tile"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Cancel move, return to action menu"
+                },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move tile cursor up" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move tile cursor down" },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move tile cursor left" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move tile cursor right" },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetBattleActingPaths()
+        {
+            return new()
+            {
+                ["Confirm"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Confirm selection"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Cancel / go back"
+                },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down" },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move cursor left" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move cursor right" },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetBattlePausedPaths()
+        {
+            // Pause menu is vertical: Units(0), Retry(1), Load(2), Settings(3),
+            // Return to World Map(4), Return to Title Screen(5)
+            // Cursor defaults to Units(0). Tab also closes the menu.
+            return new()
+            {
+                ["Resume"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Close pause menu, resume battle"
+                },
+                ["Units"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "View all units in current battle"
+                },
+                ["Retry"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter") },
+                    Desc = "Restart this battle from the beginning"
+                },
+                ["ReturnToWorldMap"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter") },
+                    Desc = "Abandon battle and return to world map"
+                },
+                ["ReturnToTitle"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter") },
+                    Desc = "Return to title screen"
+                },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up in pause menu" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down in pause menu" },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetBattleEnemyTurnPaths()
+        {
+            // During enemy turns, no actions available — just wait
+            return new()
+            {
+                ["Pause"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_TAB, "Tab") },
+                    Desc = "Open pause menu"
+                },
+            };
+        }
+
+        /// <summary>
+        /// Builds a path to reach a target menu position from the current cursor.
+        /// Menu is vertical: Down moves cursor +1, Up moves -1.
+        /// </summary>
+        private static PathEntry MenuPath(int currentPos, int targetPos, string desc)
+        {
+            var keys = new List<KeyInfo>();
+            int delta = targetPos - currentPos;
+
+            if (delta > 0)
+            {
+                for (int i = 0; i < delta; i++)
+                    keys.Add(Key(VK_DOWN, "Down"));
+            }
+            else if (delta < 0)
+            {
+                for (int i = 0; i < -delta; i++)
+                    keys.Add(Key(VK_UP, "Up"));
+            }
+
+            keys.Add(Key(VK_ENTER, "Enter"));
+            return new PathEntry { Keys = keys.ToArray(), Desc = desc };
+        }
+
+        private static KeyInfo Key(int vk, string name) => new() { Vk = vk, Name = name };
+    }
+
+    /// <summary>
+    /// A navigation path entry — contains the exact keys to press and optional wait condition.
+    /// Claude can take this, add an "id" field, and send it as a command.
+    /// </summary>
+    public class PathEntry
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("keys")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public KeyInfo[]? Keys { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("action")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? Action { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("locationId")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int LocationId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("waitForScreen")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? WaitForScreen { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("waitUntilScreenNot")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? WaitUntilScreenNot { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("waitTimeoutMs")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int WaitTimeoutMs { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("desc")]
+        public string Desc { get; set; } = "";
+    }
+
+    public class KeyInfo
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("vk")]
+        public int Vk { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+    }
+}

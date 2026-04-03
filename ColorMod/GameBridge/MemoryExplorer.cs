@@ -204,6 +204,81 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Searches ALL readable process memory for an arbitrary byte pattern.
+        /// Returns matches as a list of (address, contextHex) tuples.
+        /// Used to find data in heap memory that snapshot/diff can't reach.
+        /// </summary>
+        public List<(nint address, string context)> SearchBytesInAllMemory(byte[] pattern, int maxResults = 200)
+        {
+            var matches = new List<(nint address, string context)>();
+            if (pattern == null || pattern.Length == 0) return matches;
+
+            var process = Process.GetCurrentProcess();
+            nint address = 0;
+            long totalBytesSearched = 0;
+            const long maxTotalBytes = 500_000_000L; // 500MB cap
+            int regionsSearched = 0;
+
+            while (matches.Count < maxResults && totalBytesSearched < maxTotalBytes)
+            {
+                if (VirtualQueryEx(process.Handle, address, out MEMORY_BASIC_INFORMATION mbi, (uint)Marshal.SizeOf<MEMORY_BASIC_INFORMATION>()) == 0)
+                    break;
+
+                // Only search committed, read-write private memory (safest — heap allocations)
+                bool isReadWrite = (mbi.Protect & 0x04) != 0; // PAGE_READWRITE only
+                bool isCommitted = mbi.State == 0x1000;
+                bool notGuard = (mbi.Protect & 0x100) == 0;
+                bool notTooBig = (long)mbi.RegionSize <= 4_000_000; // 4MB max per region
+                bool isPrivateOrMapped = mbi.Type == 0x20000 || mbi.Type == 0x40000; // MEM_PRIVATE or MEM_MAPPED
+
+                if (isCommitted && isReadWrite && notGuard && notTooBig && isPrivateOrMapped)
+                {
+                    regionsSearched++;
+                    byte[] regionBytes;
+                    try
+                    {
+                        regionBytes = _scanner.ReadBytes(mbi.BaseAddress, (int)mbi.RegionSize);
+                    }
+                    catch
+                    {
+                        // Skip regions that fail to read
+                        nint skip = mbi.BaseAddress + (nint)mbi.RegionSize;
+                        if (skip <= address) break;
+                        address = skip;
+                        continue;
+                    }
+                    totalBytesSearched += regionBytes.Length;
+
+                    for (int i = 0; i <= regionBytes.Length - pattern.Length; i++)
+                    {
+                        bool match = true;
+                        for (int j = 0; j < pattern.Length; j++)
+                        {
+                            if (regionBytes[i + j] != pattern[j]) { match = false; break; }
+                        }
+                        if (match)
+                        {
+                            nint foundAddr = mbi.BaseAddress + i;
+                            int ctxStart = Math.Max(0, i - 16);
+                            int ctxEnd = Math.Min(regionBytes.Length, i + pattern.Length + 32);
+                            var ctx = new byte[ctxEnd - ctxStart];
+                            Array.Copy(regionBytes, ctxStart, ctx, 0, ctx.Length);
+                            matches.Add((foundAddr, BitConverter.ToString(ctx).Replace("-", " ")));
+                            if (matches.Count >= maxResults) break;
+                        }
+                    }
+                }
+
+                nint nextAddr = mbi.BaseAddress + (nint)mbi.RegionSize;
+                if (nextAddr <= address) break;
+                address = nextAddr;
+            }
+
+            ModLogger.Log($"[MemoryExplorer] SearchBytes: {regionsSearched} regions, {totalBytesSearched / 1024 / 1024}MB searched, {matches.Count} matches");
+            return matches;
+        }
+
+        /// <summary>
         /// Searches a specific memory range for a uint16 value appearing as uint32 LE (value, 0x00, 0x00).
         /// Writes matches to file with surrounding context.
         /// </summary>
@@ -293,6 +368,34 @@ namespace FFTColorCustomizer.GameBridge
             {
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Reads multiple addresses in a single call. Much faster than individual ReadAbsolute calls
+        /// since it avoids per-call overhead. Returns values in the same order as the input.
+        /// </summary>
+        public long[] ReadMultiple(ReadOnlySpan<(nint address, int size)> reads)
+        {
+            var results = new long[reads.Length];
+            for (int i = 0; i < reads.Length; i++)
+            {
+                var (addr, size) = reads[i];
+                try
+                {
+                    results[i] = size switch
+                    {
+                        1 => _scanner.ReadByte(addr),
+                        2 => _scanner.ReadUInt16(addr),
+                        4 => BitConverter.ToUInt32(_scanner.ReadBytes(addr, 4), 0),
+                        _ => _scanner.ReadByte(addr)
+                    };
+                }
+                catch
+                {
+                    results[i] = 0;
+                }
+            }
+            return results;
         }
 
         [DllImport("kernel32.dll")]

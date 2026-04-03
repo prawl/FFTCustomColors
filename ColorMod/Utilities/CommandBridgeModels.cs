@@ -47,6 +47,79 @@ namespace FFTColorCustomizer.Utilities
 
         [JsonPropertyName("blockSize")]
         public int BlockSize { get; set; } = 0;
+
+        [JsonPropertyName("addresses")]
+        public List<BatchReadEntry>? Addresses { get; set; }
+
+        /// <summary>
+        /// Hex string of bytes to search for (e.g. "080B" for bytes 0x08 0x0B).
+        /// Used with action "search_bytes".
+        /// </summary>
+        [JsonPropertyName("pattern")]
+        public string? Pattern { get; set; }
+
+        /// <summary>
+        /// Target screen for "navigate" action (e.g. "PartyMenu", "JobScreen").
+        /// </summary>
+        [JsonPropertyName("to")]
+        public string? To { get; set; }
+
+        /// <summary>
+        /// Target location ID for "travel" action.
+        /// </summary>
+        [JsonPropertyName("locationId")]
+        public int LocationId { get; set; } = -1;
+
+        /// <summary>
+        /// Unit index for "navigate" action (which unit to select in party menu).
+        /// </summary>
+        [JsonPropertyName("unitIndex")]
+        public int UnitIndex { get; set; } = 0;
+
+        /// <summary>
+        /// Direction for "battle_attack" action (e.g. "up", "down", "left", "right").
+        /// </summary>
+        [JsonPropertyName("direction")]
+        public string? Direction { get; set; }
+
+        /// <summary>
+        /// After sending keys, poll DetectScreen until screen.Name matches this value (or timeout).
+        /// Response is only sent once the screen matches, so the client gets guaranteed settled state.
+        /// </summary>
+        [JsonPropertyName("waitForScreen")]
+        public string? WaitForScreen { get; set; }
+
+        /// <summary>
+        /// After sending keys, poll DetectScreen until screen.Name differs from this value (or timeout).
+        /// Use when you know the current screen but not the target — e.g., "wait until we leave WorldMap".
+        /// </summary>
+        [JsonPropertyName("waitUntilScreenNot")]
+        public string? WaitUntilScreenNot { get; set; }
+
+        /// <summary>
+        /// After sending keys, poll until any of the specified memory addresses change from their
+        /// pre-key values. Use when screen name doesn't change but state does (e.g., cursor moved).
+        /// </summary>
+        [JsonPropertyName("waitForChange")]
+        public List<string>? WaitForChange { get; set; }
+
+        /// <summary>
+        /// Timeout in ms for waitForScreen/waitUntilScreenNot/waitForChange. Default 2000ms.
+        /// </summary>
+        [JsonPropertyName("waitTimeoutMs")]
+        public int WaitTimeoutMs { get; set; } = 2000;
+    }
+
+    public class BatchReadEntry
+    {
+        [JsonPropertyName("addr")]
+        public string Addr { get; set; } = "";
+
+        [JsonPropertyName("size")]
+        public int Size { get; set; } = 1;
+
+        [JsonPropertyName("label")]
+        public string? Label { get; set; }
     }
 
     public class KeyCommand
@@ -97,6 +170,69 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("blockData")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? BlockData { get; set; }
+
+        [JsonPropertyName("reads")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<BatchReadResult>? Reads { get; set; }
+
+        [JsonPropertyName("screen")]
+        public DetectedScreen? Screen { get; set; }
+
+        [JsonPropertyName("battle")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public GameBridge.BattleState? Battle { get; set; }
+
+        [JsonPropertyName("validPaths")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Dictionary<string, GameBridge.PathEntry>? ValidPaths { get; set; }
+    }
+
+    public class BatchReadResult
+    {
+        [JsonPropertyName("label")]
+        public string? Label { get; set; }
+
+        [JsonPropertyName("addr")]
+        public string Addr { get; set; } = "";
+
+        [JsonPropertyName("val")]
+        public long Val { get; set; }
+
+        [JsonPropertyName("hex")]
+        public string Hex { get; set; } = "";
+    }
+
+    public class DetectedScreen
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "Unknown";
+
+        [JsonPropertyName("uiPresent")]
+        public int UiPresent { get; set; }
+
+        [JsonPropertyName("location")]
+        public int Location { get; set; }
+
+        [JsonPropertyName("hover")]
+        public int Hover { get; set; }
+
+        [JsonPropertyName("menuCursor")]
+        public int MenuCursor { get; set; }
+
+        [JsonPropertyName("battleTeam")]
+        public int BattleTeam { get; set; }
+
+        [JsonPropertyName("battleActed")]
+        public int BattleActed { get; set; }
+
+        [JsonPropertyName("battleMoved")]
+        public int BattleMoved { get; set; }
+
+        [JsonPropertyName("battleUnitId")]
+        public int BattleUnitId { get; set; }
+
+        [JsonPropertyName("battleUnitHp")]
+        public int BattleUnitHp { get; set; }
     }
 
     public class SequenceStep
@@ -118,6 +254,18 @@ namespace FFTColorCustomizer.Utilities
 
         [JsonPropertyName("readSize")]
         public int ReadSize { get; set; } = 1;
+
+        [JsonPropertyName("waitForScreen")]
+        public string? WaitForScreen { get; set; }
+
+        [JsonPropertyName("waitUntilScreenNot")]
+        public string? WaitUntilScreenNot { get; set; }
+
+        [JsonPropertyName("waitForChange")]
+        public List<string>? WaitForChange { get; set; }
+
+        [JsonPropertyName("waitTimeoutMs")]
+        public int WaitTimeoutMs { get; set; } = 2000;
     }
 
     public class SequenceAssert

@@ -25,6 +25,8 @@ namespace FFTColorCustomizer.Utilities
         public GameStateReporter? StateReporter { get; set; }
         public MemoryExplorer? Explorer { get; set; }
         public ScreenStateMachine? ScreenMachine { get; set; }
+        public BattleTracker? BattleTracker { get; set; }
+        private NavigationActions? _navActions;
 
         public CommandWatcher(string modPath, IInputSimulator inputSimulator)
         {
@@ -56,19 +58,18 @@ namespace FFTColorCustomizer.Utilities
             // Also start a polling fallback in case FileSystemWatcher misses events
             Task.Run(async () =>
             {
-                ModLogger.Log("[CommandBridge] Starting polling fallback (every 1s)");
+                ModLogger.Log("[CommandBridge] Starting polling fallback (every 50ms)");
                 while (_watcher != null && !_disposed)
                 {
                     try
                     {
                         if (File.Exists(_commandFilePath))
                         {
-                            ModLogger.LogDebug("[CommandBridge] Poll detected command.json");
                             ProcessCommandFile();
                         }
                     }
                     catch { /* ignore polling errors */ }
-                    await Task.Delay(250);
+                    await Task.Delay(50);
                 }
             });
 
@@ -83,12 +84,7 @@ namespace FFTColorCustomizer.Utilities
 
         private void OnCommandFileChanged(object sender, FileSystemEventArgs e)
         {
-            // Debounce + process on background thread
-            Task.Run(async () =>
-            {
-                await Task.Delay(50); // Let file write complete
-                ProcessCommandFile();
-            });
+            Task.Run(() => ProcessCommandFile());
         }
 
         private void ProcessCommandFile()
@@ -108,6 +104,10 @@ namespace FFTColorCustomizer.Utilities
 
                     ModLogger.Log($"[CommandBridge] Processing command {command.Id}: {command.Description}");
                     var response = ExecuteCommand(command);
+                    response.Screen ??= DetectScreenSettled();
+                    response.Battle ??= BattleTracker?.Update();
+                    if (response.Screen != null)
+                        response.ValidPaths ??= NavigationPaths.GetPaths(response.Screen);
                     WriteResponse(response);
 
                     _lastProcessedCommandId = command.Id;
@@ -124,13 +124,17 @@ namespace FFTColorCustomizer.Utilities
                 catch (Exception ex)
                 {
                     ModLogger.LogError($"[CommandBridge] Error processing command: {ex.Message}");
-                    WriteResponse(new CommandResponse
+                    var errorResponse = new CommandResponse
                     {
                         Id = "unknown",
                         Status = "error",
                         Error = ex.Message,
                         ProcessedAt = DateTime.UtcNow.ToString("o")
-                    });
+                    };
+                    errorResponse.Screen = DetectScreenSettled();
+                    if (errorResponse.Screen != null)
+                        errorResponse.ValidPaths = NavigationPaths.GetPaths(errorResponse.Screen);
+                    WriteResponse(errorResponse);
                 }
             }
         }
@@ -250,8 +254,87 @@ namespace FFTColorCustomizer.Utilities
                         response.Status = "completed";
                         break;
 
+                    case "search_bytes":
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        if (string.IsNullOrEmpty(command.Pattern)) { response.Status = "failed"; response.Error = "Pattern required (hex string, e.g. '080B00')"; break; }
+                        try
+                        {
+                            // Parse hex string to byte array
+                            var hexClean = command.Pattern.Replace(" ", "").Replace("-", "");
+                            var patternBytes = new byte[hexClean.Length / 2];
+                            for (int i = 0; i < patternBytes.Length; i++)
+                                patternBytes[i] = Convert.ToByte(hexClean.Substring(i * 2, 2), 16);
+
+                            var matches = Explorer.SearchBytesInAllMemory(patternBytes, 100);
+
+                            // Write results to file
+                            var sb = new System.Text.StringBuilder();
+                            sb.AppendLine($"Byte pattern search: {command.Pattern} ({patternBytes.Length} bytes)");
+                            sb.AppendLine($"Searched at: {DateTime.UtcNow:O}");
+                            sb.AppendLine($"Found {matches.Count} matches");
+                            sb.AppendLine();
+                            var unitBase = Explorer.Scanner.UnitDataBase;
+                            foreach (var (matchAddr, ctx) in matches)
+                            {
+                                long dist = Math.Abs((long)matchAddr - (long)unitBase);
+                                string proximity = dist < 0x200000 ? " ** NEAR **" : "";
+                                sb.AppendLine($"  0x{matchAddr:X}{proximity}");
+                                sb.AppendLine($"    {ctx}");
+                            }
+                            var searchPath = System.IO.Path.Combine(_bridgeDirectory, $"search_bytes_{command.SearchLabel ?? "result"}.txt");
+                            System.IO.File.WriteAllText(searchPath, sb.ToString());
+
+                            // Also put summary in response
+                            response.ReadResult = new ReadResult
+                            {
+                                Address = command.Pattern,
+                                Size = patternBytes.Length,
+                                Value = matches.Count,
+                                Hex = $"{matches.Count} matches",
+                                RawBytes = matches.Count > 0 ? $"0x{matches[0].address:X}" : "none"
+                            };
+                            response.Status = "completed";
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Status = "error";
+                            response.Error = $"Pattern parse error: {ex.Message}";
+                        }
+                        break;
+
+                    case "batch_read":
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        if (command.Addresses == null || command.Addresses.Count == 0) { response.Status = "failed"; response.Error = "Addresses required"; break; }
+                        var batchReads = new (nint address, int size)[command.Addresses.Count];
+                        for (int i = 0; i < command.Addresses.Count; i++)
+                        {
+                            batchReads[i] = ((nint)Convert.ToInt64(command.Addresses[i].Addr, 16), Math.Clamp(command.Addresses[i].Size, 1, 4));
+                        }
+                        var batchValues = Explorer.ReadMultiple(batchReads);
+                        response.Reads = new List<BatchReadResult>();
+                        for (int i = 0; i < batchValues.Length; i++)
+                        {
+                            response.Reads.Add(new BatchReadResult
+                            {
+                                Label = command.Addresses[i].Label,
+                                Addr = command.Addresses[i].Addr,
+                                Val = batchValues[i],
+                                Hex = $"0x{batchValues[i]:X}"
+                            });
+                        }
+                        response.Status = "completed";
+                        break;
+
                     case "sequence":
                         return ExecuteSequence(command);
+
+                    case "path":
+                        return ExecuteValidPath(command);
+
+                    case "battle_wait":
+                    case "navigate":
+                    case "travel":
+                        return ExecuteNavAction(command);
 
                     case "set_screen":
                         if (ScreenMachine == null) { response.Status = "failed"; response.Error = "Screen state machine not initialized"; break; }
@@ -280,15 +363,79 @@ namespace FFTColorCustomizer.Utilities
                 response.Error = ex.Message;
             }
 
-            // Embed state in all action responses
-            var actionState = StateReporter?.GetCurrentState();
-            if (actionState != null)
+            return response;
+        }
+
+        private CommandResponse ExecuteValidPath(CommandRequest command)
+        {
+            var response = new CommandResponse
             {
-                actionState.ScreenState = ScreenMachine?.GetScreenState();
-                response.GameState = actionState;
+                Id = command.Id,
+                ProcessedAt = DateTime.UtcNow.ToString("o"),
+                GameWindowFound = true
+            };
+
+            var pathName = command.To;
+            if (string.IsNullOrEmpty(pathName))
+            {
+                response.Status = "failed";
+                response.Error = "Missing 'to' field — specify the validPath name (e.g. \"Flee\", \"PartyMenu\")";
+                return response;
             }
 
-            return response;
+            // Detect current screen and look up the path
+            var screen = DetectScreen();
+            if (screen == null)
+            {
+                response.Status = "failed";
+                response.Error = "Could not detect current screen";
+                return response;
+            }
+
+            var paths = NavigationPaths.GetPaths(screen);
+            if (paths == null || !paths.TryGetValue(pathName, out var path))
+            {
+                var available = paths != null ? string.Join(", ", paths.Keys) : "none";
+                response.Status = "failed";
+                response.Error = $"No path '{pathName}' on screen '{screen.Name}'. Available: {available}";
+                return response;
+            }
+
+            // If the path specifies a high-level action, delegate to it
+            if (!string.IsNullOrEmpty(path.Action))
+            {
+                command.Action = path.Action;
+                if (path.LocationId != 0) command.LocationId = path.LocationId;
+                return ExecuteNavAction(command);
+            }
+
+            // Otherwise execute as a key command with the path's wait conditions
+            if (path.Keys == null || path.Keys.Length == 0)
+            {
+                response.Status = "failed";
+                response.Error = $"Path '{pathName}' has no keys or action";
+                return response;
+            }
+
+            // Convert PathEntry keys to CommandRequest keys and execute
+            command.Keys = new System.Collections.Generic.List<KeyCommand>();
+            foreach (var k in path.Keys)
+                command.Keys.Add(new KeyCommand { Vk = k.Vk, Name = k.Name });
+            command.WaitForScreen = path.WaitForScreen;
+            command.WaitUntilScreenNot = path.WaitUntilScreenNot;
+            if (path.WaitTimeoutMs > 0) command.WaitTimeoutMs = path.WaitTimeoutMs;
+            command.Action = null; // Clear action so ExecuteKeyCommand runs
+
+            return ExecuteKeyCommand(command);
+        }
+
+        private CommandResponse ExecuteNavAction(CommandRequest command)
+        {
+            if (Explorer == null)
+                return new CommandResponse { Id = command.Id, Status = "failed", Error = "Memory explorer not initialized", ProcessedAt = DateTime.UtcNow.ToString("o") };
+
+            _navActions ??= new NavigationActions(_inputSimulator, Explorer, DetectScreen);
+            return _navActions.Execute(command);
         }
 
         private CommandResponse ExecuteKeyCommand(CommandRequest command)
@@ -336,17 +483,118 @@ namespace FFTColorCustomizer.Utilities
                             : successCount > 0 ? "partial"
                             : "failed";
 
-            // Embed state in response so Claude reads one file instead of two
-            var state = StateReporter?.GetCurrentState();
-            if (state != null)
+            // If keys succeeded and a wait condition is specified, poll until satisfied
+            if (response.Status != "failed")
             {
-                state.ScreenState = ScreenMachine?.GetScreenState();
-                response.GameState = state;
+                var waitResult = WaitForCondition(
+                    command.WaitForScreen, command.WaitUntilScreenNot,
+                    command.WaitForChange, command.WaitTimeoutMs);
+                if (waitResult.screen != null)
+                    response.Screen = waitResult.screen;
+                if (waitResult.timedOut)
+                {
+                    response.Status = "completed_timeout";
+                    ModLogger.Log($"[CommandBridge] Command {command.Id} keys OK but wait timed out after {command.WaitTimeoutMs}ms");
+                }
             }
-            StateReporter?.ReportNow();
 
             ModLogger.Log($"[CommandBridge] Command {command.Id} finished: {response.Status} ({successCount}/{command.Keys.Count} keys)");
             return response;
+        }
+
+        /// <summary>
+        /// Polls game state at ~5ms intervals until the requested condition is met or timeout.
+        /// Returns the final detected screen and whether the wait timed out.
+        /// Call TakePreSnapshot before sending keys if using waitForChange.
+        /// </summary>
+        private (DetectedScreen? screen, bool timedOut) WaitForCondition(
+            string? waitForScreen, string? waitUntilScreenNot,
+            List<string>? waitForChange, int waitTimeoutMs)
+        {
+            bool hasWait = waitForScreen != null
+                        || waitUntilScreenNot != null
+                        || (waitForChange != null && waitForChange.Count > 0);
+
+            if (!hasWait || Explorer == null)
+                return (null, false);
+
+            int timeoutMs = Math.Clamp(waitTimeoutMs, 50, 10000);
+            var sw = Stopwatch.StartNew();
+
+            // Snapshot pre-wait values for WaitForChange
+            long[]? preValues = null;
+            (nint address, int size)[]? changeAddresses = null;
+            if (waitForChange != null && waitForChange.Count > 0)
+            {
+                changeAddresses = new (nint, int)[waitForChange.Count];
+                for (int i = 0; i < waitForChange.Count; i++)
+                    changeAddresses[i] = ((nint)Convert.ToInt64(waitForChange[i], 16), 1);
+                preValues = Explorer.ReadMultiple(changeAddresses);
+            }
+
+            DetectedScreen? lastScreen = null;
+
+            while (sw.ElapsedMilliseconds < timeoutMs)
+            {
+                Thread.Sleep(5);
+                lastScreen = DetectScreen();
+                if (lastScreen == null) continue;
+
+                if (waitForScreen != null)
+                {
+                    if (string.Equals(lastScreen.Name, waitForScreen, StringComparison.OrdinalIgnoreCase))
+                        return (lastScreen, false);
+                    continue;
+                }
+
+                if (waitUntilScreenNot != null)
+                {
+                    if (!string.Equals(lastScreen.Name, waitUntilScreenNot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Screen changed — now settle: wait for 3 consecutive matching reads
+                        string newName = lastScreen.Name;
+                        int stableCount = 0;
+                        while (sw.ElapsedMilliseconds < timeoutMs)
+                        {
+                            Thread.Sleep(50);
+                            var settled = DetectScreen();
+                            if (settled == null) { stableCount = 0; continue; }
+                            if (settled.Name == newName)
+                            {
+                                stableCount++;
+                                lastScreen = settled;
+                                if (stableCount >= 3)
+                                    return (settled, false);
+                            }
+                            else if (string.Equals(settled.Name, waitUntilScreenNot, StringComparison.OrdinalIgnoreCase))
+                            {
+                                // Reverted back — was a transient blip, keep waiting
+                                break;
+                            }
+                            else
+                            {
+                                // Changed to something else — restart settle
+                                newName = settled.Name;
+                                lastScreen = settled;
+                                stableCount = 0;
+                            }
+                        }
+                    }
+                    continue;
+                }
+
+                if (changeAddresses != null && preValues != null)
+                {
+                    var currentValues = Explorer.ReadMultiple(changeAddresses);
+                    for (int i = 0; i < preValues.Length; i++)
+                    {
+                        if (currentValues[i] != preValues[i])
+                            return (lastScreen, false);
+                    }
+                }
+            }
+
+            return (lastScreen, true);
         }
 
         private CommandResponse ExecuteSequence(CommandRequest command)
@@ -408,9 +656,25 @@ namespace FFTColorCustomizer.Utilities
 
                 stepResult.KeysProcessed = keysOk;
 
-                // Wait after keys (minimum 100ms for game to process)
-                int waitMs = Math.Max(step.WaitMs, 100);
-                Thread.Sleep(waitMs);
+                // Smart wait: use condition-based polling if specified, else fall back to fixed sleep
+                bool stepHasWait = step.WaitForScreen != null
+                                || step.WaitUntilScreenNot != null
+                                || (step.WaitForChange != null && step.WaitForChange.Count > 0);
+                if (stepHasWait)
+                {
+                    var stepWait = WaitForCondition(
+                        step.WaitForScreen, step.WaitUntilScreenNot,
+                        step.WaitForChange, step.WaitTimeoutMs);
+                    if (stepWait.timedOut)
+                    {
+                        stepResult.Status = "timeout";
+                        ModLogger.Log($"[CommandBridge] Sequence step {s} wait timed out");
+                    }
+                }
+                else if (step.WaitMs > 0)
+                {
+                    Thread.Sleep(step.WaitMs);
+                }
 
                 // Read memory address if requested
                 if (!string.IsNullOrEmpty(step.ReadAddress) && Explorer != null)
@@ -557,6 +821,180 @@ namespace FFTColorCustomizer.Utilities
             catch (Exception ex)
             {
                 ModLogger.LogError($"[CommandBridge] Failed to write response: {ex.Message}");
+            }
+        }
+
+        // Screen detection address table — indices match the ReadMultiple call below
+        private static readonly (nint address, int size)[] ScreenAddresses =
+        {
+            ((nint)0x140D3A41E, 1),  // 0: partyFlag
+            ((nint)0x140D4A264, 1),  // 1: uiFlag
+            ((nint)0x14077D208, 1),  // 2: location
+            ((nint)0x140787A22, 1),  // 3: hover
+            ((nint)0x1407FC620, 1),  // 4: menuCursor
+            ((nint)0x140900824, 1),  // 5: encA
+            ((nint)0x140900828, 1),  // 6: encB
+            ((nint)0x14077D2A2, 2),  // 7: battleTeam
+            ((nint)0x14077CA8C, 1),  // 8: battleAct
+            ((nint)0x14077CA9C, 1),  // 9: battleMov
+            ((nint)0x14077D2A4, 2),  // 10: battleId
+            ((nint)0x14077D2AC, 2),  // 11: battleHp
+            ((nint)0x14077CA30, 4),  // 12: unitSlot0
+            ((nint)0x14077CA54, 4),  // 13: unitSlot9
+            ((nint)0x140C64A5C, 1),  // 14: pauseFlag
+            ((nint)0x14077CA5C, 1),  // 15: moveMode (255=selecting tile, 0=not)
+        };
+
+        /// <summary>
+        /// Polls DetectScreen until two consecutive reads return the same screen name,
+        /// ensuring the game UI has settled after a transition. Waits up to 1s.
+        /// </summary>
+        private DetectedScreen? DetectScreenSettled()
+        {
+            var first = DetectScreen();
+            if (first == null) return null;
+
+            var sw = Stopwatch.StartNew();
+            string lastName = first.Name;
+            DetectedScreen? last = first;
+            int stableCount = 0;
+
+            while (sw.ElapsedMilliseconds < 1000)
+            {
+                Thread.Sleep(50);
+                var current = DetectScreen();
+                if (current == null) continue;
+
+                if (current.Name == lastName)
+                {
+                    stableCount++;
+                    last = current;
+                    if (stableCount >= 3) // 3 consecutive matches (~150ms stable)
+                        return current;
+                }
+                else
+                {
+                    lastName = current.Name;
+                    last = current;
+                    stableCount = 0;
+                }
+            }
+
+            return last;
+        }
+
+        private bool IsPartySubScreen()
+        {
+            if (ScreenMachine == null) return false;
+            return ScreenMachine.CurrentScreen is
+                GameScreen.PartyMenu or
+                GameScreen.CharacterStatus or
+                GameScreen.EquipmentScreen or
+                GameScreen.EquipmentItemList or
+                GameScreen.JobScreen or
+                GameScreen.JobActionMenu or
+                GameScreen.JobChangeConfirmation;
+        }
+
+        private DetectedScreen? DetectScreen()
+        {
+            if (Explorer == null) return null;
+
+            try
+            {
+                var v = Explorer.ReadMultiple(ScreenAddresses);
+
+                var screen = new DetectedScreen
+                {
+                    Location = (int)v[2],
+                    Hover = (int)v[3],
+                    MenuCursor = (int)v[4],
+                    UiPresent = (int)v[1],
+                    BattleTeam = (int)v[7],
+                    BattleActed = (int)v[8],
+                    BattleMoved = (int)v[9],
+                    BattleUnitId = (int)v[10],
+                    BattleUnitHp = (int)v[11],
+                };
+
+                int party = (int)v[0];
+                int ui = (int)v[1];
+                int paused = (int)v[14];
+                int moveMode = (int)v[15];
+                int eA = (int)v[5];
+                int eB = (int)v[6];
+                long slot0 = v[12];
+                long slot9 = v[13];
+                // Battle detection: slot0==255 && slot9==0xFFFFFFFF.
+                // These slots stay stale after crash/reload, so also require that
+                // we're NOT clearly on the world map (party=0, ui=0, valid location).
+                bool validWorldLocation = screen.Location >= 0 && screen.Location <= 42;
+                bool clearlyOnWorldMap = validWorldLocation && party == 0 && ui == 0;
+                bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF && !clearlyOnWorldMap);
+
+                if (inBattle && paused == 1)
+                    screen.Name = "Battle_Paused";
+                else if (inBattle && moveMode == 255 && screen.BattleTeam == 0)
+                    screen.Name = "Battle_Moving";
+                else if (inBattle && screen.BattleTeam == 0 && screen.BattleActed == 0 && screen.BattleMoved == 0)
+                    screen.Name = "Battle_MyTurn";
+                else if (inBattle && screen.BattleTeam == 0 && (screen.BattleActed == 1 || screen.BattleMoved == 1))
+                    screen.Name = "Battle_Acting";
+                else if (inBattle)
+                    screen.Name = "Battle";
+                else if (screen.Location == 255 || screen.Location < 0)
+                    screen.Name = "TitleScreen";
+                else if (eA != eB)
+                    screen.Name = "EncounterDialog";
+                else if (!inBattle && IsPartySubScreen())
+                {
+                    // State machine says we're in a party sub-screen.
+                    // Trust it — memory flags (party/ui) are unreliable in sub-screens.
+                    screen.Name = ScreenMachine!.CurrentScreen switch
+                    {
+                        GameScreen.CharacterStatus => "CharacterStatus",
+                        GameScreen.EquipmentScreen => "EquipmentScreen",
+                        GameScreen.EquipmentItemList => "EquipmentItemList",
+                        GameScreen.JobScreen => "JobScreen",
+                        GameScreen.JobActionMenu => "JobActionMenu",
+                        GameScreen.JobChangeConfirmation => "JobChangeConfirmation",
+                        _ => "PartyMenu"
+                    };
+                }
+                else if (party == 1)
+                    screen.Name = "PartyMenu";
+                else if (party == 0 && ui == 1)
+                    screen.Name = "TravelList";
+                else if (party == 0 && ui == 0)
+                    screen.Name = "WorldMap";
+                else
+                    screen.Name = "Unknown";
+
+                // Sync state machine with memory-detected top-level screens.
+                // This ensures the state machine stays in sync even after restarts
+                // or when it drifts from reality.
+                if (ScreenMachine != null)
+                {
+                    var expected = screen.Name switch
+                    {
+                        "WorldMap" => GameScreen.WorldMap,
+                        "TitleScreen" => GameScreen.TitleScreen,
+                        "PartyMenu" => GameScreen.PartyMenu,
+                        "TravelList" => GameScreen.Unknown,
+                        "EncounterDialog" => GameScreen.Unknown,
+                        "Battle_MyTurn" or "Battle_Moving" or "Battle_Acting" or "Battle_Paused" or "Battle" => GameScreen.Unknown,
+                        _ => (GameScreen?)null
+                    };
+                    if (expected.HasValue && ScreenMachine.CurrentScreen != expected.Value)
+                        ScreenMachine.SetScreen(expected.Value);
+                }
+
+                return screen;
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[CommandBridge] DetectScreen error: {ex.Message}");
+                return null;
             }
         }
 

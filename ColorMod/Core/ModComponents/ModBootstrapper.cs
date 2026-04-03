@@ -252,6 +252,9 @@ namespace FFTColorCustomizer.Core.ModComponents
                     CommandWatcher.StateReporter = StateReporter;
                     CommandWatcher.Explorer = explorer;
                     CommandWatcher.ScreenMachine = ScreenMachine;
+                    var battleTracker = new BattleTracker(explorer);
+                    battleTracker.Start();
+                    CommandWatcher.BattleTracker = battleTracker;
                 }
 
                 ModLogger.Log("[GameBridge] Game bridge initialized successfully");

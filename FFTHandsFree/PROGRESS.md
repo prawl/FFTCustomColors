@@ -97,11 +97,106 @@ Key test infrastructure:
 - **Static item mapping**: full late-game inventory documented in SHOP_ITEMS.md (6 category tabs, ~160 items at Trade City of Sal Ghidos). Other settlements may have fewer items.
 - **Tip**: Down from quantity 1 wraps to max purchasable (99 minus held count)
 
-### Still TODO
+### Battle Memory Mapping — Major Progress (Session 2026-04-02)
+
+**Screen State Machine (CommandWatcher.cs)**
+Built memory-based screen detection into every bridge response. Every command returns `{"screen": {"name": "...", ...}}` with the current screen and key values.
+- **TitleScreen**: location=255, not in battle
+- **Battle_MyTurn / Battle**: unitSlot0==255 AND unitSlot9==0xFFFFFFFF
+- **PartyMenu**: partyFlag(0x140D3A41E)==1
+- **TravelList**: uiFlag(0x140D4A264)==1, not party, not battle
+- **WorldMap**: both flags 0
+- **EncounterDialog**: encA(0x140900824) != encB(0x140900828)
+
+**Battle Data Structures Confirmed**
+- **Turn Order Queue** (0x14077D2A0): Rolling queue of upcoming units with Level, NameId, Team, Exp, HP, MaxHP, MP, MaxMP. Updates in real-time (HP drops visible immediately).
+- **Team Allegiance**: Condensed struct +0x02 (0=friendly, 1=enemy)
+- **Movement Tile List** (0x140C66315): 7 bytes per tile [X][Y][elevation][flag][0][0][0], terminated by flag=0. Available when in Move mode.
+- **Cursor Tile Index** (0x140C64E7C): byte index into tile list for hover position
+- **Action Menu Cursor** (0x1407FC620): 0=Move, 1=Abilities, 2=Wait, 3=Status, 4=AutoBattle
+- **Unit Existence Slots** (0x14077CA30): uint32 per unit, 0xFF=exists, 0xFFFFFFFF=terminator. 9 units in Mt. Germinas battle.
+- **Act/Move Taken Flags**: 0x14077CA8C (acted), 0x14077CA9C (moved)
+
+**Battle Navigation Confirmed**
+- **Formation screen**: Enter places unit, Space→Enter starts battle
+- **Action menu**: Move(0), Abilities(1), Wait(2), Status(3), AutoBattle(4)
+- **Attack sequence**: Abilities→Enter→Enter(Attack)→direction→Enter→Enter(confirm)
+- **Wait sequence**: Navigate to menu=2, Enter, Enter (confirm facing)
+- **Pause menu**: Tab key opens it; has Units/Retry/Load/Settings/Return to World Map/Return to Title
+
+**Combat Achievements**
+- Successfully automated 5 consecutive Wait turns in Mt. Germinas
+- Killed an enemy unit via Attack targeting
+- Executed full Attack+Wait turn sequences
+- Navigated to Siedge Weald and Mandalia Plains via travel list
+- Auto-fled encounters during travel
+
+**PSX Battle Stats Reference**
+- Full PSX field layout documented in docs/playtime/BATTLE_STATS_PSX_REFERENCE.md
+- 0x1C0 (448 bytes) per unit on PSX
+- Includes all fields: Identity, Job, Team, Equipment, Stats, Position (X/Y), CT, Statuses, Abilities, etc.
+
+**Helper Script (/tmp/fft.sh)**
+Bash helper with shortcuts: `enter`, `esc`, `up`, `down`, `left`, `right`, `space`, `tab`, `tkey`, `ekey`, `state`. Every command prints `[ScreenName] loc=X hover=Y ui=Z menu=W`.
+
+### State Machine Improvements (Session 2, 2026-04-02)
+
+**Screen Detection Updates**
+- Added `Battle_Paused` state (0x140C64A5C == 1)
+- Added `Battle_Acting` state (team=0, act=1 or mov=1) for submenus/targeting
+- Fixed battle detection: now requires `location >= 255` to avoid false positives on world map
+- `fft.sh` helper script with timeouts, delays, and `block()` for efficient memory reads
+- Every bridge response includes screen state — no more guessing
+
+**Confirmed Battle States**
+- `Battle_MyTurn` — action menu open (team=0, act=0, mov=0)
+- `Battle_Acting` — in submenu/targeting (team=0, act=1 or mov=1)
+- `Battle_Paused` — Tab pause menu (0x140C64A5C=1)
+- `Battle` — enemy turn or other
+
+**Action Menu Cursor Verified**
+- 0x1407FC620 works correctly: 0=Move, 1=Abilities, 2=Wait, 3=Status, 4=AutoBattle
+- After acting, Abilities is grayed but cursor still passes through it (not skipped)
+
+**Combat Execution Pattern (Proven)**
+```
+1. Abilities(down→enter) → Attack(enter) → direction(left/right/up/down) → select(enter) → confirm(enter)
+2. Wait(down×2→enter) → facing(enter)
+```
+
+**Remaining Unsolved**
+- Enemy/unit positions: X=12,Y=10 for Ramza not found in memory scans (searched 0x14077CA, 0x14077D, 0x141020 regions)
+- Turn detection false positive: Battle_MyTurn shows during enemy turns (fixed partially with Battle_Acting)
+- Game over detection: still reads as [Battle]
+- Travel list tab identification: no reliable memory flag, use hover ID range
+
+### Critical Blockers for Battle Automation (NEXT SESSION)
+
+**1. Turn Detection is Broken**
+- Current check: team=0 AND act=0 AND mov=0 → "Battle_MyTurn"
+- Problem: These values read the SAME during enemy turns as during player turns
+- Need: Find an address that's truly different when it's our turn vs not
+- Approach: Take snapshots during confirmed "my turn" (action menu visible) vs confirmed "enemy turn" (enemies moving), diff to find the distinguishing flag
+
+**2. Game Over Not Detected**
+- Game over screen reads as [Battle] — same as active battle
+- Need: Find a flag that changes on game over (Ramza HP=0? Death counter? A specific game state byte?)
+- Approach: Read Ramza's HP from condensed struct. If HP<=0 and we're in "battle", it might be game over. Or diff the game over screen vs active battle.
+
+**3. Enemy Positions Unknown**
+- Can't target attacks without knowing where enemies are
+- Attacking empty tiles wastes turns and leads to death
+- Need: Read all unit X/Y positions simultaneously during battle
+- Approach options:
+  a. Find the full PSX-style battle struct in the remaster (position at PSX +0x47/+0x48)
+  b. Use the movement tile list (only available during Move mode) to infer nearby units
+  c. Cycle through attack target tiles and check if each has a unit on it
+  d. Search for unit X/Y parallel arrays (earlier found candidates at 0x141025xxx)
+
+### Still TODO (from before)
 - Decode learned abilities bitfield (0x30–0x70) for instant ability list reading
 - Finish equipping Lloyd and William (dream team)
 - Equipment item ID mapping (same approach as abilities)
-- Battle automation (CT tracking, action selection, targeting)
 - World map adjacency graph (which nodes connect to which)
 - Item ID memory mapping (currently using static position mapping from SHOP_ITEMS.md)
 - Map other settlement inventories (may differ from late-game Sal Ghidos)
