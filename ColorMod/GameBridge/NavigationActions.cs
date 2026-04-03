@@ -120,17 +120,31 @@ namespace FFTColorCustomizer.GameBridge
             // Press Enter to confirm facing direction
             SendKey(VK_ENTER);
 
-            // Wait for the turn to fully resolve — moveMode and action flags
-            // may flicker during the animation. Poll until stable.
+            // Poll for a terminal battle state, same as confirm_attack.
+            // The facing animation and turn transition can leave transient
+            // flags (moveMode, pauseFlag) that confuse screen detection.
             Thread.Sleep(500);
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < 3000)
+            var sw = Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 10000)
             {
-                Thread.Sleep(100);
-                // Wait for moveMode to clear (it flickers during facing confirm)
-                var val = _explorer.ReadAbsolute((nint)0x14077CA5C, 1);
-                if (val != null && val.Value.value == 0)
+                Thread.Sleep(200);
+                var current = _detectScreen();
+                if (current == null) continue;
+
+                if (current.Name == "Battle_MyTurn" ||
+                    current.Name == "Battle" ||
+                    current.Name == "GameOver" ||
+                    current.Name == "Battle_Paused")
+                {
+                    // If we hit Battle_Paused due to stale flag, send Escape to clear
+                    if (current.Name == "Battle_Paused")
+                    {
+                        SendKey(VK_ESCAPE);
+                        Thread.Sleep(300);
+                        continue;
+                    }
                     break;
+                }
             }
 
             response.Status = "completed";
@@ -458,8 +472,10 @@ namespace FFTColorCustomizer.GameBridge
             }
             else
             {
-                // Default: find tile closest to nearest living enemy
-                // Read battle state for enemy positions
+                // Default: find tile closest to nearest living enemy.
+                // Enemy positions come from the turn queue — same coordinate
+                // system as the tile list, but may be stale for enemies that
+                // haven't taken a turn recently.
                 var battleState = BattleTracker?.Update();
                 if (battleState?.Units == null || battleState.Units.Count == 0)
                 {
@@ -480,13 +496,20 @@ namespace FFTColorCustomizer.GameBridge
                     return response;
                 }
 
-                // Find the tile closest to any enemy
+                // Read cursor start position = unit's actual current position
+                var startPos = ReadCursorTile();
+
+                // Find the tile closest to any enemy, excluding tiles we're
+                // already on (can't move to own tile)
                 int bestDist = int.MaxValue;
                 targetX = tiles[0].x;
                 targetY = tiles[0].y;
 
                 foreach (var tile in tiles)
                 {
+                    // Skip our current tile
+                    if (tile.x == startPos.x && tile.y == startPos.y) continue;
+
                     foreach (var enemy in enemies)
                     {
                         int dist = Math.Abs(tile.x - enemy.X) + Math.Abs(tile.y - enemy.Y);
@@ -498,26 +521,31 @@ namespace FFTColorCustomizer.GameBridge
                         }
                     }
                 }
+
+                ModLogger.Log($"[MoveTo] Start=({startPos.x},{startPos.y}), target=({targetX},{targetY}), bestDist={bestDist}, enemies={enemies.Count}");
             }
 
-            // Try to navigate to the target tile.
-            // Press each direction and check if cursor lands on target.
-            // Try up to 20 key presses total.
-            int[] directions = { VK_DOWN, VK_UP, VK_LEFT, VK_RIGHT };
-            string[] dirNames = { "Down", "Up", "Left", "Right" };
+            // Navigate to the target tile by pressing Left repeatedly.
+            // The cursor cycles through all available tiles (not in order),
+            // so we just keep pressing until we land on the target.
+            int maxPresses = tiles.Count * 3;
 
-            for (int attempt = 0; attempt < 30; attempt++)
+            ModLogger.Log($"[MoveTo] Navigating to ({targetX},{targetY}), {maxPresses} max presses");
+
+            for (int press = 0; press < maxPresses; press++)
             {
-                // Read current cursor position
                 var cursorPos = ReadCursorTile();
+                ModLogger.Log($"[MoveTo] Press {press}: cursor=({cursorPos.x},{cursorPos.y}) target=({targetX},{targetY})");
+
                 if (cursorPos.x == targetX && cursorPos.y == targetY)
                 {
+                    ModLogger.Log($"[MoveTo] On target! Confirming move.");
                     // On target — confirm move
                     SendKey(VK_F);
                     Thread.Sleep(300);
 
-                    // Wait for move animation
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    // Wait for move animation to complete
+                    var sw = Stopwatch.StartNew();
                     while (sw.ElapsedMilliseconds < 5000)
                     {
                         Thread.Sleep(100);
@@ -530,66 +558,12 @@ namespace FFTColorCustomizer.GameBridge
                     return response;
                 }
 
-                // Try each direction to get closer
-                int bestDir = -1;
-                int bestDist = Math.Abs(cursorPos.x - targetX) + Math.Abs(cursorPos.y - targetY);
-
-                for (int d = 0; d < 4; d++)
-                {
-                    // Press direction
-                    _input.SendKeyPressToWindow(_gameWindow, directions[d]);
-                    Thread.Sleep(KEY_DELAY);
-
-                    // Read new position
-                    var newPos = ReadCursorTile();
-                    int newDist = Math.Abs(newPos.x - targetX) + Math.Abs(newPos.y - targetY);
-
-                    if (newPos.x == targetX && newPos.y == targetY)
-                    {
-                        // Found target — confirm move
-                        SendKey(VK_F);
-                        Thread.Sleep(300);
-
-                        var sw2 = System.Diagnostics.Stopwatch.StartNew();
-                        while (sw2.ElapsedMilliseconds < 5000)
-                        {
-                            Thread.Sleep(100);
-                            screen = _detectScreen();
-                            if (screen != null && screen.Name != "Battle_Moving")
-                                break;
-                        }
-
-                        response.Status = "completed";
-                        return response;
-                    }
-
-                    if (newDist < bestDist)
-                    {
-                        bestDist = newDist;
-                        bestDir = d;
-                    }
-
-                    // Undo — press opposite direction
-                    int opposite = d ^ 1; // Down↔Up, Left↔Right
-                    _input.SendKeyPressToWindow(_gameWindow, directions[opposite]);
-                    Thread.Sleep(KEY_DELAY);
-                }
-
-                // Move in the best direction found
-                if (bestDir >= 0)
-                {
-                    _input.SendKeyPressToWindow(_gameWindow, directions[bestDir]);
-                    Thread.Sleep(KEY_DELAY);
-                }
-                else
-                {
-                    // No improvement possible — stuck
-                    break;
-                }
+                _input.SendKeyPressToWindow(_gameWindow, VK_LEFT);
+                Thread.Sleep(KEY_DELAY);
             }
 
             response.Status = "failed";
-            response.Error = $"Could not reach tile ({targetX},{targetY}) after 30 attempts";
+            response.Error = $"Could not reach tile ({targetX},{targetY}) after {maxPresses} presses";
             return response;
         }
 
