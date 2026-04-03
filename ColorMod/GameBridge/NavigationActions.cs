@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using FFTColorCustomizer.Utilities;
 
@@ -14,6 +16,7 @@ namespace FFTColorCustomizer.GameBridge
         private readonly IInputSimulator _input;
         private readonly MemoryExplorer _explorer;
         private readonly Func<DetectedScreen?> _detectScreen;
+        public BattleTracker? BattleTracker { get; set; }
         private IntPtr _gameWindow;
 
         // VK codes
@@ -74,6 +77,9 @@ namespace FFTColorCustomizer.GameBridge
 
                     case "confirm_attack":
                         return ConfirmAttack(response);
+
+                    case "move_to":
+                        return MoveTo(response, command.To ?? "nearest_enemy", command.LocationId);
 
                     default:
                         response.Status = "failed";
@@ -399,6 +405,230 @@ namespace FFTColorCustomizer.GameBridge
 
             response.Status = "completed_timeout";
             return response;
+        }
+
+        // Tile list addresses
+        private const long AddrTileList = 0x140C66315;
+        private const long AddrCursorIndex = 0x140C64E7C;
+
+        /// <summary>
+        /// move_to: Navigate the movement cursor to a tile and confirm.
+        /// Accepts target as:
+        ///   - "nearest_enemy": finds the valid tile closest to nearest living enemy
+        ///   - "tile": uses locationId as tile index into the tile list
+        /// Strategy: press cursor keys, read cursor position after each,
+        /// check if we're on the target tile, confirm when matched.
+        /// </summary>
+        private CommandResponse MoveTo(CommandResponse response, string target, int tileIndex)
+        {
+            var screen = _detectScreen();
+
+            // Enter Move mode if on action menu
+            if (screen != null && screen.Name == "Battle_MyTurn")
+            {
+                int cursor = screen.MenuCursor;
+                NavigateMenuCursor(cursor, 0); // Navigate to Move (position 0)
+                SendKey(VK_ENTER);
+                Thread.Sleep(300);
+                screen = _detectScreen();
+            }
+
+            if (screen == null || screen.Name != "Battle_Moving")
+            {
+                response.Status = "failed";
+                response.Error = $"Not in Move mode (current: {screen?.Name ?? "null"})";
+                return response;
+            }
+
+            // Read tile list
+            var tiles = ReadTileList();
+            if (tiles == null || tiles.Count == 0)
+            {
+                response.Status = "failed";
+                response.Error = "Could not read tile list";
+                return response;
+            }
+
+            int targetX, targetY;
+
+            if (target == "tile" && tileIndex >= 0 && tileIndex < tiles.Count)
+            {
+                targetX = tiles[tileIndex].x;
+                targetY = tiles[tileIndex].y;
+            }
+            else
+            {
+                // Default: find tile closest to nearest living enemy
+                // Read battle state for enemy positions
+                var battleState = BattleTracker?.Update();
+                if (battleState?.Units == null || battleState.Units.Count == 0)
+                {
+                    response.Status = "failed";
+                    response.Error = "No battle state available";
+                    return response;
+                }
+
+                // Find nearest living enemy with known position
+                var enemies = battleState.Units
+                    .Where(u => u.Team != 0 && u.Hp > 0 && u.PositionKnown)
+                    .ToList();
+
+                if (enemies.Count == 0)
+                {
+                    response.Status = "failed";
+                    response.Error = "No living enemies with known positions";
+                    return response;
+                }
+
+                // Find the tile closest to any enemy
+                int bestDist = int.MaxValue;
+                targetX = tiles[0].x;
+                targetY = tiles[0].y;
+
+                foreach (var tile in tiles)
+                {
+                    foreach (var enemy in enemies)
+                    {
+                        int dist = Math.Abs(tile.x - enemy.X) + Math.Abs(tile.y - enemy.Y);
+                        if (dist < bestDist)
+                        {
+                            bestDist = dist;
+                            targetX = tile.x;
+                            targetY = tile.y;
+                        }
+                    }
+                }
+            }
+
+            // Try to navigate to the target tile.
+            // Press each direction and check if cursor lands on target.
+            // Try up to 20 key presses total.
+            int[] directions = { VK_DOWN, VK_UP, VK_LEFT, VK_RIGHT };
+            string[] dirNames = { "Down", "Up", "Left", "Right" };
+
+            for (int attempt = 0; attempt < 30; attempt++)
+            {
+                // Read current cursor position
+                var cursorPos = ReadCursorTile();
+                if (cursorPos.x == targetX && cursorPos.y == targetY)
+                {
+                    // On target — confirm move
+                    SendKey(VK_F);
+                    Thread.Sleep(300);
+
+                    // Wait for move animation
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    while (sw.ElapsedMilliseconds < 5000)
+                    {
+                        Thread.Sleep(100);
+                        screen = _detectScreen();
+                        if (screen != null && screen.Name != "Battle_Moving")
+                            break;
+                    }
+
+                    response.Status = "completed";
+                    return response;
+                }
+
+                // Try each direction to get closer
+                int bestDir = -1;
+                int bestDist = Math.Abs(cursorPos.x - targetX) + Math.Abs(cursorPos.y - targetY);
+
+                for (int d = 0; d < 4; d++)
+                {
+                    // Press direction
+                    _input.SendKeyPressToWindow(_gameWindow, directions[d]);
+                    Thread.Sleep(KEY_DELAY);
+
+                    // Read new position
+                    var newPos = ReadCursorTile();
+                    int newDist = Math.Abs(newPos.x - targetX) + Math.Abs(newPos.y - targetY);
+
+                    if (newPos.x == targetX && newPos.y == targetY)
+                    {
+                        // Found target — confirm move
+                        SendKey(VK_F);
+                        Thread.Sleep(300);
+
+                        var sw2 = System.Diagnostics.Stopwatch.StartNew();
+                        while (sw2.ElapsedMilliseconds < 5000)
+                        {
+                            Thread.Sleep(100);
+                            screen = _detectScreen();
+                            if (screen != null && screen.Name != "Battle_Moving")
+                                break;
+                        }
+
+                        response.Status = "completed";
+                        return response;
+                    }
+
+                    if (newDist < bestDist)
+                    {
+                        bestDist = newDist;
+                        bestDir = d;
+                    }
+
+                    // Undo — press opposite direction
+                    int opposite = d ^ 1; // Down↔Up, Left↔Right
+                    _input.SendKeyPressToWindow(_gameWindow, directions[opposite]);
+                    Thread.Sleep(KEY_DELAY);
+                }
+
+                // Move in the best direction found
+                if (bestDir >= 0)
+                {
+                    _input.SendKeyPressToWindow(_gameWindow, directions[bestDir]);
+                    Thread.Sleep(KEY_DELAY);
+                }
+                else
+                {
+                    // No improvement possible — stuck
+                    break;
+                }
+            }
+
+            response.Status = "failed";
+            response.Error = $"Could not reach tile ({targetX},{targetY}) after 30 attempts";
+            return response;
+        }
+
+        /// <summary>
+        /// Reads the current cursor tile position from cursor index + tile list.
+        /// </summary>
+        private (int x, int y) ReadCursorTile()
+        {
+            var idxResult = _explorer.ReadAbsolute((nint)AddrCursorIndex, 1);
+            int idx = idxResult != null ? (int)idxResult.Value.value : 0;
+
+            var tileData = _explorer.Scanner.ReadBytes((nint)AddrTileList, 350);
+            int offset = idx * 7;
+            if (offset + 6 < tileData.Length && tileData[offset + 3] != 0)
+                return (tileData[offset], tileData[offset + 1]);
+
+            return (-1, -1);
+        }
+
+        /// <summary>
+        /// Reads the full tile list (valid movement tiles).
+        /// </summary>
+        private List<(int x, int y)>? ReadTileList()
+        {
+            var tileData = _explorer.Scanner.ReadBytes((nint)AddrTileList, 350);
+            if (tileData.Length < 7) return null;
+
+            var tiles = new List<(int x, int y)>();
+            var seen = new HashSet<(int, int)>();
+            for (int i = 0; i < tileData.Length - 6; i += 7)
+            {
+                int x = tileData[i];
+                int y = tileData[i + 1];
+                int flag = tileData[i + 3];
+                if (flag == 0 || x > 30 || y > 30) break;
+                if (seen.Add((x, y)))
+                    tiles.Add((x, y));
+            }
+            return tiles;
         }
 
         // --- Helpers ---

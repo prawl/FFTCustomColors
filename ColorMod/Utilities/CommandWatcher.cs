@@ -335,6 +335,7 @@ namespace FFTColorCustomizer.Utilities
                     case "navigate":
                     case "travel":
                     case "confirm_attack":
+                    case "move_to":
                         return ExecuteNavAction(command);
 
                     case "set_screen":
@@ -435,7 +436,11 @@ namespace FFTColorCustomizer.Utilities
             if (Explorer == null)
                 return new CommandResponse { Id = command.Id, Status = "failed", Error = "Memory explorer not initialized", ProcessedAt = DateTime.UtcNow.ToString("o") };
 
-            _navActions ??= new NavigationActions(_inputSimulator, Explorer, DetectScreen);
+            if (_navActions == null)
+            {
+                _navActions = new NavigationActions(_inputSimulator, Explorer, DetectScreen);
+                _navActions.BattleTracker = BattleTracker;
+            }
             return _navActions.Execute(command);
         }
 
