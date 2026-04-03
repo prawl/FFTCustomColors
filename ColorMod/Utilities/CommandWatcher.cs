@@ -843,6 +843,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x14077CA54, 4),  // 13: unitSlot9
             ((nint)0x140C64A5C, 1),  // 14: pauseFlag
             ((nint)0x14077CA5C, 1),  // 15: moveMode (255=selecting tile, 0=not)
+            ((nint)0x140900650, 1),  // 16: battleMode (3=action menu, 2=move, 0=game over/cutscene)
         };
 
         /// <summary>
@@ -932,10 +933,16 @@ namespace FFTColorCustomizer.Utilities
                 bool clearlyOnWorldMap = validWorldLocation && party == 0 && ui == 0;
                 bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF && !clearlyOnWorldMap);
 
-                if (inBattle && paused == 1)
+                int battleMode = (int)v[16];
+
+                if (inBattle && paused == 1 && battleMode == 0)
+                    screen.Name = "GameOver";
+                else if (inBattle && paused == 1)
                     screen.Name = "Battle_Paused";
-                else if (inBattle && moveMode == 255 && screen.BattleTeam == 0)
+                else if (inBattle && screen.BattleTeam == 0 && moveMode == 255 && screen.BattleActed == 0)
                     screen.Name = "Battle_Moving";
+                else if (inBattle && screen.BattleTeam == 0 && moveMode == 255 && screen.BattleActed == 1)
+                    screen.Name = "Battle_Targeting";
                 else if (inBattle && screen.BattleTeam == 0 && screen.BattleActed == 0 && screen.BattleMoved == 0)
                     screen.Name = "Battle_MyTurn";
                 else if (inBattle && screen.BattleTeam == 0 && (screen.BattleActed == 1 || screen.BattleMoved == 1))
@@ -982,7 +989,7 @@ namespace FFTColorCustomizer.Utilities
                         "PartyMenu" => GameScreen.PartyMenu,
                         "TravelList" => GameScreen.Unknown,
                         "EncounterDialog" => GameScreen.Unknown,
-                        "Battle_MyTurn" or "Battle_Moving" or "Battle_Acting" or "Battle_Paused" or "Battle" => GameScreen.Unknown,
+                        "Battle_MyTurn" or "Battle_Moving" or "Battle_Targeting" or "Battle_Acting" or "Battle_Paused" or "Battle" or "GameOver" => GameScreen.Unknown,
                         _ => (GameScreen?)null
                     };
                     if (expected.HasValue && ScreenMachine.CurrentScreen != expected.Value)

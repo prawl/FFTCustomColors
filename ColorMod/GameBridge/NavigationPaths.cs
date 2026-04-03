@@ -19,6 +19,7 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_RIGHT = 0x27;
         private const int VK_SPACE = 0x20;
         private const int VK_TAB = 0x09;
+        private const int VK_F = 0x46;
         private const int VK_Q = 0x51;
         private const int VK_E = 0x45;
         private const int VK_T = 0x54;
@@ -40,8 +41,10 @@ namespace FFTColorCustomizer.GameBridge
                 "JobChangeConfirmation" => GetJobChangeConfirmationPaths(),
                 "TravelList" => GetTravelListPaths(),
                 "EncounterDialog" => GetEncounterDialogPaths(),
+                "GameOver" => GetGameOverPaths(),
                 "Battle_MyTurn" => GetBattleMyTurnPaths(screen),
                 "Battle_Moving" => GetBattleMovingPaths(),
+                "Battle_Targeting" => GetBattleTargetingPaths(),
                 "Battle_Acting" => GetBattleActingPaths(),
                 "Battle_Paused" => GetBattlePausedPaths(),
                 "Battle" => GetBattleEnemyTurnPaths(),
@@ -274,6 +277,49 @@ namespace FFTColorCustomizer.GameBridge
             };
         }
 
+        private static Dictionary<string, PathEntry> GetGameOverPaths()
+        {
+            // Game Over menu (cursor defaults to Retry):
+            //   Retry(0) → Change Formation and Retry / Retry from Start / Cancel
+            //   Load(1) → loading screen
+            //   Return to World Map(2) → confirm / Cancel
+            //   Return to Title Screen(3) → confirm / Cancel
+            return new()
+            {
+                ["RetryFromStart"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter") },
+                    Desc = "Retry battle from the start (Retry → Retry from Start)"
+                },
+                ["RetryChangeFormation"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter") },
+                    Desc = "Change formation and retry (Retry → Change Formation)"
+                },
+                ["Load"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter") },
+                    Desc = "Open load screen"
+                },
+                ["ReturnToWorldMap"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter") },
+                    WaitForScreen = "WorldMap",
+                    WaitTimeoutMs = 10000,
+                    Desc = "Abandon battle and return to world map (with confirmation)"
+                },
+                ["ReturnToTitle"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter") },
+                    WaitForScreen = "TitleScreen",
+                    WaitTimeoutMs = 10000,
+                    Desc = "Return to title screen (with confirmation)"
+                },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down" },
+            };
+        }
+
         private static Dictionary<string, PathEntry> GetBattleMyTurnPaths(DetectedScreen screen)
         {
             var paths = new Dictionary<string, PathEntry>();
@@ -303,10 +349,12 @@ namespace FFTColorCustomizer.GameBridge
         {
             return new()
             {
-                ["Confirm"] = new PathEntry
+                ["ConfirmMove"] = new PathEntry
                 {
-                    Keys = new[] { Key(VK_ENTER, "Enter") },
-                    Desc = "Confirm move to selected tile"
+                    Keys = new[] { Key(VK_F, "F") },
+                    WaitUntilScreenNot = "Battle_Moving",
+                    WaitTimeoutMs = 5000,
+                    Desc = "Confirm move to selected tile (F key)"
                 },
                 ["Cancel"] = new PathEntry
                 {
@@ -317,6 +365,27 @@ namespace FFTColorCustomizer.GameBridge
                 ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move tile cursor down" },
                 ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move tile cursor left" },
                 ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move tile cursor right" },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetBattleTargetingPaths()
+        {
+            return new()
+            {
+                ["ConfirmTarget"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_F, "F") },
+                    Desc = "Confirm attack on selected target (F key)"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Cancel targeting, go back"
+                },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move target cursor up" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move target cursor down" },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move target cursor left" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move target cursor right" },
             };
         }
 
@@ -365,13 +434,17 @@ namespace FFTColorCustomizer.GameBridge
                 },
                 ["ReturnToWorldMap"] = new PathEntry
                 {
-                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter") },
-                    Desc = "Abandon battle and return to world map"
+                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter") },
+                    WaitForScreen = "WorldMap",
+                    WaitTimeoutMs = 10000,
+                    Desc = "Abandon battle and return to world map (with confirmation)"
                 },
                 ["ReturnToTitle"] = new PathEntry
                 {
-                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter") },
-                    Desc = "Return to title screen"
+                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter") },
+                    WaitForScreen = "TitleScreen",
+                    WaitTimeoutMs = 10000,
+                    Desc = "Return to title screen (with confirmation)"
                 },
                 ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up in pause menu" },
                 ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down in pause menu" },
