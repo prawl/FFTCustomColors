@@ -242,25 +242,29 @@ namespace FFTColorCustomizer.GameBridge
                     PositionKnown = u.X >= 0,
                 };
 
-                // Calculate distance and direction from active unit
+                // Calculate distance and cursor-key direction from active unit.
+                // FFT isometric grid mapping (verified empirically):
+                //   Down key  = X-1, Y-1 (visually forward)
+                //   Up key    = X+1, Y+1 (visually backward)
+                //   Left key  = X-1, Y+1 (visually left)
+                //   Right key = X+1, Y-1 (visually right)
                 if (myX >= 0 && myY >= 0 && u.X >= 0 && u.Y >= 0 && kvp.Key != activeKey)
                 {
                     int dx = u.X - myX;
                     int dy = u.Y - myY;
                     unitState.Distance = Math.Abs(dx) + Math.Abs(dy);
 
-                    // Direction uses game cursor orientation:
-                    // Down = forward (increasing Y-ish), Up = backward
-                    string vertical = dy > 0 ? "down" : dy < 0 ? "up" : "";
-                    string horizontal = dx > 0 ? "right" : dx < 0 ? "left" : "";
-                    if (vertical != "" && horizontal != "")
-                        unitState.Direction = $"{vertical}-{horizontal}";
-                    else if (vertical != "")
-                        unitState.Direction = vertical;
-                    else if (horizontal != "")
-                        unitState.Direction = horizontal;
-                    else
+                    // Map dx/dy to cursor key names
+                    if (dx == 0 && dy == 0)
                         unitState.Direction = "same tile";
+                    else if (dx <= 0 && dy <= 0)
+                        unitState.Direction = "CursorDown";  // both decrease
+                    else if (dx >= 0 && dy >= 0)
+                        unitState.Direction = "CursorUp";    // both increase
+                    else if (dx <= 0 && dy >= 0)
+                        unitState.Direction = "CursorLeft";  // X dec, Y inc
+                    else
+                        unitState.Direction = "CursorRight"; // X inc, Y dec
                 }
 
                 state.Units.Add(unitState);

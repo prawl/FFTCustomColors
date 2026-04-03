@@ -901,35 +901,46 @@ namespace FFTColorCustomizer.Utilities
 
             try
             {
-                // Read cursor grid position
-                var reads = Explorer.ReadMultiple(new (nint, int)[]
-                {
-                    ((nint)0x140C65380, 1), // cursor X
-                    ((nint)0x140C65381, 1), // cursor Y
-                });
-                screen.CursorX = (int)reads[0];
-                screen.CursorY = (int)reads[1];
+                // Read cursor index and tile list atomically to avoid race conditions.
+                // Cursor index at 0x140C64E7C: byte index into tile list.
+                // Tile list at 0x140C66315: 7 bytes per tile [X, Y, elev, flag, 0, 0, 0].
+                var cursorIdx = Explorer.ReadAbsolute((nint)0x140C64E7C, 1);
+                int idx = cursorIdx != null ? (int)cursorIdx.Value.value : 0;
 
-                // Read tile list (up to 50 tiles × 7 bytes = 350 bytes)
+                var tileData = Explorer.Scanner.ReadBytes((nint)0x140C66315, 350);
+                if (tileData.Length < 7) return;
+
+                var tiles = new List<TilePosition>();
+                for (int i = 0; i < tileData.Length - 6; i += 7)
+                {
+                    int x = tileData[i];
+                    int y = tileData[i + 1];
+                    int flag = tileData[i + 3];
+
+                    if (flag == 0) break;
+                    if (x > 30 || y > 30) break;
+
+                    tiles.Add(new TilePosition { X = x, Y = y });
+                }
+
+                // Cursor position = tile at cursor index
+                if (idx >= 0 && idx < tiles.Count)
+                {
+                    screen.CursorX = tiles[idx].X;
+                    screen.CursorY = tiles[idx].Y;
+                }
+
+                // Deduplicate tiles for the response (list often has repeats)
                 if (screen.Name == "Battle_Moving")
                 {
-                    var tileData = Explorer.Scanner.ReadBytes((nint)0x140C66315, 350);
-                    if (tileData.Length >= 7)
+                    var seen = new HashSet<(int, int)>();
+                    var unique = new List<TilePosition>();
+                    foreach (var t in tiles)
                     {
-                        var tiles = new List<TilePosition>();
-                        for (int i = 0; i < tileData.Length - 6; i += 7)
-                        {
-                            int x = tileData[i];
-                            int y = tileData[i + 1];
-                            int flag = tileData[i + 3];
-
-                            if (flag == 0) break;
-                            if (x > 30 || y > 30) break;
-
-                            tiles.Add(new TilePosition { X = x, Y = y });
-                        }
-                        screen.Tiles = tiles;
+                        if (seen.Add((t.X, t.Y)))
+                            unique.Add(t);
                     }
+                    screen.Tiles = unique;
                 }
             }
             catch (Exception ex)
