@@ -233,6 +233,30 @@ namespace FFTColorCustomizer.Utilities
 
         [JsonPropertyName("battleUnitHp")]
         public int BattleUnitHp { get; set; }
+
+        /// <summary>Cursor tile X during Battle_Moving/Battle_Targeting.</summary>
+        [JsonPropertyName("cursorX")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int CursorX { get; set; } = -1;
+
+        /// <summary>Cursor tile Y during Battle_Moving/Battle_Targeting.</summary>
+        [JsonPropertyName("cursorY")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int CursorY { get; set; } = -1;
+
+        /// <summary>Available tiles during Battle_Moving (list of X,Y pairs).</summary>
+        [JsonPropertyName("tiles")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<TilePosition>? Tiles { get; set; }
+    }
+
+    public class TilePosition
+    {
+        [JsonPropertyName("x")]
+        public int X { get; set; }
+
+        [JsonPropertyName("y")]
+        public int Y { get; set; }
     }
 
     public class SequenceStep

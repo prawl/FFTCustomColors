@@ -375,6 +375,8 @@ namespace FFTColorCustomizer.GameBridge
                 ["ConfirmTarget"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_F, "F") },
+                    WaitUntilScreenNot = "Battle_Targeting",
+                    WaitTimeoutMs = 5000,
                     Desc = "Confirm attack on selected target (F key)"
                 },
                 ["Cancel"] = new PathEntry

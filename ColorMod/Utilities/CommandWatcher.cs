@@ -884,6 +884,58 @@ namespace FFTColorCustomizer.Utilities
             return last;
         }
 
+        /// <summary>
+        /// Reads tile list and cursor index during Battle_Moving/Battle_Targeting.
+        /// Tile list at 0x140C66315: 7 bytes per tile [X, Y, elev, flag, 0, 0, 0].
+        /// Cursor index at 0x140C64E7C: byte index into tile list.
+        /// </summary>
+        private void PopulateBattleTileData(DetectedScreen screen)
+        {
+            if (Explorer == null) return;
+
+            try
+            {
+                // Read cursor index
+                var cursorIdx = Explorer.ReadAbsolute((nint)0x140C64E7C, 1);
+                int idx = cursorIdx != null ? (int)cursorIdx.Value.value : 0;
+
+                // Read tile list (up to 50 tiles × 7 bytes = 350 bytes)
+                var tileData = Explorer.Scanner.ReadBytes((nint)0x140C66315, 350);
+                if (tileData.Length < 7) return;
+
+                var tiles = new List<TilePosition>();
+                for (int i = 0; i < tileData.Length - 6; i += 7)
+                {
+                    int x = tileData[i];
+                    int y = tileData[i + 1];
+                    int flag = tileData[i + 3];
+
+                    // flag=0 terminates the list
+                    if (flag == 0) break;
+
+                    // Sanity check
+                    if (x > 30 || y > 30) break;
+
+                    tiles.Add(new TilePosition { X = x, Y = y });
+                }
+
+                // Set cursor position from the tile at cursor index
+                if (idx >= 0 && idx < tiles.Count)
+                {
+                    screen.CursorX = tiles[idx].X;
+                    screen.CursorY = tiles[idx].Y;
+                }
+
+                // Include tile list for Battle_Moving so Claude knows where it can go
+                if (screen.Name == "Battle_Moving")
+                    screen.Tiles = tiles;
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[CommandBridge] PopulateBattleTileData error: {ex.Message}");
+            }
+        }
+
         private bool IsPartySubScreen()
         {
             if (ScreenMachine == null) return false;
@@ -976,6 +1028,10 @@ namespace FFTColorCustomizer.Utilities
                     screen.Name = "WorldMap";
                 else
                     screen.Name = "Unknown";
+
+                // Populate cursor tile and available tiles for battle sub-states
+                if (screen.Name == "Battle_Moving" || screen.Name == "Battle_Targeting")
+                    PopulateBattleTileData(screen);
 
                 // Sync state machine with memory-detected top-level screens.
                 // This ensures the state machine stays in sync even after restarts
