@@ -12,12 +12,56 @@ Make FFT fully hands-free by giving Claude Code a platform to play the game as i
 
 The ultimate vision: you say "play FFT" and Claude boots the game, loads a save, navigates the world, enters battles, makes tactical decisions, enjoys the story, and keeps you entertained along the way.
 
+## Design Principle: Automate the Interface, Not the Intelligence
+
+Give Claude the same tools a human player has, just digitized. The bridge should make it easy to *see* and *act* — but never make decisions for Claude.
+
+**What a human player can do (Claude should too):**
+- See the whole battlefield at a glance → `scan_units` / `battle_status`
+- Move a cursor to any tile → `move_grid x y`
+- Read the menu options → `validPaths`
+- Check a unit's stats by hovering → condensed struct reads
+- Press buttons quickly and accurately → key commands with settling
+
+**What a human player does NOT have (neither should Claude):**
+- A computer telling them the optimal move
+- Auto-pathfinding around obstacles
+- Pre-calculated damage numbers
+- Filtered "only valid" tile lists that remove bad options
+- Auto-targeting the weakest enemy
+
+**The rule:** If it removes a decision from Claude, it's too much automation. If it makes Claude fumble with the controller instead of thinking about strategy, it's not enough.
+
+Examples of good automation:
+- Self-calibrating rotation (a human doesn't think about rotation tables — they just see and press)
+- `move_grid 4 9` (a human just moves the cursor to a tile — they don't count arrow presses)
+- `scan_units` returning all positions (a human can see the whole board instantly)
+
+Examples of bad automation:
+- `move_to_best_tile` (the *choice* of tile is the game)
+- Pre-filtering invalid tiles from the response (a human can try to walk into a wall too)
+- `attack_weakest_enemy` (targeting is a tactical decision)
+
 ---
 
 ## Status Key
 - [x] Done
 - [ ] Not started
 - [~] Partially done
+
+---
+
+## Priority Guide
+
+**P0 — Speed and accuracy of Claude's game interactions are the highest priority.**
+If Claude can't interact with the game quickly and reliably, nothing else matters. Every round-trip, every wasted read, every failed move slows the experience. Optimize the bridge, minimize tool calls, self-calibrate rotation, verify actions, measure latency.
+
+**P0 — Battle automation and Claude's player instructions are also highest priority.**
+Everything Claude needs to fight battles intelligently: unit scanning, movement, attacking, AoE targeting, facing, status effects, invalid tile detection, and the PLAYER_RULES.md that governs how Claude behaves as a player.
+
+**P1 — Reading game data from memory** (names, items, abilities) so Claude can see what a human sees.
+
+**P2 — Everything else** (world map nav, shops, settlements, save/load, lore).
 
 ---
 
@@ -39,8 +83,15 @@ Every response includes `validPaths` — a map of action names to exact commands
 - [x] Battle_Moving: ConfirmMove, Cancel, CursorUp/Down/Left/Right
 - [x] Battle_Targeting: Confirm, Cancel, CursorUp/Down/Left/Right
 - [x] Battle_Paused: Resume, ReturnToWorldMap
-- [ ] Settlement: Outfitter, Tavern, Guild, PoachDen (detect via entering settlement location)
-- [ ] Outfitter Buy/Sell screens
+- [ ] Settlement menu: Outfitter, Tavern, Warriors' Guild, Poachers' Den (detect via entering settlement)
+- [ ] Outfitter: Buy/Sell/Fitting screens, category tabs, item list, quantity popup
+- [ ] Tavern: Read rumors/stories, accept errands, view errand results
+- [ ] Warriors' Guild (Recruitment): Browse recruits, hire units, dismiss units
+- [ ] Poachers' Den: Browse poached monsters, sell pelts
+- [ ] Save Game: Navigate Options tab → Save → slot selection → confirm
+- [ ] Load Game: Navigate Options tab → Load → slot selection → confirm
+- [ ] Chronicle tab: Read Personae (character bios/lore), Brave Story (plot summary), War of the Lions timeline
+- [ ] Achievements screen
 
 ### High-Level Actions
 - [x] `battle_wait` — Navigate to Wait, confirm, confirm facing, poll for terminal state
@@ -55,8 +106,15 @@ Every response includes `validPaths` — a map of action names to exact commands
 - [x] `write_byte` — Write a byte to a memory address (for testing)
 - [ ] `battle_attack` — Auto-target enemy at given grid position, confirm attack
 - [ ] `buy_item` — Navigate outfitter, select category, find item, buy quantity
+- [ ] `sell_item` — Navigate outfitter sell screen, find item, sell quantity
 - [ ] `change_job` — Navigate to job screen, select job, confirm
 - [ ] `equip_ability` — Navigate to equipment screen, select slot, find ability
+- [ ] `hire_unit` — Navigate Warriors' Guild, browse recruits, hire
+- [ ] `dismiss_unit` — Navigate Warriors' Guild, select unit, dismiss
+- [ ] `read_tavern` — Enter tavern, read rumors/errands, report text to Claude
+- [ ] `save_game` — Navigate to Options → Save → pick slot → confirm
+- [ ] `load_game` — Navigate to Options → Load → pick slot → confirm
+- [ ] `read_chronicle` — Navigate Chronicle tab, read Personae/Brave Story/timeline entries
 
 ---
 
@@ -73,7 +131,22 @@ Cheat Engine-style snapshot/diff for discovering UI state addresses.
 
 ---
 
-## 3. Speed Optimizations (Game Bridge)
+## 3. Read Game Data from Memory (Replace Hardcoded Lists) [P1]
+
+Currently Claude uses hardcoded lists for shop items, abilities, and world map locations because we can't read them from the game UI. A human player just reads the screen — Claude should too. These hardcoded lists aren't a principle violation (they give Claude the same info a human gets by looking), but reading from memory is better: always accurate, auto-updates, no maintenance.
+
+- [ ] **Shop items** — Read item names, prices, and stats from memory when browsing the shop. Eliminate the hardcoded SHOP_ITEMS.md. Different settlements have different inventories — hardcoded lists can't handle this.
+- [ ] **Ability names and descriptions** — Read ability list entries from memory when browsing job abilities or equipment screens. Eliminate hardcoded ability tables. The game stores ability names in NXD tables (CharaName pattern).
+- [ ] **World map location names** — Read location name from memory when hovering or in travel list. Currently mapped by ID in the docs — should come from the game.
+- [ ] **Unit names** — Read the displayed unit name from memory (CharaName NXD table keyed by NameId). Currently just showing NameId numbers.
+- [ ] **Job names** — Read job name from memory when hovering in job grid. Currently showing job ID numbers.
+- [ ] **Equipment names** — Read equipped item names from memory on the equipment screen.
+- [ ] **Investigate NXD table access** — The game stores all text strings in NXD database tables. Finding how to read these at runtime (either from memory or from the NXD files on disk) would unlock all of the above at once.
+
+---
+
+## 4. Speed Optimizations (Game Bridge) [P0]
+
 
 ### Phase 1: Embed State in Response
 - [x] GameState included in every CommandResponse (no separate state.json read needed)
@@ -95,9 +168,60 @@ Cheat Engine-style snapshot/diff for discovering UI state addresses.
 - [x] `set_screen` action for manual resync
 - [x] Thread-safe: state machine only mutated inside command processing lock
 
+### Phase 4: Minimize Round-Trips (THE BIG WIN)
+
+Current problem: a single battle turn takes ~30-40 seconds across 6+ Bash tool calls, each with ~2-3s of Claude overhead. A human does the same turn in 5 seconds. The mod-side work is fast — the bottleneck is the number of Claude ↔ game round-trips.
+
+**Single-command turn execution:**
+- [ ] `execute_turn` action: Claude sends full intent in one command — move target, attack target, wait
+  - `{"action": "execute_turn", "move_to": [4,9], "attack": [4,10], "wait": true}`
+  - Mod handles internally: Move→navigate→confirm→Abilities→Attack→target→confirm→Wait
+  - One round-trip instead of 6+ = **~5s instead of ~30s**
+- [ ] Support partial turns: move only, attack only, move+wait, etc.
+- [ ] Return full post-turn state: where everyone ended up, damage dealt, kills
+
+**Auto-scan on Battle_MyTurn:**
+- [ ] When detecting Battle_MyTurn, automatically run C+Up scan and include results in the response
+- [ ] Eliminates the separate `scan_units` call — saves one full round-trip (~5s)
+- [ ] Only scan if positions are stale (not tracked via background polling)
+
+**Background position tracking during enemy turns:**
+- [ ] While enemies animate, poll positions in the background
+- [ ] By the time it's our turn, positions are already fresh — no scan needed
+- [ ] Could eliminate C+Up scanning entirely after the first battle-start scan
+
+**Self-calibrating rotation built into move_grid:**
+- [ ] One test arrow press + measure delta = derive full rotation mapping
+- [ ] Costs 250ms but guarantees correctness — no separate verification from Claude
+
+**Pre-compute actionable data in responses:**
+- [ ] Include distances from active unit to all enemies
+- [ ] Include valid adjacent tiles per enemy (tiles that are next to enemy AND reachable)
+- [ ] Include attack range information (can I hit anyone without moving?)
+- [ ] Claude reads the answer, not computes it — faster decision making
+
+**Latency measurement:**
+- [ ] Log round-trip time for every command (command received → response written)
+- [ ] Flag any action taking >2s mod-side
+- [ ] Track scan time, move time, attack time separately
+- [ ] Surface metrics in response so Claude (and user) can see performance
+
 ---
 
-## 4. Battle Automation
+## 5. Player Instructions & Rules [P0]
+
+Claude needs clear instructions on how to behave as a player before it starts playing. See `FFTHandsFree/PLAYER_RULES.md`.
+
+- [x] PLAYER_RULES.md created — core rules: no googling, no spoilers, play as new player, think out loud
+- [ ] Integrate PLAYER_RULES.md into Claude's system prompt / CLAUDE.md when playing
+- [ ] Add intelligence level support (Beginner/Normal/Expert context files) — see IDEAS.md
+- [ ] Define how Claude should narrate: brief during action, summary after turns, debrief after battles
+- [ ] Define how Claude handles story scenes: read dialogue, react, form opinions, never skip
+- [ ] Test that Claude actually follows the rules during gameplay (doesn't leak training knowledge)
+
+---
+
+## 6. Battle Automation [P0]
 
 ### Battle State Presentation
 
@@ -161,7 +285,8 @@ Every interaction between Claude and the game should be as fast and reliable as 
 - [x] Read active unit before cycling (cursor starts on active unit)
 - [x] Stop logic: press Up at least expectedCount times before stopping on duplicate
 - [x] Unit count candidate at 0x140900650 (used as upper bound)
-- [ ] Add unit name lookup (NameId -> name from CharaName NXD table)
+- [ ] Add unit name to scan output (read from CharaName NXD table or memory, keyed by NameId)
+- [ ] Add status effects to scan output (poison, sleep, haste, protect, shell, charging, etc.)
 - [ ] Include unit's equipped abilities in scan data (reaction, support, movement)
 
 ### Grid Movement
@@ -171,12 +296,51 @@ Every interaction between Claude and the game should be as fast and reliable as 
 - [x] `move_grid` action: takes target (x,y), enters Move, presses arrows, confirms
 - [ ] Self-calibrating rotation (test one press, derive mapping, then navigate)
 - [ ] Auto-retry on invalid tile (if F doesn't confirm, try adjacent tiles)
-- [ ] Read valid tile list and check target before navigating (prevent invalid moves)
+
+### Invalid Tile / Target Detection
+
+A human player can see blue tiles (valid moves) and red tiles (attack range). Claude needs the same awareness. When Claude tries to move or attack an invalid tile, it should detect the failure and recover — just like a human who misclicks and tries again.
+
+**Movement:**
+- [ ] After pressing F to confirm a move, detect if still in Battle_Moving (tile was invalid)
+- [ ] On invalid tile: report failure, try next-best tile automatically
+- [ ] Read the movement tile list (0x140C66315) and convert to grid coords — give Claude awareness of which tiles are reachable BEFORE moving (like seeing the blue overlay)
+- [ ] Include valid tile list in battle status so Claude can plan moves that will actually work
+
+**Attack targeting:**
+- [ ] After confirming attack, detect if still in targeting mode (no valid target on that tile)
+- [ ] On invalid target: try adjacent tiles or report "no enemy in range"
+- [ ] Read attack range from memory if possible — let Claude know which tiles are targetable (like seeing the red overlay)
+- [ ] Distinguish "tile has no unit" from "tile is out of range"
+
+**General:**
+- [ ] Every action that can fail should return clear success/failure status
+- [ ] On failure, include WHY it failed (invalid tile, out of range, unit already acted, etc.)
+- [ ] Claude should handle failures gracefully — pick an alternative, not crash or freeze
 
 ### Attack Targeting
 - [ ] `battle_attack` action: open Abilities -> Attack -> navigate target cursor to enemy -> confirm
 - [ ] Read rotation DURING targeting mode (camera may auto-rotate between Move and Attack)
 - [ ] Verify attack landed (check enemy HP decreased)
+
+### Magic / AoE Ability Targeting
+- [ ] Navigate Abilities -> select a specific spell (not just Attack)
+- [ ] Single-target spells: same as attack targeting, navigate cursor to enemy tile
+- [ ] AoE spells: the game shows a blast radius around the cursor center tile
+- [ ] Claude needs to evaluate AoE placement: maximize enemies hit, minimize allies hit
+- [ ] Read AoE radius from ability data (each spell has a known effect area)
+- [ ] Given unit positions from scan, compute optimal center tile for AoE
+- [ ] Handle line AoE (e.g., some abilities hit in a line, not a radius)
+- [ ] Handle self-centered AoE (no targeting cursor, just confirm)
+- [ ] Handle charge time spells (CT delay before spell resolves — target may move)
+- [ ] Support healing magic targeting allies (same cursor system, opposite target selection)
+
+### Unit Facing Direction
+- [ ] Find memory address for each unit's facing direction (PSX had this at +0x49, not yet located in remaster)
+- [ ] Read facing during scan — include in unit data (N/S/E/W or 0-3)
+- [ ] Detect facing prompt at end of turn (after Wait, the game asks which direction to face)
+- [ ] Choose facing intelligently — face toward the nearest threat to avoid backstab bonus damage
+- [ ] Read facing during C+Up scan so Claude knows which direction enemies are looking (backstab opportunity)
 
 ### Battle AI / Decision Making
 - [ ] At turn start: auto-return battle status with all decision-relevant info
@@ -188,7 +352,7 @@ Every interaction between Claude and the game should be as fast and reliable as 
 
 ---
 
-## 5. Known Issues / Blockers
+## 7. Known Issues / Blockers
 
 ### Coordinate System
 - Grid coords (from cursor) and world coords (from battle tracker) are different systems
@@ -209,7 +373,7 @@ Every interaction between Claude and the game should be as fast and reliable as 
 
 ---
 
-## 6. Shell Helpers (fft.sh)
+## 8. Shell Helpers (fft.sh)
 
 - [x] `screen` — quick state check
 - [x] `path <name>` — execute validPath
@@ -228,7 +392,7 @@ Every interaction between Claude and the game should be as fast and reliable as 
 
 ---
 
-## 7. Key Memory Addresses
+## 9. Key Memory Addresses
 
 | Address | Size | Field | Notes |
 |---------|------|-------|-------|
@@ -255,7 +419,7 @@ Every interaction between Claude and the game should be as fast and reliable as 
 
 ---
 
-## 8. DirectInput Key Simulation
+## 10. DirectInput Key Simulation
 
 FFT uses DirectInput for keyboard polling. Standard Win32 APIs (PostMessage, keybd_event, SendInput without SCANCODE) work for single key presses but NOT for held-key detection.
 
