@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -181,9 +182,8 @@ namespace FFTColorCustomizer.GameBridge
             // Scan turn queue for other units' stats
             ScanTurnQueue();
 
-            // Heap scanning disabled — it was causing game crashes.
-            // Unit positions come from the condensed turn queue (active unit)
-            // and will be re-enabled with a safer approach later.
+            // Heap scanning disabled — causes slowdowns and crashes.
+            // Live positions tracked via grid cursor + scan approach instead.
 
             // Build response
             var state = new BattleState
@@ -437,16 +437,27 @@ namespace FFTColorCustomizer.GameBridge
 
         private void ReadPositionFromHeap(nint statBase, BattleUnit unit)
         {
-            var posReads = _explorer.ReadMultiple(new (nint, int)[]
+            try
             {
-                (statBase + HeapOffX, 1),
-                (statBase + HeapOffY, 1),
-            });
-            unit.StartX = (int)posReads[0];
-            unit.StartY = (int)posReads[1];
-            // Use start position as current if we don't have a live position yet
-            if (unit.X < 0) unit.X = unit.StartX;
-            if (unit.Y < 0) unit.Y = unit.StartY;
+                var posReads = _explorer.ReadMultiple(new (nint, int)[]
+                {
+                    (statBase + HeapOffX, 1),
+                    (statBase + HeapOffY, 1),
+                });
+                int x = (int)posReads[0];
+                int y = (int)posReads[1];
+                // Sanity check — grid coords should be 0-30
+                if (x < 0 || x > 30 || y < 0 || y > 30) return;
+                unit.StartX = x;
+                unit.StartY = y;
+                // Use start position as current if we don't have a live position yet
+                if (unit.X < 0) unit.X = unit.StartX;
+                if (unit.Y < 0) unit.Y = unit.StartY;
+            }
+            catch
+            {
+                // Silently ignore — heap address may be stale
+            }
         }
 
         /// <summary>
@@ -471,7 +482,7 @@ namespace FFTColorCustomizer.GameBridge
                         int lvl = BitConverter.ToUInt16(raw, pos);
                         int team = BitConverter.ToUInt16(raw, pos + 2);
 
-                        if (lvl >= 1 && lvl <= 99 && (team == 0 || team == 1))
+                        if (lvl >= 1 && lvl <= 99 && team >= 0 && team <= 3)
                         {
                             int hp = BitConverter.ToUInt16(raw, pos + 0x0C);
                             int maxHp = BitConverter.ToUInt16(raw, pos + 0x10);

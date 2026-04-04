@@ -145,6 +145,7 @@ namespace FFTColorCustomizer.Utilities
             {
                 try
                 {
+                    if (!File.Exists(_commandFilePath)) return null;
                     var json = File.ReadAllText(_commandFilePath);
                     return JsonSerializer.Deserialize<CommandRequest>(json);
                 }
@@ -243,6 +244,15 @@ namespace FFTColorCustomizer.Utilities
                         response.Status = "completed";
                         break;
 
+                    case "write_address":
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        if (string.IsNullOrEmpty(command.Address)) { response.Status = "failed"; response.Error = "Address required"; break; }
+                        var writeAddr = Convert.ToInt64(command.Address, 16);
+                        var writeVal = (byte)command.ReadSize; // reuse ReadSize field for the value to write
+                        Explorer.Scanner.WriteByte((nint)writeAddr, writeVal);
+                        response.Status = "completed";
+                        break;
+
                     case "read_block":
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         if (string.IsNullOrEmpty(command.Address)) { response.Status = "failed"; response.Error = "Address required"; break; }
@@ -302,6 +312,22 @@ namespace FFTColorCustomizer.Utilities
                         }
                         break;
 
+                    case "write_byte":
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        if (string.IsNullOrEmpty(command.Address)) { response.Status = "failed"; response.Error = "Address required"; break; }
+                        try
+                        {
+                            nint wAddr = (nint)Convert.ToInt64(command.Address.Replace("0x", ""), 16);
+                            byte wVal = (byte)command.SearchValue;
+                            Explorer.Scanner.WriteByte(wAddr, wVal);
+                            // Read back to confirm
+                            byte readBack = Explorer.Scanner.ReadByte(wAddr);
+                            response.ReadResult = new ReadResult { Address = command.Address, Size = 1, Value = readBack, Hex = $"0x{readBack:X2}" };
+                            response.Status = "completed";
+                        }
+                        catch (Exception ex) { response.Status = "error"; response.Error = ex.Message; }
+                        break;
+
                     case "batch_read":
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         if (command.Addresses == null || command.Addresses.Count == 0) { response.Status = "failed"; response.Error = "Addresses required"; break; }
@@ -336,6 +362,10 @@ namespace FFTColorCustomizer.Utilities
                     case "travel":
                     case "confirm_attack":
                     case "move_to":
+                    case "scan_units":
+                    case "test_c_hold":
+                    case "get_arrows":
+                    case "move_grid":
                         return ExecuteNavAction(command);
 
                     case "set_screen":
@@ -840,7 +870,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x140D4A264, 1),  // 1: uiFlag
             ((nint)0x14077D208, 1),  // 2: location
             ((nint)0x140787A22, 1),  // 3: hover
-            ((nint)0x1407FCCA8, 1),  // 4: menuCursor (battle action menu: 0=Move,1=Abilities,2=Wait,3=Status,4=AutoBattle)
+            ((nint)0x1407FC620, 1),  // 4: menuCursor (battle action menu: 0=Move,1=Abilities,2=Wait,3=Status,4=AutoBattle)
             ((nint)0x140900824, 1),  // 5: encA
             ((nint)0x140900828, 1),  // 6: encB
             ((nint)0x14077D2A2, 2),  // 7: battleTeam
@@ -853,6 +883,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x140C64A5C, 1),  // 14: pauseFlag
             ((nint)0x14077CA5C, 1),  // 15: moveMode (255=selecting tile, 0=not)
             ((nint)0x140900650, 1),  // 16: battleMode (3=action menu, 2=move, 0=game over/cutscene)
+            ((nint)0x14077C970, 1),  // 17: cameraRotation (incrementing counter, mod 4 = current rotation 0-3)
         };
 
         /// <summary>
@@ -990,6 +1021,7 @@ namespace FFTColorCustomizer.Utilities
                     BattleMoved = (int)v[9],
                     BattleUnitId = (int)v[10],
                     BattleUnitHp = (int)v[11],
+                    CameraRotation = (int)v[17] % 4,
                 };
 
                 int party = (int)v[0];

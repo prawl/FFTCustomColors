@@ -1,20 +1,103 @@
 #!/bin/bash
-# FFT Game Bridge Helper - source this before using: source ./fft.sh
+# =============================================================================
+# FFT Game Bridge Helper
+# =============================================================================
+# Source this before using:  source ./fft.sh
+#
+# HOW IT WORKS:
+#   Claude writes command.json → C# mod picks it up → executes → writes response.json
+#   Every response includes: screen name, battle data, and validPaths (next actions)
+#
+# QUICK START:
+#   source ./fft.sh      # Load all helpers
+#   screen               # Check current screen & state
+#   path Move            # Execute a validPath action by name
+#   enter                # Send Enter key
+#   rv "0x14077D208"     # Read 1 byte from memory address
+#   rv "0x14077D208" 2   # Read 2 bytes (uint16 LE)
+#   block "0x140C66315" 70  # Read 70 bytes as hex string
+#
+# AVAILABLE COMMANDS (most common):
+#   Key presses:   enter, esc, up, down, left, right, space, tab, tkey, ekey
+#   Navigation:    path <name>, nav <screen>, travel <locationId>
+#   Battle:        battle_wait, path Move, path Abilities, path MoveToEnemy
+#   Memory:        rv <addr> [size], block <addr> <size>, batch '<json>'
+#   State:         screen, state, fft_full '<json>'
+#   System:        restart, boot
+#
+# RESPONSE FORMAT:
+#   Most commands print: [ScreenName] loc=X hover=Y menu=M status=ST
+#   Use fft_full to get the raw JSON response with all fields
+#   Use path to see validPaths (available next actions) in the response
+#
+# VALIDPATHS:
+#   Every response includes validPaths — a map of action names to commands.
+#   These are context-sensitive: different screens show different paths.
+#   Use: path <name>  to execute one.  Example: path Flee, path Wait, path Move
+#   After executing, the response shows NEW validPaths for the resulting screen.
+#   ALWAYS read validPaths to know what actions are available — don't guess.
+#
+# MEMORY READS:
+#   rv <addr>           Read 1 byte, returns just the number
+#   rv <addr> 2         Read 2 bytes (uint16 LE)
+#   rv <addr> 4         Read 4 bytes (uint32 LE)
+#   block <addr> <n>    Read n bytes, returns hex string (pairs of hex chars)
+#                       Parse with bash: hex="$(block ...)"; byte=${hex:offset*2:2}
+#                       Convert: echo $((16#$byte))
+#   batch '<json>'      Read multiple addresses in one round-trip
+#                       Example: batch '{"addr":"14077D208","size":1,"label":"loc"}'
+#
+# PARSING HEX BLOCKS IN BASH (no python needed):
+#   hex=$(block "0x140C66315" 70)
+#   # Each byte = 2 hex chars. Byte 0 = ${hex:0:2}, Byte 1 = ${hex:2:2}, etc.
+#   # Byte at offset N = ${hex:$((N*2)):2}
+#   # Convert hex to decimal: echo $((16#${hex:0:2}))
+#   # Parse 7-byte tile entries:
+#   for i in $(seq 0 7 69); do
+#     x=$((16#${hex:$((i*2)):2}))
+#     y=$((16#${hex:$((i*2+2)):2}))
+#     elev=$((16#${hex:$((i*2+4)):2}))
+#     flag=$((16#${hex:$((i*2+6)):2}))
+#     echo "X=$x Y=$y elev=$elev flag=$flag"
+#   done
+#
+# BATTLE TILE LIST (at 0x140C66315, 7 bytes per entry):
+#   Byte 0: X coordinate
+#   Byte 1: Y coordinate
+#   Byte 2: Elevation
+#   Byte 3: Flag (1=valid, 0=terminator)
+#   Bytes 4-6: Always 0
+#   Tile[0] = active unit's current position
+#   Cursor index at 0x140C64E7C = which tile the cursor is on
+#
+# TIMEOUTS:
+#   FFT_MAX controls total script timeout (default 30s). Override before sourcing:
+#     FFT_MAX=60 source ./fft.sh
+#   Individual commands timeout after 5s if no response.json appears.
+#   Always pass timeout to Bash tool calls (10000ms is safe for most commands).
+#
+# =============================================================================
+
 B="/c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/Reloaded/Mods/FFTColorCustomizer/claude_bridge"
 
-# Track script start time for total timeout
+# --- Timeout tracking ---
+# FFT_MAX = max seconds before all commands bail out (prevents runaway scripts)
 FFT_START=${SECONDS}
 FFT_MAX=${FFT_MAX:-30}
 
 _check_total() {
-  if [ $((SECONDS - FFT_START)) -ge $FFT_MAX ]; then
+  local elapsed=$(( ${SECONDS:-0} - ${FFT_START:-0} ))
+  if [ "$elapsed" -ge "${FFT_MAX:-30}" ] 2>/dev/null; then
     echo "[TOTAL_TIMEOUT] Script exceeded ${FFT_MAX}s"
     return 1
   fi
   return 0
 }
 
-# Core: send command JSON, wait for response, print screen summary line
+# --- Core command sender ---
+# fft: Send raw command JSON, wait for response, print one-line screen summary.
+# Returns: [ScreenName] loc=X hover=Y menu=M status=ST
+# Use fft_full instead if you need the raw JSON response.
 fft() {
   _check_total || return 1
   rm -f "$B/response.json"
@@ -38,7 +121,8 @@ fft() {
   echo "[$SCR] loc=$LOC hover=$HOV menu=$MC status=$ST"
 }
 
-# Full response: returns entire response.json content
+# fft_full: Send raw command JSON, wait for response, return entire JSON.
+# Use this when you need battle data, validPaths, tile lists, etc.
 fft_full() {
   _check_total || return 1
   rm -f "$B/response.json"
@@ -55,11 +139,16 @@ fft_full() {
   cat "$B/response.json"
 }
 
+# id: Generate unique command ID. Every command needs a unique ID or the watcher skips it.
 id() { echo "c$(date +%s%N | tail -c 8)$RANDOM"; }
 
-# --- Key helpers ---
-# No client-side sleep. The mod-side waitForScreen/waitForChange handles state settling.
-# For commands that need a specific screen wait, use: enter_wait, key_wait, etc.
+# =============================================================================
+# KEY PRESS HELPERS
+# =============================================================================
+# Send a single key press. No client-side sleep needed — the mod handles settling.
+# For waiting until a specific screen appears, use key_wait / enter_wait.
+# VK codes: Enter=13, Escape=27, Up=38, Down=40, Left=37, Right=39,
+#           Space=32, Tab=9, T=84, E=69, Q=81, F=70
 
 key()  { fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":$1,\"name\":\"$2\"}],\"delayBetweenMs\":150}"; }
 enter() { key 13 Enter; }
@@ -73,7 +162,8 @@ tab()   { key 9 Tab; }
 tkey()  { key 84 T; }
 ekey()  { key 69 E; }
 
-# Key with waitForScreen — blocks until screen matches or timeout
+# key_wait: Send key and block until screen matches expected name (or timeout).
+# Usage: key_wait <vk> <name> <screenName> [timeoutMs]
 key_wait() {
   local vk=$1 name=$2 screen=$3 timeout=${4:-2000}
   fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":$vk,\"name\":\"$name\"}],\"delayBetweenMs\":150,\"waitForScreen\":\"$screen\",\"waitTimeoutMs\":$timeout}"
@@ -81,21 +171,30 @@ key_wait() {
 enter_wait() { key_wait 13 Enter "$1" "${2:-2000}"; }
 esc_wait()   { key_wait 27 Escape "$1" "${2:-2000}"; }
 
-# Key with waitUntilScreenNot — blocks until screen changes away from current
+# key_leave: Send key and block until screen changes AWAY from the given name.
+# Usage: key_leave <vk> <name> <currentScreenName> [timeoutMs]
 key_leave() {
   local vk=$1 name=$2 screen=$3 timeout=${4:-2000}
   fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":$vk,\"name\":\"$name\"}],\"delayBetweenMs\":150,\"waitUntilScreenNot\":\"$screen\",\"waitTimeoutMs\":$timeout}"
 }
 
-# Key with waitForChange — blocks until specified address(es) change value
+# key_changed: Send key and block until a memory address changes value.
+# Useful for detecting cursor moves, state transitions, etc.
+# Usage: key_changed <vk> <name> <hexAddr> [timeoutMs]
 key_changed() {
   local vk=$1 name=$2 addr=$3 timeout=${4:-2000}
   fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":$vk,\"name\":\"$name\"}],\"delayBetweenMs\":150,\"waitForChange\":[\"$addr\"],\"waitTimeoutMs\":$timeout}"
 }
 
-# --- Memory read helpers ---
+# =============================================================================
+# MEMORY READ HELPERS
+# =============================================================================
+# These read live game memory. Addresses are hex strings like "0x14077D208".
 
-# Read single value at address (1/2/4 bytes), returns just the number
+# rv: Read a value at an address. Returns just the decimal number.
+# Usage: rv <addr> [size]   (size: 1=byte, 2=uint16 LE, 4=uint32 LE; default 1)
+# Example: rv "0x14077D208"     → 24
+#          rv "0x14077D208" 2   → 1234
 rv() {
   _check_total || return 1
   rm -f "$B/response.json"
@@ -109,7 +208,11 @@ rv() {
   tr -d '\r\n ' < "$B/response.json" | grep -o '"value":[0-9]*' | head -1 | cut -d: -f2
 }
 
-# Read a block, returns hex string
+# block: Read a block of bytes as a hex string. Each byte = 2 hex chars.
+# Usage: block <addr> <numBytes>
+# Example: hex=$(block "0x140C66315" 70)
+#          # Byte at offset 0: echo $((16#${hex:0:2}))
+#          # Byte at offset 5: echo $((16#${hex:10:2}))
 block() {
   _check_total || return 1
   rm -f "$B/response.json"
@@ -123,15 +226,21 @@ block() {
   tr -d '\r\n ' < "$B/response.json" | grep -o '"blockData":"[^"]*"' | head -1 | cut -d'"' -f4
 }
 
-# Batch read: read multiple addresses in one round-trip
+# batch: Read multiple addresses in one round-trip (faster than multiple rv calls).
 # Usage: batch '{"addr":"14077D208","size":1,"label":"loc"},{"addr":"140787A22","size":1,"label":"hover"}'
+# Returns full JSON response — parse with grep or node.
 batch() {
   fft_full "{\"id\":\"$(id)\",\"action\":\"batch_read\",\"addresses\":[$1]}"
 }
 
-# --- High-level navigation actions ---
+# =============================================================================
+# HIGH-LEVEL NAVIGATION ACTIONS
+# =============================================================================
+
 # path: Execute a validPath by name. Shows screen + available next paths.
-# Usage: path Flee, path PartyMenu, path EnterLocation, path Wait
+# This is the PRIMARY way to interact with the game. Every response tells you
+# what paths are available — pick one and call path again.
+# Usage: path Flee, path PartyMenu, path Move, path Wait, path Abilities
 path() {
   _check_total || return 1
   rm -f "$B/response.json"
@@ -153,19 +262,24 @@ if(keys.length){console.log('  ValidPaths:');keys.forEach(k=>console.log('    '+
 " "$B/response.json"
 }
 
-# battle_wait: End turn (navigate to Wait, confirm, confirm facing)
+# battle_wait: End turn. Handles menu navigation → Wait → confirm facing automatically.
 battle_wait() { fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\"}"; }
 
-# navigate: Go to a target screen from wherever we are
+# nav: Navigate to a target screen from wherever you are (multi-step).
 # Usage: nav PartyMenu
 nav() { fft "{\"id\":\"$(id)\",\"action\":\"navigate\",\"to\":\"$1\"}"; }
 
-# travel: Move world map cursor to a location by ID (does NOT enter it)
-# Usage: travel 24
-# After travel, use EnterLocation validPath to actually go there
+# travel: Move world map cursor to a location by ID (does NOT enter it).
+# After travel, use: path EnterLocation  to actually go there.
+# Usage: travel 24   (see CLAUDE_GAME_BRIDGE.md for location IDs)
 travel() { fft "{\"id\":\"$(id)\",\"action\":\"travel\",\"locationId\":$1}"; }
 
-# restart: kill game, build, deploy, relaunch, wait for bridge
+# =============================================================================
+# SYSTEM COMMANDS
+# =============================================================================
+
+# restart: Full cycle — kill game, build mod, deploy, relaunch, wait for bridge.
+# Use when you need code changes to take effect.
 restart() {
   echo "[restart] Killing game..."
   taskkill //IM FFT_enhanced.exe //F 2>/dev/null
@@ -191,7 +305,7 @@ restart() {
   fi
 }
 
-# boot: Press Enter repeatedly until we leave TitleScreen
+# boot: Press Enter through title/continue screens until world map loads.
 boot() {
   local max=10
   for i in $(seq 1 $max); do
@@ -208,6 +322,33 @@ boot() {
   return 1
 }
 
-# --- State helpers ---
+# =============================================================================
+# STATE HELPERS
+# =============================================================================
+
+# state: Force a full state report (roster, battle data, etc). Prints summary.
 state() { fft "{\"id\":\"$(id)\",\"action\":\"report_state\"}"; }
+
+# screen: Quick check — sends no-op command, returns current screen name & state.
 screen() { fft "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}"; }
+
+# scan_units: Hold C + press Up to cycle through all units, report their grid positions + teams.
+# Use during battle (Battle_MyTurn) to discover where everyone is.
+scan_units() { fft_full "{\"id\":\"$(id)\",\"action\":\"scan_units\"}"; }
+
+# move_grid: Enter Move mode, navigate cursor to grid (x,y), confirm with F.
+# Usage: move_grid <x> <y>
+# Example: move_grid 0 2    → move to grid position (0,2)
+move_grid() { fft_full "{\"id\":\"$(id)\",\"action\":\"move_grid\",\"locationId\":$1,\"unitIndex\":$2}"; }
+
+# get_arrows: Compute arrow keys to move Ramza next to nearest enemy. Shows the sequence.
+# Usage: get_arrows          (just show arrows)
+#        get_arrows execute   (show AND execute the move + confirm)
+get_arrows() { fft_full "{\"id\":\"$(id)\",\"action\":\"get_arrows\",\"to\":\"${1:-plan}\"}"; }
+
+# wv: Write a byte value to a memory address. Use for testing memory flags.
+# Usage: wv <addr> <value>   (value is decimal, 0-255)
+# Example: wv "0x140D3A400" 1   → write 1 to cursor cycle flag
+wv() {
+  fft "{\"id\":\"$(id)\",\"action\":\"write_byte\",\"address\":\"$1\",\"searchValue\":$2}"
+}

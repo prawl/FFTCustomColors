@@ -104,6 +104,13 @@ namespace FFTColorCustomizer.GameBridge
             catch { return 0; }
         }
 
+        public void WriteByte(nint address, byte value)
+        {
+            if (address == 0) return;
+            try { *(byte*)address = value; }
+            catch { }
+        }
+
         public ushort ReadUInt16(nint address)
         {
             if (address == 0) return 0;

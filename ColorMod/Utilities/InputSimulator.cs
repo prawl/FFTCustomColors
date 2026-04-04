@@ -10,6 +10,8 @@ namespace FFTColorCustomizer.Utilities
     {
         bool SendKeyPress(int vkCode);
         bool SendKeyPressToWindow(IntPtr hWnd, int vkCode);
+        bool SendKeyDownToWindow(IntPtr hWnd, int vkCode);
+        bool SendKeyUpToWindow(IntPtr hWnd, int vkCode);
         bool SimulateMenuRefresh();
     }
 
@@ -142,6 +144,71 @@ namespace FFTColorCustomizer.Utilities
 
             ModLogger.LogDebug($"[InputSimulator] SendKeyPressToWindow results - Down: {downResult}, Up: {upResult}");
             return downResult && upResult;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        private const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
+        private const uint KEYEVENTF_KEYUP_FLAG = 0x0002;
+
+        [DllImport("user32.dll")]
+        private static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+        private const uint KEYEVENTF_SCANCODE = 0x0008;
+
+        public virtual bool SendKeyDownToWindow(IntPtr hWnd, int vkCode)
+        {
+            if (hWnd == IntPtr.Zero) return false;
+
+            // FFT uses DirectInput which reads hardware scan codes.
+            // Must use KEYEVENTF_SCANCODE flag with SendInput for held key detection.
+            SetForegroundWindow(hWnd);
+            Thread.Sleep(10);
+
+            ushort scanCode = (ushort)MapVirtualKey((uint)vkCode, 0); // MAPVK_VK_TO_VSC
+
+            // SendInput with scan code (DirectInput reads this)
+            var input = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new InputUnion
+                {
+                    ki = new KEYBDINPUT { wVk = 0, wScan = scanCode, dwFlags = KEYEVENTF_SCANCODE }
+                }
+            };
+            SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
+
+            // Also keybd_event and PostMessage as belt-and-suspenders
+            keybd_event((byte)vkCode, (byte)scanCode, 0, UIntPtr.Zero);
+            PostMessage(hWnd, WM_KEYDOWN, new IntPtr(vkCode), IntPtr.Zero);
+
+            return true;
+        }
+
+        public virtual bool SendKeyUpToWindow(IntPtr hWnd, int vkCode)
+        {
+            if (hWnd == IntPtr.Zero) return false;
+
+            ushort scanCode = (ushort)MapVirtualKey((uint)vkCode, 0);
+
+            var input = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new InputUnion
+                {
+                    ki = new KEYBDINPUT { wVk = 0, wScan = scanCode, dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP }
+                }
+            };
+            SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
+
+            keybd_event((byte)vkCode, (byte)scanCode, (uint)KEYEVENTF_KEYUP, UIntPtr.Zero);
+            PostMessage(hWnd, WM_KEYUP, new IntPtr(vkCode), IntPtr.Zero);
+
+            return true;
         }
 
         public bool SimulateMenuRefresh()

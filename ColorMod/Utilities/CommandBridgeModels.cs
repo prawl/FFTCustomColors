@@ -248,6 +248,11 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("tiles")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<TilePosition>? Tiles { get; set; }
+
+        /// <summary>Camera rotation (0-3). Affects which direction arrow keys move the cursor on the isometric grid.</summary>
+        [JsonPropertyName("cameraRotation")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int CameraRotation { get; set; } = -1;
     }
 
     public class TilePosition
