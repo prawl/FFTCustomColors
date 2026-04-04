@@ -99,7 +99,62 @@ Cheat Engine-style snapshot/diff for discovering UI state addresses.
 
 ## 4. Battle Automation
 
-### Unit Scanning (C+Up Cycling)
+### Battle State Presentation
+
+Claude needs the right information at the right time to make smart decisions — no more, no less. Too little and it guesses wrong. Too much and it wastes tokens parsing irrelevant data.
+
+**Compact battle summary (auto-returned every turn):**
+- [ ] All unit positions and teams (who's where)
+- [ ] All unit HP / Max HP (who's hurt, who's a kill target)
+- [ ] Distance from active unit to each enemy (who can I reach)
+- [ ] Which enemies are in attack range without moving
+- [ ] Active unit's Move range (how far can I go)
+- [ ] Who's about to act next (CT values — should I kill them before they go?)
+
+**Full detail (available on demand, not every turn):**
+- [ ] PA/MA/Brave/Faith (for damage estimation)
+- [ ] Status effects (poison, sleep, charging spells)
+- [ ] Equipped abilities (reaction abilities change target priority)
+- [ ] Terrain/elevation at key tiles
+- [ ] Job names (flavor, helps Claude narrate)
+
+**Goal:** A single `battle_status` response that gives Claude everything a good FFT player would glance at before choosing their action. No follow-up reads needed.
+
+### Rework Unit Position Discovery
+
+The current C+Up scan works but has known flaws:
+- **Slow** — holds C key via DirectInput, presses Up 3-12 times with 250ms delays = 1-4 seconds
+- **Fragile stop logic** — relies on duplicate position detection + expectedCount from an unverified memory address
+- **Escapes the menu** — scan dismisses the action menu to do C+Up, then re-opens it, which can change camera rotation
+- **Misses units** — fast units appearing twice in turn order can cause early termination
+- **No continuous tracking** — must rescan every turn instead of maintaining state
+
+**Potential improvements:**
+- [ ] Find a memory structure that directly stores all unit positions (eliminate C+Up entirely)
+- [ ] If C+Up is kept: do a single full scan at battle start, then track changes via background polling
+- [ ] Background position tracking during enemy turns (watch cursor movement + team changes)
+- [ ] Position dictionary maintained by BattleTracker, updated incrementally
+- [ ] Detect deaths (HP -> 0) and remove from tracking
+- [ ] Investigate whether the heap battle structs (found earlier, disabled due to crashes) can be read safely with a more targeted scan
+
+### Speed & Accuracy Enforcement
+
+Every interaction between Claude and the game should be as fast and reliable as possible.
+
+**Speed:**
+- [ ] Measure round-trip time per action — log it, flag anything >2s mod-side
+- [ ] Battle status should be a single response with everything needed — zero follow-up reads
+- [ ] Pre-compute arrow sequences in responses so Claude just says "execute"
+- [ ] Minimize C+Up scan frequency — track positions continuously, only full-scan when stale
+
+**Accuracy:**
+- [ ] Self-calibrating rotation: press one arrow, measure delta, derive full rotation mapping — costs 250ms but guarantees correctness
+- [ ] Build rotation verification into `move_grid` — one test press, then navigate
+- [ ] Verify rotation table at all 4 rotations empirically (rot=0 and rot=2 still inferred)
+- [ ] After confirming a move, verify cursor position matches target
+- [ ] After attacking, verify enemy HP decreased (confirm hit landed)
+
+### Unit Scanning (C+Up Cycling) — Current Implementation
 - [x] DirectInput SCANCODE trick for simulating held C key (SetForegroundWindow + SendInput with KEYEVENTF_SCANCODE)
 - [x] C+Up cycles cursor through all units in turn order
 - [x] Read rich data per unit: grid position, team, level, HP/MP, PA/MA, Move/Jump, Job, Brave/Faith, CT, Exp, NameId
@@ -114,7 +169,7 @@ Cheat Engine-style snapshot/diff for discovering UI state addresses.
 - [x] Camera rotation at 0x14077C970 (byte, value % 4)
 - [x] Arrow key -> grid delta rotation table (empirically verified at rot=1 and rot=3)
 - [x] `move_grid` action: takes target (x,y), enters Move, presses arrows, confirms
-- [ ] Verify rotation table at rot=0 and rot=2 (currently inferred from pattern)
+- [ ] Self-calibrating rotation (test one press, derive mapping, then navigate)
 - [ ] Auto-retry on invalid tile (if F doesn't confirm, try adjacent tiles)
 - [ ] Read valid tile list and check target before navigating (prevent invalid moves)
 
@@ -123,18 +178,13 @@ Cheat Engine-style snapshot/diff for discovering UI state addresses.
 - [ ] Read rotation DURING targeting mode (camera may auto-rotate between Move and Attack)
 - [ ] Verify attack landed (check enemy HP decreased)
 
-### Enemy Position Tracking (Continuous)
-- [ ] Background polling during enemy turns: watch grid cursor + team changes
-- [ ] Position dictionary: updated in real-time as enemies move
-- [ ] Eliminate need for full C+Up scan every turn (scan once at battle start, track changes after)
-- [ ] Detect enemy deaths (HP -> 0) and remove from dictionary
-
 ### Battle AI / Decision Making
-- [ ] At turn start: auto-scan units, present full battlefield state
-- [ ] Choose target based on HP, distance, threat assessment
-- [ ] Choose optimal adjacent tile (avoid AoE, prefer backstab)
+- [ ] At turn start: auto-return battle status with all decision-relevant info
+- [ ] Choose target based on HP, distance, threat assessment, CT (kill before they act)
+- [ ] Choose optimal adjacent tile (avoid AoE, prefer backstab for bonus damage)
 - [ ] Decide move vs attack vs wait based on distance and abilities
 - [ ] Handle out-of-range enemies (move toward, wait for next turn)
+- [ ] Consider reaction abilities when choosing targets (don't attack someone with Counter if low HP)
 
 ---
 
