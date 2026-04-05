@@ -190,9 +190,9 @@ Current problem: a single battle turn takes ~30-40 seconds across 6+ Bash tool c
 - [ ] By the time it's our turn, positions are already fresh — no scan needed
 - [ ] Could eliminate C+Up scanning entirely after the first battle-start scan
 
-**Self-calibrating rotation built into move_grid:**
-- [ ] One test arrow press + measure delta = derive full rotation mapping
-- [ ] Costs 250ms but guarantees correctness — no separate verification from Claude
+**Rotation table (DONE):**
+- [x] Fixed rotation table: doc (X,Y) = our (-dx,-dy), read rotation from 0x14077C970 % 4
+- [x] No calibration needed — zero extra key presses
 
 **Pre-compute actionable data in responses:**
 - [ ] Include distances from active unit to all enemies
@@ -272,9 +272,9 @@ Every interaction between Claude and the game should be as fast and reliable as 
 - [ ] Minimize C+Up scan frequency — track positions continuously, only full-scan when stale
 
 **Accuracy:**
-- [ ] Self-calibrating rotation: press one arrow, measure delta, derive full rotation mapping — costs 250ms but guarantees correctness
+- [x] Fix rotation table: negate doc axes to match grid addresses (doc (X,Y) = our (-dx,-dy))
 - [ ] Build rotation verification into `move_grid` — one test press, then navigate
-- [ ] Verify rotation table at all 4 rotations empirically (rot=0 and rot=2 still inferred)
+- [x] Fix rotation table at all 4 rotations (doc axes negated, verified at rot=0)
 - [ ] After confirming a move, verify cursor position matches target
 - [ ] After attacking, verify enemy HP decreased (confirm hit landed)
 
@@ -294,7 +294,7 @@ Every interaction between Claude and the game should be as fast and reliable as 
 - [x] Camera rotation at 0x14077C970 (byte, value % 4)
 - [x] Arrow key -> grid delta rotation table (empirically verified at rot=1 and rot=3)
 - [x] `move_grid` action: takes target (x,y), enters Move, presses arrows, confirms
-- [ ] Self-calibrating rotation (test one press, derive mapping, then navigate)
+- [x] Fix rotation table (no calibration needed — read rotation from memory, use corrected table)
 - [ ] Auto-retry on invalid tile (if F doesn't confirm, try adjacent tiles)
 
 ### Invalid Tile / Target Detection
