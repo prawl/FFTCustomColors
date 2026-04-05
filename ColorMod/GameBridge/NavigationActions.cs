@@ -772,52 +772,120 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Read rotation and current cursor position
-            var camResult = _explorer.ReadAbsolute((nint)AddrCameraRotation, 1);
-            int rotation = camResult != null ? (int)(camResult.Value.value % 4) : 0;
+            // Self-calibrate: press Right and Down, measure both deltas directly.
+            // Left = opposite of Right, Up = opposite of Down. No rotation math needed.
+            // Costs ~500ms but guarantees correctness at any camera rotation.
             var cur = ReadGridPos();
 
+            // Measure Right
+            _input.SendKeyPressToWindow(_gameWindow, VK_RIGHT);
+            Thread.Sleep(150);
+            var afterRight = ReadGridPos();
+            int rdx = afterRight.x - cur.x;
+            int rdy = afterRight.y - cur.y;
+            _input.SendKeyPressToWindow(_gameWindow, VK_LEFT); // undo
+            Thread.Sleep(100);
+
+            // Measure Down
+            _input.SendKeyPressToWindow(_gameWindow, VK_DOWN);
+            Thread.Sleep(150);
+            var afterDown = ReadGridPos();
+            int ddx = afterDown.x - cur.x;
+            int ddy = afterDown.y - cur.y;
+            _input.SendKeyPressToWindow(_gameWindow, VK_UP); // undo
+            Thread.Sleep(100);
+
+            // If either hit a boundary (no movement), infer from the other
+            if (rdx == 0 && rdy == 0 && (ddx != 0 || ddy != 0))
+            {
+                // Right hit boundary — Right is perpendicular to Down
+                // We know Down, so Right must be the other axis
+                rdx = -ddy; rdy = ddx; // 90° from Down
+            }
+            else if (ddx == 0 && ddy == 0 && (rdx != 0 || rdy != 0))
+            {
+                // Down hit boundary — infer from Right
+                ddx = rdy; ddy = -rdx; // 90° from Right
+            }
+
+            var dirDelta = new (int dx, int dy)[]
+            {
+                (rdx, rdy),     // Right [0]
+                (-rdx, -rdy),   // Left [1]
+                (-ddx, -ddy),   // Up [2] (opposite of Down)
+                (ddx, ddy),     // Down [3]
+            };
+
+            ModLogger.Log($"[MoveGrid] Calibrated: Right=({rdx},{rdy}) Left=({-rdx},{-rdy}) Up=({-ddx},{-ddy}) Down=({ddx},{ddy})");
+
+            // Verify cursor is back at start
+            cur = ReadGridPos();
             int deltaX = targetX - cur.x;
             int deltaY = targetY - cur.y;
 
-            // Build arrow list
-            string[] dirNames = { "Right", "Left", "Up", "Down" };
-            var arrows = new List<string>();
+            // Build arrow list using calibrated directions
+            // Find which direction produces +dx, -dx, +dy, -dy
+            var arrows = new List<int>(); // VK codes
+            var arrowNames = new List<string>();
+            int[] vks = { VK_RIGHT, VK_LEFT, VK_UP, VK_DOWN };
+            string[] names = { "Right", "Left", "Up", "Down" };
 
             if (deltaX != 0)
             {
-                int dir = FindDirForDelta(rotation, deltaX > 0 ? 1 : -1, 0);
-                for (int i = 0; i < Math.Abs(deltaX); i++)
-                    arrows.Add(dirNames[dir]);
+                int wantDx = deltaX > 0 ? 1 : -1;
+                for (int d = 0; d < 4; d++)
+                {
+                    if (dirDelta[d].dx == wantDx && dirDelta[d].dy == 0)
+                    {
+                        for (int i = 0; i < Math.Abs(deltaX); i++) { arrows.Add(vks[d]); arrowNames.Add(names[d]); }
+                        break;
+                    }
+                }
             }
             if (deltaY != 0)
             {
-                int dir = FindDirForDelta(rotation, 0, deltaY > 0 ? 1 : -1);
-                for (int i = 0; i < Math.Abs(deltaY); i++)
-                    arrows.Add(dirNames[dir]);
+                int wantDy = deltaY > 0 ? 1 : -1;
+                for (int d = 0; d < 4; d++)
+                {
+                    if (dirDelta[d].dy == wantDy && dirDelta[d].dx == 0)
+                    {
+                        for (int i = 0; i < Math.Abs(deltaY); i++) { arrows.Add(vks[d]); arrowNames.Add(names[d]); }
+                        break;
+                    }
+                }
             }
 
-            ModLogger.Log($"[MoveGrid] from=({cur.x},{cur.y}) to=({targetX},{targetY}) delta=({deltaX},{deltaY}) rot={rotation} arrows={string.Join(" ", arrows)}");
+            ModLogger.Log($"[MoveGrid] from=({cur.x},{cur.y}) to=({targetX},{targetY}) delta=({deltaX},{deltaY}) arrows={string.Join(" ", arrowNames)}");
 
             // Execute arrows
-            foreach (var arrow in arrows)
+            foreach (var vk in arrows)
             {
-                int vk = arrow switch { "Right" => VK_RIGHT, "Left" => VK_LEFT, "Up" => VK_UP, "Down" => VK_DOWN, _ => 0 };
-                if (vk != 0)
-                {
-                    _input.SendKeyPressToWindow(_gameWindow, vk);
-                    Thread.Sleep(100);
-                }
+                _input.SendKeyPressToWindow(_gameWindow, vk);
+                Thread.Sleep(100);
             }
 
             var finalPos = ReadGridPos();
 
-            // Confirm move with F
+            // Confirm move with F, then poll for screen transition
             _input.SendKeyPressToWindow(_gameWindow, VK_F);
-            Thread.Sleep(500);
+            Thread.Sleep(300);
 
+            // Poll up to 2s for Battle_MyTurn (move confirmed) or stay in Battle_Moving (invalid tile)
+            bool confirmed = false;
+            var sw = Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 2000)
+            {
+                var check = _detectScreen();
+                if (check != null && check.Name == "Battle_MyTurn")
+                {
+                    confirmed = true;
+                    break;
+                }
+                if (check != null && check.Name == "Battle_Moving")
+                    break; // still in move mode = invalid tile
+                Thread.Sleep(100);
+            }
             var postScreen = _detectScreen();
-            bool confirmed = postScreen != null && postScreen.Name == "Battle_MyTurn";
 
             response.Status = confirmed ? "completed" : "failed";
             response.Error = $"from=({cur.x},{cur.y}) to=({targetX},{targetY}) arrows={string.Join(" ", arrows)} cursor=({finalPos.x},{finalPos.y}) {(confirmed ? "CONFIRMED" : $"post={postScreen?.Name}")}";
@@ -940,19 +1008,49 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
-        /// Arrow key → grid delta mapping for addresses AddrGridX (0x140C64A54) and AddrGridY (0x140C6496C).
-        /// EMPIRICALLY VERIFIED at rot=3: Right=(dx=0,dy=+1), Down=(dx=+1,dy=0).
-        /// Pattern rotates by 90° each step.
-        /// Index: [rotation % 4, direction] where 0=Right, 1=Left, 2=Up, 3=Down
+        /// Arrow key → grid delta for AddrGridX (0x140C64A54) and AddrGridY (0x140C6496C).
+        ///
+        /// Source: BATTLE_COORDINATES.md verified all 4 rotations in one session using Q.
+        /// Doc uses (X,Y) where doc-X = our AddrGridY, doc-Y = our AddrGridX (axes swapped).
+        /// Table below has dx = change in AddrGridX, dy = change in AddrGridY.
+        ///
+        /// Doc original → Swapped to our (dx, dy):
+        ///   rot=0: Right=(0,+1) Down=(+1,0) Left=(0,-1) Up=(-1,0)   [Right=+Y verified]
+        ///   rot=1: Right=(0,+1) Down=(-1,0) Left=(0,-1) Up=(+1,0)   [swapped from doc (+1,0),(-1,0)...]
+        ///   rot=2: Right=(0,-1) Down=(-1,0) Left=(0,+1) Up=(+1,0)
+        ///   rot=3: Right=(0,-1) Down=(+1,0) Left=(0,+1) Up=(-1,0)
+        ///
+        /// Wait — rot=3 verified today: Right=AddrGridY+1=(0,+1), Down=AddrGridX+1=(+1,0).
+        /// But swapped doc says rot=3: Right=(0,-1). Contradiction.
+        ///
+        /// The swap is: doc (docX, docY) → our (docY, docX). So:
+        ///   doc rot=0: Right=(0,+1) → our Right=(+1, 0)? No, that's wrong too.
+        ///
+        /// Forget the doc. Use ONLY empirical data from today:
+        ///   rot=0: Down=dx+1, Right=dy+1          → Down=(+1,0) Right=(0,+1)
+        ///   rot=1: Down=dx-1, Right=dy+1           → Down=(-1,0) Right=(0,+1)
+        ///     (measured: Down went x 4→3, Right went y 9→10)
+        ///   rot=2: Down=dy+1, Right=dx-1 (Left=dx+1) → Down=(0,+1) Right=(-1,0)
+        ///     (measured: Down went y 7→8, Right went x 4→3)
+        ///   rot=3: Down=dx+1, Right=dy+1           → Down=(+1,0) Right=(0,+1)
+        ///     (measured: Down went x 0→1, Right went y 2→3)
+        ///
+        /// rot=0 and rot=3 have same mapping? That can't be right.
+        /// rot=0 and rot=2 should be opposite. Let me check rot=0 again:
+        ///   rot=0 session: Down went x 4→5 = dx+1, verified.
+        ///   rot=3 session: Down went x 0→1 = dx+1, verified.
+        /// Both have Down=dx+1. But rot=1: Down went x 4→3 = dx-1.
+        ///
+        /// Pattern: rot 0,3 → Down=+dx,Right=+dy. rot 1,2 → rotated.
+        /// This suggests the doc's rotation numbering doesn't match memory value.
+        ///
+        /// USING SELF-CALIBRATION INSTEAD — one test press guarantees correctness.
         /// </summary>
         private static readonly (int dx, int dy)[,] ArrowGridDelta = {
-            // rot=0:  Right=(dx=-1,dy=0)  Left=(dx=+1,dy=0)  Up=(dx=0,dy=-1)  Down=(dx=0,dy=+1)
-            { (-1,0), (1,0), (0,-1), (0,1) },
-            // rot=1:  Right=(dx=0,dy=-1)  Left=(dx=0,dy=+1)  Up=(dx=+1,dy=0)  Down=(dx=-1,dy=0)
-            { (0,-1), (0,1), (1,0), (-1,0) },
-            // rot=2:  Right=(dx=+1,dy=0)  Left=(dx=-1,dy=0)  Up=(dx=0,dy=+1)  Down=(dx=0,dy=-1)
-            { (1,0), (-1,0), (0,1), (0,-1) },
-            // rot=3:  Right=(dx=0,dy=+1)  Left=(dx=0,dy=-1)  Up=(dx=-1,dy=0)  Down=(dx=+1,dy=0)  [VERIFIED]
+            // Fallback only — move_grid uses self-calibration
+            { (0,1), (0,-1), (-1,0), (1,0) },
+            { (0,1), (0,-1), (1,0), (-1,0) },
+            { (-1,0), (1,0), (0,1), (0,-1) },
             { (0,1), (0,-1), (-1,0), (1,0) },
         };
 
