@@ -1018,7 +1018,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x14077CA30, 4),  // 12: unitSlot0
             ((nint)0x14077CA54, 4),  // 13: unitSlot9
             ((nint)0x140C64A5C, 1),  // 14: pauseFlag
-            ((nint)0x14077CA5C, 1),  // 15: moveMode (255=selecting tile, 0=not)
+            ((nint)0x14077CA5C, 1),  // 15: moveMode (VOLATILE/unused — was 255=selecting tile, replaced by battleMode[16]==2)
             ((nint)0x140900650, 1),  // 16: battleMode (3=action menu, 2=move, 0=game over/cutscene)
             ((nint)0x14077C970, 1),  // 17: cameraRotation (incrementing counter, mod 4 = current rotation 0-3)
         };
@@ -1466,7 +1466,6 @@ namespace FFTColorCustomizer.Utilities
                 int party = (int)v[0];
                 int ui = (int)v[1];
                 int paused = (int)v[14];
-                int moveMode = (int)v[15];
                 int eA = (int)v[5];
                 int eB = (int)v[6];
                 long slot0 = v[12];
@@ -1484,9 +1483,9 @@ namespace FFTColorCustomizer.Utilities
                     screen.Name = "GameOver";
                 else if (inBattle && paused == 1)
                     screen.Name = "Battle_Paused";
-                else if (inBattle && moveMode == 255 && screen.BattleActed == 0)
+                else if (inBattle && battleMode == 2 && screen.BattleActed == 0)
                     screen.Name = "Battle_Moving";
-                else if (inBattle && moveMode == 255 && screen.BattleActed == 1)
+                else if (inBattle && battleMode == 2 && screen.BattleActed == 1)
                     screen.Name = "Battle_Targeting";
                 else if (inBattle && screen.BattleTeam == 0 && screen.BattleActed == 0 && screen.BattleMoved == 0)
                     screen.Name = "Battle_MyTurn";

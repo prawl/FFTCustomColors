@@ -42,6 +42,25 @@ namespace FFTColorCustomizer.GameBridge
         private const long AddrUnitSlot0 = 0x14077CA30;
         private const long AddrUnitSlot9 = 0x14077CA54;
         private const long AddrMenuCursor = 0x1407FC620;
+        private const long AddrActiveNameId = 0x14077CA94;
+        private const long AddrActiveCt = 0x14077CA60;
+        private const long AddrActiveJobId = 0x14077CA6C;
+        private const long AddrCondensedNameId = 0x14077D2A4; // condensed +0x04, matches roster nameId
+
+        // Roster layout for nameId→slot lookup
+        private const long AddrRosterBase = 0x1411A18D0;
+        private const int RosterStride = 0x258;
+        private const int RosterMaxSlots = 20;
+        private const int RosterOffNameId = 0x230; // uint16
+        private const int RosterOffBrave = 0x1E;   // byte
+        private const int RosterOffFaith = 0x1F;   // byte
+        private const int RosterOffReaction = 0x08; // byte, ability ID
+        private const int RosterOffSupport = 0x0A;  // byte, ability ID
+        private const int RosterOffMovement = 0x0C; // byte, ability ID
+        private const int RosterOffEquipStart = 0x0E; // 7 x uint16 equipment IDs (0xFF=empty)
+
+        // NOTE: Effective stats (Speed, PA, MA, Move, Jump) are only in the heap battle struct
+        // or the variable-offset post-ability section. Omitted until heap scanning is reliable.
 
         // Heap battle struct offsets (from stat pattern start: exp level origBr br origFa fa)
         private const int HeapOffX = 0x1A;
@@ -140,6 +159,10 @@ namespace FFTColorCustomizer.GameBridge
                 ((nint)AddrMenuCursor, 1),               // 8: menu cursor
                 ((nint)AddrActiveUnitX, 2),              // 9: active unit X (from condensed struct)
                 ((nint)AddrActiveUnitY, 2),              // 10: active unit Y
+                ((nint)AddrActiveNameId, 4),             // 11: nameId (battle state, different numbering)
+                ((nint)AddrActiveCt, 4),                 // 12: ct
+                ((nint)AddrActiveJobId, 4),              // 13: jobId
+                ((nint)AddrCondensedNameId, 2),          // 14: condensed nameId (matches roster)
             });
 
             int activeLevel = (int)battleReads[0];
@@ -153,6 +176,64 @@ namespace FFTColorCustomizer.GameBridge
             int menuCursor = (int)battleReads[8];
             int activeUnitX = (int)battleReads[9];
             int activeUnitY = (int)battleReads[10];
+            int activeNameId = (int)battleReads[11];
+            int activeCt = (int)battleReads[12];
+            int activeJobId = (int)battleReads[13];
+            int condensedNameId = (int)battleReads[14];
+
+            // Lookup roster data by matching condensed nameId to roster nameIds
+            int activeBrave = 0, activeFaith = 0;
+            int activeReaction = 0, activeSupport = 0, activeMovement = 0;
+            string? reactionName = null, supportName = null, movementName = null;
+            var equipment = new List<int>();
+
+            if (activeTeam == 0 && condensedNameId > 0) // only for player units
+            {
+                // Build batch read for all roster nameIds
+                var nameIdReads = new (nint, int)[RosterMaxSlots];
+                for (int s = 0; s < RosterMaxSlots; s++)
+                    nameIdReads[s] = ((nint)(AddrRosterBase + s * RosterStride + RosterOffNameId), 2);
+                var nameIds = _explorer.ReadMultiple(nameIdReads);
+
+                for (int slot = 0; slot < RosterMaxSlots; slot++)
+                {
+                    if ((int)nameIds[slot] != condensedNameId) continue;
+
+                    long slotAddr = AddrRosterBase + slot * RosterStride;
+                    var rosterReads = _explorer.ReadMultiple(new (nint, int)[]
+                    {
+                        ((nint)(slotAddr + RosterOffBrave), 1),     // 0
+                        ((nint)(slotAddr + RosterOffFaith), 1),     // 1
+                        ((nint)(slotAddr + RosterOffReaction), 1),  // 2
+                        ((nint)(slotAddr + RosterOffSupport), 1),   // 3
+                        ((nint)(slotAddr + RosterOffMovement), 1),  // 4
+                        ((nint)(slotAddr + RosterOffEquipStart + 0), 2),  // 5: equip slot 0
+                        ((nint)(slotAddr + RosterOffEquipStart + 2), 2),  // 6: equip slot 1
+                        ((nint)(slotAddr + RosterOffEquipStart + 4), 2),  // 7: equip slot 2
+                        ((nint)(slotAddr + RosterOffEquipStart + 6), 2),  // 8: equip slot 3
+                        ((nint)(slotAddr + RosterOffEquipStart + 8), 2),  // 9: equip slot 4
+                        ((nint)(slotAddr + RosterOffEquipStart + 10), 2), // 10: equip slot 5
+                        ((nint)(slotAddr + RosterOffEquipStart + 12), 2), // 11: equip slot 6
+                    });
+                    activeBrave = (int)rosterReads[0];
+                    activeFaith = (int)rosterReads[1];
+                    activeReaction = (int)rosterReads[2];
+                    activeSupport = (int)rosterReads[3];
+                    activeMovement = (int)rosterReads[4];
+
+                    reactionName = AbilityData.GetAbility((byte)activeReaction)?.Name;
+                    supportName = AbilityData.GetAbility((byte)activeSupport)?.Name;
+                    movementName = AbilityData.GetAbility((byte)activeMovement)?.Name;
+
+                    for (int e = 5; e <= 11; e++)
+                    {
+                        int eqId = (int)rosterReads[e];
+                        if (eqId != 0xFF && eqId != 0xFFFF)
+                            equipment.Add(eqId);
+                    }
+                    break;
+                }
+            }
 
             // Register active unit from turn queue and update position
             int activeKey = activeTeam * 100000 + activeLevel * 1000 + activeMaxHp;
@@ -200,6 +281,19 @@ namespace FFTColorCustomizer.GameBridge
                     Acted = acted == 1,
                     Moved = moved == 1,
                     MenuCursor = menuCursor,
+                    NameId = activeNameId,
+                    Name = CharacterData.GetName(condensedNameId),
+                    Ct = activeCt,
+                    JobId = activeJobId,
+                    Brave = activeBrave,
+                    Faith = activeFaith,
+                    ReactionAbility = activeReaction,
+                    ReactionAbilityName = reactionName,
+                    SupportAbility = activeSupport,
+                    SupportAbilityName = supportName,
+                    MovementAbility = activeMovement,
+                    MovementAbilityName = movementName,
+                    Equipment = equipment.Count > 0 ? equipment : null,
                 } : null,
                 Units = new List<BattleUnitState>(),
             };
@@ -603,6 +697,59 @@ namespace FFTColorCustomizer.GameBridge
 
         [JsonPropertyName("menuCursor")]
         public int MenuCursor { get; set; }
+
+        [JsonPropertyName("nameId")]
+        public int NameId { get; set; }
+
+        [JsonPropertyName("name")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("ct")]
+        public int Ct { get; set; }
+
+        [JsonPropertyName("jobId")]
+        public int JobId { get; set; }
+
+        // Roster-sourced fields (player units only, via nameId→roster lookup)
+
+        [JsonPropertyName("brave")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Brave { get; set; }
+
+        [JsonPropertyName("faith")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Faith { get; set; }
+
+        [JsonPropertyName("reactionAbility")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int ReactionAbility { get; set; }
+
+        [JsonPropertyName("reactionAbilityName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ReactionAbilityName { get; set; }
+
+        [JsonPropertyName("supportAbility")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int SupportAbility { get; set; }
+
+        [JsonPropertyName("supportAbilityName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? SupportAbilityName { get; set; }
+
+        [JsonPropertyName("movementAbility")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int MovementAbility { get; set; }
+
+        [JsonPropertyName("movementAbilityName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? MovementAbilityName { get; set; }
+
+        [JsonPropertyName("equipment")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<int>? Equipment { get; set; }
+
+        // Effective stats (Speed, PA, MA, Move, Jump) require heap struct search.
     }
 
     public class BattleUnitState

@@ -359,6 +359,11 @@ namespace FFTColorCustomizer.GameBridge
                 Keys = new[] { Key(VK_TAB, "Tab") },
                 Desc = "Open pause menu"
             };
+            paths["RotateCamera"] = new PathEntry
+            {
+                Keys = new[] { Key(VK_Q, "Q") },
+                Desc = "Rotate camera (increments rotation counter)"
+            };
 
             return paths;
         }
@@ -383,6 +388,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move tile cursor down" },
                 ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move tile cursor left" },
                 ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move tile cursor right" },
+                ["RotateCamera"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Rotate camera (increments rotation counter)" },
             };
         }
 
