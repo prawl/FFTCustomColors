@@ -29,6 +29,7 @@ namespace FFTColorCustomizer.Utilities
         public BattleTracker? BattleTracker { get; set; }
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
+        private readonly BattleTurnTracker _turnTracker = new();
 
         /// <summary>
         /// When true, game actions must go through validPaths. Raw key presses and
@@ -156,6 +157,29 @@ namespace FFTColorCustomizer.Utilities
 
                     var response = ExecuteCommand(command);
                     response.Screen ??= DetectScreenSettled();
+
+                    // Auto-scan units when a new friendly turn starts
+                    if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name))
+                    {
+                        try
+                        {
+                            EnsureNavActions();
+                            if (_navActions != null)
+                            {
+                                ModLogger.Log("[AutoScan] New turn detected — scanning units");
+                                _navActions.AutoScanUnits();
+                                _turnTracker.MarkScanned();
+                                ModLogger.Log("[AutoScan] Scan complete");
+                                // Re-detect screen after scan (scan presses keys)
+                                response.Screen = DetectScreenSettled();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogError($"[AutoScan] Failed: {ex.Message}");
+                        }
+                    }
+
                     response.Battle ??= BattleTracker?.Update();
                     // Populate map info on battle state from MapLoader
                     if (response.Battle != null && _mapLoader != null)
@@ -640,19 +664,25 @@ namespace FFTColorCustomizer.Utilities
             return ExecuteKeyCommand(command);
         }
 
-        private CommandResponse ExecuteNavAction(CommandRequest command)
+        private void EnsureNavActions()
         {
-            if (Explorer == null)
-                return new CommandResponse { Id = command.Id, Status = "failed", Error = "Memory explorer not initialized", ProcessedAt = DateTime.UtcNow.ToString("o") };
-
-            if (_navActions == null)
+            if (_navActions == null && Explorer != null)
             {
                 _navActions = new NavigationActions(_inputSimulator, Explorer, DetectScreen);
                 _navActions.BattleTracker = BattleTracker;
             }
             EnsureMapLoader();
-            _navActions._mapLoader = _mapLoader;
-            return _navActions.Execute(command);
+            if (_navActions != null)
+                _navActions._mapLoader = _mapLoader;
+        }
+
+        private CommandResponse ExecuteNavAction(CommandRequest command)
+        {
+            if (Explorer == null)
+                return new CommandResponse { Id = command.Id, Status = "failed", Error = "Memory explorer not initialized", ProcessedAt = DateTime.UtcNow.ToString("o") };
+
+            EnsureNavActions();
+            return _navActions!.Execute(command);
         }
 
         private CommandResponse ExecuteKeyCommand(CommandRequest command)

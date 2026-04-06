@@ -1892,6 +1892,14 @@ namespace FFTColorCustomizer.GameBridge
         private const long AddrCursorCycleFlag1 = 0x140D3A400;
         private const long AddrCursorCycleFlag2 = 0x14077CA5C;
 
+        /// <summary>
+        /// Public entry point for auto-scan. Called by CommandWatcher when a new turn starts.
+        /// </summary>
+        public void AutoScanUnits()
+        {
+            CollectUnitPositionsFull();
+        }
+
         private List<ScannedUnit> CollectUnitPositionsFull()
         {
             var units = new List<ScannedUnit>();
