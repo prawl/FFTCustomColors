@@ -1576,44 +1576,59 @@ namespace FFTColorCustomizer.Utilities
                         }
                     }
 
-                    // Fallback: detect map from unit positions + terrain data
+                    // Fallback: scan static map ID table at 0x14077E800 (8-byte stride)
+                    // This table contains all loaded map resource IDs during battle.
+                    // We pick the first entry that matches a MAP file we have on disk.
                     if (!mapLoaded && _mapLoader != null)
                     {
                         try
                         {
-                            var battleState = BattleTracker?.Update();
-                            if (battleState?.Units?.Count > 0)
-                            {
-                                var positions = new List<(int x, int y)>();
-                                int allyX = 0, allyY = 0;
-                                double allyHeight = 0;
-                                foreach (var u in battleState.Units)
-                                {
-                                    if (u.X >= 0 && u.Y >= 0)
-                                    {
-                                        positions.Add((u.X, u.Y));
-                                        if (u.IsActive) { allyX = u.X; allyY = u.Y; }
-                                    }
-                                }
-                                // Read display height from cursor
-                                var hResult = Explorer.ReadAbsolute((nint)0x140C6492C, 1);
-                                if (hResult != null) allyHeight = (int)hResult.Value.value;
+                            const long AddrMapTable = 0x14077E600;
+                            const int MapTableEntries = 80; // scan up to 80 entries
+                            const int MapTableStride = 8;
 
-                                if (positions.Count >= 2)
+                            var tableReads = new (nint, int)[MapTableEntries];
+                            for (int i = 0; i < MapTableEntries; i++)
+                                tableReads[i] = ((nint)(AddrMapTable + i * MapTableStride), 4);
+                            var mapIds = Explorer.ReadMultiple(tableReads);
+
+                            // Try each map ID — load the first one we have a MAP file for
+                            // that's in the valid battle map range (1-127)
+                            for (int i = 0; i < MapTableEntries; i++)
+                            {
+                                int mapId = (int)mapIds[i];
+                                if (mapId >= 1 && mapId <= 127)
                                 {
-                                    int detected = _mapLoader.DetectMap(positions, allyX, allyY, allyHeight);
-                                    if (detected >= 0)
+                                    var testMap = _mapLoader.LoadMap(mapId);
+                                    if (testMap != null)
                                     {
-                                        _mapLoader.LoadMap(detected);
-                                        ModLogger.Log($"[Map] Detected MAP{detected:D3} from {positions.Count} unit positions");
-                                        mapLoaded = true;
+                                        // Validate: check if active unit position is in-bounds on this map
+                                        var battleState = BattleTracker?.Update();
+                                        if (battleState?.ActiveUnit != null)
+                                        {
+                                            int ux = battleState.ActiveUnit.X;
+                                            int uy = battleState.ActiveUnit.Y;
+                                            if (ux >= 0 && uy >= 0 && testMap.InBounds(ux, uy))
+                                            {
+                                                ModLogger.Log($"[Map] Found MAP{mapId:D3} in table at entry {i}, unit ({ux},{uy}) in-bounds");
+                                                mapLoaded = true;
+                                                break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            // No unit data yet, just use the first valid map
+                                            ModLogger.Log($"[Map] Found MAP{mapId:D3} in table at entry {i} (no unit validation)");
+                                            mapLoaded = true;
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
                         catch (Exception ex)
                         {
-                            ModLogger.LogError($"[Map] Detection failed: {ex.Message}");
+                            ModLogger.LogError($"[Map] Table scan failed: {ex.Message}");
                         }
                     }
 
