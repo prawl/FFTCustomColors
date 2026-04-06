@@ -495,6 +495,52 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Snapshots all readable, committed private/mapped RW heap memory.
+        /// Same filter as SearchBytesInAllMemory but stores full regions for diffing.
+        /// </summary>
+        public void TakeHeapSnapshot(string label)
+        {
+            var process = Process.GetCurrentProcess();
+            var regions = new List<(nint baseAddr, byte[] data)>();
+            long totalBytes = 0;
+
+            nint address = 0;
+            while (true)
+            {
+                if (VirtualQueryEx(process.Handle, address, out MEMORY_BASIC_INFORMATION mbi,
+                    (uint)Marshal.SizeOf<MEMORY_BASIC_INFORMATION>()) == 0)
+                    break;
+
+                bool isReadWrite = (mbi.Protect & 0x04) != 0;
+                bool isCommitted = mbi.State == 0x1000;
+                bool notGuard = (mbi.Protect & 0x100) == 0;
+                bool notTooBig = (long)mbi.RegionSize <= 4_000_000;
+                bool isPrivateOrMapped = mbi.Type == 0x20000 || mbi.Type == 0x40000;
+
+                if (isCommitted && isReadWrite && notGuard && notTooBig && isPrivateOrMapped)
+                {
+                    try
+                    {
+                        var data = _scanner.ReadBytes(mbi.BaseAddress, (int)mbi.RegionSize);
+                        if (data.Length > 0)
+                        {
+                            regions.Add((mbi.BaseAddress, data));
+                            totalBytes += data.Length;
+                        }
+                    }
+                    catch { }
+                }
+
+                nint next = mbi.BaseAddress + (nint)mbi.RegionSize;
+                if (next <= address) break;
+                address = next;
+            }
+
+            _snapshots[label] = regions;
+            ModLogger.Log($"[MemoryExplorer] Heap snapshot '{label}': {regions.Count} regions, {totalBytes / 1024 / 1024}MB");
+        }
+
+        /// <summary>
         /// Diffs two snapshots and writes changed addresses to file.
         /// </summary>
         public void DiffSnapshots(string fromLabel, string toLabel, string outputLabel)

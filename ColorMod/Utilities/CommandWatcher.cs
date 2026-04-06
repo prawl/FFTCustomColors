@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,6 +28,7 @@ namespace FFTColorCustomizer.Utilities
         public ScreenStateMachine? ScreenMachine { get; set; }
         public BattleTracker? BattleTracker { get; set; }
         private NavigationActions? _navActions;
+        private MapLoader? _mapLoader;
 
         public CommandWatcher(string modPath, IInputSimulator inputSimulator)
         {
@@ -217,6 +219,54 @@ namespace FFTColorCustomizer.Utilities
                     case "snapshot":
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         Explorer.TakeSnapshot(command.SearchLabel ?? "default");
+                        response.Status = "completed";
+                        break;
+
+                    case "mark_blocked":
+                        if (command.LocationId >= 0 && command.UnitIndex >= 0)
+                        {
+                            MarkTileBlocked(command.LocationId, command.UnitIndex);
+                            response.Status = "completed";
+                        }
+                        else
+                        {
+                            response.Status = "failed";
+                            response.Error = "locationId (gridX) and unitIndex (gridY) required";
+                        }
+                        break;
+
+                    case "set_map":
+                        if (command.LocationId >= 0)
+                        {
+                            EnsureMapLoader();
+                            var map = _mapLoader?.LoadMap(command.LocationId);
+                            if (map != null)
+                            {
+                                response.Status = "completed";
+                                response.Error = $"Loaded MAP{command.LocationId:D3}: {map.Width}x{map.Height}";
+                                ClearBlockedTiles();
+                            }
+                            else
+                            {
+                                response.Status = "failed";
+                                response.Error = $"Failed to load MAP{command.LocationId:D3}";
+                            }
+                        }
+                        else
+                        {
+                            response.Status = "failed";
+                            response.Error = "locationId (map number) required, e.g. 74 for MAP074";
+                        }
+                        break;
+
+                    case "scan_move":
+                    case "auto_move":
+                        return ExecuteNavAction(command);
+
+
+                    case "heap_snapshot":
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        Explorer.TakeHeapSnapshot(command.SearchLabel ?? "default");
                         response.Status = "completed";
                         break;
 
@@ -471,6 +521,8 @@ namespace FFTColorCustomizer.Utilities
                 _navActions = new NavigationActions(_inputSimulator, Explorer, DetectScreen);
                 _navActions.BattleTracker = BattleTracker;
             }
+            EnsureMapLoader();
+            _navActions._mapLoader = _mapLoader;
             return _navActions.Execute(command);
         }
 
@@ -924,16 +976,50 @@ namespace FFTColorCustomizer.Utilities
             return last;
         }
 
+        private void EnsureMapLoader()
+        {
+            if (_mapLoader != null) return;
+            // Look for map JSON files in claude_bridge/maps/ directory
+            var mapsDir = Path.Combine(_bridgeDirectory, "maps");
+            if (!Directory.Exists(mapsDir))
+                Directory.CreateDirectory(mapsDir);
+            _mapLoader = new MapLoader(mapsDir);
+        }
+
         /// <summary>
-        /// Reads tile list and cursor index during Battle_Moving/Battle_Targeting.
-        /// Tile list at 0x140C66315: 7 bytes per tile [X, Y, elev, flag, 0, 0, 0].
-        /// Cursor index at 0x140C64E7C: byte index into tile list.
+        // ===== Movement Tile Validity via BFS + Learn-by-Doing Cache =====
+        // BFS gives 100% recall (all valid tiles + ~12 false positives from impassable terrain).
+        // When a move fails (tile is tree/obstacle), cache it as blocked for the rest of the battle.
+        // This self-corrects: after 1-2 failed moves, the tile list becomes exact.
+        private const long AddrTerrainGrid = 0x140C65000;
+        private const int TerrainEntrySize = 7;
+        private const int TerrainGridCols = 9;
+        private const int TerrainGridRows = 8;
+        private const int TerrainEntryCount = TerrainGridCols * TerrainGridRows; // 72
+
+        private readonly HashSet<(int, int)> _blockedTiles = new();
+
+        /// <summary>
+        /// Mark a grid tile as blocked (impassable). Called when a move attempt fails.
+        /// Persists for the duration of the battle.
         /// </summary>
+        public void MarkTileBlocked(int gridX, int gridY)
+        {
+            _blockedTiles.Add((gridX, gridY));
+            ModLogger.Log($"[Tiles] Marked ({gridX},{gridY}) as blocked. Total blocked: {_blockedTiles.Count}");
+        }
+
         /// <summary>
-        /// Reads cursor grid position and available tiles during Battle_Moving/Battle_Targeting.
-        /// Cursor position at 0x140C65380 (X) and 0x140C65381 (Y) — local grid coordinates.
-        /// Tile list at 0x140C66315: 7 bytes per tile [X, Y, elev, flag, 0, 0, 0].
-        /// Direction mapping: Left=X-, Right=X+, Up=Y-, Down=Y+
+        /// Clear blocked tile cache (call when entering a new battle).
+        /// </summary>
+        public void ClearBlockedTiles()
+        {
+            _blockedTiles.Clear();
+        }
+
+        /// <summary>
+        /// Reads cursor grid position and computes valid movement tiles during Battle_Moving.
+        /// Uses BFS with terrain heights + blocked tile cache for accuracy.
         /// </summary>
         private void PopulateBattleTileData(DetectedScreen screen)
         {
@@ -941,16 +1027,79 @@ namespace FFTColorCustomizer.Utilities
 
             try
             {
-                // Read cursor index and tile list atomically to avoid race conditions.
-                // Cursor index at 0x140C64E7C: byte index into tile list.
-                // Tile list at 0x140C66315: 7 bytes per tile [X, Y, elev, flag, 0, 0, 0].
+                // Read cursor position from grid addresses
+                var cursorXResult = Explorer.ReadAbsolute((nint)0x140C64A54, 1);
+                var cursorYResult = Explorer.ReadAbsolute((nint)0x140C6496C, 1);
+                if (cursorXResult != null) screen.CursorX = (int)cursorXResult.Value.value;
+                if (cursorYResult != null) screen.CursorY = (int)cursorYResult.Value.value;
+
+                if (screen.Name != "Battle_Moving")
+                    return;
+
+                // Read Move/Jump stats from UI buffer
+                var moveResult = Explorer.ReadAbsolute((nint)0x1407AC7E4, 1);
+                var jumpResult = Explorer.ReadAbsolute((nint)0x1407AC7E6, 1);
+                int moveStat = moveResult != null ? (int)moveResult.Value.value : 4;
+                int jumpStat = jumpResult != null ? (int)jumpResult.Value.value : 3;
+
+                // Read unit's grid position
+                var gxResult = Explorer.ReadAbsolute((nint)0x140C64A54, 1);
+                var gyResult = Explorer.ReadAbsolute((nint)0x140C6496C, 1);
+                int unitGX = gxResult != null ? (int)gxResult.Value.value : 0;
+                int unitGY = gyResult != null ? (int)gyResult.Value.value : 0;
+
+                // === Try JSON map data first (exact terrain) ===
+                var mapData = _mapLoader?.CurrentMap;
+                if (mapData != null)
+                {
+                    // Get enemy positions from last scan (if available)
+                    var enemyPositions = _navActions?.GetEnemyPositions();
+
+                    var validTiles = ComputeValidTilesFromMap(mapData, unitGX, unitGY, moveStat, jumpStat, enemyPositions);
+                    screen.Tiles = validTiles;
+                    ModLogger.Log($"[Tiles] MapBFS (MAP{mapData.MapNumber:D3}): {validTiles.Count} tiles (blocked: {_blockedTiles.Count}, enemies: {enemyPositions?.Count ?? 0}). " +
+                        $"Unit=({unitGX},{unitGY}), Move={moveStat}, Jump={jumpStat}");
+                    return;
+                }
+
+                // === Fallback: memory terrain grid (approximate) ===
+                byte[]? terrainData = null;
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    var td = Explorer.Scanner.ReadBytes((nint)AddrTerrainGrid, TerrainEntryCount * TerrainEntrySize);
+                    if (td.Length >= TerrainEntryCount * TerrainEntrySize)
+                    {
+                        int unitEntry = unitGY * TerrainGridCols + (unitGX + 1);
+                        if (unitEntry >= 0 && unitEntry < TerrainEntryCount)
+                        {
+                            int mOff = unitEntry * TerrainEntrySize;
+                            if (td[mOff + 3] == 0x1F && td[mOff + 4] == 0x1F && td[mOff + 5] == 0x1F)
+                            {
+                                terrainData = td;
+                                break;
+                            }
+                        }
+                    }
+                    Thread.Sleep(5);
+                }
+
+                if (terrainData != null)
+                {
+                    var validTiles = ComputeValidTilesBFS(terrainData, unitGX, unitGY, moveStat, jumpStat);
+                    screen.Tiles = validTiles;
+                    ModLogger.Log($"[Tiles] MemBFS: {validTiles.Count} tiles (blocked cache: {_blockedTiles.Count}). " +
+                        $"Unit=({unitGX},{unitGY}), Move={moveStat}, Jump={jumpStat}");
+                    return;
+                }
+
+                // === Fallback: original tile path list ===
                 var cursorIdx = Explorer.ReadAbsolute((nint)0x140C64E7C, 1);
                 int idx = cursorIdx != null ? (int)cursorIdx.Value.value : 0;
 
                 var tileData = Explorer.Scanner.ReadBytes((nint)0x140C66315, 350);
                 if (tileData.Length < 7) return;
 
-                var tiles = new List<TilePosition>();
+                var pathTiles = new List<TilePosition>();
                 for (int i = 0; i < tileData.Length - 6; i += 7)
                 {
                     int x = tileData[i];
@@ -960,33 +1109,158 @@ namespace FFTColorCustomizer.Utilities
                     if (flag == 0) break;
                     if (x > 30 || y > 30) break;
 
-                    tiles.Add(new TilePosition { X = x, Y = y });
+                    pathTiles.Add(new TilePosition { X = x, Y = y });
                 }
 
-                // Cursor position = tile at cursor index
-                if (idx >= 0 && idx < tiles.Count)
+                if (idx >= 0 && idx < pathTiles.Count)
                 {
-                    screen.CursorX = tiles[idx].X;
-                    screen.CursorY = tiles[idx].Y;
+                    screen.CursorX = pathTiles[idx].X;
+                    screen.CursorY = pathTiles[idx].Y;
                 }
 
-                // Deduplicate tiles for the response (list often has repeats)
-                if (screen.Name == "Battle_Moving")
+                var seen = new HashSet<(int, int)>();
+                var uniqueTiles = new List<TilePosition>();
+                foreach (var t in pathTiles)
                 {
-                    var seen = new HashSet<(int, int)>();
-                    var unique = new List<TilePosition>();
-                    foreach (var t in tiles)
-                    {
-                        if (seen.Add((t.X, t.Y)))
-                            unique.Add(t);
-                    }
-                    screen.Tiles = unique;
+                    if (seen.Add((t.X, t.Y)))
+                        uniqueTiles.Add(t);
                 }
+                screen.Tiles = uniqueTiles;
             }
             catch (Exception ex)
             {
                 ModLogger.LogError($"[CommandBridge] PopulateBattleTileData error: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// BFS computation of valid movement tiles using terrain height data.
+        /// Uses min(b0,b1) as tile height, checks |height_diff| ≤ jump per step.
+        /// Excludes tiles in the blocked cache (learned from failed move attempts).
+        /// </summary>
+        private List<TilePosition> ComputeValidTilesBFS(byte[] terrainData, int unitGX, int unitGY, int moveStat, int jumpStat)
+        {
+            int GetHeight(int gx, int gy)
+            {
+                if (gx < -1 || gx > 7 || gy < 0 || gy > 7) return -1;
+                int idx = gy * TerrainGridCols + (gx + 1);
+                if (idx < 0 || idx >= TerrainEntryCount) return -1;
+                int off = idx * TerrainEntrySize;
+                int b0 = terrainData[off];
+                int b1 = terrainData[off + 1];
+                if (terrainData[off + 3] == 0x1F && terrainData[off + 4] == 0x1F && terrainData[off + 5] == 0x1F)
+                    return 0;
+                return Math.Min(b0, b1);
+            }
+
+            var visited = new Dictionary<(int, int), int>();
+            var queue = new Queue<(int x, int y, int cost)>();
+            queue.Enqueue((unitGX, unitGY, 0));
+            visited[(unitGX, unitGY)] = 0;
+
+            int[][] dirs = { new[]{1,0}, new[]{-1,0}, new[]{0,1}, new[]{0,-1} };
+
+            while (queue.Count > 0)
+            {
+                var (x, y, cost) = queue.Dequeue();
+                if (cost >= moveStat) continue;
+
+                foreach (var d in dirs)
+                {
+                    int nx = x + d[0], ny = y + d[1];
+                    if (nx < 0 || ny < 0 || ny > 7) continue;
+
+                    int nh = GetHeight(nx, ny);
+                    if (nh < 0) continue;
+
+                    // Skip tiles known to be blocked (trees, obstacles — learned from failed moves)
+                    if (_blockedTiles.Contains((nx, ny))) continue;
+
+                    int ch = GetHeight(x, y);
+                    if (Math.Abs(nh - ch) > jumpStat) continue;
+
+                    int newCost = cost + 1;
+                    if (!visited.ContainsKey((nx, ny)) || visited[(nx, ny)] > newCost)
+                    {
+                        visited[(nx, ny)] = newCost;
+                        queue.Enqueue((nx, ny, newCost));
+                    }
+                }
+            }
+
+            var allTiles = visited
+                .OrderBy(kv => kv.Value)
+                .ThenBy(kv => Math.Abs(kv.Key.Item1 - unitGX) + Math.Abs(kv.Key.Item2 - unitGY))
+                .Select(kv => new TilePosition { X = kv.Key.Item1, Y = kv.Key.Item2 })
+                .ToList();
+
+            return allTiles;
+        }
+
+        /// <summary>
+        /// BFS using JSON map data for exact terrain heights and passability.
+        /// Grid coords = map tile coords (identity mapping).
+        /// Height formula: display = height + slope_height / 2.0
+        /// Jump check uses display heights. All terrain costs 1 move point.
+        /// Enemy-occupied tiles block movement (can't move through or onto them).
+        /// </summary>
+        private List<TilePosition> ComputeValidTilesFromMap(MapData map, int unitGX, int unitGY, int moveStat, int jumpStat, HashSet<(int, int)>? enemyPositions = null)
+        {
+            double GetDisplayHeight(int x, int y)
+            {
+                if (!map.InBounds(x, y)) return -1;
+                var t = map.Tiles[x, y];
+                return t.Height + t.SlopeHeight / 2.0;
+            }
+
+            var visited = new Dictionary<(int, int), int>();
+            var queue = new Queue<(int x, int y, int cost)>();
+
+            if (!map.InBounds(unitGX, unitGY)) return new List<TilePosition>();
+
+            queue.Enqueue((unitGX, unitGY, 0));
+            visited[(unitGX, unitGY)] = 0;
+
+            int[][] dirs = { new[]{1,0}, new[]{-1,0}, new[]{0,1}, new[]{0,-1} };
+
+            while (queue.Count > 0)
+            {
+                var (x, y, cost) = queue.Dequeue();
+                if (cost >= moveStat) continue;
+
+                double ch = GetDisplayHeight(x, y);
+
+                foreach (var d in dirs)
+                {
+                    int nx = x + d[0], ny = y + d[1];
+
+                    if (!map.InBounds(nx, ny)) continue;
+                    if (!map.IsWalkable(nx, ny)) continue;
+                    if (_blockedTiles.Contains((nx, ny))) continue;
+                    if (enemyPositions != null && enemyPositions.Contains((nx, ny))) continue;
+
+                    double nh = GetDisplayHeight(nx, ny);
+                    if (nh < 0 || ch < 0) continue;
+
+                    if (Math.Abs(nh - ch) > jumpStat) continue;
+
+                    int newCost = cost + 1;
+                    if (!visited.ContainsKey((nx, ny)) || visited[(nx, ny)] > newCost)
+                    {
+                        visited[(nx, ny)] = newCost;
+                        queue.Enqueue((nx, ny, newCost));
+                    }
+                }
+            }
+
+            // Exclude the starting tile (unit's own position)
+            visited.Remove((unitGX, unitGY));
+
+            return visited
+                .OrderBy(kv => kv.Value)
+                .ThenBy(kv => Math.Abs(kv.Key.Item1 - unitGX) + Math.Abs(kv.Key.Item2 - unitGY))
+                .Select(kv => new TilePosition { X = kv.Key.Item1, Y = kv.Key.Item2 })
+                .ToList();
         }
 
         private bool IsPartySubScreen()
@@ -1021,7 +1295,7 @@ namespace FFTColorCustomizer.Utilities
                     BattleMoved = (int)v[9],
                     BattleUnitId = (int)v[10],
                     BattleUnitHp = (int)v[11],
-                    CameraRotation = (int)v[17] % 4,
+                    CameraRotation = (int)(v[17] - 1 + 4) % 4,
                 };
 
                 int party = (int)v[0];

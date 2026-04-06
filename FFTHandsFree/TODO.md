@@ -65,6 +65,19 @@ Everything Claude needs to fight battles intelligently: unit scanning, movement,
 
 ---
 
+## 0. Movement System — Remaining Work (P0)
+
+Map-based BFS and move_grid are working. These items complete the movement system:
+
+- [ ] **Auto-detect battle map** — Identify which MAP file (MAP000-MAP122) matches the current battle. Terrain fingerprinting (dimensions + 5 tile heights) uniquely identifies all 122 maps. Currently requires manual `set_map` call.
+- [ ] **Wait facing direction** — When selecting Wait, choose facing direction toward nearest enemy. Currently confirms facing immediately without choosing.
+- [ ] **Fix rotation detection** — Read rotation counter directly (`0x14077C970`, formula `(raw-1+4)%4`) instead of empirical test-press. Test-press has boundary/timing issues. Need to verify the table at all 4 rotations empirically.
+- [ ] **Fix Move/Jump stat reading** — UI buffer at `0x1407AC7E4`/`0x1407AC7E6` shows base stats (e.g. 4/4), not effective stats after equipment (e.g. 3/3). Need to find the effective stat address or compute from equipment.
+- [ ] **Auto-deploy MAP files** — Update `BuildLinked.ps1` to copy `FFTHandsFree/maps/` to `claude_bridge/maps/` during deploy. Currently must re-copy manually after every deploy.
+- [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza (different Move/Jump stats, different tactical priorities).
+
+---
+
 ## 1. ValidPaths + High-Level Actions (Navigation System)
 
 Every response includes `validPaths` — a map of action names to exact commands. Claude picks one, sends it, zero interpretation needed.

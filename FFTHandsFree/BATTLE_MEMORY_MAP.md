@@ -276,13 +276,97 @@ Menu cursor at 0x1407FC620 tracks position 0-4 correctly in main action menu.
 Note: Need TWO Enters to confirm attack (select target + confirm).
 Note: Must target a tile with an enemy — attacking empty tiles wastes the turn.
 
+#### 15. Movement Tile Validity (Map-Based BFS — EXACT)
+
+Valid movement tiles are computed via BFS using pre-parsed JSON map data (fft-map-json repo).
+
+**Map-Based BFS (primary, 100% accurate):**
+- Load map JSON via `set_map <mapNumber>` (e.g. `set_map 74` for MAP074)
+- Map files: `claude_bridge/maps/MAP###.json` (copied from fft-map-json repo)
+- Grid coordinates = map tile coordinates (identity mapping, no transform)
+- Height formula: `display = height + slope_height / 2`
+- Jump check: `|display_height_A - display_height_B| ≤ jumpStat`
+- All terrain costs 1 movement point (no swamp penalty)
+- `no_walk` flag = impassable (trees, walls, obstacles)
+- Enemy-occupied tiles block movement (can't move through)
+- Starting tile excluded from results
+- **Verified 6/6 tile counts match in-game exactly**
+
+**`scan_move` action (recommended workflow):**
+1. Scans all units via C+Up cycling (gets positions + teams)
+2. Computes valid tiles using map BFS + enemy blocking
+3. Returns `ValidMoveTiles` in response with tile coordinates
+4. Usage: `scan_move <move> <jump>` (e.g. `scan_move 7 3`)
+
+**Known issue:** Move/Jump stats at `0x1407AC7E4`/`0x1407AC7E6` show base values (before equipment modifiers). Must pass correct values as parameters.
+
+**Fallback BFS (if no map loaded):**
+- Terrain grid: `0x140C65000` (72 entries × 7 bytes, 8×9 grid)
+- Height formula: `min(b0, b1)` — rendering approximation, NOT exact
+- ~12 false positives (trees, obstacles, approximate heights)
+- Self-correcting via `mark_blocked X Y` cache
+
+**Response:** `screen.Tiles` contains grid (X,Y) pairs during `Battle_Moving`.
+
+#### 16. Tile Height Display
+
+| Address | What | Encoding |
+|---|---|---|
+| `0x140C6492C` | Current cursor tile Height × 10 | uint32, e.g. 25 = display 2.5 |
+| `0x14077CA5C` | Move mode flag | 0xFF = Move mode, 0x00 = not |
+
+**Height encodings in the IC remaster:**
+- Display value: `0x140C6492C / 10` = "Height X.X" shown on screen
+- Tile list elevation byte (offset +2 in 7-byte entry): `raw / 2` = display height
+- Rendering vertex Z float: `tile_h * 15 + 124` (tile_h in half-units)
+- Terrain grid b0/b1: rendering approximation, does NOT match actual game heights
+
+#### 17. What Was Investigated for Tile Validity (40+ agents, 4 waves)
+
+| Approach | Result |
+|---|---|
+| Rendering struct diff (0x140C6F400, stride 0x88, flag +0x1D) | Exact count (19) in first session but struct layout changes per restart, counts vary 12-19 |
+| Tile outline path (0x140C66315) | Only 8 perimeter points, not all interior tiles |
+| Terrain grid flags (0x140C65000) | No valid/invalid distinction in any byte |
+| Heap stride-32 grid (0x142FEA99C) | Address changes per session, volatile |
+| Passability bitmap | Not found anywhere in module or heap |
+| Float height array | Heights not stored as standalone float array |
+
+#### 18. Map File Data (fft-map-json)
+
+Pre-parsed terrain data from PSX GNS/mesh files. 122 maps available.
+
+**Source:** `c:/Users/ptyRa/Dev/fft-map-json/data/MAP###.json`
+**Deploy to:** `claude_bridge/maps/MAP###.json` (BuildLinked.ps1 wipes this — must re-copy)
+
+**JSON structure per tile:**
+```json
+{
+  "x": 0, "y": 0,
+  "height": 2, "slope_height": 1,
+  "depth": 0, "no_walk": false, "no_cursor": false,
+  "surface_type": "Grassland", "slope_type": "Flat 0"
+}
+```
+
+**Key formulas:**
+- Display height: `height + slope_height / 2`
+- Grid coords = map tile coords (identity mapping)
+- Maps have `lower` and `upper` levels (lower is primary)
+- `starting_locations` array has team spawn positions
+
+**Map identification:**
+- Story battles and random encounters at the same world map location use DIFFERENT maps
+- Terrain fingerprinting (dimensions + 5 tile heights) uniquely identifies all 122 maps
+- Location 26 (Siedge Weald) random encounter = MAP074 (11×12, grassland/swamp/bridge)
+- Full location→map table not yet built; currently must specify map number manually
+
 ## Still Unmapped
-- **Enemy/unit positions during battle** — critical for targeting attacks
-- **Reliable turn detection** — current method has false positives
 - **Game over detection** — no known flag
 - **Facing direction** — not found (PSX at +0x49)
 - **Current statuses** — PSX at +0x58 to +0x5C, not yet located
 - **Travel list tab identification** — no reliable memory address found, use hover ID range instead
+- **Effective Move/Jump stats** — UI buffer shows base values, not post-equipment effective values
 
 ## PSX Reference
 See BATTLE_STATS_PSX_REFERENCE.md for the complete PSX field layout.

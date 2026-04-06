@@ -40,21 +40,21 @@ Shorthand:
 - rot=2: Right=-Y, Down=-X, Left=+Y, Up=+X
 - rot=3: Right=-X, Down=+Y, Left=+X, Up=-Y
 
-### Grid = World Coords with Offset (KEY DISCOVERY)
+### Grid = Map Tile Coords (IDENTITY MAPPING — KEY DISCOVERY)
 
-The grid coordinates ARE world coordinates shifted by a fixed offset:
-- `gridX = worldX - offsetX`
-- `gridY = worldY - offsetY`
+Grid cursor coordinates ARE map file tile coordinates directly. No offset or transform needed.
 
-The offset can be computed from ANY unit whose world position is known:
-- `offsetX = knownUnit.worldX - knownUnit.gridX`
-- `offsetY = knownUnit.worldY - knownUnit.gridY`
+**Verified:** 5 grid positions matched MAP074 tile data exactly:
+- grid(1,4) = MAP074 tile(1,4), height 2+1/2=2.5 ✓
+- grid(3,4) = MAP074 tile(3,4), height 3+0/2=3.0 ✓
+- grid(1,10) = MAP074 tile(1,10), height 3+1/2=3.5 ✓
 
-**Verified:** Enemy world=(3,12) grid=(0,7) → offset=(3,5).
-Ramza grid=(0,6) → Ramza actual world = (0+3, 6+5) = (3,11) ✓
+**Height formula:** `display = tile.height + tile.slope_height / 2`
 
-**Arrow keys move diagonally in grid space: (±1, ±1) per press.**
-Earlier tests showing single-axis movement were boundary artifacts (grid values can't go below 0).
+**Previous incorrect theory:** Grid = world coords with fixed offset. This was wrong — grid coords map directly to map file indices with no transform.
+
+**Arrow keys move single-axis in grid space** (not diagonally).
+The earlier note about diagonal movement was incorrect.
 
 ### Navigation Algorithm
 1. Enter Move mode — cursor starts on Ramza
@@ -78,16 +78,20 @@ The struct at `0x14077D2A0` shows the **unit under the cursor**, NOT the active 
 - Position does NOT update after a unit moves — stays at pre-move position
 - `battleTeam` at `0x14077D2A2` = team of cursor-highlighted unit, not whose turn it is
 
-### Tile List (Movement Tiles)
+### Tile List (Movement Outline Path — NOT All Valid Tiles)
 
 Address `0x140C66315`, 7 bytes per entry: `[X] [Y] [elevation] [flag] [0] [0] [0]`
 
-- Uses the SAME world coordinate system as the struct
-- Tile coordinates do NOT change with camera rotation — only the traversal ORDER changes
-- The cursor starting tile when entering Move is NOT always the unit's actual position
-- The tile list is a 1D path of valid movement tiles, not a 2D grid
-- Arrow keys move the cursor on the actual map grid (which has more cells than just the valid tiles)
+- **This is a cursor traversal path tracing the PERIMETER of the movement diamond, NOT all valid tiles**
+- Contains ~15 entries with only ~8 unique world coordinates (the diamond boundary)
+- Multiple groups separated by 7-byte zero terminators (different units' paths)
+- Data is transient (Move mode only) and animated (shifts between reads)
+- Elevation byte = tile height in half-units (raw / 2 = display height)
+- Uses the SAME world coordinate system as the condensed struct
 - `flag=0` with `X=0, Y=0` = group terminator
+
+**For ALL valid movement tiles, use the BFS computation in CommandWatcher.PopulateBattleTileData.**
+See BATTLE_MEMORY_MAP.md section 15 for details.
 
 ### Camera Rotation
 

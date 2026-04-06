@@ -18,6 +18,7 @@ namespace FFTColorCustomizer.GameBridge
         private readonly MemoryExplorer _explorer;
         private readonly Func<DetectedScreen?> _detectScreen;
         public BattleTracker? BattleTracker { get; set; }
+        public MapLoader? _mapLoader;
         private IntPtr _gameWindow;
 
         // --- DirectInput hook for faking held C key ---
@@ -190,6 +191,7 @@ namespace FFTColorCustomizer.GameBridge
         private delegate int ReleaseDelegate(IntPtr self);
 
         // VK codes
+        private const int VK_CONTROL = 0x11;
         private const int VK_ENTER = 0x0D;
         private const int VK_ESCAPE = 0x1B;
         private const int VK_UP = 0x26;
@@ -254,6 +256,12 @@ namespace FFTColorCustomizer.GameBridge
                     case "scan_units":
                         return ScanUnits(response);
 
+                    case "scan_move":
+                        return ScanMove(response, command);
+
+                    case "auto_move":
+                        return AutoMove(response, command);
+
                     case "test_c_hold":
                         return TestCHold(response);
 
@@ -278,7 +286,8 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
-        /// battle_wait: Navigate to Wait in action menu, confirm, confirm facing.
+        /// battle_wait: Navigate to Wait in action menu, confirm, confirm facing,
+        /// then poll until it's a friendly unit's turn again (or game over).
         /// </summary>
         private CommandResponse BattleWait(CommandResponse response)
         {
@@ -302,22 +311,29 @@ namespace FFTColorCustomizer.GameBridge
             // Press Enter to confirm facing direction
             SendKey(VK_ENTER);
 
-            // Poll for a terminal battle state, same as confirm_attack.
-            // The facing animation and turn transition can leave transient
-            // flags (moveMode, pauseFlag) that confuse screen detection.
+            // Hold Ctrl to fast-forward enemy turns
             Thread.Sleep(500);
-            var sw = Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < 10000)
-            {
-                Thread.Sleep(200);
-                var current = _detectScreen();
-                if (current == null) continue;
+            SendInputKeyDown(VK_CONTROL);
+            _input.SendKeyDownToWindow(_gameWindow, VK_CONTROL);
+            ModLogger.Log("[BattleWait] Holding Ctrl for fast-forward");
 
-                if (current.Name == "Battle_MyTurn" ||
-                    current.Name == "Battle" ||
-                    current.Name == "GameOver" ||
-                    current.Name == "Battle_Paused")
+            // Poll until it's a friendly unit's turn again (or game over/timeout)
+            var sw = Stopwatch.StartNew();
+            string lastScreen = "";
+            try
+            {
+                while (sw.ElapsedMilliseconds < 120000) // 2 minute max
                 {
+                    Thread.Sleep(300);
+                    var current = _detectScreen();
+                    if (current == null) continue;
+
+                    if (current.Name != lastScreen)
+                    {
+                        ModLogger.Log($"[BattleWait] Screen: {current.Name} team={current.BattleTeam} act={current.BattleActed} mov={current.BattleMoved}");
+                        lastScreen = current.Name;
+                    }
+
                     // If we hit Battle_Paused due to stale flag, send Escape to clear
                     if (current.Name == "Battle_Paused")
                     {
@@ -325,8 +341,31 @@ namespace FFTColorCustomizer.GameBridge
                         Thread.Sleep(300);
                         continue;
                     }
-                    break;
+
+                    // Friendly unit's turn — we're done
+                    if (current.Name == "Battle_MyTurn")
+                    {
+                        response.Error = $"Friendly turn after {sw.ElapsedMilliseconds}ms";
+                        break;
+                    }
+
+                    // Game over
+                    if (current.Name == "GameOver")
+                    {
+                        response.Error = "Game Over";
+                        break;
+                    }
                 }
+
+                if (sw.ElapsedMilliseconds >= 120000)
+                    response.Error = "Timeout waiting for friendly turn (120s)";
+            }
+            finally
+            {
+                // Always release Ctrl
+                SendInputKeyUp(VK_CONTROL);
+                _input.SendKeyUpToWindow(_gameWindow, VK_CONTROL);
+                ModLogger.Log("[BattleWait] Released Ctrl");
             }
 
             response.Status = "completed";
@@ -634,6 +673,430 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// scan_move: Scan all units, compute valid movement tiles using map data,
+        /// and return both unit positions and valid tiles in one response.
+        /// Requires set_map to have been called first.
+        /// Move/Jump can be overridden via locationId (move) and unitIndex (jump).
+        /// </summary>
+        private CommandResponse ScanMove(CommandResponse response, CommandRequest command)
+        {
+            var screen = _detectScreen();
+            if (screen == null || !screen.Name.StartsWith("Battle"))
+            {
+                response.Status = "failed";
+                response.Error = $"Not in battle (current: {screen?.Name ?? "null"})";
+                return response;
+            }
+
+            // 1. Scan units
+            var units = CollectUnitPositionsFull();
+            var ally = units.FirstOrDefault(u => u.Team == 0);
+            if (ally == null)
+            {
+                response.Status = "failed";
+                response.Error = "No ally found in scan";
+                return response;
+            }
+
+            // 2. Get move/jump - use overrides if provided, otherwise from scan
+            int moveStat = command.LocationId > 0 ? command.LocationId : ally.Move;
+            int jumpStat = command.UnitIndex > 0 ? command.UnitIndex : ally.Jump;
+
+            // 3. Get enemy positions
+            var enemyPositions = GetEnemyPositions();
+
+            // 4. Build unit summary
+            var lines = new List<string>();
+            lines.Add($"units={units.Count}");
+            foreach (var u in units)
+            {
+                string teamName = u.Team == 0 ? "ALLY" : "ENEMY";
+                lines.Add($"[{teamName}] ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp}");
+            }
+
+            // 5. Compute valid tiles if map is loaded
+            var validPaths = new Dictionary<string, PathEntry>();
+            if (_mapLoader?.CurrentMap != null)
+            {
+                var map = _mapLoader.CurrentMap;
+                // BFS using map data
+                double GetDisplayHeight(int x, int y)
+                {
+                    if (!map.InBounds(x, y)) return -1;
+                    var t = map.Tiles[x, y];
+                    return t.Height + t.SlopeHeight / 2.0;
+                }
+
+                var visited = new Dictionary<(int, int), int>();
+                var queue = new Queue<(int x, int y, int cost)>();
+                visited[(ally.GridX, ally.GridY)] = 0;
+                queue.Enqueue((ally.GridX, ally.GridY, 0));
+
+                int[][] dirs = { new[]{1,0}, new[]{-1,0}, new[]{0,1}, new[]{0,-1} };
+                while (queue.Count > 0)
+                {
+                    var (x, y, cost) = queue.Dequeue();
+                    if (cost >= moveStat) continue;
+                    double ch = GetDisplayHeight(x, y);
+                    foreach (var d in dirs)
+                    {
+                        int nx = x + d[0], ny = y + d[1];
+                        if (!map.InBounds(nx, ny)) continue;
+                        if (!map.IsWalkable(nx, ny)) continue;
+                        if (enemyPositions.Contains((nx, ny))) continue;
+                        double nh = GetDisplayHeight(nx, ny);
+                        if (nh < 0 || ch < 0) continue;
+                        if (Math.Abs(nh - ch) > jumpStat) continue;
+                        int nc = cost + 1;
+                        if (nc > moveStat) continue;
+                        var key = (nx, ny);
+                        if (!visited.ContainsKey(key) || visited[key] > nc)
+                        {
+                            visited[key] = nc;
+                            queue.Enqueue((nx, ny, nc));
+                        }
+                    }
+                }
+
+                // Remove starting tile
+                visited.Remove((ally.GridX, ally.GridY));
+
+                // Build tile list as "x,y" entries in validPaths
+                var tileStrings = visited
+                    .OrderBy(kv => kv.Value)
+                    .Select(kv => $"{kv.Key.Item1},{kv.Key.Item2}")
+                    .ToList();
+
+                validPaths["ValidMoveTiles"] = new PathEntry
+                {
+                    Desc = $"{tileStrings.Count} tiles from ({ally.GridX},{ally.GridY}) Mv={moveStat} Jmp={jumpStat} enemies={enemyPositions.Count}",
+                    Action = string.Join(" ", tileStrings)
+                };
+
+                lines.Add($"validTiles={tileStrings.Count} move={moveStat} jump={jumpStat} enemies={enemyPositions.Count}");
+            }
+            else
+            {
+                lines.Add("NO MAP LOADED — call set_map first");
+            }
+
+            response.Status = "completed";
+            response.Error = string.Join(" | ", lines);
+            response.ValidPaths = validPaths;
+            return response;
+        }
+
+        /// <summary>
+        /// auto_move: Full autonomous turn — scan units, compute valid tiles,
+        /// pick safest tile (farthest from enemies), move there, wait for next turn.
+        /// Handles rotation detection empirically (test press + verify).
+        /// locationId = move stat, unitIndex = jump stat.
+        /// </summary>
+        private CommandResponse AutoMove(CommandResponse response, CommandRequest command)
+        {
+            var screen = _detectScreen();
+            if (screen == null || screen.Name != "Battle_MyTurn")
+            {
+                response.Status = "failed";
+                response.Error = $"Not on Battle_MyTurn (current: {screen?.Name ?? "null"})";
+                return response;
+            }
+
+            int moveStat = command.LocationId > 0 ? command.LocationId : 4;
+            int jumpStat = command.UnitIndex > 0 ? command.UnitIndex : 3;
+
+            // 1. Scan all units
+            var units = CollectUnitPositionsFull();
+            var ally = units.FirstOrDefault(u => u.Team == 0);
+            if (ally == null)
+            {
+                response.Status = "failed";
+                response.Error = "No ally found";
+                return response;
+            }
+
+            var enemyPositions = GetEnemyPositions();
+            int curDist = enemyPositions.Count > 0
+                ? enemyPositions.Min(e => Math.Abs(ally.GridX - e.Item1) + Math.Abs(ally.GridY - e.Item2))
+                : 99;
+
+            // 2. Compute valid tiles from map
+            var map = _mapLoader?.CurrentMap;
+            if (map == null)
+            {
+                response.Status = "failed";
+                response.Error = "No map loaded — call set_map first";
+                return response;
+            }
+
+            // BFS
+            double GetDisplayHeight(int x, int y)
+            {
+                if (!map.InBounds(x, y)) return -1;
+                var t = map.Tiles[x, y];
+                return t.Height + t.SlopeHeight / 2.0;
+            }
+
+            var visited = new Dictionary<(int, int), int>();
+            var queue = new Queue<(int x, int y, int cost)>();
+            visited[(ally.GridX, ally.GridY)] = 0;
+            queue.Enqueue((ally.GridX, ally.GridY, 0));
+            int[][] dirs = { new[]{1,0}, new[]{-1,0}, new[]{0,1}, new[]{0,-1} };
+
+            while (queue.Count > 0)
+            {
+                var (x, y, cost) = queue.Dequeue();
+                if (cost >= moveStat) continue;
+                double ch = GetDisplayHeight(x, y);
+                foreach (var d in dirs)
+                {
+                    int nx = x + d[0], ny = y + d[1];
+                    if (!map.InBounds(nx, ny)) continue;
+                    if (!map.IsWalkable(nx, ny)) continue;
+                    if (enemyPositions.Contains((nx, ny))) continue;
+                    double nh = GetDisplayHeight(nx, ny);
+                    if (nh < 0 || ch < 0) continue;
+                    if (Math.Abs(nh - ch) > jumpStat) continue;
+                    int nc = cost + 1;
+                    if (nc > moveStat) continue;
+                    if (!visited.ContainsKey((nx, ny)) || visited[(nx, ny)] > nc)
+                    {
+                        visited[(nx, ny)] = nc;
+                        queue.Enqueue((nx, ny, nc));
+                    }
+                }
+            }
+            visited.Remove((ally.GridX, ally.GridY));
+
+            // 3. Pick safest tile
+            int bestX = ally.GridX, bestY = ally.GridY;
+            int bestDist = curDist;
+            foreach (var kv in visited)
+            {
+                int d = enemyPositions.Count > 0
+                    ? enemyPositions.Min(e => Math.Abs(kv.Key.Item1 - e.Item1) + Math.Abs(kv.Key.Item2 - e.Item2))
+                    : 99;
+                if (d > bestDist)
+                {
+                    bestDist = d;
+                    bestX = kv.Key.Item1;
+                    bestY = kv.Key.Item2;
+                }
+            }
+
+            var enemyStr = string.Join(" ", enemyPositions.Select(e => $"({e.Item1},{e.Item2})"));
+            bool shouldMove = (bestX != ally.GridX || bestY != ally.GridY);
+
+            if (shouldMove)
+            {
+                ModLogger.Log($"[AutoMove] ({ally.GridX},{ally.GridY})->({bestX},{bestY}) dist {curDist}->{bestDist} enemies={enemyStr}");
+
+                // 4. Enter Move mode
+                NavigateMenuCursor(_detectScreen()?.MenuCursor ?? 0, 0);
+                SendKey(VK_ENTER);
+                Thread.Sleep(500);
+
+                // 5. Read actual position from cursor (authoritative, not scan)
+                var startPos = ReadGridPos();
+                ModLogger.Log($"[AutoMove] Scan pos=({ally.GridX},{ally.GridY}) Cursor pos=({startPos.x},{startPos.y})");
+
+                // If scan position was wrong, recompute BFS from actual position
+                if (startPos.x != ally.GridX || startPos.y != ally.GridY)
+                {
+                    ModLogger.Log($"[AutoMove] Scan/cursor mismatch — recomputing BFS from ({startPos.x},{startPos.y})");
+                    visited.Clear();
+                    visited[(startPos.x, startPos.y)] = 0;
+                    queue.Clear();
+                    queue.Enqueue((startPos.x, startPos.y, 0));
+                    while (queue.Count > 0)
+                    {
+                        var (bx, by, bc) = queue.Dequeue();
+                        if (bc >= moveStat) continue;
+                        double bch = GetDisplayHeight(bx, by);
+                        foreach (var bd in dirs)
+                        {
+                            int bnx = bx + bd[0], bny = by + bd[1];
+                            if (!map.InBounds(bnx, bny) || !map.IsWalkable(bnx, bny)) continue;
+                            if (enemyPositions.Contains((bnx, bny))) continue;
+                            double bnh = GetDisplayHeight(bnx, bny);
+                            if (bnh < 0 || bch < 0 || Math.Abs(bnh - bch) > jumpStat) continue;
+                            int bnc = bc + 1;
+                            if (bnc > moveStat) continue;
+                            if (!visited.ContainsKey((bnx, bny)) || visited[(bnx, bny)] > bnc)
+                            { visited[(bnx, bny)] = bnc; queue.Enqueue((bnx, bny, bnc)); }
+                        }
+                    }
+                    visited.Remove((startPos.x, startPos.y));
+
+                    // Re-pick best tile
+                    curDist = enemyPositions.Count > 0
+                        ? enemyPositions.Min(e => Math.Abs(startPos.x - e.Item1) + Math.Abs(startPos.y - e.Item2))
+                        : 99;
+                    bestX = startPos.x; bestY = startPos.y; bestDist = curDist;
+                    foreach (var kv in visited)
+                    {
+                        int bd = enemyPositions.Count > 0
+                            ? enemyPositions.Min(e => Math.Abs(kv.Key.Item1 - e.Item1) + Math.Abs(kv.Key.Item2 - e.Item2))
+                            : 99;
+                        if (bd > bestDist) { bestDist = bd; bestX = kv.Key.Item1; bestY = kv.Key.Item2; }
+                    }
+                }
+
+                // If best is still our position, cancel and wait
+                if (bestX == startPos.x && bestY == startPos.y)
+                {
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                    response.Error = $"Stay at ({startPos.x},{startPos.y}) dist={curDist} — no better tile. Enemies={enemyStr}";
+                    ModLogger.Log($"[AutoMove] No better tile, cancelling move");
+                    goto doWait;
+                }
+
+                response.Error = $"Moved ({startPos.x},{startPos.y})->target=({bestX},{bestY}) dist={curDist}->{bestDist} enemies={enemyStr}";
+
+                // 6. Detect rotation empirically: try Right, check delta
+                int rdx = 0, rdy = 0;
+                int[] testKeys = { VK_RIGHT, VK_DOWN, VK_LEFT, VK_UP };
+                int[] undoKeys = { VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN };
+
+                for (int i = 0; i < 4; i++)
+                {
+                    _input.SendKeyPressToWindow(_gameWindow, testKeys[i]);
+                    Thread.Sleep(150);
+                    var testPos = ReadGridPos();
+                    int tdx = testPos.x - startPos.x, tdy = testPos.y - startPos.y;
+                    // Only undo if the test key actually moved the cursor
+                    if (tdx != 0 || tdy != 0)
+                    {
+                        _input.SendKeyPressToWindow(_gameWindow, undoKeys[i]);
+                        Thread.Sleep(150);
+                    }
+
+                    if (tdx != 0 || tdy != 0)
+                    {
+                        // Derive Right delta from whichever key worked
+                        switch (i)
+                        {
+                            case 0: rdx = tdx; rdy = tdy; break;                  // Right
+                            case 1: rdx = -tdy; rdy = tdx; break;                 // Down → Right = (-dy, dx)
+                            case 2: rdx = -tdx; rdy = -tdy; break;                // Left → Right = opposite
+                            case 3: rdx = tdy; rdy = -tdx; break;                 // Up → Right = (dy, -dx)
+                        }
+                        ModLogger.Log($"[AutoMove] Rotation detected via {(new[]{"Right","Down","Left","Up"})[i]}=({tdx},{tdy}) → Right=({rdx},{rdy})");
+                        break;
+                    }
+                }
+
+                if (rdx == 0 && rdy == 0)
+                {
+                    rdx = 0; rdy = 1; // fallback
+                    ModLogger.Log("[AutoMove] Could not detect rotation, using fallback Right=(0,1)");
+                }
+
+                // 6. Navigate to target
+                int dx = bestX - startPos.x;
+                int dy = bestY - startPos.y;
+                // Down = (rdy, -rdx) perpendicular to Right
+                int ddx = rdy, ddy = -rdx;
+
+                int aRight, aDown;
+                if (rdx != 0)
+                {
+                    aRight = dx / rdx;
+                    aDown = dy / ddy;
+                }
+                else
+                {
+                    aRight = dy / rdy;
+                    aDown = dx / ddx;
+                }
+
+                int rightVK = aRight >= 0 ? VK_RIGHT : VK_LEFT;
+                int downVK = aDown >= 0 ? VK_DOWN : VK_UP;
+
+                for (int i = 0; i < Math.Abs(aRight); i++)
+                {
+                    _input.SendKeyPressToWindow(_gameWindow, rightVK);
+                    Thread.Sleep(80);
+                }
+                for (int i = 0; i < Math.Abs(aDown); i++)
+                {
+                    _input.SendKeyPressToWindow(_gameWindow, downVK);
+                    Thread.Sleep(80);
+                }
+
+                var finalPos = ReadGridPos();
+                ModLogger.Log($"[AutoMove] Cursor at ({finalPos.x},{finalPos.y}) target=({bestX},{bestY})");
+                response.Error = $"Moved ({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) target=({bestX},{bestY}) dist={curDist}->{bestDist} enemies={enemyStr}";
+
+                // 7. Confirm move
+                _input.SendKeyPressToWindow(_gameWindow, VK_F);
+                Thread.Sleep(500);
+
+                // Wait for move to confirm
+                var sw = Stopwatch.StartNew();
+                while (sw.ElapsedMilliseconds < 3000)
+                {
+                    var check = _detectScreen();
+                    if (check != null && check.Name == "Battle_MyTurn") break;
+                    Thread.Sleep(100);
+                }
+            }
+            else
+            {
+                response.Error = $"Stay at ({ally.GridX},{ally.GridY}) dist={curDist} — already safest. Enemies={enemyStr}";
+                ModLogger.Log($"[AutoMove] Staying put at ({ally.GridX},{ally.GridY}) dist={curDist}");
+            }
+
+            // 8. Wait (end turn with Ctrl fast-forward)
+            doWait:
+            Thread.Sleep(300);
+            var preWait = _detectScreen();
+            if (preWait != null && preWait.Name == "Battle_MyTurn")
+            {
+                int waitCursor = preWait.MenuCursor;
+                NavigateMenuCursor(waitCursor, 2);
+                Thread.Sleep(200);
+
+                // Verify cursor is on Wait (2) before pressing Enter
+                var cursorCheck = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+                int cursorVal = cursorCheck != null ? (int)cursorCheck.Value.value : -1;
+                ModLogger.Log($"[AutoMove] Wait cursor={cursorVal} (expect 2)");
+
+                SendKey(VK_ENTER);
+                Thread.Sleep(500);
+                SendKey(VK_ENTER);
+
+                // Hold Ctrl for fast-forward, poll until friendly turn
+                Thread.Sleep(500);
+                SendInputKeyDown(VK_CONTROL);
+                _input.SendKeyDownToWindow(_gameWindow, VK_CONTROL);
+
+                try
+                {
+                    var sw2 = Stopwatch.StartNew();
+                    while (sw2.ElapsedMilliseconds < 120000)
+                    {
+                        Thread.Sleep(300);
+                        var current = _detectScreen();
+                        if (current == null) continue;
+                        if (current.Name == "Battle_Paused") { SendKey(VK_ESCAPE); Thread.Sleep(300); continue; }
+                        if (current.Name == "Battle_MyTurn") { response.Error += $" | Next turn after {sw2.ElapsedMilliseconds}ms"; break; }
+                        if (current.Name == "GameOver") { response.Error += " | GAME OVER"; break; }
+                    }
+                }
+                finally
+                {
+                    SendInputKeyUp(VK_CONTROL);
+                    _input.SendKeyUpToWindow(_gameWindow, VK_CONTROL);
+                }
+            }
+
+            response.Status = "completed";
+            return response;
+        }
+
+        /// <summary>
         /// test_c_hold: Use SendInput with SCANCODE flag to hold C, then press Up.
         /// DirectInput games need scan codes, not virtual keys.
         /// </summary>
@@ -745,15 +1208,15 @@ namespace FFTColorCustomizer.GameBridge
         /// Index: [rotation % 4, direction] where 0=Right, 1=Left, 2=Up, 3=Down.
         /// </summary>
         /// <summary>
-        /// move_grid: Move cursor from current position to target grid (x,y).
-        /// Enter Move mode if needed, press arrows, confirm with F.
+        /// move_grid: Enter Move mode, navigate cursor to target grid (x,y), confirm with F.
+        /// Uses empirical rotation detection (test one arrow press, observe delta).
         /// Usage: {"action":"move_grid","locationId":2,"unitIndex":0}
-        ///   locationId = target grid X, unitIndex = target grid Y (reusing existing fields)
+        ///   locationId = target grid X, unitIndex = target grid Y
         /// </summary>
         private CommandResponse MoveGrid(CommandResponse response, CommandRequest command)
         {
-            int targetX = command.LocationId;  // reuse locationId as target X
-            int targetY = command.UnitIndex;   // reuse unitIndex as target Y
+            int targetX = command.LocationId;
+            int targetY = command.UnitIndex;
 
             // Enter Move mode if on Battle_MyTurn
             var screen = _detectScreen();
@@ -772,64 +1235,114 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Read rotation and current cursor position
-            var camResult = _explorer.ReadAbsolute((nint)AddrCameraRotation, 1);
-            int rotation = camResult != null ? (int)(camResult.Value.value % 4) : 0;
-            var cur = ReadGridPos();
+            var startPos = ReadGridPos();
+            int deltaX = targetX - startPos.x;
+            int deltaY = targetY - startPos.y;
 
-            int deltaX = targetX - cur.x;
-            int deltaY = targetY - cur.y;
-
-            // Use rotation table to find correct arrow keys
-            string[] dirNames = { "Right", "Left", "Up", "Down" };
-            var arrowNames = new List<string>();
-            var arrows = new List<int>();
-
-            if (deltaX != 0)
+            if (deltaX == 0 && deltaY == 0)
             {
-                int dir = FindDirForDelta(rotation, deltaX > 0 ? 1 : -1, 0);
-                for (int i = 0; i < Math.Abs(deltaX); i++) { arrows.Add(DirVKs[dir]); arrowNames.Add(dirNames[dir]); }
-            }
-            if (deltaY != 0)
-            {
-                int dir = FindDirForDelta(rotation, 0, deltaY > 0 ? 1 : -1);
-                for (int i = 0; i < Math.Abs(deltaY); i++) { arrows.Add(DirVKs[dir]); arrowNames.Add(dirNames[dir]); }
+                // Already at target — confirm
+                _input.SendKeyPressToWindow(_gameWindow, VK_F);
+                Thread.Sleep(500);
+                response.Status = "completed";
+                response.Error = $"Already at ({targetX},{targetY})";
+                return response;
             }
 
-            ModLogger.Log($"[MoveGrid] from=({cur.x},{cur.y}) to=({targetX},{targetY}) delta=({deltaX},{deltaY}) rot={rotation} arrows={string.Join(" ", arrowNames)}");
+            // Detect rotation empirically: try each arrow key until one moves the cursor
+            int rdx = 0, rdy = 0; // What "Right" does to grid coords
+            int[] testKeys = { VK_RIGHT, VK_DOWN, VK_LEFT, VK_UP };
 
-            // Execute arrows
-            foreach (var vk in arrows)
+            for (int i = 0; i < 4; i++)
             {
-                _input.SendKeyPressToWindow(_gameWindow, vk);
+                _input.SendKeyPressToWindow(_gameWindow, testKeys[i]);
+                Thread.Sleep(150);
+                var testPos = ReadGridPos();
+                int tdx = testPos.x - startPos.x, tdy = testPos.y - startPos.y;
+
+                if (tdx != 0 || tdy != 0)
+                {
+                    // Undo this test press
+                    int[] undoKeys = { VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN };
+                    _input.SendKeyPressToWindow(_gameWindow, undoKeys[i]);
+                    Thread.Sleep(150);
+
+                    // Derive what Right does from whichever key moved
+                    switch (i)
+                    {
+                        case 0: rdx = tdx; rdy = tdy; break;           // Right itself
+                        case 1: rdx = -tdy; rdy = tdx; break;          // Down → Right = (-dy, dx)
+                        case 2: rdx = -tdx; rdy = -tdy; break;         // Left → Right = opposite
+                        case 3: rdx = tdy; rdy = -tdx; break;          // Up → Right = (dy, -dx)
+                    }
+                    ModLogger.Log($"[MoveGrid] Rotation: key={i} delta=({tdx},{tdy}) → Right=({rdx},{rdy})");
+                    break;
+                }
+                // Key didn't move cursor (boundary) — do NOT press undo, just try next key
+            }
+
+            if (rdx == 0 && rdy == 0)
+            {
+                response.Status = "failed";
+                response.Error = $"Could not detect rotation from ({startPos.x},{startPos.y})";
+                SendKey(VK_ESCAPE); // Exit move mode
+                Thread.Sleep(300);
+                return response;
+            }
+
+            // Compute arrow presses needed
+            // Down = perpendicular to Right = (rdy, -rdx)
+            int ddx = rdy, ddy = -rdx;
+            int aRight, aDown;
+            if (rdx != 0) { aRight = deltaX / rdx; aDown = deltaY / ddy; }
+            else { aRight = deltaY / rdy; aDown = deltaX / ddx; }
+
+            int rightVK = aRight >= 0 ? VK_RIGHT : VK_LEFT;
+            int downVK = aDown >= 0 ? VK_DOWN : VK_UP;
+
+            ModLogger.Log($"[MoveGrid] ({startPos.x},{startPos.y})->({targetX},{targetY}) Right=({rdx},{rdy}) presses: {Math.Abs(aRight)}x{(aRight >= 0 ? "Right" : "Left")} {Math.Abs(aDown)}x{(aDown >= 0 ? "Down" : "Up")}");
+
+            // Execute arrow presses
+            for (int i = 0; i < Math.Abs(aRight); i++)
+            {
+                _input.SendKeyPressToWindow(_gameWindow, rightVK);
+                Thread.Sleep(100);
+            }
+            for (int i = 0; i < Math.Abs(aDown); i++)
+            {
+                _input.SendKeyPressToWindow(_gameWindow, downVK);
                 Thread.Sleep(100);
             }
 
             var finalPos = ReadGridPos();
+            bool onTarget = finalPos.x == targetX && finalPos.y == targetY;
 
-            // Confirm move with F, then poll for screen transition
+            if (!onTarget)
+            {
+                ModLogger.Log($"[MoveGrid] MISS: cursor=({finalPos.x},{finalPos.y}) target=({targetX},{targetY}) — cancelling");
+                SendKey(VK_ESCAPE);
+                Thread.Sleep(300);
+                response.Status = "failed";
+                response.Error = $"Navigation miss: ({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) target=({targetX},{targetY}) Right=({rdx},{rdy})";
+                return response;
+            }
+
+            // Confirm move with F
             _input.SendKeyPressToWindow(_gameWindow, VK_F);
-            Thread.Sleep(300);
+            Thread.Sleep(500);
 
-            // Poll up to 2s for Battle_MyTurn (move confirmed) or stay in Battle_Moving (invalid tile)
+            // Poll up to 3s for Battle_MyTurn
             bool confirmed = false;
             var sw = Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < 2000)
+            while (sw.ElapsedMilliseconds < 3000)
             {
                 var check = _detectScreen();
-                if (check != null && check.Name == "Battle_MyTurn")
-                {
-                    confirmed = true;
-                    break;
-                }
-                if (check != null && check.Name == "Battle_Moving")
-                    break; // still in move mode = invalid tile
+                if (check != null && check.Name == "Battle_MyTurn") { confirmed = true; break; }
                 Thread.Sleep(100);
             }
-            var postScreen = _detectScreen();
 
             response.Status = confirmed ? "completed" : "failed";
-            response.Error = $"from=({cur.x},{cur.y}) to=({targetX},{targetY}) arrows={string.Join(" ", arrows)} cursor=({finalPos.x},{finalPos.y}) {(confirmed ? "CONFIRMED" : $"post={postScreen?.Name}")}";
+            response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) {(confirmed ? "CONFIRMED" : "NOT CONFIRMED")}";
             return response;
         }
 
@@ -864,7 +1377,7 @@ namespace FFTColorCustomizer.GameBridge
 
             // Read camera rotation
             var camResult = _explorer.ReadAbsolute((nint)AddrCameraRotation, 1);
-            int rotation = camResult != null ? (int)(camResult.Value.value % 4) : 0;
+            int rotation = camResult != null ? (int)((camResult.Value.value - 1 + 4) % 4) : 0;
 
             // Build arrow sequence
             var arrows = new List<string>();
@@ -959,15 +1472,19 @@ namespace FFTColorCustomizer.GameBridge
         ///
         /// Index: [rotation % 4, direction] where 0=Right, 1=Left, 2=Up, 3=Down
         /// </summary>
+        // Rotation table: maps effective rotation to arrow key grid deltas.
+        // Raw rotation counter at 0x14077C970 is offset by 1:
+        //   effective_rot = (raw_counter - 1 + 4) % 4
+        // Empirically verified: raw%4=1 → Right=(0,+1) Down=(+1,0) → matches index 0.
         private static readonly (int dx, int dy)[,] ArrowGridDelta = {
-            // rot=0: Right=(0,-1)  Left=(0,+1)  Up=(+1,0)   Down=(-1,0)
-            { (0,-1), (0,1), (1,0), (-1,0) },
-            // rot=1: Right=(-1,0)  Left=(+1,0)  Up=(0,-1)   Down=(0,+1)
-            { (-1,0), (1,0), (0,-1), (0,1) },
-            // rot=2: Right=(0,+1)  Left=(0,-1)  Up=(-1,0)   Down=(+1,0)
+            // eff=0: Right=(0,+1)  Left=(0,-1)  Up=(-1,0)   Down=(+1,0)
             { (0,1), (0,-1), (-1,0), (1,0) },
-            // rot=3: Right=(+1,0)  Left=(-1,0)  Up=(0,+1)   Down=(0,-1)
+            // eff=1: Right=(+1,0)  Left=(-1,0)  Up=(0,+1)   Down=(0,-1)
             { (1,0), (-1,0), (0,1), (0,-1) },
+            // eff=2: Right=(0,-1)  Left=(0,+1)  Up=(+1,0)   Down=(-1,0)
+            { (0,-1), (0,1), (1,0), (-1,0) },
+            // eff=3: Right=(-1,0)  Left=(+1,0)  Up=(0,-1)   Down=(0,+1)
+            { (-1,0), (1,0), (0,-1), (0,1) },
         };
 
         private static readonly int[] DirVKs = { VK_RIGHT, VK_LEFT, VK_UP, VK_DOWN };
@@ -1040,7 +1557,7 @@ namespace FFTColorCustomizer.GameBridge
 
             // Read rotation after entering Move
             var camResult = _explorer.ReadAbsolute((nint)AddrCameraRotation, 1);
-            int rotation = camResult != null ? (int)(camResult.Value.value % 4) : 0;
+            int rotation = camResult != null ? (int)((camResult.Value.value - 1 + 4) % 4) : 0;
 
             // Step 3: Try each adjacent tile around the enemy
             // Order: prefer tiles closer to ally
@@ -1086,7 +1603,7 @@ namespace FFTColorCustomizer.GameBridge
         /// Each cycle step snaps the cursor to a unit, allowing us to read their grid position and team.
         /// </summary>
         /// <summary>Rich unit data collected during C+Up scan.</summary>
-        private class ScannedUnit
+        internal class ScannedUnit
         {
             public int GridX, GridY;
             public int Team;       // 0=ally, 1+=enemy
@@ -1100,6 +1617,28 @@ namespace FFTColorCustomizer.GameBridge
             public int Move, Jump;
             public int Job;
             public int Brave, Faith;
+        }
+
+        /// <summary>Last scan results cached for BFS enemy blocking.</summary>
+        private List<ScannedUnit>? _lastScannedUnits;
+
+        /// <summary>Get enemy grid positions from last scan for BFS blocking.</summary>
+        public HashSet<(int, int)> GetEnemyPositions()
+        {
+            var result = new HashSet<(int, int)>();
+            if (_lastScannedUnits == null) return result;
+            foreach (var u in _lastScannedUnits)
+            {
+                if (u.Team != 0 && u.Hp > 0)
+                    result.Add((u.GridX, u.GridY));
+            }
+            return result;
+        }
+
+        /// <summary>Get active unit (first ally) from last scan.</summary>
+        internal ScannedUnit? GetActiveAlly()
+        {
+            return _lastScannedUnits?.FirstOrDefault(u => u.Team == 0);
         }
 
         // Addresses that control the C-key cursor cycling mode.
@@ -1259,6 +1798,7 @@ namespace FFTColorCustomizer.GameBridge
             SendKey(VK_F);
             Thread.Sleep(300);
 
+            _lastScannedUnits = units;
             return units;
         }
 
@@ -1316,6 +1856,49 @@ namespace FFTColorCustomizer.GameBridge
             return 0; // fallback
         }
 
+        // Movement tile list address (7 bytes per entry: X Y elev flag 0 0 0)
+        private const long AddrMoveTileBase = 0x140C66315;
+
+        /// <summary>
+        /// Read the valid movement tile list and convert from world coords to grid coords.
+        /// Uses the current cursor position (= unit's grid pos) and tile[0] (= unit's world pos)
+        /// to compute the offset.
+        /// </summary>
+        private HashSet<(int gx, int gy)> ReadValidTilesAsGrid((int x, int y) cursorGridPos)
+        {
+            var tiles = new HashSet<(int gx, int gy)>();
+            try
+            {
+                var raw = _explorer.Scanner.ReadBytes((nint)AddrMoveTileBase, 210); // 30 tiles max
+                if (raw.Length < 7) return tiles;
+
+                // Tile[0] = unit's world position. Compute offset.
+                int worldX0 = raw[0];
+                int worldY0 = raw[1];
+                int offsetX = worldX0 - cursorGridPos.x;
+                int offsetY = worldY0 - cursorGridPos.y;
+
+                for (int i = 0; i < raw.Length - 6; i += 7)
+                {
+                    int wx = raw[i];
+                    int wy = raw[i + 1];
+                    int flag = raw[i + 3];
+                    if (flag == 0 && wx == 0 && wy == 0) break;
+
+                    int gx = wx - offsetX;
+                    int gy = wy - offsetY;
+                    tiles.Add((gx, gy));
+                }
+
+                ModLogger.Log($"[ReadValidTiles] {tiles.Count} valid tiles, offset=({offsetX},{offsetY})");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[ReadValidTiles] Failed: {ex.Message}");
+            }
+            return tiles;
+        }
+
         /// <summary>
         /// Read battleTeam from the condensed struct (cursor-highlighted unit).
         /// Returns 0 for friendly/empty, non-zero for enemy.
@@ -1360,7 +1943,16 @@ namespace FFTColorCustomizer.GameBridge
             int delta = target - current;
             int vk = delta > 0 ? VK_DOWN : VK_UP;
             for (int i = 0; i < Math.Abs(delta); i++)
+            {
                 SendKey(vk);
+                Thread.Sleep(150);
+            }
+            // Verify cursor arrived
+            Thread.Sleep(100);
+            var check = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+            int actual = check != null ? (int)check.Value.value : -1;
+            if (actual != target)
+                ModLogger.Log($"[NavigateMenu] WARN: cursor at {actual}, expected {target}");
         }
 
         private bool WaitForScreen(string screenName, int timeoutMs)

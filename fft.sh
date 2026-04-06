@@ -336,6 +336,27 @@ screen() { fft "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}"; }
 # Use during battle (Battle_MyTurn) to discover where everyone is.
 scan_units() { fft_full "{\"id\":\"$(id)\",\"action\":\"scan_units\"}"; }
 
+# auto_move: Full autonomous turn — scan, compute tiles, pick safest, move, wait.
+# Usage: auto_move 7 3   (move=7, jump=3)
+auto_move() {
+  local mv=${1:-4}; local jmp=${2:-3}
+  rm -f "$B/response.json"
+  echo "{\"id\":\"$(id)\",\"action\":\"auto_move\",\"locationId\":$mv,\"unitIndex\":$jmp}" > "$B/command.json"
+  local tries=0
+  until [ -f "$B/response.json" ]; do sleep 0.5; tries=$((tries+1)); [ $tries -ge 300 ] && echo "TIMEOUT" && return 1; done
+  cat "$B/response.json"
+}
+
+# scan_move: Scan units + compute valid movement tiles from map data.
+# Returns unit positions AND valid tiles. Requires set_map first.
+# Usage: scan_move              (uses scanned move/jump stats)
+#        scan_move 3 3          (override move=3, jump=3)
+scan_move() {
+  local mv=${1:-0}
+  local jmp=${2:-0}
+  fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$mv,\"unitIndex\":$jmp}"
+}
+
 # move_grid: Enter Move mode, navigate cursor to grid (x,y), confirm with F.
 # Usage: move_grid <x> <y>
 # Example: move_grid 0 2    → move to grid position (0,2)
@@ -345,6 +366,23 @@ move_grid() { fft_full "{\"id\":\"$(id)\",\"action\":\"move_grid\",\"locationId\
 # Usage: get_arrows          (just show arrows)
 #        get_arrows execute   (show AND execute the move + confirm)
 get_arrows() { fft_full "{\"id\":\"$(id)\",\"action\":\"get_arrows\",\"to\":\"${1:-plan}\"}"; }
+
+# set_map: Load a MAP JSON file for exact BFS terrain data.
+# Usage: set_map 74   (loads MAP074.json)
+# Call before or during battle. Maps must be in claude_bridge/maps/MAP###.json
+set_map() { fft "{\"id\":\"$(id)\",\"action\":\"set_map\",\"locationId\":$1}"; }
+
+# mark_blocked: Mark a grid tile as impassable (learned from failed move attempts)
+# Usage: mark_blocked <gridX> <gridY>
+mark_blocked() { fft "{\"id\":\"$(id)\",\"action\":\"mark_blocked\",\"locationId\":$1,\"unitIndex\":$2}"; }
+
+# heap_snap: Take a heap memory snapshot (for diffing Move vs non-Move mode)
+# Usage: heap_snap <label>   (e.g. "before_move", "during_move")
+heap_snap() { fft "{\"id\":\"$(id)\",\"action\":\"heap_snapshot\",\"searchLabel\":\"$1\"}"; }
+
+# heap_diff: Diff two snapshots. Results written to bridge/diff_<label>.txt
+# Usage: heap_diff <from> <to> <output>
+heap_diff() { fft "{\"id\":\"$(id)\",\"action\":\"diff\",\"fromLabel\":\"$1\",\"toLabel\":\"$2\",\"searchLabel\":\"$3\"}"; }
 
 # wv: Write a byte value to a memory address. Use for testing memory flags.
 # Usage: wv <addr> <value>   (value is decimal, 0-255)

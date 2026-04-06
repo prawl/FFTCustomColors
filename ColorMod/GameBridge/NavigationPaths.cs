@@ -59,7 +59,20 @@ namespace FFTColorCustomizer.GameBridge
                 ["Advance"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ENTER, "Enter") },
-                    Desc = "Advance through title/cutscene/load screen"
+                    Desc = "Press Enter once (advance one screen)"
+                },
+                ["Continue"] = new PathEntry
+                {
+                    Keys = new[]
+                    {
+                        Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter"),
+                        Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter"),
+                        Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter"),
+                    },
+                    DelayBetweenMs = 2000,
+                    WaitUntilScreenNot = "TitleScreen",
+                    WaitTimeoutMs = 20000,
+                    Desc = "Continue saved game (press Enter through title, load, and continue screens)"
                 },
             };
         }
@@ -513,6 +526,10 @@ namespace FFTColorCustomizer.GameBridge
         [System.Text.Json.Serialization.JsonPropertyName("locationId")]
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int LocationId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("delayBetweenMs")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int DelayBetweenMs { get; set; }
 
         [System.Text.Json.Serialization.JsonPropertyName("waitForScreen")]
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
