@@ -1555,10 +1555,6 @@ namespace FFTColorCustomizer.Utilities
                     },
                 };
 
-                // Track world map location for auto map loading (persists to disk)
-                if (screen.Location >= 0 && screen.Location <= 42 && screen.Location != _lastWorldMapLocation)
-                    SaveLastLocation(screen.Location);
-
                 // Save raw location before overriding — needed for title screen detection
                 int rawLocation = screen.Location;
 
@@ -1632,6 +1628,13 @@ namespace FFTColorCustomizer.Utilities
                     screen.Name = "WorldMap";
                 else
                     screen.Name = "Unknown";
+
+                // Track world map location for auto map loading (persists to disk).
+                // Only save when actually stopped on the world map or at an encounter —
+                // NOT during travel animation (location address flickers through intermediate nodes).
+                if (screen.Location >= 0 && screen.Location <= 42 && screen.Location != _lastWorldMapLocation
+                    && (screen.Name == "WorldMap" || screen.Name == "EncounterDialog"))
+                    SaveLastLocation(screen.Location);
 
                 // Reset map auto-load flag when not in battle
                 if (!inBattle && _battleMapAutoLoaded)
