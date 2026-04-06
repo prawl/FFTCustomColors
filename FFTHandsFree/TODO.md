@@ -82,6 +82,7 @@ Claude can move and wait, but can't attack. This is the #1 blocker — you can't
 
 ### Movement System — Remaining Work
 - [~] **Auto-detect battle map** — Location ID lookup + random encounter maps implemented, fingerprint fallback
+- [ ] **last_location.txt gets overwritten on restart** — File reverts to wrong value (30 instead of 26) after kill/deploy/relaunch cycle. Backup/restore in BuildLinked.ps1 may not be working, or boot sequence writes a bad value before battle loads.
 - [~] **Wait facing direction** — Basic implementation done, needs tactical improvement
 - [ ] **Fix Move/Jump stat reading** — UI buffer shows base stats, not effective
 - [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza

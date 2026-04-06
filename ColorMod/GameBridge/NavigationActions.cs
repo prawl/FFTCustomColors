@@ -330,16 +330,18 @@ namespace FFTColorCustomizer.GameBridge
         private CommandResponse BattleWait(CommandResponse response)
         {
             var screen = _detectScreen();
-            if (screen == null || screen.Name != "Battle_MyTurn")
+            if (screen == null || (screen.Name != "Battle_MyTurn" && screen.Name != "Battle_Acting"))
             {
                 response.Status = "failed";
-                response.Error = $"Not on Battle_MyTurn screen (current: {screen?.Name ?? "null"})";
+                response.Error = $"Not on Battle_MyTurn/Battle_Acting screen (current: {screen?.Name ?? "null"})";
                 return response;
             }
 
-            // Navigate cursor to Wait (position 2)
-            int cursor = screen.MenuCursor;
+            // Read cursor directly from memory (screen.MenuCursor can be stale)
+            var cursorResult = _explorer.ReadAbsolute((nint)0x1407FCCA8, 1);
+            int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
             int target = 2; // Wait
+            ModLogger.Log($"[BattleWait] Cursor at {cursor}, navigating to {target}");
             NavigateMenuCursor(cursor, target);
 
             // Press Enter to select Wait
@@ -1304,7 +1306,7 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(200);
 
                 // Verify cursor is on Wait (2) before pressing Enter
-                var cursorCheck = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+                var cursorCheck = _explorer.ReadAbsolute((nint)0x1407FCCA8, 1);
                 int cursorVal = cursorCheck != null ? (int)cursorCheck.Value.value : -1;
                 ModLogger.Log($"[AutoMove] Wait cursor={cursorVal} (expect 2)");
 
@@ -2194,7 +2196,7 @@ namespace FFTColorCustomizer.GameBridge
             }
             // Verify cursor arrived
             Thread.Sleep(100);
-            var check = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+            var check = _explorer.ReadAbsolute((nint)0x1407FCCA8, 1);
             int actual = check != null ? (int)check.Value.value : -1;
             if (actual != target)
                 ModLogger.Log($"[NavigateMenu] WARN: cursor at {actual}, expected {target}");

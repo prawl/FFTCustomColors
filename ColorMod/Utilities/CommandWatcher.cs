@@ -1051,7 +1051,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x140D4A264, 1),  // 1: uiFlag
             ((nint)0x14077D208, 1),  // 2: location
             ((nint)0x140787A22, 1),  // 3: hover
-            ((nint)0x1407FC620, 1),  // 4: menuCursor (battle action menu: 0=Move,1=Abilities,2=Wait,3=Status,4=AutoBattle)
+            ((nint)0x1407FCCA8, 1),  // 4: menuCursor (battle action menu: 0=Move,1=Abilities,2=Wait,3=Status,4=AutoBattle)
             ((nint)0x140900824, 1),  // 5: encA
             ((nint)0x140900828, 1),  // 6: encB
             ((nint)0x14077D2A2, 2),  // 7: battleTeam
@@ -1581,34 +1581,18 @@ namespace FFTColorCustomizer.Utilities
                 // Battle detection: use RAW location (not overridden by last_location.txt).
                 // Title screen has rawLocation=255, battleMode=255, slot0=0xFFFFFFFF.
                 // World map has rawLocation 0-42, battleMode=0.
-                // Battle has rawLocation=255 (or valid), battleMode>0.
-                bool rawValidLocation = rawLocation >= 0 && rawLocation <= 42;
-                bool clearlyOnWorldMap = rawValidLocation && party == 0 && battleMode == 0;
-                bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF && !clearlyOnWorldMap);
                 int gameOverFlag = (int)v[18];
+                bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF);
 
-                if (inBattle && paused == 1 && battleMode == 0 && gameOverFlag == 1)
-                    screen.Name = "GameOver";
-                else if (inBattle && paused == 1)
-                    screen.Name = "Battle_Paused";
-                else if (inBattle && (moveMode == 255 || battleMode == 2) && screen.BattleActed == 0)
-                    screen.Name = "Battle_Moving";
-                else if (inBattle && (moveMode == 255 || battleMode == 2) && screen.BattleActed == 1)
-                    screen.Name = "Battle_Targeting";
-                else if (inBattle && screen.BattleTeam == 0 && screen.BattleActed == 0 && screen.BattleMoved == 0)
-                    screen.Name = "Battle_MyTurn";
-                else if (inBattle && screen.BattleTeam == 0 && (screen.BattleActed == 1 || screen.BattleMoved == 1))
-                    screen.Name = "Battle_Acting";
-                else if (inBattle)
-                    screen.Name = "Battle";
-                else if (rawLocation == 255 || rawLocation < 0)
-                    screen.Name = "TitleScreen";
-                else if (eA != eB)
-                    screen.Name = "EncounterDialog";
-                else if (!inBattle && IsPartySubScreen())
+                screen.Name = GameBridge.ScreenDetectionLogic.Detect(
+                    party, ui, rawLocation, slot0, slot9,
+                    battleMode, moveMode, paused, gameOverFlag,
+                    screen.BattleTeam, screen.BattleActed, screen.BattleMoved,
+                    eA, eB, !inBattle && IsPartySubScreen());
+
+                // Resolve party sub-screen to specific screen via state machine
+                if (screen.Name == "PartySubScreen")
                 {
-                    // State machine says we're in a party sub-screen.
-                    // Trust it — memory flags (party/ui) are unreliable in sub-screens.
                     screen.Name = ScreenMachine!.CurrentScreen switch
                     {
                         GameScreen.CharacterStatus => "CharacterStatus",
@@ -1620,14 +1604,6 @@ namespace FFTColorCustomizer.Utilities
                         _ => "PartyMenu"
                     };
                 }
-                else if (party == 1)
-                    screen.Name = "PartyMenu";
-                else if (party == 0 && ui == 1)
-                    screen.Name = "TravelList";
-                else if (party == 0 && ui == 0)
-                    screen.Name = "WorldMap";
-                else
-                    screen.Name = "Unknown";
 
                 // Track world map location for auto map loading (persists to disk).
                 // Only save when actually stopped on the world map or at an encounter —

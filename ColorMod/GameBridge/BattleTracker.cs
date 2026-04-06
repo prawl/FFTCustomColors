@@ -41,7 +41,7 @@ namespace FFTColorCustomizer.GameBridge
         private const long AddrBattleMoved = 0x14077CA9C;
         private const long AddrUnitSlot0 = 0x14077CA30;
         private const long AddrUnitSlot9 = 0x14077CA54;
-        private const long AddrMenuCursor = 0x1407FC620;
+        private const long AddrMenuCursor = 0x1407FCCA8;
         private const long AddrActiveNameId = 0x14077CA94;
         private const long AddrActiveCt = 0x14077CA60;
         private const long AddrActiveJobId = 0x14077CA6C;
