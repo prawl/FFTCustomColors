@@ -1557,6 +1557,10 @@ namespace FFTColorCustomizer.Utilities
                 else
                     screen.Name = "Unknown";
 
+                // Reset map auto-load flag when not in battle
+                if (!inBattle && _battleMapAutoLoaded)
+                    _battleMapAutoLoaded = false;
+
                 // Auto-load map when first entering battle (any battle screen)
                 if (inBattle && !_battleMapAutoLoaded)
                 {
