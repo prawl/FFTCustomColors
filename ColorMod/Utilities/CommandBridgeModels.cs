@@ -213,6 +213,10 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("location")]
         public int Location { get; set; }
 
+        [JsonPropertyName("locationName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? LocationName { get; set; }
+
         [JsonPropertyName("hover")]
         public int Hover { get; set; }
 

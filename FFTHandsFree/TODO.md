@@ -69,14 +69,14 @@ Everything Claude needs to fight battles intelligently: unit scanning, movement,
 
 Map-based BFS and move_grid are working. These items complete the movement system:
 
-- [ ] **Auto-detect battle map** — Identify which MAP file (MAP000-MAP122) matches the current battle. Terrain fingerprinting (dimensions + 5 tile heights) uniquely identifies all 122 maps. Currently requires manual `set_map` call.
-- [ ] **Wait facing direction** — When selecting Wait, choose facing direction toward nearest enemy. Currently confirms facing immediately without choosing.
+- [~] **Auto-detect battle map** — Location ID lookup + height fingerprinting implemented. Works for known locations (5 mapped so far). Falls back to unit positions + ally height for unknown locations.
+- [ ] **Map all ~40 world map locations** — Build complete location_maps.json by visiting each location and identifying the MAP number. Only 5/~40 mapped so far: 26=MAP074, 28=MAP076, 29=MAP077, 35=MAP083, 37=MAP084. Story battles may use different maps than random encounters at the same location.
+- [~] **Wait facing direction** — Basic implementation done (faces toward nearest enemy using negated cursor delta). Needs tactical improvement: minimize back exposure considering all enemy positions, threat levels, and map edges. Facing key = opposite of cursor movement direction (empirically verified).
 - [ ] **Fix rotation detection** — Read rotation counter directly (`0x14077C970`, formula `(raw-1+4)%4`) instead of empirical test-press. Test-press has boundary/timing issues. Need to verify the table at all 4 rotations empirically.
 - [ ] **Fix Move/Jump stat reading** — UI buffer at `0x1407AC7E4`/`0x1407AC7E6` shows base stats (e.g. 4/4), not effective stats after equipment (e.g. 3/3). Need to find the effective stat address or compute from equipment.
 - [ ] **Auto-deploy MAP files** — Update `BuildLinked.ps1` to copy `FFTHandsFree/maps/` to `claude_bridge/maps/` during deploy. Currently must re-copy manually after every deploy.
 - [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza (different Move/Jump stats, different tactical priorities).
 - [ ] **Neutral unit handling (team=2)** — Team 2 = neutral/NPC (not enemy). Don't block pathing for neutrals. Neutrals may not appear in C+Up turn cycling. 9 unit slots active but only 3 found in scan during rare encounter.
-- [ ] **BFS enemy traversal** — Units can move THROUGH enemy tiles but can't STOP on them. Current BFS blocks enemies from traversal entirely. Fix: allow enemies in BFS pathfinding, only exclude from final valid tile list.
 - [ ] **Fix GameOver vs Pause detection** — Battle_Paused and GameOver screens are being confused. Need a reliable way to distinguish them (different memory flags).
 
 ---

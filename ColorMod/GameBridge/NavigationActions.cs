@@ -306,9 +306,41 @@ namespace FFTColorCustomizer.GameBridge
 
             // Press Enter to select Wait
             SendKey(VK_ENTER);
-            Thread.Sleep(300);
+            Thread.Sleep(500);
 
-            // Press Enter to confirm facing direction
+            // Face toward nearest enemy before confirming
+            var ally = _lastScannedUnits?.FirstOrDefault(u => u.Team == 0);
+            var enemies = _lastScannedUnits?.Where(u => u.Team == 1 && u.Hp > 0).ToList();
+            if (ally != null && enemies != null && enemies.Count > 0)
+            {
+                var nearest = enemies.OrderBy(e => Math.Abs(e.GridX - ally.GridX) + Math.Abs(e.GridY - ally.GridY)).First();
+                int dx = nearest.GridX - ally.GridX;
+                int dy = nearest.GridY - ally.GridY;
+
+                // Determine dominant direction to face
+                // Use empirical rotation detection: press Right, observe delta, derive mapping
+                // Same approach as move_grid — static table has known issues
+                int faceDx = 0, faceDy = 0;
+                if (Math.Abs(dx) >= Math.Abs(dy)) { faceDx = dx > 0 ? 1 : -1; }
+                else { faceDy = dy > 0 ? 1 : -1; }
+
+                // Facing uses OPPOSITE direction from cursor movement:
+                // pressing Down moves cursor +X but faces unit -X.
+                // So negate the face delta when looking up the arrow key.
+                var camResult = _explorer.ReadAbsolute((nint)AddrCameraRotation, 1);
+                int rotation = camResult != null ? (int)((camResult.Value.value - 1 + 4) % 4) : 0;
+
+                int dir = FindDirForDelta(rotation, -faceDx, -faceDy);
+                int vk = DirVKs[dir];
+
+                _input.SendKeyPressToWindow(_gameWindow, vk);
+                Thread.Sleep(200);
+
+                string[] dirNames = { "Right", "Left", "Up", "Down" };
+                ModLogger.Log($"[BattleWait] Facing toward ({nearest.GridX},{nearest.GridY}) delta=({dx},{dy}) face=({faceDx},{faceDy}) key={dirNames[dir]} rot={rotation}");
+            }
+
+            // Confirm facing
             SendKey(VK_ENTER);
 
             // Hold Ctrl to fast-forward enemy turns

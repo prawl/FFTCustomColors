@@ -115,10 +115,12 @@ fft() {
   local R=$(cat "$B/response.json" | tr -d '\r\n ')
   local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
   local LOC=$(echo "$R" | grep -o '"location":[0-9]*' | head -1 | cut -d: -f2)
+  local LOCNAME=$(echo "$R" | grep -o '"locationName":"[^"]*"' | head -1 | cut -d'"' -f4)
   local HOV=$(echo "$R" | grep -o '"hover":[0-9]*' | head -1 | cut -d: -f2)
   local MC=$(echo "$R" | grep -o '"menuCursor":[0-9]*' | head -1 | cut -d: -f2)
   local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
-  echo "[$SCR] loc=$LOC hover=$HOV menu=$MC status=$ST"
+  local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
+  echo "[$SCR] loc=$LOCSTR hover=$HOV menu=$MC status=$ST"
 }
 
 # fft_full: Send raw command JSON, wait for response, return entire JSON.

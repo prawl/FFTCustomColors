@@ -1001,6 +1001,30 @@ namespace FFTColorCustomizer.Utilities
         private int _lastWorldMapLocation = -1;
         private bool _battleMapAutoLoaded = false;
 
+        private static readonly Dictionary<int, string> LocationNames = new()
+        {
+            {0, "Orbonne Monastery"}, {1, "Gariland"}, {2, "Mandalia Plains"},
+            {3, "Eagrose Castle"}, {4, "Zeklaus Desert"}, {5, "Thieves Fort"},
+            {6, "Lenalia Plateau"}, {7, "Windmill Hut"}, {8, "Fort Besselat"},
+            {9, "Dorter Trade City"}, {10, "Araguay Woods"}, {11, "Zirekile Falls"},
+            {12, "Zaland Fort City"}, {13, "Bariaus Hill"}, {14, "Tchigolith Fenlands"},
+            {15, "Bariaus Valley"}, {16, "Lionel Castle"}, {17, "Goug Machine City"},
+            {18, "Warjilis Trade City"}, {19, "Golgollada Gallows"}, {20, "Lesalia Imperial Capital"},
+            {21, "Riovanes Castle"}, {22, "Yardrow Fort City"}, {23, "Walled City of Yardrow"},
+            {24, "Dugeura Pass"}, {25, "Bervenia Free City"}, {26, "Siedge Weald"},
+            {27, "Mount Germinas"}, {28, "Zeklaus Desert"}, {29, "Lenalia Plateau"},
+            {30, "Lake Poescas"}, {31, "Dorvauldar Marsh"}, {32, "Grogh Heights"},
+            {33, "Beddha Sandwaste"}, {34, "Finnath Creek"}, {35, "Balias Tor"},
+            {36, "Balias Swale"}, {37, "Balias Tor"}, {38, "Mount Bervenia"},
+            {39, "Zeltennia Castle"}, {40, "Limberry Castle"}, {41, "Igros Castle"},
+            {42, "Mullonde"},
+        };
+
+        private static string? GetLocationName(int locationId)
+        {
+            return LocationNames.TryGetValue(locationId, out var name) ? name : null;
+        }
+
         private string? _lastLocationPath;
 
         private string GetLastLocationPath()
@@ -1350,6 +1374,8 @@ namespace FFTColorCustomizer.Utilities
                 // Track world map location for auto map loading (persists to disk)
                 if (screen.Location >= 0 && screen.Location <= 42 && screen.Location != _lastWorldMapLocation)
                     SaveLastLocation(screen.Location);
+
+                screen.LocationName = GetLocationName(screen.Location);
 
                 int party = (int)v[0];
                 int ui = (int)v[1];
