@@ -88,7 +88,7 @@ Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `bat
 - [ ] **Fix Move/Jump stat reading** — UI buffer shows base stats, not effective
 - [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza
 - [ ] **Neutral unit handling (team=2)** — Don't block pathing for neutrals
-- [ ] **Menu cursor address (0x1407FCCA8) goes stale** — Reads correctly during a turn but doesn't reset at start of new turn. Shows old value (e.g. Wait=2) when cursor is visually on Move. Need to find a more reliable cursor source or detect turn transitions to invalidate cache.
+- [x] **Menu cursor address fixed** — 0x1407FC620 is reliable (resets on new turn, tracks all 5 positions, survives restart). 0x1407FCCA8 was the stale one. Thorough testing confirmed.
 - [ ] **Auto-scan double-fire** — Auto-scan on Battle_MyTurn fires after scan_move already scanned, causing key presses that open Status menu. Disabled for now. Need scan_move to mark turn as scanned via BattleTurnTracker.
 
 ---
