@@ -345,6 +345,144 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Searches heap memory for the battle scenario struct and returns the MAP ID.
+        /// The scenario struct has location ID at +0x24 and MAP ID at +0x30 (both uint32).
+        /// Searches PAGE_READWRITE heap regions for a uint32 value in the valid MAP range (1-127)
+        /// at offset +0x0C from a uint32 matching a known location ID pattern.
+        /// Returns -1 if not found.
+        /// </summary>
+        public int FindScenarioMapId(int locationHint = -1)
+        {
+            try
+            {
+                // Search heap for the battle scenario struct.
+                // The struct has location ID (uint32) at +0x24 and map ID (uint32) at +0x30.
+                // Between them (+0x28 to +0x2F) are: unknown, music ID — 8 bytes.
+                // We collect ALL matches and return the most plausible one.
+                using var process = Process.GetCurrentProcess();
+                nint address = nint.Zero;
+                int regionsSearched = 0;
+                long totalBytes = 0;
+                var candidates = new List<(int mapId, int locId, int scenarioId, nint addr)>();
+
+                while (regionsSearched < 500 && totalBytes < 300_000_000)
+                {
+                    if (VirtualQueryEx(process.Handle, address, out MEMORY_BASIC_INFORMATION mbi, (uint)Marshal.SizeOf<MEMORY_BASIC_INFORMATION>()) == 0)
+                        break;
+
+                    nint nextAddr = mbi.BaseAddress + (nint)mbi.RegionSize;
+                    if (nextAddr <= address) break;
+                    address = nextAddr;
+
+                    bool isReadWrite = (mbi.Protect & 0x04) != 0;
+                    bool isCommitted = mbi.State == 0x1000;
+                    bool notGuard = (mbi.Protect & 0x100) == 0;
+                    bool notTooBig = (long)mbi.RegionSize <= 4_000_000;
+                    bool isPrivateOrMapped = mbi.Type == 0x20000 || mbi.Type == 0x40000;
+
+                    if (!(isCommitted && isReadWrite && notGuard && notTooBig && isPrivateOrMapped))
+                        continue;
+
+                    regionsSearched++;
+                    byte[] regionBytes;
+                    try { regionBytes = _scanner.ReadBytes(mbi.BaseAddress, (int)mbi.RegionSize); }
+                    catch { continue; }
+                    totalBytes += regionBytes.Length;
+
+                    // Search for pattern: locId(1-42) at +0x24, mapId(1-127) at +0x30
+                    for (int i = 0x24; i <= regionBytes.Length - 0x3C; i += 4)
+                    {
+                        uint locId = BitConverter.ToUInt32(regionBytes, i);
+                        if (locId < 1 || locId > 42) continue;
+
+                        uint mapId = BitConverter.ToUInt32(regionBytes, i + 0x0C);
+                        if (mapId < 1 || mapId > 127) continue;
+
+                        // Struct base validation
+                        uint scenarioId = BitConverter.ToUInt32(regionBytes, i - 0x24);
+                        if (scenarioId < 50 || scenarioId > 600) continue;
+
+                        uint subType = BitConverter.ToUInt32(regionBytes, i - 0x20);
+                        if (subType > 20) continue;
+
+                        // Fields between location and map should be plausible
+                        uint field28 = BitConverter.ToUInt32(regionBytes, i + 0x04); // +0x28
+                        uint musicId = BitConverter.ToUInt32(regionBytes, i + 0x08); // +0x2C
+                        if (musicId > 200) continue;
+                        if (field28 > 200) continue;
+
+                        uint surfaceType = BitConverter.ToUInt32(regionBytes, i + 0x10); // +0x34
+                        if (surfaceType > 50) continue;
+
+                        if (i + 0x38 >= regionBytes.Length) continue;
+                        uint teams = BitConverter.ToUInt32(regionBytes, i + 0x38);
+                        if (teams < 1 || teams > 4) continue;
+
+                        nint foundAddr = mbi.BaseAddress + i - 0x24;
+                        candidates.Add(((int)mapId, (int)locId, (int)scenarioId, foundAddr));
+                    }
+                }
+
+                if (candidates.Count > 0)
+                {
+                    // Write all candidates to a file for debugging
+                    try
+                    {
+                        var debugPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? ".", "claude_bridge", "map_candidates.txt");
+                        var lines = new List<string> { $"Found {candidates.Count} candidates ({regionsSearched} regions, {totalBytes/1024}KB):" };
+                        foreach (var c in candidates)
+                            lines.Add($"  scenario={c.scenarioId} loc={c.locId} map={c.mapId} at 0x{c.addr:X}");
+                        File.WriteAllLines(debugPath, lines);
+                    }
+                    catch { /* best effort */ }
+
+                    // Log all candidates
+                    foreach (var c in candidates)
+                        ModLogger.Log($"[Map] Candidate: scenario={c.scenarioId} loc={c.locId} map={c.mapId} at 0x{c.addr:X}");
+
+                    // If we have a location hint, filter to candidates matching that location
+                    if (locationHint >= 0)
+                    {
+                        var locMatches = candidates.FindAll(c => c.locId == locationHint);
+                        if (locMatches.Count > 0)
+                        {
+                            var best2 = locMatches[0];
+                            ModLogger.Log($"[Map] Selected (loc hint={locationHint}): scenario={best2.scenarioId} loc={best2.locId} map={best2.mapId} at 0x{best2.addr:X}");
+                            return best2.mapId;
+                        }
+                    }
+
+                    // Filter to low-address candidates (< 0x10000000) which are live battle data,
+                    // not the massive lookup tables at high addresses (0x42xx+, 0x43xx+)
+                    var lowAddr = candidates.FindAll(c => (long)c.addr < 0x10000000);
+                    if (lowAddr.Count > 0)
+                    {
+                        // Take the one with the highest scenario ID among low-address matches
+                        var best3 = lowAddr[0];
+                        foreach (var c in lowAddr)
+                            if (c.scenarioId > best3.scenarioId)
+                                best3 = c;
+                        ModLogger.Log($"[Map] Selected (low-addr, {lowAddr.Count} candidates): scenario={best3.scenarioId} loc={best3.locId} map={best3.mapId} at 0x{best3.addr:X}");
+                        return best3.mapId;
+                    }
+
+                    // Fallback: use first match at lowest address
+                    var best = candidates[0];
+
+                    ModLogger.Log($"[Map] Selected: scenario={best.scenarioId} loc={best.locId} map={best.mapId} at 0x{best.addr:X}");
+                    return best.mapId;
+                }
+
+                ModLogger.Log($"[Map] Scenario struct not found ({regionsSearched} regions, {totalBytes / 1024}KB searched)");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[Map] FindScenarioMapId error: {ex.Message}");
+            }
+            return -1;
+        }
+
+        /// <summary>
         /// Reads 1, 2, or 4 bytes at an absolute memory address.
         /// Returns (value, rawBytes) or null if read fails.
         /// </summary>

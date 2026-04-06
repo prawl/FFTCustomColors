@@ -1576,59 +1576,18 @@ namespace FFTColorCustomizer.Utilities
                         }
                     }
 
-                    // Fallback: scan static map ID table at 0x14077E800 (8-byte stride)
-                    // This table contains all loaded map resource IDs during battle.
-                    // We pick the first entry that matches a MAP file we have on disk.
+                    // Fallback: search heap for scenario struct with MAP ID
                     if (!mapLoaded && _mapLoader != null)
                     {
-                        try
+                        int heapMapId = Explorer.FindScenarioMapId(_lastWorldMapLocation);
+                        if (heapMapId > 0)
                         {
-                            const long AddrMapTable = 0x14077E600;
-                            const int MapTableEntries = 80; // scan up to 80 entries
-                            const int MapTableStride = 8;
-
-                            var tableReads = new (nint, int)[MapTableEntries];
-                            for (int i = 0; i < MapTableEntries; i++)
-                                tableReads[i] = ((nint)(AddrMapTable + i * MapTableStride), 4);
-                            var mapIds = Explorer.ReadMultiple(tableReads);
-
-                            // Try each map ID — load the first one we have a MAP file for
-                            // that's in the valid battle map range (1-127)
-                            for (int i = 0; i < MapTableEntries; i++)
+                            var heapMap = _mapLoader.LoadMap(heapMapId);
+                            if (heapMap != null)
                             {
-                                int mapId = (int)mapIds[i];
-                                if (mapId >= 1 && mapId <= 127)
-                                {
-                                    var testMap = _mapLoader.LoadMap(mapId);
-                                    if (testMap != null)
-                                    {
-                                        // Validate: check if active unit position is in-bounds on this map
-                                        var battleState = BattleTracker?.Update();
-                                        if (battleState?.ActiveUnit != null)
-                                        {
-                                            int ux = battleState.ActiveUnit.X;
-                                            int uy = battleState.ActiveUnit.Y;
-                                            if (ux >= 0 && uy >= 0 && testMap.InBounds(ux, uy))
-                                            {
-                                                ModLogger.Log($"[Map] Found MAP{mapId:D3} in table at entry {i}, unit ({ux},{uy}) in-bounds");
-                                                mapLoaded = true;
-                                                break;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            // No unit data yet, just use the first valid map
-                                            ModLogger.Log($"[Map] Found MAP{mapId:D3} in table at entry {i} (no unit validation)");
-                                            mapLoaded = true;
-                                            break;
-                                        }
-                                    }
-                                }
+                                ModLogger.Log($"[Map] Loaded MAP{heapMapId:D3} from scenario struct heap search");
+                                mapLoaded = true;
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            ModLogger.LogError($"[Map] Table scan failed: {ex.Message}");
                         }
                     }
 
