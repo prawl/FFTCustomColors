@@ -493,3 +493,12 @@ FFT uses DirectInput for keyboard polling. Standard Win32 APIs (PostMessage, key
 5. Release via all three methods when done
 
 **Used for:** C+Up unit cycling scan
+
+---
+
+## Sources & References
+
+- [ ] Add source references to docs for:
+  - [fft-map-json](https://github.com/rainbowbismuth/fft-map-json) — Pre-parsed map terrain data (122 MAP JSON files with heights, slopes, surfaces, starting locations)
+  - [FFT Move-Find Item Guide by FFBeowulf](https://gamefaqs.gamespot.com/ps/197339-final-fantasy-tactics/faqs/32346) — ASCII height maps for every battle location with noWalk tiles, used for MAP number identification
+  - [FFHacktics Wiki](https://ffhacktics.com/wiki/) — PSX memory maps, terrain format, scenario tables

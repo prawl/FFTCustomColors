@@ -1,0 +1,434 @@
+{
+  "1.1": {
+    "name": "Mandalia Plains",
+    "mapNumber": 85,
+    "dims": "12x13",
+    "confidence": "high"
+  },
+  "1.2": {
+    "name": "Sweegy Woods",
+    "mapNumber": 82,
+    "dims": "11x12",
+    "confidence": "known"
+  },
+  "1.3": {
+    "name": "Slums in Dorter",
+    "mapNumber": 32,
+    "dims": "10x16",
+    "confidence": "known"
+  },
+  "1.4": {
+    "name": "Cellar of Sand Mouse (at Zeklaus Desert)",
+    "mapNumber": 51,
+    "dims": "10x11",
+    "confidence": "known"
+  },
+  "1.5": {
+    "name": "Zeklaus Desert",
+    "mapNumber": 76,
+    "dims": "10x18",
+    "confidence": "known"
+  },
+  "1.6": {
+    "name": "Thieves Fort",
+    "mapNumber": 91,
+    "dims": "10x12",
+    "confidence": "medium"
+  },
+  "1.7": {
+    "name": "Lenalia Plateau",
+    "mapNumber": 77,
+    "dims": "11x11",
+    "confidence": "medium"
+  },
+  "1.8": {
+    "name": "Windmill Shed (at Fovoham Plains)",
+    "mapNumber": 103,
+    "dims": "8x10",
+    "confidence": "high"
+  },
+  "1.9": {
+    "name": "Fovoham Plains",
+    "mapNumber": 72,
+    "dims": "9x14",
+    "confidence": "high"
+  },
+  "1.10": {
+    "name": "Fort Zeakden",
+    "mapNumber": 49,
+    "dims": "9x13",
+    "confidence": "known"
+  },
+  "2.1": {
+    "name": "Dorter Trade City",
+    "mapNumber": 31,
+    "dims": "9x11",
+    "confidence": "high"
+  },
+  "2.2": {
+    "name": "Araguay Woods",
+    "mapNumber": 82,
+    "dims": "10x12",
+    "confidence": "known"
+  },
+  "2.3": {
+    "name": "Zirekile Falls",
+    "mapNumber": 2,
+    "dims": "10x11",
+    "confidence": "known"
+  },
+  "2.4": {
+    "name": "Zaland Fort City",
+    "mapNumber": 35,
+    "dims": "10x13",
+    "confidence": "high"
+  },
+  "2.5": {
+    "name": "Bariaus Hill",
+    "mapNumber": 72,
+    "dims": "9x14",
+    "confidence": "known"
+  },
+  "2.6": {
+    "name": "Zigolis Swamp",
+    "mapNumber": 78,
+    "dims": "12x12",
+    "confidence": "known"
+  },
+  "2.7": {
+    "name": "Slums in Goug",
+    "mapNumber": 31,
+    "dims": "9x11",
+    "confidence": "known"
+  },
+  "2.8": {
+    "name": "Bariaus Valley",
+    "mapNumber": 87,
+    "dims": "12x12",
+    "confidence": "known"
+  },
+  "2.9": {
+    "name": "Golgorand Execution Site",
+    "mapNumber": 63,
+    "dims": "11x11",
+    "confidence": "high"
+  },
+  "2.10": {
+    "name": "At the Gate of Lionel Castle",
+    "mapNumber": 12,
+    "dims": "9x15",
+    "confidence": "high"
+  },
+  "2.11": {
+    "name": "Inside of Lionel Castle",
+    "mapNumber": 13,
+    "dims": "8x10",
+    "confidence": "high"
+  },
+  "3.1": {
+    "name": "Goland Coal City",
+    "mapNumber": 27,
+    "dims": "10x10",
+    "confidence": "known"
+  },
+  "3.2": {
+    "name": "Back Gate of Lesalia Castle",
+    "mapNumber": 2,
+    "dims": "10x11",
+    "confidence": "high"
+  },
+  "3.3": {
+    "name": "Underground Book Storage Second Floor",
+    "mapNumber": 58,
+    "dims": "10x12",
+    "confidence": "high"
+  },
+  "3.4": {
+    "name": "Underground Book Storage Third Floor",
+    "mapNumber": 82,
+    "dims": "11x12",
+    "confidence": "known"
+  },
+  "3.5": {
+    "name": "Underground Book Storage First Floor",
+    "mapNumber": 33,
+    "dims": "9x13",
+    "confidence": "known"
+  },
+  "3.6": {
+    "name": "Grog Hill",
+    "mapNumber": 81,
+    "dims": "11x13",
+    "confidence": "high"
+  },
+  "3.7": {
+    "name": "Yardow Fort City",
+    "mapNumber": 25,
+    "dims": "10x12",
+    "confidence": "high"
+  },
+  "3.8": {
+    "name": "Yuguo Woods",
+    "mapNumber": 70,
+    "dims": "8x12",
+    "confidence": "known"
+  },
+  "3.9": {
+    "name": "At the Gate of Riovanes Castle",
+    "mapNumber": 78,
+    "dims": "12x12",
+    "confidence": "known"
+  },
+  "3.10": {
+    "name": "Inside of Riovanes Castle",
+    "mapNumber": 7,
+    "dims": "8x12",
+    "confidence": "medium"
+  },
+  "3.11": {
+    "name": "Roof of Riovanes Castle",
+    "mapNumber": 116,
+    "dims": "11x11",
+    "confidence": "known"
+  },
+  "4.1": {
+    "name": "Doguola Pass",
+    "mapNumber": 68,
+    "dims": "8x10",
+    "confidence": "known"
+  },
+  "4.2": {
+    "name": "Bervenia Free City",
+    "mapNumber": 35,
+    "dims": "10x13",
+    "confidence": "known"
+  },
+  "4.3": {
+    "name": "Finath River",
+    "mapNumber": 88,
+    "dims": "10x17",
+    "confidence": "medium"
+  },
+  "4.4": {
+    "name": "Zeltennia Castle (Church Outside the Town)",
+    "mapNumber": 36,
+    "dims": "10x10",
+    "confidence": "high"
+  },
+  "4.5": {
+    "name": "Bed Desert",
+    "mapNumber": 91,
+    "dims": "10x12",
+    "confidence": "known"
+  },
+  "4.6": {
+    "name": "South Wall of Bethla Garrison",
+    "mapNumber": 66,
+    "dims": "9x13",
+    "confidence": "high"
+  },
+  "4.7": {
+    "name": "North Wall of Bethla Garrison",
+    "mapNumber": 97,
+    "dims": "11x13",
+    "confidence": "known"
+  },
+  "4.8": {
+    "name": "In Front of Bethla Garrison's Sluice",
+    "mapNumber": 90,
+    "dims": "10x12",
+    "confidence": "known"
+  },
+  "4.9": {
+    "name": "Germinas Peak",
+    "mapNumber": 90,
+    "dims": "10x12",
+    "confidence": "known"
+  },
+  "4.10": {
+    "name": "Poeskas Lake",
+    "mapNumber": 89,
+    "dims": "11x14",
+    "confidence": "high"
+  },
+  "4.11": {
+    "name": "At the Gates of Limberry Castle",
+    "mapNumber": 19,
+    "dims": "8x14",
+    "confidence": "high"
+  },
+  "4.12": {
+    "name": "Inside Limberry Castle",
+    "mapNumber": 16,
+    "dims": "10x13",
+    "confidence": "high"
+  },
+  "4.13": {
+    "name": "Underground Graveyard of Limberry Castle",
+    "mapNumber": 17,
+    "dims": "6x16",
+    "confidence": "high"
+  },
+  "4.14": {
+    "name": "Inside of Igros Castle",
+    "mapNumber": 13,
+    "dims": "10x11",
+    "confidence": "known"
+  },
+  "4.15": {
+    "name": "St. Murond Temple",
+    "mapNumber": 50,
+    "dims": "8x16",
+    "confidence": "medium"
+  },
+  "4.16": {
+    "name": "Hall of St. Murond Temple",
+    "mapNumber": 3,
+    "dims": "9x13",
+    "confidence": "high"
+  },
+  "4.17": {
+    "name": "Chapel of St. Murond Temple",
+    "mapNumber": 47,
+    "dims": "8x16",
+    "confidence": "known"
+  },
+  "4.18": {
+    "name": "Underground Book Storage Fourth Floor",
+    "mapNumber": 50,
+    "dims": "8x16",
+    "confidence": "known"
+  },
+  "4.19": {
+    "name": "Underground Book Storage Fifth Floor",
+    "mapNumber": 61,
+    "dims": "12x15",
+    "confidence": "known"
+  },
+  "4.20": {
+    "name": "Murond Death City",
+    "mapNumber": 69,
+    "dims": "12x12",
+    "confidence": "medium"
+  },
+  "4.21": {
+    "name": "Lost Sacred Precincts",
+    "mapNumber": 54,
+    "dims": "10x14",
+    "confidence": "known"
+  },
+  "4.22": {
+    "name": "Graveyard of Airships",
+    "mapNumber": 45,
+    "dims": "9x16",
+    "confidence": "known"
+  },
+  "5.1": {
+    "name": "Bervenia Volcano",
+    "mapNumber": 75,
+    "dims": "10x12",
+    "confidence": "high"
+  },
+  "5.2": {
+    "name": "Dolbodar Swamp",
+    "mapNumber": 44,
+    "dims": "10x14",
+    "confidence": "known"
+  },
+  "5.3": {
+    "name": "Colliery Underground Third Floor",
+    "mapNumber": 30,
+    "dims": "11x11",
+    "confidence": "high"
+  },
+  "5.4": {
+    "name": "Colliery Underground Second Floor",
+    "mapNumber": 29,
+    "dims": "12x13",
+    "confidence": "medium"
+  },
+  "5.5": {
+    "name": "Colliery Underground First Floor",
+    "mapNumber": 97,
+    "dims": "11x13",
+    "confidence": "known"
+  },
+  "5.6": {
+    "name": "Underground Passage in Goland",
+    "mapNumber": 39,
+    "dims": "6x18",
+    "confidence": "known"
+  },
+  "5.7": {
+    "name": "Nelveska Temple",
+    "mapNumber": 70,
+    "dims": "8x12",
+    "confidence": "high"
+  },
+  "5.8": {
+    "name": "Zarghidas Trade City",
+    "mapNumber": 47,
+    "dims": "10x16",
+    "confidence": "high"
+  },
+  "5.9": {
+    "name": "Deep Dungeon 1:  NOGIAS",
+    "mapNumber": 107,
+    "dims": "10x10",
+    "confidence": "exact"
+  },
+  "5.10": {
+    "name": "Deep Dungeon 2:  TERMINATE",
+    "mapNumber": 95,
+    "dims": "9x12",
+    "confidence": "known"
+  },
+  "5.11": {
+    "name": "Deep Dungeon 3:  DELTA",
+    "mapNumber": 32,
+    "dims": "10x16",
+    "confidence": "known"
+  },
+  "5.12": {
+    "name": "Deep Dungeon 4:  VALKYRIES",
+    "mapNumber": 100,
+    "dims": "11x16",
+    "confidence": "known"
+  },
+  "5.13": {
+    "name": "Deep Dungeon 5:  MLAPAN",
+    "mapNumber": 111,
+    "dims": "7x12",
+    "confidence": "exact"
+  },
+  "5.14": {
+    "name": "Deep Dungeon 6:  TIGER",
+    "mapNumber": 51,
+    "dims": "10x11",
+    "confidence": "known"
+  },
+  "5.15": {
+    "name": "Deep Dungeon 7:  BRIDGE",
+    "mapNumber": 46,
+    "dims": "9x15",
+    "confidence": "known"
+  },
+  "5.16": {
+    "name": "Deep Dungeon 8:  VOYAGE",
+    "mapNumber": 108,
+    "dims": "13x14",
+    "confidence": "exact"
+  },
+  "5.17": {
+    "name": "Deep Dungeon 9:  HORROR",
+    "mapNumber": 16,
+    "dims": "10x12",
+    "confidence": "known"
+  },
+  "5.18": {
+    "name": "Deep Dungeon 10:  END",
+    "mapNumber": 114,
+    "dims": "13x13",
+    "confidence": "exact"
+  }
+}
