@@ -81,6 +81,52 @@ Map-based BFS and move_grid are working. These items complete the movement syste
 
 ---
 
+## 0.5 Intelligence Modes — Claude's Knowledge Levels
+
+Claude plays at different skill levels depending on what game knowledge is available.
+The implementation is the same code — just different reference data loaded.
+
+### Mode 1 — Blind Playthrough ("First Timer")
+- Only knows what's on screen: positions, HP, basic stats from memory
+- No damage formulas, no ability data, no enemy weakness tables
+- Discovers mechanics by experience and saves to a learning journal
+  - "Got hit from behind for way more damage — facing matters"
+  - "Fire healed that enemy — some enemies absorb elements"
+  - "That spell hit 3 of my units — need to spread out"
+- Makes mistakes, adapts, builds intuition over time
+- The entertaining "watching a friend play" experience
+- **Implementation:** No `mechanics/` folder loaded. Learns by observing HP changes, deaths, etc.
+
+### Mode 2 — Experienced Player ("Wiki Open")
+- Full game mechanics loaded: damage formulas, ability ranges, zodiac chart, elements
+- Pre-computes damage before attacking ("I deal ~280 to the Knight, enough to kill")
+- Knows enemy weaknesses, status effect durations, turn order manipulation
+- Plays like someone who's beaten the game before and has the wiki bookmarked
+- Still makes tactical decisions — the knowledge informs, doesn't decide
+- **Implementation:** `FFTHandsFree/mechanics/` folder with:
+  - `damage.md` — PA/MA formulas, weapon types, element modifiers
+  - `abilities.json` — ID → name, range, AoE, element, MP cost, formula
+  - `jobs.json` — base stats, innate abilities, movement types
+  - `status_effects.md` — what each status does, duration, cure methods
+  - `zodiac.md` — compatibility chart (good/bad/neutral matchups)
+  - `elements.md` — absorb/null/weak/half for enemy types
+- **Tactical summary** returned with scan_move:
+  - Kill potential for each enemy
+  - Threat assessment (who can hit me, how hard, when)
+  - Ability recommendations with estimated damage
+
+### Mode 3 — Min-Maxer ("Speedrunner") [Future]
+- Optimizes party builds, ability combos, equipment loadouts
+- Knows speed manipulation, CT tricks, broken ability combinations (Yell stacking, Math Skill, etc.)
+- Plans multiple turns ahead
+- Plays like a challenge runner or speedrunner
+
+### Progression Option
+Start on Mode 1, "unlock" Mode 2 after enough deaths or battles — like the game is teaching Claude.
+Or let the user pick the mode at session start.
+
+---
+
 ## 1. ValidPaths + High-Level Actions (Navigation System)
 
 Every response includes `validPaths` — a map of action names to exact commands. Claude picks one, sends it, zero interpretation needed.
