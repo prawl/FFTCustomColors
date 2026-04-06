@@ -369,6 +369,10 @@ move_grid() { fft_full "{\"id\":\"$(id)\",\"action\":\"move_grid\",\"locationId\
 #        get_arrows execute   (show AND execute the move + confirm)
 get_arrows() { fft_full "{\"id\":\"$(id)\",\"action\":\"get_arrows\",\"to\":\"${1:-plan}\"}"; }
 
+# strict: Toggle strict mode. When ON, game actions must go through validPaths.
+# Usage: strict 1   (enable)    strict 0   (disable)
+strict() { fft "{\"id\":\"$(id)\",\"action\":\"set_strict\",\"locationId\":${1:-1}}"; }
+
 # set_map: Load a MAP JSON file for exact BFS terrain data.
 # Usage: set_map 74   (loads MAP074.json)
 # Call before or during battle. Maps must be in claude_bridge/maps/MAP###.json

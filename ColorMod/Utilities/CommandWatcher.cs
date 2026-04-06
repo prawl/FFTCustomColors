@@ -30,6 +30,23 @@ namespace FFTColorCustomizer.Utilities
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
 
+        /// <summary>
+        /// When true, game actions must go through validPaths. Raw key presses and
+        /// actions not in the current screen's validPaths are blocked.
+        /// Info actions (scan_move, screen, memory reads) are always allowed.
+        /// </summary>
+        public bool StrictMode { get; set; } = false;
+
+        // Actions that are always allowed regardless of strict mode (info/infrastructure)
+        private static readonly HashSet<string> InfrastructureActions = new()
+        {
+            "scan_move", "scan_units", "set_map", "report_state",
+            "read_address", "read_block", "batch_read",
+            "mark_blocked", "snapshot", "heap_snapshot", "diff",
+            "search_bytes", "search_memory", "search_near",
+            "dump_unit", "dump_all", "write_address", "set_strict", "set_map"
+        };
+
         public CommandWatcher(string modPath, IInputSimulator inputSimulator)
         {
             _inputSimulator = inputSimulator ?? throw new ArgumentNullException(nameof(inputSimulator));
@@ -166,6 +183,68 @@ namespace FFTColorCustomizer.Utilities
 
         private CommandResponse ExecuteCommand(CommandRequest command)
         {
+            if (StrictMode)
+            {
+                // In strict mode, block raw key presses (must use validPaths)
+                if (string.IsNullOrEmpty(command.Action) && command.Keys?.Count > 0)
+                {
+                    var screen = DetectScreen();
+                    var paths = screen != null ? NavigationPaths.GetPaths(screen) : null;
+                    var available = paths != null ? string.Join(", ", paths.Keys) : "none";
+                    return new CommandResponse
+                    {
+                        Id = command.Id,
+                        Status = "blocked",
+                        Error = $"[STRICT MODE] Raw key presses are not allowed. You must use 'path <name>' to execute actions. Current screen: {screen?.Name}. Available actions: {available}. Example: {{\"action\":\"path\",\"to\":\"Move\"}}",
+                        ProcessedAt = DateTime.UtcNow.ToString("o"),
+                        GameWindowFound = true,
+                        Screen = screen,
+                        ValidPaths = paths
+                    };
+                }
+
+                // Block game actions not in validPaths (infrastructure actions always pass)
+                if (!string.IsNullOrEmpty(command.Action) && !InfrastructureActions.Contains(command.Action))
+                {
+                    var screen = DetectScreen();
+                    var paths = screen != null ? NavigationPaths.GetPaths(screen) : null;
+
+                    // Check if action matches a validPath action or key
+                    bool allowed = false;
+                    if (paths != null)
+                    {
+                        foreach (var kv in paths)
+                        {
+                            if (string.Equals(kv.Key, command.Action, StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(kv.Value.Action, command.Action, StringComparison.OrdinalIgnoreCase))
+                            {
+                                allowed = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Allow structured game actions that validate internally
+                    if (command.Action is "path" or "move_grid" or "battle_wait")
+                        allowed = true;
+
+                    if (!allowed)
+                    {
+                        var available = paths != null ? string.Join(", ", paths.Keys) : "none";
+                        return new CommandResponse
+                        {
+                            Id = command.Id,
+                            Status = "blocked",
+                            Error = $"[STRICT MODE] Action '{command.Action}' is not a valid action on screen '{screen?.Name}'. Use 'path <name>' with one of: {available}. Infrastructure actions (scan_move, read_address, etc.) are always allowed.",
+                            ProcessedAt = DateTime.UtcNow.ToString("o"),
+                            GameWindowFound = true,
+                            Screen = screen,
+                            ValidPaths = paths
+                        };
+                    }
+                }
+            }
+
             // Route action commands (dump_unit, report_state, etc.)
             if (!string.IsNullOrEmpty(command.Action))
                 return ExecuteAction(command);
@@ -257,6 +336,12 @@ namespace FFTColorCustomizer.Utilities
                             response.Status = "failed";
                             response.Error = "locationId (map number) required, e.g. 74 for MAP074";
                         }
+                        break;
+
+                    case "set_strict":
+                        StrictMode = command.LocationId != 0; // locationId=1 → on, 0 → off
+                        response.Status = "completed";
+                        response.Error = $"Strict mode: {(StrictMode ? "ON — game actions must use validPaths" : "OFF — all actions allowed")}";
                         break;
 
                     case "scan_move":
