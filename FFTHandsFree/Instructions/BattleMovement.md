@@ -163,21 +163,34 @@ Verified 6/6 tile counts match in-game exactly.
 - The targeting cursor is free — it can move anywhere on the grid, not just valid tiles
 - Confirming on a tile outside attack range does nothing
 
+## Waiting (Ending Your Turn)
+
+To Wait, navigate the menu cursor to Wait (index 2) and press Enter twice (select + confirm facing).
+
+**KNOWN BUG: `battle_wait` is unreliable.** It assumes the cursor is on Move and presses Down once, but after attacking the cursor is on Abilities (index 1). This causes it to misfire. Until fixed, manually navigate:
+
+1. Check `ui=` in screen response to know current cursor position
+2. Press Down the right number of times to reach Wait (index 2)
+3. **Enter** (select Wait) → **Enter** (confirm facing direction)
+
+| Current ui | Downs to Wait |
+|-----------|---------------|
+| Move (0) | 2 |
+| Abilities (1) | 1 |
+| Wait (2) | 0 |
+
 ## Quick Reference
 
 ```bash
 # Full turn: scan -> move -> attack -> wait
-scan_move 7 3                   # scan battlefield
+scan_move 7 3                   # ALWAYS scan first
 move_grid 6 5                   # move adjacent to enemy
-# Enter targeting: Down→Enter→Enter (Abilities→Attack)
-# Empirical rotation: press Right, read delta, undo
-# Navigate to enemy tile, Enter, Enter
-battle_wait                     # ALWAYS wait to end turn
+# Attack: navigate to Abilities→Attack, empirical rotation, target, confirm
+# Wait: navigate cursor to Wait(2), Enter, Enter
 
 # Attack without moving (enemy already adjacent)
-# Enter targeting, empirical rotation, navigate, confirm
-battle_wait
+# scan_move, then attack, then wait
 
 # Just wait (skip move and action)
-battle_wait
+# Navigate cursor to Wait(2), Enter, Enter
 ```
