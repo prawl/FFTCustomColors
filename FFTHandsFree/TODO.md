@@ -427,6 +427,14 @@ A human player can see blue tiles (valid moves) and red tiles (attack range). Cl
 - GameOver detection: reads as Battle (need dedicated game-over flag)
 - Settlement/shop screens not detected yet
 - Menu cursor unreliable after animations
+- Battle at valid world map location detected as TravelList/WorldMap (clearlyOnWorldMap false positive)
+
+### Travel System
+- [ ] Orbonne Monastery (loc 18) has a story mission encounter screen different from random encounters — needs special handling
+- [ ] Encounter polling during travel misses some encounters (encounter triggers before polling starts or between poll cycles)
+- [ ] Ctrl hold during travel not speeding up movement — may need longer hold or different timing
+- [ ] After fleeing an encounter, character continues traveling automatically — need to resume polling instead of calling travel again
+- [ ] Location address 0x14077D208 stores last-passed-through node, not standing position — unreliable for current location
 
 ### Turn Detection
 - `acted` and `moved` flags at 0x14077CA8C/9C are unreliable

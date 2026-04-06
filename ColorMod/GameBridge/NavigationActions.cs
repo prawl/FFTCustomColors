@@ -241,11 +241,14 @@ namespace FFTColorCustomizer.GameBridge
                     case "battle_wait":
                         return BattleWait(response);
 
+                    case "battle_flee":
+                        return BattleFlee(response);
+
                     case "navigate":
                         return Navigate(response, command.To ?? "");
 
-                    case "travel":
-                        return Travel(response, command.LocationId);
+                    case "travel_to":
+                        return TravelTo(response, command.LocationId);
 
                     case "confirm_attack":
                         return ConfirmAttack(response);
@@ -289,6 +292,41 @@ namespace FFTColorCustomizer.GameBridge
         /// battle_wait: Navigate to Wait in action menu, confirm, confirm facing,
         /// then poll until it's a friendly unit's turn again (or game over).
         /// </summary>
+        /// <summary>
+        /// battle_flee: Open pause menu (Tab), scroll to Quit (Down x4), confirm twice.
+        /// Returns to world map.
+        /// </summary>
+        private CommandResponse BattleFlee(CommandResponse response)
+        {
+            SendKey(VK_TAB);
+            Thread.Sleep(500);
+            for (int i = 0; i < 4; i++)
+            {
+                SendKey(VK_DOWN);
+                Thread.Sleep(200);
+            }
+            SendKey(VK_ENTER);
+            Thread.Sleep(500);
+            SendKey(VK_ENTER);
+            Thread.Sleep(1000);
+            // Poll until we're on the world map (or timeout after 10s)
+            var sw = Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 10000)
+            {
+                var screen = _detectScreen();
+                if (screen != null && (screen.Name == "WorldMap" || screen.Name == "TravelList"))
+                {
+                    response.Status = "completed";
+                    response.Error = $"On {screen.Name} at loc {screen.Location}";
+                    return response;
+                }
+                Thread.Sleep(200);
+            }
+            response.Status = "completed";
+            response.Error = "Fled battle, transition may still be in progress";
+            return response;
+        }
+
         private CommandResponse BattleWait(CommandResponse response)
         {
             var screen = _detectScreen();
@@ -517,114 +555,157 @@ namespace FFTColorCustomizer.GameBridge
         ///   1. Open list, press E to switch tab (resets to top), Enter to identify
         ///      tab via hover. Repeat E until on the correct tab for our target.
         ///   2. Once on correct tab, T reopens, Down+Enter to scan items until
-        ///      hover matches target.
+        /// Travel list tab orders — hardcoded from in-game verification.
+        /// Each array contains location IDs in the order they appear in the UI.
+        /// Tab 0 = Settlements, Tab 1 = Battlegrounds, Tab 2 = Miscellaneous.
         /// </summary>
-        private CommandResponse Travel(CommandResponse response, int locationId)
+        private static readonly int[][] TravelTabs = {
+            // Settlements (tab 0) — verified in-game 2026-04-06
+            new[] { 0, 2, 3, 1, 5, 4, 6, 9, 10, 11, 12, 8, 7, 13, 14 },
+            // Battlegrounds (tab 1) — verified in-game 2026-04-06
+            new[] { 24, 26, 28, 29, 25, 32, 35, 37, 30, 39, 33, 31, 38, 40, 34, 42, 41, 36, 27 },
+            // Miscellaneous (tab 2) — verified in-game 2026-04-06
+            new[] { 17, 15, 19, 18, 21, 16, 23, 22 },
+        };
+
+        // Which tab each location ID belongs to, and its index within that tab
+        private static readonly Dictionary<int, (int tab, int index)> TravelLookup;
+
+        static NavigationActions()
         {
-            if (locationId < 0)
+            TravelLookup = new Dictionary<int, (int, int)>();
+            for (int tab = 0; tab < TravelTabs.Length; tab++)
+                for (int idx = 0; idx < TravelTabs[tab].Length; idx++)
+                    TravelLookup[TravelTabs[tab][idx]] = (tab, idx);
+        }
+
+        private CommandResponse TravelTo(CommandResponse response, int locationId)
+        {
+            if (!TravelLookup.TryGetValue(locationId, out var target))
             {
                 response.Status = "failed";
-                response.Error = "locationId is required and must be >= 0";
+                response.Error = $"Location {locationId} not in travel list. Valid: {string.Join(",", TravelLookup.Keys.OrderBy(k => k))}";
                 return response;
             }
 
-            // First navigate to WorldMap
             var screen = _detectScreen();
-            if (screen == null)
+            if (screen == null || (screen.Name != "WorldMap" && screen.Name != "TravelList"))
             {
                 response.Status = "failed";
-                response.Error = "Could not detect current screen";
+                response.Error = $"Must be on WorldMap (current: {screen?.Name})";
                 return response;
             }
 
-            if (screen.Name != "WorldMap")
-            {
-                var navResponse = Navigate(response, "WorldMap");
-                if (navResponse.Status != "completed")
-                    return navResponse;
-            }
-
-            // Open travel list
+            // 1. Open travel list — cursor starts on current location
             SendKey(VK_T);
-            if (!WaitForScreen("TravelList", 2000))
+            Thread.Sleep(500);
+
+            // Read current cursor position via Enter + hover
+            SendKey(VK_ENTER);
+            Thread.Sleep(300);
+
+            var hoverCheck = _explorer.ReadAbsolute((nint)0x140787A22, 1);
+            int currentLoc = hoverCheck != null ? (int)hoverCheck.Value.value : -1;
+
+            int currentTab = 0;
+            int currentIdx = 0;
+            if (TravelLookup.TryGetValue(currentLoc, out var cur))
             {
-                response.Status = "failed";
-                response.Error = "Failed to open travel list";
-                return response;
+                currentTab = cur.tab;
+                currentIdx = cur.index;
             }
 
-            // Scan all 3 tabs. For each tab:
-            //   - E switches tab (resets cursor to top of that tab)
-            //   - Enter selects the highlighted item (closes list, updates hover)
-            //   - If hover matches, done
-            //   - If not, T reopens (remembers tab + cursor), Down advances, repeat
-            //   - Track hover values to detect wrap-around (list is circular)
-            //
-            // Key behaviors (proven manually):
-            //   - E switches tab and resets cursor to first item
-            //   - Enter selects current item, updates hover, closes list
-            //   - T reopens on same tab with cursor on last-selected item
-            //   - Down advances cursor one position
-            //   - Hover address only updates on Enter, not while scrolling
+            // 2. Reopen and navigate to destination
+            SendKey(VK_T);
+            Thread.Sleep(500);
 
-            for (int tab = 0; tab < 3; tab++)
+            int tabsToMove = (target.tab - currentTab + 3) % 3;
+            for (int i = 0; i < tabsToMove; i++)
             {
-                // Switch to next tab (resets cursor to top)
                 SendKey(VK_E);
                 Thread.Sleep(300);
+            }
 
-                // Select first item on this tab
-                SendKey(VK_ENTER);
-                Thread.Sleep(300);
+            int fromIdx = tabsToMove > 0 ? 0 : currentIdx;
+            int steps = target.index - fromIdx;
 
-                screen = _detectScreen();
-                if (screen != null && screen.Hover == locationId)
+            if (steps > 0)
+                for (int i = 0; i < steps; i++) { SendKey(VK_DOWN); Thread.Sleep(150); }
+            else if (steps < 0)
+                for (int i = 0; i < -steps; i++) { SendKey(VK_UP); Thread.Sleep(150); }
+
+            // 3. Press Enter to center on destination node
+            SendKey(VK_ENTER);
+            Thread.Sleep(500);
+
+            // 4. Press Enter to confirm travel
+            SendKey(VK_ENTER);
+            Thread.Sleep(300); // Brief wait before starting poll
+
+            // 4.5. Hold Ctrl to speed up movement
+            SendInputKeyDown(VK_CONTROL);
+            _input.SendKeyDownToWindow(_gameWindow, VK_CONTROL);
+            ModLogger.Log("[Travel] Holding Ctrl for fast-forward");
+
+            // 5-9. Poll until arrival or encounter
+            var sw = Stopwatch.StartNew();
+            int stableWorldMapCount = 0;
+            try
+            {
+                while (sw.ElapsedMilliseconds < 30000) // 30s max travel time
                 {
-                    response.Status = "completed";
-                    return response;
-                }
+                    Thread.Sleep(200);
 
-                // Remember first hover to detect wrap-around
-                int firstHover = screen?.Hover ?? -1;
-
-                // Scan remaining items on this tab
-                for (int item = 0; item < 25; item++)
-                {
-                    // Reopen list (cursor on last-selected item)
-                    SendKey(VK_T);
-                    Thread.Sleep(500);
-
-                    // Advance to next item
-                    SendKey(VK_DOWN);
-                    Thread.Sleep(150);
-
-                    // Select it
-                    SendKey(VK_ENTER);
-                    Thread.Sleep(300);
-
-                    screen = _detectScreen();
-                    if (screen != null && screen.Hover == locationId)
+                    // Check encounter via memory directly (faster than DetectScreen)
+                    var encA = _explorer.ReadAbsolute((nint)0x140900824, 1);
+                    var encB = _explorer.ReadAbsolute((nint)0x140900828, 1);
+                    if (encA != null && encB != null && encA.Value.value != encB.Value.value)
                     {
-                        response.Status = "completed";
+                        // 6. Encounter detected — release Ctrl and report
+                        SendInputKeyUp(VK_CONTROL);
+                        _input.SendKeyUpToWindow(_gameWindow, VK_CONTROL);
+                        ModLogger.Log("[Travel] Encounter detected, released Ctrl");
+
+                        Thread.Sleep(500); // Let dialog settle
+                        var encScreen = _detectScreen();
+                        response.Status = "encounter";
+                        response.Error = $"Encounter at {encScreen?.LocationName ?? "unknown"} (loc {encScreen?.Location}). Fight (Enter) or Flee (Down+Enter).";
+                        response.Screen = encScreen;
                         return response;
                     }
 
-                    // If we wrapped back to the first item, this tab is exhausted
-                    if (screen != null && screen.Hover == firstHover)
-                        break;
+                    // 9. Detect arrival: WorldMap screen stable for 1+ second (no more animation)
+                    var current = _detectScreen();
+                    if (current != null && current.Name == "WorldMap")
+                    {
+                        stableWorldMapCount++;
+                        if (stableWorldMapCount >= 5) // 5 x 200ms = 1 second stable
+                        {
+                            response.Status = "completed";
+                            response.Error = $"Arrived at destination (loc {current.Location})";
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        stableWorldMapCount = 0;
+                    }
                 }
 
-                // Reopen list so E can switch to next tab
-                SendKey(VK_T);
-                Thread.Sleep(500);
+                if (sw.ElapsedMilliseconds >= 30000)
+                {
+                    response.Status = "completed";
+                    response.Error = "Travel timeout after 30s";
+                }
+            }
+            finally
+            {
+                // 10. Always release Ctrl
+                SendInputKeyUp(VK_CONTROL);
+                _input.SendKeyUpToWindow(_gameWindow, VK_CONTROL);
+                ModLogger.Log("[Travel] Released Ctrl");
             }
 
-            // Close the travel list before reporting failure
-            SendKey(VK_ESCAPE);
-            Thread.Sleep(300);
-
-            response.Status = "failed";
-            response.Error = $"Could not find location {locationId} in any travel list tab";
             return response;
         }
 
@@ -746,37 +827,77 @@ namespace FFTColorCustomizer.GameBridge
                 lines.Add($"[{teamName}] ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp}");
             }
 
-            // 5. Auto-detect map if not loaded
-            if (_mapLoader != null && _mapLoader.CurrentMap == null)
+            // 5. Auto-detect map — validate any pre-loaded map against unit positions + ally height
+            if (_mapLoader != null)
             {
-                // Try 1: Location ID lookup (fast, reliable for known locations)
+                var allPositions = units.Where(u => u.GridX >= 0 && u.GridY >= 0)
+                                        .Select(u => (u.GridX, u.GridY)).ToList();
+
+                // Read ally height once for all validation steps
+                var heightResult = _explorer.ReadAbsolute((nint)0x140C6492C, 4);
+                double allyHeight = heightResult != null ? (double)heightResult.Value.value / 10.0 : -1;
+
+                // Validate bounds + walkability only. Height is unreliable for validation
+                // (memory address may not correspond to map tile height) — used as
+                // tiebreaker in DetectMap fingerprinting instead.
+                bool ValidateMap(MapData map)
+                {
+                    return allPositions.All(p => map.InBounds(p.Item1, p.Item2) && map.IsWalkable(p.Item1, p.Item2));
+                }
+
+                // Resolve location ID (from screen or persisted file)
                 var currentScreen = _detectScreen();
                 int locId = currentScreen?.Location ?? -1;
-                // If location is 255 (battle), try reading persisted location from disk
                 if (locId < 0 || locId > 42)
                 {
                     try
                     {
-                        var lastLocPath = System.IO.Path.Combine(_mapLoader.MapDataDir, "last_location.txt");
+                        var lastLocPath = System.IO.Path.Combine(_mapLoader.MapDataDir, "..", "last_location.txt");
                         if (System.IO.File.Exists(lastLocPath))
                             locId = int.Parse(System.IO.File.ReadAllText(lastLocPath).Trim());
                     }
                     catch { }
                 }
+
+                // Try 1: Random encounter map lookup (highest priority — known correct)
                 if (locId >= 0 && locId <= 42)
+                {
+                    int reMap = _mapLoader.GetRandomEncounterMap(locId);
+                    if (reMap >= 0)
+                    {
+                        var loaded = _mapLoader.LoadMap(reMap);
+                        if (loaded != null && ValidateMap(loaded))
+                        {
+                            lines.Add($"MAP{reMap:D3} (random encounter, loc {locId})");
+                        }
+                        else
+                        {
+                            _mapLoader.ClearMap();
+                        }
+                    }
+                }
+
+                // Try 2: Story battle map lookup
+                if (_mapLoader.CurrentMap == null && locId >= 0 && locId <= 42)
                 {
                     var locMap = _mapLoader.LoadMapForLocation(locId);
                     if (locMap != null)
-                        lines.Add($"MAP{locMap.MapNumber:D3} (location {locId} lookup)");
+                    {
+                        if (ValidateMap(locMap))
+                        {
+                            lines.Add($"MAP{locMap.MapNumber:D3} (location {locId} lookup)");
+                        }
+                        else
+                        {
+                            ModLogger.Log($"[Map] Location lookup MAP{locMap.MapNumber:D3} invalid, trying fingerprint");
+                            _mapLoader.ClearMap();
+                        }
+                    }
                 }
 
                 // Try 2: Fingerprint detection (unit positions + height)
-                if (_mapLoader.CurrentMap == null)
+                if (_mapLoader.CurrentMap == null && allPositions.Count > 0)
                 {
-                    var heightResult = _explorer.ReadAbsolute((nint)0x140C6492C, 4);
-                    double allyHeight = heightResult != null ? (double)heightResult.Value.value / 10.0 : -1;
-
-                    var allPositions = units.Select(u => (u.GridX, u.GridY)).ToList();
                     int detected = _mapLoader.DetectMap(allPositions, ally.GridX, ally.GridY, allyHeight);
                     if (detected >= 0)
                     {
@@ -785,7 +906,7 @@ namespace FFTColorCustomizer.GameBridge
                     }
                     else
                     {
-                        lines.Add($"MAP DETECTION FAILED (loc={locId}, allyH={allyHeight}, {units.Count} units)");
+                        lines.Add($"MAP DETECTION FAILED (allyH={allyHeight}, {units.Count} units)");
                     }
                 }
             }

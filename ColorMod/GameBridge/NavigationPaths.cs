@@ -282,7 +282,7 @@ namespace FFTColorCustomizer.GameBridge
                 },
                 ["Flee"] = new PathEntry
                 {
-                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter") },
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     WaitForScreen = "WorldMap",
                     WaitTimeoutMs = 3000,
                     Desc = "Flee from encounter"

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FFTColorCustomizer.Utilities;
@@ -238,6 +239,10 @@ namespace FFTColorCustomizer.GameBridge
             EnsureAllMapsLoaded();
             if (_allMaps == null) return -1;
 
+            var log = new List<string>();
+            log.Add($"DetectMap: ally=({allyX},{allyY}) h={allyDisplayHeight} units={unitPositions.Count}");
+            log.Add($"  positions: {string.Join(" ", unitPositions.Select(p => $"({p.x},{p.y})"))}");
+
             // Step 1: Filter maps where ALL unit positions are in-bounds and walkable (skip rejected)
             var candidates = new List<int>();
             foreach (var kv in _allMaps)
@@ -256,42 +261,50 @@ namespace FFTColorCustomizer.GameBridge
                 if (valid) candidates.Add(kv.Key);
             }
 
-            ModLogger.Log($"[MapLoader] DetectMap: {candidates.Count} candidates after position filter");
+            log.Add($"Step 1 (bounds+walk): {candidates.Count} candidates: {string.Join(",", candidates.Select(c => $"MAP{c:D3}"))}");
 
-            if (candidates.Count == 1) return candidates[0];
-            if (candidates.Count == 0) return -1;
+            if (candidates.Count == 1) { WriteDetectLog(log, candidates[0], "unique position match"); return candidates[0]; }
+            if (candidates.Count == 0) { WriteDetectLog(log, -1, "no maps fit"); return -1; }
 
-            // Step 2: Filter by ally's display height
-            var heightMatches = new List<int>();
-            foreach (var num in candidates)
-            {
-                var map = _allMaps[num];
-                double h = map.GetDisplayHeight(allyX, allyY);
-                if (Math.Abs(h - allyDisplayHeight) < 0.01)
-                    heightMatches.Add(num);
-            }
-
-            ModLogger.Log($"[MapLoader] DetectMap: {heightMatches.Count} candidates after height filter (ally h={allyDisplayHeight})");
-
-            if (heightMatches.Count == 1) return heightMatches[0];
-
-            // Step 3: Tightest dimension fit (prefer map whose dimensions best match unit spread)
-            var remaining = heightMatches.Count > 0 ? heightMatches : candidates;
-
+            // Step 2: Score by dimension tightness only (height address unreliable)
             int maxX = 0, maxY = 0;
             foreach (var (x, y) in unitPositions) { if (x > maxX) maxX = x; if (y > maxY) maxY = y; }
 
-            int bestMap = remaining[0];
-            int bestFit = int.MaxValue;
-            foreach (var num in remaining)
+            int bestMap = -1;
+            int bestScore = int.MaxValue;
+            foreach (var num in candidates)
             {
                 var map = _allMaps[num];
-                int fit = (map.Width - maxX - 1) + (map.Height - maxY - 1);
-                if (fit >= 0 && fit < bestFit) { bestFit = fit; bestMap = num; }
+                int dimFit = (map.Width - maxX - 1) + (map.Height - maxY - 1);
+                if (dimFit < 0) continue;
+
+                double h = map.GetDisplayHeight(allyX, allyY);
+                log.Add($"  MAP{num:D3} {map.Width}x{map.Height} fit={dimFit} h={h}");
+                if (dimFit < bestScore) { bestScore = dimFit; bestMap = num; }
             }
 
-            ModLogger.Log($"[MapLoader] DetectMap: {remaining.Count} candidates, tightest fit MAP{bestMap:D3} (fit={bestFit})");
+            // If multiple maps tie on fit, log them all
+            var ties = candidates.Where(n => {
+                var m = _allMaps[n];
+                return (m.Width - maxX - 1) + (m.Height - maxY - 1) == bestScore;
+            }).ToList();
+            if (ties.Count > 1)
+                log.Add($"  TIE ({ties.Count}): {string.Join(",", ties.Select(t => $"MAP{t:D3}"))}");
+
+            WriteDetectLog(log, bestMap, $"tightest fit={bestScore} ({candidates.Count} candidates, {ties.Count} ties)");
             return bestMap;
+        }
+
+        private void WriteDetectLog(List<string> log, int result, string reason)
+        {
+            log.Add($"RESULT: MAP{result:D3} ({reason})");
+            try
+            {
+                var path = Path.Combine(_mapDataDir, "..", "detect_log.txt");
+                File.WriteAllLines(path, log);
+            }
+            catch { }
+            ModLogger.Log($"[MapLoader] DetectMap result: MAP{result:D3} ({reason})");
         }
 
         private MapData? LoadMapFromFile(string path, int mapNumber)
@@ -372,6 +385,40 @@ namespace FFTColorCustomizer.GameBridge
                 return null;
             }
             return LoadMap(mapNumber);
+        }
+
+        /// <summary>
+        /// Look up MAP number for random encounters at a world map location.
+        /// Uses random_encounter_maps.json (separate from story battle maps).
+        /// Returns -1 if not in table.
+        /// </summary>
+        public int GetRandomEncounterMap(int locationId)
+        {
+            var path = Path.Combine(_mapDataDir, "..", "random_encounter_maps.json");
+            if (!File.Exists(path))
+                path = Path.Combine(_mapDataDir, "random_encounter_maps.json");
+            if (!File.Exists(path))
+            {
+                ModLogger.Log($"[MapLoader] random_encounter_maps.json not found (tried {Path.Combine(_mapDataDir, "..", "random_encounter_maps.json")})");
+                return -1;
+            }
+
+            try
+            {
+                var json = File.ReadAllText(path);
+                var lookup = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+                if (lookup != null && lookup.TryGetValue(locationId.ToString(), out var val) && val.ValueKind == JsonValueKind.Number)
+                {
+                    ModLogger.Log($"[MapLoader] Random encounter map for location {locationId}: MAP{val.GetInt32():D3}");
+                    return val.GetInt32();
+                }
+                ModLogger.Log($"[MapLoader] No random encounter entry for location {locationId}");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[MapLoader] Failed to read random_encounter_maps.json: {ex.Message}");
+            }
+            return -1;
         }
 
         // --- JSON deserialization models ---

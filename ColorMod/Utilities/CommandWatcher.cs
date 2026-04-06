@@ -35,7 +35,15 @@ namespace FFTColorCustomizer.Utilities
         /// actions not in the current screen's validPaths are blocked.
         /// Info actions (scan_move, screen, memory reads) are always allowed.
         /// </summary>
-        public bool StrictMode { get; set; } = true;
+        public bool StrictMode { get; set; } = false;
+
+        /// <summary>
+        /// When true, any command that sends keys or game actions is blocked unless
+        /// the previous command was a state query (no-op key press, read, or infrastructure action).
+        /// Forces Claude to check state before every action.
+        /// </summary>
+        public bool RequireStateCheck { get; set; } = false;
+        private bool _lastCommandWasQuery = false;
 
         // Actions that are always allowed regardless of strict mode (info/infrastructure)
         private static readonly HashSet<string> InfrastructureActions = new()
@@ -122,6 +130,30 @@ namespace FFTColorCustomizer.Utilities
                     }
 
                     ModLogger.Log($"[CommandBridge] Processing command {command.Id}: {command.Description}");
+
+                    // Only a zero-key no-op command counts as a state check (the "screen" helper)
+                    bool isScreenQuery = (command.Keys != null && command.Keys.Count == 0)
+                        && command.Action == null;
+
+                    // Enforce: must call screen before any game command
+                    if (RequireStateCheck && !isScreenQuery && !_lastCommandWasQuery)
+                    {
+                        var blocked = new CommandResponse
+                        {
+                            Id = command.Id,
+                            Status = "blocked",
+                            Error = "[STATE CHECK REQUIRED] Call 'screen' before sending game commands.",
+                            ProcessedAt = DateTime.UtcNow.ToString("o"),
+                            GameWindowFound = true
+                        };
+                        blocked.Screen = DetectScreenSettled();
+                        WriteResponse(blocked);
+                        _lastProcessedCommandId = command.Id;
+                        return;
+                    }
+
+                    _lastCommandWasQuery = isScreenQuery;
+
                     var response = ExecuteCommand(command);
                     response.Screen ??= DetectScreenSettled();
                     response.Battle ??= BattleTracker?.Update();
@@ -232,7 +264,7 @@ namespace FFTColorCustomizer.Utilities
                     }
 
                     // Allow structured game actions that validate internally
-                    if (command.Action is "path" or "move_grid" or "battle_wait")
+                    if (command.Action is "path" or "move_grid" or "battle_wait" or "battle_flee" or "travel_to")
                         allowed = true;
 
                     if (!allowed)
@@ -331,6 +363,10 @@ namespace FFTColorCustomizer.Utilities
                                 response.Status = "completed";
                                 response.Error = $"Loaded MAP{command.LocationId:D3}: {map.Width}x{map.Height}";
                                 ClearBlockedTiles();
+                                _battleMapAutoLoaded = true;
+                                // Cache this as the random encounter map for the current location
+                                if (_lastWorldMapLocation >= 0)
+                                    SaveRandomEncounterMap(_lastWorldMapLocation, command.LocationId);
                             }
                             else
                             {
@@ -500,8 +536,9 @@ namespace FFTColorCustomizer.Utilities
                         return ExecuteValidPath(command);
 
                     case "battle_wait":
+                    case "battle_flee":
                     case "navigate":
-                    case "travel":
+                    case "travel_to":
                     case "confirm_attack":
                     case "move_to":
                     case "scan_units":
@@ -1028,6 +1065,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x14077CA5C, 1),  // 15: moveMode (VOLATILE/unused — was 255=selecting tile, replaced by battleMode[16]==2)
             ((nint)0x140900650, 1),  // 16: battleMode (3=action menu, 2=move, 0=game over/cutscene)
             ((nint)0x14077C970, 1),  // 17: cameraRotation (incrementing counter, mod 4 = current rotation 0-3)
+            ((nint)0x140D3A10C, 1),  // 18: gameOverFlag (1=game over, 0=normal)
         };
 
         /// <summary>
@@ -1095,21 +1133,24 @@ namespace FFTColorCustomizer.Utilities
 
         private static readonly Dictionary<int, string> LocationNames = new()
         {
-            {0, "Orbonne Monastery"}, {1, "Gariland"}, {2, "Mandalia Plains"},
-            {3, "Eagrose Castle"}, {4, "Zeklaus Desert"}, {5, "Thieves Fort"},
-            {6, "Lenalia Plateau"}, {7, "Windmill Hut"}, {8, "Fort Besselat"},
-            {9, "Dorter Trade City"}, {10, "Araguay Woods"}, {11, "Zirekile Falls"},
-            {12, "Zaland Fort City"}, {13, "Bariaus Hill"}, {14, "Tchigolith Fenlands"},
-            {15, "Bariaus Valley"}, {16, "Lionel Castle"}, {17, "Goug Machine City"},
-            {18, "Warjilis Trade City"}, {19, "Golgollada Gallows"}, {20, "Lesalia Imperial Capital"},
-            {21, "Riovanes Castle"}, {22, "Yardrow Fort City"}, {23, "Walled City of Yardrow"},
-            {24, "Dugeura Pass"}, {25, "Bervenia Free City"}, {26, "Siedge Weald"},
-            {27, "Mount Germinas"}, {28, "Zeklaus Desert"}, {29, "Lenalia Plateau"},
-            {30, "Lake Poescas"}, {31, "Dorvauldar Marsh"}, {32, "Grogh Heights"},
-            {33, "Beddha Sandwaste"}, {34, "Finnath Creek"}, {35, "Balias Tor"},
-            {36, "Balias Swale"}, {37, "Balias Tor"}, {38, "Mount Bervenia"},
-            {39, "Zeltennia Castle"}, {40, "Limberry Castle"}, {41, "Igros Castle"},
-            {42, "Mullonde"},
+            // Settlements (0-14) — verified in-game 2026-04-06
+            {0, "Royal City of Lesalia"}, {1, "Riovanes Castle"}, {2, "Eagrose Castle"},
+            {3, "Lionel Castle"}, {4, "Limberry Castle"}, {5, "Zeltennia Castle"},
+            {6, "Magick City of Gariland"}, {7, "Walled City of Yardrow"}, {8, "Mining Town of Gollund"},
+            {9, "Merchant City of Dorter"}, {10, "Castled City of Zaland"}, {11, "Clockwork City of Goug"},
+            {12, "Port City of Warjilis"}, {13, "Free City of Bervenia"}, {14, "Trade City of Sal Ghidos"},
+            // Miscellaneous (15-23) — verified in-game 2026-04-06
+            {15, "Ziekden Fortress"}, {16, "Mullonde"}, {17, "Brigands' Den"},
+            {18, "Orbonne Monastery"}, {19, "Golgollada Gallows"}, {20, "unused"},
+            {21, "Fort Besselat"}, {22, "Midlight's Deep"}, {23, "Nelveska Temple"},
+            // Battlegrounds (24-42) — verified in-game 2026-04-06
+            {24, "Mandalia Plain"}, {25, "Fovoham Windflats"}, {26, "The Siedge Weald"},
+            {27, "Mount Bervenia"}, {28, "Zeklaus Desert"}, {29, "Lenalian Plateau"},
+            {30, "Tchigolith Fenlands"}, {31, "The Yuguewood"}, {32, "Araguay Woods"},
+            {33, "Grogh Heights"}, {34, "Beddha Sandwaste"}, {35, "Zeirchele Falls"},
+            {36, "Dorvauldar Marsh"}, {37, "Balias Tor"}, {38, "Dugeura Pass"},
+            {39, "Balias Swale"}, {40, "Finnath Creek"}, {41, "Lake Poescas"},
+            {42, "Mount Germinas"},
         };
 
         private static string? GetLocationName(int locationId)
@@ -1122,10 +1163,8 @@ namespace FFTColorCustomizer.Utilities
         private string GetLastLocationPath()
         {
             if (_lastLocationPath != null) return _lastLocationPath;
-            // Save in the maps directory (survives deploys), not bridge directory
-            EnsureMapLoader();
-            var mapsDir = _mapLoader != null ? _mapLoader.MapDataDir : _bridgeDirectory;
-            _lastLocationPath = Path.Combine(mapsDir, "last_location.txt");
+            // Save in bridge directory (claude_bridge/last_location.txt)
+            _lastLocationPath = Path.Combine(_bridgeDirectory, "last_location.txt");
             return _lastLocationPath;
         }
 
@@ -1146,6 +1185,38 @@ namespace FFTColorCustomizer.Utilities
             }
             catch { }
             return -1;
+        }
+
+        private void SaveRandomEncounterMap(int locationId, int mapNumber)
+        {
+            try
+            {
+                EnsureMapLoader();
+                var dir = _mapLoader?.MapDataDir ?? _bridgeDirectory;
+                var path = Path.Combine(dir, "..", "random_encounter_maps.json");
+                if (!File.Exists(path))
+                    path = Path.Combine(dir, "random_encounter_maps.json");
+
+                var lookup = new Dictionary<string, object>();
+                if (File.Exists(path))
+                {
+                    var existing = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(File.ReadAllText(path));
+                    if (existing != null)
+                        foreach (var kv in existing)
+                            if (kv.Value.ValueKind == System.Text.Json.JsonValueKind.Number)
+                                lookup[kv.Key] = kv.Value.GetInt32();
+                            else if (kv.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                                lookup[kv.Key] = kv.Value.GetString()!;
+                }
+                lookup[locationId.ToString()] = mapNumber;
+                var json = System.Text.Json.JsonSerializer.Serialize(lookup, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(path, json);
+                ModLogger.Log($"[Map] Saved random encounter map: location {locationId} → MAP{mapNumber:D3}");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[Map] Failed to save random encounter map: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -1488,6 +1559,9 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Location >= 0 && screen.Location <= 42 && screen.Location != _lastWorldMapLocation)
                     SaveLastLocation(screen.Location);
 
+                // Save raw location before overriding — needed for title screen detection
+                int rawLocation = screen.Location;
+
                 // During battle (location=255), use last known world map location
                 if (screen.Location == 255)
                 {
@@ -1506,16 +1580,18 @@ namespace FFTColorCustomizer.Utilities
                 int eB = (int)v[6];
                 long slot0 = v[12];
                 long slot9 = v[13];
-                // Battle detection: slot0==255 && slot9==0xFFFFFFFF.
-                // These slots stay stale after crash/reload, so also require that
-                // we're NOT clearly on the world map (party=0, ui=0, valid location).
-                bool validWorldLocation = screen.Location >= 0 && screen.Location <= 42;
-                bool clearlyOnWorldMap = validWorldLocation && party == 0 && ui == 0;
-                bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF && !clearlyOnWorldMap);
-
                 int battleMode = (int)v[16];
 
-                if (inBattle && paused == 1 && battleMode == 0)
+                // Battle detection: use RAW location (not overridden by last_location.txt).
+                // Title screen has rawLocation=255, battleMode=255, slot0=0xFFFFFFFF.
+                // World map has rawLocation 0-42, battleMode=0.
+                // Battle has rawLocation=255 (or valid), battleMode>0.
+                bool rawValidLocation = rawLocation >= 0 && rawLocation <= 42;
+                bool clearlyOnWorldMap = rawValidLocation && party == 0 && battleMode == 0;
+                bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF && !clearlyOnWorldMap);
+                int gameOverFlag = (int)v[18];
+
+                if (inBattle && paused == 1 && battleMode == 0 && gameOverFlag == 1)
                     screen.Name = "GameOver";
                 else if (inBattle && paused == 1)
                     screen.Name = "Battle_Paused";
@@ -1529,7 +1605,7 @@ namespace FFTColorCustomizer.Utilities
                     screen.Name = "Battle_Acting";
                 else if (inBattle)
                     screen.Name = "Battle";
-                else if (screen.Location == 255 || screen.Location < 0)
+                else if (rawLocation == 255 || rawLocation < 0)
                     screen.Name = "TitleScreen";
                 else if (eA != eB)
                     screen.Name = "EncounterDialog";
@@ -1568,31 +1644,12 @@ namespace FFTColorCustomizer.Utilities
                     if (_lastWorldMapLocation < 0)
                         _lastWorldMapLocation = LoadLastLocation();
 
-                    bool mapLoaded = false;
-                    // Try location-based lookup first
+                    // Try location-based lookup (fast, validated later by scan_move)
                     if (_lastWorldMapLocation >= 0 && _mapLoader != null)
                     {
                         var autoMap = _mapLoader.LoadMapForLocation(_lastWorldMapLocation);
                         if (autoMap != null)
-                        {
-                            ModLogger.Log($"[Map] Auto-loaded MAP{autoMap.MapNumber:D3} for location {_lastWorldMapLocation}");
-                            mapLoaded = true;
-                        }
-                    }
-
-                    // Fallback: search heap for scenario struct with MAP ID
-                    if (!mapLoaded && _mapLoader != null)
-                    {
-                        int heapMapId = Explorer.FindScenarioMapId(_lastWorldMapLocation);
-                        if (heapMapId > 0)
-                        {
-                            var heapMap = _mapLoader.LoadMap(heapMapId);
-                            if (heapMap != null)
-                            {
-                                ModLogger.Log($"[Map] Loaded MAP{heapMapId:D3} from scenario struct heap search");
-                                mapLoaded = true;
-                            }
-                        }
+                            ModLogger.Log($"[Map] Auto-loaded MAP{autoMap.MapNumber:D3} for location {_lastWorldMapLocation} (will validate on scan_move)");
                     }
 
                     _battleMapAutoLoaded = true;

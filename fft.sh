@@ -80,6 +80,17 @@
 
 B="/c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/Reloaded/Mods/FFTColorCustomizer/claude_bridge"
 
+# Block chained commands: only one fft/fft_full call allowed per session.
+_FFT_DONE=0
+_fft_guard() {
+  if [ "$_FFT_DONE" -eq 1 ]; then
+    echo "[NO] Only call one command at a time. Do not chain commands."
+    kill -9 $$ 2>/dev/null
+    exit 1
+  fi
+  _FFT_DONE=1
+}
+
 # --- Timeout tracking ---
 # FFT_MAX = max seconds before all commands bail out (prevents runaway scripts)
 FFT_START=${SECONDS}
@@ -100,6 +111,7 @@ _check_total() {
 # Use fft_full instead if you need the raw JSON response.
 fft() {
   _check_total || return 1
+  _fft_guard
   rm -f "$B/response.json"
   echo "$1" > "$B/command.json"
   local tries=0
@@ -127,6 +139,7 @@ fft() {
 # Use this when you need battle data, validPaths, tile lists, etc.
 fft_full() {
   _check_total || return 1
+  _fft_guard
   rm -f "$B/response.json"
   echo "$1" > "$B/command.json"
   local tries=0
@@ -267,14 +280,91 @@ if(keys.length){console.log('  ValidPaths:');keys.forEach(k=>console.log('    '+
 # battle_wait: End turn. Handles menu navigation → Wait → confirm facing automatically.
 battle_wait() { fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\"}"; }
 
+# battle_flee: Quit battle and return to world map (Tab → Down x4 → Enter → Enter).
+battle_flee() { fft "{\"id\":\"$(id)\",\"action\":\"battle_flee\"}"; }
+
 # nav: Navigate to a target screen from wherever you are (multi-step).
 # Usage: nav PartyMenu
 nav() { fft "{\"id\":\"$(id)\",\"action\":\"navigate\",\"to\":\"$1\"}"; }
 
-# travel: Move world map cursor to a location by ID (does NOT enter it).
-# After travel, use: path EnterLocation  to actually go there.
-# Usage: travel 24   (see CLAUDE_GAME_BRIDGE.md for location IDs)
-travel() { fft "{\"id\":\"$(id)\",\"action\":\"travel\",\"locationId\":$1}"; }
+# travel: Navigate to a world map location by ID. Opens travel list, selects location, confirms move.
+# Usage: travel 26   (travel to Siedge Weald)
+travel() { fft "{\"id\":\"$(id)\",\"action\":\"travel_to\",\"locationId\":$1}"; }
+
+# goto: Travel to a location, enter encounter, place Ramza solo, start battle.
+# Handles: travel → confirm move → encounter → formation → battle.
+# Flees encounters at wrong locations along the way.
+# Usage: goto 26   (travel to loc 26 and fight the random encounter)
+goto() {
+  local target=$1
+  _check_total || return 1
+  # Step 1: Travel to hover over target + confirm move
+  echo "[goto] Traveling to location $target..."
+  fft "{\"id\":\"$(id)\",\"action\":\"travel\",\"locationId\":$target}"
+  sleep 0.5
+  key 13 Enter
+  sleep 2
+  # Step 2: Poll for encounter or arrival
+  local max=20
+  for i in $(seq 1 $max); do
+    rm -f "$B/response.json"
+    echo "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}" > "$B/command.json"
+    local t=0
+    until [ -f "$B/response.json" ] || [ $t -ge 150 ]; do sleep 0.02; t=$((t+1)); done
+    local R=$(tr -d '\r\n ' < "$B/response.json")
+    local scr=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
+    local loc=$(echo "$R" | grep -o '"location":[0-9]*' | head -1 | cut -d: -f2)
+    echo "[goto] poll $i — screen=$scr loc=$loc"
+    # Encounter dialog
+    if [ "$scr" = "EncounterDialog" ]; then
+      if [ "$loc" = "$target" ]; then
+        echo "[goto] Encounter at target! Accepting..."
+        key 13 Enter
+        sleep 3
+        # Formation screen: place Ramza solo → start battle
+        # Enter=place on starting tile, Space=done, Enter=Yes to commence
+        echo "[goto] Formation: placing Ramza..."
+        key 13 Enter
+        sleep 1
+        key 32 Space
+        sleep 1
+        key 13 Enter
+        sleep 3
+        echo "[goto] Battle starting..."
+        return 0
+      else
+        echo "[goto] Encounter at loc $loc (not target $target) — fleeing..."
+        key 40 Down
+        sleep 0.5
+        key 13 Enter
+        sleep 3
+        continue
+      fi
+    fi
+    # Already in battle
+    if echo "$scr" | grep -q "Battle"; then
+      echo "[goto] In battle at loc $loc"
+      return 0
+    fi
+    # On world map at target — press Enter to trigger encounter
+    if [ "$scr" = "WorldMap" ] && [ "$loc" = "$target" ]; then
+      echo "[goto] At target, triggering encounter..."
+      key 13 Enter
+      sleep 2
+      continue
+    fi
+    # TravelList at target — press Enter to trigger encounter
+    if [ "$scr" = "TravelList" ] && [ "$loc" = "$target" ]; then
+      echo "[goto] TravelList at target, pressing Enter..."
+      key 13 Enter
+      sleep 2
+      continue
+    fi
+    sleep 1
+  done
+  echo "[goto] Timeout after $max polls"
+  return 1
+}
 
 # =============================================================================
 # SYSTEM COMMANDS
@@ -299,12 +389,32 @@ restart() {
     sleep 0.2
     tries=$((tries + 1))
   done
-  if [ -f "$B/state.json" ]; then
-    echo "[restart] Bridge online. Game is on title screen."
-  else
+  if [ ! -f "$B/state.json" ]; then
     echo "[restart] TIMEOUT waiting for bridge"
     return 1
   fi
+  echo "[restart] Bridge online. Booting through title..."
+  # Press Enter through title → main menu → Continue → save select → loading
+  local max=20
+  for i in $(seq 1 $max); do
+    rm -f "$B/response.json"
+    echo "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":150}" > "$B/command.json"
+    local t=0
+    until [ -f "$B/response.json" ] || [ $t -ge 150 ]; do sleep 0.02; t=$((t+1)); done
+    sleep 2
+    # Check screen
+    rm -f "$B/response.json"
+    echo "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}" > "$B/command.json"
+    t=0
+    until [ -f "$B/response.json" ] || [ $t -ge 150 ]; do sleep 0.02; t=$((t+1)); done
+    local scr=$(tr -d '\r\n ' < "$B/response.json" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
+    echo "[restart] boot $i — screen: $scr"
+    if [ "$scr" != "TitleScreen" ] && [ "$scr" != "" ]; then
+      echo "[restart] Ready on $scr"
+      return 0
+    fi
+  done
+  echo "[restart] Booted (may still be loading)"
 }
 
 # boot: Press Enter through title/continue screens until world map loads.

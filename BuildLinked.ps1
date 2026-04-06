@@ -417,7 +417,12 @@ if ($LASTEXITCODE -eq 0) {
         New-Item -ItemType Directory -Force -Path $bridgeMapsDir | Out-Null
         Copy-Item "FFTHandsFree/maps/MAP*.json" $bridgeMapsDir -Force
         Copy-Item "FFTHandsFree/location_maps.json" $bridgeMapsDir -Force -ErrorAction SilentlyContinue
-        # Preserve last_location.txt if it exists (don't overwrite)
+        # Copy random encounter map lookup to bridge dir (one level up from maps/)
+        Copy-Item "FFTHandsFree/random_encounter_maps.json" "$modPath/claude_bridge/" -Force -ErrorAction SilentlyContinue
+        # Copy last_location.txt to bridge dir if it exists in repo (preserve across deploys)
+        if (Test-Path "FFTHandsFree/last_location.txt") {
+            Copy-Item "FFTHandsFree/last_location.txt" "$modPath/claude_bridge/" -Force
+        }
         $mapCount = (Get-ChildItem "$bridgeMapsDir/MAP*.json" | Measure-Object).Count
         Write-Host "Copied $mapCount battle maps to claude_bridge/maps" -ForegroundColor Green
     }
