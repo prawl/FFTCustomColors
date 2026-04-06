@@ -75,6 +75,9 @@ Map-based BFS and move_grid are working. These items complete the movement syste
 - [ ] **Fix Move/Jump stat reading** — UI buffer at `0x1407AC7E4`/`0x1407AC7E6` shows base stats (e.g. 4/4), not effective stats after equipment (e.g. 3/3). Need to find the effective stat address or compute from equipment.
 - [ ] **Auto-deploy MAP files** — Update `BuildLinked.ps1` to copy `FFTHandsFree/maps/` to `claude_bridge/maps/` during deploy. Currently must re-copy manually after every deploy.
 - [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza (different Move/Jump stats, different tactical priorities).
+- [ ] **Neutral unit handling (team=2)** — Team 2 = neutral/NPC (not enemy). Don't block pathing for neutrals. Neutrals may not appear in C+Up turn cycling. 9 unit slots active but only 3 found in scan during rare encounter.
+- [ ] **BFS enemy traversal** — Units can move THROUGH enemy tiles but can't STOP on them. Current BFS blocks enemies from traversal entirely. Fix: allow enemies in BFS pathfinding, only exclude from final valid tile list.
+- [ ] **Fix GameOver vs Pause detection** — Battle_Paused and GameOver screens are being confused. Need a reliable way to distinguish them (different memory flags).
 
 ---
 

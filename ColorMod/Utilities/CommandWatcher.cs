@@ -998,6 +998,39 @@ namespace FFTColorCustomizer.Utilities
         private const int TerrainEntryCount = TerrainGridCols * TerrainGridRows; // 72
 
         private readonly HashSet<(int, int)> _blockedTiles = new();
+        private int _lastWorldMapLocation = -1;
+        private bool _battleMapAutoLoaded = false;
+
+        private string? _lastLocationPath;
+
+        private string GetLastLocationPath()
+        {
+            if (_lastLocationPath != null) return _lastLocationPath;
+            // Save in the maps directory (survives deploys), not bridge directory
+            EnsureMapLoader();
+            var mapsDir = _mapLoader != null ? _mapLoader.MapDataDir : _bridgeDirectory;
+            _lastLocationPath = Path.Combine(mapsDir, "last_location.txt");
+            return _lastLocationPath;
+        }
+
+        private void SaveLastLocation(int locationId)
+        {
+            _lastWorldMapLocation = locationId;
+            try { File.WriteAllText(GetLastLocationPath(), locationId.ToString()); }
+            catch { /* best effort */ }
+        }
+
+        private int LoadLastLocation()
+        {
+            try
+            {
+                var path = GetLastLocationPath();
+                if (File.Exists(path))
+                    return int.Parse(File.ReadAllText(path).Trim());
+            }
+            catch { }
+            return -1;
+        }
 
         /// <summary>
         /// Mark a grid tile as blocked (impassable). Called when a move attempt fails.
@@ -1015,6 +1048,7 @@ namespace FFTColorCustomizer.Utilities
         public void ClearBlockedTiles()
         {
             _blockedTiles.Clear();
+            _battleMapAutoLoaded = false;
         }
 
         /// <summary>
@@ -1035,6 +1069,21 @@ namespace FFTColorCustomizer.Utilities
 
                 if (screen.Name != "Battle_Moving")
                     return;
+
+                // Auto-load map from location ID if not already loaded
+                EnsureMapLoader();
+                if (_lastWorldMapLocation < 0)
+                    _lastWorldMapLocation = LoadLastLocation();
+                if (!_battleMapAutoLoaded && _lastWorldMapLocation >= 0 && _mapLoader != null)
+                {
+                    var autoMap = _mapLoader.LoadMapForLocation(_lastWorldMapLocation);
+                    if (autoMap != null)
+                    {
+                        ModLogger.Log($"[Tiles] Auto-loaded MAP{autoMap.MapNumber:D3} for location {_lastWorldMapLocation}");
+                        ClearBlockedTiles();
+                    }
+                    _battleMapAutoLoaded = true;
+                }
 
                 // Read Move/Jump stats from UI buffer
                 var moveResult = Explorer.ReadAbsolute((nint)0x1407AC7E4, 1);
@@ -1297,6 +1346,10 @@ namespace FFTColorCustomizer.Utilities
                     BattleUnitHp = (int)v[11],
                     CameraRotation = (int)(v[17] - 1 + 4) % 4,
                 };
+
+                // Track world map location for auto map loading (persists to disk)
+                if (screen.Location >= 0 && screen.Location <= 42 && screen.Location != _lastWorldMapLocation)
+                    SaveLastLocation(screen.Location);
 
                 int party = (int)v[0];
                 int ui = (int)v[1];

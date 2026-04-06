@@ -14,7 +14,8 @@ namespace FFTColorCustomizer.GameBridge
     /// </summary>
     public class MapLoader
     {
-        private readonly string _mapDataDir;
+        private string _mapDataDir;
+        public string MapDataDir => _mapDataDir;
         private MapData? _currentMap;
         private int _currentMapNumber = -1;
 
@@ -24,21 +25,17 @@ namespace FFTColorCustomizer.GameBridge
         public MapLoader(string mapDataDir)
         {
             _mapDataDir = mapDataDir;
-            // If the bridge maps dir is empty, try the repo's FFTHandsFree/maps/ directory
-            if (!Directory.Exists(_mapDataDir) || Directory.GetFiles(_mapDataDir, "MAP*.json").Length == 0)
+            // Always prefer the repo's FFTHandsFree/maps/ directory (has all 122 maps + location_maps.json)
+            var dir = new DirectoryInfo(mapDataDir);
+            while (dir?.Parent != null)
             {
-                // Walk up from mapDataDir to find the repo root (has FFTHandsFree/)
-                var dir = new DirectoryInfo(mapDataDir);
-                while (dir?.Parent != null)
+                dir = dir.Parent;
+                var repoMaps = Path.Combine(dir.FullName, "FFTHandsFree", "maps");
+                if (Directory.Exists(repoMaps) && Directory.GetFiles(repoMaps, "MAP*.json").Length > 10)
                 {
-                    dir = dir.Parent;
-                    var repoMaps = Path.Combine(dir.FullName, "FFTHandsFree", "maps");
-                    if (Directory.Exists(repoMaps) && Directory.GetFiles(repoMaps, "MAP*.json").Length > 0)
-                    {
-                        _mapDataDir = repoMaps;
-                        ModLogger.Log($"[MapLoader] Using repo maps dir: {repoMaps}");
-                        break;
-                    }
+                    _mapDataDir = repoMaps;
+                    ModLogger.Log($"[MapLoader] Using repo maps dir: {repoMaps}");
+                    break;
                 }
             }
         }
@@ -59,19 +56,125 @@ namespace FFTColorCustomizer.GameBridge
                 return null;
             }
 
+            var map = LoadMapFromFile(path, mapNumber);
+            if (map == null)
+            {
+                ModLogger.LogError($"[MapLoader] Failed to parse MAP{mapNumber:D3}");
+                return null;
+            }
+
+            _currentMap = map;
+            _currentMapNumber = mapNumber;
+            ModLogger.Log($"[MapLoader] Loaded MAP{mapNumber:D3}: {map.Width}x{map.Height}");
+            return _currentMap;
+        }
+
+        public void ClearMap()
+        {
+            _currentMap = null;
+            _currentMapNumber = -1;
+        }
+
+        private Dictionary<int, MapData>? _allMaps;
+
+        /// <summary>
+        /// Load all maps from disk (one-time, ~12MB). Used for fingerprint detection.
+        /// </summary>
+        private void EnsureAllMapsLoaded()
+        {
+            if (_allMaps != null) return;
+            _allMaps = new Dictionary<int, MapData>();
+            var files = Directory.GetFiles(_mapDataDir, "MAP*.json");
+            foreach (var file in files)
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(Path.GetFileName(file), @"MAP(\d+)\.json");
+                if (!match.Success) continue;
+                int num = int.Parse(match.Groups[1].Value);
+                var map = LoadMapFromFile(file, num);
+                if (map != null) _allMaps[num] = map;
+            }
+            ModLogger.Log($"[MapLoader] Loaded {_allMaps.Count} maps for fingerprinting");
+        }
+
+        /// <summary>
+        /// Detect which map matches the current battle by checking unit positions + ally height.
+        /// Returns the map number, or -1 if no unique match.
+        /// </summary>
+        /// <param name="unitPositions">Grid positions of all units (grid = map coords)</param>
+        /// <param name="allyX">Ally grid X</param>
+        /// <param name="allyY">Ally grid Y</param>
+        /// <param name="allyDisplayHeight">Display height at ally position (from memory)</param>
+        public int DetectMap(List<(int x, int y)> unitPositions, int allyX, int allyY, double allyDisplayHeight)
+        {
+            EnsureAllMapsLoaded();
+            if (_allMaps == null) return -1;
+
+            // Step 1: Filter maps where ALL unit positions are in-bounds and walkable
+            var candidates = new List<int>();
+            foreach (var kv in _allMaps)
+            {
+                var map = kv.Value;
+                bool valid = true;
+                foreach (var (x, y) in unitPositions)
+                {
+                    if (!map.InBounds(x, y) || !map.IsWalkable(x, y))
+                    {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) candidates.Add(kv.Key);
+            }
+
+            ModLogger.Log($"[MapLoader] DetectMap: {candidates.Count} candidates after position filter");
+
+            if (candidates.Count == 1) return candidates[0];
+            if (candidates.Count == 0) return -1;
+
+            // Step 2: Filter by ally's display height
+            var heightMatches = new List<int>();
+            foreach (var num in candidates)
+            {
+                var map = _allMaps[num];
+                double h = map.GetDisplayHeight(allyX, allyY);
+                if (Math.Abs(h - allyDisplayHeight) < 0.01)
+                    heightMatches.Add(num);
+            }
+
+            ModLogger.Log($"[MapLoader] DetectMap: {heightMatches.Count} candidates after height filter (ally h={allyDisplayHeight})");
+
+            if (heightMatches.Count == 1) return heightMatches[0];
+
+            // Step 3: Tightest dimension fit (prefer map whose dimensions best match unit spread)
+            var remaining = heightMatches.Count > 0 ? heightMatches : candidates;
+
+            int maxX = 0, maxY = 0;
+            foreach (var (x, y) in unitPositions) { if (x > maxX) maxX = x; if (y > maxY) maxY = y; }
+
+            int bestMap = remaining[0];
+            int bestFit = int.MaxValue;
+            foreach (var num in remaining)
+            {
+                var map = _allMaps[num];
+                int fit = (map.Width - maxX - 1) + (map.Height - maxY - 1);
+                if (fit >= 0 && fit < bestFit) { bestFit = fit; bestMap = num; }
+            }
+
+            ModLogger.Log($"[MapLoader] DetectMap: {remaining.Count} candidates, tightest fit MAP{bestMap:D3} (fit={bestFit})");
+            return bestMap;
+        }
+
+        private MapData? LoadMapFromFile(string path, int mapNumber)
+        {
             try
             {
                 var json = File.ReadAllText(path);
                 var raw = JsonSerializer.Deserialize<RawMapJson>(json);
-                if (raw?.Lower == null || raw.Lower.Length == 0)
-                {
-                    ModLogger.LogError($"[MapLoader] MAP{mapNumber:D3} has no lower level data");
-                    return null;
-                }
+                if (raw?.Lower == null || raw.Lower.Length == 0) return null;
 
                 var rows = raw.Lower.Length;
                 var cols = raw.Lower[0].Length;
-                var tiles = new MapTile[cols, rows]; // tiles[x, y]
+                var tiles = new MapTile[cols, rows];
 
                 for (int y = 0; y < rows; y++)
                 {
@@ -91,29 +194,54 @@ namespace FFTColorCustomizer.GameBridge
                     }
                 }
 
-                _currentMap = new MapData
-                {
-                    MapNumber = mapNumber,
-                    Width = cols,
-                    Height = rows,
-                    Tiles = tiles
-                };
-                _currentMapNumber = mapNumber;
+                return new MapData { MapNumber = mapNumber, Width = cols, Height = rows, Tiles = tiles };
+            }
+            catch { return null; }
+        }
 
-                ModLogger.Log($"[MapLoader] Loaded MAP{mapNumber:D3}: {cols}x{rows}");
-                return _currentMap;
+        /// <summary>
+        /// Look up MAP number from world map location ID using location_maps.json.
+        /// Returns -1 if location not in table.
+        /// </summary>
+        public int GetMapNumberForLocation(int locationId)
+        {
+            var lookupPath = Path.Combine(_mapDataDir, "..", "location_maps.json");
+            if (!File.Exists(lookupPath))
+            {
+                // Try repo path
+                lookupPath = Path.Combine(_mapDataDir, "location_maps.json");
+            }
+            if (!File.Exists(lookupPath)) return -1;
+
+            try
+            {
+                var json = File.ReadAllText(lookupPath);
+                var lookup = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+                if (lookup != null && lookup.TryGetValue(locationId.ToString(), out var val) && val.ValueKind == JsonValueKind.Number)
+                {
+                    return val.GetInt32();
+                }
             }
             catch (Exception ex)
             {
-                ModLogger.LogError($"[MapLoader] Failed to load MAP{mapNumber:D3}: {ex.Message}");
-                return null;
+                ModLogger.LogError($"[MapLoader] Failed to read location_maps.json: {ex.Message}");
             }
+            return -1;
         }
 
-        public void ClearMap()
+        /// <summary>
+        /// Try to auto-load the correct map for a world map location ID.
+        /// Returns the loaded map, or null if location not in lookup table.
+        /// </summary>
+        public MapData? LoadMapForLocation(int locationId)
         {
-            _currentMap = null;
-            _currentMapNumber = -1;
+            int mapNumber = GetMapNumberForLocation(locationId);
+            if (mapNumber < 0)
+            {
+                ModLogger.Log($"[MapLoader] No map mapping for location {locationId}");
+                return null;
+            }
+            return LoadMap(mapNumber);
         }
 
         // --- JSON deserialization models ---

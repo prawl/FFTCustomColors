@@ -714,7 +714,51 @@ namespace FFTColorCustomizer.GameBridge
                 lines.Add($"[{teamName}] ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp}");
             }
 
-            // 5. Compute valid tiles if map is loaded
+            // 5. Auto-detect map if not loaded
+            if (_mapLoader != null && _mapLoader.CurrentMap == null)
+            {
+                // Try 1: Location ID lookup (fast, reliable for known locations)
+                var currentScreen = _detectScreen();
+                int locId = currentScreen?.Location ?? -1;
+                // If location is 255 (battle), try reading persisted location from disk
+                if (locId < 0 || locId > 42)
+                {
+                    try
+                    {
+                        var lastLocPath = System.IO.Path.Combine(_mapLoader.MapDataDir, "last_location.txt");
+                        if (System.IO.File.Exists(lastLocPath))
+                            locId = int.Parse(System.IO.File.ReadAllText(lastLocPath).Trim());
+                    }
+                    catch { }
+                }
+                if (locId >= 0 && locId <= 42)
+                {
+                    var locMap = _mapLoader.LoadMapForLocation(locId);
+                    if (locMap != null)
+                        lines.Add($"MAP{locMap.MapNumber:D3} (location {locId} lookup)");
+                }
+
+                // Try 2: Fingerprint detection (unit positions + height)
+                if (_mapLoader.CurrentMap == null)
+                {
+                    var heightResult = _explorer.ReadAbsolute((nint)0x140C6492C, 4);
+                    double allyHeight = heightResult != null ? (double)heightResult.Value.value / 10.0 : -1;
+
+                    var allPositions = units.Select(u => (u.GridX, u.GridY)).ToList();
+                    int detected = _mapLoader.DetectMap(allPositions, ally.GridX, ally.GridY, allyHeight);
+                    if (detected >= 0)
+                    {
+                        _mapLoader.LoadMap(detected);
+                        lines.Add($"MAP{detected:D3} (fingerprint, allyH={allyHeight})");
+                    }
+                    else
+                    {
+                        lines.Add($"MAP DETECTION FAILED (loc={locId}, allyH={allyHeight}, {units.Count} units)");
+                    }
+                }
+            }
+
+            // 6. Compute valid tiles if map is loaded
             var validPaths = new Dictionary<string, PathEntry>();
             if (_mapLoader?.CurrentMap != null)
             {
@@ -777,7 +821,7 @@ namespace FFTColorCustomizer.GameBridge
             }
             else
             {
-                lines.Add("NO MAP LOADED — call set_map first");
+                lines.Add("NO MAP — detection failed and no manual set_map");
             }
 
             response.Status = "completed";

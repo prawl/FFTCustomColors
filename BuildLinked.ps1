@@ -411,6 +411,17 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "  [OK] ModConfig.json present" -ForegroundColor Green
     }
 
+    # Copy battle map data for Claude bridge
+    $bridgeMapsDir = "$modPath/claude_bridge/maps"
+    if (Test-Path "FFTHandsFree/maps") {
+        New-Item -ItemType Directory -Force -Path $bridgeMapsDir | Out-Null
+        Copy-Item "FFTHandsFree/maps/MAP*.json" $bridgeMapsDir -Force
+        Copy-Item "FFTHandsFree/location_maps.json" $bridgeMapsDir -Force -ErrorAction SilentlyContinue
+        # Preserve last_location.txt if it exists (don't overwrite)
+        $mapCount = (Get-ChildItem "$bridgeMapsDir/MAP*.json" | Measure-Object).Count
+        Write-Host "Copied $mapCount battle maps to claude_bridge/maps" -ForegroundColor Green
+    }
+
     # Report results
     if ($verificationErrors.Count -eq 0) {
         Write-Host "`nBuild successful! Mod installed to: $modPath" -ForegroundColor Green
