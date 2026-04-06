@@ -35,7 +35,7 @@ namespace FFTColorCustomizer.Utilities
         /// actions not in the current screen's validPaths are blocked.
         /// Info actions (scan_move, screen, memory reads) are always allowed.
         /// </summary>
-        public bool StrictMode { get; set; } = false;
+        public bool StrictMode { get; set; } = true;
 
         // Actions that are always allowed regardless of strict mode (info/infrastructure)
         private static readonly HashSet<string> InfrastructureActions = new()
