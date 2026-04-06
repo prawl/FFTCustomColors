@@ -433,10 +433,8 @@ if ($LASTEXITCODE -eq 0) {
         Copy-Item "FFTHandsFree/location_maps.json" $bridgeMapsDir -Force -ErrorAction SilentlyContinue
         # Copy random encounter map lookup to bridge dir (one level up from maps/)
         Copy-Item "FFTHandsFree/random_encounter_maps.json" "$modPath/claude_bridge/" -Force -ErrorAction SilentlyContinue
-        # Copy last_location.txt to bridge dir if it exists in repo (preserve across deploys)
-        if (Test-Path "FFTHandsFree/last_location.txt") {
-            Copy-Item "FFTHandsFree/last_location.txt" "$modPath/claude_bridge/" -Force
-        }
+        # NOTE: last_location.txt is runtime state written by the game, NOT from repo.
+        # It's backed up/restored by the deploy wipe logic above.
         $mapCount = (Get-ChildItem "$bridgeMapsDir/MAP*.json" | Measure-Object).Count
         Write-Host "Copied $mapCount battle maps to claude_bridge/maps" -ForegroundColor Green
     }

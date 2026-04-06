@@ -38,6 +38,9 @@ Desktop.ini
 # macOS
 .DS_Store
 
+# Runtime state (written by game, not source)
+FFTHandsFree/last_location.txt
+
 # Reloaded-II specific
 *.log
 Reloaded.Mod.Loader.Bootstrapper.dll
