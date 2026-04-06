@@ -274,6 +274,9 @@ namespace FFTColorCustomizer.GameBridge
                     case "move_grid":
                         return MoveGrid(response, command);
 
+                    case "battle_attack":
+                        return BattleAttack(response, command);
+
                     default:
                         response.Status = "failed";
                         response.Error = $"Unknown navigation action: {command.Action}";
@@ -442,6 +445,173 @@ namespace FFTColorCustomizer.GameBridge
 
             response.Status = "completed";
             return response;
+        }
+
+        /// <summary>
+        /// battle_attack: Navigate to Abilities→Attack, enter targeting mode,
+        /// empirically detect rotation, navigate cursor to target tile, confirm.
+        /// Usage: {"action":"battle_attack","locationId":x,"unitIndex":y}
+        /// </summary>
+        private CommandResponse BattleAttack(CommandResponse response, CommandRequest command)
+        {
+            int targetX = command.LocationId;
+            int targetY = command.UnitIndex;
+
+            var screen = _detectScreen();
+            if (screen == null || (screen.Name != "Battle_MyTurn" && screen.Name != "Battle_Acting"))
+            {
+                response.Status = "failed";
+                response.Error = $"Not on Battle_MyTurn/Battle_Acting (current: {screen?.Name ?? "null"})";
+                return response;
+            }
+
+            // Step 1: Navigate menu to Abilities (index 1)
+            var cursorResult = _explorer.ReadAbsolute((nint)0x1407FCCA8, 1);
+            int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
+            NavigateMenuCursor(cursor, 1);
+            SendKey(VK_ENTER); // Open Abilities submenu
+            Thread.Sleep(500);
+
+            // Step 2: Select Attack (top item in submenu)
+            SendKey(VK_ENTER);
+            Thread.Sleep(500);
+
+            // Verify we're in targeting mode
+            screen = _detectScreen();
+            if (screen == null || screen.Name != "Battle_Targeting")
+            {
+                response.Status = "failed";
+                response.Error = $"Failed to enter targeting mode (current: {screen?.Name ?? "null"})";
+                // Try to back out
+                SendKey(VK_ESCAPE);
+                Thread.Sleep(300);
+                SendKey(VK_ESCAPE);
+                return response;
+            }
+
+            // Step 3: Read starting cursor position
+            var startPos = ReadGridPos();
+            ModLogger.Log($"[BattleAttack] Targeting mode, cursor at ({startPos.x},{startPos.y}), target ({targetX},{targetY})");
+
+            int deltaX = targetX - startPos.x;
+            int deltaY = targetY - startPos.y;
+
+            if (deltaX == 0 && deltaY == 0)
+            {
+                // Already on target — confirm
+                SendKey(VK_ENTER);
+                Thread.Sleep(500);
+                SendKey(VK_ENTER);
+                Thread.Sleep(300);
+                response.Status = "completed";
+                response.Error = $"Attacked ({targetX},{targetY}) — cursor was already on target";
+                return response;
+            }
+
+            // Step 4: Empirical rotation detection — press Right, read delta
+            _input.SendKeyPressToWindow(_gameWindow, VK_RIGHT);
+            Thread.Sleep(150);
+            var testPos = ReadGridPos();
+            int rdx = testPos.x - startPos.x;
+            int rdy = testPos.y - startPos.y;
+
+            if (rdx == 0 && rdy == 0)
+            {
+                // Right didn't move (at boundary) — try Down
+                _input.SendKeyPressToWindow(_gameWindow, VK_DOWN);
+                Thread.Sleep(150);
+                testPos = ReadGridPos();
+                int ddx = testPos.x - startPos.x;
+                int ddy = testPos.y - startPos.y;
+                // Undo Down
+                _input.SendKeyPressToWindow(_gameWindow, VK_UP);
+                Thread.Sleep(150);
+
+                if (ddx != 0 || ddy != 0)
+                {
+                    // Down = 90° CW from Right → Right = (-ddy, ddx)
+                    rdx = -ddy;
+                    rdy = ddx;
+                    ModLogger.Log($"[BattleAttack] Rotation from Down: ({ddx},{ddy}) → Right=({rdx},{rdy})");
+                }
+                else
+                {
+                    response.Status = "failed";
+                    response.Error = "Could not detect rotation — cursor didn't move";
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                    return response;
+                }
+            }
+            else
+            {
+                // Undo the Right press
+                _input.SendKeyPressToWindow(_gameWindow, VK_LEFT);
+                Thread.Sleep(150);
+                ModLogger.Log($"[BattleAttack] Rotation: Right=({rdx},{rdy})");
+            }
+
+            // Step 5: Compute arrow key for target delta
+            string? arrowName = AttackDirectionLogic.ComputeArrowForDelta(rdx, rdy, deltaX, deltaY);
+            if (arrowName == null)
+            {
+                // Target isn't one arrow press away — need multi-step navigation
+                // Navigate X then Y, same as move_grid
+                NavigateGrid(deltaX, deltaY, FindRotationFromRight(rdx, rdy));
+            }
+            else
+            {
+                int vk = arrowName switch
+                {
+                    "Right" => VK_RIGHT,
+                    "Left" => VK_LEFT,
+                    "Up" => VK_UP,
+                    "Down" => VK_DOWN,
+                    _ => 0
+                };
+                if (vk != 0)
+                {
+                    _input.SendKeyPressToWindow(_gameWindow, vk);
+                    Thread.Sleep(150);
+                }
+            }
+
+            // Step 6: Verify cursor is on target
+            var finalPos = ReadGridPos();
+            if (finalPos.x != targetX || finalPos.y != targetY)
+            {
+                ModLogger.Log($"[BattleAttack] WARN: cursor at ({finalPos.x},{finalPos.y}), expected ({targetX},{targetY})");
+                response.Error = $"Cursor miss: at ({finalPos.x},{finalPos.y}) expected ({targetX},{targetY})";
+                SendKey(VK_ESCAPE);
+                Thread.Sleep(300);
+                response.Status = "failed";
+                return response;
+            }
+
+            // Step 7: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
+            SendKey(VK_ENTER);
+            Thread.Sleep(500);
+            SendKey(VK_ENTER);
+            Thread.Sleep(500);
+
+            response.Status = "completed";
+            response.Error = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y})";
+            ModLogger.Log($"[BattleAttack] {response.Error}");
+            return response;
+        }
+
+        /// <summary>
+        /// Derive the rotation index (0-3) from empirical Right delta.
+        /// Used to bridge AttackDirectionLogic with NavigateGrid.
+        /// </summary>
+        private int FindRotationFromRight(int rdx, int rdy)
+        {
+            for (int r = 0; r < 4; r++)
+            {
+                var (dx, dy) = ArrowGridDelta[r, 0]; // index 0 = Right
+                if (dx == rdx && dy == rdy) return r;
+            }
+            return 0;
         }
 
         /// <summary>

@@ -63,8 +63,8 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 Claude can move and wait, but can't attack. This is the #1 blocker — you can't play FFT without attacking.
 
 ### Attack Targeting
-- [ ] `battle_attack` action: open Abilities -> Attack -> navigate target cursor to enemy -> confirm
-- [ ] Read rotation DURING targeting mode (camera may auto-rotate between Move and Attack)
+- [x] `battle_attack` action: open Abilities -> Attack -> navigate target cursor to enemy -> confirm
+- [x] Read rotation DURING targeting mode — uses empirical detection (press Right, read delta)
 - [ ] Verify attack landed (check enemy HP decreased)
 
 ### Single-Command Turn Execution (THE BIG WIN)
@@ -87,6 +87,8 @@ Claude can move and wait, but can't attack. This is the #1 blocker — you can't
 - [ ] **Fix Move/Jump stat reading** — UI buffer shows base stats, not effective
 - [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza
 - [ ] **Neutral unit handling (team=2)** — Don't block pathing for neutrals
+- [ ] **Menu cursor address (0x1407FCCA8) goes stale** — Reads correctly during a turn but doesn't reset at start of new turn. Shows old value (e.g. Wait=2) when cursor is visually on Move. Need to find a more reliable cursor source or detect turn transitions to invalidate cache.
+- [ ] **Auto-scan double-fire** — Auto-scan on Battle_MyTurn fires after scan_move already scanned, causing key presses that open Status menu. Disabled for now. Need scan_move to mark turn as scanned via BattleTurnTracker.
 
 ---
 

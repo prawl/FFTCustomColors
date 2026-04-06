@@ -474,6 +474,11 @@ scan_move() {
 # Example: move_grid 0 2    → move to grid position (0,2)
 move_grid() { fft_full "{\"id\":\"$(id)\",\"action\":\"move_grid\",\"locationId\":$1,\"unitIndex\":$2}"; }
 
+# battle_attack: Attack a target tile. Handles menu nav, rotation detection, targeting.
+# Usage: battle_attack <x> <y>
+# Example: battle_attack 2 4    → attack tile (2,4)
+battle_attack() { fft_full "{\"id\":\"$(id)\",\"action\":\"battle_attack\",\"locationId\":$1,\"unitIndex\":$2}"; }
+
 # get_arrows: Compute arrow keys to move Ramza next to nearest enemy. Shows the sequence.
 # Usage: get_arrows          (just show arrows)
 #        get_arrows execute   (show AND execute the move + confirm)

@@ -159,26 +159,11 @@ namespace FFTColorCustomizer.Utilities
                     response.Screen ??= DetectScreenSettled();
 
                     // Auto-scan units when a new friendly turn starts
-                    if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name))
-                    {
-                        try
-                        {
-                            EnsureNavActions();
-                            if (_navActions != null)
-                            {
-                                ModLogger.Log("[AutoScan] New turn detected — scanning units");
-                                _navActions.AutoScanUnits();
-                                _turnTracker.MarkScanned();
-                                ModLogger.Log("[AutoScan] Scan complete");
-                                // Re-detect screen after scan (scan presses keys)
-                                response.Screen = DetectScreenSettled();
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            ModLogger.LogError($"[AutoScan] Failed: {ex.Message}");
-                        }
-                    }
+                    // TODO: Re-enable once scan_move marks turn as scanned to prevent double-scan
+                    // if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name))
+                    // {
+                    //     ...
+                    // }
 
                     response.Battle ??= BattleTracker?.Update();
                     // Populate map info on battle state from MapLoader
@@ -288,7 +273,7 @@ namespace FFTColorCustomizer.Utilities
                     }
 
                     // Allow structured game actions that validate internally
-                    if (command.Action is "path" or "move_grid" or "battle_wait" or "battle_flee" or "travel_to")
+                    if (command.Action is "path" or "move_grid" or "battle_wait" or "battle_flee" or "battle_attack" or "travel_to")
                         allowed = true;
 
                     if (!allowed)
@@ -561,6 +546,7 @@ namespace FFTColorCustomizer.Utilities
 
                     case "battle_wait":
                     case "battle_flee":
+                    case "battle_attack":
                     case "navigate":
                     case "travel_to":
                     case "confirm_attack":
