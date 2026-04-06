@@ -1000,6 +1000,31 @@ namespace FFTColorCustomizer.GameBridge
                 lines.Add("NO MAP — detection failed and no manual set_map");
             }
 
+            // Attack tiles: 4 cardinal neighbors of active unit with arrow key mapping
+            {
+                var camResult = _explorer.ReadAbsolute((nint)AddrCameraRotation, 1);
+                int rotation = camResult != null ? (int)((camResult.Value.value - 1 + 4) % 4) : 0;
+                string[] dirNames = { "Right", "Left", "Up", "Down" };
+                int[][] cardinals = { new[]{1,0}, new[]{-1,0}, new[]{0,1}, new[]{0,-1} };
+                var attackTiles = new List<string>();
+                foreach (var delta in cardinals)
+                {
+                    int tx = ally.GridX + delta[0];
+                    int ty = ally.GridY + delta[1];
+                    int dir = FindDirForDelta(rotation, delta[0], delta[1]);
+                    string arrowName = dirNames[dir];
+                    bool hasEnemy = enemyPositions.Contains((tx, ty));
+                    bool hasAlly = units.Any(u => u.Team == 0 && u.GridX == tx && u.GridY == ty && !(u.GridX == ally.GridX && u.GridY == ally.GridY));
+                    string occupant = hasEnemy ? "ENEMY" : hasAlly ? "ALLY" : "empty";
+                    attackTiles.Add($"{tx},{ty}={arrowName}({occupant})");
+                }
+                validPaths["AttackTiles"] = new PathEntry
+                {
+                    Desc = $"4 cardinal tiles from ({ally.GridX},{ally.GridY}) rot={rotation}",
+                    Action = string.Join(" ", attackTiles)
+                };
+            }
+
             response.Status = "completed";
             response.Error = string.Join(" | ", lines);
             response.ValidPaths = validPaths;

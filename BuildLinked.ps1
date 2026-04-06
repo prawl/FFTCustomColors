@@ -45,8 +45,22 @@ if (Test-Path $modPath) {
         Copy-Item $userThemesJson "$tempBackupPath/UserThemes.json" -Force
     }
 
+    # Backup last_location.txt from claude_bridge if it exists
+    $lastLocPath = "$modPath/claude_bridge/last_location.txt"
+    $lastLocBackup = "$env:TEMP/FFTColorCustomizer_last_location.txt"
+    if (Test-Path $lastLocPath) {
+        Copy-Item $lastLocPath $lastLocBackup -Force
+    }
+
     # Remove everything
     Remove-Item "$modPath/*" -Force -Recurse -ErrorAction SilentlyContinue
+
+    # Restore last_location.txt to bridge dir
+    if (Test-Path $lastLocBackup) {
+        New-Item -ItemType Directory -Force -Path "$modPath/claude_bridge" | Out-Null
+        Copy-Item $lastLocBackup "$modPath/claude_bridge/last_location.txt" -Force
+        Remove-Item $lastLocBackup -Force -ErrorAction SilentlyContinue
+    }
 
     # Restore UserThemes if backup exists
     if (Test-Path $tempBackupPath) {
