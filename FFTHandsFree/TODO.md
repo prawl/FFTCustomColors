@@ -60,11 +60,12 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 1. Battle Execution — Attack + Complete Turns (P0, BLOCKING)
 
-Claude can move and wait, but can't attack. This is the #1 blocker — you can't play FFT without attacking.
+Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `battle_wait`. Remaining work is polish and robustness.
 
 ### Attack Targeting
 - [x] `battle_attack` action: open Abilities -> Attack -> navigate target cursor to enemy -> confirm
 - [x] Read rotation DURING targeting mode — uses empirical detection (press Right, read delta)
+- [x] `AttackTiles` in scan_move response — 4 cardinal tiles with ENEMY/ALLY/empty occupancy
 - [ ] Verify attack landed (check enemy HP decreased)
 
 ### Single-Command Turn Execution (THE BIG WIN)
@@ -82,7 +83,7 @@ Claude can move and wait, but can't attack. This is the #1 blocker — you can't
 
 ### Movement System — Remaining Work
 - [~] **Auto-detect battle map** — Location ID lookup + random encounter maps implemented, fingerprint fallback
-- [ ] **last_location.txt gets overwritten on restart** — File reverts to wrong value (30 instead of 26) after kill/deploy/relaunch cycle. Backup/restore in BuildLinked.ps1 may not be working, or boot sequence writes a bad value before battle loads.
+- [x] **last_location.txt persistence fixed** — Removed stale repo copy, backup/restore on deploy, save uses rawLocation not post-override screen.Location, world map detection works with stale unit slots.
 - [~] **Wait facing direction** — Basic implementation done, needs tactical improvement
 - [ ] **Fix Move/Jump stat reading** — UI buffer shows base stats, not effective
 - [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza

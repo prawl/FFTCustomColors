@@ -65,11 +65,27 @@ The mod handles everything internally:
 
 You'll get back a confirmation like `(1,4)->(6,5) CONFIRMED`.
 
-### 4. Act or Wait
+### 4. Attack
 
-After moving, the action menu reappears. You can:
-- **Attack**: select Abilities -> Attack -> target an adjacent enemy
-- **Wait**: `battle_wait` (handles menu nav + facing confirmation)
+```bash
+battle_attack 7 5    # attack tile (7,5) — must be in attack range
+```
+
+The mod handles everything internally:
+1. Navigates menu to Abilities → Attack
+2. Enters targeting mode
+3. Empirical rotation detection (press Right, read delta, undo)
+4. Navigates cursor to target tile
+5. Verifies cursor is on target
+6. Confirms attack (Enter → Enter)
+
+Pick a target tile from `AttackTiles` in the scan_move response — any tile marked `ENEMY`.
+
+### 5. Wait
+
+```bash
+battle_wait          # end turn (handles menu nav + facing)
+```
 
 ## How Map Detection Works
 
@@ -185,12 +201,14 @@ To Wait, navigate the menu cursor to Wait (index 2) and press Enter twice (selec
 # Full turn: scan -> move -> attack -> wait
 scan_move 7 3                   # ALWAYS scan first
 move_grid 6 5                   # move adjacent to enemy
-# Attack: navigate to Abilities→Attack, empirical rotation, target, confirm
-# Wait: navigate cursor to Wait(2), Enter, Enter
+battle_attack 7 5               # attack enemy tile
+battle_wait                     # end turn
 
 # Attack without moving (enemy already adjacent)
-# scan_move, then attack, then wait
+scan_move 7 3
+battle_attack 2 4
+battle_wait
 
 # Just wait (skip move and action)
-# Navigate cursor to Wait(2), Enter, Enter
+battle_wait
 ```
