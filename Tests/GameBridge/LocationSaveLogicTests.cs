@@ -1,0 +1,110 @@
+using FFTColorCustomizer.GameBridge;
+using Xunit;
+
+namespace FFTColorCustomizer.Tests.GameBridge
+{
+    /// <summary>
+    /// Tests for the logic that decides WHEN to save the world map location to disk.
+    ///
+    /// Bug: During battle, screen.Location gets overridden from 255 to _lastWorldMapLocation.
+    /// The save condition checks screen.Location != _lastWorldMapLocation, which is always
+    /// false after the override — so the file never updates.
+    ///
+    /// The save decision should use the RAW location (before override), not the display location.
+    /// </summary>
+    public class LocationSaveLogicTests
+    {
+        [Fact]
+        public void ShouldSave_WorldMap_NewLocation_ReturnsTrue()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 26, screenName: "WorldMap", lastSavedLocation: -1);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void ShouldSave_WorldMap_SameLocation_ReturnsFalse()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 26, screenName: "WorldMap", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_WorldMap_DifferentLocation_ReturnsTrue()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 26, screenName: "WorldMap", lastSavedLocation: 30);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void ShouldSave_EncounterDialog_ReturnsTrue()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 26, screenName: "EncounterDialog", lastSavedLocation: 30);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void ShouldSave_Battle_ReturnsFalse()
+        {
+            // During battle, rawLocation is 255 — should NOT save
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 255, screenName: "Battle_MyTurn", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_TravelList_ReturnsFalse()
+        {
+            // TravelList — location may be flickering during travel animation
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 30, screenName: "TravelList", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_TitleScreen_ReturnsFalse()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 255, screenName: "TitleScreen", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_InvalidLocation_ReturnsFalse()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: -1, screenName: "WorldMap", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_LocationOutOfRange_ReturnsFalse()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 99, screenName: "WorldMap", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_EncounterDialog_SameLocation_ReturnsFalse()
+        {
+            // Already saved this location
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 26, screenName: "EncounterDialog", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_BattleMyTurn_WithValidRawLocation_ReturnsFalse()
+        {
+            // Even if rawLocation happens to be valid during battle (e.g. location
+            // didn't flip to 255 yet), don't save during battle screens
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 26, screenName: "Battle_MyTurn", lastSavedLocation: 30);
+            Assert.False(result);
+        }
+    }
+}

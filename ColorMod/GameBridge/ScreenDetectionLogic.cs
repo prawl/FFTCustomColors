@@ -15,13 +15,12 @@ namespace FFTColorCustomizer.GameBridge
         {
             bool rawValidLocation = rawLocation >= 0 && rawLocation <= 42;
 
-            // Battle detection: unit slots populated = in battle.
-            // Don't let flickering battleMode/ui flags pull us out of battle.
-            // Previously: clearlyOnWorldMap = rawValidLocation && party==0 && battleMode==0
-            // This caused false negatives during attack animations when battleMode flickers to 0.
-            // Fix: only consider "clearly on world map" if unit slots are NOT populated.
+            // Battle detection: unit slots populated AND not clearly on world map.
+            // Unit slots (0xFF) persist after leaving battle, so we need clearlyOnWorldMap
+            // to override. During attack animations rawLocation=255 (not valid), so
+            // clearlyOnWorldMap stays false and we correctly stay in battle.
             bool unitSlotsPopulated = slot0 == 255 && slot9 == 0xFFFFFFFF;
-            bool clearlyOnWorldMap = rawValidLocation && !unitSlotsPopulated && party == 0 && battleMode == 0;
+            bool clearlyOnWorldMap = rawValidLocation && party == 0 && battleMode == 0;
             bool inBattle = unitSlotsPopulated && !clearlyOnWorldMap;
 
             if (inBattle && paused == 1 && battleMode == 0 && gameOverFlag == 1)

@@ -1622,11 +1622,10 @@ namespace FFTColorCustomizer.Utilities
                 }
 
                 // Track world map location for auto map loading (persists to disk).
-                // Only save when actually stopped on the world map or at an encounter —
-                // NOT during travel animation (location address flickers through intermediate nodes).
-                if (screen.Location >= 0 && screen.Location <= 42 && screen.Location != _lastWorldMapLocation
-                    && (screen.Name == "WorldMap" || screen.Name == "EncounterDialog"))
-                    SaveLastLocation(screen.Location);
+                // Uses rawLocation (before battle override) to avoid the stale-check bug
+                // where screen.Location == _lastWorldMapLocation after override → never saves.
+                if (GameBridge.LocationSaveLogic.ShouldSave(rawLocation, screen.Name, _lastWorldMapLocation))
+                    SaveLastLocation(rawLocation);
 
                 // Reset map auto-load flag when not in battle
                 if (!inBattle && _battleMapAutoLoaded)

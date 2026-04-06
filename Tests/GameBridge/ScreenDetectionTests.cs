@@ -129,6 +129,21 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("Battle_Targeting", result);
         }
 
+        [Fact]
+        public void DetectScreen_WorldMap_WithStaleUnitSlots_ShouldReturnWorldMap()
+        {
+            // After leaving battle, unit slots stay populated (0xFF).
+            // If rawLocation is valid and battleMode=0, we're on the world map.
+            // The save logic depends on this to write last_location.txt.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 26, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 5, isPartySubScreen: false);
+
+            Assert.Equal("WorldMap", result);
+        }
+
         // The critical regression test: battle with flickering flags
         [Theory]
         [InlineData(0, 0)]  // battleMode=0, ui=0 → could look like WorldMap
