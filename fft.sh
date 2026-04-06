@@ -117,10 +117,10 @@ fft() {
   local LOC=$(echo "$R" | grep -o '"location":[0-9]*' | head -1 | cut -d: -f2)
   local LOCNAME=$(echo "$R" | grep -o '"locationName":"[^"]*"' | head -1 | cut -d'"' -f4)
   local HOV=$(echo "$R" | grep -o '"hover":[0-9]*' | head -1 | cut -d: -f2)
-  local MC=$(echo "$R" | grep -o '"menuCursor":[0-9]*' | head -1 | cut -d: -f2)
+  local UI=$(echo "$R" | grep -o '"ui":"[^"]*"' | head -1 | cut -d'"' -f4)
   local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
   local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
-  echo "[$SCR] loc=$LOCSTR hover=$HOV menu=$MC status=$ST"
+  echo "[$SCR] loc=$LOCSTR hover=$HOV ui=$UI status=$ST"
 }
 
 # fft_full: Send raw command JSON, wait for response, return entire JSON.

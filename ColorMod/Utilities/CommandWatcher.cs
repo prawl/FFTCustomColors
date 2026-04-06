@@ -125,6 +125,12 @@ namespace FFTColorCustomizer.Utilities
                     var response = ExecuteCommand(command);
                     response.Screen ??= DetectScreenSettled();
                     response.Battle ??= BattleTracker?.Update();
+                    // Populate map info on battle state from MapLoader
+                    if (response.Battle != null && _mapLoader?.CurrentMap != null)
+                    {
+                        response.Battle.MapId = _mapLoader.CurrentMapNumber;
+                        response.Battle.MapName = response.Screen?.LocationName;
+                    }
                     if (response.Screen != null)
                         response.ValidPaths ??= NavigationPaths.GetPaths(response.Screen);
                     WriteResponse(response);
@@ -1195,11 +1201,22 @@ namespace FFTColorCustomizer.Utilities
                     _battleMapAutoLoaded = true;
                 }
 
-                // Read Move/Jump stats from UI buffer
+                // Read Move/Jump base stats from UI buffer, then add movement ability bonus.
+                // UI buffer shows BASE values (e.g., 4), not effective (e.g., 7 with Move+3).
                 var moveResult = Explorer.ReadAbsolute((nint)0x1407AC7E4, 1);
                 var jumpResult = Explorer.ReadAbsolute((nint)0x1407AC7E6, 1);
                 int moveStat = moveResult != null ? (int)moveResult.Value.value : 4;
                 int jumpStat = jumpResult != null ? (int)jumpResult.Value.value : 3;
+
+                // Apply movement ability bonus (e.g., Move+1=0xE6, Move+2=0xE7, Move+3=0xE8)
+                var battleState = BattleTracker?.Update();
+                int movementAbilityId = battleState?.ActiveUnit?.MovementAbility ?? 0;
+                if (movementAbilityId == 0xE6) moveStat += 1;      // Move+1
+                else if (movementAbilityId == 0xE7) moveStat += 2; // Move+2
+                else if (movementAbilityId == 0xE8) moveStat += 3; // Move+3
+                else if (movementAbilityId == 0xEB) jumpStat += 1; // Jump+1
+                else if (movementAbilityId == 0xEC) jumpStat += 2; // Jump+2
+                else if (movementAbilityId == 0xED) jumpStat += 3; // Jump+3
 
                 // Read unit's grid position
                 var gxResult = Explorer.ReadAbsolute((nint)0x140C64A54, 1);
@@ -1455,17 +1472,35 @@ namespace FFTColorCustomizer.Utilities
                     BattleUnitId = (int)v[10],
                     BattleUnitHp = (int)v[11],
                     CameraRotation = (int)(v[17] - 1 + 4) % 4,
+                    UI = (int)v[4] switch
+                    {
+                        0 => "Move",
+                        1 => "Abilities",
+                        2 => "Wait",
+                        3 => "Status",
+                        4 => "AutoBattle",
+                        _ => null
+                    },
                 };
 
                 // Track world map location for auto map loading (persists to disk)
                 if (screen.Location >= 0 && screen.Location <= 42 && screen.Location != _lastWorldMapLocation)
                     SaveLastLocation(screen.Location);
 
+                // During battle (location=255), use last known world map location
+                if (screen.Location == 255)
+                {
+                    if (_lastWorldMapLocation < 0)
+                        _lastWorldMapLocation = LoadLastLocation();
+                    if (_lastWorldMapLocation >= 0)
+                        screen.Location = _lastWorldMapLocation;
+                }
                 screen.LocationName = GetLocationName(screen.Location);
 
                 int party = (int)v[0];
                 int ui = (int)v[1];
                 int paused = (int)v[14];
+                int moveMode = (int)v[15]; // 255=tile selection active, 0=not
                 int eA = (int)v[5];
                 int eB = (int)v[6];
                 long slot0 = v[12];
@@ -1483,9 +1518,9 @@ namespace FFTColorCustomizer.Utilities
                     screen.Name = "GameOver";
                 else if (inBattle && paused == 1)
                     screen.Name = "Battle_Paused";
-                else if (inBattle && battleMode == 2 && screen.BattleActed == 0)
+                else if (inBattle && (moveMode == 255 || battleMode == 2) && screen.BattleActed == 0)
                     screen.Name = "Battle_Moving";
-                else if (inBattle && battleMode == 2 && screen.BattleActed == 1)
+                else if (inBattle && (moveMode == 255 || battleMode == 2) && screen.BattleActed == 1)
                     screen.Name = "Battle_Targeting";
                 else if (inBattle && screen.BattleTeam == 0 && screen.BattleActed == 0 && screen.BattleMoved == 0)
                     screen.Name = "Battle_MyTurn";
@@ -1520,6 +1555,69 @@ namespace FFTColorCustomizer.Utilities
                     screen.Name = "WorldMap";
                 else
                     screen.Name = "Unknown";
+
+                // Auto-load map when first entering battle (any battle screen)
+                if (inBattle && !_battleMapAutoLoaded)
+                {
+                    EnsureMapLoader();
+                    if (_lastWorldMapLocation < 0)
+                        _lastWorldMapLocation = LoadLastLocation();
+
+                    bool mapLoaded = false;
+                    // Try location-based lookup first
+                    if (_lastWorldMapLocation >= 0 && _mapLoader != null)
+                    {
+                        var autoMap = _mapLoader.LoadMapForLocation(_lastWorldMapLocation);
+                        if (autoMap != null)
+                        {
+                            ModLogger.Log($"[Map] Auto-loaded MAP{autoMap.MapNumber:D3} for location {_lastWorldMapLocation}");
+                            mapLoaded = true;
+                        }
+                    }
+
+                    // Fallback: detect map from unit positions + terrain data
+                    if (!mapLoaded && _mapLoader != null)
+                    {
+                        try
+                        {
+                            var battleState = BattleTracker?.Update();
+                            if (battleState?.Units?.Count > 0)
+                            {
+                                var positions = new List<(int x, int y)>();
+                                int allyX = 0, allyY = 0;
+                                double allyHeight = 0;
+                                foreach (var u in battleState.Units)
+                                {
+                                    if (u.X >= 0 && u.Y >= 0)
+                                    {
+                                        positions.Add((u.X, u.Y));
+                                        if (u.IsActive) { allyX = u.X; allyY = u.Y; }
+                                    }
+                                }
+                                // Read display height from cursor
+                                var hResult = Explorer.ReadAbsolute((nint)0x140C6492C, 1);
+                                if (hResult != null) allyHeight = (int)hResult.Value.value;
+
+                                if (positions.Count >= 2)
+                                {
+                                    int detected = _mapLoader.DetectMap(positions, allyX, allyY, allyHeight);
+                                    if (detected >= 0)
+                                    {
+                                        _mapLoader.LoadMap(detected);
+                                        ModLogger.Log($"[Map] Detected MAP{detected:D3} from {positions.Count} unit positions");
+                                        mapLoaded = true;
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogError($"[Map] Detection failed: {ex.Message}");
+                        }
+                    }
+
+                    _battleMapAutoLoaded = true;
+                }
 
                 // Populate cursor tile and available tiles for battle sub-states
                 if (screen.Name == "Battle_Moving" || screen.Name == "Battle_Targeting")

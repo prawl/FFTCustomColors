@@ -280,7 +280,15 @@ namespace FFTColorCustomizer.GameBridge
                     MaxMp = activeMaxMp,
                     Acted = acted == 1,
                     Moved = moved == 1,
-                    MenuCursor = menuCursor,
+                    HoveredAction = menuCursor switch
+                    {
+                        0 => "Move",
+                        1 => "Abilities",
+                        2 => "Wait",
+                        3 => "Status",
+                        4 => "AutoBattle",
+                        _ => null
+                    },
                     NameId = activeNameId,
                     Name = CharacterData.GetName(condensedNameId),
                     Ct = activeCt,
@@ -655,6 +663,14 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("inBattle")]
         public bool InBattle { get; set; }
 
+        [JsonPropertyName("mapName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? MapName { get; set; }
+
+        [JsonPropertyName("mapId")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int MapId { get; set; }
+
         [JsonPropertyName("activeUnit")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public ActiveUnitState? ActiveUnit { get; set; }
@@ -695,8 +711,9 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("moved")]
         public bool Moved { get; set; }
 
-        [JsonPropertyName("menuCursor")]
-        public int MenuCursor { get; set; }
+        [JsonPropertyName("hoveredAction")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? HoveredAction { get; set; }
 
         [JsonPropertyName("nameId")]
         public int NameId { get; set; }

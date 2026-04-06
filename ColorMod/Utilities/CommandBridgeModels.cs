@@ -223,6 +223,14 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("menuCursor")]
         public int MenuCursor { get; set; }
 
+        [JsonPropertyName("ui")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? UI { get; set; }
+
+        [JsonPropertyName("hoveredAction")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? HoveredAction { get; set; }
+
         [JsonPropertyName("battleTeam")]
         public int BattleTeam { get; set; }
 
