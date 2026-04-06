@@ -1067,7 +1067,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x140D4A264, 1),  // 1: uiFlag
             ((nint)0x14077D208, 1),  // 2: location
             ((nint)0x140787A22, 1),  // 3: hover
-            ((nint)0x1407FCCA8, 1),  // 4: menuCursor (battle action menu: 0=Move,1=Abilities,2=Wait,3=Status,4=AutoBattle)
+            ((nint)0x1407FC620, 1),  // 4: menuCursor (battle action menu: 0=Move,1=Abilities,2=Wait,3=Status,4=AutoBattle)
             ((nint)0x140900824, 1),  // 5: encA
             ((nint)0x140900828, 1),  // 6: encB
             ((nint)0x14077D2A2, 2),  // 7: battleTeam

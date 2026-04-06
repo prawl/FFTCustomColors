@@ -341,7 +341,7 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             // Read cursor directly from memory (screen.MenuCursor can be stale)
-            var cursorResult = _explorer.ReadAbsolute((nint)0x1407FCCA8, 1);
+            var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
             int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
             int target = 2; // Wait
             ModLogger.Log($"[BattleWait] Cursor at {cursor}, navigating to {target}");
@@ -466,7 +466,7 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             // Step 1: Navigate menu to Abilities (index 1)
-            var cursorResult = _explorer.ReadAbsolute((nint)0x1407FCCA8, 1);
+            var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
             int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
             NavigateMenuCursor(cursor, 1);
             SendKey(VK_ENTER); // Open Abilities submenu
@@ -1476,7 +1476,7 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(200);
 
                 // Verify cursor is on Wait (2) before pressing Enter
-                var cursorCheck = _explorer.ReadAbsolute((nint)0x1407FCCA8, 1);
+                var cursorCheck = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
                 int cursorVal = cursorCheck != null ? (int)cursorCheck.Value.value : -1;
                 ModLogger.Log($"[AutoMove] Wait cursor={cursorVal} (expect 2)");
 
@@ -2374,7 +2374,7 @@ namespace FFTColorCustomizer.GameBridge
             }
             // Verify cursor arrived
             Thread.Sleep(100);
-            var check = _explorer.ReadAbsolute((nint)0x1407FCCA8, 1);
+            var check = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
             int actual = check != null ? (int)check.Value.value : -1;
             if (actual != target)
                 ModLogger.Log($"[NavigateMenu] WARN: cursor at {actual}, expected {target}");
