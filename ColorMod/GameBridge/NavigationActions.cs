@@ -837,6 +837,29 @@ namespace FFTColorCustomizer.GameBridge
                 // Remove starting tile
                 visited.Remove((ally.GridX, ally.GridY));
 
+                // Self-correction: if BFS found 0 tiles, the map is probably wrong
+                if (visited.Count == 0 && moveStat > 0)
+                {
+                    ModLogger.Log($"[ScanMove] BFS returned 0 tiles on MAP{map.MapNumber:D3} — rejecting and retrying");
+                    _mapLoader.RejectCurrentMap();
+
+                    // Retry detection
+                    var allPositions2 = units.Select(u => (u.GridX, u.GridY)).ToList();
+                    var heightResult2 = _explorer.ReadAbsolute((nint)0x140C6492C, 4);
+                    double allyHeight2 = heightResult2 != null ? (double)heightResult2.Value.value / 10.0 : -1;
+                    int retryMap = _mapLoader.DetectMap(allPositions2, ally.GridX, ally.GridY, allyHeight2);
+                    if (retryMap >= 0)
+                    {
+                        _mapLoader.LoadMap(retryMap);
+                        lines.Add($"MAP{map.MapNumber:D3} rejected (0 tiles), retried → MAP{retryMap:D3}");
+                        // Recompute BFS with new map — recurse by falling through to else branch
+                    }
+                    else
+                    {
+                        lines.Add($"MAP{map.MapNumber:D3} rejected (0 tiles), no alternative found");
+                    }
+                }
+
                 // Build tile list as "x,y" entries in validPaths
                 var tileStrings = visited
                     .OrderBy(kv => kv.Value)

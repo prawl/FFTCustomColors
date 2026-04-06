@@ -1158,6 +1158,7 @@ namespace FFTColorCustomizer.Utilities
         {
             _blockedTiles.Clear();
             _battleMapAutoLoaded = false;
+            _mapLoader?.ClearRejections();
         }
 
         /// <summary>

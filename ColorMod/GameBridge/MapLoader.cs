@@ -69,10 +69,32 @@ namespace FFTColorCustomizer.GameBridge
             return _currentMap;
         }
 
+        private readonly HashSet<int> _rejectedMaps = new();
+
         public void ClearMap()
         {
             _currentMap = null;
             _currentMapNumber = -1;
+        }
+
+        /// <summary>
+        /// Reject the current map (wrong terrain detected during gameplay).
+        /// Next scan_move will try a different candidate.
+        /// </summary>
+        public void RejectCurrentMap()
+        {
+            if (_currentMapNumber >= 0)
+            {
+                _rejectedMaps.Add(_currentMapNumber);
+                ModLogger.Log($"[MapLoader] Rejected MAP{_currentMapNumber:D3} — will try alternatives next scan");
+                ClearMap();
+            }
+        }
+
+        /// <summary>Clear rejections (new battle at a new location).</summary>
+        public void ClearRejections()
+        {
+            _rejectedMaps.Clear();
         }
 
         private Dictionary<int, MapData>? _allMaps;
@@ -109,10 +131,11 @@ namespace FFTColorCustomizer.GameBridge
             EnsureAllMapsLoaded();
             if (_allMaps == null) return -1;
 
-            // Step 1: Filter maps where ALL unit positions are in-bounds and walkable
+            // Step 1: Filter maps where ALL unit positions are in-bounds and walkable (skip rejected)
             var candidates = new List<int>();
             foreach (var kv in _allMaps)
             {
+                if (_rejectedMaps.Contains(kv.Key)) continue;
                 var map = kv.Value;
                 bool valid = true;
                 foreach (var (x, y) in unitPositions)
