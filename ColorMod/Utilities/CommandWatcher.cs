@@ -126,10 +126,11 @@ namespace FFTColorCustomizer.Utilities
                     response.Screen ??= DetectScreenSettled();
                     response.Battle ??= BattleTracker?.Update();
                     // Populate map info on battle state from MapLoader
-                    if (response.Battle != null && _mapLoader?.CurrentMap != null)
+                    if (response.Battle != null && _mapLoader != null)
                     {
                         response.Battle.MapId = _mapLoader.CurrentMapNumber;
-                        response.Battle.MapName = response.Screen?.LocationName;
+                        response.Battle.MapName = MapLoader.GetMapName(_mapLoader.CurrentMapNumber)
+                            ?? response.Screen?.LocationName;
                     }
                     if (response.Screen != null)
                         response.ValidPaths ??= NavigationPaths.GetPaths(response.Screen);
