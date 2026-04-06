@@ -1,3 +1,4 @@
+<!-- This file should not be longer than 200 lines, if so prune me. -->
 # FFT Job Classes — Strategy Reference
 
 Quick reference for Claude to make informed decisions about job changes, ability purchases, and party composition.

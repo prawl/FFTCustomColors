@@ -1,3 +1,4 @@
+<!-- This file should not be longer than 200 lines, if so prune me. -->
 # FFT Hands-Free — Ideas
 
 ## Smart Auto-Battle Mod (Release Candidate)

@@ -1,3 +1,4 @@
+<!-- This file should not be longer than 200 lines, if so prune me. -->
 # Battle Coordinate System & Camera Rotation
 
 ## Map Grid Cursor Position (THE KEY DISCOVERY)
@@ -103,24 +104,6 @@ Address: `0x14077C970` (byte), incrementing counter. `value % 4` = rotation 0-3.
 - Always read rotation AFTER entering Move mode, not before
 - Added to screen response as `cameraRotation` (0-3) — requires build+deploy
 
-## Arrow Key → World Direction Mapping
-
-**STATUS: PARTIALLY VERIFIED — needs full 4-rotation test**
-
-The rotation table below is theoretical. What IS confirmed:
-- At multiple rotations, **Right** arrow key moved toward an enemy at world delta (-4, +1)
-- The camera may have been changing between tests, making per-rotation results unreliable
-- Full empirical verification at all 4 rotations still needed (see next section)
-
-**Theoretical table (needs verification):**
-
-| World direction | rot=0 | rot=1 | rot=2 | rot=3 |
-|----------------|-------|-------|-------|-------|
-| -X, +Y         | Right | Down  | Left  | Up    |
-| +X, -Y         | Left  | Up    | Right | Down  |
-| +X, +Y         | Down  | Left  | Up    | Right |
-| -X, -Y         | Up    | Right | Down  | Left  |
-
 ## Working Approach: Scan-and-Move (PROVEN)
 
 Instead of computing directions from the rotation table, scan for the enemy by pressing
@@ -162,29 +145,11 @@ After move: team=0 (0=beside, not on enemy)
 [Battle_MyTurn] — confirmed!
 ```
 
-## Live Position Discovery Results
+## Live Unit Positions
 
-**CONCLUSION: The game does NOT store live unit positions in a persistent per-unit array.**
+**The game does NOT store live positions in a persistent per-unit array.** Grid cursor (0x140C64A54/0x140C6496C) is the only live position source, and only tracks what the cursor is on.
 
-What we searched:
-- Formation array at 0x14077D010 (stride 0x50): STARTING positions only, never update
-- Condensed struct at 0x14077D2A0: cursor-selected unit, stale world coords
-- Heap battle structs (found via AoB): stale world coords (7,11) even after movement
-- Cursor struct at 0x1407D6C36/3C: shows live coords for cursor-selected unit, different coord system
-- Entire main module diff after movement: only tile list and cursor values changed
-
-**What DOES work:**
-- Grid cursor at 0x140C64A54 (X) and 0x140C6496C (Y): LIVE, accurate, but only tracks cursor
-- When entering Move mode, cursor starts on active unit = that unit's live position
-- When cursor crosses any unit, battleTeam at 0x14077D2A2 changes
-
-**IMPORTANT: Entering Move mode RESETS a previous move.** Do NOT enter Move mode to "check" position — it undoes the unit's movement. Only enter Move once per turn.
-
-**Solution: Track positions in C# code.**
-- At the start of each friendly turn, the cursor position when entering Move = Ramza's live pos
-- During the scan, when crossing an enemy, their grid position = cursor position at that moment
-- Store these in BattleTracker's unit dictionary
-- Use the rotation table to compute arrow keys from grid delta
+**IMPORTANT: Entering Move mode RESETS a previous move.** Only enter Move once per turn.
 
 ## C+Up Unit Cycling (THE BREAKTHROUGH)
 
@@ -208,21 +173,9 @@ This gives us **live grid positions for every unit** without scanning or coordin
 | Chocobo | (0,2) | 1 | (6,13) |
 | Far enemy | (5,2) | 1 | (3,10) |
 
-## Key Corrections from Previous Understanding
+## Key Corrections
 
-1. **`battleTeam` is NOT "whose turn"** — it's the team of whatever unit the cursor is hovering over.
-
-2. **Menu cursor address is `0x1407FC620`**, not `0x1407FCCA8` (which was stale/broken).
-
-3. **The tile list order changes with camera rotation** but the coordinates themselves are stable world coords.
-
-4. **Struct positions are stale after movement** — the X/Y at `0x14077D360/62` reflects the unit's position from their last turn start, not their current position after moving.
-
-5. **Arrow keys move the cursor on the full map grid**, not just the valid movement tiles. The cursor can go anywhere on the map; it just can't confirm a move to a non-blue tile.
-
-## Code Changes Made (pending build+deploy)
-
-1. **CommandWatcher.cs** line 843: Fixed menu cursor address from `0x1407FCCA8` → `0x1407FC620`
-2. **CommandWatcher.cs** line 856: Added camera rotation read from `0x14077C970`
-3. **CommandWatcher.cs** line 993: Added `CameraRotation = (int)v[17] % 4` to DetectedScreen
-4. **CommandBridgeModels.cs**: Added `CameraRotation` property to `DetectedScreen` class
+- **`battleTeam` (0x14077D2A2)** = team of cursor-hovered unit, NOT whose turn it is
+- **Menu cursor** = `0x1407FC620` (not 0x1407FCCA8)
+- **Struct positions are stale after movement** — X/Y at 0x14077D360/62 = last turn start position
+- **Arrow keys move cursor on the full map grid**, not just valid movement tiles

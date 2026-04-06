@@ -1,3 +1,4 @@
+<!-- This file should not be longer than 200 lines, if so prune me. -->
 # PSX Battle Stats Reference (for mapping to IC Remaster)
 
 Source: FFT Hacking community wiki. PSX struct stride = 0x1C0 (448 bytes) per unit.
@@ -163,13 +164,10 @@ Source: FFT Hacking community wiki. PSX struct stride = 0x1C0 (448 bytes) per un
 ### AI
 | Offset | Size | Field |
 |--------|------|-------|
-| 0x165 | byte | AI X Target |
-| 0x166 | byte | AI Y Target |
+| 0x165-0x166 | 2 bytes | AI X/Y Target |
 | 0x167 | byte | AI/Autobattle setting (bitflags) |
 | 0x168 | byte | Prioritized Target |
-| 0x169 | byte | ENTD Unknown (left) |
-| 0x16A | byte | (0x04 = Save CT / don't move unless needed) |
-| 0x16B | byte | ENTD Unknown (right) |
+| 0x169-0x16B | 3 bytes | ENTD unknowns + Save CT flag (0x16A bit 0x04) |
 | 0x16C | uint16 | Unit Quote/Name ID (0x00XX=Special, 0x01XX=GenericM, 0x02XX=GenericF, 0x03XX=Monster) |
 
 ### Target & Action Data

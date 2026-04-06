@@ -1,3 +1,4 @@
+<!-- This file should not be longer than 200 lines, if so prune me. -->
 # FFT: Ivalice Chronicles — Unit Data Array
 
 Technical documentation for the in-memory unit/roster data structure used by FFT: The Ivalice Chronicles (Steam remaster). Reverse-engineered through hex dumps, the FFHacktics PSX World Stats wiki, the WotL Characters mod NXD files, and iterative testing.

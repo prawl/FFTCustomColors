@@ -1,3 +1,4 @@
+<!-- This file should not be longer than 200 lines, if so prune me. -->
 # Outfitter Shop Items — Static Mapping
 
 Items listed by category tab (Left/Right or A/D to switch), top to bottom.

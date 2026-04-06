@@ -1,3 +1,4 @@
+<!-- This file should not be longer than 200 lines, if so prune me. -->
 # FFT Hands-Free — Player Rules for Claude
 
 These rules apply when Claude is playing Final Fantasy Tactics. This is not a coding guide — it's how to behave as a player.

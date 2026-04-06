@@ -1,3 +1,4 @@
+<!-- This file is exempt from the 200 line limit. -->
 # FFT Hands-Free — Claude Plays Final Fantasy Tactics
 
 ## Project Goal
