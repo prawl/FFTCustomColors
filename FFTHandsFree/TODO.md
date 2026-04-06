@@ -60,7 +60,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 1. Battle Execution — Attack + Complete Turns (P0, BLOCKING)
 
-Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `battle_wait`. Remaining work is polish and robustness.
+Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `battle_wait`. First battle WON autonomously. Remaining work is polish and robustness.
 
 ### Attack Targeting
 - [x] `battle_attack` action: open Abilities -> Attack -> navigate target cursor to enemy -> confirm
@@ -90,6 +90,8 @@ Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `bat
 - [ ] **Neutral unit handling (team=2)** — Don't block pathing for neutrals
 - [x] **Menu cursor address fixed** — 0x1407FC620 is reliable (resets on new turn, tracks all 5 positions, survives restart). 0x1407FCCA8 was the stale one. Thorough testing confirmed.
 - [ ] **Auto-scan double-fire** — Auto-scan on Battle_MyTurn fires after scan_move already scanned, causing key presses that open Status menu. Disabled for now. Need scan_move to mark turn as scanned via BattleTurnTracker.
+- [ ] **Battle_Victory screen detection** — When all enemies die, victory screen appears briefly then returns to world map. Currently misdetected as Battle_Acting. Need to detect and handle gracefully.
+- [x] **battle_wait facing uses F key** — Facing confirmation uses F, not Enter. Fixed.
 
 ---
 

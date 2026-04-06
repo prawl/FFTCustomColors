@@ -340,12 +340,26 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Read cursor directly from memory (screen.MenuCursor can be stale)
+            // Small delay to ensure menu is fully rendered after attack animation
+            Thread.Sleep(300);
+
+            // Read cursor directly from memory
             var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
             int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
             int target = 2; // Wait
             ModLogger.Log($"[BattleWait] Cursor at {cursor}, navigating to {target}");
             NavigateMenuCursor(cursor, target);
+
+            // Verify we actually reached Wait before pressing Enter
+            Thread.Sleep(150);
+            var verifyResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+            int actual = verifyResult != null ? (int)verifyResult.Value.value : -1;
+            if (actual != target)
+            {
+                ModLogger.Log($"[BattleWait] RETRY: cursor at {actual}, expected {target}. Retrying navigation.");
+                NavigateMenuCursor(actual, target);
+                Thread.Sleep(150);
+            }
 
             // Press Enter to select Wait
             SendKey(VK_ENTER);
@@ -383,8 +397,8 @@ namespace FFTColorCustomizer.GameBridge
                 ModLogger.Log($"[BattleWait] Facing toward ({nearest.GridX},{nearest.GridY}) delta=({dx},{dy}) face=({faceDx},{faceDy}) key={dirNames[dir]} rot={rotation}");
             }
 
-            // Confirm facing
-            SendKey(VK_ENTER);
+            // Confirm facing (game says "press F to confirm")
+            SendKey(VK_F);
 
             // Hold Ctrl to fast-forward enemy turns
             Thread.Sleep(500);
