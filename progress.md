@@ -1,73 +1,92 @@
 # Session Progress — 2026-04-06
 
-## What We Did
+## What Was Accomplished
 
-### 1. Memory Scan (30 agents across 3 waves)
-- **Wave 1**: 10 agents discovered ~120 memory fields across 8 regions
-- **Wave 2**: 10 agents verified within same session (56/60+ confirmed)
-- **Wave 3**: 10 agents verified after full game restart (all static addresses survived)
+### 1. Memory Scan (30 agents, 3 waves)
+- Discovered ~120 memory fields across 8 regions
+- Verified same-session AND cross-restart stability
 - Full results in [docs/MEMORY_SCAN_WAVE1.md](docs/MEMORY_SCAN_WAVE1.md)
 
-### 2. Battle State Reporting (ActiveUnit)
-Added to every battle response:
-- `nameId`, `ct`, `jobId` — from confirmed static addresses
-- `brave`, `faith` — from roster lookup (permanent values, player units only)
-- `reactionAbilityName`, `supportAbilityName`, `movementAbilityName` — with human-readable names
-- `equipment` — 7 equipment slot IDs from roster
-- `hoveredAction` — resolved menu item name ("Move", "Abilities", "Wait", "Status", "AutoBattle")
-
-Removed after proving wrong:
-- `speed` (condensed +0x06 = 6, real speed = 11 — NOT speed)
-- `pa`, `ma` (condensed +0x18 = 100, real PA = 20 — NOT PA, likely CT gauge)
-- `move`, `jump`, `moveModifier`, `jumpModifier` (from UI buffer = cursor-selected unit, NOT active unit)
+### 2. Battle State Reporting
+Active unit now reports: nameId, name (story characters), ct, jobId, brave, faith, equipped abilities (with names), equipment IDs, hoveredAction.
 
 ### 3. Screen Detection Fixes
-- **Battle_Moving/Targeting**: Now uses `moveMode == 255 || battleMode == 2` (was only battleMode==2, missed battleMode==1 state)
-- **Location during battle**: Falls back to saved `_lastWorldMapLocation` when location reads 255
-- **`hoveredAction`** replaces `menuCursor` — shows "Move" instead of 0
+- Battle_Moving uses `moveMode==255 || battleMode==2` (fixed from battleMode-only)
+- `hoveredAction` replaces raw menuCursor number
+- `ui` field on screen response ("Move", "Abilities", "Wait", etc.)
+- Location falls back to saved world map location during battle
 
-### 4. Character & Item Data Files
-- `CharacterData.cs` — ~40 story characters + ~100 job/monster names, `GetDisplayName(nameId, jobId)`
-- `ItemData.cs` — 293 items from FFTPatcher (IDs don't match IC remaster, need remapping)
+### 4. Map Auto-Detection (MAJOR BREAKTHROUGH)
+- **Heap scenario struct found** at dynamic address with MAP ID (+0x30) and location ID (+0x24)
+- C# `FindScenarioMapId()` scans ~300MB of heap memory, pattern-matches the struct
+- Filters to low-address candidates (live battle data), picks highest scenario ID
+- 128 map names hardcoded from MapTrapFormationData.xml
+- **Successfully detects MAP074 "The Siedge Weald" automatically**
+- Reset flag added so map re-scans on new battle
 
-### 5. Map Auto-Detection
-- Added fallback: when `_lastWorldMapLocation` is unknown, uses `MapLoader.DetectMap()` to cross-reference unit positions against all 122 MAP files
-- Fires on first battle screen detection (any battle screen, not just Battle_Moving)
-- Movement ability bonus (Move+1/+2/+3) applied to base Move for BFS tile computation
+### 5. Data Files Created
+- `CharacterData.cs` — ~140 entries (story characters + job/monster names)
+- `ItemData.cs` — 293 items (FFTPatcher IDs, need remapping for IC remaster)
+- `MapLoader.GetMapName()` — 128 battle map names
 
 ### 6. Text Encoding Research
-- Cracked FFT PSX encoding from FFTPatcher source: 0x0A-0x23 = A-Z, 0x24-0x3D = a-z, 0x00-0x09 = 0-9
-- Location/item/character names stored in `battle_bin.en.bin` (compressed in 0002.en.pac), custom encoding
-- 20 agents searched 0x140000000-0x141400000 + heap ranges — text NOT in static module memory
-- Game text lives in PAGE_READONLY heap memory loaded from compressed game files
+- FFT PSX encoding cracked: 0x0A-0x23=A-Z, 0x24-0x3D=a-z, 0x00-0x09=0-9
+- Text in compressed .pac files, custom encoding, PAGE_READONLY heap memory
+- 40+ agents searched — text strings not in static module memory
+
+## Current Bug: Map Detection False Positives
+
+### Problem
+The heap scan finds ~500+ candidates matching the scenario struct pattern. For Siedge Weald (MAP074) it works because the correct match has the highest scenario ID among low-address candidates. But for Araguay Woods (MAP080), the correct match only appears at HIGH addresses (0x42C4+) in lookup tables, NOT in low-address live data.
+
+### Root Cause
+The scenario struct layout may differ for random encounters vs story battles, OR the random encounter's struct has field values outside our validation ranges (scenario 50-600, subType <20, music <200, etc.).
+
+### Candidates File
+Written to `claude_bridge/map_candidates.txt` on each scan. Shows all matches with scenario, location, map, and address.
+
+### What Needs Investigation
+1. **Widen the search** — relax validation constraints or try different field offsets
+2. **Check if random encounters use a different struct** — read the actual bytes at the correct map=80 addresses (0x42C4000480) to understand the layout
+3. **Verify our struct offsets** — the +0x24/+0x30 offsets were derived from ONE battle (Siedge Weald scenario 284). Other battles may have different layouts.
+4. **Consider alternative approach** — search for JUST the map ID byte (0x50 for MAP080) in a smaller, more targeted heap region, then validate context
+
+### Approach for Next Session
+1. Load into Araguay Woods battle
+2. Read the two high-address candidates for map=80 (0x42C4000480, 0x42DC0013F8) 
+3. Dump 96 bytes from each to see the full struct
+4. Compare layout with the Siedge Weald struct to find what's different
+5. Adjust validation to handle both cases
 
 ## Pitfalls Found During Battle Play
 
-1. **battleMode=1 not recognized** — game was in Move mode but we detected Battle_MyTurn. Fixed with moveMode fallback.
-2. **acted/moved flags reset** between turn phases — after acting, if you enter move-after-act, acted reads 0 again
-3. **MoveToEnemy silently fails** without a loaded MAP file
-4. **Keys sent during unrecognized state** get processed by game — accidentally toggled AutoBattle
-5. **UI buffer shows cursor-selected unit** not active unit — all UI buffer stats were wrong
-6. **Condensed nameId is sequential** (1,2,3...) not a character identifier — "Ramza" name showed for Kenrick
-7. **Condensed header values misidentified** — +0x18 is NOT PA (it's 100 = CT gauge), +0x06 is NOT Speed
-8. **Item IDs don't match FFTPatcher** — IC remaster uses different numbering, no formula found
-9. **Map auto-detection picked wrong map** (MAP007 instead of MAP074) without location hint
-10. **Tile count too low** — BFS used base Move=4 instead of effective Move=7 (Movement+3 not applied)
+1. **battleMode=1** not recognized as move mode (fixed with moveMode fallback)
+2. **acted/moved flags reset** between turn phases
+3. **MoveToEnemy silently fails** without loaded MAP
+4. **Keys sent during unrecognized state** get processed by game
+5. **UI buffer shows cursor-selected unit** not active unit
+6. **Condensed nameId is sequential** (1,2,3...) not character identifier
+7. **Condensed header values misidentified** — +0x18 is CT gauge, +0x06 is NOT speed
+8. **Item IDs don't match FFTPatcher** — IC remaster uses different numbering
+9. **Map detection picks wrong map** for some encounters (false positives)
+10. **_battleMapAutoLoaded didn't reset** between battles (fixed)
+11. **Too many concurrent agents crash the bridge** — limit to <5 at a time for bridge reads
 
 ## Still TODO
 
-### Critical (blocks gameplay)
-- [ ] Fix location persistence — `last_location.txt` never created when going save→battle
-- [ ] Effective stats (Speed, PA, MA, Move, Jump) — only in heap struct, needs reliable scanning
-- [ ] Roster-to-battle matching — condensedNameId is useless, need equipment-based matching
+### Critical
+- [ ] Fix map detection for all encounter types (Araguay Woods fails)
+- [ ] Effective stats (Speed, PA, MA, Move, Jump) — only in heap struct
+- [ ] Roster-to-battle unit matching — condensedNameId is sequential, need equipment-based matching
 
 ### Important
-- [ ] Generic character names — can't read from memory (custom encoding, compressed)
-- [ ] Item ID remapping — need more data points or extract from game files
-- [ ] Verify map detection picks correct MAP for each location
-- [ ] Game over flag verification — 0x140D3A10C candidate, untested
+- [ ] Generic character names — game text in custom encoding, compressed
+- [ ] Item ID remapping for IC remaster
+- [ ] Verify map detection across 5+ different battle locations
+- [ ] Game over flag verification (0x140D3A10C)
 
-### Nice to Have  
-- [ ] Turn order prediction from CT table at 0x14077D868
-- [ ] Status effect reading from heap struct +0x50-0x5F
+### Nice to Have
+- [ ] Turn order prediction from CT table
+- [ ] Status effects from heap struct +0x50-0x5F
 - [ ] Facing direction from heap struct +0x39
+- [ ] Item name lookup table with correct IC remaster IDs
