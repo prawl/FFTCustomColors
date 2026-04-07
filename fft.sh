@@ -473,16 +473,8 @@ screen() { fft "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}"; }
 # Use during battle (Battle_MyTurn) to discover where everyone is.
 scan_units() { fft_full "{\"id\":\"$(id)\",\"action\":\"scan_units\"}"; }
 
-# auto_move: Full autonomous turn — scan, compute tiles, pick safest, move, wait.
-# Usage: auto_move 7 3   (move=7, jump=3)
-auto_move() {
-  local mv=${1:-4}; local jmp=${2:-3}
-  rm -f "$B/response.json"
-  echo "{\"id\":\"$(id)\",\"action\":\"auto_move\",\"locationId\":$mv,\"unitIndex\":$jmp}" > "$B/command.json"
-  local tries=0
-  until [ -f "$B/response.json" ]; do sleep 0.5; tries=$((tries+1)); [ $tries -ge 300 ] && echo "TIMEOUT" && return 1; done
-  cat "$B/response.json"
-}
+# auto_move: DISABLED — Claude should make tactical decisions, not automate turns.
+auto_move() { echo "[DISABLED] auto_move is not allowed. Use scan_move, battle_move, battle_attack, battle_wait individually."; return 1; }
 
 # scan_move: Scan units + compute valid movement tiles from map data.
 # Returns unit positions AND valid tiles. Requires set_map first.

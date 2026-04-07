@@ -37,7 +37,7 @@ namespace FFTColorCustomizer.Utilities
         /// actions not in the current screen's validPaths are blocked.
         /// Info actions (scan_move, screen, memory reads) are always allowed.
         /// </summary>
-        public bool StrictMode { get; set; } = false;
+        public bool StrictMode { get; set; } = true;
 
         /// <summary>
         /// When true, any command that sends keys or game actions is blocked unless
