@@ -120,8 +120,8 @@ fft() {
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 250 ]; then
-      echo "[TIMEOUT] No response after 5s"
+    if [ $tries -ge 750 ]; then
+      echo "[TIMEOUT] No response after 15s"
       return 1
     fi
   done
@@ -148,7 +148,7 @@ fft_full() {
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 250 ]; then
+    if [ $tries -ge 750 ]; then
       echo "[TIMEOUT]"
       return 1
     fi

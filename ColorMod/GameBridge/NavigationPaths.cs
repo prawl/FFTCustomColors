@@ -356,11 +356,6 @@ namespace FFTColorCustomizer.GameBridge
             // Build key sequence to reach each menu option from current cursor position
             // Menu: 0=Move, 1=Abilities, 2=Wait, 3=Status, 4=AutoBattle
             paths["Move"] = MenuPath(cursor, 0, "Enter Move mode to select a tile manually");
-            paths["MoveToEnemy"] = new PathEntry
-            {
-                Action = "move_to",
-                Desc = "Move to the closest valid tile near the nearest enemy"
-            };
             paths["Abilities"] = MenuPath(cursor, 1, "Open abilities submenu (Attack, secondary)");
             paths["Wait"] = new PathEntry
             {

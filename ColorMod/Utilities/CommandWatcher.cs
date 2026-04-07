@@ -170,12 +170,26 @@ namespace FFTColorCustomizer.Utilities
                     var response = ExecuteCommand(command);
                     response.Screen ??= DetectScreenSettled();
 
-                    // Auto-scan units when a new friendly turn starts
-                    // TODO: Re-enable once scan_move marks turn as scanned to prevent double-scan
-                    // if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name))
-                    // {
-                    //     ...
-                    // }
+                    // Auto-scan units when a new player turn starts (team 0 only)
+                    if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam))
+                    {
+                        try
+                        {
+                            var scanCommand = new CommandRequest { Id = response.Id, Action = "scan_move" };
+                            var scanResponse = ExecuteNavAction(scanCommand);
+                            // Merge scan results into the original response
+                            response.Battle = scanResponse.Battle;
+                            response.ValidPaths = scanResponse.ValidPaths;
+                            response.Screen = scanResponse.Screen ?? response.Screen;
+                            if (scanResponse.Error != null)
+                                response.Error = (response.Error != null ? response.Error + " | " : "") + "[auto-scan] " + scanResponse.Error;
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogError($"[CommandBridge] Auto-scan failed: {ex.Message}");
+                        }
+                        _turnTracker.MarkScanned();
+                    }
 
                     response.Battle ??= BattleTracker?.Update();
                     // Populate map info on battle state from MapLoader
@@ -400,6 +414,7 @@ namespace FFTColorCustomizer.Utilities
 
                     case "scan_move":
                     case "auto_move":
+                        _turnTracker.MarkScanned(); // prevent double-scan if auto-scan already ran
                         return ExecuteNavAction(command);
 
 
@@ -593,6 +608,9 @@ namespace FFTColorCustomizer.Utilities
                         return ExecuteValidPath(command);
 
                     case "battle_wait":
+                        _turnTracker.ResetForNewTurn(); // battle_wait skips intermediate phases
+                        return ExecuteNavActionWithAutoScan(command);
+
                     case "battle_flee":
                     case "battle_attack":
                     case "world_travel_to":
@@ -613,7 +631,7 @@ namespace FFTColorCustomizer.Utilities
                     case "buy":
                     case "sell":
                     case "change_job":
-                        return ExecuteNavAction(command);
+                        return ExecuteNavActionWithAutoScan(command);
 
                     case "set_screen":
                         if (ScreenMachine == null) { response.Status = "failed"; response.Error = "Screen state machine not initialized"; break; }
@@ -727,6 +745,36 @@ namespace FFTColorCustomizer.Utilities
 
             EnsureNavActions();
             return _navActions!.Execute(command);
+        }
+
+        /// <summary>
+        /// Execute a nav action, then auto-scan if the result lands on Battle_MyTurn for a player unit.
+        /// This ensures auto-scan fires regardless of which action caused the turn transition.
+        /// </summary>
+        private CommandResponse ExecuteNavActionWithAutoScan(CommandRequest command)
+        {
+            var response = ExecuteNavAction(command);
+
+            if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam))
+            {
+                try
+                {
+                    var scanCommand = new CommandRequest { Id = response.Id, Action = "scan_move" };
+                    var scanResponse = ExecuteNavAction(scanCommand);
+                    response.Battle = scanResponse.Battle;
+                    response.ValidPaths = scanResponse.ValidPaths;
+                    response.Screen = scanResponse.Screen ?? response.Screen;
+                    if (scanResponse.Error != null)
+                        response.Error = (response.Error != null ? response.Error + " | " : "") + "[auto-scan] " + scanResponse.Error;
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogError($"[CommandBridge] Auto-scan failed: {ex.Message}");
+                }
+                _turnTracker.MarkScanned();
+            }
+
+            return response;
         }
 
         private CommandResponse ExecuteKeyCommand(CommandRequest command)

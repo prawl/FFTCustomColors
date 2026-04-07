@@ -14,7 +14,11 @@ namespace FFTColorCustomizer.GameBridge
         /// Returns true if an auto-scan should be triggered for the given screen state.
         /// Only returns true on the first Battle_MyTurn detection after a turn transition.
         /// </summary>
-        public bool ShouldAutoScan(string screenName)
+        /// <summary>
+        /// Returns true if an auto-scan should be triggered.
+        /// Only returns true for player-controlled units (team 0) on Battle_MyTurn.
+        /// </summary>
+        public bool ShouldAutoScan(string screenName, int team = 0)
         {
             bool isMyTurn = screenName == "Battle_MyTurn";
 
@@ -30,6 +34,11 @@ namespace FFTColorCustomizer.GameBridge
                 return false;
 
             _wasMyTurn = true;
+
+            // Only auto-scan for player-controlled units (team 0)
+            if (team != 0)
+                return false;
+
             return !_scannedThisTurn;
         }
 
@@ -39,6 +48,17 @@ namespace FFTColorCustomizer.GameBridge
         public void MarkScanned()
         {
             _scannedThisTurn = true;
+        }
+
+        /// <summary>
+        /// Reset the tracker for a new turn. Call this when battle_wait or similar
+        /// actions complete, since they bypass the normal screen transition detection
+        /// (the tracker never sees the intermediate enemy/ally phases).
+        /// </summary>
+        public void ResetForNewTurn()
+        {
+            _scannedThisTurn = false;
+            _wasMyTurn = false;
         }
     }
 }
