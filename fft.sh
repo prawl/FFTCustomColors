@@ -18,12 +18,14 @@
 #   block "0x140C66315" 70  # Read 70 bytes as hex string
 #
 # AVAILABLE COMMANDS (most common):
-#   Key presses:   enter, esc, up, down, left, right, space, tab, tkey, ekey
-#   Navigation:    path <name>, nav <screen>, travel <locationId>
-#   Battle:        battle_wait, path Move, path Abilities, path MoveToEnemy
+#   Actions:       execute_action <name>  (execute a validPath action)
+#   Battle:        battle_move <x> <y>, battle_attack <x> <y>, battle_wait
+#                  battle_flee, battle_retry, battle_retry_formation
+#   Navigation:    world_travel_to <id>, advance_dialogue
+#   Management:    save, load, buy <item> <qty>, sell <item> <qty>, change_job <id> <job>
 #   Memory:        rv <addr> [size], block <addr> <size>, batch '<json>'
-#   State:         screen, state, fft_full '<json>'
-#   System:        restart, boot
+#   State:         screen, state, scan_units, scan_move
+#   System:        restart, boot, strict 1/0
 #
 # RESPONSE FORMAT:
 #   Most commands print: [ScreenName] loc=X hover=Y menu=M status=ST
@@ -252,14 +254,14 @@ batch() {
 # HIGH-LEVEL NAVIGATION ACTIONS
 # =============================================================================
 
-# path: Execute a validPath by name. Shows screen + available next paths.
+# execute_action: Execute a validPath by name. Shows screen + available next paths.
 # This is the PRIMARY way to interact with the game. Every response tells you
-# what paths are available — pick one and call path again.
-# Usage: path Flee, path PartyMenu, path Move, path Wait, path Abilities
-path() {
+# what actions are available — pick one and call execute_action again.
+# Usage: execute_action Flee, execute_action Move, execute_action Wait
+execute_action() {
   _check_total || return 1
   rm -f "$B/response.json"
-  echo "{\"id\":\"$(id)\",\"action\":\"path\",\"to\":\"$1\"}" > "$B/command.json"
+  echo "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"$1\"}" > "$B/command.json"
   local tries=0
   until [ -f "$B/response.json" ]; do
     sleep 0.02
@@ -277,19 +279,42 @@ if(keys.length){console.log('  ValidPaths:');keys.forEach(k=>console.log('    '+
 " "$B/response.json"
 }
 
-# battle_wait: End turn. Handles menu navigation → Wait → confirm facing automatically.
+# battle_wait: End turn. Handles menu navigation → Wait → confirm facing → polls until next friendly turn.
 battle_wait() { fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\"}"; }
 
 # battle_flee: Quit battle and return to world map (Tab → Down x4 → Enter → Enter).
 battle_flee() { fft "{\"id\":\"$(id)\",\"action\":\"battle_flee\"}"; }
 
-# nav: Navigate to a target screen from wherever you are (multi-step).
-# Usage: nav PartyMenu
-nav() { fft "{\"id\":\"$(id)\",\"action\":\"navigate\",\"to\":\"$1\"}"; }
+# world_travel_to: Navigate to a world map location by ID. Opens travel list, selects, confirms.
+# Usage: world_travel_to 26   (travel to Siedge Weald)
+world_travel_to() { fft "{\"id\":\"$(id)\",\"action\":\"world_travel_to\",\"locationId\":$1}"; }
 
-# travel: Navigate to a world map location by ID. Opens travel list, selects location, confirms move.
-# Usage: travel 26   (travel to Siedge Weald)
-travel() { fft "{\"id\":\"$(id)\",\"action\":\"travel_to\",\"locationId\":$1}"; }
+# advance_dialogue: Advance cutscene dialogue by one text box (presses Enter).
+advance_dialogue() { fft "{\"id\":\"$(id)\",\"action\":\"advance_dialogue\"}"; }
+
+# save: Save the game.
+save() { fft "{\"id\":\"$(id)\",\"action\":\"save\"}"; }
+
+# load: Load the most recent save.
+load() { fft "{\"id\":\"$(id)\",\"action\":\"load\"}"; }
+
+# battle_retry: Retry the current battle from the pause menu.
+battle_retry() { fft "{\"id\":\"$(id)\",\"action\":\"battle_retry\"}"; }
+
+# battle_retry_formation: Retry battle with formation screen from the pause menu.
+battle_retry_formation() { fft "{\"id\":\"$(id)\",\"action\":\"battle_retry_formation\"}"; }
+
+# buy: Buy an item from a shop.
+# Usage: buy <item_name> <quantity>
+buy() { fft "{\"id\":\"$(id)\",\"action\":\"buy\",\"to\":\"$1\",\"locationId\":${2:-1}}"; }
+
+# sell: Sell an item at a shop.
+# Usage: sell <item_name> <quantity>
+sell() { fft "{\"id\":\"$(id)\",\"action\":\"sell\",\"to\":\"$1\",\"locationId\":${2:-1}}"; }
+
+# change_job: Change a unit's job.
+# Usage: change_job <unit_id> <job_name>
+change_job() { fft "{\"id\":\"$(id)\",\"action\":\"change_job\",\"locationId\":$1,\"to\":\"$2\"}"; }
 
 # goto: Travel to a location, enter encounter, place Ramza solo, start battle.
 # Handles: travel → confirm move → encounter → formation → battle.
@@ -300,7 +325,7 @@ goto() {
   _check_total || return 1
   # Step 1: Travel to hover over target + confirm move
   echo "[goto] Traveling to location $target..."
-  fft "{\"id\":\"$(id)\",\"action\":\"travel\",\"locationId\":$target}"
+  fft "{\"id\":\"$(id)\",\"action\":\"world_travel_to\",\"locationId\":$target}"
   sleep 0.5
   key 13 Enter
   sleep 2
@@ -469,10 +494,10 @@ scan_move() {
   fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$mv,\"unitIndex\":$jmp}"
 }
 
-# move_grid: Enter Move mode, navigate cursor to grid (x,y), confirm with F.
-# Usage: move_grid <x> <y>
-# Example: move_grid 0 2    → move to grid position (0,2)
-move_grid() { fft_full "{\"id\":\"$(id)\",\"action\":\"move_grid\",\"locationId\":$1,\"unitIndex\":$2}"; }
+# battle_move: Enter Move mode, navigate cursor to grid (x,y), confirm with F.
+# Usage: battle_move <x> <y>
+# Example: battle_move 0 2    → move to grid position (0,2)
+battle_move() { fft_full "{\"id\":\"$(id)\",\"action\":\"battle_move\",\"locationId\":$1,\"unitIndex\":$2}"; }
 
 # battle_attack: Attack a target tile. Handles menu nav, rotation detection, targeting.
 # Usage: battle_attack <x> <y>

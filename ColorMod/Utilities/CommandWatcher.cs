@@ -61,8 +61,11 @@ namespace FFTColorCustomizer.Utilities
         // Named game actions allowed in strict mode (from fft.sh helpers)
         private static readonly HashSet<string> AllowedGameActions = new()
         {
-            "path", "battle_wait", "battle_flee", "battle_attack",
-            "move_grid", "travel_to", "navigate", "auto_move", "get_arrows"
+            "execute_action", "battle_wait", "battle_flee", "battle_attack",
+            "battle_move", "world_travel_to", "auto_move", "get_arrows",
+            "advance_dialogue", "save", "load",
+            "battle_retry", "battle_retry_formation",
+            "buy", "sell", "change_job"
         };
 
         public CommandWatcher(string modPath, IInputSimulator inputSimulator)
@@ -585,20 +588,31 @@ namespace FFTColorCustomizer.Utilities
                     case "sequence":
                         return ExecuteSequence(command);
 
-                    case "path":
+                    case "execute_action":
+                    case "path": // legacy alias
                         return ExecuteValidPath(command);
 
                     case "battle_wait":
                     case "battle_flee":
                     case "battle_attack":
-                    case "navigate":
-                    case "travel_to":
+                    case "world_travel_to":
+                    case "travel_to": // legacy alias
+                    case "navigate": // legacy alias
                     case "confirm_attack":
                     case "move_to":
                     case "scan_units":
                     case "test_c_hold":
                     case "get_arrows":
-                    case "move_grid":
+                    case "battle_move":
+                    case "move_grid": // legacy alias
+                    case "advance_dialogue":
+                    case "save":
+                    case "load":
+                    case "battle_retry":
+                    case "battle_retry_formation":
+                    case "buy":
+                    case "sell":
+                    case "change_job":
                         return ExecuteNavAction(command);
 
                     case "set_screen":

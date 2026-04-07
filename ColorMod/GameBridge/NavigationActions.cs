@@ -247,6 +247,7 @@ namespace FFTColorCustomizer.GameBridge
                     case "navigate":
                         return Navigate(response, command.To ?? "");
 
+                    case "world_travel_to":
                     case "travel_to":
                         return TravelTo(response, command.LocationId);
 
@@ -271,11 +272,36 @@ namespace FFTColorCustomizer.GameBridge
                     case "get_arrows":
                         return GetArrows(response, command);
 
+                    case "battle_move":
                     case "move_grid":
                         return MoveGrid(response, command);
 
                     case "battle_attack":
                         return BattleAttack(response, command);
+
+                    case "advance_dialogue":
+                        return AdvanceDialogue(response);
+
+                    case "save":
+                        return SaveGame(response);
+
+                    case "load":
+                        return LoadGame(response);
+
+                    case "battle_retry":
+                        return BattleRetry(response, formation: false);
+
+                    case "battle_retry_formation":
+                        return BattleRetry(response, formation: true);
+
+                    case "buy":
+                        return Buy(response, command);
+
+                    case "sell":
+                        return Sell(response, command);
+
+                    case "change_job":
+                        return ChangeJob(response, command);
 
                     default:
                         response.Status = "failed";
@@ -2405,6 +2431,59 @@ namespace FFTColorCustomizer.GameBridge
                     return true;
             }
             return false;
+        }
+
+        private CommandResponse AdvanceDialogue(CommandResponse response)
+        {
+            // Send Enter to advance cutscene text
+            SendKey(VK_ENTER);
+            Thread.Sleep(300);
+            var screen = _detectScreen();
+            response.Status = "completed";
+            response.Screen = screen;
+            return response;
+        }
+
+        private CommandResponse SaveGame(CommandResponse response)
+        {
+            response.Status = "failed";
+            response.Error = "Not implemented yet";
+            return response;
+        }
+
+        private CommandResponse LoadGame(CommandResponse response)
+        {
+            response.Status = "failed";
+            response.Error = "Not implemented yet";
+            return response;
+        }
+
+        private CommandResponse BattleRetry(CommandResponse response, bool formation)
+        {
+            response.Status = "failed";
+            response.Error = "Not implemented yet";
+            return response;
+        }
+
+        private CommandResponse Buy(CommandResponse response, CommandRequest command)
+        {
+            response.Status = "failed";
+            response.Error = "Not implemented yet";
+            return response;
+        }
+
+        private CommandResponse Sell(CommandResponse response, CommandRequest command)
+        {
+            response.Status = "failed";
+            response.Error = "Not implemented yet";
+            return response;
+        }
+
+        private CommandResponse ChangeJob(CommandResponse response, CommandRequest command)
+        {
+            response.Status = "failed";
+            response.Error = "Not implemented yet";
+            return response;
         }
     }
 }
