@@ -11,7 +11,7 @@ namespace FFTColorCustomizer.GameBridge
             long slot0, long slot9,
             int battleMode, int moveMode, int paused, int gameOverFlag,
             int battleTeam, int battleActed, int battleMoved,
-            int encA, int encB, bool isPartySubScreen)
+            int encA, int encB, bool isPartySubScreen, int eventId = 0)
         {
             bool rawValidLocation = rawLocation >= 0 && rawLocation <= 42;
 
@@ -37,6 +37,8 @@ namespace FFTColorCustomizer.GameBridge
                 return "Battle_Acting";
             if (inBattle)
                 return "Battle";
+            if (eventId > 0 && (rawLocation == 255 || rawLocation < 0))
+                return "Cutscene";
             if (rawLocation == 255 || rawLocation < 0)
                 return "TitleScreen";
             if (encA != encB)
