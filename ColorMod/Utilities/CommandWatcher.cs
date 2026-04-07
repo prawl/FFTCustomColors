@@ -55,7 +55,14 @@ namespace FFTColorCustomizer.Utilities
             "mark_blocked", "snapshot", "heap_snapshot", "diff",
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
-            "read_dialogue"
+            "read_dialogue", "write_byte"
+        };
+
+        // Named game actions allowed in strict mode (from fft.sh helpers)
+        private static readonly HashSet<string> AllowedGameActions = new()
+        {
+            "path", "battle_wait", "battle_flee", "battle_attack",
+            "move_grid", "travel_to", "navigate", "auto_move", "get_arrows"
         };
 
         public CommandWatcher(string modPath, IInputSimulator inputSimulator)
@@ -235,63 +242,33 @@ namespace FFTColorCustomizer.Utilities
         {
             if (StrictMode)
             {
-                // In strict mode, block raw key presses (must use validPaths)
-                if (string.IsNullOrEmpty(command.Action) && command.Keys?.Count > 0)
+                // In strict mode, only allow:
+                //   1. Infrastructure actions (scan_units, read_address, etc.)
+                //   2. Named game actions from fft.sh helpers (path, battle_wait, etc.)
+                //   3. No-op state queries (empty keys, no action) — e.g. screen command
+                // Block everything else (raw keys, sequence, unknown actions).
+                bool isInfra = !string.IsNullOrEmpty(command.Action) && InfrastructureActions.Contains(command.Action);
+                bool isGameAction = !string.IsNullOrEmpty(command.Action) && AllowedGameActions.Contains(command.Action);
+                bool isNoOp = string.IsNullOrEmpty(command.Action) && (command.Keys == null || command.Keys.Count == 0);
+
+                if (!isInfra && !isGameAction && !isNoOp)
                 {
                     var screen = DetectScreen();
                     var paths = screen != null ? NavigationPaths.GetPaths(screen) : null;
                     var available = paths != null ? string.Join(", ", paths.Keys) : "none";
+                    string reason = string.IsNullOrEmpty(command.Action)
+                        ? "Raw key presses are not allowed"
+                        : $"Action '{command.Action}' is not allowed";
                     return new CommandResponse
                     {
                         Id = command.Id,
                         Status = "blocked",
-                        Error = $"[STRICT MODE] Raw key presses are not allowed. You must use 'path <name>' to execute actions. Current screen: {screen?.Name}. Available actions: {available}. Example: {{\"action\":\"path\",\"to\":\"Move\"}}",
+                        Error = $"[STRICT MODE] {reason}. Use the fft.sh helper commands: path, battle_wait, battle_attack, move_grid, scan_units, etc. Current screen: {screen?.Name}. ValidPaths: {available}",
                         ProcessedAt = DateTime.UtcNow.ToString("o"),
                         GameWindowFound = true,
                         Screen = screen,
                         ValidPaths = paths
                     };
-                }
-
-                // Block game actions not in validPaths (infrastructure actions always pass)
-                if (!string.IsNullOrEmpty(command.Action) && !InfrastructureActions.Contains(command.Action))
-                {
-                    var screen = DetectScreen();
-                    var paths = screen != null ? NavigationPaths.GetPaths(screen) : null;
-
-                    // Check if action matches a validPath action or key
-                    bool allowed = false;
-                    if (paths != null)
-                    {
-                        foreach (var kv in paths)
-                        {
-                            if (string.Equals(kv.Key, command.Action, StringComparison.OrdinalIgnoreCase) ||
-                                string.Equals(kv.Value.Action, command.Action, StringComparison.OrdinalIgnoreCase))
-                            {
-                                allowed = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    // Allow structured game actions that validate internally
-                    if (command.Action is "path" or "move_grid" or "battle_wait" or "battle_flee" or "battle_attack" or "travel_to")
-                        allowed = true;
-
-                    if (!allowed)
-                    {
-                        var available = paths != null ? string.Join(", ", paths.Keys) : "none";
-                        return new CommandResponse
-                        {
-                            Id = command.Id,
-                            Status = "blocked",
-                            Error = $"[STRICT MODE] Action '{command.Action}' is not a valid action on screen '{screen?.Name}'. Use 'path <name>' with one of: {available}. Infrastructure actions (scan_move, read_address, etc.) are always allowed.",
-                            ProcessedAt = DateTime.UtcNow.ToString("o"),
-                            GameWindowFound = true,
-                            Screen = screen,
-                            ValidPaths = paths
-                        };
-                    }
                 }
             }
 

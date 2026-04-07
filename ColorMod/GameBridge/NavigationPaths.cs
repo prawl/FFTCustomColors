@@ -30,6 +30,7 @@ namespace FFTColorCustomizer.GameBridge
 
             return screen.Name switch
             {
+                "Cutscene" => GetCutscenePaths(),
                 "TitleScreen" => GetTitleScreenPaths(),
                 "WorldMap" => GetWorldMapPaths(),
                 "PartyMenu" => GetPartyMenuPaths(),
@@ -51,6 +52,18 @@ namespace FFTColorCustomizer.GameBridge
                 "Battle_EnemiesTurn" => GetBattleWaitingPaths(),
                 "Battle" => GetBattleWaitingPaths(),
                 _ => null
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetCutscenePaths()
+        {
+            return new()
+            {
+                ["Advance"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Advance dialogue (press Enter)"
+                },
             };
         }
 
