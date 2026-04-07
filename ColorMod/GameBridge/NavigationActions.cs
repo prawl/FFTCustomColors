@@ -387,40 +387,61 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(150);
             }
 
-            // Press Enter to select Wait
+            // Press Enter to select Wait — enters the facing screen.
             SendKey(VK_ENTER);
             Thread.Sleep(500);
 
-            // Face toward nearest enemy before confirming
+            // Face optimal direction using the rotation detected during the last move.
+            // The movement system (battle_move, battle_attack) empirically detects what
+            // the Right arrow key does by pressing it and reading the cursor delta.
+            // That Right delta maps to a specific rotation in the facing table.
+            // The camera doesn't auto-rotate when entering the facing screen, so the
+            // rotation from the move is still valid here.
             var ally = _lastScannedUnits?.FirstOrDefault(u => u.Team == 0);
             var enemies = _lastScannedUnits?.Where(u => u.Team == 1 && u.Hp > 0).ToList();
-            if (ally != null && enemies != null && enemies.Count > 0)
+            if (ally != null && enemies != null && enemies.Count > 0 && _lastDetectedRightDelta != null)
             {
-                var nearest = enemies.OrderBy(e => Math.Abs(e.GridX - ally.GridX) + Math.Abs(e.GridY - ally.GridY)).First();
-                int dx = nearest.GridX - ally.GridX;
-                int dy = nearest.GridY - ally.GridY;
+                var allyPos = new FacingStrategy.UnitPosition
+                {
+                    GridX = ally.GridX, GridY = ally.GridY,
+                    Team = ally.Team, Hp = ally.Hp, MaxHp = ally.MaxHp
+                };
+                var enemyPositions = enemies.Select(e => new FacingStrategy.UnitPosition
+                {
+                    GridX = e.GridX, GridY = e.GridY,
+                    Team = e.Team, Hp = e.Hp, MaxHp = e.MaxHp
+                }).ToList();
 
-                // Determine dominant direction to face
-                // Use empirical rotation detection: press Right, observe delta, derive mapping
-                // Same approach as move_grid — static table has known issues
-                int faceDx = 0, faceDy = 0;
-                if (Math.Abs(dx) >= Math.Abs(dy)) { faceDx = dx > 0 ? 1 : -1; }
-                else { faceDy = dy > 0 ? 1 : -1; }
+                var (faceDx, faceDy) = FacingStrategy.ComputeOptimalFacing(allyPos, enemyPositions);
 
-                // Facing uses OPPOSITE direction from cursor movement:
-                // pressing Down moves cursor +X but faces unit -X.
-                // So negate the face delta when looking up the arrow key.
-                var camResult = _explorer.ReadAbsolute((nint)AddrCameraRotation, 1);
-                int rotation = camResult != null ? (int)((camResult.Value.value - 1 + 4) % 4) : 0;
+                // Look up the Right delta in the facing table to find the facing rotation
+                var (rdx, rdy) = _lastDetectedRightDelta.Value;
+                int facingRot = FacingStrategy.DeriveRotation(0, rdx, rdy); // 0 = Right key index
 
-                int dir = FindDirForDelta(rotation, -faceDx, -faceDy);
-                int vk = DirVKs[dir];
-
-                _input.SendKeyPressToWindow(_gameWindow, vk);
-                Thread.Sleep(200);
-
-                string[] dirNames = { "Right", "Left", "Up", "Down" };
-                ModLogger.Log($"[BattleWait] Facing toward ({nearest.GridX},{nearest.GridY}) delta=({dx},{dy}) face=({faceDx},{faceDy}) key={dirNames[dir]} rot={rotation}");
+                if (facingRot >= 0)
+                {
+                    string? arrowKey = FacingStrategy.GetFacingArrowKey(facingRot, faceDx, faceDy);
+                    if (arrowKey != null)
+                    {
+                        int vk = arrowKey switch
+                        {
+                            "Right" => VK_RIGHT, "Left" => VK_LEFT,
+                            "Up" => VK_UP, "Down" => VK_DOWN,
+                            _ => VK_RIGHT
+                        };
+                        _input.SendKeyPressToWindow(_gameWindow, vk);
+                        Thread.Sleep(200);
+                        ModLogger.Log($"[BattleWait] Facing ({faceDx},{faceDy}) rightDelta=({rdx},{rdy}) facingRot={facingRot} key={arrowKey}");
+                    }
+                }
+                else
+                {
+                    ModLogger.Log($"[BattleWait] Could not derive facing rotation from rightDelta=({rdx},{rdy})");
+                }
+            }
+            else if (_lastDetectedRightDelta == null)
+            {
+                ModLogger.Log("[BattleWait] No rotation data — accepting default facing");
             }
 
             // Confirm facing (game says "press F to confirm")
@@ -572,6 +593,7 @@ namespace FFTColorCustomizer.GameBridge
                     // Down = 90° CW from Right → Right = (-ddy, ddx)
                     rdx = -ddy;
                     rdy = ddx;
+                    _lastDetectedRightDelta = (rdx, rdy);
                     ModLogger.Log($"[BattleAttack] Rotation from Down: ({ddx},{ddy}) → Right=({rdx},{rdy})");
                 }
                 else
@@ -588,6 +610,7 @@ namespace FFTColorCustomizer.GameBridge
                 // Undo the Right press
                 _input.SendKeyPressToWindow(_gameWindow, VK_LEFT);
                 Thread.Sleep(150);
+                _lastDetectedRightDelta = (rdx, rdy);
                 ModLogger.Log($"[BattleAttack] Rotation: Right=({rdx},{rdy})");
             }
 
@@ -628,14 +651,59 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Step 7: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
+            // Step 7: Read target HP and team before confirming (cursor is on target)
+            const long AddrCondensedHp = 0x14077D2AC; // TurnQueueBase + TqHp, uint16 LE
+            const long AddrCondensedTeam = 0x14077D2A2; // TurnQueueBase + team, uint16 LE
+            var preHpResult = _explorer.ReadAbsolute((nint)AddrCondensedHp, 2);
+            var preTeamResult = _explorer.ReadAbsolute((nint)AddrCondensedTeam, 2);
+            int preAttackHp = preHpResult != null ? (int)preHpResult.Value.value : -1;
+            int targetTeam = preTeamResult != null ? (int)preTeamResult.Value.value : -1;
+            ModLogger.Log($"[BattleAttack] Pre-attack: target HP={preAttackHp}, team={targetTeam}");
+
+            // Step 8: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
             SendKey(VK_ENTER);
             Thread.Sleep(500);
             SendKey(VK_ENTER);
-            Thread.Sleep(500);
+
+            // Step 9: Poll for HP change while struct still shows the target (same team)
+            int postAttackHp = preAttackHp;
+            if (preAttackHp > 0)
+            {
+                for (int poll = 0; poll < 60; poll++) // 60 * 100ms = 6s max
+                {
+                    Thread.Sleep(100);
+                    var teamRead = _explorer.ReadAbsolute((nint)AddrCondensedTeam, 2);
+                    int currentTeam = teamRead != null ? (int)teamRead.Value.value : -1;
+
+                    // Struct switched away from target — stop polling
+                    if (currentTeam != targetTeam)
+                    {
+                        ModLogger.Log($"[BattleAttack] Struct switched to team {currentTeam} after {poll * 100}ms");
+                        break;
+                    }
+
+                    var hpRead = _explorer.ReadAbsolute((nint)AddrCondensedHp, 2);
+                    if (hpRead != null)
+                    {
+                        int currentHp = (int)hpRead.Value.value;
+                        if (currentHp != preAttackHp)
+                        {
+                            postAttackHp = currentHp;
+                            ModLogger.Log($"[BattleAttack] HP changed: {preAttackHp} -> {currentHp} after {poll * 100}ms");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Step 10: Evaluate attack result
+            var attackResult = AttackVerification.Evaluate(preAttackHp, postAttackHp);
+            string resultStr = attackResult.Hit
+                ? (attackResult.Killed ? $"KILLED! {attackResult.Damage} damage" : $"HIT! {attackResult.Damage} damage ({attackResult.HpAfter} HP remaining)")
+                : "MISSED (no HP change detected)";
 
             response.Status = "completed";
-            response.Error = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y})";
+            response.Error = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {resultStr}";
             ModLogger.Log($"[BattleAttack] {response.Error}");
             return response;
         }
@@ -1030,14 +1098,59 @@ namespace FFTColorCustomizer.GameBridge
             // 3. Get enemy positions
             var enemyPositions = GetEnemyPositions();
 
-            // 4. Build unit summary
-            var lines = new List<string>();
-            lines.Add($"units={units.Count}");
+            // 4. Build structured battle state
+            var battleState = new BattleState { InBattle = true };
+            battleState.ActiveUnit = new ActiveUnitState
+            {
+                Team = ally.Team,
+                Level = ally.Level,
+                X = ally.GridX,
+                Y = ally.GridY,
+                Hp = ally.Hp,
+                MaxHp = ally.MaxHp,
+                Mp = ally.Mp,
+                MaxMp = ally.MaxMp,
+                NameId = ally.NameId,
+                JobId = ally.Job,
+                JobName = GameStateReporter.GetJobName(ally.Job),
+                Brave = ally.Brave,
+                Faith = ally.Faith,
+                Move = ally.Move,
+                Jump = ally.Jump,
+                PA = ally.PA,
+                MA = ally.MA,
+            };
+            // Move/Jump exposed via ActiveUnit for Claude's decision-making
             foreach (var u in units)
             {
-                string teamName = u.Team == 0 ? "PLAYER" : u.Team == 2 ? "ALLY" : "ENEMY";
-                lines.Add($"[{teamName}] ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp}");
+                bool isActive = u == ally;
+                int dist = Math.Abs(u.GridX - ally.GridX) + Math.Abs(u.GridY - ally.GridY);
+
+                battleState.Units.Add(new BattleUnitState
+                {
+                    Team = u.Team,
+                    JobId = u.Job,
+                    JobName = GameStateReporter.GetJobName(u.Job),
+                    Level = u.Level,
+                    X = u.GridX,
+                    Y = u.GridY,
+                    Hp = u.Hp,
+                    MaxHp = u.MaxHp,
+                    Mp = u.Mp,
+                    MaxMp = u.MaxMp,
+                    PositionKnown = true,
+                    Distance = isActive ? 0 : dist,
+                    IsActive = isActive,
+                    // Facing: null for now. Movement delta is unreliable because the game's
+                    // Wait AI picks a facing direction independent of movement. Need a stable
+                    // memory address for unit facing direction to populate this. See TODO.md.
+                    Facing = null,
+                });
             }
+            response.Battle = battleState;
+
+            // Diagnostic lines for logging only (not in response)
+            var lines = new List<string>();
 
             // 5. Auto-detect map — validate any pre-loaded map against unit positions + ally height
             if (_mapLoader != null)
@@ -1193,19 +1306,24 @@ namespace FFTColorCustomizer.GameBridge
                     }
                 }
 
-                // Build tile list as "x,y" entries in validPaths
-                var tileStrings = visited
+                // Build tile list as structured array
+                var tileList = visited
                     .OrderBy(kv => kv.Value)
-                    .Select(kv => $"{kv.Key.Item1},{kv.Key.Item2}")
+                    .Select(kv => new Utilities.TilePosition
+                    {
+                        X = kv.Key.Item1,
+                        Y = kv.Key.Item2,
+                        H = GetDisplayHeight(kv.Key.Item1, kv.Key.Item2)
+                    })
                     .ToList();
 
                 validPaths["ValidMoveTiles"] = new PathEntry
                 {
-                    Desc = $"{tileStrings.Count} tiles from ({ally.GridX},{ally.GridY}) Mv={moveStat} Jmp={jumpStat} enemies={enemyPositions.Count}",
-                    Action = string.Join(" ", tileStrings)
+                    Desc = $"{tileList.Count} tiles from ({ally.GridX},{ally.GridY}) Mv={moveStat} Jmp={jumpStat} enemies={enemyPositions.Count}",
+                    Tiles = tileList
                 };
 
-                lines.Add($"validTiles={tileStrings.Count} move={moveStat} jump={jumpStat} enemies={enemyPositions.Count}");
+                lines.Add($"validTiles={tileList.Count} move={moveStat} jump={jumpStat} enemies={enemyPositions.Count}");
             }
             else
             {
@@ -1218,27 +1336,73 @@ namespace FFTColorCustomizer.GameBridge
                 int rotation = camResult != null ? (int)((camResult.Value.value - 1 + 4) % 4) : 0;
                 string[] dirNames = { "Right", "Left", "Up", "Down" };
                 int[][] cardinals = { new[]{1,0}, new[]{-1,0}, new[]{0,1}, new[]{0,-1} };
-                var attackTiles = new List<string>();
+                var attackTileList = new List<AttackTileInfo>();
                 foreach (var delta in cardinals)
                 {
                     int tx = ally.GridX + delta[0];
                     int ty = ally.GridY + delta[1];
                     int dir = FindDirForDelta(rotation, delta[0], delta[1]);
                     string arrowName = dirNames[dir];
-                    bool hasEnemy = enemyPositions.Contains((tx, ty));
-                    bool hasAlly = units.Any(u => u.Team == 0 && u.GridX == tx && u.GridY == ty && !(u.GridX == ally.GridX && u.GridY == ally.GridY));
-                    string occupant = hasEnemy ? "ENEMY" : hasAlly ? "ALLY" : "empty";
-                    attackTiles.Add($"{tx},{ty}={arrowName}({occupant})");
+                    var occupantUnit = units.FirstOrDefault(u => u.GridX == tx && u.GridY == ty && u != ally);
+                    string occupant = occupantUnit == null ? "empty"
+                        : occupantUnit.Team == 0 ? "ally" : "enemy";
+                    var tile = new AttackTileInfo { X = tx, Y = ty, Arrow = arrowName, Occupant = occupant };
+                    if (occupantUnit != null)
+                    {
+                        tile.Hp = occupantUnit.Hp;
+                        tile.MaxHp = occupantUnit.MaxHp;
+                        tile.JobName = GameStateReporter.GetJobName(occupantUnit.Job);
+                    }
+                    attackTileList.Add(tile);
                 }
                 validPaths["AttackTiles"] = new PathEntry
                 {
                     Desc = $"4 cardinal tiles from ({ally.GridX},{ally.GridY}) rot={rotation}",
-                    Action = string.Join(" ", attackTiles)
+                    AttackTiles = attackTileList
                 };
             }
 
+            // Recommended facing for Wait command
+            {
+                var livingEnemies = units
+                    .Where(u => u.Team == 1 && u.Hp > 0)
+                    .Select(u => new FacingStrategy.UnitPosition
+                    {
+                        GridX = u.GridX, GridY = u.GridY,
+                        Team = u.Team, Hp = u.Hp, MaxHp = u.MaxHp
+                    })
+                    .ToList();
+                var allyPos = new FacingStrategy.UnitPosition
+                {
+                    GridX = ally.GridX, GridY = ally.GridY,
+                    Team = ally.Team, Hp = ally.Hp, MaxHp = ally.MaxHp
+                };
+                var facingResult = FacingStrategy.ComputeOptimalFacingDetailed(allyPos, livingEnemies);
+                string faceName = (facingResult.Dx, facingResult.Dy) switch
+                {
+                    (1, 0) => "East", (-1, 0) => "West",
+                    (0, 1) => "North", (0, -1) => "South",
+                    _ => $"({facingResult.Dx},{facingResult.Dy})"
+                };
+                validPaths["RecommendedFacing"] = new PathEntry
+                {
+                    Desc = $"Face {faceName} — {facingResult.Front} front, {facingResult.Side} side, {facingResult.Back} back",
+                    Facing = new FacingInfo
+                    {
+                        Dx = facingResult.Dx,
+                        Dy = facingResult.Dy,
+                        Direction = faceName,
+                        Front = facingResult.Front,
+                        Side = facingResult.Side,
+                        Back = facingResult.Back
+                    }
+                };
+            }
+
+            if (lines.Count > 0)
+                ModLogger.Log($"[ScanMove] {string.Join(" | ", lines)}");
+
             response.Status = "completed";
-            response.Error = string.Join(" | ", lines);
             response.ValidPaths = validPaths;
             return response;
         }
@@ -1439,6 +1603,7 @@ namespace FFTColorCustomizer.GameBridge
                             case 2: rdx = -tdx; rdy = -tdy; break;                // Left → Right = opposite
                             case 3: rdx = tdy; rdy = -tdx; break;                 // Up → Right = (dy, -dx)
                         }
+                        _lastDetectedRightDelta = (rdx, rdy);
                         ModLogger.Log($"[AutoMove] Rotation detected via {(new[]{"Right","Down","Left","Up"})[i]}=({tdx},{tdy}) → Right=({rdx},{rdy})");
                         break;
                     }
@@ -1732,6 +1897,7 @@ namespace FFTColorCustomizer.GameBridge
                         case 2: rdx = -tdx; rdy = -tdy; break;         // Left → Right = opposite
                         case 3: rdx = tdy; rdy = -tdx; break;          // Up → Right = (dy, -dx)
                     }
+                    _lastDetectedRightDelta = (rdx, rdy);
                     ModLogger.Log($"[MoveGrid] Rotation: key={i} delta=({tdx},{tdy}) → Right=({rdx},{rdy})");
                     break;
                 }
@@ -2076,8 +2242,16 @@ namespace FFTColorCustomizer.GameBridge
             public int Brave, Faith;
         }
 
+        /// <summary>
+        /// Last empirically detected Right arrow delta from grid navigation.
+        /// Used by BattleWait to determine facing rotation without reading camera address.
+        /// Set during battle_move/battle_attack/auto_move whenever rotation detection runs.
+        /// </summary>
+        private (int dx, int dy)? _lastDetectedRightDelta;
+
         /// <summary>Last scan results cached for BFS enemy blocking.</summary>
         private List<ScannedUnit>? _lastScannedUnits;
+
 
         /// <summary>Get enemy grid positions from last scan for BFS blocking.</summary>
         public HashSet<(int, int)> GetEnemyPositions()

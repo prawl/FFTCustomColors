@@ -214,9 +214,9 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 - [ ] Read attack range from memory
 
 ### Unit Facing Direction
-- [ ] Find memory address for facing direction
-- [ ] Read facing during scan for backstab opportunities
-- [ ] Choose facing intelligently at end of turn
+- [x] Choose facing intelligently at end of turn — FacingStrategy computes optimal direction via arc-based threat scoring (front=1, side=2, back=3 weights with distance/HP decay). battle_wait uses empirical rotation from grid navigation to press the correct key. 11/11 confirmed across all 4 directions.
+- [ ] Read unit facing direction from memory — Movement delta is unreliable (game AI picks facing during Wait independent of movement). Need a stable memory address for each unit's current facing. Searched 0x14077C970 (counter, drifts), 0x140C64900 (async, unreliable), full heap diffs (no stable static address found). Value is likely on UE4 heap behind pointer chains. The `facing` field exists in BattleUnitState JSON but is always null until solved.
+- [ ] Use facing data for backstab targeting — Once facing is readable, Claude can plan attacks from behind enemies for bonus damage
 
 ---
 

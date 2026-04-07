@@ -559,8 +559,68 @@ namespace FFTColorCustomizer.GameBridge
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int WaitTimeoutMs { get; set; }
 
+        [System.Text.Json.Serialization.JsonPropertyName("tiles")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public System.Collections.Generic.List<FFTColorCustomizer.Utilities.TilePosition>? Tiles { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("attackTiles")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public System.Collections.Generic.List<AttackTileInfo>? AttackTiles { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("facing")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public FacingInfo? Facing { get; set; }
+
         [System.Text.Json.Serialization.JsonPropertyName("desc")]
         public string Desc { get; set; } = "";
+    }
+
+    public class AttackTileInfo
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("x")]
+        public int X { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("y")]
+        public int Y { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("arrow")]
+        public string Arrow { get; set; } = "";
+
+        [System.Text.Json.Serialization.JsonPropertyName("occupant")]
+        public string Occupant { get; set; } = "empty";
+
+        [System.Text.Json.Serialization.JsonPropertyName("hp")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int Hp { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxHp")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int MaxHp { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("jobName")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? JobName { get; set; }
+    }
+
+    public class FacingInfo
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("dx")]
+        public int Dx { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("dy")]
+        public int Dy { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("direction")]
+        public string Direction { get; set; } = "";
+
+        [System.Text.Json.Serialization.JsonPropertyName("front")]
+        public int Front { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("side")]
+        public int Side { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("back")]
+        public int Back { get; set; }
     }
 
     public class KeyInfo

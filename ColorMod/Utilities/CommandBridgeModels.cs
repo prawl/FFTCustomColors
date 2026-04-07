@@ -151,6 +151,10 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("error")]
         public string? Error { get; set; }
 
+        [JsonPropertyName("info")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Info { get; set; }
+
         [JsonPropertyName("processedAt")]
         public string ProcessedAt { get; set; } = "";
 
@@ -283,6 +287,10 @@ namespace FFTColorCustomizer.Utilities
 
         [JsonPropertyName("y")]
         public int Y { get; set; }
+
+        [JsonPropertyName("h")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public double H { get; set; }
     }
 
     public class SequenceStep

@@ -181,6 +181,7 @@ namespace FFTColorCustomizer.Utilities
                             response.Battle = scanResponse.Battle;
                             response.ValidPaths = scanResponse.ValidPaths;
                             response.Screen = scanResponse.Screen ?? response.Screen;
+                            response.Info = scanResponse.Info;
                             if (scanResponse.Error != null)
                                 response.Error = (response.Error != null ? response.Error + " | " : "") + "[auto-scan] " + scanResponse.Error;
                         }
@@ -764,6 +765,7 @@ namespace FFTColorCustomizer.Utilities
                     response.Battle = scanResponse.Battle;
                     response.ValidPaths = scanResponse.ValidPaths;
                     response.Screen = scanResponse.Screen ?? response.Screen;
+                    response.Info = scanResponse.Info;
                     if (scanResponse.Error != null)
                         response.Error = (response.Error != null ? response.Error + " | " : "") + "[auto-scan] " + scanResponse.Error;
                 }

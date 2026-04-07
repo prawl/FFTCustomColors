@@ -138,7 +138,7 @@ namespace FFTColorCustomizer.GameBridge
             }
         }
 
-        private static string? GetJobName(int jobId)
+        internal static string? GetJobName(int jobId)
         {
             return jobId switch
             {

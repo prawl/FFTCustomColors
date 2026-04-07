@@ -728,6 +728,10 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("jobId")]
         public int JobId { get; set; }
 
+        [JsonPropertyName("jobName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? JobName { get; set; }
+
         // Roster-sourced fields (player units only, via nameId→roster lookup)
 
         [JsonPropertyName("brave")]
@@ -766,13 +770,35 @@ namespace FFTColorCustomizer.GameBridge
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<int>? Equipment { get; set; }
 
-        // Effective stats (Speed, PA, MA, Move, Jump) require heap struct search.
+        [JsonPropertyName("move")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Move { get; set; }
+
+        [JsonPropertyName("jump")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Jump { get; set; }
+
+        [JsonPropertyName("pa")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int PA { get; set; }
+
+        [JsonPropertyName("ma")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int MA { get; set; }
     }
 
     public class BattleUnitState
     {
         [JsonPropertyName("team")]
         public int Team { get; set; }
+
+        [JsonPropertyName("jobId")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int JobId { get; set; }
+
+        [JsonPropertyName("jobName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? JobName { get; set; }
 
         [JsonPropertyName("level")]
         public int Level { get; set; }
@@ -815,5 +841,10 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("direction")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Direction { get; set; }
+
+        /// <summary>Cardinal direction the unit is facing (N/S/E/W). Derived from last movement delta.</summary>
+        [JsonPropertyName("facing")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Facing { get; set; }
     }
 }

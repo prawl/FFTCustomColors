@@ -272,6 +272,7 @@ execute_action() {
 const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
 const s=r.screen||{};
 console.log('['+s.name+'] loc='+s.location+' hover='+s.hover+' status='+r.status);
+if(r.info)console.log('  INFO:',r.info);
 if(r.error)console.log('  ERROR:',r.error);
 const vp=r.validPaths||{};
 const keys=Object.keys(vp);

@@ -22,7 +22,7 @@ source ./fft.sh
 |---------|-------------|
 | `battle_move <x> <y>` | Move active unit to grid tile |
 | `battle_attack <x> <y>` | Attack target at tile |
-| `battle_wait` | End turn, face enemy, wait for next friendly turn |
+| `battle_wait` | End turn, face optimal direction (arc scoring, requires prior move), wait for next friendly turn |
 | `battle_flee` | Quit battle, return to world map |
 | `battle_retry` | Retry battle (from pause menu) |
 | `battle_retry_formation` | Retry with formation screen |
@@ -45,6 +45,28 @@ source ./fft.sh
 | `sell <item> <qty>` | Sell item at shop |
 | `change_job <unit_id> <job>` | Change a unit's job |
 
+## Direct Key Presses
+
+Single key press commands for manual control. Useful for menu navigation, facing selection, and testing.
+
+| Command | Description |
+|---------|-------------|
+| `up` | Press Up arrow |
+| `down` | Press Down arrow |
+| `left` | Press Left arrow |
+| `right` | Press Right arrow |
+| `enter` | Press Enter (confirm) |
+| `esc` | Press Escape (cancel/back) |
+| `space` | Press Space |
+| `tab` | Press Tab |
+
+Waiting variants (press key, then wait for screen change):
+
+| Command | Description |
+|---------|-------------|
+| `enter_wait <screen>` | Press Enter, wait until `<screen>` appears |
+| `esc_wait <screen>` | Press Escape, wait until `<screen>` appears |
+
 ## System
 
 | Command | Description |
@@ -63,7 +85,12 @@ source ./fft.sh
 Every response includes:
 - **Screen state** — which screen you're on
 - **ValidPaths** — available actions for the current screen
-- **Battle data** — unit positions, HP, active unit info (when in battle)
+- **Battle data** (when in battle):
+  - `battle.activeUnit` — your unit: jobName, move, jump, pa, ma, hp, brave, faith
+  - `battle.units[]` — all units: team, jobName, level, position, hp, distance
+  - `ValidMoveTiles.tiles[]` — reachable tiles with height (`h`) for high ground
+  - `AttackTiles.attackTiles[]` — adjacent tiles with arrow key, occupant info (hp, jobName if enemy)
+  - `RecommendedFacing.facing` — optimal facing direction with arc breakdown (front/side/back counts)
 
 ## Strict Mode
 
@@ -108,7 +135,7 @@ screen                    # Did it end? What screen now?
 
 Every screen has a set of valid actions. Use `execute_action <name>` to run them. The response always shows what's available next. Common ones:
 
-- **Battle_MyTurn**: Move, Abilities, Wait, MoveToEnemy, Pause
+- **Battle_MyTurn**: Move, Attack, Wait, Pause
 - **WorldMap**: PartyMenu, TravelList
 - **Cutscene**: Advance
 - **EncounterDialog**: Fight, Flee

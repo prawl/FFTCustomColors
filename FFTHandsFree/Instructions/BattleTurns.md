@@ -50,7 +50,12 @@ You can do Move and Act in any order, or skip either. But you MUST Wait to end t
 scan_move           # uses the unit's actual Move/Jump stats
 ```
 
-Returns: unit positions (PLAYER/ALLY/ENEMY), valid movement tiles, camera rotation, attack tiles.
+Returns structured JSON:
+- **battle.activeUnit** — your unit's stats: jobName, move, jump, pa, ma, hp, brave, faith
+- **battle.units[]** — all units with team, jobName, level, x, y, hp/maxHp, distance from you
+- **ValidMoveTiles.tiles[]** — reachable tiles with `{x, y, h}` (h = height for high ground)
+- **AttackTiles.attackTiles[]** — 4 cardinal tiles with `{x, y, arrow, occupant}`. Occupied tiles include hp, maxHp, jobName
+- **RecommendedFacing.facing** — optimal Wait direction with `{direction, front, side, back}` arc counts
 
 ### 2. Move
 
@@ -58,7 +63,7 @@ Returns: unit positions (PLAYER/ALLY/ENEMY), valid movement tiles, camera rotati
 battle_move 6 5     # move to grid position (6,5)
 ```
 
-Pick a tile from the `ValidMoveTiles` list. The mod handles Move mode, rotation, arrow keys, and confirmation.
+Pick a tile from the `ValidMoveTiles.tiles[]` array. Each tile has `{x, y, h}` — prefer higher `h` values for high ground advantage. The mod handles Move mode, rotation, arrow keys, and confirmation.
 
 ### 3. Attack
 
@@ -66,15 +71,31 @@ Pick a tile from the `ValidMoveTiles` list. The mod handles Move mode, rotation,
 battle_attack 7 5   # attack tile (7,5)
 ```
 
-Pick a target from `AttackTiles` in the scan_move response — any tile marked `ENEMY`. The mod handles menu navigation, rotation detection, cursor movement, and confirmation.
+Pick a target from `AttackTiles` in the scan_move response — any tile with `"occupant": "enemy"`. These tiles include the target's hp, maxHp, and jobName so you can assess threats. The mod handles menu navigation, rotation detection, cursor movement, and confirmation.
 
 ### 4. End turn
 
 ```bash
-battle_wait         # end turn, auto-faces nearest enemy, waits for next friendly turn
+battle_wait         # end turn, auto-faces optimal direction, waits for next friendly turn
 ```
 
-`battle_wait` handles everything: navigates to Wait in the menu, confirms facing, holds Ctrl to fast-forward through enemy/ally turns, and returns when it's your turn again.
+`battle_wait` handles everything: navigates to Wait in the menu, faces the optimal direction (minimizes enemies at your back using arc-based threat scoring), holds Ctrl to fast-forward through enemy/ally turns, and returns when it's your turn again.
+
+**Note:** Auto-facing only works after a move (`battle_move`), because the rotation is detected empirically during grid navigation. If you skip the move and just wait, it accepts the default facing direction.
+
+The `RecommendedFacing` in scan_move shows you the recommended direction before you act, with arc counts (front/side/back) so you can understand the reasoning.
+
+To manually control facing (e.g. for testing or overriding), use direct key presses:
+
+```bash
+# Navigate to Wait manually, then pick facing direction
+execute_action Wait   # or use battle_wait for full auto
+up                    # face a direction
+down                  # face a direction
+left                  # face a direction
+right                 # face a direction
+enter                 # confirm facing
+```
 
 ## Waiting for Other Turns
 
