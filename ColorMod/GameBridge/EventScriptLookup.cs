@@ -1,0 +1,85 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+
+namespace FFTColorCustomizer.GameBridge
+{
+    /// <summary>
+    /// Loads and caches decoded event scripts from .mes files.
+    /// Provides lookup by event ID to get dialogue for cutscenes.
+    /// </summary>
+    public class EventScriptLookup
+    {
+        public record EventScript(int EventId, List<MesDecoder.DialogueLine> Lines);
+
+        private readonly Dictionary<int, EventScript> _scripts = new();
+        private readonly string _mesDirectory;
+
+        public EventScriptLookup(string mesDirectory)
+        {
+            _mesDirectory = mesDirectory;
+            LoadAll();
+        }
+
+        private void LoadAll()
+        {
+            if (!Directory.Exists(_mesDirectory)) return;
+
+            foreach (var file in Directory.GetFiles(_mesDirectory, "event*.en.mes"))
+            {
+                var filename = Path.GetFileNameWithoutExtension(file); // e.g. "event002.en"
+                var numPart = filename.Replace("event", "").Replace(".en", "");
+                if (int.TryParse(numPart, out int eventId))
+                {
+                    var lines = MesDecoder.DecodeFile(file);
+                    _scripts[eventId] = new EventScript(eventId, lines);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get the decoded script for an event ID. Returns null if not found.
+        /// </summary>
+        public EventScript? GetScript(int eventId)
+        {
+            return _scripts.TryGetValue(eventId, out var script) ? script : null;
+        }
+
+        /// <summary>
+        /// Get a human-readable formatted script for an event ID.
+        /// Format: "Speaker: dialogue text" per line.
+        /// </summary>
+        public string? GetFormattedScript(int eventId)
+        {
+            var script = GetScript(eventId);
+            if (script == null) return null;
+
+            var sb = new StringBuilder();
+            string? lastSpeaker = null;
+
+            foreach (var line in script.Lines)
+            {
+                if (line.Speaker != null && line.Speaker != lastSpeaker)
+                {
+                    if (sb.Length > 0) sb.AppendLine();
+                    sb.Append(line.Speaker).Append(": ");
+                    lastSpeaker = line.Speaker;
+                }
+                else if (line.Speaker == null && lastSpeaker != null)
+                {
+                    sb.Append("  ");
+                }
+
+                sb.AppendLine(line.Text);
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        /// <summary>
+        /// Get count of loaded scripts.
+        /// </summary>
+        public int Count => _scripts.Count;
+    }
+}
