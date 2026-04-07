@@ -278,6 +278,16 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("eventId")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int EventId { get; set; }
+
+        /// <summary>Story objective location ID (yellow diamond on world map). 0 when no objective.</summary>
+        [JsonPropertyName("storyObjective")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int StoryObjective { get; set; }
+
+        /// <summary>Human-readable name for the story objective location.</summary>
+        [JsonPropertyName("storyObjectiveName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? StoryObjectiveName { get; set; }
     }
 
     public class TilePosition

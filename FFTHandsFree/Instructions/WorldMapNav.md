@@ -31,7 +31,7 @@ execute_action Fight    # Accept the encounter
 execute_action Flee     # Skip it and continue walking
 ```
 
-After fleeing, your character **automatically continues** toward the original destination. More encounters may trigger — just keep fleeing (or fighting) until you arrive.
+After fleeing, your character **automatically continues** toward the original destination. **Do NOT re-issue `world_travel_to`** — just call `screen` to check if you arrived or hit another encounter. Keep fleeing (or fighting) until you arrive.
 
 ## After Accepting a Fight
 
@@ -53,12 +53,13 @@ The **Formation Screen** appears:
 
 ```bash
 screen
-# Output: [WorldMap] loc=26(TheSiedgeWeald) hover=26 ui=Move status=completed
+# Output: [WorldMap] loc=26(TheSiedgeWeald) hover=26 ui=Move status=completed objective=18(OrbonneMonastery)
 ```
 
 - **loc** = your current location (ID and name)
 - **hover** = where the cursor is pointing
 - **status** = completed/blocked/failed
+- **objective** = story destination (yellow diamond on the map). This is where the story wants you to go next. Only shown when there's an active story objective.
 
 ## Location IDs
 

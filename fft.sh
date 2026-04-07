@@ -134,7 +134,16 @@ fft() {
   local UI=$(echo "$R" | grep -o '"ui":"[^"]*"' | head -1 | cut -d'"' -f4)
   local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
   local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
-  echo "[$SCR] loc=$LOCSTR hover=$HOV ui=$UI status=$ST"
+  local OBJ=$(echo "$R" | grep -o '"storyObjective":[0-9]*' | head -1 | cut -d: -f2)
+  local OBJNAME=$(echo "$R" | grep -o '"storyObjectiveName":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local OBJSTR=""; [ -n "$OBJ" ] && { OBJSTR="objective=$OBJ"; [ -n "$OBJNAME" ] && OBJSTR="objective=$OBJ($OBJNAME)"; }
+  local LINE="[$SCR] loc=$LOCSTR status=$ST"
+  # hover only during TravelList
+  [ "$SCR" = "TravelList" ] && LINE="$LINE hover=$HOV"
+  # ui only during battle
+  [[ "$SCR" == Battle_* ]] && [ -n "$UI" ] && LINE="$LINE ui=$UI"
+  [ -n "$OBJSTR" ] && LINE="$LINE $OBJSTR"
+  echo "$LINE"
 }
 
 # fft_full: Send raw command JSON, wait for response, return entire JSON.

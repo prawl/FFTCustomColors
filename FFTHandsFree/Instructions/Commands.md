@@ -119,7 +119,9 @@ screen                    # Check: WorldMap?
 save                      # Save before traveling
 world_travel_to 26        # Head to The Siedge Weald
 screen                    # Did we arrive or hit an encounter?
-execute_action Fight      # Accept encounter (or Flee to skip)
+execute_action Flee       # Flee encounter — character auto-continues walking
+screen                    # Check again — arrived or another encounter?
+# Do NOT re-issue world_travel_to after fleeing — the game continues automatically
 ```
 
 ## Typical Cutscene Flow

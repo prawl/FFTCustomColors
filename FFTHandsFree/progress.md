@@ -1,74 +1,47 @@
-<!-- This file should not be longer than 200 lines, if so prune me. -->
-# Cutscene Reading System — Progress
+<!-- This file is exempt from the 200 line limit. -->
+# Story Objective on World Map — Implementation Plan
 
 ## Goal
-Claude reads cutscene dialogue in real-time and reacts like a first-time player.
 
-## What's Done
+When Claude calls `screen` on the world map, include the story objective location so Claude knows where to go next. The yellow diamond marker address (`0x1411A0FB6`) is already known.
 
-### 1. Decoded .mes files (PSX text encoding)
-- **MesDecoder.cs** — decodes FFT's PSX text encoding (0x0A='A', 0x24='a', etc.)
-- Handles speaker tags (`[Knight]`, `[Ovelia]`), control codes, punctuation
-- 17 unit tests covering all byte values and file parsing
-- Successfully decoded event002.en.mes (Orbonne opening) through event010.en.mes (Gariland battle)
+**Before:**
+```
+[WorldMap] loc=26(TheSiedgeWeald) hover=26 ui=Move status=completed
+```
 
-### 2. EventScriptLookup.cs
-- Loads all 298 `.mes` files from `0002.en/fftpack/text/` directory
-- Caches decoded scripts keyed by event number
-- `GetScript(eventId)` returns list of DialogueLine(Speaker, Text)
-- `GetFormattedScript(eventId)` returns readable "Speaker: text" format
-- 5 unit tests
+**After:**
+```
+[WorldMap] loc=26(TheSiedgeWeald) hover=26 ui=Move status=completed objective=18(OrbonneMonastery)
+```
 
-### 3. Cutscene screen detection
-- Added `eventId` parameter to ScreenDetectionLogic.Detect
-- When location=255 and eventId>0 (non-battle), returns "Cutscene" instead of "TitleScreen"
-- 3 unit tests
-- Pre-battle cutscenes (unit slots populated) still detected as Battle — TODO
+## Steps
 
-### 4. Event ID memory address found
-- **`0x14077CA94`** — stores the current event file number during cutscenes
-- Verified: event002 (Orbonne), event004 (first battle), event008 (narrator), event010 (Gariland)
-- Stable within same cutscene, changes between scenes
-- During battle this address holds active unit nameId (dual-purpose)
-- Already defined in code as `AddrActiveNameId` in BattleTracker.cs
+### 1. Find where GameState fields are populated
+- Trace how `location`, `locationName`, `hover` get into the response JSON
+- Likely in `GameStateReporter.cs` or `CommandWatcher.cs`
 
-### 5. eventId wired into CommandWatcher
-- Address `0x14077CA94` at ScreenAddresses index 19
-- Reads v[19], passes to ScreenDetectionLogic.Detect
-- Sets `screen.EventId` when screen is "Cutscene"
-- `DetectedScreen.EventId` serialized in JSON (omitted when 0)
-- 2 unit tests (serialization)
+### 2. Add `storyObjective` field to GameState model
+- Add `StoryObjective` (byte) to the response model in `CommandBridgeModels.cs`
+- Read the byte at `0x1411A0FB6` alongside the existing location/hover reads
 
-### 6. read_dialogue bridge action
-- `{"action": "read_dialogue"}` reads eventId from memory, looks up script
-- Returns formatted dialogue text in `response.dialogue` field
-- `CommandResponse.Dialogue` serialized in JSON (omitted when null)
-- Added to InfrastructureActions (always allowed in strict mode)
-- 2 unit tests (response serialization)
+### 3. Map objective ID to location name
+- Reuse the existing location name dictionary (same IDs as world map locations)
+- Add `StoryObjectiveName` string field so the response includes both ID and name
 
-### 7. .mes file deployment
-- EventScriptLookup initialized in ModBootstrapper.InitializeGameBridge
-- Reads from `claude_bridge/scripts/` directory
-- BuildLinked.ps1 copies 298 .mes files from Pac Files source
-- Gracefully handles missing directory (0 scripts loaded)
+### 4. Surface in fft.sh output
+- Parse `storyObjective` and `storyObjectiveName` from response JSON
+- Append `objective=ID(Name)` to the screen summary line
+- Only show when on WorldMap and value is non-zero
 
-## What's Left
+### 5. Update WorldMapNav.md
+- Document the objective field in the "Reading the Screen" section
+- Note that this tells Claude where the story wants it to go
 
-### 8. Claude's cutscene behavior (NEXT)
-- Detect [Cutscene] screen state
-- Load the event script via read_dialogue
-- Read through dialogue, commenting on plot, characters, humor
-- Press Enter/F to advance dialogue
-- Track which lines have been read (dialogue index within event)
-- Follow PLAYER_RULES.md — react genuinely, no spoilers
+### 6. Tests
+- Test that the objective byte is read and included in WorldMap responses
+- Test that objective=0 or missing is handled gracefully (no objective shown)
+- Test fft.sh parsing of the new field
 
-## File Locations
-- `.mes` files: `c:/Users/ptyRa/OneDrive/Desktop/Pac Files/0002.en/fftpack/text/event###.en.mes`
-- Deploy target: `claude_bridge/scripts/event###.en.mes`
-- 298 event files covering the entire game script
-- PSX encoding table: MesDecoder.cs (also documented in project_memory_scan_results.md)
-
-## Key Addresses
-| Address | Field | Notes |
-|---------|-------|-------|
-| 0x14077CA94 | Event ID / Active NameId | Event number during cutscenes, nameId during battle |
+### 7. Mark TODO complete
+- Check off "Story objective location" in TODO.md

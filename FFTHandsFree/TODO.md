@@ -99,7 +99,7 @@ Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `bat
 
 Claude needs to know where the story wants it to go. Without this, it wanders aimlessly.
 
-- [ ] **Story objective location** — Read yellow diamond marker from 0x1411A0FB6, include in WorldMap response so Claude knows the next story destination
+- [x] **Story objective location** — Read yellow diamond marker from 0x1411A0FB6, include in WorldMap response so Claude knows the next story destination
 - [ ] **Orbonne Monastery story encounter** — Loc 18 has a different encounter screen than random battles. Need to detect and handle it.
 - [ ] **Story scene handling** — Define how Claude reads dialogue, reacts to cutscenes, never skips
 

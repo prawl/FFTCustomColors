@@ -1191,6 +1191,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x14077C970, 1),  // 17: cameraRotation (incrementing counter, mod 4 = current rotation 0-3)
             ((nint)0x140D3A10C, 1),  // 18: gameOverFlag (1=game over, 0=normal)
             ((nint)0x14077CA94, 2),  // 19: eventId (event file number during cutscenes, nameId during battle)
+            ((nint)0x1411A0FB6, 1),  // 20: storyObjective (yellow diamond location ID on world map)
         };
 
         /// <summary>
@@ -1692,6 +1693,13 @@ namespace FFTColorCustomizer.Utilities
                         screen.Location = _lastWorldMapLocation;
                 }
                 screen.LocationName = GetLocationName(screen.Location);
+
+                int storyObj = (int)v[20];
+                if (storyObj > 0 && storyObj < 255)
+                {
+                    screen.StoryObjective = storyObj;
+                    screen.StoryObjectiveName = GetLocationName(storyObj);
+                }
 
                 int party = (int)v[0];
                 int ui = (int)v[1];
