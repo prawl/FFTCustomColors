@@ -255,6 +255,11 @@ namespace FFTColorCustomizer.Core.ModComponents
                     var battleTracker = new BattleTracker(explorer);
                     battleTracker.Start();
                     CommandWatcher.BattleTracker = battleTracker;
+
+                    var scriptsDir = System.IO.Path.Combine(bridgeDir, "scripts");
+                    var scriptLookup = new EventScriptLookup(scriptsDir);
+                    CommandWatcher.ScriptLookup = scriptLookup;
+                    ModLogger.Log($"[GameBridge] Loaded {scriptLookup.Count} event scripts from {scriptsDir}");
                 }
 
                 ModLogger.Log("[GameBridge] Game bridge initialized successfully");

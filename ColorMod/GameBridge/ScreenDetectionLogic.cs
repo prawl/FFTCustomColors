@@ -33,6 +33,10 @@ namespace FFTColorCustomizer.GameBridge
                 return "Battle_Targeting";
             if (inBattle && battleTeam == 0 && battleActed == 0 && battleMoved == 0)
                 return "Battle_MyTurn";
+            if (inBattle && battleTeam == 2 && battleActed == 0 && battleMoved == 0)
+                return "Battle_AlliesTurn";
+            if (inBattle && battleTeam == 1 && battleActed == 0 && battleMoved == 0)
+                return "Battle_EnemiesTurn";
             if (inBattle && battleTeam == 0 && (battleActed == 1 || battleMoved == 1))
                 return "Battle_Acting";
             if (inBattle)

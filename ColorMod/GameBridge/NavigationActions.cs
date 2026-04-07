@@ -962,7 +962,7 @@ namespace FFTColorCustomizer.GameBridge
             lines.Add($"units={units.Count}");
             foreach (var u in units)
             {
-                string teamName = u.Team == 0 ? "ALLY" : "ENEMY";
+                string teamName = u.Team == 0 ? "PLAYER" : u.Team == 2 ? "ALLY" : "ENEMY";
                 lines.Add($"[{teamName}] ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp} MP={u.Mp}/{u.MaxMp} PA={u.PA} MA={u.MA} Mv={u.Move} Jmp={u.Jump} Job={u.Job} Br={u.Brave} Fa={u.Faith} CT={u.CT} Exp={u.Exp} NameId={u.NameId}");
             }
 
@@ -1009,7 +1009,7 @@ namespace FFTColorCustomizer.GameBridge
             lines.Add($"units={units.Count}");
             foreach (var u in units)
             {
-                string teamName = u.Team == 0 ? "ALLY" : "ENEMY";
+                string teamName = u.Team == 0 ? "PLAYER" : u.Team == 2 ? "ALLY" : "ENEMY";
                 lines.Add($"[{teamName}] ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp}");
             }
 

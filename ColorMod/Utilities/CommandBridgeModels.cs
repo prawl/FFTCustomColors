@@ -185,6 +185,10 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("validPaths")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Dictionary<string, GameBridge.PathEntry>? ValidPaths { get; set; }
+
+        [JsonPropertyName("dialogue")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Dialogue { get; set; }
     }
 
     public class BatchReadResult
@@ -265,6 +269,11 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("cameraRotation")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int CameraRotation { get; set; } = -1;
+
+        /// <summary>Event script ID during cutscenes (e.g. 2=Orbonne, 4=first battle). 0 when not in cutscene.</summary>
+        [JsonPropertyName("eventId")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int EventId { get; set; }
     }
 
     public class TilePosition

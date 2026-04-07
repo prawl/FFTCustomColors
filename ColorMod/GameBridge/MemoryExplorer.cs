@@ -279,6 +279,79 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Searches ALL readable memory regions (not just PAGE_READWRITE) for an arbitrary byte pattern.
+        /// Includes PAGE_READONLY, PAGE_EXECUTE_READ, PAGE_WRITECOPY, etc.
+        /// Use this when text or data may be in read-only or code sections.
+        /// </summary>
+        public List<(nint address, string context)> SearchBytesAllRegions(byte[] pattern, int maxResults = 200)
+        {
+            var matches = new List<(nint address, string context)>();
+            if (pattern == null || pattern.Length == 0) return matches;
+
+            var process = Process.GetCurrentProcess();
+            nint address = 0;
+            long totalBytesSearched = 0;
+            const long maxTotalBytes = 2_000_000_000L; // 2GB cap (broader search needs more room)
+            int regionsSearched = 0;
+
+            while (matches.Count < maxResults && totalBytesSearched < maxTotalBytes)
+            {
+                if (VirtualQueryEx(process.Handle, address, out MEMORY_BASIC_INFORMATION mbi, (uint)Marshal.SizeOf<MEMORY_BASIC_INFORMATION>()) == 0)
+                    break;
+
+                // Search ALL committed, readable memory (not just read-write)
+                bool isCommitted = mbi.State == 0x1000;
+                bool isReadable = (mbi.Protect & 0xEE) != 0; // PAGE_READONLY, PAGE_READWRITE, PAGE_EXECUTE_READ, etc.
+                bool notGuard = (mbi.Protect & 0x100) == 0;
+                bool notTooBig = (long)mbi.RegionSize <= 16_000_000; // 16MB max per region
+
+                if (isCommitted && isReadable && notGuard && notTooBig)
+                {
+                    regionsSearched++;
+                    byte[] regionBytes;
+                    try
+                    {
+                        regionBytes = _scanner.ReadBytes(mbi.BaseAddress, (int)mbi.RegionSize);
+                    }
+                    catch
+                    {
+                        nint skip = mbi.BaseAddress + (nint)mbi.RegionSize;
+                        if (skip <= address) break;
+                        address = skip;
+                        continue;
+                    }
+                    totalBytesSearched += regionBytes.Length;
+
+                    for (int i = 0; i <= regionBytes.Length - pattern.Length; i++)
+                    {
+                        bool match = true;
+                        for (int j = 0; j < pattern.Length; j++)
+                        {
+                            if (regionBytes[i + j] != pattern[j]) { match = false; break; }
+                        }
+                        if (match)
+                        {
+                            nint foundAddr = mbi.BaseAddress + i;
+                            int ctxStart = Math.Max(0, i - 16);
+                            int ctxEnd = Math.Min(regionBytes.Length, i + pattern.Length + 32);
+                            var ctx = new byte[ctxEnd - ctxStart];
+                            Array.Copy(regionBytes, ctxStart, ctx, 0, ctx.Length);
+                            matches.Add((foundAddr, BitConverter.ToString(ctx).Replace("-", " ")));
+                            if (matches.Count >= maxResults) break;
+                        }
+                    }
+                }
+
+                nint nextAddr = mbi.BaseAddress + (nint)mbi.RegionSize;
+                if (nextAddr <= address) break;
+                address = nextAddr;
+            }
+
+            ModLogger.Log($"[MemoryExplorer] SearchBytesAllRegions: {regionsSearched} regions, {totalBytesSearched / 1024 / 1024}MB searched, {matches.Count} matches");
+            return matches;
+        }
+
+        /// <summary>
         /// Searches a specific memory range for a uint16 value appearing as uint32 LE (value, 0x00, 0x00).
         /// Writes matches to file with surrounding context.
         /// </summary>

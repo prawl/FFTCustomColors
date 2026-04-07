@@ -46,7 +46,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_InBattle_EnemyTurn_ShouldReturnBattle()
+        public void DetectScreen_InBattle_EnemyTurn_ShouldReturnBattleEnemiesTurn()
         {
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
@@ -54,7 +54,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 1, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false);
 
-            Assert.Equal("Battle", result);
+            Assert.Equal("Battle_EnemiesTurn", result);
         }
 
         [Fact]

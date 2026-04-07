@@ -47,7 +47,9 @@ namespace FFTColorCustomizer.GameBridge
                 "Battle_Targeting" => GetBattleTargetingPaths(),
                 "Battle_Acting" => GetBattleActingPaths(),
                 "Battle_Paused" => GetBattlePausedPaths(),
-                "Battle" => GetBattleEnemyTurnPaths(),
+                "Battle_AlliesTurn" => GetBattleWaitingPaths(),
+                "Battle_EnemiesTurn" => GetBattleWaitingPaths(),
+                "Battle" => GetBattleWaitingPaths(),
                 _ => null
             };
         }
@@ -475,9 +477,9 @@ namespace FFTColorCustomizer.GameBridge
             };
         }
 
-        private static Dictionary<string, PathEntry> GetBattleEnemyTurnPaths()
+        private static Dictionary<string, PathEntry> GetBattleWaitingPaths()
         {
-            // During enemy turns, no actions available — just wait
+            // Not our turn — poll screen state until Battle_MyTurn, observe what happens
             return new()
             {
                 ["Pause"] = new PathEntry

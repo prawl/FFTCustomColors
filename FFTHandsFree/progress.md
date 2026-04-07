@@ -32,28 +32,31 @@ Claude reads cutscene dialogue in real-time and reacts like a first-time player.
 - During battle this address holds active unit nameId (dual-purpose)
 - Already defined in code as `AddrActiveNameId` in BattleTracker.cs
 
+### 5. eventId wired into CommandWatcher
+- Address `0x14077CA94` at ScreenAddresses index 19
+- Reads v[19], passes to ScreenDetectionLogic.Detect
+- Sets `screen.EventId` when screen is "Cutscene"
+- `DetectedScreen.EventId` serialized in JSON (omitted when 0)
+- 2 unit tests (serialization)
+
+### 6. read_dialogue bridge action
+- `{"action": "read_dialogue"}` reads eventId from memory, looks up script
+- Returns formatted dialogue text in `response.dialogue` field
+- `CommandResponse.Dialogue` serialized in JSON (omitted when null)
+- Added to InfrastructureActions (always allowed in strict mode)
+- 2 unit tests (response serialization)
+
+### 7. .mes file deployment
+- EventScriptLookup initialized in ModBootstrapper.InitializeGameBridge
+- Reads from `claude_bridge/scripts/` directory
+- BuildLinked.ps1 copies 298 .mes files from Pac Files source
+- Gracefully handles missing directory (0 scripts loaded)
+
 ## What's Left
 
-### 5. Wire eventId into CommandWatcher (NEXT)
-- Add `0x14077CA94` to ScreenAddresses array (index 19+)
-- Pass eventId to ScreenDetectionLogic.Detect call
-- Add `eventId` field to DetectedScreen class
-- Screen response will show `[Cutscene] eventId=2` instead of `[TitleScreen]`
-
-### 6. Add `read_dialogue` action
-- New bridge command: `{"action": "read_dialogue"}` or auto-include in screen response
-- Reads eventId from memory, loads script via EventScriptLookup
-- Returns formatted dialogue text in response
-- Claude reads it and reacts
-
-### 7. Deploy .mes files
-- Copy `0002.en/fftpack/text/*.mes` to bridge directory (or read from pac files path)
-- EventScriptLookup needs to know where the files are at runtime
-- BuildLinked.ps1 may need to deploy them
-
-### 8. Claude's cutscene behavior
+### 8. Claude's cutscene behavior (NEXT)
 - Detect [Cutscene] screen state
-- Load the event script
+- Load the event script via read_dialogue
 - Read through dialogue, commenting on plot, characters, humor
 - Press Enter/F to advance dialogue
 - Track which lines have been read (dialogue index within event)
@@ -61,6 +64,7 @@ Claude reads cutscene dialogue in real-time and reacts like a first-time player.
 
 ## File Locations
 - `.mes` files: `c:/Users/ptyRa/OneDrive/Desktop/Pac Files/0002.en/fftpack/text/event###.en.mes`
+- Deploy target: `claude_bridge/scripts/event###.en.mes`
 - 298 event files covering the entire game script
 - PSX encoding table: MesDecoder.cs (also documented in project_memory_scan_results.md)
 
@@ -68,12 +72,3 @@ Claude reads cutscene dialogue in real-time and reacts like a first-time player.
 | Address | Field | Notes |
 |---------|-------|-------|
 | 0x14077CA94 | Event ID / Active NameId | Event number during cutscenes, nameId during battle |
-
-## Logs That Helped
-The Reloaded-II mod loader logs (docs/logs.txt) showed:
-```
-[FFTPack] Accessing file 5 -> event_test_evt.bin (OVERRIDEN to /script/enhanced/event004.e)
-loaded: nxd/text/scenario/scenario0020.pzd
-loaded: sound/voice/scenario/scenario0010/vo_scenario0010_003_000.sab
-```
-This confirmed the game loads event scripts by number and uses scenario IDs for voice files.

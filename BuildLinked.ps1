@@ -439,6 +439,18 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "Copied $mapCount battle maps to claude_bridge/maps" -ForegroundColor Green
     }
 
+    # Copy event script .mes files for cutscene dialogue reading
+    $mesSource = "$env:USERPROFILE/OneDrive/Desktop/Pac Files/0002.en/fftpack/text"
+    $bridgeScriptsDir = "$modPath/claude_bridge/scripts"
+    if (Test-Path $mesSource) {
+        New-Item -ItemType Directory -Force -Path $bridgeScriptsDir | Out-Null
+        Copy-Item "$mesSource/event*.en.mes" $bridgeScriptsDir -Force
+        $mesCount = (Get-ChildItem "$bridgeScriptsDir/event*.en.mes" | Measure-Object).Count
+        Write-Host "Copied $mesCount event scripts to claude_bridge/scripts" -ForegroundColor Green
+    } else {
+        Write-Host "Event script source not found at $mesSource - cutscene reading disabled" -ForegroundColor Yellow
+    }
+
     # Report results
     if ($verificationErrors.Count -eq 0) {
         Write-Host "`nBuild successful! Mod installed to: $modPath" -ForegroundColor Green

@@ -27,6 +27,7 @@ namespace FFTColorCustomizer.Utilities
         public MemoryExplorer? Explorer { get; set; }
         public ScreenStateMachine? ScreenMachine { get; set; }
         public BattleTracker? BattleTracker { get; set; }
+        public EventScriptLookup? ScriptLookup { get; set; }
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
         private readonly BattleTurnTracker _turnTracker = new();
@@ -52,8 +53,9 @@ namespace FFTColorCustomizer.Utilities
             "scan_move", "scan_units", "set_map", "report_state",
             "read_address", "read_block", "batch_read",
             "mark_blocked", "snapshot", "heap_snapshot", "diff",
-            "search_bytes", "search_memory", "search_near",
-            "dump_unit", "dump_all", "write_address", "set_strict", "set_map"
+            "search_bytes", "search_all", "search_memory", "search_near",
+            "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
+            "read_dialogue"
         };
 
         public CommandWatcher(string modPath, IInputSimulator inputSimulator)
@@ -349,6 +351,26 @@ namespace FFTColorCustomizer.Utilities
                         response.Status = "completed";
                         break;
 
+                    case "read_dialogue":
+                        if (ScriptLookup == null) { response.Status = "failed"; response.Error = "Script lookup not initialized"; break; }
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        {
+                            var evtRead = Explorer.ReadAbsolute((nint)0x14077CA94, 2);
+                            int evtId = evtRead.HasValue ? (int)evtRead.Value.value : 0;
+                            var script = ScriptLookup.GetFormattedScript(evtId);
+                            if (script != null)
+                            {
+                                response.Dialogue = script;
+                                response.Status = "completed";
+                            }
+                            else
+                            {
+                                response.Status = "failed";
+                                response.Error = $"No script found for eventId={evtId}";
+                            }
+                        }
+                        break;
+
                     case "mark_blocked":
                         if (command.LocationId >= 0 && command.UnitIndex >= 0)
                         {
@@ -489,6 +511,51 @@ namespace FFTColorCustomizer.Utilities
                                 Value = matches.Count,
                                 Hex = $"{matches.Count} matches",
                                 RawBytes = matches.Count > 0 ? $"0x{matches[0].address:X}" : "none"
+                            };
+                            response.Status = "completed";
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Status = "error";
+                            response.Error = $"Pattern parse error: {ex.Message}";
+                        }
+                        break;
+
+                    case "search_all":
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        if (string.IsNullOrEmpty(command.Pattern)) { response.Status = "failed"; response.Error = "Pattern required (hex string, e.g. '080B00')"; break; }
+                        try
+                        {
+                            var hexAll = command.Pattern.Replace(" ", "").Replace("-", "");
+                            var patternAll = new byte[hexAll.Length / 2];
+                            for (int i = 0; i < patternAll.Length; i++)
+                                patternAll[i] = Convert.ToByte(hexAll.Substring(i * 2, 2), 16);
+
+                            var allMatches = Explorer.SearchBytesAllRegions(patternAll, 100);
+
+                            var sbAll = new System.Text.StringBuilder();
+                            sbAll.AppendLine($"Byte pattern search (ALL regions): {command.Pattern} ({patternAll.Length} bytes)");
+                            sbAll.AppendLine($"Searched at: {DateTime.UtcNow:O}");
+                            sbAll.AppendLine($"Found {allMatches.Count} matches");
+                            sbAll.AppendLine();
+                            var unitBaseAll = Explorer.Scanner.UnitDataBase;
+                            foreach (var (matchAddr, ctx) in allMatches)
+                            {
+                                long dist = Math.Abs((long)matchAddr - (long)unitBaseAll);
+                                string proximity = dist < 0x200000 ? " ** NEAR **" : "";
+                                sbAll.AppendLine($"  0x{matchAddr:X}{proximity}");
+                                sbAll.AppendLine($"    {ctx}");
+                            }
+                            var searchAllPath = System.IO.Path.Combine(_bridgeDirectory, $"search_all_{command.SearchLabel ?? "result"}.txt");
+                            System.IO.File.WriteAllText(searchAllPath, sbAll.ToString());
+
+                            response.ReadResult = new ReadResult
+                            {
+                                Address = command.Pattern,
+                                Size = patternAll.Length,
+                                Value = allMatches.Count,
+                                Hex = $"{allMatches.Count} matches (all regions)",
+                                RawBytes = allMatches.Count > 0 ? $"0x{allMatches[0].address:X}" : "none"
                             };
                             response.Status = "completed";
                         }
@@ -1082,6 +1149,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x140900650, 1),  // 16: battleMode (3=action menu, 2=move, 0=game over/cutscene)
             ((nint)0x14077C970, 1),  // 17: cameraRotation (incrementing counter, mod 4 = current rotation 0-3)
             ((nint)0x140D3A10C, 1),  // 18: gameOverFlag (1=game over, 0=normal)
+            ((nint)0x14077CA94, 2),  // 19: eventId (event file number during cutscenes, nameId during battle)
         };
 
         /// <summary>
@@ -1598,13 +1666,17 @@ namespace FFTColorCustomizer.Utilities
                 // Title screen has rawLocation=255, battleMode=255, slot0=0xFFFFFFFF.
                 // World map has rawLocation 0-42, battleMode=0.
                 int gameOverFlag = (int)v[18];
+                int eventId = (int)v[19];
                 bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF);
 
                 screen.Name = GameBridge.ScreenDetectionLogic.Detect(
                     party, ui, rawLocation, slot0, slot9,
                     battleMode, moveMode, paused, gameOverFlag,
                     screen.BattleTeam, screen.BattleActed, screen.BattleMoved,
-                    eA, eB, !inBattle && IsPartySubScreen());
+                    eA, eB, !inBattle && IsPartySubScreen(), eventId);
+
+                if (screen.Name == "Cutscene")
+                    screen.EventId = eventId;
 
                 // Resolve party sub-screen to specific screen via state machine
                 if (screen.Name == "PartySubScreen")
