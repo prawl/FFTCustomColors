@@ -73,7 +73,7 @@ Claude sees NameId numbers and broken JobIds. A human player sees names and job 
 Claude only sees HP/MP for non-active units. A human sees status icons, CT bars, and can hover for stats.
 
 - [ ] **CT/Speed for all units** — Read CT values from battle struct so Claude can predict turn order ("enemy mage acts next, I should kill it now"). Currently only active unit's CT is read.
-- [ ] **Status effects** — Read active status flags per unit (Poison, Haste, Protect, Sleep, etc.). 5 bytes of status bitfields per unit in the battle struct. Claude needs to know "my unit is poisoned" or "that enemy has Protect up."
+- [x] **Status effects** — Read active status flags from static battle array at 0x140893E45 + slot*0x200. 5-byte PSX bitfield decoded into named statuses (Poison, Haste, Protect, etc.). Matched to scanned units by HP+MaxHP. All 40 statuses supported.
 - [ ] **Dead/KO vs crystalized vs alive** — Distinguish between KO'd units (can be raised), crystal/treasure (permanently gone), and alive units. Currently all are in the unit list with no death state.
 - [ ] **PA/MA/Brave/Faith for all units** — Currently only the active unit's stats are read from UI buffer. Need stats for enemies too (to estimate damage) and allies (to choose healing targets).
 

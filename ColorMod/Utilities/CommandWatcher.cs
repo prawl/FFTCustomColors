@@ -517,6 +517,53 @@ namespace FFTColorCustomizer.Utilities
                         }
                         break;
 
+                    case "probe_status":
+                        // Find a unit by HP pattern and dump 128 bytes before stat pattern for status investigation
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        try
+                        {
+                            int probeHp = command.SearchValue > 0 ? command.SearchValue : 0;
+                            if (probeHp <= 0) { response.Status = "failed"; response.Error = "Provide searchValue = unit's maxHP"; break; }
+                            byte hpLo = (byte)(probeHp & 0xFF);
+                            byte hpHi = (byte)(probeHp >> 8);
+                            // Search for MaxHP MaxHP pattern (HP == MaxHP for full health units)
+                            var probePattern = new byte[] { hpLo, hpHi, hpLo, hpHi };
+                            var probeMatches = Explorer.SearchBytesInAllMemory(probePattern, 10);
+                            if (probeMatches.Count == 0) { response.Status = "failed"; response.Error = $"No match for HP={probeHp}"; break; }
+
+                            // For each match, verify it's a real unit struct by checking exp/level at -8
+                            foreach (var (probeAddr, _) in probeMatches)
+                            {
+                                nint statBase = probeAddr - 8; // stat pattern starts 8 bytes before HP
+                                var verifyBytes = Explorer.Scanner.ReadBytes(statBase, 8);
+                                if (verifyBytes.Length < 8) continue;
+                                byte expByte = verifyBytes[0];
+                                byte levelByte = verifyBytes[1];
+                                if (levelByte < 1 || levelByte > 99 || expByte > 99) continue;
+
+                                // Read 128 bytes BEFORE stat pattern + 128 bytes after = 256 total
+                                nint readStart = statBase - 128;
+                                var dumpBytes = Explorer.Scanner.ReadBytes(readStart, 384);
+                                if (dumpBytes.Length == 0) continue;
+
+                                var hexStr = BitConverter.ToString(dumpBytes).Replace("-", "");
+                                response.Status = "completed";
+                                response.Error = $"addr=0x{statBase:X} lv={levelByte} exp={expByte} | pre128+stat+post256: {hexStr}";
+                                break;
+                            }
+                            if (response.Status != "completed")
+                            {
+                                response.Status = "failed";
+                                response.Error = $"Found {probeMatches.Count} HP matches but none verified as unit struct";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Status = "error";
+                            response.Error = $"Probe error: {ex.Message}";
+                        }
+                        break;
+
                     case "search_all":
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         if (string.IsNullOrEmpty(command.Pattern)) { response.Status = "failed"; response.Error = "Pattern required (hex string, e.g. '080B00')"; break; }

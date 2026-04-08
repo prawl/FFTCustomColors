@@ -1057,7 +1057,9 @@ namespace FFTColorCustomizer.GameBridge
             foreach (var u in units)
             {
                 string teamName = u.Team == 0 ? "PLAYER" : u.Team == 2 ? "ALLY" : "ENEMY";
-                lines.Add($"[{teamName}] ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp} MP={u.Mp}/{u.MaxMp} PA={u.PA} MA={u.MA} Mv={u.Move} Jmp={u.Jump} Job={u.Job} Br={u.Brave} Fa={u.Faith} CT={u.CT} Exp={u.Exp} NameId={u.NameId}");
+                var statuses = StatusDecoder.Decode(u.StatusBytes);
+                string statusStr = statuses.Count > 0 ? $" [{string.Join(",", statuses)}]" : "";
+                lines.Add($"[{teamName}] ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp} MP={u.Mp}/{u.MaxMp} PA={u.PA} MA={u.MA} Mv={u.Move} Jmp={u.Jump} Job={u.Job} Br={u.Brave} Fa={u.Faith} CT={u.CT} Exp={u.Exp} NameId={u.NameId}{statusStr}");
             }
 
             response.Status = units.Count > 0 ? "completed" : "failed";
@@ -1145,6 +1147,7 @@ namespace FFTColorCustomizer.GameBridge
                     // Wait AI picks a facing direction independent of movement. Need a stable
                     // memory address for unit facing direction to populate this. See TODO.md.
                     Facing = null,
+                    Statuses = StatusDecoder.Decode(u.StatusBytes) is var s && s.Count > 0 ? s : null,
                 });
             }
             response.Battle = battleState;
@@ -2240,6 +2243,7 @@ namespace FFTColorCustomizer.GameBridge
             public int Move, Jump;
             public int Job;
             public int Brave, Faith;
+            public byte[] StatusBytes = new byte[5]; // 5-byte status bitfield
         }
 
         /// <summary>
@@ -2436,6 +2440,53 @@ namespace FFTColorCustomizer.GameBridge
             // Re-open action menu
             SendKey(VK_F);
             Thread.Sleep(300);
+
+            // Read status bytes from static battle array
+            // Status is at 0x140893E45 + slot * 0x200 (5 bytes per unit, up to 21 slots)
+            // Match slots to scanned units by HP + MaxHP
+            const long AddrStatusArrayBase = 0x140893E45;
+            const long AddrStatArrayHp = 0x140893E14;     // HP uint16 in static array
+            const long AddrStatArrayMaxHp = 0x140893E16;   // MaxHP uint16 in static array
+            const int StatusStride = 0x200;
+            const int MaxSlots = 21;
+
+            try
+            {
+                // Build batch read for all slot HP+MaxHP values
+                var hpReads = new (nint, int)[MaxSlots * 2];
+                for (int s = 0; s < MaxSlots; s++)
+                {
+                    hpReads[s * 2] = ((nint)(AddrStatArrayHp + s * StatusStride), 2);
+                    hpReads[s * 2 + 1] = ((nint)(AddrStatArrayMaxHp + s * StatusStride), 2);
+                }
+                var hpValues = _explorer.ReadMultiple(hpReads);
+
+                // Match each scanned unit to a slot by HP+MaxHP
+                foreach (var unit in units)
+                {
+                    for (int s = 0; s < MaxSlots; s++)
+                    {
+                        int slotHp = (int)hpValues[s * 2];
+                        int slotMaxHp = (int)hpValues[s * 2 + 1];
+                        if (slotMaxHp == unit.MaxHp && slotHp == unit.Hp)
+                        {
+                            var statusBytes = _explorer.Scanner.ReadBytes((nint)(AddrStatusArrayBase + s * StatusStride), 5);
+                            if (statusBytes.Length == 5)
+                            {
+                                unit.StatusBytes = statusBytes;
+                                var decoded = StatusDecoder.Decode(statusBytes);
+                                if (decoded.Count > 0)
+                                    ModLogger.Log($"[CollectPositions] Unit ({unit.GridX},{unit.GridY}) statuses: [{string.Join(",", decoded)}]");
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.Log($"[CollectPositions] Status read failed: {ex.Message}");
+            }
 
             _lastScannedUnits = units;
             return units;

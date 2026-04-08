@@ -846,5 +846,10 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("facing")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Facing { get; set; }
+
+        /// <summary>Active status effects on this unit (e.g. "Poison", "Haste", "Protect").</summary>
+        [JsonPropertyName("statuses")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? Statuses { get; set; }
     }
 }
