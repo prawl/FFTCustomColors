@@ -81,6 +81,9 @@ Claude only sees HP/MP for non-active units. A human sees status icons, CT bars,
 Claude can only use "Attack" (the basic physical hit). A human player opens the Abilities menu and picks from their full skillset.
 
 - [x] **Read available abilities** — Learned ability IDs read from condensed struct FFFF-terminated list at +0x28. Mapped to names, MP cost, range (horizontal/vertical/AoE/height), target, effect, cast speed, element, added effects via ActionAbilityLookup. Only shown for active unit (list doesn't update during C+Up cycling). Mettle abilities fully verified in-game with exact descriptions and range values.
+- [x] **Battle_Abilities screen state** — Abilities submenu (Attack/Mettle/Items) tracked via BattleMenuTracker state machine. `0x140D3A10C` = submenu active flag. ui= shows current submenu item. Cursor persists within turn (Esc→re-Enter stays on same item), resets on new turn.
+- [x] **Battle_Mettle/Battle_Items screen states** — When selecting a skillset from Abilities submenu, screen transitions to Battle_<Skillset> (e.g. Battle_Mettle, Battle_Items). ui= shows current ability name within the list (e.g. ui=Focus, ui=Shout).
+- [~] **Ability list filtering** — Mettle abilities filtered correctly by learned IDs from scan. Items list shows full skillset (unfiltered) — need to read Chemist JP learned abilities from roster bitfield (PSX offset 0x99-0xD1) to filter. Item order may not match in-game order.
 - [ ] **`battle_ability <name> <x> <y>`** — Navigate Abilities menu → select a specific ability → target a tile → confirm. Same as battle_attack but for any ability.
 - [ ] **Use Items** — Navigate to Item in the ability menu → select Potion/Phoenix Down/etc → target ally → confirm. Critical for healing and raising downed units.
 - [ ] **Heal targeting allies** — battle_attack only targets enemies. Healing abilities and items need to target allies. The targeting cursor and confirmation work the same way, but the target selection logic needs to allow friendly tiles.
@@ -286,6 +289,8 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 - Battle at valid world map location detected as TravelList/WorldMap (clearlyOnWorldMap false positive)
 - Settlement/shop screens not detected yet
 - Menu cursor unreliable after animations
+- [FIXED] Ability list browsing caused false Cutscene detection (slot0 changes from 0xFF inside submenus). Fixed by also checking slot9=0xFFFFFFFF + battleMode=2|3.
+- [FIXED] 0x140D3A10C was labeled gameOverFlag — actually a submenu/mode active flag (1 when in Move mode, Abilities submenu, etc.)
 
 ### Coordinate System
 - Grid coords and world coords are different systems

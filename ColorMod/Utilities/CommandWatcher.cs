@@ -32,6 +32,7 @@ namespace FFTColorCustomizer.Utilities
         private MapLoader? _mapLoader;
         private readonly BattleTurnTracker _turnTracker = new();
         private readonly BattleMenuTracker _battleMenuTracker = new();
+        private HashSet<int>? _cachedLearnedAbilityIds;
 
         /// <summary>
         /// When true, game actions must go through validPaths. Raw key presses and
@@ -196,6 +197,8 @@ namespace FFTColorCustomizer.Utilities
                     }
 
                     response.Battle ??= BattleTracker?.Update();
+                    // Cache learned ability IDs from active unit for ability list tracking
+                    CacheLearnedAbilities(response.Battle);
                     // Populate map info on battle state from MapLoader
                     if (response.Battle != null && _mapLoader != null)
                     {
@@ -1353,11 +1356,33 @@ namespace FFTColorCustomizer.Utilities
             }
             else if (screen.Name == "Battle_Abilities" && _battleMenuTracker.InSubmenu)
             {
-                // If an ability was selected (Enter pressed), override screen name
-                if (_battleMenuTracker.SelectedItem != null)
+                if (_battleMenuTracker.InAbilityList)
                 {
-                    screen.Name = GameBridge.ScreenDetectionLogic.GetAbilityScreenName(_battleMenuTracker.SelectedItem);
-                    screen.UI = _battleMenuTracker.SelectedItem;
+                    // Level 3: inside an ability list (e.g. Mettle → Focus/Rush/Shout)
+                    var skillsetName = _battleMenuTracker.SelectedItem;
+                    if (skillsetName != null)
+                        screen.Name = GameBridge.ScreenDetectionLogic.GetAbilityScreenName(skillsetName);
+                    screen.UI = _battleMenuTracker.CurrentAbility;
+                }
+                else if (_battleMenuTracker.SelectedItem != null)
+                {
+                    // An ability submenu item was selected — enter the ability list
+                    var skillsetName = _battleMenuTracker.SelectedItem;
+                    if (skillsetName != "Attack") // Attack goes to targeting, not a list
+                    {
+                        var abilityNames = GetAbilityListForSkillset(skillsetName);
+                        if (abilityNames.Length > 0)
+                        {
+                            _battleMenuTracker.EnterAbilityList(abilityNames);
+                            screen.Name = GameBridge.ScreenDetectionLogic.GetAbilityScreenName(skillsetName);
+                            screen.UI = _battleMenuTracker.CurrentAbility;
+                        }
+                    }
+                    else
+                    {
+                        screen.Name = GameBridge.ScreenDetectionLogic.GetAbilityScreenName(skillsetName);
+                        screen.UI = skillsetName;
+                    }
                 }
                 else
                 {
@@ -1368,6 +1393,46 @@ namespace FFTColorCustomizer.Utilities
             {
                 _battleMenuTracker.OnKeyPressed(0x1B); // exit submenu
             }
+        }
+
+        /// <summary>
+        /// Cache learned ability IDs from the active unit's scan results.
+        /// </summary>
+        private void CacheLearnedAbilities(GameBridge.BattleState? battle)
+        {
+            if (battle?.Units == null) return;
+            // Active unit has IsActive=true
+            var active = battle.Units.FirstOrDefault(u => u.IsActive);
+            if (active?.Abilities != null && active.Abilities.Count > 0)
+            {
+                _cachedLearnedAbilityNames = new HashSet<string>(
+                    active.Abilities.Select(a => a.Name));
+            }
+        }
+
+        private HashSet<string>? _cachedLearnedAbilityNames;
+
+        /// <summary>
+        /// Get the ability names for a skillset, filtered to only learned abilities.
+        /// Falls back to full skillset if no cached scan data.
+        /// </summary>
+        private string[] GetAbilityListForSkillset(string skillsetName)
+        {
+            var allAbilities = GameBridge.ActionAbilityLookup.GetSkillsetAbilities(skillsetName);
+            if (allAbilities == null) return System.Array.Empty<string>();
+
+            if (_cachedLearnedAbilityNames != null && _cachedLearnedAbilityNames.Count > 0)
+            {
+                // Filter to only learned abilities, preserving skillset order
+                var filtered = allAbilities
+                    .Where(a => _cachedLearnedAbilityNames.Contains(a.Name))
+                    .Select(a => a.Name)
+                    .ToArray();
+                return filtered.Length > 0 ? filtered : allAbilities.Select(a => a.Name).ToArray();
+            }
+
+            // No cached data — return full skillset
+            return allAbilities.Select(a => a.Name).ToArray();
         }
 
         private static string? GetLocationName(int locationId)

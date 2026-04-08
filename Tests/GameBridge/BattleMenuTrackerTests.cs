@@ -196,6 +196,130 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Null(tracker.SelectedItem);
         }
 
+        // === Ability list (third level) tests ===
+
+        [Fact]
+        public void EnterSkillset_SetsAbilityList()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.OnKeyPressed(VK_DOWN); // Mettle
+            tracker.EnterAbilityList(new[] { "Focus", "Rush", "Shout" });
+
+            Assert.True(tracker.InAbilityList);
+            Assert.Equal("Focus", tracker.CurrentAbility);
+            Assert.Equal(0, tracker.AbilityCursorIndex);
+        }
+
+        [Fact]
+        public void AbilityList_DownNavigates()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.EnterAbilityList(new[] { "Focus", "Rush", "Shout" });
+            tracker.OnKeyPressed(VK_DOWN);
+
+            Assert.Equal("Rush", tracker.CurrentAbility);
+            Assert.Equal(1, tracker.AbilityCursorIndex);
+        }
+
+        [Fact]
+        public void AbilityList_UpWraps()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.EnterAbilityList(new[] { "Focus", "Rush", "Shout" });
+            tracker.OnKeyPressed(VK_UP);
+
+            Assert.Equal("Shout", tracker.CurrentAbility);
+        }
+
+        [Fact]
+        public void AbilityList_EscapeReturnsToSubmenu()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.OnKeyPressed(VK_DOWN); // Mettle
+            tracker.EnterAbilityList(new[] { "Focus", "Rush", "Shout" });
+            tracker.OnKeyPressed(VK_ESCAPE);
+
+            Assert.False(tracker.InAbilityList);
+            Assert.True(tracker.InSubmenu);
+            Assert.Equal("Mettle", tracker.CurrentItem);
+            Assert.Null(tracker.CurrentAbility);
+        }
+
+        [Fact]
+        public void AbilityList_DownUpDoesNotAffectSubmenuCursor()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.OnKeyPressed(VK_DOWN); // Mettle
+            tracker.EnterAbilityList(new[] { "Focus", "Rush", "Shout" });
+            tracker.OnKeyPressed(VK_DOWN); // Rush
+            tracker.OnKeyPressed(VK_DOWN); // Shout
+
+            // Submenu cursor should still be on Mettle
+            Assert.Equal(1, tracker.CursorIndex);
+        }
+
+        [Fact]
+        public void AbilityList_NewTurnClearsAll()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.EnterAbilityList(new[] { "Focus", "Rush", "Shout" });
+            tracker.OnNewTurn();
+
+            Assert.False(tracker.InAbilityList);
+            Assert.False(tracker.InSubmenu);
+            Assert.Null(tracker.CurrentAbility);
+        }
+
+        [Fact]
+        public void AbilityList_FilteredByLearned()
+        {
+            // If unit only learned Focus and Shout, list should only contain those
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.EnterAbilityList(new[] { "Focus", "Shout" });
+
+            Assert.Equal("Focus", tracker.CurrentAbility);
+            tracker.OnKeyPressed(VK_DOWN);
+            Assert.Equal("Shout", tracker.CurrentAbility);
+            tracker.OnKeyPressed(VK_DOWN);
+            Assert.Equal("Focus", tracker.CurrentAbility); // wraps
+        }
+
+        [Fact]
+        public void AbilityList_EnterDoesNotExitList()
+        {
+            // Enter selects the ability (for targeting), but tracker
+            // stays in list — screen detection handles the transition
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.EnterAbilityList(new[] { "Focus", "Rush", "Shout" });
+            tracker.OnKeyPressed(VK_DOWN); // Rush
+            tracker.OnKeyPressed(VK_RETURN);
+
+            Assert.True(tracker.InAbilityList);
+            Assert.Equal("Rush", tracker.SelectedAbility);
+        }
+
+        [Fact]
+        public void SelectedAbility_ClearedOnEscape()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.EnterAbilityList(new[] { "Focus", "Rush" });
+            tracker.OnKeyPressed(VK_RETURN); // select Focus
+            tracker.OnKeyPressed(VK_ESCAPE); // back to submenu
+
+            Assert.Null(tracker.SelectedAbility);
+        }
+
+        // === Existing tests below ===
+
         [Fact]
         public void DifferentItemsOnNewTurn_CursorResets()
         {
