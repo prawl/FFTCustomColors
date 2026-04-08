@@ -235,6 +235,7 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 - [ ] Detect failed move (still in Battle_Moving after F press) — retry or cancel
 - [ ] Detect failed attack (still in targeting mode) — cancel and re-evaluate
 - [ ] Handle unexpected screen transitions during turn execution
+- [ ] **Counter attack KO** — If the active unit is KO'd by a reaction ability (Counter Tackle, etc.) after attacking, battle_wait fails because the game skips to the next unit's turn without going through the normal Wait flow. Need to detect "active unit died" and recover gracefully.
 
 ### Unit Facing Direction
 - [x] Choose facing intelligently at end of turn — FacingStrategy computes optimal direction via arc-based threat scoring (front=1, side=2, back=3 weights with distance/HP decay). battle_wait uses empirical rotation from grid navigation to press the correct key. 11/11 confirmed across all 4 directions.

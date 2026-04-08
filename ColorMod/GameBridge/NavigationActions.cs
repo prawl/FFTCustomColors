@@ -2454,12 +2454,14 @@ namespace FFTColorCustomizer.GameBridge
                     ModLogger.Log($"[CollectPositions] Unit {units.Count}: ({pos.x},{pos.y}) t{unit.Team} lv{unit.Level} hp={unit.Hp}/{unit.MaxHp} job={unit.Job}");
                 }
 
-                // Only stop after we've pressed Up at least expectedCount times
-                // This ensures fast units appearing multiple times in turn order
-                // don't cause us to stop before seeing all unique units
-                if (i >= expectedCount && !isNew)
+                // Stop when we've cycled back to a unit we already saw AND we've
+                // pressed Up enough times to have seen everyone. Fast units appear
+                // multiple times in the Combat Timeline before slower units appear,
+                // so we can't stop at the first duplicate — we must keep cycling
+                // until we've completed a full loop.
+                if (!isNew && units.Count >= 2 && i >= units.Count)
                 {
-                    ModLogger.Log($"[CollectPositions] Duplicate after {i + 1} presses (>= {expectedCount}), {units.Count} unique units");
+                    ModLogger.Log($"[CollectPositions] Full cycle after {i + 1} presses, {units.Count} unique units");
                     break;
                 }
             }
