@@ -106,5 +106,57 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 rawLocation: 26, screenName: "Battle_MyTurn", lastSavedLocation: 30);
             Assert.False(result);
         }
+
+        [Fact]
+        public void ShouldSave_WorldMap_StaleRawLocation_UsesHover()
+        {
+            // rawLocation is stale (stuck at Orbonne=18 from previous travel),
+            // but hover shows the real position (Siedge Weald=26).
+            // On WorldMap, hover is the authoritative location.
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 18, hover: 26, screenName: "WorldMap", lastSavedLocation: 18);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void ShouldSave_WorldMap_HoverMatchesSaved_ReturnsFalse()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 18, hover: 26, screenName: "WorldMap", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_EncounterDialog_UsesRawLocation_NotHover()
+        {
+            // During encounter, rawLocation is the encounter location, hover may differ
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 26, hover: 10, screenName: "EncounterDialog", lastSavedLocation: 18);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void GetEffectiveLocation_WorldMap_ReturnsHover()
+        {
+            int loc = LocationSaveLogic.GetEffectiveLocation(
+                rawLocation: 18, hover: 26, screenName: "WorldMap");
+            Assert.Equal(26, loc);
+        }
+
+        [Fact]
+        public void GetEffectiveLocation_EncounterDialog_ReturnsRaw()
+        {
+            int loc = LocationSaveLogic.GetEffectiveLocation(
+                rawLocation: 26, hover: 10, screenName: "EncounterDialog");
+            Assert.Equal(26, loc);
+        }
+
+        [Fact]
+        public void GetEffectiveLocation_Battle_ReturnsRaw()
+        {
+            int loc = LocationSaveLogic.GetEffectiveLocation(
+                rawLocation: 255, hover: 18, screenName: "Battle_MyTurn");
+            Assert.Equal(255, loc);
+        }
     }
 }

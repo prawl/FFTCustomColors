@@ -1730,6 +1730,7 @@ namespace FFTColorCustomizer.Utilities
 
                 // Save raw location before overriding — needed for title screen detection
                 int rawLocation = screen.Location;
+                int hover = screen.Hover;
 
                 // During battle (location=255), use last known world map location
                 if (screen.Location == 255)
@@ -1790,10 +1791,19 @@ namespace FFTColorCustomizer.Utilities
                 }
 
                 // Track world map location for auto map loading (persists to disk).
-                // Uses rawLocation (before battle override) to avoid the stale-check bug
-                // where screen.Location == _lastWorldMapLocation after override → never saves.
-                if (GameBridge.LocationSaveLogic.ShouldSave(rawLocation, screen.Name, _lastWorldMapLocation))
-                    SaveLastLocation(rawLocation);
+                // On WorldMap, hover is the authoritative position (rawLocation is stale after travel).
+                // On EncounterDialog, rawLocation is the encounter location.
+                if (GameBridge.LocationSaveLogic.ShouldSave(rawLocation, hover, screen.Name, _lastWorldMapLocation))
+                {
+                    int effectiveLoc = GameBridge.LocationSaveLogic.GetEffectiveLocation(rawLocation, hover, screen.Name);
+                    SaveLastLocation(effectiveLoc);
+                    // Also update the display location if we detected a better value
+                    if (screen.Name == "WorldMap" && effectiveLoc != screen.Location)
+                    {
+                        screen.Location = effectiveLoc;
+                        screen.LocationName = GetLocationName(effectiveLoc);
+                    }
+                }
 
                 // Reset map auto-load flag when not in battle
                 if (!inBattle && _battleMapAutoLoaded)
