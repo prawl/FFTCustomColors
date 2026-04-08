@@ -236,7 +236,7 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 - [ ] Detect failed attack (still in targeting mode) — cancel and re-evaluate
 - [ ] Handle unexpected screen transitions during turn execution
 - [ ] **Counter attack KO** — If the active unit is KO'd by a reaction ability (Counter Tackle, etc.) after attacking, battle_wait fails because the game skips to the next unit's turn without going through the normal Wait flow. Need to detect "active unit died" and recover gracefully.
-- [ ] **Auto-Wait after Move+Act** — When both Move and Act are used, the game skips the action menu and goes directly to the facing/direction screen. `battle_wait` expects to start from Battle_MyTurn but the game is already waiting for facing confirmation (F key + direction). Need to detect this state and just confirm facing instead of trying to navigate to Wait in the menu.
+- [x] **Auto-Wait after Move+Act** — Fixed. BattleWaitLogic detects Battle_Targeting/Battle_Moving states (auto-facing after Move+Act) and skips menu navigation, going straight to facing confirmation. Tested in-game: Move→Attack→Wait now works seamlessly.
 - [ ] **Dead units block movement** — KO'd units still occupy their tile. Scan shows them with HP=0 and [Dead] status but BFS/movement doesn't account for them as obstacles. Attempted move to a dead unit's tile fails. Need to treat HP=0 units as impassable in pathfinding.
 - [ ] **Friendly units block movement** — Can't move onto a tile occupied by an ally. Claude needs to check all friendly unit positions (not just enemies) before choosing a move target. Currently only enemy positions are considered as obstacles in BFS.
 

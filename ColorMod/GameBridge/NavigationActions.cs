@@ -359,37 +359,47 @@ namespace FFTColorCustomizer.GameBridge
         private CommandResponse BattleWait(CommandResponse response)
         {
             var screen = _detectScreen();
-            if (screen == null || (screen.Name != "Battle_MyTurn" && screen.Name != "Battle_Acting"))
+            if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
             {
                 response.Status = "failed";
-                response.Error = $"Not on Battle_MyTurn/Battle_Acting screen (current: {screen?.Name ?? "null"})";
+                response.Error = $"Cannot battle_wait from screen (current: {screen?.Name ?? "null"})";
                 return response;
             }
 
-            // Small delay to ensure menu is fully rendered after attack animation
-            Thread.Sleep(300);
+            bool skipMenu = BattleWaitLogic.ShouldSkipMenuNavigation(screen.Name);
 
-            // Read cursor directly from memory
-            var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
-            int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
-            int target = 2; // Wait
-            ModLogger.Log($"[BattleWait] Cursor at {cursor}, navigating to {target}");
-            NavigateMenuCursor(cursor, target);
-
-            // Verify we actually reached Wait before pressing Enter
-            Thread.Sleep(150);
-            var verifyResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
-            int actual = verifyResult != null ? (int)verifyResult.Value.value : -1;
-            if (actual != target)
+            if (skipMenu)
             {
-                ModLogger.Log($"[BattleWait] RETRY: cursor at {actual}, expected {target}. Retrying navigation.");
-                NavigateMenuCursor(actual, target);
-                Thread.Sleep(150);
+                // After Move+Act, game already transitioned to facing screen.
+                // Skip menu navigation entirely — we're already where we need to be.
+                ModLogger.Log($"[BattleWait] Auto-facing detected (screen={screen.Name}), skipping menu navigation");
+                Thread.Sleep(300);
             }
+            else
+            {
+                // Normal path: navigate action menu to Wait
+                Thread.Sleep(300);
 
-            // Press Enter to select Wait — enters the facing screen.
-            SendKey(VK_ENTER);
-            Thread.Sleep(500);
+                var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+                int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
+                int target = 2; // Wait
+                ModLogger.Log($"[BattleWait] Cursor at {cursor}, navigating to {target}");
+                NavigateMenuCursor(cursor, target);
+
+                Thread.Sleep(150);
+                var verifyResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+                int actual = verifyResult != null ? (int)verifyResult.Value.value : -1;
+                if (actual != target)
+                {
+                    ModLogger.Log($"[BattleWait] RETRY: cursor at {actual}, expected {target}. Retrying navigation.");
+                    NavigateMenuCursor(actual, target);
+                    Thread.Sleep(150);
+                }
+
+                // Press Enter to select Wait — enters the facing screen.
+                SendKey(VK_ENTER);
+                Thread.Sleep(500);
+            }
 
             // Face optimal direction using the rotation detected during the last move.
             // The movement system (battle_move, battle_attack) empirically detects what
