@@ -1162,6 +1162,22 @@ namespace FFTColorCustomizer.GameBridge
                     // memory address for unit facing direction to populate this. See TODO.md.
                     Facing = null,
                     Statuses = StatusDecoder.Decode(u.StatusBytes) is var s && s.Count > 0 ? s : null,
+                    Abilities = u.LearnedAbilities.Count > 0 ? u.LearnedAbilities.Select(a => new AbilityEntry
+                    {
+                        Name = a.Name,
+                        Mp = a.MpCost,
+                        HRange = a.HRange,
+                        VRange = a.VRange,
+                        AoE = a.AoE,
+                        HoE = a.HoE,
+                        Target = a.Target,
+                        Effect = a.Effect,
+                        CastSpeed = a.CastSpeed,
+                        Element = a.Element,
+                        AddedEffect = a.AddedEffect,
+                        Reflectable = a.Reflectable,
+                        Arithmetickable = a.Arithmetickable,
+                    }).ToList() : null,
                 });
             }
 
@@ -2283,6 +2299,7 @@ namespace FFTColorCustomizer.GameBridge
             public int Brave, Faith;
             public int Speed;
             public byte[] StatusBytes = new byte[5]; // 5-byte status bitfield
+            public List<ActionAbilityInfo> LearnedAbilities = new(); // from condensed struct FFFF list
         }
 
         /// <summary>
@@ -2390,9 +2407,17 @@ namespace FFTColorCustomizer.GameBridge
                         Jump = (int)reads0[13], Job = (int)reads0[14], Brave = (int)reads0[15],
                         Faith = (int)reads0[16],
                     };
+                    // Read learned abilities for active unit only (condensed struct list doesn't update during C+Up)
+                    var abilityBytes = _explorer.Scanner.ReadBytes((nint)(AddrCondensedBase + 0x28), 64);
+                    if (abilityBytes.Length > 0)
+                    {
+                        var learnedIds = ActionAbilityLookup.ParseLearnedIdsFromBytes(abilityBytes);
+                        u0.LearnedAbilities = ActionAbilityLookup.ResolveLearnedAbilities(learnedIds);
+                    }
+
                     seen.Add((pos0.x, pos0.y));
                     units.Add(u0);
-                    ModLogger.Log($"[CollectPositions] Active unit: ({pos0.x},{pos0.y}) t{u0.Team} lv{u0.Level} hp={u0.Hp}/{u0.MaxHp}");
+                    ModLogger.Log($"[CollectPositions] Active unit: ({pos0.x},{pos0.y}) t{u0.Team} lv{u0.Level} hp={u0.Hp}/{u0.MaxHp} abilities={u0.LearnedAbilities.Count}");
                 }
             }
 
@@ -2461,7 +2486,7 @@ namespace FFTColorCustomizer.GameBridge
                     };
 
                     units.Add(unit);
-                    ModLogger.Log($"[CollectPositions] Unit {units.Count}: ({pos.x},{pos.y}) t{unit.Team} lv{unit.Level} hp={unit.Hp}/{unit.MaxHp} job={unit.Job}");
+                    ModLogger.Log($"[CollectPositions] Unit {units.Count}: ({pos.x},{pos.y}) t{unit.Team} lv{unit.Level} hp={unit.Hp}/{unit.MaxHp}");
                 }
 
                 // Stop when we've cycled back to a unit we already saw AND we've

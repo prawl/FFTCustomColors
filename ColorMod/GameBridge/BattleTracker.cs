@@ -903,5 +903,61 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("statuses")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string>? Statuses { get; set; }
+
+        /// <summary>Learned action abilities this unit can use (excluding basic Attack).</summary>
+        [JsonPropertyName("abilities")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<AbilityEntry>? Abilities { get; set; }
+    }
+
+    public class AbilityEntry
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+
+        [JsonPropertyName("mp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Mp { get; set; }
+
+        [JsonPropertyName("horizontalRange")]
+        public string HRange { get; set; } = "";
+
+        [JsonPropertyName("verticalRange")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int VRange { get; set; }
+
+        [JsonPropertyName("areaOfEffect")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int AoE { get; set; }
+
+        [JsonPropertyName("heightOfEffect")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int HoE { get; set; }
+
+        [JsonPropertyName("target")]
+        public string Target { get; set; } = "";
+
+        [JsonPropertyName("effect")]
+        public string Effect { get; set; } = "";
+
+        [JsonPropertyName("castSpeed")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int CastSpeed { get; set; }
+
+        [JsonPropertyName("element")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Element { get; set; }
+
+        [JsonPropertyName("addedEffect")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? AddedEffect { get; set; }
+
+        [JsonPropertyName("reflectable")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool Reflectable { get; set; }
+
+        [JsonPropertyName("arithmetickable")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool Arithmetickable { get; set; }
     }
 }

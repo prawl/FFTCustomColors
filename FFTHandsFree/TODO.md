@@ -80,7 +80,7 @@ Claude only sees HP/MP for non-active units. A human sees status icons, CT bars,
 ### 1c. Abilities — Know HOW to act beyond basic Attack
 Claude can only use "Attack" (the basic physical hit). A human player opens the Abilities menu and picks from their full skillset.
 
-- [ ] **Read available abilities** — When it's Claude's turn, read the ability list for the active unit. This is what appears under the Abilities menu: the secondary skillset (e.g. White Magicks, Items, Martial Arts). Include ability names, MP costs, and whether they're usable.
+- [x] **Read available abilities** — Learned ability IDs read from condensed struct FFFF-terminated list at +0x28. Mapped to names, MP cost, range (horizontal/vertical/AoE/height), target, effect, cast speed, element, added effects via ActionAbilityLookup. Only shown for active unit (list doesn't update during C+Up cycling). Mettle abilities fully verified in-game with exact descriptions and range values.
 - [ ] **`battle_ability <name> <x> <y>`** — Navigate Abilities menu → select a specific ability → target a tile → confirm. Same as battle_attack but for any ability.
 - [ ] **Use Items** — Navigate to Item in the ability menu → select Potion/Phoenix Down/etc → target ally → confirm. Critical for healing and raising downed units.
 - [ ] **Heal targeting allies** — battle_attack only targets enemies. Healing abilities and items need to target allies. The targeting cursor and confirmation work the same way, but the target selection logic needs to allow friendly tiles.

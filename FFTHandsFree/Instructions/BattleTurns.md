@@ -52,7 +52,7 @@ scan_move           # uses the unit's actual Move/Jump stats
 
 Returns structured JSON:
 - **battle.activeUnit** — your unit's stats: jobName, move, jump, pa, ma, hp, brave, faith
-- **battle.units[]** — all units with **name** (story characters like "Ramza", "Agrias"), team, jobName, level, x, y, hp/maxHp, ct, speed, distance, **statuses** (e.g. `["Protect","Shell","Poison"]`)
+- **battle.units[]** — all units with **name** (story characters like "Ramza", "Agrias"), team, jobName, level, x, y, hp/maxHp, ct, speed, distance, **statuses** (e.g. `["Protect","Shell","Poison"]`), **abilities** (active unit only: name, mp, horizontalRange, verticalRange, areaOfEffect, heightOfEffect, target, effect, castSpeed, element, addedEffect)
 - **battle.turnOrder[]** — Combat Timeline order (who acts next). Each entry has name, team, level, hp/maxHp, x, y, ct, isActive. Derived from C+Up scan order which follows the game's timeline.
 - **ValidMoveTiles.tiles[]** — reachable tiles with `{x, y, h}` (h = height for high ground)
 - **AttackTiles.attackTiles[]** — 4 cardinal tiles with `{x, y, arrow, occupant}`. Occupied tiles include hp, maxHp, jobName
