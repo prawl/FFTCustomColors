@@ -147,6 +147,43 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_InBattle_AbilityList_Slot0NotFF_ShouldStayInBattle()
+        {
+            // When browsing ability lists (e.g. Mettle submenu), slot0 changes from 255
+            // to a non-FF value (e.g. 146). But we're still in battle — slot9=0xFFFFFFFF
+            // and battleMode=3 confirm this. Should NOT detect as Cutscene.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 146, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false, eventId: 401,
+                submenuFlag: 1);
+
+            Assert.StartsWith("Battle", result);
+        }
+
+        [Theory]
+        [InlineData("Attack", "Battle_Attack")]
+        [InlineData("Mettle", "Battle_Mettle")]
+        [InlineData("Items", "Battle_Items")]
+        [InlineData("Arts of War", "Battle_ArtsOfWar")]
+        [InlineData("White Magicks", "Battle_WhiteMagicks")]
+        [InlineData("Black Magicks", "Battle_BlackMagicks")]
+        [InlineData("Time Magicks", "Battle_TimeMagicks")]
+        [InlineData("Steal", "Battle_Steal")]
+        [InlineData("Fundaments", "Battle_Fundaments")]
+        public void DetectScreen_AbilitySubmenuSelected_ShouldReturnSpecificScreen(
+            string selectedAbility, string expectedScreen)
+        {
+            // When a specific ability is selected from the Abilities submenu,
+            // the screen name should include the selected skillset.
+            // This is handled by ScreenDetectionLogic.GetAbilityScreenName.
+            var result = ScreenDetectionLogic.GetAbilityScreenName(selectedAbility);
+
+            Assert.Equal(expectedScreen, result);
+        }
+
+        [Fact]
         public void DetectScreen_BattleMoving_ShouldReturnBattleMoving()
         {
             var result = ScreenDetectionLogic.Detect(

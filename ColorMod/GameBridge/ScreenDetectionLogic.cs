@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace FFTColorCustomizer.GameBridge
 {
     /// <summary>
@@ -20,9 +22,12 @@ namespace FFTColorCustomizer.GameBridge
             // Unit slots (0xFF) persist after leaving battle, so we need clearlyOnWorldMap
             // to override. During attack animations rawLocation=255 (not valid), so
             // clearlyOnWorldMap stays false and we correctly stay in battle.
+            // When browsing ability lists, slot0 can change from 255 to a non-FF value,
+            // but slot9=0xFFFFFFFF + battleMode=3 confirms we're still in battle.
             bool unitSlotsPopulated = slot0 == 255 && slot9 == 0xFFFFFFFF;
+            bool battleModeActive = slot9 == 0xFFFFFFFF && (battleMode == 2 || battleMode == 3);
             bool clearlyOnWorldMap = rawValidLocation && party == 0 && battleMode == 0;
-            bool inBattle = unitSlotsPopulated && !clearlyOnWorldMap;
+            bool inBattle = (unitSlotsPopulated || battleModeActive) && !clearlyOnWorldMap;
 
             if (inBattle && paused == 1 && battleMode == 0 && gameOverFlag == 1)
                 return "GameOver";
@@ -63,6 +68,18 @@ namespace FFTColorCustomizer.GameBridge
             if (party == 0 && ui == 0)
                 return "WorldMap";
             return "Unknown";
+        }
+
+        /// <summary>
+        /// Converts a selected ability/skillset name into its screen state name.
+        /// E.g. "Attack" → "Battle_Attack", "White Magicks" → "Battle_WhiteMagicks"
+        /// </summary>
+        public static string GetAbilityScreenName(string abilityName)
+        {
+            var words = abilityName.Split(' ');
+            var pascal = string.Concat(words.Select(w =>
+                char.ToUpper(w[0]) + w.Substring(1)));
+            return $"Battle_{pascal}";
         }
     }
 }

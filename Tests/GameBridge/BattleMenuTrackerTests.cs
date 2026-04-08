@@ -145,17 +145,55 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void Enter_DoesNotExitSubmenu()
+        public void Enter_SetsSelectedItem()
         {
-            // Enter selects within the submenu (e.g. opens Attack targeting)
-            // but the tracker shouldn't exit — the screen detection will
-            // transition to a different state via memory
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle", "Items" });
+            tracker.OnKeyPressed(VK_RETURN);
+
+            Assert.Equal("Attack", tracker.SelectedItem);
+        }
+
+        [Fact]
+        public void Enter_OnMettle_SetsSelectedToMettle()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle", "Items" });
+            tracker.OnKeyPressed(VK_DOWN); // Mettle
+            tracker.OnKeyPressed(VK_RETURN);
+
+            Assert.Equal("Mettle", tracker.SelectedItem);
+        }
+
+        [Fact]
+        public void SelectedItem_NullBeforeEnter()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+
+            Assert.Null(tracker.SelectedItem);
+        }
+
+        [Fact]
+        public void SelectedItem_ClearedOnEscape()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.OnKeyPressed(VK_RETURN); // select Attack
+            tracker.OnKeyPressed(VK_ESCAPE); // back out
+
+            Assert.Null(tracker.SelectedItem);
+        }
+
+        [Fact]
+        public void SelectedItem_ClearedOnNewTurn()
+        {
             var tracker = new BattleMenuTracker();
             tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
             tracker.OnKeyPressed(VK_RETURN);
+            tracker.OnNewTurn();
 
-            Assert.True(tracker.InSubmenu);
-            Assert.Equal("Attack", tracker.CurrentItem);
+            Assert.Null(tracker.SelectedItem);
         }
 
         [Fact]

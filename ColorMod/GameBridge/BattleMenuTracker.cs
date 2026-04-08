@@ -9,18 +9,23 @@ namespace FFTColorCustomizer.GameBridge
     /// </summary>
     public class BattleMenuTracker
     {
+        private const int VK_RETURN = 0x0D;
+        private const int VK_ESCAPE = 0x1B;
         private const int VK_UP = 0x26;
         private const int VK_DOWN = 0x28;
-        private const int VK_ESCAPE = 0x1B;
 
         private string[]? _items;
 
         public bool InSubmenu { get; private set; }
         public int CursorIndex { get; private set; }
 
-        public string? CurrentItem => _items != null && CursorIndex >= 0 && CursorIndex < _items.Length
+        /// <summary>The item the cursor is currently on (null if not in submenu).</summary>
+        public string? CurrentItem => InSubmenu && _items != null && CursorIndex >= 0 && CursorIndex < _items.Length
             ? _items[CursorIndex]
             : null;
+
+        /// <summary>The item that was selected via Enter (null until Enter pressed, cleared on Escape/new turn).</summary>
+        public string? SelectedItem { get; private set; }
 
         public void EnterAbilitiesSubmenu(string[] items)
         {
@@ -41,8 +46,12 @@ namespace FFTColorCustomizer.GameBridge
                 case VK_UP:
                     CursorIndex = (CursorIndex - 1 + _items.Length) % _items.Length;
                     break;
+                case VK_RETURN:
+                    SelectedItem = CurrentItem;
+                    break;
                 case VK_ESCAPE:
                     InSubmenu = false;
+                    SelectedItem = null;
                     break;
             }
         }
@@ -51,12 +60,14 @@ namespace FFTColorCustomizer.GameBridge
         {
             InSubmenu = false;
             CursorIndex = 0;
+            SelectedItem = null;
         }
 
         public void Reset()
         {
             InSubmenu = false;
             CursorIndex = 0;
+            SelectedItem = null;
             _items = null;
         }
     }

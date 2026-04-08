@@ -1353,7 +1353,16 @@ namespace FFTColorCustomizer.Utilities
             }
             else if (screen.Name == "Battle_Abilities" && _battleMenuTracker.InSubmenu)
             {
-                screen.UI = _battleMenuTracker.CurrentItem;
+                // If an ability was selected (Enter pressed), override screen name
+                if (_battleMenuTracker.SelectedItem != null)
+                {
+                    screen.Name = GameBridge.ScreenDetectionLogic.GetAbilityScreenName(_battleMenuTracker.SelectedItem);
+                    screen.UI = _battleMenuTracker.SelectedItem;
+                }
+                else
+                {
+                    screen.UI = _battleMenuTracker.CurrentItem;
+                }
             }
             else if (screen.Name != "Battle_Abilities" && _battleMenuTracker.InSubmenu)
             {
@@ -1926,7 +1935,8 @@ namespace FFTColorCustomizer.Utilities
                 int submenuFlag = (int)v[18]; // 1=submenu/mode active (Abilities submenu, Move mode, etc.), 0=top-level menu
                 int gameOverFlag = submenuFlag; // same address — game over uses submenuFlag=1 + paused=1 + battleMode=0
                 int eventId = (int)v[19];
-                bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF);
+                bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF)
+                    || (slot9 == 0xFFFFFFFF && (battleMode == 2 || battleMode == 3));
 
                 screen.Name = GameBridge.ScreenDetectionLogic.Detect(
                     party, ui, rawLocation, slot0, slot9,
@@ -2011,7 +2021,8 @@ namespace FFTColorCustomizer.Utilities
                         "PartyMenu" => GameScreen.PartyMenu,
                         "TravelList" => GameScreen.Unknown,
                         "EncounterDialog" => GameScreen.Unknown,
-                        "Battle_MyTurn" or "Battle_Moving" or "Battle_Targeting" or "Battle_Acting" or "Battle_Abilities" or "Battle_Paused" or "Battle" or "GameOver" => GameScreen.Unknown,
+                        "Battle" or "GameOver" => GameScreen.Unknown,
+                        _ when screen.Name.StartsWith("Battle_") => GameScreen.Unknown,
                         _ => (GameScreen?)null
                     };
                     if (expected.HasValue && ScreenMachine.CurrentScreen != expected.Value)
