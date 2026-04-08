@@ -58,40 +58,70 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ---
 
-## 1. Battle Execution — Attack + Complete Turns (P0, BLOCKING)
+## 1. Battle Execution (P0, BLOCKING)
 
-Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `battle_wait`. First battle WON autonomously. Remaining work is polish and robustness.
+Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `battle_wait`. First battle WON autonomously.
 
-### Attack Targeting
+### 1a. Unit Identity — Know WHO is on the field
+Claude sees NameId numbers and broken JobIds. A human player sees names and job classes at a glance.
+
+- [ ] **Unit names** — Read character name from NameId. Either decode from NXD tables in memory or maintain a lookup table. Claude needs to know "that's Ramza" vs "that's a generic Knight."
+- [ ] **Fix job name mapping** — Current scan reads IC remaster internal IDs (76-89) from UI buffer, but `GetJobName()` expects PSX IDs (0x01-0x24). Need either a remaster ID mapping or a different memory address.
+- [ ] **Zodiac sign per unit** — Read from roster or battle struct. Needed to assess damage multipliers (e.g. Scorpio vs Pisces = Good compatibility = +25% damage). See Wiki/ZodiacAndElements.md.
+
+### 1b. Unit State — Know WHAT each unit can do
+Claude only sees HP/MP for non-active units. A human sees status icons, CT bars, and can hover for stats.
+
+- [ ] **CT/Speed for all units** — Read CT values from battle struct so Claude can predict turn order ("enemy mage acts next, I should kill it now"). Currently only active unit's CT is read.
+- [ ] **Status effects** — Read active status flags per unit (Poison, Haste, Protect, Sleep, etc.). 5 bytes of status bitfields per unit in the battle struct. Claude needs to know "my unit is poisoned" or "that enemy has Protect up."
+- [ ] **Dead/KO vs crystalized vs alive** — Distinguish between KO'd units (can be raised), crystal/treasure (permanently gone), and alive units. Currently all are in the unit list with no death state.
+- [ ] **PA/MA/Brave/Faith for all units** — Currently only the active unit's stats are read from UI buffer. Need stats for enemies too (to estimate damage) and allies (to choose healing targets).
+
+### 1c. Abilities — Know HOW to act beyond basic Attack
+Claude can only use "Attack" (the basic physical hit). A human player opens the Abilities menu and picks from their full skillset.
+
+- [ ] **Read available abilities** — When it's Claude's turn, read the ability list for the active unit. This is what appears under the Abilities menu: the secondary skillset (e.g. White Magicks, Items, Martial Arts). Include ability names, MP costs, and whether they're usable.
+- [ ] **`battle_ability <name> <x> <y>`** — Navigate Abilities menu → select a specific ability → target a tile → confirm. Same as battle_attack but for any ability.
+- [ ] **Use Items** — Navigate to Item in the ability menu → select Potion/Phoenix Down/etc → target ally → confirm. Critical for healing and raising downed units.
+- [ ] **Heal targeting allies** — battle_attack only targets enemies. Healing abilities and items need to target allies. The targeting cursor and confirmation work the same way, but the target selection logic needs to allow friendly tiles.
+- [ ] **Raise downed units** — Phoenix Down or Raise spell on a KO'd unit. Requires knowing which tiles have dead units and being able to target them.
+
+### 1d. AoE and Range — Target abilities that hit areas
+Many abilities hit more than one tile. A human player sees the AoE preview. Claude needs to know what it'll hit.
+
+- [ ] **Read ability range and AoE shape** — From the ability's secondary data: range, effect area, vertical tolerance. So Claude knows Fire has range 4 + 2-tile AoE diamond, vs Attack which is range 1 + single tile.
+- [ ] **AoE targeting** — For abilities with effect areas, Claude needs to position the AoE to maximize enemies hit and minimize allies hit. This is a placement decision Claude makes, not automation — but it needs the AoE shape info to decide.
+- [ ] **Charge time spells** — Some abilities take multiple turns to resolve. Claude needs to know the CT cost so it can decide if a slow powerful spell or a fast weak one is better.
+
+### 1e. Enemy Intel — Know WHAT the enemy will do back
+A human player can check enemy abilities by hovering. Claude has no visibility into enemy capabilities.
+
+- [ ] **Enemy reaction abilities** — Read equipped reaction ability per unit (Counter Tackle, First Strike, Blade Grasp, etc.). Claude needs this to assess risk: "if I melee this Knight, he has Counter Tackle and will hit me back."
+- [ ] **Enemy equipped abilities** — Read secondary skillset and support abilities. Helps Claude anticipate threats: "that Black Mage has Firaga" or "that unit has Teleport."
+
+### 1f. Turn Execution — Speed and reliability
 - [x] `battle_attack` action: open Abilities -> Attack -> navigate target cursor to enemy -> confirm
 - [x] Read rotation DURING targeting mode — uses empirical detection (press Right, read delta)
 - [x] `AttackTiles` in scan_move response — 4 cardinal tiles with ENEMY/ALLY/empty occupancy
-- [ ] Verify attack landed (check enemy HP decreased)
-
-### Single-Command Turn Execution (THE BIG WIN)
-- [ ] `execute_turn` action: Claude sends full intent in one command — move target, attack target, wait
-  - `{"action": "execute_turn", "move_to": [4,9], "attack": [4,10], "wait": true}`
-  - Mod handles internally: Move→navigate→confirm→Abilities→Attack→target→confirm→Wait
+- [ ] **Verify attack landed** — Check enemy HP decreased after attack animation
+- [ ] **`execute_turn` action** — Claude sends full intent in one command: move target, ability, wait
+  - `{"action": "execute_turn", "move_to": [4,9], "ability": "Attack", "target": [4,10], "wait": true}`
+  - Mod handles internally: Move→navigate→confirm→Abilities→select→target→confirm→Wait
   - One round-trip instead of 6+ = **~5s instead of ~30s**
-- [ ] Support partial turns: move only, attack only, move+wait, etc.
+- [ ] Support partial turns: move only, ability only, move+wait, etc.
 - [ ] Return full post-turn state: where everyone ended up, damage dealt, kills
 
-### Battle State — Give Claude What It Needs to Decide
-- [ ] Auto-scan units on Battle_MyTurn (eliminate separate scan_units call)
-- [ ] Compact battle summary every turn: positions, HP, distances, CT, attack range
-- [ ] Full detail on demand: PA/MA/Brave/Faith, status effects, equipped abilities
-
-### Movement System — Remaining Work
+### 1g. Movement System — Remaining Work
 - [~] **Auto-detect battle map** — Location ID lookup + random encounter maps implemented, fingerprint fallback
-- [x] **last_location.txt persistence fixed** — Removed stale repo copy, backup/restore on deploy, save uses rawLocation not post-override screen.Location, world map detection works with stale unit slots.
+- [x] **last_location.txt persistence fixed**
 - [~] **Wait facing direction** — Basic implementation done, needs tactical improvement
-- [ ] **Fix Move/Jump stat reading** — UI buffer shows base stats, not effective
-- [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza
-- [ ] **Neutral unit handling (team=2)** — Don't block pathing for neutrals
-- [x] **Menu cursor address fixed** — 0x1407FC620 is reliable (resets on new turn, tracks all 5 positions, survives restart). 0x1407FCCA8 was the stale one. Thorough testing confirmed.
-- [ ] **Auto-scan double-fire** — Auto-scan on Battle_MyTurn fires after scan_move already scanned, causing key presses that open Status menu. Disabled for now. Need scan_move to mark turn as scanned via BattleTurnTracker.
-- [ ] **Battle_Victory screen detection** — When all enemies die, victory screen appears briefly then returns to world map. Currently misdetected as Battle_Acting. Need to detect and handle gracefully.
-- [x] **battle_wait facing uses F key** — Facing confirmation uses F, not Enter. Fixed.
+- [ ] **Fix Move/Jump stat reading** — UI buffer shows base stats, not effective (equipment bonuses missing)
+- [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza. Currently scan_move assumes first team=0 unit is active.
+- [ ] **Neutral unit handling (team=2)** — Don't block pathing for NPCs/guests
+- [x] **Menu cursor address fixed** — 0x1407FC620 confirmed reliable
+- [ ] **Auto-scan double-fire** — Auto-scan on Battle_MyTurn fires after scan_move already scanned, opening Status menu. Need BattleTurnTracker to mark turns as scanned.
+- [ ] **Battle_Victory screen detection** — Victory screen misdetected as Battle_Acting. Need to detect and transition gracefully to world map.
+- [x] **battle_wait facing uses F key** — Fixed.
 
 ---
 
@@ -199,24 +229,23 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 
 ---
 
-## 9. Battle Automation — Advanced (P2)
+## 9. Battle — Advanced (P2)
 
-### Magic / AoE Ability Targeting
-- [ ] Navigate Abilities -> select a specific spell
-- [ ] AoE placement: maximize enemies hit, minimize allies hit
-- [ ] Handle line AoE, self-centered AoE, charge time spells
-- [ ] Support healing magic targeting allies
-
-### Invalid Tile / Target Detection
-- [ ] Detect failed move (still in Battle_Moving after F press)
-- [ ] Detect failed attack (still in targeting mode)
-- [ ] Read movement tile list for pre-move awareness
-- [ ] Read attack range from memory
+### Error Recovery
+- [ ] Detect failed move (still in Battle_Moving after F press) — retry or cancel
+- [ ] Detect failed attack (still in targeting mode) — cancel and re-evaluate
+- [ ] Handle unexpected screen transitions during turn execution
 
 ### Unit Facing Direction
 - [x] Choose facing intelligently at end of turn — FacingStrategy computes optimal direction via arc-based threat scoring (front=1, side=2, back=3 weights with distance/HP decay). battle_wait uses empirical rotation from grid navigation to press the correct key. 11/11 confirmed across all 4 directions.
-- [ ] Read unit facing direction from memory — Movement delta is unreliable (game AI picks facing during Wait independent of movement). Need a stable memory address for each unit's current facing. Searched 0x14077C970 (counter, drifts), 0x140C64900 (async, unreliable), full heap diffs (no stable static address found). Value is likely on UE4 heap behind pointer chains. The `facing` field exists in BattleUnitState JSON but is always null until solved.
-- [ ] Use facing data for backstab targeting — Once facing is readable, Claude can plan attacks from behind enemies for bonus damage
+- [ ] Read unit facing direction from memory — Searched 0x14077C970 (drifts), 0x140C64900 (unreliable), full heap diffs (no static address). Likely on UE4 heap behind pointer chains.
+- [ ] Use facing data for backstab targeting — Once facing is readable, Claude can plan attacks from behind enemies (back attacks bypass most evasion, see Wiki/BattleMechanics.md)
+
+### Advanced Targeting
+- [ ] Line AoE abilities (e.g. some Geomancy, certain summons)
+- [ ] Self-centered AoE abilities
+- [ ] Multi-hit abilities (Truth/Nether Mantra random targeting)
+- [ ] Terrain-aware Geomancy (surface type determines ability, see Wiki/MapFormat.md)
 
 ---
 
