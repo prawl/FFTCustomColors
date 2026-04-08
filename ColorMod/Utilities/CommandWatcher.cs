@@ -31,6 +31,7 @@ namespace FFTColorCustomizer.Utilities
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
         private readonly BattleTurnTracker _turnTracker = new();
+        private readonly BattleMenuTracker _battleMenuTracker = new();
 
         /// <summary>
         /// When true, game actions must go through validPaths. Raw key presses and
@@ -160,6 +161,7 @@ namespace FFTColorCustomizer.Utilities
                             GameWindowFound = true
                         };
                         blocked.Screen = DetectScreenSettled();
+                        SyncBattleMenuTracker(blocked.Screen);
                         WriteResponse(blocked);
                         _lastProcessedCommandId = command.Id;
                         return;
@@ -169,6 +171,7 @@ namespace FFTColorCustomizer.Utilities
 
                     var response = ExecuteCommand(command);
                     response.Screen ??= DetectScreenSettled();
+                    SyncBattleMenuTracker(response.Screen);
 
                     // Auto-scan units when a new player turn starts (team 0 only)
                     if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam))
@@ -226,6 +229,7 @@ namespace FFTColorCustomizer.Utilities
                         ProcessedAt = DateTime.UtcNow.ToString("o")
                     };
                     errorResponse.Screen = DetectScreenSettled();
+                    SyncBattleMenuTracker(errorResponse.Screen);
                     if (errorResponse.Screen != null)
                         errorResponse.ValidPaths = NavigationPaths.GetPaths(errorResponse.Screen);
                     WriteResponse(errorResponse);
@@ -657,6 +661,7 @@ namespace FFTColorCustomizer.Utilities
 
                     case "battle_wait":
                         _turnTracker.ResetForNewTurn(); // battle_wait skips intermediate phases
+                        _battleMenuTracker.OnNewTurn();
                         return ExecuteNavActionWithAutoScan(command);
 
                     case "battle_flee":
@@ -857,7 +862,11 @@ namespace FFTColorCustomizer.Utilities
                 ModLogger.LogDebug($"[CommandBridge] Key {key.Name ?? key.Vk.ToString()} (0x{key.Vk:X2}): {(success ? "OK" : "FAIL")}");
 
                 if (success)
+                {
                     ScreenMachine?.OnKeyPressed(key.Vk);
+                    if (_battleMenuTracker.InSubmenu)
+                        _battleMenuTracker.OnKeyPressed(key.Vk);
+                }
 
                 if (key.HoldMs > 0)
                     Thread.Sleep(key.HoldMs);
@@ -1036,6 +1045,8 @@ namespace FFTColorCustomizer.Utilities
                     {
                         keysOk++;
                         ScreenMachine?.OnKeyPressed(key.Vk);
+                        if (_battleMenuTracker.InSubmenu)
+                            _battleMenuTracker.OnKeyPressed(key.Vk);
                     }
 
                     if (key.HoldMs > 0)
@@ -1236,7 +1247,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x14077CA5C, 1),  // 15: moveMode (VOLATILE/unused — was 255=selecting tile, replaced by battleMode[16]==2)
             ((nint)0x140900650, 1),  // 16: battleMode (3=action menu, 2=move, 0=game over/cutscene)
             ((nint)0x14077C970, 1),  // 17: cameraRotation (incrementing counter, mod 4 = current rotation 0-3)
-            ((nint)0x140D3A10C, 1),  // 18: gameOverFlag (1=game over, 0=normal)
+            ((nint)0x140D3A10C, 1),  // 18: submenuFlag (1=submenu/mode active, 0=top-level menu; also 1 during game over)
             ((nint)0x14077CA94, 2),  // 19: eventId (event file number during cutscenes, nameId during battle)
             ((nint)0x1411A0FB6, 1),  // 20: storyObjective (yellow diamond location ID on world map)
         };
@@ -1326,9 +1337,159 @@ namespace FFTColorCustomizer.Utilities
             {42, "Mount Germinas"},
         };
 
+        /// <summary>
+        /// Syncs the battle menu tracker with the settled screen state.
+        /// Called AFTER DetectScreenSettled so we only react to stable screen transitions,
+        /// not intermediate flickers during settling.
+        /// </summary>
+        private void SyncBattleMenuTracker(DetectedScreen? screen)
+        {
+            if (screen == null) return;
+
+            if (screen.Name == "Battle_Abilities" && !_battleMenuTracker.InSubmenu)
+            {
+                _battleMenuTracker.EnterAbilitiesSubmenu(GetAbilitiesSubmenuItems());
+                screen.UI = _battleMenuTracker.CurrentItem;
+            }
+            else if (screen.Name == "Battle_Abilities" && _battleMenuTracker.InSubmenu)
+            {
+                screen.UI = _battleMenuTracker.CurrentItem;
+            }
+            else if (screen.Name != "Battle_Abilities" && _battleMenuTracker.InSubmenu)
+            {
+                _battleMenuTracker.OnKeyPressed(0x1B); // exit submenu
+            }
+        }
+
         private static string? GetLocationName(int locationId)
         {
             return LocationNames.TryGetValue(locationId, out var name) ? name : null;
+        }
+
+        /// <summary>
+        /// Reads the active unit's secondary ability from the roster and returns
+        /// the Abilities submenu items (always "Attack" first, then the secondary).
+        /// </summary>
+        private string[] GetAbilitiesSubmenuItems()
+        {
+            const long AddrRosterBase = 0x1411A18D0;
+            const int RosterStride = 0x258;
+
+            // Default if we can't read memory
+            var items = new List<string> { "Attack" };
+
+            if (Explorer != null)
+            {
+                try
+                {
+                    // Find active unit's roster slot by matching the condensed struct's nameId
+                    var nameIdRead = Explorer.ReadAbsolute((nint)0x14077D2A4, 2);
+                    if (!nameIdRead.HasValue) return items.ToArray();
+                    var nameId = (int)nameIdRead.Value.value;
+
+                    for (int i = 0; i < 55; i++)
+                    {
+                        var slotRead = Explorer.ReadAbsolute((nint)(AddrRosterBase + i * RosterStride + 0x230), 2);
+                        if (!slotRead.HasValue) continue;
+                        if ((int)slotRead.Value.value == nameId)
+                        {
+                            // Primary skillset: derived from job byte at +0x02
+                            var jobRead = Explorer.ReadAbsolute((nint)(AddrRosterBase + i * RosterStride + 0x02), 1);
+                            if (jobRead.HasValue)
+                            {
+                                var primaryName = GetPrimarySkillsetName((int)jobRead.Value.value);
+                                if (primaryName != null)
+                                    items.Add(primaryName);
+                            }
+
+                            // Secondary skillset: index at +0x07 (0 = none equipped)
+                            var secRead = Explorer.ReadAbsolute((nint)(AddrRosterBase + i * RosterStride + 0x07), 1);
+                            if (secRead.HasValue)
+                            {
+                                var secondaryIdx = (int)secRead.Value.value;
+                                if (secondaryIdx > 0)
+                                {
+                                    var secondaryName = GetSkillsetName(secondaryIdx);
+                                    if (secondaryName != null)
+                                        items.Add(secondaryName);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                catch { /* fall back to Attack only */ }
+            }
+
+            return items.ToArray();
+        }
+
+        /// <summary>
+        /// Maps IC remaster job ID to the job's primary skillset name.
+        /// </summary>
+        private static string? GetPrimarySkillsetName(int jobId)
+        {
+            // Ramza's unique jobs (IC remaster IDs vary by chapter)
+            // Ramza job IDs: 0x03=Ch4, 0xA0=Ch1, etc. — all use Mettle
+            if (jobId == 3 || jobId == 160 || jobId == 161 || jobId == 162)
+                return "Mettle";
+
+            // Standard generic job IDs (IC remaster)
+            return jobId switch
+            {
+                76 => "Fundaments",   // Squire
+                77 => "Items",        // Chemist
+                78 => "Arts of War",  // Knight
+                79 => "Aim",          // Archer
+                80 => "Martial Arts", // Monk
+                81 => "White Magicks",// White Mage
+                82 => "Black Magicks",// Black Mage
+                83 => "Time Magicks", // Time Mage
+                84 => "Mystic Arts",  // Mystic
+                85 => "Summon",       // Summoner
+                86 => "Steal",        // Thief
+                87 => "Speechcraft",  // Orator
+                88 => "Geomancy",     // Geomancer
+                89 => "Jump",         // Dragoon
+                90 => "Iaido",        // Samurai
+                91 => "Throw",        // Ninja
+                92 => "Arithmeticks", // Arithmetician
+                93 => "Bardsong",     // Bard
+                94 => "Dance",        // Dancer
+                _ => null
+            };
+        }
+
+        /// <summary>
+        /// Maps secondary ability index (+0x07) to skillset name.
+        /// These indices are into the character's personal unlocked ability list.
+        /// </summary>
+        private static string? GetSkillsetName(int index)
+        {
+            return index switch
+            {
+                3 => "Mettle",
+                4 => "Mettle",
+                5 => "Fundaments",
+                6 => "Items",
+                7 => "Arts of War",
+                8 => "Aim",
+                9 => "Martial Arts",
+                10 => "White Magicks",
+                11 => "Black Magicks",
+                12 => "Time Magicks",
+                13 => "Summon",
+                14 => "Steal",
+                15 => "Speechcraft",
+                16 => "Mystic Arts",
+                17 => "Geomancy",
+                18 => "Jump",
+                19 => "Iaido",
+                20 => "Throw",
+                21 => "Arithmeticks",
+                22 => "Bardsong",
+                _ => null
+            };
         }
 
         private string? _lastLocationPath;
@@ -1762,7 +1923,8 @@ namespace FFTColorCustomizer.Utilities
                 // Battle detection: use RAW location (not overridden by last_location.txt).
                 // Title screen has rawLocation=255, battleMode=255, slot0=0xFFFFFFFF.
                 // World map has rawLocation 0-42, battleMode=0.
-                int gameOverFlag = (int)v[18];
+                int submenuFlag = (int)v[18]; // 1=submenu/mode active (Abilities submenu, Move mode, etc.), 0=top-level menu
+                int gameOverFlag = submenuFlag; // same address — game over uses submenuFlag=1 + paused=1 + battleMode=0
                 int eventId = (int)v[19];
                 bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF);
 
@@ -1770,10 +1932,16 @@ namespace FFTColorCustomizer.Utilities
                     party, ui, rawLocation, slot0, slot9,
                     battleMode, moveMode, paused, gameOverFlag,
                     screen.BattleTeam, screen.BattleActed, screen.BattleMoved,
-                    eA, eB, !inBattle && IsPartySubScreen(), eventId);
+                    eA, eB, !inBattle && IsPartySubScreen(), eventId,
+                    submenuFlag: submenuFlag, menuCursor: screen.MenuCursor);
 
                 if (screen.Name == "Cutscene")
                     screen.EventId = eventId;
+
+                // Battle menu tracker: set UI from tracker if in submenu
+                // (entry/exit managed in SyncBattleMenuTracker, called after screen settles)
+                if (screen.Name == "Battle_Abilities" && _battleMenuTracker.InSubmenu)
+                    screen.UI = _battleMenuTracker.CurrentItem;
 
                 // Resolve party sub-screen to specific screen via state machine
                 if (screen.Name == "PartySubScreen")
@@ -1843,7 +2011,7 @@ namespace FFTColorCustomizer.Utilities
                         "PartyMenu" => GameScreen.PartyMenu,
                         "TravelList" => GameScreen.Unknown,
                         "EncounterDialog" => GameScreen.Unknown,
-                        "Battle_MyTurn" or "Battle_Moving" or "Battle_Targeting" or "Battle_Acting" or "Battle_Paused" or "Battle" or "GameOver" => GameScreen.Unknown,
+                        "Battle_MyTurn" or "Battle_Moving" or "Battle_Targeting" or "Battle_Acting" or "Battle_Abilities" or "Battle_Paused" or "Battle" or "GameOver" => GameScreen.Unknown,
                         _ => (GameScreen?)null
                     };
                     if (expected.HasValue && ScreenMachine.CurrentScreen != expected.Value)

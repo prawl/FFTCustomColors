@@ -36,13 +36,40 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void DetectScreen_InBattle_AfterActing_ShouldReturnBattleActing()
         {
+            // Actual acting/animation: submenuFlag=0 (not in a submenu, actually performing action)
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 1, battleMoved: 0,
-                encA: 0, encB: 0, isPartySubScreen: false);
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 0);
 
             Assert.Equal("Battle_Acting", result);
+        }
+
+        [Fact]
+        public void DetectScreen_InBattle_AbilitiesSubmenu_ShouldReturnBattleAbilities()
+        {
+            // Entering Abilities submenu sets acted=1, moved=1, submenuFlag=1, menuCursor stays at 1
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
+
+            Assert.Equal("Battle_Abilities", result);
+        }
+
+        [Fact]
+        public void DetectScreen_InBattle_AbilitiesSubmenu_ActedOnly_ShouldReturnBattleAbilities()
+        {
+            // Sometimes only acted=1 when entering submenu (moved may vary)
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
+
+            Assert.Equal("Battle_Abilities", result);
         }
 
         [Fact]
@@ -96,13 +123,27 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void DetectScreen_GameOver_ShouldReturnGameOver()
         {
+            // Game over: submenuFlag=1 (repurposed), paused=1, battleMode=0
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 1,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
-                encA: 0, encB: 0, isPartySubScreen: false);
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
 
             Assert.Equal("GameOver", result);
+        }
+
+        [Fact]
+        public void DetectScreen_MoveMode_SubmenuFlag1_ShouldReturnBattleMoving()
+        {
+            // Move mode also sets submenuFlag=1, should still detect as Battle_Moving
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 2, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
+
+            Assert.Equal("Battle_Moving", result);
         }
 
         [Fact]

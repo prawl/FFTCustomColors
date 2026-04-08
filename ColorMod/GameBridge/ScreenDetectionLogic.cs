@@ -11,7 +11,8 @@ namespace FFTColorCustomizer.GameBridge
             long slot0, long slot9,
             int battleMode, int moveMode, int paused, int gameOverFlag,
             int battleTeam, int battleActed, int battleMoved,
-            int encA, int encB, bool isPartySubScreen, int eventId = 0)
+            int encA, int encB, bool isPartySubScreen, int eventId = 0,
+            int submenuFlag = 0, int menuCursor = -1)
         {
             bool rawValidLocation = rawLocation >= 0 && rawLocation <= 42;
 
@@ -37,6 +38,12 @@ namespace FFTColorCustomizer.GameBridge
                 return "Battle_AlliesTurn";
             if (inBattle && battleTeam == 1 && battleActed == 0 && battleMoved == 0)
                 return "Battle_EnemiesTurn";
+            // Abilities submenu: submenuFlag=1 (mode active), battleMode=3 (action menu context),
+            // acted/moved flags set by entering submenu. Without submenuFlag this was misdetected
+            // as Battle_Acting.
+            if (inBattle && submenuFlag == 1 && battleMode == 3 && battleTeam == 0
+                && (battleActed == 1 || battleMoved == 1))
+                return "Battle_Abilities";
             if (inBattle && battleTeam == 0 && (battleActed == 1 || battleMoved == 1))
                 return "Battle_Acting";
             if (inBattle)
