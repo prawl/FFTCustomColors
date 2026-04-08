@@ -65,7 +65,7 @@ Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `bat
 ### 1a. Unit Identity — Know WHO is on the field
 Claude sees NameId numbers and broken JobIds. A human player sees names and job classes at a glance.
 
-- [ ] **Unit names** — Read character name from NameId. Either decode from NXD tables in memory or maintain a lookup table. Claude needs to know "that's Ramza" vs "that's a generic Knight."
+- [x] **Unit names** — Story characters identified via roster nameId lookup (match by level+origBrave+origFaith from static battle array at 0x140893E0C). UnitNameLookup maps nameIds to names (Ramza, Agrias, Orlandeau, etc.). Generic units show null name.
 - [ ] **Fix job name mapping** — Current scan reads IC remaster internal IDs (76-89) from UI buffer, but `GetJobName()` expects PSX IDs (0x01-0x24). Need either a remaster ID mapping or a different memory address.
 - [ ] **Zodiac sign per unit** — Read from roster or battle struct. Needed to assess damage multipliers (e.g. Scorpio vs Pisces = Good compatibility = +25% damage). See Wiki/ZodiacAndElements.md.
 

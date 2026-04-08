@@ -87,7 +87,7 @@ Every response includes:
 - **ValidPaths** — available actions for the current screen
 - **Battle data** (when in battle):
   - `battle.activeUnit` — your unit: jobName, move, jump, pa, ma, hp, brave, faith
-  - `battle.units[]` — all units: team, jobName, level, position, hp, distance, statuses (e.g. `["Protect","Poison"]`)
+  - `battle.units[]` — all units: name (story characters only), team, jobName, level, position, hp, distance, statuses
   - `ValidMoveTiles.tiles[]` — reachable tiles with height (`h`) for high ground
   - `AttackTiles.attackTiles[]` — adjacent tiles with arrow key, occupant info (hp, jobName if enemy)
   - `RecommendedFacing.facing` — optimal facing direction with arc breakdown (front/side/back counts)

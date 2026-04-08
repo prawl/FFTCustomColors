@@ -1057,9 +1057,10 @@ namespace FFTColorCustomizer.GameBridge
             foreach (var u in units)
             {
                 string teamName = u.Team == 0 ? "PLAYER" : u.Team == 2 ? "ALLY" : "ENEMY";
+                string nameStr = u.Name != null ? $" {u.Name}" : "";
                 var statuses = StatusDecoder.Decode(u.StatusBytes);
                 string statusStr = statuses.Count > 0 ? $" [{string.Join(",", statuses)}]" : "";
-                lines.Add($"[{teamName}] ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp} MP={u.Mp}/{u.MaxMp} PA={u.PA} MA={u.MA} Mv={u.Move} Jmp={u.Jump} Job={u.Job} Br={u.Brave} Fa={u.Faith} CT={u.CT} Exp={u.Exp} NameId={u.NameId}{statusStr}");
+                lines.Add($"[{teamName}]{nameStr} ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp} MP={u.Mp}/{u.MaxMp} PA={u.PA} MA={u.MA} Mv={u.Move} Jmp={u.Jump} Job={u.Job} Br={u.Brave} Fa={u.Faith} CT={u.CT} Exp={u.Exp}{statusStr}");
             }
 
             response.Status = units.Count > 0 ? "completed" : "failed";
@@ -1130,6 +1131,7 @@ namespace FFTColorCustomizer.GameBridge
 
                 battleState.Units.Add(new BattleUnitState
                 {
+                    Name = u.Name,
                     Team = u.Team,
                     JobId = u.Job,
                     JobName = GameStateReporter.GetJobName(u.Job),
@@ -2234,7 +2236,9 @@ namespace FFTColorCustomizer.GameBridge
             public int GridX, GridY;
             public int Team;       // 0=ally, 1+=enemy
             public int Level;
-            public int NameId;
+            public int NameId;     // Sequential battle index (NOT roster nameId)
+            public int RosterNameId; // Roster nameId (for story character lookup)
+            public string? Name;   // Resolved character name (e.g. "Ramza")
             public int Exp;
             public int CT;
             public int Hp, MaxHp;
@@ -2441,42 +2445,57 @@ namespace FFTColorCustomizer.GameBridge
             SendKey(VK_F);
             Thread.Sleep(300);
 
-            // Read status bytes from static battle array
-            // Status is at 0x140893E45 + slot * 0x200 (5 bytes per unit, up to 21 slots)
-            // Match slots to scanned units by HP + MaxHP
-            const long AddrStatusArrayBase = 0x140893E45;
-            const long AddrStatArrayHp = 0x140893E14;     // HP uint16 in static array
-            const long AddrStatArrayMaxHp = 0x140893E16;   // MaxHP uint16 in static array
+            // Read status bytes + identity from static battle array
+            // Layout per slot (stride 0x200):
+            //   +0x0C from array base: exp(byte) level(byte) origBrave(byte) brave(byte) origFaith(byte) faith(byte) flag(byte) 00 HP(u16) maxHP(u16)
+            //   +0x45 from array base: 5 status bytes
+            const long AddrStatArrayBase = 0x140893C00;  // Start of battle array (unit 0)
+            const long StatOffStatPattern = 0x20C;        // exp/level offset from array base
+            const long StatOffHp = 0x214;                 // HP offset from array base
+            const long StatOffMaxHp = 0x216;              // MaxHP offset from array base
+            const long StatOffStatus = 0x245;             // Status bytes offset from array base
             const int StatusStride = 0x200;
             const int MaxSlots = 21;
 
             try
             {
-                // Build batch read for all slot HP+MaxHP values
-                var hpReads = new (nint, int)[MaxSlots * 2];
+                // Build batch read for all slot HP+MaxHP+origBrave+origFaith values
+                var slotReads = new (nint, int)[MaxSlots * 4];
                 for (int s = 0; s < MaxSlots; s++)
                 {
-                    hpReads[s * 2] = ((nint)(AddrStatArrayHp + s * StatusStride), 2);
-                    hpReads[s * 2 + 1] = ((nint)(AddrStatArrayMaxHp + s * StatusStride), 2);
+                    long slotBase = AddrStatArrayBase + s * StatusStride;
+                    slotReads[s * 4] = ((nint)(slotBase + StatOffHp), 2);       // HP
+                    slotReads[s * 4 + 1] = ((nint)(slotBase + StatOffMaxHp), 2); // MaxHP
+                    slotReads[s * 4 + 2] = ((nint)(slotBase + StatOffStatPattern), 1); // exp (byte)
+                    slotReads[s * 4 + 3] = ((nint)(slotBase + StatOffStatPattern + 1), 1); // level (byte)
                 }
-                var hpValues = _explorer.ReadMultiple(hpReads);
+                var slotValues = _explorer.ReadMultiple(slotReads);
 
                 // Match each scanned unit to a slot by HP+MaxHP
                 foreach (var unit in units)
                 {
                     for (int s = 0; s < MaxSlots; s++)
                     {
-                        int slotHp = (int)hpValues[s * 2];
-                        int slotMaxHp = (int)hpValues[s * 2 + 1];
+                        int slotHp = (int)slotValues[s * 4];
+                        int slotMaxHp = (int)slotValues[s * 4 + 1];
                         if (slotMaxHp == unit.MaxHp && slotHp == unit.Hp)
                         {
-                            var statusBytes = _explorer.Scanner.ReadBytes((nint)(AddrStatusArrayBase + s * StatusStride), 5);
+                            // Read status bytes
+                            var statusBytes = _explorer.Scanner.ReadBytes((nint)(AddrStatArrayBase + s * StatusStride + StatOffStatus), 5);
                             if (statusBytes.Length == 5)
                             {
                                 unit.StatusBytes = statusBytes;
                                 var decoded = StatusDecoder.Decode(statusBytes);
                                 if (decoded.Count > 0)
                                     ModLogger.Log($"[CollectPositions] Unit ({unit.GridX},{unit.GridY}) statuses: [{string.Join(",", decoded)}]");
+                            }
+
+                            // Read origBrave/origFaith for roster matching (bytes at statPattern+2 and +4)
+                            var identBytes = _explorer.Scanner.ReadBytes((nint)(AddrStatArrayBase + s * StatusStride + StatOffStatPattern + 2), 4);
+                            if (identBytes.Length == 4)
+                            {
+                                unit.Brave = identBytes[0];  // origBrave
+                                unit.Faith = identBytes[2];  // origFaith
                             }
                             break;
                         }
@@ -2485,7 +2504,61 @@ namespace FFTColorCustomizer.GameBridge
             }
             catch (Exception ex)
             {
-                ModLogger.Log($"[CollectPositions] Status read failed: {ex.Message}");
+                ModLogger.Log($"[CollectPositions] Status/identity read failed: {ex.Message}");
+            }
+
+            // Resolve unit names from roster for player units (team=0)
+            // Match by level + brave + faith to find the roster slot, then read the real nameId
+            // (Can't match by HP — roster stores formation HP which differs from battle HP with equipment)
+            const long AddrRosterBase = 0x1411A18D0;
+            const int RosterStride = 0x258;
+            const int RosterMaxSlots = 20;
+            const int RosterOffNameId = 0x230;
+            const int RosterOffLevel = 0x1D;
+            const int RosterOffBrave = 0x1E;
+            const int RosterOffFaith = 0x1F;
+
+            try
+            {
+                var playerUnits = units.Where(u => u.Team == 0).ToList();
+                if (playerUnits.Count > 0)
+                {
+                    // Batch-read roster nameId + level + brave + faith for all slots
+                    var rosterReads = new (nint, int)[RosterMaxSlots * 4];
+                    for (int s = 0; s < RosterMaxSlots; s++)
+                    {
+                        long slotAddr = AddrRosterBase + s * RosterStride;
+                        rosterReads[s * 4] = ((nint)(slotAddr + RosterOffNameId), 2);
+                        rosterReads[s * 4 + 1] = ((nint)(slotAddr + RosterOffLevel), 1);
+                        rosterReads[s * 4 + 2] = ((nint)(slotAddr + RosterOffBrave), 1);
+                        rosterReads[s * 4 + 3] = ((nint)(slotAddr + RosterOffFaith), 1);
+                    }
+                    var rosterValues = _explorer.ReadMultiple(rosterReads);
+
+                    foreach (var unit in playerUnits)
+                    {
+                        for (int s = 0; s < RosterMaxSlots; s++)
+                        {
+                            int rNameId = (int)rosterValues[s * 4];
+                            int rLevel = (int)rosterValues[s * 4 + 1];
+                            int rBrave = (int)rosterValues[s * 4 + 2];
+                            int rFaith = (int)rosterValues[s * 4 + 3];
+
+                            if (rNameId > 0 && rLevel == unit.Level && rBrave == unit.Brave && rFaith == unit.Faith)
+                            {
+                                unit.RosterNameId = rNameId;
+                                unit.Name = UnitNameLookup.GetName(rNameId);
+                                if (unit.Name != null)
+                                    ModLogger.Log($"[CollectPositions] Identified ({unit.GridX},{unit.GridY}) as {unit.Name} (rosterNameId={rNameId})");
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.Log($"[CollectPositions] Name lookup failed: {ex.Message}");
             }
 
             _lastScannedUnits = units;

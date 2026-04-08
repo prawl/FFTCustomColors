@@ -789,6 +789,10 @@ namespace FFTColorCustomizer.GameBridge
 
     public class BattleUnitState
     {
+        [JsonPropertyName("name")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Name { get; set; }
+
         [JsonPropertyName("team")]
         public int Team { get; set; }
 

@@ -52,7 +52,7 @@ scan_move           # uses the unit's actual Move/Jump stats
 
 Returns structured JSON:
 - **battle.activeUnit** — your unit's stats: jobName, move, jump, pa, ma, hp, brave, faith
-- **battle.units[]** — all units with team, jobName, level, x, y, hp/maxHp, distance, **statuses** (e.g. `["Protect","Shell","Poison"]`)
+- **battle.units[]** — all units with **name** (story characters like "Ramza", "Agrias"), team, jobName, level, x, y, hp/maxHp, distance, **statuses** (e.g. `["Protect","Shell","Poison"]`)
 - **ValidMoveTiles.tiles[]** — reachable tiles with `{x, y, h}` (h = height for high ground)
 - **AttackTiles.attackTiles[]** — 4 cardinal tiles with `{x, y, arrow, occupant}`. Occupied tiles include hp, maxHp, jobName
 - **RecommendedFacing.facing** — optimal Wait direction with `{direction, front, side, back}` arc counts
