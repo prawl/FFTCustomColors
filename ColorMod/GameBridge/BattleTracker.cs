@@ -677,6 +677,44 @@ namespace FFTColorCustomizer.GameBridge
 
         [JsonPropertyName("units")]
         public List<BattleUnitState> Units { get; set; } = new();
+
+        [JsonPropertyName("turnOrder")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<TurnOrderEntry>? TurnOrder { get; set; }
+    }
+
+    public class TurnOrderEntry
+    {
+        [JsonPropertyName("name")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("team")]
+        public string Team { get; set; } = "ENEMY";
+
+        [JsonPropertyName("level")]
+        public int Level { get; set; }
+
+        [JsonPropertyName("hp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Hp { get; set; }
+
+        [JsonPropertyName("maxHp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int MaxHp { get; set; }
+
+        [JsonPropertyName("x")]
+        public int X { get; set; }
+
+        [JsonPropertyName("y")]
+        public int Y { get; set; }
+
+        [JsonPropertyName("ct")]
+        public int CT { get; set; }
+
+        [JsonPropertyName("isActive")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IsActive { get; set; }
     }
 
     public class ActiveUnitState
@@ -806,6 +844,16 @@ namespace FFTColorCustomizer.GameBridge
 
         [JsonPropertyName("level")]
         public int Level { get; set; }
+
+        /// <summary>Charge Time (0-100). Unit acts when CT reaches 100.</summary>
+        [JsonPropertyName("ct")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int CT { get; set; }
+
+        /// <summary>Speed stat (base, without equipment modifiers). Determines CT gain per tick.</summary>
+        [JsonPropertyName("speed")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Speed { get; set; }
 
         [JsonPropertyName("startX")]
         public int StartX { get; set; }

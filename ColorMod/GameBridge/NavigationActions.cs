@@ -1145,6 +1145,8 @@ namespace FFTColorCustomizer.GameBridge
                     PositionKnown = true,
                     Distance = isActive ? 0 : dist,
                     IsActive = isActive,
+                    CT = u.CT,
+                    Speed = u.Speed,
                     // Facing: null for now. Movement delta is unreliable because the game's
                     // Wait AI picks a facing direction independent of movement. Need a stable
                     // memory address for unit facing direction to populate this. See TODO.md.
@@ -1152,6 +1154,28 @@ namespace FFTColorCustomizer.GameBridge
                     Statuses = StatusDecoder.Decode(u.StatusBytes) is var s && s.Count > 0 ? s : null,
                 });
             }
+
+            // Turn order: the C+Up scan traverses units in timeline order.
+            // The scan order IS the turn order — unit 1 scanned = next to act, etc.
+            var turnOrder = new List<TurnOrderEntry>();
+            foreach (var u in units)
+            {
+                bool isActive = u == ally;
+                turnOrder.Add(new TurnOrderEntry
+                {
+                    Name = u.Name,
+                    Team = u.Team == 0 ? "PLAYER" : u.Team == 2 ? "ALLY" : "ENEMY",
+                    Level = u.Level,
+                    Hp = u.Hp,
+                    MaxHp = u.MaxHp,
+                    X = u.GridX,
+                    Y = u.GridY,
+                    CT = u.CT,
+                    IsActive = isActive,
+                });
+            }
+            battleState.TurnOrder = turnOrder.Count > 0 ? turnOrder : null;
+
             response.Battle = battleState;
 
             // Diagnostic lines for logging only (not in response)
@@ -2247,6 +2271,7 @@ namespace FFTColorCustomizer.GameBridge
             public int Move, Jump;
             public int Job;
             public int Brave, Faith;
+            public int Speed;
             public byte[] StatusBytes = new byte[5]; // 5-byte status bitfield
         }
 
@@ -2329,6 +2354,7 @@ namespace FFTColorCustomizer.GameBridge
                         ((nint)(AddrCondensedBase + 0x00), 2),
                         ((nint)(AddrCondensedBase + 0x02), 2),
                         ((nint)(AddrCondensedBase + 0x04), 2),
+                        ((nint)(AddrCondensedBase + 0x06), 1), // 3: Speed (base)
                         ((nint)(AddrCondensedBase + 0x08), 2),
                         ((nint)(AddrCondensedBase + 0x0A), 2),
                         ((nint)(AddrCondensedBase + 0x0C), 2),
@@ -2347,11 +2373,12 @@ namespace FFTColorCustomizer.GameBridge
                     {
                         GridX = pos0.x, GridY = pos0.y,
                         Level = (int)reads0[0], Team = (int)reads0[1], NameId = (int)reads0[2],
-                        Exp = (int)reads0[3], CT = (int)reads0[4], Hp = (int)reads0[5],
-                        MaxHp = (int)reads0[6], Mp = (int)reads0[7], MaxMp = (int)reads0[8],
-                        PA = (int)reads0[9], MA = (int)reads0[10], Move = (int)reads0[11],
-                        Jump = (int)reads0[12], Job = (int)reads0[13], Brave = (int)reads0[14],
-                        Faith = (int)reads0[15],
+                        Speed = (int)reads0[3],
+                        Exp = (int)reads0[4], CT = (int)reads0[5], Hp = (int)reads0[6],
+                        MaxHp = (int)reads0[7], Mp = (int)reads0[8], MaxMp = (int)reads0[9],
+                        PA = (int)reads0[10], MA = (int)reads0[11], Move = (int)reads0[12],
+                        Jump = (int)reads0[13], Job = (int)reads0[14], Brave = (int)reads0[15],
+                        Faith = (int)reads0[16],
                     };
                     seen.Add((pos0.x, pos0.y));
                     units.Add(u0);
@@ -2384,19 +2411,20 @@ namespace FFTColorCustomizer.GameBridge
                         ((nint)(AddrCondensedBase + 0x00), 2), // 0: level
                         ((nint)(AddrCondensedBase + 0x02), 2), // 1: team
                         ((nint)(AddrCondensedBase + 0x04), 2), // 2: nameId
-                        ((nint)(AddrCondensedBase + 0x08), 2), // 3: exp
-                        ((nint)(AddrCondensedBase + 0x0A), 2), // 4: CT
-                        ((nint)(AddrCondensedBase + 0x0C), 2), // 5: HP
-                        ((nint)(AddrCondensedBase + 0x10), 2), // 6: maxHP
-                        ((nint)(AddrCondensedBase + 0x12), 2), // 7: MP
-                        ((nint)(AddrCondensedBase + 0x16), 2), // 8: maxMP
-                        ((nint)(AddrCondensedBase + 0x18), 2), // 9: PA
-                        ((nint)(AddrCondensedBase + 0x1A), 2), // 10: MA
-                        ((nint)(AddrUIBuffer + 0x24), 2),      // 11: Move
-                        ((nint)(AddrUIBuffer + 0x26), 2),      // 12: Jump
-                        ((nint)(AddrUIBuffer + 0x2A), 2),      // 13: Job
-                        ((nint)(AddrUIBuffer + 0x2C), 2),      // 14: Brave
-                        ((nint)(AddrUIBuffer + 0x2E), 2),      // 15: Faith
+                        ((nint)(AddrCondensedBase + 0x06), 1), // 3: Speed (base)
+                        ((nint)(AddrCondensedBase + 0x08), 2), // 4: exp
+                        ((nint)(AddrCondensedBase + 0x0A), 2), // 5: CT
+                        ((nint)(AddrCondensedBase + 0x0C), 2), // 6: HP
+                        ((nint)(AddrCondensedBase + 0x10), 2), // 7: maxHP
+                        ((nint)(AddrCondensedBase + 0x12), 2), // 8: MP
+                        ((nint)(AddrCondensedBase + 0x16), 2), // 9: maxMP
+                        ((nint)(AddrCondensedBase + 0x18), 2), // 10: PA
+                        ((nint)(AddrCondensedBase + 0x1A), 2), // 11: MA
+                        ((nint)(AddrUIBuffer + 0x24), 2),      // 12: Move
+                        ((nint)(AddrUIBuffer + 0x26), 2),      // 13: Jump
+                        ((nint)(AddrUIBuffer + 0x2A), 2),      // 14: Job
+                        ((nint)(AddrUIBuffer + 0x2C), 2),      // 15: Brave
+                        ((nint)(AddrUIBuffer + 0x2E), 2),      // 16: Faith
                     });
 
                     var unit = new ScannedUnit
@@ -2406,19 +2434,20 @@ namespace FFTColorCustomizer.GameBridge
                         Level = (int)reads[0],
                         Team = (int)reads[1],
                         NameId = (int)reads[2],
-                        Exp = (int)reads[3],
-                        CT = (int)reads[4],
-                        Hp = (int)reads[5],
-                        MaxHp = (int)reads[6],
-                        Mp = (int)reads[7],
-                        MaxMp = (int)reads[8],
-                        PA = (int)reads[9],
-                        MA = (int)reads[10],
-                        Move = (int)reads[11],
-                        Jump = (int)reads[12],
-                        Job = (int)reads[13],
-                        Brave = (int)reads[14],
-                        Faith = (int)reads[15],
+                        Speed = (int)reads[3],
+                        Exp = (int)reads[4],
+                        CT = (int)reads[5],
+                        Hp = (int)reads[6],
+                        MaxHp = (int)reads[7],
+                        Mp = (int)reads[8],
+                        MaxMp = (int)reads[9],
+                        PA = (int)reads[10],
+                        MA = (int)reads[11],
+                        Move = (int)reads[12],
+                        Jump = (int)reads[13],
+                        Job = (int)reads[14],
+                        Brave = (int)reads[15],
+                        Faith = (int)reads[16],
                     };
 
                     units.Add(unit);
