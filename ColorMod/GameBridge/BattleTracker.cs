@@ -908,6 +908,11 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("abilities")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<AbilityEntry>? Abilities { get; set; }
+
+        /// <summary>Secondary skillset index from roster +0x07. 0 = none equipped.</summary>
+        [JsonPropertyName("secondaryAbility")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int SecondaryAbility { get; set; }
     }
 
     public class AbilityEntry

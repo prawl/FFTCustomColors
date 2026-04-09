@@ -1441,11 +1441,12 @@ namespace FFTColorCustomizer.Utilities
             if (activeUnit.JobName != null)
                 _cachedPrimarySkillset = GetPrimarySkillsetByJobName(activeUnit.JobName);
 
-            // Secondary skillset — read from roster via level+brave+faith match
-            // Use BattleTracker's ActiveUnit for brave/faith (read from roster reliably)
-            var au = battle.ActiveUnit;
-            if (au != null && au.Brave > 0 && au.Faith > 0)
-                CacheSecondaryFromRoster(au.Level, au.Brave, au.Faith);
+            // Secondary skillset from the roster-matched scan data
+            // Uses the active unit from Units list (correctly matched by RosterMatcher)
+            // instead of BattleTracker.ActiveUnit (which may identify the wrong unit)
+            _cachedSecondarySkillset = activeUnit.SecondaryAbility > 0
+                ? GetSkillsetName(activeUnit.SecondaryAbility)
+                : null;
         }
 
         private void CacheSecondaryFromRoster(int level, int brave, int faith)

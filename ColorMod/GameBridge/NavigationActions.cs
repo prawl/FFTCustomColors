@@ -1434,6 +1434,7 @@ namespace FFTColorCustomizer.GameBridge
                     // Wait AI picks a facing direction independent of movement. Need a stable
                     // memory address for unit facing direction to populate this. See TODO.md.
                     Facing = null,
+                    SecondaryAbility = u.SecondaryAbility,
                     Statuses = StatusDecoder.Decode(u.StatusBytes) is var s && s.Count > 0 ? s : null,
                     Abilities = u.LearnedAbilities.Count > 0 ? u.LearnedAbilities.Select(a => new AbilityEntry
                     {
@@ -2865,7 +2866,7 @@ namespace FFTColorCustomizer.GameBridge
                 var playerUnits = units.Where(u => u.Team == 0).ToList();
                 if (playerUnits.Count > 0)
                 {
-                    // Batch-read roster fields for all slots: nameId, level, brave, faith, job, secondary
+                    // Batch-read roster fields for all slots
                     const int FieldsPerSlot = 6;
                     var rosterReads = new (nint, int)[RosterMaxSlots * FieldsPerSlot];
                     for (int s = 0; s < RosterMaxSlots; s++)
@@ -2880,46 +2881,43 @@ namespace FFTColorCustomizer.GameBridge
                     }
                     var rosterValues = _explorer.ReadMultiple(rosterReads);
 
-                    // Track which roster slots have been claimed to avoid double-matching
-                    var claimedSlots = new HashSet<int>();
-
-                    foreach (var unit in playerUnits)
+                    // Build roster slot array
+                    var rosterSlots = new RosterSlot[RosterMaxSlots];
+                    for (int s = 0; s < RosterMaxSlots; s++)
                     {
-                        for (int s = 0; s < RosterMaxSlots; s++)
+                        rosterSlots[s] = new RosterSlot
                         {
-                            if (claimedSlots.Contains(s)) continue;
+                            NameId = (int)rosterValues[s * FieldsPerSlot + 0],
+                            Level = (int)rosterValues[s * FieldsPerSlot + 1],
+                            Brave = (int)rosterValues[s * FieldsPerSlot + 2],
+                            Faith = (int)rosterValues[s * FieldsPerSlot + 3],
+                            Job = (int)rosterValues[s * FieldsPerSlot + 4],
+                            Secondary = (int)rosterValues[s * FieldsPerSlot + 5],
+                        };
+                    }
 
-                            int rNameId = (int)rosterValues[s * FieldsPerSlot + 0];
-                            int rLevel = (int)rosterValues[s * FieldsPerSlot + 1];
-                            int rBrave = (int)rosterValues[s * FieldsPerSlot + 2];
-                            int rFaith = (int)rosterValues[s * FieldsPerSlot + 3];
-                            int rJob = (int)rosterValues[s * FieldsPerSlot + 4];
-                            int rSecondary = (int)rosterValues[s * FieldsPerSlot + 5];
+                    // Build scanned unit identity array
+                    var identities = playerUnits.Select(u => new ScannedUnitIdentity
+                    {
+                        Level = u.Level, Brave = u.Brave, Faith = u.Faith, Hp = u.Hp
+                    }).ToArray();
 
-                            if (rNameId <= 0 || rLevel != unit.Level) continue;
+                    // Match using two-pass algorithm (known brave/faith first, then active unit)
+                    var matches = RosterMatcher.Match(identities, rosterSlots);
 
-                            // For units that already have Brave/Faith (from UI buffer during C+Up),
-                            // match on brave+faith. For the active unit (Brave==0, not yet populated),
-                            // match on level only and populate from roster.
-                            bool braveMatch = unit.Brave == 0 || rBrave == unit.Brave;
-                            bool faithMatch = unit.Faith == 0 || rFaith == unit.Faith;
+                    for (int i = 0; i < playerUnits.Count && i < matches.Length; i++)
+                    {
+                        var m = matches[i];
+                        if (m.NameId <= 0) continue;
 
-                            if (braveMatch && faithMatch)
-                            {
-                                claimedSlots.Add(s);
-                                unit.RosterNameId = rNameId;
-                                unit.Name = UnitNameLookup.GetName(rNameId);
-                                unit.Job = rJob;
-                                unit.Brave = rBrave;
-                                unit.Faith = rFaith;
-                                unit.SecondaryAbility = rSecondary;
-                                if (unit.Name != null)
-                                    ModLogger.Log($"[CollectPositions] Identified ({unit.GridX},{unit.GridY}) as {unit.Name} job={rJob} (rosterNameId={rNameId})");
-                                else
-                                    ModLogger.Log($"[CollectPositions] Matched ({unit.GridX},{unit.GridY}) job={rJob} bra={rBrave} fai={rFaith} (rosterNameId={rNameId})");
-                                break;
-                            }
-                        }
+                        var unit = playerUnits[i];
+                        unit.RosterNameId = m.NameId;
+                        unit.Name = UnitNameLookup.GetName(m.NameId);
+                        unit.Job = m.Job;
+                        unit.Brave = m.Brave;
+                        unit.Faith = m.Faith;
+                        unit.SecondaryAbility = m.Secondary;
+                        ModLogger.Log($"[CollectPositions] Matched ({unit.GridX},{unit.GridY}) as {unit.Name ?? $"unit"} job={m.Job} bra={m.Brave} fai={m.Faith} (rosterNameId={m.NameId})");
                     }
                 }
             }
