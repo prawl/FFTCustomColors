@@ -913,7 +913,9 @@ namespace FFTColorCustomizer.GameBridge
             {
                 SendKey(VK_ENTER);
                 Thread.Sleep(500);
-                SendKey(VK_ENTER);
+                SendKey(VK_ENTER); // confirm target
+                Thread.Sleep(500);
+                SendKey(VK_ENTER); // Unit/Tile dialog (selects "Unit" default; harmless if no dialog)
                 Thread.Sleep(300);
                 response.Status = "completed";
                 response.Info = $"Used {abilityName} on ({targetX},{targetY}) — cursor was already on target";
@@ -994,10 +996,12 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Confirm
+            // Confirm target + Unit/Tile dialog
             SendKey(VK_ENTER);
             Thread.Sleep(500);
-            SendKey(VK_ENTER);
+            SendKey(VK_ENTER); // confirm target
+            Thread.Sleep(500);
+            SendKey(VK_ENTER); // Unit/Tile dialog (selects "Unit" default; harmless if no dialog)
             Thread.Sleep(300);
 
             response.Status = "completed";

@@ -137,9 +137,18 @@ fft() {
   local OBJ=$(echo "$R" | grep -o '"storyObjective":[0-9]*' | head -1 | cut -d: -f2)
   local OBJNAME=$(echo "$R" | grep -o '"storyObjectiveName":"[^"]*"' | head -1 | cut -d'"' -f4)
   local OBJSTR=""; [ -n "$OBJ" ] && { OBJSTR="objective=$OBJ"; [ -n "$OBJNAME" ] && OBJSTR="objective=$OBJ($OBJNAME)"; }
+  local ANAME=$(echo "$R" | grep -o '"activeUnitName":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local AJOB=$(echo "$R" | grep -o '"activeUnitJob":"[^"]*"' | head -1 | cut -d'"' -f4)
   local LINE="[$SCR]"
-  # ui right after state during battle
-  [[ "$SCR" == Battle_* ]] && [ -n "$UI" ] && LINE="$LINE ui=$UI"
+  # active unit right after state during battle
+  if [[ "$SCR" == Battle_* ]]; then
+    if [ -n "$ANAME" ] && [ -n "$AJOB" ]; then
+      LINE="$LINE ${ANAME}(${AJOB})"
+    elif [ -n "$AJOB" ]; then
+      LINE="$LINE ($AJOB)"
+    fi
+    [ -n "$UI" ] && LINE="$LINE ui=$UI"
+  fi
   LINE="$LINE loc=$LOCSTR"
   # hover only during TravelList
   [ "$SCR" = "TravelList" ] && LINE="$LINE hover=$HOV"

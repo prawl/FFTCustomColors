@@ -430,9 +430,20 @@ namespace FFTColorCustomizer.Utilities
                         {
                             ModLogger.Log("[CommandBridge] Returning cached scan (already scanned this turn)");
                             var cached = _turnTracker.CachedScanResponse!;
-                            cached.Id = command.Id; // update ID to match this request
+                            cached.Id = command.Id;
                             cached.Info = (cached.Info != null ? cached.Info + " | " : "") + "[cached]";
                             return cached;
+                        }
+                        // Block scan during animations/enemy turns
+                        {
+                            var currentScreen = DetectScreen();
+                            if (currentScreen != null && !BattleTurnTracker.CanScan(currentScreen.Name))
+                            {
+                                response.Status = "blocked";
+                                response.Error = $"Cannot scan during {currentScreen.Name} — wait for Battle_MyTurn";
+                                response.Screen = currentScreen;
+                                break;
+                            }
                         }
                         _turnTracker.MarkScanned();
                         var scanResult = ExecuteNavAction(command);
@@ -691,6 +702,7 @@ namespace FFTColorCustomizer.Utilities
                     case "battle_move":
                     case "move_grid": // legacy alias
                         _turnTracker.InvalidateCache(); // battlefield state changed
+                        _battleMenuTracker.ReturnToMyTurn(); // reset submenu tracking
                         return ExecuteNavAction(command);
 
                     case "world_travel_to":
@@ -1413,6 +1425,10 @@ namespace FFTColorCustomizer.Utilities
                     screen.UI = _battleMenuTracker.CurrentItem;
                 }
             }
+            else if (screen.Name == "Battle_MyTurn" && (_battleMenuTracker.InSubmenu || _battleMenuTracker.InAbilityList))
+            {
+                _battleMenuTracker.ReturnToMyTurn();
+            }
             else if (screen.Name != "Battle_Abilities" && _battleMenuTracker.InSubmenu)
             {
                 _battleMenuTracker.OnKeyPressed(0x1B); // exit submenu
@@ -2103,6 +2119,18 @@ namespace FFTColorCustomizer.Utilities
                 // Populate cursor tile and available tiles for battle sub-states
                 if (screen.Name == "Battle_Moving" || screen.Name == "Battle_Attacking")
                     PopulateBattleTileData(screen);
+
+                // Populate active unit name/job during battle from cached scan
+                if (inBattle && _turnTracker.HasCachedScan)
+                {
+                    var cachedBattle = _turnTracker.CachedScanResponse?.Battle;
+                    var active = cachedBattle?.Units?.FirstOrDefault(u => u.IsActive);
+                    if (active != null)
+                    {
+                        screen.ActiveUnitName = active.Name;
+                        screen.ActiveUnitJob = active.JobName;
+                    }
+                }
 
                 // Sync state machine with memory-detected top-level screens.
                 // This ensures the state machine stays in sync even after restarts

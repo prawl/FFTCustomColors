@@ -214,6 +214,21 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
         }
 
+        [Theory]
+        [InlineData("Battle_MyTurn", true)]
+        [InlineData("Battle_EnemiesTurn", false)]
+        [InlineData("Battle_AlliesTurn", false)]
+        [InlineData("Battle_Acting", false)]
+        [InlineData("Battle_Moving", false)]
+        [InlineData("Battle_Attacking", false)]
+        [InlineData("Battle_Abilities", false)]
+        [InlineData("Battle_Mettle", false)]
+        [InlineData("Battle_Paused", false)]
+        public void CanScan_OnlyDuringMyTurn(string screenName, bool expected)
+        {
+            Assert.Equal(expected, BattleTurnTracker.CanScan(screenName));
+        }
+
         [Fact]
         public void ShouldAutoScan_AfterEnemyTurn_ResetsForNewPlayerTurn()
         {

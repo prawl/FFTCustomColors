@@ -318,6 +318,31 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Null(tracker.SelectedAbility);
         }
 
+        [Fact]
+        public void ReturnToMyTurn_ResetsSubmenuAndAbilityList()
+        {
+            // After battle_ability completes, the game returns to Battle_MyTurn.
+            // The tracker should fully reset so ui= shows the correct main menu cursor.
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle", "Items" });
+            tracker.OnKeyPressed(VK_DOWN); // Mettle
+            tracker.OnKeyPressed(VK_RETURN); // select Mettle
+            tracker.EnterAbilityList(new[] { "Focus", "Rush", "Shout" });
+            tracker.OnKeyPressed(VK_DOWN); // Rush
+
+            tracker.ReturnToMyTurn();
+
+            Assert.False(tracker.InSubmenu);
+            Assert.False(tracker.InAbilityList);
+            Assert.Null(tracker.CurrentItem);
+            Assert.Null(tracker.CurrentAbility);
+            Assert.Null(tracker.SelectedItem);
+            Assert.Null(tracker.SelectedAbility);
+            // Cursor indices reset so next entry starts fresh
+            Assert.Equal(0, tracker.CursorIndex);
+            Assert.Equal(0, tracker.AbilityCursorIndex);
+        }
+
         // === Existing tests below ===
 
         [Fact]

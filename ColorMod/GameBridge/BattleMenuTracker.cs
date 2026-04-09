@@ -104,6 +104,21 @@ namespace FFTColorCustomizer.GameBridge
             }
         }
 
+        /// <summary>
+        /// Called when screen returns to Battle_MyTurn after an ability use.
+        /// Resets all submenu/ability list state so ui= shows the correct main menu cursor.
+        /// Unlike OnNewTurn, this doesn't imply a different unit — just that we're back at the action menu.
+        /// </summary>
+        public void ReturnToMyTurn()
+        {
+            InSubmenu = false;
+            InAbilityList = false;
+            CursorIndex = 0;
+            AbilityCursorIndex = 0;
+            SelectedItem = null;
+            SelectedAbility = null;
+        }
+
         public void OnNewTurn()
         {
             InSubmenu = false;

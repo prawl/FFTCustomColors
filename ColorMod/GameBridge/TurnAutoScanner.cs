@@ -83,6 +83,16 @@ namespace FFTColorCustomizer.GameBridge
         /// Call after game actions that change battlefield state (battle_attack,
         /// battle_ability, battle_move) so the next scan_move gets fresh data.
         /// </summary>
+        /// <summary>
+        /// Returns true if scanning is allowed on the given screen.
+        /// Only allows scanning during Battle_MyTurn — not during animations,
+        /// enemy turns, or menu browsing.
+        /// </summary>
+        public static bool CanScan(string screenName)
+        {
+            return screenName == "Battle_MyTurn";
+        }
+
         public void InvalidateCache()
         {
             CachedScanResponse = null;

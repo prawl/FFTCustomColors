@@ -288,6 +288,16 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("storyObjectiveName")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? StoryObjectiveName { get; set; }
+
+        /// <summary>Name of the active unit (e.g. "Ramza"). Null for generic units without names.</summary>
+        [JsonPropertyName("activeUnitName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ActiveUnitName { get; set; }
+
+        /// <summary>Job name of the active unit (e.g. "Archer", "Gallant Knight").</summary>
+        [JsonPropertyName("activeUnitJob")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ActiveUnitJob { get; set; }
     }
 
     public class TilePosition
