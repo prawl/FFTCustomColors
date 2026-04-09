@@ -297,8 +297,43 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public static string? GetJobName(int jobId)
         {
+            // Try IC remaster roster IDs first (74+ range), then fall back to PSX IDs
+            if (RosterJobNameById.TryGetValue(jobId, out var rosterName))
+                return rosterName;
             return JobNameById.TryGetValue(jobId, out var name) ? name : null;
         }
+
+        /// <summary>
+        /// IC remaster roster job IDs (at roster offset +0x02).
+        /// These differ from PSX job IDs and overlap with PSX story character IDs.
+        /// Verified empirically by reading roster data during battle.
+        /// </summary>
+        private static readonly Dictionary<int, string> RosterJobNameById = new()
+        {
+            [74] = "Squire",          // 0x4A — verified
+            [75] = "Chemist",         // 0x4B — estimated (sequential)
+            [76] = "White Mage",      // 0x4C — estimated
+            [77] = "Archer",          // 0x4D — verified
+            [78] = "Monk",            // 0x4E — verified
+            [79] = "Knight",          // 0x4F — verified
+            [80] = "Black Mage",      // 0x50 — estimated
+            [81] = "Time Mage",       // 0x51 — estimated
+            [82] = "Summoner",        // 0x52 — estimated
+            [83] = "Thief",           // 0x53 — estimated
+            [84] = "Orator",          // 0x54 — estimated
+            [85] = "Mystic",          // 0x55 — estimated
+            [86] = "Geomancer",       // 0x56 — estimated
+            [87] = "Dragoon",         // 0x57 — estimated
+            [88] = "Samurai",         // 0x58 — estimated
+            [89] = "Ninja",           // 0x59 — verified
+            [90] = "Arithmetician",   // 0x5A — estimated
+            [91] = "Bard",            // 0x5B — estimated
+            [92] = "Dancer",          // 0x5C — estimated
+            [93] = "Mime",            // 0x5D — estimated
+            // WotL jobs
+            [94] = "Dark Knight",     // 0x5E — estimated
+            [95] = "Onion Knight",    // 0x5F — estimated
+        };
 
         /// <summary>
         /// Returns a display name for a unit using both nameId and jobId.

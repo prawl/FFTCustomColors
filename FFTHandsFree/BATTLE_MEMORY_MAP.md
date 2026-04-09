@@ -116,15 +116,23 @@ Story battles and random encounters at same location use DIFFERENT maps. Terrain
 
 ## 12. Screen Detection
 ```
-inBattle = (slot0==255 AND slot9==0xFFFFFFFF)
+inBattle = (slot0==255 AND slot9==0xFFFFFFFF) OR (slot9==0xFFFFFFFF AND battleMode in {2,3,4})
 Battle_MyTurn = inBattle AND team==0 AND act==0 AND mov==0
+Battle_Moving = inBattle AND battleMode==2
+Battle_Attacking = inBattle AND battleMode==4
+Battle_Abilities = inBattle AND submenuFlag==1 AND battleMode==3 AND team==0 AND (act==1 OR mov==1)
+Battle_Paused = inBattle AND paused==1
+GameOver = inBattle AND paused==1 AND battleMode==0 AND gameOverFlag==1
 EncounterDialog = encA(0x140900824) != encB(0x140900828)
 PartyMenu = partyFlag(0x140D3A41E)==1
 TravelList = uiFlag(0x140D4A264)==1
 TitleScreen = location(0x14077D208)==255
 ```
 
-**Known issues:** Game Over not detected. Settlement/shop not reliably detected. Menu cursor unreliable in submenus.
+Battle mode values: 2=move tile selection, 3=action menu/ability browsing, 4=ability targeting.
+Submenu flag (0x140D3A10C): 1=submenu/mode active (Move, Abilities, targeting), 0=top-level menu.
+
+**Known issues:** Settlement/shop not reliably detected.
 
 ## 13. Attack Sequence
 ```
@@ -144,6 +152,21 @@ TitleScreen = location(0x14077D208)==255
 | Valid move tiles | scan_move or BFS from map JSON |
 | Total units | Existence slots at 0x14077CA30 |
 
+## 15. IC Remaster Roster Job IDs
+The IC remaster uses different job IDs than PSX in the roster (+0x02). Verified values:
+| ID | Job | ID | Job |
+|----|-----|----|-----|
+| 74 | Squire | 82 | Summoner* |
+| 75 | Chemist* | 83 | Thief* |
+| 76 | White Mage* | 84 | Orator* |
+| 77 | Archer | 85 | Mystic* |
+| 78 | Monk | 86 | Geomancer* |
+| 79 | Knight | 87 | Dragoon* |
+| 80 | Black Mage* | 88 | Samurai* |
+| 81 | Time Mage* | 89 | Ninja |
+*= estimated, not yet verified in-game
+
 ## Still Unmapped
-- Game over detection, facing direction, current statuses, effective Move/Jump stats
+- Facing direction, effective Move/Jump stats (UI buffer shows base, not equipment-modified)
+- IC remaster roster job IDs for jobs between Knight(79) and Ninja(89) need verification
 - See BATTLE_STATS_PSX_REFERENCE.md for complete PSX field layout

@@ -162,6 +162,45 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.StartsWith("Battle", result);
         }
 
+        [Fact]
+        public void DetectScreen_InBattle_AbilityListBrowsing_BattleMode3_ShouldReturnBattleAbilities()
+        {
+            // Browsing ability list (e.g. Mettle abilities): battleMode=3, submenuFlag=1
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
+
+            Assert.Equal("Battle_Abilities", result);
+        }
+
+        [Fact]
+        public void DetectScreen_InBattle_AttackTargeting_BattleMode4_ShouldReturnBattleTargeting()
+        {
+            // Real targeting mode (after selecting Attack): battleMode=4, submenuFlag=1, moveMode=255
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 4, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
+
+            Assert.Equal("Battle_Attacking", result);
+        }
+
+        [Fact]
+        public void DetectScreen_InBattle_MoveMode_BattleMode2_ShouldReturnBattleMoving()
+        {
+            // Move tile selection: battleMode=2, moveMode=255
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 2, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
+
+            Assert.Equal("Battle_Moving", result);
+        }
+
         [Theory]
         [InlineData("Attack", "Battle_Attack")]
         [InlineData("Mettle", "Battle_Mettle")]
@@ -172,6 +211,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [InlineData("Time Magicks", "Battle_TimeMagicks")]
         [InlineData("Steal", "Battle_Steal")]
         [InlineData("Fundaments", "Battle_Fundaments")]
+        [InlineData("Throw", "Battle_Throw")]
         public void DetectScreen_AbilitySubmenuSelected_ShouldReturnSpecificScreen(
             string selectedAbility, string expectedScreen)
         {
@@ -181,6 +221,20 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var result = ScreenDetectionLogic.GetAbilityScreenName(selectedAbility);
 
             Assert.Equal(expectedScreen, result);
+        }
+
+        [Fact]
+        public void DetectScreen_BattleMode4_ShouldReturnBattleAttacking()
+        {
+            // Attack targeting mode should be called Battle_Attacking (not Battle_Attacking)
+            // to match Battle_Moving naming convention
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 4, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
+
+            Assert.Equal("Battle_Attacking", result);
         }
 
         [Fact]
@@ -198,13 +252,14 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void DetectScreen_BattleTargeting_ShouldReturnBattleTargeting()
         {
+            // Targeting mode is battleMode=4 (not 2, which is Move mode)
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
-                battleMode: 2, moveMode: 255, paused: 0, gameOverFlag: 0,
-                battleTeam: 0, battleActed: 1, battleMoved: 0,
-                encA: 0, encB: 0, isPartySubScreen: false);
+                battleMode: 4, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
 
-            Assert.Equal("Battle_Targeting", result);
+            Assert.Equal("Battle_Attacking", result);
         }
 
         [Fact]

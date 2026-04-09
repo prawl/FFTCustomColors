@@ -254,12 +254,12 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("battleUnitHp")]
         public int BattleUnitHp { get; set; }
 
-        /// <summary>Cursor tile X during Battle_Moving/Battle_Targeting.</summary>
+        /// <summary>Cursor tile X during Battle_Moving/Battle_Attacking.</summary>
         [JsonPropertyName("cursorX")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int CursorX { get; set; } = -1;
 
-        /// <summary>Cursor tile Y during Battle_Moving/Battle_Targeting.</summary>
+        /// <summary>Cursor tile Y during Battle_Moving/Battle_Attacking.</summary>
         [JsonPropertyName("cursorY")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int CursorY { get; set; } = -1;

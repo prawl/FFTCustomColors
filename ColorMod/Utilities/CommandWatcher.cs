@@ -33,6 +33,8 @@ namespace FFTColorCustomizer.Utilities
         private readonly BattleTurnTracker _turnTracker = new();
         private readonly BattleMenuTracker _battleMenuTracker = new();
         private HashSet<int>? _cachedLearnedAbilityIds;
+        private string? _cachedPrimarySkillset;
+        private string? _cachedSecondarySkillset;
 
         /// <summary>
         /// When true, game actions must go through validPaths. Raw key presses and
@@ -665,6 +667,9 @@ namespace FFTColorCustomizer.Utilities
                     case "battle_wait":
                         _turnTracker.ResetForNewTurn(); // battle_wait skips intermediate phases
                         _battleMenuTracker.OnNewTurn();
+                        _cachedPrimarySkillset = null;
+                        _cachedSecondarySkillset = null;
+                        _cachedLearnedAbilityNames = null;
                         return ExecuteNavActionWithAutoScan(command);
 
                     case "battle_flee":
@@ -1400,14 +1405,62 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         private void CacheLearnedAbilities(GameBridge.BattleState? battle)
         {
-            if (battle?.Units == null) return;
-            // Active unit has IsActive=true
-            var active = battle.Units.FirstOrDefault(u => u.IsActive);
-            if (active?.Abilities != null && active.Abilities.Count > 0)
+            if (battle == null) return;
+
+            // Cache abilities and skillsets from the active unit in the Units list
+            // (populated by NavigationActions with roster-sourced job/brave/faith)
+            var activeUnit = battle.Units?.FirstOrDefault(u => u.IsActive);
+            if (activeUnit == null) return;
+
+            if (activeUnit.Abilities != null && activeUnit.Abilities.Count > 0)
             {
                 _cachedLearnedAbilityNames = new HashSet<string>(
-                    active.Abilities.Select(a => a.Name));
+                    activeUnit.Abilities.Select(a => a.Name));
             }
+
+            // Primary skillset from roster-sourced job name
+            if (activeUnit.JobName != null)
+                _cachedPrimarySkillset = GetPrimarySkillsetByJobName(activeUnit.JobName);
+
+            // Secondary skillset — read from roster via level+brave+faith match
+            // Use BattleTracker's ActiveUnit for brave/faith (read from roster reliably)
+            var au = battle.ActiveUnit;
+            if (au != null && au.Brave > 0 && au.Faith > 0)
+                CacheSecondaryFromRoster(au.Level, au.Brave, au.Faith);
+        }
+
+        private void CacheSecondaryFromRoster(int level, int brave, int faith)
+        {
+            const long AddrRosterBase = 0x1411A18D0;
+            const int RosterStride = 0x258;
+            const int RosterMaxSlots = 20;
+
+            if (Explorer == null) return;
+
+            try
+            {
+                var reads = new (nint, int)[RosterMaxSlots * 4];
+                for (int s = 0; s < RosterMaxSlots; s++)
+                {
+                    long addr = AddrRosterBase + s * RosterStride;
+                    reads[s * 4] = ((nint)(addr + 0x1D), 1); // level
+                    reads[s * 4 + 1] = ((nint)(addr + 0x1E), 1); // brave
+                    reads[s * 4 + 2] = ((nint)(addr + 0x1F), 1); // faith
+                    reads[s * 4 + 3] = ((nint)(addr + 0x07), 1); // secondary index
+                }
+                var vals = Explorer.ReadMultiple(reads);
+
+                for (int s = 0; s < RosterMaxSlots; s++)
+                {
+                    if ((int)vals[s * 4] == level && (int)vals[s * 4 + 1] == brave && (int)vals[s * 4 + 2] == faith)
+                    {
+                        int rSecondary = (int)vals[s * 4 + 3];
+                        _cachedSecondarySkillset = rSecondary > 0 ? GetSkillsetName(rSecondary) : null;
+                        break;
+                    }
+                }
+            }
+            catch { /* best effort */ }
         }
 
         private HashSet<string>? _cachedLearnedAbilityNames;
@@ -1446,90 +1499,47 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         private string[] GetAbilitiesSubmenuItems()
         {
-            const long AddrRosterBase = 0x1411A18D0;
-            const int RosterStride = 0x258;
-
-            // Default if we can't read memory
             var items = new List<string> { "Attack" };
 
-            if (Explorer != null)
-            {
-                try
-                {
-                    // Find active unit's roster slot by matching the condensed struct's nameId
-                    var nameIdRead = Explorer.ReadAbsolute((nint)0x14077D2A4, 2);
-                    if (!nameIdRead.HasValue) return items.ToArray();
-                    var nameId = (int)nameIdRead.Value.value;
-
-                    for (int i = 0; i < 55; i++)
-                    {
-                        var slotRead = Explorer.ReadAbsolute((nint)(AddrRosterBase + i * RosterStride + 0x230), 2);
-                        if (!slotRead.HasValue) continue;
-                        if ((int)slotRead.Value.value == nameId)
-                        {
-                            // Primary skillset: derived from job byte at +0x02
-                            var jobRead = Explorer.ReadAbsolute((nint)(AddrRosterBase + i * RosterStride + 0x02), 1);
-                            if (jobRead.HasValue)
-                            {
-                                var primaryName = GetPrimarySkillsetName((int)jobRead.Value.value);
-                                if (primaryName != null)
-                                    items.Add(primaryName);
-                            }
-
-                            // Secondary skillset: index at +0x07 (0 = none equipped)
-                            var secRead = Explorer.ReadAbsolute((nint)(AddrRosterBase + i * RosterStride + 0x07), 1);
-                            if (secRead.HasValue)
-                            {
-                                var secondaryIdx = (int)secRead.Value.value;
-                                if (secondaryIdx > 0)
-                                {
-                                    var secondaryName = GetSkillsetName(secondaryIdx);
-                                    if (secondaryName != null)
-                                        items.Add(secondaryName);
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-                catch { /* fall back to Attack only */ }
-            }
+            if (_cachedPrimarySkillset != null)
+                items.Add(_cachedPrimarySkillset);
+            if (_cachedSecondarySkillset != null)
+                items.Add(_cachedSecondarySkillset);
 
             return items.ToArray();
         }
 
         /// <summary>
-        /// Maps IC remaster job ID to the job's primary skillset name.
+        /// Maps job name (from scan results) to the job's primary skillset name.
         /// </summary>
-        private static string? GetPrimarySkillsetName(int jobId)
+        private static string? GetPrimarySkillsetByJobName(string jobName)
         {
-            // Ramza's unique jobs (IC remaster IDs vary by chapter)
-            // Ramza job IDs: 0x03=Ch4, 0xA0=Ch1, etc. — all use Mettle
-            if (jobId == 3 || jobId == 160 || jobId == 161 || jobId == 162)
-                return "Mettle";
-
-            // Standard generic job IDs (IC remaster)
-            return jobId switch
+            return jobName switch
             {
-                76 => "Fundaments",   // Squire
-                77 => "Items",        // Chemist
-                78 => "Arts of War",  // Knight
-                79 => "Aim",          // Archer
-                80 => "Martial Arts", // Monk
-                81 => "White Magicks",// White Mage
-                82 => "Black Magicks",// Black Mage
-                83 => "Time Magicks", // Time Mage
-                84 => "Mystic Arts",  // Mystic
-                85 => "Summon",       // Summoner
-                86 => "Steal",        // Thief
-                87 => "Speechcraft",  // Orator
-                88 => "Geomancy",     // Geomancer
-                89 => "Jump",         // Dragoon
-                90 => "Iaido",        // Samurai
-                91 => "Throw",        // Ninja
-                92 => "Arithmeticks", // Arithmetician
-                93 => "Bardsong",     // Bard
-                94 => "Dance",        // Dancer
+                "Squire" => "Fundaments",
+                "Chemist" => "Items",
+                "Knight" => "Arts of War",
+                "Archer" => "Aim",
+                "Monk" => "Martial Arts",
+                "White Mage" => "White Magicks",
+                "Black Mage" => "Black Magicks",
+                "Time Mage" => "Time Magicks",
+                "Mystic" => "Mystic Arts",
+                "Summoner" => "Summon",
+                "Thief" => "Steal",
+                "Orator" => "Speechcraft",
+                "Geomancer" => "Geomancy",
+                "Dragoon" => "Jump",
+                "Samurai" => "Iaido",
+                "Ninja" => "Throw",
+                "Arithmetician" => "Arithmeticks",
+                "Bard" => "Bardsong",
+                "Dancer" => "Dance",
+                "Dark Knight" => "Darkness",
+                "Onion Knight" => null, // No primary action ability
+                // Ramza/story character jobs — the scan reports these as generic job names
+                // but the actual primary is their unique skillset
+                "Mettle" => "Mettle",
                 _ => null
             };
         }
@@ -2001,7 +2011,7 @@ namespace FFTColorCustomizer.Utilities
                 int gameOverFlag = submenuFlag; // same address — game over uses submenuFlag=1 + paused=1 + battleMode=0
                 int eventId = (int)v[19];
                 bool inBattle = (slot0 == 255 && slot9 == 0xFFFFFFFF)
-                    || (slot9 == 0xFFFFFFFF && (battleMode == 2 || battleMode == 3));
+                    || (slot9 == 0xFFFFFFFF && (battleMode == 2 || battleMode == 3 || battleMode == 4));
 
                 screen.Name = GameBridge.ScreenDetectionLogic.Detect(
                     party, ui, rawLocation, slot0, slot9,
@@ -2071,7 +2081,7 @@ namespace FFTColorCustomizer.Utilities
                 }
 
                 // Populate cursor tile and available tiles for battle sub-states
-                if (screen.Name == "Battle_Moving" || screen.Name == "Battle_Targeting")
+                if (screen.Name == "Battle_Moving" || screen.Name == "Battle_Attacking")
                     PopulateBattleTileData(screen);
 
                 // Sync state machine with memory-detected top-level screens.

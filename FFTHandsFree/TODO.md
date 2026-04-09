@@ -66,7 +66,7 @@ Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `bat
 Claude sees NameId numbers and broken JobIds. A human player sees names and job classes at a glance.
 
 - [x] **Unit names** — Story characters identified via roster nameId lookup (match by level+origBrave+origFaith from static battle array at 0x140893E0C). UnitNameLookup maps nameIds to names (Ramza, Agrias, Orlandeau, etc.). Generic units show null name.
-- [ ] **Fix job name mapping** — Current scan reads IC remaster internal IDs (76-89) from UI buffer, but `GetJobName()` expects PSX IDs (0x01-0x24). Need either a remaster ID mapping or a different memory address.
+- [x] **Fix job name mapping** — Job now read from roster (+0x02) via level+brave+faith matching instead of stale UI buffer. IC remaster roster job IDs added to CharacterData.RosterJobNameById (74=Squire through 89=Ninja verified, others estimated). Also fixed Brave/Faith reading from roster instead of UI buffer for active unit.
 - [ ] **Zodiac sign per unit** — Read from roster or battle struct. Needed to assess damage multipliers (e.g. Scorpio vs Pisces = Good compatibility = +25% damage). See Wiki/ZodiacAndElements.md.
 
 ### 1b. Unit State — Know WHAT each unit can do
@@ -239,7 +239,7 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 - [ ] Detect failed attack (still in targeting mode) — cancel and re-evaluate
 - [ ] Handle unexpected screen transitions during turn execution
 - [ ] **Counter attack KO** — If the active unit is KO'd by a reaction ability (Counter Tackle, etc.) after attacking, battle_wait fails because the game skips to the next unit's turn without going through the normal Wait flow. Need to detect "active unit died" and recover gracefully.
-- [x] **Auto-Wait after Move+Act** — Fixed. BattleWaitLogic detects Battle_Targeting/Battle_Moving states (auto-facing after Move+Act) and skips menu navigation, going straight to facing confirmation. Tested in-game: Move→Attack→Wait now works seamlessly.
+- [x] **Auto-Wait after Move+Act** — Fixed. BattleWaitLogic detects Battle_Attacking/Battle_Moving states (auto-facing after Move+Act) and skips menu navigation, going straight to facing confirmation. Tested in-game: Move→Attack→Wait now works seamlessly.
 - [ ] **Dead units block movement** — KO'd units still occupy their tile. Scan shows them with HP=0 and [Dead] status but BFS/movement doesn't account for them as obstacles. Attempted move to a dead unit's tile fails. Need to treat HP=0 units as impassable in pathfinding.
 - [ ] **Friendly units block movement** — Can't move onto a tile occupied by an ally. Claude needs to check all friendly unit positions (not just enemies) before choosing a move target. Currently only enemy positions are considered as obstacles in BFS.
 
@@ -273,7 +273,7 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 ### Done
 - [x] TitleScreen, WorldMap, TravelList, PartyMenu, CharacterStatus
 - [x] EquipmentScreen, JobScreen, JobActionMenu, JobChangeConfirmation
-- [x] EncounterDialog, Battle_MyTurn, Battle_Moving, Battle_Targeting, Battle_Acting, Battle_Paused
+- [x] EncounterDialog, Battle_MyTurn, Battle_Moving, Battle_Attacking, Battle_Acting, Battle_Paused
 
 ### Remaining
 - [ ] Settlement menu, Outfitter, Tavern, Warriors' Guild, Poachers' Den

@@ -549,7 +549,7 @@ namespace FFTColorCustomizer.GameBridge
 
             // Verify we're in targeting mode
             screen = _detectScreen();
-            if (screen == null || screen.Name != "Battle_Targeting")
+            if (screen == null || screen.Name != "Battle_Attacking")
             {
                 response.Status = "failed";
                 response.Error = $"Failed to enter targeting mode (current: {screen?.Name ?? "null"})";
@@ -1007,10 +1007,10 @@ namespace FFTColorCustomizer.GameBridge
         private CommandResponse ConfirmAttack(CommandResponse response)
         {
             var screen = _detectScreen();
-            if (screen == null || screen.Name != "Battle_Targeting")
+            if (screen == null || screen.Name != "Battle_Attacking")
             {
                 response.Status = "failed";
-                response.Error = $"Not on Battle_Targeting screen (current: {screen?.Name ?? "null"})";
+                response.Error = $"Not on Battle_Attacking screen (current: {screen?.Name ?? "null"})";
                 return response;
             }
 
@@ -2298,6 +2298,7 @@ namespace FFTColorCustomizer.GameBridge
             public int Job;
             public int Brave, Faith;
             public int Speed;
+            public int SecondaryAbility; // roster +0x07 secondary skillset index
             public byte[] StatusBytes = new byte[5]; // 5-byte status bitfield
             public List<ActionAbilityInfo> LearnedAbilities = new(); // from condensed struct FFFF list
         }
@@ -2376,25 +2377,25 @@ namespace FFTColorCustomizer.GameBridge
                 var pos0 = ReadGridPos();
                 if (pos0.x >= 0 && pos0.y >= 0)
                 {
+                    // Read active unit data from condensed struct (reliable) and UI buffer (Move/Jump only).
+                    // Job/Brave/Faith are NOT read from UI buffer — it's stale after C+Up cycling.
+                    // They'll be populated from roster matching below.
                     var reads0 = _explorer.ReadMultiple(new (nint, int)[]
                     {
-                        ((nint)(AddrCondensedBase + 0x00), 2),
-                        ((nint)(AddrCondensedBase + 0x02), 2),
-                        ((nint)(AddrCondensedBase + 0x04), 2),
+                        ((nint)(AddrCondensedBase + 0x00), 2), // 0: level
+                        ((nint)(AddrCondensedBase + 0x02), 2), // 1: team
+                        ((nint)(AddrCondensedBase + 0x04), 2), // 2: nameId
                         ((nint)(AddrCondensedBase + 0x06), 1), // 3: Speed (base)
-                        ((nint)(AddrCondensedBase + 0x08), 2),
-                        ((nint)(AddrCondensedBase + 0x0A), 2),
-                        ((nint)(AddrCondensedBase + 0x0C), 2),
-                        ((nint)(AddrCondensedBase + 0x10), 2),
-                        ((nint)(AddrCondensedBase + 0x12), 2),
-                        ((nint)(AddrCondensedBase + 0x16), 2),
-                        ((nint)(AddrCondensedBase + 0x18), 2),
-                        ((nint)(AddrCondensedBase + 0x1A), 2),
-                        ((nint)(AddrUIBuffer + 0x24), 2),
-                        ((nint)(AddrUIBuffer + 0x26), 2),
-                        ((nint)(AddrUIBuffer + 0x2A), 2),
-                        ((nint)(AddrUIBuffer + 0x2C), 2),
-                        ((nint)(AddrUIBuffer + 0x2E), 2),
+                        ((nint)(AddrCondensedBase + 0x08), 2), // 4: exp
+                        ((nint)(AddrCondensedBase + 0x0A), 2), // 5: CT
+                        ((nint)(AddrCondensedBase + 0x0C), 2), // 6: HP
+                        ((nint)(AddrCondensedBase + 0x10), 2), // 7: maxHP
+                        ((nint)(AddrCondensedBase + 0x12), 2), // 8: MP
+                        ((nint)(AddrCondensedBase + 0x16), 2), // 9: maxMP
+                        ((nint)(AddrCondensedBase + 0x18), 2), // 10: PA
+                        ((nint)(AddrCondensedBase + 0x1A), 2), // 11: MA
+                        ((nint)(AddrUIBuffer + 0x24), 2),      // 12: Move (UI buffer — only reliable before C+Up)
+                        ((nint)(AddrUIBuffer + 0x26), 2),      // 13: Jump
                     });
                     var u0 = new ScannedUnit
                     {
@@ -2404,8 +2405,8 @@ namespace FFTColorCustomizer.GameBridge
                         Exp = (int)reads0[4], CT = (int)reads0[5], Hp = (int)reads0[6],
                         MaxHp = (int)reads0[7], Mp = (int)reads0[8], MaxMp = (int)reads0[9],
                         PA = (int)reads0[10], MA = (int)reads0[11], Move = (int)reads0[12],
-                        Jump = (int)reads0[13], Job = (int)reads0[14], Brave = (int)reads0[15],
-                        Faith = (int)reads0[16],
+                        Jump = (int)reads0[13],
+                        // Job, Brave, Faith populated from roster matching below
                     };
                     // Read learned abilities for active unit only (condensed struct list doesn't update during C+Up)
                     var abilityBytes = _explorer.Scanner.ReadBytes((nint)(AddrCondensedBase + 0x28), 64);
@@ -2573,8 +2574,8 @@ namespace FFTColorCustomizer.GameBridge
                 ModLogger.Log($"[CollectPositions] Status/identity read failed: {ex.Message}");
             }
 
-            // Resolve unit names from roster for player units (team=0)
-            // Match by level + brave + faith to find the roster slot, then read the real nameId
+            // Resolve unit identity from roster for player units (team=0)
+            // Match by level + brave + faith to find the roster slot, then read nameId, job, secondary
             // (Can't match by HP — roster stores formation HP which differs from battle HP with equipment)
             const long AddrRosterBase = 0x1411A18D0;
             const int RosterStride = 0x258;
@@ -2583,39 +2584,66 @@ namespace FFTColorCustomizer.GameBridge
             const int RosterOffLevel = 0x1D;
             const int RosterOffBrave = 0x1E;
             const int RosterOffFaith = 0x1F;
+            const int RosterOffJob = 0x02;
+            const int RosterOffSecondary = 0x07;
 
             try
             {
                 var playerUnits = units.Where(u => u.Team == 0).ToList();
                 if (playerUnits.Count > 0)
                 {
-                    // Batch-read roster nameId + level + brave + faith for all slots
-                    var rosterReads = new (nint, int)[RosterMaxSlots * 4];
+                    // Batch-read roster fields for all slots: nameId, level, brave, faith, job, secondary
+                    const int FieldsPerSlot = 6;
+                    var rosterReads = new (nint, int)[RosterMaxSlots * FieldsPerSlot];
                     for (int s = 0; s < RosterMaxSlots; s++)
                     {
                         long slotAddr = AddrRosterBase + s * RosterStride;
-                        rosterReads[s * 4] = ((nint)(slotAddr + RosterOffNameId), 2);
-                        rosterReads[s * 4 + 1] = ((nint)(slotAddr + RosterOffLevel), 1);
-                        rosterReads[s * 4 + 2] = ((nint)(slotAddr + RosterOffBrave), 1);
-                        rosterReads[s * 4 + 3] = ((nint)(slotAddr + RosterOffFaith), 1);
+                        rosterReads[s * FieldsPerSlot + 0] = ((nint)(slotAddr + RosterOffNameId), 2);
+                        rosterReads[s * FieldsPerSlot + 1] = ((nint)(slotAddr + RosterOffLevel), 1);
+                        rosterReads[s * FieldsPerSlot + 2] = ((nint)(slotAddr + RosterOffBrave), 1);
+                        rosterReads[s * FieldsPerSlot + 3] = ((nint)(slotAddr + RosterOffFaith), 1);
+                        rosterReads[s * FieldsPerSlot + 4] = ((nint)(slotAddr + RosterOffJob), 1);
+                        rosterReads[s * FieldsPerSlot + 5] = ((nint)(slotAddr + RosterOffSecondary), 1);
                     }
                     var rosterValues = _explorer.ReadMultiple(rosterReads);
+
+                    // Track which roster slots have been claimed to avoid double-matching
+                    var claimedSlots = new HashSet<int>();
 
                     foreach (var unit in playerUnits)
                     {
                         for (int s = 0; s < RosterMaxSlots; s++)
                         {
-                            int rNameId = (int)rosterValues[s * 4];
-                            int rLevel = (int)rosterValues[s * 4 + 1];
-                            int rBrave = (int)rosterValues[s * 4 + 2];
-                            int rFaith = (int)rosterValues[s * 4 + 3];
+                            if (claimedSlots.Contains(s)) continue;
 
-                            if (rNameId > 0 && rLevel == unit.Level && rBrave == unit.Brave && rFaith == unit.Faith)
+                            int rNameId = (int)rosterValues[s * FieldsPerSlot + 0];
+                            int rLevel = (int)rosterValues[s * FieldsPerSlot + 1];
+                            int rBrave = (int)rosterValues[s * FieldsPerSlot + 2];
+                            int rFaith = (int)rosterValues[s * FieldsPerSlot + 3];
+                            int rJob = (int)rosterValues[s * FieldsPerSlot + 4];
+                            int rSecondary = (int)rosterValues[s * FieldsPerSlot + 5];
+
+                            if (rNameId <= 0 || rLevel != unit.Level) continue;
+
+                            // For units that already have Brave/Faith (from UI buffer during C+Up),
+                            // match on brave+faith. For the active unit (Brave==0, not yet populated),
+                            // match on level only and populate from roster.
+                            bool braveMatch = unit.Brave == 0 || rBrave == unit.Brave;
+                            bool faithMatch = unit.Faith == 0 || rFaith == unit.Faith;
+
+                            if (braveMatch && faithMatch)
                             {
+                                claimedSlots.Add(s);
                                 unit.RosterNameId = rNameId;
                                 unit.Name = UnitNameLookup.GetName(rNameId);
+                                unit.Job = rJob;
+                                unit.Brave = rBrave;
+                                unit.Faith = rFaith;
+                                unit.SecondaryAbility = rSecondary;
                                 if (unit.Name != null)
-                                    ModLogger.Log($"[CollectPositions] Identified ({unit.GridX},{unit.GridY}) as {unit.Name} (rosterNameId={rNameId})");
+                                    ModLogger.Log($"[CollectPositions] Identified ({unit.GridX},{unit.GridY}) as {unit.Name} job={rJob} (rosterNameId={rNameId})");
+                                else
+                                    ModLogger.Log($"[CollectPositions] Matched ({unit.GridX},{unit.GridY}) job={rJob} bra={rBrave} fai={rFaith} (rosterNameId={rNameId})");
                                 break;
                             }
                         }

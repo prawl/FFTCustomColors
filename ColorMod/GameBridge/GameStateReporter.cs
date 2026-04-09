@@ -140,46 +140,8 @@ namespace FFTColorCustomizer.GameBridge
 
         internal static string? GetJobName(int jobId)
         {
-            return jobId switch
-            {
-                // Generic jobs (male/female pairs)
-                // Job grid Row 0: Squire, Chemist, Knight, Archer, Monk, White Mage
-                // Job grid Row 1: Black Mage, Time Mage, Summoner, Thief, Orator, Mystic, Geomancer
-                // Job grid Row 2: Dragoon, Samurai, Ninja, Arithmetician, Bard, Mime
-                0x01 or 0x02 => "Chemist",
-                0x03 or 0x04 => "Knight",
-                0x05 or 0x06 => "Archer",
-                0x07 or 0x08 => "Monk",
-                0x09 or 0x0A => "White Mage",
-                0x0B or 0x0C => "Black Mage",
-                0x0D or 0x0E => "Time Mage",
-                0x0F or 0x10 => "Summoner",
-                0x11 or 0x12 => "Thief",
-                0x13 or 0x14 => "Orator",
-                0x15 or 0x16 => "Mystic",
-                0x17 or 0x18 => "Geomancer",
-                0x19 or 0x1A => "Dragoon",
-                0x1B or 0x1C => "Samurai",
-                0x1D or 0x1E => "Ninja",
-                0x1F or 0x20 => "Arithmetician",
-                0x21 => "Bard",
-                0x22 => "Dancer",
-                0x23 or 0x24 => "Mime",
-
-                0x4A => "Squire",
-                0x4B => "Squire",
-
-                // Story character unique jobs
-                0xA0 => "Gallant Knight (Ramza Ch4)",
-                0x4C => "Holy Knight (Agrias)",
-                0x4D => "Holy Knight (Delita Ch1)",
-                0x5E => "Thunder God (Orlandeau)",
-                0x5B => "Templar (Beowulf)",
-                0x5F => "Sword Saint (Cidolfus)",
-                0xA2 => "Sky Pirate (Balthier)",
-                0xA3 => "Game Hunter (Luso)",
-                _ => null
-            };
+            // Delegate to CharacterData which handles both IC remaster roster IDs and PSX IDs
+            return CharacterData.GetJobName(jobId);
         }
 
 

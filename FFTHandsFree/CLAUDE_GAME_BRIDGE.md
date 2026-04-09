@@ -87,11 +87,12 @@ Grid index = row×5 + col. Cursor starts at Ramza (0,0).
 |--------|-------|--------|-------|
 | +0x00 | Cursor grid index | +0x08 | Current MP |
 | +0x02 | Current HP | +0x0C | Max MP |
-| +0x06 | Max HP | +0x20 | Job ID |
-| +0x1E | Cursor index (dup) | +0x22 | Brave |
-| +0x28 | Cursor index (3rd) | +0x24 | Faith |
+| +0x06 | Max HP | +0x20 | Job ID (STALE after C+Up) |
+| +0x1E | Cursor index (dup) | +0x22 | Brave (STALE after C+Up) |
+| +0x28 | Cursor index (3rd) | +0x24 | Faith (STALE after C+Up) |
 
 Read byte at 0x1407AC7CA = cursor grid index. Right +1, Down +5.
+**WARNING:** Job/Brave/Faith from UI buffer are stale after C+Up cycling. Use roster (+0x02/+0x1E/+0x1F) instead, matched by level.
 
 ### World Map State
 | Address | Field |

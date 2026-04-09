@@ -25,7 +25,7 @@ namespace FFTColorCustomizer.GameBridge
             // When browsing ability lists, slot0 can change from 255 to a non-FF value,
             // but slot9=0xFFFFFFFF + battleMode=3 confirms we're still in battle.
             bool unitSlotsPopulated = slot0 == 255 && slot9 == 0xFFFFFFFF;
-            bool battleModeActive = slot9 == 0xFFFFFFFF && (battleMode == 2 || battleMode == 3);
+            bool battleModeActive = slot9 == 0xFFFFFFFF && (battleMode == 2 || battleMode == 3 || battleMode == 4);
             bool clearlyOnWorldMap = rawValidLocation && party == 0 && battleMode == 0;
             bool inBattle = (unitSlotsPopulated || battleModeActive) && !clearlyOnWorldMap;
 
@@ -33,22 +33,23 @@ namespace FFTColorCustomizer.GameBridge
                 return "GameOver";
             if (inBattle && paused == 1)
                 return "Battle_Paused";
-            if (inBattle && (moveMode == 255 || battleMode == 2) && battleActed == 0)
+            // battleMode values: 2=move tile selection, 3=action menu/ability browsing, 4=ability targeting
+            // Attacking: battleMode=4 (selecting target tile for an ability/attack)
+            if (inBattle && battleMode == 4)
+                return "Battle_Attacking";
+            // Moving: battleMode=2 (selecting movement tile)
+            if (inBattle && battleMode == 2)
                 return "Battle_Moving";
-            if (inBattle && (moveMode == 255 || battleMode == 2) && battleActed == 1)
-                return "Battle_Targeting";
+            // Abilities submenu: submenuFlag=1 + battleMode=3 + acted/moved flags set by entering submenu
+            if (inBattle && submenuFlag == 1 && battleMode == 3 && battleTeam == 0
+                && (battleActed == 1 || battleMoved == 1))
+                return "Battle_Abilities";
             if (inBattle && battleTeam == 0 && battleActed == 0 && battleMoved == 0)
                 return "Battle_MyTurn";
             if (inBattle && battleTeam == 2 && battleActed == 0 && battleMoved == 0)
                 return "Battle_AlliesTurn";
             if (inBattle && battleTeam == 1 && battleActed == 0 && battleMoved == 0)
                 return "Battle_EnemiesTurn";
-            // Abilities submenu: submenuFlag=1 (mode active), battleMode=3 (action menu context),
-            // acted/moved flags set by entering submenu. Without submenuFlag this was misdetected
-            // as Battle_Acting.
-            if (inBattle && submenuFlag == 1 && battleMode == 3 && battleTeam == 0
-                && (battleActed == 1 || battleMoved == 1))
-                return "Battle_Abilities";
             if (inBattle && battleTeam == 0 && (battleActed == 1 || battleMoved == 1))
                 return "Battle_Acting";
             if (inBattle)

@@ -12,7 +12,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Theory]
         [InlineData("Battle_MyTurn", false)]     // Normal: at action menu, needs menu nav
         [InlineData("Battle_Acting", false)]      // Acted but not moved: still has menu
-        [InlineData("Battle_Targeting", true)]    // After Move+Act: already on facing screen
+        [InlineData("Battle_Attacking", true)]    // After Move+Act: already on facing screen
         [InlineData("Battle_Moving", true)]       // Could also be facing screen
         public void ShouldSkipMenuNavigation_DetectsCorrectly(string screenName, bool expectedSkip)
         {
@@ -26,7 +26,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Theory]
         [InlineData("Battle_MyTurn", true)]
         [InlineData("Battle_Acting", true)]
-        [InlineData("Battle_Targeting", true)]   // After Move+Act facing screen
+        [InlineData("Battle_Attacking", true)]   // After Move+Act facing screen
         [InlineData("Battle_Moving", true)]      // Could be facing screen variant
         [InlineData("WorldMap", false)]
         [InlineData("TitleScreen", false)]

@@ -36,11 +36,20 @@ You can do Move and Act in any order, or skip either. But you MUST Wait to end t
 |-------|---------|------------|
 | `Battle_MyTurn` | Your unit's turn, action menu open | Choose: move, attack, or wait |
 | `Battle_Acting` | You've partially acted (moved or used ability) | Finish your turn (attack or wait) |
-| `Battle_Moving` | Move mode, selecting a tile | Pick a tile or cancel |
-| `Battle_Targeting` | Attack targeting, selecting a target | Pick a target or cancel |
+| `Battle_Moving` | Move mode, selecting a tile (battleMode=2) | Pick a tile or cancel |
+| `Battle_Abilities` | Abilities submenu open (Attack/Mettle/Items) | Pick a skillset or cancel |
+| `Battle_Attacking` | Attack targeting, selecting a target (battleMode=4) | Pick a target or cancel |
+| `Battle_Mettle` | Mettle ability list (Focus/Rush/Shout/...) | Pick an ability or cancel |
+| `Battle_Items` | Items list (Potion/Phoenix Down/...) | Pick an item or cancel |
+| `Battle_<Skillset>` | Any other skillset ability list | Pick an ability or cancel |
 | `Battle_AlliesTurn` | NPC ally is acting | Wait — poll `screen` until `Battle_MyTurn` |
 | `Battle_EnemiesTurn` | Enemy is acting | Wait — poll `screen` until `Battle_MyTurn` |
 | `Battle_Paused` | Pause menu open | Resume, retry, or flee |
+
+The `ui=` field shows the current cursor position at each level:
+- `Battle_MyTurn ui=Abilities` — cursor on Abilities in action menu
+- `Battle_Abilities ui=Mettle` — cursor on Mettle in abilities submenu
+- `Battle_Mettle ui=Shout` — cursor on Shout in ability list
 
 ## Step-by-Step: A Full Turn
 
