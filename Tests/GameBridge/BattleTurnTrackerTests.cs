@@ -98,5 +98,67 @@ namespace FFTColorCustomizer.Tests.GameBridge
             tracker.MarkScanned();
             Assert.False(tracker.ShouldAutoScan("Battle_MyTurn"));
         }
+
+        // === Scan caching tests ===
+
+        [Fact]
+        public void CachedScan_NullBeforeFirstScan()
+        {
+            var tracker = new BattleTurnTracker();
+            Assert.Null(tracker.CachedScanResponse);
+        }
+
+        [Fact]
+        public void CachedScan_StoredAfterCacheScan()
+        {
+            var tracker = new BattleTurnTracker();
+            var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "test", Status = "completed" };
+            tracker.CacheScanResponse(response);
+
+            Assert.NotNull(tracker.CachedScanResponse);
+            Assert.Equal("test", tracker.CachedScanResponse!.Id);
+        }
+
+        [Fact]
+        public void CachedScan_ReturnedOnSecondScan()
+        {
+            var tracker = new BattleTurnTracker();
+            var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
+            tracker.CacheScanResponse(response);
+            tracker.MarkScanned();
+
+            // Second scan should return cached
+            Assert.True(tracker.HasCachedScan);
+            Assert.Equal("scan1", tracker.CachedScanResponse!.Id);
+        }
+
+        [Fact]
+        public void CachedScan_ClearedOnResetForNewTurn()
+        {
+            var tracker = new BattleTurnTracker();
+            var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
+            tracker.CacheScanResponse(response);
+            tracker.MarkScanned();
+
+            tracker.ResetForNewTurn();
+
+            Assert.Null(tracker.CachedScanResponse);
+            Assert.False(tracker.HasCachedScan);
+        }
+
+        [Fact]
+        public void CachedScan_ClearedOnTurnTransition()
+        {
+            var tracker = new BattleTurnTracker();
+            tracker.ShouldAutoScan("Battle_MyTurn");
+            var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
+            tracker.CacheScanResponse(response);
+            tracker.MarkScanned();
+
+            // Enemy turn clears cache
+            tracker.ShouldAutoScan("Battle");
+
+            Assert.Null(tracker.CachedScanResponse);
+        }
     }
 }

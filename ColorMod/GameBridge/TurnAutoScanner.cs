@@ -1,14 +1,30 @@
+using FFTColorCustomizer.Utilities;
+
 namespace FFTColorCustomizer.GameBridge
 {
     /// <summary>
     /// Tracks battle turn state to determine when auto-scanning should occur.
     /// Auto-scan triggers once per friendly turn (Battle_MyTurn), resets when
     /// the turn ends (any non-MyTurn battle state or leaving battle).
+    /// Also caches the scan response so subsequent scan_move calls within
+    /// the same turn return instantly without re-scanning.
     /// </summary>
     public class BattleTurnTracker
     {
         private bool _scannedThisTurn;
         private bool _wasMyTurn;
+
+        /// <summary>Cached scan response for this turn. Null if not yet scanned.</summary>
+        public CommandResponse? CachedScanResponse { get; private set; }
+
+        /// <summary>True if a scan response is cached for this turn.</summary>
+        public bool HasCachedScan => CachedScanResponse != null;
+
+        /// <summary>Cache a scan response for reuse within this turn.</summary>
+        public void CacheScanResponse(CommandResponse response)
+        {
+            CachedScanResponse = response;
+        }
 
         /// <summary>
         /// Returns true if an auto-scan should be triggered for the given screen state.
@@ -27,6 +43,7 @@ namespace FFTColorCustomizer.GameBridge
             {
                 _scannedThisTurn = false;
                 _wasMyTurn = false;
+                CachedScanResponse = null;
             }
 
             // Not in battle or not my turn — don't scan
@@ -59,6 +76,7 @@ namespace FFTColorCustomizer.GameBridge
         {
             _scannedThisTurn = false;
             _wasMyTurn = false;
+            CachedScanResponse = null;
         }
     }
 }

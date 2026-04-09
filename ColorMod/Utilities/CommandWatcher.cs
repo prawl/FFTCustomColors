@@ -183,6 +183,8 @@ namespace FFTColorCustomizer.Utilities
                         {
                             var scanCommand = new CommandRequest { Id = response.Id, Action = "scan_move" };
                             var scanResponse = ExecuteNavAction(scanCommand);
+                            if (scanResponse.Status == "completed")
+                                _turnTracker.CacheScanResponse(scanResponse);
                             // Merge scan results into the original response
                             response.Battle = scanResponse.Battle;
                             response.ValidPaths = scanResponse.ValidPaths;
@@ -424,8 +426,19 @@ namespace FFTColorCustomizer.Utilities
 
                     case "scan_move":
                     case "auto_move":
-                        _turnTracker.MarkScanned(); // prevent double-scan if auto-scan already ran
-                        return ExecuteNavAction(command);
+                        if (_turnTracker.HasCachedScan)
+                        {
+                            ModLogger.Log("[CommandBridge] Returning cached scan (already scanned this turn)");
+                            var cached = _turnTracker.CachedScanResponse!;
+                            cached.Id = command.Id; // update ID to match this request
+                            cached.Info = (cached.Info != null ? cached.Info + " | " : "") + "[cached]";
+                            return cached;
+                        }
+                        _turnTracker.MarkScanned();
+                        var scanResult = ExecuteNavAction(command);
+                        if (scanResult.Status == "completed")
+                            _turnTracker.CacheScanResponse(scanResult);
+                        return scanResult;
 
 
                     case "heap_snapshot":
