@@ -1439,6 +1439,8 @@ namespace FFTColorCustomizer.GameBridge
                     // memory address for unit facing direction to populate this. See TODO.md.
                     Facing = null,
                     SecondaryAbility = u.SecondaryAbility,
+                    LifeState = StatusDecoder.GetLifeState(u.StatusBytes) is var ls && ls != "alive" ? ls
+                        : (u.Hp <= 0 && u.MaxHp > 0 ? "dead" : null),
                     Statuses = StatusDecoder.Decode(u.StatusBytes) is var s && s.Count > 0 ? s : null,
                     Abilities = u.LearnedAbilities.Count > 0 ? u.LearnedAbilities.Select(a => new AbilityEntry
                     {

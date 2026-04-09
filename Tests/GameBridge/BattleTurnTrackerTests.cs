@@ -242,5 +242,21 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // New player turn should auto-scan
             Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
         }
+        [Fact]
+        public void CachedScan_ClearedWhenUnitChanges_WithoutEnemyTurn()
+        {
+            // When user plays manually (not via battle_wait), the tracker never sees
+            // Battle_EnemiesTurn. It goes Battle_MyTurn(unit1) → Battle_MyTurn(unit2).
+            // The cache must invalidate when the unit ID changes.
+            var tracker = new BattleTurnTracker();
+            tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1);
+            var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
+            tracker.CacheScanResponse(response);
+            tracker.MarkScanned();
+
+            // New unit's turn — no intermediate enemy turn
+            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", unitId: 2));
+            Assert.False(tracker.HasCachedScan);
+        }
     }
 }

@@ -16,6 +16,10 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_UP = 0x26;
         private const int VK_DOWN = 0x28;
 
+        /// <summary>True after an ability was used this turn (SyncForScreen reset from submenu).
+        /// Prevents stale memory flags from re-entering the submenu.</summary>
+        public bool HasActedThisTurn { get; private set; }
+
         // Level 2: Abilities submenu (Attack/Mettle/Items)
         private string[]? _items;
         public bool InSubmenu { get; private set; }
@@ -46,6 +50,7 @@ namespace FFTColorCustomizer.GameBridge
 
         public void EnterAbilitiesSubmenu(string[] items)
         {
+            if (HasActedThisTurn) return; // stale memory flags — already acted, can't re-enter
             _items = items;
             InSubmenu = true;
             // Don't reset CursorIndex — game remembers position within a turn
@@ -109,6 +114,24 @@ namespace FFTColorCustomizer.GameBridge
         /// Resets all submenu/ability list state so ui= shows the correct main menu cursor.
         /// Unlike OnNewTurn, this doesn't imply a different unit — just that we're back at the action menu.
         /// </summary>
+        /// <summary>
+        /// Called by SyncBattleMenuTracker after each screen detection.
+        /// Resets tracker state when screen transitions away from Abilities menus.
+        /// </summary>
+        public void SyncForScreen(string screenName)
+        {
+            if (screenName == "Battle_MyTurn" && (InSubmenu || InAbilityList))
+            {
+                HasActedThisTurn = true;
+                ReturnToMyTurn();
+            }
+            else if (screenName != "Battle_Abilities" && (InSubmenu || InAbilityList))
+            {
+                HasActedThisTurn = true;
+                ReturnToMyTurn();
+            }
+        }
+
         public void ReturnToMyTurn()
         {
             InSubmenu = false;
@@ -127,12 +150,14 @@ namespace FFTColorCustomizer.GameBridge
             AbilityCursorIndex = 0;
             SelectedItem = null;
             SelectedAbility = null;
+            HasActedThisTurn = false;
         }
 
         public void Reset()
         {
             InSubmenu = false;
             InAbilityList = false;
+            HasActedThisTurn = false;
             CursorIndex = 0;
             AbilityCursorIndex = 0;
             SelectedItem = null;

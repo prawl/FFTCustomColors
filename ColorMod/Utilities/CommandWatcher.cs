@@ -177,7 +177,7 @@ namespace FFTColorCustomizer.Utilities
                     SyncBattleMenuTracker(response.Screen);
 
                     // Auto-scan units when a new player turn starts (team 0 only)
-                    if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam))
+                    if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId))
                     {
                         try
                         {
@@ -847,7 +847,7 @@ namespace FFTColorCustomizer.Utilities
         {
             var response = ExecuteNavAction(command);
 
-            if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam))
+            if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId))
             {
                 try
                 {
@@ -1425,13 +1425,9 @@ namespace FFTColorCustomizer.Utilities
                     screen.UI = _battleMenuTracker.CurrentItem;
                 }
             }
-            else if (screen.Name == "Battle_MyTurn" && (_battleMenuTracker.InSubmenu || _battleMenuTracker.InAbilityList))
+            else if (screen.Name != null)
             {
-                _battleMenuTracker.ReturnToMyTurn();
-            }
-            else if (screen.Name != "Battle_Abilities" && _battleMenuTracker.InSubmenu)
-            {
-                _battleMenuTracker.OnKeyPressed(0x1B); // exit submenu
+                _battleMenuTracker.SyncForScreen(screen.Name);
             }
         }
 
@@ -2059,6 +2055,12 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "Cutscene")
                     screen.EventId = eventId;
 
+                // At the start of a turn (acted=0, moved=0), the cursor is always on Move.
+                // The memory at 0x1407FC620 can be stale after charge-time spells (e.g. Haste),
+                // showing menuCursor=1 (Abilities) when the game cursor is visually on Move.
+                if (screen.Name == "Battle_MyTurn" && screen.BattleActed == 0 && screen.BattleMoved == 0)
+                    screen.UI = "Move";
+
                 // Battle menu tracker: set UI from tracker if in submenu
                 // (entry/exit managed in SyncBattleMenuTracker, called after screen settles)
                 if (screen.Name == "Battle_Abilities" && _battleMenuTracker.InSubmenu)
@@ -2120,7 +2122,7 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "Battle_Moving" || screen.Name == "Battle_Attacking")
                     PopulateBattleTileData(screen);
 
-                // Populate active unit name/job during battle from cached scan
+                // Populate active unit name/job during battle
                 if (inBattle && _turnTracker.HasCachedScan)
                 {
                     var cachedBattle = _turnTracker.CachedScanResponse?.Battle;
@@ -2130,6 +2132,24 @@ namespace FFTColorCustomizer.Utilities
                         screen.ActiveUnitName = active.Name;
                         screen.ActiveUnitJob = active.JobName;
                     }
+                }
+                else if (inBattle && Explorer != null && screen.ActiveUnitJob == null)
+                {
+                    // Fallback: read jobId from UI buffer when no scan cached.
+                    // Note: condensed nameId (+0x04) is a sequential battle slot ID, NOT the
+                    // character nameId — can't be used for name lookup. Name requires roster
+                    // matching via full scan.
+                    try
+                    {
+                        var jobResult = Explorer.ReadAbsolute((nint)(0x1407AC7C0 + 0x2A), 2);
+                        if (jobResult != null)
+                        {
+                            int jobId = (int)jobResult.Value.value;
+                            screen.ActiveUnitJob = GameBridge.CharacterData.GetJobName(jobId)
+                                ?? GameBridge.GameStateReporter.GetJobName(jobId);
+                        }
+                    }
+                    catch { /* memory read failed, leave null */ }
                 }
 
                 // Sync state machine with memory-detected top-level screens.

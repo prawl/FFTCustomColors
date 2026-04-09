@@ -76,5 +76,51 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains("Protect", statuses);
             Assert.Contains("Shell", statuses);
         }
+        [Fact]
+        public void GetLifeState_NoStatuses_ReturnsAlive()
+        {
+            Assert.Equal("alive", StatusDecoder.GetLifeState(new byte[] { 0, 0, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void GetLifeState_Dead_ReturnsDead()
+        {
+            // Dead = byte 0, mask 0x20. Unit can be raised.
+            Assert.Equal("dead", StatusDecoder.GetLifeState(new byte[] { 0x20, 0, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void GetLifeState_Crystal_ReturnsCrystal()
+        {
+            // Crystal = byte 0, mask 0x40. Permanently gone.
+            Assert.Equal("crystal", StatusDecoder.GetLifeState(new byte[] { 0x40, 0, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void GetLifeState_Treasure_ReturnsTreasure()
+        {
+            // Treasure = byte 1, mask 0x01. Permanently gone.
+            Assert.Equal("treasure", StatusDecoder.GetLifeState(new byte[] { 0, 0x01, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void GetLifeState_DeadAndCrystal_ReturnsCrystal()
+        {
+            // Crystal takes priority over Dead (crystal implies dead already)
+            Assert.Equal("crystal", StatusDecoder.GetLifeState(new byte[] { 0x60, 0, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void GetLifeState_DeadWithOtherStatuses_ReturnsDead()
+        {
+            // Dead + Poison + Haste — still dead, other statuses don't matter
+            Assert.Equal("dead", StatusDecoder.GetLifeState(new byte[] { 0x20, 0, 0, 0x88, 0 }));
+        }
+
+        [Fact]
+        public void GetLifeState_NullBytes_ReturnsAlive()
+        {
+            Assert.Equal("alive", StatusDecoder.GetLifeState(null!));
+        }
     }
 }

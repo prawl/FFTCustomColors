@@ -90,6 +90,7 @@ Claude can only use "Attack" (the basic physical hit). A human player opens the 
 - [ ] **battle_ability should validate target range** — Currently navigates to any tile and confirms, even if the tile is out of range for the ability (e.g. Aim +1 can't target adjacent tiles — archers have a minimum range). Should check ability range before confirming, or detect when the game rejects the target.
 - [ ] **battle_ability spell targeting: Unit/Tile dialog** — Spells have an extra confirmation dialog: "Choose to target either the unit or the current tile" with Unit/Tile/Cancel options. Currently battle_ability doesn't handle this. Should press Enter (selects "Unit" default) for the extra confirmation. "Tile" is for edge cases like pre-casting on a tile a friendly will move to.
 - [ ] **Show active unit name/job in screen state** — Screen output should show whose turn it is (e.g. "Ramza (Gallant Knight)" or "Lloyd (Archer)") so Claude doesn't have to scan to know.
+- [ ] **Active unit job fallback shows wrong job** — UI buffer job ID fallback (used before scan) shows "Chemist" when the active unit is a Squire. The UI buffer at 0x1407AC7EA may not reflect the active unit's job reliably — may be stale from a previous hover or cursor position. Need a more reliable source for pre-scan job display.
 - [ ] **Detect charging/casting units** — Units charging a spell (e.g. Haste) show in the Combat Timeline with the spell name. Need to read charging state, which spell, and remaining CT from memory. Important for: not issuing commands to charging allies, knowing when spells will fire, and interrupting enemy casters.
 - [ ] **Block scan_move during animations** — scan_move should only run during Battle_MyTurn. During enemy turns, ally turns, spell animations, or any non-MyTurn battle state, return an error telling Claude to wait. Currently returns stale cached data or runs C+Up cycling during animations which can break things.
 - [ ] **Fix Ramza's job name** — Roster job=3 maps to "Heretic" but the game shows "Gallant Knight". Need correct IC remaster name for Ramza's Ch4 job.
@@ -233,6 +234,7 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 - [x] Fixed rotation table (zero calibration)
 
 ### Remaining
+- [x] **Keep scan_units as diagnostic fallback** — scan_units bypasses the scan cache and always does a fresh C+Up cycle. Useful when scan_move returns stale cached data.
 - [ ] **Auto-scan on Battle_MyTurn** — Include unit scan results in response automatically
 - [ ] **Background position tracking** — Poll positions during enemy turns so they're fresh when it's our turn
 - [ ] **Pre-compute actionable data** — Distances, valid adjacent tiles, attack range in responses

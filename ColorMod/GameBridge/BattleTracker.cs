@@ -342,6 +342,7 @@ namespace FFTColorCustomizer.GameBridge
                     MaxMp = u.MaxMp,
                     IsActive = kvp.Key == activeKey,
                     PositionKnown = u.X >= 0,
+                    LifeState = u.Hp <= 0 && u.MaxHp > 0 ? "dead" : null,
                 };
 
                 // Calculate distance and cursor-key direction from active unit.
@@ -898,6 +899,11 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("facing")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Facing { get; set; }
+
+        /// <summary>Life state: "alive", "dead" (can be raised), "crystal" or "treasure" (permanently gone).</summary>
+        [JsonPropertyName("lifeState")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? LifeState { get; set; }
 
         /// <summary>Active status effects on this unit (e.g. "Poison", "Haste", "Protect").</summary>
         [JsonPropertyName("statuses")]

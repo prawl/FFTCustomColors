@@ -415,5 +415,81 @@ namespace FFTColorCustomizer.Tests.GameBridge
             tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
             Assert.Equal("Attack", tracker.CurrentItem); // still Attack, Down was lost
         }
+
+        [Fact]
+        public void SyncForScreen_BattleActing_WhileInAbilityList_ShouldFullyReset()
+        {
+            // After battle_ability executes (e.g. Shout), screen becomes Battle_Acting.
+            // SyncForScreen should fully reset the tracker — not just one Escape level.
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle", "Items" });
+            tracker.OnKeyPressed(VK_DOWN); // Mettle
+            tracker.OnKeyPressed(VK_RETURN); // select Mettle
+            tracker.EnterAbilityList(new[] { "Focus", "Rush", "Shout" });
+            tracker.OnKeyPressed(VK_DOWN); // Rush
+            tracker.OnKeyPressed(VK_RETURN); // select Rush
+
+            // Screen transitions to Battle_Acting after ability use
+            tracker.SyncForScreen("Battle_Acting");
+
+            Assert.False(tracker.InSubmenu);
+            Assert.False(tracker.InAbilityList);
+            Assert.Null(tracker.SelectedItem);
+            Assert.Null(tracker.SelectedAbility);
+        }
+
+        [Fact]
+        public void SyncForScreen_BattleAbilities_DoesNotReset()
+        {
+            // When screen IS Battle_Abilities, the tracker should stay in submenu state.
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.OnKeyPressed(VK_DOWN); // Mettle
+
+            tracker.SyncForScreen("Battle_Abilities");
+
+            Assert.True(tracker.InSubmenu);
+            Assert.Equal("Mettle", tracker.CurrentItem);
+        }
+
+        [Fact]
+        public void HasActedThisTurn_PreventsReenteringSubmenu()
+        {
+            // After using an ability, SyncForScreen resets the tracker and sets HasActedThisTurn.
+            // If stale memory flags cause Battle_Abilities to be detected again,
+            // the tracker should refuse to re-enter the submenu.
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle", "Time Magicks" });
+            tracker.OnKeyPressed(VK_DOWN); // Mettle
+            tracker.OnKeyPressed(VK_DOWN); // Time Magicks
+            tracker.OnKeyPressed(VK_RETURN); // select Time Magicks
+            tracker.EnterAbilityList(new[] { "Haste", "Slow" });
+            tracker.OnKeyPressed(VK_RETURN); // select Haste
+
+            // Ability executes, screen transitions away from Abilities
+            tracker.SyncForScreen("Battle_Attacking");
+
+            // Tracker should be reset AND mark that we acted
+            Assert.False(tracker.InSubmenu);
+            Assert.True(tracker.HasActedThisTurn);
+
+            // Stale memory flags cause Battle_Abilities to be detected again
+            // Tracker should refuse to re-enter
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle", "Time Magicks" });
+            Assert.False(tracker.InSubmenu); // refused!
+        }
+
+        [Fact]
+        public void HasActedThisTurn_ClearedOnNewTurn()
+        {
+            var tracker = new BattleMenuTracker();
+            tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
+            tracker.OnKeyPressed(VK_RETURN);
+            tracker.SyncForScreen("Battle_Acting");
+            Assert.True(tracker.HasActedThisTurn);
+
+            tracker.OnNewTurn();
+            Assert.False(tracker.HasActedThisTurn);
+        }
     }
 }

@@ -49,12 +49,13 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void DetectScreen_InBattle_AbilitiesSubmenu_ShouldReturnBattleAbilities()
         {
-            // Entering Abilities submenu sets acted=1, moved=1, submenuFlag=1, menuCursor stays at 1
+            // Entering Abilities submenu sets acted=1, moved=1, submenuFlag=1, menuCursor=1 (Abilities)
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 1, battleMoved: 1,
-                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
+                menuCursor: 1);
 
             Assert.Equal("Battle_Abilities", result);
         }
@@ -67,7 +68,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 1, battleMoved: 0,
-                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
+                menuCursor: 1);
 
             Assert.Equal("Battle_Abilities", result);
         }
@@ -165,12 +167,13 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void DetectScreen_InBattle_AbilityListBrowsing_BattleMode3_ShouldReturnBattleAbilities()
         {
-            // Browsing ability list (e.g. Mettle abilities): battleMode=3, submenuFlag=1
+            // Browsing ability list (e.g. Mettle abilities): battleMode=3, submenuFlag=1, menuCursor=1
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 1, battleMoved: 1,
-                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
+                menuCursor: 1);
 
             Assert.Equal("Battle_Abilities", result);
         }
@@ -292,6 +295,22 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false);
 
             Assert.StartsWith("Battle", result);
+        }
+        [Fact]
+        public void DetectScreen_AfterAbilityUse_SubmenuFlagStale_ShouldReturnBattleActing()
+        {
+            // After using an ability, the game returns to the action menu.
+            // submenuFlag=1 stays stale, battleActed=1, battleMode=3, menuCursor=0 (Move).
+            // This should NOT be detected as Battle_Abilities — it's Battle_Acting.
+            // The key differentiator: menuCursor=0 (Move), not 1 (Abilities).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
+                menuCursor: 0);
+
+            Assert.Equal("Battle_Acting", result);
         }
     }
 }

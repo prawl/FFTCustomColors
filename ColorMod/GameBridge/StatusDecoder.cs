@@ -58,6 +58,19 @@ namespace FFTColorCustomizer.GameBridge
         };
 
         /// <summary>
+        /// Returns the unit's life state: "alive", "dead" (can be raised), "crystal", or "treasure" (permanently gone).
+        /// </summary>
+        public static string GetLifeState(byte[] statusBytes)
+        {
+            if (statusBytes == null || statusBytes.Length < 2)
+                return "alive";
+            if ((statusBytes[0] & 0x40) != 0) return "crystal";
+            if ((statusBytes[1] & 0x01) != 0) return "treasure";
+            if ((statusBytes[0] & 0x20) != 0) return "dead";
+            return "alive";
+        }
+
+        /// <summary>
         /// Decode 5 status bytes into a list of active status effect names.
         /// Returns empty list if no statuses are active.
         /// </summary>

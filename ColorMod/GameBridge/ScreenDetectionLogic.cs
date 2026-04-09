@@ -40,9 +40,11 @@ namespace FFTColorCustomizer.GameBridge
             // Moving: battleMode=2 (selecting movement tile)
             if (inBattle && battleMode == 2)
                 return "Battle_Moving";
-            // Abilities submenu: submenuFlag=1 + battleMode=3 + acted/moved flags set by entering submenu
+            // Abilities submenu: submenuFlag=1 + battleMode=3 + acted/moved flags set by entering submenu.
+            // menuCursor must be 1 (Abilities) to distinguish from stale submenuFlag after ability use —
+            // when returning to action menu after acting, submenuFlag stays 1 but cursor resets to 0 (Move).
             if (inBattle && submenuFlag == 1 && battleMode == 3 && battleTeam == 0
-                && (battleActed == 1 || battleMoved == 1))
+                && (battleActed == 1 || battleMoved == 1) && menuCursor == 1)
                 return "Battle_Abilities";
             if (inBattle && battleTeam == 0 && battleActed == 0 && battleMoved == 0)
                 return "Battle_MyTurn";
