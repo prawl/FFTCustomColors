@@ -94,6 +94,36 @@ namespace FFTColorCustomizer.GameBridge
         public const int ATTACK_ID = 0x22;
 
         /// <summary>
+        /// Returns the skillset name that contains the given ability ID, or null if not found.
+        /// </summary>
+        public static string? GetSkillsetForAbilityId(int id)
+        {
+            foreach (var (skillsetName, abilities) in Skillsets)
+            {
+                foreach (var ability in abilities)
+                {
+                    if (ability.Id == id) return skillsetName;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Filter a list of abilities to only those belonging to the given skillsets.
+        /// Used to exclude abilities from unequipped skillsets (e.g. a Monk shouldn't
+        /// show Mettle abilities even if the unit learned them as a Squire).
+        /// </summary>
+        public static List<ActionAbilityInfo> FilterBySkillsets(
+            List<ActionAbilityInfo> abilities, IEnumerable<string> equippedSkillsets)
+        {
+            var allowed = new HashSet<string>(equippedSkillsets);
+            return abilities.Where(a => {
+                var skillset = GetSkillsetForAbilityId(a.Id);
+                return skillset != null && allowed.Contains(skillset);
+            }).ToList();
+        }
+
+        /// <summary>
         /// The condensed struct ability list only reflects the active (first-scanned) unit.
         /// During C+Up cycling, the list doesn't update for hovered units.
         /// Only read abilities for unit index 0 (the active unit).

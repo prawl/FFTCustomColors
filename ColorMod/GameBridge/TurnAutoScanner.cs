@@ -14,6 +14,7 @@ namespace FFTColorCustomizer.GameBridge
         private bool _scannedThisTurn;
         private bool _wasMyTurn;
         private int _lastUnitId = -1;
+        private int _lastUnitHp = -1;
 
         /// <summary>Cached scan response for this turn. Null if not yet scanned.</summary>
         public CommandResponse? CachedScanResponse { get; private set; }
@@ -35,7 +36,7 @@ namespace FFTColorCustomizer.GameBridge
         /// Returns true if an auto-scan should be triggered.
         /// Only returns true for player-controlled units (team 0) on Battle_MyTurn.
         /// </summary>
-        public bool ShouldAutoScan(string screenName, int team = 0, int unitId = -1)
+        public bool ShouldAutoScan(string screenName, int team = 0, int unitId = -1, int unitHp = -1)
         {
             bool isMyTurn = screenName == "Battle_MyTurn";
 
@@ -51,15 +52,22 @@ namespace FFTColorCustomizer.GameBridge
                 _scannedThisTurn = false;
                 _wasMyTurn = false;
                 _lastUnitId = -1;
+                _lastUnitHp = -1;
                 CachedScanResponse = null;
             }
 
-            // Detect unit change without intermediate enemy/ally turn
-            // (e.g. user played manually, or multiple player units act in sequence)
-            if (isMyTurn && _wasMyTurn && unitId >= 0 && _lastUnitId >= 0 && unitId != _lastUnitId)
+            // Detect unit change without intermediate enemy/ally turn.
+            // battleUnitId at 0x14077D2A4 is unreliable (same value for multiple units),
+            // so also check HP which differs between units.
+            if (isMyTurn && _wasMyTurn && _scannedThisTurn)
             {
-                _scannedThisTurn = false;
-                CachedScanResponse = null;
+                bool unitChanged = (unitId >= 0 && _lastUnitId >= 0 && unitId != _lastUnitId)
+                    || (unitHp >= 0 && _lastUnitHp >= 0 && unitHp != _lastUnitHp);
+                if (unitChanged)
+                {
+                    _scannedThisTurn = false;
+                    CachedScanResponse = null;
+                }
             }
 
             // Not in battle or not my turn — don't scan
@@ -69,6 +77,8 @@ namespace FFTColorCustomizer.GameBridge
             _wasMyTurn = true;
             if (unitId >= 0)
                 _lastUnitId = unitId;
+            if (unitHp >= 0)
+                _lastUnitHp = unitHp;
 
             // Only auto-scan for player-controlled units (team 0)
             if (team != 0)
@@ -115,6 +125,7 @@ namespace FFTColorCustomizer.GameBridge
             _scannedThisTurn = false;
             _wasMyTurn = false;
             _lastUnitId = -1;
+            _lastUnitHp = -1;
             CachedScanResponse = null;
         }
     }

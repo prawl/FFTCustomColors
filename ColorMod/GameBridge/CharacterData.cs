@@ -311,8 +311,8 @@ namespace FFTColorCustomizer.GameBridge
         private static readonly Dictionary<int, string> RosterJobNameById = new()
         {
             // Ramza's unique job IDs (take priority over PSX generic Knight=0x03)
-            [3] = "Heretic",            // 0x03 — Ramza Ch4, primary=Mettle
-            [0xA0] = "Heretic",         // Ramza variant
+            [3] = "Gallant Knight",      // 0x03 — Ramza Ch4, primary=Mettle (game displays "Gallant Knight")
+            [0xA0] = "Gallant Knight",  // Ramza variant
             [0xA1] = "Squire",          // Ramza Ch2-3 variant
 
             // Generic human jobs (IC remaster roster IDs)

@@ -1442,7 +1442,7 @@ namespace FFTColorCustomizer.GameBridge
                     LifeState = StatusDecoder.GetLifeState(u.StatusBytes) is var ls && ls != "alive" ? ls
                         : (u.Hp <= 0 && u.MaxHp > 0 ? "dead" : null),
                     Statuses = StatusDecoder.Decode(u.StatusBytes) is var s && s.Count > 0 ? s : null,
-                    Abilities = u.LearnedAbilities.Count > 0 ? u.LearnedAbilities.Select(a => new AbilityEntry
+                    Abilities = u.LearnedAbilities.Count > 0 ? FilterAbilitiesBySkillsets(u).Select(a => new AbilityEntry
                     {
                         Name = a.Name,
                         Mp = a.MpCost,
@@ -1459,6 +1459,27 @@ namespace FFTColorCustomizer.GameBridge
                         Arithmetickable = a.Arithmetickable,
                     }).ToList() : null,
                 });
+            }
+
+            // --- Helper: filter abilities to only equipped skillsets ---
+            List<ActionAbilityInfo> FilterAbilitiesBySkillsets(ScannedUnit unit)
+            {
+                var jobName = GameStateReporter.GetJobName(unit.Job);
+                var primary = jobName != null
+                    ? Utilities.CommandWatcher.GetPrimarySkillsetByJobName(jobName)
+                    : null;
+                var secondary = unit.SecondaryAbility > 0
+                    ? Utilities.CommandWatcher.GetSkillsetName(unit.SecondaryAbility)
+                    : null;
+
+                var equipped = new List<string>();
+                if (primary != null) equipped.Add(primary);
+                if (secondary != null) equipped.Add(secondary);
+
+                if (equipped.Count == 0)
+                    return unit.LearnedAbilities; // can't filter, return all
+
+                return ActionAbilityLookup.FilterBySkillsets(unit.LearnedAbilities, equipped);
             }
 
             // Turn order: the C+Up scan traverses units in timeline order.

@@ -177,7 +177,7 @@ namespace FFTColorCustomizer.Utilities
                     SyncBattleMenuTracker(response.Screen);
 
                     // Auto-scan units when a new player turn starts (team 0 only)
-                    if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId))
+                    if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId, response.Screen.BattleUnitHp))
                     {
                         try
                         {
@@ -847,7 +847,7 @@ namespace FFTColorCustomizer.Utilities
         {
             var response = ExecuteNavAction(command);
 
-            if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId))
+            if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId, response.Screen.BattleUnitHp))
             {
                 try
                 {
@@ -1544,7 +1544,7 @@ namespace FFTColorCustomizer.Utilities
         /// <summary>
         /// Maps job name (from scan results) to the job's primary skillset name.
         /// </summary>
-        private static string? GetPrimarySkillsetByJobName(string jobName)
+        internal static string? GetPrimarySkillsetByJobName(string jobName)
         {
             return jobName switch
             {
@@ -1570,7 +1570,8 @@ namespace FFTColorCustomizer.Utilities
                 "Dark Knight" => "Darkness",
                 "Onion Knight" => null, // No primary action ability
                 // Ramza/story character jobs
-                "Heretic" => "Mettle",         // Ramza Ch4
+                "Gallant Knight" => "Mettle",   // Ramza Ch4
+                "Heretic" => "Mettle",         // Ramza Ch4 (legacy)
                 "Mettle" => "Mettle",
                 _ => null
             };
@@ -1580,7 +1581,7 @@ namespace FFTColorCustomizer.Utilities
         /// Maps secondary ability index (+0x07) to skillset name.
         /// These indices are into the character's personal unlocked ability list.
         /// </summary>
-        private static string? GetSkillsetName(int index)
+        internal static string? GetSkillsetName(int index)
         {
             return index switch
             {
@@ -2133,24 +2134,9 @@ namespace FFTColorCustomizer.Utilities
                         screen.ActiveUnitJob = active.JobName;
                     }
                 }
-                else if (inBattle && Explorer != null && screen.ActiveUnitJob == null)
-                {
-                    // Fallback: read jobId from UI buffer when no scan cached.
-                    // Note: condensed nameId (+0x04) is a sequential battle slot ID, NOT the
-                    // character nameId — can't be used for name lookup. Name requires roster
-                    // matching via full scan.
-                    try
-                    {
-                        var jobResult = Explorer.ReadAbsolute((nint)(0x1407AC7C0 + 0x2A), 2);
-                        if (jobResult != null)
-                        {
-                            int jobId = (int)jobResult.Value.value;
-                            screen.ActiveUnitJob = GameBridge.CharacterData.GetJobName(jobId)
-                                ?? GameBridge.GameStateReporter.GetJobName(jobId);
-                        }
-                    }
-                    catch { /* memory read failed, leave null */ }
-                }
+                // No fallback for active unit job — UI buffer at 0x1407AC7EA is stale
+                // (shows last hovered unit, not active unit). Better to show nothing than wrong data.
+                // Active unit name/job will populate after first scan_move.
 
                 // Sync state machine with memory-detected top-level screens.
                 // This ensures the state machine stays in sync even after restarts

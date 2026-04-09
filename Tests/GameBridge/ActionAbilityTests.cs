@@ -115,5 +115,34 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.NotNull(tailwind);
             Assert.Equal("Tailwind", tailwind!.Name);
         }
+        [Fact]
+        public void GetSkillsetForAbilityId_MettleFocus_ReturnsMettle()
+        {
+            Assert.Equal("Mettle", ActionAbilityLookup.GetSkillsetForAbilityId(0x41));
+        }
+
+        [Fact]
+        public void GetSkillsetForAbilityId_UnknownId_ReturnsNull()
+        {
+            Assert.Null(ActionAbilityLookup.GetSkillsetForAbilityId(0x9999));
+        }
+
+        [Fact]
+        public void FilterBySkillsets_OnlyReturnsAbilitiesFromGivenSkillsets()
+        {
+            // A Monk with secondary Time Magicks should only show Martial Arts + Time Magicks abilities,
+            // NOT Fundaments or Mettle abilities even if the unit learned them.
+            var allLearned = new List<ActionAbilityInfo>
+            {
+                // From Mettle (should be filtered OUT if not equipped)
+                ActionAbilityLookup.GetById(0x41)!, // Focus (Mettle)
+                ActionAbilityLookup.GetById(0xAE)!, // Tailwind (Mettle)
+            };
+
+            var filtered = ActionAbilityLookup.FilterBySkillsets(allLearned, new[] { "Time Magicks" });
+
+            // Focus and Tailwind are Mettle, not Time Magicks — should be excluded
+            Assert.Empty(filtered);
+        }
     }
 }

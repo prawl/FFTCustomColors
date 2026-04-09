@@ -247,16 +247,30 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             // When user plays manually (not via battle_wait), the tracker never sees
             // Battle_EnemiesTurn. It goes Battle_MyTurn(unit1) → Battle_MyTurn(unit2).
-            // The cache must invalidate when the unit ID changes.
+            // The cache must invalidate when the unit HP changes (unitId is unreliable).
             var tracker = new BattleTurnTracker();
-            tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1);
+            tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1, unitHp: 496);
             var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
             tracker.CacheScanResponse(response);
             tracker.MarkScanned();
 
-            // New unit's turn — no intermediate enemy turn
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", unitId: 2));
+            // New unit's turn — same unitId but different HP
+            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1, unitHp: 475));
             Assert.False(tracker.HasCachedScan);
+        }
+
+        [Fact]
+        public void CachedScan_NotClearedWhenSameUnit()
+        {
+            // Same unit, same HP — cache should persist
+            var tracker = new BattleTurnTracker();
+            tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1, unitHp: 496);
+            var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
+            tracker.CacheScanResponse(response);
+            tracker.MarkScanned();
+
+            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1, unitHp: 496));
+            Assert.True(tracker.HasCachedScan);
         }
     }
 }
