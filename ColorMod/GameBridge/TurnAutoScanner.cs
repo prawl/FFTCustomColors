@@ -38,8 +38,14 @@ namespace FFTColorCustomizer.GameBridge
         {
             bool isMyTurn = screenName == "Battle_MyTurn";
 
-            // Transitioned away from my turn — reset for next turn
-            if (_wasMyTurn && !isMyTurn)
+            // Only reset when truly transitioning to another unit's turn,
+            // not when visiting submenus (Battle_Abilities, Battle_Moving, etc.)
+            // which are still part of the same turn.
+            bool isOtherUnitsTurn = screenName == "Battle_EnemiesTurn"
+                || screenName == "Battle_AlliesTurn";
+            bool leftBattle = !screenName.StartsWith("Battle");
+
+            if (_wasMyTurn && (isOtherUnitsTurn || leftBattle))
             {
                 _scannedThisTurn = false;
                 _wasMyTurn = false;
@@ -72,6 +78,16 @@ namespace FFTColorCustomizer.GameBridge
         /// actions complete, since they bypass the normal screen transition detection
         /// (the tracker never sees the intermediate enemy/ally phases).
         /// </summary>
+        /// <summary>
+        /// Clear the cached scan response without resetting the turn state.
+        /// Call after game actions that change battlefield state (battle_attack,
+        /// battle_ability, battle_move) so the next scan_move gets fresh data.
+        /// </summary>
+        public void InvalidateCache()
+        {
+            CachedScanResponse = null;
+        }
+
         public void ResetForNewTurn()
         {
             _scannedThisTurn = false;

@@ -20,6 +20,7 @@ namespace FFTColorCustomizer.GameBridge
         public BattleTracker? BattleTracker { get; set; }
         public MapLoader? _mapLoader;
         public Func<string[]>? GetAbilitiesSubmenuItems { get; set; }
+        public Func<string, string[]>? GetAbilityListForSkillset { get; set; }
         private IntPtr _gameWindow;
 
         // --- DirectInput hook for faking held C key ---
@@ -837,32 +838,35 @@ namespace FFTColorCustomizer.GameBridge
             Thread.Sleep(500);
 
             // Step 4: Navigate to the ability within the skillset
-            // Navigate down from the top (index 0) to the target ability
-            screen = _detectScreen();
-            string expectedScreenName = ScreenDetectionLogic.GetAbilityScreenName(loc.skillsetName);
+            // Use the learned ability list (from scan) to determine the correct index.
+            // The game only shows learned abilities, so the menu index may differ
+            // from the hardcoded skillset index.
+            var learnedAbilities = GetAbilityListForSkillset?.Invoke(loc.skillsetName);
+            int abilityIndex = loc.indexInSkillset; // fallback to hardcoded
 
-            // Go to top of ability list first
-            for (int i = 0; i < 20; i++) // max 20 abilities in a skillset
+            if (learnedAbilities != null && learnedAbilities.Length > 0)
             {
-                screen = _detectScreen();
-                if (screen?.UI == ActionAbilityLookup.GetSkillsetAbilities(loc.skillsetName)?[0].Name)
-                    break;
+                int learnedIdx = System.Array.IndexOf(learnedAbilities, abilityName);
+                if (learnedIdx >= 0)
+                    abilityIndex = learnedIdx;
+                ModLogger.Log($"[BattleAbility] Learned abilities for {loc.skillsetName}: [{string.Join(", ", learnedAbilities)}], {abilityName} at index {abilityIndex}");
+            }
+            else
+            {
+                ModLogger.Log($"[BattleAbility] No learned ability data, using hardcoded index {abilityIndex}");
+            }
+
+            // Navigate: go to top first, then down to target
+            int listSize = learnedAbilities?.Length ?? 20;
+            for (int i = 0; i < listSize; i++)
+            {
                 SendKey(VK_UP);
                 Thread.Sleep(150);
             }
-
-            // Navigate down to target ability
-            for (int i = 0; i < loc.indexInSkillset; i++)
+            for (int i = 0; i < abilityIndex; i++)
             {
                 SendKey(VK_DOWN);
                 Thread.Sleep(150);
-            }
-
-            // Verify we're on the right ability
-            screen = _detectScreen();
-            if (screen?.UI != abilityName)
-            {
-                ModLogger.Log($"[BattleAbility] WARN: expected ui={abilityName}, got ui={screen?.UI}");
             }
 
             // Step 5: Select the ability

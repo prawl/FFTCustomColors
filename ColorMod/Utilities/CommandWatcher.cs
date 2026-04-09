@@ -688,6 +688,11 @@ namespace FFTColorCustomizer.Utilities
                     case "battle_flee":
                     case "battle_attack":
                     case "battle_ability":
+                    case "battle_move":
+                    case "move_grid": // legacy alias
+                        _turnTracker.InvalidateCache(); // battlefield state changed
+                        return ExecuteNavAction(command);
+
                     case "world_travel_to":
                     case "travel_to": // legacy alias
                     case "navigate": // legacy alias
@@ -696,8 +701,6 @@ namespace FFTColorCustomizer.Utilities
                     case "scan_units":
                     case "test_c_hold":
                     case "get_arrows":
-                    case "battle_move":
-                    case "move_grid": // legacy alias
                     case "advance_dialogue":
                     case "save":
                     case "load":
@@ -808,6 +811,7 @@ namespace FFTColorCustomizer.Utilities
                 _navActions = new NavigationActions(_inputSimulator, Explorer, DetectScreen);
                 _navActions.BattleTracker = BattleTracker;
                 _navActions.GetAbilitiesSubmenuItems = GetAbilitiesSubmenuItems;
+                _navActions.GetAbilityListForSkillset = GetAbilityListForSkillset;
             }
             EnsureMapLoader();
             if (_navActions != null)
@@ -1552,8 +1556,8 @@ namespace FFTColorCustomizer.Utilities
                 "Dancer" => "Dance",
                 "Dark Knight" => "Darkness",
                 "Onion Knight" => null, // No primary action ability
-                // Ramza/story character jobs — the scan reports these as generic job names
-                // but the actual primary is their unique skillset
+                // Ramza/story character jobs
+                "Heretic" => "Mettle",         // Ramza Ch4
                 "Mettle" => "Mettle",
                 _ => null
             };

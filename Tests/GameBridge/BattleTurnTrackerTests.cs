@@ -29,7 +29,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             tracker.MarkScanned();
 
             // Enemy turn
-            tracker.ShouldAutoScan("Battle");
+            tracker.ShouldAutoScan("Battle_EnemiesTurn");
 
             // New turn
             Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
@@ -89,9 +89,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
             tracker.MarkScanned();
             Assert.False(tracker.ShouldAutoScan("Battle_MyTurn"));
 
-            // Intermediate states (acting, enemy turn)
-            tracker.ShouldAutoScan("Battle_Acting");
-            tracker.ShouldAutoScan("Battle");
+            // Intermediate states (enemy turn)
+            tracker.ShouldAutoScan("Battle_EnemiesTurn");
 
             // Turn 2
             Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
@@ -147,18 +146,86 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void CachedScan_ClearedOnTurnTransition()
+        public void CachedScan_NotClearedByScreenTransitions()
         {
+            // Screen transitions (menus, submenus) should NOT clear the cache.
+            // Only explicit game actions (move, attack, ability, wait) clear it.
             var tracker = new BattleTurnTracker();
             tracker.ShouldAutoScan("Battle_MyTurn");
             var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
             tracker.CacheScanResponse(response);
             tracker.MarkScanned();
 
-            // Enemy turn clears cache
-            tracker.ShouldAutoScan("Battle");
+            // All these are still the same turn
+            tracker.ShouldAutoScan("Battle_Abilities");
+            Assert.True(tracker.HasCachedScan);
+
+            tracker.ShouldAutoScan("Battle_Mettle");
+            Assert.True(tracker.HasCachedScan);
+
+            tracker.ShouldAutoScan("Battle_Moving");
+            Assert.True(tracker.HasCachedScan);
+
+            tracker.ShouldAutoScan("Battle_Attacking");
+            Assert.True(tracker.HasCachedScan);
+
+            tracker.ShouldAutoScan("Battle_Acting");
+            Assert.True(tracker.HasCachedScan);
+
+            // Return to Battle_MyTurn — should NOT re-scan
+            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.True(tracker.HasCachedScan);
+        }
+
+        [Fact]
+        public void CachedScan_ClearedByInvalidateCache()
+        {
+            // Game actions (battle_attack, battle_ability, battle_move) call
+            // InvalidateCache to force a re-scan on next scan_move.
+            var tracker = new BattleTurnTracker();
+            tracker.ShouldAutoScan("Battle_MyTurn");
+            var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
+            tracker.CacheScanResponse(response);
+            tracker.MarkScanned();
+
+            tracker.InvalidateCache();
 
             Assert.Null(tracker.CachedScanResponse);
+            Assert.False(tracker.HasCachedScan);
+            // But scannedThisTurn stays true — auto-scan won't re-fire
+            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn"));
+        }
+
+        [Fact]
+        public void CachedScan_ClearedByResetForNewTurn()
+        {
+            // battle_wait calls ResetForNewTurn which clears everything
+            var tracker = new BattleTurnTracker();
+            tracker.ShouldAutoScan("Battle_MyTurn");
+            var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
+            tracker.CacheScanResponse(response);
+            tracker.MarkScanned();
+
+            tracker.ResetForNewTurn();
+
+            Assert.Null(tracker.CachedScanResponse);
+            Assert.False(tracker.HasCachedScan);
+            // And auto-scan should fire again on next turn
+            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
+        }
+
+        [Fact]
+        public void ShouldAutoScan_AfterEnemyTurn_ResetsForNewPlayerTurn()
+        {
+            var tracker = new BattleTurnTracker();
+            tracker.ShouldAutoScan("Battle_MyTurn");
+            tracker.MarkScanned();
+
+            // Enemy turn resets scannedThisTurn
+            tracker.ShouldAutoScan("Battle_EnemiesTurn");
+
+            // New player turn should auto-scan
+            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
         }
     }
 }

@@ -43,7 +43,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             tracker.MarkScanned();
 
             // Enemy phase
-            tracker.ShouldAutoScan("Battle", team: 1);
+            tracker.ShouldAutoScan("Battle_EnemiesTurn", team: 1);
 
             // New player turn
             Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
