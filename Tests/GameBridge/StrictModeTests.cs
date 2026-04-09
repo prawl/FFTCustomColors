@@ -21,7 +21,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
         private static readonly HashSet<string> AllowedGameActions = new()
         {
-            "execute_action", "battle_wait", "battle_flee", "battle_attack",
+            "execute_action", "battle_wait", "battle_flee", "battle_attack", "battle_ability",
             "battle_move", "world_travel_to", "auto_move", "get_arrows",
             "advance_dialogue", "save", "load",
             "battle_retry", "battle_retry_formation",

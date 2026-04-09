@@ -508,6 +508,19 @@ battle_move() { fft_full "{\"id\":\"$(id)\",\"action\":\"battle_move\",\"locatio
 # Example: battle_attack 2 4    → attack tile (2,4)
 battle_attack() { fft_full "{\"id\":\"$(id)\",\"action\":\"battle_attack\",\"locationId\":$1,\"unitIndex\":$2}"; }
 
+# battle_ability: Use a specific ability. Self-targeting abilities need no coordinates.
+# Usage: battle_ability "Shout"                    (self-target)
+#        battle_ability "Throw Stone" 4 8           (targeted at tile x=4, y=8)
+#        battle_ability "Cure" 10 9                 (heal ally at 10,9)
+battle_ability() {
+  local name="$1"
+  if [ -n "$2" ] && [ -n "$3" ]; then
+    fft_full "{\"id\":\"$(id)\",\"action\":\"battle_ability\",\"description\":\"$name\",\"locationId\":$2,\"unitIndex\":$3}"
+  else
+    fft_full "{\"id\":\"$(id)\",\"action\":\"battle_ability\",\"description\":\"$name\"}"
+  fi
+}
+
 # get_arrows: Compute arrow keys to move Ramza next to nearest enemy. Shows the sequence.
 # Usage: get_arrows          (just show arrows)
 #        get_arrows execute   (show AND execute the move + confirm)

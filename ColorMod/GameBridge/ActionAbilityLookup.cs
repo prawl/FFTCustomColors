@@ -100,6 +100,12 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public static bool ShouldReadAbilities(int unitIndex) => unitIndex == 0;
 
+        /// <summary>
+        /// All skillsets with their ability lists. Used for looking up which skillset
+        /// an ability belongs to and its position within the skillset.
+        /// </summary>
+        public static IReadOnlyDictionary<string, List<ActionAbilityInfo>> AllSkillsets => Skillsets;
+
         // Flat lookup: ability ID → info (built lazily from all skillsets)
         private static Dictionary<int, ActionAbilityInfo>? _allAbilities;
         private static Dictionary<int, ActionAbilityInfo> AllAbilities

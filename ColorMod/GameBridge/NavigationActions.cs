@@ -19,6 +19,7 @@ namespace FFTColorCustomizer.GameBridge
         private readonly Func<DetectedScreen?> _detectScreen;
         public BattleTracker? BattleTracker { get; set; }
         public MapLoader? _mapLoader;
+        public Func<string[]>? GetAbilitiesSubmenuItems { get; set; }
         private IntPtr _gameWindow;
 
         // --- DirectInput hook for faking held C key ---
@@ -278,6 +279,9 @@ namespace FFTColorCustomizer.GameBridge
 
                     case "battle_attack":
                         return BattleAttack(response, command);
+
+                    case "battle_ability":
+                        return BattleAbility(response, command);
 
                     case "advance_dialogue":
                         return AdvanceDialogue(response);
@@ -730,6 +734,271 @@ namespace FFTColorCustomizer.GameBridge
                 if (dx == rdx && dy == rdy) return r;
             }
             return 0;
+        }
+
+        /// <summary>
+        /// battle_ability: Navigate to Abilities submenu, select a skillset + ability, confirm.
+        /// For self-targeting abilities (Shout, Focus): just confirms.
+        /// For targeted abilities: navigates cursor to target tile and confirms.
+        /// Usage: {"action":"battle_ability","description":"Shout"} (self-target)
+        /// Usage: {"action":"battle_ability","description":"Throw Stone","locationId":4,"unitIndex":8} (targeted)
+        /// </summary>
+        private CommandResponse BattleAbility(CommandResponse response, CommandRequest command)
+        {
+            string? abilityName = command.Description;
+            if (string.IsNullOrEmpty(abilityName))
+            {
+                response.Status = "failed";
+                response.Error = "Missing ability name in 'description' field";
+                return response;
+            }
+
+            // If it's "Attack", delegate to BattleAttack
+            if (abilityName == "Attack")
+                return BattleAttack(response, command);
+
+            var screen = _detectScreen();
+            if (screen == null || (screen.Name != "Battle_MyTurn" && screen.Name != "Battle_Acting"))
+            {
+                response.Status = "failed";
+                response.Error = $"Not on Battle_MyTurn/Battle_Acting (current: {screen?.Name ?? "null"})";
+                return response;
+            }
+
+            // Step 1: Navigate to Abilities in action menu (index 1)
+            var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+            int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
+            NavigateMenuCursor(cursor, 1);
+            SendKey(VK_ENTER);
+            Thread.Sleep(500);
+
+            // Step 2: Get available skillsets from cached scan data
+            var submenuItems = GetAbilitiesSubmenuItems?.Invoke() ?? new[] { "Attack" };
+            ModLogger.Log($"[BattleAbility] Submenu items: {string.Join(", ", submenuItems)}");
+
+            var availableSkillsets = submenuItems.Where(s => s != "Attack").ToArray();
+            var location = BattleAbilityNavigation.FindAbility(abilityName, availableSkillsets);
+            if (location == null)
+            {
+                response.Status = "failed";
+                response.Error = $"Ability '{abilityName}' not found in available skillsets: {string.Join(", ", submenuItems)}";
+                SendKey(VK_ESCAPE);
+                return response;
+            }
+
+            var loc = location.Value;
+            int targetX = command.LocationId;
+            int targetY = command.UnitIndex;
+
+            if (!loc.isSelfTarget && (targetX < 0 || targetY < 0))
+            {
+                response.Status = "failed";
+                response.Error = $"Ability '{abilityName}' requires a target (locationId=x, unitIndex=y)";
+                SendKey(VK_ESCAPE);
+                return response;
+            }
+
+            // Step 3: Enter the Abilities submenu and navigate to the correct skillset
+            screen = _detectScreen();
+            // The menu may not have entered the submenu yet if the previous DetectScreen
+            // didn't trigger SyncBattleMenuTracker. Press Enter on Abilities if still on main menu.
+            if (screen?.Name == "Battle_MyTurn")
+            {
+                // Menu cursor should be on Abilities already from Step 1
+                SendKey(VK_ENTER);
+                Thread.Sleep(500);
+            }
+
+            // Find the skillset index in the submenu items array
+            int skillsetIdx = BattleAbilityNavigation.FindSkillsetIndex(loc.skillsetName, submenuItems);
+            if (skillsetIdx < 0)
+            {
+                response.Status = "failed";
+                response.Error = $"Skillset '{loc.skillsetName}' not in submenu: {string.Join(", ", submenuItems)}";
+                SendKey(VK_ESCAPE);
+                return response;
+            }
+
+            // Navigate: submenu starts on the last cursor position (may not be Attack).
+            // Press Up enough times to guarantee we're at Attack (index 0), then Down to target.
+            for (int i = 0; i < submenuItems.Length; i++)
+            {
+                SendKey(VK_UP);
+                Thread.Sleep(150);
+            }
+            for (int i = 0; i < skillsetIdx; i++)
+            {
+                SendKey(VK_DOWN);
+                Thread.Sleep(150);
+            }
+
+            // Step 3: Enter the skillset
+            SendKey(VK_ENTER);
+            Thread.Sleep(500);
+
+            // Step 4: Navigate to the ability within the skillset
+            // Navigate down from the top (index 0) to the target ability
+            screen = _detectScreen();
+            string expectedScreenName = ScreenDetectionLogic.GetAbilityScreenName(loc.skillsetName);
+
+            // Go to top of ability list first
+            for (int i = 0; i < 20; i++) // max 20 abilities in a skillset
+            {
+                screen = _detectScreen();
+                if (screen?.UI == ActionAbilityLookup.GetSkillsetAbilities(loc.skillsetName)?[0].Name)
+                    break;
+                SendKey(VK_UP);
+                Thread.Sleep(150);
+            }
+
+            // Navigate down to target ability
+            for (int i = 0; i < loc.indexInSkillset; i++)
+            {
+                SendKey(VK_DOWN);
+                Thread.Sleep(150);
+            }
+
+            // Verify we're on the right ability
+            screen = _detectScreen();
+            if (screen?.UI != abilityName)
+            {
+                ModLogger.Log($"[BattleAbility] WARN: expected ui={abilityName}, got ui={screen?.UI}");
+            }
+
+            // Step 5: Select the ability
+            SendKey(VK_ENTER);
+            Thread.Sleep(500);
+
+            // Step 6: Handle targeting
+            if (loc.isSelfTarget)
+            {
+                // Self-targeting abilities: confirm immediately
+                // The game may show a confirmation or just apply
+                SendKey(VK_ENTER);
+                Thread.Sleep(300);
+                response.Status = "completed";
+                response.Info = $"Used {abilityName} (self-target)";
+                return response;
+            }
+
+            // Targeted ability: we should now be in targeting mode (Battle_Attacking)
+            screen = _detectScreen();
+            if (screen == null || screen.Name != "Battle_Attacking")
+            {
+                // Some abilities go straight to targeting without battleMode=4
+                // Check if we're still in a battle state
+                if (screen?.Name?.StartsWith("Battle") != true)
+                {
+                    response.Status = "failed";
+                    response.Error = $"Failed to enter targeting mode for {abilityName} (current: {screen?.Name ?? "null"})";
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                    SendKey(VK_ESCAPE);
+                    return response;
+                }
+            }
+
+            // Navigate cursor to target tile (reuse BattleAttack's targeting logic)
+            var startPos = ReadGridPos();
+            ModLogger.Log($"[BattleAbility] Targeting {abilityName}, cursor at ({startPos.x},{startPos.y}), target ({targetX},{targetY})");
+
+            int deltaX = targetX - startPos.x;
+            int deltaY = targetY - startPos.y;
+
+            if (deltaX == 0 && deltaY == 0)
+            {
+                SendKey(VK_ENTER);
+                Thread.Sleep(500);
+                SendKey(VK_ENTER);
+                Thread.Sleep(300);
+                response.Status = "completed";
+                response.Info = $"Used {abilityName} on ({targetX},{targetY}) — cursor was already on target";
+                return response;
+            }
+
+            // Empirical rotation detection
+            _input.SendKeyPressToWindow(_gameWindow, VK_RIGHT);
+            Thread.Sleep(150);
+            var testPos = ReadGridPos();
+            int rdx = testPos.x - startPos.x;
+            int rdy = testPos.y - startPos.y;
+
+            if (rdx == 0 && rdy == 0)
+            {
+                _input.SendKeyPressToWindow(_gameWindow, VK_DOWN);
+                Thread.Sleep(150);
+                testPos = ReadGridPos();
+                int ddx = testPos.x - startPos.x;
+                int ddy = testPos.y - startPos.y;
+                _input.SendKeyPressToWindow(_gameWindow, VK_UP);
+                Thread.Sleep(150);
+
+                if (ddx != 0 || ddy != 0)
+                {
+                    rdx = -ddy;
+                    rdy = ddx;
+                }
+                else
+                {
+                    response.Status = "failed";
+                    response.Error = $"Could not detect rotation for {abilityName} targeting";
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                    return response;
+                }
+            }
+            else
+            {
+                _input.SendKeyPressToWindow(_gameWindow, VK_LEFT);
+                Thread.Sleep(150);
+            }
+
+            _lastDetectedRightDelta = (rdx, rdy);
+
+            // Navigate to target
+            string? arrowName = AttackDirectionLogic.ComputeArrowForDelta(rdx, rdy, deltaX, deltaY);
+            if (arrowName == null)
+            {
+                NavigateGrid(deltaX, deltaY, FindRotationFromRight(rdx, rdy));
+            }
+            else
+            {
+                int vk = arrowName switch
+                {
+                    "Right" => VK_RIGHT,
+                    "Left" => VK_LEFT,
+                    "Up" => VK_UP,
+                    "Down" => VK_DOWN,
+                    _ => 0
+                };
+                if (vk != 0)
+                {
+                    _input.SendKeyPressToWindow(_gameWindow, vk);
+                    Thread.Sleep(150);
+                }
+            }
+
+            // Verify cursor position
+            var finalPos = ReadGridPos();
+            if (finalPos.x != targetX || finalPos.y != targetY)
+            {
+                ModLogger.Log($"[BattleAbility] WARN: cursor at ({finalPos.x},{finalPos.y}), expected ({targetX},{targetY})");
+                response.Error = $"Cursor miss: at ({finalPos.x},{finalPos.y}) expected ({targetX},{targetY})";
+                SendKey(VK_ESCAPE);
+                Thread.Sleep(300);
+                response.Status = "failed";
+                return response;
+            }
+
+            // Confirm
+            SendKey(VK_ENTER);
+            Thread.Sleep(500);
+            SendKey(VK_ENTER);
+            Thread.Sleep(300);
+
+            response.Status = "completed";
+            response.Info = $"Used {abilityName} on ({targetX},{targetY})";
+            return response;
         }
 
         /// <summary>

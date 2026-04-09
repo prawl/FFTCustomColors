@@ -65,7 +65,7 @@ namespace FFTColorCustomizer.Utilities
         // Named game actions allowed in strict mode (from fft.sh helpers)
         private static readonly HashSet<string> AllowedGameActions = new()
         {
-            "execute_action", "battle_wait", "battle_flee", "battle_attack",
+            "execute_action", "battle_wait", "battle_flee", "battle_attack", "battle_ability",
             "battle_move", "world_travel_to", "auto_move", "get_arrows",
             "advance_dialogue", "save", "load",
             "battle_retry", "battle_retry_formation",
@@ -674,6 +674,7 @@ namespace FFTColorCustomizer.Utilities
 
                     case "battle_flee":
                     case "battle_attack":
+                    case "battle_ability":
                     case "world_travel_to":
                     case "travel_to": // legacy alias
                     case "navigate": // legacy alias
@@ -793,6 +794,7 @@ namespace FFTColorCustomizer.Utilities
             {
                 _navActions = new NavigationActions(_inputSimulator, Explorer, DetectScreen);
                 _navActions.BattleTracker = BattleTracker;
+                _navActions.GetAbilitiesSubmenuItems = GetAbilitiesSubmenuItems;
             }
             EnsureMapLoader();
             if (_navActions != null)
