@@ -156,6 +156,7 @@ namespace FFTColorCustomizer.GameBridge
                 new(0x1C6, "Focus",          0, "Self", 0, 1, 0, "self",     "Increases own physical attack power"),
                 new(0x1C7, "Rush",           0, "1",    0, 1, 0, "enemy",    "Ramming attack, chance of knockback"),
                 new(0x1C8, "Throw Stone",    0, "4",    0, 1, 0, "enemy",    "Lob a stone, chance of knockback"),
+                new(0x1C9, "Salve",          0, "1",    0, 1, 0, "ally",     "Remove Poison, Blindness, and Silence from adjacent unit"),
             },
             ["Items"] = new()
             {
