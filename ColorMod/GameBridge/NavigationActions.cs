@@ -327,17 +327,25 @@ namespace FFTColorCustomizer.GameBridge
         /// then poll until it's a friendly unit's turn again (or game over).
         /// </summary>
         /// <summary>
-        /// battle_flee: Open pause menu (Tab), scroll to Quit (Down x4), confirm twice.
-        /// Returns to world map.
+        /// battle_flee: Open pause menu (Tab), navigate to Return to World Map, confirm.
+        /// The pause menu remembers its last cursor position, so we press Up x6 first
+        /// to force the cursor back to Units(0), then Down x4 to reach ReturnToWorldMap(4).
         /// </summary>
         private CommandResponse BattleFlee(CommandResponse response)
         {
             SendKey(VK_TAB);
             Thread.Sleep(500);
+            // Force cursor to top (Up at top is a no-op, so 6 presses = guaranteed top).
+            for (int i = 0; i < 6; i++)
+            {
+                SendKey(VK_UP);
+                Thread.Sleep(100);
+            }
+            // Now navigate Down x4 to reach ReturnToWorldMap.
             for (int i = 0; i < 4; i++)
             {
                 SendKey(VK_DOWN);
-                Thread.Sleep(200);
+                Thread.Sleep(150);
             }
             SendKey(VK_ENTER);
             Thread.Sleep(500);

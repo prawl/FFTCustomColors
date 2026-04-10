@@ -466,16 +466,33 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter") },
                     Desc = "Restart this battle from the beginning"
                 },
+                // Pause menu remembers last cursor position between openings.
+                // Press Up x6 first to force cursor to Units(0), then Down x4 to reach
+                // ReturnToWorldMap(4). Up at the top is a no-op so x6 is a safe reset.
                 ["ReturnToWorldMap"] = new PathEntry
                 {
-                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter") },
+                    Keys = new[]
+                    {
+                        Key(VK_UP, "Up"), Key(VK_UP, "Up"), Key(VK_UP, "Up"),
+                        Key(VK_UP, "Up"), Key(VK_UP, "Up"), Key(VK_UP, "Up"),
+                        Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"),
+                        Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"),
+                        Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter")
+                    },
                     WaitForScreen = "WorldMap",
                     WaitTimeoutMs = 10000,
                     Desc = "Abandon battle and return to world map (with confirmation)"
                 },
                 ["ReturnToTitle"] = new PathEntry
                 {
-                    Keys = new[] { Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter") },
+                    Keys = new[]
+                    {
+                        Key(VK_UP, "Up"), Key(VK_UP, "Up"), Key(VK_UP, "Up"),
+                        Key(VK_UP, "Up"), Key(VK_UP, "Up"), Key(VK_UP, "Up"),
+                        Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"),
+                        Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"), Key(VK_DOWN, "Down"),
+                        Key(VK_ENTER, "Enter"), Key(VK_ENTER, "Enter")
+                    },
                     WaitForScreen = "TitleScreen",
                     WaitTimeoutMs = 10000,
                     Desc = "Return to title screen (with confirmation)"

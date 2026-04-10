@@ -97,6 +97,12 @@ namespace FFTColorCustomizer.GameBridge
             ["04-73-64-00-50-69-1E-8E-64-00"] = "Automaton",
             // Meliadoul (Divine Knight):
             ["0A-7D-0F-50-64-69-27-78-32-5A"] = "Divine Knight",
+            // Isilud (Nightblade — PSX: Assassin variant):
+            ["0A-9B-0B-32-64-6E-30-78-32-32"] = "Nightblade",
+            // Wiegraf (White Knight — note: his class may change through the story):
+            ["0A-C8-0B-96-64-8C-32-7D-32-64"] = "White Knight",
+            // Barich (Machinist — story enemy, same class name as Mustadio's but different fingerprint):
+            ["08-8C-0B-64-64-7D-32-64-2E-78"] = "Machinist",
 
             // Note: Ramza's fingerprint differs between saves (saw 5 different
             // patterns now, depending on his current job/equipment/growth).
