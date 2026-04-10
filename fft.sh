@@ -24,7 +24,7 @@
 #   Navigation:    world_travel_to <id>, advance_dialogue
 #   Management:    save, load, buy <item> <qty>, sell <item> <qty>, change_job <id> <job>
 #   Memory:        rv <addr> [size], block <addr> <size>, batch '<json>'
-#   State:         screen, state, scan_units, scan_move
+#   State:         screen, state, scan_units, scan_move, logs
 #   System:        running, restart, boot, strict 1/0
 #
 # RESPONSE FORMAT:
@@ -568,6 +568,24 @@ state() { fft "{\"id\":\"$(id)\",\"action\":\"report_state\"}"; }
 
 # screen: Quick check — sends no-op command, returns current screen name & state.
 screen() { fft "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}"; }
+
+# logs: Tail the live mod log (truncated fresh on each game launch).
+# Usage: logs           — last 40 lines
+#        logs 100       — last 100 lines
+#        logs grep foo  — grep all logs for 'foo'
+logs() {
+  local live="$B/live_log.txt"
+  if [ ! -f "$live" ]; then
+    echo "[logs] No live_log.txt yet — start the game via boot/restart first"
+    return 1
+  fi
+  if [ "$1" = "grep" ]; then
+    shift
+    grep -E "$@" "$live"
+  else
+    tail -n "${1:-40}" "$live"
+  fi
+}
 
 # scan_units: Hold C + press Up to cycle through all units, report their grid positions + teams.
 # Use during battle (Battle_MyTurn) to discover where everyone is.
