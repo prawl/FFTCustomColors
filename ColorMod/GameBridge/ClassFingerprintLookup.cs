@@ -59,6 +59,12 @@ namespace FFTColorCustomizer.GameBridge
             ["07-55-1E-3C-55-83-27-6C-07-5A"] = "Steelhawk",
             // Bull family (Wisenkin is the first tier):
             ["06-87-1E-05-55-6B-27-78-07-64"] = "Wisenkin",
+            // Goblin family (tier 3):
+            ["06-62-1E-4B-55-80-27-73-07-5C"] = "Gobbledygook",
+            // Squid/Piscodaemon family:
+            ["07-73-1E-73-55-65-27-65-07-60"] = "Squidraken",
+            // Behemoth family:
+            ["05-8C-1E-78-55-75-24-86-07-69"] = "Behemoth",
 
             // === Generic human jobs ===
             ["0C-4B-09-78-64-64-3C-3C-32-96"] = "Black Mage",
@@ -75,8 +81,9 @@ namespace FFTColorCustomizer.GameBridge
             ["0A-78-0F-32-64-64-28-78-32-32"] = "Dragoon",
             ["0B-64-0F-4B-64-64-3C-5A-32-50"] = "Squire",
             ["14-37-14-32-64-64-50-1E-32-73"] = "Bard",
+            ["06-8C-1E-32-64-78-23-78-28-73"] = "Mime",
 
-            // Note: Ramza's fingerprint differs between saves (saw 4 different
+            // Note: Ramza's fingerprint differs between saves (saw 5 different
             // patterns now, depending on his current job/equipment/growth).
             // Roster lookup is authoritative for Ramza — fingerprint is unreliable.
         };

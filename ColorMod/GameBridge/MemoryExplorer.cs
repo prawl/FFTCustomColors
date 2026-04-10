@@ -209,12 +209,22 @@ namespace FFTColorCustomizer.GameBridge
         /// Used to find data in heap memory that snapshot/diff can't reach.
         /// </summary>
         public List<(nint address, string context)> SearchBytesInAllMemory(byte[] pattern, int maxResults = 200)
+            => SearchBytesInAllMemory(pattern, maxResults, 0L, long.MaxValue);
+
+        /// <summary>
+        /// Search with an optional address range filter. Regions outside
+        /// [minAddr, maxAddr) are skipped entirely, so they don't count toward maxResults.
+        /// Use this when you know the target data lives in a specific heap range
+        /// (e.g. unit structs in 0x4160000000..0x4180000000).
+        /// </summary>
+        public List<(nint address, string context)> SearchBytesInAllMemory(
+            byte[] pattern, int maxResults, long minAddr, long maxAddr)
         {
             var matches = new List<(nint address, string context)>();
             if (pattern == null || pattern.Length == 0) return matches;
 
             var process = Process.GetCurrentProcess();
-            nint address = 0;
+            nint address = (nint)minAddr;
             long totalBytesSearched = 0;
             const long maxTotalBytes = 500_000_000L; // 500MB cap
             int regionsSearched = 0;
@@ -224,14 +234,20 @@ namespace FFTColorCustomizer.GameBridge
                 if (VirtualQueryEx(process.Handle, address, out MEMORY_BASIC_INFORMATION mbi, (uint)Marshal.SizeOf<MEMORY_BASIC_INFORMATION>()) == 0)
                     break;
 
+                // Stop early if we've walked past the requested range.
+                if ((long)mbi.BaseAddress >= maxAddr) break;
+
                 // Only search committed, read-write private memory (safest — heap allocations)
                 bool isReadWrite = (mbi.Protect & 0x04) != 0; // PAGE_READWRITE only
                 bool isCommitted = mbi.State == 0x1000;
                 bool notGuard = (mbi.Protect & 0x100) == 0;
                 bool notTooBig = (long)mbi.RegionSize <= 4_000_000; // 4MB max per region
                 bool isPrivateOrMapped = mbi.Type == 0x20000 || mbi.Type == 0x40000; // MEM_PRIVATE or MEM_MAPPED
+                // Skip regions entirely outside the requested range.
+                bool inRange = (long)mbi.BaseAddress + (long)mbi.RegionSize > minAddr
+                              && (long)mbi.BaseAddress < maxAddr;
 
-                if (isCommitted && isReadWrite && notGuard && notTooBig && isPrivateOrMapped)
+                if (isCommitted && isReadWrite && notGuard && notTooBig && isPrivateOrMapped && inRange)
                 {
                     regionsSearched++;
                     byte[] regionBytes;

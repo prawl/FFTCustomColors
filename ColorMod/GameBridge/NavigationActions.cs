@@ -3034,9 +3034,12 @@ namespace FFTColorCustomizer.GameBridge
                         (byte)(unit.MaxHp & 0xFF), (byte)(unit.MaxHp >> 8),
                     };
 
-                    var matches = _explorer.SearchBytesInAllMemory(hpPattern, 8);
-                    // Filter to heap unit struct range (empirically 0x41_6000_0000..0x41_7200_0000)
-                    var heapMatches = matches.Where(m => (long)m.address >= 0x4160000000L && (long)m.address < 0x4180000000L).ToList();
+                    // Search only the heap unit struct range (empirically 0x4160000000..0x4180000000).
+                    // Without the range filter, searches for common HP values (like 116)
+                    // exhaust the match limit on graphics-buffer false positives in
+                    // 0x428C..0x429x before reaching the real unit structs.
+                    var heapMatches = _explorer.SearchBytesInAllMemory(
+                        hpPattern, maxResults: 8, minAddr: 0x4160000000L, maxAddr: 0x4180000000L);
                     if (heapMatches.Count == 0)
                     {
                         ModLogger.Log($"[CollectPositions] No heap match for ({unit.GridX},{unit.GridY}) hp={unit.Hp}/{unit.MaxHp}");

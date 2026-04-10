@@ -315,6 +315,11 @@ namespace FFTColorCustomizer.GameBridge
             [0xA0] = "Gallant Knight",  // Ramza variant
             [0xA1] = "Squire",          // Ramza Ch2-3 variant
 
+            // Story character unique job IDs (small numbers, distinct from 74+ range).
+            // Verified in-game: these appear in the roster at +0x02 for story chars.
+            [22] = "Machinist",       // Mustadio — verified
+            [30] = "Holy Knight",     // Agrias — verified
+
             // Generic human jobs (IC remaster roster IDs)
             [74] = "Squire",          // 0x4A — verified
             [75] = "Chemist",         // 0x4B — estimated (sequential)
@@ -335,7 +340,7 @@ namespace FFTColorCustomizer.GameBridge
             [90] = "Arithmetician",   // 0x5A — estimated
             [91] = "Bard",            // 0x5B — estimated
             [92] = "Dancer",          // 0x5C — estimated
-            [93] = "Mime",            // 0x5D — estimated
+            [93] = "Mime",            // 0x5D — estimated (verified this battle)
             // WotL jobs
             [94] = "Dark Knight",     // 0x5E — estimated
             [95] = "Onion Knight",    // 0x5F — estimated
