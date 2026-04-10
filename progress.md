@@ -1,92 +1,140 @@
-# Session Progress — 2026-04-06
+# Session Progress — Enemy Class Fingerprint Discovery
 
-## What Was Accomplished
+Last updated: 2026-04-10 (mid-session snapshot before context handoff)
 
-### 1. Memory Scan (30 agents, 3 waves)
-- Discovered ~120 memory fields across 8 regions
-- Verified same-session AND cross-restart stability
-- Full results in [docs/MEMORY_SCAN_WAVE1.md](docs/MEMORY_SCAN_WAVE1.md)
+## The big win
+**Enemy job/class detection now works reliably.** Previously every enemy was labeled "Chemist" (because the UI buffer was unreliable and the condensed struct has no jobId byte). Now the system reads 11 bytes at heap unit struct offset `+0x69`, uses bytes 1-10 as a class fingerprint, and looks them up in a dictionary. 50+ classes covered.
 
-### 2. Battle State Reporting
-Active unit now reports: nameId, name (story characters), ct, jobId, brave, faith, equipped abilities (with names), equipment IDs, hoveredAction.
+See `memory/project_class_fingerprint.md` for the full investigation and current pitfalls.
 
-### 3. Screen Detection Fixes
-- Battle_Moving uses `moveMode==255 || battleMode==2` (fixed from battleMode-only)
-- `hoveredAction` replaces raw menuCursor number
-- `ui` field on screen response ("Move", "Abilities", "Wait", etc.)
-- Location falls back to saved world map location during battle
+## Infrastructure delivered this session
 
-### 4. Map Auto-Detection (MAJOR BREAKTHROUGH)
-- **Heap scenario struct found** at dynamic address with MAP ID (+0x30) and location ID (+0x24)
-- C# `FindScenarioMapId()` scans ~300MB of heap memory, pattern-matches the struct
-- Filters to low-address candidates (live battle data), picks highest scenario ID
-- 128 map names hardcoded from MapTrapFormationData.xml
-- **Successfully detects MAP074 "The Siedge Weald" automatically**
-- Reset flag added so map re-scans on new battle
+### 1. Fingerprint-based class detection
+- `ColorMod/GameBridge/ClassFingerprintLookup.cs` — new file. Dictionary `FingerprintToJob` keyed by 10-byte hex string, plus `FingerprintByTeam` for classes that share fingerprints (e.g. Arithmetician player vs Ahriman enemy).
+- `ColorMod/GameBridge/NavigationActions.cs` — `CollectUnitPositionsFull()` has a new loop that, after roster matching, searches the heap for each unit's HP+MaxHP pattern, reads 11 bytes at struct+0x69, and sets `unit.JobNameOverride` from the fingerprint lookup.
+- Scan now renders `unit.JobNameOverride ?? GetJobName(u.Job)` with the UI-buffer fallback restricted to player units (team=0) only. Enemies without a fingerprint match show as `(?)` instead of inheriting the active player's job via UI buffer leak.
+- Zero-fingerprint fallback: tries successive heap matches if the first one lands on a dead/reserved slot.
+- Range-filtered heap search via `SearchBytesInAllMemory(pattern, maxResults, minAddr, maxAddr)` — eliminates graphics-buffer false positives that were exhausting the match budget.
 
-### 5. Data Files Created
-- `CharacterData.cs` — ~140 entries (story characters + job/monster names)
-- `ItemData.cs` — 293 items (FFTPatcher IDs, need remapping for IC remaster)
-- `MapLoader.GetMapName()` — 128 battle map names
+### 2. Story character roster fix
+- `ColorMod/GameBridge/CharacterData.cs` — added `StoryCharacterJob` dict (nameId → canonical job) and `GetStoryJob(nameId)` API. Fixes story characters like Marach/Beowulf/Rapha/Mustadio/Agrias whose roster +0x02 field is their nameId, not a job ID.
+- `NavigationActions.cs` calls `GetStoryJob` after the roster match and overrides `JobNameOverride` if the character is in the dict.
 
-### 6. Text Encoding Research
-- FFT PSX encoding cracked: 0x0A-0x23=A-Z, 0x24-0x3D=a-z, 0x00-0x09=0-9
-- Text in compressed .pac files, custom encoding, PAGE_READONLY heap memory
-- 40+ agents searched — text strings not in static module memory
+### 3. Scan cache invalidation
+- `ColorMod/Utilities/CommandWatcher.cs` — `scan_move` now calls `_turnTracker.ShouldAutoScan(...)` before checking `HasCachedScan`. Previously the cache only invalidated on battle_move/attack/ability/wait/flee, so a scan on a new turn without any prior action returned stale data forever. Now the cache correctly invalidates when `battleUnitId` or `battleUnitHp` changes between scans.
 
-## Current Bug: Map Detection False Positives
+### 4. Live log file
+- `ColorMod/Core/ConsoleLogger.cs` — tees all mod output to `claude_bridge/live_log.txt` (truncated on first write per session). Claude can now `grep` or `tail` this file for fresh logs without the user copy-pasting from the game console window.
+- `fft.sh` — new `logs` helper: `logs` (last 40), `logs 100` (last 100), `logs grep <pattern>`.
 
-### Problem
-The heap scan finds ~500+ candidates matching the scenario struct pattern. For Siedge Weald (MAP074) it works because the correct match has the highest scenario ID among low-address candidates. But for Araguay Woods (MAP080), the correct match only appears at HIGH addresses (0x42C4+) in lookup tables, NOT in low-address live data.
+### 5. Title screen detection fix
+- `ColorMod/GameBridge/ScreenDetectionLogic.cs` — treat `eventId == 0xFFFF` as "no event" so a freshly-launched game on the title screen isn't misclassified as Cutscene.
+- New test: `DetectScreen_TitleScreen_EventIdUninitializedSentinel_ReturnsTitleScreen`.
 
-### Root Cause
-The scenario struct layout may differ for random encounters vs story battles, OR the random encounter's struct has field values outside our validation ranges (scenario 50-600, subType <20, music <200, etc.).
+### 6. `boot` / `restart` robustness
+- `fft.sh` — new `running` helper checks `tasklist` for `FFT_enhanced.exe`. `boot` now launches the game if not running, waits for bridge, then advances past title. `restart` full cycle: kill → build → deploy → launch → advance.
+- Cursor reset for Pause menu: `ReturnToWorldMap` now presses Up x6 before Down x4 because the Pause menu remembers its last cursor position.
+- Shorter default timeout (5s vs 15s) with `running` print on timeout so crashes are immediately visible.
+- Reset `FFT_START` / `_FFT_DONE` on entry so the 30s total-script budget doesn't kill a long boot.
 
-### Candidates File
-Written to `claude_bridge/map_candidates.txt` on each scan. Shows all matches with scenario, location, map, and address.
+### 7. `battle_flee` cursor reset
+- `ColorMod/GameBridge/NavigationActions.cs:BattleFlee` — same Up x6 before Down x4 fix.
+- `ColorMod/GameBridge/NavigationPaths.cs:ReturnToWorldMap` / `ReturnToTitle` — same fix.
 
-### What Needs Investigation
-1. **Widen the search** — relax validation constraints or try different field offsets
-2. **Check if random encounters use a different struct** — read the actual bytes at the correct map=80 addresses (0x42C4000480) to understand the layout
-3. **Verify our struct offsets** — the +0x24/+0x30 offsets were derived from ONE battle (Siedge Weald scenario 284). Other battles may have different layouts.
-4. **Consider alternative approach** — search for JUST the map ID byte (0x50 for MAP080) in a smaller, more targeted heap region, then validate context
+## Fingerprint table state
 
-### Approach for Next Session
-1. Load into Araguay Woods battle
-2. Read the two high-address candidates for map=80 (0x42C4000480, 0x42DC0013F8) 
-3. Dump 96 bytes from each to see the full struct
-4. Compare layout with the Siedge Weald struct to find what's different
-5. Adjust validation to handle both cases
+**51 classes covered**:
 
-## Pitfalls Found During Battle Play
+### Monsters (26)
+Chocobo, Black Chocobo, Black Goblin, Gobbledygook, Bomb, Grenade, Exploder, Red Panther, Coeurl, Vampire Cat, Skeleton, Bonesnatch, Skeletal Fiend, Ghast, Ghoul, Revenant, Floating Eye, Ahriman, Plague Horror, Dragon, Red Dragon, Wisenkin, Minotaur, Malboro, Ochu, Piscodaemon, Squidraken, Jura Aevis, Steelhawk, Cockatrice, Behemoth
 
-1. **battleMode=1** not recognized as move mode (fixed with moveMode fallback)
-2. **acted/moved flags reset** between turn phases
-3. **MoveToEnemy silently fails** without loaded MAP
-4. **Keys sent during unrecognized state** get processed by game
-5. **UI buffer shows cursor-selected unit** not active unit
-6. **Condensed nameId is sequential** (1,2,3...) not character identifier
-7. **Condensed header values misidentified** — +0x18 is CT gauge, +0x06 is NOT speed
-8. **Item IDs don't match FFTPatcher** — IC remaster uses different numbering
-9. **Map detection picks wrong map** for some encounters (false positives)
-10. **_battleMapAutoLoaded didn't reset** between battles (fixed)
-11. **Too many concurrent agents crash the bridge** — limit to <5 at a time for bridge reads
+### Generic humans (15)
+Squire, Chemist, Knight, Archer, Monk, White Mage, Black Mage, Time Mage, Summoner, Thief, Mystic, Geomancer (via Ramza roster), Dragoon, Samurai, Arithmetician, Bard, Mime
 
-## Still TODO
+### Story characters via fingerprint (6)
+Gallant Knight (Ramza — unreliable, varies per save), Automaton (Construct 8), Divine Knight (Meliadoul), Nightblade (Isilud), White Knight (Wiegraf — may change through story), Machinist (Barich — distinct fingerprint from Mustadio)
 
-### Critical
-- [ ] Fix map detection for all encounter types (Araguay Woods fails)
-- [ ] Effective stats (Speed, PA, MA, Move, Jump) — only in heap struct
-- [ ] Roster-to-battle unit matching — condensedNameId is sequential, need equipment-based matching
+### Story characters via roster nameId (14)
+Ramza, Delita, Orlandeau, Reis, Gaffgarion, Mustadio, Marach, Agrias, Beowulf, Rapha, Meliadoul, Cloud, Construct 8, Balthier, Luso
 
-### Important
-- [ ] Generic character names — game text in custom encoding, compressed
-- [ ] Item ID remapping for IC remaster
-- [ ] Verify map detection across 5+ different battle locations
-- [ ] Game over flag verification (0x140D3A10C)
+## What's still missing
 
-### Nice to Have
-- [ ] Turn order prediction from CT table
-- [ ] Status effects from heap struct +0x50-0x5F
-- [ ] Facing direction from heap struct +0x39
-- [ ] Item name lookup table with correct IC remaster IDs
+### Monster families with gaps
+| Family | Missing |
+|---|---|
+| Chocobo | Red Chocobo (tier 3) |
+| Goblin | Goblin (tier 1) |
+| Dragon | Blue Dragon (tier 2) |
+| Bull | Sacred (tier 2) |
+| Malboro | Great Malboro (tier 3) |
+| Piscodaemon | Mindflayer (tier 3) |
+| Behemoth | Behemoth King (tier 2), Dark Behemoth (tier 3) |
+
+### Entire missing families
+- **Pig/Boar**: Pig, Swine, Wild Boar
+- **Treant**: Dryad, Treant, Elder Treant
+- **Hydra**: Hydra, Greater Hydra, Tiamat
+
+### Missing generic humans
+- Orator, generic Ninja (as enemy), Dancer, Onion Knight, Dark Knight
+- Note: User mentioned Dark Knight / Onion Knight mods will be enabled next restart
+
+### Lucavi / bosses (story-fight only, low priority)
+- Belias, Zalera, Adrammelech, Hashmal, Ultima, Cuchulainn, Archaeodaemon, Ultima Demon
+
+## Battlegrounds visited this session
+All 19 battlegrounds visited (24-42). Some re-rolled multiple times. Notable:
+- **Grogh Heights (33)** — mod-forced battle with 11 lv99 enemies, unit structs at 0x430xxxx (outside hardcoded heap range). **Skipped** — mod-only enemies shouldn't be labeled as canonical.
+- **Mandalia Plain (24)** — also mod-forced, but with story characters (Isilud, Wiegraf, Barich). Labeled because those chars DO appear normally in story fights.
+- **Balias Tor (37)** — Meliadoul battle, added her Divine Knight fingerprint (her roster match was failing due to brave/faith read issues).
+
+## Known bugs and workarounds
+
+### Fingerprint heap search fails in some saves
+Hardcoded range `0x4160000000..0x4180000000` misses heap unit structs in some saves. Observed in Grogh Heights where structs were at 0x430xxxx. Current behavior: enemies show as `(?)`. Future fix: dynamically discover the heap region by searching for any known unit's HP pattern first.
+
+### Ramza's fingerprint varies per save
+Ramza has had 5+ different fingerprints across saves depending on his job/equipment/growth. His roster lookup via nameId=1 is the authoritative path. I never added Ramza as a fingerprint entry for this reason. (A couple of his entries leaked into the table earlier in the session by accident — need to audit and remove if they're still there.)
+
+### First turn of a newly loaded battle can return stale cached scan
+Right after loading a save into a battle, the first `scan_move` can return data from the previous battle's cache. Workaround: `battle_wait` through the first turn. See `memory/feedback_scan_first_turn_bug.md`.
+
+### Screen detection during formation loading
+After `execute_action Fight`, the bridge reports `TravelList` for 3-6 seconds during the formation scene load. The key sequence (Enter Enter Space Enter) still works — just sleep and send it blindly. See `ClassFingerprintLabeling.md`.
+
+### Story char roster match needs level+brave+faith
+The roster match uses a `RosterMatcher.Match` with Level+Brave+Faith as the key. If brave/faith are polluted by UI buffer leak (showing 100/100 for an enemy), the match fails. Meliadoul (nameId=42) regularly fails to match — her fingerprint is now a backup.
+
+## Git state
+Branch: `auto-play-with-claude`
+Remote: `prawl/FFTCustomColors` (moved from `FFT_Color_Mod`)
+Recent commits (HEAD first):
+- `05f2c1d` Add 4 monster fingerprints: Cockatrice, Plague Horror, Red Dragon, Minotaur
+- `d87c784` Fix battle_flee cursor reset and add 3 story char fingerprints
+- `24f10a1` Skip zero fingerprints, add Chocobo/Piscodaemon/Divine Knight
+- `34b867a` Add story char job lookup by nameId, 4 new fingerprints
+- `9e8c34b` Fix heap search range, add story char jobs, add 4 fingerprints
+- `c4d184d` Add 9 more class fingerprints
+- `a650e63` Expand class fingerprint table and ignore byte 0
+- `dab579c` Add class fingerprint lookup for enemy job names
+- `e0c9250` Tee all mod logs to claude_bridge/live_log.txt
+- `7c95e96` Shorter default timeout and print running status on timeout
+- `5656ad2` Fix title screen detection and restart hang
+- `a8f2f75` Add running helper, auto-launch game in boot
+
+Uncommitted changes (staged for this final commit):
+- `ClassFingerprintLookup.cs` — Vampire Cat, Jura Aevis, Malboro, Skeleton
+- `progress.md` — this file
+- `FFTHandsFree/Instructions/ClassFingerprintLabeling.md` — new
+- `FFTHandsFree/Instructions/Commands.md` — added running/boot/logs entries
+- `FFTHandsFree/Instructions/Rules.md` — added Class Labeling Mode section
+
+## How to continue in a new context
+
+1. Read `FFTHandsFree/Instructions/ClassFingerprintLabeling.md` for the loop procedure.
+2. Read `memory/project_class_fingerprint.md` for the technical background.
+3. Read `memory/project_battle_loop.md` for the detailed flee→travel→formation→scan flow.
+4. Check `progress.md` (this file) for current state and what's missing.
+5. Run `boot` to get into the game, `battle_wait` if needed to get past first-turn cache bug, then start the loop.
+6. Target the missing monster families listed above. Each battleground has a different enemy pool — try unvisited ones first.
+7. Commit after every 3-5 new entries with a descriptive message.

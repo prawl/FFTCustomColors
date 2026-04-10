@@ -36,6 +36,7 @@ namespace FFTColorCustomizer.GameBridge
         {
             // === Monsters ===
             // Undead family (byte 1 = 0x05 for skeletons, 0x07 for ghosts):
+            ["05-73-1E-05-55-78-27-6C-07-55"] = "Skeleton",
             ["05-65-1E-03-55-66-27-7D-07-58"] = "Skeletal Fiend",
             ["05-5A-1E-04-55-6A-27-7B-07-57"] = "Bonesnatch",
             ["07-52-1E-60-55-6E-27-5D-07-6A"] = "Ghast",
@@ -45,7 +46,8 @@ namespace FFTColorCustomizer.GameBridge
             ["06-56-1E-23-55-72-27-67-07-57"] = "Black Goblin",
             // Bomb family:
             ["07-57-1E-1E-5A-73-27-55-07-5E"] = "Grenade",
-            // Malboro family:
+            // Malboro family (tier 1 Malboro, tier 2 Ochu):
+            ["08-AF-1E-0F-5A-61-26-69-1E-63"] = "Malboro",
             ["08-91-1E-0F-5A-5F-27-6E-1B-6E"] = "Ochu",
             // Floating Eye family (tier 1 Floating Eye, tier 2 Ahriman, tier 3 Plague Horror):
             ["06-50-1E-50-55-68-28-5A-07-59"] = "Floating Eye",
@@ -58,7 +60,8 @@ namespace FFTColorCustomizer.GameBridge
             ["07-50-1E-96-55-62-27-96-07-69"] = "Black Chocobo",
             // Bomb family (shared by Bomb / Grenade / Exploder variants):
             ["07-55-1E-14-5A-68-27-64-07-5D"] = "Bomb",
-            // Bird family (tier 1 Steelhawk, tier 3 Cockatrice):
+            // Bird family (tier 1 Jura Aevis, tier 2 Steelhawk, tier 3 Cockatrice):
+            ["07-5A-1E-28-55-71-27-69-07-55"] = "Jura Aevis",
             ["07-55-1E-3C-55-83-27-6C-07-5A"] = "Steelhawk",
             ["07-65-1E-0A-55-87-27-98-07-64"] = "Cockatrice",
             // Bull family (Wisenkin is the first tier):
@@ -70,8 +73,9 @@ namespace FFTColorCustomizer.GameBridge
             ["07-73-1E-73-55-65-27-65-07-60"] = "Squidraken",
             // Behemoth family:
             ["05-8C-1E-78-55-75-24-86-07-69"] = "Behemoth",
-            // Panther family (tier 1):
+            // Panther family (tier 1 Red Panther, tier 2 Coeurl, tier 3 Vampire Cat):
             ["06-74-1E-32-55-74-27-62-07-5B"] = "Red Panther",
+            ["06-63-1E-46-55-86-27-84-07-55"] = "Vampire Cat",
             // Bomb family (tier 2/3 Exploder):
             ["07-7C-1E-28-5A-64-27-74-07-60"] = "Exploder",
             // Dragon family:

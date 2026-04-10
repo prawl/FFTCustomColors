@@ -73,7 +73,12 @@ Waiting variants (press key, then wait for screen change):
 |---------|-------------|
 | `strict 1` / `strict 0` | Enable/disable strict mode |
 | `set_map <id>` | Manually load a battle map |
-| `restart` | Kill game, rebuild, redeploy, relaunch |
+| `running` | Check if FFT_enhanced.exe is alive (fast, no bridge call) |
+| `boot` | Launch game if not running, advance past title. Safe from any state. |
+| `restart` | Full cycle: kill, rebuild, redeploy, relaunch, boot through title |
+| `logs` | Tail the live mod log (`claude_bridge/live_log.txt`) |
+| `logs 100` | Last 100 lines |
+| `logs grep <pattern>` | Grep the whole live log |
 
 ## How It Works
 
