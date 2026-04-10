@@ -42,7 +42,8 @@ namespace FFTColorCustomizer.GameBridge
             ["07-52-1E-60-55-6E-27-5D-07-6A"] = "Ghast",
             ["07-53-1E-7C-55-67-27-5A-07-69"] = "Ghoul",
             ["07-5D-1E-40-55-79-27-61-07-6E"] = "Revenant",
-            // Goblin family:
+            // Goblin family (tier 1 Goblin, tier 2 Black Goblin, tier 3 Gobbledygook):
+            ["07-75-1E-28-55-69-27-62-07-55"] = "Goblin",
             ["06-56-1E-23-55-72-27-67-07-57"] = "Black Goblin",
             // Bomb family:
             ["07-57-1E-1E-5A-73-27-55-07-5E"] = "Grenade",
