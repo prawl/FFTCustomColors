@@ -25,7 +25,7 @@
 #   Management:    save, load, buy <item> <qty>, sell <item> <qty>, change_job <id> <job>
 #   Memory:        rv <addr> [size], block <addr> <size>, batch '<json>'
 #   State:         screen, state, scan_units, scan_move
-#   System:        restart, boot, strict 1/0
+#   System:        running, restart, boot, strict 1/0
 #
 # RESPONSE FORMAT:
 #   Most commands print: [ScreenName] loc=X hover=Y menu=M status=ST
@@ -416,6 +416,25 @@ goto() {
 # SYSTEM COMMANDS
 # =============================================================================
 
+# running: Check whether FFT_enhanced.exe is currently running.
+# Returns 0 if running, 1 if not. Prints one-line status.
+# Fast: uses tasklist, no bridge round-trip.
+running() {
+  if tasklist //NH //FI "IMAGENAME eq FFT_enhanced.exe" 2>/dev/null | grep -qi "FFT_enhanced.exe"; then
+    echo "[running] FFT_enhanced.exe: YES"
+    return 0
+  else
+    echo "[running] FFT_enhanced.exe: NO"
+    return 1
+  fi
+}
+
+# _launch_game: Internal helper — starts Reloaded-II + FFT in the background.
+# Does NOT wait for the bridge; caller is responsible for that.
+_launch_game() {
+  "/c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/Reloaded/reloaded-ii.exe" --launch "C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\FFT_enhanced.exe" &
+}
+
 # restart: Full cycle — kill game, build mod, deploy, relaunch, wait for bridge.
 # Use when you need code changes to take effect.
 restart() {
@@ -428,7 +447,7 @@ restart() {
   echo "[restart] Deploying..."
   powershell.exe -ExecutionPolicy Bypass -File ./BuildLinked.ps1 2>&1 | tail -3
   echo "[restart] Launching..."
-  "/c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/Reloaded/reloaded-ii.exe" --launch "C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\FFT_enhanced.exe" &
+  _launch_game
   echo "[restart] Waiting for bridge..."
   local tries=0
   until [ -f "$B/state.json" ] || [ $tries -ge 150 ]; do
@@ -463,8 +482,25 @@ restart() {
   echo "[restart] Booted (may still be loading)"
 }
 
-# boot: Press Enter through title/continue screens until world map loads.
+# boot: Get the game to a playable screen.
+# If the game isn't running, launches it and waits for the bridge.
+# Then presses Enter through title/continue screens until past TitleScreen.
 boot() {
+  if ! running >/dev/null; then
+    echo "[boot] Game not running — launching..."
+    _launch_game
+    echo "[boot] Waiting for bridge..."
+    local tries=0
+    until [ -f "$B/state.json" ] || [ $tries -ge 150 ]; do
+      sleep 0.2
+      tries=$((tries + 1))
+    done
+    if [ ! -f "$B/state.json" ]; then
+      echo "[boot] TIMEOUT waiting for bridge"
+      return 1
+    fi
+    echo "[boot] Bridge online."
+  fi
   local max=10
   for i in $(seq 1 $max); do
     enter
