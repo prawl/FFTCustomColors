@@ -53,6 +53,12 @@ namespace FFTColorCustomizer.GameBridge
             ["06-5B-1E-3C-55-81-27-74-07-69"] = "Coeurl",
             // Chocobo family:
             ["07-50-1E-96-55-62-27-96-07-69"] = "Black Chocobo",
+            // Bomb family (shared by Bomb / Grenade / Exploder variants):
+            ["07-55-1E-14-5A-68-27-64-07-5D"] = "Bomb",
+            // Bird family:
+            ["07-55-1E-3C-55-83-27-6C-07-5A"] = "Steelhawk",
+            // Bull family (Wisenkin is the first tier):
+            ["06-87-1E-05-55-6B-27-78-07-64"] = "Wisenkin",
 
             // === Generic human jobs ===
             ["0C-4B-09-78-64-64-3C-3C-32-96"] = "Black Mage",
@@ -67,10 +73,12 @@ namespace FFTColorCustomizer.GameBridge
             ["0A-50-0A-78-64-6E-32-5A-32-6E"] = "White Mage",
             ["0C-4B-0E-5A-64-64-2D-80-32-5A"] = "Samurai",
             ["0A-78-0F-32-64-64-28-78-32-32"] = "Dragoon",
+            ["0B-64-0F-4B-64-64-3C-5A-32-50"] = "Squire",
+            ["14-37-14-32-64-64-50-1E-32-73"] = "Bard",
 
-            // Note: Ramza's fingerprint differs between saves (saw 3 different
-            // patterns now). Likely encodes equipment/stat growth for story chars.
-            // Use roster lookup for Ramza instead.
+            // Note: Ramza's fingerprint differs between saves (saw 4 different
+            // patterns now, depending on his current job/equipment/growth).
+            // Roster lookup is authoritative for Ramza — fingerprint is unreliable.
         };
 
         /// <summary>

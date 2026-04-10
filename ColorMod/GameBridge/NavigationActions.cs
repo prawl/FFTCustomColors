@@ -1423,7 +1423,11 @@ namespace FFTColorCustomizer.GameBridge
                     Name = u.Name,
                     Team = u.Team,
                     JobId = u.Job,
-                    JobName = u.JobNameOverride ?? GameStateReporter.GetJobName(u.Job),
+                    // For enemies, unit.Job is polluted by UI buffer leak (often shows
+                    // the active player's job). Only trust fingerprint match for them.
+                    // Players can fall back to GetJobName(u.Job) since roster sets it.
+                    JobName = u.JobNameOverride
+                        ?? (u.Team == 0 ? GameStateReporter.GetJobName(u.Job) : null),
                     Level = u.Level,
                     X = u.GridX,
                     Y = u.GridY,
@@ -1713,7 +1717,8 @@ namespace FFTColorCustomizer.GameBridge
                     {
                         tile.Hp = occupantUnit.Hp;
                         tile.MaxHp = occupantUnit.MaxHp;
-                        tile.JobName = occupantUnit.JobNameOverride ?? GameStateReporter.GetJobName(occupantUnit.Job);
+                        tile.JobName = occupantUnit.JobNameOverride
+                            ?? (occupantUnit.Team == 0 ? GameStateReporter.GetJobName(occupantUnit.Job) : null);
                     }
                     attackTileList.Add(tile);
                 }
