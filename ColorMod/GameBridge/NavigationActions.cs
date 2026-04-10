@@ -1673,6 +1673,9 @@ namespace FFTColorCustomizer.GameBridge
                     })
                     .ToList();
 
+                // Cache for battle_move validation
+                _lastValidMoveTiles = new HashSet<(int, int)>(visited.Keys);
+
                 validPaths["ValidMoveTiles"] = new PathEntry
                 {
                     Desc = $"{tileList.Count} tiles from ({ally.GridX},{ally.GridY}) Mv={moveStat} Jmp={jumpStat} enemies={enemyPositions.Count}",
@@ -2196,6 +2199,14 @@ namespace FFTColorCustomizer.GameBridge
             int targetX = command.LocationId;
             int targetY = command.UnitIndex;
 
+            // Validate target tile against last scan_move results
+            if (!MoveValidator.IsValidTile(targetX, targetY, _lastValidMoveTiles))
+            {
+                response.Status = "failed";
+                response.Error = MoveValidator.GetInvalidTileError(targetX, targetY, _lastValidMoveTiles);
+                return response;
+            }
+
             // Enter Move mode if on Battle_MyTurn
             var screen = _detectScreen();
             if (screen != null && screen.Name == "Battle_MyTurn")
@@ -2613,6 +2624,9 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>Last scan results cached for BFS enemy blocking.</summary>
         private List<ScannedUnit>? _lastScannedUnits;
+
+        /// <summary>Last computed valid move tiles from scan_move BFS. Used by battle_move to validate targets.</summary>
+        private HashSet<(int x, int y)>? _lastValidMoveTiles;
 
 
         /// <summary>Get enemy grid positions from last scan for BFS blocking.</summary>

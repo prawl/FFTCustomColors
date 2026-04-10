@@ -31,6 +31,7 @@ namespace FFTColorCustomizer.Utilities
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
         private readonly BattleTurnTracker _turnTracker = new();
+        private bool _suppressAutoScan;
         private readonly BattleMenuTracker _battleMenuTracker = new();
         private HashSet<int>? _cachedLearnedAbilityIds;
         private string? _cachedPrimarySkillset;
@@ -177,7 +178,13 @@ namespace FFTColorCustomizer.Utilities
                     SyncBattleMenuTracker(response.Screen);
 
                     // Auto-scan units when a new player turn starts (team 0 only)
-                    if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId, response.Screen.BattleUnitHp))
+                    // Suppressed after battle_move/attack/ability — C+Up keypresses during
+                    // post-action settling can navigate the action menu (Reset Move bug).
+                    if (_suppressAutoScan)
+                    {
+                        _suppressAutoScan = false;
+                    }
+                    else if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId, response.Screen.BattleUnitHp))
                     {
                         try
                         {
@@ -279,8 +286,10 @@ namespace FFTColorCustomizer.Utilities
                 bool isInfra = !string.IsNullOrEmpty(command.Action) && InfrastructureActions.Contains(command.Action);
                 bool isGameAction = !string.IsNullOrEmpty(command.Action) && AllowedGameActions.Contains(command.Action);
                 bool isNoOp = string.IsNullOrEmpty(command.Action) && (command.Keys == null || command.Keys.Count == 0);
+                // Escape key (VK 27) is always allowed — universal cancel/back
+                bool isEscape = string.IsNullOrEmpty(command.Action) && command.Keys?.Count == 1 && command.Keys[0].Vk == 0x1B;
 
-                if (!isInfra && !isGameAction && !isNoOp)
+                if (!isInfra && !isGameAction && !isNoOp && !isEscape)
                 {
                     var screen = DetectScreen();
                     var paths = screen != null ? NavigationPaths.GetPaths(screen) : null;
@@ -703,6 +712,7 @@ namespace FFTColorCustomizer.Utilities
                     case "move_grid": // legacy alias
                         _turnTracker.InvalidateCache(); // battlefield state changed
                         _battleMenuTracker.ReturnToMyTurn(); // reset submenu tracking
+                        _suppressAutoScan = true; // prevent auto-scan — C+Up after move/attack can hit Reset Move
                         return ExecuteNavAction(command);
 
                     case "world_travel_to":
