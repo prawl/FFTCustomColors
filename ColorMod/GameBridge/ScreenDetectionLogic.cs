@@ -37,6 +37,9 @@ namespace FFTColorCustomizer.GameBridge
             // Attacking: battleMode=4 (selecting target tile for an ability/attack)
             if (inBattle && battleMode == 4)
                 return "Battle_Attacking";
+            // Waiting/Facing: battleMode=2 + menuCursor=2 (Wait) — post-action facing selection
+            if (inBattle && battleMode == 2 && menuCursor == 2)
+                return "Battle_Waiting";
             // Moving: battleMode=2 (selecting movement tile)
             if (inBattle && battleMode == 2)
                 return "Battle_Moving";

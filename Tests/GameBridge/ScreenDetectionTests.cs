@@ -297,6 +297,35 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.StartsWith("Battle", result);
         }
         [Fact]
+        public void DetectScreen_FacingSelection_ShouldReturnBattleWaiting()
+        {
+            // After Move+Attack, the game enters facing selection.
+            // battleMode=2 (same as Move), but menuCursor=2 (Wait) distinguishes it.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 2, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
+                menuCursor: 2);
+
+            Assert.Equal("Battle_Waiting", result);
+        }
+
+        [Fact]
+        public void DetectScreen_NormalMoveMode_MenuCursor0_ShouldReturnBattleMoving()
+        {
+            // Normal Move mode: battleMode=2, menuCursor=0 (Move)
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 2, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
+                menuCursor: 0);
+
+            Assert.Equal("Battle_Moving", result);
+        }
+
+        [Fact]
         public void DetectScreen_AfterAbilityUse_SubmenuFlagStale_ShouldReturnBattleActing()
         {
             // After using an ability, the game returns to the action menu.
