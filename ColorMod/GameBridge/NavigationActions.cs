@@ -1385,8 +1385,10 @@ namespace FFTColorCustomizer.GameBridge
             int moveStat = command.LocationId > 0 ? command.LocationId : ally.Move;
             int jumpStat = command.UnitIndex > 0 ? command.UnitIndex : ally.Jump;
 
-            // 3. Get enemy positions
-            var enemyPositions = GetEnemyPositions();
+            // 3. Get all occupied positions (enemies, allies, dead units — everything except active unit)
+            var occupiedPositions = BattleFieldHelper.GetOccupiedPositions(
+                units.Select(u => (u.GridX, u.GridY, u.Team, u.Hp, u == ally)).ToList());
+            var enemyPositions = GetEnemyPositions(); // still needed for facing/distance calculations
 
             // 4. Build structured battle state
             var battleState = new BattleState { InBattle = true };
@@ -1621,7 +1623,7 @@ namespace FFTColorCustomizer.GameBridge
                         int nx = x + d[0], ny = y + d[1];
                         if (!map.InBounds(nx, ny)) continue;
                         if (!map.IsWalkable(nx, ny)) continue;
-                        if (enemyPositions.Contains((nx, ny))) continue;
+                        if (occupiedPositions.Contains((nx, ny))) continue; // all units block movement
                         double nh = GetDisplayHeight(nx, ny);
                         if (nh < 0 || ch < 0) continue;
                         if (Math.Abs(nh - ch) > jumpStat) continue;
@@ -2221,6 +2223,19 @@ namespace FFTColorCustomizer.GameBridge
             {
                 response.Status = "failed";
                 response.Error = $"Not in Move mode (current: {screen?.Name ?? "null"})";
+                return response;
+            }
+
+            // Validate target against the game's own movement tile list (authoritative source).
+            // This catches tiles that BFS incorrectly included (dead units, wrong Move stat, etc.)
+            var gameTileBytes = _explorer.Scanner.ReadBytes((nint)GameTileList.Address, GameTileList.MaxBytes);
+            var gameTiles = GameTileList.Parse(gameTileBytes);
+            if (gameTiles.Count > 0 && !gameTiles.Contains((targetX, targetY)))
+            {
+                SendKey(VK_ESCAPE); // exit Move mode
+                Thread.Sleep(300);
+                response.Status = "failed";
+                response.Error = $"Tile ({targetX},{targetY}) is not reachable (game reports {gameTiles.Count} valid tiles). Pick from the game's valid tile list.";
                 return response;
             }
 
