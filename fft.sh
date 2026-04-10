@@ -498,10 +498,74 @@ scan_units() { fft_full "{\"id\":\"$(id)\",\"action\":\"scan_units\"}"; }
 auto_move() { echo "[DISABLED] auto_move is not allowed. Use scan_move, battle_move, battle_attack, battle_wait individually."; return 1; }
 
 # scan_move: Scan units + compute valid movement tiles from map data.
-# Returns unit positions AND valid tiles. Requires set_map first.
+# Prints compact summary. Use scan_move_full for raw JSON.
 # Usage: scan_move              (uses scanned move/jump stats)
 #        scan_move 3 3          (override move=3, jump=3)
 scan_move() {
+  local mv=${1:-0}
+  local jmp=${2:-0}
+  local R=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$mv,\"unitIndex\":$jmp}")
+  # Strip whitespace for reliable grep matching (JSON may be pretty-printed)
+  local RR=$(echo "$R" | tr -d '\r\n ')
+  local ST=$(echo "$RR" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
+  if [ "$ST" = "blocked" ]; then
+    local ERR=$(echo "$RR" | grep -o '"error":"[^"]*"' | head -1 | cut -d'"' -f4)
+    echo "[BLOCKED] $ERR"
+    return 1
+  fi
+  if [ "$ST" != "completed" ]; then
+    local ERR=$(echo "$RR" | grep -o '"error":"[^"]*"' | head -1 | cut -d'"' -f4)
+    echo "[FAILED] $ERR"
+    return 1
+  fi
+  # Screen line
+  local SCR=$(echo "$RR" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local AJOB=$(echo "$RR" | grep -o '"activeUnitJob":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local BWON=$(echo "$RR" | grep -o '"battleWon":true')
+  echo "[$SCR] ${AJOB:+(${AJOB})} ${BWON:+*** BATTLE WON ***}"
+  # Active unit
+  local AX=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"x":[0-9]*' | head -1 | cut -d: -f2)
+  local AY=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"y":[0-9]*' | head -1 | cut -d: -f2)
+  local AHP=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"hp":[0-9]*' | head -1 | cut -d: -f2)
+  local AMHP=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"maxHp":[0-9]*' | head -1 | cut -d: -f2)
+  local AMV=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"move":[0-9]*' | head -1 | cut -d: -f2)
+  local AJP=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"jump":[0-9]*' | head -1 | cut -d: -f2)
+  echo "  Active: ($AX,$AY) HP=$AHP/$AMHP Mv=$AMV Jmp=$AJP"
+  # Units summary — use node to parse JSON reliably
+  echo "  Units:"
+  node -e "
+    var d = JSON.parse(process.argv[1]);
+    var u = d.battle?.units || [];
+    u.forEach(function(v) {
+      var t = v.team === 0 ? 'PLAYER' : v.team === 2 ? 'ALLY' : 'ENEMY';
+      var nm = v.name ? v.name + ' ' : '';
+      var jn = v.jobName || '?';
+      var ex = '';
+      if (v.isActive) ex += ' *ACTIVE*';
+      if (v.lifeState) ex += ' [' + v.lifeState + ']';
+      if (v.statuses && v.statuses.length) ex += ' [' + v.statuses.join(',') + ']';
+      console.log('    [' + t + '] ' + nm + '(' + jn + ') (' + v.x + ',' + v.y + ') HP=' + v.hp + '/' + v.maxHp + ' dist=' + (v.distance ?? '?') + ex);
+    });
+    // Tiles
+    var tiles = d.validPaths?.ValidMoveTiles;
+    if (tiles) console.log('  Tiles: ' + tiles.desc);
+    // Attack tiles
+    var atk = d.validPaths?.AttackTiles?.attackTiles || [];
+    atk.forEach(function(a) {
+      if (a.occupant !== 'empty')
+        console.log('    Attack ' + a.arrow + ' (' + a.x + ',' + a.y + '): ' + a.occupant + (a.jobName ? ' (' + a.jobName + ')' : '') + (a.hp != null ? ' HP=' + a.hp : ''));
+    });
+    // Facing
+    var f = d.validPaths?.RecommendedFacing;
+    if (f) console.log('  ' + f.desc);
+    // Abilities
+    var ab = d.battle?.units?.find(function(x){return x.isActive})?.abilities;
+    if (ab && ab.length) console.log('  Abilities: ' + ab.map(function(a){return a.name}).join(', '));
+  " "$R" 2>/dev/null
+}
+
+# scan_move_full: Raw JSON version of scan_move for debugging.
+scan_move_full() {
   local mv=${1:-0}
   local jmp=${2:-0}
   fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$mv,\"unitIndex\":$jmp}"
