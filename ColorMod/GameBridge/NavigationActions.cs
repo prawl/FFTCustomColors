@@ -3128,16 +3128,22 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>
         /// Navigate to Move (index 0) in the action menu without trusting memory cursor.
-        /// Presses Up 4 times to guarantee reaching index 0 from any position.
-        /// The memory at 0x1407FC620 is stale after abilities (e.g. Shout sets it to 1
-        /// even though the cursor is on Move).
+        /// Menu has 5 items (Move/Abilities/Wait/Status/AutoBattle) and wraps.
+        /// Press Down 4x to reach bottom (index 4) from anywhere, then Up 4x to reach Move (0).
         /// </summary>
         private void NavigateToMove()
         {
+            // Go to bottom first
+            for (int i = 0; i < 4; i++)
+            {
+                SendKey(VK_DOWN);
+                Thread.Sleep(100);
+            }
+            // Then go to top (Move = index 0)
             for (int i = 0; i < 4; i++)
             {
                 SendKey(VK_UP);
-                Thread.Sleep(150);
+                Thread.Sleep(100);
             }
         }
 
