@@ -134,7 +134,8 @@ A human player can check enemy abilities by hovering. Claude has no visibility i
 - [ ] **Scan cache doesn't invalidate between player turns** — `battleUnitId` at `0x14077D2A4` reads the same value for multiple units, so the unit-change detection in TurnAutoScanner doesn't fire. Need a more reliable signal (e.g. compare `battleUnitHp` at `0x14077D2AC`, or track unit position changes). Critical blocker for multi-unit battles.
 - [ ] **battle_move reports NOT CONFIRMED for valid moves** — Navigation succeeds (cursor reaches target) but F key confirmation doesn't transition to Battle_MyTurn within 3s timeout. May need longer timeout for distant moves, or the F key confirmation flow changed. The move DID apply in-game.
 - [ ] **Auto-scan double-fire** — Auto-scan on Battle_MyTurn fires after scan_move already scanned, opening Status menu. Need BattleTurnTracker to mark turns as scanned.
-- [ ] **Battle_Victory screen detection** — Victory screen misdetected as Battle_Acting. Need to detect and transition gracefully to world map.
+- [ ] **Battle_Victory screen detection** — Victory screen misdetected as TravelList/EncounterDialog. Need to capture memory values during victory screen to find a reliable signal. When detected, should auto-transition gracefully (press Enter to advance through rewards, then return to world map).
+- [ ] **Post-attack facing/move selection** — After Attack without prior Move, game enters move+facing selection. Currently misdetected as Battle_Moving. Need to detect this state and handle it (confirm facing or escape).
 - [x] **battle_wait facing uses F key** — Fixed.
 
 ---
