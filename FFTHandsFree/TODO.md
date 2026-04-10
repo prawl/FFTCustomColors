@@ -131,6 +131,7 @@ A human player can check enemy abilities by hovering. Claude has no visibility i
 - [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza. Currently scan_move assumes first team=0 unit is active.
 - [ ] **Neutral unit handling (team=2)** — Don't block pathing for NPCs/guests
 - [x] **Menu cursor address fixed** — 0x1407FC620 confirmed reliable
+- [ ] **C+Up scan misidentifies unit teams** — Monk (team=0 PLAYER) was scanned as team=1 ENEMY at (7,7) with wrong HP/job. Caused Ramza to attack own ally. The condensed struct team field at +0x02 may be unreliable during C+Up cycling, or HP/MaxHP matching is pairing the wrong static array slot. Critical bug — wrong team = attack allies.
 - [ ] **Scan cache doesn't invalidate between player turns** — `battleUnitId` at `0x14077D2A4` reads the same value for multiple units, so the unit-change detection in TurnAutoScanner doesn't fire. Need a more reliable signal (e.g. compare `battleUnitHp` at `0x14077D2AC`, or track unit position changes). Critical blocker for multi-unit battles.
 - [ ] **battle_move reports NOT CONFIRMED for valid moves** — Navigation succeeds (cursor reaches target) but F key confirmation doesn't transition to Battle_MyTurn within 3s timeout. May need longer timeout for distant moves, or the F key confirmation flow changed. The move DID apply in-game.
 - [ ] **Auto-scan double-fire** — Auto-scan on Battle_MyTurn fires after scan_move already scanned, opening Status menu. Need BattleTurnTracker to mark turns as scanned.
