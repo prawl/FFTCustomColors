@@ -409,6 +409,22 @@ namespace FFTColorCustomizer.Utilities
 
                     case "scan_move":
                     case "auto_move":
+                        // Refresh cache state based on current battle state — ShouldAutoScan
+                        // detects turn/unit changes and invalidates the cache as a side
+                        // effect. Without this, scan_move would return stale cached data
+                        // forever after a turn change (the cache invalidation only runs
+                        // on battle_move/attack/ability/wait actions otherwise).
+                        {
+                            var preScreen = DetectScreen();
+                            if (preScreen != null)
+                            {
+                                _turnTracker.ShouldAutoScan(
+                                    preScreen.Name,
+                                    team: preScreen.BattleTeam,
+                                    unitId: preScreen.BattleUnitId,
+                                    unitHp: preScreen.BattleUnitHp);
+                            }
+                        }
                         if (_turnTracker.HasCachedScan)
                         {
                             ModLogger.Log("[CommandBridge] Returning cached scan (already scanned this turn)");

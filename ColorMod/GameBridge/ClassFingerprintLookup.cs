@@ -47,6 +47,12 @@ namespace FFTColorCustomizer.GameBridge
             ["07-57-1E-1E-5A-73-27-55-07-5E"] = "Grenade",
             // Malboro family:
             ["08-91-1E-0F-5A-5F-27-6E-1B-6E"] = "Ochu",
+            // Floating Eye family:
+            ["06-50-1E-50-55-68-28-5A-07-59"] = "Floating Eye",
+            // Panther family:
+            ["06-5B-1E-3C-55-81-27-74-07-69"] = "Coeurl",
+            // Chocobo family:
+            ["07-50-1E-96-55-62-27-96-07-69"] = "Black Chocobo",
 
             // === Generic human jobs ===
             ["0C-4B-09-78-64-64-3C-3C-32-96"] = "Black Mage",
@@ -59,10 +65,24 @@ namespace FFTColorCustomizer.GameBridge
             ["0B-5A-10-32-5A-6E-32-64-32-3C"] = "Thief",
             ["0C-4B-0A-78-64-64-41-32-32-82"] = "Time Mage",
             ["0A-50-0A-78-64-6E-32-5A-32-6E"] = "White Mage",
+            ["0C-4B-0E-5A-64-64-2D-80-32-5A"] = "Samurai",
+            ["0A-78-0F-32-64-64-28-78-32-32"] = "Dragoon",
 
             // Note: Ramza's fingerprint differs between saves (saw 3 different
             // patterns now). Likely encodes equipment/stat growth for story chars.
             // Use roster lookup for Ramza instead.
+        };
+
+        /// <summary>
+        /// Fingerprints that are shared between two DIFFERENT classes. Resolved
+        /// by team (player vs enemy). Both classes have identical 10-byte signatures
+        /// — this is a known limitation of the fingerprint approach.
+        /// </summary>
+        private static readonly Dictionary<string, (string player, string enemy)> FingerprintByTeam = new()
+        {
+            // Arithmetician (player) and Ahriman (enemy monster) have identical
+            // 11-byte fingerprints. Observed empirically in Zeirchele Falls battle.
+            ["06-4B-1E-5F-55-5F-28-8C-07-5F"] = ("Arithmetician", "Ahriman"),
         };
 
         /// <summary>
@@ -71,8 +91,28 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public static string? GetJobName(byte[] fingerprint)
         {
+            return GetJobName(fingerprint, team: null);
+        }
+
+        /// <summary>
+        /// Look up a job name with optional team disambiguation. Some classes share
+        /// identical fingerprints — passing the unit's team (0=player, 1=enemy)
+        /// lets us resolve the collision.
+        /// </summary>
+        public static string? GetJobName(byte[] fingerprint, int? team)
+        {
             if (fingerprint == null || fingerprint.Length < 11) return null;
             var key = BitConverter.ToString(fingerprint, 1, 10);
+
+            // Team-disambiguated entries first
+            if (FingerprintByTeam.TryGetValue(key, out var pair))
+            {
+                if (team == 0) return pair.player;
+                if (team == 1) return pair.enemy;
+                // Unknown team — return both for logging
+                return $"{pair.player}/{pair.enemy}";
+            }
+
             return FingerprintToJob.TryGetValue(key, out var name) ? name : null;
         }
 

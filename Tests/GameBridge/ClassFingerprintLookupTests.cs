@@ -29,5 +29,17 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("Knight", ClassFingerprintLookup.GetJobName(playerKnight));
             Assert.Equal("Knight", ClassFingerprintLookup.GetJobName(enemyKnight));
         }
+
+        [Fact]
+        public void Lookup_DisambiguatesByTeam_WhenFingerprintCollides()
+        {
+            // Arithmetician (player) and Ahriman (enemy monster) have IDENTICAL
+            // 11-byte fingerprints. Observed empirically in Zeirchele Falls battle.
+            // Must disambiguate by team.
+            var fingerprint = new byte[] { 0x10, 0x06, 0x4B, 0x1E, 0x5F, 0x55, 0x5F, 0x28, 0x8C, 0x07, 0x5F };
+
+            Assert.Equal("Arithmetician", ClassFingerprintLookup.GetJobName(fingerprint, team: 0));
+            Assert.Equal("Ahriman", ClassFingerprintLookup.GetJobName(fingerprint, team: 1));
+        }
     }
 }

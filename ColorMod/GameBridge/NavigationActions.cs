@@ -3045,7 +3045,7 @@ namespace FFTColorCustomizer.GameBridge
                     if (fpBytes.Length != 11) continue;
 
                     unit.ClassFingerprint = fpBytes;
-                    var jobName = ClassFingerprintLookup.GetJobName(fpBytes);
+                    var jobName = ClassFingerprintLookup.GetJobName(fpBytes, team: unit.Team);
                     if (jobName != null)
                     {
                         unit.JobNameOverride = jobName;
