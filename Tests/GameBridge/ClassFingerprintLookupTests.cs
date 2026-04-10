@@ -16,5 +16,18 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
             Assert.Equal("Skeletal Fiend", jobName);
         }
+
+        [Fact]
+        public void Lookup_IgnoresByteZero_WhenMatchingClass()
+        {
+            // A player Knight and an enemy Knight had fingerprints differing only
+            // at byte 0 (02-0A-... vs 03-0A-...). Byte 0 is per-unit/team variation,
+            // so the lookup must ignore it to resolve both to "Knight".
+            var playerKnight = new byte[] { 0x02, 0x0A, 0x78, 0x0F, 0x50, 0x64, 0x64, 0x28, 0x78, 0x32, 0x50 };
+            var enemyKnight  = new byte[] { 0x03, 0x0A, 0x78, 0x0F, 0x50, 0x64, 0x64, 0x28, 0x78, 0x32, 0x50 };
+
+            Assert.Equal("Knight", ClassFingerprintLookup.GetJobName(playerKnight));
+            Assert.Equal("Knight", ClassFingerprintLookup.GetJobName(enemyKnight));
+        }
     }
 }
