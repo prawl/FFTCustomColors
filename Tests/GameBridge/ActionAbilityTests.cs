@@ -144,5 +144,23 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // Focus and Tailwind are Mettle, not Time Magicks — should be excluded
             Assert.Empty(filtered);
         }
+        [Fact]
+        public void FilterBySkillsets_SquireWithMettleIds_ShouldIncludeFundaments()
+        {
+            // Squire's primary skillset is "Fundaments" but learned ability IDs
+            // from the condensed struct use Mettle IDs (0x41=Focus, 0x55=Rush, etc.).
+            // FilterBySkillsets must recognize Mettle abilities as valid for Fundaments.
+            var learnedAbilities = new List<ActionAbilityInfo>
+            {
+                ActionAbilityLookup.GetById(0x41)!, // Focus (Mettle ID)
+                ActionAbilityLookup.GetById(0x55)!, // Rush (Mettle ID)
+                ActionAbilityLookup.GetById(0x8B)!, // Throw Stone (Mettle ID)
+            };
+
+            var filtered = ActionAbilityLookup.FilterBySkillsets(learnedAbilities, new[] { "Fundaments" });
+
+            // These should NOT be filtered out — Fundaments is the Squire version of Mettle
+            Assert.Equal(3, filtered.Count);
+        }
     }
 }

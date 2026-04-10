@@ -109,6 +109,16 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Skillsets that share ability pools. The game uses Mettle IDs for all units
+        /// regardless of whether they're a Squire (Fundaments) or have Mettle equipped.
+        /// </summary>
+        private static readonly Dictionary<string, string[]> SkillsetAliases = new()
+        {
+            ["Fundaments"] = new[] { "Fundaments", "Mettle" },
+            ["Mettle"] = new[] { "Mettle", "Fundaments" },
+        };
+
+        /// <summary>
         /// Filter a list of abilities to only those belonging to the given skillsets.
         /// Used to exclude abilities from unequipped skillsets (e.g. a Monk shouldn't
         /// show Mettle abilities even if the unit learned them as a Squire).
@@ -116,7 +126,14 @@ namespace FFTColorCustomizer.GameBridge
         public static List<ActionAbilityInfo> FilterBySkillsets(
             List<ActionAbilityInfo> abilities, IEnumerable<string> equippedSkillsets)
         {
-            var allowed = new HashSet<string>(equippedSkillsets);
+            var allowed = new HashSet<string>();
+            foreach (var s in equippedSkillsets)
+            {
+                allowed.Add(s);
+                if (SkillsetAliases.TryGetValue(s, out var aliases))
+                    foreach (var a in aliases)
+                        allowed.Add(a);
+            }
             return abilities.Where(a => {
                 var skillset = GetSkillsetForAbilityId(a.Id);
                 return skillset != null && allowed.Contains(skillset);
