@@ -3055,11 +3055,29 @@ namespace FFTColorCustomizer.GameBridge
                         continue;
                     }
 
-                    // Match address is where HP starts (at struct +0x10). Fingerprint at struct +0x69.
-                    var structBase = (long)heapMatches[0].address - 0x10;
-                    var fpAddr = (nint)(structBase + 0x69);
-                    var fpBytes = _explorer.Scanner.ReadBytes(fpAddr, 11);
-                    if (fpBytes.Length != 11) continue;
+                    // Try each heap match until we find one with a non-zero fingerprint.
+                    // Some matches land on stale/dead unit slots where +0x69 is all zeros,
+                    // which isn't a valid class signature — fall through to the next match.
+                    byte[]? fpBytes = null;
+                    foreach (var match in heapMatches)
+                    {
+                        var candidateBase = (long)match.address - 0x10;
+                        var candidateFpAddr = (nint)(candidateBase + 0x69);
+                        var candidateBytes = _explorer.Scanner.ReadBytes(candidateFpAddr, 11);
+                        if (candidateBytes.Length != 11) continue;
+                        // Skip if all-zero (dead/reserved slot).
+                        bool allZero = true;
+                        for (int bi = 0; bi < 11; bi++)
+                            if (candidateBytes[bi] != 0) { allZero = false; break; }
+                        if (allZero) continue;
+                        fpBytes = candidateBytes;
+                        break;
+                    }
+                    if (fpBytes == null)
+                    {
+                        ModLogger.Log($"[CollectPositions] All heap matches had zero fingerprint for ({unit.GridX},{unit.GridY}) hp={unit.Hp}/{unit.MaxHp}");
+                        continue;
+                    }
 
                     unit.ClassFingerprint = fpBytes;
                     var jobName = ClassFingerprintLookup.GetJobName(fpBytes, team: unit.Team);

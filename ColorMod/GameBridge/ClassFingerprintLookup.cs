@@ -51,7 +51,9 @@ namespace FFTColorCustomizer.GameBridge
             ["06-50-1E-50-55-68-28-5A-07-59"] = "Floating Eye",
             // Panther family:
             ["06-5B-1E-3C-55-81-27-74-07-69"] = "Coeurl",
-            // Chocobo family:
+            // Chocobo family (yellow/base Chocobo, distinct from Black Chocobo):
+            ["08-6C-1E-64-4B-77-23-62-07-5E"] = "Chocobo",
+            // Chocobo family (black, tier 2):
             ["07-50-1E-96-55-62-27-96-07-69"] = "Black Chocobo",
             // Bomb family (shared by Bomb / Grenade / Exploder variants):
             ["07-55-1E-14-5A-68-27-64-07-5D"] = "Bomb",
@@ -61,7 +63,8 @@ namespace FFTColorCustomizer.GameBridge
             ["06-87-1E-05-55-6B-27-78-07-64"] = "Wisenkin",
             // Goblin family (tier 3):
             ["06-62-1E-4B-55-80-27-73-07-5C"] = "Gobbledygook",
-            // Squid/Piscodaemon family:
+            // Squid/Piscodaemon family (tier 1: Piscodaemon; tier 2: Squidraken):
+            ["07-6C-1E-78-55-6F-27-5A-07-60"] = "Piscodaemon",
             ["07-73-1E-73-55-65-27-65-07-60"] = "Squidraken",
             // Behemoth family:
             ["05-8C-1E-78-55-75-24-86-07-69"] = "Behemoth",
@@ -92,6 +95,8 @@ namespace FFTColorCustomizer.GameBridge
             // === Story character classes ===
             // Construct 8 (Automaton) has a distinctive 0x64/0x00 pattern.
             ["04-73-64-00-50-69-1E-8E-64-00"] = "Automaton",
+            // Meliadoul (Divine Knight):
+            ["0A-7D-0F-50-64-69-27-78-32-5A"] = "Divine Knight",
 
             // Note: Ramza's fingerprint differs between saves (saw 5 different
             // patterns now, depending on his current job/equipment/growth).
