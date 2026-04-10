@@ -1504,6 +1504,7 @@ namespace FFTColorCustomizer.GameBridge
                 });
             }
             battleState.TurnOrder = turnOrder.Count > 0 ? turnOrder : null;
+            battleState.BattleWon = BattleFieldHelper.AllEnemiesDefeated(battleState.Units);
 
             response.Battle = battleState;
 

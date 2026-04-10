@@ -373,6 +373,8 @@ namespace FFTColorCustomizer.GameBridge
                 state.Units.Add(unitState);
             }
 
+            state.BattleWon = BattleFieldHelper.AllEnemiesDefeated(state.Units);
+
             return state;
         }
 
@@ -671,6 +673,10 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("mapId")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int MapId { get; set; }
+
+        [JsonPropertyName("battleWon")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool BattleWon { get; set; }
 
         [JsonPropertyName("activeUnit")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
