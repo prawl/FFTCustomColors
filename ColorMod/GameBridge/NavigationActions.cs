@@ -1874,7 +1874,7 @@ namespace FFTColorCustomizer.GameBridge
                 ModLogger.Log($"[AutoMove] ({ally.GridX},{ally.GridY})->({bestX},{bestY}) dist {curDist}->{bestDist} enemies={enemyStr}");
 
                 // 4. Enter Move mode
-                NavigateMenuCursor(_detectScreen()?.MenuCursor ?? 0, 0);
+                NavigateToMove();
                 SendKey(VK_ENTER);
                 Thread.Sleep(500);
 
@@ -2213,7 +2213,7 @@ namespace FFTColorCustomizer.GameBridge
             var screen = _detectScreen();
             if (screen != null && screen.Name == "Battle_MyTurn")
             {
-                NavigateMenuCursor(screen.MenuCursor, 0);
+                NavigateToMove();
                 SendKey(VK_ENTER);
                 Thread.Sleep(500);
                 screen = _detectScreen();
@@ -2415,7 +2415,7 @@ namespace FFTColorCustomizer.GameBridge
                 var screen = _detectScreen();
                 if (screen != null && screen.Name == "Battle_MyTurn")
                 {
-                    NavigateMenuCursor(screen.MenuCursor, 0); // Navigate to Move
+                    NavigateToMove(); // Navigate to Move (don't trust stale menuCursor)
                     SendKey(VK_ENTER);
                     Thread.Sleep(500);
                 }
@@ -2550,8 +2550,7 @@ namespace FFTColorCustomizer.GameBridge
             screen = _detectScreen();
             if (screen != null && screen.Name == "Battle_MyTurn")
             {
-                int cursor = screen.MenuCursor;
-                NavigateMenuCursor(cursor, 0);
+                NavigateToMove();
                 SendKey(VK_ENTER);
                 Thread.Sleep(500);
                 screen = _detectScreen();
@@ -3124,6 +3123,21 @@ namespace FFTColorCustomizer.GameBridge
         {
             _input.SendKeyPressToWindow(_gameWindow, vk);
             Thread.Sleep(KEY_DELAY);
+        }
+
+        /// <summary>
+        /// Navigate to Move (index 0) in the action menu without trusting memory cursor.
+        /// Presses Up 4 times to guarantee reaching index 0 from any position.
+        /// The memory at 0x1407FC620 is stale after abilities (e.g. Shout sets it to 1
+        /// even though the cursor is on Move).
+        /// </summary>
+        private void NavigateToMove()
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                SendKey(VK_UP);
+                Thread.Sleep(150);
+            }
         }
 
         private void NavigateMenuCursor(int current, int target)
