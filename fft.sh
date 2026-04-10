@@ -117,11 +117,14 @@ fft() {
   rm -f "$B/response.json"
   echo "$1" > "$B/command.json"
   local tries=0
+  # $2 = per-command timeout in seconds (default 5). Poll at 20ms intervals.
+  local max_tries=$(( ${2:-5} * 50 ))
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 750 ]; then
-      echo "[TIMEOUT] No response after 15s"
+    if [ $tries -ge $max_tries ]; then
+      echo "[TIMEOUT] No response after $(( max_tries / 50 ))s"
+      running
       return 1
     fi
   done
@@ -165,11 +168,14 @@ fft_full() {
   rm -f "$B/response.json"
   echo "$1" > "$B/command.json"
   local tries=0
+  # $2 = per-command timeout in seconds (default 5). Poll at 20ms intervals.
+  local max_tries=$(( ${2:-5} * 50 ))
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 750 ]; then
-      echo "[TIMEOUT]"
+    if [ $tries -ge $max_tries ]; then
+      echo "[TIMEOUT] No response after $(( max_tries / 50 ))s"
+      running
       return 1
     fi
   done
