@@ -31,7 +31,6 @@ namespace FFTColorCustomizer.Utilities
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
         private readonly BattleTurnTracker _turnTracker = new();
-        private bool _suppressAutoScan;
         private bool _movedThisTurn;
         private readonly BattleMenuTracker _battleMenuTracker = new();
         private HashSet<int>? _cachedLearnedAbilityIds;
@@ -178,35 +177,9 @@ namespace FFTColorCustomizer.Utilities
                     response.Screen ??= DetectScreenSettled();
                     SyncBattleMenuTracker(response.Screen);
 
-                    // Auto-scan units when a new player turn starts (team 0 only)
-                    // Suppressed after battle_move/attack/ability — C+Up keypresses during
-                    // post-action settling can navigate the action menu (Reset Move bug).
-                    if (_suppressAutoScan)
-                    {
-                        _suppressAutoScan = false;
-                    }
-                    else if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId, response.Screen.BattleUnitHp))
-                    {
-                        try
-                        {
-                            var scanCommand = new CommandRequest { Id = response.Id, Action = "scan_move" };
-                            var scanResponse = ExecuteNavAction(scanCommand);
-                            if (scanResponse.Status == "completed")
-                                _turnTracker.CacheScanResponse(scanResponse);
-                            // Merge scan results into the original response
-                            response.Battle = scanResponse.Battle;
-                            response.ValidPaths = scanResponse.ValidPaths;
-                            response.Screen = scanResponse.Screen ?? response.Screen;
-                            response.Info = scanResponse.Info;
-                            if (scanResponse.Error != null)
-                                response.Error = (response.Error != null ? response.Error + " | " : "") + "[auto-scan] " + scanResponse.Error;
-                        }
-                        catch (Exception ex)
-                        {
-                            ModLogger.LogError($"[CommandBridge] Auto-scan failed: {ex.Message}");
-                        }
-                        _turnTracker.MarkScanned();
-                    }
+                    // No auto-scan — Claude must call scan_move explicitly before acting.
+                    // Auto-scan was removed because C+Up keypresses during settling caused
+                    // the Reset Move bug and stale cache issues.
 
                     response.Battle ??= BattleTracker?.Update();
                     // Cache learned ability IDs from active unit for ability list tracking
@@ -699,7 +672,23 @@ namespace FFTColorCustomizer.Utilities
                         return ExecuteValidPath(command);
 
                     case "battle_wait":
-                        _turnTracker.ResetForNewTurn(); // battle_wait skips intermediate phases
+                        // Auto-scan if no scan cached (battle_wait needs unit data for facing)
+                        if (!_turnTracker.HasCachedScan)
+                        {
+                            try
+                            {
+                                var scanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
+                                var scanRes = ExecuteNavAction(scanCmd);
+                                if (scanRes.Status == "completed")
+                                    _turnTracker.CacheScanResponse(scanRes);
+                                _turnTracker.MarkScanned();
+                            }
+                            catch (Exception ex)
+                            {
+                                ModLogger.LogError($"[CommandBridge] Pre-wait scan failed: {ex.Message}");
+                            }
+                        }
+                        _turnTracker.ResetForNewTurn();
                         _battleMenuTracker.OnNewTurn();
                         _movedThisTurn = false;
                         _cachedPrimarySkillset = null;
@@ -708,18 +697,30 @@ namespace FFTColorCustomizer.Utilities
                         return ExecuteNavActionWithAutoScan(command);
 
                     case "battle_flee":
-                    case "battle_attack":
-                    case "battle_ability":
                         _turnTracker.InvalidateCache();
                         _battleMenuTracker.ReturnToMyTurn();
-                        _suppressAutoScan = true;
+                        return ExecuteNavAction(command);
+
+                    case "battle_attack":
+                    case "battle_ability":
+                        if (!_turnTracker.HasCachedScan)
+                            return new CommandResponse { Id = command.Id, Status = "blocked",
+                                Error = "Run scan_move before battle_attack/battle_ability. Scan data is required for targeting.",
+                                ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
+                                Screen = DetectScreenSettled() };
+                        _turnTracker.InvalidateCache();
+                        _battleMenuTracker.ReturnToMyTurn();
                         return ExecuteNavAction(command);
 
                     case "battle_move":
                     case "move_grid": // legacy alias
+                        if (!_turnTracker.HasCachedScan)
+                            return new CommandResponse { Id = command.Id, Status = "blocked",
+                                Error = "Run scan_move before battle_move. Scan data is required for tile validation.",
+                                ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
+                                Screen = DetectScreenSettled() };
                         _turnTracker.InvalidateCache();
                         _battleMenuTracker.ReturnToMyTurn();
-                        _suppressAutoScan = true;
                         _movedThisTurn = true;
                         return ExecuteNavAction(command);
 
