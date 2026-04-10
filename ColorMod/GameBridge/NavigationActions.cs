@@ -1404,7 +1404,7 @@ namespace FFTColorCustomizer.GameBridge
                 MaxMp = ally.MaxMp,
                 NameId = ally.NameId,
                 JobId = ally.Job,
-                JobName = GameStateReporter.GetJobName(ally.Job),
+                JobName = ally.JobNameOverride ?? GameStateReporter.GetJobName(ally.Job),
                 Brave = ally.Brave,
                 Faith = ally.Faith,
                 Move = ally.Move,
@@ -1423,7 +1423,7 @@ namespace FFTColorCustomizer.GameBridge
                     Name = u.Name,
                     Team = u.Team,
                     JobId = u.Job,
-                    JobName = GameStateReporter.GetJobName(u.Job),
+                    JobName = u.JobNameOverride ?? GameStateReporter.GetJobName(u.Job),
                     Level = u.Level,
                     X = u.GridX,
                     Y = u.GridY,
@@ -1466,7 +1466,7 @@ namespace FFTColorCustomizer.GameBridge
             // --- Helper: filter abilities to only equipped skillsets ---
             List<ActionAbilityInfo> FilterAbilitiesBySkillsets(ScannedUnit unit)
             {
-                var jobName = GameStateReporter.GetJobName(unit.Job);
+                var jobName = unit.JobNameOverride ?? GameStateReporter.GetJobName(unit.Job);
                 var primary = jobName != null
                     ? Utilities.CommandWatcher.GetPrimarySkillsetByJobName(jobName)
                     : null;
@@ -1713,7 +1713,7 @@ namespace FFTColorCustomizer.GameBridge
                     {
                         tile.Hp = occupantUnit.Hp;
                         tile.MaxHp = occupantUnit.MaxHp;
-                        tile.JobName = GameStateReporter.GetJobName(occupantUnit.Job);
+                        tile.JobName = occupantUnit.JobNameOverride ?? GameStateReporter.GetJobName(occupantUnit.Job);
                     }
                     attackTileList.Add(tile);
                 }
@@ -2632,6 +2632,8 @@ namespace FFTColorCustomizer.GameBridge
             public int SecondaryAbility; // roster +0x07 secondary skillset index
             public byte[] StatusBytes = new byte[5]; // 5-byte status bitfield
             public List<ActionAbilityInfo> LearnedAbilities = new(); // from condensed struct FFFF list
+            public byte[]? ClassFingerprint;  // 11 bytes at heap struct +0x69 (see ClassFingerprintLookup)
+            public string? JobNameOverride;   // Resolved class name from fingerprint (fallback for enemies)
         }
 
         /// <summary>
@@ -3002,6 +3004,63 @@ namespace FFTColorCustomizer.GameBridge
             catch (Exception ex)
             {
                 ModLogger.Log($"[CollectPositions] Name lookup failed: {ex.Message}");
+            }
+
+            // Class fingerprint lookup: find each unit's heap struct and read bytes at +0x69.
+            // This is the only reliable way to identify enemy classes — the UI buffer returns
+            // Job=1 (Chemist) for all enemies, and enemies aren't in the roster.
+            // See memory/project_class_fingerprint.md for the investigation.
+            try
+            {
+                foreach (var unit in units)
+                {
+                    if (unit.JobNameOverride != null) continue;  // Already resolved (e.g. via roster)
+                    if (unit.MaxHp <= 0) continue;
+
+                    // Search for the 4-byte HP+MaxHP pattern. HP is at struct +0x10, MaxHP at +0x12.
+                    // Unique enough per unit since real FFT battles rarely have two units with
+                    // identical HP AND MaxHP AND the same class state.
+                    // For wounded units (HP != MaxHP), this naturally matches only that unit.
+                    // For full-HP enemies (HP == MaxHP), it may have duplicates (e.g., two Chemists
+                    // with the same HP roll), but we take the first match since same class → same fingerprint.
+                    var hpPattern = new byte[]
+                    {
+                        (byte)(unit.Hp & 0xFF), (byte)(unit.Hp >> 8),
+                        (byte)(unit.MaxHp & 0xFF), (byte)(unit.MaxHp >> 8),
+                    };
+
+                    var matches = _explorer.SearchBytesInAllMemory(hpPattern, 8);
+                    // Filter to heap unit struct range (empirically 0x41_6000_0000..0x41_7200_0000)
+                    var heapMatches = matches.Where(m => (long)m.address >= 0x4160000000L && (long)m.address < 0x4180000000L).ToList();
+                    if (heapMatches.Count == 0)
+                    {
+                        ModLogger.Log($"[CollectPositions] No heap match for ({unit.GridX},{unit.GridY}) hp={unit.Hp}/{unit.MaxHp}");
+                        continue;
+                    }
+
+                    // Match address is where HP starts (at struct +0x10). Fingerprint at struct +0x69.
+                    var structBase = (long)heapMatches[0].address - 0x10;
+                    var fpAddr = (nint)(structBase + 0x69);
+                    var fpBytes = _explorer.Scanner.ReadBytes(fpAddr, 11);
+                    if (fpBytes.Length != 11) continue;
+
+                    unit.ClassFingerprint = fpBytes;
+                    var jobName = ClassFingerprintLookup.GetJobName(fpBytes);
+                    if (jobName != null)
+                    {
+                        unit.JobNameOverride = jobName;
+                        ModLogger.Log($"[CollectPositions] Fingerprint match ({unit.GridX},{unit.GridY}) → {jobName}");
+                    }
+                    else
+                    {
+                        var fpKey = ClassFingerprintLookup.ToKey(fpBytes);
+                        ModLogger.Log($"[CollectPositions] Unknown fingerprint ({unit.GridX},{unit.GridY}): {fpKey} hp={unit.Hp}/{unit.MaxHp} lv={unit.Level}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.Log($"[CollectPositions] Fingerprint lookup failed: {ex.Message}");
             }
 
             _lastScannedUnits = units;
