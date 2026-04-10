@@ -74,7 +74,7 @@ Claude only sees HP/MP for non-active units. A human sees status icons, CT bars,
 
 - [x] **CT/Speed/Turn Order for all units** — CT and Speed read from condensed struct (+0x0A and +0x06). Turn order derived from C+Up scan order (which traverses the game's Combat Timeline). turnOrder array in response includes name, team, level, hp/maxHp, position, ct.
 - [x] **Status effects** — Read active status flags from static battle array at 0x140893E45 + slot*0x200. 5-byte PSX bitfield decoded into named statuses (Poison, Haste, Protect, etc.). Matched to scanned units by HP+MaxHP. All 40 statuses supported.
-- [ ] **Dead/KO vs crystalized vs alive** — Distinguish between KO'd units (can be raised), crystal/treasure (permanently gone), and alive units. Currently all are in the unit list with no death state.
+- [x] **Dead/KO vs crystalized vs alive** — lifeState field: "dead" (can be raised), "crystal"/"treasure" (permanently gone). HP=0 fallback when status bytes unavailable.
 - [ ] **PA/MA/Brave/Faith for all units** — Currently only the active unit's stats are read from UI buffer. Need stats for enemies too (to estimate damage) and allies (to choose healing targets).
 
 ### 1c. Abilities — Know HOW to act beyond basic Attack
@@ -84,16 +84,16 @@ Claude can only use "Attack" (the basic physical hit). A human player opens the 
 - [x] **Battle_Abilities screen state** — Abilities submenu (Attack/Mettle/Items) tracked via BattleMenuTracker state machine. `0x140D3A10C` = submenu active flag. ui= shows current submenu item. Cursor persists within turn (Esc→re-Enter stays on same item), resets on new turn.
 - [x] **Battle_Mettle/Battle_Items screen states** — When selecting a skillset from Abilities submenu, screen transitions to Battle_<Skillset> (e.g. Battle_Mettle, Battle_Items). ui= shows current ability name within the list (e.g. ui=Focus, ui=Shout).
 - [~] **Ability list filtering** — Mettle abilities filtered correctly by learned IDs from scan. Items list shows full skillset (unfiltered) — need to read Chemist JP learned abilities from roster bitfield (PSX offset 0x99-0xD1) to filter. Item order may not match in-game order.
-- [ ] **Filter scan abilities by equipped skillsets** — Condensed struct +0x28 returns ALL learned abilities across ALL skillsets (e.g. an Archer shows Focus from Fundaments). Should filter to only abilities usable from the unit's primary + secondary skillsets.
+- [x] **Filter scan abilities by equipped skillsets** — FilterBySkillsets with Fundaments/Mettle aliases. Only shows abilities from primary + secondary skillsets.
 - [~] **`battle_ability <name> <x> <y>`** — Navigate Abilities menu → select a specific ability → target a tile → confirm. Self-target (Shout, Focus) and targeted (Pummel) verified working. Menu navigation uses learned ability list for correct index. Known issue: BattleMenuTracker gets out of sync after battle_ability because NavigationActions sends keys directly without updating tracker.
-- [ ] **BattleMenuTracker desync after battle_ability** — battle_ability navigates menus via SendKey in NavigationActions, bypassing the tracker. After ability use, the tracker shows wrong ui= state. Need to reset tracker after battle_ability completes.
+- [x] **BattleMenuTracker desync after battle_ability** — Fixed via SyncForScreen(), HasActedThisTurn flag, and NavigateToMove() (press Up 4x instead of trusting stale menuCursor).
 - [ ] **battle_ability should validate target range** — Currently navigates to any tile and confirms, even if the tile is out of range for the ability (e.g. Aim +1 can't target adjacent tiles — archers have a minimum range). Should check ability range before confirming, or detect when the game rejects the target.
 - [ ] **battle_ability spell targeting: Unit/Tile dialog** — Spells have an extra confirmation dialog: "Choose to target either the unit or the current tile" with Unit/Tile/Cancel options. Currently battle_ability doesn't handle this. Should press Enter (selects "Unit" default) for the extra confirmation. "Tile" is for edge cases like pre-casting on a tile a friendly will move to.
 - [ ] **Show active unit name/job in screen state** — Screen output should show whose turn it is (e.g. "Ramza (Gallant Knight)" or "Lloyd (Archer)") so Claude doesn't have to scan to know.
 - [ ] **Active unit job fallback shows wrong job** — UI buffer job ID fallback (used before scan) shows "Chemist" when the active unit is a Squire. The UI buffer at 0x1407AC7EA may not reflect the active unit's job reliably — may be stale from a previous hover or cursor position. Need a more reliable source for pre-scan job display.
 - [ ] **Detect charging/casting units** — Units charging a spell (e.g. Haste) show in the Combat Timeline with the spell name. Need to read charging state, which spell, and remaining CT from memory. Important for: not issuing commands to charging allies, knowing when spells will fire, and interrupting enemy casters.
 - [ ] **Block scan_move during animations** — scan_move should only run during Battle_MyTurn. During enemy turns, ally turns, spell animations, or any non-MyTurn battle state, return an error telling Claude to wait. Currently returns stale cached data or runs C+Up cycling during animations which can break things.
-- [ ] **Fix Ramza's job name** — Roster job=3 maps to "Heretic" but the game shows "Gallant Knight". Need correct IC remaster name for Ramza's Ch4 job.
+- [x] **Fix Ramza's job name** — Roster job=3 now maps to "Gallant Knight".
 - [ ] **Use Items** — Navigate to Item in the ability menu → select Potion/Phoenix Down/etc → target ally → confirm. Critical for healing and raising downed units.
 - [ ] **Heal targeting allies** — battle_attack only targets enemies. Healing abilities and items need to target allies. The targeting cursor and confirmation work the same way, but the target selection logic needs to allow friendly tiles.
 - [ ] **Raise downed units** — Phoenix Down or Raise spell on a KO'd unit. Requires knowing which tiles have dead units and being able to target them.
@@ -253,8 +253,8 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 - [ ] Handle unexpected screen transitions during turn execution
 - [ ] **Counter attack KO** — If the active unit is KO'd by a reaction ability (Counter Tackle, etc.) after attacking, battle_wait fails because the game skips to the next unit's turn without going through the normal Wait flow. Need to detect "active unit died" and recover gracefully.
 - [x] **Auto-Wait after Move+Act** — Fixed. BattleWaitLogic detects Battle_Attacking/Battle_Moving states (auto-facing after Move+Act) and skips menu navigation, going straight to facing confirmation. Tested in-game: Move→Attack→Wait now works seamlessly.
-- [ ] **Dead units block movement** — KO'd units still occupy their tile. BFS doesn't treat dead allies as obstacles so ValidMoveTiles includes their tile. The game rejects the move. Need to exclude all unit positions (alive and dead, ally and enemy) from BFS valid tiles.
-- [ ] **Friendly units block movement** — Can't move onto a tile occupied by an ally. Claude needs to check all friendly unit positions (not just enemies) before choosing a move target. Currently only enemy positions are considered as obstacles in BFS.
+- [x] **Dead units block movement** — BFS now excludes all occupied tiles (allies, enemies, dead units) via BattleFieldHelper.GetOccupiedPositions(). Also added game tile list validation at 0x140C66315 as second safety net.
+- [x] **Friendly units block movement** — Fixed with BattleFieldHelper.GetOccupiedPositions() in BFS.
 
 ### Unit Facing Direction
 - [x] Choose facing intelligently at end of turn — FacingStrategy computes optimal direction via arc-based threat scoring (front=1, side=2, back=3 weights with distance/HP decay). battle_wait uses empirical rotation from grid navigation to press the correct key. 11/11 confirmed across all 4 directions.
