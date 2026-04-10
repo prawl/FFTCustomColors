@@ -708,9 +708,11 @@ namespace FFTColorCustomizer.Utilities
                                 Error = "Run scan_move before battle_attack/battle_ability. Scan data is required for targeting.",
                                 ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
                                 Screen = DetectScreenSettled() };
-                        _turnTracker.InvalidateCache();
                         _battleMenuTracker.ReturnToMyTurn();
-                        return ExecuteNavAction(command);
+                        var actionResult = ExecuteNavAction(command);
+                        if (actionResult.Status == "completed")
+                            _turnTracker.InvalidateCache(); // only invalidate on success
+                        return actionResult;
 
                     case "battle_move":
                     case "move_grid": // legacy alias
@@ -719,10 +721,12 @@ namespace FFTColorCustomizer.Utilities
                                 Error = "Run scan_move before battle_move. Scan data is required for tile validation.",
                                 ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
                                 Screen = DetectScreenSettled() };
-                        _turnTracker.InvalidateCache();
                         _battleMenuTracker.ReturnToMyTurn();
                         _movedThisTurn = true;
-                        return ExecuteNavAction(command);
+                        var moveResult = ExecuteNavAction(command);
+                        if (moveResult.Status == "completed")
+                            _turnTracker.InvalidateCache(); // only invalidate on successful move
+                        return moveResult;
 
                     case "world_travel_to":
                     case "travel_to": // legacy alias
