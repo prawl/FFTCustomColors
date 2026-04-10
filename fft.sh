@@ -435,13 +435,89 @@ _launch_game() {
   "/c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/Reloaded/reloaded-ii.exe" --launch "C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\FFT_enhanced.exe" &
 }
 
+# _wait_bridge: Delete stale state.json, then poll for a fresh one.
+# Returns 0 if the bridge came online within $1 seconds (default 60), 1 on timeout.
+# Must delete first — stale state.json from a prior session would fool a naive check.
+_wait_bridge() {
+  local max_seconds=${1:-60}
+  rm -f "$B/state.json"
+  local deadline=$(( SECONDS + max_seconds ))
+  while [ $SECONDS -lt $deadline ]; do
+    if [ -f "$B/state.json" ]; then
+      return 0
+    fi
+    sleep 0.2
+  done
+  return 1
+}
+
+# _raw_advance: Press Enter via the execute_action path, which is strict-mode safe.
+# Used by the boot loop. Takes no args; uses the "Advance" validPath which is
+# present on TitleScreen, Cutscene, and most intro/loading screens.
+_raw_advance() {
+  rm -f "$B/response.json"
+  echo "{\"id\":\"c$(date +%s%N | tail -c 8)$RANDOM\",\"action\":\"execute_action\",\"to\":\"Advance\"}" > "$B/command.json"
+  # Wait up to 3s for response; if it doesn't come, the mod may still be loading.
+  local t=0
+  until [ -f "$B/response.json" ] || [ $t -ge 150 ]; do
+    sleep 0.02
+    t=$((t + 1))
+  done
+}
+
+# _raw_read_screen: Send a no-op command to read the current screen name.
+# Returns the screen name via echo, or empty string on timeout.
+_raw_read_screen() {
+  rm -f "$B/response.json"
+  echo "{\"id\":\"c$(date +%s%N | tail -c 8)$RANDOM\",\"keys\":[],\"delayBetweenMs\":0}" > "$B/command.json"
+  local t=0
+  until [ -f "$B/response.json" ] || [ $t -ge 150 ]; do
+    sleep 0.02
+    t=$((t + 1))
+  done
+  if [ -f "$B/response.json" ]; then
+    tr -d '\r\n ' < "$B/response.json" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4
+  fi
+}
+
+# _advance_past_title: Press Enter (via execute_action Advance) until the screen
+# is no longer TitleScreen. Shared between boot and restart. Prints per-iteration
+# progress with elapsed time. Returns 0 on success, 1 on timeout after $1 attempts.
+#
+# Uses execute_action Advance rather than raw key presses because strict mode
+# blocks raw keypresses with status=blocked, which would silently hang the loop.
+_advance_past_title() {
+  local max=${1:-20}
+  local t0=$SECONDS
+  for i in $(seq 1 $max); do
+    _raw_advance
+    sleep 2
+    local scr=$(_raw_read_screen)
+    local elapsed=$(( SECONDS - t0 ))
+    echo "[boot] attempt $i/${max} (${elapsed}s) — screen: ${scr:-<no response>}"
+    if [ -n "$scr" ] && [ "$scr" != "TitleScreen" ]; then
+      echo "[boot] Arrived at $scr"
+      return 0
+    fi
+  done
+  echo "[boot] TIMEOUT after $max attempts"
+  return 1
+}
+
 # restart: Full cycle — kill game, build mod, deploy, relaunch, wait for bridge.
 # Use when you need code changes to take effect.
 restart() {
+  # Reset total-script budget — boot can legitimately take 60+ seconds.
+  FFT_START=$SECONDS
+  _FFT_DONE=0
   echo "[restart] Killing game..."
   taskkill //IM FFT_enhanced.exe //F 2>/dev/null
   taskkill //IM reloaded-ii.exe //F 2>/dev/null
   sleep 2
+  if running >/dev/null; then
+    echo "[restart] FFT_enhanced.exe still running after taskkill — aborting"
+    return 1
+  fi
   echo "[restart] Building..."
   dotnet build ColorMod/FFTColorCustomizer.csproj -c Release 2>&1 | tail -3
   echo "[restart] Deploying..."
@@ -449,71 +525,32 @@ restart() {
   echo "[restart] Launching..."
   _launch_game
   echo "[restart] Waiting for bridge..."
-  local tries=0
-  until [ -f "$B/state.json" ] || [ $tries -ge 150 ]; do
-    sleep 0.2
-    tries=$((tries + 1))
-  done
-  if [ ! -f "$B/state.json" ]; then
+  if ! _wait_bridge 60; then
     echo "[restart] TIMEOUT waiting for bridge"
     return 1
   fi
-  echo "[restart] Bridge online. Booting through title..."
-  # Press Enter through title → main menu → Continue → save select → loading
-  local max=20
-  for i in $(seq 1 $max); do
-    rm -f "$B/response.json"
-    echo "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":150}" > "$B/command.json"
-    local t=0
-    until [ -f "$B/response.json" ] || [ $t -ge 150 ]; do sleep 0.02; t=$((t+1)); done
-    sleep 2
-    # Check screen
-    rm -f "$B/response.json"
-    echo "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}" > "$B/command.json"
-    t=0
-    until [ -f "$B/response.json" ] || [ $t -ge 150 ]; do sleep 0.02; t=$((t+1)); done
-    local scr=$(tr -d '\r\n ' < "$B/response.json" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
-    echo "[restart] boot $i — screen: $scr"
-    if [ "$scr" != "TitleScreen" ] && [ "$scr" != "" ]; then
-      echo "[restart] Ready on $scr"
-      return 0
-    fi
-  done
-  echo "[restart] Booted (may still be loading)"
+  echo "[restart] Bridge online. Advancing past title..."
+  _advance_past_title 20
 }
 
 # boot: Get the game to a playable screen.
 # If the game isn't running, launches it and waits for the bridge.
 # Then presses Enter through title/continue screens until past TitleScreen.
 boot() {
+  # Reset total-script budget — boot can legitimately take 60+ seconds.
+  FFT_START=$SECONDS
+  _FFT_DONE=0
   if ! running >/dev/null; then
     echo "[boot] Game not running — launching..."
     _launch_game
     echo "[boot] Waiting for bridge..."
-    local tries=0
-    until [ -f "$B/state.json" ] || [ $tries -ge 150 ]; do
-      sleep 0.2
-      tries=$((tries + 1))
-    done
-    if [ ! -f "$B/state.json" ]; then
+    if ! _wait_bridge 60; then
       echo "[boot] TIMEOUT waiting for bridge"
       return 1
     fi
     echo "[boot] Bridge online."
   fi
-  local max=10
-  for i in $(seq 1 $max); do
-    enter
-    sleep 2
-    local scr=$(fft '{"id":"'$(id)'","keys":[],"delayBetweenMs":0}' | grep -o '^\[[^]]*\]' | tr -d '[]')
-    echo "[boot] attempt $i — screen: $scr"
-    if [ "$scr" != "TitleScreen" ]; then
-      echo "[boot] Arrived at $scr"
-      return 0
-    fi
-  done
-  echo "[boot] TIMEOUT after $max attempts"
-  return 1
+  _advance_past_title 20
 }
 
 # =============================================================================

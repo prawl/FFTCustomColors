@@ -59,7 +59,9 @@ namespace FFTColorCustomizer.GameBridge
                 return "Battle_Acting";
             if (inBattle)
                 return "Battle";
-            if (eventId > 0 && (rawLocation == 255 || rawLocation < 0))
+            // eventId == 0xFFFF is the uninitialized sentinel (seen on freshly
+            // launched game at title screen), not a real cutscene event.
+            if (eventId > 0 && eventId != 0xFFFF && (rawLocation == 255 || rawLocation < 0))
                 return "Cutscene";
             if (rawLocation == 255 || rawLocation < 0)
                 return "TitleScreen";

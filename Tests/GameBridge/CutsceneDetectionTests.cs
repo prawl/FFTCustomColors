@@ -32,6 +32,21 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_TitleScreen_EventIdUninitializedSentinel_ReturnsTitleScreen()
+        {
+            // On a freshly launched game sitting at the title screen, the eventId
+            // memory slot reads as 0xFFFF (65535) — an uninitialized sentinel, not
+            // a real event. Previously this was misclassified as Cutscene.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false, eventId: 65535);
+
+            Assert.Equal("TitleScreen", result);
+        }
+
+        [Fact]
         public void DetectScreen_BattleCutscene_WithEventId_ReturnsBattle()
         {
             // Pre-battle cutscenes with unit slots populated — currently detected as Battle.
