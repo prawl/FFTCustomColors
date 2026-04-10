@@ -2321,13 +2321,17 @@ namespace FFTColorCustomizer.GameBridge
             _input.SendKeyPressToWindow(_gameWindow, VK_F);
             Thread.Sleep(500);
 
-            // Poll up to 3s for Battle_MyTurn
+            // Poll up to 5s for Battle_MyTurn or Battle_Acting (move confirmed, back on action menu).
+            // Long-distance moves (4+ tiles) have walking animations that can exceed 3s.
             bool confirmed = false;
             var sw = Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < 3000)
+            while (sw.ElapsedMilliseconds < 5000)
             {
                 var check = _detectScreen();
-                if (check != null && check.Name == "Battle_MyTurn") { confirmed = true; break; }
+                // After F confirms, wait until we leave Battle_Moving (tile selection).
+                // Any other battle screen means the move completed (action menu, acting, etc.)
+                if (check != null && check.Name != "Battle_Moving" && check.Name!.StartsWith("Battle"))
+                { confirmed = true; break; }
                 Thread.Sleep(100);
             }
 

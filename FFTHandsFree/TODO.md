@@ -132,6 +132,7 @@ A human player can check enemy abilities by hovering. Claude has no visibility i
 - [ ] **Neutral unit handling (team=2)** — Don't block pathing for NPCs/guests
 - [x] **Menu cursor address fixed** — 0x1407FC620 confirmed reliable
 - [ ] **Scan cache doesn't invalidate between player turns** — `battleUnitId` at `0x14077D2A4` reads the same value for multiple units, so the unit-change detection in TurnAutoScanner doesn't fire. Need a more reliable signal (e.g. compare `battleUnitHp` at `0x14077D2AC`, or track unit position changes). Critical blocker for multi-unit battles.
+- [ ] **battle_move reports NOT CONFIRMED for valid moves** — Navigation succeeds (cursor reaches target) but F key confirmation doesn't transition to Battle_MyTurn within 3s timeout. May need longer timeout for distant moves, or the F key confirmation flow changed. The move DID apply in-game.
 - [ ] **Auto-scan double-fire** — Auto-scan on Battle_MyTurn fires after scan_move already scanned, opening Status menu. Need BattleTurnTracker to mark turns as scanned.
 - [ ] **Battle_Victory screen detection** — Victory screen misdetected as Battle_Acting. Need to detect and transition gracefully to world map.
 - [x] **battle_wait facing uses F key** — Fixed.
@@ -251,7 +252,7 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 - [ ] Handle unexpected screen transitions during turn execution
 - [ ] **Counter attack KO** — If the active unit is KO'd by a reaction ability (Counter Tackle, etc.) after attacking, battle_wait fails because the game skips to the next unit's turn without going through the normal Wait flow. Need to detect "active unit died" and recover gracefully.
 - [x] **Auto-Wait after Move+Act** — Fixed. BattleWaitLogic detects Battle_Attacking/Battle_Moving states (auto-facing after Move+Act) and skips menu navigation, going straight to facing confirmation. Tested in-game: Move→Attack→Wait now works seamlessly.
-- [ ] **Dead units block movement** — KO'd units still occupy their tile. Scan shows them with HP=0 and [Dead] status but BFS/movement doesn't account for them as obstacles. Attempted move to a dead unit's tile fails. Need to treat HP=0 units as impassable in pathfinding.
+- [ ] **Dead units block movement** — KO'd units still occupy their tile. BFS doesn't treat dead allies as obstacles so ValidMoveTiles includes their tile. The game rejects the move. Need to exclude all unit positions (alive and dead, ally and enemy) from BFS valid tiles.
 - [ ] **Friendly units block movement** — Can't move onto a tile occupied by an ally. Claude needs to check all friendly unit positions (not just enemies) before choosing a move target. Currently only enemy positions are considered as obstacles in BFS.
 
 ### Unit Facing Direction

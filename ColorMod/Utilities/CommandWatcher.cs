@@ -32,6 +32,7 @@ namespace FFTColorCustomizer.Utilities
         private MapLoader? _mapLoader;
         private readonly BattleTurnTracker _turnTracker = new();
         private bool _suppressAutoScan;
+        private bool _movedThisTurn;
         private readonly BattleMenuTracker _battleMenuTracker = new();
         private HashSet<int>? _cachedLearnedAbilityIds;
         private string? _cachedPrimarySkillset;
@@ -700,6 +701,7 @@ namespace FFTColorCustomizer.Utilities
                     case "battle_wait":
                         _turnTracker.ResetForNewTurn(); // battle_wait skips intermediate phases
                         _battleMenuTracker.OnNewTurn();
+                        _movedThisTurn = false;
                         _cachedPrimarySkillset = null;
                         _cachedSecondarySkillset = null;
                         _cachedLearnedAbilityNames = null;
@@ -708,11 +710,17 @@ namespace FFTColorCustomizer.Utilities
                     case "battle_flee":
                     case "battle_attack":
                     case "battle_ability":
+                        _turnTracker.InvalidateCache();
+                        _battleMenuTracker.ReturnToMyTurn();
+                        _suppressAutoScan = true;
+                        return ExecuteNavAction(command);
+
                     case "battle_move":
                     case "move_grid": // legacy alias
-                        _turnTracker.InvalidateCache(); // battlefield state changed
-                        _battleMenuTracker.ReturnToMyTurn(); // reset submenu tracking
-                        _suppressAutoScan = true; // prevent auto-scan — C+Up after move/attack can hit Reset Move
+                        _turnTracker.InvalidateCache();
+                        _battleMenuTracker.ReturnToMyTurn();
+                        _suppressAutoScan = true;
+                        _movedThisTurn = true;
                         return ExecuteNavAction(command);
 
                     case "world_travel_to":
@@ -2066,10 +2074,12 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "Cutscene")
                     screen.EventId = eventId;
 
-                // At the start of a turn (acted=0, moved=0), the cursor is always on Move.
-                // The memory at 0x1407FC620 can be stale after charge-time spells (e.g. Haste),
-                // showing menuCursor=1 (Abilities) when the game cursor is visually on Move.
-                if (screen.Name == "Battle_MyTurn" && screen.BattleActed == 0 && screen.BattleMoved == 0)
+                // At the start of a fresh turn (acted=0, moved=0, no move/action this turn),
+                // the cursor is always on Move. The memory at 0x1407FC620 can be stale after
+                // charge-time spells (e.g. Haste), showing menuCursor=1 (Abilities).
+                // Don't override after battle_move — the cursor is on Abilities (Move grayed out).
+                if (screen.Name == "Battle_MyTurn" && screen.BattleActed == 0 && screen.BattleMoved == 0
+                    && !_movedThisTurn && !_battleMenuTracker.HasActedThisTurn)
                     screen.UI = "Move";
 
                 // Battle menu tracker: set UI from tracker if in submenu
