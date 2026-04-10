@@ -2764,7 +2764,7 @@ namespace FFTColorCustomizer.GameBridge
 
                 // Press Up via PostMessage
                 _input.SendKeyPressToWindow(_gameWindow, VK_UP);
-                Thread.Sleep(250);
+                Thread.Sleep(350); // give game time to update ALL unit data (was 250ms, caused desync)
 
                 // Read grid position
                 var pos = ReadGridPos();
@@ -2923,7 +2923,10 @@ namespace FFTColorCustomizer.GameBridge
 
             try
             {
-                var playerUnits = units.Where(u => u.Team == 0).ToList();
+                // Match against ALL units — the condensed struct team field can be stale
+                // during C+Up cycling, so we can't trust it to pre-filter. If a unit matches
+                // a roster entry, we KNOW it's a player unit regardless of scanned team.
+                var playerUnits = units.ToList();
                 if (playerUnits.Count > 0)
                 {
                     // Batch-read roster fields for all slots
@@ -2959,7 +2962,7 @@ namespace FFTColorCustomizer.GameBridge
                     // Build scanned unit identity array
                     var identities = playerUnits.Select(u => new ScannedUnitIdentity
                     {
-                        Level = u.Level, Brave = u.Brave, Faith = u.Faith, Hp = u.Hp
+                        Level = u.Level, Brave = u.Brave, Faith = u.Faith, Hp = u.Hp, Team = u.Team
                     }).ToArray();
 
                     // Match using two-pass algorithm (known brave/faith first, then active unit)
@@ -2971,6 +2974,11 @@ namespace FFTColorCustomizer.GameBridge
                         if (m.NameId <= 0) continue;
 
                         var unit = playerUnits[i];
+                        if (unit.Team != 0)
+                        {
+                            ModLogger.Log($"[CollectPositions] Correcting team for ({unit.GridX},{unit.GridY}): was {unit.Team}, roster match → 0");
+                            unit.Team = 0;
+                        }
                         unit.RosterNameId = m.NameId;
                         unit.Name = UnitNameLookup.GetName(m.NameId);
                         unit.Job = m.Job;
