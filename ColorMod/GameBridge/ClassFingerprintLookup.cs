@@ -47,8 +47,9 @@ namespace FFTColorCustomizer.GameBridge
             ["07-57-1E-1E-5A-73-27-55-07-5E"] = "Grenade",
             // Malboro family:
             ["08-91-1E-0F-5A-5F-27-6E-1B-6E"] = "Ochu",
-            // Floating Eye family:
+            // Floating Eye family (tier 1 Floating Eye, tier 2 Ahriman, tier 3 Plague Horror):
             ["06-50-1E-50-55-68-28-5A-07-59"] = "Floating Eye",
+            ["06-4D-1E-8C-55-6C-28-7F-07-78"] = "Plague Horror",
             // Panther family:
             ["06-5B-1E-3C-55-81-27-74-07-69"] = "Coeurl",
             // Chocobo family (yellow/base Chocobo, distinct from Black Chocobo):
@@ -57,8 +58,9 @@ namespace FFTColorCustomizer.GameBridge
             ["07-50-1E-96-55-62-27-96-07-69"] = "Black Chocobo",
             // Bomb family (shared by Bomb / Grenade / Exploder variants):
             ["07-55-1E-14-5A-68-27-64-07-5D"] = "Bomb",
-            // Bird family:
+            // Bird family (tier 1 Steelhawk, tier 3 Cockatrice):
             ["07-55-1E-3C-55-83-27-6C-07-5A"] = "Steelhawk",
+            ["07-65-1E-0A-55-87-27-98-07-64"] = "Cockatrice",
             // Bull family (Wisenkin is the first tier):
             ["06-87-1E-05-55-6B-27-78-07-64"] = "Wisenkin",
             // Goblin family (tier 3):
@@ -74,6 +76,9 @@ namespace FFTColorCustomizer.GameBridge
             ["07-7C-1E-28-5A-64-27-74-07-60"] = "Exploder",
             // Dragon family:
             ["06-85-1E-4B-55-76-27-88-07-64"] = "Dragon",
+            ["06-9D-1E-73-55-84-27-93-06-64"] = "Red Dragon",
+            // Bull family (Wisenkin tier 1, Minotaur tier 3):
+            ["06-A0-1E-08-55-6C-27-98-07-64"] = "Minotaur",
 
             // === Generic human jobs ===
             ["0C-4B-09-78-64-64-3C-3C-32-96"] = "Black Mage",
