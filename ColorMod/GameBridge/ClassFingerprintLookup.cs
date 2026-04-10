@@ -65,6 +65,12 @@ namespace FFTColorCustomizer.GameBridge
             ["07-73-1E-73-55-65-27-65-07-60"] = "Squidraken",
             // Behemoth family:
             ["05-8C-1E-78-55-75-24-86-07-69"] = "Behemoth",
+            // Panther family (tier 1):
+            ["06-74-1E-32-55-74-27-62-07-5B"] = "Red Panther",
+            // Bomb family (tier 2/3 Exploder):
+            ["07-7C-1E-28-5A-64-27-74-07-60"] = "Exploder",
+            // Dragon family:
+            ["06-85-1E-4B-55-76-27-88-07-64"] = "Dragon",
 
             // === Generic human jobs ===
             ["0C-4B-09-78-64-64-3C-3C-32-96"] = "Black Mage",
@@ -82,6 +88,10 @@ namespace FFTColorCustomizer.GameBridge
             ["0B-64-0F-4B-64-64-3C-5A-32-50"] = "Squire",
             ["14-37-14-32-64-64-50-1E-32-73"] = "Bard",
             ["06-8C-1E-32-64-78-23-78-28-73"] = "Mime",
+
+            // === Story character classes ===
+            // Construct 8 (Automaton) has a distinctive 0x64/0x00 pattern.
+            ["04-73-64-00-50-69-1E-8E-64-00"] = "Automaton",
 
             // Note: Ramza's fingerprint differs between saves (saw 5 different
             // patterns now, depending on his current job/equipment/growth).

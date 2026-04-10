@@ -3002,7 +3002,16 @@ namespace FFTColorCustomizer.GameBridge
                         unit.Brave = m.Brave;
                         unit.Faith = m.Faith;
                         unit.SecondaryAbility = m.Secondary;
-                        ModLogger.Log($"[CollectPositions] Matched ({unit.GridX},{unit.GridY}) as {unit.Name ?? $"unit"} job={m.Job} bra={m.Brave} fai={m.Faith} (rosterNameId={m.NameId})");
+                        // For story characters, the roster's job field at +0x02 equals
+                        // their nameId rather than a real job ID (e.g. Marach job=26
+                        // which PSX maps to Dragoon). StoryCharacterJob dict provides
+                        // the canonical job name for these characters.
+                        var storyJob = CharacterData.GetStoryJob(m.NameId);
+                        if (storyJob != null)
+                        {
+                            unit.JobNameOverride = storyJob;
+                        }
+                        ModLogger.Log($"[CollectPositions] Matched ({unit.GridX},{unit.GridY}) as {unit.Name ?? $"unit"} job={m.Job} bra={m.Brave} fai={m.Faith} (rosterNameId={m.NameId}){(storyJob != null ? $" → storyJob={storyJob}" : "")}");
                     }
                 }
             }

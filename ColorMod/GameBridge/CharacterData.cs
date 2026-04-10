@@ -304,6 +304,44 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Canonical job names for story characters, keyed by nameId (roster +0x230).
+        /// For story characters, the roster's "job" field at +0x02 equals their nameId
+        /// rather than a generic job ID, so reading it as a job mis-labels them via
+        /// PSX fallback (e.g. nameId=26 Marach gets labeled "Dragoon" because PSX
+        /// 0x1A=26=Dragoon). This dict is the authoritative source of their real job.
+        ///
+        /// Look up by rosterNameId AFTER the roster match succeeds. Use GetStoryJob().
+        /// </summary>
+        private static readonly Dictionary<int, string> StoryCharacterJob = new()
+        {
+            // Verified in-game
+            [22] = "Machinist",       // Mustadio
+            [26] = "Netherseer",      // Marach (PSX: Malak → Hell Knight)
+            [30] = "Holy Knight",     // Agrias
+            [31] = "Templar",         // Beowulf
+            [41] = "Skyseer",         // Rapha (PSX: Rafa → Heaven Knight)
+            // Unverified — based on known canonical jobs
+            [13] = "Thunder God",     // Orlandeau (WotL: Sword Saint)
+            [15] = "Dragonkin",       // Reis (human form)
+            [17] = "Fell Knight",     // Gaffgarion
+            [42] = "Divine Knight",   // Meliadoul
+            [50] = "Soldier",         // Cloud
+            [117] = "Automaton",      // Construct 8 — verified
+            [140] = "Sky Pirate",     // Balthier
+            [141] = "Game Hunter",    // Luso
+        };
+
+        /// <summary>
+        /// Returns the canonical job name for a story character by nameId, or null
+        /// if the nameId is not a known story character. Use this when you know
+        /// the unit is a story character (matched via rosterNameId).
+        /// </summary>
+        public static string? GetStoryJob(int nameId)
+        {
+            return StoryCharacterJob.TryGetValue(nameId, out var name) ? name : null;
+        }
+
+        /// <summary>
         /// IC remaster roster job IDs (at roster offset +0x02).
         /// These differ from PSX job IDs and overlap with PSX story character IDs.
         /// Verified empirically by reading roster data during battle.
@@ -315,10 +353,6 @@ namespace FFTColorCustomizer.GameBridge
             [0xA0] = "Gallant Knight",  // Ramza variant
             [0xA1] = "Squire",          // Ramza Ch2-3 variant
 
-            // Story character unique job IDs (small numbers, distinct from 74+ range).
-            // Verified in-game: these appear in the roster at +0x02 for story chars.
-            [22] = "Machinist",       // Mustadio — verified
-            [30] = "Holy Knight",     // Agrias — verified
 
             // Generic human jobs (IC remaster roster IDs)
             [74] = "Squire",          // 0x4A — verified
