@@ -34,23 +34,35 @@ namespace FFTColorCustomizer.GameBridge
         // user-provided ground truth.
         private static readonly Dictionary<string, string> FingerprintToJob = new()
         {
-            // From Siedge Weald encounter 1:
+            // === Monsters ===
+            // Undead family (byte 1 = 0x05 for skeletons, 0x07 for ghosts):
             ["05-65-1E-03-55-66-27-7D-07-58"] = "Skeletal Fiend",
+            ["05-5A-1E-04-55-6A-27-7B-07-57"] = "Bonesnatch",
+            ["07-52-1E-60-55-6E-27-5D-07-6A"] = "Ghast",
+            ["07-53-1E-7C-55-67-27-5A-07-69"] = "Ghoul",
+            ["07-5D-1E-40-55-79-27-61-07-6E"] = "Revenant",
+            // Goblin family:
             ["06-56-1E-23-55-72-27-67-07-57"] = "Black Goblin",
+            // Bomb family:
             ["07-57-1E-1E-5A-73-27-55-07-5E"] = "Grenade",
+            // Malboro family:
+            ["08-91-1E-0F-5A-5F-27-6E-1B-6E"] = "Ochu",
+
+            // === Generic human jobs ===
             ["0C-4B-09-78-64-64-3C-3C-32-96"] = "Black Mage",
             ["09-87-0D-50-64-6E-30-81-32-50"] = "Monk",
-
-            // From Siedge Weald encounter 2:
             ["0D-46-08-7D-64-5A-46-32-32-7D"] = "Summoner",
             ["0C-50-10-4B-64-64-4B-4B-32-50"] = "Chemist",
             ["0B-64-10-41-64-64-2D-6E-32-50"] = "Archer",
             ["0C-4B-0A-6E-64-64-3C-32-32-78"] = "Mystic",
             ["0A-78-0F-50-64-64-28-78-32-50"] = "Knight",
-            // Note: Ramza (Gallant Knight) fingerprint differs between saves
-            // (saw "0B-78-0B-6E-5F-64-32-73-30-73" and "0C-50-14-5A-64-64-28-8C-32-50").
-            // Likely encodes equipment/stat growth for story chars. Use roster lookup
-            // for Ramza instead.
+            ["0B-5A-10-32-5A-6E-32-64-32-3C"] = "Thief",
+            ["0C-4B-0A-78-64-64-41-32-32-82"] = "Time Mage",
+            ["0A-50-0A-78-64-6E-32-5A-32-6E"] = "White Mage",
+
+            // Note: Ramza's fingerprint differs between saves (saw 3 different
+            // patterns now). Likely encodes equipment/stat growth for story chars.
+            // Use roster lookup for Ramza instead.
         };
 
         /// <summary>
