@@ -2764,7 +2764,7 @@ namespace FFTColorCustomizer.GameBridge
 
                 // Press Up via PostMessage
                 _input.SendKeyPressToWindow(_gameWindow, VK_UP);
-                Thread.Sleep(350); // give game time to update ALL unit data (was 250ms, caused desync)
+                Thread.Sleep(500); // give game time to fully update grid pos + condensed struct (was 250ms → 350ms → 500ms)
 
                 // Read grid position
                 var pos = ReadGridPos();
@@ -2775,7 +2775,7 @@ namespace FFTColorCustomizer.GameBridge
 
                 if (isNew)
                 {
-                    // Read ALL unit data from condensed struct + UI buffer
+                    // Read unit data, then verify position didn't change during the read (race detection).
                     var reads = _explorer.ReadMultiple(new (nint, int)[]
                     {
                         ((nint)(AddrCondensedBase + 0x00), 2), // 0: level
@@ -2796,6 +2796,16 @@ namespace FFTColorCustomizer.GameBridge
                         ((nint)(AddrUIBuffer + 0x2C), 2),      // 15: Brave
                         ((nint)(AddrUIBuffer + 0x2E), 2),      // 16: Faith
                     });
+
+                    // Verify grid position didn't change during the read.
+                    // If it did, the condensed struct data belongs to a different unit — skip this read.
+                    var posAfter = ReadGridPos();
+                    if (posAfter.x != pos.x || posAfter.y != pos.y)
+                    {
+                        ModLogger.Log($"[CollectPositions] Position race at ({pos.x},{pos.y})→({posAfter.x},{posAfter.y}), skipping stale read");
+                        seen.Remove((pos.x, pos.y));
+                        continue;
+                    }
 
                     var unit = new ScannedUnit
                     {
