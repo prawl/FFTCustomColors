@@ -642,6 +642,13 @@ scan_move() {
     var u = d.battle?.units || [];
     // Compact one-line formatter for an ability entry.
     // Shows: name R:<hrange> [AoE:<n>] -> <target> [(Element)] [MP <n>] [*<addedEffect>*]
+    //        [targets=N hits=M: <tile list>]
+    // Each tile renders as (x,y); tiles with an occupant that matches the ability's
+    // target intent are prefixed with '*' and suffixed with «UnitName». Intent match:
+    //   ally-target abilities   -> star self + ally tiles
+    //   enemy-target abilities  -> star enemy tiles
+    // 'hits' counts the starred entries — the set of tiles that will actually affect
+    // something this turn.
     function fmtAb(a) {
       var parts = [a.name];
       if (a.horizontalRange) parts.push('R:' + a.horizontalRange);
@@ -650,6 +657,22 @@ scan_move() {
       if (a.element) parts.push('(' + a.element + ')');
       if (a.mp) parts.push('MP ' + a.mp);
       if (a.addedEffect) parts.push('[' + a.addedEffect + ']');
+      if (a.validTargetTiles && a.validTargetTiles.length) {
+        var wantsAlly = a.target && (a.target.indexOf('ally') !== -1 || a.target.indexOf('self') !== -1);
+        var wantsEnemy = a.target && a.target.indexOf('enemy') !== -1;
+        var hits = 0;
+        var rendered = a.validTargetTiles.map(function(t) {
+          var occ = t.occupant;
+          var hit =
+            (wantsAlly && (occ === 'self' || occ === 'ally')) ||
+            (wantsEnemy && occ === 'enemy');
+          if (hit) hits++;
+          var marker = hit ? '*' : '';
+          var suffix = (hit && t.unitName) ? '«' + t.unitName + '»' : '';
+          return marker + '(' + t.x + ',' + t.y + ')' + suffix;
+        }).join(' ');
+        parts.push('targets=' + a.validTargetTiles.length + ' hits=' + hits + ': ' + rendered);
+      }
       return parts.join(' ');
     }
     // Pre-pass: assign disambiguation suffixes to nameless units with duplicate jobs
@@ -701,7 +724,8 @@ scan_move() {
     var f = d.validPaths?.RecommendedFacing;
     if (f) console.log('  ' + f.desc);
     // Abilities (active unit) — one per line with full metadata
-    var ab = d.battle?.units?.find(function(x){return x.isActive})?.abilities;
+    var activeUnit = d.battle?.units?.find(function(x){return x.isActive});
+    var ab = activeUnit?.abilities;
     if (ab && ab.length) {
       console.log('  Abilities:');
       ab.forEach(function(a) { console.log('    - ' + fmtAb(a)); });

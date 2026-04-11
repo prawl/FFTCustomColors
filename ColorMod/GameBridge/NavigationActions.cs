@@ -895,12 +895,14 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Targeted ability: we should now be in targeting mode (Battle_Attacking)
+            // Targeted ability: we should now be in targeting mode.
+            // Battle_Attacking = basic Attack command (battleMode=4)
+            // Battle_Casting   = skillset ability target selection (battleMode=1)
             screen = _detectScreen();
-            if (screen == null || screen.Name != "Battle_Attacking")
+            if (screen == null || (screen.Name != "Battle_Attacking" && screen.Name != "Battle_Casting"))
             {
-                // Some abilities go straight to targeting without battleMode=4
-                // Check if we're still in a battle state
+                // Some abilities go straight to targeting without battleMode 1 or 4 —
+                // tolerate any in-battle state and let the caller handle it downstream.
                 if (screen?.Name?.StartsWith("Battle") != true)
                 {
                     response.Status = "failed";
@@ -1322,10 +1324,12 @@ namespace FFTColorCustomizer.GameBridge
         private CommandResponse ConfirmAttack(CommandResponse response)
         {
             var screen = _detectScreen();
-            if (screen == null || screen.Name != "Battle_Attacking")
+            // Accept both basic Attack targeting and skillset ability casting —
+            // the F-to-confirm mechanic is the same for both.
+            if (screen == null || (screen.Name != "Battle_Attacking" && screen.Name != "Battle_Casting"))
             {
                 response.Status = "failed";
-                response.Error = $"Not on Battle_Attacking screen (current: {screen?.Name ?? "null"})";
+                response.Error = $"Not on Battle_Attacking/Battle_Casting screen (current: {screen?.Name ?? "null"})";
                 return response;
             }
 
@@ -1418,7 +1422,8 @@ namespace FFTColorCustomizer.GameBridge
             // Allowed:
             //   Battle_MyTurn       — start of player turn, no action yet
             //   Battle_Moving       — player picking a move destination
-            //   Battle_Attacking    — player picking an attack/ability target
+            //   Battle_Attacking    — player picking a basic Attack target (battleMode=4)
+            //   Battle_Casting      — player picking a skillset ability target (battleMode=1)
             //   Battle_Abilities    — player browsing their ability submenu
             //   Battle_Waiting      — post-action facing selection
             //   Battle_Paused       — pause menu open over the battle
@@ -1432,7 +1437,7 @@ namespace FFTColorCustomizer.GameBridge
             //   Battle_GameOver     — KO'd
             var allowedStates = new HashSet<string>
             {
-                "Battle_MyTurn", "Battle_Moving", "Battle_Attacking",
+                "Battle_MyTurn", "Battle_Moving", "Battle_Attacking", "Battle_Casting",
                 "Battle_Abilities", "Battle_Waiting", "Battle_Paused"
             };
             if (!allowedStates.Contains(screen.Name))
@@ -1483,6 +1488,14 @@ namespace FFTColorCustomizer.GameBridge
                 PA = ally.PA,
                 MA = ally.MA,
             };
+            // Position→unit index for annotating ability target tiles with occupant info.
+            // Built once outside the per-unit loop so every ability lookup is O(1).
+            var unitByPos = new Dictionary<(int x, int y), ScannedUnit>();
+            foreach (var posUnit in units)
+            {
+                unitByPos[(posUnit.GridX, posUnit.GridY)] = posUnit;
+            }
+
             // Move/Jump exposed via ActiveUnit for Claude's decision-making
             foreach (var u in units)
             {
@@ -1501,21 +1514,66 @@ namespace FFTColorCustomizer.GameBridge
                 List<AbilityEntry>? abilities = null;
                 if (u.LearnedAbilities.Count > 0)
                 {
-                    abilities = FilterAbilitiesBySkillsets(u).Select(a => new AbilityEntry
+                    // Only the active player unit gets valid-target tiles populated.
+                    // Enemies and idle allies don't need them — Claude is only planning
+                    // the current turn.
+                    var abilityMap = isActive ? _mapLoader?.CurrentMap : null;
+
+                    abilities = FilterAbilitiesBySkillsets(u).Select(a =>
                     {
-                        Name = a.Name,
-                        Mp = a.MpCost,
-                        HRange = a.HRange,
-                        VRange = a.VRange,
-                        AoE = a.AoE,
-                        HoE = a.HoE,
-                        Target = a.Target,
-                        Effect = a.Effect,
-                        CastSpeed = a.CastSpeed,
-                        Element = a.Element,
-                        AddedEffect = a.AddedEffect,
-                        Reflectable = a.Reflectable,
-                        Arithmetickable = a.Arithmetickable,
+                        var entry = new AbilityEntry
+                        {
+                            Name = a.Name,
+                            Mp = a.MpCost,
+                            HRange = a.HRange,
+                            VRange = a.VRange,
+                            AoE = a.AoE,
+                            HoE = a.HoE,
+                            Target = a.Target,
+                            Effect = a.Effect,
+                            CastSpeed = a.CastSpeed,
+                            Element = a.Element,
+                            AddedEffect = a.AddedEffect,
+                            Reflectable = a.Reflectable,
+                            Arithmetickable = a.Arithmetickable,
+                        };
+
+                        // Point-target abilities (AoE=1, numeric HRange) get a list of
+                        // tiles the active caster can currently aim at. Each tile is
+                        // annotated with occupant info (self/ally/enemy + unit name) when
+                        // a unit is standing on it, so Claude can immediately see which
+                        // tiles are useful to target without cross-referencing units[].
+                        if (abilityMap != null && AbilityTargetCalculator.IsPointTarget(a))
+                        {
+                            var tiles = AbilityTargetCalculator.GetValidTargetTiles(
+                                u.GridX, u.GridY, a, abilityMap);
+                            if (tiles.Count > 0)
+                            {
+                                entry.ValidTargetTiles = tiles
+                                    .OrderBy(t => t.y).ThenBy(t => t.x)
+                                    .Select(t =>
+                                    {
+                                        var tile = new ValidTargetTile { X = t.x, Y = t.y };
+                                        if (unitByPos.TryGetValue((t.x, t.y), out var occ))
+                                        {
+                                            // "self" takes precedence over ally/enemy for the caster's own tile.
+                                            if (occ == u)
+                                                tile.Occupant = "self";
+                                            else if (occ.Team == 0 || occ.Team == 2)
+                                                tile.Occupant = "ally";
+                                            else
+                                                tile.Occupant = "enemy";
+                                            tile.UnitName = !string.IsNullOrEmpty(occ.Name)
+                                                ? occ.Name
+                                                : (occ.JobNameOverride ?? GameStateReporter.GetJobName(occ.Job));
+                                        }
+                                        return tile;
+                                    })
+                                    .ToList();
+                            }
+                        }
+
+                        return entry;
                     }).ToList();
                 }
                 else if (u.Team != 0 && jobName != null)

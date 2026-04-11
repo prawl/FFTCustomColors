@@ -192,6 +192,23 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_InBattle_SkillsetTargeting_BattleMode1_ShouldReturnBattleCasting()
+        {
+            // Empirical capture during Ramza casting Tailwind: battleMode=1, slot0=150 (not 255),
+            // slot9=0xFFFFFFFF, submenuFlag=1, menuCursor=1, battleActed=1, battleMoved=1,
+            // eventId=401. Previously mis-detected as Cutscene because slot0 != 255 and
+            // battleMode=1 wasn't in battleModeActive.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 150, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false, eventId: 401,
+                submenuFlag: 1, menuCursor: 1);
+
+            Assert.Equal("Battle_Casting", result);
+        }
+
+        [Fact]
         public void DetectScreen_InBattle_MoveMode_BattleMode2_ShouldReturnBattleMoving()
         {
             // Move tile selection: battleMode=2, moveMode=255

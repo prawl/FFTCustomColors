@@ -2161,7 +2161,7 @@ namespace FFTColorCustomizer.Utilities
                 }
 
                 // Populate cursor tile and available tiles for battle sub-states
-                if (screen.Name == "Battle_Moving" || screen.Name == "Battle_Attacking")
+                if (screen.Name == "Battle_Moving" || screen.Name == "Battle_Attacking" || screen.Name == "Battle_Casting")
                     PopulateBattleTileData(screen);
 
                 // Populate active unit name/job during battle from cached scan data.

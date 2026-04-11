@@ -215,16 +215,20 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Theory]
+        // Allowed: player has cursor control — safe to scan (C+Up cycling won't corrupt state).
         [InlineData("Battle_MyTurn", true)]
+        [InlineData("Battle_Moving", true)]
+        [InlineData("Battle_Attacking", true)]
+        [InlineData("Battle_Casting", true)]
+        [InlineData("Battle_Abilities", true)]
+        [InlineData("Battle_Waiting", true)]
+        [InlineData("Battle_Paused", true)]
+        // Blocked: animations or other teams' turns — scanning would race with state changes.
         [InlineData("Battle_EnemiesTurn", false)]
         [InlineData("Battle_AlliesTurn", false)]
         [InlineData("Battle_Acting", false)]
-        [InlineData("Battle_Moving", false)]
-        [InlineData("Battle_Attacking", false)]
-        [InlineData("Battle_Abilities", false)]
         [InlineData("Battle_Mettle", false)]
-        [InlineData("Battle_Paused", false)]
-        public void CanScan_OnlyDuringMyTurn(string screenName, bool expected)
+        public void CanScan_CursorControlStates(string screenName, bool expected)
         {
             Assert.Equal(expected, BattleTurnTracker.CanScan(screenName));
         }

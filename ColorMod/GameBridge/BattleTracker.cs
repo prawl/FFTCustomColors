@@ -976,5 +976,39 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("arithmetickable")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool Arithmetickable { get; set; }
+
+        /// <summary>
+        /// For point-target abilities (AoE=1, numeric HRange), the set of tiles
+        /// the caster can currently target. Null for ineligible abilities
+        /// (self-cast, AoE splash, line, non-numeric HRange). Populated only for
+        /// the active player unit — enemies and idle allies omit this field so
+        /// the scan stays small.
+        /// </summary>
+        [JsonPropertyName("validTargetTiles")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<ValidTargetTile>? ValidTargetTiles { get; set; }
+    }
+
+    /// <summary>
+    /// A single tile in an ability's valid-target list, annotated with occupant
+    /// info when a unit is standing on it. Empty tiles omit occupant/unitName.
+    /// </summary>
+    public class ValidTargetTile
+    {
+        [JsonPropertyName("x")]
+        public int X { get; set; }
+
+        [JsonPropertyName("y")]
+        public int Y { get; set; }
+
+        /// <summary>"self", "ally", "enemy", or null for an empty tile.</summary>
+        [JsonPropertyName("occupant")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Occupant { get; set; }
+
+        /// <summary>Display name of the unit standing here, if any.</summary>
+        [JsonPropertyName("unitName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? UnitName { get; set; }
     }
 }

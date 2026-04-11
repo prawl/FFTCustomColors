@@ -46,6 +46,7 @@ namespace FFTColorCustomizer.GameBridge
                 "Battle_MyTurn" => GetBattleMyTurnPaths(screen),
                 "Battle_Moving" => GetBattleMovingPaths(),
                 "Battle_Attacking" => GetBattleTargetingPaths(),
+                "Battle_Casting" => GetBattleTargetingPaths(),
                 "Battle_Acting" => GetBattleActingPaths(),
                 "Battle_Paused" => GetBattlePausedPaths(),
                 "Battle_AlliesTurn" => GetBattleWaitingPaths(),

@@ -1,0 +1,158 @@
+using FFTColorCustomizer.GameBridge;
+using Xunit;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace FFTColorCustomizer.Tests.GameBridge
+{
+    public class AbilityTargetCalculatorTests
+    {
+        /// <summary>Build a flat N×N walkable map with every tile at the same height.</summary>
+        private static MapData FlatMap(int size, int height = 0)
+        {
+            var map = new MapData { Width = size, Height = size, Tiles = new MapTile[size, size] };
+            for (int x = 0; x < size; x++)
+                for (int y = 0; y < size; y++)
+                    map.Tiles[x, y] = new MapTile { Height = height, NoWalk = false };
+            return map;
+        }
+
+        [Fact]
+        public void IsPointTarget_ExcludesSelfHRange()
+        {
+            var ability = new ActionAbilityInfo(0, "Focus", 0, "Self", 0, 1, 0, "self", "");
+            Assert.False(AbilityTargetCalculator.IsPointTarget(ability));
+        }
+
+        [Fact]
+        public void IsPointTarget_ExcludesNonUnitAoE()
+        {
+            var ability = new ActionAbilityInfo(0, "Fire", 0, "4", 99, 2, 0, "enemy/AoE", "");
+            Assert.False(AbilityTargetCalculator.IsPointTarget(ability));
+        }
+
+        [Fact]
+        public void IsPointTarget_AcceptsSingleTileRanged()
+        {
+            var ability = new ActionAbilityInfo(0, "Rush", 0, "1", 1, 1, 0, "enemy", "");
+            Assert.True(AbilityTargetCalculator.IsPointTarget(ability));
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_EnemyRange1_ExcludesCasterTile()
+        {
+            // Caster at (5,5), HR=1 enemy-target ability.
+            // Valid = 4 cardinal neighbors (caster tile excluded — can't Rush yourself).
+            var map = FlatMap(10);
+            var ability = new ActionAbilityInfo(0, "Rush", 0, "1", 99, 1, 0, "enemy", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, ability, map);
+            Assert.Equal(4, tiles.Count);
+            Assert.DoesNotContain((5, 5), tiles);
+            Assert.Contains((4, 5), tiles);
+            Assert.Contains((6, 5), tiles);
+            Assert.Contains((5, 4), tiles);
+            Assert.Contains((5, 6), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_AllyRange1_IncludesCasterTile()
+        {
+            // Ally-target abilities (Potion, Chant, Salve) can target the caster.
+            // Caster at (5,5), HR=1 → 4 cardinal neighbors + self = 5 tiles.
+            var map = FlatMap(10);
+            var ability = new ActionAbilityInfo(0, "Chant", 0, "1", 99, 1, 0, "ally", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, ability, map);
+            Assert.Equal(5, tiles.Count);
+            Assert.Contains((5, 5), tiles);
+            Assert.Contains((4, 5), tiles);
+            Assert.Contains((6, 5), tiles);
+            Assert.Contains((5, 4), tiles);
+            Assert.Contains((5, 6), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_AllyRange4_IncludesCasterTile()
+        {
+            // Full HR=4 diamond on a flat open map = 41 tiles (includes caster for ally cast).
+            var map = FlatMap(20);
+            var ability = new ActionAbilityInfo(0, "Potion", 0, "4", 99, 1, 0, "ally", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(10, 10, ability, map);
+            Assert.Equal(41, tiles.Count);
+            Assert.Contains((10, 10), tiles);
+            Assert.Contains((6, 10), tiles);
+            Assert.Contains((14, 10), tiles);
+            Assert.DoesNotContain((5, 10), tiles);
+            Assert.DoesNotContain((15, 10), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_EnemyClippedToMapBounds()
+        {
+            // Enemy-target at corner (0,0), HR=4 quadrant = 15 tiles minus caster = 14.
+            var map = FlatMap(10);
+            var ability = new ActionAbilityInfo(0, "Throw Stone", 0, "4", 99, 1, 0, "enemy", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(0, 0, ability, map);
+            Assert.Equal(14, tiles.Count);
+            Assert.DoesNotContain((0, 0), tiles);
+            Assert.Contains((4, 0), tiles);
+            Assert.Contains((0, 4), tiles);
+            Assert.DoesNotContain((-1, 0), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_UnwalkableTilesExcluded()
+        {
+            // A single NoWalk tile inside the diamond should not appear in the result.
+            var map = FlatMap(10);
+            map.Tiles[5, 6] = new MapTile { Height = 0, NoWalk = true };
+            var ability = new ActionAbilityInfo(0, "Rush", 0, "1", 99, 1, 0, "enemy", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, ability, map);
+            Assert.DoesNotContain((5, 6), tiles);
+            // Still get the other 3 neighbors
+            Assert.Equal(3, tiles.Count);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_VRangeFiltersTallerTiles()
+        {
+            // VR=1 blocks tiles whose height differs by more than 1 from the caster.
+            var map = FlatMap(10, height: 5);
+            // Raise one tile within HR range way above the caster
+            map.Tiles[7, 5] = new MapTile { Height = 20 };
+            var ability = new ActionAbilityInfo(0, "Rush", 0, "3", 1, 1, 0, "enemy", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, ability, map);
+            // (7,5) is HR=2 but ΔZ=15 > VR=1 — excluded
+            Assert.DoesNotContain((7, 5), tiles);
+            // (6,5) is HR=1 flat — included
+            Assert.Contains((6, 5), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_VRange99_IgnoresElevation()
+        {
+            // VR=99 should not filter anything regardless of height differences.
+            var map = FlatMap(10, height: 5);
+            map.Tiles[7, 5] = new MapTile { Height = 99 };
+            var ability = new ActionAbilityInfo(0, "Throw Stone", 0, "4", 99, 1, 0, "enemy", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, ability, map);
+            Assert.Contains((7, 5), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_NullMap_ReturnsEmpty()
+        {
+            var ability = new ActionAbilityInfo(0, "Rush", 0, "1", 1, 1, 0, "enemy", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, ability, null);
+            Assert.Empty(tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_IneligibleAbility_ReturnsEmpty()
+        {
+            var map = FlatMap(10);
+            var aoeAbility = new ActionAbilityInfo(0, "Fire", 0, "4", 99, 2, 0, "enemy/AoE", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, aoeAbility, map);
+            Assert.Empty(tiles);
+        }
+    }
+}
