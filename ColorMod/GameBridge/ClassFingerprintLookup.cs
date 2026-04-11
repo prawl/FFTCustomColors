@@ -47,6 +47,7 @@ namespace FFTColorCustomizer.GameBridge
             ["06-56-1E-23-55-72-27-67-07-57"] = "Black Goblin",
             // Bomb family:
             ["07-57-1E-1E-5A-73-27-55-07-5E"] = "Grenade",
+            ["8C-64-88-43-88-43-84-22-84-22"] = "Grenade",
             // Malboro family (tier 1 Malboro, tier 2 Ochu):
             ["08-AF-1E-0F-5A-61-26-69-1E-63"] = "Malboro",
             ["08-91-1E-0F-5A-5F-27-6E-1B-6E"] = "Ochu",
@@ -55,23 +56,25 @@ namespace FFTColorCustomizer.GameBridge
             ["06-4D-1E-8C-55-6C-28-7F-07-78"] = "Plague Horror",
             // Panther family:
             ["06-5B-1E-3C-55-81-27-74-07-69"] = "Coeurl",
-            // Chocobo family (yellow/base Chocobo, distinct from Black Chocobo):
+            // Chocobo family (tier 1 Chocobo, tier 2 Black Chocobo, tier 3 Red Chocobo):
             ["08-6C-1E-64-4B-77-23-62-07-5E"] = "Chocobo",
-            // Chocobo family (black, tier 2):
             ["07-50-1E-96-55-62-27-96-07-69"] = "Black Chocobo",
+            ["04-5B-1E-5A-55-88-27-82-07-63"] = "Red Chocobo",
             // Bomb family (shared by Bomb / Grenade / Exploder variants):
             ["07-55-1E-14-5A-68-27-64-07-5D"] = "Bomb",
             // Bird family (tier 1 Jura Aevis, tier 2 Steelhawk, tier 3 Cockatrice):
             ["07-5A-1E-28-55-71-27-69-07-55"] = "Jura Aevis",
             ["07-55-1E-3C-55-83-27-6C-07-5A"] = "Steelhawk",
             ["07-65-1E-0A-55-87-27-98-07-64"] = "Cockatrice",
-            // Bull family (Wisenkin is the first tier):
+            // Bull family (tier 1 Wisenkin, tier 2 Sekhret):
             ["06-87-1E-05-55-6B-27-78-07-64"] = "Wisenkin",
+            ["06-97-1E-0A-55-7A-27-AD-07-64"] = "Sekhret",
             // Goblin family (tier 3):
             ["06-62-1E-4B-55-80-27-73-07-5C"] = "Gobbledygook",
-            // Squid/Piscodaemon family (tier 1: Piscodaemon; tier 2: Squidraken):
+            // Squid/Piscodaemon family (tier 1 Piscodaemon, tier 2 Squidraken, tier 3 Mindflayer):
             ["07-6C-1E-78-55-6F-27-5A-07-60"] = "Piscodaemon",
             ["07-73-1E-73-55-65-27-65-07-60"] = "Squidraken",
+            ["07-5C-1E-A0-55-70-27-7F-07-5C"] = "Mindflayer",
             // Behemoth family:
             ["05-8C-1E-78-55-75-24-86-07-69"] = "Behemoth",
             // Panther family (tier 1 Red Panther, tier 2 Coeurl, tier 3 Vampire Cat):

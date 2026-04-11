@@ -642,6 +642,10 @@ scan_move() {
       if (v.lifeState) ex += ' [' + v.lifeState + ']';
       if (v.statuses && v.statuses.length) ex += ' [' + v.statuses.join(',') + ']';
       console.log('    [' + t + '] ' + nm + '(' + jn + ') (' + v.x + ',' + v.y + ') HP=' + v.hp + '/' + v.maxHp + ' dist=' + (v.distance ?? '?') + ex);
+      // Show per-unit abilities for non-active units (active unit shown separately below)
+      if (!v.isActive && v.abilities && v.abilities.length) {
+        console.log('      abilities: ' + v.abilities.map(function(a){return a.name}).join(', '));
+      }
     });
     // Tiles
     var tiles = d.validPaths?.ValidMoveTiles;

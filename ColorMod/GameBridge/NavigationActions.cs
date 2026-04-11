@@ -1166,9 +1166,37 @@ namespace FFTColorCustomizer.GameBridge
             var screen = _detectScreen();
             if (screen == null || (screen.Name != "WorldMap" && screen.Name != "TravelList"))
             {
-                response.Status = "failed";
-                response.Error = $"Must be on WorldMap (current: {screen?.Name})";
-                return response;
+                // Stale-state bypass: after battle_flee returns, screen detection can stay stuck
+                // at Battle_MyTurn because unit slot memory (0x14077CA30/54) persists until the
+                // game reallocates it. The combination of:
+                //   - battleMode == 0     (no active battle)
+                //   - rawLocation valid   (distinguishes from attack-animation flicker where it's 255)
+                //   - party == 0          (not in pause/party menu)
+                // means we're genuinely on the world map with stale slot memory.
+                // See memory/feedback_flee_stale_state.md.
+                bool looksStaleWorldMap = false;
+                if (screen?.Name != null && screen.Name.StartsWith("Battle"))
+                {
+                    var bmResult = _explorer.ReadAbsolute((nint)0x140900650, 1);
+                    var locResult = _explorer.ReadAbsolute((nint)0x14077D208, 1);
+                    int bm = bmResult != null ? (int)bmResult.Value.value : -1;
+                    int loc = locResult != null ? (int)locResult.Value.value : -1;
+                    // battleMode==0 AND valid location = we're not in active battle, even though
+                    // unit slots still show populated. Party flag is NOT checked because the
+                    // pause menu can leave it set to 1 after flee. See memory/feedback_flee_stale_state.md.
+                    if (bm == 0 && loc >= 0 && loc <= 42)
+                    {
+                        ModLogger.Log($"[TravelTo] Stale screen={screen.Name}, battleMode=0, loc={loc} — bypassing");
+                        looksStaleWorldMap = true;
+                    }
+                }
+
+                if (!looksStaleWorldMap)
+                {
+                    response.Status = "failed";
+                    response.Error = $"Must be on WorldMap (current: {screen?.Name})";
+                    return response;
+                }
             }
 
             // 1. Open travel list — cursor starts on current location
@@ -1426,6 +1454,44 @@ namespace FFTColorCustomizer.GameBridge
                 bool isActive = u == ally;
                 int dist = Math.Abs(u.GridX - ally.GridX) + Math.Abs(u.GridY - ally.GridY);
 
+                // Compute job name first so we can use it for monster ability lookup
+                var jobName = u.JobNameOverride
+                    ?? (u.Team == 0 ? GameStateReporter.GetJobName(u.Job) : null);
+
+                // Resolve abilities:
+                //  - Active player unit: filter learned list by equipped skillsets
+                //  - Enemy monster: look up fixed kit by class name (MonsterAbilities)
+                //  - Enemy human or unknown: null (their abilities are per-encounter and
+                //    we don't have a way to read them yet)
+                List<AbilityEntry>? abilities = null;
+                if (u.LearnedAbilities.Count > 0)
+                {
+                    abilities = FilterAbilitiesBySkillsets(u).Select(a => new AbilityEntry
+                    {
+                        Name = a.Name,
+                        Mp = a.MpCost,
+                        HRange = a.HRange,
+                        VRange = a.VRange,
+                        AoE = a.AoE,
+                        HoE = a.HoE,
+                        Target = a.Target,
+                        Effect = a.Effect,
+                        CastSpeed = a.CastSpeed,
+                        Element = a.Element,
+                        AddedEffect = a.AddedEffect,
+                        Reflectable = a.Reflectable,
+                        Arithmetickable = a.Arithmetickable,
+                    }).ToList();
+                }
+                else if (u.Team != 0 && jobName != null)
+                {
+                    var monsterAbs = MonsterAbilities.GetAbilities(jobName);
+                    if (monsterAbs != null && monsterAbs.Length > 0)
+                    {
+                        abilities = monsterAbs.Select(name => new AbilityEntry { Name = name }).ToList();
+                    }
+                }
+
                 battleState.Units.Add(new BattleUnitState
                 {
                     Name = u.Name,
@@ -1434,8 +1500,7 @@ namespace FFTColorCustomizer.GameBridge
                     // For enemies, unit.Job is polluted by UI buffer leak (often shows
                     // the active player's job). Only trust fingerprint match for them.
                     // Players can fall back to GetJobName(u.Job) since roster sets it.
-                    JobName = u.JobNameOverride
-                        ?? (u.Team == 0 ? GameStateReporter.GetJobName(u.Job) : null),
+                    JobName = jobName,
                     Level = u.Level,
                     X = u.GridX,
                     Y = u.GridY,
@@ -1456,22 +1521,7 @@ namespace FFTColorCustomizer.GameBridge
                     LifeState = StatusDecoder.GetLifeState(u.StatusBytes) is var ls && ls != "alive" ? ls
                         : (u.Hp <= 0 && u.MaxHp > 0 ? "dead" : null),
                     Statuses = StatusDecoder.Decode(u.StatusBytes) is var s && s.Count > 0 ? s : null,
-                    Abilities = u.LearnedAbilities.Count > 0 ? FilterAbilitiesBySkillsets(u).Select(a => new AbilityEntry
-                    {
-                        Name = a.Name,
-                        Mp = a.MpCost,
-                        HRange = a.HRange,
-                        VRange = a.VRange,
-                        AoE = a.AoE,
-                        HoE = a.HoE,
-                        Target = a.Target,
-                        Effect = a.Effect,
-                        CastSpeed = a.CastSpeed,
-                        Element = a.Element,
-                        AddedEffect = a.AddedEffect,
-                        Reflectable = a.Reflectable,
-                        Arithmetickable = a.Arithmetickable,
-                    }).ToList() : null,
+                    Abilities = abilities,
                 });
             }
 
@@ -3051,12 +3101,14 @@ namespace FFTColorCustomizer.GameBridge
                         (byte)(unit.MaxHp & 0xFF), (byte)(unit.MaxHp >> 8),
                     };
 
-                    // Search only the heap unit struct range (empirically 0x4160000000..0x4180000000).
-                    // Without the range filter, searches for common HP values (like 116)
-                    // exhaust the match limit on graphics-buffer false positives in
-                    // 0x428C..0x429x before reaching the real unit structs.
+                    // Search the heap unit struct range. Originally hardcoded to
+                    // 0x4160000000..0x4180000000, but some battles have unit structs outside
+                    // this narrow range. Widened to 0x4000000000..0x4200000000 to cover more
+                    // UE4 heap addresses. The upper limit intentionally stops before
+                    // 0x420000_0000 (graphics data) to avoid false positives in sequential
+                    // float arrays that coincidentally match HP byte patterns.
                     var heapMatches = _explorer.SearchBytesInAllMemory(
-                        hpPattern, maxResults: 8, minAddr: 0x4160000000L, maxAddr: 0x4180000000L);
+                        hpPattern, maxResults: 16, minAddr: 0x4000000000L, maxAddr: 0x4200000000L);
                     if (heapMatches.Count == 0)
                     {
                         ModLogger.Log($"[CollectPositions] No heap match for ({unit.GridX},{unit.GridY}) hp={unit.Hp}/{unit.MaxHp}");
