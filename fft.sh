@@ -645,15 +645,34 @@ scan_move() {
       if (a.addedEffect) parts.push('[' + a.addedEffect + ']');
       return parts.join(' ');
     }
+    // Pre-pass: assign disambiguation suffixes to nameless units with duplicate jobs
+    // within a team. Keyed by \"team|jobName\", counts how many units share that key,
+    // then numbers them in scan order. Single instances get no suffix.
+    var groupCounts = {};
+    u.forEach(function(v) {
+      if (v.name) return;  // named story chars never get #N
+      var key = (v.team || 0) + '|' + (v.jobName || '?');
+      groupCounts[key] = (groupCounts[key] || 0) + 1;
+    });
+    var groupSeen = {};
+    function disambiguate(v) {
+      if (v.name) return null;  // named units don't need disambiguation
+      var key = (v.team || 0) + '|' + (v.jobName || '?');
+      if ((groupCounts[key] || 0) < 2) return null;  // singletons don't need numbering
+      groupSeen[key] = (groupSeen[key] || 0) + 1;
+      return '#' + groupSeen[key];
+    }
     u.forEach(function(v) {
       var t = v.team === 0 ? 'PLAYER' : v.team === 2 ? 'ALLY' : 'ENEMY';
       var nm = v.name ? v.name + ' ' : '';
       var jn = v.jobName || '?';
+      var disambig = disambiguate(v);
+      var jnStr = disambig ? jn + ' ' + disambig : jn;
       var ex = '';
       if (v.isActive) ex += ' *ACTIVE*';
       if (v.lifeState) ex += ' [' + v.lifeState + ']';
       if (v.statuses && v.statuses.length) ex += ' [' + v.statuses.join(',') + ']';
-      console.log('    [' + t + '] ' + nm + '(' + jn + ') (' + v.x + ',' + v.y + ') HP=' + v.hp + '/' + v.maxHp + ' dist=' + (v.distance ?? '?') + ex);
+      console.log('    [' + t + '] ' + nm + '(' + jnStr + ') (' + v.x + ',' + v.y + ') HP=' + v.hp + '/' + v.maxHp + ' dist=' + (v.distance ?? '?') + ex);
       // Show per-unit abilities for non-active units (active unit shown separately below).
       // Each ability on its own line with range/AoE/target/element/mp metadata.
       if (!v.isActive && v.abilities && v.abilities.length) {
