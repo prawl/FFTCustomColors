@@ -76,7 +76,6 @@ Organized by priority tier. Each item is tagged with its original category:
 These are correctness bugs or foundational features that block everything downstream. Fix these before adding new capabilities.
 
 - [ ] **Read ability range and AoE shape** [AoE] — From the ability's secondary data: range, effect area, vertical tolerance. So Claude knows Fire has range 4 + 2-tile AoE diamond, vs Attack which is range 1 + single tile. **Foundational — blocks AoE targeting, charge time spells, spell Unit/Tile dialog, and enemy threat assessment.**
-- [ ] **Multiple friendly unit support** [Movement] — Handle turns for units other than Ramza. Currently scan_move assumes first team=0 unit is active. Blocks every battle with more than one player unit.
 
 ### Tier 2 — Core tactical depth
 
@@ -153,6 +152,7 @@ After correctness. 5s vs 30s per turn is huge, but only once the individual piec
 - [x] **Auto-scan double-fire** [Movement] — Fixed. BattleTurnTracker now marks turns as scanned so auto-scan doesn't re-fire after explicit scan_move.
 - [x] **battle_wait facing uses F key** [Movement] — Fixed.
 - [x] **C+Up scan position/unit data desync** [Movement] — Auto-scan removal eliminated the failure window. `scan_move` now only runs C+Up once per turn on explicit request (subsequent calls return the cached response), and scans are blocked during Battle_Acting / Battle_AlliesTurn / Battle_EnemiesTurn. Roster-match team correction handles remaining edge cases. Not observed in play since. Relog if it recurs.
+- [x] **Multiple friendly unit support** [Movement] — C+Up scan starts on the active unit (the bottom of the Combat Timeline on the left side of the screen) before any Up press — see `CollectUnitPositionsFull` at `NavigationActions.cs:2832`. `units[0]` is therefore always the active unit, and `FirstOrDefault(Team == 0)` resolves to it in the Battle_MyTurn path. Verified in live logs with a 4-friendly party (Ramza+Kenrick+Lloyd+Wilham) scanning correctly, each roster/fingerprint matched to the right job. Relog if a specific multi-unit bug appears.
 
 ---
 
