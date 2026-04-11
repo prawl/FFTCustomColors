@@ -149,3 +149,23 @@ Every screen has a set of valid actions. Use `execute_action <name>` to run them
 - **PartyMenu**: various sub-menus
 
 When in doubt, call `screen` or `execute_action` with any name — the error will list available actions.
+
+## Known Gotchas
+
+**First turn of a new battle** may return stale cached scan data. Workaround: `battle_wait` through the first turn to force a fresh scan.
+
+**`battle_flee` can leave screen state stuck** reporting `Battle_MyTurn` for several seconds after the player is back on the world map. Travel commands may still fail during this window even though you ARE on the world map. If you see a "stuck" state after flee, run `restart` to cleanly re-sync.
+
+**Formation screen lies about its state** for 3-6 seconds after `execute_action Fight`. Screen detection reports `TravelList` during this transition — don't trust it. Just `sleep 3` and blindly send the standard formation key sequence: Enter → Enter → Space → Enter.
+
+**Strict mode blocks raw key input** (`enter`, `space`, etc). Disable with `strict 0` for formation transitions or menu scraping, re-enable with `strict 1` after. For play sessions always keep strict mode ON to catch command typos.
+
+**Scan during enemy/animation turns is blocked.** `scan_move` returns `status=blocked` during Battle_Acting / Battle_AlliesTurn / Battle_EnemiesTurn because C+Up cycling can corrupt game state mid-animation. Allowed states: Battle_MyTurn, Battle_Moving, Battle_Attacking, Battle_Abilities, Battle_Waiting, Battle_Paused.
+
+**Ramza's fingerprint varies per save** (his job/equipment change as you play). Don't rely on fingerprint for him — the roster lookup by nameId=1 is authoritative.
+
+**Mod-forced battles skip unit struct search.** Grogh Heights, Dugeura Pass, Tchigolith Fenlands, Mandalia Plain story battles spawn unit structs at addresses outside the hardcoded heap range. Fingerprints fail → every enemy shows as `(?)`. Flee those battles and move on.
+
+**Use `restart` (fft.sh helper), not manual taskkill.** The helper handles the full rebuild+deploy+launch+boot cycle. Manual sequences often skip steps and leave the mod out of sync with the game.
+
+**Only one command at a time per bash call.** The bridge is single-threaded and chaining multiple commands with `&&` can race. Send one, wait for response, send the next.

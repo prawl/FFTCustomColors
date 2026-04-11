@@ -166,7 +166,33 @@ The IC remaster uses different job IDs than PSX in the roster (+0x02). Verified 
 | 81 | Time Mage* | 89 | Ninja |
 *= estimated, not yet verified in-game
 
+## 16. Heap-Only Structures (dynamic addresses)
+
+These tables live in heap-allocated UE4 memory and move between sessions. Find them at runtime via anchor signature search.
+
+### Class Fingerprints (per-unit, `+0x69` from struct base)
+Every battle unit has an 11-byte fingerprint in its heap unit struct at offset +0x69. **Bytes 1-10** are the stable class signature (byte 0 varies per unit). This is the ONLY reliable enemy class identifier. See `CLASS_FINGERPRINTS.md` for full details, family patterns, and known collision handling.
+
+To find a unit struct: search for its `HP MaxHP` u16 pair, subtract 0x10. Search range: `0x4000000000..0x4200000000`.
+
+### Roster Name Display Table (per-slot, stride 0x280)
+Player character names (including generic recruits like "Kenrick" or "Lloyd") live in per-slot records separate from the roster array. Each record is 0x280 bytes; the displayed name is a null-terminated ASCII string at **+0x10 inside each record**. Anchor signature: `Ramza\0Delita\0Argath\0Zalbaag\0Dycedarg\0Larg\0Goltanna\0Ovelia\0Orland\0` (note "Orland" not "Orlandeau"). See `UNIT_DATA_STRUCTURE.md` → "Roster Name Display Table".
+
+### Gil (static address confirmed)
+`0x140D39CD0` — u32 LE. Survives restarts, updates in real-time. Read with `read_address size=4`.
+
+## 17. Inventory — investigation paused
+The party item inventory (Potions, X-Potions, bombs, etc.) has **not** been located in memory. Exhaustive byte-pattern search for `02 00 5D 00 63 00 60 00` (Potion=2, Hi-Potion=0, X-Pot=93, Ether=99, Antidote=96) in u8/u16/u32/float/XOR/big-endian encodings returned 0 matches across condensed struct, gil region, roster, item metadata, and heap abilities regions.
+
+**Item metadata IS findable** — strings "Potion", "Hi-Potion", "X-Potion", etc. live as length-prefixed UTF-16 in a std::wstring pool around `0x040D2xxx`, but these are just name+description pairs with no count field.
+
+**Save file is encrypted** — at `%USERPROFILE%/OneDrive/Documents/My Games/FINAL FANTASY TACTICS - The Ivalice Chronicles/Steam/<accountid>/enhanced.png`. Format: PNG wrapper + custom `ffTo` chunk containing a 93KB `UMIF` blob that decompresses to ~2MB. Encryption scheme unknown. Neither zlib nor raw deflate work.
+
+**Next options**: see `memory/project_inventory_investigation.md` for a full dossier. Most promising next step is "scrape the Items menu while it's rendered" (Option C in the memo).
+
 ## Still Unmapped
 - Facing direction, effective Move/Jump stats (UI buffer shows base, not equipment-modified)
+- Enemy display names (only player roster names readable — see UNIT_DATA_STRUCTURE.md)
+- Party item inventory (see section 17)
 - IC remaster roster job IDs for jobs between Knight(79) and Ninja(89) need verification
 - See BATTLE_STATS_PSX_REFERENCE.md for complete PSX field layout

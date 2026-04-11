@@ -7,7 +7,7 @@ Discover and label the class (job/monster type) of every enemy in FFT by looping
 ## Background
 The FFT IC remaster doesn't expose enemy job IDs reliably. Instead, each battle unit's heap struct has 11 bytes at offset `+0x69` that act as a **class fingerprint** — identical for instances of the same class. The system reads these during `scan_move`, looks them up in a dictionary, and renders the class name. Unknown fingerprints show as `(?)` and must be labeled by the user.
 
-See `memory/project_class_fingerprint.md` for the full investigation history and implementation details. Also `memory/project_battle_loop.md` for the step-by-step flow.
+See `../CLASS_FINGERPRINTS.md` for the technical reference (memory layout, known pitfalls, family patterns, implementation files).
 
 ## The Loop (per battle)
 

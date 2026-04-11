@@ -125,3 +125,18 @@ Note: ID 20 is unused.
 - **Save before traveling** to dangerous locations: `save`
 - **After travel**, call `screen` to check if you arrived or hit an encounter.
 - **Orbonne Monastery (ID 18)** has a story mission — avoid during normal exploration.
+
+## Known-Broken Battlegrounds (skip for class-labeling runs)
+
+Some battlegrounds spawn **mod-forced battles** where enemy unit structs live at heap addresses outside our search range. Class fingerprint lookup fails and every enemy renders as `(?)`. If you're doing class discovery work, flee these immediately and move on:
+
+- **Grogh Heights (33)** — 11 mod-only units at ~0x430xxxx
+- **Dugeura Pass (38)** — 6 enemies, all unreachable
+- **Tchigolith Fenlands (30)** — 6 enemies, all unreachable
+- **Mandalia Plain (24)** — story battle with 11 units, all unreachable
+
+Regular story play on these maps still works (move, attack, etc.) — just don't expect class names or ability lists for the enemies.
+
+## Post-Flee State Gotcha
+
+After `battle_flee` succeeds, the screen state can stay stuck reporting `Battle_MyTurn` for several seconds even though the player is back on the world map. Travel commands may error out during this window. If you see this, the fast recovery is `restart` (full rebuild + relaunch). Don't try to force-send keys — you can't control a battle that's already ended.

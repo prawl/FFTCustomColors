@@ -4,6 +4,11 @@
 Roster field offsets: reaction +0x08, support +0x0A, movement +0x0C.
 Bytes +0x09, +0x0B, +0x0D = 0x01 when corresponding slot is equipped.
 
+## Action ability metadata
+- **Player action abilities** — full metadata (range, AoE, target, element, effect, MP cost, cast speed, added effects, reflectable, arithmetickable) is in `ColorMod/GameBridge/ActionAbilityLookup.cs`. Skillsets: Mettle, Fundaments, Arts of War, Aim, Martial Arts, White/Black/Time Magicks, Mystic Arts, Summon, Steal, Speechcraft, Geomancy, Jump, Iaido, Throw, Items, Arithmeticks, Bardsong, Dance, Darkness (Dark Knight), plus Story character primaries.
+- **Monster action abilities** — fixed per class. `MonsterAbilities.cs` maps class name → ability list. `MonsterAbilityLookup.cs` provides full metadata for ~60 monster abilities (Tackle, Pickaxe, Talon Dive, Tentacles, etc). Abilities are elemental-typed and include added status effects. ~47 monster classes covered.
+- Monsters verified empirically: two units of the same class with different HP/level have identical ability loadouts. Tier progression does NOT strictly add abilities — e.g. Sekhret (Bull tier 2) has 3 abilities but Minotaur (tier 3) only has 2 with a different second ability.
+
 ## Secondary Ability Index (+0x07)
 
 Stores index into character's personal unlocked ability list (NOT a universal ID). Story characters with unique primary abilities shift indices.

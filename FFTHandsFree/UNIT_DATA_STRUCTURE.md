@@ -135,6 +135,40 @@ During reverse engineering, the following offsets were tested for the name field
 - +0x121 (contains job-1 for story characters, 0 for generics — some other purpose)
 - +0x122, +0x124 (mirror unitIndex — related to roster management, not name)
 
+## Roster Name Display Table (separate from the unit data array)
+
+The roster array at 0x1411A18D0 does **not** contain character names as strings — `+0x230` is just a nameId integer, and for generics there's no readable name anywhere in the 0x258-byte slot data. Displayed names live in a **separate per-slot name record table** in the UE4 heap.
+
+**Structure**: 16 roster slots, each a **0x280-byte** record. Inside each record, at offset **+0x10**, is a null-terminated UTF-8 ASCII string — the character's displayed name. After that string, there's a list of alternate name options (unused by us, likely for sprite/theme variations). The rest of the record is stats/config binary data.
+
+**Locating it**: search for the 57-byte anchor signature:
+```
+"Ramza\0Delita\0Argath\0Zalbaag\0Dycedarg\0Larg\0Goltanna\0Ovelia\0Orland\0"
+```
+Note **"Orland"** (6 chars) not "Orlandeau" — the roster table truncates Orlandeau at a record boundary. There's a separate flat master name pool that uses the full "Orlandeau" — avoid confusing them.
+
+The anchor pattern starts at offset +0x10 inside the first record (slot 0 = Ramza). So record base = match address - 0x10. Slot N's name is at `base + N * 0x280 + 0x10`.
+
+**Verified layout** (empirical from live game):
+```
+slot 0:  Ramza    (story char, always slot 0)
+slot 1:  Kenrick  (first generic recruit)
+slot 2:  Lloyd
+slot 3:  Wilham
+slot 4:  Alicia
+...
+```
+
+**Parser**: walks at 0x280 stride, reads null-terminated string at +0x10 per record, stops at first empty record (end of active recruits). See `ColorMod/GameBridge/NameTableLookup.cs` for the implementation.
+
+**Integration**: `RosterMatcher.RosterMatchResult.SlotIndex` tells the scan which roster slot a battle unit matched to. `NavigationActions.CollectUnitPositionsFull` uses `UnitNameLookup.GetName(nameId)` first (story chars), then falls back to `NameTableLookup.GetNameBySlot(slotIndex)` for generics.
+
+### Enemy names — NOT yet readable
+
+Enemy units (both generic "Sithon the Bonesnatch" and monsters) have displayed names in-game when hovered, but these names are NOT findable via byte-pattern search in PAGE_READWRITE memory. Tested UTF-8 and UTF-16 LE for "Sithon", "Justitia", "Telephassa" with the enemy actively hovered — zero matches. Sanity check: "Ramza" still finds 5 matches so the search works.
+
+Hypotheses: enemy names may be in PAGE_READONLY data sections (loaded from `battle_bin.en.bin` on demand), rendered via glyph sprite lookup without ever forming a contiguous string, or encrypted until render. 4 possible next approaches documented in the TODO and in `memory/project_unit_name_table.md`.
+
 ## References
 
 - [FFHacktics Wiki — World Stats](https://ffhacktics.com/wiki/World_Stats) — PSX unit data structure (0xCE = Name ID)

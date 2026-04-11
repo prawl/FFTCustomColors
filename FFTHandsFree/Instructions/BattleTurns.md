@@ -61,11 +61,20 @@ scan_move           # uses the unit's actual Move/Jump stats
 
 Returns structured JSON:
 - **battle.activeUnit** — your unit's stats: jobName, move, jump, pa, ma, hp, brave, faith
-- **battle.units[]** — all units with **name** (story characters like "Ramza", "Agrias"), team, jobName, level, x, y, hp/maxHp, ct, speed, distance, **statuses** (e.g. `["Protect","Shell","Poison"]`), **abilities** (active unit only: name, mp, horizontalRange, verticalRange, areaOfEffect, heightOfEffect, target, effect, castSpeed, element, addedEffect)
-- **battle.turnOrder[]** — Combat Timeline order (who acts next). Each entry has name, team, level, hp/maxHp, x, y, ct, isActive. Derived from C+Up scan order which follows the game's timeline.
+- **battle.units[]** — all units with:
+  - **name** — story characters ("Ramza", "Agrias", etc.) AND generic player recruits ("Kenrick", "Lloyd", "Wilham"). Enemy names and monster names are null (not readable from memory yet).
+  - jobName, team, level, x, y, hp/maxHp, ct, speed, distance
+  - **statuses** (e.g. `["Protect","Shell","Poison"]`)
+  - **lifeState** — "dead", "crystal", or null (alive)
+  - **abilities** (per-unit) — each ability entry: `{name, mp, horizontalRange, verticalRange, areaOfEffect, heightOfEffect, target, effect, castSpeed, element, addedEffect}`. Populated for active player (learned + equipped skillsets), AND for monster enemies (fixed per class from `MonsterAbilities.cs`). Enemy human abilities are per-encounter randomized and NOT yet readable.
+- **battle.turnOrder[]** — Combat Timeline order. Each entry has name, team, level, hp/maxHp, x, y, ct, isActive.
 - **ValidMoveTiles.tiles[]** — reachable tiles with `{x, y, h}` (h = height for high ground)
 - **AttackTiles.attackTiles[]** — 4 cardinal tiles with `{x, y, arrow, occupant}`. Occupied tiles include hp, maxHp, jobName
 - **RecommendedFacing.facing** — optimal Wait direction with `{direction, front, side, back}` arc counts
+
+**Duplicate units get numbered suffixes** — if you have 3 Bonesnatches on the field, they render as `(Bonesnatch #1)`, `(Bonesnatch #2)`, `(Bonesnatch #3)` so you can reference specific instances ("focus Bonesnatch #3 first"). Numbering is by scan order and stable within a single scan.
+
+**Scan is blocked during unsafe states.** scan_move returns `status=blocked` during `Battle_Acting`, `Battle_AlliesTurn`, `Battle_EnemiesTurn` because C+Up cycling can corrupt game state mid-animation. Wait for `Battle_MyTurn` before scanning.
 
 ### 2. Move
 
@@ -176,3 +185,7 @@ The mod reads rotation automatically. You just say `battle_move x y`.
 - **Move/Jump stats from UI are base values** (no equipment). Override with `scan_move <move> <jump>`.
 - **Camera auto-rotates** when entering Move or Attack targeting. The mod handles this.
 - **Confirming on an invalid tile does nothing.** Always pick from valid tile lists.
+- **First-turn scan returns stale data.** On the very first scan of a newly loaded battle, scan_move may return cached data from the previous session. Workaround: call `battle_wait` to pass a turn, then rescan.
+- **Ramza's fingerprint varies per save.** Don't rely on his fingerprint for class identification — roster lookup by nameId=1 is authoritative.
+- **Mod-forced battles break class detection.** Grogh Heights, Dugeura Pass, Tchigolith Fenlands, Mandalia Plain story battles spawn unit structs at addresses our heap search can't reach. All enemies show as `(?)`. Flee and move to another battle.
+- **Enemy names are not readable.** The game displays names for enemy units when hovered (e.g. a Bonesnatch named "Sithon"), but those strings aren't findable in PAGE_READWRITE memory. Critical for "defeat Joe Schmo" objectives — you'll need to hover enemies in-game manually to identify targets. See TODO.md section 1a for status.
