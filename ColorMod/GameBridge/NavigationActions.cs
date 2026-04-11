@@ -1538,11 +1538,42 @@ namespace FFTColorCustomizer.GameBridge
                             Arithmetickable = a.Arithmetickable,
                         };
 
-                        // Point-target abilities (AoE=1, numeric HRange) get a list of
-                        // tiles the active caster can currently aim at. Each tile is
-                        // annotated with occupant info (self/ally/enemy + unit name) when
-                        // a unit is standing on it, so Claude can immediately see which
-                        // tiles are useful to target without cross-referencing units[].
+                        // Display name for a unit. Story chars use roster name.
+                        // Player recruits (team 0) can trust GetJobName(Job) because
+                        // the roster populates Job correctly. For enemies we only
+                        // trust JobNameOverride (set by fingerprint lookup) — their
+                        // raw Job byte is polluted by UI buffer leak (often shows
+                        // Ramza's job), so we fall back to "?" for unfingerprinted.
+                        string UnitDisplayName(ScannedUnit su)
+                        {
+                            if (!string.IsNullOrEmpty(su.Name)) return su.Name!;
+                            if (!string.IsNullOrEmpty(su.JobNameOverride)) return su.JobNameOverride!;
+                            if (su.Team == 0) return GameStateReporter.GetJobName(su.Job) ?? "?";
+                            return "?";
+                        }
+
+                        // Shared helper: annotate a raw (x,y) with occupant info
+                        // drawn from the position index. Used for both point and
+                        // radius valid-target lists.
+                        ValidTargetTile AnnotateTile(int tx, int ty)
+                        {
+                            var tile = new ValidTargetTile { X = tx, Y = ty };
+                            if (unitByPos.TryGetValue((tx, ty), out var occ))
+                            {
+                                if (occ == u)
+                                    tile.Occupant = "self";
+                                else if (occ.Team == 0 || occ.Team == 2)
+                                    tile.Occupant = "ally";
+                                else
+                                    tile.Occupant = "enemy";
+                                tile.UnitName = UnitDisplayName(occ);
+                            }
+                            return tile;
+                        }
+
+                        // Point-target abilities (AoE=1, numeric HRange): the clicked
+                        // tile IS the entire effect. Populate validTargetTiles with
+                        // annotated per-tile occupant info.
                         if (abilityMap != null && AbilityTargetCalculator.IsPointTarget(a))
                         {
                             var tiles = AbilityTargetCalculator.GetValidTargetTiles(
@@ -1551,25 +1582,62 @@ namespace FFTColorCustomizer.GameBridge
                             {
                                 entry.ValidTargetTiles = tiles
                                     .OrderBy(t => t.y).ThenBy(t => t.x)
-                                    .Select(t =>
-                                    {
-                                        var tile = new ValidTargetTile { X = t.x, Y = t.y };
-                                        if (unitByPos.TryGetValue((t.x, t.y), out var occ))
-                                        {
-                                            // "self" takes precedence over ally/enemy for the caster's own tile.
-                                            if (occ == u)
-                                                tile.Occupant = "self";
-                                            else if (occ.Team == 0 || occ.Team == 2)
-                                                tile.Occupant = "ally";
-                                            else
-                                                tile.Occupant = "enemy";
-                                            tile.UnitName = !string.IsNullOrEmpty(occ.Name)
-                                                ? occ.Name
-                                                : (occ.JobNameOverride ?? GameStateReporter.GetJobName(occ.Job));
-                                        }
-                                        return tile;
-                                    })
+                                    .Select(t => AnnotateTile(t.x, t.y))
                                     .ToList();
+                            }
+                        }
+                        // Radius-AoE abilities (AoE>1, numeric HRange): the clicked tile
+                        // is the splash CENTER. Populate validTargetTiles with valid
+                        // centers, then compute bestCenters — the top ~5 centers ranked
+                        // by splash hit count — so Claude can pick an optimal placement.
+                        else if (abilityMap != null && AbilityTargetCalculator.IsRadiusTarget(a))
+                        {
+                            var centers = AbilityTargetCalculator.GetValidTargetTiles(
+                                u.GridX, u.GridY, a, abilityMap);
+                            if (centers.Count > 0)
+                            {
+                                entry.ValidTargetTiles = centers
+                                    .OrderBy(t => t.y).ThenBy(t => t.x)
+                                    .Select(t => AnnotateTile(t.x, t.y))
+                                    .ToList();
+
+                                // Rank centers by splash hits. Enemy-target abilities
+                                // favor max enemies with minimal friendly fire; ally-target
+                                // abilities favor max allies caught in the splash.
+                                bool wantsAlly = a.Target.Contains("ally") || a.Target.Contains("self");
+                                var scoredCenters = new List<(int score, SplashCenter center)>();
+                                foreach (var c in centers)
+                                {
+                                    var splash = AbilityTargetCalculator.GetSplashTiles(
+                                        c.x, c.y, a, abilityMap);
+                                    var enemies = new List<string>();
+                                    var allies = new List<string>();
+                                    foreach (var st in splash)
+                                    {
+                                        if (!unitByPos.TryGetValue(st, out var hitUnit)) continue;
+                                        if (hitUnit.Team == 0 || hitUnit.Team == 2)
+                                            allies.Add(UnitDisplayName(hitUnit));
+                                        else
+                                            enemies.Add(UnitDisplayName(hitUnit));
+                                    }
+                                    if (enemies.Count == 0 && allies.Count == 0) continue;
+                                    int score = wantsAlly ? allies.Count : (enemies.Count - allies.Count);
+                                    scoredCenters.Add((score, new SplashCenter
+                                    {
+                                        X = c.x, Y = c.y,
+                                        Enemies = enemies,
+                                        Allies = allies,
+                                    }));
+                                }
+                                if (scoredCenters.Count > 0)
+                                {
+                                    entry.BestCenters = scoredCenters
+                                        .OrderByDescending(t => t.score)
+                                        .ThenBy(t => t.center.Y).ThenBy(t => t.center.X)
+                                        .Take(5)
+                                        .Select(t => t.center)
+                                        .ToList();
+                                }
                             }
                         }
 

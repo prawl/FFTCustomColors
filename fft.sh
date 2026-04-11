@@ -637,18 +637,24 @@ scan_move() {
   echo "  Active: ($AX,$AY) HP=$AHP/$AMHP Mv=$AMV Jmp=$AJP"
   # Units summary — use node to parse JSON reliably
   echo "  Units:"
-  node -e "
-    var d = JSON.parse(process.argv[1]);
+  # Pass the scan JSON via stdin — it's too large for argv on big scans
+  # (Throw Stone + radius AoE center lists can easily exceed ~32KB).
+  echo "$R" | node -e "
+    var d = JSON.parse(require('fs').readFileSync(0, 'utf8'));
     var u = d.battle?.units || [];
-    // Compact one-line formatter for an ability entry.
-    // Shows: name R:<hrange> [AoE:<n>] -> <target> [(Element)] [MP <n>] [*<addedEffect>*]
-    //        [targets=N hits=M: <tile list>]
-    // Each tile renders as (x,y); tiles with an occupant that matches the ability's
-    // target intent are prefixed with '*' and suffixed with «UnitName». Intent match:
-    //   ally-target abilities   -> star self + ally tiles
-    //   enemy-target abilities  -> star enemy tiles
-    // 'hits' counts the starred entries — the set of tiles that will actually affect
-    // something this turn.
+    // One-line formatter for an ability entry. Returns an array of strings
+    // (1-2 lines) so callers can console.log each. Line 1 is always the compact
+    // ability header; line 2, if present, is the bestCenters summary for radius
+    // abilities.
+    //
+    // Point-target (AoE=1): 'targets=N hits=M: (x,y) *(x,y)«Name» ...'
+    //   Tiles whose occupant matches the ability's intent (ally spells star
+    //   self/ally tiles; enemy spells star enemy tiles) are prefixed with '*'
+    //   and suffixed with «UnitName».
+    //
+    // Radius (AoE>1): 'centers=N' plus a 'best:' line listing top ranked splash
+    //   placements. Each best entry shows '(x,y) e:Name,Name a:Name' summarizing
+    //   which units would be caught in the splash.
     function fmtAb(a) {
       var parts = [a.name];
       if (a.horizontalRange) parts.push('R:' + a.horizontalRange);
@@ -657,23 +663,42 @@ scan_move() {
       if (a.element) parts.push('(' + a.element + ')');
       if (a.mp) parts.push('MP ' + a.mp);
       if (a.addedEffect) parts.push('[' + a.addedEffect + ']');
+
+      var extraLines = [];
       if (a.validTargetTiles && a.validTargetTiles.length) {
-        var wantsAlly = a.target && (a.target.indexOf('ally') !== -1 || a.target.indexOf('self') !== -1);
-        var wantsEnemy = a.target && a.target.indexOf('enemy') !== -1;
-        var hits = 0;
-        var rendered = a.validTargetTiles.map(function(t) {
-          var occ = t.occupant;
-          var hit =
-            (wantsAlly && (occ === 'self' || occ === 'ally')) ||
-            (wantsEnemy && occ === 'enemy');
-          if (hit) hits++;
-          var marker = hit ? '*' : '';
-          var suffix = (hit && t.unitName) ? '«' + t.unitName + '»' : '';
-          return marker + '(' + t.x + ',' + t.y + ')' + suffix;
-        }).join(' ');
-        parts.push('targets=' + a.validTargetTiles.length + ' hits=' + hits + ': ' + rendered);
+        if (a.areaOfEffect && a.areaOfEffect > 1) {
+          // Radius AoE: compact center count + bestCenters summary.
+          parts.push('centers=' + a.validTargetTiles.length);
+          if (a.bestCenters && a.bestCenters.length) {
+            var bestRendered = a.bestCenters.map(function(bc) {
+              var segs = ['(' + bc.x + ',' + bc.y + ')'];
+              if (bc.enemies && bc.enemies.length)
+                segs.push('e:' + bc.enemies.join(','));
+              if (bc.allies && bc.allies.length)
+                segs.push('a:' + bc.allies.join(','));
+              return segs.join(' ');
+            }).join('  ');
+            extraLines.push('best: ' + bestRendered);
+          }
+        } else {
+          // Point-target: inline tile list with hit markers.
+          var wantsAlly = a.target && (a.target.indexOf('ally') !== -1 || a.target.indexOf('self') !== -1);
+          var wantsEnemy = a.target && a.target.indexOf('enemy') !== -1;
+          var hits = 0;
+          var rendered = a.validTargetTiles.map(function(t) {
+            var occ = t.occupant;
+            var hit =
+              (wantsAlly && (occ === 'self' || occ === 'ally')) ||
+              (wantsEnemy && occ === 'enemy');
+            if (hit) hits++;
+            var marker = hit ? '*' : '';
+            var suffix = (hit && t.unitName) ? '«' + t.unitName + '»' : '';
+            return marker + '(' + t.x + ',' + t.y + ')' + suffix;
+          }).join(' ');
+          parts.push('targets=' + a.validTargetTiles.length + ' hits=' + hits + ': ' + rendered);
+        }
       }
-      return parts.join(' ');
+      return [parts.join(' ')].concat(extraLines);
     }
     // Pre-pass: assign disambiguation suffixes to nameless units with duplicate jobs
     // within a team. Keyed by \"team|jobName\", counts how many units share that key,
@@ -704,10 +729,12 @@ scan_move() {
       if (v.statuses && v.statuses.length) ex += ' [' + v.statuses.join(',') + ']';
       console.log('    [' + t + '] ' + nm + '(' + jnStr + ') (' + v.x + ',' + v.y + ') HP=' + v.hp + '/' + v.maxHp + ' dist=' + (v.distance ?? '?') + ex);
       // Show per-unit abilities for non-active units (active unit shown separately below).
-      // Each ability on its own line with range/AoE/target/element/mp metadata.
+      // Each ability may render 1-2 lines (header + optional best-centers).
       if (!v.isActive && v.abilities && v.abilities.length) {
         v.abilities.forEach(function(a) {
-          console.log('      - ' + fmtAb(a));
+          var lines = fmtAb(a);
+          console.log('      - ' + lines[0]);
+          for (var i = 1; i < lines.length; i++) console.log('        ' + lines[i]);
         });
       }
     });
@@ -723,14 +750,18 @@ scan_move() {
     // Facing
     var f = d.validPaths?.RecommendedFacing;
     if (f) console.log('  ' + f.desc);
-    // Abilities (active unit) — one per line with full metadata
+    // Abilities (active unit) — one or two lines per ability.
     var activeUnit = d.battle?.units?.find(function(x){return x.isActive});
     var ab = activeUnit?.abilities;
     if (ab && ab.length) {
       console.log('  Abilities:');
-      ab.forEach(function(a) { console.log('    - ' + fmtAb(a)); });
+      ab.forEach(function(a) {
+        var lines = fmtAb(a);
+        console.log('    - ' + lines[0]);
+        for (var i = 1; i < lines.length; i++) console.log('      ' + lines[i]);
+      });
     }
-  " "$R" 2>/dev/null
+  "
 }
 
 # scan_move_full: Raw JSON version of scan_move for debugging.

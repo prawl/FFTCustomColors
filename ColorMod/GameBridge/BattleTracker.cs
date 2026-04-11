@@ -978,15 +978,28 @@ namespace FFTColorCustomizer.GameBridge
         public bool Arithmetickable { get; set; }
 
         /// <summary>
-        /// For point-target abilities (AoE=1, numeric HRange), the set of tiles
-        /// the caster can currently target. Null for ineligible abilities
-        /// (self-cast, AoE splash, line, non-numeric HRange). Populated only for
-        /// the active player unit — enemies and idle allies omit this field so
-        /// the scan stays small.
+        /// For point-target abilities (AoE=1, numeric HRange) AND radius-AoE
+        /// abilities (AoE>1, numeric HRange), the set of tiles the caster can
+        /// currently aim at. For point-target abilities the splash IS this tile;
+        /// for radius abilities this is the CENTER list — see BestCenters for
+        /// splash evaluation. Null for self-cast, line, cone, full-field, or
+        /// non-numeric HRange. Populated only for the active player unit.
         /// </summary>
         [JsonPropertyName("validTargetTiles")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<ValidTargetTile>? ValidTargetTiles { get; set; }
+
+        /// <summary>
+        /// For radius-AoE abilities only: the top-ranked aim centers by splash
+        /// hit count, so Claude can pick the best placement without enumerating
+        /// splashes for every valid center. Sorted by (enemies hit - allies hit)
+        /// for enemy-target abilities, or by (allies hit) for ally-target ones.
+        /// Omitted for point-target abilities (no ranking needed) and when no
+        /// units are in splash range (nothing to rank).
+        /// </summary>
+        [JsonPropertyName("bestCenters")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<SplashCenter>? BestCenters { get; set; }
     }
 
     /// <summary>
@@ -1010,5 +1023,26 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("unitName")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? UnitName { get; set; }
+    }
+
+    /// <summary>
+    /// A ranked aim-center for a radius-AoE ability. Lists the units that would
+    /// be caught in the splash if the ability were cast at this tile.
+    /// </summary>
+    public class SplashCenter
+    {
+        [JsonPropertyName("x")]
+        public int X { get; set; }
+
+        [JsonPropertyName("y")]
+        public int Y { get; set; }
+
+        /// <summary>Display names of enemy units in the splash.</summary>
+        [JsonPropertyName("enemies")]
+        public List<string> Enemies { get; set; } = new();
+
+        /// <summary>Display names of ally units (including the caster) in the splash.</summary>
+        [JsonPropertyName("allies")]
+        public List<string> Allies { get; set; } = new();
     }
 }

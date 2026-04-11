@@ -147,11 +147,135 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void GetValidTargetTiles_IneligibleAbility_ReturnsEmpty()
+        public void GetValidTargetTiles_RadiusAoE_ReturnsCenterCandidates()
+        {
+            // Radius AoE abilities (AoE>1) now return the set of valid CENTER tiles,
+            // not an empty set. Each center is a place the caster can aim the splash.
+            var map = FlatMap(20);
+            var ability = new ActionAbilityInfo(0, "Fire", 0, "4", 99, 2, 1, "enemy/AoE", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(10, 10, ability, map);
+            // Same math as point-target: 41-tile diamond (HR=4) PLUS caster tile
+            // included (radius casts can center on self).
+            Assert.Equal(41, tiles.Count);
+            Assert.Contains((10, 10), tiles);
+            Assert.Contains((6, 10), tiles);
+            Assert.Contains((14, 10), tiles);
+            Assert.DoesNotContain((5, 10), tiles);
+        }
+
+        [Fact]
+        public void IsRadiusTarget_AcceptsAoE2NumericRange()
+        {
+            var fira = new ActionAbilityInfo(0, "Fira", 12, "4", 99, 2, 2, "enemy/AoE", "");
+            Assert.True(AbilityTargetCalculator.IsRadiusTarget(fira));
+            Assert.False(AbilityTargetCalculator.IsPointTarget(fira));
+        }
+
+        [Fact]
+        public void IsRadiusTarget_RejectsPointTarget()
+        {
+            var rush = new ActionAbilityInfo(0, "Rush", 0, "1", 99, 1, 0, "enemy", "");
+            Assert.False(AbilityTargetCalculator.IsRadiusTarget(rush));
+            Assert.True(AbilityTargetCalculator.IsPointTarget(rush));
+        }
+
+        [Fact]
+        public void IsRadiusTarget_RejectsSelfCast()
+        {
+            var cyclone = new ActionAbilityInfo(0, "Cyclone", 0, "Self", 0, 2, 0, "enemy/AoE", "");
+            Assert.False(AbilityTargetCalculator.IsRadiusTarget(cyclone));
+        }
+
+        [Fact]
+        public void GetSplashTiles_AoE2_ReturnsFiveTilePlus()
+        {
+            // AoE=2 = radius 1 = 5-tile plus shape (center + 4 cardinal neighbors).
+            var map = FlatMap(10);
+            var ability = new ActionAbilityInfo(0, "Fira", 12, "4", 99, 2, 2, "enemy/AoE", "");
+            var splash = AbilityTargetCalculator.GetSplashTiles(5, 5, ability, map);
+            Assert.Equal(5, splash.Count);
+            Assert.Contains((5, 5), splash);
+            Assert.Contains((4, 5), splash);
+            Assert.Contains((6, 5), splash);
+            Assert.Contains((5, 4), splash);
+            Assert.Contains((5, 6), splash);
+        }
+
+        [Fact]
+        public void GetSplashTiles_AoE3_ReturnsThirteenTileDiamond()
+        {
+            // AoE=3 = radius 2 = 13-tile diamond.
+            var map = FlatMap(10);
+            var ability = new ActionAbilityInfo(0, "Curaja", 20, "4", 99, 3, 3, "ally/AoE", "");
+            var splash = AbilityTargetCalculator.GetSplashTiles(5, 5, ability, map);
+            Assert.Equal(13, splash.Count);
+            // Center and all 4 radius-1 neighbors
+            Assert.Contains((5, 5), splash);
+            // Radius 2 corners
+            Assert.Contains((3, 5), splash);
+            Assert.Contains((7, 5), splash);
+            Assert.Contains((5, 3), splash);
+            Assert.Contains((5, 7), splash);
+            // Radius 2 diagonals are IN (taxicab ≤ 2)
+            Assert.Contains((4, 4), splash);
+            Assert.Contains((6, 6), splash);
+            // Outside radius
+            Assert.DoesNotContain((3, 4), splash); // taxi=3
+        }
+
+        [Fact]
+        public void GetSplashTiles_HoE_FiltersTallTiles()
+        {
+            // HoE=0 means splash only hits tiles at the same elevation as the center.
+            var map = FlatMap(10, height: 5);
+            map.Tiles[5, 6] = new MapTile { Height = 20 }; // way above the center
+            var ability = new ActionAbilityInfo(0, "Fira", 12, "4", 99, 2, 0, "enemy/AoE", "");
+            var splash = AbilityTargetCalculator.GetSplashTiles(5, 5, ability, map);
+            // (5,6) excluded by HoE filter
+            Assert.DoesNotContain((5, 6), splash);
+            // Other 4 neighbors still present
+            Assert.Equal(4, splash.Count);
+        }
+
+        [Fact]
+        public void GetSplashTiles_UnwalkableTilesExcluded()
         {
             var map = FlatMap(10);
-            var aoeAbility = new ActionAbilityInfo(0, "Fire", 0, "4", 99, 2, 0, "enemy/AoE", "");
-            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, aoeAbility, map);
+            map.Tiles[4, 5] = new MapTile { Height = 0, NoWalk = true };
+            var ability = new ActionAbilityInfo(0, "Fira", 12, "4", 99, 2, 2, "enemy/AoE", "");
+            var splash = AbilityTargetCalculator.GetSplashTiles(5, 5, ability, map);
+            Assert.DoesNotContain((4, 5), splash);
+            Assert.Equal(4, splash.Count);
+        }
+
+        [Fact]
+        public void GetSplashTiles_PointTargetAbility_ReturnsEmpty()
+        {
+            var map = FlatMap(10);
+            var rush = new ActionAbilityInfo(0, "Rush", 0, "1", 99, 1, 0, "enemy", "");
+            Assert.Empty(AbilityTargetCalculator.GetSplashTiles(5, 5, rush, map));
+        }
+
+        [Fact]
+        public void GetSplashTiles_ClippedToMapBounds()
+        {
+            // Center at corner (0,0): 5-tile plus clips to 3 in-bounds tiles.
+            var map = FlatMap(10);
+            var ability = new ActionAbilityInfo(0, "Fira", 12, "4", 99, 2, 2, "enemy/AoE", "");
+            var splash = AbilityTargetCalculator.GetSplashTiles(0, 0, ability, map);
+            Assert.Equal(3, splash.Count);
+            Assert.Contains((0, 0), splash);
+            Assert.Contains((1, 0), splash);
+            Assert.Contains((0, 1), splash);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_IneligibleAbility_ReturnsEmpty()
+        {
+            // Non-numeric HRange (e.g. "Self") is still rejected.
+            var map = FlatMap(10);
+            var cyclone = new ActionAbilityInfo(0, "Cyclone", 0, "Self", 0, 2, 0, "enemy/AoE", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, cyclone, map);
             Assert.Empty(tiles);
         }
     }
