@@ -6,35 +6,74 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.GameBridge
 {
     /// <summary>
-    /// Reads character names from the master name table in game memory.
+    /// Reads character names from the per-roster-slot name records in game memory.
     ///
-    /// The game stores a flat array of null-terminated ASCII strings starting with
-    /// "Ramza\0Delita\0Argath\0Zalbaag\0..." and continuing through all story
-    /// character names and then a large pool of generic recruit names (Wilham,
-    /// Kenrick, Lloyd, etc). The table is indexed by integer — roster slot's
-    /// +0x02 field holds the name table index for that slot's character.
+    /// The game keeps a table of roster slot records, one per unit (Ramza + generic
+    /// recruits + story characters), each 0x280 bytes wide. At offset +0x10 inside
+    /// each record is a list of null-terminated UTF-8 name alternatives starting
+    /// with the CHOSEN (displayed) name. For slot 0 (Ramza) the list is the 9 main
+    /// story characters — Ramza always appears first. For generic recruits, the
+    /// first string is the recruit's chosen name.
     ///
-    /// Pure parser (ParseNameTable) is static and testable. The instance wrapper
-    /// handles the memory search + caching.
+    /// HOW TO USE:
+    /// Call GetNameBySlot(N) where N is the roster slot index (0 = Ramza, 1 = first
+    /// recruit, etc). Returns the chosen display name, or null if the slot is out
+    /// of range or the table hasn't been located yet.
+    ///
+    /// PERFORMANCE:
+    /// On the first call, searches memory once for the table anchor and reads
+    /// ~16KB of record data. Subsequent calls are O(1) dictionary lookups. The
+    /// cache persists for the mod process lifetime — call Invalidate() to refresh
+    /// after a heap relocation (rarely needed).
+    ///
+    /// WHY THIS EXISTS:
+    /// UnitNameLookup has hardcoded story character names. For generic player
+    /// recruits (like a random-named Knight), we need to read the actual name
+    /// from game memory. The roster slot at 0x1411A18D0 does NOT contain the
+    /// name string directly — names live in this separate per-slot record table.
     /// </summary>
     public class NameTableLookup
     {
         private readonly MemoryExplorer _explorer;
-        private Dictionary<int, string>? _nameCache;
+        private Dictionary<int, string>? _slotNameCache;
         private long _tableBase = 0;
         private bool _buildAttempted = false;
 
-        // 60-byte signature: first 9 story names from the master name table.
+        /// <summary>
+        /// Stride between roster slot records in the name table.
+        /// </summary>
+        public const int RecordStride = 0x280;
+
+        /// <summary>
+        /// Offset of the first (chosen) character name inside each record, relative
+        /// to the record's start.
+        /// </summary>
+        public const int NameOffsetInRecord = 0x10;
+
+        /// <summary>
+        /// Max characters to read for a single name — longer than this and it's
+        /// not a valid name, so treat as table end.
+        /// </summary>
+        public const int MaxNameLength = 31;
+
+        // 57-byte signature: the ROSTER slot table's opening — 9 name alternatives
+        // for slot 0 (Ramza). Each slot record is 0x280 bytes, name alternatives
+        // start at +0x10 in each record, and slot 0's alternatives always end with
+        // "Orland\0" (6 chars, truncated — NOT "Orlandeau\0" which appears in the
+        // separate master name table).
         //
-        // We can't use a shorter anchor because there are multiple tables in memory
-        // that share a "Ramza\0Delita\0Argath\0Zalbaag\0..." prefix:
-        //   1. Per-roster-slot records at ~0x280 stride — each record lists 9 story
-        //      name alternatives (Ramza through "Orland"), then binary stat data.
-        //   2. The actual master name table — same opening but continues with
-        //      "Orlandeau" (full name) at position 9 instead of "Orland".
+        // Using "Orland\0" as the final suffix distinguishes the per-slot roster
+        // table from the flat master name pool. The roster table is what we want:
+        // it's ordered by roster slot, stride 0x280, and the FIRST string in each
+        // record is the character's displayed name.
         //
-        // Using "Orlandeau\0" as the distinguishing suffix guarantees we hit the
-        // master table, which has all ~500 character names we need to read.
+        // Verified empirically: searching for this signature finds a base like
+        // 0x41667B2034. At that base:
+        //   +0x0010: "Ramza"   (slot 0)
+        //   +0x0290: "Kenrick" (slot 1)
+        //   +0x0510: "Lloyd"   (slot 2)
+        //   +0x0790: "Wilham"  (slot 3)
+        //   +0x0A10: "Alicia"  (slot 4)
         private static readonly byte[] AnchorPattern =
         {
             0x52, 0x61, 0x6D, 0x7A, 0x61, 0x00, // "Ramza\0"
@@ -45,7 +84,7 @@ namespace FFTColorCustomizer.GameBridge
             0x4C, 0x61, 0x72, 0x67, 0x00, // "Larg\0"
             0x47, 0x6F, 0x6C, 0x74, 0x61, 0x6E, 0x6E, 0x61, 0x00, // "Goltanna\0"
             0x4F, 0x76, 0x65, 0x6C, 0x69, 0x61, 0x00, // "Ovelia\0"
-            0x4F, 0x72, 0x6C, 0x61, 0x6E, 0x64, 0x65, 0x61, 0x75, 0x00 // "Orlandeau\0"
+            0x4F, 0x72, 0x6C, 0x61, 0x6E, 0x64, 0x00 // "Orland\0" (roster-table truncation)
         };
 
         public NameTableLookup(MemoryExplorer explorer)
@@ -54,17 +93,16 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
-        /// Returns the character name at the given table index, or null if not found.
-        /// On first call, locates the table in memory and builds the full index map.
+        /// Returns the displayed character name for the given roster slot (0-based),
+        /// or null if the slot is out of range or the name table can't be located.
         ///
-        /// The memory search is expensive (~900MB scan) so it runs at most once per
-        /// session. After the first attempt, subsequent calls return from cache —
-        /// even on failure, we remember the failure so we don't retry and stall
-        /// every scan. Call Invalidate() to force a retry (e.g. after a game restart).
+        /// On first call, searches memory for the table anchor. On failure the
+        /// attempt is remembered so subsequent calls return null immediately without
+        /// retrying the expensive search. Call Invalidate() to force a retry.
         /// </summary>
-        public string? GetNameByIndex(int index)
+        public string? GetNameBySlot(int slot)
         {
-            if (index <= 0 || index > 2000) return null;
+            if (slot < 0 || slot >= 30) return null;
 
             if (!_buildAttempted)
             {
@@ -72,34 +110,86 @@ namespace FFTColorCustomizer.GameBridge
                 TryBuildCache();
             }
 
-            if (_nameCache == null) return null;
-            return _nameCache.TryGetValue(index, out var name) ? name : null;
+            if (_slotNameCache == null) return null;
+            return _slotNameCache.TryGetValue(slot, out var name) ? name : null;
         }
 
         /// <summary>
-        /// Forces a rebuild of the cache on next lookup. Call this between battles
-        /// or after a restart in case the heap address shifted.
+        /// Forces a rebuild of the cache on next lookup. Call this after a heap
+        /// relocation or if the game state changes significantly.
         /// </summary>
         public void Invalidate()
         {
-            _nameCache = null;
+            _slotNameCache = null;
             _tableBase = 0;
             _buildAttempted = false;
         }
 
         /// <summary>
-        /// Pure parser: walks a byte buffer containing the name table and returns
-        /// an index → name map. Index starts at 1 (Ramza). Stops when it encounters
-        /// non-printable bytes or empty string runs, which indicate the end of the
-        /// table.
+        /// Pure parser: walks a byte buffer as a stride-based roster name table.
+        /// Each record is RecordStride bytes; the first null-terminated UTF-8 name
+        /// at +NameOffsetInRecord inside each record is that slot's displayed name.
+        /// Returns slot → name map, where slot 0 is the first record in the buffer.
         ///
         /// Rules:
-        /// - Each name is a null-terminated ASCII string (0x20-0x7E range).
-        /// - Max name length 31 characters — beyond that is garbage.
-        /// - Index starts at 1 (1-based, matches roster slot +0x02 values).
-        /// - Table ends at first non-printable byte inside a pending string.
-        /// - Consecutive nulls (empty strings) are tolerated up to a limit, then
-        ///   terminate parsing.
+        /// - Names must start with a printable character (0x20-0x7E or UTF-8 high byte).
+        /// - Names must be <= MaxNameLength bytes before the null terminator.
+        /// - A record with no valid name (zero-length or garbage at +0x10) terminates parsing.
+        ///   This is how we know we've walked past the end of the recruit list.
+        /// </summary>
+        public static Dictionary<int, string> ParseRosterNameTable(byte[] bytes)
+        {
+            var cache = new Dictionary<int, string>();
+            if (bytes == null || bytes.Length < NameOffsetInRecord + 1) return cache;
+
+            int maxSlots = bytes.Length / RecordStride;
+            for (int slot = 0; slot < maxSlots; slot++)
+            {
+                int nameStart = slot * RecordStride + NameOffsetInRecord;
+                if (nameStart + 1 >= bytes.Length) break;
+
+                // Read up to MaxNameLength bytes or until null terminator
+                int nameEnd = nameStart;
+                while (nameEnd < bytes.Length && nameEnd - nameStart < MaxNameLength)
+                {
+                    if (bytes[nameEnd] == 0) break;
+                    nameEnd++;
+                }
+
+                int len = nameEnd - nameStart;
+                if (len == 0)
+                {
+                    // Empty name — this slot has no occupant, we've walked past
+                    // the end of the recruit list.
+                    break;
+                }
+                if (len >= MaxNameLength)
+                {
+                    // No null terminator found within max length — not valid.
+                    break;
+                }
+
+                // Validate characters: must be printable ASCII or UTF-8 high bytes.
+                bool valid = true;
+                for (int k = nameStart; k < nameEnd; k++)
+                {
+                    byte bk = bytes[k];
+                    if (bk < 0x20 || bk == 0x7F) { valid = false; break; }
+                }
+                if (!valid) break;
+
+                var name = Encoding.UTF8.GetString(bytes, nameStart, len);
+                cache[slot] = name;
+            }
+
+            return cache;
+        }
+
+        /// <summary>
+        /// LEGACY: pure flat-table parser kept for backward compatibility with existing tests.
+        /// This was used when we thought the name table was a flat list indexed by nameId.
+        /// The real structure is per-slot records (see ParseRosterNameTable). Not used
+        /// at runtime anymore.
         /// </summary>
         public static Dictionary<int, string> ParseNameTable(byte[] bytes)
         {
@@ -117,10 +207,6 @@ namespace FFTColorCustomizer.GameBridge
                     int len = i - strStart;
                     if (len > 0 && len < 32)
                     {
-                        // Valid character range: printable ASCII (0x20-0x7E) plus
-                        // extended high bytes (0x80-0xFF) to allow UTF-8 sequences for
-                        // accented names like "Cúchulainn". Control bytes (0x01-0x1F)
-                        // and DEL (0x7F) indicate non-string data.
                         bool valid = true;
                         for (int k = strStart; k < i; k++)
                         {
@@ -129,28 +215,22 @@ namespace FFTColorCustomizer.GameBridge
                         }
                         if (valid)
                         {
-                            // Decode as UTF-8 so accented chars survive. Falls back to
-                            // empty string on invalid sequences, which we just skip.
                             var name = Encoding.UTF8.GetString(bytes, strStart, len);
                             cache[index++] = name;
                             consecutiveNulls = 0;
                         }
                         else
                         {
-                            // Hit non-string data — table has ended.
                             break;
                         }
                     }
                     else if (len == 0)
                     {
-                        // Empty string (consecutive nulls). A few are tolerated but
-                        // a run of them means we're past the table's last entry.
                         consecutiveNulls++;
                         if (consecutiveNulls > 3 && cache.Count > 10) break;
                     }
                     else
                     {
-                        // Over-long string: not valid table data.
                         break;
                     }
                     strStart = i + 1;
@@ -165,12 +245,8 @@ namespace FFTColorCustomizer.GameBridge
             try
             {
                 // Use SearchBytesInAllMemory (PAGE_READWRITE private/mapped only) — the
-                // master name table lives in heap-allocated UE4 data, not read-only
-                // sections. SearchBytesAllRegions is wider (covers PAGE_READONLY etc.)
-                // but crashes the game on large scans due to unsafe reads in some
-                // regions. The narrower search is safe and has been verified to find
-                // the table (confirmed via bridge `search_bytes` command reaching
-                // 0x4E17FBDFD1 during investigation).
+                // roster name table lives in heap-allocated UE4 data. SearchBytesAllRegions
+                // is wider but crashes the game on large scans.
                 var matches = _explorer.SearchBytesInAllMemory(AnchorPattern, maxResults: 8);
                 if (matches == null || matches.Count == 0)
                 {
@@ -180,39 +256,42 @@ namespace FFTColorCustomizer.GameBridge
 
                 ModLogger.Log($"[NameTableLookup] {matches.Count} anchor matches found");
 
-                // Try each match until one parses cleanly. Some matches may be in
-                // read-only memory segments that can't be fully read, or may be
-                // truncated copies — iterate to find one that actually works.
+                // The anchor pattern starts at "Ramza\0" which is at +0x10 inside the
+                // first record. So record 0 starts at matchAddr - 0x10.
                 Dictionary<int, string>? best = null;
                 long bestBase = 0;
                 foreach (var (matchAddr, _) in matches)
                 {
-                    var bytes = _explorer.Scanner.ReadBytes((nint)matchAddr, 8192);
-                    if (bytes == null || bytes.Length < 128)
+                    long recordBase = (long)matchAddr - NameOffsetInRecord;
+                    var bytes = _explorer.Scanner.ReadBytes((nint)recordBase, 16384);
+                    if (bytes == null || bytes.Length < 1024)
                     {
-                        ModLogger.Log($"[NameTableLookup]   0x{(long)matchAddr:X}: read failed or too short ({bytes?.Length ?? 0} bytes)");
+                        ModLogger.Log($"[NameTableLookup]   0x{recordBase:X}: read failed or too short ({bytes?.Length ?? 0} bytes)");
                         continue;
                     }
 
-                    var cache = ParseNameTable(bytes);
-                    ModLogger.Log($"[NameTableLookup]   0x{(long)matchAddr:X}: parsed {cache.Count} names");
+                    var cache = ParseRosterNameTable(bytes);
+                    ModLogger.Log($"[NameTableLookup]   0x{recordBase:X}: parsed {cache.Count} slots");
 
                     if (cache.Count > (best?.Count ?? 0))
                     {
                         best = cache;
-                        bestBase = (long)matchAddr;
+                        bestBase = recordBase;
                     }
                 }
 
                 if (best == null || best.Count == 0)
                 {
-                    ModLogger.Log("[NameTableLookup] All match attempts produced 0 names");
+                    ModLogger.Log("[NameTableLookup] All match attempts produced 0 slots");
                     return false;
                 }
 
-                _nameCache = best;
+                _slotNameCache = best;
                 _tableBase = bestBase;
-                ModLogger.Log($"[NameTableLookup] Selected 0x{_tableBase:X} with {_nameCache.Count} names (Ramza={_nameCache.GetValueOrDefault(1)}, Wilham={_nameCache.GetValueOrDefault(76)}, Kenrick={_nameCache.GetValueOrDefault(103)})");
+                var sample = new List<string>();
+                for (int i = 0; i < 5 && i < _slotNameCache.Count; i++)
+                    sample.Add($"slot{i}={_slotNameCache.GetValueOrDefault(i) ?? "?"}");
+                ModLogger.Log($"[NameTableLookup] Selected 0x{_tableBase:X} with {_slotNameCache.Count} slots ({string.Join(", ", sample)})");
                 return true;
             }
             catch (Exception ex)

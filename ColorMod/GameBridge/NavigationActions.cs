@@ -3114,14 +3114,14 @@ namespace FFTColorCustomizer.GameBridge
                             unit.Team = 0;
                         }
                         unit.RosterNameId = m.NameId;
-                        // Try story character name first (hardcoded for known nameIds).
-                        // Fall back to the master name table lookup using the Job field
-                        // as the table index — for generics, roster +0x02 holds the name
-                        // table index (e.g. 76=Wilham, 103=Kenrick).
-                        // Uses SearchBytesInAllMemory (safe, PAGE_READWRITE only) on
-                        // first call per session to locate the table.
+                        // Prefer story character name (hardcoded for known nameIds).
+                        // Fall back to the roster name table keyed by slot index.
+                        // The table stores per-roster-slot records where the first
+                        // null-terminated string in each record is the chosen
+                        // display name. Generic recruits (Knight named "Kenrick"
+                        // etc.) get their real names from this lookup.
                         unit.Name = UnitNameLookup.GetName(m.NameId)
-                            ?? _nameTable.GetNameByIndex(m.Job);
+                            ?? (m.SlotIndex >= 0 ? _nameTable.GetNameBySlot(m.SlotIndex) : null);
                         unit.Job = m.Job;
                         unit.Brave = m.Brave;
                         unit.Faith = m.Faith;

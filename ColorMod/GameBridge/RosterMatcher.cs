@@ -29,6 +29,8 @@ namespace FFTColorCustomizer.GameBridge
         public int Brave;
         public int Faith;
         public int Secondary;
+        /// <summary>Index of the matched roster slot (0-based). -1 if no match.</summary>
+        public int SlotIndex;
     }
 
     /// <summary>
@@ -41,6 +43,7 @@ namespace FFTColorCustomizer.GameBridge
         public static RosterMatchResult[] Match(ScannedUnitIdentity[] scannedUnits, RosterSlot[] rosterSlots)
         {
             var results = new RosterMatchResult[scannedUnits.Length];
+            for (int u = 0; u < results.Length; u++) results[u].SlotIndex = -1;
             var claimedSlots = new HashSet<int>();
 
             // Pass 1: match units with known Brave/Faith (exact match)
@@ -66,6 +69,7 @@ namespace FFTColorCustomizer.GameBridge
                             Brave = rosterSlots[s].Brave,
                             Faith = rosterSlots[s].Faith,
                             Secondary = rosterSlots[s].Secondary,
+                            SlotIndex = s,
                         };
                         break;
                     }
@@ -99,6 +103,7 @@ namespace FFTColorCustomizer.GameBridge
                             Brave = rosterSlots[s].Brave,
                             Faith = rosterSlots[s].Faith,
                             Secondary = rosterSlots[s].Secondary,
+                            SlotIndex = s,
                         };
                         break;
                     }

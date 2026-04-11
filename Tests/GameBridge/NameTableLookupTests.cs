@@ -183,5 +183,134 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("Construct 8", result[2]);
             Assert.Equal("Boco", result[3]);
         }
+
+        // =========================================================================
+        // ParseRosterNameTable tests — the stride-based parser we actually use.
+        // =========================================================================
+
+        /// <summary>
+        /// Build a single roster record: 0x10 bytes of filler, then a null-terminated
+        /// name, then zeros to fill out the 0x280-byte stride.
+        /// </summary>
+        private static byte[] BuildRecord(string name)
+        {
+            var record = new byte[NameTableLookup.RecordStride];
+            var nameBytes = Encoding.ASCII.GetBytes(name);
+            System.Array.Copy(nameBytes, 0, record, NameTableLookup.NameOffsetInRecord, nameBytes.Length);
+            // Null terminator already in place (array zeroed)
+            return record;
+        }
+
+        private static byte[] ConcatRecords(params string[] names)
+        {
+            var total = new List<byte>();
+            foreach (var name in names)
+            {
+                total.AddRange(BuildRecord(name));
+            }
+            return total.ToArray();
+        }
+
+        [Fact]
+        public void ParseRosterNameTable_EmptyBuffer_ReturnsEmpty()
+        {
+            var result = NameTableLookup.ParseRosterNameTable(System.Array.Empty<byte>());
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public void ParseRosterNameTable_NullBuffer_ReturnsEmpty()
+        {
+            var result = NameTableLookup.ParseRosterNameTable(null!);
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public void ParseRosterNameTable_SingleRecord_ReturnsSlot0()
+        {
+            var bytes = BuildRecord("Ramza");
+            var result = NameTableLookup.ParseRosterNameTable(bytes);
+            Assert.Single(result);
+            Assert.Equal("Ramza", result[0]);
+        }
+
+        [Fact]
+        public void ParseRosterNameTable_FiveRecords_MapsByZeroBasedSlot()
+        {
+            // Matches the real in-game observation: Ramza, Kenrick, Lloyd, Wilham, Alicia
+            var bytes = ConcatRecords("Ramza", "Kenrick", "Lloyd", "Wilham", "Alicia");
+            var result = NameTableLookup.ParseRosterNameTable(bytes);
+            Assert.Equal(5, result.Count);
+            Assert.Equal("Ramza", result[0]);
+            Assert.Equal("Kenrick", result[1]);
+            Assert.Equal("Lloyd", result[2]);
+            Assert.Equal("Wilham", result[3]);
+            Assert.Equal("Alicia", result[4]);
+        }
+
+        [Fact]
+        public void ParseRosterNameTable_EmptyRecordTerminatesParsing()
+        {
+            // 3 valid records followed by an empty one — parser stops at the empty.
+            // Any further records (even if valid) are ignored because we've walked
+            // past the end of the recruit list.
+            var valid = ConcatRecords("Ramza", "Kenrick", "Lloyd");
+            var empty = new byte[NameTableLookup.RecordStride]; // all zeros
+            var extra = BuildRecord("ShouldNotAppear");
+            var bytes = new byte[valid.Length + empty.Length + extra.Length];
+            valid.CopyTo(bytes, 0);
+            empty.CopyTo(bytes, valid.Length);
+            extra.CopyTo(bytes, valid.Length + empty.Length);
+
+            var result = NameTableLookup.ParseRosterNameTable(bytes);
+            Assert.Equal(3, result.Count);
+            Assert.DoesNotContain(3, result.Keys);
+            Assert.DoesNotContain(4, result.Keys);
+        }
+
+        [Fact]
+        public void ParseRosterNameTable_NamesAtCorrectOffset()
+        {
+            // Verify that the parser reads from +0x10 inside each record, not +0x00.
+            // Put garbage at +0x00 through +0x0F that would fail validation, real
+            // name at +0x10.
+            var record = new byte[NameTableLookup.RecordStride];
+            for (int i = 0; i < NameTableLookup.NameOffsetInRecord; i++)
+                record[i] = 0xFF; // garbage (would be invalid as a name)
+            var nameBytes = Encoding.ASCII.GetBytes("Kenrick");
+            System.Array.Copy(nameBytes, 0, record, NameTableLookup.NameOffsetInRecord, nameBytes.Length);
+
+            var result = NameTableLookup.ParseRosterNameTable(record);
+            Assert.Single(result);
+            Assert.Equal("Kenrick", result[0]);
+        }
+
+        [Fact]
+        public void ParseRosterNameTable_OverLongNameStopsParsing()
+        {
+            // If a record has a "name" that never hits a null terminator within
+            // MaxNameLength, treat it as table end.
+            var record = new byte[NameTableLookup.RecordStride];
+            for (int i = NameTableLookup.NameOffsetInRecord;
+                 i < NameTableLookup.NameOffsetInRecord + NameTableLookup.MaxNameLength + 5;
+                 i++)
+            {
+                record[i] = (byte)'A';
+            }
+            // No null terminator within MaxNameLength bytes
+
+            var result = NameTableLookup.ParseRosterNameTable(record);
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public void ParseRosterNameTable_NullTerminatedWithinRange_IsAccepted()
+        {
+            // Longer name but still within bounds should parse fine.
+            var record = BuildRecord("Esperaunce"); // 10 chars, well under MaxNameLength
+            var result = NameTableLookup.ParseRosterNameTable(record);
+            Assert.Single(result);
+            Assert.Equal("Esperaunce", result[0]);
+        }
     }
 }
