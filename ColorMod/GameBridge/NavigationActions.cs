@@ -1778,6 +1778,39 @@ namespace FFTColorCustomizer.GameBridge
                     ? Utilities.CommandWatcher.GetSkillsetName(unit.SecondaryAbility)
                     : null;
 
+                // Primary source of truth: the per-job learned-action bitfield read from
+                // the roster slot at +0x32 + jobIdx*3. This is the ONLY reliable way to
+                // see what Ramza has learned across all jobs, because the condensed struct
+                // at +0x28 always holds his Mettle list regardless of current primary.
+                // Fall back to the condensed struct for units we couldn't roster-match.
+                if (unit.LearnedBitfieldByJobIdx != null && unit.LearnedBitfieldByJobIdx.Count > 0)
+                {
+                    var result = new List<ActionAbilityInfo>();
+
+                    if (primary != null)
+                    {
+                        int primaryJobIdx = AbilityData.GetJobIdxBySkillsetName(primary);
+                        if (primaryJobIdx >= 0 && unit.LearnedBitfieldByJobIdx.TryGetValue(primaryJobIdx, out var pBytes))
+                        {
+                            result.AddRange(ActionAbilityLookup.GetLearnedAbilitiesFromBitfield(
+                                primary, pBytes.byte0, pBytes.byte1));
+                        }
+                    }
+
+                    if (secondary != null && secondary != primary)
+                    {
+                        int secondaryJobIdx = AbilityData.GetJobIdxBySkillsetName(secondary);
+                        if (secondaryJobIdx >= 0 && unit.LearnedBitfieldByJobIdx.TryGetValue(secondaryJobIdx, out var sBytes))
+                        {
+                            result.AddRange(ActionAbilityLookup.GetLearnedAbilitiesFromBitfield(
+                                secondary, sBytes.byte0, sBytes.byte1));
+                        }
+                    }
+
+                    if (result.Count > 0) return result;
+                }
+
+                // Fallback: filter the condensed struct's learned list by equipped skillsets.
                 var equipped = new List<string>();
                 if (primary != null) equipped.Add(primary);
                 if (secondary != null) equipped.Add(secondary);
@@ -2937,6 +2970,13 @@ namespace FFTColorCustomizer.GameBridge
             public int SecondaryAbility; // roster +0x07 secondary skillset index
             public byte[] StatusBytes = new byte[5]; // 5-byte status bitfield
             public List<ActionAbilityInfo> LearnedAbilities = new(); // from condensed struct FFFF list
+            /// <summary>
+            /// Per-job learned-action-ability bitfield read from the roster slot at
+            /// +0x32 + jobIdx*3. Keyed by jobIdx (see ActionAbilityLookup.GetJobJpOffset).
+            /// Value is the 2-byte MSB-first bitfield (byte0, byte1) for that job.
+            /// Populated only for matched player units. Null for enemies.
+            /// </summary>
+            public Dictionary<int, (byte byte0, byte byte1)>? LearnedBitfieldByJobIdx;
             public byte[]? ClassFingerprint;  // 11 bytes at heap struct +0x69 (see ClassFingerprintLookup)
             public string? JobNameOverride;   // Resolved class name from fingerprint (fallback for enemies)
         }
@@ -3309,6 +3349,42 @@ namespace FFTColorCustomizer.GameBridge
                         unit.Brave = m.Brave;
                         unit.Faith = m.Faith;
                         unit.SecondaryAbility = m.Secondary;
+
+                        // Read this unit's per-job learned-action-ability bitfield from
+                        // the roster slot at +0x32 + jobIdx*3 (2 bytes per job, MSB-first).
+                        // Only read the primary and secondary skillsets' jobs to keep the
+                        // work scoped. See memory/project_roster_learned_abilities.md.
+                        if (m.SlotIndex >= 0)
+                        {
+                            long slotAddr = AddrRosterBase + m.SlotIndex * RosterStride;
+                            unit.LearnedBitfieldByJobIdx = new Dictionary<int, (byte, byte)>();
+
+                            var jobsToRead = new HashSet<int>();
+                            // Primary: resolve from the raw job ID via GetJobName → GetJobJpOffset.
+                            var primaryJobName = unit.JobNameOverride ?? GameStateReporter.GetJobName(m.Job);
+                            if (primaryJobName != null)
+                            {
+                                int primaryJobIdx = AbilityData.GetJobJpOffset(primaryJobName);
+                                if (primaryJobIdx >= 0) jobsToRead.Add(primaryJobIdx);
+                            }
+                            // Secondary: secondary is a skillset index; map to the owning job idx.
+                            var secondarySkillset = Utilities.CommandWatcher.GetSkillsetName(m.Secondary);
+                            if (secondarySkillset != null)
+                            {
+                                int secondaryJobIdx = AbilityData.GetJobIdxBySkillsetName(secondarySkillset);
+                                if (secondaryJobIdx >= 0) jobsToRead.Add(secondaryJobIdx);
+                            }
+
+                            foreach (var jobIdx in jobsToRead)
+                            {
+                                long bitfieldAddr = slotAddr + 0x32 + jobIdx * 3;
+                                var bytesRead = _explorer.Scanner.ReadBytes((nint)bitfieldAddr, 2);
+                                if (bytesRead != null && bytesRead.Length >= 2)
+                                {
+                                    unit.LearnedBitfieldByJobIdx[jobIdx] = (bytesRead[0], bytesRead[1]);
+                                }
+                            }
+                        }
                         // For story characters, the roster's job field at +0x02 equals
                         // their nameId rather than a real job ID (e.g. Marach job=26
                         // which PSX maps to Dragoon). StoryCharacterJob dict provides

@@ -151,5 +151,39 @@ namespace FFTColorCustomizer.GameBridge
                 _ => -1
             };
         }
+
+        /// <summary>
+        /// Map a skillset name to the job index used for the roster's per-job
+        /// learned-ability bitfield (see `project_roster_learned_abilities.md`).
+        /// Inverse of the "primary skillset for this job" mapping.
+        /// </summary>
+        public static int GetJobIdxBySkillsetName(string skillsetName)
+        {
+            return skillsetName switch
+            {
+                "Fundaments" => 0,
+                "Mettle" => 0, // Mettle is the Squire/Gallant Knight primary
+                "Items" => 1,
+                "Arts of War" => 2,
+                "Aim" => 3,
+                "Martial Arts" => 4,
+                "White Magicks" => 5,
+                "Black Magicks" => 6,
+                "Time Magicks" => 7,
+                "Summon" => 8,
+                "Steal" => 9,
+                "Speechcraft" => 10,
+                "Mystic Arts" => 11,
+                "Geomancy" => 12,
+                "Jump" => 13,
+                "Iaido" => 14,
+                "Throw" => 15,
+                "Arithmeticks" => 16,
+                "Bardsong" => 17,
+                "Dance" => 17,
+                "Darkness" => 19,
+                _ => -1
+            };
+        }
     }
 }

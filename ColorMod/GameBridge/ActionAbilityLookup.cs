@@ -183,6 +183,50 @@ namespace FFTColorCustomizer.GameBridge
         public static bool ShouldReadAbilities(int unitIndex) => unitIndex == 0;
 
         /// <summary>
+        /// Decode the 2-byte learned-action-ability bitfield from a roster slot job block.
+        /// Bits are stored MSB-first: bit 7 of byte0 = ability index 0, bit 0 of byte0 = ability
+        /// index 7, bit 7 of byte1 = ability index 8, etc. Returns the set of ability indices
+        /// (0-15) that are marked learned.
+        ///
+        /// Confirmed empirically 2026-04-11 by purchasing Stop (Time Magicks idx 4) and
+        /// Thundaga (Black Magicks idx 6) and watching the exact MSB positions flip.
+        /// </summary>
+        public static HashSet<int> DecodeLearnedBitfield(byte byte0, byte byte1)
+        {
+            var result = new HashSet<int>();
+            for (int i = 0; i < 8; i++)
+            {
+                // MSB-first: ability index i corresponds to bit (7 - i) of the byte.
+                if ((byte0 & (0x80 >> i)) != 0) result.Add(i);
+                if ((byte1 & (0x80 >> i)) != 0) result.Add(i + 8);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Given a skillset name and the two learned-ability bitfield bytes from the
+        /// roster slot, return the subset of that skillset's abilities the character
+        /// has actually learned (preserving the skillset's ability order).
+        ///
+        /// Returns an empty list for unknown skillset names.
+        /// </summary>
+        public static List<ActionAbilityInfo> GetLearnedAbilitiesFromBitfield(
+            string skillsetName, byte byte0, byte byte1)
+        {
+            if (!Skillsets.TryGetValue(skillsetName, out var skillset))
+                return new List<ActionAbilityInfo>();
+
+            var learnedIndices = DecodeLearnedBitfield(byte0, byte1);
+            var result = new List<ActionAbilityInfo>();
+            for (int i = 0; i < skillset.Count; i++)
+            {
+                if (learnedIndices.Contains(i))
+                    result.Add(skillset[i]);
+            }
+            return result;
+        }
+
+        /// <summary>
         /// All skillsets with their ability lists. Used for looking up which skillset
         /// an ability belongs to and its position within the skillset.
         /// </summary>
