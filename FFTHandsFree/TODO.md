@@ -100,6 +100,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Post-attack facing/move selection** [Movement] — After Attack without prior Move, game enters move+facing selection. Currently misdetected as Battle_Moving. Need to detect this state and handle it (confirm facing or escape).
 - [ ] **Battle_Victory screen detection** [Movement] — Victory screen misdetected as TravelList/EncounterDialog. Need to capture memory values during victory screen to find a reliable signal. When detected, should auto-transition gracefully (press Enter to advance through rewards, then return to world map).
 - [ ] **Detect charging/casting units** [Abilities] — Units charging a spell (e.g. Haste) show in the Combat Timeline with the spell name. Need to read charging state, which spell, and remaining CT from memory. Important for: not issuing commands to charging allies, knowing when spells will fire, and interrupting enemy casters.
+- [ ] **"Equal to Jump" range values in Jump skillset** [AbilityData] — Horizontal Jump entries in `ActionAbilityLookup.cs` have VR hardcoded to `0` and Vertical Jump entries have HR hardcoded to `"0"`, because the wiki says these fields are "Equal to the unit's Jump attribute." Using `0` will break any valid-attack-tile calculation that depends on these ranges. Need a sentinel (e.g. `-1` or the string `"jump"`) and a resolver that substitutes the unit's Jump stat at lookup time.
 
 ### Tier 4 — Known hard problems, park until unblocked
 
