@@ -573,6 +573,25 @@ namespace FFTColorCustomizer.GameBridge
                 new(0x00, "Finale",          0, "Self", 0, 99, 0, "ally/AoE", "The ultimate song. Increases allies' CT to 100.",
                     CastSpeed: 5, AddedEffect: "Sets CT to 100 (50% per target)"),
             },
+            // Dance: Dancer (female-only) job command. Counterpart to Bardsong — affects
+            // all enemies on the field instead of allies. Sourced from FFT wiki.
+            ["Dance"] = new()
+            {
+                new(0x00, "Witch Hunt",      0, "Self", 0, 99, 0, "enemy/AoE", "A dance whose esoteric moves reduce enemies' MP.",
+                    CastSpeed: 17, AddedEffect: "Reduces MP: PA + (PA * Br / 100)"),
+                new(0x00, "Mincing Minuet",  0, "Self", 0, 99, 0, "enemy/AoE", "A dance whose fervent steps damage enemies' HP.",
+                    CastSpeed: 17, AddedEffect: "Reduces HP: PA + (PA * Br / 100)"),
+                new(0x00, "Slow Dance",      0, "Self", 0, 99, 0, "enemy/AoE", "A dance whose sedate pace reduces enemies' Speed.",
+                    CastSpeed: 13, AddedEffect: "-1 Speed (50% per target)"),
+                new(0x00, "Polka",           0, "Self", 0, 99, 0, "enemy/AoE", "A quick, vivacious dance that reduces enemies' physical attack power.",
+                    CastSpeed: 13, AddedEffect: "-1 Physical Attack (50% per target)"),
+                new(0x00, "Heathen Frolick", 0, "Self", 0, 99, 0, "enemy/AoE", "An exotic dance that clouds the mind, reducing enemies' magickal attack power.",
+                    CastSpeed: 10, AddedEffect: "-1 Magick Attack (50% per target)"),
+                new(0x00, "Forbidden Dance", 0, "Self", 0, 99, 0, "enemy/AoE", "A mesmerizing dance that inflicts status effects.",
+                    CastSpeed: 10, AddedEffect: "Applies Blind, Confusion, Silence, Toad, Poison, Slow, Stop, Sleep (50% per target)"),
+                new(0x00, "Last Waltz",      0, "Self", 0, 99, 0, "enemy/AoE", "The ultimate dance. Drops the CT of all enemies to zero.",
+                    CastSpeed: 5, AddedEffect: "Sets CT to 0 (34% per target)"),
+            },
             ["Arithmeticks"] = new()
             {
                 new(0x00, "Target CT",           0, "Self", 0, 1, 0, "self", "Base arithmetick algorithm on the target's CT.",
@@ -598,6 +617,21 @@ namespace FFTColorCustomizer.GameBridge
                 new(0x1DE, "Cleansing Strike",    0, "3", 0, 2, 0, "enemy/AoE", "Weapon damage + may inflict Doom"),
                 new(0x1DF, "Northswain's Strike", 0, "3", 0, 2, 0, "enemy/AoE", "Weapon damage + may inflict Death"),
                 new(0x1E0, "Hallowed Bolt",       0, "3", 0, 2, 0, "enemy/AoE", "Weapon damage + may inflict Silence"),
+            },
+            // Darkness: Dark Knight skillset. All abilities require an equipped sword.
+            // Sourced from FFT wiki.
+            ["Darkness"] = new()
+            {
+                new(0x00, "Sanguine Sword",    0, "3", 0, 1, 0, "enemy", "Absorb HP from the target.",
+                    CastSpeed: 0, AddedEffect: "Absorb HP: PA x WP x 80%"),
+                new(0x00, "Infernal Strike",   0, "3", 0, 1, 0, "enemy", "Absorb MP from the target.",
+                    CastSpeed: 0, AddedEffect: "Absorb MP: PA x WP x 80%"),
+                new(0x00, "Crushing Blow",     0, "3", 0, 2, 0, "enemy/AoE", "Inflict damage with a sinister sword.",
+                    CastSpeed: 0, AddedEffect: "Applies Stop (25%)"),
+                new(0x00, "Abyssal Blade",     0, "3", 0, 3, 2, "enemy/AoE", "Sacrifice own HP to deal damage to others, with the nearest units suffering the most damage.",
+                    CastSpeed: 0, AddedEffect: "Self-damage: 20% of max HP"),
+                new(0x00, "Unholy Sacrifice",  0, "1", 0, 3, 0, "enemy/AoE", "Sacrifice own HP to deal extensive damage to all units in range.",
+                    CastSpeed: 0, Element: "Dark", AddedEffect: "Applies Slow; Self-damage: 30% of max HP"),
             },
         };
     }

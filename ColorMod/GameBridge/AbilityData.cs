@@ -73,8 +73,8 @@ namespace FFTColorCustomizer.GameBridge
             [0xDC] = new(0xDC, "Doublehand", 900, "Samurai", "Wield a weapon with both hands, increasing its destructive power."),
             [0xDD] = new(0xDD, "Dual Wield", 1000, "Ninja", "Allows the unit to wield a weapon in each hand, even if not a ninja. Certain weapons can be equipped in this manner, allowing the unit to attack twice each turn."),
             [0xD0] = new(0xD0, "EXP Boost", 350, "Arithmetician", "Earn more EXP for the same actions."),
-            [0xE4] = new(0xE4, "HP Boost", 2000, "Dark Knight"),
-            [0xE5] = new(0xE5, "Vehemence", 400, "Dark Knight"),
+            [0xE4] = new(0xE4, "HP Boost", 2000, "Dark Knight", "Increases maximum HP by 20 percent."),
+            [0xE5] = new(0xE5, "Vehemence", 400, "Dark Knight", "Increases attack power by 50 percent, and decreases defensive power by 50 percent."),
         };
 
         public static readonly Dictionary<byte, AbilityInfo> MovementAbilities = new()
@@ -97,7 +97,7 @@ namespace FFTColorCustomizer.GameBridge
             [0xEF] = new(0xEF, "Accrue EXP", 400, "Arithmetician", "Obtain EXP upon moving."),
             [0xF0] = new(0xF0, "Accrue JP", 400, "Arithmetician", "Obtain JP upon moving."),
             [0xFB] = new(0xFB, "Fly", 900, "Bard", "Allows the unit to move by flying, passing over enemies and obstacles."),
-            [0xEB] = new(0xEB, "Jump +3", 600, "Dark Knight"),
+            [0xEB] = new(0xEB, "Jump +3", 600, "Dark Knight", "Increases jump attribute by 3, allowing the unit to traverse greater elevation differences."),
             [0xE8] = new(0xE8, "Movement +3", 1000, "Bard", "Increases movement by 3, allowing the unit to move a greater distance."),
         };
 
