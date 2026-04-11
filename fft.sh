@@ -665,7 +665,22 @@ scan_move() {
       if (a.addedEffect) parts.push('[' + a.addedEffect + ']');
 
       var extraLines = [];
-      if (a.validTargetTiles && a.validTargetTiles.length) {
+      // Line abilities have a bestDirections summary instead of a tile list.
+      // Detect them by the presence of bestDirections OR by HR>1 with AoE=1 and
+      // only 2-4 seed tiles (a radius HR=8 would return dozens). Simpler: trust
+      // bestDirections presence and fall through to standard rendering when absent.
+      if (a.bestDirections && a.bestDirections.length) {
+        parts.push('seeds=' + (a.validTargetTiles ? a.validTargetTiles.length : 0));
+        var dirRendered = a.bestDirections.map(function(bd) {
+          var segs = [bd.direction + '→(' + bd.seed[0] + ',' + bd.seed[1] + ')'];
+          if (bd.enemies && bd.enemies.length)
+            segs.push('e:' + bd.enemies.join(','));
+          if (bd.allies && bd.allies.length)
+            segs.push('a:' + bd.allies.join(','));
+          return segs.join(' ');
+        }).join('  ');
+        extraLines.push('best: ' + dirRendered);
+      } else if (a.validTargetTiles && a.validTargetTiles.length) {
         if (a.areaOfEffect && a.areaOfEffect > 1) {
           // Radius AoE: compact center count + bestCenters summary.
           parts.push('centers=' + a.validTargetTiles.length);

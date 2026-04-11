@@ -1640,6 +1640,63 @@ namespace FFTColorCustomizer.GameBridge
                                 }
                             }
                         }
+                        // Line abilities (Shape=Line): caster picks a cardinal
+                        // direction by clicking a seed tile. validTargetTiles holds
+                        // the up-to-4 valid seed tiles; bestDirections ranks each
+                        // direction by line hits so Claude can pick the best aim.
+                        else if (abilityMap != null && AbilityTargetCalculator.IsLineTarget(a))
+                        {
+                            var seeds = AbilityTargetCalculator.GetValidTargetTiles(
+                                u.GridX, u.GridY, a, abilityMap);
+                            if (seeds.Count > 0)
+                            {
+                                entry.ValidTargetTiles = seeds
+                                    .OrderBy(t => t.y).ThenBy(t => t.x)
+                                    .Select(t => AnnotateTile(t.x, t.y))
+                                    .ToList();
+
+                                bool wantsAllyLine = a.Target.Contains("ally") || a.Target.Contains("self");
+                                var scoredDirections = new List<(int score, DirectionalHit hit)>();
+                                foreach (var (label, dx, dy) in AbilityTargetCalculator.CardinalDirections)
+                                {
+                                    int seedX = u.GridX + dx;
+                                    int seedY = u.GridY + dy;
+                                    // Skip directions whose seed isn't valid (off-map,
+                                    // unwalkable, or fails HoE from caster).
+                                    if (!seeds.Contains((seedX, seedY))) continue;
+
+                                    var lineTiles = AbilityTargetCalculator.GetLineTiles(
+                                        u.GridX, u.GridY, dx, dy, a, abilityMap);
+                                    var enemies = new List<string>();
+                                    var allies = new List<string>();
+                                    foreach (var lt in lineTiles)
+                                    {
+                                        if (!unitByPos.TryGetValue(lt, out var hitUnit)) continue;
+                                        if (hitUnit.Team == 0 || hitUnit.Team == 2)
+                                            allies.Add(UnitDisplayName(hitUnit));
+                                        else
+                                            enemies.Add(UnitDisplayName(hitUnit));
+                                    }
+                                    if (enemies.Count == 0 && allies.Count == 0) continue;
+                                    int score = wantsAllyLine ? allies.Count : (enemies.Count - allies.Count);
+                                    scoredDirections.Add((score, new DirectionalHit
+                                    {
+                                        Direction = label,
+                                        Seed = new[] { seedX, seedY },
+                                        Enemies = enemies,
+                                        Allies = allies,
+                                    }));
+                                }
+                                if (scoredDirections.Count > 0)
+                                {
+                                    entry.BestDirections = scoredDirections
+                                        .OrderByDescending(t => t.score)
+                                        .ThenBy(t => t.hit.Direction)
+                                        .Select(t => t.hit)
+                                        .ToList();
+                                }
+                            }
+                        }
 
                         return entry;
                     }).ToList();

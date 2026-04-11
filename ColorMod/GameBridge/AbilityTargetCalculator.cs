@@ -3,16 +3,20 @@ using System.Collections.Generic;
 namespace FFTColorCustomizer.GameBridge
 {
     /// <summary>
-    /// Computes the set of tiles a single-tile-target or radius-AoE ability can
-    /// be aimed at, and the splash set for radius abilities.
+    /// Computes the set of tiles a single-tile-target, radius-AoE, or cardinal
+    /// line ability can be aimed at, and the splash/hit set for each.
     ///
     /// Scope:
-    ///   - Point-target abilities: AoE=1, numeric HRange. Hits exactly the clicked tile.
-    ///   - Radius AoE abilities: AoE>1, numeric HRange. Diamond splash of radius
-    ///     (AoE-1) around the clicked tile, filtered by HoE elevation delta.
+    ///   - Point-target (AoE=1, numeric HRange): clicks hit exactly the clicked tile.
+    ///   - Radius AoE (AoE>1, numeric HRange): diamond splash of radius (AoE-1)
+    ///     around the clicked tile, filtered by HoE elevation delta.
+    ///   - Line (Shape=Line, numeric HRange): caster picks a cardinal direction
+    ///     by clicking a seed tile (N/E/S/W neighbor); the line extends HR tiles
+    ///     in that direction. HoE hard-terminates the line at the first tile whose
+    ///     |ΔZ| from the caster exceeds the tolerance.
     ///
-    /// Excludes self-only (HRange="Self"), line shapes, cone shapes, and
-    /// full-field effects — those need different calculators.
+    /// Excludes self-only (HRange="Self"), cone shapes, and full-field effects —
+    /// those need different calculators.
     ///
     /// Line of sight is NOT modeled. FFT lets you target empty or unwalkable tiles
     /// with many abilities, so we return all geometrically-valid tiles; callers
@@ -21,11 +25,24 @@ namespace FFTColorCustomizer.GameBridge
     public static class AbilityTargetCalculator
     {
         /// <summary>
+        /// The four cardinal direction vectors used by Line-shape abilities.
+        /// Labeled with compass strings for display and scripting.
+        /// </summary>
+        public static readonly (string Label, int Dx, int Dy)[] CardinalDirections =
+        {
+            ("N", 0, -1),
+            ("E", 1, 0),
+            ("S", 0, 1),
+            ("W", -1, 0),
+        };
+
+        /// <summary>
         /// Returns true if this ability is a single-tile point-target ability
-        /// (AoE=1, numeric HRange, not self-cast).
+        /// (AoE=1, numeric HRange, not self-cast, not an explicitly-tagged shape).
         /// </summary>
         public static bool IsPointTarget(ActionAbilityInfo ability)
         {
+            if (ability.Shape != AbilityShape.Auto) return false;
             if (ability.AoE != 1) return false;
             if (ability.HRange == "Self") return false;
             if (!int.TryParse(ability.HRange, out _)) return false;
@@ -34,11 +51,12 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>
         /// Returns true if this ability is a radius-AoE ability with a clickable
-        /// target tile (AoE>1, numeric HRange, not self-cast). Fira, Cure,
-        /// Protect, Summons, Ultima, etc.
+        /// target tile (AoE>1, numeric HRange, not self-cast, not an explicitly-tagged shape).
+        /// Fira, Cure, Protect, Summons, Ultima, etc.
         /// </summary>
         public static bool IsRadiusTarget(ActionAbilityInfo ability)
         {
+            if (ability.Shape != AbilityShape.Auto) return false;
             if (ability.AoE <= 1) return false;
             if (ability.HRange == "Self") return false;
             if (!int.TryParse(ability.HRange, out _)) return false;
@@ -46,10 +64,24 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
-        /// Compute the set of valid target-center tiles for a point-target OR
-        /// radius-AoE ability cast from the given caster position. Same math for
-        /// both shapes — taxicab ≤ HR, ΔZ ≤ VR, map bounds, walkable.
-        /// Returns an empty set if the ability isn't eligible or the map is null.
+        /// Returns true if this ability fires a cardinal line from the caster
+        /// (explicitly tagged with Shape=Line). Shockwave, Divine Ruination.
+        /// </summary>
+        public static bool IsLineTarget(ActionAbilityInfo ability)
+        {
+            if (ability.Shape != AbilityShape.Line) return false;
+            if (ability.HRange == "Self") return false;
+            if (!int.TryParse(ability.HRange, out _)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Compute the set of valid target-tiles the caster can aim at. For
+        /// point-target and radius-AoE abilities, this is the taxicab diamond
+        /// within HR/VR (the clicked tile is either the hit or the splash center).
+        /// For line abilities, this is the 4 cardinal seed tiles that pick a
+        /// direction. Returns an empty set if the ability isn't eligible or the
+        /// map is null.
         /// </summary>
         public static HashSet<(int x, int y)> GetValidTargetTiles(
             int casterX,
@@ -59,6 +91,29 @@ namespace FFTColorCustomizer.GameBridge
         {
             var result = new HashSet<(int, int)>();
             if (map == null) return result;
+
+            // Line abilities: 4 cardinal seed tiles around the caster.
+            // Each seed tile picks a direction for the line to fire in.
+            if (IsLineTarget(ability))
+            {
+                int casterZSeed = map.InBounds(casterX, casterY)
+                    ? map.Tiles[casterX, casterY].Height
+                    : 0;
+                foreach (var (_, dx, dy) in CardinalDirections)
+                {
+                    int sx = casterX + dx;
+                    int sy = casterY + dy;
+                    if (!map.InBounds(sx, sy)) continue;
+                    if (!map.IsWalkable(sx, sy)) continue;
+                    // Seed tile must be within the line's HoE tolerance from the
+                    // caster — otherwise the game won't let you aim that direction.
+                    int zDelta = System.Math.Abs(map.Tiles[sx, sy].Height - casterZSeed);
+                    if (zDelta > ability.HoE) continue;
+                    result.Add((sx, sy));
+                }
+                return result;
+            }
+
             if (!IsPointTarget(ability) && !IsRadiusTarget(ability)) return result;
             if (!int.TryParse(ability.HRange, out int hr)) return result;
 
@@ -90,6 +145,44 @@ namespace FFTColorCustomizer.GameBridge
                     if (zDelta > vr) continue;
                     result.Add((x, y));
                 }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Compute the set of tiles hit by a line-shape ability fired from the
+        /// caster in the given cardinal direction. Walks outward HR tiles. The
+        /// caster's own tile is not included (the line starts one tile past the
+        /// caster). HoE is a hard terminator — the first tile whose |ΔZ| from
+        /// the caster exceeds the tolerance stops the line. Map edge also stops
+        /// the line. Returns an empty set for non-line abilities or null map.
+        /// </summary>
+        public static List<(int x, int y)> GetLineTiles(
+            int casterX,
+            int casterY,
+            int dx,
+            int dy,
+            ActionAbilityInfo ability,
+            MapData? map)
+        {
+            var result = new List<(int, int)>();
+            if (map == null) return result;
+            if (!IsLineTarget(ability)) return result;
+            if (!int.TryParse(ability.HRange, out int length)) return result;
+            if (!map.InBounds(casterX, casterY)) return result;
+
+            int casterZ = map.Tiles[casterX, casterY].Height;
+            int hoe = ability.HoE;
+
+            for (int step = 1; step <= length; step++)
+            {
+                int x = casterX + dx * step;
+                int y = casterY + dy * step;
+                if (!map.InBounds(x, y)) break;
+                int zDelta = System.Math.Abs(map.Tiles[x, y].Height - casterZ);
+                if (zDelta > hoe) break; // hard terminator: the line stops here
+                result.Add((x, y));
             }
 
             return result;

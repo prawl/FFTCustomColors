@@ -4,6 +4,40 @@ using System.Linq;
 
 namespace FFTColorCustomizer.GameBridge
 {
+    /// <summary>
+    /// Splash shape of an ability. Determines how the calculator turns
+    /// (HR, VR, AoE, HoE) into a concrete set of affected tiles.
+    /// </summary>
+    public enum AbilityShape
+    {
+        /// <summary>
+        /// Default. The calculator infers shape from (HRange, AoE):
+        /// AoE=1 + numeric HR → point-target; AoE&gt;1 + numeric HR → radius.
+        /// Covers 95%+ of abilities.
+        /// </summary>
+        Auto,
+        /// <summary>
+        /// Cardinal line from caster. HR is the total line length; AoE is
+        /// ignored (always 1-wide). Caster picks direction by clicking a seed
+        /// tile (one of the 4 cardinal neighbors). Shockwave, Divine Ruination.
+        /// </summary>
+        Line,
+        /// <summary>
+        /// Diamond splash centered on the caster instead of a clicked tile.
+        /// HRange="Self". Cyclone, Chakra, Purification.
+        /// </summary>
+        SelfRadius,
+        /// <summary>
+        /// Hits every unit of the target type on the map, regardless of range.
+        /// All Bardsong, all Dance. Not yet implemented.
+        /// </summary>
+        FullField,
+        /// <summary>
+        /// 3-row falling-damage cone. Only Abyssal Blade. Deferred.
+        /// </summary>
+        Cone,
+    }
+
     public record ActionAbilityInfo(
         int Id,
         string Name,
@@ -18,7 +52,8 @@ namespace FFTColorCustomizer.GameBridge
         string? Element = null,       // Element: "Fire", "Ice", "Lightning", "Holy", etc. null = non-elemental
         string? AddedEffect = null,   // "Adds: Haste", "Removes: Poison, Blindness, Silence", etc.
         bool Reflectable = false,     // Can be reflected by Reflect status
-        bool Arithmetickable = false  // Can be cast via Arithmeticks
+        bool Arithmetickable = false, // Can be cast via Arithmeticks
+        AbilityShape Shape = AbilityShape.Auto  // Splash shape; default infers from (HRange, AoE)
     );
 
     /// <summary>
@@ -307,7 +342,7 @@ namespace FFTColorCustomizer.GameBridge
                 new(0x79, "Aurablast",       0, "3",  0, 1, 0, "enemy", "Employ one's martial spirit to strike a distant foe.",
                     CastSpeed: 0),
                 new(0x7A, "Shockwave",       0, "8",  0, 1, 2, "enemy", "Release spiritual energy mighty enough to rend the earth.",
-                    CastSpeed: 0, Element: "Earth"),
+                    CastSpeed: 0, Element: "Earth", Shape: AbilityShape.Line),
                 new(0x7B, "Doom Fist",       0, "1",  0, 1, 0, "enemy", "Invite slow, certain death with blows to pressure points.",
                     CastSpeed: 0, AddedEffect: "Applies Doom"),
                 new(0x7C, "Purification",    0, "Self", 0, 2, 0, "ally/AoE", "Release positive energy to remove status ailments.",
@@ -622,7 +657,7 @@ namespace FFTColorCustomizer.GameBridge
                 new(0x1E0, "Hallowed Bolt",       0, "3", 99, 2, 1, "enemy/AoE", "Channels holy energy through one's sword. Attacks distant units and has a chance of inflicting Silence.",
                     CastSpeed: 0, AddedEffect: "Applies Silence"),
                 new(0x00,  "Divine Ruination",    0, "5",  0, 1, 2, "enemy", "Channels holy energy through one's sword. Attacks units in a straight line and has a chance of inflicting Confusion.",
-                    CastSpeed: 0, AddedEffect: "Applies Confusion"),
+                    CastSpeed: 0, AddedEffect: "Applies Confusion", Shape: AbilityShape.Line),
             },
             // Darkness: Dark Knight skillset. All abilities require an equipped sword.
             // Sourced from FFT wiki.

@@ -1000,6 +1000,15 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("bestCenters")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<SplashCenter>? BestCenters { get; set; }
+
+        /// <summary>
+        /// For line-shape abilities only (Shockwave, Divine Ruination): one
+        /// entry per cardinal direction that catches at least one unit. Ranked
+        /// like BestCenters. Claude picks a direction by clicking its seed tile.
+        /// </summary>
+        [JsonPropertyName("bestDirections")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<DirectionalHit>? BestDirections { get; set; }
     }
 
     /// <summary>
@@ -1042,6 +1051,33 @@ namespace FFTColorCustomizer.GameBridge
         public List<string> Enemies { get; set; } = new();
 
         /// <summary>Display names of ally units (including the caster) in the splash.</summary>
+        [JsonPropertyName("allies")]
+        public List<string> Allies { get; set; } = new();
+    }
+
+    /// <summary>
+    /// A ranked direction for a line-shape ability. Claude picks this direction
+    /// by clicking the seed tile one step in front of the caster. Lists the
+    /// units that would be hit by the line.
+    /// </summary>
+    public class DirectionalHit
+    {
+        /// <summary>Compass direction: "N", "E", "S", or "W".</summary>
+        [JsonPropertyName("direction")]
+        public string Direction { get; set; } = "";
+
+        /// <summary>
+        /// Seed tile coordinates — the cardinal neighbor Claude clicks to aim
+        /// the line in this direction.
+        /// </summary>
+        [JsonPropertyName("seed")]
+        public int[] Seed { get; set; } = new[] { 0, 0 };
+
+        /// <summary>Display names of enemy units the line hits.</summary>
+        [JsonPropertyName("enemies")]
+        public List<string> Enemies { get; set; } = new();
+
+        /// <summary>Display names of ally units the line hits.</summary>
         [JsonPropertyName("allies")]
         public List<string> Allies { get; set; } = new();
     }

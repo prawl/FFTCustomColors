@@ -278,5 +278,150 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, cyclone, map);
             Assert.Empty(tiles);
         }
+
+        // ============================================================
+        // Line-shape abilities (Shockwave, Divine Ruination)
+        // ============================================================
+
+        private static ActionAbilityInfo Shockwave(int hoe = 2) =>
+            new(0x7A, "Shockwave", 0, "8", 0, 1, hoe, "enemy", "",
+                Shape: AbilityShape.Line);
+
+        [Fact]
+        public void IsLineTarget_AcceptsShockwave()
+        {
+            Assert.True(AbilityTargetCalculator.IsLineTarget(Shockwave()));
+        }
+
+        [Fact]
+        public void IsLineTarget_RejectsAutoShape()
+        {
+            // A normal point-target ability should not be classified as a line.
+            var rush = new ActionAbilityInfo(0, "Rush", 0, "1", 99, 1, 0, "enemy", "");
+            Assert.False(AbilityTargetCalculator.IsLineTarget(rush));
+        }
+
+        [Fact]
+        public void IsPointTarget_RejectsExplicitLineShape()
+        {
+            // Line shapes must NOT be picked up by point-target math even though
+            // their AoE=1, or they'd get the wrong tile set.
+            Assert.False(AbilityTargetCalculator.IsPointTarget(Shockwave()));
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_Line_ReturnsFourCardinalSeeds()
+        {
+            // Caster in the middle of an open flat map → all 4 cardinal seeds valid.
+            var map = FlatMap(10);
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, Shockwave(), map);
+            Assert.Equal(4, tiles.Count);
+            Assert.Contains((4, 5), tiles);
+            Assert.Contains((6, 5), tiles);
+            Assert.Contains((5, 4), tiles);
+            Assert.Contains((5, 6), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_Line_ClipsAtCorner()
+        {
+            // Caster at (0,0) → only east and south seeds exist; west/north are off-map.
+            var map = FlatMap(10);
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(0, 0, Shockwave(), map);
+            Assert.Equal(2, tiles.Count);
+            Assert.Contains((1, 0), tiles);
+            Assert.Contains((0, 1), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_Line_ExcludesUnwalkableSeeds()
+        {
+            var map = FlatMap(10);
+            map.Tiles[6, 5] = new MapTile { Height = 0, NoWalk = true };
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, Shockwave(), map);
+            Assert.DoesNotContain((6, 5), tiles);
+            Assert.Equal(3, tiles.Count);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_Line_ExcludesSeedsOutsideHoE()
+        {
+            // Caster at (5,5) on a height=0 flat map; raise the eastern seed (6,5)
+            // to a height delta that exceeds Shockwave's HoE=2.
+            var map = FlatMap(10);
+            map.Tiles[6, 5] = new MapTile { Height = 10 };
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, Shockwave(2), map);
+            Assert.DoesNotContain((6, 5), tiles);
+            Assert.Equal(3, tiles.Count);
+        }
+
+        [Fact]
+        public void GetLineTiles_Length8_EastOnOpenMap()
+        {
+            // Caster at (0,5) on a 10-wide flat map firing east → 8 tiles.
+            var map = FlatMap(10);
+            var line = AbilityTargetCalculator.GetLineTiles(0, 5, 1, 0, Shockwave(), map);
+            Assert.Equal(8, line.Count);
+            for (int step = 1; step <= 8; step++)
+                Assert.Contains((step, 5), line);
+        }
+
+        [Fact]
+        public void GetLineTiles_ExcludesCasterTile()
+        {
+            var map = FlatMap(10);
+            var line = AbilityTargetCalculator.GetLineTiles(5, 5, 1, 0, Shockwave(), map);
+            Assert.DoesNotContain((5, 5), line);
+        }
+
+        [Fact]
+        public void GetLineTiles_StopsAtMapEdge()
+        {
+            // Caster at (7,5), east line tries to extend 8 tiles but map is 10 wide
+            // → only (8,5) and (9,5) make it before running off the edge.
+            var map = FlatMap(10);
+            var line = AbilityTargetCalculator.GetLineTiles(7, 5, 1, 0, Shockwave(), map);
+            Assert.Equal(2, line.Count);
+            Assert.Contains((8, 5), line);
+            Assert.Contains((9, 5), line);
+        }
+
+        [Fact]
+        public void GetLineTiles_HoEHardTerminator()
+        {
+            // Flat map at height 0, with a tall tile at (5, 5) blocking the line.
+            // Line from (0, 5) east with HoE=2 should stop AT the tall tile and
+            // include no tiles beyond it.
+            var map = FlatMap(10);
+            map.Tiles[5, 5] = new MapTile { Height = 10 }; // way above HoE=2
+            var line = AbilityTargetCalculator.GetLineTiles(0, 5, 1, 0, Shockwave(2), map);
+            // Tiles (1,5) through (4,5) are included; (5,5) is the terminator and
+            // everything after is excluded.
+            Assert.Equal(4, line.Count);
+            Assert.Contains((1, 5), line);
+            Assert.Contains((4, 5), line);
+            Assert.DoesNotContain((5, 5), line);
+            Assert.DoesNotContain((6, 5), line);
+        }
+
+        [Fact]
+        public void GetLineTiles_HoE2_AllowsSmallStep()
+        {
+            // A 2h step is within Shockwave's HoE tolerance — line should continue past it.
+            var map = FlatMap(10);
+            map.Tiles[3, 5] = new MapTile { Height = 2 };
+            var line = AbilityTargetCalculator.GetLineTiles(0, 5, 1, 0, Shockwave(2), map);
+            Assert.Contains((3, 5), line);
+            Assert.Contains((4, 5), line);
+        }
+
+        [Fact]
+        public void GetLineTiles_PointTargetAbility_ReturnsEmpty()
+        {
+            var map = FlatMap(10);
+            var rush = new ActionAbilityInfo(0, "Rush", 0, "1", 99, 1, 0, "enemy", "");
+            var line = AbilityTargetCalculator.GetLineTiles(5, 5, 1, 0, rush, map);
+            Assert.Empty(line);
+        }
     }
 }
