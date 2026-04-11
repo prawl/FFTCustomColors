@@ -633,6 +633,18 @@ scan_move() {
   node -e "
     var d = JSON.parse(process.argv[1]);
     var u = d.battle?.units || [];
+    // Compact one-line formatter for an ability entry.
+    // Shows: name R:<hrange> [AoE:<n>] -> <target> [(Element)] [MP <n>] [*<addedEffect>*]
+    function fmtAb(a) {
+      var parts = [a.name];
+      if (a.horizontalRange) parts.push('R:' + a.horizontalRange);
+      if (a.areaOfEffect && a.areaOfEffect > 1) parts.push('AoE:' + a.areaOfEffect);
+      if (a.target) parts.push('-> ' + a.target);
+      if (a.element) parts.push('(' + a.element + ')');
+      if (a.mp) parts.push('MP ' + a.mp);
+      if (a.addedEffect) parts.push('[' + a.addedEffect + ']');
+      return parts.join(' ');
+    }
     u.forEach(function(v) {
       var t = v.team === 0 ? 'PLAYER' : v.team === 2 ? 'ALLY' : 'ENEMY';
       var nm = v.name ? v.name + ' ' : '';
@@ -642,9 +654,12 @@ scan_move() {
       if (v.lifeState) ex += ' [' + v.lifeState + ']';
       if (v.statuses && v.statuses.length) ex += ' [' + v.statuses.join(',') + ']';
       console.log('    [' + t + '] ' + nm + '(' + jn + ') (' + v.x + ',' + v.y + ') HP=' + v.hp + '/' + v.maxHp + ' dist=' + (v.distance ?? '?') + ex);
-      // Show per-unit abilities for non-active units (active unit shown separately below)
+      // Show per-unit abilities for non-active units (active unit shown separately below).
+      // Each ability on its own line with range/AoE/target/element/mp metadata.
       if (!v.isActive && v.abilities && v.abilities.length) {
-        console.log('      abilities: ' + v.abilities.map(function(a){return a.name}).join(', '));
+        v.abilities.forEach(function(a) {
+          console.log('      - ' + fmtAb(a));
+        });
       }
     });
     // Tiles
@@ -659,9 +674,12 @@ scan_move() {
     // Facing
     var f = d.validPaths?.RecommendedFacing;
     if (f) console.log('  ' + f.desc);
-    // Abilities
+    // Abilities (active unit) — one per line with full metadata
     var ab = d.battle?.units?.find(function(x){return x.isActive})?.abilities;
-    if (ab && ab.length) console.log('  Abilities: ' + ab.map(function(a){return a.name}).join(', '));
+    if (ab && ab.length) {
+      console.log('  Abilities:');
+      ab.forEach(function(a) { console.log('    - ' + fmtAb(a)); });
+    }
   " "$R" 2>/dev/null
 }
 

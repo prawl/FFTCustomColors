@@ -1488,7 +1488,31 @@ namespace FFTColorCustomizer.GameBridge
                     var monsterAbs = MonsterAbilities.GetAbilities(jobName);
                     if (monsterAbs != null && monsterAbs.Length > 0)
                     {
-                        abilities = monsterAbs.Select(name => new AbilityEntry { Name = name }).ToList();
+                        // Look up full metadata (range, AoE, target, element, effect) for each
+                        // ability name from MonsterAbilityLookup. Falls back to name-only for
+                        // abilities not yet in the metadata dict.
+                        abilities = monsterAbs.Select(name =>
+                        {
+                            var info = MonsterAbilityLookup.GetByName(name);
+                            if (info == null)
+                                return new AbilityEntry { Name = name };
+                            return new AbilityEntry
+                            {
+                                Name = info.Name,
+                                Mp = info.MpCost,
+                                HRange = info.HRange,
+                                VRange = info.VRange,
+                                AoE = info.AoE,
+                                HoE = info.HoE,
+                                Target = info.Target,
+                                Effect = info.Effect,
+                                CastSpeed = info.CastSpeed,
+                                Element = info.Element,
+                                AddedEffect = info.AddedEffect,
+                                Reflectable = info.Reflectable,
+                                Arithmetickable = info.Arithmetickable,
+                            };
+                        }).ToList();
                     }
                 }
 
