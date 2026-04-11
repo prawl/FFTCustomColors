@@ -75,7 +75,6 @@ Organized by priority tier. Each item is tagged with its original category:
 
 These are correctness bugs or foundational features that block everything downstream. Fix these before adding new capabilities.
 
-- [ ] **C+Up scan position/unit data desync** [Movement] — After first fix (roster match corrects team), the Monk still showed as ENEMY Chemist HP=343 at (7,7). The grid position read and condensed struct read are not atomic — we can read position from unit A and condensed struct from unit B. Fix: batch both reads atomically, or verify HP matches expected player unit HP before trusting "enemy" label. **CRITICAL — causes friendly fire.**
 - [ ] **Read ability range and AoE shape** [AoE] — From the ability's secondary data: range, effect area, vertical tolerance. So Claude knows Fire has range 4 + 2-tile AoE diamond, vs Attack which is range 1 + single tile. **Foundational — blocks AoE targeting, charge time spells, spell Unit/Tile dialog, and enemy threat assessment.**
 - [ ] **Multiple friendly unit support** [Movement] — Handle turns for units other than Ramza. Currently scan_move assumes first team=0 unit is active. Blocks every battle with more than one player unit.
 
@@ -153,6 +152,7 @@ After correctness. 5s vs 30s per turn is huge, but only once the individual piec
 - [x] **Enemy job names all show "Chemist"** [Movement] — Fixed via 11-byte class fingerprint at heap struct +0x69. `ClassFingerprintLookup` maps fingerprints to class names for ~50+ classes. Story chars use roster nameId lookup.
 - [x] **Auto-scan double-fire** [Movement] — Fixed. BattleTurnTracker now marks turns as scanned so auto-scan doesn't re-fire after explicit scan_move.
 - [x] **battle_wait facing uses F key** [Movement] — Fixed.
+- [x] **C+Up scan position/unit data desync** [Movement] — Auto-scan removal eliminated the failure window. `scan_move` now only runs C+Up once per turn on explicit request (subsequent calls return the cached response), and scans are blocked during Battle_Acting / Battle_AlliesTurn / Battle_EnemiesTurn. Roster-match team correction handles remaining edge cases. Not observed in play since. Relog if it recurs.
 
 ---
 
