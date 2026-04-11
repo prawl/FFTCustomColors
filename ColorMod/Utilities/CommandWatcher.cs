@@ -2164,7 +2164,19 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "Battle_Moving" || screen.Name == "Battle_Attacking")
                     PopulateBattleTileData(screen);
 
-                // Populate active unit name/job during battle
+                // Populate active unit name/job during battle from cached scan data.
+                //
+                // Why cache-only: there is no single memory address that gives us the
+                // "active unit" reliably without a scan. The condensed struct at 0x14077D2A0
+                // reflects the CURSOR unit (whichever unit the cursor is hovering or the
+                // last unit scanned during C+Up cycling), not necessarily the active unit.
+                // Battle-state nameId at 0x14077CA94 uses a different numbering scheme that
+                // doesn't match roster entries. BattleTracker's AddrActiveJobId at 0x14077CA6C
+                // reads the wrong unit on enemy turns.
+                //
+                // So active unit name/job will show as empty on the FIRST `screen` call of
+                // a battle, then populate after the first scan_move runs and caches the
+                // active unit. Subsequent actions keep the cache fresh.
                 if (inBattle && _turnTracker.HasCachedScan)
                 {
                     var cachedBattle = _turnTracker.CachedScanResponse?.Battle;
@@ -2175,9 +2187,6 @@ namespace FFTColorCustomizer.Utilities
                         screen.ActiveUnitJob = active.JobName;
                     }
                 }
-                // No fallback for active unit job — UI buffer at 0x1407AC7EA is stale
-                // (shows last hovered unit, not active unit). Better to show nothing than wrong data.
-                // Active unit name/job will populate after first scan_move.
 
                 // Sync state machine with memory-detected top-level screens.
                 // This ensures the state machine stays in sync even after restarts

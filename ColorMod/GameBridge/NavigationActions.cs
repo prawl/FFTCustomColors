@@ -1407,6 +1407,39 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // Scan-safe screens. scan_move uses C+Up cycling to walk all units, which
+            // reads the condensed struct as the cursor lands on each. During enemy turns
+            // or ability/attack animations, cycling can corrupt game state or return
+            // stale data because the game is mid-transition. Restrict to states where
+            // the player has control of the cursor.
+            //
+            // Allowed:
+            //   Battle_MyTurn       — start of player turn, no action yet
+            //   Battle_Moving       — player picking a move destination
+            //   Battle_Attacking    — player picking an attack/ability target
+            //   Battle_Abilities    — player browsing their ability submenu
+            //   Battle_Waiting      — post-action facing selection
+            //   Battle_Paused       — pause menu open over the battle
+            //
+            // Blocked:
+            //   Battle_Acting       — player's unit is mid-animation
+            //   Battle_AlliesTurn   — neutral/NPC guest's turn
+            //   Battle_EnemiesTurn  — enemy is acting
+            //   Battle              — ambiguous sub-state (fall-through case)
+            //   Battle_Victory      — battle over
+            //   Battle_GameOver     — KO'd
+            var allowedStates = new HashSet<string>
+            {
+                "Battle_MyTurn", "Battle_Moving", "Battle_Attacking",
+                "Battle_Abilities", "Battle_Waiting", "Battle_Paused"
+            };
+            if (!allowedStates.Contains(screen.Name))
+            {
+                response.Status = "blocked";
+                response.Error = $"Cannot scan during {screen.Name} — wait for Battle_MyTurn";
+                return response;
+            }
+
             // 1. Scan units
             var units = CollectUnitPositionsFull();
             var ally = units.FirstOrDefault(u => u.Team == 0);
