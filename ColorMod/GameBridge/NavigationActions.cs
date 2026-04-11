@@ -3114,6 +3114,9 @@ namespace FFTColorCustomizer.GameBridge
                         unit.RosterNameId = m.NameId;
                         unit.Name = UnitNameLookup.GetName(m.NameId);
                         unit.Job = m.Job;
+                        // Note: NameTableLookup fallback for generic character names is
+                        // implemented but NOT wired here because the memory search can
+                        // crash the game on large heap scans. See memory/project_unit_name_table.md.
                         unit.Brave = m.Brave;
                         unit.Faith = m.Faith;
                         unit.SecondaryAbility = m.Secondary;
