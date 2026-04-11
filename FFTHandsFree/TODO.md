@@ -62,84 +62,97 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 Basic turn cycle works: `scan_move` → `move_grid` → `battle_attack` → `battle_wait`. First battle WON autonomously.
 
-### 1a. Unit Identity — Know WHO is on the field
-Claude sees NameId numbers and broken JobIds. A human player sees names and job classes at a glance.
+Organized by priority tier. Each item is tagged with its original category:
+- **[Identity]** — Know WHO is on the field
+- **[State]** — Know WHAT each unit can do (HP, stats, status)
+- **[Abilities]** — Know HOW to act beyond basic Attack
+- **[AoE]** — Target abilities that hit areas
+- **[EnemyIntel]** — Know what the enemy will do back
+- **[Execution]** — Turn action speed and reliability
+- **[Movement]** — Grid navigation and scanning infrastructure
 
-- [x] **Unit names — story characters** — Story characters identified via roster nameId lookup (match by level+origBrave+origFaith from static battle array at 0x140893E0C). UnitNameLookup maps nameIds to names (Ramza, Agrias, Orlandeau, etc.).
-- [x] **Unit names — generic player recruits** — Generic recruits (Warriors' Guild hires) now display their real names (Kenrick, Lloyd, Wilham, etc.) via `NameTableLookup`. Finds a heap table with 0x280-byte per-roster-slot records at a heap base discovered via the anchor signature `Ramza\0Delita\0Argath\0Zalbaag\0Dycedarg\0Larg\0Goltanna\0Ovelia\0Orland\0`. Each record has the chosen display name as the first null-terminated string at +0x10 inside the record. Walks at 0x280 stride. `RosterMatcher.RosterMatchResult` now carries `SlotIndex` so the name lookup keys off the matched roster slot.
-- [ ] **Unit names — enemies** — The game displays names for enemy units when hovered (e.g. a random encounter Bonesnatch might be "Sithon", a Grenade might be "Justitia"). Critical for story battles where the objective is "defeat Joe Schmo" and Claude needs to identify which specific unit is the target. `NameTableLookup` currently only covers the player roster table. Attempted to find enemy names via byte-pattern search — **failed**. Tested "Sithon", "Justitia", "Telephassa" in both UTF-8 and UTF-16 LE, with and without the enemy actively hovered in-game. Zero matches in PAGE_READWRITE memory. "Ramza" still finds 5 matches so the search itself works. Enemy names may be in PAGE_READONLY data sections, rendered via glyph lookup without ever forming a contiguous string, or loaded on-demand from a data file. See `memory/project_unit_name_table.md` for full investigation and 4 possible next approaches (extract from `battle_bin.en.bin`, find a name-index byte on the enemy unit struct, cautiously use SearchBytesAllRegions, or trigger name load via Status screen).
-- [ ] **Zodiac sign per unit** — Read from roster or battle struct. Needed to assess damage multipliers (e.g. Scorpio vs Pisces = Good compatibility = +25% damage). See Wiki/ZodiacAndElements.md.
+### Tier 1 — Unblockers (do first)
 
-### 1b. Unit State — Know WHAT each unit can do
-Claude only sees HP/MP for non-active units. A human sees status icons, CT bars, and can hover for stats.
+These are correctness bugs or foundational features that block everything downstream. Fix these before adding new capabilities.
 
-- [x] **CT/Speed/Turn Order for all units** — CT and Speed read from condensed struct (+0x0A and +0x06). Turn order derived from C+Up scan order (which traverses the game's Combat Timeline). turnOrder array in response includes name, team, level, hp/maxHp, position, ct.
-- [x] **Status effects** — Read active status flags from static battle array at 0x140893E45 + slot*0x200. 5-byte PSX bitfield decoded into named statuses (Poison, Haste, Protect, etc.). Matched to scanned units by HP+MaxHP. All 40 statuses supported.
-- [x] **Dead/KO vs crystalized vs alive** — lifeState field: "dead" (can be raised), "crystal"/"treasure" (permanently gone). HP=0 fallback when status bytes unavailable.
-- [ ] **PA/MA/Brave/Faith for all units** — Currently only the active unit's stats are read from UI buffer. Need stats for enemies too (to estimate damage) and allies (to choose healing targets).
+- [ ] **C+Up scan position/unit data desync** [Movement] — After first fix (roster match corrects team), the Monk still showed as ENEMY Chemist HP=343 at (7,7). The grid position read and condensed struct read are not atomic — we can read position from unit A and condensed struct from unit B. Fix: batch both reads atomically, or verify HP matches expected player unit HP before trusting "enemy" label. **CRITICAL — causes friendly fire.**
+- [ ] **Read ability range and AoE shape** [AoE] — From the ability's secondary data: range, effect area, vertical tolerance. So Claude knows Fire has range 4 + 2-tile AoE diamond, vs Attack which is range 1 + single tile. **Foundational — blocks AoE targeting, charge time spells, spell Unit/Tile dialog, and enemy threat assessment.**
+- [ ] **Multiple friendly unit support** [Movement] — Handle turns for units other than Ramza. Currently scan_move assumes first team=0 unit is active. Blocks every battle with more than one player unit.
 
-### 1c. Abilities — Know HOW to act beyond basic Attack
-Claude can only use "Attack" (the basic physical hit). A human player opens the Abilities menu and picks from their full skillset.
+### Tier 2 — Core tactical depth
 
-- [x] **Read available abilities** — Learned ability IDs read from condensed struct FFFF-terminated list at +0x28. Mapped to names, MP cost, range (horizontal/vertical/AoE/height), target, effect, cast speed, element, added effects via ActionAbilityLookup. Only shown for active unit (list doesn't update during C+Up cycling). Mettle abilities fully verified in-game with exact descriptions and range values.
-- [x] **Battle_Abilities screen state** — Abilities submenu (Attack/Mettle/Items) tracked via BattleMenuTracker state machine. `0x140D3A10C` = submenu active flag. ui= shows current submenu item. Cursor persists within turn (Esc→re-Enter stays on same item), resets on new turn.
-- [x] **Battle_Mettle/Battle_Items screen states** — When selecting a skillset from Abilities submenu, screen transitions to Battle_<Skillset> (e.g. Battle_Mettle, Battle_Items). ui= shows current ability name within the list (e.g. ui=Focus, ui=Shout).
-- [~] **Ability list filtering** — Mettle abilities filtered correctly by learned IDs from scan. Items list shows full skillset (unfiltered) — need to read Chemist JP learned abilities from roster bitfield (PSX offset 0x99-0xD1) to filter. Item order may not match in-game order.
-- [x] **Filter scan abilities by equipped skillsets** — FilterBySkillsets with Fundaments/Mettle aliases. Only shows abilities from primary + secondary skillsets.
-- [~] **`battle_ability <name> <x> <y>`** — Navigate Abilities menu → select a specific ability → target a tile → confirm. Self-target (Shout, Focus) and targeted (Pummel) verified working. Menu navigation uses learned ability list for correct index. Known issue: BattleMenuTracker gets out of sync after battle_ability because NavigationActions sends keys directly without updating tracker.
-- [x] **BattleMenuTracker desync after battle_ability** — Fixed via SyncForScreen(), HasActedThisTurn flag, and NavigateToMove() (press Up 4x instead of trusting stale menuCursor).
-- [ ] **battle_ability should validate target range** — Currently navigates to any tile and confirms, even if the tile is out of range for the ability (e.g. Aim +1 can't target adjacent tiles — archers have a minimum range). Should check ability range before confirming, or detect when the game rejects the target.
-- [ ] **battle_ability spell targeting: Unit/Tile dialog** — Spells have an extra confirmation dialog: "Choose to target either the unit or the current tile" with Unit/Tile/Cancel options. Currently battle_ability doesn't handle this. Should press Enter (selects "Unit" default) for the extra confirmation. "Tile" is for edge cases like pre-casting on a tile a friendly will move to.
-- [ ] **Show active unit name/job in screen state** — Screen output should show whose turn it is (e.g. "Ramza (Gallant Knight)" or "Lloyd (Archer)") so Claude doesn't have to scan to know.
-- [ ] **Active unit job fallback shows wrong job** — UI buffer job ID fallback (used before scan) shows "Chemist" when the active unit is a Squire. The UI buffer at 0x1407AC7EA may not reflect the active unit's job reliably — may be stale from a previous hover or cursor position. Need a more reliable source for pre-scan job display.
-- [ ] **Detect charging/casting units** — Units charging a spell (e.g. Haste) show in the Combat Timeline with the spell name. Need to read charging state, which spell, and remaining CT from memory. Important for: not issuing commands to charging allies, knowing when spells will fire, and interrupting enemy casters.
-- [ ] **Block scan_move during animations** — scan_move should only run during Battle_MyTurn. During enemy turns, ally turns, spell animations, or any non-MyTurn battle state, return an error telling Claude to wait. Currently returns stale cached data or runs C+Up cycling during animations which can break things.
-- [x] **Fix Ramza's job name** — Roster job=3 now maps to "Gallant Knight".
-- [ ] **Use Items** — Navigate to Item in the ability menu → select Potion/Phoenix Down/etc → target ally → confirm. Critical for healing and raising downed units.
-- [ ] **Heal targeting allies** — battle_attack only targets enemies. Healing abilities and items need to target allies. The targeting cursor and confirmation work the same way, but the target selection logic needs to allow friendly tiles.
-- [ ] **Raise downed units** — Phoenix Down or Raise spell on a KO'd unit. Requires knowing which tiles have dead units and being able to target them.
+Unlocks Chemist play, healing, mage targeting, and safe melee decisions.
 
-### 1d. AoE and Range — Target abilities that hit areas
-Many abilities hit more than one tile. A human player sees the AoE preview. Claude needs to know what it'll hit.
+- [ ] **Use Items** [Abilities] — Navigate to Item in the ability menu → select Potion/Phoenix Down/etc → target ally → confirm. Critical for healing and raising downed units.
+- [ ] **Heal targeting allies** [Abilities] — battle_attack only targets enemies. Healing abilities and items need to target allies. The targeting cursor and confirmation work the same way, but the target selection logic needs to allow friendly tiles.
+- [ ] **Raise downed units** [Abilities] — Phoenix Down or Raise spell on a KO'd unit. Requires knowing which tiles have dead units and being able to target them.
+- [ ] **AoE targeting** [AoE] — For abilities with effect areas, Claude needs to position the AoE to maximize enemies hit and minimize allies hit. This is a placement decision Claude makes, not automation — but it needs the AoE shape info to decide. Depends on "Read ability range and AoE shape".
+- [ ] **Enemy reaction abilities** [EnemyIntel] — Read equipped reaction ability per unit (Counter Tackle, First Strike, Blade Grasp, etc.). Claude needs this to assess risk: "if I melee this Knight, he has Counter Tackle and will hit me back."
+- [~] **Ability list filtering** [Abilities] — Mettle abilities filtered correctly by learned IDs from scan. Items list shows full skillset (unfiltered) — need to read Chemist JP learned abilities from roster bitfield (PSX offset 0x99-0xD1) to filter. Item order may not match in-game order.
+- [~] **`battle_ability <name> <x> <y>`** [Abilities] — Navigate Abilities menu → select a specific ability → target a tile → confirm. Self-target (Shout, Focus) and targeted (Pummel) verified working. Menu navigation uses learned ability list for correct index. Known issue: BattleMenuTracker gets out of sync after battle_ability because NavigationActions sends keys directly without updating tracker.
+- [ ] **battle_ability spell targeting: Unit/Tile dialog** [Abilities] — Spells have an extra confirmation dialog: "Choose to target either the unit or the current tile" with Unit/Tile/Cancel options. Currently battle_ability doesn't handle this. Should press Enter (selects "Unit" default) for the extra confirmation. "Tile" is for edge cases like pre-casting on a tile a friendly will move to.
 
-- [ ] **Read ability range and AoE shape** — From the ability's secondary data: range, effect area, vertical tolerance. So Claude knows Fire has range 4 + 2-tile AoE diamond, vs Attack which is range 1 + single tile.
-- [ ] **AoE targeting** — For abilities with effect areas, Claude needs to position the AoE to maximize enemies hit and minimize allies hit. This is a placement decision Claude makes, not automation — but it needs the AoE shape info to decide.
-- [ ] **Charge time spells** — Some abilities take multiple turns to resolve. Claude needs to know the CT cost so it can decide if a slow powerful spell or a fast weak one is better.
+### Tier 3 — Robustness
 
-### 1e. Enemy Intel — Know WHAT the enemy will do back
-A human player can check enemy abilities by hovering. Claude has no visibility into enemy capabilities.
+Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
-- [ ] **Enemy reaction abilities** — Read equipped reaction ability per unit (Counter Tackle, First Strike, Blade Grasp, etc.). Claude needs this to assess risk: "if I melee this Knight, he has Counter Tackle and will hit me back."
-- [ ] **Enemy equipped abilities** — Read secondary skillset and support abilities. Helps Claude anticipate threats: "that Black Mage has Firaga" or "that unit has Teleport."
+- [ ] **Verify attack landed** [Execution] — Check enemy HP decreased after attack animation.
+- [ ] **Scan cache doesn't invalidate between player turns** [Movement] — `battleUnitId` at `0x14077D2A4` reads the same value for multiple units, so the unit-change detection in TurnAutoScanner doesn't fire. Need a more reliable signal (e.g. compare `battleUnitHp` at `0x14077D2AC`, or track unit position changes). Critical blocker for multi-unit battles.
+- [ ] **battle_move reports NOT CONFIRMED for valid moves** [Movement] — Navigation succeeds (cursor reaches target) but F key confirmation doesn't transition to Battle_MyTurn within 3s timeout. May need longer timeout for distant moves, or the F key confirmation flow changed. The move DID apply in-game.
+- [ ] **Post-attack facing/move selection** [Movement] — After Attack without prior Move, game enters move+facing selection. Currently misdetected as Battle_Moving. Need to detect this state and handle it (confirm facing or escape).
+- [ ] **Battle_Victory screen detection** [Movement] — Victory screen misdetected as TravelList/EncounterDialog. Need to capture memory values during victory screen to find a reliable signal. When detected, should auto-transition gracefully (press Enter to advance through rewards, then return to world map).
+- [ ] **Detect charging/casting units** [Abilities] — Units charging a spell (e.g. Haste) show in the Combat Timeline with the spell name. Need to read charging state, which spell, and remaining CT from memory. Important for: not issuing commands to charging allies, knowing when spells will fire, and interrupting enemy casters.
 
-### 1f. Turn Execution — Speed and reliability
-- [x] `battle_attack` action: open Abilities -> Attack -> navigate target cursor to enemy -> confirm
-- [x] Read rotation DURING targeting mode — uses empirical detection (press Right, read delta)
-- [x] `AttackTiles` in scan_move response — 4 cardinal tiles with ENEMY/ALLY/empty occupancy
-- [ ] **Verify attack landed** — Check enemy HP decreased after attack animation
-- [ ] **`execute_turn` action** — Claude sends full intent in one command: move target, ability, wait
+### Tier 4 — Known hard problems, park until unblocked
+
+Revisit only when you have a new approach. Don't spin on these.
+
+- [ ] **Unit names — enemies** [Identity] — The game displays names for enemy units when hovered (e.g. a random encounter Bonesnatch might be "Sithon", a Grenade might be "Justitia"). Critical for story battles where the objective is "defeat Joe Schmo" and Claude needs to identify which specific unit is the target. `NameTableLookup` currently only covers the player roster table. Attempted to find enemy names via byte-pattern search — **failed**. Tested "Sithon", "Justitia", "Telephassa" in both UTF-8 and UTF-16 LE, with and without the enemy actively hovered in-game. Zero matches in PAGE_READWRITE memory. "Ramza" still finds 5 matches so the search itself works. Enemy names may be in PAGE_READONLY data sections, rendered via glyph lookup without ever forming a contiguous string, or loaded on-demand from a data file. See `memory/project_unit_name_table.md` for full investigation and 4 possible next approaches (extract from `battle_bin.en.bin`, find a name-index byte on the enemy unit struct, cautiously use SearchBytesAllRegions, or trigger name load via Status screen).
+- [ ] **PA/MA/Brave/Faith for all units** [State] — Currently only the active unit's stats are read from UI buffer. Need stats for enemies too (to estimate damage) and allies (to choose healing targets).
+- [ ] **Zodiac sign per unit** [Identity] — Read from roster or battle struct. Needed to assess damage multipliers (e.g. Scorpio vs Pisces = Good compatibility = +25% damage). See Wiki/ZodiacAndElements.md.
+- [ ] **Charge time spells** [AoE] — Some abilities take multiple turns to resolve. Claude needs to know the CT cost so it can decide if a slow powerful spell or a fast weak one is better. Depends on "Read ability range and AoE shape".
+- [ ] **Fix Move/Jump stat reading** [Movement] — UI buffer shows base stats, not effective (equipment bonuses missing). Cosmetic until you hit a unit that can't reach a tile it should.
+- [ ] **Neutral unit handling (team=2)** [Movement] — Don't block pathing for NPCs/guests. Rare, only matters in guest battles.
+
+### Tier 5 — Speed optimization
+
+After correctness. 5s vs 30s per turn is huge, but only once the individual pieces are reliable.
+
+- [ ] **`execute_turn` action** [Execution] — Claude sends full intent in one command: move target, ability, wait
   - `{"action": "execute_turn", "move_to": [4,9], "ability": "Attack", "target": [4,10], "wait": true}`
   - Mod handles internally: Move→navigate→confirm→Abilities→select→target→confirm→Wait
   - One round-trip instead of 6+ = **~5s instead of ~30s**
-- [ ] Support partial turns: move only, ability only, move+wait, etc.
-- [ ] Return full post-turn state: where everyone ended up, damage dealt, kills
+- [ ] **Support partial turns** [Execution] — move only, ability only, move+wait, etc.
+- [ ] **Return full post-turn state** [Execution] — where everyone ended up, damage dealt, kills.
 
-### 1g. Movement System — Remaining Work
-- [~] **Auto-detect battle map** — Location ID lookup + random encounter maps implemented, fingerprint fallback
-- [x] **last_location.txt persistence fixed**
-- [~] **Wait facing direction** — Basic implementation done, needs tactical improvement
-- [ ] **Fix Move/Jump stat reading** — UI buffer shows base stats, not effective (equipment bonuses missing)
-- [ ] **Multiple friendly unit support** — Handle turns for units other than Ramza. Currently scan_move assumes first team=0 unit is active.
-- [ ] **Neutral unit handling (team=2)** — Don't block pathing for NPCs/guests
-- [x] **Menu cursor address fixed** — 0x1407FC620 confirmed reliable
-- [ ] **C+Up scan position/unit data desync** — After first fix (roster match corrects team), the Monk still showed as ENEMY Chemist HP=343 at (7,7). The grid position read and condensed struct read are not atomic — we can read position from unit A and condensed struct from unit B. Fix: batch both reads atomically, or verify HP matches expected player unit HP before trusting "enemy" label. CRITICAL — causes friendly fire.
-- [ ] **Enemy job names all show "Chemist"** — The UI buffer at 0x1407AC7EA returns job=1 (Chemist) for all enemies during C+Up scan, even when they're monsters like Black Goblin (0x29). The UI buffer isn't updating reliably when cycling. The condensed struct at 0x14077D2A0 doesn't have a job field in the header. Need to find a reliable source for enemy job IDs — possibly: (a) longer sleep before reading UI buffer, (b) read from static battle array slot matching by HP, (c) use nameId lookup for monsters, or (d) read jobId from heap struct via BattleTracker.
-- [ ] **Scan cache doesn't invalidate between player turns** — `battleUnitId` at `0x14077D2A4` reads the same value for multiple units, so the unit-change detection in TurnAutoScanner doesn't fire. Need a more reliable signal (e.g. compare `battleUnitHp` at `0x14077D2AC`, or track unit position changes). Critical blocker for multi-unit battles.
-- [ ] **battle_move reports NOT CONFIRMED for valid moves** — Navigation succeeds (cursor reaches target) but F key confirmation doesn't transition to Battle_MyTurn within 3s timeout. May need longer timeout for distant moves, or the F key confirmation flow changed. The move DID apply in-game.
-- [ ] **Auto-scan double-fire** — Auto-scan on Battle_MyTurn fires after scan_move already scanned, opening Status menu. Need BattleTurnTracker to mark turns as scanned.
-- [ ] **Battle_Victory screen detection** — Victory screen misdetected as TravelList/EncounterDialog. Need to capture memory values during victory screen to find a reliable signal. When detected, should auto-transition gracefully (press Enter to advance through rewards, then return to world map).
-- [ ] **Post-attack facing/move selection** — After Attack without prior Move, game enters move+facing selection. Currently misdetected as Battle_Moving. Need to detect this state and handle it (confirm facing or escape).
-- [x] **battle_wait facing uses F key** — Fixed.
+### Done (for reference)
+
+- [x] **Unit names — story characters** [Identity] — Story characters identified via roster nameId lookup (match by level+origBrave+origFaith from static battle array at 0x140893E0C). UnitNameLookup maps nameIds to names (Ramza, Agrias, Orlandeau, etc.).
+- [x] **Unit names — generic player recruits** [Identity] — Generic recruits (Warriors' Guild hires) now display their real names (Kenrick, Lloyd, Wilham, etc.) via `NameTableLookup`. Finds a heap table with 0x280-byte per-roster-slot records at a heap base discovered via the anchor signature `Ramza\0Delita\0Argath\0Zalbaag\0Dycedarg\0Larg\0Goltanna\0Ovelia\0Orland\0`. Each record has the chosen display name as the first null-terminated string at +0x10 inside the record. Walks at 0x280 stride. `RosterMatcher.RosterMatchResult` now carries `SlotIndex` so the name lookup keys off the matched roster slot.
+- [x] **CT/Speed/Turn Order for all units** [State] — CT and Speed read from condensed struct (+0x0A and +0x06). Turn order derived from C+Up scan order (which traverses the game's Combat Timeline). turnOrder array in response includes name, team, level, hp/maxHp, position, ct.
+- [x] **Status effects** [State] — Read active status flags from static battle array at 0x140893E45 + slot*0x200. 5-byte PSX bitfield decoded into named statuses (Poison, Haste, Protect, etc.). Matched to scanned units by HP+MaxHP. All 40 statuses supported.
+- [x] **Dead/KO vs crystalized vs alive** [State] — lifeState field: "dead" (can be raised), "crystal"/"treasure" (permanently gone). HP=0 fallback when status bytes unavailable.
+- [x] **Read available abilities** [Abilities] — Learned ability IDs read from condensed struct FFFF-terminated list at +0x28. Mapped to names, MP cost, range (horizontal/vertical/AoE/height), target, effect, cast speed, element, added effects via ActionAbilityLookup. Only shown for active unit (list doesn't update during C+Up cycling). Mettle abilities fully verified in-game with exact descriptions and range values.
+- [x] **Battle_Abilities screen state** [Abilities] — Abilities submenu (Attack/Mettle/Items) tracked via BattleMenuTracker state machine. `0x140D3A10C` = submenu active flag. ui= shows current submenu item. Cursor persists within turn (Esc→re-Enter stays on same item), resets on new turn.
+- [x] **Battle_Mettle/Battle_Items screen states** [Abilities] — When selecting a skillset from Abilities submenu, screen transitions to Battle_<Skillset> (e.g. Battle_Mettle, Battle_Items). ui= shows current ability name within the list (e.g. ui=Focus, ui=Shout).
+- [x] **Filter scan abilities by equipped skillsets** [Abilities] — FilterBySkillsets with Fundaments/Mettle aliases. Only shows abilities from primary + secondary skillsets.
+- [x] **BattleMenuTracker desync after battle_ability** [Abilities] — Fixed via SyncForScreen(), HasActedThisTurn flag, and NavigateToMove() (press Up 4x instead of trusting stale menuCursor).
+- [x] **battle_ability should validate target range** [Abilities] — Checks ability range before confirming and detects when the game rejects the target.
+- [x] **Show active unit name/job in screen state** [Abilities] — Screen output shows whose turn it is (e.g. "Ramza (Gallant Knight)" or "Lloyd (Archer)") so Claude doesn't have to scan to know.
+- [x] **Active unit job fallback shows wrong job** [Abilities] — Fixed. Pre-scan job display now uses a reliable source instead of the stale UI buffer at 0x1407AC7EA.
+- [x] **Block scan_move during animations** [Abilities] — scan_move returns `status=blocked` during Battle_Acting / Battle_AlliesTurn / Battle_EnemiesTurn. Allowed states: Battle_MyTurn, Battle_Moving, Battle_Attacking, Battle_Abilities, Battle_Waiting, Battle_Paused.
+- [x] **Fix Ramza's job name** [Abilities] — Roster job=3 now maps to "Gallant Knight".
+- [x] **Enemy equipped abilities** [EnemyIntel] — Monster enemies display their full fixed ability loadout via `MonsterAbilities.cs` + `MonsterAbilityLookup.cs` with range/AoE/target/element/effect metadata.
+- [x] **`battle_attack` action** [Execution] — Opens Abilities → Attack → navigates target cursor to enemy → confirms.
+- [x] **Read rotation DURING targeting mode** [Execution] — Uses empirical detection (press Right, read delta).
+- [x] **`AttackTiles` in scan_move response** [Execution] — 4 cardinal tiles with ENEMY/ALLY/empty occupancy.
+- [~] **Auto-detect battle map** [Movement] — Location ID lookup + random encounter maps implemented, fingerprint fallback.
+- [x] **last_location.txt persistence fixed** [Movement]
+- [~] **Wait facing direction** [Movement] — Basic implementation done, needs tactical improvement.
+- [x] **Menu cursor address fixed** [Movement] — 0x1407FC620 confirmed reliable.
+- [x] **Enemy job names all show "Chemist"** [Movement] — Fixed via 11-byte class fingerprint at heap struct +0x69. `ClassFingerprintLookup` maps fingerprints to class names for ~50+ classes. Story chars use roster nameId lookup.
+- [x] **Auto-scan double-fire** [Movement] — Fixed. BattleTurnTracker now marks turns as scanned so auto-scan doesn't re-fire after explicit scan_move.
+- [x] **battle_wait facing uses F key** [Movement] — Fixed.
 
 ---
 
