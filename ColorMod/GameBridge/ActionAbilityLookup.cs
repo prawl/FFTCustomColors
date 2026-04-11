@@ -613,10 +613,16 @@ namespace FFTColorCustomizer.GameBridge
             },
             ["Holy Sword"] = new()
             {
-                new(0x1DD, "Judgment Blade",      0, "3", 0, 2, 0, "enemy/AoE", "Weapon damage + may inflict Stop"),
-                new(0x1DE, "Cleansing Strike",    0, "3", 0, 2, 0, "enemy/AoE", "Weapon damage + may inflict Doom"),
-                new(0x1DF, "Northswain's Strike", 0, "3", 0, 2, 0, "enemy/AoE", "Weapon damage + may inflict Death"),
-                new(0x1E0, "Hallowed Bolt",       0, "3", 0, 2, 0, "enemy/AoE", "Weapon damage + may inflict Silence"),
+                new(0x1DD, "Judgment Blade",      0, "2", 99, 2, 0, "enemy/AoE", "Channels holy energy through one's sword. Attacks distant units and has a chance of inflicting Stop.",
+                    CastSpeed: 0, AddedEffect: "Applies Stop"),
+                new(0x1DE, "Cleansing Strike",    0, "3",  2, 1, 0, "enemy", "Channels holy energy through one's sword. Attacks a distant unit and has a chance of inflicting Doom.",
+                    CastSpeed: 0, AddedEffect: "Applies Doom"),
+                new(0x1DF, "Northswain's Strike", 0, "3",  1, 1, 0, "enemy", "Channels holy energy through one's sword. Attacks a distant unit and has a chance of causing instant KO.",
+                    CastSpeed: 0, AddedEffect: "Applies KO"),
+                new(0x1E0, "Hallowed Bolt",       0, "3", 99, 2, 1, "enemy/AoE", "Channels holy energy through one's sword. Attacks distant units and has a chance of inflicting Silence.",
+                    CastSpeed: 0, AddedEffect: "Applies Silence"),
+                new(0x00,  "Divine Ruination",    0, "5",  0, 1, 2, "enemy", "Channels holy energy through one's sword. Attacks units in a straight line and has a chance of inflicting Confusion.",
+                    CastSpeed: 0, AddedEffect: "Applies Confusion"),
             },
             // Darkness: Dark Knight skillset. All abilities require an equipped sword.
             // Sourced from FFT wiki.
