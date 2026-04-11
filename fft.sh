@@ -615,11 +615,18 @@ scan_move() {
     echo "[FAILED] $ERR"
     return 1
   fi
-  # Screen line
+  # Screen line — show active unit's name + job after the screen state
   local SCR=$(echo "$RR" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local ANAME=$(echo "$RR" | grep -o '"activeUnitName":"[^"]*"' | head -1 | cut -d'"' -f4)
   local AJOB=$(echo "$RR" | grep -o '"activeUnitJob":"[^"]*"' | head -1 | cut -d'"' -f4)
   local BWON=$(echo "$RR" | grep -o '"battleWon":true')
-  echo "[$SCR] ${AJOB:+(${AJOB})} ${BWON:+*** BATTLE WON ***}"
+  local ACTIVE_STR=""
+  if [ -n "$ANAME" ] && [ -n "$AJOB" ]; then
+    ACTIVE_STR="${ANAME} (${AJOB})"
+  elif [ -n "$AJOB" ]; then
+    ACTIVE_STR="(${AJOB})"
+  fi
+  echo "[$SCR]${ACTIVE_STR:+ ${ACTIVE_STR}} ${BWON:+*** BATTLE WON ***}"
   # Active unit
   local AX=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"x":[0-9]*' | head -1 | cut -d: -f2)
   local AY=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"y":[0-9]*' | head -1 | cut -d: -f2)
