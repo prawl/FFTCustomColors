@@ -17,6 +17,7 @@ namespace FFTColorCustomizer.GameBridge
         private readonly IInputSimulator _input;
         private readonly MemoryExplorer _explorer;
         private readonly Func<DetectedScreen?> _detectScreen;
+        private readonly NameTableLookup _nameTable;
         public BattleTracker? BattleTracker { get; set; }
         public MapLoader? _mapLoader;
         public Func<string[]>? GetAbilitiesSubmenuItems { get; set; }
@@ -213,6 +214,7 @@ namespace FFTColorCustomizer.GameBridge
             _input = input;
             _explorer = explorer;
             _detectScreen = detectScreen;
+            _nameTable = new NameTableLookup(explorer);
             _gameWindow = Process.GetCurrentProcess().MainWindowHandle;
         }
 
@@ -3112,11 +3114,15 @@ namespace FFTColorCustomizer.GameBridge
                             unit.Team = 0;
                         }
                         unit.RosterNameId = m.NameId;
-                        unit.Name = UnitNameLookup.GetName(m.NameId);
+                        // Try story character name first (hardcoded for known nameIds).
+                        // Fall back to the master name table lookup using the Job field
+                        // as the table index — for generics, roster +0x02 holds the name
+                        // table index (e.g. 76=Wilham, 103=Kenrick).
+                        // Uses SearchBytesInAllMemory (safe, PAGE_READWRITE only) on
+                        // first call per session to locate the table.
+                        unit.Name = UnitNameLookup.GetName(m.NameId)
+                            ?? _nameTable.GetNameByIndex(m.Job);
                         unit.Job = m.Job;
-                        // Note: NameTableLookup fallback for generic character names is
-                        // implemented but NOT wired here because the memory search can
-                        // crash the game on large heap scans. See memory/project_unit_name_table.md.
                         unit.Brave = m.Brave;
                         unit.Faith = m.Faith;
                         unit.SecondaryAbility = m.Secondary;

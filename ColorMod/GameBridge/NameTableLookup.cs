@@ -164,10 +164,14 @@ namespace FFTColorCustomizer.GameBridge
         {
             try
             {
-                // Use SearchBytesAllRegions (not SearchBytesInAllMemory) because the name
-                // table may live in PAGE_READONLY or PAGE_EXECUTE_READ memory rather than
-                // PAGE_READWRITE. The narrower search misses it.
-                var matches = _explorer.SearchBytesAllRegions(AnchorPattern, maxResults: 8);
+                // Use SearchBytesInAllMemory (PAGE_READWRITE private/mapped only) — the
+                // master name table lives in heap-allocated UE4 data, not read-only
+                // sections. SearchBytesAllRegions is wider (covers PAGE_READONLY etc.)
+                // but crashes the game on large scans due to unsafe reads in some
+                // regions. The narrower search is safe and has been verified to find
+                // the table (confirmed via bridge `search_bytes` command reaching
+                // 0x4E17FBDFD1 during investigation).
+                var matches = _explorer.SearchBytesInAllMemory(AnchorPattern, maxResults: 8);
                 if (matches == null || matches.Count == 0)
                 {
                     ModLogger.Log("[NameTableLookup] No anchor match found");
