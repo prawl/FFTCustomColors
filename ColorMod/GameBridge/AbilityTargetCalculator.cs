@@ -82,12 +82,18 @@ namespace FFTColorCustomizer.GameBridge
         /// For line abilities, this is the 4 cardinal seed tiles that pick a
         /// direction. Returns an empty set if the ability isn't eligible or the
         /// map is null.
+        ///
+        /// casterJump: optional fallback when the ability's VRange is 0. In FFT,
+        /// melee-range abilities don't define their own vertical tolerance —
+        /// they inherit the caster's Jump stat. Passing it here avoids culling
+        /// valid melee targets on sloped maps. Callers can pass 0 to disable.
         /// </summary>
         public static HashSet<(int x, int y)> GetValidTargetTiles(
             int casterX,
             int casterY,
             ActionAbilityInfo ability,
-            MapData? map)
+            MapData? map,
+            int casterJump = 0)
         {
             var result = new HashSet<(int, int)>();
             if (map == null) return result;
@@ -121,7 +127,9 @@ namespace FFTColorCustomizer.GameBridge
                 ? map.Tiles[casterX, casterY].Height
                 : 0;
 
-            int vr = ability.VRange; // 99 acts as "unlimited" naturally
+            // VR=0 in the table means "melee, use caster Jump as vertical reach".
+            // Real vertical-range abilities (Throw Stone, Black Magicks) have VR=99.
+            int vr = ability.VRange > 0 ? ability.VRange : casterJump;
 
             // Enemy-target abilities can't be aimed at the caster's own tile for
             // point-target casts. Radius casts CAN land their center on the caster

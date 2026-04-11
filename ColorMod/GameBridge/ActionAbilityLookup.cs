@@ -383,7 +383,7 @@ namespace FFTColorCustomizer.GameBridge
                     CastSpeed: 0),
                 new(0x78, "Pummel",          0, "1",  0, 1, 0, "enemy", "Strike many times in quick succession.",
                     CastSpeed: 0),
-                new(0x79, "Aurablast",       0, "3",  0, 1, 0, "enemy", "Employ one's martial spirit to strike a distant foe.",
+                new(0x79, "Aurablast",       0, "3",  99, 1, 0, "enemy", "Employ one's martial spirit to strike a distant foe.",
                     CastSpeed: 0),
                 new(0x7A, "Shockwave",       0, "8",  0, 1, 2, "enemy", "Release spiritual energy mighty enough to rend the earth.",
                     CastSpeed: 0, Element: "Earth", Shape: AbilityShape.Line),

@@ -1577,7 +1577,7 @@ namespace FFTColorCustomizer.GameBridge
                         if (abilityMap != null && AbilityTargetCalculator.IsPointTarget(a))
                         {
                             var tiles = AbilityTargetCalculator.GetValidTargetTiles(
-                                u.GridX, u.GridY, a, abilityMap);
+                                u.GridX, u.GridY, a, abilityMap, u.Jump);
                             if (tiles.Count > 0)
                             {
                                 entry.ValidTargetTiles = tiles
@@ -1593,7 +1593,7 @@ namespace FFTColorCustomizer.GameBridge
                         else if (abilityMap != null && AbilityTargetCalculator.IsRadiusTarget(a))
                         {
                             var centers = AbilityTargetCalculator.GetValidTargetTiles(
-                                u.GridX, u.GridY, a, abilityMap);
+                                u.GridX, u.GridY, a, abilityMap, u.Jump);
                             if (centers.Count > 0)
                             {
                                 entry.ValidTargetTiles = centers
@@ -1647,7 +1647,7 @@ namespace FFTColorCustomizer.GameBridge
                         else if (abilityMap != null && AbilityTargetCalculator.IsLineTarget(a))
                         {
                             var seeds = AbilityTargetCalculator.GetValidTargetTiles(
-                                u.GridX, u.GridY, a, abilityMap);
+                                u.GridX, u.GridY, a, abilityMap, u.Jump);
                             if (seeds.Count > 0)
                             {
                                 entry.ValidTargetTiles = seeds

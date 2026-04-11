@@ -139,6 +139,45 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void GetValidTargetTiles_VRange0_FallsBackToCasterJump()
+        {
+            // Pummel is a melee ability with VR=0 in our table — it should inherit
+            // the caster's Jump stat as its effective vertical reach. A Monk with
+            // Jump=4 should be able to Pummel an adjacent tile raised by 3h.
+            var map = FlatMap(10, height: 5);
+            map.Tiles[6, 5] = new MapTile { Height = 8 }; // +3h from caster
+            var pummel = new ActionAbilityInfo(0, "Pummel", 0, "1", 0, 1, 0, "enemy", "");
+            var tilesWithJump = AbilityTargetCalculator.GetValidTargetTiles(5, 5, pummel, map, casterJump: 4);
+            Assert.Contains((6, 5), tilesWithJump);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_VRange0_NoJumpPassedExcludesElevation()
+        {
+            // If no casterJump is passed (default 0), VR=0 abilities revert to
+            // strict same-elevation matching — adjacent tiles with any elevation
+            // delta are excluded. This preserves the old behavior for callers
+            // that don't know the unit's Jump stat.
+            var map = FlatMap(10, height: 5);
+            map.Tiles[6, 5] = new MapTile { Height = 6 }; // +1h from caster
+            var pummel = new ActionAbilityInfo(0, "Pummel", 0, "1", 0, 1, 0, "enemy", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, pummel, map);
+            Assert.DoesNotContain((6, 5), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_VRange0_HighJumpAllowsTallTarget()
+        {
+            // Jump=8 should allow reaching an adjacent +7h tile. Realistic for a
+            // late-game Dragoon or a Monk with Jump+N passives.
+            var map = FlatMap(10, height: 5);
+            map.Tiles[6, 5] = new MapTile { Height = 12 }; // +7h
+            var pummel = new ActionAbilityInfo(0, "Pummel", 0, "1", 0, 1, 0, "enemy", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, pummel, map, casterJump: 8);
+            Assert.Contains((6, 5), tiles);
+        }
+
+        [Fact]
         public void GetValidTargetTiles_NullMap_ReturnsEmpty()
         {
             var ability = new ActionAbilityInfo(0, "Rush", 0, "1", 1, 1, 0, "enemy", "");
