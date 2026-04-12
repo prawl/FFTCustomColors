@@ -3261,355 +3261,151 @@ namespace FFTColorCustomizer.GameBridge
         private List<ScannedUnit> CollectUnitPositionsFull()
         {
             var units = new List<ScannedUnit>();
-            var seen = new HashSet<(int, int)>();
-            int maxUnits = 12;
 
-            // Dismiss action menu first — C+Up only works on open field
-            SendKey(VK_ESCAPE);
-            Thread.Sleep(500);
-
-            // Hold C via SendInput with SCANCODE flag (required for DirectInput games)
-            // Also hold via keybd_event and PostMessage for belt-and-suspenders
-            SendInputKeyDown(VK_C);
-            _input.SendKeyDownToWindow(_gameWindow, VK_C);
-            PostMessage(_gameWindow, 0x0100, (IntPtr)VK_C, IntPtr.Zero);
-            Thread.Sleep(500);
-
-            // Read candidate unit count from 0x140900650 — use as upper bound
-            int expectedCount = 0;
-            try {
-                var countResult = _explorer.ReadAbsolute((nint)0x140900650, 1);
-                expectedCount = countResult != null ? (int)countResult.Value.value : 0;
-            } catch { }
-            if (expectedCount <= 0 || expectedCount > maxUnits) expectedCount = maxUnits;
-            ModLogger.Log($"[CollectPositions] Expected unit count: {expectedCount}");
-
-            // Read the active unit FIRST (cursor starts on them before any Up press)
-            Thread.Sleep(200);
+            // === Phase 1: Read active unit data from condensed struct (slot 0) ===
+            // The condensed struct has reliable stats for the active unit and its ability list.
+            var activeReads = _explorer.ReadMultiple(new (nint, int)[]
             {
-                var pos0 = ReadGridPos();
-                if (pos0.x >= 0 && pos0.y >= 0)
-                {
-                    // Read active unit data from condensed struct (reliable) and UI buffer (Move/Jump only).
-                    // Job/Brave/Faith are NOT read from UI buffer — it's stale after C+Up cycling.
-                    // They'll be populated from roster matching below.
-                    var reads0 = _explorer.ReadMultiple(new (nint, int)[]
-                    {
-                        ((nint)(AddrCondensedBase + 0x00), 2), // 0: level
-                        ((nint)(AddrCondensedBase + 0x02), 2), // 1: team
-                        ((nint)(AddrCondensedBase + 0x04), 2), // 2: nameId
-                        ((nint)(AddrCondensedBase + 0x06), 1), // 3: Speed (base)
-                        ((nint)(AddrCondensedBase + 0x08), 2), // 4: exp
-                        ((nint)(AddrCondensedBase + 0x0A), 2), // 5: CT
-                        ((nint)(AddrCondensedBase + 0x0C), 2), // 6: HP
-                        ((nint)(AddrCondensedBase + 0x10), 2), // 7: maxHP
-                        ((nint)(AddrCondensedBase + 0x12), 2), // 8: MP
-                        ((nint)(AddrCondensedBase + 0x16), 2), // 9: maxMP
-                        ((nint)(AddrCondensedBase + 0x18), 2), // 10: PA
-                        ((nint)(AddrCondensedBase + 0x1A), 2), // 11: MA
-                        ((nint)(AddrUIBuffer + 0x24), 2),      // 12: Move (UI buffer — only reliable before C+Up)
-                        ((nint)(AddrUIBuffer + 0x26), 2),      // 13: Jump
-                    });
-                    var u0 = new ScannedUnit
-                    {
-                        GridX = pos0.x, GridY = pos0.y,
-                        Level = (int)reads0[0], Team = (int)reads0[1], NameId = (int)reads0[2],
-                        Speed = (int)reads0[3],
-                        Exp = (int)reads0[4], CT = (int)reads0[5], Hp = (int)reads0[6],
-                        MaxHp = (int)reads0[7], Mp = (int)reads0[8], MaxMp = (int)reads0[9],
-                        PA = (int)reads0[10], MA = (int)reads0[11], Move = (int)reads0[12],
-                        Jump = (int)reads0[13],
-                        // Job, Brave, Faith populated from roster matching below
-                    };
-                    // Read learned abilities for active unit only (condensed struct list doesn't update during C+Up)
-                    var abilityBytes = _explorer.Scanner.ReadBytes((nint)(AddrCondensedBase + 0x28), 64);
-                    if (abilityBytes.Length > 0)
-                    {
-                        var learnedIds = ActionAbilityLookup.ParseLearnedIdsFromBytes(abilityBytes);
-                        u0.LearnedAbilities = ActionAbilityLookup.ResolveLearnedAbilities(learnedIds);
-                    }
+                ((nint)(AddrCondensedBase + 0x00), 2), // 0: level
+                ((nint)(AddrCondensedBase + 0x02), 2), // 1: team
+                ((nint)(AddrCondensedBase + 0x04), 2), // 2: nameId
+                ((nint)(AddrCondensedBase + 0x06), 1), // 3: speed
+                ((nint)(AddrCondensedBase + 0x08), 2), // 4: exp
+                ((nint)(AddrCondensedBase + 0x0A), 2), // 5: CT
+                ((nint)(AddrCondensedBase + 0x0C), 2), // 6: HP
+                ((nint)(AddrCondensedBase + 0x10), 2), // 7: maxHP
+                ((nint)(AddrCondensedBase + 0x12), 2), // 8: MP
+                ((nint)(AddrCondensedBase + 0x16), 2), // 9: maxMP
+                ((nint)(AddrCondensedBase + 0x18), 2), // 10: PA
+                ((nint)(AddrCondensedBase + 0x1A), 2), // 11: MA
+                ((nint)(AddrUIBuffer + 0x24), 2),      // 12: Move
+                ((nint)(AddrUIBuffer + 0x26), 2),      // 13: Jump
+            });
+            int activeHp = (int)activeReads[6];
+            int activeMaxHp = (int)activeReads[7];
 
-                    seen.Add((pos0.x, pos0.y));
-                    units.Add(u0);
-                    ModLogger.Log($"[CollectPositions] Active unit: ({pos0.x},{pos0.y}) t{u0.Team} lv{u0.Level} hp={u0.Hp}/{u0.MaxHp} abilities={u0.LearnedAbilities.Count}");
+            // === Phase 2: Scan static battle array for ALL units ===
+            // The battle array has fixed-stride 0x200 slots with this layout per slot:
+            //   +0x0C: exp(byte)  +0x0D: level(byte)
+            //   +0x0E: origBrave  +0x0F: brave  +0x10: origFaith  +0x11: faith
+            //   +0x12: team(u16)  — 0=party, 1=enemy, 2=ally/neutral
+            //   +0x14: HP(u16)    +0x16: MaxHP(u16)
+            //   +0x18: MP(u16)    +0x1A: MaxMP(u16)
+            //   +0x33: gridX(byte)  +0x34: gridY(byte)
+            //   +0x45: status bytes (5 bytes)
+            // Player units are at positive offsets from BattleArrayBase + 0x200,
+            // enemy units are at negative offsets (up to ~16 slots back).
+            const long BattleArrayBase = 0x140893C00;
+            const int ArrayStride = 0x200;
+            const int ScanSlotsBack = 20;  // how far back for enemies
+            const int ScanSlotsForward = 10; // how far forward for players
+            int totalSlots = ScanSlotsBack + ScanSlotsForward;
+
+            try
+            {
+                // Batch-read key fields for all candidate slots
+                const int FieldsPerSlot = 11;
+                var slotReads = new (nint, int)[totalSlots * FieldsPerSlot];
+                for (int s = 0; s < totalSlots; s++)
+                {
+                    long sb = BattleArrayBase + (long)(s - ScanSlotsBack + 1) * ArrayStride;
+                    slotReads[s * FieldsPerSlot + 0] = ((nint)(sb + 0x0C), 1);  // exp
+                    slotReads[s * FieldsPerSlot + 1] = ((nint)(sb + 0x0D), 1);  // level
+                    slotReads[s * FieldsPerSlot + 2] = ((nint)(sb + 0x14), 2);  // HP
+                    slotReads[s * FieldsPerSlot + 3] = ((nint)(sb + 0x16), 2);  // MaxHP
+                    slotReads[s * FieldsPerSlot + 4] = ((nint)(sb + 0x18), 2);  // MP
+                    slotReads[s * FieldsPerSlot + 5] = ((nint)(sb + 0x1A), 2);  // MaxMP
+                    slotReads[s * FieldsPerSlot + 6] = ((nint)(sb + 0x33), 1);  // gridX
+                    slotReads[s * FieldsPerSlot + 7] = ((nint)(sb + 0x34), 1);  // gridY
+                    slotReads[s * FieldsPerSlot + 8] = ((nint)(sb + 0x0E), 1);  // origBrave
+                    slotReads[s * FieldsPerSlot + 9] = ((nint)(sb + 0x10), 1);  // origFaith
+                    slotReads[s * FieldsPerSlot + 10] = ((nint)(sb + 0x12), 2); // inBattleFlag
                 }
-            }
+                var sv = _explorer.ReadMultiple(slotReads);
 
-            for (int i = 0; i < maxUnits; i++)
-            {
-                // Re-assert C held
-                SendInputKeyDown(VK_C);
-                Thread.Sleep(50);
-
-                // Press Up via PostMessage
-                _input.SendKeyPressToWindow(_gameWindow, VK_UP);
-                Thread.Sleep(500); // give game time to fully update grid pos + condensed struct (was 250ms → 350ms → 500ms)
-
-                // Read grid position
-                var pos = ReadGridPos();
-                if (pos.x < 0 || pos.y < 0) continue;
-
-                // Deduplicate by position
-                bool isNew = seen.Add((pos.x, pos.y));
-
-                if (isNew)
+                // Discover valid units from the array and build ScannedUnit list
+                var usedSlots = new HashSet<int>();
+                for (int s = 0; s < totalSlots; s++)
                 {
-                    // Read unit data, then verify position didn't change during the read (race detection).
-                    var reads = _explorer.ReadMultiple(new (nint, int)[]
-                    {
-                        ((nint)(AddrCondensedBase + 0x00), 2), // 0: level
-                        ((nint)(AddrCondensedBase + 0x02), 2), // 1: team
-                        ((nint)(AddrCondensedBase + 0x04), 2), // 2: nameId
-                        ((nint)(AddrCondensedBase + 0x06), 1), // 3: Speed (base)
-                        ((nint)(AddrCondensedBase + 0x08), 2), // 4: exp
-                        ((nint)(AddrCondensedBase + 0x0A), 2), // 5: CT
-                        ((nint)(AddrCondensedBase + 0x0C), 2), // 6: HP
-                        ((nint)(AddrCondensedBase + 0x10), 2), // 7: maxHP
-                        ((nint)(AddrCondensedBase + 0x12), 2), // 8: MP
-                        ((nint)(AddrCondensedBase + 0x16), 2), // 9: maxMP
-                        ((nint)(AddrCondensedBase + 0x18), 2), // 10: PA
-                        ((nint)(AddrCondensedBase + 0x1A), 2), // 11: MA
-                        ((nint)(AddrUIBuffer + 0x24), 2),      // 12: Move
-                        ((nint)(AddrUIBuffer + 0x26), 2),      // 13: Jump
-                        ((nint)(AddrUIBuffer + 0x2A), 2),      // 14: Job
-                        ((nint)(AddrUIBuffer + 0x2C), 2),      // 15: Brave
-                        ((nint)(AddrUIBuffer + 0x2E), 2),      // 16: Faith
-                    });
+                    int exp = (int)sv[s * FieldsPerSlot + 0];
+                    int lvl = (int)sv[s * FieldsPerSlot + 1];
+                    int hp =  (int)sv[s * FieldsPerSlot + 2];
+                    int maxHp = (int)sv[s * FieldsPerSlot + 3];
+                    int mp =  (int)sv[s * FieldsPerSlot + 4];
+                    int maxMp = (int)sv[s * FieldsPerSlot + 5];
+                    int gx =  (int)sv[s * FieldsPerSlot + 6];
+                    int gy =  (int)sv[s * FieldsPerSlot + 7];
+                    int brave = (int)sv[s * FieldsPerSlot + 8];
+                    int faith = (int)sv[s * FieldsPerSlot + 9];
+                    int inBattle = (int)sv[s * FieldsPerSlot + 10];
 
-                    // Verify grid position didn't change during the read.
-                    // If it did, the condensed struct data belongs to a different unit — skip this read.
-                    var posAfter = ReadGridPos();
-                    if (posAfter.x != pos.x || posAfter.y != pos.y)
-                    {
-                        ModLogger.Log($"[CollectPositions] Position race at ({pos.x},{pos.y})→({posAfter.x},{posAfter.y}), skipping stale read");
-                        seen.Remove((pos.x, pos.y));
-                        continue;
-                    }
+                    // +0x12 = 1 for units actively in this battle, 0 for stale/empty slots
+                    if (inBattle == 0) continue;
+
+                    // Validate: must have reasonable stats and position within map bounds
+                    if (lvl < 1 || lvl > 99) continue;
+                    if (maxHp <= 0 || maxHp >= 2000) continue;
+                    if (exp > 99) continue;
+                    if (gx > 30 || gy > 30) continue;
+
+                    // Team: initially set to 1 (enemy). Roster matching downstream will
+                    // correct player units to 0. The static array doesn't have a team field
+                    // matching the condensed struct convention (0=party,1=enemy).
+                    int team = 1;
+
+                    long slotBase = BattleArrayBase + (long)(s - ScanSlotsBack + 1) * ArrayStride;
+
+                    // Status bytes (5 bytes at +0x45)
+                    var statusBytes = _explorer.Scanner.ReadBytes((nint)(slotBase + 0x45), 5);
+
+                    // Check if this is the active unit (match by HP+MaxHP with condensed struct)
+                    bool isActive = (hp == activeHp && maxHp == activeMaxHp);
 
                     var unit = new ScannedUnit
                     {
-                        GridX = pos.x,
-                        GridY = pos.y,
-                        Level = (int)reads[0],
-                        Team = (int)reads[1],
-                        NameId = (int)reads[2],
-                        Speed = (int)reads[3],
-                        Exp = (int)reads[4],
-                        CT = (int)reads[5],
-                        Hp = (int)reads[6],
-                        MaxHp = (int)reads[7],
-                        Mp = (int)reads[8],
-                        MaxMp = (int)reads[9],
-                        PA = (int)reads[10],
-                        MA = (int)reads[11],
-                        Move = (int)reads[12],
-                        Jump = (int)reads[13],
-                        Job = (int)reads[14],
-                        Brave = (int)reads[15],
-                        Faith = (int)reads[16],
+                        GridX = gx, GridY = gy,
+                        Level = lvl, Team = team, Exp = exp,
+                        Hp = hp, MaxHp = maxHp, Mp = mp, MaxMp = maxMp,
+                        Brave = brave, Faith = faith,
                     };
 
-                    units.Add(unit);
-                    ModLogger.Log($"[CollectPositions] Unit {units.Count}: ({pos.x},{pos.y}) t{unit.Team} lv{unit.Level} hp={unit.Hp}/{unit.MaxHp}");
-                }
-
-                // Stop when we've cycled back to a unit we already saw AND we've
-                // pressed Up enough times to have seen everyone. Fast units appear
-                // multiple times in the Combat Timeline before slower units appear,
-                // so we can't stop at the first duplicate — we must keep cycling
-                // until we've completed a full loop.
-                if (!isNew && units.Count >= 2 && i >= units.Count)
-                {
-                    ModLogger.Log($"[CollectPositions] Full cycle after {i + 1} presses, {units.Count} unique units");
-                    break;
-                }
-            }
-
-            // Release C everywhere
-            SendInputKeyUp(VK_C);
-            _input.SendKeyUpToWindow(_gameWindow, VK_C);
-            PostMessage(_gameWindow, 0x0101, (IntPtr)VK_C, IntPtr.Zero);
-            Thread.Sleep(200);
-
-            // Retry if C+Up scan failed (only found 1 unit when we expect more).
-            // This happens when the C key hold doesn't register with the game,
-            // causing Up presses to move the cursor instead of cycling the Combat Timeline.
-            if (units.Count <= 1 && expectedCount > 1)
-            {
-                ModLogger.Log($"[CollectPositions] C+Up scan found only {units.Count} unit(s) but expected {expectedCount}. Retrying with longer hold...");
-                units.Clear();
-                seen.Clear();
-
-                // Re-dismiss menu and retry with longer initial C hold
-                SendKey(VK_ESCAPE);
-                Thread.Sleep(500);
-                SetForegroundWindow(_gameWindow);
-                Thread.Sleep(100);
-                SendInputKeyDown(VK_C);
-                _input.SendKeyDownToWindow(_gameWindow, VK_C);
-                PostMessage(_gameWindow, 0x0100, (IntPtr)VK_C, IntPtr.Zero);
-                Thread.Sleep(1000); // longer hold on retry
-
-                // Re-read active unit
-                {
-                    var retryPos = ReadGridPos();
-                    if (retryPos.x >= 0 && retryPos.y >= 0)
+                    if (isActive)
                     {
-                        var reads0 = _explorer.ReadMultiple(new (nint, int)[]
-                        {
-                            ((nint)(AddrCondensedBase + 0x00), 2),
-                            ((nint)(AddrCondensedBase + 0x02), 2),
-                            ((nint)(AddrCondensedBase + 0x04), 2),
-                            ((nint)(AddrCondensedBase + 0x06), 1),
-                            ((nint)(AddrCondensedBase + 0x08), 2),
-                            ((nint)(AddrCondensedBase + 0x0A), 2),
-                            ((nint)(AddrCondensedBase + 0x0C), 2),
-                            ((nint)(AddrCondensedBase + 0x10), 2),
-                            ((nint)(AddrCondensedBase + 0x12), 2),
-                            ((nint)(AddrCondensedBase + 0x16), 2),
-                            ((nint)(AddrCondensedBase + 0x18), 2),
-                            ((nint)(AddrCondensedBase + 0x1A), 2),
-                            ((nint)(AddrUIBuffer + 0x24), 2),
-                            ((nint)(AddrUIBuffer + 0x26), 2),
-                        });
-                        var u0 = new ScannedUnit
-                        {
-                            GridX = retryPos.x, GridY = retryPos.y,
-                            Level = (int)reads0[0], Team = (int)reads0[1], NameId = (int)reads0[2],
-                            Speed = (int)reads0[3], Exp = (int)reads0[4], CT = (int)reads0[5],
-                            Hp = (int)reads0[6], MaxHp = (int)reads0[7],
-                            Mp = (int)reads0[8], MaxMp = (int)reads0[9],
-                            PA = (int)reads0[10], MA = (int)reads0[11],
-                            Move = (int)reads0[12], Jump = (int)reads0[13],
-                        };
+                        // Active unit's team is reliably read from condensed struct
+                        unit.Team = (int)activeReads[1];
+                        unit.NameId = (int)activeReads[2];
+                        unit.Speed = (int)activeReads[3];
+                        unit.CT = (int)activeReads[5];
+                        unit.PA = (int)activeReads[10];
+                        unit.MA = (int)activeReads[11];
+                        unit.Move = (int)activeReads[12];
+                        unit.Jump = (int)activeReads[13];
+
+                        // Read learned abilities from condensed struct ability list
                         var abilityBytes = _explorer.Scanner.ReadBytes((nint)(AddrCondensedBase + 0x28), 64);
                         if (abilityBytes.Length > 0)
                         {
                             var learnedIds = ActionAbilityLookup.ParseLearnedIdsFromBytes(abilityBytes);
-                            u0.LearnedAbilities = ActionAbilityLookup.ResolveLearnedAbilities(learnedIds);
-                        }
-                        seen.Add((retryPos.x, retryPos.y));
-                        units.Add(u0);
-                    }
-                }
-
-                // Retry C+Up cycle
-                for (int i = 0; i < maxUnits; i++)
-                {
-                    SendInputKeyDown(VK_C);
-                    Thread.Sleep(50);
-                    _input.SendKeyPressToWindow(_gameWindow, VK_UP);
-                    Thread.Sleep(500);
-                    var pos = ReadGridPos();
-                    if (pos.x < 0 || pos.y < 0) continue;
-                    bool isNew = seen.Add((pos.x, pos.y));
-                    if (isNew)
-                    {
-                        var posAfter = ReadGridPos();
-                        if (posAfter.x != pos.x || posAfter.y != pos.y) { seen.Remove((pos.x, pos.y)); continue; }
-                        var reads = _explorer.ReadMultiple(new (nint, int)[]
-                        {
-                            ((nint)(AddrCondensedBase + 0x00), 2), ((nint)(AddrCondensedBase + 0x02), 2),
-                            ((nint)(AddrCondensedBase + 0x04), 2), ((nint)(AddrCondensedBase + 0x06), 1),
-                            ((nint)(AddrCondensedBase + 0x08), 2), ((nint)(AddrCondensedBase + 0x0A), 2),
-                            ((nint)(AddrCondensedBase + 0x0C), 2), ((nint)(AddrCondensedBase + 0x10), 2),
-                            ((nint)(AddrCondensedBase + 0x12), 2), ((nint)(AddrCondensedBase + 0x16), 2),
-                            ((nint)(AddrCondensedBase + 0x18), 2), ((nint)(AddrCondensedBase + 0x1A), 2),
-                            ((nint)(AddrUIBuffer + 0x24), 2), ((nint)(AddrUIBuffer + 0x26), 2),
-                            ((nint)(AddrUIBuffer + 0x2A), 2), ((nint)(AddrUIBuffer + 0x2C), 2),
-                            ((nint)(AddrUIBuffer + 0x2E), 2),
-                        });
-                        units.Add(new ScannedUnit
-                        {
-                            GridX = pos.x, GridY = pos.y,
-                            Level = (int)reads[0], Team = (int)reads[1], NameId = (int)reads[2],
-                            Speed = (int)reads[3], Exp = (int)reads[4], CT = (int)reads[5],
-                            Hp = (int)reads[6], MaxHp = (int)reads[7],
-                            Mp = (int)reads[8], MaxMp = (int)reads[9],
-                            PA = (int)reads[10], MA = (int)reads[11],
-                            Move = (int)reads[12], Jump = (int)reads[13],
-                            Job = (int)reads[14], Brave = (int)reads[15], Faith = (int)reads[16],
-                        });
-                    }
-                    if (!isNew && units.Count >= 2 && i >= units.Count)
-                    {
-                        ModLogger.Log($"[CollectPositions] Retry: Full cycle after {i + 1} presses, {units.Count} unique units");
-                        break;
-                    }
-                }
-
-                // Release C
-                SendInputKeyUp(VK_C);
-                _input.SendKeyUpToWindow(_gameWindow, VK_C);
-                PostMessage(_gameWindow, 0x0101, (IntPtr)VK_C, IntPtr.Zero);
-                Thread.Sleep(200);
-                ModLogger.Log($"[CollectPositions] Retry result: {units.Count} units");
-            }
-
-            // Re-open action menu
-            SendKey(VK_F);
-            Thread.Sleep(300);
-
-            // Read status bytes + identity from static battle array
-            // Layout per slot (stride 0x200):
-            //   +0x0C from array base: exp(byte) level(byte) origBrave(byte) brave(byte) origFaith(byte) faith(byte) flag(byte) 00 HP(u16) maxHP(u16)
-            //   +0x45 from array base: 5 status bytes
-            const long AddrStatArrayBase = 0x140893C00;  // Start of battle array (unit 0)
-            const long StatOffStatPattern = 0x20C;        // exp/level offset from array base
-            const long StatOffHp = 0x214;                 // HP offset from array base
-            const long StatOffMaxHp = 0x216;              // MaxHP offset from array base
-            const long StatOffStatus = 0x245;             // Status bytes offset from array base
-            const int StatusStride = 0x200;
-            const int MaxSlots = 21;
-
-            try
-            {
-                // Build batch read for all slot HP+MaxHP+origBrave+origFaith values
-                var slotReads = new (nint, int)[MaxSlots * 4];
-                for (int s = 0; s < MaxSlots; s++)
-                {
-                    long slotBase = AddrStatArrayBase + s * StatusStride;
-                    slotReads[s * 4] = ((nint)(slotBase + StatOffHp), 2);       // HP
-                    slotReads[s * 4 + 1] = ((nint)(slotBase + StatOffMaxHp), 2); // MaxHP
-                    slotReads[s * 4 + 2] = ((nint)(slotBase + StatOffStatPattern), 1); // exp (byte)
-                    slotReads[s * 4 + 3] = ((nint)(slotBase + StatOffStatPattern + 1), 1); // level (byte)
-                }
-                var slotValues = _explorer.ReadMultiple(slotReads);
-
-                // Match each scanned unit to a slot by HP+MaxHP
-                foreach (var unit in units)
-                {
-                    for (int s = 0; s < MaxSlots; s++)
-                    {
-                        int slotHp = (int)slotValues[s * 4];
-                        int slotMaxHp = (int)slotValues[s * 4 + 1];
-                        if (slotMaxHp == unit.MaxHp && slotHp == unit.Hp)
-                        {
-                            // Read status bytes
-                            var statusBytes = _explorer.Scanner.ReadBytes((nint)(AddrStatArrayBase + s * StatusStride + StatOffStatus), 5);
-                            if (statusBytes.Length == 5)
-                            {
-                                unit.StatusBytes = statusBytes;
-                                var decoded = StatusDecoder.Decode(statusBytes);
-                                if (decoded.Count > 0)
-                                    ModLogger.Log($"[CollectPositions] Unit ({unit.GridX},{unit.GridY}) statuses: [{string.Join(",", decoded)}]");
-                            }
-
-                            // Read origBrave/origFaith for roster matching (bytes at statPattern+2 and +4)
-                            var identBytes = _explorer.Scanner.ReadBytes((nint)(AddrStatArrayBase + s * StatusStride + StatOffStatPattern + 2), 4);
-                            if (identBytes.Length == 4)
-                            {
-                                unit.Brave = identBytes[0];  // origBrave
-                                unit.Faith = identBytes[2];  // origFaith
-                            }
-                            break;
+                            unit.LearnedAbilities = ActionAbilityLookup.ResolveLearnedAbilities(learnedIds);
                         }
                     }
+
+                    if (statusBytes.Length == 5)
+                    {
+                        unit.StatusBytes = statusBytes;
+                        var decoded = StatusDecoder.Decode(statusBytes);
+                        if (decoded.Count > 0)
+                            ModLogger.Log($"[CollectPositions] Unit ({gx},{gy}) statuses: [{string.Join(",", decoded)}]");
+                    }
+
+                    units.Add(unit);
+                    usedSlots.Add(s);
+                    ModLogger.Log($"[CollectPositions] Unit {units.Count}: ({gx},{gy}) t{team} lv{lvl} hp={hp}/{maxHp} br={brave} fa={faith}{(isActive ? " [ACTIVE]" : "")}");
                 }
             }
             catch (Exception ex)
             {
-                ModLogger.Log($"[CollectPositions] Status/identity read failed: {ex.Message}");
+                ModLogger.Log($"[CollectPositions] Battle array read failed: {ex.Message}");
             }
 
             // Resolve unit identity from roster for player units (team=0)
