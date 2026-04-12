@@ -44,7 +44,12 @@ namespace FFTColorCustomizer.GameBridge
             // paths and cursor interactions are identical.
             bool battleModeActive = slot9 == 0xFFFFFFFF && (battleMode == 1 || battleMode == 2 || battleMode == 3 || battleMode == 4);
             bool clearlyOnWorldMap = rawValidLocation && party == 0 && battleMode == 0;
-            bool inBattle = (unitSlotsPopulated || battleModeActive) && !clearlyOnWorldMap;
+            // After battle ends, stale flags persist (acted=1, moved=1, slot0=255) but
+            // battleMode resets to 0 and location goes to 255. Not a real battle.
+            // Distinguished from mid-battle flickering (acted=0) by the acted/moved flags.
+            bool postBattleTransition = battleMode == 0 && !rawValidLocation
+                                        && (battleActed == 1 || battleMoved == 1);
+            bool inBattle = (unitSlotsPopulated || battleModeActive) && !clearlyOnWorldMap && !postBattleTransition;
 
             // Formation screen: battle-like flags (slot9=0xFFFFFFFF, battleMode=1)
             // but no units populated yet (slot0=0xFFFFFFFF instead of 0x000000FF).
@@ -60,8 +65,10 @@ namespace FFTColorCustomizer.GameBridge
             // Note: these use unitSlotsPopulated directly, not inBattle, because clearlyOnWorldMap
             // would suppress inBattle (location is valid + battleMode=0 during post-battle).
             // Desertion can appear with paused=0 OR paused=1 and location=valid OR location=255.
+            // MUST require rawValidLocation to distinguish from stale post-battle WorldMap
+            // (where location=255 and all other flags are identical to Desertion).
             bool postBattle = unitSlotsPopulated && battleMode == 0 && gameOverFlag == 0
-                              && (battleActed == 1 || battleMoved == 1);
+                              && (battleActed == 1 || battleMoved == 1) && rawValidLocation;
             bool postBattlePaused = unitSlotsPopulated && battleMode == 0 && paused == 1
                               && gameOverFlag == 1 && (battleActed == 1 || battleMoved == 1);
             if (postBattle && encA != encB)

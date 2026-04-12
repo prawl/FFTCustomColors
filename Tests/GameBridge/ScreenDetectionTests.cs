@@ -531,5 +531,35 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
             Assert.Equal("Battle_Paused", result);
         }
+
+        [Fact]
+        public void DetectScreen_PostBattle_StaleFlags_ShouldNotReturnBattle()
+        {
+            // After battle ends and Desertion is dismissed, stale flags persist:
+            // slot0=255, slot9=0xFFFFFFFF, acted=1, moved=1, submenuFlag=1,
+            // battleMode=0, location=255. Should NOT detect as any Battle_ state.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 8, encB: 8, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0);
+
+            Assert.DoesNotContain("Battle", result);
+        }
+
+        [Fact]
+        public void DetectScreen_PostBattle_StaleFlags_ShouldReturnTitleScreen()
+        {
+            // With location=255 and no battle, should fall through to TitleScreen.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 8, encB: 8, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0);
+
+            Assert.Equal("TitleScreen", result);
+        }
     }
 }
