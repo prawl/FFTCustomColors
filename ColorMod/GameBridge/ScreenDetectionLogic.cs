@@ -76,6 +76,15 @@ namespace FFTColorCustomizer.GameBridge
             if ((postBattle || postBattlePaused) && encA == encB && submenuFlag == 1)
                 return "Battle_Desertion";
 
+            // Mid-battle dialogue: characters talking during an active battle.
+            // eventId > 0 means a dialogue event is playing. battleMode=0 means no
+            // action menu is open (distinguishes from eventId=401 that fires during
+            // normal ability browsing with battleMode=3).
+            if (inBattle && eventId > 0 && eventId != 0xFFFF && battleMode == 0
+                && paused == 0 && gameOverFlag == 0
+                && !(battleActed == 1 || battleMoved == 1)) // exclude post-battle transition
+                return "Battle_Dialogue";
+
             // GameOver: paused=1, battleMode=0, gameOverFlag=1, acted=0 (player didn't finish turn).
             // Desertion warning can also have paused=1 + gameOverFlag=1 + battleMode=0, but
             // it has acted=1/moved=1 (battle was completed). Check acted to distinguish.

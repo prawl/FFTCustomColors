@@ -51,6 +51,7 @@ namespace FFTColorCustomizer.GameBridge
                 "Battle_Paused" => GetBattlePausedPaths(),
                 "Battle_Status" => GetBackOutPaths("You're in the Status screen! Press Escape to get back to battle."),
                 "Battle_AutoBattle" => GetBackOutPaths("You're in the Auto-Battle menu! Press Escape to get back to battle before the AI takes over."),
+                "Battle_Dialogue" => GetBattleDialoguePaths(),
                 "Battle_Victory" => null, // auto-advances, no action needed
                 "Battle_Desertion" => GetDesertionPaths(),
                 "Battle_Formation" => GetBattleFormationPaths(),
@@ -556,6 +557,18 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     Desc = message
                 }
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetBattleDialoguePaths()
+        {
+            return new()
+            {
+                ["Advance"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Advance dialogue (press Enter to continue)"
+                },
             };
         }
 

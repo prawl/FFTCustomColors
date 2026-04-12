@@ -47,18 +47,16 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_BattleCutscene_WithEventId_ReturnsBattle()
+        public void DetectScreen_BattleCutscene_WithEventId_ReturnsBattleDialogue()
         {
-            // Pre-battle cutscenes with unit slots populated — currently detected as Battle.
-            // TODO: Distinguish pre-battle cutscenes from active battle using eventId + battleMode.
+            // Mid-battle dialogue: unit slots populated + eventId active + battleMode=0.
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false, eventId: 4);
 
-            // For now, in-battle cutscenes show as Battle_MyTurn (battleTeam=0, acted=0, moved=0)
-            Assert.Equal("Battle_MyTurn", result);
+            Assert.Equal("Battle_Dialogue", result);
         }
     }
 }
