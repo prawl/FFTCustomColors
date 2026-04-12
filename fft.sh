@@ -624,19 +624,64 @@ console.log('');
 // Abilities with target tiles
 if(activeU&&activeU.abilities){
   console.log('Abilities:');
-  activeU.abilities.forEach(a=>{
-    const tiles=(a.validTargetTiles||[]).map(t=>{
+  // Build display lines, collapsing families with identical targets (e.g. Aim +1..+20)
+  function fmtTiles(rawTiles){
+    return rawTiles.map(t=>{
       let s='('+t.x+','+t.y+')';
-      if(t.unitName)s+='<'+t.unitName+'>';
+      const tag=(t.occupant==='ally'||t.occupant==='self')?' ALLY':'';
+      if(t.unitName)s+='<'+t.unitName+tag+'>';
       else if(t.occupant&&t.occupant!=='empty')s+='<'+t.occupant+'>';
       return s;
     });
+  }
+  function tileKey(rawTiles){
+    return rawTiles.map(t=>t.x+','+t.y).sort().join(';');
+  }
+  const lines=[];
+  const abs=activeU.abilities;
+  for(let i=0;i<abs.length;i++){
+    const a=abs[i];
+    const rawTiles=a.validTargetTiles||[];
+    const hasEnemy=rawTiles.some(t=>t.occupant==='enemy');
+    if(a.target==='enemy'&&!hasEnemy)continue;
+    // Detect numbered family: Name +N or Name N
+    const m=a.name.match(/^(.+?)\\s*\\+?(\\d+)$/);
+    if(m){
+      const prefix=m[1].replace(/\\s+$/,'');
+      const num=m[2];
+      const key=tileKey(rawTiles);
+      // Look ahead for consecutive abilities with same prefix and same tiles
+      const nums=[num];
+      let j=i+1;
+      while(j<abs.length){
+        const b=abs[j];
+        const bm=b.name.match(/^(.+?)\\s*\\+?(\\d+)$/);
+        if(!bm)break;
+        const bp=bm[1].replace(/\\s+$/,'');
+        if(bp!==prefix)break;
+        const bTiles=b.validTargetTiles||[];
+        const bHasEnemy=bTiles.some(t=>t.occupant==='enemy');
+        if(b.target==='enemy'&&!bHasEnemy){j++;continue;}
+        if(tileKey(bTiles)!==key)break;
+        nums.push(bm[2]);
+        j++;
+      }
+      if(nums.length>1){
+        const tiles=fmtTiles(rawTiles);
+        const label=prefix+' (+'+nums[0]+' to +'+nums[nums.length-1]+')';
+        lines.push('  '+label+' \\u2192 '+(tiles.length?tiles.join(' '):'(no targets in range)'));
+        i=j-1;
+        continue;
+      }
+    }
+    const tiles=fmtTiles(rawTiles);
     const mp=a.mpCost?' mp='+a.mpCost:'';
     const ct=a.castSpeed?' ct='+a.castSpeed:'';
     const el=a.element?' ['+a.element+']':'';
     const eff=a.addedEffect?' {'+a.addedEffect+'}':'';
-    console.log('  '+a.name+mp+ct+el+eff+' \u2192 '+(tiles.length?tiles.join(' '):'(no targets in range)'));
-  });
+    lines.push('  '+a.name+mp+ct+el+eff+' \\u2192 '+(tiles.length?tiles.join(' '):'(no targets in range)'));
+  }
+  lines.forEach(l=>console.log(l));
   console.log('');
 }
 

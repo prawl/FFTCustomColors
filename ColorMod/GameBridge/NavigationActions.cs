@@ -3263,6 +3263,7 @@ namespace FFTColorCustomizer.GameBridge
         /// Set during battle_move/battle_attack/auto_move whenever rotation detection runs.
         /// </summary>
         private (int dx, int dy)? _lastDetectedRightDelta;
+        private readonly UnitNameCache _unitNameCache = new();
 
         /// <summary>Last scan results cached for BFS enemy blocking.</summary>
         private List<ScannedUnit>? _lastScannedUnits;
@@ -3686,7 +3687,16 @@ namespace FFTColorCustomizer.GameBridge
                         hpPattern, maxResults: 16, minAddr: 0x4000000000L, maxAddr: 0x4200000000L);
                     if (heapMatches.Count == 0)
                     {
-                        ModLogger.Log($"[CollectPositions] No heap match for ({unit.GridX},{unit.GridY}) hp={unit.Hp}/{unit.MaxHp}");
+                        var cached = _unitNameCache.Get(unit.GridX, unit.GridY);
+                        if (cached != null)
+                        {
+                            unit.JobNameOverride = cached;
+                            ModLogger.Log($"[CollectPositions] Cache hit ({unit.GridX},{unit.GridY}) → {cached} (no heap match)");
+                        }
+                        else
+                        {
+                            ModLogger.Log($"[CollectPositions] No heap match for ({unit.GridX},{unit.GridY}) hp={unit.Hp}/{unit.MaxHp}");
+                        }
                         continue;
                     }
 
@@ -3710,7 +3720,16 @@ namespace FFTColorCustomizer.GameBridge
                     }
                     if (fpBytes == null)
                     {
-                        ModLogger.Log($"[CollectPositions] All heap matches had zero fingerprint for ({unit.GridX},{unit.GridY}) hp={unit.Hp}/{unit.MaxHp}");
+                        var cached2 = _unitNameCache.Get(unit.GridX, unit.GridY);
+                        if (cached2 != null)
+                        {
+                            unit.JobNameOverride = cached2;
+                            ModLogger.Log($"[CollectPositions] Cache hit ({unit.GridX},{unit.GridY}) → {cached2} (zero fingerprint)");
+                        }
+                        else
+                        {
+                            ModLogger.Log($"[CollectPositions] All heap matches had zero fingerprint for ({unit.GridX},{unit.GridY}) hp={unit.Hp}/{unit.MaxHp}");
+                        }
                         continue;
                     }
 
@@ -3719,6 +3738,7 @@ namespace FFTColorCustomizer.GameBridge
                     if (jobName != null)
                     {
                         unit.JobNameOverride = jobName;
+                        _unitNameCache.Set(unit.GridX, unit.GridY, jobName);
                         ModLogger.Log($"[CollectPositions] Fingerprint match ({unit.GridX},{unit.GridY}) → {jobName}");
                     }
                     else
