@@ -307,7 +307,7 @@ if(keys.length){console.log('  ValidPaths:');keys.forEach(k=>console.log('    '+
 }
 
 # battle_wait: End turn. Handles menu navigation → Wait → confirm facing → polls until next friendly turn.
-battle_wait() { fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\"}"; }
+battle_wait() { fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\"}" 60; }
 
 # battle_flee: Quit battle and return to world map (Tab → Down x4 → Enter → Enter).
 battle_flee() { fft "{\"id\":\"$(id)\",\"action\":\"battle_flee\"}"; }
