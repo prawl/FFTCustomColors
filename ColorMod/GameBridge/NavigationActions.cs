@@ -377,10 +377,10 @@ namespace FFTColorCustomizer.GameBridge
 
         private CommandResponse BattleWait(CommandResponse response)
         {
-            _justMoved = false;
             var screen = _detectScreen();
             if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
             {
+                _justMoved = false;
                 response.Status = "failed";
                 response.Error = $"Cannot battle_wait from screen (current: {screen?.Name ?? "null"})";
                 return response;
@@ -393,6 +393,7 @@ namespace FFTColorCustomizer.GameBridge
                 // After Move+Act, game already transitioned to facing screen.
                 // Skip menu navigation entirely — we're already where we need to be.
                 ModLogger.Log($"[BattleWait] Auto-facing detected (screen={screen.Name}), skipping menu navigation");
+                _justMoved = false;
                 Thread.Sleep(300);
             }
             else
@@ -402,6 +403,14 @@ namespace FFTColorCustomizer.GameBridge
 
                 var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
                 int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
+                // After battle_move, game auto-advances cursor to Abilities (1)
+                // but 0x1407FC620 still reads 0. Correct before navigating.
+                if (_justMoved && cursor == 0)
+                {
+                    ModLogger.Log("[BattleWait] Post-move cursor correction: 0 → 1");
+                    cursor = 1;
+                }
+                _justMoved = false; // consumed
                 int target = 2; // Wait
                 ModLogger.Log($"[BattleWait] Cursor at {cursor}, navigating to {target}");
                 NavigateMenuCursor(cursor, target);
@@ -2522,6 +2531,13 @@ namespace FFTColorCustomizer.GameBridge
             if (preWait != null && preWait.Name == "Battle_MyTurn")
             {
                 int waitCursor = preWait.MenuCursor;
+                // After battle_move, game auto-advances cursor to Abilities (1)
+                // but 0x1407FC620 still reads 0. Apply same correction as BattleAbility.
+                if (_justMoved && waitCursor == 0)
+                {
+                    ModLogger.Log("[AutoMove] Post-move cursor correction for Wait: 0 → 1");
+                    waitCursor = 1;
+                }
                 NavigateMenuCursor(waitCursor, 2);
                 Thread.Sleep(200);
 
