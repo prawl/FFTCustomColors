@@ -2325,8 +2325,17 @@ namespace FFTColorCustomizer.Utilities
                     var active = cachedBattle?.Units?.FirstOrDefault(u => u.IsActive);
                     if (active != null)
                     {
-                        screen.ActiveUnitName = active.Name;
-                        screen.ActiveUnitJob = active.JobName;
+                        // Only show cached active unit if the current HP matches.
+                        // After turn changes, the memory HP reflects the NEW active unit
+                        // but the cache still holds the OLD one. Suppress stale names.
+                        bool hpMatches = screen.BattleUnitHp <= 0
+                            || active.Hp <= 0
+                            || screen.BattleUnitHp == active.Hp;
+                        if (hpMatches)
+                        {
+                            screen.ActiveUnitName = active.Name;
+                            screen.ActiveUnitJob = active.JobName;
+                        }
                     }
                 }
 
