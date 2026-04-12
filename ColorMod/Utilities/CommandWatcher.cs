@@ -773,11 +773,8 @@ namespace FFTColorCustomizer.Utilities
                         return ExecuteNavAction(command);
 
                     case "battle_attack":
-                        _lastAbilityName = "Attack";
                         goto case "battle_ability";
                     case "battle_ability":
-                        if (command.Action == "battle_ability")
-                            _lastAbilityName = command.Description; // ability name from command
                         if (!_turnTracker.HasCachedScan)
                             return new CommandResponse { Id = command.Id, Status = "blocked",
                                 Error = "Run scan_move before battle_attack/battle_ability. Scan data is required for targeting.",
@@ -805,9 +802,14 @@ namespace FFTColorCustomizer.Utilities
                                 }
                             }
                         }
+                        // Set ability name only after all validation passes
+                        _lastAbilityName = command.Action == "battle_attack"
+                            ? "Attack" : command.Description;
                         _battleMenuTracker.ReturnToMyTurn();
                         var actionResult = ExecuteNavAction(command);
-                        if (actionResult.Status == "completed")
+                        if (actionResult.Status != "completed")
+                            _lastAbilityName = null; // clear on failure
+                        else
                         {
                             _turnTracker.InvalidateCache();
                             actionResult.PostAction = _navActions?.ReadPostActionState();
