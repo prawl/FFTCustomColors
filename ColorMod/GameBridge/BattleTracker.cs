@@ -911,6 +911,17 @@ namespace FFTColorCustomizer.GameBridge
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? LifeState { get; set; }
 
+        /// <summary>
+        /// Turns remaining before a KO'd unit crystallizes and is permanently lost.
+        /// 3 = just died (3 hearts), 2 = urgent, 1 = critical (next tick = crystal), 0 = crystallized.
+        /// Null for alive units. Helps Claude prioritize: "do I Phoenix Down now or can I wait?"
+        /// NOTE: not yet populated from memory — needs the death counter address discovered
+        /// in a live session. See TODO.md.
+        /// </summary>
+        [JsonPropertyName("deathCounter")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int DeathCounter { get; set; }
+
         /// <summary>Active status effects on this unit (e.g. "Poison", "Haste", "Protect").</summary>
         [JsonPropertyName("statuses")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

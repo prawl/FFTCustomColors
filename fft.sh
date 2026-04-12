@@ -740,7 +740,12 @@ scan_move() {
       var jnStr = disambig ? jn + ' ' + disambig : jn;
       var ex = '';
       if (v.isActive) ex += ' *ACTIVE*';
-      if (v.lifeState) ex += ' [' + v.lifeState + ']';
+      if (v.lifeState) {
+        ex += ' [' + v.lifeState;
+        if (v.lifeState === 'dead' && v.deathCounter > 0)
+          ex += ' ' + v.deathCounter + '/3';
+        ex += ']';
+      }
       if (v.statuses && v.statuses.length) ex += ' [' + v.statuses.join(',') + ']';
       console.log('    [' + t + '] ' + nm + '(' + jnStr + ') (' + v.x + ',' + v.y + ') HP=' + v.hp + '/' + v.maxHp + ' dist=' + (v.distance ?? '?') + ex);
       // Show per-unit abilities for non-active units (active unit shown separately below).
