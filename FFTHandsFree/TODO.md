@@ -439,7 +439,38 @@ FFT uses DirectInput for keyboard polling. Standard Win32 APIs work for single k
 
 ---
 
-## 16. Mod Separation
+## 16. Battle Statistics & Lifetime Tracking
+
+Track per-unit and per-battle stats across the entire playthrough. Surface as a post-battle summary and a `stats` command Claude can call anytime.
+
+### Per-battle stats
+- [ ] Turns to complete
+- [ ] Per-unit: damage dealt, damage received, healing dealt, kills, KOs, tiles moved, abilities used
+- [ ] MVP selection (highest damage + kills weighted)
+- [ ] Fastest kill (fewest hits to KO an enemy)
+- [ ] Closest call (lowest HP any player unit reached while alive)
+- [ ] Party totals: damage dealt/received/healed
+
+### Lifetime stats (persisted to JSON across sessions)
+- [ ] Per-unit career: total battles, total damage, total kills, total heals, times KO'd, times raised, MVP count
+- [ ] Per-unit ability usage breakdown (e.g. "Ramza used Throw Stone 47 times")
+- [ ] Per-unit tiles traversed lifetime total
+- [ ] Session aggregates: battles won/lost/fled, total play time, gil earned
+
+### Display
+- [ ] Post-battle summary rendered after Battle_Victory detection (replaces the game's bare "MVP: Name")
+- [ ] `stats` shell command to query lifetime stats anytime
+- [ ] Fun milestone announcements: "Ramza just passed 10,000 total damage!", "Kenrick has been KO'd more than anyone else (7x)"
+
+### Implementation
+- `BattleStatTracker.cs` accumulates events from postAction/scan diffs
+- Persisted to `claude_bridge/lifetime_stats.json`
+- Hooks: battle_move (distance), battle_ability (damage via HP diff), battle_wait (turn count), scan_move (HP changes = enemy damage to us)
+- MVP formula: `kills * 300 + damage_dealt + healing_dealt * 0.5 - deaths * 200`
+
+---
+
+## 17. Mod Separation
 
 - [ ] **Extract FFTHandsFree into its own Reloaded-II mod** — All the GameBridge code (NavigationActions, BattleTracker, ScreenDetectionLogic, AbilityTargetCalculator, MemoryExplorer, CommandWatcher, etc.), the `claude_bridge/` runtime directory, `fft.sh`, map data, and instruction docs are piggybacked onto the FFTColorCustomizer mod project. They share a `.csproj`, DI container, and entry point. At some point this needs to be its own standalone Reloaded-II mod with its own project, config, and lifecycle — so the color customizer can ship independently without dragging in the entire battle AI bridge. Not urgent while we're iterating fast (shared project = faster builds, single deploy), but becomes important when either mod is ready for public distribution or when the code size makes the shared project unwieldy.
 
