@@ -546,6 +546,21 @@ namespace FFTColorCustomizer.GameBridge
                 ModLogger.Log("[BattleWait] Turn wait complete");
             }
 
+            // Auto-dismiss post-battle screens (Victory auto-advances, Desertion needs Enter)
+            var postScreen = _detectScreen();
+            if (postScreen?.Name == "Battle_Desertion")
+            {
+                ModLogger.Log("[BattleWait] Dismissing Desertion warning");
+                // May have multiple warnings (one per unit near threshold)
+                for (int i = 0; i < 5; i++)
+                {
+                    SendKey(VK_ENTER);
+                    Thread.Sleep(500);
+                    postScreen = _detectScreen();
+                    if (postScreen?.Name != "Battle_Desertion") break;
+                }
+            }
+
             response.Status = "completed";
             return response;
         }
@@ -981,7 +996,8 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(300);
                 response.Status = "completed";
                 response.Info = $"Used {abilityName} (self-target)";
-                _menuCursorStale = true;
+                // Don't set _menuCursorStale — after ability-only, cursor defaults to Move (0) which is correct.
+                // Only battle_move sets cursor stale (game advances to Abilities but memory reads 0).
                 return response;
             }
 
@@ -1021,7 +1037,6 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(300);
                 response.Status = "completed";
                 response.Info = $"Used {abilityName} on ({targetX},{targetY}) — cursor was already on target";
-                _menuCursorStale = true;
                 return response;
             }
 
@@ -1109,7 +1124,6 @@ namespace FFTColorCustomizer.GameBridge
 
             response.Status = "completed";
             response.Info = $"Used {abilityName} on ({targetX},{targetY})";
-            _menuCursorStale = true;
             return response;
         }
 
@@ -1710,9 +1724,19 @@ namespace FFTColorCustomizer.GameBridge
                                     {
                                         if (!unitByPos.TryGetValue(st, out var hitUnit)) continue;
                                         if (hitUnit.Team == 0 || hitUnit.Team == 2)
-                                            allies.Add(UnitDisplayName(hitUnit));
+                                        {
+                                            // Summons: ally-target (Moogle/Carbuncle/Faerie) hits allies;
+                                            // enemy-target (Shiva/Ramuh/etc.) skips allies entirely.
+                                            if (!isSummon || wantsAlly)
+                                                allies.Add(UnitDisplayName(hitUnit));
+                                        }
                                         else
-                                            enemies.Add(UnitDisplayName(hitUnit));
+                                        {
+                                            // Summons: enemy-target hits enemies;
+                                            // ally-target (Moogle/Carbuncle/Faerie) skips enemies.
+                                            if (!isSummon || !wantsAlly)
+                                                enemies.Add(UnitDisplayName(hitUnit));
+                                        }
                                     }
                                     if (enemies.Count == 0 && allies.Count == 0) continue;
                                     int score = AbilityTargetCalculator.ComputeSplashScore(

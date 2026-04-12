@@ -86,7 +86,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void EffectiveMenuCursor_StaleFlagTrue_MemoryReads0_Returns1()
         {
-            // After move or ability, memory reads 0 but game cursor is at Abilities (1)
+            // After move, memory reads 0 but game cursor is at Abilities (1).
+            // Flag is ONLY set after battle_move (not ability — ability returns cursor to Move/0).
             int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 0, menuCursorStale: true);
             Assert.Equal(1, result);
         }

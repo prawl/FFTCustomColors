@@ -1534,7 +1534,11 @@ namespace FFTColorCustomizer.Utilities
 
             // Primary skillset from roster-sourced job name
             if (activeUnit.JobName != null)
+            {
                 _cachedPrimarySkillset = GetPrimarySkillsetByJobName(activeUnit.JobName);
+                if (_cachedPrimarySkillset == null)
+                    ModLogger.Log($"[CommandBridge] WARN: No primary skillset for job '{activeUnit.JobName}' — submenu will be missing primary");
+            }
 
             // Secondary skillset from the roster-matched scan data
             // Uses the active unit from Units list (correctly matched by RosterMatcher)
@@ -2180,6 +2184,7 @@ namespace FFTColorCustomizer.Utilities
                     bool hasMoved = screen.BattleMoved == 1 || _movedThisTurn;
                     // After moving, the game auto-advances cursor to Abilities (1)
                     // but 0x1407FC620 still reads 0. Correct for display.
+                    // After ability (without move), cursor defaults back to Move (0) — no correction needed.
                     int effectiveCursor = screen.MenuCursor;
                     if (hasMoved && effectiveCursor == 0)
                         effectiveCursor = 1;
