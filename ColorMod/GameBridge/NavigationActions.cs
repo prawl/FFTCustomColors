@@ -472,11 +472,13 @@ namespace FFTColorCustomizer.GameBridge
             // Confirm facing (game says "press F to confirm")
             SendKey(VK_F);
 
-            // Hold Ctrl to fast-forward enemy turns
+            // NOTE: Ctrl fast-forward disabled — holding Ctrl during enemy turns
+            // was causing the bridge to time out and stop responding to commands.
+            // The game still processes turns at normal speed without it.
             Thread.Sleep(500);
-            SendInputKeyDown(VK_CONTROL);
-            _input.SendKeyDownToWindow(_gameWindow, VK_CONTROL);
-            ModLogger.Log("[BattleWait] Holding Ctrl for fast-forward");
+            // SendInputKeyDown(VK_CONTROL);
+            // _input.SendKeyDownToWindow(_gameWindow, VK_CONTROL);
+            ModLogger.Log("[BattleWait] Waiting for enemy turns (Ctrl fast-forward disabled)");
 
             // Poll until it's a friendly unit's turn again (or game over/timeout)
             var sw = Stopwatch.StartNew();
@@ -523,10 +525,10 @@ namespace FFTColorCustomizer.GameBridge
             }
             finally
             {
-                // Always release Ctrl
-                SendInputKeyUp(VK_CONTROL);
-                _input.SendKeyUpToWindow(_gameWindow, VK_CONTROL);
-                ModLogger.Log("[BattleWait] Released Ctrl");
+                // Release Ctrl (no-op while disabled, kept for safety)
+                // SendInputKeyUp(VK_CONTROL);
+                // _input.SendKeyUpToWindow(_gameWindow, VK_CONTROL);
+                ModLogger.Log("[BattleWait] Turn wait complete");
             }
 
             response.Status = "completed";
