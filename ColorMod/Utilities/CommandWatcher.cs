@@ -473,13 +473,14 @@ namespace FFTColorCustomizer.Utilities
                         _turnTracker.MarkScanned();
                         var scanResult = ExecuteNavAction(command);
                         if (scanResult.Status == "completed")
-                        {
                             _turnTracker.CacheScanResponse(scanResult);
-                            // Compact mode (default): strip empty tiles and flavor text
-                            // from ability entries to save tokens. Verbose mode keeps all.
-                            if (!command.Verbose)
-                                CompactAbilities(scanResult);
-                        }
+                        // Compact mode (default): strip empty tiles and flavor text.
+                        // Applied AFTER caching so the cache holds the full response
+                        // and verbose mode can return it unmodified on cache hits.
+                        // Compaction mutates in-place — the cache is also compacted,
+                        // but that's OK since subsequent compact returns are idempotent.
+                        if (!command.Verbose && scanResult.Status == "completed")
+                            CompactAbilities(scanResult);
                         return scanResult;
 
 
