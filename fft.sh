@@ -292,7 +292,7 @@ execute_action() {
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 750 ]; then echo "[TIMEOUT]"; return 1; fi
+    if [ $tries -ge 1500 ]; then echo "[TIMEOUT]"; return 1; fi
   done
   node -e "
 const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
