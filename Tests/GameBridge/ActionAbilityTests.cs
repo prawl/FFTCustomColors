@@ -162,5 +162,101 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // These should NOT be filtered out — Fundaments is the Squire version of Mettle
             Assert.Equal(3, filtered.Count);
         }
+
+        [Fact]
+        public void CollapseJumpAbilities_ReturnsOneEntry_WithHighestHorizontalRange()
+        {
+            var learned = new List<ActionAbilityInfo>
+            {
+                new(0, "Horizontal Jump +1", 0, "2", 0, 1, 0, "enemy", ""),
+                new(0, "Horizontal Jump +2", 0, "3", 0, 1, 0, "enemy", ""),
+                new(0, "Horizontal Jump +3", 0, "4", 0, 1, 0, "enemy", ""),
+                new(0, "Vertical Jump +2",   0, "0", 2, 1, 0, "enemy", ""),
+                new(0, "Vertical Jump +5",   0, "0", 5, 1, 0, "enemy", ""),
+            };
+
+            var result = ActionAbilityLookup.CollapseJumpAbilities(learned);
+
+            Assert.Single(result);
+            Assert.Equal("Jump", result[0].Name);
+            Assert.Equal("4", result[0].HRange); // highest Horizontal Jump +3 → range 4
+            Assert.Equal(5, result[0].VRange);    // highest Vertical Jump +5
+        }
+
+        [Fact]
+        public void CollapseJumpAbilities_OnlyHorizontal_VRangeIsZero()
+        {
+            var learned = new List<ActionAbilityInfo>
+            {
+                new(0, "Horizontal Jump +1", 0, "2", 0, 1, 0, "enemy", ""),
+                new(0, "Horizontal Jump +7", 0, "8", 0, 1, 0, "enemy", ""),
+            };
+
+            var result = ActionAbilityLookup.CollapseJumpAbilities(learned);
+
+            Assert.Single(result);
+            Assert.Equal("Jump", result[0].Name);
+            Assert.Equal("8", result[0].HRange);
+            Assert.Equal(0, result[0].VRange);
+        }
+
+        [Fact]
+        public void CollapseJumpAbilities_EmptyList_ReturnsEmpty()
+        {
+            var result = ActionAbilityLookup.CollapseJumpAbilities(new List<ActionAbilityInfo>());
+
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public void CollapseJumpAbilities_NonJumpAbilities_PassedThrough()
+        {
+            var learned = new List<ActionAbilityInfo>
+            {
+                new(0, "Horizontal Jump +4", 0, "5", 0, 1, 0, "enemy", ""),
+                new(0, "Vertical Jump +3",   0, "0", 3, 1, 0, "enemy", ""),
+                new(0, "Some Other Ability",  0, "3", 0, 1, 0, "enemy", ""),
+            };
+
+            var result = ActionAbilityLookup.CollapseJumpAbilities(learned);
+
+            Assert.Equal(2, result.Count);
+            Assert.Equal("Jump", result[0].Name);
+            Assert.Equal("Some Other Ability", result[1].Name);
+        }
+
+        [Fact]
+        public void GetLearnedAbilitiesFromBitfield_Jump_CollapsesToSingleEntry()
+        {
+            // Bits 0-4 = Horizontal Jump +1 through +7 (5 entries)
+            // Bits 5-11 = Vertical Jump +2 through +8 (7 entries)
+            // Learn Horizontal +1 (bit 0), +2 (bit 1), +3 (bit 2) and Vertical +2 (bit 5), +5 (bit 8)
+            byte byte0 = 0b_1110_0100; // bits 0,1,2 = H+1,H+2,H+3; bit 5 = V+2
+            byte byte1 = 0b_0010_0000; // bit 8 (= bit 0 of byte1) = V+5... wait
+
+            // Actually let me check the bitfield layout. MSB-first means:
+            // byte0 bit 7 = ability index 0 (Horizontal Jump +1)
+            // byte0 bit 6 = ability index 1 (Horizontal Jump +2)
+            // byte0 bit 5 = ability index 2 (Horizontal Jump +3)
+            // byte0 bit 4 = ability index 3 (Horizontal Jump +4)
+            // byte0 bit 3 = ability index 4 (Horizontal Jump +7)
+            // byte0 bit 2 = ability index 5 (Vertical Jump +2)
+            // byte0 bit 1 = ability index 6 (Vertical Jump +3)
+            // byte0 bit 0 = ability index 7 (Vertical Jump +4)
+            // byte1 bit 7 = ability index 8 (Vertical Jump +5)
+            // ...
+
+            // Learn H+1(idx0), H+3(idx2), V+5(idx8):
+            byte b0 = (byte)((0x80 >> 0) | (0x80 >> 2)); // bit7 + bit5 = 0xA0
+            byte b1 = (byte)(0x80 >> 0); // bit7 = 0x80 → ability index 8 = Vertical Jump +5
+
+            var result = ActionAbilityLookup.GetLearnedAbilitiesFromBitfield("Jump", b0, b1);
+
+            // Should be collapsed to single "Jump" entry
+            Assert.Single(result);
+            Assert.Equal("Jump", result[0].Name);
+            Assert.Equal("4", result[0].HRange);  // H+3 → range 4 (highest horizontal)
+            Assert.Equal(5, result[0].VRange);     // V+5 (highest vertical)
+        }
     }
 }

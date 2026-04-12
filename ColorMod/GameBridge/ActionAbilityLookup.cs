@@ -223,6 +223,46 @@ namespace FFTColorCustomizer.GameBridge
                 if (learnedIndices.Contains(i))
                     result.Add(skillset[i]);
             }
+
+            if (skillsetName == "Jump")
+                result = CollapseJumpAbilities(result);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Collapse individual Horizontal Jump +N / Vertical Jump +N entries into a
+        /// single "Jump" entry whose HR = highest learned Horizontal range and
+        /// VR = highest learned Vertical range. In-game, Jump is one menu entry
+        /// whose effective range is determined by the highest learned levels.
+        /// Non-Jump abilities in the list are passed through unchanged.
+        /// </summary>
+        public static List<ActionAbilityInfo> CollapseJumpAbilities(List<ActionAbilityInfo> learnedJumpAbilities)
+        {
+            int maxHR = 0;
+            int maxVR = 0;
+            var others = new List<ActionAbilityInfo>();
+
+            foreach (var a in learnedJumpAbilities)
+            {
+                if (a.Name.StartsWith("Horizontal Jump") && int.TryParse(a.HRange, out int hr))
+                    maxHR = Math.Max(maxHR, hr);
+                else if (a.Name.StartsWith("Vertical Jump"))
+                    maxVR = Math.Max(maxVR, a.VRange);
+                else
+                    others.Add(a);
+            }
+
+            var result = new List<ActionAbilityInfo>();
+
+            if (maxHR > 0 || maxVR > 0)
+            {
+                result.Add(new(0, "Jump", 0, maxHR.ToString(), maxVR, 1, 0, "enemy",
+                    $"Jump to target tile and attack on landing. Range {maxHR}, vertical reach {maxVR}.",
+                    CastSpeed: 0));
+            }
+
+            result.AddRange(others);
             return result;
         }
 
