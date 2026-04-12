@@ -1802,6 +1802,55 @@ namespace FFTColorCustomizer.GameBridge
                     Statuses = StatusDecoder.Decode(u.StatusBytes) is var s && s.Count > 0 ? s : null,
                     Abilities = abilities,
                 });
+
+                // Prepend basic Attack to the active player unit's ability list.
+                // Uses HR=1 (melee default) — will need weapon-type detection for
+                // ranged weapons (guns, bows, crossbows) in the future. VR=0 falls
+                // back to casterJump via the calculator.
+                if (isActive && u.Team == 0)
+                {
+                    var abilityMap = _mapLoader?.CurrentMap;
+                    var attackInfo = new ActionAbilityInfo(
+                        ActionAbilityLookup.ATTACK_ID, "Attack", 0,
+                        "1", 0, 1, 0, "enemy", "Attacks with the equipped weapon, or bare fists if no weapon is equipped.");
+                    var attackEntry = new AbilityEntry
+                    {
+                        Name = "Attack",
+                        HRange = "1",
+                        AoE = 1,
+                        Target = "enemy",
+                        Effect = "Attacks with the equipped weapon, or bare fists if no weapon is equipped.",
+                    };
+                    if (abilityMap != null)
+                    {
+                        var attackTiles = AbilityTargetCalculator.GetValidTargetTiles(
+                            u.GridX, u.GridY, attackInfo, abilityMap, u.Jump);
+                        if (attackTiles.Count > 0)
+                        {
+                            attackEntry.ValidTargetTiles = attackTiles
+                                .OrderBy(t => t.y).ThenBy(t => t.x)
+                                .Select(t =>
+                                {
+                                    var tile = new ValidTargetTile { X = t.x, Y = t.y };
+                                    if (unitByPos.TryGetValue((t.x, t.y), out var occ))
+                                    {
+                                        tile.Occupant = occ == u ? "self"
+                                            : (occ.Team == 0 || occ.Team == 2) ? "ally"
+                                            : "enemy";
+                                        tile.UnitName = !string.IsNullOrEmpty(occ.Name) ? occ.Name
+                                            : !string.IsNullOrEmpty(occ.JobNameOverride) ? occ.JobNameOverride
+                                            : occ.Team == 0 ? GameStateReporter.GetJobName(occ.Job) ?? "?"
+                                            : "?";
+                                    }
+                                    return tile;
+                                })
+                                .ToList();
+                        }
+                    }
+                    var unitState = battleState.Units[battleState.Units.Count - 1];
+                    unitState.Abilities ??= new List<AbilityEntry>();
+                    unitState.Abilities.Insert(0, attackEntry);
+                }
             }
 
             // --- Helper: filter abilities to only equipped skillsets ---
