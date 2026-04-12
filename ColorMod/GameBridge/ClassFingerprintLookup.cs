@@ -39,6 +39,7 @@ namespace FFTColorCustomizer.GameBridge
             ["05-73-1E-05-55-78-27-6C-07-55"] = "Skeleton",
             ["05-65-1E-03-55-66-27-7D-07-58"] = "Skeletal Fiend",
             ["05-5A-1E-04-55-6A-27-7B-07-57"] = "Bonesnatch",
+            ["00-00-00-00-06-01-00-00-00-00"] = "Bonesnatch", // variant — near-zero fingerprint, possibly mod-altered
             ["07-52-1E-60-55-6E-27-5D-07-6A"] = "Ghast",
             ["07-53-1E-7C-55-67-27-5A-07-69"] = "Ghoul",
             ["07-5D-1E-40-55-79-27-61-07-6E"] = "Revenant",
