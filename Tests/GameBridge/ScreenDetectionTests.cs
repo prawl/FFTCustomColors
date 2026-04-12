@@ -463,6 +463,21 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_Desertion_WithPaused_ShouldReturnBattleDesertion()
+        {
+            // Second observed Desertion variant: paused=1, location=255, gameOverFlag=1.
+            // Previously misdetected as GameOver. Distinguished by acted=1/moved=1.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 9, encB: 9, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0);
+
+            Assert.Equal("Battle_Desertion", result);
+        }
+
+        [Fact]
         public void DetectScreen_Status_Paused_MenuCursor3_ShouldReturnBattleStatus()
         {
             // Status screen: paused=1 + menuCursor=3. Previously misdetected as Battle_Paused.

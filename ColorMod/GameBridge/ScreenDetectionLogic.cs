@@ -59,14 +59,21 @@ namespace FFTColorCustomizer.GameBridge
             // Desertion: encA == encB, warns about units near Brave/Faith thresholds. Needs Enter.
             // Note: these use unitSlotsPopulated directly, not inBattle, because clearlyOnWorldMap
             // would suppress inBattle (location is valid + battleMode=0 during post-battle).
-            bool postBattle = unitSlotsPopulated && battleMode == 0 && paused == 0 && gameOverFlag == 0
-                              && (battleActed == 1 || battleMoved == 1) && rawValidLocation;
+            // Desertion can appear with paused=0 OR paused=1 and location=valid OR location=255.
+            bool postBattle = unitSlotsPopulated && battleMode == 0 && gameOverFlag == 0
+                              && (battleActed == 1 || battleMoved == 1);
+            bool postBattlePaused = unitSlotsPopulated && battleMode == 0 && paused == 1
+                              && gameOverFlag == 1 && (battleActed == 1 || battleMoved == 1);
             if (postBattle && encA != encB)
                 return "Battle_Victory";
-            if (postBattle && encA == encB && submenuFlag == 1)
+            if ((postBattle || postBattlePaused) && encA == encB && submenuFlag == 1)
                 return "Battle_Desertion";
 
-            if (inBattle && paused == 1 && battleMode == 0 && gameOverFlag == 1)
+            // GameOver: paused=1, battleMode=0, gameOverFlag=1, acted=0 (player didn't finish turn).
+            // Desertion warning can also have paused=1 + gameOverFlag=1 + battleMode=0, but
+            // it has acted=1/moved=1 (battle was completed). Check acted to distinguish.
+            if (inBattle && paused == 1 && battleMode == 0 && gameOverFlag == 1
+                && battleActed == 0 && battleMoved == 0)
                 return "GameOver";
             // Status screen: paused=1 + menuCursor=3. Must check before Battle_Paused.
             if (inBattle && paused == 1 && menuCursor == 3)
