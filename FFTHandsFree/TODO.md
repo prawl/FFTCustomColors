@@ -59,6 +59,13 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 - [ ] **Remove false MISSED detection** — `battle_attack` reports "MISSED (no HP change detected)" on every attack because the HP check reads stale memory before the damage resolves. BattleTracker already detects real damage at 100ms polling. Remove the immediate HP comparison and rely on BattleTracker events instead.
 - [ ] **Auto-screen after Wait** — After `execute_action Wait` or `battle_wait` completes (next friendly turn starts), automatically run `screen` and include the full battle state in the response. This makes the turn loop a single command: attack → wait+screen. The user still decides what to do — they just don't have to type `screen` every time.
 
+### Screen Output Polish (identified 2026-04-12 end of session)
+
+- [ ] **Hide abilities with no enemy targets for damage abilities** [UX] — Wilham's screen shows 30+ abilities, most of which only hit allies or have no targets in range. For offensive abilities (target=enemy), hide them entirely if no enemy is in their target tile list. Keeps the output focused on actionable choices. Buff/heal abilities should still show ally targets.
+- [ ] **Collapse Aim+N abilities into one entry** [UX] — Kenrick's Aim+1 through Aim+20 all hit the same tiles. Collapse into one line: `Aim (+1 to +20) → (10,6)<Skeleton> (7,11)<Wisenkin>`. Same for any ability family that shares identical target tiles.
+- [ ] **Cache unit class names by position** [State] — Enemy class names (from fingerprint lookup) disappear after HP changes because the fingerprint search uses HP+MaxHP to find the heap struct. Once a unit is identified, cache its name keyed by grid position so it persists across turns. Show cached name even when fingerprint re-lookup fails. `(9,8)<?>` should stay `(9,8)<Skeleton>`.
+- [ ] **Tag ally targets in ability tile lists** [UX] — Attack shows `(9,9)<Ramza>` alongside enemies, making it easy to accidentally target allies. Tag allies clearly: `(9,9)<Ramza ALLY>` or filter allies from enemy-target abilities entirely. Heal/buff abilities should still show allies normally. Enemy abilities targeting allies should show `(9,9)<Ramza>` without tag.
+
 ### Tier 1 — Unblockers (do first)
 
 - [ ] **Inventory quantity for Items, Throw, and Iaido** [Abilities] — Three skillsets depend on a per-character "Held" count:
