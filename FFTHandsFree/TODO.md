@@ -354,10 +354,20 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 ## 12. Known Issues / Blockers
 
 ### Missing Screen States
-- [ ] **Formation** — Pre-battle unit placement screen. Currently misdetected as TravelList for 3-6s during transition. Need to find a memory signal that distinguishes it from TravelList/WorldMap. Critical for automated battle entry.
+- [x] **Battle_Formation** — Detected via slot0=0xFFFFFFFF + battleMode=1. Implemented 2026-04-12.
 - [ ] **Battle_Cutscene** — Mid-battle cutscenes (pre-battle intros, death speeches, mid-fight dialogue). Currently detected as `Cutscene` or falls through to `Battle`. Need to distinguish from regular cutscenes so Claude knows it's still in a battle context.
-- [ ] **Battle_Victory** — Victory screen after winning. Currently misdetected as TravelList/EncounterDialog. Need to capture memory values during victory to find a reliable signal.
-- [ ] **SaveScreen / LoadScreen** — Save and load game screens. Not detected yet. Need memory investigation.
+- [x] **Battle_Victory** — Detected via post-battle flags + encA != encB. Auto-advances. Implemented 2026-04-12.
+- [x] **Battle_Desertion** — Post-victory Brave/Faith warning. Detected via post-battle + encA == encB + submenuFlag=1. Needs Enter to dismiss. Implemented 2026-04-12.
+- [x] **Battle_Status** — Status screen (paused=1 + menuCursor=3). Escape to exit. Implemented 2026-04-12.
+- [x] **Battle_AutoBattle** — Auto-Battle submenu (submenuFlag=1 + menuCursor=4). Escape to exit. Implemented 2026-04-12.
+- [ ] **SaveScreen / LoadScreen** — Indistinguishable from TitleScreen with static addresses. All memory values identical. Would need UE4 widget tree hooks or state transition tracking. Parked 2026-04-12.
+- [ ] **Settlement** — Outfitter/Tavern/Warriors' Guild menu. Indistinguishable from TravelList with static addresses (both have uiFlag=1). Only differentiator found was a heap pointer at 0x140D4A290 which shifts between sessions. Could use location-based heuristic (uiFlag=1 + location 0-14 = Settlement). Parked 2026-04-12.
+
+### Bugs Found 2026-04-12
+- [ ] **Wilham detected as "Steelhawk" instead of Summoner** — Fingerprint or roster match returning wrong job name. Causes `GetPrimarySkillsetByJobName` to return null → primary skillset missing from submenu items → `battle_ability` navigates to wrong skillset. Need to investigate whether this is a fingerprint collision or roster job ID mapping issue.
+- [ ] **battle_move CONFIRMED for out-of-range tiles** — Move validation passed and reported CONFIRMED for a tile outside the valid range. The confirmation logic checks for `Battle_MyTurn` returning, but the game rejecting the move also returns to `Battle_MyTurn`. Need to verify the unit's position actually changed after a "confirmed" move.
+- [ ] **battle_wait enters AutoBattle after battle_ability** — After Shout (self-target), `battle_wait` navigated to AutoBattle (index 4) instead of Wait (index 2). The `_justMoved` flag was false (no move was done, only ability), so the post-move cursor correction didn't apply. But after `battle_ability`, the menu cursor is also stale. Need a `_justActed` flag or generalize the cursor correction for any action that changes cursor state.
+- [ ] **Submenu items missing primary skillset** — When `GetPrimarySkillsetByJobName` returns null (unknown job like "Steelhawk"), the submenu items are `[Attack, Secondary]` instead of `[Attack, Primary, Secondary]`. Navigation then presses wrong number of Downs. Should log a warning when primary is null.
 
 ### Screen Detection Edge Cases
 - Battle_Paused false positives: pauseFlag=1 stale after facing confirmation
