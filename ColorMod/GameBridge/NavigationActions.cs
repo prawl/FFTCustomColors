@@ -1598,6 +1598,7 @@ namespace FFTColorCustomizer.GameBridge
                 Mp = ally.Mp,
                 MaxMp = ally.MaxMp,
                 NameId = ally.NameId,
+                Name = ally.Name,
                 JobId = ally.Job,
                 JobName = ally.JobNameOverride ?? GameStateReporter.GetJobName(ally.Job),
                 Brave = ally.Brave,
