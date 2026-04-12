@@ -630,5 +630,55 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 enemyCount: 0, allyCount: 3, wantsAlly: true, isSummon: false);
             Assert.Equal(3, score);
         }
+
+        // --- Dead unit filtering ---
+
+        [Fact]
+        public void IsRevivalAbility_PhoenixDown_ReturnsTrue()
+        {
+            var ability = new ActionAbilityInfo(0, "Phoenix Down", 0, "4", 99, 1, 0, "ally", "")
+            {
+                AddedEffect = "Removes KO"
+            };
+            Assert.True(AbilityTargetCalculator.IsRevivalAbility(ability));
+        }
+
+        [Fact]
+        public void IsRevivalAbility_Attack_ReturnsFalse()
+        {
+            var ability = new ActionAbilityInfo(0, "Attack", 0, "1", 99, 1, 0, "enemy", "");
+            Assert.False(AbilityTargetCalculator.IsRevivalAbility(ability));
+        }
+
+        [Fact]
+        public void IsRevivalAbility_Revive_ReturnsTrue()
+        {
+            var ability = new ActionAbilityInfo(0, "Revive", 0, "1", 99, 1, 0, "ally", "")
+            {
+                AddedEffect = "Removes KO"
+            };
+            Assert.True(AbilityTargetCalculator.IsRevivalAbility(ability));
+        }
+
+        [Fact]
+        public void IsRevivalAbility_Raise_ReturnsTrue()
+        {
+            // Raise has "Removes KO" in its added effect
+            var ability = new ActionAbilityInfo(0, "Raise", 0, "4", 99, 1, 0, "ally", "")
+            {
+                AddedEffect = "Removes KO"
+            };
+            Assert.True(AbilityTargetCalculator.IsRevivalAbility(ability));
+        }
+
+        [Fact]
+        public void IsRevivalAbility_CureWithoutKO_ReturnsFalse()
+        {
+            var ability = new ActionAbilityInfo(0, "Cure", 0, "4", 99, 1, 0, "ally", "")
+            {
+                AddedEffect = "Restores HP"
+            };
+            Assert.False(AbilityTargetCalculator.IsRevivalAbility(ability));
+        }
     }
 }

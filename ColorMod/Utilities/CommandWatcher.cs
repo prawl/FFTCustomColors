@@ -414,54 +414,7 @@ namespace FFTColorCustomizer.Utilities
 
                     case "scan_move":
                     case "auto_move":
-                        // Refresh cache state based on current battle state — ShouldAutoScan
-                        // detects turn/unit changes and invalidates the cache as a side
-                        // effect. Without this, scan_move would return stale cached data
-                        // forever after a turn change (the cache invalidation only runs
-                        // on battle_move/attack/ability/wait actions otherwise).
-                        {
-                            var preScreen = DetectScreen();
-                            if (preScreen != null)
-                            {
-                                // Read the active unit's grid position for unit-change
-                                // detection. Position is the most reliable signal for
-                                // detecting turn switches in multi-unit parties — two
-                                // units can have the same HP but never the same position.
-                                int ux = -1, uy = -1;
-                                if (preScreen.Name == "Battle_MyTurn" && Explorer != null)
-                                {
-                                    var rx = Explorer.ReadAbsolute((nint)0x140C64A54, 1);
-                                    var ry = Explorer.ReadAbsolute((nint)0x140C6496C, 1);
-                                    if (rx != null) ux = (int)rx.Value.value;
-                                    if (ry != null) uy = (int)ry.Value.value;
-                                }
-                                bool hadCache = _turnTracker.HasCachedScan;
-                                _turnTracker.ShouldAutoScan(
-                                    preScreen.Name,
-                                    team: preScreen.BattleTeam,
-                                    unitId: preScreen.BattleUnitId,
-                                    unitHp: preScreen.BattleUnitHp,
-                                    unitX: ux, unitY: uy);
-                                // If ShouldAutoScan just invalidated the cache, a new
-                                // unit's turn started — reset per-turn state.
-                                if (hadCache && !_turnTracker.HasCachedScan)
-                                {
-                                    _movedThisTurn = false;
-                                    _waitConfirmPending = false;
-                                    _lastAbilityName = null;
-                                    _battleMenuTracker.OnNewTurn();
-                                }
-                            }
-                        }
-                        if (_turnTracker.HasCachedScan)
-                        {
-                            ModLogger.Log("[CommandBridge] Returning cached scan (already scanned this turn)");
-                            var cached = _turnTracker.CachedScanResponse!;
-                            cached.Id = command.Id;
-                            cached.Info = (cached.Info != null ? cached.Info + " | " : "") + "[cached]";
-                            return cached;
-                        }
-                        // Block scan during animations/enemy turns
+                        // No caching — scan is ~15ms (pure memory reads), always fresh.
                         {
                             var currentScreen = DetectScreen();
                             if (currentScreen != null && !BattleTurnTracker.CanScan(currentScreen.Name))
@@ -472,15 +425,9 @@ namespace FFTColorCustomizer.Utilities
                                 break;
                             }
                         }
-                        _turnTracker.MarkScanned();
                         var scanResult = ExecuteNavAction(command);
                         if (scanResult.Status == "completed")
-                            _turnTracker.CacheScanResponse(scanResult);
-                        // Compact mode (default): strip empty tiles and flavor text.
-                        // Applied AFTER caching so the cache holds the full response
-                        // and verbose mode can return it unmodified on cache hits.
-                        // Compaction mutates in-place — the cache is also compacted,
-                        // but that's OK since subsequent compact returns are idempotent.
+                            _turnTracker.CacheScanResponse(scanResult); // still cache for battle_attack/ability/move
                         if (!command.Verbose && scanResult.Status == "completed")
                             CompactAbilities(scanResult);
                         return scanResult;
@@ -775,11 +722,14 @@ namespace FFTColorCustomizer.Utilities
                     case "battle_attack":
                         goto case "battle_ability";
                     case "battle_ability":
+                        // Auto-scan if no cached scan data (scan is ~15ms, no reason to block)
                         if (!_turnTracker.HasCachedScan)
-                            return new CommandResponse { Id = command.Id, Status = "blocked",
-                                Error = "Run scan_move before battle_attack/battle_ability. Scan data is required for targeting.",
-                                ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
-                                Screen = DetectScreenSettled() };
+                        {
+                            var autoScanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
+                            var autoScanRes = ExecuteNavAction(autoScanCmd);
+                            if (autoScanRes.Status == "completed")
+                                _turnTracker.CacheScanResponse(autoScanRes);
+                        }
                         // Validate target is within ability's horizontal range from caster
                         if (command.Action == "battle_ability" && command.Description != null
                             && command.LocationId >= 0 && command.UnitIndex >= 0
@@ -818,11 +768,14 @@ namespace FFTColorCustomizer.Utilities
 
                     case "battle_move":
                     case "move_grid": // legacy alias
+                        // Auto-scan if no cached scan data
                         if (!_turnTracker.HasCachedScan)
-                            return new CommandResponse { Id = command.Id, Status = "blocked",
-                                Error = "Run scan_move before battle_move. Scan data is required for tile validation.",
-                                ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
-                                Screen = DetectScreenSettled() };
+                        {
+                            var moveScanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
+                            var moveScanRes = ExecuteNavAction(moveScanCmd);
+                            if (moveScanRes.Status == "completed")
+                                _turnTracker.CacheScanResponse(moveScanRes);
+                        }
                         _battleMenuTracker.ReturnToMyTurn();
                         _movedThisTurn = true;
                         var moveResult = ExecuteNavAction(command);

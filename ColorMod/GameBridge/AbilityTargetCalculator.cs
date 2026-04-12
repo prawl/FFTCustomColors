@@ -37,6 +37,15 @@ namespace FFTColorCustomizer.GameBridge
         };
 
         /// <summary>
+        /// Returns true if this ability can target dead/KO'd units (revival abilities).
+        /// Used to filter dead units out of target tile lists for non-revival abilities.
+        /// </summary>
+        public static bool IsRevivalAbility(ActionAbilityInfo ability)
+        {
+            return ability.AddedEffect != null && ability.AddedEffect.Contains("Removes KO");
+        }
+
+        /// <summary>
         /// Returns true if this ability is a single-tile point-target ability
         /// (AoE=1, numeric HRange, not self-cast, not an explicitly-tagged shape).
         /// </summary>

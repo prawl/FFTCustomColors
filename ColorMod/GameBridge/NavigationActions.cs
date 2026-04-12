@@ -718,45 +718,10 @@ namespace FFTColorCustomizer.GameBridge
             Thread.Sleep(500);
             SendKey(VK_ENTER);
 
-            // Step 9: Poll for HP change while struct still shows the target (same team)
-            int postAttackHp = preAttackHp;
-            if (preAttackHp > 0)
-            {
-                for (int poll = 0; poll < 60; poll++) // 60 * 100ms = 6s max
-                {
-                    Thread.Sleep(100);
-                    var teamRead = _explorer.ReadAbsolute((nint)AddrCondensedTeam, 2);
-                    int currentTeam = teamRead != null ? (int)teamRead.Value.value : -1;
-
-                    // Struct switched away from target — stop polling
-                    if (currentTeam != targetTeam)
-                    {
-                        ModLogger.Log($"[BattleAttack] Struct switched to team {currentTeam} after {poll * 100}ms");
-                        break;
-                    }
-
-                    var hpRead = _explorer.ReadAbsolute((nint)AddrCondensedHp, 2);
-                    if (hpRead != null)
-                    {
-                        int currentHp = (int)hpRead.Value.value;
-                        if (currentHp != preAttackHp)
-                        {
-                            postAttackHp = currentHp;
-                            ModLogger.Log($"[BattleAttack] HP changed: {preAttackHp} -> {currentHp} after {poll * 100}ms");
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Step 10: Evaluate attack result
-            var attackResult = AttackVerification.Evaluate(preAttackHp, postAttackHp);
-            string resultStr = attackResult.Hit
-                ? (attackResult.Killed ? $"KILLED! {attackResult.Damage} damage" : $"HIT! {attackResult.Damage} damage ({attackResult.HpAfter} HP remaining)")
-                : "MISSED (no HP change detected)";
-
+            // Attack completed — damage detection handled by BattleTracker (100ms polling).
+            // No longer poll HP inline (was slow and unreliable — always reported MISS).
             response.Status = "completed";
-            response.Error = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {resultStr}";
+            response.Error = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y})";
             ModLogger.Log($"[BattleAttack] {response.Error}");
             return response;
         }
@@ -1611,10 +1576,16 @@ namespace FFTColorCustomizer.GameBridge
             };
             // Position→unit index for annotating ability target tiles with occupant info.
             // Built once outside the per-unit loop so every ability lookup is O(1).
-            var unitByPos = new Dictionary<(int x, int y), ScannedUnit>();
+            // Separate dictionaries for alive and dead units — most abilities should
+            // not show dead units as targets (only revival abilities like Phoenix Down).
+            var aliveByPos = new Dictionary<(int x, int y), ScannedUnit>();
+            var deadByPos = new Dictionary<(int x, int y), ScannedUnit>();
             foreach (var posUnit in units)
             {
-                unitByPos[(posUnit.GridX, posUnit.GridY)] = posUnit;
+                if (posUnit.Hp <= 0 && posUnit.MaxHp > 0)
+                    deadByPos[(posUnit.GridX, posUnit.GridY)] = posUnit;
+                else
+                    aliveByPos[(posUnit.GridX, posUnit.GridY)] = posUnit;
             }
 
             // Move/Jump exposed via ActiveUnit for Claude's decision-making
@@ -1673,13 +1644,14 @@ namespace FFTColorCustomizer.GameBridge
                             return "?";
                         }
 
-                        // Shared helper: annotate a raw (x,y) with occupant info
-                        // drawn from the position index. Used for both point and
-                        // radius valid-target lists.
+                        // Shared helper: annotate a raw (x,y) with occupant info.
+                        // Uses aliveByPos for normal abilities, deadByPos for revival.
+                        var tileIndex = AbilityTargetCalculator.IsRevivalAbility(a)
+                            ? deadByPos : aliveByPos;
                         ValidTargetTile AnnotateTile(int tx, int ty)
                         {
                             var tile = new ValidTargetTile { X = tx, Y = ty };
-                            if (unitByPos.TryGetValue((tx, ty), out var occ))
+                            if (tileIndex.TryGetValue((tx, ty), out var occ))
                             {
                                 if (occ == u)
                                     tile.Occupant = "self";
@@ -1737,7 +1709,7 @@ namespace FFTColorCustomizer.GameBridge
                                     var allies = new List<string>();
                                     foreach (var st in splash)
                                     {
-                                        if (!unitByPos.TryGetValue(st, out var hitUnit)) continue;
+                                        if (!aliveByPos.TryGetValue(st, out var hitUnit)) continue;
                                         if (hitUnit.Team == 0 || hitUnit.Team == 2)
                                         {
                                             // Summons: ally-target (Moogle/Carbuncle/Faerie) hits allies;
@@ -1805,7 +1777,7 @@ namespace FFTColorCustomizer.GameBridge
                                     var allies = new List<string>();
                                     foreach (var lt in lineTiles)
                                     {
-                                        if (!unitByPos.TryGetValue(lt, out var hitUnit)) continue;
+                                        if (!aliveByPos.TryGetValue(lt, out var hitUnit)) continue;
                                         if (hitUnit.Team == 0 || hitUnit.Team == 2)
                                             allies.Add(UnitDisplayName(hitUnit));
                                         else
@@ -1946,7 +1918,7 @@ namespace FFTColorCustomizer.GameBridge
                                 .Select(t =>
                                 {
                                     var tile = new ValidTargetTile { X = t.x, Y = t.y };
-                                    if (unitByPos.TryGetValue((t.x, t.y), out var occ))
+                                    if (aliveByPos.TryGetValue((t.x, t.y), out var occ))
                                     {
                                         tile.Occupant = occ == u ? "self"
                                             : (occ.Team == 0 || occ.Team == 2) ? "ally"
