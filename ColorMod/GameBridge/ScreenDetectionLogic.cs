@@ -25,10 +25,23 @@ namespace FFTColorCustomizer.GameBridge
             // When browsing ability lists, slot0 can change from 255 to a non-FF value,
             // but slot9=0xFFFFFFFF + battleMode=3 confirms we're still in battle.
             bool unitSlotsPopulated = slot0 == 255 && slot9 == 0xFFFFFFFF;
-            // battleMode=1 is targeting mode from a skillset ability (Tailwind, Fire, etc.)
-            // — handled as Battle_Casting (may involve cast time, cancel returns to skillset).
-            // battleMode=4 is targeting mode from the Attack command (basic attack)
-            // — handled as Battle_Attacking (instant, cancel returns to action menu).
+            // battleMode values:
+            //   1 = cast-time magick targeting (Black/White/Time/Mystic/Summon/etc.)
+            //   2 = move tile selection
+            //   3 = action menu / ability browsing
+            //   4 = instant targeting (basic Attack AND Throw/Items/Iaido/Aim/etc.)
+            //
+            // The engine treats battleMode=4 as "pick a tile with a cursor, confirm
+            // to execute immediately." Both basic Attack and many skillset abilities
+            // (Throw Shuriken, Potion, Ashura, Aim+N) route through this path.
+            // From Claude's POV they're the same screen: move cursor, press F.
+            //
+            // battleMode=1 is reserved for magicks that have a cast-time charge —
+            // Fire, Haste, Cura, Moogle, etc. Same targeting UX but internally queued.
+            //
+            // We split the state name (Battle_Attacking vs Battle_Casting) to let
+            // downstream logic reason about "am I in a queued cast?" but the valid
+            // paths and cursor interactions are identical.
             bool battleModeActive = slot9 == 0xFFFFFFFF && (battleMode == 1 || battleMode == 2 || battleMode == 3 || battleMode == 4);
             bool clearlyOnWorldMap = rawValidLocation && party == 0 && battleMode == 0;
             bool inBattle = (unitSlotsPopulated || battleModeActive) && !clearlyOnWorldMap;
@@ -37,12 +50,10 @@ namespace FFTColorCustomizer.GameBridge
                 return "GameOver";
             if (inBattle && paused == 1)
                 return "Battle_Paused";
-            // battleMode values: 1=ability targeting (from skillset), 2=move tile selection,
-            // 3=action menu/ability browsing, 4=attack targeting (from Attack command).
-            // Attacking: basic Attack command target selection — instant, cancel → action menu.
+            // Attacking: instant-targeting — basic Attack, Throw, Items, Iaido, Aim.
             if (inBattle && battleMode == 4)
                 return "Battle_Attacking";
-            // Casting: skillset ability target selection — may have cast time, cancel → skillset list.
+            // Casting: cast-time magick target selection — Fire, Cure, Haste, etc.
             if (inBattle && battleMode == 1)
                 return "Battle_Casting";
             // Waiting/Facing: battleMode=2 + menuCursor=2 (Wait) — post-action facing selection
