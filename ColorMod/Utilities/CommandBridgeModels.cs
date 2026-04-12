@@ -193,6 +193,40 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("dialogue")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Dialogue { get; set; }
+
+        /// <summary>
+        /// Post-action snapshot of the active unit's state — position, HP, MP.
+        /// Populated after successful battle_move, battle_attack, and battle_ability
+        /// so Claude can confirm the action worked without a full rescan.
+        /// </summary>
+        [JsonPropertyName("postAction")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public PostActionState? PostAction { get; set; }
+    }
+
+    /// <summary>
+    /// Lightweight snapshot of the active unit's state after a battle action
+    /// completes. Read from the condensed struct — faster than a full scan.
+    /// </summary>
+    public class PostActionState
+    {
+        [JsonPropertyName("x")]
+        public int X { get; set; }
+
+        [JsonPropertyName("y")]
+        public int Y { get; set; }
+
+        [JsonPropertyName("hp")]
+        public int Hp { get; set; }
+
+        [JsonPropertyName("maxHp")]
+        public int MaxHp { get; set; }
+
+        [JsonPropertyName("mp")]
+        public int Mp { get; set; }
+
+        [JsonPropertyName("maxMp")]
+        public int MaxMp { get; set; }
     }
 
     public class BatchReadResult

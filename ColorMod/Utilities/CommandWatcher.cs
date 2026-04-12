@@ -730,7 +730,10 @@ namespace FFTColorCustomizer.Utilities
                         _battleMenuTracker.ReturnToMyTurn();
                         var actionResult = ExecuteNavAction(command);
                         if (actionResult.Status == "completed")
-                            _turnTracker.InvalidateCache(); // only invalidate on success
+                        {
+                            _turnTracker.InvalidateCache();
+                            actionResult.PostAction = _navActions?.ReadPostActionState();
+                        }
                         return actionResult;
 
                     case "battle_move":
@@ -744,7 +747,10 @@ namespace FFTColorCustomizer.Utilities
                         _movedThisTurn = true;
                         var moveResult = ExecuteNavAction(command);
                         if (moveResult.Status == "completed")
-                            _turnTracker.InvalidateCache(); // only invalidate on successful move
+                        {
+                            _turnTracker.InvalidateCache();
+                            moveResult.PostAction = _navActions?.ReadPostActionState();
+                        }
                         return moveResult;
 
                     case "world_travel_to":

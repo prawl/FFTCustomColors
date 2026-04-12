@@ -3662,6 +3662,40 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// <summary>
+        /// Read a lightweight post-action snapshot from the condensed struct.
+        /// Much faster than a full scan — just reads position + HP/MP from
+        /// known static addresses. Returns null if any read fails.
+        /// </summary>
+        public PostActionState? ReadPostActionState()
+        {
+            try
+            {
+                var reads = _explorer.ReadMultiple(new[]
+                {
+                    ((nint)(AddrCondensedBase + 0x0C), 2), // HP
+                    ((nint)(AddrCondensedBase + 0x10), 2), // MaxHP
+                    ((nint)(AddrCondensedBase + 0x12), 2), // MP
+                    ((nint)(AddrCondensedBase + 0x16), 2), // MaxMP
+                });
+                var pos = ReadGridPos();
+                if (pos.x < 0 || pos.y < 0) return null;
+                return new PostActionState
+                {
+                    X = pos.x,
+                    Y = pos.y,
+                    Hp = (int)reads[0],
+                    MaxHp = (int)reads[1],
+                    Mp = (int)reads[2],
+                    MaxMp = (int)reads[3],
+                };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         /// Navigate to Move (index 0) in the action menu without trusting memory cursor.
         /// Menu has 5 items (Move/Abilities/Wait/Status/AutoBattle) and wraps.
         /// Press Down 4x to reach bottom (index 4) from anywhere, then Up 4x to reach Move (0).
