@@ -18,18 +18,6 @@ namespace FFTColorCustomizer.GameBridge
         private int _lastUnitId = -1;
         private int _lastUnitHp = -1;
 
-        /// <summary>Cached scan response for this turn. Null if not yet scanned.</summary>
-        public CommandResponse? CachedScanResponse { get; private set; }
-
-        /// <summary>True if a scan response is cached for this turn.</summary>
-        public bool HasCachedScan => CachedScanResponse != null;
-
-        /// <summary>Cache a scan response for reuse within this turn.</summary>
-        public void CacheScanResponse(CommandResponse response)
-        {
-            CachedScanResponse = response;
-        }
-
         /// <summary>
         /// Returns true if an auto-scan should be triggered for the given screen state.
         /// Only returns true on the first Battle_MyTurn detection after a turn transition.
@@ -59,7 +47,6 @@ namespace FFTColorCustomizer.GameBridge
                 _lastUnitHp = -1;
                 _lastUnitX = -1;
                 _lastUnitY = -1;
-                CachedScanResponse = null;
             }
 
             // Detect unit change without intermediate enemy/ally turn.
@@ -75,8 +62,7 @@ namespace FFTColorCustomizer.GameBridge
                 if (unitChanged)
                 {
                     _scannedThisTurn = false;
-                    CachedScanResponse = null;
-                }
+                    }
             }
 
             // Not in battle or not my turn — don't scan
@@ -110,20 +96,7 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
-        /// Reset the tracker for a new turn. Call this when battle_wait or similar
-        /// actions complete, since they bypass the normal screen transition detection
-        /// (the tracker never sees the intermediate enemy/ally phases).
-        /// </summary>
-        /// <summary>
-        /// Clear the cached scan response without resetting the turn state.
-        /// Call after game actions that change battlefield state (battle_attack,
-        /// battle_ability, battle_move) so the next scan_move gets fresh data.
-        /// </summary>
-        /// <summary>
-        /// Returns true if scanning is allowed on the given screen. Allowed during
-        /// any state where the player has cursor control — not during animations,
-        /// enemy turns, or post-action transitions. Kept in sync with
-        /// NavigationActions.ScanMove's allowedStates so both gates agree.
+        /// Returns true if scanning is allowed on the given screen.
         /// </summary>
         public static bool CanScan(string screenName)
         {
@@ -136,11 +109,6 @@ namespace FFTColorCustomizer.GameBridge
                 || screenName == "Battle_Paused";
         }
 
-        public void InvalidateCache()
-        {
-            CachedScanResponse = null;
-        }
-
         public void ResetForNewTurn()
         {
             _scannedThisTurn = false;
@@ -149,7 +117,6 @@ namespace FFTColorCustomizer.GameBridge
             _lastUnitHp = -1;
             _lastUnitX = -1;
             _lastUnitY = -1;
-            CachedScanResponse = null;
         }
     }
 }

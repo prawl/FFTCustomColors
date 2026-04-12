@@ -427,10 +427,7 @@ namespace FFTColorCustomizer.Utilities
                         }
                         var scanResult = ExecuteNavAction(command);
                         if (scanResult.Status == "completed")
-                        {
-                            _turnTracker.CacheScanResponse(scanResult);
                             CacheLearnedAbilities(scanResult.Battle);
-                        }
                         if (!command.Verbose && scanResult.Status == "completed")
                             CompactAbilities(scanResult);
                         return scanResult;
@@ -691,21 +688,17 @@ namespace FFTColorCustomizer.Utilities
                             }
                             _waitConfirmPending = false;
                         }
-                        // Auto-scan if no scan cached (battle_wait needs unit data for facing)
-                        if (!_turnTracker.HasCachedScan)
+                        // Auto-scan before wait (battle_wait needs unit data for facing)
+                        try
                         {
-                            try
-                            {
-                                var scanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
-                                var scanRes = ExecuteNavAction(scanCmd);
-                                if (scanRes.Status == "completed")
-                                    _turnTracker.CacheScanResponse(scanRes);
+                            var scanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
+                            var scanRes = ExecuteNavAction(scanCmd);
+                            if (scanRes.Status == "completed")
                                 _turnTracker.MarkScanned();
-                            }
-                            catch (Exception ex)
-                            {
-                                ModLogger.LogError($"[CommandBridge] Pre-wait scan failed: {ex.Message}");
-                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogError($"[CommandBridge] Pre-wait scan failed: {ex.Message}");
                         }
                         _turnTracker.ResetForNewTurn();
                         _battleMenuTracker.OnNewTurn();
@@ -718,30 +711,26 @@ namespace FFTColorCustomizer.Utilities
                         return ExecuteNavActionWithAutoScan(command);
 
                     case "battle_flee":
-                        _turnTracker.InvalidateCache();
                         _battleMenuTracker.ReturnToMyTurn();
                         return ExecuteNavAction(command);
 
                     case "battle_attack":
                         goto case "battle_ability";
                     case "battle_ability":
-                        // Auto-scan if no cached scan data (scan is ~15ms, no reason to block)
-                        if (!_turnTracker.HasCachedScan)
+                        // Always scan fresh before attack/ability (~15ms)
+                        CommandResponse? freshScan = null;
                         {
                             var autoScanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
-                            var autoScanRes = ExecuteNavAction(autoScanCmd);
-                            if (autoScanRes.Status == "completed")
-                            {
-                                _turnTracker.CacheScanResponse(autoScanRes);
-                                CacheLearnedAbilities(autoScanRes.Battle);
-                            }
+                            freshScan = ExecuteNavAction(autoScanCmd);
+                            if (freshScan.Status == "completed")
+                                CacheLearnedAbilities(freshScan.Battle);
                         }
                         // Validate target is within ability's horizontal range from caster
                         if (command.Action == "battle_ability" && command.Description != null
                             && command.LocationId >= 0 && command.UnitIndex >= 0
-                            && _turnTracker.CachedScanResponse?.Battle?.Units != null)
+                            && freshScan?.Battle?.Units != null)
                         {
-                            var activeUnit = _turnTracker.CachedScanResponse.Battle.Units
+                            var activeUnit = freshScan.Battle.Units
                                 .FirstOrDefault(u => u.IsActive);
                             var matchingAbility = activeUnit?.Abilities?
                                 .FirstOrDefault(a => a.Name.Equals(command.Description, StringComparison.OrdinalIgnoreCase));
@@ -767,30 +756,24 @@ namespace FFTColorCustomizer.Utilities
                             _lastAbilityName = null; // clear on failure
                         else
                         {
-                            _turnTracker.InvalidateCache();
                             actionResult.PostAction = _navActions?.ReadPostActionState();
                         }
                         return actionResult;
 
                     case "battle_move":
                     case "move_grid": // legacy alias
-                        // Auto-scan if no cached scan data
-                        if (!_turnTracker.HasCachedScan)
+                        // Always scan fresh before move (~15ms)
                         {
                             var moveScanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
                             var moveScanRes = ExecuteNavAction(moveScanCmd);
                             if (moveScanRes.Status == "completed")
-                            {
-                                _turnTracker.CacheScanResponse(moveScanRes);
                                 CacheLearnedAbilities(moveScanRes.Battle);
-                            }
                         }
                         _battleMenuTracker.ReturnToMyTurn();
                         _movedThisTurn = true;
                         var moveResult = ExecuteNavAction(command);
                         if (moveResult.Status == "completed")
                         {
-                            _turnTracker.InvalidateCache();
                             moveResult.PostAction = _navActions?.ReadPostActionState();
                         }
                         return moveResult;
@@ -1585,6 +1568,8 @@ namespace FFTColorCustomizer.Utilities
                     // Keep addedEffect since it's mechanically useful ("Restores 30 HP").
                     ability.Effect = null!;
                 }
+                // Server-side: hide enemy-target abilities with no enemies, collapse Aim families
+                unit.Abilities = AbilityCompactor.Compact(unit.Abilities);
             }
         }
 
@@ -2280,26 +2265,7 @@ namespace FFTColorCustomizer.Utilities
                 //
                 // So active unit name/job will show as empty on the FIRST `screen` call of
                 // a battle, then populate after the first scan_move runs and caches the
-                // active unit. Subsequent actions keep the cache fresh.
-                if (inBattle && _turnTracker.HasCachedScan)
-                {
-                    var cachedBattle = _turnTracker.CachedScanResponse?.Battle;
-                    var active = cachedBattle?.Units?.FirstOrDefault(u => u.IsActive);
-                    if (active != null)
-                    {
-                        // Only show cached active unit if the current HP matches.
-                        // After turn changes, the memory HP reflects the NEW active unit
-                        // but the cache still holds the OLD one. Suppress stale names.
-                        bool hpMatches = screen.BattleUnitHp <= 0
-                            || active.Hp <= 0
-                            || screen.BattleUnitHp == active.Hp;
-                        if (hpMatches)
-                        {
-                            screen.ActiveUnitName = active.Name;
-                            screen.ActiveUnitJob = active.JobName;
-                        }
-                    }
-                }
+                // Active unit name/job populated by scan_move at turn start.
 
                 // Sync state machine with memory-detected top-level screens.
                 // This ensures the state machine stays in sync even after restarts

@@ -521,7 +521,7 @@ namespace FFTColorCustomizer.GameBridge
                     // Friendly unit's turn — we're done
                     if (current.Name == "Battle_MyTurn")
                     {
-                        response.Error = $"Friendly turn after {sw.ElapsedMilliseconds}ms";
+                        response.Info = $"Friendly turn after {sw.ElapsedMilliseconds}ms";
                         break;
                     }
 
@@ -615,7 +615,7 @@ namespace FFTColorCustomizer.GameBridge
                 SendKey(VK_ENTER);
                 Thread.Sleep(300);
                 response.Status = "completed";
-                response.Error = $"Attacked ({targetX},{targetY}) — cursor was already on target";
+                response.Info = $"Attacked ({targetX},{targetY}) — cursor was already on target";
                 return response;
             }
 
@@ -717,25 +717,16 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Step 7: Read target HP and team before confirming (cursor is on target)
-            const long AddrCondensedHp = 0x14077D2AC; // TurnQueueBase + TqHp, uint16 LE
-            const long AddrCondensedTeam = 0x14077D2A2; // TurnQueueBase + team, uint16 LE
-            var preHpResult = _explorer.ReadAbsolute((nint)AddrCondensedHp, 2);
-            var preTeamResult = _explorer.ReadAbsolute((nint)AddrCondensedTeam, 2);
-            int preAttackHp = preHpResult != null ? (int)preHpResult.Value.value : -1;
-            int targetTeam = preTeamResult != null ? (int)preTeamResult.Value.value : -1;
-            ModLogger.Log($"[BattleAttack] Pre-attack: target HP={preAttackHp}, team={targetTeam}");
-
-            // Step 8: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
+            // Step 7: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
             SendKey(VK_ENTER);
             Thread.Sleep(500);
             SendKey(VK_ENTER);
 
             // Attack completed — damage detection handled by BattleTracker (100ms polling).
-            // No longer poll HP inline (was slow and unreliable — always reported MISS).
+            // Damage detection handled by BattleTracker (100ms polling).
             response.Status = "completed";
-            response.Error = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y})";
-            ModLogger.Log($"[BattleAttack] {response.Error}");
+            response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y})";
+            ModLogger.Log($"[BattleAttack] {response.Info}");
             return response;
         }
 
