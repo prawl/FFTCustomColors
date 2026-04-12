@@ -53,10 +53,12 @@ namespace FFTColorCustomizer.GameBridge
                 "Battle_AutoBattle" => GetBackOutPaths("You're in the Auto-Battle menu! Press Escape to get back to battle before the AI takes over."),
                 "Battle_Victory" => null, // auto-advances, no action needed
                 "Battle_Desertion" => GetDesertionPaths(),
-                "Battle_Formation" => null, // TODO: add formation placement paths
+                "Battle_Formation" => GetBattleFormationPaths(),
+                "Battle_Abilities" => GetBattleAbilitiesSubPaths(),
                 "Battle_AlliesTurn" => GetBattleWaitingPaths(),
                 "Battle_EnemiesTurn" => GetBattleWaitingPaths(),
                 "Battle" => GetBattleWaitingPaths(),
+                _ when screen.Name.StartsWith("Battle_") => GetBattleAbilityListPaths(),
                 _ => null
             };
         }
@@ -554,6 +556,73 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     Desc = message
                 }
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetBattleFormationPaths()
+        {
+            return new()
+            {
+                ["PlaceUnit"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Place/swap unit on the selected blue tile"
+                },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move formation cursor up" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move formation cursor down" },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move formation cursor left" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move formation cursor right" },
+                ["Commence"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_SPACE, "Space"), Key(VK_ENTER, "Enter") },
+                    DelayBetweenMs = 500,
+                    WaitUntilScreenNot = "Battle_Formation",
+                    WaitTimeoutMs = 10000,
+                    Desc = "Open Commence dialog (Space) then confirm (Enter) to start battle"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetBattleAbilitiesSubPaths()
+        {
+            // Abilities submenu: Attack / primary skillset / secondary skillset
+            return new()
+            {
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up in abilities submenu" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down in abilities submenu" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Select highlighted skillset (Attack, primary, or secondary)"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Cancel, back to action menu"
+                },
+            };
+        }
+
+        /// <summary>
+        /// Fallback for any Battle_<Skillset> screen (Battle_Mettle, Battle_Items, etc.)
+        /// where Claude is browsing an ability list.
+        /// </summary>
+        private static Dictionary<string, PathEntry> GetBattleAbilityListPaths()
+        {
+            return new()
+            {
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Scroll up in ability list" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Scroll down in ability list" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Use highlighted ability (enters targeting mode)"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Cancel, back to abilities submenu"
+                },
             };
         }
 
