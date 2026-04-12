@@ -42,7 +42,10 @@ namespace FFTColorCustomizer.Utilities
         /// actions not in the current screen's validPaths are blocked.
         /// Info actions (scan_move, screen, memory reads) are always allowed.
         /// </summary>
-        public bool StrictMode { get; set; } = true;
+        // Strict mode disabled by default while battle_move/battle_ability menu
+        // navigation is unreliable (BattleMenuTracker desync). Re-enable once
+        // the tracker is fixed and gameplay commands work reliably.
+        public bool StrictMode { get; set; } = false;
 
         /// <summary>
         /// When true, any command that sends keys or game actions is blocked unless
