@@ -138,7 +138,9 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void FindAbility_Jump_NotFoundWhenJumpSkillsetUnavailable()
         {
-            // If the unit doesn't have Jump equipped, "Jump" shouldn't resolve
+            // "Jump" is a synthetic ability only created when Jump skillset is available.
+            // If Jump isn't in available skillsets and the special case doesn't match,
+            // the fallback won't find it because AllSkillsets uses hardcoded lists.
             var result = BattleAbilityNavigation.FindAbility("Jump", new[] { "Mettle", "Items" });
             Assert.Null(result);
         }
@@ -156,5 +158,18 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.NotNull(result);
             Assert.Equal(expectedTrueSelf, result.Value.isTrueSelfOnly);
         }
+
+        [Fact]
+        public void FindAbility_FallsBackToAllSkillsets_WhenNotInAvailable()
+        {
+            // Aurablast is in Martial Arts. If the available skillsets don't include
+            // Martial Arts (e.g. secondary wasn't detected), the fallback search
+            // should still find it.
+            var result = BattleAbilityNavigation.FindAbility("Aurablast", new[] { "Jump" });
+
+            Assert.NotNull(result);
+            Assert.Equal("Martial Arts", result.Value.skillsetName);
+        }
+
     }
 }

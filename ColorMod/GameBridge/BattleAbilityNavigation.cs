@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 
 namespace FFTColorCustomizer.GameBridge
@@ -76,24 +77,24 @@ namespace FFTColorCustomizer.GameBridge
                 }
             }
 
-            // Fall back to searching all skillsets only if no available skillsets were specified
-            if (availableSkillsets == null)
+            // Fall back to searching all skillsets (ability might be in an undetected secondary).
+            // Skip skillsets already searched above to avoid false matches (e.g. synthetic "Jump").
+            var searched = new HashSet<string>(availableSkillsets ?? System.Array.Empty<string>());
+            foreach (var (skillsetName, abilities) in ActionAbilityLookup.AllSkillsets)
             {
-                foreach (var (skillsetName, abilities) in ActionAbilityLookup.AllSkillsets)
+                if (searched.Contains(skillsetName)) continue;
+                for (int i = 0; i < abilities.Count; i++)
                 {
-                    for (int i = 0; i < abilities.Count; i++)
+                    if (abilities[i].Name == abilityName)
                     {
-                        if (abilities[i].Name == abilityName)
+                        bool isSelf = abilities[i].HRange == "Self";
+                        return new AbilityLocation
                         {
-                            bool isSelf = abilities[i].HRange == "Self";
-                            return new AbilityLocation
-                            {
-                                skillsetName = skillsetName,
-                                indexInSkillset = i,
-                                isSelfTarget = isSelf,
-                                isTrueSelfOnly = isSelf && abilities[i].AoE <= 1
-                            };
-                        }
+                            skillsetName = skillsetName,
+                            indexInSkillset = i,
+                            isSelfTarget = isSelf,
+                            isTrueSelfOnly = isSelf && abilities[i].AoE <= 1
+                        };
                     }
                 }
             }

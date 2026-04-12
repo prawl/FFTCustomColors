@@ -69,6 +69,7 @@ namespace FFTColorCustomizer.GameBridge
         // Tracked state
         private readonly Dictionary<int, BattleUnit> _units = new();
         private bool _inBattle;
+        private bool _pollDiagLogged;
 
         // Static array tracking for real-time HP/position change detection
         private readonly TrackedSlot[] _trackedSlots = new TrackedSlot[ArrayTotalSlots];
@@ -90,7 +91,7 @@ namespace FFTColorCustomizer.GameBridge
                 while (!token.IsCancellationRequested)
                 {
                     try { Update(); }
-                    catch { /* ignore */ }
+                    catch (Exception ex) { ModLogger.LogDebug($"[BattleTracker] Poll error: {ex.Message}"); }
                     await Task.Delay(100, token);
                 }
             }, token);
@@ -118,7 +119,15 @@ namespace FFTColorCustomizer.GameBridge
                 ((nint)AddrUnitSlot0, 4),
                 ((nint)AddrUnitSlot9, 4),
             });
-            bool inBattle = reads[0] == 255 && reads[1] == 0xFFFFFFFF;
+            // slot9=0xFFFFFFFF is the reliable battle indicator. slot0 can flicker
+            // from 255 during attack animations, so don't require it for staying in battle.
+            // Use _inBattle as a sticky flag: enter on both slots, exit only when slot9 changes.
+            bool enterBattle = reads[0] == 255 && reads[1] == 0xFFFFFFFF;
+            bool inBattle = enterBattle || (_inBattle && reads[1] == 0xFFFFFFFF);
+            if (!_inBattle && inBattle)
+                ModLogger.Log($"[BattleTracker] Entering battle: slot0={reads[0]:X}, slot9={reads[1]:X}");
+            if (_inBattle && !inBattle)
+                ModLogger.Log($"[BattleTracker] Leaving battle: slot0={reads[0]:X}, slot9={reads[1]:X}");
 
             if (!inBattle)
             {
@@ -472,6 +481,26 @@ namespace FFTColorCustomizer.GameBridge
                 reads[s * fields + 4] = ((nint)(sb + 0x12), 2); // inBattleFlag
             }
             var sv = _explorer.ReadMultiple(reads);
+
+            // One-time diagnostic: log first active slot found
+            if (!_pollDiagLogged)
+            {
+                int activeCount = 0;
+                for (int d = 0; d < ArrayTotalSlots; d++)
+                {
+                    int dFlag = (int)sv[d * fields + 4];
+                    int dMaxHp = (int)sv[d * fields + 1];
+                    if (dFlag != 0 && dMaxHp > 0 && dMaxHp < 2000) activeCount++;
+                }
+                ModLogger.Log($"[BattleTracker] PollStaticArray diagnostic: {activeCount} active slots out of {ArrayTotalSlots}");
+                if (activeCount == 0)
+                {
+                    // Log first few raw values for debugging
+                    for (int d = 0; d < 5 && d < ArrayTotalSlots; d++)
+                        ModLogger.Log($"[BattleTracker]   slot[{d}]: hp={sv[d*fields]}, maxHp={sv[d*fields+1]}, gx={sv[d*fields+2]}, gy={sv[d*fields+3]}, flag={sv[d*fields+4]}");
+                }
+                _pollDiagLogged = true;
+            }
 
             for (int s = 0; s < ArrayTotalSlots; s++)
             {

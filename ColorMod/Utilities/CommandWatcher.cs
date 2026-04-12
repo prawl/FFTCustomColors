@@ -726,14 +726,15 @@ namespace FFTColorCustomizer.Utilities
                                 CacheLearnedAbilities(freshScan.Battle);
                         }
                         // Validate target is within ability's horizontal range from caster
-                        if (command.Action == "battle_ability" && command.Description != null
+                        string? abilityToValidate = command.Action == "battle_attack" ? "Attack" : command.Description;
+                        if (abilityToValidate != null
                             && command.LocationId >= 0 && command.UnitIndex >= 0
                             && freshScan?.Battle?.Units != null)
                         {
                             var activeUnit = freshScan.Battle.Units
                                 .FirstOrDefault(u => u.IsActive);
                             var matchingAbility = activeUnit?.Abilities?
-                                .FirstOrDefault(a => a.Name.Equals(command.Description, StringComparison.OrdinalIgnoreCase));
+                                .FirstOrDefault(a => a.Name.Equals(abilityToValidate, StringComparison.OrdinalIgnoreCase));
                             if (matchingAbility != null && activeUnit != null
                                 && int.TryParse(matchingAbility.HRange, out int hr) && hr > 0)
                             {
@@ -741,7 +742,7 @@ namespace FFTColorCustomizer.Utilities
                                 if (dist > hr)
                                 {
                                     return new CommandResponse { Id = command.Id, Status = "failed",
-                                        Error = $"Target ({command.LocationId},{command.UnitIndex}) is {dist} tiles away but '{command.Description}' has range {hr}.",
+                                        Error = $"Target ({command.LocationId},{command.UnitIndex}) is {dist} tiles away but '{abilityToValidate}' has range {hr}.",
                                         ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
                                         Screen = DetectScreenSettled() };
                                 }
@@ -1536,6 +1537,7 @@ namespace FFTColorCustomizer.Utilities
             _cachedSecondarySkillset = activeUnit.SecondaryAbility > 0
                 ? GetSkillsetName(activeUnit.SecondaryAbility)
                 : null;
+            ModLogger.Log($"[CommandBridge] Skillsets: primary={_cachedPrimarySkillset ?? "null"}, secondary={_cachedSecondarySkillset ?? "null"} (secondaryIdx={activeUnit.SecondaryAbility})");
         }
 
         /// <summary>

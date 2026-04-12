@@ -618,7 +618,8 @@ const ahp=au?.hp??activeU?.hp??'?';
 const amhp=au?.maxHp??activeU?.maxHp??'?';
 const amp=au?.mp??activeU?.mp??'?';
 const ammp=au?.maxMp??activeU?.maxMp??'?';
-console.log('['+s.name+'] '+aName+(aJob?'('+aJob+')':'')+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp);
+const uiTag=s.ui?' ui='+s.ui:'';
+console.log('['+s.name+']'+uiTag+' '+aName+(aJob?'('+aJob+')':'')+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp);
 console.log('');
 
 // Abilities with target tiles
