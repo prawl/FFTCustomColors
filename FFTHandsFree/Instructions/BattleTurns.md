@@ -85,13 +85,45 @@ battle_move 6 5     # move to grid position (6,5)
 
 Pick a tile from the `ValidMoveTiles.tiles[]` array. Each tile has `{x, y, h}` — prefer higher `h` values for high ground advantage. The mod handles Move mode, rotation, arrow keys, and confirmation.
 
-### 3. Attack
+### 3. Act — Use an Ability
+
+Use `battle_ability` for ALL offensive, healing, and support actions (including basic Attack):
 
 ```bash
-battle_attack 7 5   # attack tile (7,5)
+battle_ability "Attack" 7 5          # basic attack at tile (7,5)
+battle_ability "Throw Stone" 4 8     # ranged ability at tile
+battle_ability "Cure" 10 9           # heal ally at tile
+battle_ability "Ifrit" 6 7           # AoE centered on tile
+battle_ability "Shout"               # self-target (no coordinates)
+battle_ability "Chakra"              # self-radius AoE (no coordinates)
+battle_ability "Phoenix Down" 3 4    # raise dead ally
 ```
 
-Pick a target from `AttackTiles` in the scan_move response — any tile with `"occupant": "enemy"`. These tiles include the target's hp, maxHp, and jobName so you can assess threats. The mod handles menu navigation, rotation detection, cursor movement, and confirmation.
+`battle_attack` still works as a shortcut for basic Attack only.
+
+**How scan_move shows abilities:** Each scanned unit's abilities include metadata and valid targets. The shell renders them in compact format:
+
+```
+  Attack R:1 -> enemy hits=2: *(7,5)«Goblin» *(6,6)«Skeleton»  (2 empty)
+  Cure R:4 -> ally MP 6 hits=1: *(10,9)«Ramza» (3,4)«Goblin»  (8 empty)
+  Ifrit R:4 AoE:2 -> enemy (Fire) MP 24 centers=12
+    best: (6,7) e:Goblin,Skeleton  (5,8) e:Goblin a:Ramza
+  Shockwave R:3 -> enemy seeds=4
+    best: East→(8,6) e:Goblin,Skeleton  North→(7,7) e:Goblin
+  Shout R:Self AoE:1 -> self/AoE MP 0
+  Chakra R:Self AoE:2 -> ally/AoE
+  Chant R:Self AoE:99 -> ally/AoE
+```
+
+**Reading the format:**
+- **Point-target** (AoE=1): `hits=N` counts intent-matching tiles. `*` marks good targets. `«Name»` shows occupants.
+- **Radius AoE** (AoE>1): `centers=N` valid aim points. `best:` ranks top placements by `(enemies - allies)`.
+- **Line AoE**: `seeds=N` clickable tiles. `best:` ranks cardinal directions by hits.
+- **Self-only** (R:Self AoE:1): No targets — just use the ability name with no coordinates.
+- **Self-radius** (R:Self AoE>1): Hits tiles around caster. No coordinates needed.
+- **Full-field** (AoE:99): Hits all allies/enemies. Bard/Dancer songs. No targeting.
+
+**Choosing a target:** Pick from the ability's valid targets in scan_move. For AoE, use the `best:` line to find the placement that hits the most enemies with fewest allies caught. For point-target, pick tiles marked with `*`.
 
 ### 4. End turn
 
@@ -105,73 +137,38 @@ battle_wait         # end turn, auto-faces optimal direction, waits for next fri
 
 The `RecommendedFacing` in scan_move shows you the recommended direction before you act, with arc counts (front/side/back) so you can understand the reasoning.
 
-To manually control facing (e.g. for testing or overriding), use direct key presses:
-
-```bash
-# Navigate to Wait manually, then pick facing direction
-execute_action Wait   # or use battle_wait for full auto
-up                    # face a direction
-down                  # face a direction
-left                  # face a direction
-right                 # face a direction
-enter                 # confirm facing
-```
-
 ## Waiting for Other Turns
 
-When you see `Battle_AlliesTurn` or `Battle_EnemiesTurn`, it's not your turn. You can:
-- Poll `screen` to watch the state change
-- Call `scan_units` to see HP changes
-- Comment on what's happening ("Agrias just took a hit!")
-- Wait for `Battle_MyTurn` to come back
-
-`battle_wait` handles this automatically after ending your turn.
+`battle_wait` auto-waits through enemy/ally turns. When you see `Battle_AlliesTurn` or `Battle_EnemiesTurn`, poll `screen` until `Battle_MyTurn` returns.
 
 ## Quick Reference
 
 ```bash
-# Full turn: scan -> move -> attack -> wait
+# Full turn: scan -> move -> ability -> wait
 scan_move
 battle_move 6 5
-battle_attack 7 5
+battle_ability "Attack" 7 5
 battle_wait
 
-# Attack without moving (enemy already adjacent)
+# Use a spell after moving
 scan_move
-battle_attack 2 4
+battle_move 4 3
+battle_ability "Fire" 5 4
+battle_wait
+
+# Heal an ally (no move)
+scan_move
+battle_ability "Cure" 10 9
+battle_wait
+
+# Self-buff (no move, no target)
+scan_move
+battle_ability "Shout"
 battle_wait
 
 # Just wait (skip move and action)
 battle_wait
-
-# Retry a lost battle
-battle_retry
-
-# Flee from battle
-battle_flee
 ```
-
-## How Map Detection Works
-
-1. Your world map location is saved when you stop on a node
-2. Battle starts — location is looked up in `random_encounter_maps.json` (e.g. location 26 -> MAP074)
-3. MAP074.json is loaded with tile heights, walkability, terrain
-4. BFS runs from the active unit using Move/Jump stats
-
-If auto-lookup fails, use `set_map <id>` to manually load the correct map.
-
-## How Grid Navigation Works
-
-The cursor moves on an absolute grid. Arrow key → grid direction depends on camera rotation:
-
-| rot | Right    | Left     | Up       | Down     |
-|-----|----------|----------|----------|----------|
-| 0   | (0, +1)  | (0, -1)  | (-1, 0)  | (+1, 0)  |
-| 1   | (+1, 0)  | (-1, 0)  | (0, +1)  | (0, -1)  |
-| 2   | (0, -1)  | (0, +1)  | (+1, 0)  | (-1, 0)  |
-| 3   | (-1, 0)  | (+1, 0)  | (0, -1)  | (0, +1)  |
-
-The mod reads rotation automatically. You just say `battle_move x y`.
 
 ## Unit Teams
 
@@ -181,12 +178,10 @@ The mod reads rotation automatically. You just say `battle_move x y`.
 
 ## Gotchas
 
-- **Always scan first.** `scan_move` before any move or attack.
+- **Always scan first.** `scan_move` before any move or ability.
 - **battle_wait ends your turn AND waits.** It polls until the next friendly turn.
-- **Move/Jump stats from UI are base values** (no equipment). Override with `scan_move <move> <jump>`.
-- **Camera auto-rotates** when entering Move or Attack targeting. The mod handles this.
-- **Confirming on an invalid tile does nothing.** Always pick from valid tile lists.
-- **First-turn scan returns stale data.** On the very first scan of a newly loaded battle, scan_move may return cached data from the previous session. Workaround: call `battle_wait` to pass a turn, then rescan.
-- **Ramza's fingerprint varies per save.** Don't rely on his fingerprint for class identification — roster lookup by nameId=1 is authoritative.
-- **Mod-forced battles break class detection.** Grogh Heights, Dugeura Pass, Tchigolith Fenlands, Mandalia Plain story battles spawn unit structs at addresses our heap search can't reach. All enemies show as `(?)`. Flee and move to another battle.
-- **Enemy names are not readable.** The game displays names for enemy units when hovered (e.g. a Bonesnatch named "Sithon"), but those strings aren't findable in PAGE_READWRITE memory. Critical for "defeat Joe Schmo" objectives — you'll need to hover enemies in-game manually to identify targets. See TODO.md section 1a for status.
+- **Pick targets from scan data.** Point-target: use `*`-marked tiles. AoE: use `best:` placements.
+- **First-turn scan returns stale data.** Workaround: `battle_wait` through first turn, then rescan.
+- **battle_ability validates range.** If target is out of range, it returns an error instead of wasting the action.
+- **Enemy names are not readable.** Enemy units show job names only (e.g. "Goblin", "Knight"), not their individual names. For "defeat X" objectives, you'll need to identify targets by other means.
+- **Mod-forced battles break class detection.** Grogh Heights, Dugeura Pass, Tchigolith Fenlands, Mandalia Plain — all enemies show as `(?)`. Flee these.

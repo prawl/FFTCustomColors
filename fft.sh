@@ -830,9 +830,9 @@ battle_attack() { fft_full "{\"id\":\"$(id)\",\"action\":\"battle_attack\",\"loc
 battle_ability() {
   local name="$1"
   if [ -n "$2" ] && [ -n "$3" ]; then
-    fft_full "{\"id\":\"$(id)\",\"action\":\"battle_ability\",\"description\":\"$name\",\"locationId\":$2,\"unitIndex\":$3}"
+    fft_full "{\"id\":\"$(id)\",\"action\":\"battle_ability\",\"description\":\"$name\",\"locationId\":$2,\"unitIndex\":$3}" 15
   else
-    fft_full "{\"id\":\"$(id)\",\"action\":\"battle_ability\",\"description\":\"$name\"}"
+    fft_full "{\"id\":\"$(id)\",\"action\":\"battle_ability\",\"description\":\"$name\"}" 15
   fi
 }
 

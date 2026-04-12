@@ -178,6 +178,21 @@ To find a unit struct: search for its `HP MaxHP` u16 pair, subtract 0x10. Search
 ### Roster Name Display Table (per-slot, stride 0x280)
 Player character names (including generic recruits like "Kenrick" or "Lloyd") live in per-slot records separate from the roster array. Each record is 0x280 bytes; the displayed name is a null-terminated ASCII string at **+0x10 inside each record**. Anchor signature: `Ramza\0Delita\0Argath\0Zalbaag\0Dycedarg\0Larg\0Goltanna\0Ovelia\0Orland\0` (note "Orland" not "Orlandeau"). See `UNIT_DATA_STRUCTURE.md` → "Roster Name Display Table".
 
+### Passive Ability Bitfields (per-unit, from heap struct base)
+Enemy units store equipped reaction/support/movement abilities as bitfields in the heap unit struct. These are the ONLY source for enemy passive abilities — enemies don't have roster slots.
+
+| Field | Offset | Size | Base ID | Notes |
+|-------|--------|------|---------|-------|
+| Reaction | +0x74 | 4 bytes | 166 | MSB-first. Parry=bit 25, Counter Tackle=bit 14, Gil Snapper=bit 17 |
+| Support | +0x78 | 5 bytes | 198 | MSB-first. Equip Swords=bit 2, Evasive Stance=bit 25 |
+| Movement | +0x7D | 3 bytes | TBD | MSB-first. Base not yet verified with known equipped ability |
+
+**Bit decoding (MSB-first):** For ability ID `N` with base `B`: position = `N - B`, byte index = `floor(pos/8)`, bit index = `7 - (pos % 8)`, mask = `1 << bitIndex`.
+
+**Verified 2026-04-12:** Knight(Parry reaction ✓, Equip Swords support ✓), Archer(Gil Snapper reaction ✓, Evasive Stance support ✓), Archer(no reaction ✓, Evasive Stance support ✓), Time Mage(no reaction ✓, Evasive Stance support ✓).
+
+**Caveat:** These appear to be EQUIPPED ability bits (1 bit set per field), not learned. HP pattern search can match wrong struct if multiple units share HP — verify with level/brave/faith. Player units should use roster (+0x08/+0x0A/+0x0C) instead.
+
 ### Gil (static address confirmed)
 `0x140D39CD0` — u32 LE. Survives restarts, updates in real-time. Read with `read_address size=4`.
 
@@ -195,4 +210,5 @@ The party item inventory (Potions, X-Potions, bombs, etc.) has **not** been loca
 - Enemy display names (only player roster names readable — see UNIT_DATA_STRUCTURE.md)
 - Party item inventory (see section 17)
 - IC remaster roster job IDs for jobs between Knight(79) and Ninja(89) need verification
+- Movement ability bitfield base (needs a unit with a known equipped movement ability to verify)
 - See BATTLE_STATS_PSX_REFERENCE.md for complete PSX field layout

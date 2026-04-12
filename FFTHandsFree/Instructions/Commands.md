@@ -21,7 +21,9 @@ source ./fft.sh
 | Command | Description |
 |---------|-------------|
 | `battle_move <x> <y>` | Move active unit to grid tile |
-| `battle_attack <x> <y>` | Attack target at tile |
+| `battle_ability "<name>" <x> <y>` | Use any ability on a target tile |
+| `battle_ability "<name>"` | Use self-target ability (Shout, Chakra, etc.) |
+| `battle_attack <x> <y>` | Shortcut for `battle_ability "Attack" x y` |
 | `battle_wait` | End turn, face optimal direction (arc scoring, requires prior move), wait for next friendly turn |
 | `battle_flee` | Quit battle, return to world map |
 | `battle_retry` | Retry battle (from pause menu) |
@@ -92,7 +94,7 @@ Every response includes:
 - **ValidPaths** — available actions for the current screen
 - **Battle data** (when in battle):
   - `battle.activeUnit` — your unit: jobName, move, jump, pa, ma, hp, brave, faith
-  - `battle.units[]` — all units: name (story characters only), team, jobName, level, position, hp, distance, statuses
+  - `battle.units[]` — all units: name, team, jobName, level, position, hp, distance, statuses, abilities (with validTargetTiles, bestCenters, bestDirections per ability)
   - `ValidMoveTiles.tiles[]` — reachable tiles with height (`h`) for high ground
   - `AttackTiles.attackTiles[]` — adjacent tiles with arrow key, occupant info (hp, jobName if enemy)
   - `RecommendedFacing.facing` — optimal facing direction with arc breakdown (front/side/back counts)
@@ -110,9 +112,9 @@ Always enable strict mode for play sessions.
 
 ```bash
 screen                    # Check: Battle_MyTurn?
-scan_move                 # See units, tiles, enemies
-battle_move 6 5           # Move adjacent to enemy
-battle_attack 7 5         # Attack enemy
+scan_move                 # See units, tiles, abilities, targets
+battle_move 6 5           # Move to tile
+battle_ability "Attack" 7 5  # Use ability on target
 battle_wait               # End turn + wait for next turn
 # Repeat when Battle_MyTurn returns
 ```

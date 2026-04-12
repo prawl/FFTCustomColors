@@ -1908,6 +1908,9 @@ namespace FFTColorCustomizer.GameBridge
                         : (u.Hp <= 0 && u.MaxHp > 0 ? "dead" : null),
                     Statuses = StatusDecoder.Decode(u.StatusBytes) is var s && s.Count > 0 ? s : null,
                     Abilities = abilities,
+                    Reaction = u.ReactionAbility,
+                    Support = u.SupportAbility,
+                    Movement = u.MovementAbility,
                 });
 
                 // Prepend basic Attack to the active player unit's ability list.
@@ -3205,6 +3208,9 @@ namespace FFTColorCustomizer.GameBridge
             public List<int>? Equipment;  // roster equipment IDs (7 slots, 0xFF/0xFFFF filtered out)
             public byte[]? ClassFingerprint;  // 11 bytes at heap struct +0x69 (see ClassFingerprintLookup)
             public string? JobNameOverride;   // Resolved class name from fingerprint (fallback for enemies)
+            public string? ReactionAbility;   // Equipped reaction ability name (from heap bitfield at +0x74)
+            public string? SupportAbility;    // Equipped support ability name (from heap bitfield at +0x78)
+            public string? MovementAbility;   // Equipped movement ability name (from heap bitfield at +0x7D)
         }
 
         /// <summary>
@@ -3630,6 +3636,32 @@ namespace FFTColorCustomizer.GameBridge
                             }
                             if (eq.Count > 0)
                                 unit.Equipment = eq;
+
+                            // Read equipped passive abilities from roster (+0x08/+0x0A/+0x0C)
+                            var passiveReads = _explorer.ReadMultiple(new[]
+                            {
+                                ((nint)(slotAddr + 0x08), 1), // reaction ID
+                                ((nint)(slotAddr + 0x09), 1), // reaction equipped flag
+                                ((nint)(slotAddr + 0x0A), 1), // support ID
+                                ((nint)(slotAddr + 0x0B), 1), // support equipped flag
+                                ((nint)(slotAddr + 0x0C), 1), // movement ID
+                                ((nint)(slotAddr + 0x0D), 1), // movement equipped flag
+                            });
+                            if ((int)passiveReads[1] == 1)
+                            {
+                                var id = (byte)(int)passiveReads[0];
+                                unit.ReactionAbility = AbilityData.ReactionAbilities.TryGetValue(id, out var ra) ? ra.Name : null;
+                            }
+                            if ((int)passiveReads[3] == 1)
+                            {
+                                var id = (byte)(int)passiveReads[2];
+                                unit.SupportAbility = AbilityData.SupportAbilities.TryGetValue(id, out var sa) ? sa.Name : null;
+                            }
+                            if ((int)passiveReads[5] == 1)
+                            {
+                                var id = (byte)(int)passiveReads[4];
+                                unit.MovementAbility = AbilityData.MovementAbilities.TryGetValue(id, out var ma) ? ma.Name : null;
+                            }
                         }
                         // For story characters, the roster's job field at +0x02 equals
                         // their nameId rather than a real job ID (e.g. Marach job=26
@@ -3731,6 +3763,28 @@ namespace FFTColorCustomizer.GameBridge
                     {
                         var fpKey = ClassFingerprintLookup.ToKey(fpBytes);
                         ModLogger.Log($"[CollectPositions] Unknown fingerprint ({unit.GridX},{unit.GridY}): {fpKey} hp={unit.Hp}/{unit.MaxHp} lv={unit.Level}");
+                    }
+
+                    // Read equipped passive abilities from heap struct bitfields.
+                    // Reaction: 4 bytes at +0x74, Support: 5 bytes at +0x78.
+                    // See BATTLE_MEMORY_MAP.md section 16 "Passive Ability Bitfields".
+                    try
+                    {
+                        var structBase = (long)heapMatches[0].address - 0x10;
+                        var reactionBytes = _explorer.Scanner.ReadBytes((nint)(structBase + 0x74), 4);
+                        var supportBytes = _explorer.Scanner.ReadBytes((nint)(structBase + 0x78), 5);
+
+                        if (reactionBytes.Length == 4)
+                            unit.ReactionAbility = PassiveAbilityDecoder.DecodeReaction(reactionBytes);
+                        if (supportBytes.Length == 5)
+                            unit.SupportAbility = PassiveAbilityDecoder.DecodeSupport(supportBytes);
+
+                        if (unit.ReactionAbility != null || unit.SupportAbility != null)
+                            ModLogger.Log($"[CollectPositions] Passives ({unit.GridX},{unit.GridY}): reaction={unit.ReactionAbility ?? "none"} support={unit.SupportAbility ?? "none"}");
+                    }
+                    catch (Exception pex)
+                    {
+                        ModLogger.Log($"[CollectPositions] Passive ability read failed ({unit.GridX},{unit.GridY}): {pex.Message}");
                     }
                 }
             }

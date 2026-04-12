@@ -923,9 +923,9 @@ namespace FFTColorCustomizer.GameBridge
         public int DeathCounter { get; set; }
 
         // === Equipped passive abilities ===
-        // Populated from the roster's equipped slots. Lets Claude assess risk
-        // ("this Knight has Counter Tackle") and plan accordingly.
-        // NOT YET POPULATED — needs memory addresses for equipped R/S/M per unit.
+        // Player units: read from roster (+0x08/+0x0A/+0x0C byte IDs).
+        // Enemy units: decoded from heap struct bitfields (+0x74 reaction, +0x78 support).
+        // See BATTLE_MEMORY_MAP.md section 16 "Passive Ability Bitfields".
 
         /// <summary>Equipped reaction ability name (e.g. "Counter Tackle", "Auto-Potion").</summary>
         [JsonPropertyName("reaction")]
