@@ -76,6 +76,75 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Returns true if this ability hits every unit of its target type on the
+        /// entire map. All Bardsong (AoE=99) and all Dance abilities. No tile
+        /// list needed — Claude just knows "range is irrelevant."
+        /// </summary>
+        public static bool IsFullField(ActionAbilityInfo ability)
+        {
+            if (ability.HRange != "Self") return false;
+            if (ability.AoE < 50) return false; // 99 for Bardsong/Dance, anything >= 50 is "all"
+            return true;
+        }
+
+        /// <summary>
+        /// Returns true if this ability is a self-centered AoE splash — the
+        /// caster is the center of a diamond, no target-picking required.
+        /// HRange="Self" + AoE>1 (but NOT full-field AoE≥50).
+        /// Cyclone, Chakra, Purification.
+        /// Excludes self-only buffs (AoE=1 like Focus/Shout — no splash).
+        /// </summary>
+        public static bool IsSelfRadius(ActionAbilityInfo ability)
+        {
+            if (ability.HRange != "Self") return false;
+            if (ability.AoE <= 1) return false;
+            if (IsFullField(ability)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Compute the splash tile set for a self-centered AoE ability. Diamond
+        /// of radius (AoE-1) around the caster, filtered by HoE elevation delta
+        /// from the caster's tile and walkability. The caster's own tile IS
+        /// included (the splash originates from them).
+        ///
+        /// Returns an empty set for non-self-radius abilities or null map.
+        /// </summary>
+        public static HashSet<(int x, int y)> GetSelfRadiusTiles(
+            int casterX,
+            int casterY,
+            ActionAbilityInfo ability,
+            MapData? map)
+        {
+            var result = new HashSet<(int, int)>();
+            if (map == null) return result;
+            if (!IsSelfRadius(ability)) return result;
+
+            int radius = ability.AoE - 1;
+            int hoe = ability.HoE;
+
+            if (!map.InBounds(casterX, casterY)) return result;
+            int casterZ = map.Tiles[casterX, casterY].Height;
+
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                int rowBudget = radius - System.Math.Abs(dx);
+                for (int dy = -rowBudget; dy <= rowBudget; dy++)
+                {
+                    int x = casterX + dx;
+                    int y = casterY + dy;
+                    if (!map.InBounds(x, y)) continue;
+                    if (!map.IsWalkable(x, y)) continue;
+                    int zDelta = System.Math.Abs(map.Tiles[x, y].Height - casterZ);
+                    if (zDelta > hoe) continue;
+                    result.Add((x, y));
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Compute the set of valid target-tiles the caster can aim at. For
         /// point-target and radius-AoE abilities, this is the taxicab diamond
         /// within HR/VR (the clicked tile is either the hit or the splash center).

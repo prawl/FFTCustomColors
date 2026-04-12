@@ -1700,6 +1700,23 @@ namespace FFTColorCustomizer.GameBridge
                             }
                         }
 
+                        // Self-radius abilities (HRange="Self", AoE>1): splash
+                        // centered on the caster with no target-picking. Emit the
+                        // affected tiles directly so Claude can see what would be
+                        // hit (Cyclone's enemies, Chakra's allies, etc.).
+                        else if (abilityMap != null && AbilityTargetCalculator.IsSelfRadius(a))
+                        {
+                            var splash = AbilityTargetCalculator.GetSelfRadiusTiles(
+                                u.GridX, u.GridY, a, abilityMap);
+                            if (splash.Count > 0)
+                            {
+                                entry.ValidTargetTiles = splash
+                                    .OrderBy(t => t.y).ThenBy(t => t.x)
+                                    .Select(t => AnnotateTile(t.x, t.y))
+                                    .ToList();
+                            }
+                        }
+
                         return entry;
                     }).ToList();
                 }

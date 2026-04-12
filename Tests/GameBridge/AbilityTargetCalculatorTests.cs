@@ -311,11 +311,153 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void GetValidTargetTiles_IneligibleAbility_ReturnsEmpty()
         {
-            // Non-numeric HRange (e.g. "Self") is still rejected.
+            // Non-numeric HRange (e.g. "Self") is still rejected by point/radius.
             var map = FlatMap(10);
             var cyclone = new ActionAbilityInfo(0, "Cyclone", 0, "Self", 0, 2, 0, "enemy/AoE", "");
             var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, cyclone, map);
             Assert.Empty(tiles);
+        }
+
+        // ============================================================
+        // Self-radius abilities (Cyclone, Chakra, Purification)
+        // ============================================================
+
+        [Fact]
+        public void IsSelfRadius_AcceptsSelfWithAoEGreaterThanOne()
+        {
+            var cyclone = new ActionAbilityInfo(0, "Cyclone", 0, "Self", 0, 2, 0, "enemy/AoE", "");
+            Assert.True(AbilityTargetCalculator.IsSelfRadius(cyclone));
+        }
+
+        [Fact]
+        public void IsSelfRadius_RejectsNumericHRange()
+        {
+            var fira = new ActionAbilityInfo(0, "Fira", 12, "4", 99, 2, 2, "enemy/AoE", "");
+            Assert.False(AbilityTargetCalculator.IsSelfRadius(fira));
+        }
+
+        [Fact]
+        public void IsSelfRadius_RejectsSelfWithAoEOne()
+        {
+            // Focus is HRange="Self" AoE=1 — it's a pure self-buff, no splash.
+            var focus = new ActionAbilityInfo(0, "Focus", 0, "Self", 0, 1, 0, "self", "");
+            Assert.False(AbilityTargetCalculator.IsSelfRadius(focus));
+        }
+
+        [Fact]
+        public void GetSelfRadiusTiles_Cyclone_AoE2_ReturnsFiveTilePlus()
+        {
+            // Cyclone: HRange="Self", AoE=2 → radius 1 diamond centered on caster = 5 tiles.
+            var map = FlatMap(10);
+            var cyclone = new ActionAbilityInfo(0, "Cyclone", 0, "Self", 0, 2, 0, "enemy/AoE", "");
+            var tiles = AbilityTargetCalculator.GetSelfRadiusTiles(5, 5, cyclone, map);
+            Assert.Equal(5, tiles.Count);
+            Assert.Contains((5, 5), tiles);
+            Assert.Contains((4, 5), tiles);
+            Assert.Contains((6, 5), tiles);
+            Assert.Contains((5, 4), tiles);
+            Assert.Contains((5, 6), tiles);
+        }
+
+        [Fact]
+        public void GetSelfRadiusTiles_AoE3_ReturnsThirteenTileDiamond()
+        {
+            var map = FlatMap(10);
+            // Hypothetical self-AoE-3 ability
+            var ability = new ActionAbilityInfo(0, "BigSplash", 0, "Self", 0, 3, 0, "ally/AoE", "");
+            var tiles = AbilityTargetCalculator.GetSelfRadiusTiles(5, 5, ability, map);
+            Assert.Equal(13, tiles.Count);
+            Assert.Contains((5, 5), tiles);
+            Assert.Contains((3, 5), tiles);
+            Assert.Contains((7, 5), tiles);
+        }
+
+        [Fact]
+        public void GetSelfRadiusTiles_ClippedAtCorner()
+        {
+            var map = FlatMap(10);
+            var cyclone = new ActionAbilityInfo(0, "Cyclone", 0, "Self", 0, 2, 0, "enemy/AoE", "");
+            var tiles = AbilityTargetCalculator.GetSelfRadiusTiles(0, 0, cyclone, map);
+            // Corner: center + east + south = 3 tiles
+            Assert.Equal(3, tiles.Count);
+            Assert.Contains((0, 0), tiles);
+            Assert.Contains((1, 0), tiles);
+            Assert.Contains((0, 1), tiles);
+        }
+
+        [Fact]
+        public void GetSelfRadiusTiles_HoEFiltersElevation()
+        {
+            var map = FlatMap(10, height: 5);
+            map.Tiles[6, 5] = new MapTile { Height = 20 }; // way above caster
+            var cyclone = new ActionAbilityInfo(0, "Cyclone", 0, "Self", 0, 2, 0, "enemy/AoE", "");
+            var tiles = AbilityTargetCalculator.GetSelfRadiusTiles(5, 5, cyclone, map);
+            Assert.DoesNotContain((6, 5), tiles);
+            Assert.Equal(4, tiles.Count);
+        }
+
+        [Fact]
+        public void GetSelfRadiusTiles_UnwalkableExcluded()
+        {
+            var map = FlatMap(10);
+            map.Tiles[5, 4] = new MapTile { Height = 0, NoWalk = true };
+            var cyclone = new ActionAbilityInfo(0, "Cyclone", 0, "Self", 0, 2, 0, "enemy/AoE", "");
+            var tiles = AbilityTargetCalculator.GetSelfRadiusTiles(5, 5, cyclone, map);
+            Assert.DoesNotContain((5, 4), tiles);
+            Assert.Equal(4, tiles.Count);
+        }
+
+        [Fact]
+        public void GetSelfRadiusTiles_PointTarget_ReturnsEmpty()
+        {
+            var map = FlatMap(10);
+            var rush = new ActionAbilityInfo(0, "Rush", 0, "1", 99, 1, 0, "enemy", "");
+            Assert.Empty(AbilityTargetCalculator.GetSelfRadiusTiles(5, 5, rush, map));
+        }
+
+        [Fact]
+        public void GetSelfRadiusTiles_SelfAoE1_ReturnsEmpty()
+        {
+            // Focus: self-buff with AoE=1 — no splash, not a self-radius ability.
+            var map = FlatMap(10);
+            var focus = new ActionAbilityInfo(0, "Focus", 0, "Self", 0, 1, 0, "self", "");
+            Assert.Empty(AbilityTargetCalculator.GetSelfRadiusTiles(5, 5, focus, map));
+        }
+
+        // ============================================================
+        // Full-field abilities (Bardsong, Dance)
+        // ============================================================
+
+        [Fact]
+        public void IsFullField_AcceptsBardsong()
+        {
+            var seraph = new ActionAbilityInfo(0, "Seraph Song", 0, "Self", 0, 99, 0, "ally/AoE", "");
+            Assert.True(AbilityTargetCalculator.IsFullField(seraph));
+        }
+
+        [Fact]
+        public void IsFullField_RejectsCyclone()
+        {
+            // Cyclone: AoE=2, not full-field.
+            var cyclone = new ActionAbilityInfo(0, "Cyclone", 0, "Self", 0, 2, 0, "enemy/AoE", "");
+            Assert.False(AbilityTargetCalculator.IsFullField(cyclone));
+        }
+
+        [Fact]
+        public void IsSelfRadius_RejectsFullField()
+        {
+            // Bardsong AoE=99 should NOT be classified as self-radius.
+            var seraph = new ActionAbilityInfo(0, "Seraph Song", 0, "Self", 0, 99, 0, "ally/AoE", "");
+            Assert.False(AbilityTargetCalculator.IsSelfRadius(seraph));
+        }
+
+        [Fact]
+        public void GetSelfRadiusTiles_FullField_ReturnsEmpty()
+        {
+            // Full-field abilities should NOT produce splash tiles (would be entire map).
+            var map = FlatMap(10);
+            var seraph = new ActionAbilityInfo(0, "Seraph Song", 0, "Self", 0, 99, 0, "ally/AoE", "");
+            Assert.Empty(AbilityTargetCalculator.GetSelfRadiusTiles(5, 5, seraph, map));
         }
 
         // ============================================================
