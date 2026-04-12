@@ -422,6 +422,12 @@ FFT uses DirectInput for keyboard polling. Standard Win32 APIs work for single k
 
 ---
 
+## 16. Mod Separation
+
+- [ ] **Extract FFTHandsFree into its own Reloaded-II mod** — All the GameBridge code (NavigationActions, BattleTracker, ScreenDetectionLogic, AbilityTargetCalculator, MemoryExplorer, CommandWatcher, etc.), the `claude_bridge/` runtime directory, `fft.sh`, map data, and instruction docs are piggybacked onto the FFTColorCustomizer mod project. They share a `.csproj`, DI container, and entry point. At some point this needs to be its own standalone Reloaded-II mod with its own project, config, and lifecycle — so the color customizer can ship independently without dragging in the entire battle AI bridge. Not urgent while we're iterating fast (shared project = faster builds, single deploy), but becomes important when either mod is ready for public distribution or when the code size makes the shared project unwieldy.
+
+---
+
 ## Sources & References
 
 - [fft-map-json](https://github.com/rainbowbismuth/fft-map-json) — Pre-parsed map terrain data (122 MAP JSON files)
