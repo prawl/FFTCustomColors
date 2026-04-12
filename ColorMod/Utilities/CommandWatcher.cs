@@ -32,6 +32,7 @@ namespace FFTColorCustomizer.Utilities
         private MapLoader? _mapLoader;
         private readonly BattleTurnTracker _turnTracker = new();
         private bool _movedThisTurn;
+        private string? _lastAbilityName; // Last ability used via battle_ability, shown in ui= during targeting
         private readonly BattleMenuTracker _battleMenuTracker = new();
         private HashSet<int>? _cachedLearnedAbilityIds;
         private string? _cachedPrimarySkillset;
@@ -723,6 +724,7 @@ namespace FFTColorCustomizer.Utilities
                         _turnTracker.ResetForNewTurn();
                         _battleMenuTracker.OnNewTurn();
                         _movedThisTurn = false;
+                        _lastAbilityName = null;
                         _cachedPrimarySkillset = null;
                         _cachedSecondarySkillset = null;
                         _cachedLearnedAbilityNames = null;
@@ -734,7 +736,11 @@ namespace FFTColorCustomizer.Utilities
                         return ExecuteNavAction(command);
 
                     case "battle_attack":
+                        _lastAbilityName = "Attack";
+                        goto case "battle_ability";
                     case "battle_ability":
+                        if (command.Action == "battle_ability")
+                            _lastAbilityName = command.Description; // ability name from command
                         if (!_turnTracker.HasCachedScan)
                             return new CommandResponse { Id = command.Id, Status = "blocked",
                                 Error = "Run scan_move before battle_attack/battle_ability. Scan data is required for targeting.",
@@ -2117,13 +2123,26 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "Cutscene")
                     screen.EventId = eventId;
 
-                // At the start of a fresh turn (acted=0, moved=0, no move/action this turn),
-                // the cursor is always on Move. The memory at 0x1407FC620 can be stale after
-                // charge-time spells (e.g. Haste), showing menuCursor=1 (Abilities).
-                // Don't override after battle_move — the cursor is on Abilities (Move grayed out).
-                if (screen.Name == "Battle_MyTurn" && screen.BattleActed == 0 && screen.BattleMoved == 0
-                    && !_movedThisTurn && !_battleMenuTracker.HasActedThisTurn)
-                    screen.UI = "Move";
+                // Map the action menu cursor index to a label.
+                // Menu always has 5 items: Move/ResetMove(0) Abilities(1) Wait(2) Status(3) AutoBattle(4).
+                // After moving, index 0 is "Reset Move" instead of "Move".
+                if (screen.Name == "Battle_MyTurn" || screen.Name == "Battle_Acting")
+                {
+                    bool hasMoved = screen.BattleMoved == 1 || _movedThisTurn;
+                    screen.UI = screen.MenuCursor switch
+                    {
+                        0 => hasMoved ? "Reset Move" : "Move",
+                        1 => "Abilities",
+                        2 => "Wait",
+                        3 => "Status",
+                        4 => "AutoBattle",
+                        _ => null
+                    };
+                }
+
+                // During targeting mode, show the ability being cast/used.
+                if ((screen.Name == "Battle_Attacking" || screen.Name == "Battle_Casting") && _lastAbilityName != null)
+                    screen.UI = _lastAbilityName;
 
                 // Battle menu tracker: set UI from tracker if in submenu
                 // (entry/exit managed in SyncBattleMenuTracker, called after screen settles)
