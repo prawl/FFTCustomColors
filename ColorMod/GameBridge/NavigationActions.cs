@@ -837,12 +837,15 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             // Navigate: submenu starts on the last cursor position (may not be Attack).
-            // Press Up enough times to guarantee we're at Attack (index 0), then Down to target.
-            for (int i = 0; i < submenuItems.Length; i++)
+            // FFT submenu cursors do NOT wrap — pressing Up from the top stays at top.
+            // Press Up×10 to guarantee we're on Attack (index 0) from any starting position,
+            // then Down to the target skillset.
+            for (int i = 0; i < 10; i++)
             {
                 SendKey(VK_UP);
-                Thread.Sleep(150);
+                Thread.Sleep(100);
             }
+            // Now at Attack (index 0). Navigate Down to the target skillset.
             for (int i = 0; i < skillsetIdx; i++)
             {
                 SendKey(VK_DOWN);
