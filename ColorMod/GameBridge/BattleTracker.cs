@@ -79,12 +79,24 @@ namespace FFTColorCustomizer.GameBridge
         private const int TqMp = 0x12;
         private const int TqMaxMp = 0x16;
 
+        // Static battle array constants (discovered 2026-04-12)
+        private const long BattleArrayBase = 0x140893C00;
+        private const int ArrayStride = 0x200;
+        private const int ArraySlotsBack = 20;  // enemies at negative offsets
+        private const int ArraySlotsForward = 10; // players at positive offsets
+        private const int ArrayTotalSlots = ArraySlotsBack + ArraySlotsForward;
+
         // Tracked state
         private readonly Dictionary<int, BattleUnit> _units = new();
         private readonly Dictionary<int, nint> _heapAddresses = new(); // unitKey → heap struct address
         private bool _inBattle;
         private bool _heapScanDone;
         private DateTime _lastHeapScan = DateTime.MinValue;
+
+        // Static array tracking for real-time HP/position change detection
+        private readonly TrackedSlot[] _trackedSlots = new TrackedSlot[ArrayTotalSlots];
+        private readonly List<BattleEvent> _recentEvents = new();
+        private readonly object _eventsLock = new();
 
         public BattleTracker(MemoryExplorer explorer)
         {
@@ -139,11 +151,19 @@ namespace FFTColorCustomizer.GameBridge
                     _heapAddresses.Clear();
                     _heapScanDone = false;
                     _inBattle = false;
+                    // Clear tracked slots and events on battle end
+                    for (int i = 0; i < _trackedSlots.Length; i++)
+                        _trackedSlots[i] = default;
+                    lock (_eventsLock) { _recentEvents.Clear(); }
                 }
                 return null;
             }
 
             _inBattle = true;
+
+            // Poll static battle array for real-time HP/position changes
+            try { PollStaticArray(); }
+            catch (Exception ex) { ModLogger.LogDebug($"[BattleTracker] PollStaticArray error: {ex.Message}"); }
 
             // Read turn queue slot 0 for active unit info + position from condensed struct
             var battleReads = _explorer.ReadMultiple(new (nint, int)[]
@@ -642,6 +662,147 @@ namespace FFTColorCustomizer.GameBridge
             }
             catch { }
             return null;
+        }
+
+        /// <summary>
+        /// Poll the static battle array for real-time HP/position changes.
+        /// Called every 100ms from the Update loop. Detects damage, healing,
+        /// movement, and death in real-time without any game input.
+        /// </summary>
+        private void PollStaticArray()
+        {
+            // Batch-read HP + MaxHP + gridX + gridY + inBattleFlag for all slots
+            const int fields = 5;
+            var reads = new (nint, int)[ArrayTotalSlots * fields];
+            for (int s = 0; s < ArrayTotalSlots; s++)
+            {
+                long sb = BattleArrayBase + (long)(s - ArraySlotsBack + 1) * ArrayStride;
+                reads[s * fields + 0] = ((nint)(sb + 0x14), 2); // HP
+                reads[s * fields + 1] = ((nint)(sb + 0x16), 2); // MaxHP
+                reads[s * fields + 2] = ((nint)(sb + 0x33), 1); // gridX
+                reads[s * fields + 3] = ((nint)(sb + 0x34), 1); // gridY
+                reads[s * fields + 4] = ((nint)(sb + 0x12), 2); // inBattleFlag
+            }
+            var sv = _explorer.ReadMultiple(reads);
+
+            for (int s = 0; s < ArrayTotalSlots; s++)
+            {
+                int hp = (int)sv[s * fields + 0];
+                int maxHp = (int)sv[s * fields + 1];
+                int gx = (int)sv[s * fields + 2];
+                int gy = (int)sv[s * fields + 3];
+                int inBattle = (int)sv[s * fields + 4];
+
+                ref var slot = ref _trackedSlots[s];
+
+                // Skip non-battle or invalid slots
+                if (inBattle == 0 || maxHp <= 0 || maxHp >= 2000 || gx > 30 || gy > 30)
+                {
+                    slot.Active = false;
+                    continue;
+                }
+
+                if (!slot.Active || slot.MaxHp != maxHp)
+                {
+                    // New unit or unit changed — initialize tracking
+                    slot.Active = true;
+                    slot.Hp = hp;
+                    slot.MaxHp = maxHp;
+                    slot.GridX = gx;
+                    slot.GridY = gy;
+                    continue;
+                }
+
+                // Detect HP changes
+                if (hp != slot.Hp)
+                {
+                    int delta = hp - slot.Hp;
+                    string type = delta < 0 ? "damage" : "heal";
+                    int amount = Math.Abs(delta);
+                    bool died = hp <= 0 && slot.Hp > 0;
+
+                    var ev = new BattleEvent
+                    {
+                        Type = died ? "kill" : type,
+                        GridX = gx, GridY = gy,
+                        Amount = amount,
+                        HpBefore = slot.Hp, HpAfter = hp,
+                        MaxHp = maxHp,
+                        Timestamp = DateTime.UtcNow,
+                    };
+
+                    lock (_eventsLock) { _recentEvents.Add(ev); }
+
+                    if (died)
+                        ModLogger.Log($"[BattleTracker] KILL at ({gx},{gy}): {slot.Hp}→0/{maxHp} ({amount} damage)");
+                    else if (delta < 0)
+                        ModLogger.Log($"[BattleTracker] {amount} damage to ({gx},{gy}): {slot.Hp}→{hp}/{maxHp}");
+                    else
+                        ModLogger.Log($"[BattleTracker] {amount} healed at ({gx},{gy}): {slot.Hp}→{hp}/{maxHp}");
+
+                    slot.Hp = hp;
+                }
+
+                // Detect position changes (unit moved)
+                if (gx != slot.GridX || gy != slot.GridY)
+                {
+                    var ev = new BattleEvent
+                    {
+                        Type = "move",
+                        GridX = gx, GridY = gy,
+                        FromX = slot.GridX, FromY = slot.GridY,
+                        MaxHp = maxHp,
+                        Timestamp = DateTime.UtcNow,
+                    };
+                    lock (_eventsLock) { _recentEvents.Add(ev); }
+                    ModLogger.Log($"[BattleTracker] Unit moved ({slot.GridX},{slot.GridY})→({gx},{gy}) hp={hp}/{maxHp}");
+                    slot.GridX = gx;
+                    slot.GridY = gy;
+                }
+            }
+
+            // Trim old events (keep last 30 seconds)
+            lock (_eventsLock)
+            {
+                var cutoff = DateTime.UtcNow.AddSeconds(-30);
+                _recentEvents.RemoveAll(e => e.Timestamp < cutoff);
+            }
+        }
+
+        /// <summary>Get recent battle events (damage, heals, moves, kills) since the given time.</summary>
+        public List<BattleEvent> GetEventsSince(DateTime since)
+        {
+            lock (_eventsLock)
+            {
+                return _recentEvents.Where(e => e.Timestamp >= since).ToList();
+            }
+        }
+
+        /// <summary>Get all recent battle events (last 30 seconds).</summary>
+        public List<BattleEvent> GetRecentEvents()
+        {
+            lock (_eventsLock) { return _recentEvents.ToList(); }
+        }
+
+        private struct TrackedSlot
+        {
+            public bool Active;
+            public int Hp, MaxHp;
+            public int GridX, GridY;
+        }
+
+        public class BattleEvent
+        {
+            public string Type { get; set; } = ""; // "damage", "heal", "kill", "move"
+            public int GridX { get; set; }
+            public int GridY { get; set; }
+            public int FromX { get; set; }  // for moves
+            public int FromY { get; set; }  // for moves
+            public int Amount { get; set; }  // damage/heal amount
+            public int HpBefore { get; set; }
+            public int HpAfter { get; set; }
+            public int MaxHp { get; set; }
+            public DateTime Timestamp { get; set; }
         }
 
         private class BattleUnit

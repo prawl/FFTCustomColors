@@ -1500,9 +1500,11 @@ namespace FFTColorCustomizer.GameBridge
             {
                 string teamName = u.Team == 0 ? "PLAYER" : u.Team == 2 ? "ALLY" : "ENEMY";
                 string nameStr = u.Name != null ? $" {u.Name}" : "";
+                string jobStr = u.JobNameOverride ?? (u.Job > 0 ? GameStateReporter.GetJobName(u.Job) : null) ?? "";
+                if (jobStr.Length > 0) jobStr = $"({jobStr})";
                 var statuses = StatusDecoder.Decode(u.StatusBytes);
                 string statusStr = statuses.Count > 0 ? $" [{string.Join(",", statuses)}]" : "";
-                lines.Add($"[{teamName}]{nameStr} ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp} MP={u.Mp}/{u.MaxMp} PA={u.PA} MA={u.MA} Mv={u.Move} Jmp={u.Jump} Job={u.Job} Br={u.Brave} Fa={u.Faith} CT={u.CT} Exp={u.Exp}{statusStr}");
+                lines.Add($"[{teamName}]{nameStr}{jobStr} ({u.GridX},{u.GridY}) Lv{u.Level} HP={u.Hp}/{u.MaxHp} MP={u.Mp}/{u.MaxMp} PA={u.PA} MA={u.MA} Mv={u.Move} Jmp={u.Jump} Br={u.Brave} Fa={u.Faith} CT={u.CT} Spd={u.Speed} Exp={u.Exp}{statusStr}");
             }
 
             response.Status = units.Count > 0 ? "completed" : "failed";
