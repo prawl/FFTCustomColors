@@ -690,7 +690,7 @@ scan_move() {
       } else if ((a.validTargetTiles && a.validTargetTiles.length) || a.totalTargets > 0) {
         if (a.areaOfEffect && a.areaOfEffect > 1) {
           // Radius AoE: compact center count + bestCenters summary.
-          parts.push('centers=' + a.validTargetTiles.length);
+          parts.push('centers=' + (a.validTargetTiles ? a.validTargetTiles.length : 0));
           if (a.bestCenters && a.bestCenters.length) {
             var bestRendered = a.bestCenters.map(function(bc) {
               var segs = ['(' + bc.x + ',' + bc.y + ')'];
