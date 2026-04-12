@@ -75,16 +75,41 @@ Entry[0] = active unit's current position. Cursor index at `0x140C64E7C`.
 | +0x2C | Brave |
 | +0x2E | Faith |
 
-## 8. Unit Position
+## 8. Unit Position & Stats (Static Battle Array)
 
-**Live Position via C+Up Cycling (BEST METHOD):**
-Hold C + press Up repeatedly — cursor snaps to each unit in turn order. Read grid pos (0x140C64A54 X, 0x140C6496C Y), team (0x14077D2A2), world pos (0x14077D360 X, 0x14077D362 Y).
+**Static Battle Array (BEST METHOD — no input needed):**
+Per-unit slots at stride 0x200. Player units at `BattleArrayBase + n*0x200` (n≥1), enemies at negative offsets (up to -20 slots). Base: `0x140893C00`. Filter active units: `+0x12 == 1`.
 
-**Condensed Turn Queue Position:**
-X at 0x14077D360, Y at 0x14077D362 — updates per turn rotation. Background polling at 100ms catches all units.
+| Offset | Size | Field | Verified |
+|--------|------|-------|----------|
+| +0x0C | byte | Exp | ✓ |
+| +0x0D | byte | Level | ✓ |
+| +0x0E | byte | origBrave | ✓ |
+| +0x0F | byte | brave (in-battle) | ✓ |
+| +0x10 | byte | origFaith | ✓ |
+| +0x11 | byte | faith (in-battle) | ✓ |
+| +0x12 | u16 | inBattleFlag (1=active, 0=stale) | ✓ |
+| +0x14 | u16 | HP | ✓ |
+| +0x16 | u16 | MaxHP | ✓ |
+| +0x18 | u16 | MP | ✓ |
+| +0x1A | u16 | MaxMP | ✓ |
+| +0x22 | byte | PA (total, with equipment) | ✓ |
+| +0x23 | byte | MA (total, with equipment) | ✓ |
+| +0x24 | byte | Speed | ✓ |
+| +0x25 | byte | CT | ✓ |
+| +0x26 | byte | PA (raw, without equipment) | ✓ |
+| +0x27 | byte | MA (raw, without equipment) | ✓ |
+| +0x28 | byte | WP (right hand weapon power) | ✓ |
+| +0x2E | byte | C-EV % (class evasion) | ✓ |
+| +0x32 | byte | S-EV % (shield evasion) | ✓ |
+| +0x33 | byte | Grid X | ✓ 10/10 |
+| +0x34 | byte | Grid Y | ✓ 10/10 |
+| +0x45 | 5 bytes | Status effects bitfield | ✓ |
 
-**Starting Position via Heap Struct:**
-Found via `search_bytes`. Starting X at +0x1A, Y at +0x23 from stat base. Does NOT update after movement.
+Move/Jump NOT in this array — only available from UI buffer for active unit.
+
+**Condensed Struct (active unit only):**
+X at 0x14077D360, Y at 0x14077D362 — world coords, not grid coords.
 
 ## 9. Movement Tile Validity (Map-Based BFS)
 
@@ -95,10 +120,10 @@ Found via `search_bytes`. Starting X at +0x1A, Y at +0x23 from stat base. Does N
 - `no_walk` = impassable, enemy tiles block movement
 - **Verified 6/6 tile counts match in-game exactly**
 
-**`scan_move` action:** Scans units via C+Up, computes valid tiles via BFS, returns `ValidMoveTiles`.
+**`scan_move` action:** Scans units via static array, computes valid tiles via BFS, returns `ValidMoveTiles`.
 Usage: `scan_move <move> <jump>`
 
-**Known issue:** Move/Jump stats at UI buffer show base values (no equipment modifiers).
+**Known issue:** Move/Jump only available from UI buffer for active unit (base values, no equipment modifiers).
 
 **Fallback BFS (no map loaded):** Terrain grid at 0x140C65000, approximate heights, ~12 false positives.
 
@@ -187,28 +212,15 @@ Enemy units store equipped reaction/support/movement abilities as bitfields in t
 | Support | +0x78 | 5 bytes | 198 | MSB-first. Equip Swords=bit 2, Evasive Stance=bit 25 |
 | Movement | +0x7D | 3 bytes | TBD | MSB-first. Base not yet verified with known equipped ability |
 
-**Bit decoding (MSB-first):** For ability ID `N` with base `B`: position = `N - B`, byte index = `floor(pos/8)`, bit index = `7 - (pos % 8)`, mask = `1 << bitIndex`.
-
-**Verified 2026-04-12:** Knight(Parry reaction ✓, Equip Swords support ✓), Archer(Gil Snapper reaction ✓, Evasive Stance support ✓), Archer(no reaction ✓, Evasive Stance support ✓), Time Mage(no reaction ✓, Evasive Stance support ✓).
-
-**Caveat:** These appear to be EQUIPPED ability bits (1 bit set per field), not learned. HP pattern search can match wrong struct if multiple units share HP — verify with level/brave/faith. Player units should use roster (+0x08/+0x0A/+0x0C) instead.
+Bit decoding (MSB-first): position = `N - B`, byte = `pos/8`, bit = `7 - (pos%8)`. These are EQUIPPED bits (1 per field). Player units use roster instead.
 
 ### Gil (static address confirmed)
 `0x140D39CD0` — u32 LE. Survives restarts, updates in real-time. Read with `read_address size=4`.
 
 ## 17. Inventory — investigation paused
-The party item inventory (Potions, X-Potions, bombs, etc.) has **not** been located in memory. Exhaustive byte-pattern search for `02 00 5D 00 63 00 60 00` (Potion=2, Hi-Potion=0, X-Pot=93, Ether=99, Antidote=96) in u8/u16/u32/float/XOR/big-endian encodings returned 0 matches across condensed struct, gil region, roster, item metadata, and heap abilities regions.
-
-**Item metadata IS findable** — strings "Potion", "Hi-Potion", "X-Potion", etc. live as length-prefixed UTF-16 in a std::wstring pool around `0x040D2xxx`, but these are just name+description pairs with no count field.
-
-**Save file is encrypted** — at `%USERPROFILE%/OneDrive/Documents/My Games/FINAL FANTASY TACTICS - The Ivalice Chronicles/Steam/<accountid>/enhanced.png`. Format: PNG wrapper + custom `ffTo` chunk containing a 93KB `UMIF` blob that decompresses to ~2MB. Encryption scheme unknown. Neither zlib nor raw deflate work.
-
-**Next options**: see `memory/project_inventory_investigation.md` for a full dossier. Most promising next step is "scrape the Items menu while it's rendered" (Option C in the memo).
+Not located in memory. See `memory/project_inventory_investigation.md` for full dossier. Next step: scrape Items menu while rendered (Option C).
 
 ## Still Unmapped
-- Facing direction, effective Move/Jump stats (UI buffer shows base, not equipment-modified)
-- Enemy display names (only player roster names readable — see UNIT_DATA_STRUCTURE.md)
-- Party item inventory (see section 17)
-- IC remaster roster job IDs for jobs between Knight(79) and Ninja(89) need verification
-- Movement ability bitfield base (needs a unit with a known equipped movement ability to verify)
+- Effective Move/Jump (not in static array, only UI buffer for active unit)
+- Enemy display names, party item inventory (see §17), facing direction
 - See BATTLE_STATS_PSX_REFERENCE.md for complete PSX field layout
