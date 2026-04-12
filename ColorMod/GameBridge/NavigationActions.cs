@@ -787,7 +787,7 @@ namespace FFTColorCustomizer.GameBridge
             int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
             NavigateMenuCursor(cursor, 1);
             SendKey(VK_ENTER);
-            Thread.Sleep(500);
+            Thread.Sleep(1000); // Wait for submenu to fully load — 500ms was too fast
 
             // Step 2: Get available skillsets from cached scan data
             var submenuItems = GetAbilitiesSubmenuItems?.Invoke() ?? new[] { "Attack" };
@@ -815,15 +815,26 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Step 3: Enter the Abilities submenu and navigate to the correct skillset
+            // Step 3: Verify we're in the Abilities submenu. Step 1 already pressed Enter
+            // on Abilities — if screen detection is slow, we might still read Battle_MyTurn
+            // or Battle_Acting. Do NOT press Enter again here (that would select Attack
+            // from the submenu, which is the bug that caused Throw Stone → Attack targeting).
             screen = _detectScreen();
-            // The menu may not have entered the submenu yet if the previous DetectScreen
-            // didn't trigger SyncBattleMenuTracker. Press Enter on Abilities if still on main menu.
-            if (screen?.Name == "Battle_MyTurn")
+            if (screen?.Name == "Battle_MyTurn" || screen?.Name == "Battle_Acting")
             {
-                // Menu cursor should be on Abilities already from Step 1
-                SendKey(VK_ENTER);
+                // Still on action menu — the Enter from Step 1 didn't register.
+                // Wait longer and retry.
                 Thread.Sleep(500);
+                screen = _detectScreen();
+                if (screen?.Name == "Battle_MyTurn" || screen?.Name == "Battle_Acting")
+                {
+                    // Try Enter one more time
+                    var retryRead = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+                    int retryCursor = retryRead != null ? (int)retryRead.Value.value : 1;
+                    NavigateMenuCursor(retryCursor, 1);
+                    SendKey(VK_ENTER);
+                    Thread.Sleep(1000);
+                }
             }
 
             // Find the skillset index in the submenu items array
@@ -838,18 +849,18 @@ namespace FFTColorCustomizer.GameBridge
 
             // Navigate: submenu starts on the last cursor position (may not be Attack).
             // FFT submenu cursors do NOT wrap — pressing Up from the top stays at top.
-            // Press Up×10 to guarantee we're on Attack (index 0) from any starting position,
-            // then Down to the target skillset.
-            for (int i = 0; i < 10; i++)
+            // Press Up×5 to guarantee we're on Attack (index 0) — covers submenus up to
+            // 6 items (Attack + 5 skillsets). 250ms between presses to let the game settle.
+            for (int i = 0; i < 5; i++)
             {
                 SendKey(VK_UP);
-                Thread.Sleep(100);
+                Thread.Sleep(250);
             }
             // Now at Attack (index 0). Navigate Down to the target skillset.
             for (int i = 0; i < skillsetIdx; i++)
             {
                 SendKey(VK_DOWN);
-                Thread.Sleep(150);
+                Thread.Sleep(250);
             }
 
             // Step 3: Enter the skillset
@@ -3393,11 +3404,16 @@ namespace FFTColorCustomizer.GameBridge
                             unit.LearnedBitfieldByJobIdx = new Dictionary<int, (byte, byte)>();
 
                             var jobsToRead = new HashSet<int>();
-                            // Primary: resolve from the raw job ID via GetJobName → GetJobJpOffset.
+                            // Primary: resolve via skillset name → job idx. This handles
+                            // story character jobs (Gallant Knight → Mettle → idx 0) that
+                            // GetJobJpOffset doesn't know about.
                             var primaryJobName = unit.JobNameOverride ?? GameStateReporter.GetJobName(m.Job);
-                            if (primaryJobName != null)
+                            var primarySkillset = primaryJobName != null
+                                ? Utilities.CommandWatcher.GetPrimarySkillsetByJobName(primaryJobName)
+                                : null;
+                            if (primarySkillset != null)
                             {
-                                int primaryJobIdx = AbilityData.GetJobJpOffset(primaryJobName);
+                                int primaryJobIdx = AbilityData.GetJobIdxBySkillsetName(primarySkillset);
                                 if (primaryJobIdx >= 0) jobsToRead.Add(primaryJobIdx);
                             }
                             // Secondary: secondary is a skillset index; map to the owning job idx.
