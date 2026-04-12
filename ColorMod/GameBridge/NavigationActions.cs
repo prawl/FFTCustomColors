@@ -28,9 +28,10 @@ namespace FFTColorCustomizer.GameBridge
         private static volatile bool _injectCKey = false;
         private static bool _diHookInstalled = false;
 
-        // After battle_move, the game auto-advances cursor to Abilities (index 1)
-        // but memory at 0x1407FC620 still reads 0. This flag corrects for that.
-        private bool _justMoved = false;
+        // After battle_move or battle_ability, the game auto-advances cursor to
+        // Abilities (index 1) but memory at 0x1407FC620 still reads 0.
+        // This flag triggers cursor correction in battle_wait and battle_ability.
+        private bool _menuCursorStale = false;
 
         // Original GetDeviceState function pointer
         private static IntPtr _originalGetDeviceState;
@@ -380,7 +381,7 @@ namespace FFTColorCustomizer.GameBridge
             var screen = _detectScreen();
             if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
             {
-                _justMoved = false;
+                _menuCursorStale = false;
                 response.Status = "failed";
                 response.Error = $"Cannot battle_wait from screen (current: {screen?.Name ?? "null"})";
                 return response;
@@ -393,7 +394,7 @@ namespace FFTColorCustomizer.GameBridge
                 // After Move+Act, game already transitioned to facing screen.
                 // Skip menu navigation entirely — we're already where we need to be.
                 ModLogger.Log($"[BattleWait] Auto-facing detected (screen={screen.Name}), skipping menu navigation");
-                _justMoved = false;
+                _menuCursorStale = false;
                 Thread.Sleep(300);
             }
             else
@@ -405,12 +406,12 @@ namespace FFTColorCustomizer.GameBridge
                 int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
                 // After battle_move, game auto-advances cursor to Abilities (1)
                 // but 0x1407FC620 still reads 0. Correct before navigating.
-                if (_justMoved && cursor == 0)
+                if (_menuCursorStale && cursor == 0)
                 {
                     ModLogger.Log("[BattleWait] Post-move cursor correction: 0 → 1");
                     cursor = 1;
                 }
-                _justMoved = false; // consumed
+                _menuCursorStale = false; // consumed
                 int target = 2; // Wait
                 ModLogger.Log($"[BattleWait] Cursor at {cursor}, navigating to {target}");
                 NavigateMenuCursor(cursor, target);
@@ -798,15 +799,15 @@ namespace FFTColorCustomizer.GameBridge
             // but never disappears. Indices are stable:
             //   Move/ResetMove(0) Abilities(1) Wait(2) Status(3) AutoBattle(4)
             // After battle_move, the game auto-advances cursor to Abilities (1)
-            // but the memory address 0x1407FC620 still reads 0. Use _justMoved to correct.
+            // but the memory address 0x1407FC620 still reads 0. Use _menuCursorStale to correct.
             var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
             int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
-            if (_justMoved && cursor == 0)
+            if (_menuCursorStale && cursor == 0)
             {
                 ModLogger.Log("[BattleAbility] Post-move cursor correction: memory reads 0 but game is at 1 (Abilities)");
                 cursor = 1;
             }
-            _justMoved = false; // consumed
+            _menuCursorStale = false; // consumed
             NavigateMenuCursor(cursor, 1);
             SendKey(VK_ENTER);
             Thread.Sleep(1000); // Wait for submenu to fully load — 500ms was too fast
@@ -980,6 +981,7 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(300);
                 response.Status = "completed";
                 response.Info = $"Used {abilityName} (self-target)";
+                _menuCursorStale = true;
                 return response;
             }
 
@@ -1019,6 +1021,7 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(300);
                 response.Status = "completed";
                 response.Info = $"Used {abilityName} on ({targetX},{targetY}) — cursor was already on target";
+                _menuCursorStale = true;
                 return response;
             }
 
@@ -1106,6 +1109,7 @@ namespace FFTColorCustomizer.GameBridge
 
             response.Status = "completed";
             response.Info = $"Used {abilityName} on ({targetX},{targetY})";
+            _menuCursorStale = true;
             return response;
         }
 
@@ -2533,7 +2537,7 @@ namespace FFTColorCustomizer.GameBridge
                 int waitCursor = preWait.MenuCursor;
                 // After battle_move, game auto-advances cursor to Abilities (1)
                 // but 0x1407FC620 still reads 0. Apply same correction as BattleAbility.
-                if (_justMoved && waitCursor == 0)
+                if (_menuCursorStale && waitCursor == 0)
                 {
                     ModLogger.Log("[AutoMove] Post-move cursor correction for Wait: 0 → 1");
                     waitCursor = 1;
@@ -2859,7 +2863,7 @@ namespace FFTColorCustomizer.GameBridge
 
             response.Status = confirmed ? "completed" : "failed";
             response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) {(confirmed ? "CONFIRMED" : "NOT CONFIRMED")}";
-            if (confirmed) _justMoved = true;
+            if (confirmed) _menuCursorStale = true;
             return response;
         }
 

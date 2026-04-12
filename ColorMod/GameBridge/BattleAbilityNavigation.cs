@@ -91,5 +91,17 @@ namespace FFTColorCustomizer.GameBridge
             }
             return -1;
         }
+
+        /// <summary>
+        /// Returns the effective menu cursor position, correcting for stale memory reads.
+        /// After battle_move or battle_ability, the game auto-advances the cursor to
+        /// Abilities (1) but memory at 0x1407FC620 still reads 0.
+        /// </summary>
+        public static int EffectiveMenuCursor(int memoryCursor, bool menuCursorStale)
+        {
+            if (menuCursorStale && memoryCursor == 0)
+                return 1; // game is at Abilities, memory is stale
+            return memoryCursor;
+        }
     }
 }

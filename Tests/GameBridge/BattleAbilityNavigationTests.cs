@@ -82,5 +82,29 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal(0, result.Value.indexInSkillset);
             Assert.False(result.Value.isSelfTarget);
         }
+
+        [Fact]
+        public void EffectiveMenuCursor_StaleFlagTrue_MemoryReads0_Returns1()
+        {
+            // After move or ability, memory reads 0 but game cursor is at Abilities (1)
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 0, menuCursorStale: true);
+            Assert.Equal(1, result);
+        }
+
+        [Fact]
+        public void EffectiveMenuCursor_StaleFlagTrue_MemoryReadsNonZero_ReturnsMemoryValue()
+        {
+            // If memory reads non-zero, trust it even with stale flag
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 2, menuCursorStale: true);
+            Assert.Equal(2, result);
+        }
+
+        [Fact]
+        public void EffectiveMenuCursor_StaleFlagFalse_MemoryReads0_Returns0()
+        {
+            // No stale flag, trust the memory value
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 0, menuCursorStale: false);
+            Assert.Equal(0, result);
+        }
     }
 }
