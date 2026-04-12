@@ -3431,6 +3431,121 @@ namespace FFTColorCustomizer.GameBridge
             PostMessage(_gameWindow, 0x0101, (IntPtr)VK_C, IntPtr.Zero);
             Thread.Sleep(200);
 
+            // Retry if C+Up scan failed (only found 1 unit when we expect more).
+            // This happens when the C key hold doesn't register with the game,
+            // causing Up presses to move the cursor instead of cycling the Combat Timeline.
+            if (units.Count <= 1 && expectedCount > 1)
+            {
+                ModLogger.Log($"[CollectPositions] C+Up scan found only {units.Count} unit(s) but expected {expectedCount}. Retrying with longer hold...");
+                units.Clear();
+                seen.Clear();
+
+                // Re-dismiss menu and retry with longer initial C hold
+                SendKey(VK_ESCAPE);
+                Thread.Sleep(500);
+                SetForegroundWindow(_gameWindow);
+                Thread.Sleep(100);
+                SendInputKeyDown(VK_C);
+                _input.SendKeyDownToWindow(_gameWindow, VK_C);
+                PostMessage(_gameWindow, 0x0100, (IntPtr)VK_C, IntPtr.Zero);
+                Thread.Sleep(1000); // longer hold on retry
+
+                // Re-read active unit
+                {
+                    var retryPos = ReadGridPos();
+                    if (retryPos.x >= 0 && retryPos.y >= 0)
+                    {
+                        var reads0 = _explorer.ReadMultiple(new (nint, int)[]
+                        {
+                            ((nint)(AddrCondensedBase + 0x00), 2),
+                            ((nint)(AddrCondensedBase + 0x02), 2),
+                            ((nint)(AddrCondensedBase + 0x04), 2),
+                            ((nint)(AddrCondensedBase + 0x06), 1),
+                            ((nint)(AddrCondensedBase + 0x08), 2),
+                            ((nint)(AddrCondensedBase + 0x0A), 2),
+                            ((nint)(AddrCondensedBase + 0x0C), 2),
+                            ((nint)(AddrCondensedBase + 0x10), 2),
+                            ((nint)(AddrCondensedBase + 0x12), 2),
+                            ((nint)(AddrCondensedBase + 0x16), 2),
+                            ((nint)(AddrCondensedBase + 0x18), 2),
+                            ((nint)(AddrCondensedBase + 0x1A), 2),
+                            ((nint)(AddrUIBuffer + 0x24), 2),
+                            ((nint)(AddrUIBuffer + 0x26), 2),
+                        });
+                        var u0 = new ScannedUnit
+                        {
+                            GridX = retryPos.x, GridY = retryPos.y,
+                            Level = (int)reads0[0], Team = (int)reads0[1], NameId = (int)reads0[2],
+                            Speed = (int)reads0[3], Exp = (int)reads0[4], CT = (int)reads0[5],
+                            Hp = (int)reads0[6], MaxHp = (int)reads0[7],
+                            Mp = (int)reads0[8], MaxMp = (int)reads0[9],
+                            PA = (int)reads0[10], MA = (int)reads0[11],
+                            Move = (int)reads0[12], Jump = (int)reads0[13],
+                        };
+                        var abilityBytes = _explorer.Scanner.ReadBytes((nint)(AddrCondensedBase + 0x28), 64);
+                        if (abilityBytes.Length > 0)
+                        {
+                            var learnedIds = ActionAbilityLookup.ParseLearnedIdsFromBytes(abilityBytes);
+                            u0.LearnedAbilities = ActionAbilityLookup.ResolveLearnedAbilities(learnedIds);
+                        }
+                        seen.Add((retryPos.x, retryPos.y));
+                        units.Add(u0);
+                    }
+                }
+
+                // Retry C+Up cycle
+                for (int i = 0; i < maxUnits; i++)
+                {
+                    SendInputKeyDown(VK_C);
+                    Thread.Sleep(50);
+                    _input.SendKeyPressToWindow(_gameWindow, VK_UP);
+                    Thread.Sleep(500);
+                    var pos = ReadGridPos();
+                    if (pos.x < 0 || pos.y < 0) continue;
+                    bool isNew = seen.Add((pos.x, pos.y));
+                    if (isNew)
+                    {
+                        var posAfter = ReadGridPos();
+                        if (posAfter.x != pos.x || posAfter.y != pos.y) { seen.Remove((pos.x, pos.y)); continue; }
+                        var reads = _explorer.ReadMultiple(new (nint, int)[]
+                        {
+                            ((nint)(AddrCondensedBase + 0x00), 2), ((nint)(AddrCondensedBase + 0x02), 2),
+                            ((nint)(AddrCondensedBase + 0x04), 2), ((nint)(AddrCondensedBase + 0x06), 1),
+                            ((nint)(AddrCondensedBase + 0x08), 2), ((nint)(AddrCondensedBase + 0x0A), 2),
+                            ((nint)(AddrCondensedBase + 0x0C), 2), ((nint)(AddrCondensedBase + 0x10), 2),
+                            ((nint)(AddrCondensedBase + 0x12), 2), ((nint)(AddrCondensedBase + 0x16), 2),
+                            ((nint)(AddrCondensedBase + 0x18), 2), ((nint)(AddrCondensedBase + 0x1A), 2),
+                            ((nint)(AddrUIBuffer + 0x24), 2), ((nint)(AddrUIBuffer + 0x26), 2),
+                            ((nint)(AddrUIBuffer + 0x2A), 2), ((nint)(AddrUIBuffer + 0x2C), 2),
+                            ((nint)(AddrUIBuffer + 0x2E), 2),
+                        });
+                        units.Add(new ScannedUnit
+                        {
+                            GridX = pos.x, GridY = pos.y,
+                            Level = (int)reads[0], Team = (int)reads[1], NameId = (int)reads[2],
+                            Speed = (int)reads[3], Exp = (int)reads[4], CT = (int)reads[5],
+                            Hp = (int)reads[6], MaxHp = (int)reads[7],
+                            Mp = (int)reads[8], MaxMp = (int)reads[9],
+                            PA = (int)reads[10], MA = (int)reads[11],
+                            Move = (int)reads[12], Jump = (int)reads[13],
+                            Job = (int)reads[14], Brave = (int)reads[15], Faith = (int)reads[16],
+                        });
+                    }
+                    if (!isNew && units.Count >= 2 && i >= units.Count)
+                    {
+                        ModLogger.Log($"[CollectPositions] Retry: Full cycle after {i + 1} presses, {units.Count} unique units");
+                        break;
+                    }
+                }
+
+                // Release C
+                SendInputKeyUp(VK_C);
+                _input.SendKeyUpToWindow(_gameWindow, VK_C);
+                PostMessage(_gameWindow, 0x0101, (IntPtr)VK_C, IntPtr.Zero);
+                Thread.Sleep(200);
+                ModLogger.Log($"[CollectPositions] Retry result: {units.Count} units");
+            }
+
             // Re-open action menu
             SendKey(VK_F);
             Thread.Sleep(300);
