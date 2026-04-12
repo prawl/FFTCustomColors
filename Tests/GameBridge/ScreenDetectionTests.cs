@@ -358,5 +358,50 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
             Assert.Equal("Battle_Acting", result);
         }
+
+        [Fact]
+        public void DetectScreen_Formation_BattleMode1_NoUnits_ShouldReturnFormation()
+        {
+            // Formation screen: battleMode=1, slot9=0xFFFFFFFF (battle-like),
+            // but slot0=0xFFFFFFFF (no units populated yet, not 0x000000FF).
+            // Location is valid (28), encA==encB (encounter accepted).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 28, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 3, encB: 3, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            Assert.Equal("Battle_Formation", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Formation_ShouldNotReturnBattleCasting()
+        {
+            // Previously Formation was misdetected as Battle_Casting because
+            // battleMode=1 + slot9=0xFFFFFFFF triggered battleModeActive.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 28, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 3, encB: 3, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            Assert.NotEqual("Battle_Casting", result);
+        }
+
+        [Fact]
+        public void DetectScreen_RealBattleCasting_UnitsPopulated_StillWorks()
+        {
+            // Real Battle_Casting: slot0=255 (0x000000FF, units exist), battleMode=1.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            Assert.Equal("Battle_Casting", result);
+        }
     }
 }

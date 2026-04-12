@@ -46,6 +46,13 @@ namespace FFTColorCustomizer.GameBridge
             bool clearlyOnWorldMap = rawValidLocation && party == 0 && battleMode == 0;
             bool inBattle = (unitSlotsPopulated || battleModeActive) && !clearlyOnWorldMap;
 
+            // Formation screen: battle-like flags (slot9=0xFFFFFFFF, battleMode=1)
+            // but no units populated yet (slot0=0xFFFFFFFF instead of 0x000000FF).
+            // During ability browsing slot0 can be other values (e.g. 150), so we check
+            // specifically for the 0xFFFFFFFF terminator, not just "not 255".
+            if (inBattle && slot0 == 0xFFFFFFFF && battleMode == 1)
+                return "Battle_Formation";
+
             if (inBattle && paused == 1 && battleMode == 0 && gameOverFlag == 1)
                 return "GameOver";
             if (inBattle && paused == 1)

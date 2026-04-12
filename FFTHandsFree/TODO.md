@@ -353,6 +353,12 @@ Currently Claude uses hardcoded lists. Reading from memory is better: always acc
 
 ## 12. Known Issues / Blockers
 
+### Missing Screen States
+- [ ] **Formation** — Pre-battle unit placement screen. Currently misdetected as TravelList for 3-6s during transition. Need to find a memory signal that distinguishes it from TravelList/WorldMap. Critical for automated battle entry.
+- [ ] **Battle_Cutscene** — Mid-battle cutscenes (pre-battle intros, death speeches, mid-fight dialogue). Currently detected as `Cutscene` or falls through to `Battle`. Need to distinguish from regular cutscenes so Claude knows it's still in a battle context.
+- [ ] **Battle_Victory** — Victory screen after winning. Currently misdetected as TravelList/EncounterDialog. Need to capture memory values during victory to find a reliable signal.
+- [ ] **SaveScreen / LoadScreen** — Save and load game screens. Not detected yet. Need memory investigation.
+
 ### Screen Detection Edge Cases
 - Battle_Paused false positives: pauseFlag=1 stale after facing confirmation
 - Battle at valid world map location detected as TravelList/WorldMap (clearlyOnWorldMap false positive)
