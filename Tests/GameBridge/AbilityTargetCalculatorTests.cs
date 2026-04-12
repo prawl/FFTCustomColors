@@ -680,5 +680,25 @@ namespace FFTColorCustomizer.Tests.GameBridge
             };
             Assert.False(AbilityTargetCalculator.IsRevivalAbility(ability));
         }
+
+        [Fact]
+        public void GetValidTargetTiles_Attack_IncludesDiagonals()
+        {
+            // FFT Attack uses Manhattan distance — diagonals at distance 2 ARE valid
+            // for range-2 weapons (spears). (9,9) from (10,10) is distance 2.
+            var map = FlatMap(20);
+            var attack = new ActionAbilityInfo(
+                ActionAbilityLookup.ATTACK_ID, "Attack", 0,
+                "2", 0, 1, 0, "enemy", "");
+
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(10, 10, attack, map, casterJump: 3);
+
+            // Cardinal and diagonal tiles within Manhattan distance 2
+            Assert.Contains((10, 8), tiles);
+            Assert.Contains((9, 9), tiles);
+            Assert.Contains((11, 11), tiles);
+            Assert.Contains((9, 11), tiles);
+            Assert.Contains((11, 9), tiles);
+        }
     }
 }

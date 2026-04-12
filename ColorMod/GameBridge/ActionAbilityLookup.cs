@@ -54,7 +54,7 @@ namespace FFTColorCustomizer.GameBridge
         bool Reflectable = false,     // Can be reflected by Reflect status
         bool Arithmetickable = false, // Can be cast via Arithmeticks
         AbilityShape Shape = AbilityShape.Auto,  // Splash shape; default infers from (HRange, AoE)
-        int MinRange = 0                        // Minimum range (guns=3, bows have no min range)
+        int MinRange = 0                        // Minimum range (guns=2, bows=2, crossbows=3)
     );
 
     /// <summary>

@@ -379,6 +379,17 @@ namespace FFTColorCustomizer.GameBridge
         private CommandResponse BattleWait(CommandResponse response)
         {
             var screen = _detectScreen();
+
+            // Turn-ending abilities (Jump) end the turn immediately — no Wait needed.
+            // If we're already on another unit's turn, return success.
+            if (screen != null && (screen.Name == "Battle_EnemiesTurn"
+                || screen.Name == "Battle_AlliesTurn"))
+            {
+                response.Status = "completed";
+                response.Info = "Turn already ended (ability ended turn automatically)";
+                return response;
+            }
+
             if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
             {
                 _menuCursorStale = false;
@@ -716,34 +727,39 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Step 7: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
-            BattleTracker?.Update(); // ensure slots are initialized before attack
-            var attackTime = DateTime.UtcNow;
+            // Step 7: Read target HP from static array before confirming
+            int preHp = ReadStaticArrayHpAt(targetX, targetY);
+            int preMaxHp = ReadStaticArrayMaxHpAt(targetX, targetY);
+            ModLogger.Log($"[BattleAttack] Pre-attack HP at ({targetX},{targetY}): {preHp}/{preMaxHp}");
+
+            // Step 8: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
             SendKey(VK_ENTER);
             Thread.Sleep(500);
             SendKey(VK_ENTER);
 
-            // Wait for attack animation, then poll for damage events.
-            // The static array updates during animation — poll multiple times to catch it.
+            // Poll static array until HP changes or timeout (attack animation resolves)
             response.Status = "completed";
-            BattleTracker.BattleEvent? killEvent = null;
-            BattleTracker.BattleEvent? dmgEvent = null;
-            for (int poll = 0; poll < 15; poll++) // up to 3s (15 × 200ms)
+            int postHp = preHp;
+            for (int poll = 0; poll < 20; poll++) // up to 4s
             {
                 Thread.Sleep(200);
-                BattleTracker?.Update();
-                var allRecent = BattleTracker?.GetRecentEvents();
-                killEvent = allRecent?.FindLast(e => e.Type == "kill" && e.Timestamp >= attackTime);
-                dmgEvent = allRecent?.FindLast(e => e.Type == "damage" && e.Timestamp >= attackTime);
-                if (killEvent != null || dmgEvent != null) break;
+                postHp = ReadStaticArrayHpAt(targetX, targetY);
+                if (postHp != preHp) break;
             }
-            ModLogger.Log($"[BattleAttack] Damage result: kill={killEvent != null}, dmg={dmgEvent != null}");
-            if (killEvent != null)
-                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {killEvent.Amount} damage, KILL ({killEvent.HpBefore}→0/{killEvent.MaxHp})";
-            else if (dmgEvent != null)
-                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {dmgEvent.Amount} damage ({dmgEvent.HpBefore}→{dmgEvent.HpAfter}/{dmgEvent.MaxHp})";
+
+            ModLogger.Log($"[BattleAttack] Post-attack HP at ({targetX},{targetY}): {postHp}/{preMaxHp} (pre={preHp})");
+            if (postHp != preHp && preHp > 0)
+            {
+                int dmg = preHp - postHp;
+                if (postHp <= 0)
+                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {dmg} damage, KILL ({preHp}→0/{preMaxHp})";
+                else
+                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {dmg} damage ({preHp}→{postHp}/{preMaxHp})";
+            }
             else
+            {
                 response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y})";
+            }
             ModLogger.Log($"[BattleAttack] {response.Info}");
             return response;
         }
@@ -2757,6 +2773,7 @@ namespace FFTColorCustomizer.GameBridge
             int targetY = command.UnitIndex;
 
             // Validate target tile against last scan_move results
+            ModLogger.Log($"[MoveGrid] Validating ({targetX},{targetY}): validTiles={_lastValidMoveTiles?.Count ?? -1}");
             if (!MoveValidator.IsValidTile(targetX, targetY, _lastValidMoveTiles))
             {
                 response.Status = "failed";
@@ -2900,17 +2917,26 @@ namespace FFTColorCustomizer.GameBridge
 
             // Poll up to 5s for Battle_MyTurn or Battle_Acting (move confirmed, back on action menu).
             // Long-distance moves (4+ tiles) have walking animations that can exceed 3s.
-            // Exclude Battle_Casting (battleMode=1 fires transiently during move confirmation)
-            // and Battle_Formation to avoid false positives.
+            // Wait for move animation to complete. battleMode=1 (Battle_Casting) fires
+            // transiently during move — accept it only after 1s delay to skip the transient.
             bool confirmed = false;
             var sw = Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 5000)
             {
                 var check = _detectScreen();
                 if (check != null && check.Name != "Battle_Moving"
-                    && check.Name != "Battle_Casting" && check.Name != "Battle_Formation"
+                    && check.Name != "Battle_Formation"
                     && check.Name!.StartsWith("Battle"))
-                { confirmed = true; break; }
+                {
+                    // Battle_Casting is transient during move animation — only accept
+                    // after 1s to ensure it's not the brief flicker
+                    if (check.Name == "Battle_Casting" && sw.ElapsedMilliseconds < 1000)
+                    {
+                        Thread.Sleep(100);
+                        continue;
+                    }
+                    confirmed = true; break;
+                }
                 Thread.Sleep(100);
             }
 
@@ -3914,6 +3940,47 @@ namespace FFTColorCustomizer.GameBridge
                 SendKey(VK_ESCAPE);
                 Thread.Sleep(300);
             }
+        }
+
+        /// <summary>
+        /// Read a unit's HP from the static battle array by scanning all slots for
+        /// a unit at the given grid position. Returns -1 if not found.
+        /// </summary>
+        private int ReadStaticArrayHpAt(int gridX, int gridY)
+        {
+            return ReadStaticArrayFieldAt(gridX, gridY, 0x14); // HP offset
+        }
+
+        private int ReadStaticArrayMaxHpAt(int gridX, int gridY)
+        {
+            return ReadStaticArrayFieldAt(gridX, gridY, 0x16); // MaxHP offset
+        }
+
+        private int ReadStaticArrayFieldAt(int gridX, int gridY, int fieldOffset)
+        {
+            const long Base = 0x140893C00;
+            const int Stride = 0x200;
+            const int SlotsBack = 20;
+            const int TotalSlots = 30;
+            try
+            {
+                for (int s = 0; s < TotalSlots; s++)
+                {
+                    long sb = Base + (long)(s - SlotsBack + 1) * Stride;
+                    var reads = _explorer.ReadMultiple(new[]
+                    {
+                        ((nint)(sb + 0x12), 2), // inBattleFlag
+                        ((nint)(sb + 0x33), 1), // gridX
+                        ((nint)(sb + 0x34), 1), // gridY
+                        ((nint)(sb + fieldOffset), 2), // requested field
+                    });
+                    if ((int)reads[0] != 1) continue;
+                    if ((int)reads[1] == gridX && (int)reads[2] == gridY)
+                        return (int)reads[3];
+                }
+            }
+            catch { }
+            return -1;
         }
 
         /// <summary>

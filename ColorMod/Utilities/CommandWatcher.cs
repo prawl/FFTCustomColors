@@ -670,24 +670,6 @@ namespace FFTColorCustomizer.Utilities
                         return ExecuteValidPath(command);
 
                     case "battle_wait":
-                        // Prompt confirmation if unit hasn't moved or acted
-                        {
-                            var waitScreen = DetectScreen();
-                            bool acted = waitScreen?.BattleActed == 1 || _lastAbilityName != null;
-                            bool moved = waitScreen?.BattleMoved == 1 || _movedThisTurn;
-                            if (BattleWaitLogic.NeedsConfirmation(acted, moved, _waitConfirmPending))
-                            {
-                                _waitConfirmPending = true;
-                                return new CommandResponse
-                                {
-                                    Id = command.Id, Status = "needs_confirmation",
-                                    Error = "Unit hasn't moved or acted. Send battle_wait again to confirm skipping this turn.",
-                                    ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
-                                    Screen = waitScreen
-                                };
-                            }
-                            _waitConfirmPending = false;
-                        }
                         // Auto-scan before wait (battle_wait needs unit data for facing)
                         try
                         {
@@ -862,11 +844,35 @@ namespace FFTColorCustomizer.Utilities
                 return response;
             }
 
-            // If the path specifies a high-level action, delegate to it
+            // If the path specifies a high-level action, delegate.
+            // battle_wait needs special handling (confirmation, pre-scan, turn reset)
+            // that only exists in the main command switch — call ExecuteNavActionWithAutoScan
+            // which handles the full wait cycle including facing and turn polling.
             if (!string.IsNullOrEmpty(path.Action))
             {
                 command.Action = path.Action;
                 if (path.LocationId != 0) command.LocationId = path.LocationId;
+
+                if (path.Action == "battle_wait")
+                {
+                    // Pre-scan for facing data
+                    try
+                    {
+                        var scanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
+                        ExecuteNavAction(scanCmd);
+                    }
+                    catch { }
+                    _turnTracker.ResetForNewTurn();
+                    _battleMenuTracker.OnNewTurn();
+                    _movedThisTurn = false;
+                    _waitConfirmPending = false;
+                    _lastAbilityName = null;
+                    _cachedPrimarySkillset = null;
+                    _cachedSecondarySkillset = null;
+                    _cachedLearnedAbilityNames = null;
+                    return ExecuteNavActionWithAutoScan(command);
+                }
+
                 return ExecuteNavAction(command);
             }
 
