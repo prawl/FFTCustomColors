@@ -553,10 +553,14 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Step 1: Navigate menu to Abilities (index 1)
+            // Step 1: Navigate menu to Abilities (index depends on whether Move already used)
+            //   Before move: Move(0) Abilities(1) Wait(2) Status(3) AutoBattle(4)
+            //   After move:  Abilities(0) Wait(1) Status(2) AutoBattle(3)
             var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
             int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
-            NavigateMenuCursor(cursor, 1);
+            bool alreadyMoved = screen.Name == "Battle_Acting" || screen.BattleMoved == 1;
+            int abilitiesIndex = alreadyMoved ? 0 : 1;
+            NavigateMenuCursor(cursor, abilitiesIndex);
             SendKey(VK_ENTER); // Open Abilities submenu
             Thread.Sleep(500);
 
@@ -778,10 +782,16 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Step 1: Navigate to Abilities in action menu (index 1)
+            // Step 1: Navigate to Abilities in action menu.
+            // IMPORTANT: After moving, the action menu drops "Move" and indices shift:
+            //   Before move: Move(0) Abilities(1) Wait(2) Status(3) AutoBattle(4)
+            //   After move:  Abilities(0) Wait(1) Status(2) AutoBattle(3)
+            // Detect which layout we're in by checking if the unit has already moved.
             var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
             int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
-            NavigateMenuCursor(cursor, 1);
+            bool alreadyMoved = screen.Name == "Battle_Acting" || screen.BattleMoved == 1;
+            int abilitiesIndex = alreadyMoved ? 0 : 1;
+            NavigateMenuCursor(cursor, abilitiesIndex);
             SendKey(VK_ENTER);
             Thread.Sleep(500);
 
@@ -2571,7 +2581,16 @@ namespace FFTColorCustomizer.GameBridge
             var screen = _detectScreen();
             if (screen != null && screen.Name == "Battle_MyTurn")
             {
-                NavigateToMove();
+                // Read the ACTUAL menu cursor position from memory rather than
+                // trusting the tracker or brute-forcing. This fixes the desync
+                // where NavigateToMove's Down×4/Up×4 lands on the wrong item
+                // because the menu has fewer than 5 items after acting/moving.
+                var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+                int cursor = cursorResult != null ? (int)cursorResult.Value.value : 0;
+                if (cursor != 0)
+                {
+                    NavigateMenuCursor(cursor, 0); // Navigate to Move (index 0)
+                }
                 SendKey(VK_ENTER);
                 Thread.Sleep(500);
                 screen = _detectScreen();
