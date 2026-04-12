@@ -306,6 +306,33 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("lifeState")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? LifeState { get; set; }
+
+        /// <summary>
+        /// For the active unit: abilities with their valid target tile coordinates.
+        /// Each ability lists the exact tiles it can reach from the unit's current position.
+        /// Only populated for the active unit via scan_move.
+        /// </summary>
+        [JsonPropertyName("abilities")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<AbilityWithTiles>? Abilities { get; set; }
+    }
+
+    /// <summary>An ability with its reachable target tile coordinates.</summary>
+    public class AbilityWithTiles
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+
+        [JsonPropertyName("range")]
+        public int Range { get; set; }
+
+        [JsonPropertyName("mpCost")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int MpCost { get; set; }
+
+        [JsonPropertyName("targets")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<int[]>? Targets { get; set; }  // [[x,y], [x,y], ...] compact format
     }
 
     /// <summary>

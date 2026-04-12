@@ -1567,7 +1567,8 @@ namespace FFTColorCustomizer.GameBridge
 
             // 1. Scan units
             var units = CollectUnitPositionsFull();
-            var ally = units.FirstOrDefault(u => u.Team == 0);
+            var ally = units.FirstOrDefault(u => u.IsActive)
+                    ?? units.FirstOrDefault(u => u.Team == 0);
             if (ally == null)
             {
                 response.Status = "failed";
@@ -3182,9 +3183,10 @@ namespace FFTColorCustomizer.GameBridge
         /// Collect all unit positions by holding C and pressing Up to cycle through turn order.
         /// Each cycle step snaps the cursor to a unit, allowing us to read their grid position and team.
         /// </summary>
-        /// <summary>Rich unit data collected during C+Up scan.</summary>
+        /// <summary>Rich unit data from static battle array scan.</summary>
         internal class ScannedUnit
         {
+            public bool IsActive;  // true for the unit whose turn it is
             public int GridX, GridY;
             public int Team;       // 0=ally, 1+=enemy
             public int Level;
@@ -3227,7 +3229,7 @@ namespace FFTColorCustomizer.GameBridge
                 string teamName = u.Team == 0 ? "PLAYER" : u.Team == 2 ? "ALLY" : "ENEMY";
                 string? className = u.JobNameOverride ?? (u.Job > 0 ? GameStateReporter.GetJobName(u.Job) : null);
                 var statuses = StatusDecoder.Decode(u.StatusBytes);
-                bool isActive = u.Move > 0 || u.Jump > 0; // active unit has Move/Jump from UI buffer
+                bool isActive = u.IsActive;
 
                 var resp = new Utilities.ScannedUnitResponse
                 {
@@ -3281,10 +3283,11 @@ namespace FFTColorCustomizer.GameBridge
             return result;
         }
 
-        /// <summary>Get active unit (first ally) from last scan.</summary>
+        /// <summary>Get active unit from last scan.</summary>
         internal ScannedUnit? GetActiveAlly()
         {
-            return _lastScannedUnits?.FirstOrDefault(u => u.Team == 0);
+            return _lastScannedUnits?.FirstOrDefault(u => u.IsActive)
+                ?? _lastScannedUnits?.FirstOrDefault(u => u.Team == 0);
         }
 
         // Addresses that control the C-key cursor cycling mode.
@@ -3422,8 +3425,7 @@ namespace FFTColorCustomizer.GameBridge
 
                     if (isActive)
                     {
-                        // Active unit: augment with condensed struct data for team, abilities,
-                        // and Move/Jump (which aren't in the static array)
+                        unit.IsActive = true;
                         unit.Team = (int)activeReads[1];
                         unit.NameId = (int)activeReads[2];
                         unit.Move = (int)activeReads[12];

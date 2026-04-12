@@ -566,8 +566,88 @@ boot() {
 # state: Force a full state report (roster, battle data, etc). Prints summary.
 state() { fft "{\"id\":\"$(id)\",\"action\":\"report_state\"}"; }
 
-# screen: Quick check — sends no-op command, returns current screen name & state.
-screen() { fft "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}"; }
+# screen: Universal state command. In battle: shows active unit, abilities with
+# reachable targets, and all unit positions. Outside battle: shows screen name & state.
+screen() {
+  # Quick screen check first
+  _check_total || return 1
+  rm -f "$B/response.json"
+  echo "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}" > "$B/command.json"
+  local tries=0
+  until [ -f "$B/response.json" ]; do
+    sleep 0.02; tries=$((tries+1))
+    if [ $tries -ge 250 ]; then echo "[TIMEOUT]"; return 1; fi
+  done
+  local R=$(cat "$B/response.json" | tr -d '\r\n ')
+  local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+  # During Battle_MyTurn: run scan_move for full tactical view
+  if [[ "$SCR" == "Battle_MyTurn" ]]; then
+    local raw
+    raw=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\"}")
+    echo "$raw" | node -e "
+const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
+const s=j.screen||{};
+const b=j.battle||{};
+const au=b.activeUnit;
+const us=b.units||[];
+
+// Header — find active unit from units list (most reliable source)
+const activeU2=us.find(u=>u.isActive);
+const aName=activeU2?.name||au?.name||s.activeUnitName||'?';
+const aJob=activeU2?.jobName||au?.jobName||s.activeUnitJob||'';
+const ax=au?.x??activeU2?.x??'?';
+const ay=au?.y??activeU2?.y??'?';
+const ahp=au?.hp??activeU2?.hp??'?';
+const amhp=au?.maxHp??activeU2?.maxHp??'?';
+const amp=au?.mp??activeU2?.mp??'?';
+const ammp=au?.maxMp??activeU2?.maxMp??'?';
+console.log('[Battle] '+aName+(aJob?'('+aJob+')':'')+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp);
+console.log('');
+
+// Abilities with target tiles and occupant names
+const activeU=us.find(u=>u.isActive);
+if(activeU&&activeU.abilities){
+  console.log('Abilities:');
+  activeU.abilities.forEach(a=>{
+    const tiles=(a.validTargetTiles||[]).map(t=>{
+      let s='('+t.x+','+t.y+')';
+      if(t.unitName)s+='<'+t.unitName+'>';
+      else if(t.occupant&&t.occupant!=='empty')s+='<'+t.occupant+'>';
+      return s;
+    });
+    const mp=a.mpCost?' mp='+a.mpCost:'';
+    const ct=a.castSpeed?' ct='+a.castSpeed:'';
+    const el=a.element?' ['+a.element+']':'';
+    const eff=a.addedEffect?' {'+a.addedEffect+'}':'';
+    console.log('  '+a.name+mp+ct+el+eff+' → '+(tiles.length?tiles.join(' '):'(no targets in range)'));
+  });
+  console.log('');
+}
+
+// All units
+console.log('Units:');
+us.forEach(u=>{
+  const team=u.team===0?'PLAYER':u.team===2?'ALLY':'ENEMY';
+  const nm=u.name?' '+u.name:'';
+  const cl=u.jobName?'('+u.jobName+')':'';
+  const st=u.statuses?.length?' ['+u.statuses.join(',')+']':'';
+  const life=u.lifeState==='dead'?' DEAD':'';
+  const act=u.isActive?' *':'';
+  const dist=u.distance!==undefined&&!u.isActive?' d='+u.distance:'';
+  console.log('  ['+team+']'+nm+cl+' ('+u.x+','+u.y+') HP='+u.hp+'/'+u.maxHp+dist+st+life+act);
+});
+" 2>/dev/null
+  else
+    # Non-battle: parse the response we already have
+    local SCR2=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
+    local LOC=$(echo "$R" | grep -o '"location":[0-9]*' | head -1 | cut -d: -f2)
+    local LOCNAME=$(echo "$R" | grep -o '"locationName":"[^"]*"' | head -1 | cut -d'"' -f4)
+    local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
+    local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
+    echo "[$SCR2] loc=$LOCSTR status=$ST"
+  fi
+}
 
 # logs: Tail the live mod log (truncated fresh on each game launch).
 # Usage: logs           — last 40 lines
