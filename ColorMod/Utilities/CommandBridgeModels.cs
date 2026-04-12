@@ -209,6 +209,103 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("postAction")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public PostActionState? PostAction { get; set; }
+
+        /// <summary>
+        /// Structured unit data from scan_units. Each entry has position, stats,
+        /// team, class name, status effects, etc. Populated by scan_units and scan_move.
+        /// </summary>
+        [JsonPropertyName("units")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<ScannedUnitResponse>? Units { get; set; }
+    }
+
+    /// <summary>JSON-serializable unit data from scan_units.</summary>
+    public class ScannedUnitResponse
+    {
+        [JsonPropertyName("name")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("class")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Class { get; set; }
+
+        [JsonPropertyName("team")]
+        public string Team { get; set; } = "ENEMY";
+
+        [JsonPropertyName("x")]
+        public int X { get; set; }
+
+        [JsonPropertyName("y")]
+        public int Y { get; set; }
+
+        [JsonPropertyName("hp")]
+        public int Hp { get; set; }
+
+        [JsonPropertyName("maxHp")]
+        public int MaxHp { get; set; }
+
+        [JsonPropertyName("mp")]
+        public int Mp { get; set; }
+
+        [JsonPropertyName("maxMp")]
+        public int MaxMp { get; set; }
+
+        [JsonPropertyName("pa")]
+        public int Pa { get; set; }
+
+        [JsonPropertyName("ma")]
+        public int Ma { get; set; }
+
+        [JsonPropertyName("speed")]
+        public int Speed { get; set; }
+
+        [JsonPropertyName("ct")]
+        public int Ct { get; set; }
+
+        [JsonPropertyName("brave")]
+        public int Brave { get; set; }
+
+        [JsonPropertyName("faith")]
+        public int Faith { get; set; }
+
+        [JsonPropertyName("level")]
+        public int Level { get; set; }
+
+        [JsonPropertyName("exp")]
+        public int Exp { get; set; }
+
+        [JsonPropertyName("move")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Move { get; set; }
+
+        [JsonPropertyName("jump")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Jump { get; set; }
+
+        [JsonPropertyName("isActive")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IsActive { get; set; }
+
+        [JsonPropertyName("statuses")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? Statuses { get; set; }
+
+        [JsonPropertyName("reaction")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Reaction { get; set; }
+
+        [JsonPropertyName("support")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Support { get; set; }
+
+        [JsonPropertyName("movement")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Movement { get; set; }
+
+        [JsonPropertyName("lifeState")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? LifeState { get; set; }
     }
 
     /// <summary>

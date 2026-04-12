@@ -292,7 +292,7 @@ execute_action() {
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 250 ]; then echo "[TIMEOUT]"; return 1; fi
+    if [ $tries -ge 750 ]; then echo "[TIMEOUT]"; return 1; fi
   done
   node -e "
 const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
@@ -587,9 +587,31 @@ logs() {
   fi
 }
 
-# scan_units: Hold C + press Up to cycle through all units, report their grid positions + teams.
-# Use during battle (Battle_MyTurn) to discover where everyone is.
-scan_units() { fft_full "{\"id\":\"$(id)\",\"action\":\"scan_units\"}"; }
+# scan_units: Read all unit positions + stats from memory (no input needed).
+# Returns structured JSON with units[] array. Compact formatted output.
+scan_units() {
+  local raw
+  raw=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_units\"}")
+  echo "$raw" | node -e "
+const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
+const s=j.screen||{};
+console.log('['+s.name+'] '+((s.activeUnitName||'')+' '+(s.activeUnitJob?'('+s.activeUnitJob+')':'')).trim());
+const us=j.units||[];
+us.forEach(u=>{
+  const st=u.statuses?.length?(' ['+u.statuses.join(',')+']'):'';
+  const nm=u.name?(' '+u.name):'';
+  const cl=u.class?('('+u.class+')'):'';
+  const act=u.isActive?' *':'';
+  const life=u.lifeState==='dead'?' DEAD':'';
+  const mv=u.move?(' Mv='+u.move+' Jmp='+u.jump):'';
+  console.log('  ['+u.team+']'+nm+cl+' ('+u.x+','+u.y+') HP='+u.hp+'/'+u.maxHp+' PA='+u.pa+' MA='+u.ma+' Spd='+u.speed+' CT='+u.ct+mv+' Br='+u.brave+' Fa='+u.faith+st+life+act);
+});
+console.log('  '+us.length+' units');
+" 2>/dev/null
+}
+
+# scan_units_json: Raw JSON output for programmatic use.
+scan_units_json() { fft_full "{\"id\":\"$(id)\",\"action\":\"scan_units\"}"; }
 
 # auto_move: DISABLED — Claude should make tactical decisions, not automate turns.
 auto_move() { echo "[DISABLED] auto_move is not allowed. Use scan_move, battle_move, battle_attack, battle_wait individually."; return 1; }

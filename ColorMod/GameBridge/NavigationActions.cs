@@ -1493,7 +1493,10 @@ namespace FFTColorCustomizer.GameBridge
 
             var units = CollectUnitPositionsFull();
 
-            // Build comprehensive summary
+            // Build structured JSON response
+            response.Units = BuildUnitResponses(units);
+
+            // Also keep the summary string for backward compatibility
             var lines = new List<string>();
             lines.Add($"units={units.Count}");
             foreach (var u in units)
@@ -3213,6 +3216,42 @@ namespace FFTColorCustomizer.GameBridge
             public string? ReactionAbility;   // Equipped reaction ability name (from heap bitfield at +0x74)
             public string? SupportAbility;    // Equipped support ability name (from heap bitfield at +0x78)
             public string? MovementAbility;   // Equipped movement ability name (from heap bitfield at +0x7D)
+        }
+
+        /// <summary>Convert internal ScannedUnit list to JSON-serializable response objects.</summary>
+        private static List<Utilities.ScannedUnitResponse> BuildUnitResponses(List<ScannedUnit> units)
+        {
+            var result = new List<Utilities.ScannedUnitResponse>();
+            foreach (var u in units)
+            {
+                string teamName = u.Team == 0 ? "PLAYER" : u.Team == 2 ? "ALLY" : "ENEMY";
+                string? className = u.JobNameOverride ?? (u.Job > 0 ? GameStateReporter.GetJobName(u.Job) : null);
+                var statuses = StatusDecoder.Decode(u.StatusBytes);
+                bool isActive = u.Move > 0 || u.Jump > 0; // active unit has Move/Jump from UI buffer
+
+                var resp = new Utilities.ScannedUnitResponse
+                {
+                    Name = u.Name,
+                    Class = className,
+                    Team = teamName,
+                    X = u.GridX, Y = u.GridY,
+                    Hp = u.Hp, MaxHp = u.MaxHp,
+                    Mp = u.Mp, MaxMp = u.MaxMp,
+                    Pa = u.PA, Ma = u.MA,
+                    Speed = u.Speed, Ct = u.CT,
+                    Brave = u.Brave, Faith = u.Faith,
+                    Level = u.Level, Exp = u.Exp,
+                    Move = u.Move, Jump = u.Jump,
+                    IsActive = isActive,
+                    Reaction = u.ReactionAbility,
+                    Support = u.SupportAbility,
+                    Movement = u.MovementAbility,
+                    LifeState = u.Hp <= 0 && u.MaxHp > 0 ? "dead" : null,
+                };
+                if (statuses.Count > 0) resp.Statuses = statuses;
+                result.Add(resp);
+            }
+            return result;
         }
 
         /// <summary>
