@@ -28,6 +28,10 @@ namespace FFTColorCustomizer.GameBridge
         private static volatile bool _injectCKey = false;
         private static bool _diHookInstalled = false;
 
+        // After battle_move, the game auto-advances cursor to Abilities (index 1)
+        // but memory at 0x1407FC620 still reads 0. This flag corrects for that.
+        private bool _justMoved = false;
+
         // Original GetDeviceState function pointer
         private static IntPtr _originalGetDeviceState;
 
@@ -373,6 +377,7 @@ namespace FFTColorCustomizer.GameBridge
 
         private CommandResponse BattleWait(CommandResponse response)
         {
+            _justMoved = false;
             var screen = _detectScreen();
             if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
             {
@@ -783,8 +788,16 @@ namespace FFTColorCustomizer.GameBridge
             // The menu always has 5 items — Move becomes "Reset Move" after moving,
             // but never disappears. Indices are stable:
             //   Move/ResetMove(0) Abilities(1) Wait(2) Status(3) AutoBattle(4)
+            // After battle_move, the game auto-advances cursor to Abilities (1)
+            // but the memory address 0x1407FC620 still reads 0. Use _justMoved to correct.
             var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
             int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
+            if (_justMoved && cursor == 0)
+            {
+                ModLogger.Log("[BattleAbility] Post-move cursor correction: memory reads 0 but game is at 1 (Abilities)");
+                cursor = 1;
+            }
+            _justMoved = false; // consumed
             NavigateMenuCursor(cursor, 1);
             SendKey(VK_ENTER);
             Thread.Sleep(1000); // Wait for submenu to fully load — 500ms was too fast
@@ -847,23 +860,69 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Navigate: submenu starts on the last cursor position (may not be Attack).
-            // FFT submenu cursors do NOT wrap — pressing Up from the top stays at top.
-            // Press Up×5 to guarantee we're on Attack (index 0) — covers submenus up to
-            // 6 items (Attack + 5 skillsets). 250ms between presses to let the game settle.
-            for (int i = 0; i < 5; i++)
+            // Wait for the Abilities submenu to fully appear before navigating.
+            ModLogger.Log($"[BattleAbility] Navigating submenu: skillsetIdx={skillsetIdx} for '{loc.skillsetName}' in [{string.Join(", ", submenuItems)}]");
+            for (int wait = 0; wait < 20; wait++)
             {
-                SendKey(VK_UP);
-                Thread.Sleep(250);
+                var subScreen = _detectScreen();
+                if (subScreen?.Name == "Battle_Abilities")
+                {
+                    ModLogger.Log($"[BattleAbility] Submenu detected after {wait * 150}ms");
+                    break;
+                }
+                Thread.Sleep(150);
             }
-            // Now at Attack (index 0). Navigate Down to the target skillset.
-            for (int i = 0; i < skillsetIdx; i++)
+            Thread.Sleep(500); // extra settle time after submenu appears
+
+            // Submenu navigation using global cursor counter at 0x140C0EB20.
+            // The submenu WRAPS and ui= LAGS by one keypress (reports previous position).
+            // ui= after entering submenu shows the PREVIOUS cursor position. The actual
+            // cursor is one past that. We use this to determine where we are, then press
+            // Down the right number of times to reach the target.
+            //
+            // Approach: read ui= to determine actual position (ui shows prev, so actual =
+            // index of ui + 1, mod itemCount). Then compute how many Downs to reach target.
+            screen = _detectScreen();
+            string? uiAfterEntry = screen?.UI;
+            int currentIdx = 0; // default to Attack if we can't determine
+            if (uiAfterEntry != null)
+            {
+                int uiIdx = BattleAbilityNavigation.FindSkillsetIndex(uiAfterEntry, submenuItems);
+                if (uiIdx >= 0)
+                {
+                    // ui= lags by one: it shows where cursor WAS. Actual = next item.
+                    currentIdx = (uiIdx + 1) % submenuItems.Length;
+                }
+            }
+            ModLogger.Log($"[BattleAbility] ui='{uiAfterEntry}' → actual cursor at index {currentIdx} ('{submenuItems[currentIdx]}'), target={skillsetIdx} ('{loc.skillsetName}')");
+
+            // Compute downs needed (wrapping forward)
+            int downsNeeded = (skillsetIdx - currentIdx + submenuItems.Length) % submenuItems.Length;
+            ModLogger.Log($"[BattleAbility] Pressing Down x{downsNeeded}");
+
+            // Read counter baseline for verification
+            var counterBefore = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
+            int baseline = counterBefore != null ? (int)counterBefore.Value.value : -1;
+
+            for (int i = 0; i < downsNeeded; i++)
             {
                 SendKey(VK_DOWN);
-                Thread.Sleep(250);
+                Thread.Sleep(400);
             }
 
-            // Step 3: Enter the skillset
+            // Verify via counter delta
+            if (baseline >= 0)
+            {
+                var counterAfter = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
+                int actual = counterAfter != null ? (int)counterAfter.Value.value : -1;
+                int delta = actual - baseline;
+                ModLogger.Log($"[BattleAbility] Counter: {baseline} → {actual} (delta={delta}, expected={downsNeeded})");
+                if (delta != downsNeeded)
+                    ModLogger.Log($"[BattleAbility] WARN: counter delta mismatch! Some keypresses may have been lost.");
+            }
+
+            // Enter the skillset
+            Thread.Sleep(300);
             SendKey(VK_ENTER);
             Thread.Sleep(500);
 
@@ -2784,6 +2843,7 @@ namespace FFTColorCustomizer.GameBridge
 
             response.Status = confirmed ? "completed" : "failed";
             response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) {(confirmed ? "CONFIRMED" : "NOT CONFIRMED")}";
+            if (confirmed) _justMoved = true;
             return response;
         }
 

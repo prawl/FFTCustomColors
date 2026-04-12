@@ -23,7 +23,7 @@ namespace FFTColorCustomizer.GameBridge
         // Level 2: Abilities submenu (Attack/Mettle/Items)
         private string[]? _items;
         public bool InSubmenu { get; private set; }
-        public int CursorIndex { get; private set; }
+        public int CursorIndex { get; set; }
 
         /// <summary>The submenu item the cursor is on (null if not in submenu).</summary>
         public string? CurrentItem => InSubmenu && !InAbilityList && _items != null
