@@ -33,6 +33,19 @@ namespace FFTColorCustomizer.GameBridge
                 };
             }
 
+            // "Jump" is a synthetic collapsed entry from CollapseJumpAbilities.
+            // In the game menu, selecting the first Jump ability (index 0) works
+            // for any jump — the game uses the highest learned range automatically.
+            if (abilityName == "Jump" && availableSkillsets?.Contains("Jump") == true)
+            {
+                return new AbilityLocation
+                {
+                    skillsetName = "Jump",
+                    indexInSkillset = 0,
+                    isSelfTarget = false
+                };
+            }
+
             // Search available skillsets first (unit's primary + secondary)
             if (availableSkillsets != null)
             {

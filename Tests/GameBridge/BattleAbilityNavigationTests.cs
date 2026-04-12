@@ -107,5 +107,26 @@ namespace FFTColorCustomizer.Tests.GameBridge
             int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 0, menuCursorStale: false);
             Assert.Equal(0, result);
         }
+
+        [Fact]
+        public void FindAbility_Jump_FoundInJumpSkillset()
+        {
+            // The collapsed "Jump" entry from CollapseJumpAbilities should be findable
+            // via battle_ability "Jump". It maps to the Jump skillset at index 0.
+            var result = BattleAbilityNavigation.FindAbility("Jump", new[] { "Jump", "Martial Arts" });
+
+            Assert.NotNull(result);
+            Assert.Equal("Jump", result.Value.skillsetName);
+            Assert.Equal(0, result.Value.indexInSkillset);
+            Assert.False(result.Value.isSelfTarget);
+        }
+
+        [Fact]
+        public void FindAbility_Jump_NotFoundWhenJumpSkillsetUnavailable()
+        {
+            // If the unit doesn't have Jump equipped, "Jump" shouldn't resolve
+            var result = BattleAbilityNavigation.FindAbility("Jump", new[] { "Mettle", "Items" });
+            Assert.Null(result);
+        }
     }
 }
