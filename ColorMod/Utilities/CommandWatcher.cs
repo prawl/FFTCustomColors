@@ -2225,12 +2225,9 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "Battle_MyTurn" || screen.Name == "Battle_Acting")
                 {
                     bool hasMoved = screen.BattleMoved == 1 || _movedThisTurn;
-                    // After moving, the game auto-advances cursor to Abilities (1)
-                    // but 0x1407FC620 still reads 0. Correct for display.
-                    // After ability (without move), cursor defaults back to Move (0) — no correction needed.
-                    int effectiveCursor = screen.MenuCursor;
-                    if (hasMoved && effectiveCursor == 0)
-                        effectiveCursor = 1;
+                    bool hasActed = screen.BattleActed == 1 || _lastAbilityName != null;
+                    int effectiveCursor = BattleAbilityNavigation.EffectiveMenuCursor(
+                        screen.MenuCursor, moved: hasMoved, acted: hasActed);
                     screen.UI = effectiveCursor switch
                     {
                         0 => "Move",

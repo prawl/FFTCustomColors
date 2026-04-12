@@ -403,14 +403,12 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(300);
 
                 var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
-                int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
-                // After battle_move, game auto-advances cursor to Abilities (1)
-                // but 0x1407FC620 still reads 0. Correct before navigating.
-                if (_menuCursorStale && cursor == 0)
-                {
-                    ModLogger.Log("[BattleWait] Post-move cursor correction: 0 → 1");
-                    cursor = 1;
-                }
+                int rawCursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
+                bool hasMoved = screen.BattleMoved == 1 || _menuCursorStale;
+                bool hasActed = screen.BattleActed == 1;
+                int cursor = BattleAbilityNavigation.EffectiveMenuCursor(rawCursor, moved: hasMoved, acted: hasActed);
+                if (cursor != rawCursor)
+                    ModLogger.Log($"[BattleWait] Cursor correction: raw={rawCursor} → effective={cursor} (moved={hasMoved}, acted={hasActed})");
                 _menuCursorStale = false; // consumed
                 int target = 2; // Wait
                 ModLogger.Log($"[BattleWait] Cursor at {cursor}, navigating to {target}");
@@ -813,12 +811,12 @@ namespace FFTColorCustomizer.GameBridge
             // After battle_move, the game auto-advances cursor to Abilities (1)
             // but the memory address 0x1407FC620 still reads 0. Use _menuCursorStale to correct.
             var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
-            int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
-            if (_menuCursorStale && cursor == 0)
-            {
-                ModLogger.Log("[BattleAbility] Post-move cursor correction: memory reads 0 but game is at 1 (Abilities)");
-                cursor = 1;
-            }
+            int rawCursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
+            bool hasMoved = screen.BattleMoved == 1 || _menuCursorStale;
+            bool hasActed = screen.BattleActed == 1;
+            int cursor = BattleAbilityNavigation.EffectiveMenuCursor(rawCursor, moved: hasMoved, acted: hasActed);
+            if (cursor != rawCursor)
+                ModLogger.Log($"[BattleAbility] Cursor correction: raw={rawCursor} → effective={cursor} (moved={hasMoved}, acted={hasActed})");
             _menuCursorStale = false; // consumed
             NavigateMenuCursor(cursor, 1);
             SendKey(VK_ENTER);

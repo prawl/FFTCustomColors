@@ -84,27 +84,41 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void EffectiveMenuCursor_StaleFlagTrue_MemoryReads0_Returns1()
+        public void EffectiveMenuCursor_AfterMove_MemoryReads0_Returns1()
         {
             // After move, memory reads 0 but game cursor is at Abilities (1).
-            // Flag is ONLY set after battle_move (not ability — ability returns cursor to Move/0).
-            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 0, menuCursorStale: true);
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 0, moved: true, acted: false);
             Assert.Equal(1, result);
         }
 
         [Fact]
-        public void EffectiveMenuCursor_StaleFlagTrue_MemoryReadsNonZero_ReturnsMemoryValue()
+        public void EffectiveMenuCursor_AfterAbility_MemoryReads1_Returns0()
         {
-            // If memory reads non-zero, trust it even with stale flag
-            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 2, menuCursorStale: true);
+            // After ability-only (no move), memory reads 1 but game cursor is at Move (0).
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 1, moved: false, acted: true);
+            Assert.Equal(0, result);
+        }
+
+        [Fact]
+        public void EffectiveMenuCursor_NoMoveNoAct_TrustsMemory()
+        {
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 0, moved: false, acted: false);
+            Assert.Equal(0, result);
+        }
+
+        [Fact]
+        public void EffectiveMenuCursor_AfterMove_MemoryReadsNonZero_TrustsMemory()
+        {
+            // If memory already reads non-zero after move, trust it
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 2, moved: true, acted: false);
             Assert.Equal(2, result);
         }
 
         [Fact]
-        public void EffectiveMenuCursor_StaleFlagFalse_MemoryReads0_Returns0()
+        public void EffectiveMenuCursor_AfterAbility_MemoryReads0_TrustsMemory()
         {
-            // No stale flag, trust the memory value
-            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 0, menuCursorStale: false);
+            // If memory already reads 0 after ability, trust it (already correct)
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(memoryCursor: 0, moved: false, acted: true);
             Assert.Equal(0, result);
         }
 
