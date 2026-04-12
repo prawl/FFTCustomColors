@@ -434,12 +434,21 @@ namespace FFTColorCustomizer.Utilities
                                     if (rx != null) ux = (int)rx.Value.value;
                                     if (ry != null) uy = (int)ry.Value.value;
                                 }
+                                bool hadCache = _turnTracker.HasCachedScan;
                                 _turnTracker.ShouldAutoScan(
                                     preScreen.Name,
                                     team: preScreen.BattleTeam,
                                     unitId: preScreen.BattleUnitId,
                                     unitHp: preScreen.BattleUnitHp,
                                     unitX: ux, unitY: uy);
+                                // If ShouldAutoScan just invalidated the cache, a new
+                                // unit's turn started — reset per-turn state.
+                                if (hadCache && !_turnTracker.HasCachedScan)
+                                {
+                                    _movedThisTurn = false;
+                                    _lastAbilityName = null;
+                                    _battleMenuTracker.OnNewTurn();
+                                }
                             }
                         }
                         if (_turnTracker.HasCachedScan)
