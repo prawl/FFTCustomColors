@@ -107,6 +107,11 @@ Unlocks Chemist play, healing, mage targeting, and safe melee decisions.
 - [x] **`battle_ability <name> <x> <y>`** [Abilities] — Fully working. Self-target (Shout, Focus, Chakra) and targeted (Haste, Pummel) verified. Submenu navigation uses counter-delta approach with `0x140C0EB20` global cursor counter. Move→ability sequence verified (Chakra after move). Post-move cursor correction via `_menuCursorStale` flag. Still untested: Throw Shuriken skillset resolution.
 - [x] **battle_ability spell targeting: Unit/Tile dialog** [Abilities] — Already implemented: both target-confirmation paths in BattleAbility send an extra Enter after confirming the target, which selects "Unit" (the default) on the Unit/Tile dialog. Harmless if no dialog appears. Confirmed by code review 2026-04-11.
 
+### Tier 2.5 — Navigation completeness
+
+- [ ] **Flesh out validPaths for every screen state** — Every screen state should have a complete set of validPaths/validActions that Claude can use. Currently some states have sparse or missing paths. Audit all screen states and ensure each one tells Claude exactly what it can do. This is the primary way Claude navigates the game — incomplete paths mean Claude gets stuck.
+- [ ] **Chocobo riding** — Units can ride chocobos in battle, which changes their movement range and possibly their action menu. Need to detect when a unit is mounted, adjust Move stat, and handle any chocobo-specific abilities or movement restrictions.
+
 ### Tier 3 — Robustness
 
 Turn-state recovery, edge case handlers, multi-unit battle reliability.
