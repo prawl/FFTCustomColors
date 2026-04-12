@@ -579,6 +579,54 @@ namespace FFTColorCustomizer.GameBridge
             "bag" or "cloth" or "fellsword";
 
         /// <summary>
+        /// Returns the attack range for a weapon given its item ID.
+        /// For ranged weapons (bows, guns, crossbows) returns their actual range.
+        /// For melee weapons, non-weapons, empty slots, or unknown IDs returns 1.
+        /// </summary>
+        public static int GetAttackRange(int itemId)
+        {
+            if (itemId == 0xFF || itemId == 0xFFFF)
+                return 1;
+            if (!Items.TryGetValue(itemId, out var item))
+                return 1;
+            if (!IsWeapon(item.Type))
+                return 1;
+            return item.Range > 0 ? item.Range : 1;
+        }
+
+        /// <summary>
+        /// Returns the attack range for a unit based on their equipment list.
+        /// Finds the first weapon in the equipment slots and returns its range.
+        /// Returns 1 (melee) if no weapon is found or equipment is null/empty.
+        /// </summary>
+        public static int GetWeaponRangeFromEquipment(List<int>? equipment)
+        {
+            if (equipment == null || equipment.Count == 0)
+                return 1;
+            foreach (var id in equipment)
+            {
+                if (!Items.TryGetValue(id, out var item))
+                    continue;
+                if (IsWeapon(item.Type))
+                    return item.Range > 0 ? item.Range : 1;
+            }
+            return 1;
+        }
+
+        /// <summary>
+        /// Builds an ActionAbilityInfo for the basic Attack command using the
+        /// equipped weapon's range. Falls back to range 1 for melee/unknown.
+        /// </summary>
+        public static ActionAbilityInfo BuildAttackAbilityInfo(List<int>? equipment)
+        {
+            int range = GetWeaponRangeFromEquipment(equipment);
+            return new ActionAbilityInfo(
+                ActionAbilityLookup.ATTACK_ID, "Attack", 0,
+                range.ToString(), 0, 1, 0, "enemy",
+                "Attacks with the equipped weapon, or bare fists if no weapon is equipped.");
+        }
+
+        /// <summary>
         /// Returns whether the item type is protective equipment (head/body/accessory).
         /// </summary>
         public static bool IsEquipment(string type) => type is

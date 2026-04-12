@@ -488,11 +488,10 @@ namespace FFTColorCustomizer.GameBridge
             SendKey(VK_F);
 
             // NOTE: Ctrl fast-forward disabled — holding Ctrl during enemy turns
-            // was causing the bridge to time out and stop responding to commands.
-            // The game still processes turns at normal speed without it.
+            // doesn't visibly speed up animations in the IC remaster. Tested both
+            // continuous hold and pulse approaches (2026-04-12). May need a different
+            // key or game setting. The game still processes turns at normal speed.
             Thread.Sleep(500);
-            // SendInputKeyDown(VK_CONTROL);
-            // _input.SendKeyDownToWindow(_gameWindow, VK_CONTROL);
             ModLogger.Log("[BattleWait] Waiting for enemy turns (Ctrl fast-forward disabled)");
 
             // Poll until it's a friendly unit's turn again (or game over/timeout)
@@ -503,6 +502,7 @@ namespace FFTColorCustomizer.GameBridge
                 while (sw.ElapsedMilliseconds < 120000) // 2 minute max
                 {
                     Thread.Sleep(300);
+
                     var current = _detectScreen();
                     if (current == null) continue;
 
@@ -540,9 +540,6 @@ namespace FFTColorCustomizer.GameBridge
             }
             finally
             {
-                // Release Ctrl (no-op while disabled, kept for safety)
-                // SendInputKeyUp(VK_CONTROL);
-                // _input.SendKeyUpToWindow(_gameWindow, VK_CONTROL);
                 ModLogger.Log("[BattleWait] Turn wait complete");
             }
 
@@ -1593,6 +1590,7 @@ namespace FFTColorCustomizer.GameBridge
                 Jump = ally.Jump,
                 PA = ally.PA,
                 MA = ally.MA,
+                Equipment = ally.Equipment,
             };
             // Position→unit index for annotating ability target tiles with occupant info.
             // Built once outside the per-unit loop so every ability lookup is O(1).
@@ -1903,22 +1901,19 @@ namespace FFTColorCustomizer.GameBridge
                 });
 
                 // Prepend basic Attack to the active player unit's ability list.
-                // Uses HR=1 (melee default) — will need weapon-type detection for
-                // ranged weapons (guns, bows, crossbows) in the future. VR=0 falls
-                // back to casterJump via the calculator.
+                // Range determined by equipped weapon (gun=8, bow=5, crossbow=4, melee=1).
+                // VR=0 falls back to casterJump via the calculator.
                 if (isActive && u.Team == 0)
                 {
                     var abilityMap = _mapLoader?.CurrentMap;
-                    var attackInfo = new ActionAbilityInfo(
-                        ActionAbilityLookup.ATTACK_ID, "Attack", 0,
-                        "1", 0, 1, 0, "enemy", "Attacks with the equipped weapon, or bare fists if no weapon is equipped.");
+                    var attackInfo = ItemData.BuildAttackAbilityInfo(u.Equipment);
                     var attackEntry = new AbilityEntry
                     {
                         Name = "Attack",
-                        HRange = "1",
+                        HRange = attackInfo.HRange,
                         AoE = 1,
                         Target = "enemy",
-                        Effect = "Attacks with the equipped weapon, or bare fists if no weapon is equipped.",
+                        Effect = attackInfo.Effect,
                     };
                     if (abilityMap != null)
                     {
@@ -3197,6 +3192,7 @@ namespace FFTColorCustomizer.GameBridge
             /// Populated only for matched player units. Null for enemies.
             /// </summary>
             public Dictionary<int, (byte byte0, byte byte1)>? LearnedBitfieldByJobIdx;
+            public List<int>? Equipment;  // roster equipment IDs (7 slots, 0xFF/0xFFFF filtered out)
             public byte[]? ClassFingerprint;  // 11 bytes at heap struct +0x69 (see ClassFingerprintLookup)
             public string? JobNameOverride;   // Resolved class name from fingerprint (fallback for enemies)
         }
@@ -3609,6 +3605,21 @@ namespace FFTColorCustomizer.GameBridge
                                     unit.LearnedBitfieldByJobIdx[jobIdx] = (bytesRead[0], bytesRead[1]);
                                 }
                             }
+
+                            // Read equipment slots (7 × uint16 at roster +0x0E)
+                            const int equipStart = 0x0E;
+                            var equipReads = _explorer.ReadMultiple(Enumerable.Range(0, 7)
+                                .Select(i => ((nint)(slotAddr + equipStart + i * 2), 2))
+                                .ToArray());
+                            var eq = new List<int>();
+                            for (int e = 0; e < 7; e++)
+                            {
+                                int eqId = (int)equipReads[e];
+                                if (eqId != 0xFF && eqId != 0xFFFF)
+                                    eq.Add(eqId);
+                            }
+                            if (eq.Count > 0)
+                                unit.Equipment = eq;
                         }
                         // For story characters, the roster's job field at +0x02 equals
                         // their nameId rather than a real job ID (e.g. Marach job=26
