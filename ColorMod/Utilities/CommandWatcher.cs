@@ -762,6 +762,28 @@ namespace FFTColorCustomizer.Utilities
                                 Error = "Run scan_move before battle_attack/battle_ability. Scan data is required for targeting.",
                                 ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
                                 Screen = DetectScreenSettled() };
+                        // Validate target is within ability's horizontal range from caster
+                        if (command.Action == "battle_ability" && command.Description != null
+                            && command.LocationId >= 0 && command.UnitIndex >= 0
+                            && _turnTracker.CachedScanResponse?.Battle?.Units != null)
+                        {
+                            var activeUnit = _turnTracker.CachedScanResponse.Battle.Units
+                                .FirstOrDefault(u => u.IsActive);
+                            var matchingAbility = activeUnit?.Abilities?
+                                .FirstOrDefault(a => a.Name.Equals(command.Description, StringComparison.OrdinalIgnoreCase));
+                            if (matchingAbility != null && activeUnit != null
+                                && int.TryParse(matchingAbility.HRange, out int hr) && hr > 0)
+                            {
+                                int dist = Math.Abs(command.LocationId - activeUnit.X) + Math.Abs(command.UnitIndex - activeUnit.Y);
+                                if (dist > hr)
+                                {
+                                    return new CommandResponse { Id = command.Id, Status = "failed",
+                                        Error = $"Target ({command.LocationId},{command.UnitIndex}) is {dist} tiles away but '{command.Description}' has range {hr}.",
+                                        ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
+                                        Screen = DetectScreenSettled() };
+                                }
+                            }
+                        }
                         _battleMenuTracker.ReturnToMyTurn();
                         var actionResult = ExecuteNavAction(command);
                         if (actionResult.Status == "completed")
