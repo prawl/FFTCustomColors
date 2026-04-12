@@ -563,12 +563,15 @@ boot() {
 # STATE HELPERS
 # =============================================================================
 
-# state: Force a full state report (roster, battle data, etc). Prints summary.
-state() { fft "{\"id\":\"$(id)\",\"action\":\"report_state\"}"; }
-
-# screen: Universal state command. In battle: shows active unit, abilities with
-# reachable targets, and all unit positions. Outside battle: shows screen name & state.
+# screen: Universal state command. THE primary way to see game state.
+# In battle: shows active unit, abilities with reachable targets, all units.
+# Outside battle: shows screen name, location, status.
+# Usage: screen        (compact — default)
+#        screen -v     (verbose — adds PA/MA/Spd/CT/Br/Fa per unit, full ability details)
 screen() {
+  local verbose=false
+  if [ "$1" = "-v" ]; then verbose=true; shift; fi
+
   # Quick screen check first
   _check_total || return 1
   rm -f "$B/response.json"
@@ -583,30 +586,31 @@ screen() {
 
   # During Battle_MyTurn: run scan_move for full tactical view
   if [[ "$SCR" == "Battle_MyTurn" ]]; then
+    local vflag="false"; $verbose && vflag="true"
     local raw
-    raw=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\"}")
+    raw=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"verbose\":$vflag}")
     echo "$raw" | node -e "
 const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
 const s=j.screen||{};
 const b=j.battle||{};
 const au=b.activeUnit;
 const us=b.units||[];
+const verbose=$vflag;
 
-// Header — find active unit from units list (most reliable source)
-const activeU2=us.find(u=>u.isActive);
-const aName=activeU2?.name||au?.name||s.activeUnitName||'?';
-const aJob=activeU2?.jobName||au?.jobName||s.activeUnitJob||'';
-const ax=au?.x??activeU2?.x??'?';
-const ay=au?.y??activeU2?.y??'?';
-const ahp=au?.hp??activeU2?.hp??'?';
-const amhp=au?.maxHp??activeU2?.maxHp??'?';
-const amp=au?.mp??activeU2?.mp??'?';
-const ammp=au?.maxMp??activeU2?.maxMp??'?';
+// Header
+const activeU=us.find(u=>u.isActive);
+const aName=au?.name||activeU?.name||s.activeUnitName||'?';
+const aJob=au?.jobName||activeU?.jobName||s.activeUnitJob||'';
+const ax=au?.x??activeU?.x??'?';
+const ay=au?.y??activeU?.y??'?';
+const ahp=au?.hp??activeU?.hp??'?';
+const amhp=au?.maxHp??activeU?.maxHp??'?';
+const amp=au?.mp??activeU?.mp??'?';
+const ammp=au?.maxMp??activeU?.maxMp??'?';
 console.log('[Battle] '+aName+(aJob?'('+aJob+')':'')+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp);
 console.log('');
 
-// Abilities with target tiles and occupant names
-const activeU=us.find(u=>u.isActive);
+// Abilities with target tiles
 if(activeU&&activeU.abilities){
   console.log('Abilities:');
   activeU.abilities.forEach(a=>{
@@ -620,12 +624,12 @@ if(activeU&&activeU.abilities){
     const ct=a.castSpeed?' ct='+a.castSpeed:'';
     const el=a.element?' ['+a.element+']':'';
     const eff=a.addedEffect?' {'+a.addedEffect+'}':'';
-    console.log('  '+a.name+mp+ct+el+eff+' → '+(tiles.length?tiles.join(' '):'(no targets in range)'));
+    console.log('  '+a.name+mp+ct+el+eff+' \u2192 '+(tiles.length?tiles.join(' '):'(no targets in range)'));
   });
   console.log('');
 }
 
-// All units
+// Units
 console.log('Units:');
 us.forEach(u=>{
   const team=u.team===0?'PLAYER':u.team===2?'ALLY':'ENEMY';
@@ -635,17 +639,23 @@ us.forEach(u=>{
   const life=u.lifeState==='dead'?' DEAD':'';
   const act=u.isActive?' *':'';
   const dist=u.distance!==undefined&&!u.isActive?' d='+u.distance:'';
-  console.log('  ['+team+']'+nm+cl+' ('+u.x+','+u.y+') HP='+u.hp+'/'+u.maxHp+dist+st+life+act);
+  let extra='';
+  if(verbose){
+    extra=' PA='+u.pa+' MA='+u.ma+' Spd='+(u.speed||'?')+' CT='+(u.ct||'?')+' Br='+u.brave+' Fa='+u.faith;
+    if(u.reaction)extra+=' R:'+u.reaction;
+    if(u.support)extra+=' S:'+u.support;
+    if(u.movement)extra+=' M:'+u.movement;
+  }
+  console.log('  ['+team+']'+nm+cl+' ('+u.x+','+u.y+') HP='+u.hp+'/'+u.maxHp+dist+extra+st+life+act);
 });
 " 2>/dev/null
   else
     # Non-battle: parse the response we already have
-    local SCR2=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
     local LOC=$(echo "$R" | grep -o '"location":[0-9]*' | head -1 | cut -d: -f2)
     local LOCNAME=$(echo "$R" | grep -o '"locationName":"[^"]*"' | head -1 | cut -d'"' -f4)
     local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
     local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
-    echo "[$SCR2] loc=$LOCSTR status=$ST"
+    echo "[$SCR] loc=$LOCSTR status=$ST"
   fi
 }
 
@@ -667,44 +677,15 @@ logs() {
   fi
 }
 
-# scan_units: Read all unit positions + stats from memory (no input needed).
-# Returns structured JSON with units[] array. Compact formatted output.
-scan_units() {
-  local raw
-  raw=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_units\"}")
-  echo "$raw" | node -e "
-const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
-const s=j.screen||{};
-console.log('['+s.name+'] '+((s.activeUnitName||'')+' '+(s.activeUnitJob?'('+s.activeUnitJob+')':'')).trim());
-const us=j.units||[];
-us.forEach(u=>{
-  const st=u.statuses?.length?(' ['+u.statuses.join(',')+']'):'';
-  const nm=u.name?(' '+u.name):'';
-  const cl=u.class?('('+u.class+')'):'';
-  const act=u.isActive?' *':'';
-  const life=u.lifeState==='dead'?' DEAD':'';
-  const mv=u.move?(' Mv='+u.move+' Jmp='+u.jump):'';
-  console.log('  ['+u.team+']'+nm+cl+' ('+u.x+','+u.y+') HP='+u.hp+'/'+u.maxHp+' PA='+u.pa+' MA='+u.ma+' Spd='+u.speed+' CT='+u.ct+mv+' Br='+u.brave+' Fa='+u.faith+st+life+act);
-});
-console.log('  '+us.length+' units');
-" 2>/dev/null
-}
-
-# scan_units_json: Raw JSON output for programmatic use.
-scan_units_json() { fft_full "{\"id\":\"$(id)\",\"action\":\"scan_units\"}"; }
-
-# auto_move: DISABLED — Claude should make tactical decisions, not automate turns.
-auto_move() { echo "[DISABLED] auto_move is not allowed. Use scan_move, battle_move, battle_attack, battle_wait individually."; return 1; }
-
-# scan_move: Scan units + compute valid movement tiles from map data.
-# Prints compact summary. Use scan_move_full for raw JSON.
-# Usage: scan_move              (uses scanned move/jump stats)
-#        scan_move 3 3          (override move=3, jump=3)
-# scan_move: Scan units + compute valid tiles. Compact output by default.
-# Usage: scan_move              (compact — occupied tiles only)
-#        scan_move -v           (verbose — full tile lists)
-#        scan_move <move> <jump> (override Move/Jump stats)
-scan_move() {
+# =============================================================================
+# DEPRECATED COMMANDS — use screen instead
+# =============================================================================
+# scan_units, scan_move, state all replaced by the unified screen command.
+# Kept as thin wrappers that print a reminder, in case muscle memory kicks in.
+scan_units() { echo "[USE screen] scan_units is deprecated. Use: screen"; screen; }
+state() { echo "[USE screen] state is deprecated. Use: screen"; screen; }
+auto_move() { echo "[DISABLED] Use battle_move, battle_attack, battle_ability, battle_wait individually."; return 1; }
+_old_scan_move() {
   local verbose=false
   if [ "$1" = "-v" ]; then verbose=true; shift; fi
   local mv=${1:-0}
@@ -908,12 +889,8 @@ scan_move() {
   "
 }
 
-# scan_move_full: Raw JSON version of scan_move for debugging.
-scan_move_full() {
-  local mv=${1:-0}
-  local jmp=${2:-0}
-  fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$mv,\"unitIndex\":$jmp}"
-}
+scan_move() { echo "[USE screen] scan_move is deprecated. Use: screen"; screen; }
+scan_move_full() { echo "[USE screen -v] scan_move_full is deprecated. Use: screen -v"; screen -v; }
 
 # battle_move: Enter Move mode, navigate cursor to grid (x,y), confirm with F.
 # Usage: battle_move <x> <y>

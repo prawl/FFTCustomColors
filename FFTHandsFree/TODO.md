@@ -75,6 +75,7 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 
 Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
+- [ ] **Add PreToolUse hook to block `| node` in bash commands** [Enforcement] — Claude should never pipe command output through node for parsing. All shell helpers (screen, execute_action, battle_attack, etc.) handle formatting internally. A Claude Code PreToolUse hook on Bash can detect `| node` in the command string and block it with a reminder to use the formatted helpers. Pending testing the unified screen command first.
 - [ ] **Remove scan_move caching** [Performance] — Scan is now ~15ms (pure memory reads, no C+Up). Caching adds complexity and causes stale data bugs. Remove `HasCachedScan`, `CacheScanResponse`, `MarkScanned` and always scan fresh. Identified 2026-04-12.
 - [ ] **battle_attack allows diagonal targets** [Execution] — `battle_attack x y` doesn't validate that the target is on a cardinal direction (same X or same Y) from the attacker. FFT only allows attacking in the 4 cardinal directions. Fix: validate `targetX == unitX || targetY == unitY` before entering targeting mode. Observed 2026-04-12.
 - [ ] **Equipment IDs stale across battles** [State] — Roster equipment at `+0x0E` reads the save-state equipment, not the current in-battle loadout. Need to find the live equipment address.
