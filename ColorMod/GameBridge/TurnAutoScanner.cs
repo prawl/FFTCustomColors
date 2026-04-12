@@ -12,6 +12,8 @@ namespace FFTColorCustomizer.GameBridge
     public class BattleTurnTracker
     {
         private bool _scannedThisTurn;
+        private int _lastUnitX = -1;
+        private int _lastUnitY = -1;
         private bool _wasMyTurn;
         private int _lastUnitId = -1;
         private int _lastUnitHp = -1;
@@ -36,7 +38,9 @@ namespace FFTColorCustomizer.GameBridge
         /// Returns true if an auto-scan should be triggered.
         /// Only returns true for player-controlled units (team 0) on Battle_MyTurn.
         /// </summary>
-        public bool ShouldAutoScan(string screenName, int team = 0, int unitId = -1, int unitHp = -1)
+        public bool ShouldAutoScan(
+            string screenName, int team = 0, int unitId = -1, int unitHp = -1,
+            int unitX = -1, int unitY = -1)
         {
             bool isMyTurn = screenName == "Battle_MyTurn";
 
@@ -53,16 +57,21 @@ namespace FFTColorCustomizer.GameBridge
                 _wasMyTurn = false;
                 _lastUnitId = -1;
                 _lastUnitHp = -1;
+                _lastUnitX = -1;
+                _lastUnitY = -1;
                 CachedScanResponse = null;
             }
 
             // Detect unit change without intermediate enemy/ally turn.
-            // battleUnitId at 0x14077D2A4 is unreliable (same value for multiple units),
-            // so also check HP which differs between units.
+            // battleUnitId at 0x14077D2A4 is unreliable (same value for multiple units).
+            // Use HP AND position as change signals — both differ between units even
+            // when they're at full health. Position is the most reliable: when the turn
+            // switches from unit A at (5,3) to unit B at (8,4), position always changes.
             if (isMyTurn && _wasMyTurn && _scannedThisTurn)
             {
                 bool unitChanged = (unitId >= 0 && _lastUnitId >= 0 && unitId != _lastUnitId)
-                    || (unitHp >= 0 && _lastUnitHp >= 0 && unitHp != _lastUnitHp);
+                    || (unitHp >= 0 && _lastUnitHp >= 0 && unitHp != _lastUnitHp)
+                    || (unitX >= 0 && _lastUnitX >= 0 && (unitX != _lastUnitX || unitY != _lastUnitY));
                 if (unitChanged)
                 {
                     _scannedThisTurn = false;
@@ -79,6 +88,11 @@ namespace FFTColorCustomizer.GameBridge
                 _lastUnitId = unitId;
             if (unitHp >= 0)
                 _lastUnitHp = unitHp;
+            if (unitX >= 0)
+            {
+                _lastUnitX = unitX;
+                _lastUnitY = unitY;
+            }
 
             // Only auto-scan for player-controlled units (team 0)
             if (team != 0)
@@ -133,6 +147,8 @@ namespace FFTColorCustomizer.GameBridge
             _wasMyTurn = false;
             _lastUnitId = -1;
             _lastUnitHp = -1;
+            _lastUnitX = -1;
+            _lastUnitY = -1;
             CachedScanResponse = null;
         }
     }

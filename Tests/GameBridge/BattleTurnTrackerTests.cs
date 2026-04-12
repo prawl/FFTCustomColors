@@ -276,5 +276,35 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.False(tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1, unitHp: 496));
             Assert.True(tracker.HasCachedScan);
         }
+
+        [Fact]
+        public void CachedScan_ClearedWhenPositionChanges()
+        {
+            // Two units with the same HP but different positions — position change
+            // should invalidate the cache even when HP matches.
+            var tracker = new BattleTurnTracker();
+            tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1, unitHp: 500, unitX: 5, unitY: 3);
+            var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
+            tracker.CacheScanResponse(response);
+            tracker.MarkScanned();
+
+            // Same HP but different position — must invalidate
+            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1, unitHp: 500, unitX: 8, unitY: 4));
+            Assert.False(tracker.HasCachedScan);
+        }
+
+        [Fact]
+        public void CachedScan_NotClearedWhenSamePosition()
+        {
+            // Same unit, same HP, same position — cache should persist
+            var tracker = new BattleTurnTracker();
+            tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1, unitHp: 500, unitX: 5, unitY: 3);
+            var response = new FFTColorCustomizer.Utilities.CommandResponse { Id = "scan1", Status = "completed" };
+            tracker.CacheScanResponse(response);
+            tracker.MarkScanned();
+
+            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn", unitId: 1, unitHp: 500, unitX: 5, unitY: 3));
+            Assert.True(tracker.HasCachedScan);
+        }
     }
 }

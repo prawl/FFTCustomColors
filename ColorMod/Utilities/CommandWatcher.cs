@@ -421,11 +421,24 @@ namespace FFTColorCustomizer.Utilities
                             var preScreen = DetectScreen();
                             if (preScreen != null)
                             {
+                                // Read the active unit's grid position for unit-change
+                                // detection. Position is the most reliable signal for
+                                // detecting turn switches in multi-unit parties — two
+                                // units can have the same HP but never the same position.
+                                int ux = -1, uy = -1;
+                                if (preScreen.Name == "Battle_MyTurn" && Explorer != null)
+                                {
+                                    var rx = Explorer.ReadAbsolute((nint)0x140C64A54, 1);
+                                    var ry = Explorer.ReadAbsolute((nint)0x140C6496C, 1);
+                                    if (rx != null) ux = (int)rx.Value.value;
+                                    if (ry != null) uy = (int)ry.Value.value;
+                                }
                                 _turnTracker.ShouldAutoScan(
                                     preScreen.Name,
                                     team: preScreen.BattleTeam,
                                     unitId: preScreen.BattleUnitId,
-                                    unitHp: preScreen.BattleUnitHp);
+                                    unitHp: preScreen.BattleUnitHp,
+                                    unitX: ux, unitY: uy);
                             }
                         }
                         if (_turnTracker.HasCachedScan)
