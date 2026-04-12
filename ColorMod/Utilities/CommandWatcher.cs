@@ -473,7 +473,13 @@ namespace FFTColorCustomizer.Utilities
                         _turnTracker.MarkScanned();
                         var scanResult = ExecuteNavAction(command);
                         if (scanResult.Status == "completed")
+                        {
                             _turnTracker.CacheScanResponse(scanResult);
+                            // Compact mode (default): strip empty tiles and flavor text
+                            // from ability entries to save tokens. Verbose mode keeps all.
+                            if (!command.Verbose)
+                                CompactAbilities(scanResult);
+                        }
                         return scanResult;
 
 
@@ -1535,6 +1541,39 @@ namespace FFTColorCustomizer.Utilities
             _cachedSecondarySkillset = activeUnit.SecondaryAbility > 0
                 ? GetSkillsetName(activeUnit.SecondaryAbility)
                 : null;
+        }
+
+        /// <summary>
+        /// Strip empty tiles and verbose fields from ability entries to reduce
+        /// token usage in the scan_move response. Only occupied tiles (with an
+        /// enemy/ally/self) are kept; empty tiles are summarized as TotalTargets count.
+        /// Effect (flavor text) and VRange/AoE/HoE (derivable from metadata) are removed.
+        /// </summary>
+        private static void CompactAbilities(CommandResponse response)
+        {
+            var units = response.Battle?.Units;
+            if (units == null) return;
+
+            foreach (var unit in units)
+            {
+                if (unit.Abilities == null) continue;
+                foreach (var ability in unit.Abilities)
+                {
+                    if (ability.ValidTargetTiles != null)
+                    {
+                        int total = ability.ValidTargetTiles.Count;
+                        // Keep only tiles with an occupant
+                        var occupied = ability.ValidTargetTiles
+                            .Where(t => t.Occupant != null)
+                            .ToList();
+                        ability.TotalTargets = total;
+                        ability.ValidTargetTiles = occupied.Count > 0 ? occupied : null;
+                    }
+                    // Strip flavor text — Claude knows what Potion does from the name.
+                    // Keep addedEffect since it's mechanically useful ("Restores 30 HP").
+                    ability.Effect = null!;
+                }
+            }
         }
 
         private void CacheSecondaryFromRoster(int level, int brave, int faith)

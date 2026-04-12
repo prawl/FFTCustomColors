@@ -1050,16 +1050,22 @@ namespace FFTColorCustomizer.GameBridge
         public bool Arithmetickable { get; set; }
 
         /// <summary>
-        /// For point-target abilities (AoE=1, numeric HRange) AND radius-AoE
-        /// abilities (AoE>1, numeric HRange), the set of tiles the caster can
-        /// currently aim at. For point-target abilities the splash IS this tile;
-        /// for radius abilities this is the CENTER list — see BestCenters for
-        /// splash evaluation. Null for self-cast, line, cone, full-field, or
-        /// non-numeric HRange. Populated only for the active player unit.
+        /// Valid target tiles for this ability. In compact mode (default), only
+        /// tiles with occupants are included — use TotalTargets for the full count.
+        /// In verbose mode, all tiles are included. Null for ineligible abilities.
         /// </summary>
         [JsonPropertyName("validTargetTiles")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<ValidTargetTile>? ValidTargetTiles { get; set; }
+
+        /// <summary>
+        /// Total number of valid target tiles (including empty ones). Only
+        /// populated in compact mode — lets Claude know the full range without
+        /// listing every empty tile.
+        /// </summary>
+        [JsonPropertyName("totalTargets")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int TotalTargets { get; set; }
 
         /// <summary>
         /// For radius-AoE abilities only: the top-ranked aim centers by splash

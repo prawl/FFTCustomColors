@@ -59,6 +59,13 @@ namespace FFTColorCustomizer.Utilities
         public string? Pattern { get; set; }
 
         /// <summary>
+        /// When true, scan_move returns full tile lists for every ability.
+        /// When false (default), only occupied tiles are included + a totalTargets count.
+        /// </summary>
+        [JsonPropertyName("verbose")]
+        public bool Verbose { get; set; }
+
+        /// <summary>
         /// Target screen for "navigate" action (e.g. "PartyMenu", "JobScreen").
         /// </summary>
         [JsonPropertyName("to")]

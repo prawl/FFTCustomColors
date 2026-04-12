@@ -598,10 +598,17 @@ auto_move() { echo "[DISABLED] auto_move is not allowed. Use scan_move, battle_m
 # Prints compact summary. Use scan_move_full for raw JSON.
 # Usage: scan_move              (uses scanned move/jump stats)
 #        scan_move 3 3          (override move=3, jump=3)
+# scan_move: Scan units + compute valid tiles. Compact output by default.
+# Usage: scan_move              (compact — occupied tiles only)
+#        scan_move -v           (verbose — full tile lists)
+#        scan_move <move> <jump> (override Move/Jump stats)
 scan_move() {
+  local verbose=false
+  if [ "$1" = "-v" ]; then verbose=true; shift; fi
   local mv=${1:-0}
   local jmp=${2:-0}
-  local R=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$mv,\"unitIndex\":$jmp}")
+  local vflag="false"; $verbose && vflag="true"
+  local R=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$mv,\"unitIndex\":$jmp,\"verbose\":$vflag}")
   # Strip whitespace for reliable grep matching (JSON may be pretty-printed)
   local RR=$(echo "$R" | tr -d '\r\n ')
   local ST=$(echo "$RR" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
@@ -680,7 +687,7 @@ scan_move() {
           return segs.join(' ');
         }).join('  ');
         extraLines.push('best: ' + dirRendered);
-      } else if (a.validTargetTiles && a.validTargetTiles.length) {
+      } else if ((a.validTargetTiles && a.validTargetTiles.length) || a.totalTargets > 0) {
         if (a.areaOfEffect && a.areaOfEffect > 1) {
           // Radius AoE: compact center count + bestCenters summary.
           parts.push('centers=' + a.validTargetTiles.length);
@@ -696,11 +703,15 @@ scan_move() {
             extraLines.push('best: ' + bestRendered);
           }
         } else {
-          // Point-target: inline tile list with hit markers.
+          // Point-target: show occupied tiles with markers.
+          // Compact mode (totalTargets > 0): only occupied tiles in the list.
+          // Verbose mode: full tile list with all tiles.
           var wantsAlly = a.target && (a.target.indexOf('ally') !== -1 || a.target.indexOf('self') !== -1);
           var wantsEnemy = a.target && a.target.indexOf('enemy') !== -1;
+          var tiles = a.validTargetTiles || [];
+          var total = a.totalTargets || tiles.length;
           var hits = 0;
-          var rendered = a.validTargetTiles.map(function(t) {
+          var rendered = tiles.map(function(t) {
             var occ = t.occupant;
             var hit =
               (wantsAlly && (occ === 'self' || occ === 'ally')) ||
@@ -710,7 +721,9 @@ scan_move() {
             var suffix = (hit && t.unitName) ? '«' + t.unitName + '»' : '';
             return marker + '(' + t.x + ',' + t.y + ')' + suffix;
           }).join(' ');
-          parts.push('targets=' + a.validTargetTiles.length + ' hits=' + hits + ': ' + rendered);
+          var empty = total - tiles.length;
+          var emptyStr = empty > 0 ? '  (' + empty + ' empty)' : '';
+          parts.push('hits=' + hits + ': ' + (rendered || '(none in range)') + emptyStr);
         }
       }
       return [parts.join(' ')].concat(extraLines);
