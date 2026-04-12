@@ -294,13 +294,23 @@ execute_action() {
     tries=$((tries + 1))
     if [ $tries -ge 1500 ]; then echo "[TIMEOUT]"; return 1; fi
   done
+  local R=$(cat "$B/response.json" | tr -d '\r\n ')
+  local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+  # If Wait completed and we're at Battle_MyTurn, auto-show screen
+  if [ "$1" = "Wait" ] && [[ "$SCR" == "Battle_MyTurn" ]]; then
+    screen
+    return
+  fi
+
+  # Otherwise show compact action result
   node -e "
 const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
 const s=r.screen||{};
 const ui=s.ui?' ui='+s.ui:'';
-console.log('['+s.name+']'+ui+' loc='+s.location+' hover='+s.hover+' status='+r.status);
+console.log('['+s.name+']'+ui+' status='+r.status);
 if(r.info)console.log('  INFO:',r.info);
-if(r.error)console.log('  ERROR:',r.error);
+if(r.error&&r.status!=='completed')console.log('  ERROR:',r.error);
 const vp=r.validPaths||{};
 const keys=Object.keys(vp);
 if(keys.length){console.log('  ValidPaths:');keys.forEach(k=>console.log('    '+k+': '+vp[k].desc));}
@@ -893,15 +903,35 @@ _old_scan_move() {
 scan_move() { echo "[USE screen] scan_move is deprecated. Use: screen"; screen; }
 scan_move_full() { echo "[USE screen -v] scan_move_full is deprecated. Use: screen -v"; screen -v; }
 
+# _fmt_action: Shared formatter for battle action responses. Parses JSON, shows compact result.
+_fmt_action() {
+  local raw="$1"
+  echo "$raw" | node -e "
+const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
+const s=j.screen||{};
+const ui=s.ui?' ui='+s.ui:'';
+if(j.status!=='completed'){
+  console.log('['+s.name+']'+ui+' '+j.status+': '+(j.error||'unknown error'));
+}else{
+  let msg='['+s.name+']'+ui;
+  if(j.error)msg+=' '+j.error;
+  else if(j.info)msg+=' '+j.info;
+  if(j.postAction){
+    const p=j.postAction;
+    msg+=' → ('+p.x+','+p.y+') HP='+p.hp+'/'+p.maxHp;
+  }
+  console.log(msg);
+}
+" 2>/dev/null
+}
+
 # battle_move: Enter Move mode, navigate cursor to grid (x,y), confirm with F.
 # Usage: battle_move <x> <y>
-# Example: battle_move 0 2    → move to grid position (0,2)
-battle_move() { fft_full "{\"id\":\"$(id)\",\"action\":\"battle_move\",\"locationId\":$1,\"unitIndex\":$2}"; }
+battle_move() { _fmt_action "$(fft_full "{\"id\":\"$(id)\",\"action\":\"battle_move\",\"locationId\":$1,\"unitIndex\":$2}")"; }
 
 # battle_attack: Attack a target tile. Handles menu nav, rotation detection, targeting.
 # Usage: battle_attack <x> <y>
-# Example: battle_attack 2 4    → attack tile (2,4)
-battle_attack() { fft_full "{\"id\":\"$(id)\",\"action\":\"battle_attack\",\"locationId\":$1,\"unitIndex\":$2}"; }
+battle_attack() { _fmt_action "$(fft_full "{\"id\":\"$(id)\",\"action\":\"battle_attack\",\"locationId\":$1,\"unitIndex\":$2}")"; }
 
 # battle_ability: Use a specific ability. Self-targeting abilities need no coordinates.
 # Usage: battle_ability "Shout"                    (self-target)
@@ -910,9 +940,9 @@ battle_attack() { fft_full "{\"id\":\"$(id)\",\"action\":\"battle_attack\",\"loc
 battle_ability() {
   local name="$1"
   if [ -n "$2" ] && [ -n "$3" ]; then
-    fft_full "{\"id\":\"$(id)\",\"action\":\"battle_ability\",\"description\":\"$name\",\"locationId\":$2,\"unitIndex\":$3}" 15
+    _fmt_action "$(fft_full "{\"id\":\"$(id)\",\"action\":\"battle_ability\",\"description\":\"$name\",\"locationId\":$2,\"unitIndex\":$3}" 15)"
   else
-    fft_full "{\"id\":\"$(id)\",\"action\":\"battle_ability\",\"description\":\"$name\"}" 15
+    _fmt_action "$(fft_full "{\"id\":\"$(id)\",\"action\":\"battle_ability\",\"description\":\"$name\"}" 15)"
   fi
 }
 
