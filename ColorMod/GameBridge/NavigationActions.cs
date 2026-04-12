@@ -3304,7 +3304,7 @@ namespace FFTColorCustomizer.GameBridge
             try
             {
                 // Batch-read key fields for all candidate slots
-                const int FieldsPerSlot = 11;
+                const int FieldsPerSlot = 15;
                 var slotReads = new (nint, int)[totalSlots * FieldsPerSlot];
                 for (int s = 0; s < totalSlots; s++)
                 {
@@ -3320,6 +3320,10 @@ namespace FFTColorCustomizer.GameBridge
                     slotReads[s * FieldsPerSlot + 8] = ((nint)(sb + 0x0E), 1);  // origBrave
                     slotReads[s * FieldsPerSlot + 9] = ((nint)(sb + 0x10), 1);  // origFaith
                     slotReads[s * FieldsPerSlot + 10] = ((nint)(sb + 0x12), 2); // inBattleFlag
+                    slotReads[s * FieldsPerSlot + 11] = ((nint)(sb + 0x22), 1); // PA (total)
+                    slotReads[s * FieldsPerSlot + 12] = ((nint)(sb + 0x23), 1); // MA (total)
+                    slotReads[s * FieldsPerSlot + 13] = ((nint)(sb + 0x24), 1); // Speed
+                    slotReads[s * FieldsPerSlot + 14] = ((nint)(sb + 0x25), 1); // CT
                 }
                 var sv = _explorer.ReadMultiple(slotReads);
 
@@ -3361,23 +3365,26 @@ namespace FFTColorCustomizer.GameBridge
                     // Check if this is the active unit (match by HP+MaxHP with condensed struct)
                     bool isActive = (hp == activeHp && maxHp == activeMaxHp);
 
+                    int paTotal = (int)sv[s * FieldsPerSlot + 11];
+                    int maTotal = (int)sv[s * FieldsPerSlot + 12];
+                    int speed =   (int)sv[s * FieldsPerSlot + 13];
+                    int ct =      (int)sv[s * FieldsPerSlot + 14];
+
                     var unit = new ScannedUnit
                     {
                         GridX = gx, GridY = gy,
                         Level = lvl, Team = team, Exp = exp,
                         Hp = hp, MaxHp = maxHp, Mp = mp, MaxMp = maxMp,
                         Brave = brave, Faith = faith,
+                        PA = paTotal, MA = maTotal, Speed = speed, CT = ct,
                     };
 
                     if (isActive)
                     {
-                        // Active unit's team is reliably read from condensed struct
+                        // Active unit: augment with condensed struct data for team, abilities,
+                        // and Move/Jump (which aren't in the static array)
                         unit.Team = (int)activeReads[1];
                         unit.NameId = (int)activeReads[2];
-                        unit.Speed = (int)activeReads[3];
-                        unit.CT = (int)activeReads[5];
-                        unit.PA = (int)activeReads[10];
-                        unit.MA = (int)activeReads[11];
                         unit.Move = (int)activeReads[12];
                         unit.Jump = (int)activeReads[13];
 
