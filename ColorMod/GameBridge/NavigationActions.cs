@@ -2864,9 +2864,29 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(100);
             }
 
-            response.Status = confirmed ? "completed" : "failed";
-            response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) {(confirmed ? "CONFIRMED" : "NOT CONFIRMED")}";
-            if (confirmed) _menuCursorStale = true;
+            if (!confirmed)
+            {
+                response.Status = "failed";
+                response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) NOT CONFIRMED (timeout)";
+                return response;
+            }
+
+            // Verify the unit actually moved by reading postAction position.
+            // If the game rejected the move (invalid tile), it returns to Battle_MyTurn
+            // without changing position — the "confirmed" check above can't distinguish
+            // this from a successful move.
+            var postCheck = ReadPostActionState();
+            if (postCheck != null && postCheck.X == startPos.x && postCheck.Y == startPos.y
+                && (startPos.x != targetX || startPos.y != targetY))
+            {
+                response.Status = "failed";
+                response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) REJECTED — unit still at start position";
+                return response;
+            }
+
+            response.Status = "completed";
+            response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) CONFIRMED";
+            _menuCursorStale = true;
             return response;
         }
 
