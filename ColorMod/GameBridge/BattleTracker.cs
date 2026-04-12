@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -10,16 +9,9 @@ using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.GameBridge
 {
     /// <summary>
-    /// Tracks battle state by reading the turn queue for stats and scanning heap memory
-    /// for unit positions. The IC remaster stores per-unit battle data in heap-allocated
-    /// structs with this layout from the stat pattern start:
-    ///   +0x00: exp(byte) level(byte) origBrave(byte) brave(byte) origFaith(byte) faith(byte)
-    ///   +0x06: turnFlag(byte) 00
-    ///   +0x08: HP(uint16) MaxHP(uint16) MP(uint16) pad MaxMP(uint16)
-    ///   +0x1A: X position (byte)
-    ///   +0x23: Y position (byte)
-    /// Each unit has an "active" copy (turnFlag=1) and a "saved" copy (turnFlag=0),
-    /// separated by stride 0x800. The active copy has live position data.
+    /// Tracks battle state by reading the turn queue for stats and the static battle
+    /// array at 0x140893C00 (stride 0x200) for positions and real-time HP changes.
+    /// Polls the static array every 100ms to detect damage, movement, and kills.
     /// </summary>
     public class BattleTracker : IDisposable
     {
@@ -59,18 +51,6 @@ namespace FFTColorCustomizer.GameBridge
         private const int RosterOffMovement = 0x0C; // byte, ability ID
         private const int RosterOffEquipStart = 0x0E; // 7 x uint16 equipment IDs (0xFF=empty)
 
-        // NOTE: Effective stats (Speed, PA, MA, Move, Jump) are only in the heap battle struct
-        // or the variable-offset post-ability section. Omitted until heap scanning is reliable.
-
-        // Heap battle struct offsets (from stat pattern start: exp level origBr br origFa fa)
-        private const int HeapOffX = 0x1A;
-        private const int HeapOffY = 0x23;
-        private const int HeapOffTurnFlag = 0x06;
-        private const int HeapOffHp = 0x08;
-        private const int HeapOffMaxHp = 0x0A;
-        private const int HeapOffMp = 0x0C;
-        private const int HeapOffMaxMp = 0x0E;
-
         // Turn queue field offsets (uint16 LE)
         private const int TqLevel = 0x00;
         private const int TqTeam = 0x02;
@@ -88,10 +68,7 @@ namespace FFTColorCustomizer.GameBridge
 
         // Tracked state
         private readonly Dictionary<int, BattleUnit> _units = new();
-        private readonly Dictionary<int, nint> _heapAddresses = new(); // unitKey → heap struct address
         private bool _inBattle;
-        private bool _heapScanDone;
-        private DateTime _lastHeapScan = DateTime.MinValue;
 
         // Static array tracking for real-time HP/position change detection
         private readonly TrackedSlot[] _trackedSlots = new TrackedSlot[ArrayTotalSlots];
@@ -148,8 +125,6 @@ namespace FFTColorCustomizer.GameBridge
                 if (_inBattle)
                 {
                     _units.Clear();
-                    _heapAddresses.Clear();
-                    _heapScanDone = false;
                     _inBattle = false;
                     // Clear tracked slots and events on battle end
                     for (int i = 0; i < _trackedSlots.Length; i++)
@@ -396,193 +371,6 @@ namespace FFTColorCustomizer.GameBridge
             state.BattleWon = BattleFieldHelper.AllEnemiesDefeated(state.Units);
 
             return state;
-        }
-
-        /// <summary>
-        /// Scan heap memory for unit battle structs.
-        /// Strategy: search for HP(u16) MaxHP(u16) pattern from the turn queue,
-        /// then verify level byte at -0x08 and read X at +0x12, Y at +0x1B
-        /// (offsets relative to HP field, which is at +0x08 from stat start).
-        /// </summary>
-        private void ScanHeapForPositions()
-        {
-            var sw = Stopwatch.StartNew();
-            int found = 0;
-
-            foreach (var kvp in _units)
-            {
-                var unit = kvp.Value;
-                if (unit.Level <= 0 || unit.MaxHp <= 0) continue;
-
-                // Check cached address first
-                if (_heapAddresses.TryGetValue(kvp.Key, out var knownAddr))
-                {
-                    try
-                    {
-                        // Verify MaxHP still matches at known location
-                        var verify = _explorer.Scanner.ReadBytes(knownAddr + HeapOffMaxHp, 2);
-                        if (verify.Length == 2 && BitConverter.ToUInt16(verify, 0) == unit.MaxHp)
-                        {
-                            ReadPositionFromHeap(knownAddr, unit);
-                            var hpBytes = _explorer.Scanner.ReadBytes(knownAddr + HeapOffHp, 2);
-                            if (hpBytes.Length == 2) unit.Hp = BitConverter.ToUInt16(hpBytes, 0);
-                            found++;
-                            continue;
-                        }
-                    }
-                    catch { }
-                    _heapAddresses.Remove(kvp.Key);
-                }
-
-                // Search for MaxHP(u16) followed by MP(u16) — a 4-byte pattern that's
-                // more unique than just MaxHP alone. At +0x0A: MaxHP(u16) MP(u16)
-                byte maxHpLo = (byte)(unit.MaxHp & 0xFF);
-                byte maxHpHi = (byte)(unit.MaxHp >> 8);
-                byte mpLo = (byte)(unit.Mp & 0xFF);
-                byte mpHi = (byte)(unit.Mp >> 8);
-                var hpPattern = new byte[] { maxHpLo, maxHpHi, mpLo, mpHi };
-
-                var matches = _explorer.SearchBytesInAllMemory(hpPattern, 30);
-
-                // Collect all valid candidates, then pick the best one
-                nint bestAddr = 0;
-                int bestX = -1, bestY = -1, bestHp = 0;
-                bool bestHasTurnFlag = false;
-
-                foreach (var (addr, _) in matches)
-                {
-                    try
-                    {
-                        nint statStart = addr - HeapOffMaxHp;
-
-                        // Verify level at +0x01
-                        byte levelByte = _explorer.Scanner.ReadByte(statStart + 1);
-                        if (levelByte != (byte)unit.Level) continue;
-
-                        // Verify HP at +0x08 is reasonable
-                        var hpCheck = _explorer.Scanner.ReadBytes(statStart + HeapOffHp, 2);
-                        if (hpCheck.Length < 2) continue;
-                        int hpVal = BitConverter.ToUInt16(hpCheck, 0);
-                        if (hpVal <= 0 || hpVal > unit.MaxHp + 100) continue;
-
-                        // Read position and turn flag
-                        var posBytes = _explorer.ReadMultiple(new (nint, int)[]
-                        {
-                            (statStart + HeapOffX, 1),
-                            (statStart + HeapOffY, 1),
-                            (statStart + HeapOffTurnFlag, 1),
-                        });
-                        int x = (int)posBytes[0];
-                        int y = (int)posBytes[1];
-                        bool hasTurnFlag = posBytes[2] == 1;
-
-                        if (x < 0 || x > 30 || y < 0 || y > 30) continue;
-
-                        // Prefer: turnFlag=1 copy > non-zero position > any match
-                        bool isBetter = false;
-                        if (bestAddr == 0) isBetter = true;
-                        else if (hasTurnFlag && !bestHasTurnFlag) isBetter = true;
-                        else if (!bestHasTurnFlag && (x > 0 || y > 0) && bestX == 0 && bestY == 0) isBetter = true;
-
-                        if (isBetter)
-                        {
-                            bestAddr = statStart;
-                            bestX = x;
-                            bestY = y;
-                            bestHp = hpVal;
-                            bestHasTurnFlag = hasTurnFlag;
-                        }
-                    }
-                    catch { continue; }
-                }
-
-                if (bestAddr != 0)
-                {
-                    _heapAddresses[kvp.Key] = bestAddr;
-                    unit.X = bestX;
-                    unit.Y = bestY;
-                    unit.Hp = bestHp;
-                    found++;
-                    ModLogger.LogDebug($"[BattleTracker] Found unit lv{unit.Level} t{unit.Team} at X={bestX} Y={bestY} flag={bestHasTurnFlag} (0x{bestAddr:X})");
-                }
-
-                if (sw.ElapsedMilliseconds > 5000)
-                {
-                    ModLogger.Log($"[BattleTracker] Heap scan timeout after {found} units, {sw.ElapsedMilliseconds}ms");
-                    break;
-                }
-
-                // Only do one full search per scan cycle to avoid overloading
-                if (found == 0 && sw.ElapsedMilliseconds > 2000)
-                    break;
-            }
-
-            _heapScanDone = found > 0;
-            if (found > 0)
-                ModLogger.Log($"[BattleTracker] Heap scan: {found} units positioned in {sw.ElapsedMilliseconds}ms");
-        }
-
-        /// <summary>
-        /// Fast refresh: re-read positions from already-known heap addresses.
-        /// Invalidates cached addresses if data looks wrong.
-        /// </summary>
-        private void RefreshPositionsFromKnownAddresses()
-        {
-            var toRemove = new List<int>();
-            foreach (var kvp in _heapAddresses)
-            {
-                if (!_units.TryGetValue(kvp.Key, out var unit)) continue;
-                try
-                {
-                    // Verify MaxHP still matches (struct hasn't been reallocated)
-                    var verify = _explorer.Scanner.ReadBytes(kvp.Value + HeapOffMaxHp, 2);
-                    if (verify.Length < 2 || BitConverter.ToUInt16(verify, 0) != unit.MaxHp)
-                    {
-                        toRemove.Add(kvp.Key);
-                        unit.X = -1;
-                        unit.Y = -1;
-                        continue;
-                    }
-
-                    ReadPositionFromHeap(kvp.Value, unit);
-                    var hpBytes = _explorer.Scanner.ReadBytes(kvp.Value + HeapOffHp, 2);
-                    if (hpBytes.Length == 2)
-                        unit.Hp = BitConverter.ToUInt16(hpBytes, 0);
-                }
-                catch
-                {
-                    toRemove.Add(kvp.Key);
-                    unit.X = -1;
-                    unit.Y = -1;
-                }
-            }
-            foreach (var key in toRemove)
-                _heapAddresses.Remove(key);
-        }
-
-        private void ReadPositionFromHeap(nint statBase, BattleUnit unit)
-        {
-            try
-            {
-                var posReads = _explorer.ReadMultiple(new (nint, int)[]
-                {
-                    (statBase + HeapOffX, 1),
-                    (statBase + HeapOffY, 1),
-                });
-                int x = (int)posReads[0];
-                int y = (int)posReads[1];
-                // Sanity check — grid coords should be 0-30
-                if (x < 0 || x > 30 || y < 0 || y > 30) return;
-                unit.StartX = x;
-                unit.StartY = y;
-                // Use start position as current if we don't have a live position yet
-                if (unit.X < 0) unit.X = unit.StartX;
-                if (unit.Y < 0) unit.Y = unit.StartY;
-            }
-            catch
-            {
-                // Silently ignore — heap address may be stale
-            }
         }
 
         /// <summary>

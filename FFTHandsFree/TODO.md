@@ -259,6 +259,11 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Post-battle memory values stuck at 255 after auto-battle** — All memory addresses stayed at 255/0xFFFFFFFF permanently. May require game restart.
 - [~] **Auto-detect battle map** — Location ID lookup + random encounter maps implemented, fingerprint fallback. BUG: after restart, location address reads 255 causing wrong map auto-detection.
 
+### Bugs Found 2026-04-12 Session 2
+- [ ] **battle_move reports Battle_Casting instead of Battle_Moving** [State] — After `battle_move 8 7`, response header shows `[Battle_Casting]` but the actual screen state is Battle_Moving (battleMode=2). Battle_Casting (battleMode=1) is for cast-time magick targeting, not movement. The screen detection may be reading battleMode=1 during the move confirmation animation. Observed 2026-04-12.
+- [ ] **battle_move doesn't validate target tile** [Execution] — `battle_move 8 7` accepted and moved to an invalid tile without returning an error. The move command should validate the target against the BFS-computed valid tile list before attempting navigation. If the tile isn't reachable, return an error immediately. Observed 2026-04-12.
+- [ ] **screen doesn't show ui= at turn start after Wait** [State] — After `execute_action Wait`, the auto-screen for the next turn shows `[Battle_MyTurn]` without `ui=Move`. The game cursor is on Move at turn start but the screen output doesn't report it. The ui= field should reflect the current menu cursor position. Observed 2026-04-12.
+
 ---
 
 ## 13. Battle Statistics & Lifetime Tracking

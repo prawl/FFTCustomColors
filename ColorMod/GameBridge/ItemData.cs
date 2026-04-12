@@ -621,15 +621,18 @@ namespace FFTColorCustomizer.GameBridge
         {
             int range = GetWeaponRangeFromEquipment(equipment);
             int minRange = 0;
-            // Guns and bows can't hit adjacent targets
+            // Ranged weapon minimum ranges:
+            //   Guns: min 2 (can't hit adjacent)
+            //   Bows: min 2 (can't hit adjacent)
+            //   Crossbows: min 3, max 4
             if (equipment != null)
             {
                 foreach (var id in equipment)
                 {
                     if (Items.TryGetValue(id, out var item))
                     {
-                        if (item.Type == "gun") { minRange = 3; break; }
-                        if (item.Type == "bow") { minRange = 3; break; }
+                        if (item.Type == "gun") { minRange = 2; break; }
+                        if (item.Type == "bow") { minRange = 2; break; }
                         if (item.Type == "crossbow") { minRange = 3; break; }
                     }
                 }

@@ -646,12 +646,29 @@ namespace FFTColorCustomizer.GameBridge
                     _lastDetectedRightDelta = (rdx, rdy);
                     ModLogger.Log($"[BattleAttack] Rotation from Down: ({ddx},{ddy}) → Right=({rdx},{rdy})");
                 }
+                else if (_lastDetectedRightDelta != null)
+                {
+                    // Fallback: use cached rotation from previous move/attack this turn
+                    (rdx, rdy) = _lastDetectedRightDelta.Value;
+                    ModLogger.Log($"[BattleAttack] Rotation fallback (cached): Right=({rdx},{rdy})");
+                }
                 else
                 {
-                    response.Status = "failed";
-                    response.Error = "Could not detect rotation — cursor didn't move";
-                    EscapeToMyTurn();
-                    return response;
+                    // Last resort: read camera rotation from memory
+                    var camResult = _explorer.ReadAbsolute((nint)AddrCameraRotation, 1);
+                    if (camResult != null)
+                    {
+                        (rdx, rdy) = AttackDirectionLogic.RightDeltaFromCameraRotation((int)camResult.Value.value);
+                        _lastDetectedRightDelta = (rdx, rdy);
+                        ModLogger.Log($"[BattleAttack] Rotation fallback (camera): raw={camResult.Value.value} → Right=({rdx},{rdy})");
+                    }
+                    else
+                    {
+                        response.Status = "failed";
+                        response.Error = "Could not detect rotation — cursor didn't move";
+                        EscapeToMyTurn();
+                        return response;
+                    }
                 }
             }
             else
@@ -1027,13 +1044,31 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     rdx = -ddy;
                     rdy = ddx;
+                    ModLogger.Log($"[BattleAbility] Rotation from Down: ({ddx},{ddy}) → Right=({rdx},{rdy})");
+                }
+                else if (_lastDetectedRightDelta != null)
+                {
+                    // Fallback: use cached rotation from previous move/attack this turn
+                    (rdx, rdy) = _lastDetectedRightDelta.Value;
+                    ModLogger.Log($"[BattleAbility] Rotation fallback (cached): Right=({rdx},{rdy})");
                 }
                 else
                 {
-                    response.Status = "failed";
-                    response.Error = $"Could not detect rotation for {abilityName} targeting";
-                    EscapeToMyTurn();
-                    return response;
+                    // Last resort: read camera rotation from memory
+                    var camResult = _explorer.ReadAbsolute((nint)AddrCameraRotation, 1);
+                    if (camResult != null)
+                    {
+                        (rdx, rdy) = AttackDirectionLogic.RightDeltaFromCameraRotation((int)camResult.Value.value);
+                        _lastDetectedRightDelta = (rdx, rdy);
+                        ModLogger.Log($"[BattleAbility] Rotation fallback (camera): raw={camResult.Value.value} → Right=({rdx},{rdy})");
+                    }
+                    else
+                    {
+                        response.Status = "failed";
+                        response.Error = $"Could not detect rotation for {abilityName} targeting";
+                        EscapeToMyTurn();
+                        return response;
+                    }
                 }
             }
             else

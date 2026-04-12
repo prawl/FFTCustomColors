@@ -17,6 +17,24 @@ namespace FFTColorCustomizer.GameBridge
         /// compute which arrow key produces the desired (targetDx, targetDy).
         /// Returns "Right", "Left", "Up", "Down", or null if the target delta isn't cardinal.
         /// </summary>
+        /// <summary>
+        /// Derive the Right arrow delta from the raw camera rotation byte at 0x14077C970.
+        /// Raw rotation is offset by 1: effective = (raw - 1 + 4) % 4.
+        /// Used as fallback when empirical rotation detection fails (e.g. Jump targeting).
+        /// </summary>
+        public static (int dx, int dy) RightDeltaFromCameraRotation(int rawRotation)
+        {
+            int eff = ((rawRotation - 1) % 4 + 4) % 4;
+            return eff switch
+            {
+                0 => (0, 1),
+                1 => (1, 0),
+                2 => (0, -1),
+                3 => (-1, 0),
+                _ => (0, 1), // shouldn't happen
+            };
+        }
+
         public static string? ComputeArrowForDelta(int rightDx, int rightDy, int targetDx, int targetDy)
         {
             if (targetDx == 0 && targetDy == 0) return null;

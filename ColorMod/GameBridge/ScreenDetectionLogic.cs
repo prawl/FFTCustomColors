@@ -78,9 +78,12 @@ namespace FFTColorCustomizer.GameBridge
 
             // Mid-battle dialogue: characters talking during an active battle.
             // eventId > 0 means a dialogue event is playing. battleMode=0 means no
-            // action menu is open (distinguishes from eventId=401 that fires during
-            // normal ability browsing with battleMode=3).
-            if (inBattle && eventId > 0 && eventId != 0xFFFF && battleMode == 0
+            // action menu is open. The eventId address (0x14077CA94) doubles as the
+            // active unit's nameId during battle — nameIds are >= 200, while real
+            // event script IDs (event002.en.mes, event004.en.mes) are < 200.
+            // Without this filter, attack animations with battleMode=0 and a high
+            // nameId (e.g. 401) get misdetected as Battle_Dialogue.
+            if (inBattle && eventId > 0 && eventId < 200 && battleMode == 0
                 && paused == 0 && gameOverFlag == 0
                 && !(battleActed == 1 || battleMoved == 1)) // exclude post-battle transition
                 return "Battle_Dialogue";

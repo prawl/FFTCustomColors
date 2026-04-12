@@ -563,16 +563,16 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_InBattle_WithEventId_BattleMode0_ShouldReturnBattleDialogue()
+        public void DetectScreen_InBattle_WithRealEventId_BattleMode0_ShouldReturnBattleDialogue()
         {
-            // Mid-battle dialogue: inBattle=true (units populated), eventId > 0,
+            // Mid-battle dialogue: inBattle=true (units populated), real eventId < 200,
             // battleMode=0 (no action menu — dialogue is showing).
-            // Should detect as Battle_Dialogue, not Battle_MyTurn or generic Battle.
+            // Real event script IDs are small (event004.en.mes), not nameIds (401+).
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
-                encA: 0, encB: 0, isPartySubScreen: false, eventId: 401);
+                encA: 0, encB: 0, isPartySubScreen: false, eventId: 4);
 
             Assert.Equal("Battle_Dialogue", result);
         }

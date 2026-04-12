@@ -144,5 +144,41 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var info = ItemData.BuildAttackAbilityInfo(sword);
             Assert.Equal("1", info.HRange);
         }
+
+        [Fact]
+        public void BuildAttackAbilityInfo_Gun_MinRange2()
+        {
+            // Guns can't hit adjacent tiles — min range is 2, not 3.
+            // In FFT, guns skip the tile right next to you but CAN hit 2 tiles away.
+            var gun = new List<int> { 71 }; // Romandan Pistol
+            var info = ItemData.BuildAttackAbilityInfo(gun);
+            Assert.Equal(2, info.MinRange);
+        }
+
+        [Fact]
+        public void BuildAttackAbilityInfo_Bow_MinRange2()
+        {
+            // Bows skip adjacent tile — min range 2 (same as guns).
+            var bow = new List<int> { 83 }; // Longbow
+            var info = ItemData.BuildAttackAbilityInfo(bow);
+            Assert.Equal(2, info.MinRange);
+        }
+
+        [Fact]
+        public void BuildAttackAbilityInfo_Crossbow_MinRange3()
+        {
+            // Crossbows have min range 3 and max range 4.
+            var crossbow = new List<int> { 77 }; // Bowgun
+            var info = ItemData.BuildAttackAbilityInfo(crossbow);
+            Assert.Equal(3, info.MinRange);
+        }
+
+        [Fact]
+        public void BuildAttackAbilityInfo_MeleeWeapon_NoMinRange()
+        {
+            var sword = new List<int> { 19 }; // Broadsword
+            var info = ItemData.BuildAttackAbilityInfo(sword);
+            Assert.Equal(0, info.MinRange);
+        }
     }
 }

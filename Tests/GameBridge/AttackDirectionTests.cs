@@ -87,5 +87,23 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 rightDx: 0, rightDy: 1, targetDx: 0, targetDy: 0);
             Assert.Null(result);
         }
+
+        // RightDeltaFromCameraRotation: derive the Right arrow delta from the raw
+        // camera rotation byte at 0x14077C970. Used as fallback when empirical
+        // rotation detection fails (e.g. Jump targeting where cursor doesn't move).
+
+        [Theory]
+        [InlineData(1, 0, 1)]   // raw=1 → eff=0 → Right=(0,+1)
+        [InlineData(2, 1, 0)]   // raw=2 → eff=1 → Right=(+1,0)
+        [InlineData(3, 0, -1)]  // raw=3 → eff=2 → Right=(0,-1)
+        [InlineData(4, -1, 0)]  // raw=4 → eff=3 → Right=(-1,0)
+        [InlineData(5, 0, 1)]   // raw=5 → wraps to eff=0
+        [InlineData(0, -1, 0)]  // raw=0 → eff=3 (wraps)
+        public void RightDeltaFromCameraRotation_ReturnsCorrectDelta(int rawRotation, int expectedDx, int expectedDy)
+        {
+            var (dx, dy) = AttackDirectionLogic.RightDeltaFromCameraRotation(rawRotation);
+            Assert.Equal(expectedDx, dx);
+            Assert.Equal(expectedDy, dy);
+        }
     }
 }
