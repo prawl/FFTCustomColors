@@ -3768,8 +3768,85 @@ namespace FFTColorCustomizer.GameBridge
 
         private CommandResponse BattleRetry(CommandResponse response, bool formation)
         {
+            var screen = _detectScreen();
+            if (screen == null)
+            {
+                response.Status = "failed";
+                response.Error = "Could not detect screen";
+                return response;
+            }
+
+            // Path 1: GameOver screen — menu has Retry(0), Load(1), Return to World Map(2), Return to Title(3).
+            // Retry is the default (top) option. Press Up×3 to guarantee top, then Enter.
+            if (screen.Name == "GameOver")
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    SendKey(VK_UP);
+                    Thread.Sleep(100);
+                }
+                SendKey(VK_ENTER);
+                Thread.Sleep(1000);
+
+                if (formation)
+                {
+                    // "Retry with formation" — press Down once to select the formation option
+                    // (if the game offers it after selecting Retry). Some FFT versions
+                    // show a "Retry" vs "Retry (Formation)" sub-choice.
+                    SendKey(VK_DOWN);
+                    Thread.Sleep(100);
+                    SendKey(VK_ENTER);
+                    Thread.Sleep(1000);
+                }
+
+                response.Status = "completed";
+                response.Info = "Retry from GameOver";
+                return response;
+            }
+
+            // Path 2: Mid-battle retry via pause menu (Tab → Retry).
+            // Pause menu: Resume(0), Retry(1), Quit(2) — or similar layout.
+            if (screen.Name == "Battle_Paused" || screen.Name.StartsWith("Battle"))
+            {
+                // If not already paused, open the pause menu
+                if (screen.Name != "Battle_Paused")
+                {
+                    SendKey(VK_TAB);
+                    Thread.Sleep(500);
+                    screen = _detectScreen();
+                    if (screen?.Name != "Battle_Paused")
+                    {
+                        response.Status = "failed";
+                        response.Error = $"Failed to open pause menu (current: {screen?.Name ?? "null"})";
+                        return response;
+                    }
+                }
+
+                // Navigate to Retry — press Down once from Resume(0) to Retry(1)
+                SendKey(VK_DOWN);
+                Thread.Sleep(150);
+                SendKey(VK_ENTER);
+                Thread.Sleep(500);
+
+                // Confirm retry (game may show "Are you sure?" dialog)
+                SendKey(VK_ENTER);
+                Thread.Sleep(1000);
+
+                if (formation)
+                {
+                    SendKey(VK_DOWN);
+                    Thread.Sleep(100);
+                    SendKey(VK_ENTER);
+                    Thread.Sleep(1000);
+                }
+
+                response.Status = "completed";
+                response.Info = "Retry from pause menu";
+                return response;
+            }
+
             response.Status = "failed";
-            response.Error = "Not implemented yet";
+            response.Error = $"Cannot retry from {screen.Name} — need GameOver or Battle screen";
             return response;
         }
 
