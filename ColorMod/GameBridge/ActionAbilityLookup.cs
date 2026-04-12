@@ -267,6 +267,17 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Returns true if the ability name belongs to the Summon skillset.
+        /// Summon splash skips friendly tiles — allies take zero effect.
+        /// </summary>
+        public static bool IsSummonAbility(string abilityName)
+        {
+            if (!Skillsets.TryGetValue("Summon", out var summonAbilities))
+                return false;
+            return summonAbilities.Any(a => a.Name == abilityName);
+        }
+
+        /// <summary>
         /// All skillsets with their ability lists. Used for looking up which skillset
         /// an ability belongs to and its position within the skillset.
         /// </summary>

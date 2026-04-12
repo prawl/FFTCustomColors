@@ -1696,7 +1696,9 @@ namespace FFTColorCustomizer.GameBridge
                                 // Rank centers by splash hits. Enemy-target abilities
                                 // favor max enemies with minimal friendly fire; ally-target
                                 // abilities favor max allies caught in the splash.
+                                // Summon abilities skip friendly tiles — no ally penalty.
                                 bool wantsAlly = a.Target.Contains("ally") || a.Target.Contains("self");
+                                bool isSummon = ActionAbilityLookup.IsSummonAbility(a.Name);
                                 var scoredCenters = new List<(int score, SplashCenter center)>();
                                 foreach (var c in centers)
                                 {
@@ -1713,7 +1715,8 @@ namespace FFTColorCustomizer.GameBridge
                                             enemies.Add(UnitDisplayName(hitUnit));
                                     }
                                     if (enemies.Count == 0 && allies.Count == 0) continue;
-                                    int score = wantsAlly ? allies.Count : (enemies.Count - allies.Count);
+                                    int score = AbilityTargetCalculator.ComputeSplashScore(
+                                        enemies.Count, allies.Count, wantsAlly, isSummon);
                                     scoredCenters.Add((score, new SplashCenter
                                     {
                                         X = c.x, Y = c.y,

@@ -604,5 +604,31 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var line = AbilityTargetCalculator.GetLineTiles(5, 5, 1, 0, rush, map);
             Assert.Empty(line);
         }
+
+        [Fact]
+        public void SplashScore_EnemyAbility_PenalizesAllies()
+        {
+            int score = AbilityTargetCalculator.ComputeSplashScore(
+                enemyCount: 2, allyCount: 1, wantsAlly: false, isSummon: false);
+            Assert.Equal(1, score); // 2 enemies - 1 ally = 1
+        }
+
+        [Fact]
+        public void SplashScore_SummonAbility_DoesNotPenalizeAllies()
+        {
+            // Summons skip friendly tiles — allies take zero damage.
+            // Score should be enemy count only, not (enemies - allies).
+            int score = AbilityTargetCalculator.ComputeSplashScore(
+                enemyCount: 2, allyCount: 1, wantsAlly: false, isSummon: true);
+            Assert.Equal(2, score); // 2 enemies, ally ignored
+        }
+
+        [Fact]
+        public void SplashScore_AllyAbility_CountsAllies()
+        {
+            int score = AbilityTargetCalculator.ComputeSplashScore(
+                enemyCount: 0, allyCount: 3, wantsAlly: true, isSummon: false);
+            Assert.Equal(3, score);
+        }
     }
 }

@@ -307,5 +307,20 @@ namespace FFTColorCustomizer.GameBridge
 
             return result;
         }
+
+        /// <summary>
+        /// Compute the ranking score for a splash center placement.
+        /// For ally-targeting: score = allyCount (more allies caught = better).
+        /// For enemy-targeting: score = enemyCount - allyCount (friendly fire penalty).
+        /// For Summon abilities: score = enemyCount (no ally penalty — summons skip friendlies).
+        /// </summary>
+        public static int ComputeSplashScore(int enemyCount, int allyCount, bool wantsAlly, bool isSummon)
+        {
+            if (wantsAlly)
+                return allyCount;
+            if (isSummon)
+                return enemyCount;
+            return enemyCount - allyCount;
+        }
     }
 }
