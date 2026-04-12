@@ -403,5 +403,63 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
             Assert.Equal("Battle_Casting", result);
         }
+
+        [Fact]
+        public void DetectScreen_Victory_EncANotEqualEncB_ShouldReturnBattleVictory()
+        {
+            // Victory screen: stale battle slots, battleMode=0, acted+moved=1,
+            // encA != encB (encounter values diverge as battle ends).
+            // Previously misdetected as EncounterDialog.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 28, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 6, encB: 5, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 1);
+
+            Assert.Equal("Battle_Victory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Victory_ShouldNotReturnEncounterDialog()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 28, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 6, encB: 5, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 1);
+
+            Assert.NotEqual("EncounterDialog", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Desertion_EncAEqualsEncB_ShouldReturnBattleDesertion()
+        {
+            // Desertion warning: same post-battle flags as Victory but encA == encB.
+            // Needs Enter to dismiss. Previously misdetected as TravelList.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 28, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 10, encB: 10, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 1);
+
+            Assert.Equal("Battle_Desertion", result);
+        }
+
+        [Fact]
+        public void DetectScreen_RealEncounterDialog_NotInBattle_StillWorks()
+        {
+            // Real encounter dialog: encA != encB but NOT post-battle (acted=0, moved=0).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 28, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 3, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            Assert.Equal("EncounterDialog", result);
+        }
     }
 }

@@ -53,6 +53,19 @@ namespace FFTColorCustomizer.GameBridge
             if (inBattle && slot0 == 0xFFFFFFFF && battleMode == 1)
                 return "Battle_Formation";
 
+            // Post-battle screens: stale unit slots + battleMode=0 + acted/moved flags
+            // still set from the last turn. These appear after the final enemy is defeated.
+            // Victory: encA != encB (encounter values diverge as battle ends). Auto-advances.
+            // Desertion: encA == encB, warns about units near Brave/Faith thresholds. Needs Enter.
+            // Note: these use unitSlotsPopulated directly, not inBattle, because clearlyOnWorldMap
+            // would suppress inBattle (location is valid + battleMode=0 during post-battle).
+            bool postBattle = unitSlotsPopulated && battleMode == 0 && paused == 0 && gameOverFlag == 0
+                              && (battleActed == 1 || battleMoved == 1) && rawValidLocation;
+            if (postBattle && encA != encB)
+                return "Battle_Victory";
+            if (postBattle && encA == encB && submenuFlag == 1)
+                return "Battle_Desertion";
+
             if (inBattle && paused == 1 && battleMode == 0 && gameOverFlag == 1)
                 return "GameOver";
             if (inBattle && paused == 1)
