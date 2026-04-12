@@ -922,6 +922,67 @@ namespace FFTColorCustomizer.GameBridge
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int DeathCounter { get; set; }
 
+        // === Equipped passive abilities ===
+        // Populated from the roster's equipped slots. Lets Claude assess risk
+        // ("this Knight has Counter Tackle") and plan accordingly.
+        // NOT YET POPULATED — needs memory addresses for equipped R/S/M per unit.
+
+        /// <summary>Equipped reaction ability name (e.g. "Counter Tackle", "Auto-Potion").</summary>
+        [JsonPropertyName("reaction")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Reaction { get; set; }
+
+        /// <summary>Equipped support ability name (e.g. "Dual Wield", "Concentration").</summary>
+        [JsonPropertyName("support")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Support { get; set; }
+
+        /// <summary>Equipped movement ability name (e.g. "Move+2", "Teleport").</summary>
+        [JsonPropertyName("movement")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Movement { get; set; }
+
+        // === Elemental properties ===
+        // Per-unit elemental resistances from equipment and innate traits.
+        // Claude can see "Black Goblin [weak:Fire]" and prioritize Fire spells.
+        // NOT YET POPULATED — needs heap struct addresses (PSX 0x6D-0x70).
+
+        /// <summary>Elements this unit absorbs (healed instead of damaged). Null if none.</summary>
+        [JsonPropertyName("elementAbsorb")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? ElementAbsorb { get; set; }
+
+        /// <summary>Elements this unit nullifies (zero damage). Null if none.</summary>
+        [JsonPropertyName("elementNull")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? ElementNull { get; set; }
+
+        /// <summary>Elements this unit resists (half damage). Null if none.</summary>
+        [JsonPropertyName("elementHalf")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? ElementHalf { get; set; }
+
+        /// <summary>Elements this unit is weak to (double damage). Null if none.</summary>
+        [JsonPropertyName("elementWeak")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? ElementWeak { get; set; }
+
+        // === Charging/casting state ===
+        // When a unit is charging a spell, shows the ability and remaining CT.
+        // Claude needs this to: not issue commands to charging allies, know when
+        // spells will fire, and decide whether to interrupt enemy casters.
+        // NOT YET POPULATED — needs PSX 0x15D/0x170 equivalents.
+
+        /// <summary>Name of the ability currently being charged/cast. Null if not charging.</summary>
+        [JsonPropertyName("chargingAbility")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ChargingAbility { get; set; }
+
+        /// <summary>Remaining CT ticks until the charged ability resolves. 0 if not charging.</summary>
+        [JsonPropertyName("chargeCt")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int ChargeCt { get; set; }
+
         /// <summary>Active status effects on this unit (e.g. "Poison", "Haste", "Protect").</summary>
         [JsonPropertyName("statuses")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

@@ -88,5 +88,39 @@ namespace FFTColorCustomizer.GameBridge
 
             return result;
         }
+
+        /// <summary>
+        /// FFT element byte: each bit represents an element.
+        /// Used for elemental absorb/cancel/half/weak/strengthen fields.
+        /// </summary>
+        private static readonly (byte mask, string name)[] ElementMap =
+        {
+            (0x01, "Fire"),
+            (0x02, "Lightning"),
+            (0x04, "Ice"),
+            (0x08, "Wind"),
+            (0x10, "Earth"),
+            (0x20, "Water"),
+            (0x40, "Holy"),
+            (0x80, "Dark"),
+        };
+
+        /// <summary>
+        /// Decode an element byte into a list of element names.
+        /// Returns null if no bits are set (no elements).
+        /// NOT YET CALLED — needs the elemental property addresses (PSX 0x6D-0x70)
+        /// discovered in a live session.
+        /// </summary>
+        public static List<string>? DecodeElements(byte elementByte)
+        {
+            if (elementByte == 0) return null;
+            var result = new List<string>();
+            foreach (var (mask, name) in ElementMap)
+            {
+                if ((elementByte & mask) != 0)
+                    result.Add(name);
+            }
+            return result;
+        }
     }
 }

@@ -747,7 +747,16 @@ scan_move() {
         ex += ']';
       }
       if (v.statuses && v.statuses.length) ex += ' [' + v.statuses.join(',') + ']';
+      if (v.chargingAbility) ex += ' {casting ' + v.chargingAbility + ' CT=' + v.chargeCt + '}';
+      if (v.elementWeak && v.elementWeak.length) ex += ' weak:' + v.elementWeak.join(',');
+      if (v.elementAbsorb && v.elementAbsorb.length) ex += ' absorb:' + v.elementAbsorb.join(',');
       console.log('    [' + t + '] ' + nm + '(' + jnStr + ') (' + v.x + ',' + v.y + ') HP=' + v.hp + '/' + v.maxHp + ' dist=' + (v.distance ?? '?') + ex);
+      // Show equipped passives on a second line if present
+      var passives = [];
+      if (v.reaction) passives.push('R:' + v.reaction);
+      if (v.support) passives.push('S:' + v.support);
+      if (v.movement) passives.push('M:' + v.movement);
+      if (passives.length) console.log('      equip: ' + passives.join(' | '));
       // Show per-unit abilities for non-active units (active unit shown separately below).
       // Each ability may render 1-2 lines (header + optional best-centers).
       if (!v.isActive && v.abilities && v.abilities.length) {
