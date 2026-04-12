@@ -3575,6 +3575,16 @@ namespace FFTColorCustomizer.GameBridge
                         {
                             unit.JobNameOverride = storyJob;
                         }
+                        else if (unit.Team == 0)
+                        {
+                            // For generic player units, use the roster job ID to set
+                            // the job name. This prevents the fingerprint lookup from
+                            // overriding with a monster class (e.g. Wilham roster job=82
+                            // matched as "Steelhawk" instead of "Summoner" via fingerprint).
+                            var rosterJobName = CharacterData.GetJobName(m.Job);
+                            if (rosterJobName != null)
+                                unit.JobNameOverride = rosterJobName;
+                        }
                         ModLogger.Log($"[CollectPositions] Matched ({unit.GridX},{unit.GridY}) as {unit.Name ?? $"unit"} job={m.Job} bra={m.Brave} fai={m.Faith} (rosterNameId={m.NameId}){(storyJob != null ? $" → storyJob={storyJob}" : "")}");
                     }
                 }
