@@ -355,26 +355,28 @@ namespace FFTColorCustomizer.GameBridge
 
 
             // Generic human jobs (IC remaster roster IDs)
+            // Follows PSX job order starting at 74. Verified: Squire(74), Knight(76),
+            // Archer(77), Monk(78), Summoner(82), Dragoon(87), Ninja(89).
             [74] = "Squire",          // 0x4A — verified
-            [75] = "Chemist",         // 0x4B — estimated (sequential)
-            [76] = "White Mage",      // 0x4C — estimated
+            [75] = "Chemist",         // 0x4B — PSX order
+            [76] = "Knight",          // 0x4C — verified (Kenrick job=76, confirmed Knight 2026-04-12)
             [77] = "Archer",          // 0x4D — verified
             [78] = "Monk",            // 0x4E — verified
-            [79] = "Knight",          // 0x4F — verified
-            [80] = "Black Mage",      // 0x50 — estimated
-            [81] = "Time Mage",       // 0x51 — estimated
-            [82] = "Summoner",        // 0x52 — estimated
-            [83] = "Thief",           // 0x53 — estimated
-            [84] = "Orator",          // 0x54 — estimated
-            [85] = "Mystic",          // 0x55 — estimated
-            [86] = "Geomancer",       // 0x56 — estimated
-            [87] = "Dragoon",         // 0x57 — estimated
-            [88] = "Samurai",         // 0x58 — estimated
+            [79] = "White Mage",      // 0x4F — PSX order (was incorrectly mapped as Knight)
+            [80] = "Black Mage",      // 0x50 — PSX order
+            [81] = "Time Mage",       // 0x51 — PSX order
+            [82] = "Summoner",        // 0x52 — verified (Wilham job=82, confirmed Summoner 2026-04-12)
+            [83] = "Thief",           // 0x53 — PSX order
+            [84] = "Orator",          // 0x54 — PSX order
+            [85] = "Mystic",          // 0x55 — PSX order
+            [86] = "Geomancer",       // 0x56 — PSX order
+            [87] = "Dragoon",         // 0x57 — verified (Lloyd job=87, confirmed Dragoon 2026-04-12)
+            [88] = "Samurai",         // 0x58 — PSX order
             [89] = "Ninja",           // 0x59 — verified
-            [90] = "Arithmetician",   // 0x5A — estimated
-            [91] = "Bard",            // 0x5B — estimated
-            [92] = "Dancer",          // 0x5C — estimated
-            [93] = "Mime",            // 0x5D — estimated (verified this battle)
+            [90] = "Arithmetician",   // 0x5A — PSX order
+            [91] = "Bard",            // 0x5B — PSX order
+            [92] = "Dancer",          // 0x5C — PSX order
+            [93] = "Mime",            // 0x5D — PSX order
             // WotL jobs
             [94] = "Dark Knight",     // 0x5E — estimated
             [95] = "Onion Knight",    // 0x5F — estimated

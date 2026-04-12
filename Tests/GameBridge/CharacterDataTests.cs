@@ -14,10 +14,13 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Theory]
-        [InlineData(82, "Summoner")]
-        [InlineData(79, "Knight")]
-        [InlineData(87, "Dragoon")]
-        [InlineData(78, "Monk")]
+        [InlineData(76, "Knight")]      // verified: Kenrick job=76
+        [InlineData(82, "Summoner")]    // verified: Wilham job=82
+        [InlineData(87, "Dragoon")]     // verified: Lloyd job=87
+        [InlineData(78, "Monk")]        // verified
+        [InlineData(79, "White Mage")]  // PSX order (was incorrectly 79=Knight)
+        [InlineData(74, "Squire")]      // verified
+        [InlineData(89, "Ninja")]       // verified
         public void GetJobName_GenericPlayerJobs_ReturnsCorrectName(int jobId, string expected)
         {
             Assert.Equal(expected, CharacterData.GetJobName(jobId));
