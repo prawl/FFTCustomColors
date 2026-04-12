@@ -128,5 +128,19 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var result = BattleAbilityNavigation.FindAbility("Jump", new[] { "Mettle", "Items" });
             Assert.Null(result);
         }
+
+        [Theory]
+        [InlineData("Focus", true)]    // Self, AoE=1 → true self-only
+        [InlineData("Shout", true)]    // Self, AoE=1 → true self-only
+        [InlineData("Chakra", false)]  // Self, AoE=2 → self-radius, needs AoE confirm
+        [InlineData("Cyclone", false)] // Self, AoE=2 → self-radius
+        [InlineData("Fire", false)]    // Targeted
+        public void IsTrueSelfTarget_DistinguishesSelfOnlyFromSelfRadius(
+            string abilityName, bool expectedTrueSelf)
+        {
+            var result = BattleAbilityNavigation.FindAbility(abilityName);
+            Assert.NotNull(result);
+            Assert.Equal(expectedTrueSelf, result.Value.isTrueSelfOnly);
+        }
     }
 }

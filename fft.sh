@@ -718,7 +718,7 @@ scan_move() {
               (wantsEnemy && occ === 'enemy');
             if (hit) hits++;
             var marker = hit ? '*' : '';
-            var suffix = (hit && t.unitName) ? '«' + t.unitName + '»' : '';
+            var suffix = t.unitName ? '«' + t.unitName + '»' : '';
             return marker + '(' + t.x + ',' + t.y + ')' + suffix;
           }).join(' ');
           var empty = total - tiles.length;

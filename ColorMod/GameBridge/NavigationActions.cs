@@ -985,16 +985,28 @@ namespace FFTColorCustomizer.GameBridge
             Thread.Sleep(500);
 
             // Step 6: Handle targeting
-            if (loc.isSelfTarget)
+            if (loc.isTrueSelfOnly)
             {
-                // Self-targeting abilities: confirm immediately
-                // The game may show a confirmation or just apply
+                // True self-only abilities (Focus, Shout): apply instantly, single confirm
                 SendKey(VK_ENTER);
                 Thread.Sleep(300);
                 response.Status = "completed";
                 response.Info = $"Used {abilityName} (self-target)";
-                // Don't set _menuCursorStale — after ability-only, cursor defaults to Move (0) which is correct.
-                // Only battle_move sets cursor stale (game advances to Abilities but memory reads 0).
+                return response;
+            }
+
+            if (loc.isSelfTarget)
+            {
+                // Self-radius abilities (Chakra, Cyclone, Purification): game shows AoE
+                // preview centered on caster. Need to wait for the preview to appear,
+                // then confirm twice (select target + confirm cast).
+                Thread.Sleep(500); // wait for AoE preview to render
+                SendKey(VK_ENTER);
+                Thread.Sleep(500);
+                SendKey(VK_ENTER); // confirm cast
+                Thread.Sleep(300);
+                response.Status = "completed";
+                response.Info = $"Used {abilityName} (self-radius AoE)";
                 return response;
             }
 

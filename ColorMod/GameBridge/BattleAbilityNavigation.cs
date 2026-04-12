@@ -13,6 +13,12 @@ namespace FFTColorCustomizer.GameBridge
             public string skillsetName;
             public int indexInSkillset;
             public bool isSelfTarget;
+            /// <summary>
+            /// True for abilities like Focus/Shout (HRange=Self, AoE=1) that apply instantly.
+            /// False for self-radius abilities like Chakra/Cyclone (HRange=Self, AoE>1) that
+            /// show an AoE preview and need an extra confirmation.
+            /// </summary>
+            public bool isTrueSelfOnly;
         }
 
         /// <summary>
@@ -57,11 +63,13 @@ namespace FFTColorCustomizer.GameBridge
                     {
                         if (abilities[i].Name == abilityName)
                         {
+                            bool isSelf = abilities[i].HRange == "Self";
                             return new AbilityLocation
                             {
                                 skillsetName = skillsetName,
                                 indexInSkillset = i,
-                                isSelfTarget = abilities[i].HRange == "Self"
+                                isSelfTarget = isSelf,
+                                isTrueSelfOnly = isSelf && abilities[i].AoE <= 1
                             };
                         }
                     }
@@ -77,11 +85,13 @@ namespace FFTColorCustomizer.GameBridge
                     {
                         if (abilities[i].Name == abilityName)
                         {
+                            bool isSelf = abilities[i].HRange == "Self";
                             return new AbilityLocation
                             {
                                 skillsetName = skillsetName,
                                 indexInSkillset = i,
-                                isSelfTarget = abilities[i].HRange == "Self"
+                                isSelfTarget = isSelf,
+                                isTrueSelfOnly = isSelf && abilities[i].AoE <= 1
                             };
                         }
                     }
