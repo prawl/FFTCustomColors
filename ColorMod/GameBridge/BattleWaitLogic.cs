@@ -19,6 +19,18 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Returns true if battle_wait should prompt for confirmation because the
+        /// unit hasn't moved or acted this turn. Skipping a turn with no action is
+        /// almost always a mistake. The confirmed parameter allows a second call to
+        /// bypass the check.
+        /// </summary>
+        public static bool NeedsConfirmation(bool acted, bool moved, bool confirmed)
+        {
+            if (confirmed) return false;
+            return !acted && !moved;
+        }
+
+        /// <summary>
         /// Returns true if BattleWait can start from this screen state.
         /// Accepts normal battle screens AND the auto-facing screens.
         /// </summary>

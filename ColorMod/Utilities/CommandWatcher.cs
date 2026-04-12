@@ -32,6 +32,7 @@ namespace FFTColorCustomizer.Utilities
         private MapLoader? _mapLoader;
         private readonly BattleTurnTracker _turnTracker = new();
         private bool _movedThisTurn;
+        private bool _waitConfirmPending; // Set when battle_wait rejected for no move/act; next battle_wait goes through
         private string? _lastAbilityName; // Last ability used via battle_ability, shown in ui= during targeting
         private readonly BattleMenuTracker _battleMenuTracker = new();
         private HashSet<int>? _cachedLearnedAbilityIds;
@@ -446,6 +447,7 @@ namespace FFTColorCustomizer.Utilities
                                 if (hadCache && !_turnTracker.HasCachedScan)
                                 {
                                     _movedThisTurn = false;
+                                    _waitConfirmPending = false;
                                     _lastAbilityName = null;
                                     _battleMenuTracker.OnNewTurn();
                                 }
@@ -721,6 +723,24 @@ namespace FFTColorCustomizer.Utilities
                         return ExecuteValidPath(command);
 
                     case "battle_wait":
+                        // Prompt confirmation if unit hasn't moved or acted
+                        {
+                            var waitScreen = DetectScreen();
+                            bool acted = waitScreen?.BattleActed == 1 || _lastAbilityName != null;
+                            bool moved = waitScreen?.BattleMoved == 1 || _movedThisTurn;
+                            if (BattleWaitLogic.NeedsConfirmation(acted, moved, _waitConfirmPending))
+                            {
+                                _waitConfirmPending = true;
+                                return new CommandResponse
+                                {
+                                    Id = command.Id, Status = "needs_confirmation",
+                                    Error = "Unit hasn't moved or acted. Send battle_wait again to confirm skipping this turn.",
+                                    ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
+                                    Screen = waitScreen
+                                };
+                            }
+                            _waitConfirmPending = false;
+                        }
                         // Auto-scan if no scan cached (battle_wait needs unit data for facing)
                         if (!_turnTracker.HasCachedScan)
                         {
@@ -740,6 +760,7 @@ namespace FFTColorCustomizer.Utilities
                         _turnTracker.ResetForNewTurn();
                         _battleMenuTracker.OnNewTurn();
                         _movedThisTurn = false;
+                        _waitConfirmPending = false;
                         _lastAbilityName = null;
                         _cachedPrimarySkillset = null;
                         _cachedSecondarySkillset = null;

@@ -36,5 +36,36 @@ namespace FFTColorCustomizer.Tests.GameBridge
             bool valid = BattleWaitLogic.CanStartBattleWait(screenName);
             Assert.Equal(expected, valid);
         }
+
+        [Fact]
+        public void NeedsConfirmation_NoMoveNoAct_ReturnsTrue()
+        {
+            Assert.True(BattleWaitLogic.NeedsConfirmation(acted: false, moved: false, confirmed: false));
+        }
+
+        [Fact]
+        public void NeedsConfirmation_Moved_ReturnsFalse()
+        {
+            Assert.False(BattleWaitLogic.NeedsConfirmation(acted: false, moved: true, confirmed: false));
+        }
+
+        [Fact]
+        public void NeedsConfirmation_Acted_ReturnsFalse()
+        {
+            Assert.False(BattleWaitLogic.NeedsConfirmation(acted: true, moved: false, confirmed: false));
+        }
+
+        [Fact]
+        public void NeedsConfirmation_BothMovedAndActed_ReturnsFalse()
+        {
+            Assert.False(BattleWaitLogic.NeedsConfirmation(acted: true, moved: true, confirmed: false));
+        }
+
+        [Fact]
+        public void NeedsConfirmation_NoMoveNoAct_ButConfirmed_ReturnsFalse()
+        {
+            // Second battle_wait call should go through
+            Assert.False(BattleWaitLogic.NeedsConfirmation(acted: false, moved: false, confirmed: true));
+        }
     }
 }
