@@ -68,6 +68,9 @@ namespace FFTColorCustomizer.GameBridge
 
             if (inBattle && paused == 1 && battleMode == 0 && gameOverFlag == 1)
                 return "GameOver";
+            // Status screen: paused=1 + menuCursor=3. Must check before Battle_Paused.
+            if (inBattle && paused == 1 && menuCursor == 3)
+                return "Battle_Status";
             if (inBattle && paused == 1)
                 return "Battle_Paused";
             // Attacking: instant-targeting — basic Attack, Throw, Items, Iaido, Aim.
@@ -82,6 +85,9 @@ namespace FFTColorCustomizer.GameBridge
             // Moving: battleMode=2 (selecting movement tile)
             if (inBattle && battleMode == 2)
                 return "Battle_Moving";
+            // Auto-Battle submenu: menuCursor=4 + submenuFlag=1. Must check before Battle_Abilities/Acting.
+            if (inBattle && submenuFlag == 1 && battleMode == 3 && menuCursor == 4)
+                return "Battle_AutoBattle";
             // Abilities submenu: submenuFlag=1 + battleMode=3 + acted/moved flags set by entering submenu.
             // menuCursor must be 1 (Abilities) to distinguish from stale submenuFlag after ability use —
             // when returning to action menu after acting, submenuFlag stays 1 but cursor resets to 0 (Move).

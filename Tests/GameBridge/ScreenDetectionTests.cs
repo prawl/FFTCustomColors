@@ -461,5 +461,60 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
             Assert.Equal("EncounterDialog", result);
         }
+
+        [Fact]
+        public void DetectScreen_Status_Paused_MenuCursor3_ShouldReturnBattleStatus()
+        {
+            // Status screen: paused=1 + menuCursor=3. Previously misdetected as Battle_Paused.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 3);
+
+            Assert.Equal("Battle_Status", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Status_ShouldNotReturnBattlePaused()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 3);
+
+            Assert.NotEqual("Battle_Paused", result);
+        }
+
+        [Fact]
+        public void DetectScreen_AutoBattle_MenuCursor4_ShouldReturnBattleAutoBattle()
+        {
+            // Auto-Battle submenu: menuCursor=4 + submenuFlag=1 + battleMode=3.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 4);
+
+            Assert.Equal("Battle_AutoBattle", result);
+        }
+
+        [Fact]
+        public void DetectScreen_RealPause_MenuCursorNot3_StillReturnsBattlePaused()
+        {
+            // Real pause (Tab key): paused=1, menuCursor != 3.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            Assert.Equal("Battle_Paused", result);
+        }
     }
 }

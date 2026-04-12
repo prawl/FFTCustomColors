@@ -49,6 +49,11 @@ namespace FFTColorCustomizer.GameBridge
                 "Battle_Casting" => GetBattleTargetingPaths(),
                 "Battle_Acting" => GetBattleActingPaths(),
                 "Battle_Paused" => GetBattlePausedPaths(),
+                "Battle_Status" => GetBackOutPaths("You're in the Status screen! Press Escape to get back to battle."),
+                "Battle_AutoBattle" => GetBackOutPaths("You're in the Auto-Battle menu! Press Escape to get back to battle before the AI takes over."),
+                "Battle_Victory" => null, // auto-advances, no action needed
+                "Battle_Desertion" => GetDesertionPaths(),
+                "Battle_Formation" => null, // TODO: add formation placement paths
                 "Battle_AlliesTurn" => GetBattleWaitingPaths(),
                 "Battle_EnemiesTurn" => GetBattleWaitingPaths(),
                 "Battle" => GetBattleWaitingPaths(),
@@ -538,6 +543,30 @@ namespace FFTColorCustomizer.GameBridge
 
             keys.Add(Key(VK_ENTER, "Enter"));
             return new PathEntry { Keys = keys.ToArray(), Desc = desc };
+        }
+
+        private static Dictionary<string, PathEntry> GetBackOutPaths(string message)
+        {
+            return new()
+            {
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = message
+                }
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetDesertionPaths()
+        {
+            return new()
+            {
+                ["Dismiss"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Dismiss the desertion warning and continue"
+                }
+            };
         }
 
         private static KeyInfo Key(int vk, string name) => new() { Vk = vk, Name = name };
