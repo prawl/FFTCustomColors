@@ -104,6 +104,7 @@ namespace FFTColorCustomizer.GameBridge
             ["0B-64-0F-4B-64-64-3C-5A-32-50"] = "Squire",
             ["14-37-14-32-64-64-50-1E-32-73"] = "Bard",
             ["06-8C-1E-32-64-78-23-78-28-73"] = "Mime",
+            ["0C-46-0D-32-50-78-2B-7A-32-4B"] = "Ninja",
 
             // === Story character classes ===
             // Construct 8 (Automaton) has a distinctive 0x64/0x00 pattern.
