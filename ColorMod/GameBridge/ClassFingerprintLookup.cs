@@ -49,6 +49,10 @@ namespace FFTColorCustomizer.GameBridge
             // Bomb family:
             ["07-57-1E-1E-5A-73-27-55-07-5E"] = "Grenade",
             ["8C-64-88-43-88-43-84-22-84-22"] = "Grenade",
+            // Tree family (tier 1 Dryad, tier 2 Treant):
+            ["07-96-1E-A0-5A-63-27-66-07-64"] = "Dryad",
+            ["07-82-1E-B4-5A-60-27-59-07-5F"] = "Treant",
+
             // Malboro family (tier 1 Malboro, tier 2 Ochu):
             ["08-AF-1E-0F-5A-61-26-69-1E-63"] = "Malboro",
             ["08-91-1E-0F-5A-5F-27-6E-1B-6E"] = "Ochu",
