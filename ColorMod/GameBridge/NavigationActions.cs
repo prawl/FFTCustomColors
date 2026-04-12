@@ -596,10 +596,7 @@ namespace FFTColorCustomizer.GameBridge
             {
                 response.Status = "failed";
                 response.Error = $"Failed to enter targeting mode (current: {screen?.Name ?? "null"})";
-                // Try to back out
-                SendKey(VK_ESCAPE);
-                Thread.Sleep(300);
-                SendKey(VK_ESCAPE);
+                EscapeToMyTurn();
                 return response;
             }
 
@@ -653,8 +650,7 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     response.Status = "failed";
                     response.Error = "Could not detect rotation — cursor didn't move";
-                    SendKey(VK_ESCAPE);
-                    Thread.Sleep(300);
+                    EscapeToMyTurn();
                     return response;
                 }
             }
@@ -985,9 +981,7 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     response.Status = "failed";
                     response.Error = $"Failed to enter targeting mode for {abilityName} (current: {screen?.Name ?? "null"})";
-                    SendKey(VK_ESCAPE);
-                    Thread.Sleep(300);
-                    SendKey(VK_ESCAPE);
+                    EscapeToMyTurn();
                     return response;
                 }
             }
@@ -1038,8 +1032,7 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     response.Status = "failed";
                     response.Error = $"Could not detect rotation for {abilityName} targeting";
-                    SendKey(VK_ESCAPE);
-                    Thread.Sleep(300);
+                    EscapeToMyTurn();
                     return response;
                 }
             }
@@ -3840,6 +3833,21 @@ namespace FFTColorCustomizer.GameBridge
                 return result != null ? (int)result.Value.value : -1;
             }
             catch { return -1; }
+        }
+
+        /// <summary>
+        /// Escape out of targeting/abilities/menus back to Battle_MyTurn.
+        /// Sends up to 5 Escape presses, checking screen state after each.
+        /// </summary>
+        private void EscapeToMyTurn()
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                var screen = _detectScreen();
+                if (screen?.Name == "Battle_MyTurn") return;
+                SendKey(VK_ESCAPE);
+                Thread.Sleep(300);
+            }
         }
 
         /// <summary>

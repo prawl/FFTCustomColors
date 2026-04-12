@@ -427,7 +427,10 @@ namespace FFTColorCustomizer.Utilities
                         }
                         var scanResult = ExecuteNavAction(command);
                         if (scanResult.Status == "completed")
-                            _turnTracker.CacheScanResponse(scanResult); // still cache for battle_attack/ability/move
+                        {
+                            _turnTracker.CacheScanResponse(scanResult);
+                            CacheLearnedAbilities(scanResult.Battle);
+                        }
                         if (!command.Verbose && scanResult.Status == "completed")
                             CompactAbilities(scanResult);
                         return scanResult;
@@ -728,7 +731,10 @@ namespace FFTColorCustomizer.Utilities
                             var autoScanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
                             var autoScanRes = ExecuteNavAction(autoScanCmd);
                             if (autoScanRes.Status == "completed")
+                            {
                                 _turnTracker.CacheScanResponse(autoScanRes);
+                                CacheLearnedAbilities(autoScanRes.Battle);
+                            }
                         }
                         // Validate target is within ability's horizontal range from caster
                         if (command.Action == "battle_ability" && command.Description != null
@@ -774,7 +780,10 @@ namespace FFTColorCustomizer.Utilities
                             var moveScanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
                             var moveScanRes = ExecuteNavAction(moveScanCmd);
                             if (moveScanRes.Status == "completed")
+                            {
                                 _turnTracker.CacheScanResponse(moveScanRes);
+                                CacheLearnedAbilities(moveScanRes.Battle);
+                            }
                         }
                         _battleMenuTracker.ReturnToMyTurn();
                         _movedThisTurn = true;

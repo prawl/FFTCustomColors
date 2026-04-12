@@ -227,6 +227,7 @@ namespace FFTColorCustomizer.GameBridge
                     if (!map.IsWalkable(x, y)) continue;
                     int taxi = System.Math.Abs(x - casterX) + System.Math.Abs(y - casterY);
                     if (taxi > hr) continue;
+                    if (taxi < ability.MinRange) continue;
                     int zDelta = System.Math.Abs(map.Tiles[x, y].Height - casterZ);
                     if (zDelta > vr) continue;
                     result.Add((x, y));

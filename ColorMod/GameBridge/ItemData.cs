@@ -620,10 +620,25 @@ namespace FFTColorCustomizer.GameBridge
         public static ActionAbilityInfo BuildAttackAbilityInfo(List<int>? equipment)
         {
             int range = GetWeaponRangeFromEquipment(equipment);
+            int minRange = 0;
+            // Guns and bows can't hit adjacent targets
+            if (equipment != null)
+            {
+                foreach (var id in equipment)
+                {
+                    if (Items.TryGetValue(id, out var item))
+                    {
+                        if (item.Type == "gun") { minRange = 3; break; }
+                        if (item.Type == "bow") { minRange = 3; break; }
+                        if (item.Type == "crossbow") { minRange = 3; break; }
+                    }
+                }
+            }
             return new ActionAbilityInfo(
                 ActionAbilityLookup.ATTACK_ID, "Attack", 0,
                 range.ToString(), 0, 1, 0, "enemy",
-                "Attacks with the equipped weapon, or bare fists if no weapon is equipped.");
+                "Attacks with the equipped weapon, or bare fists if no weapon is equipped.",
+                MinRange: minRange);
         }
 
         /// <summary>

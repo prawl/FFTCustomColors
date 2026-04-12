@@ -618,7 +618,7 @@ const ahp=au?.hp??activeU?.hp??'?';
 const amhp=au?.maxHp??activeU?.maxHp??'?';
 const amp=au?.mp??activeU?.mp??'?';
 const ammp=au?.maxMp??activeU?.maxMp??'?';
-console.log('[Battle] '+aName+(aJob?'('+aJob+')':'')+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp);
+console.log('['+s.name+'] '+aName+(aJob?'('+aJob+')':'')+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp);
 console.log('');
 
 // Abilities with target tiles
