@@ -218,7 +218,7 @@ namespace FFTColorCustomizer.GameBridge
         /// (e.g. unit structs in 0x4160000000..0x4180000000).
         /// </summary>
         public List<(nint address, string context)> SearchBytesInAllMemory(
-            byte[] pattern, int maxResults, long minAddr, long maxAddr)
+            byte[] pattern, int maxResults, long minAddr, long maxAddr, bool broadSearch = false)
         {
             var matches = new List<(nint address, string context)>();
             if (pattern == null || pattern.Length == 0) return matches;
@@ -226,7 +226,7 @@ namespace FFTColorCustomizer.GameBridge
             var process = Process.GetCurrentProcess();
             nint address = (nint)minAddr;
             long totalBytesSearched = 0;
-            const long maxTotalBytes = 500_000_000L; // 500MB cap
+            long maxTotalBytes = broadSearch ? 2_000_000_000L : 500_000_000L;
             int regionsSearched = 0;
 
             while (matches.Count < maxResults && totalBytesSearched < maxTotalBytes)
@@ -237,17 +237,29 @@ namespace FFTColorCustomizer.GameBridge
                 // Stop early if we've walked past the requested range.
                 if ((long)mbi.BaseAddress >= maxAddr) break;
 
-                // Only search committed, read-write private memory (safest — heap allocations)
-                bool isReadWrite = (mbi.Protect & 0x04) != 0; // PAGE_READWRITE only
                 bool isCommitted = mbi.State == 0x1000;
                 bool notGuard = (mbi.Protect & 0x100) == 0;
-                bool notTooBig = (long)mbi.RegionSize <= 4_000_000; // 4MB max per region
-                bool isPrivateOrMapped = mbi.Type == 0x20000 || mbi.Type == 0x40000; // MEM_PRIVATE or MEM_MAPPED
-                // Skip regions entirely outside the requested range.
                 bool inRange = (long)mbi.BaseAddress + (long)mbi.RegionSize > minAddr
                               && (long)mbi.BaseAddress < maxAddr;
 
-                if (isCommitted && isReadWrite && notGuard && notTooBig && isPrivateOrMapped && inRange)
+                bool passesFilter;
+                if (broadSearch)
+                {
+                    // Broad: any committed readable memory, up to 16MB per region
+                    bool isReadable = (mbi.Protect & 0xEE) != 0;
+                    bool notTooBig = (long)mbi.RegionSize <= 16_000_000;
+                    passesFilter = isCommitted && isReadable && notGuard && notTooBig && inRange;
+                }
+                else
+                {
+                    // Narrow: only read-write private/mapped memory (safest — heap allocations)
+                    bool isReadWrite = (mbi.Protect & 0x04) != 0;
+                    bool notTooBig = (long)mbi.RegionSize <= 4_000_000;
+                    bool isPrivateOrMapped = mbi.Type == 0x20000 || mbi.Type == 0x40000;
+                    passesFilter = isCommitted && isReadWrite && notGuard && notTooBig && isPrivateOrMapped && inRange;
+                }
+
+                if (passesFilter)
                 {
                     regionsSearched++;
                     byte[] regionBytes;

@@ -727,39 +727,24 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Step 7: Read target HP from static array before confirming
-            int preHp = ReadStaticArrayHpAt(targetX, targetY);
-            int preMaxHp = ReadStaticArrayMaxHpAt(targetX, targetY);
-            ModLogger.Log($"[BattleAttack] Pre-attack HP at ({targetX},{targetY}): {preHp}/{preMaxHp}");
+            // Step 7: Read projected damage and hit% from attacker's heap struct.
+            // Need attacker's HP+MaxHP to find their heap struct. Use static array
+            // (condensed struct shows TARGET during targeting, not attacker).
+            int attackerHp = ReadStaticArrayHpAt(startPos.x, startPos.y);
+            int attackerMaxHp = ReadStaticArrayMaxHpAt(startPos.x, startPos.y);
+            var (projDamage, projHitPct) = ReadDamagePreview(attackerHp, attackerMaxHp);
+            ModLogger.Log($"[BattleAttack] Preview: {projDamage} damage, {projHitPct}% hit");
 
             // Step 8: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
             SendKey(VK_ENTER);
             Thread.Sleep(500);
             SendKey(VK_ENTER);
 
-            // Poll static array until HP changes or timeout (attack animation resolves)
             response.Status = "completed";
-            int postHp = preHp;
-            for (int poll = 0; poll < 20; poll++) // up to 4s
-            {
-                Thread.Sleep(200);
-                postHp = ReadStaticArrayHpAt(targetX, targetY);
-                if (postHp != preHp) break;
-            }
-
-            ModLogger.Log($"[BattleAttack] Post-attack HP at ({targetX},{targetY}): {postHp}/{preMaxHp} (pre={preHp})");
-            if (postHp != preHp && preHp > 0)
-            {
-                int dmg = preHp - postHp;
-                if (postHp <= 0)
-                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {dmg} damage, KILL ({preHp}→0/{preMaxHp})";
-                else
-                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {dmg} damage ({preHp}→{postHp}/{preMaxHp})";
-            }
-            else
-            {
-                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y})";
-            }
+            string preview = projDamage > 0 || projHitPct > 0
+                ? $" ({projDamage} dmg, {projHitPct}% hit)"
+                : "";
+            response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}){preview}";
             ModLogger.Log($"[BattleAttack] {response.Info}");
             return response;
         }
@@ -3940,6 +3925,71 @@ namespace FFTColorCustomizer.GameBridge
                 SendKey(VK_ESCAPE);
                 Thread.Sleep(300);
             }
+        }
+
+        /// <summary>
+        /// Read projected damage and hit% from the attacker's heap struct.
+        /// The game writes these while the cursor is on a target in targeting mode:
+        ///   Hit% at statBase - 62 (u16)
+        ///   Damage at statBase - 96 (u16)
+        /// Finds the attacker's struct by searching for their HP/MaxHP pattern.
+        /// </summary>
+        /// <summary>
+        /// Read projected damage and hit% from the attacker's heap struct during targeting mode.
+        /// The game writes these values relative to the unit's battle struct:
+        ///   Hit% at statBase - 62 (u16, 0-100)
+        ///   Damage at statBase - 96 (u16)
+        /// Finds the struct by searching for the MaxHP+MaxHP pattern (both copies match
+        /// even when the unit is damaged). Verified across multiple targets 2026-04-12.
+        /// </summary>
+        private (int damage, int hitPct) ReadDamagePreview(int attackerHp, int attackerMaxHp)
+        {
+            if (attackerMaxHp <= 0) return (0, 0);
+            try
+            {
+                // Search ALL readable memory for MaxHP+MaxHP pattern. The copy with
+                // damage preview data lives in a non-standard memory region (not
+                // PAGE_READWRITE private). Use broadSearch to scan all readable regions.
+                byte[] pattern = {
+                    (byte)(attackerMaxHp & 0xFF), (byte)(attackerMaxHp >> 8),
+                    (byte)(attackerMaxHp & 0xFF), (byte)(attackerMaxHp >> 8)
+                };
+                var matches = _explorer.SearchBytesInAllMemory(pattern, 20, 0L, long.MaxValue, broadSearch: true);
+
+                foreach (var (addr, _) in matches)
+                {
+                    nint statBase = addr - 8; // HP is at +8 from stat pattern start
+                    // Verify level byte at +1 is reasonable
+                    byte levelByte = _explorer.Scanner.ReadByte(statBase + 1);
+                    if (levelByte < 1 || levelByte > 99)
+                    {
+                        ModLogger.Log($"[DamagePreview] Rejected 0x{addr:X}: level={levelByte}");
+                        continue;
+                    }
+
+                    // Read hit% at statBase - 62 and damage at statBase - 96
+                    var hitBytes = _explorer.Scanner.ReadBytes(statBase - 62, 2);
+                    var dmgBytes = _explorer.Scanner.ReadBytes(statBase - 96, 2);
+                    if (hitBytes.Length < 2 || dmgBytes.Length < 2) continue;
+
+                    int hitPct = BitConverter.ToUInt16(hitBytes, 0);
+                    int damage = BitConverter.ToUInt16(dmgBytes, 0);
+                    ModLogger.Log($"[DamagePreview] Candidate 0x{addr:X}: lv={levelByte} hit={hitPct} dmg={damage}");
+
+                    // Sanity check
+                    if (hitPct > 100 || damage > 9999) continue;
+                    if (hitPct == 0 && damage == 0) continue;
+
+                    ModLogger.Log($"[DamagePreview] Hit={hitPct}% Damage={damage} (struct 0x{statBase:X})");
+                    return (damage, hitPct);
+                }
+                ModLogger.Log($"[DamagePreview] No valid struct found for MaxHP={attackerMaxHp} ({matches.Count} candidates)");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogDebug($"[DamagePreview] Error: {ex.Message}");
+            }
+            return (0, 0);
         }
 
         /// <summary>
