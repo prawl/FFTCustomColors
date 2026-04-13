@@ -727,24 +727,40 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Step 7: Read projected damage and hit% from attacker's heap struct.
-            // Need attacker's HP+MaxHP to find their heap struct. Use static array
-            // (condensed struct shows TARGET during targeting, not attacker).
-            int attackerHp = ReadStaticArrayHpAt(startPos.x, startPos.y);
-            int attackerMaxHp = ReadStaticArrayMaxHpAt(startPos.x, startPos.y);
-            var (projDamage, projHitPct) = ReadDamagePreview(attackerHp, attackerMaxHp);
-            ModLogger.Log($"[BattleAttack] Preview: {projDamage} damage, {projHitPct}% hit");
+            // Step 7: Read target's pre-attack HP from static array
+            int preHp = ReadStaticArrayHpAt(targetX, targetY);
+            int targetMaxHp = ReadStaticArrayMaxHpAt(targetX, targetY);
+            ModLogger.Log($"[BattleAttack] Pre-attack: target HP={preHp}/{targetMaxHp}");
 
             // Step 8: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
             SendKey(VK_ENTER);
             Thread.Sleep(500);
             SendKey(VK_ENTER);
 
+            // Step 9: Wait for animation, then read live HP from readonly memory.
+            // The static array is stale mid-turn, but SearchBytesAllRegions finds
+            // live copies in readonly regions (0x141xxx, 0x15Axxx) that update immediately.
             response.Status = "completed";
-            string preview = projDamage > 0 || projHitPct > 0
-                ? $" ({projDamage} dmg, {projHitPct}% hit)"
-                : "";
-            response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}){preview}";
+            Thread.Sleep(2000); // wait for attack animation
+            int postHp = ReadLiveHp(targetMaxHp, preHp);
+            ModLogger.Log($"[BattleAttack] Post-attack: live HP={postHp} (was {preHp})");
+
+            if (postHp >= 0 && postHp != preHp)
+            {
+                int dmg = preHp - postHp;
+                if (postHp <= 0)
+                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {dmg} damage, KILL! ({preHp}→0/{targetMaxHp})";
+                else
+                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {dmg} damage ({preHp}→{postHp}/{targetMaxHp})";
+            }
+            else if (postHp == preHp)
+            {
+                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — MISSED!";
+            }
+            else
+            {
+                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y})";
+            }
             ModLogger.Log($"[BattleAttack] {response.Info}");
             return response;
         }
@@ -3934,6 +3950,67 @@ namespace FFTColorCustomizer.GameBridge
         ///   Damage at statBase - 96 (u16)
         /// Finds the attacker's struct by searching for their HP/MaxHP pattern.
         /// </summary>
+        /// <summary>
+        /// Read a unit's live HP by searching all readable memory for their MaxHP+MaxHP
+        /// pattern and reading the HP at the same struct offset. The static array at
+        /// 0x140893C00 is stale mid-turn, but readonly copies in 0x141xxx/0x15Axxx
+        /// update immediately after damage. Returns -1 if not found.
+        /// </summary>
+        private int ReadLiveHp(int unitMaxHp, int preAttackHp)
+        {
+            if (unitMaxHp <= 0) return -1;
+            try
+            {
+                // Search all readable memory for structs with this unit's MaxHP.
+                // The struct layout has: ... HP(u16) MaxHP(u16) MP(u16) ...
+                // Search for a longer context pattern to reduce false matches:
+                // Use the pre-attack snapshot: preHp(u16) + MaxHP(u16)
+                // Then also search for MaxHP+MaxHP (the "saved" copy pattern).
+                // Compare all found HPs — the one that differs from preAttackHp is live.
+
+                // Search readonly memory for any struct with this unit's MaxHP.
+                // The struct has HP(u16) immediately before MaxHP(u16).
+                // The readonly copies update in real-time — if damage landed,
+                // HP will differ from preAttackHp.
+                byte[] maxHpBytes = {
+                    (byte)(unitMaxHp & 0xFF), (byte)(unitMaxHp >> 8)
+                };
+                var matches = _explorer.SearchBytesInAllMemory(
+                    maxHpBytes, 50, 0x141000000L, 0x15C000000L, broadSearch: true);
+
+                foreach (var (addr, _) in matches)
+                {
+                    // Read HP at offset -2 from MaxHP match
+                    nint hpAddr = addr - 2;
+                    var hpBytes = _explorer.Scanner.ReadBytes(hpAddr, 2);
+                    if (hpBytes.Length < 2) continue;
+                    int hp = BitConverter.ToUInt16(hpBytes, 0);
+
+                    // Verify: HP must be 0..MaxHP and must differ from pre-attack
+                    if (hp > unitMaxHp) continue;
+                    if (hp == preAttackHp) continue;
+
+                    // Verify this is a unit struct by checking level at statBase+1
+                    nint statBase = hpAddr - 8;
+                    byte levelByte = 0;
+                    try { levelByte = _explorer.Scanner.ReadByte(statBase + 1); } catch { continue; }
+                    if (levelByte < 1 || levelByte > 99) continue;
+
+                    ModLogger.Log($"[ReadLiveHp] Live HP={hp} at 0x{hpAddr:X} (was {preAttackHp}, lv={levelByte})");
+                    return hp;
+                }
+
+                // All copies still show preAttackHp — attack missed
+                ModLogger.Log($"[ReadLiveHp] No HP change found ({matches.Count} MaxHP matches, all show {preAttackHp})");
+                return preAttackHp;
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogDebug($"[ReadLiveHp] Error: {ex.Message}");
+            }
+            return -1;
+        }
+
         /// <summary>
         /// Read projected damage and hit% from the attacker's heap struct during targeting mode.
         /// The game writes these values relative to the unit's battle struct:

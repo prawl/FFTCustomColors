@@ -268,6 +268,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
   - **Code exists but disabled:** `ReadDamagePreview()` in NavigationActions.cs has the search + offset logic. Currently returns (0,0) because the broad search finds the wrong copy. Fix: add address range filter to skip 0x416xxx and target the 0x130-0x15A range.
 - [ ] **BFS move tiles too permissive — terrain height not properly limiting range** [Movement] — BFS at Move=4 from (10,9) includes (8,7) (distance 4) but in-game the tile isn't reachable due to terrain. The BFS validation passes but the game rejects the move. Need to verify terrain height costs in BFS match FFT's rules. Observed 2026-04-12.
 - [x] **Attack target tiles include diagonal targets** [Abilities] — INVALID: FFT Attack DOES include diagonals via Manhattan distance. (7,9)→(8,10) is a valid adjacent attack. Cardinal-only assumption was wrong.
+- [ ] **Focus shows "no targets in range" instead of self** [Abilities] — Focus is a self-only ability (HRange=Self, AoE=1) but screen shows "(no targets in range)" instead of showing Ramza as the target. Self-target abilities should show the caster. Observed 2026-04-13.
 
 ---
 
