@@ -727,10 +727,13 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Step 7: Read target's pre-attack HP from static array
+            // Step 7: Read target's pre-attack HP, level, and damage preview
             int preHp = ReadStaticArrayHpAt(targetX, targetY);
             int targetMaxHp = ReadStaticArrayMaxHpAt(targetX, targetY);
-            ModLogger.Log($"[BattleAttack] Pre-attack: target HP={preHp}/{targetMaxHp}");
+            int targetLevel = ReadStaticArrayFieldAt(targetX, targetY, 0x0D) & 0xFF; // level is 1 byte
+            int attackerMaxHp = ReadStaticArrayMaxHpAt(startPos.x, startPos.y);
+            var (projDamage, projHitPct) = ReadDamagePreview(attackerMaxHp);
+            ModLogger.Log($"[BattleAttack] Pre-attack: target HP={preHp}/{targetMaxHp} lv={targetLevel}, preview={projDamage}dmg/{projHitPct}%");
 
             // Step 8: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
             SendKey(VK_ENTER);
@@ -742,23 +745,24 @@ namespace FFTColorCustomizer.GameBridge
             // live copies in readonly regions (0x141xxx, 0x15Axxx) that update immediately.
             response.Status = "completed";
             Thread.Sleep(2000); // wait for attack animation
-            int postHp = ReadLiveHp(targetMaxHp, preHp);
+            int postHp = ReadLiveHp(targetMaxHp, preHp, targetLevel);
             ModLogger.Log($"[BattleAttack] Post-attack: live HP={postHp} (was {preHp})");
 
+            string dmgStr = projDamage > 0 ? $" ({projDamage} dmg, {projHitPct}% hit)" : "";
             if (postHp >= 0 && postHp != preHp)
             {
                 if (postHp <= 0)
-                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — KO'd! ({preHp}→0/{targetMaxHp})";
+                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — KO'd!{dmgStr} ({preHp}→0/{targetMaxHp})";
                 else
-                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — HIT ({preHp}→{postHp}/{targetMaxHp})";
+                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — HIT{dmgStr} ({preHp}→{postHp}/{targetMaxHp})";
             }
             else if (postHp == preHp)
             {
-                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — MISSED!";
+                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — MISSED!{dmgStr}";
             }
             else
             {
-                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y})";
+                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}){dmgStr}";
             }
             ModLogger.Log($"[BattleAttack] {response.Info}");
             return response;
@@ -3947,15 +3951,58 @@ namespace FFTColorCustomizer.GameBridge
         /// The game writes these while the cursor is on a target in targeting mode:
         ///   Hit% at statBase - 62 (u16)
         ///   Damage at statBase - 96 (u16)
-        /// Finds the attacker's struct by searching for their HP/MaxHP pattern.
+        /// Finds the attacker's struct by searching readonly memory for MaxHP+MaxHP.
         /// </summary>
+        private (int damage, int hitPct) ReadDamagePreview(int attackerMaxHp)
+        {
+            if (attackerMaxHp <= 0) return (0, 0);
+            try
+            {
+                byte[] pattern = {
+                    (byte)(attackerMaxHp & 0xFF), (byte)(attackerMaxHp >> 8),
+                    (byte)(attackerMaxHp & 0xFF), (byte)(attackerMaxHp >> 8)
+                };
+                // Search readonly regions where the copy with preview data lives
+                var matches = _explorer.SearchBytesInAllMemory(
+                    pattern, 20, 0x140800000L, 0x15C000000L, broadSearch: true);
+
+                foreach (var (addr, _) in matches)
+                {
+                    nint statBase = addr - 10; // MaxHP is at +10 from stat base
+                    byte levelByte = 0;
+                    try { levelByte = _explorer.Scanner.ReadByte(statBase + 1); } catch { continue; }
+                    if (levelByte < 1 || levelByte > 99) continue;
+
+                    var hitBytes = _explorer.Scanner.ReadBytes(statBase - 62, 2);
+                    var dmgBytes = _explorer.Scanner.ReadBytes(statBase - 96, 2);
+                    if (hitBytes.Length < 2 || dmgBytes.Length < 2) continue;
+
+                    int hitPct = BitConverter.ToUInt16(hitBytes, 0);
+                    int damage = BitConverter.ToUInt16(dmgBytes, 0);
+
+                    // The copy with real preview data has hit% in 1-100 range
+                    if (hitPct < 1 || hitPct > 100) continue;
+                    if (damage <= 0 || damage > 9999) continue;
+
+                    ModLogger.Log($"[DamagePreview] Hit={hitPct}% Dmg={damage} (struct 0x{statBase:X}, lv={levelByte})");
+                    return (damage, hitPct);
+                }
+                ModLogger.Log($"[DamagePreview] No preview found ({matches.Count} MaxHP matches)");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogDebug($"[DamagePreview] Error: {ex.Message}");
+            }
+            return (0, 0);
+        }
+
         /// <summary>
         /// Read a unit's live HP by searching all readable memory for their MaxHP+MaxHP
         /// pattern and reading the HP at the same struct offset. The static array at
         /// 0x140893C00 is stale mid-turn, but readonly copies in 0x141xxx/0x15Axxx
         /// update immediately after damage. Returns -1 if not found.
         /// </summary>
-        private int ReadLiveHp(int unitMaxHp, int preAttackHp)
+        private int ReadLiveHp(int unitMaxHp, int preAttackHp, int targetLevel = 0)
         {
             if (unitMaxHp <= 0) return -1;
             try
@@ -3974,11 +4021,15 @@ namespace FFTColorCustomizer.GameBridge
                 byte[] maxHpBytes = {
                     (byte)(unitMaxHp & 0xFF), (byte)(unitMaxHp >> 8)
                 };
-                // Include the static array range (0x14089xxxx) which is stale mid-turn,
-                // plus the readonly ranges (0x141xxx-0x15Bxxx) which have live data.
-                // The stale copy serves as confirmation we found the right unit.
-                var matches = _explorer.SearchBytesInAllMemory(
-                    maxHpBytes, 50, 0x140800000L, 0x15C000000L, broadSearch: true);
+                // Search two ranges: the static array for the stale reference,
+                // then readonly regions for the live data.
+                var staleMatches = _explorer.SearchBytesInAllMemory(
+                    maxHpBytes, 10, 0x140893000L, 0x140895000L, broadSearch: true);
+                var liveMatches = _explorer.SearchBytesInAllMemory(
+                    maxHpBytes, 100, 0x141000000L, 0x15C000000L, broadSearch: true);
+                var matches = new List<(nint address, string context)>();
+                matches.AddRange(staleMatches);
+                matches.AddRange(liveMatches);
 
                 // Collect valid unit structs. Read 8 bytes of context (the stat pattern:
                 // exp level origBr br origFa fa turnFlag 00) to fingerprint each struct.
@@ -4008,23 +4059,28 @@ namespace FFTColorCustomizer.GameBridge
                         changedEntries.Add((hp, ctx, addr));
                 }
 
-                // Match changed entries against stale contexts — the context bytes
-                // (exp, level, brave, faith) must match to confirm it's the same unit.
-                foreach (var (hp, ctx, addr) in changedEntries)
+                // Match by level. Use targetLevel from static array if available,
+                // otherwise fall back to stale context level.
+                int expectedLevel = targetLevel > 0 ? targetLevel
+                    : staleContexts.Count > 0 ? staleContexts[0].ctx[1] : 0;
+
+                if (expectedLevel > 0)
                 {
-                    foreach (var (staleCtx, _) in staleContexts)
+                    foreach (var (hp, ctx, addr) in changedEntries)
                     {
-                        // Compare level and brave/faith (bytes 1, 2, 3, 4, 5)
-                        if (ctx[1] == staleCtx[1] && ctx[2] == staleCtx[2]
-                            && ctx[3] == staleCtx[3] && ctx[4] == staleCtx[4]
-                            && ctx[5] == staleCtx[5])
+                        if (ctx[1] == expectedLevel)
                         {
-                            ModLogger.Log($"[ReadLiveHp] Live HP={hp} at 0x{addr:X} (lv={ctx[1]}, context match confirmed)");
+                            ModLogger.Log($"[ReadLiveHp] Live HP={hp} at 0x{addr:X} (lv={ctx[1]})");
                             return hp;
                         }
                     }
                 }
 
+                // Log detail for debugging
+                foreach (var (sc, sa) in staleContexts)
+                    ModLogger.Log($"[ReadLiveHp] STALE at 0x{sa:X}: lv={sc[1]} hp={preAttackHp}");
+                foreach (var (ch, cc, ca) in changedEntries)
+                    ModLogger.Log($"[ReadLiveHp] CHANGED at 0x{ca:X}: lv={cc[1]} hp={ch}");
                 ModLogger.Log($"[ReadLiveHp] stale={staleContexts.Count} changed={changedEntries.Count} ({matches.Count} total)");
                 return preAttackHp;
             }
