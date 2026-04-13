@@ -32,6 +32,7 @@ namespace FFTColorCustomizer.Utilities
         private MapLoader? _mapLoader;
         private readonly BattleTurnTracker _turnTracker = new();
         private bool _movedThisTurn;
+        private int _postMoveX = -1, _postMoveY = -1; // confirmed position after battle_move
         private bool _waitConfirmPending; // Set when battle_wait rejected for no move/act; next battle_wait goes through
         private string? _lastAbilityName; // Last ability used via battle_ability, shown in ui= during targeting
         private readonly BattleMenuTracker _battleMenuTracker = new();
@@ -708,6 +709,8 @@ namespace FFTColorCustomizer.Utilities
                         _turnTracker.ResetForNewTurn();
                         _battleMenuTracker.OnNewTurn();
                         _movedThisTurn = false;
+                        _postMoveX = -1;
+                        _postMoveY = -1;
                         _waitConfirmPending = false;
                         _lastAbilityName = null;
                         _cachedPrimarySkillset = null;
@@ -731,9 +734,9 @@ namespace FFTColorCustomizer.Utilities
                                 CacheLearnedAbilities(freshScan.Battle);
                         }
                         // Validate target is within ability's horizontal range from caster.
-                        // Skip if we moved this turn — static array position is stale after move.
+                        // After move, use confirmed post-move position instead of stale static array.
                         string? abilityToValidate = command.Action == "battle_attack" ? "Attack" : command.Description;
-                        if (abilityToValidate != null && !_movedThisTurn
+                        if (abilityToValidate != null
                             && command.LocationId >= 0 && command.UnitIndex >= 0
                             && freshScan?.Battle?.Units != null)
                         {
@@ -744,11 +747,13 @@ namespace FFTColorCustomizer.Utilities
                             if (matchingAbility != null && activeUnit != null
                                 && int.TryParse(matchingAbility.HRange, out int hr) && hr > 0)
                             {
-                                int dist = Math.Abs(command.LocationId - activeUnit.X) + Math.Abs(command.UnitIndex - activeUnit.Y);
+                                int casterX = _movedThisTurn && _postMoveX >= 0 ? _postMoveX : activeUnit.X;
+                                int casterY = _movedThisTurn && _postMoveY >= 0 ? _postMoveY : activeUnit.Y;
+                                int dist = Math.Abs(command.LocationId - casterX) + Math.Abs(command.UnitIndex - casterY);
                                 if (dist > hr)
                                 {
                                     return new CommandResponse { Id = command.Id, Status = "failed",
-                                        Error = $"Target ({command.LocationId},{command.UnitIndex}) is {dist} tiles away but '{abilityToValidate}' has range {hr}.",
+                                        Error = $"Target ({command.LocationId},{command.UnitIndex}) is {dist} tiles away from ({casterX},{casterY}) but '{abilityToValidate}' has range {hr}.",
                                         ProcessedAt = DateTime.UtcNow.ToString("o"), GameWindowFound = true,
                                         Screen = DetectScreenSettled() };
                                 }
@@ -782,6 +787,11 @@ namespace FFTColorCustomizer.Utilities
                         if (moveResult.Status == "completed")
                         {
                             moveResult.PostAction = _navActions?.ReadPostActionState();
+                            if (moveResult.PostAction != null)
+                            {
+                                _postMoveX = moveResult.PostAction.X;
+                                _postMoveY = moveResult.PostAction.Y;
+                            }
                             // Re-scan after move so positions are fresh for battle_attack range validation
                             try
                             {
