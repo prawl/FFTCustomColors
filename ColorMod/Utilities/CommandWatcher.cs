@@ -782,10 +782,10 @@ namespace FFTColorCustomizer.Utilities
                                 CacheLearnedAbilities(moveScanRes.Battle);
                         }
                         _battleMenuTracker.ReturnToMyTurn();
-                        _movedThisTurn = true;
                         var moveResult = ExecuteNavAction(command);
                         if (moveResult.Status == "completed")
                         {
+                            _movedThisTurn = true;
                             moveResult.PostAction = _navActions?.ReadPostActionState();
                             if (moveResult.PostAction != null)
                             {

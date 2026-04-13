@@ -3329,7 +3329,8 @@ namespace FFTColorCustomizer.GameBridge
             if (_lastScannedUnits == null) return result;
             foreach (var u in _lastScannedUnits)
             {
-                if (u.Team != 0 && u.Hp > 0)
+                // Only block enemy units (team=1), not neutrals/NPCs (team=2)
+                if (u.Team == 1 && u.Hp > 0)
                     result.Add((u.GridX, u.GridY));
             }
             return result;
