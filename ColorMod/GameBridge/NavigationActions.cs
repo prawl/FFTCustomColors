@@ -747,11 +747,10 @@ namespace FFTColorCustomizer.GameBridge
 
             if (postHp >= 0 && postHp != preHp)
             {
-                int dmg = preHp - postHp;
                 if (postHp <= 0)
-                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {dmg} damage, KILL! ({preHp}→0/{targetMaxHp})";
+                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — KO'd! ({preHp}→0/{targetMaxHp})";
                 else
-                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — {dmg} damage ({preHp}→{postHp}/{targetMaxHp})";
+                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — HIT ({preHp}→{postHp}/{targetMaxHp})";
             }
             else if (postHp == preHp)
             {
@@ -3975,33 +3974,58 @@ namespace FFTColorCustomizer.GameBridge
                 byte[] maxHpBytes = {
                     (byte)(unitMaxHp & 0xFF), (byte)(unitMaxHp >> 8)
                 };
+                // Include the static array range (0x14089xxxx) which is stale mid-turn,
+                // plus the readonly ranges (0x141xxx-0x15Bxxx) which have live data.
+                // The stale copy serves as confirmation we found the right unit.
                 var matches = _explorer.SearchBytesInAllMemory(
-                    maxHpBytes, 50, 0x141000000L, 0x15C000000L, broadSearch: true);
+                    maxHpBytes, 50, 0x140800000L, 0x15C000000L, broadSearch: true);
+
+                // Collect valid unit structs. Read 8 bytes of context (the stat pattern:
+                // exp level origBr br origFa fa turnFlag 00) to fingerprint each struct.
+                // Only accept a "changed" HP if its context matches a "stale" copy's context.
+                var staleContexts = new List<(byte[] ctx, nint addr)>();
+                var changedEntries = new List<(int hp, byte[] ctx, nint addr)>();
 
                 foreach (var (addr, _) in matches)
                 {
-                    // Read HP at offset -2 from MaxHP match
                     nint hpAddr = addr - 2;
                     var hpBytes = _explorer.Scanner.ReadBytes(hpAddr, 2);
                     if (hpBytes.Length < 2) continue;
                     int hp = BitConverter.ToUInt16(hpBytes, 0);
-
-                    // Verify: HP must be 0..MaxHP and must differ from pre-attack
                     if (hp > unitMaxHp) continue;
-                    if (hp == preAttackHp) continue;
 
-                    // Verify this is a unit struct by checking level at statBase+1
+                    // Read stat context: 8 bytes starting at statBase (= hpAddr - 8)
                     nint statBase = hpAddr - 8;
-                    byte levelByte = 0;
-                    try { levelByte = _explorer.Scanner.ReadByte(statBase + 1); } catch { continue; }
-                    if (levelByte < 1 || levelByte > 99) continue;
+                    var ctx = _explorer.Scanner.ReadBytes(statBase, 8);
+                    if (ctx.Length < 8) continue;
 
-                    ModLogger.Log($"[ReadLiveHp] Live HP={hp} at 0x{hpAddr:X} (was {preAttackHp}, lv={levelByte})");
-                    return hp;
+                    // Verify level at byte 1
+                    if (ctx[1] < 1 || ctx[1] > 99) continue;
+
+                    if (hp == preAttackHp)
+                        staleContexts.Add((ctx, addr));
+                    else
+                        changedEntries.Add((hp, ctx, addr));
                 }
 
-                // All copies still show preAttackHp — attack missed
-                ModLogger.Log($"[ReadLiveHp] No HP change found ({matches.Count} MaxHP matches, all show {preAttackHp})");
+                // Match changed entries against stale contexts — the context bytes
+                // (exp, level, brave, faith) must match to confirm it's the same unit.
+                foreach (var (hp, ctx, addr) in changedEntries)
+                {
+                    foreach (var (staleCtx, _) in staleContexts)
+                    {
+                        // Compare level and brave/faith (bytes 1, 2, 3, 4, 5)
+                        if (ctx[1] == staleCtx[1] && ctx[2] == staleCtx[2]
+                            && ctx[3] == staleCtx[3] && ctx[4] == staleCtx[4]
+                            && ctx[5] == staleCtx[5])
+                        {
+                            ModLogger.Log($"[ReadLiveHp] Live HP={hp} at 0x{addr:X} (lv={ctx[1]}, context match confirmed)");
+                            return hp;
+                        }
+                    }
+                }
+
+                ModLogger.Log($"[ReadLiveHp] stale={staleContexts.Count} changed={changedEntries.Count} ({matches.Count} total)");
                 return preAttackHp;
             }
             catch (Exception ex)
