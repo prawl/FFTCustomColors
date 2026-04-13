@@ -55,7 +55,6 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 
 ### Screen Output Polish
 
-- [ ] **Remove fft.sh duplicate ability filtering** [Performance] — The hide-empty-enemy-target and Aim+N collapsing now runs in C# (AbilityCompactor) but fft.sh still has duplicate JS logic. Remove the JS version — server-side handles it before JSON serialization.
 
 ### Tier 1 — Unblockers (do first)
 
@@ -83,14 +82,13 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 - [ ] **Add PreToolUse hook to block `| node` in bash commands** [Enforcement] — Claude should never pipe command output through node for parsing. All shell helpers (screen, execute_action, battle_attack, etc.) handle formatting internally. A Claude Code PreToolUse hook on Bash can detect `| node` in the command string and block it with a reminder to use the formatted helpers. Pending testing the unified screen command first.
 
-- [ ] **execute_action responses missing ui= field** [State] — Non-battle-MyTurn screens (Battle_Abilities, Battle_Attacking, etc.) no longer show `ui=Attack` or `ui=Jump` in the response header. Observed 2026-04-12.
+- [~] **execute_action responses missing ui= field** [State] — UI is set for all battle screens in DetectScreen. May be resolved by current code. Needs verification. Observed 2026-04-12.
 - [ ] **battle_ability selects wrong skillset for secondary abilities** [Execution] — Secondary skillset detection unreliable (roster +0x07 reads 0). Fallback to all-skillsets search added but submenu navigation may still pick wrong item. Observed 2026-04-12.
 - [ ] **Show hit% per target in ability tiles** [State] — When hovering a target in-game, the game shows projected hit%. Read this from memory and include it per target tile so Claude can see `(10,6)<Skeleton 73%>` instead of just `(10,6)<Skeleton>`. Would help decide between a high-damage low-accuracy Aim+20 vs reliable Attack. Could also help detect LoS blocking (0% = blocked). Identified 2026-04-12.
 - [ ] **Line-of-sight blocking for ranged attacks** [Abilities] — Archer attacked Treant at (7,11) from (10,9) but a tree blocked the projectile. FFT has LoS checks for ranged abilities (bows, thrown stones, guns). We need to detect blocked paths. Options: (A) read the game's projected hit% from memory during targeting mode, (B) compute LoS from map height data, (C) enter targeting, check if game rejects tile, cancel if blocked. Option A is most practical if the address can be found. Observed 2026-04-12.
 - [ ] **Equipment IDs stale across battles** [State] — Roster equipment at `+0x0E` reads the save-state equipment, not the current in-battle loadout. Need to find the live equipment address.
 - [ ] **Active unit name/job stale across battles** [State] — After restarting a battle with different equipment/jobs, the name/job display doesn't refresh between battles.
-- [ ] **`screen` shows wrong active unit between scans** [State] — `screen` reads the active unit from a stale memory buffer. Fix: use the `IsActive` flag from static array scan.
-- [ ] **battle_move reports NOT CONFIRMED for valid moves** [Movement] — Navigation succeeds but F key confirmation doesn't transition within 3s timeout.
+- [ ] **battle_move reports NOT CONFIRMED for valid moves** [Movement] — Navigation succeeds but F key confirmation doesn't transition. Timeout increased from 5s to 8s for long-distance moves.
 - [ ] **Detect disabled/grayed action menu items** [Movement] — Need to find a memory flag or detect from cursor behavior.
 - [ ] **Post-attack facing/move selection** [Movement] — After Act without prior Move, game returns to Battle_MyTurn with cursor on Move. battle_wait should handle this correctly.
 - [~] **battle_retry doesn't work from GameOver screen** [Execution] — Code exists, GameOver detection fixed. Needs live testing.
@@ -103,9 +101,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 - [ ] **Unit names — enemies** [Identity] — Enemy display names not found in memory. May need NXD table access or glyph-based lookup.
 - [ ] **Zodiac sign per unit** [Identity] — Needed for damage multipliers.
-- [ ] **Charge time spells** [AoE] — CT cost per ability for tactical planning.
 - [ ] **Fix Move/Jump stat reading** [Movement] — UI buffer shows base stats, not effective (equipment bonuses missing).
-- [ ] **Neutral unit handling (team=2)** [Movement] — Don't block pathing for NPCs/guests. Rare.
 
 ### Tier 5 — Speed optimization
 

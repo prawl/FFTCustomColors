@@ -2934,7 +2934,7 @@ namespace FFTColorCustomizer.GameBridge
             // transiently during move — accept it only after 1s delay to skip the transient.
             bool confirmed = false;
             var sw = Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < 5000)
+            while (sw.ElapsedMilliseconds < 8000)
             {
                 var check = _detectScreen();
                 if (check != null && check.Name != "Battle_Moving"
