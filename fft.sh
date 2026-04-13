@@ -292,7 +292,7 @@ execute_action() {
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 1500 ]; then echo "[TIMEOUT]"; return 1; fi
+    if [ $tries -ge 3000 ]; then echo "[TIMEOUT]"; return 1; fi
   done
   local R=$(cat "$B/response.json" | tr -d '\r\n ')
   local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)

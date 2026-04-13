@@ -707,9 +707,10 @@ namespace FFTColorCustomizer.Utilities
                             if (freshScan.Status == "completed")
                                 CacheLearnedAbilities(freshScan.Battle);
                         }
-                        // Validate target is within ability's horizontal range from caster
+                        // Validate target is within ability's horizontal range from caster.
+                        // Skip if we moved this turn — static array position is stale after move.
                         string? abilityToValidate = command.Action == "battle_attack" ? "Attack" : command.Description;
-                        if (abilityToValidate != null
+                        if (abilityToValidate != null && !_movedThisTurn
                             && command.LocationId >= 0 && command.UnitIndex >= 0
                             && freshScan?.Battle?.Units != null)
                         {
@@ -758,6 +759,15 @@ namespace FFTColorCustomizer.Utilities
                         if (moveResult.Status == "completed")
                         {
                             moveResult.PostAction = _navActions?.ReadPostActionState();
+                            // Re-scan after move so positions are fresh for battle_attack range validation
+                            try
+                            {
+                                var postMoveScan = new CommandRequest { Id = command.Id, Action = "scan_move" };
+                                var postMoveRes = ExecuteNavAction(postMoveScan);
+                                if (postMoveRes.Status == "completed")
+                                    CacheLearnedAbilities(postMoveRes.Battle);
+                            }
+                            catch { }
                         }
                         return moveResult;
 

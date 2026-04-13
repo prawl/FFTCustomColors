@@ -269,6 +269,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **BFS move tiles too permissive — terrain height not properly limiting range** [Movement] — BFS at Move=4 from (10,9) includes (8,7) (distance 4) but in-game the tile isn't reachable due to terrain. The BFS validation passes but the game rejects the move. Need to verify terrain height costs in BFS match FFT's rules. Observed 2026-04-12.
 - [x] **Attack target tiles include diagonal targets** [Abilities] — INVALID: FFT Attack DOES include diagonals via Manhattan distance. (7,9)→(8,10) is a valid adjacent attack. Cardinal-only assumption was wrong.
 - [ ] **Focus shows "no targets in range" instead of self** [Abilities] — Focus is a self-only ability (HRange=Self, AoE=1) but screen shows "(no targets in range)" instead of showing Ramza as the target. Self-target abilities should show the caster. Observed 2026-04-13.
+- [ ] **battle_attack after move selects Wait instead of Attack** [Execution] — After battle_move, battle_attack navigates the action menu but lands on Wait instead of Attack/Abilities. The menu cursor position is stale after move (ui=Move vs actual cursor at Abilities). The `_menuCursorStale` flag should handle this but isn't working correctly for the move→attack flow. Results in "Failed to enter targeting mode (current: Battle_Casting)" because Wait was selected. Observed 2026-04-13.
 
 ---
 
