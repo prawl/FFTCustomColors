@@ -591,6 +591,7 @@ namespace FFTColorCustomizer.GameBridge
 
             // Step 1: Navigate menu to Abilities (always index 1).
             // Menu is stable: Move/ResetMove(0) Abilities(1) Wait(2) Status(3) AutoBattle(4)
+            // Trust the raw memory cursor — EffectiveMenuCursor corrections cause more bugs.
             var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
             int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
             NavigateMenuCursor(cursor, 1);
@@ -1721,10 +1722,18 @@ namespace FFTColorCustomizer.GameBridge
                             return tile;
                         }
 
+                        // Self-target abilities (HRange=Self): target is always the caster
+                        if (a.HRange == "Self")
+                        {
+                            entry.ValidTargetTiles = new List<ValidTargetTile>
+                            {
+                                AnnotateTile(u.GridX, u.GridY)
+                            };
+                        }
                         // Point-target abilities (AoE=1, numeric HRange): the clicked
                         // tile IS the entire effect. Populate validTargetTiles with
                         // annotated per-tile occupant info.
-                        if (abilityMap != null && AbilityTargetCalculator.IsPointTarget(a))
+                        else if (abilityMap != null && AbilityTargetCalculator.IsPointTarget(a))
                         {
                             var tiles = AbilityTargetCalculator.GetValidTargetTiles(
                                 u.GridX, u.GridY, a, abilityMap, u.Jump);

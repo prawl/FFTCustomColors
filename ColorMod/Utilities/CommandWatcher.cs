@@ -483,6 +483,29 @@ namespace FFTColorCustomizer.Utilities
                         response.Status = "completed";
                         break;
 
+                    case "read_bytes":
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        try
+                        {
+                            long readAddr = Convert.ToInt64(command.Pattern, 16);
+                            int readSize = command.SearchValue > 0 ? command.SearchValue : 256;
+                            if (readSize > 1024) readSize = 1024;
+                            var readData = Explorer.Scanner.ReadBytes((nint)readAddr, readSize);
+                            response.Status = "completed";
+                            response.ReadResult = new ReadResult
+                            {
+                                Address = $"0x{readAddr:X}",
+                                Size = readData.Length,
+                                Hex = BitConverter.ToString(readData).Replace("-", " ")
+                            };
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Status = "failed";
+                            response.Error = $"Read failed: {ex.Message}";
+                        }
+                        break;
+
                     case "search_bytes":
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         if (string.IsNullOrEmpty(command.Pattern)) { response.Status = "failed"; response.Error = "Pattern required (hex string, e.g. '080B00')"; break; }
@@ -2192,12 +2215,9 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "Battle_MyTurn" || screen.Name == "Battle_Acting")
                 {
                     bool hasMoved = screen.BattleMoved == 1 || _movedThisTurn;
-                    bool hasActed = screen.BattleActed == 1 || _lastAbilityName != null;
-                    int effectiveCursor = BattleAbilityNavigation.EffectiveMenuCursor(
-                        screen.MenuCursor, moved: hasMoved, acted: hasActed);
-                    screen.UI = effectiveCursor switch
+                    screen.UI = screen.MenuCursor switch
                     {
-                        0 => "Move",
+                        0 => hasMoved ? "Reset Move" : "Move",
                         1 => "Abilities",
                         2 => "Wait",
                         3 => "Status",

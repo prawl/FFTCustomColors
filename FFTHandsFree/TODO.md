@@ -53,9 +53,9 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 
 ### NEXT 5 — Do these first (identified 2026-04-12 battle testing)
 
-- [ ] **Remove scan_move caching** — Scan is now ~15ms (pure memory reads). The cache causes: (a) "Run scan_move first" errors after failed attacks, (b) stale data between turns, (c) forced `screen` calls before every `battle_attack`. Remove `HasCachedScan`, `CacheScanResponse`, `MarkScanned` — every `battle_attack`/`battle_ability` should scan fresh inline.
-- [ ] **Format battle_attack/battle_ability responses** — Currently returns raw JSON walls. Should return compact formatted output like `screen` does. Example: `[Attack] Lloyd hit Treant at (7,10) for 378 damage (183/561)` or `[Attack] Kenrick shot Skeleton at (10,6) — evaded!`. Use BattleTracker events to detect damage/miss.
-- [ ] **Remove false MISSED detection** — `battle_attack` reports "MISSED (no HP change detected)" on every attack because the HP check reads stale memory before the damage resolves. BattleTracker already detects real damage at 100ms polling. Remove the immediate HP comparison and rely on BattleTracker events instead.
+- [x] **Remove scan_move caching** — Fixed 2026-04-12: always scan fresh.
+- [x] **Format battle_attack/battle_ability responses** — Fixed 2026-04-12-13: HIT/MISS/KO reporting with live HP from readonly memory.
+- [x] **Remove false MISSED detection** — Fixed 2026-04-12-13: live HP detection via readonly memory regions.
 
 ### Screen Output Polish (identified 2026-04-12 end of session)
 
@@ -87,7 +87,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 - [ ] **Add PreToolUse hook to block `| node` in bash commands** [Enforcement] — Claude should never pipe command output through node for parsing. All shell helpers (screen, execute_action, battle_attack, etc.) handle formatting internally. A Claude Code PreToolUse hook on Bash can detect `| node` in the command string and block it with a reminder to use the formatted helpers. Pending testing the unified screen command first.
 
-- [ ] **"ERROR: Friendly turn after Xms" is not an error** [State] — `battle_wait` / `execute_action Wait` reports "Friendly turn after 903ms" in the ERROR field. This is informational (how long until next player turn), not an error. Should use `info` field instead, or just omit it. Confusing when reading responses. Observed 2026-04-12.
+- [x] **"ERROR: Friendly turn after Xms" is not an error** [State] — Fixed 2026-04-12: uses Info field now.
 - [ ] **execute_action responses missing ui= field** [State] — Non-battle-MyTurn screens (Battle_Abilities, Battle_Attacking, etc.) no longer show `ui=Attack` or `ui=Jump` in the response header. The old `fft` formatter included it but `execute_action` lost it. Need to add ui= back to execute_action output for non-MyTurn battle screens. Observed 2026-04-12.
 - [ ] **battle_ability selects wrong skillset for secondary abilities** [Execution] — Lloyd has Jump (primary) and Martial Arts (secondary). `battle_ability "Aurablast"` selected Attack instead of Martial Arts. The ability→skillset resolution is picking the wrong submenu item. Need to verify the skillset lookup maps Aurablast→Martial Arts correctly and that the submenu navigation scrolls to the right entry. Observed 2026-04-12.
 - [x] **screen header should show [Battle_MyTurn] not [Battle]** [State] — Fixed 2026-04-12.
@@ -97,16 +97,16 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Show hit% per target in ability tiles** [State] — When hovering a target in-game, the game shows projected hit%. Read this from memory and include it per target tile so Claude can see `(10,6)<Skeleton 73%>` instead of just `(10,6)<Skeleton>`. Would help decide between a high-damage low-accuracy Aim+20 vs reliable Attack. Could also help detect LoS blocking (0% = blocked). Identified 2026-04-12.
 - [ ] **Line-of-sight blocking for ranged attacks** [Abilities] — Archer attacked Treant at (7,11) from (10,9) but a tree blocked the projectile. FFT has LoS checks for ranged abilities (bows, thrown stones, guns). We need to detect blocked paths. Options: (A) read the game's projected hit% from memory during targeting mode, (B) compute LoS from map height data, (C) enter targeting, check if game rejects tile, cancel if blocked. Option A is most practical if the address can be found. Observed 2026-04-12.
 - [x] **Filter dead units from ability target tiles** [State] — Fixed in session 5 (AbilityTargetCalculator.IsRevivalAbility).
-- [ ] **battle_attack allows diagonal targets** [Execution] — `battle_attack x y` doesn't validate that the target is on a cardinal direction (same X or same Y) from the attacker. FFT only allows attacking in the 4 cardinal directions. Fix: validate `targetX == unitX || targetY == unitY` before entering targeting mode. Observed 2026-04-12.
+- [x] **battle_attack allows diagonal targets** [Execution] — INVALID: FFT Attack uses Manhattan distance, diagonals ARE valid.
 - [ ] **Equipment IDs stale across battles** [State] — Roster equipment at `+0x0E` reads the save-state equipment, not the current in-battle loadout. Need to find the live equipment address.
 - [ ] **Active unit name/job stale across battles** [State] — After restarting a battle with different equipment/jobs, the name/job display doesn't refresh between battles.
 - [ ] **`screen` shows wrong active unit between scans** [State] — `screen` reads the active unit from a stale memory buffer. Fix: use the `IsActive` flag from static array scan.
-- [ ] **Verify attack landed** [Execution] — Currently reports false "MISSED" when the attack landed but HP check read stale data. Consider removing MISS detection since BattleTracker now detects damage in real-time.
-- [ ] **Scan cache doesn't invalidate between player turns** [Movement] — Will be fixed by removing caching entirely.
+- [x] **Verify attack landed** [Execution] — Fixed 2026-04-13: live HP detection from readonly memory.
+- [x] **Scan cache doesn't invalidate between player turns** [Movement] — Fixed 2026-04-12: cache removed entirely.
 - [ ] **battle_move reports NOT CONFIRMED for valid moves** [Movement] — Navigation succeeds but F key confirmation doesn't transition within 3s timeout.
 - [ ] **Detect disabled/grayed action menu items** [Movement] — Need to find a memory flag or detect from cursor behavior.
 - [x] **C+Up scan sometimes fails after restart** [Movement] — OBSOLETE: C+Up eliminated in session 5.
-- [ ] **Jump ends turn immediately — no Wait/facing step** [Execution] — After Jump, the turn ends immediately. Claude tries to `battle_wait` after Jump which fails. Need to detect Jump as a turn-ending ability.
+- [x] **Jump ends turn immediately — no Wait/facing step** [Execution] — Fixed 2026-04-12: BattleWait detects enemy/ally turn and returns success.
 - [ ] **Post-attack facing/move selection** [Movement] — After Act without prior Move, game returns to Battle_MyTurn with cursor on Move. battle_wait should handle this correctly.
 - [~] **battle_retry doesn't work from GameOver screen** [Execution] — Code exists, GameOver detection fixed. Needs live testing.
 - [ ] **Re-enable Ctrl fast-forward during enemy turns** [Execution] — Tested both continuous hold and pulse approaches. Neither visibly sped up animations. Low priority.
@@ -270,6 +270,8 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [x] **Attack target tiles include diagonal targets** [Abilities] — INVALID: FFT Attack DOES include diagonals via Manhattan distance. (7,9)→(8,10) is a valid adjacent attack. Cardinal-only assumption was wrong.
 - [ ] **Focus shows "no targets in range" instead of self** [Abilities] — Focus is a self-only ability (HRange=Self, AoE=1) but screen shows "(no targets in range)" instead of showing Ramza as the target. Self-target abilities should show the caster. Observed 2026-04-13.
 - [ ] **Screen detection shows Cutscene during ability targeting** [State] — While in targeting mode for Aurablast (selecting a target tile), screen detection reports "Cutscene" instead of "Battle_Attacking" or "Battle_Casting". This causes key commands to fail because they check screen state. Observed 2026-04-13.
+- [ ] **battle_attack after move should validate range from new position** [Execution] — After moving, range validation is skipped entirely because static array position is stale. But we know the post-move position from the CONFIRMED response. Should validate range using the confirmed position instead of skipping. Attacked (9,4) from (8,5) at distance 2 with melee range 1 — should have been rejected. Observed 2026-04-13.
+- [ ] **Failed battle_move reports ui=Abilities instead of ui=Move** [State] — After battle_move fails validation, the response shows ui=Abilities but the in-game cursor is still on Move. The scan that runs before the move might be changing the reported ui state. Observed 2026-04-13.
 - [ ] **battle_ability selects wrong ability from list** [Execution] — battle_ability "Aurablast" selected Pummel instead. The ability list navigation (Up×N to top, Down×index) is picking the wrong index. The learned ability list may not match the hardcoded index, or the scroll navigation is off-by-one. Observed 2026-04-13.
 - [ ] **ui= shows Move instead of Reset Move after moving** [State] — After a unit moves, the action menu cursor is on "Reset Move" but ui= still reports "Move". Should show "Reset Move" when the unit has already moved this turn. Observed 2026-04-13.
 - [ ] **scan_move disrupts targeting mode** [State] — Running scan_move while hovering a target in Attack targeting mode disrupted the targeting (screen changed from Battle_Attacking to Battle_Acting). Scans should be read-only and not send any key inputs during targeting. Observed 2026-04-13.
