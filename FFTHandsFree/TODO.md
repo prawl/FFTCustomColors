@@ -53,9 +53,6 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 
 ### NEXT 5 — Do these first (identified 2026-04-12 battle testing)
 
-### Screen Output Polish
-
-
 ### Tier 1 — Unblockers (do first)
 
 - [ ] **Inventory quantity for Items, Throw, and Iaido** [Abilities] — Three skillsets depend on a per-character "Held" count:
@@ -90,7 +87,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Active unit name/job stale across battles** [State] — After restarting a battle with different equipment/jobs, the name/job display doesn't refresh between battles.
 - [ ] **battle_move reports NOT CONFIRMED for valid moves** [Movement] — Navigation succeeds but F key confirmation doesn't transition. Timeout increased from 5s to 8s for long-distance moves.
 - [ ] **Detect disabled/grayed action menu items** [Movement] — Need to find a memory flag or detect from cursor behavior.
-- [ ] **Post-attack facing/move selection** [Movement] — After Act without prior Move, game returns to Battle_MyTurn with cursor on Move. battle_wait should handle this correctly.
 - [~] **battle_retry doesn't work from GameOver screen** [Execution] — Code exists, GameOver detection fixed. Needs live testing.
 - [ ] **Re-enable Ctrl fast-forward during enemy turns** [Execution] — Tested both continuous hold and pulse approaches. Neither visibly sped up animations. Low priority.
 - [ ] **Populate new BattleUnitState fields from memory** [State] — deathCounter, elementAbsorb/Null/Half/Weak, chargingAbility/chargeCt, facing. All need IC remaster addresses discovered.
@@ -130,10 +126,10 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ## 4. Instruction Guides (P1)
 
-- [ ] **PartyManagement.md** — How to access the party menu, view unit stats, change equipment, change jobs.
+- [x] **PartyManagement.md** — Written 2026-04-13.
 - [ ] **Shopping.md** — How to enter a settlement, navigate the outfitter, buy/sell items.
-- [ ] **FormationScreen.md** — How to place units before battle.
-- [ ] **SaveLoad.md** — How to save and load the game.
+- [x] **FormationScreen.md** — Written 2026-04-13.
+- [x] **SaveLoad.md** — Written 2026-04-13.
 - [ ] **StoryScenes.md** — How story cutscenes work, dialogue advancement.
 - [ ] **AbilitiesAndJobs.md** — How the job system works, JP, learning abilities.
 
