@@ -27,7 +27,7 @@ namespace FFTColorCustomizer.GameBridge
             int battleTeam, int battleActed, int battleMoved,
             int encA, int encB, bool isPartySubScreen, int eventId = 0,
             int submenuFlag = 0, int menuCursor = -1, int hover = 255,
-            int locationMenuFlag = 0, int shopTypeIndex = -1)
+            int locationMenuFlag = 0)
         {
             // rawLocation is the last-visited named place (village/shop/campaign ground).
             // It's STICKY — retains the last-visited location even when the player leaves.
@@ -133,24 +133,13 @@ namespace FFTColorCustomizer.GameBridge
                 if (atNamedLocation && encA != encB && !actedOrMoved && slot0 != 255)
                     return "EncounterDialog";
 
-                // LocationMenu variants: player is inside a named location's menu. The
-                // shopTypeIndex at 0x140D435F0 identifies which shop/service is highlighted.
-                // Discovered via module-snapshot diff 2026-04-14 by cycling cursor through
-                // the 4 shop options at Dorter.
-                //   0 = Outfitter, 1 = Tavern, 2 = Warriors' Guild, 3 = Poachers' Den
-                // Save Game and other menu entries not yet mapped — fall through to generic
-                // LocationMenu when shopTypeIndex is outside the known range.
+                // LocationMenu: player is inside a named location's menu. Which specific
+                // shop/service is highlighted lives in screen.UI (populated by the caller
+                // from shopTypeIndex at 0x140D435F0), NOT as a separate screen name —
+                // consistent with how we label action-menu cursor positions (e.g.
+                // Battle_MyTurn with ui=AutoBattle).
                 if (atNamedLocation)
-                {
-                    return shopTypeIndex switch
-                    {
-                        0 => "Outfitter",
-                        1 => "Tavern",
-                        2 => "WarriorsGuild",
-                        3 => "PoachersDen",
-                        _ => "LocationMenu"
-                    };
-                }
+                    return "LocationMenu";
 
                 // Mid-battle dialogue with slot0 torn down: rawLocation=255 + real event +
                 // slot0=0xFFFFFFFF + acted/moved=1 (happened after an action).

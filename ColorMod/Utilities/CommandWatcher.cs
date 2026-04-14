@@ -396,7 +396,7 @@ namespace FFTColorCustomizer.Utilities
                                 dP, dU, dLoc, dS0, dS9, dBm, dMm, dPs, dGo,
                                 dBt, dBa, dBmv, dEa, dEb, !dInBattle && IsPartySubScreen(),
                                 dEv, submenuFlag: dSf, menuCursor: dMc, hover: dHover,
-                                locationMenuFlag: dLmf, shopTypeIndex: dSti);
+                                locationMenuFlag: dLmf);
                             var snapshot = new Dictionary<string, object>
                             {
                                 ["timestamp"] = DateTime.UtcNow.ToString("o"),
@@ -2346,8 +2346,21 @@ namespace FFTColorCustomizer.Utilities
                     screen.BattleTeam, screen.BattleActed, screen.BattleMoved,
                     eA, eB, !inBattle && IsPartySubScreen(), eventId,
                     submenuFlag: submenuFlag, menuCursor: screen.MenuCursor,
-                    hover: hover, locationMenuFlag: locationMenuFlag,
-                    shopTypeIndex: shopTypeIndex);
+                    hover: hover, locationMenuFlag: locationMenuFlag);
+
+                // LocationMenu UI label from shopTypeIndex at 0x140D435F0. Mapped empirically
+                // at Dorter (4 shops). Save Game and others not yet mapped — stay null.
+                if (screen.Name == "LocationMenu")
+                {
+                    screen.UI = shopTypeIndex switch
+                    {
+                        0 => "Outfitter",
+                        1 => "Tavern",
+                        2 => "WarriorsGuild",
+                        3 => "PoachersDen",
+                        _ => null
+                    };
+                }
 
                 if (screen.Name == "Cutscene")
                     screen.EventId = eventId;
