@@ -7,12 +7,16 @@ public class ScreenStateMachineTests
 {
     private const int VK_RETURN = 0x0D;
     private const int VK_ESCAPE = 0x1B;
+    private const int VK_SPACE = 0x20;
+    private const int VK_1 = 0x31;
     private const int VK_LEFT = 0x25;
     private const int VK_UP = 0x26;
     private const int VK_RIGHT = 0x27;
     private const int VK_DOWN = 0x28;
+    private const int VK_B = 0x42;
     private const int VK_Q = 0x51;
     private const int VK_E = 0x45;
+    private const int VK_R = 0x52;
     private const int VK_T = 0x54;
     private const int VK_Y = 0x59;
 
@@ -193,14 +197,22 @@ public class ScreenStateMachineTests
     }
 
     [Fact]
-    public void EquipmentScreen_GridBounds()
+    public void EquipmentScreen_GridWraps()
     {
         var sm = CreateAtScreen(GameScreen.EquipmentScreen);
-        // Navigate to bottom-right
+        // 5 Downs from row 0: 0→1→2→3→4→0 (wrap) — end at row 0
         for (int i = 0; i < 5; i++) sm.OnKeyPressed(VK_DOWN);
+        Assert.Equal(0, sm.CursorRow);
+        // One more Down lands at row 1
+        sm.OnKeyPressed(VK_DOWN);
+        Assert.Equal(1, sm.CursorRow);
+
+        // Right toggles 0 ↔ 1 (column wrap)
+        Assert.Equal(0, sm.CursorCol);
         sm.OnKeyPressed(VK_RIGHT);
-        Assert.Equal(4, sm.CursorRow); // clamped at 4
-        Assert.Equal(1, sm.CursorCol); // clamped at 1
+        Assert.Equal(1, sm.CursorCol);
+        sm.OnKeyPressed(VK_RIGHT);
+        Assert.Equal(0, sm.CursorCol); // wrapped back
     }
 
     [Fact]
@@ -420,5 +432,199 @@ public class ScreenStateMachineTests
 
         sm.OnKeyPressed(VK_RIGHT);
         Assert.Contains("Change Job", sm.GetScreenDescription());
+    }
+
+    // --- CharacterStatus view toggles + side-flows (§10.6) ---
+
+    [Fact]
+    public void CharacterStatus_StatsExpandedToggle()
+    {
+        var sm = CreateAtScreen(GameScreen.CharacterStatus);
+        Assert.False(sm.StatsExpanded);
+        sm.OnKeyPressed(VK_1);
+        Assert.True(sm.StatsExpanded);
+        sm.OnKeyPressed(VK_1);
+        Assert.False(sm.StatsExpanded);
+    }
+
+    [Fact]
+    public void CharacterStatus_StatsExpanded_ResetsOnEscape()
+    {
+        var sm = CreateAtScreen(GameScreen.CharacterStatus);
+        sm.OnKeyPressed(VK_1);
+        Assert.True(sm.StatsExpanded);
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.False(sm.StatsExpanded);
+    }
+
+    [Fact]
+    public void CharacterStatus_Space_OpensCharacterDialog()
+    {
+        var sm = CreateAtScreen(GameScreen.CharacterStatus);
+        sm.OnKeyPressed(VK_SPACE);
+        Assert.Equal(GameScreen.CharacterDialog, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void CharacterDialog_Enter_ReturnsToCharacterStatus()
+    {
+        var sm = CreateAtScreen(GameScreen.CharacterStatus);
+        sm.OnKeyPressed(VK_SPACE);
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void CharacterStatus_SidebarIndex2_Enter_OpensCombatSets()
+    {
+        var sm = CreateAtScreen(GameScreen.CharacterStatus);
+        sm.OnKeyPressed(VK_DOWN); // sidebar = 1 (Job)
+        sm.OnKeyPressed(VK_DOWN); // sidebar = 2 (Combat Sets)
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.CombatSets, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void CombatSets_Escape_ReturnsToCharacterStatus()
+    {
+        var sm = CreateAtScreen(GameScreen.CombatSets);
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
+    }
+
+    // --- DismissUnit (external set via hold_key) ---
+
+    [Fact]
+    public void DismissUnit_CursorDefaultsToBack_LeftRightToggles()
+    {
+        var sm = CreateAtScreen(GameScreen.DismissUnit);
+        Assert.False(sm.DismissConfirmSelected); // Back is default (safe)
+        sm.OnKeyPressed(VK_RIGHT);
+        Assert.True(sm.DismissConfirmSelected);  // Confirm
+        sm.OnKeyPressed(VK_LEFT);
+        Assert.False(sm.DismissConfirmSelected);
+    }
+
+    [Fact]
+    public void DismissUnit_EscapeOrEnter_ReturnsToCharacterStatus()
+    {
+        var sm = CreateAtScreen(GameScreen.DismissUnit);
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
+
+        sm = CreateAtScreen(GameScreen.DismissUnit);
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
+    }
+
+    // --- EquipmentAndAbilities (EquipmentScreen) Effects view toggle + slot routing ---
+
+    [Fact]
+    public void EquipmentScreen_R_TogglesEffectsView()
+    {
+        var sm = CreateAtScreen(GameScreen.EquipmentScreen);
+        Assert.False(sm.EquipmentEffectsView);
+        sm.OnKeyPressed(VK_R);
+        Assert.True(sm.EquipmentEffectsView);
+        sm.OnKeyPressed(VK_R);
+        Assert.False(sm.EquipmentEffectsView);
+    }
+
+    [Fact]
+    public void EquipmentScreen_EffectsView_ResetsOnEscape()
+    {
+        var sm = CreateAtScreen(GameScreen.EquipmentScreen);
+        sm.OnKeyPressed(VK_R);
+        Assert.True(sm.EquipmentEffectsView);
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.False(sm.EquipmentEffectsView);
+    }
+
+    [Theory]
+    [InlineData(0, EquipmentSlot.Weapon)]
+    [InlineData(1, EquipmentSlot.Shield)]
+    [InlineData(2, EquipmentSlot.Headware)]
+    [InlineData(3, EquipmentSlot.CombatGarb)]
+    [InlineData(4, EquipmentSlot.Accessory)]
+    public void EquipmentScreen_EnterOnEquipmentSlot_CapturesSlotIdentity(int row, EquipmentSlot expected)
+    {
+        var sm = CreateAtScreen(GameScreen.EquipmentScreen);
+        for (int i = 0; i < row; i++) sm.OnKeyPressed(VK_DOWN);
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.EquipmentItemList, sm.CurrentScreen);
+        Assert.Equal(expected, sm.CurrentEquipmentSlot);
+    }
+
+    [Fact]
+    public void EquipmentScreen_QE_StaysOnScreen_ForPartyCycling()
+    {
+        // On EquipmentAndAbilities, Q/E cycle to prev/next party member while
+        // keeping the screen open (game-side behavior — state machine has no
+        // unit-identity to track, so the screen name stays the same).
+        var sm = CreateAtScreen(GameScreen.EquipmentScreen);
+        sm.OnKeyPressed(VK_Q);
+        Assert.Equal(GameScreen.EquipmentScreen, sm.CurrentScreen);
+        sm.OnKeyPressed(VK_E);
+        Assert.Equal(GameScreen.EquipmentScreen, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void EquipmentScreen_EnterOnPrimaryActionRow_IsNoOp()
+    {
+        // Row 0 of the abilities column = job-locked primary skillset
+        // (e.g. "Mettle" for Gallant Knight). Enter does nothing — the
+        // primary skillset can only change via JobSelection.
+        var sm = CreateAtScreen(GameScreen.EquipmentScreen);
+        sm.OnKeyPressed(VK_RIGHT);  // col = 1
+        // CursorRow is still 0
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.EquipmentScreen, sm.CurrentScreen);
+        Assert.Equal(0, sm.CursorRow);
+        Assert.Equal(1, sm.CursorCol);
+    }
+
+    [Theory]
+    [InlineData(1, GameScreen.SecondaryAbilities)]
+    [InlineData(2, GameScreen.ReactionAbilities)]
+    [InlineData(3, GameScreen.SupportAbilities)]
+    [InlineData(4, GameScreen.MovementAbilities)]
+    public void EquipmentScreen_EnterOnAbilityColumn_RoutesByRow(int row, GameScreen expected)
+    {
+        var sm = CreateAtScreen(GameScreen.EquipmentScreen);
+        sm.OnKeyPressed(VK_RIGHT); // col = 1 (Abilities column)
+        for (int i = 0; i < row; i++) sm.OnKeyPressed(VK_DOWN);
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(expected, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void AbilityPicker_EnterOrEscape_ReturnsToEquipmentScreen_RestoringCursor()
+    {
+        var sm = CreateAtScreen(GameScreen.EquipmentScreen);
+        sm.OnKeyPressed(VK_RIGHT);      // col 1
+        sm.OnKeyPressed(VK_DOWN);       // row 1 (secondary action)
+        sm.OnKeyPressed(VK_RETURN);     // → SecondaryAbilities, saves row=1 col=1
+        Assert.Equal(GameScreen.SecondaryAbilities, sm.CurrentScreen);
+
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.Equal(GameScreen.EquipmentScreen, sm.CurrentScreen);
+        Assert.Equal(1, sm.CursorRow);
+        Assert.Equal(1, sm.CursorCol);
+    }
+
+    [Fact]
+    public void EquipmentItemList_EnterOrEscape_RestoresEquipmentScreenCursor()
+    {
+        var sm = CreateAtScreen(GameScreen.EquipmentScreen);
+        sm.OnKeyPressed(VK_DOWN);       // row 1 (Shield)
+        sm.OnKeyPressed(VK_DOWN);       // row 2 (Headware)
+        sm.OnKeyPressed(VK_RETURN);     // → EquipmentItemList with slot=Headware
+        Assert.Equal(GameScreen.EquipmentItemList, sm.CurrentScreen);
+        Assert.Equal(EquipmentSlot.Headware, sm.CurrentEquipmentSlot);
+
+        sm.OnKeyPressed(VK_RETURN);     // equip → back to EquipmentScreen
+        Assert.Equal(GameScreen.EquipmentScreen, sm.CurrentScreen);
+        Assert.Equal(2, sm.CursorRow);
+        Assert.Equal(0, sm.CursorCol);
     }
 }

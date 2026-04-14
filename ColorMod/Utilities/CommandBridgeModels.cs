@@ -476,6 +476,21 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("activeUnitJob")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ActiveUnitJob { get; set; }
+
+        /// <summary>CharacterStatus view toggle: `1` key expands the full stat grid
+        /// (Move/Jump/PA/MA/PE/ME/weapon-parry/shield-parry/cloak-evade). When true,
+        /// the game's hint reads "[1] Less" and the header shows all numeric stats.
+        /// Only emitted on CharacterStatus.</summary>
+        [JsonPropertyName("statsExpanded")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool StatsExpanded { get; set; }
+
+        /// <summary>EquipmentAndAbilities view toggle: `R` key flips between the
+        /// default two-column equipment+abilities list and an "Equipment Effects"
+        /// summary of aggregate stat effects. Only emitted on EquipmentAndAbilities.</summary>
+        [JsonPropertyName("equipmentEffectsView")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool EquipmentEffectsView { get; set; }
     }
 
     public class TilePosition

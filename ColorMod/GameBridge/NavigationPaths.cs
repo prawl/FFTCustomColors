@@ -52,6 +52,7 @@ namespace FFTColorCustomizer.GameBridge
                 "EquippableCombatGarb" => GetEquippableItemPaths("armor"),
                 "EquippableAccessories" => GetEquippableItemPaths("accessory"),
                 "ActionAbilities" => GetAbilityPickerPaths("action ability (skillset)"),
+                "SecondaryAbilities" => GetAbilityPickerPaths("secondary action skillset (Items / Arts of War / Aim / etc.)"),
                 "ReactionAbilities" => GetAbilityPickerPaths("reaction ability"),
                 "SupportAbilities" => GetAbilityPickerPaths("support ability"),
                 "MovementAbilities" => GetAbilityPickerPaths("movement ability"),
@@ -1011,16 +1012,26 @@ namespace FFTColorCustomizer.GameBridge
                 ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up within column (wraps)" },
                 ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down within column (wraps)" },
                 ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Focus Equipment column (Weapon/Shield/Helm/Armor/Accessory)" },
-                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Focus Abilities column (Action/Reaction/Support/Movement)" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Focus Abilities column (Secondary/Reaction/Support/Movement)" },
                 ["Select"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ENTER, "Enter") },
-                    Desc = "Open slot picker for highlighted slot (Equippable<Type> or <Type>Abilities)"
+                    Desc = "Open slot picker (Equippable<Type> or <Type>Abilities). Row 0 of Abilities column is job-locked — no-op."
                 },
                 ["ToggleEffectsView"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_R, "R") },
                     Desc = "Toggle Equipment Effects summary view (aggregate stat effects) ↔ default list view"
+                },
+                ["PrevUnit"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_Q, "Q") },
+                    Desc = "Switch to previous unit in party, keeping this screen open (wraps)"
+                },
+                ["NextUnit"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_E, "E") },
+                    Desc = "Switch to next unit in party, keeping this screen open (wraps)"
                 },
                 ["Back"] = new PathEntry
                 {

@@ -188,6 +188,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
         [Theory]
         [InlineData("ActionAbilities")]
+        [InlineData("SecondaryAbilities")]
         [InlineData("ReactionAbilities")]
         [InlineData("SupportAbilities")]
         [InlineData("MovementAbilities")]

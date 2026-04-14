@@ -16,7 +16,9 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_UP = 0x26;
         private const int VK_RIGHT = 0x27;
         private const int VK_DOWN = 0x28;
+        private const int VK_SPACE = 0x20;
         private const int VK_1 = 0x31;
+        private const int VK_B = 0x42;
         private const int VK_Q = 0x51;
         private const int VK_E = 0x45;
         private const int VK_R = 0x52;
@@ -35,9 +37,47 @@ namespace FFTColorCustomizer.GameBridge
         public int RosterCount { get; set; } = 17;
         public int JobActionIndex { get; private set; } // 0=Learn, 1=Change
 
+        /// <summary>
+        /// CharacterStatus view toggle: `1` key expands the header to show the
+        /// full stat grid (Movement/Jump/PA/MA/PE/ME/etc.). Toggle in-place.
+        /// </summary>
+        public bool StatsExpanded { get; private set; }
+
+        /// <summary>
+        /// EquipmentAndAbilities view toggle: `R` key flips the center panel
+        /// between the default list view and the Equipment Effects summary.
+        /// Toggle in-place.
+        /// </summary>
+        public bool EquipmentEffectsView { get; private set; }
+
+        /// <summary>
+        /// DismissUnit cursor position: false = Back (default, safe), true = Confirm.
+        /// Left/Right toggle. Enter on Confirm permanently dismisses the unit.
+        /// </summary>
+        public bool DismissConfirmSelected { get; private set; }
+
+        /// <summary>
+        /// Which equipment slot was highlighted when Enter opened the picker.
+        /// Used to surface the correct Equippable&lt;Type&gt; screen name at
+        /// detection time even though the state machine uses a single
+        /// EquipmentItemList game-screen internally.
+        /// </summary>
+        public EquipmentSlot CurrentEquipmentSlot { get; private set; } = EquipmentSlot.Weapon;
+
+        /// <summary>
+        /// Which ability slot was highlighted when Enter opened the ability picker.
+        /// Rows 0 and 1 both route to ActionAbilities — game treats them as
+        /// separate slots (primary + secondary) but the picker is the same.
+        /// </summary>
+        public AbilitySlot CurrentAbilitySlot { get; private set; } = AbilitySlot.PrimaryAction;
+
         // Saved party menu cursor for returning from CharacterStatus
         private int _savedPartyRow;
         private int _savedPartyCol;
+
+        // Saved EquipmentAndAbilities cursor for returning from a picker.
+        private int _savedEquipmentRow;
+        private int _savedEquipmentCol;
 
         public void SetScreen(GameScreen screen)
         {
@@ -99,6 +139,21 @@ namespace FFTColorCustomizer.GameBridge
                     break;
                 case GameScreen.JobChangeConfirmation:
                     HandleJobChangeConfirmation(vkCode);
+                    break;
+                case GameScreen.SecondaryAbilities:
+                case GameScreen.ReactionAbilities:
+                case GameScreen.SupportAbilities:
+                case GameScreen.MovementAbilities:
+                    HandleAbilityPicker(vkCode);
+                    break;
+                case GameScreen.CombatSets:
+                    HandleCombatSets(vkCode);
+                    break;
+                case GameScreen.CharacterDialog:
+                    HandleCharacterDialog(vkCode);
+                    break;
+                case GameScreen.DismissUnit:
+                    HandleDismissUnit(vkCode);
                     break;
             }
         }
@@ -172,6 +227,7 @@ namespace FFTColorCustomizer.GameBridge
                     CursorCol = _savedPartyCol;
                     GridColumns = 5;
                     GridRows = (RosterCount + 4) / 5;
+                    StatsExpanded = false; // reset view toggle when leaving
                     break;
                 case VK_UP:
                     // Sidebar wraps: Equipment (0) → Combat Sets (2).
@@ -181,6 +237,18 @@ namespace FFTColorCustomizer.GameBridge
                     // Sidebar wraps: Combat Sets (2) → Equipment (0).
                     SidebarIndex = SidebarIndex == 2 ? 0 : SidebarIndex + 1;
                     break;
+                case VK_1:
+                    // `1` toggles the full stat grid expansion in-place.
+                    // Hint at bottom-right flips between [1] More / [1] Less.
+                    StatsExpanded = !StatsExpanded;
+                    break;
+                case VK_SPACE:
+                    // Space opens the unit's flavor-text dialog.
+                    CurrentScreen = GameScreen.CharacterDialog;
+                    break;
+                // VK_B (hold 3s) opens DismissUnit. Held-key detection lives outside
+                // the state machine — the hold_key action in CommandWatcher will
+                // invoke SetScreen(DismissUnit) directly after the timer completes.
                 case VK_RETURN:
                     if (SidebarIndex == 0)
                     {
@@ -198,10 +266,12 @@ namespace FFTColorCustomizer.GameBridge
                         GridColumns = IsRamza ? 8 : 6;
                         GridRows = 3;
                     }
-                    // SidebarIndex == 2 (Combat Sets) — NOT yet modeled in state machine.
-                    // The GameScreen enum doesn't have CombatSets. Detection falls back
-                    // to CharacterStatus with ui="Combat Sets" until the nested screen
-                    // is added to GameScreen and HandleCombatSets is implemented.
+                    else if (SidebarIndex == 2)
+                    {
+                        CurrentScreen = GameScreen.CombatSets;
+                        CursorRow = 0;
+                        CursorCol = 0;
+                    }
                     break;
             }
         }
@@ -212,23 +282,71 @@ namespace FFTColorCustomizer.GameBridge
             {
                 case VK_ESCAPE:
                     CurrentScreen = GameScreen.CharacterStatus;
+                    EquipmentEffectsView = false; // reset view toggle when leaving
                     break;
                 case VK_UP:
-                    if (CursorRow > 0) CursorRow--;
+                    // Column-local vertical wrap: 5 rows per column.
+                    CursorRow = CursorRow == 0 ? 4 : CursorRow - 1;
                     break;
                 case VK_DOWN:
-                    if (CursorRow < GridRows - 1) CursorRow++;
+                    CursorRow = CursorRow == 4 ? 0 : CursorRow + 1;
                     break;
                 case VK_LEFT:
-                    if (CursorCol > 0) CursorCol--;
+                    // Horizontal wrap: col 0 (Equipment) ↔ col 1 (Abilities).
+                    CursorCol = CursorCol == 0 ? 1 : 0;
                     break;
                 case VK_RIGHT:
-                    if (CursorCol < GridColumns - 1) CursorCol++;
+                    CursorCol = CursorCol == 1 ? 0 : 1;
+                    break;
+                case VK_R:
+                    // R toggles the Equipment Effects summary view in-place.
+                    EquipmentEffectsView = !EquipmentEffectsView;
                     break;
                 case VK_RETURN:
-                    CurrentScreen = GameScreen.EquipmentItemList;
+                    // Route to slot-specific picker based on cursor position.
+                    // Left column (CursorCol == 0) = equipment slots by row:
+                    //   0=Weapon, 1=Shield, 2=Headware, 3=CombatGarb, 4=Accessory
+                    // Right column (CursorCol == 1) = ability slots by row:
+                    //   0=PrimaryAction (LOCKED — no-op), 1=Secondary,
+                    //   2=Reaction, 3=Support, 4=Movement
+                    if (CursorCol == 1 && CursorRow == 0)
+                    {
+                        // PrimaryAction is job-locked. Enter does nothing in-game —
+                        // the primary skillset is determined by the unit's current
+                        // job (change it via JobSelection instead). Intentionally
+                        // fall through without transitioning.
+                        break;
+                    }
+                    if (CursorCol == 0)
+                    {
+                        // All five equipment slots share the generic EquipmentItemList
+                        // state machine screen. The slot identity is recoverable at
+                        // detection time via CurrentEquipmentSlot (read from CursorRow
+                        // at the moment of Enter) — CommandWatcher uses this to
+                        // surface the correct Equippable<Type> screen name.
+                        CurrentEquipmentSlot = (EquipmentSlot)System.Math.Min(CursorRow, 4);
+                        CurrentScreen = GameScreen.EquipmentItemList;
+                    }
+                    else
+                    {
+                        // Abilities column (rows 1-4 only; row 0 handled above).
+                        CurrentAbilitySlot = (AbilitySlot)System.Math.Min(CursorRow, 4);
+                        CurrentScreen = CurrentAbilitySlot switch
+                        {
+                            AbilitySlot.SecondaryAction => GameScreen.SecondaryAbilities,
+                            AbilitySlot.Reaction => GameScreen.ReactionAbilities,
+                            AbilitySlot.Support => GameScreen.SupportAbilities,
+                            AbilitySlot.Movement => GameScreen.MovementAbilities,
+                            _ => GameScreen.SecondaryAbilities
+                        };
+                    }
+                    // Reset picker cursor
+                    int savedRow = CursorRow;
+                    int savedCol = CursorCol;
                     CursorRow = 0;
                     CursorCol = 0;
+                    _savedEquipmentRow = savedRow;
+                    _savedEquipmentCol = savedCol;
                     break;
             }
         }
@@ -238,10 +356,77 @@ namespace FFTColorCustomizer.GameBridge
             switch (vk)
             {
                 case VK_ESCAPE:
+                case VK_RETURN:
+                    // Both Escape (cancel) and Enter (equip) return to the
+                    // two-column EquipmentAndAbilities screen. Restore the
+                    // cursor position so the player lands on the same slot
+                    // they opened.
                     CurrentScreen = GameScreen.EquipmentScreen;
+                    CursorRow = _savedEquipmentRow;
+                    CursorCol = _savedEquipmentCol;
+                    GridColumns = 2;
+                    GridRows = 5;
                     break;
+            }
+        }
+
+        // Shared handler for Action/Reaction/Support/MovementAbilities pickers.
+        // Same transitions as EquipmentItemList — cancel or equip both return
+        // to EquipmentAndAbilities with cursor restored.
+        private void HandleAbilityPicker(int vk)
+        {
+            switch (vk)
+            {
+                case VK_ESCAPE:
                 case VK_RETURN:
                     CurrentScreen = GameScreen.EquipmentScreen;
+                    CursorRow = _savedEquipmentRow;
+                    CursorCol = _savedEquipmentCol;
+                    GridColumns = 2;
+                    GridRows = 5;
+                    break;
+            }
+        }
+
+        // CombatSets: third sidebar item under CharacterStatus. Inner navigation
+        // not yet explored live — treat as a terminal state that only Escape exits.
+        // When the feature is used and its screen shape is known, expand the
+        // handler with Up/Down/Enter semantics.
+        private void HandleCombatSets(int vk)
+        {
+            if (vk == VK_ESCAPE)
+                CurrentScreen = GameScreen.CharacterStatus;
+        }
+
+        // CharacterDialog: flavor-text dialog opened by Space on CharacterStatus.
+        // Enter advances / closes; Escape does nothing in this game's dialogs.
+        private void HandleCharacterDialog(int vk)
+        {
+            if (vk == VK_RETURN)
+                CurrentScreen = GameScreen.CharacterStatus;
+        }
+
+        // DismissUnit: confirmation opened by holding B for 3s on CharacterStatus.
+        // Cursor defaults to Back (safe). Left/Right toggle. Enter activates.
+        private void HandleDismissUnit(int vk)
+        {
+            switch (vk)
+            {
+                case VK_LEFT:
+                case VK_RIGHT:
+                    DismissConfirmSelected = !DismissConfirmSelected;
+                    break;
+                case VK_ESCAPE:
+                    CurrentScreen = GameScreen.CharacterStatus;
+                    DismissConfirmSelected = false;
+                    break;
+                case VK_RETURN:
+                    // Regardless of Confirm/Back, both transition back to
+                    // CharacterStatus. If Confirm fires, the unit is dismissed
+                    // (roster change) — detection will pick that up on the next
+                    // scan; the state machine just tracks the menu transition.
+                    CurrentScreen = GameScreen.CharacterStatus;
+                    DismissConfirmSelected = false;
                     break;
             }
         }

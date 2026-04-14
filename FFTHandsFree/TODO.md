@@ -322,7 +322,7 @@ Captured 2026-04-14 from user screenshots. State machine already exists in `Scre
 ```
 PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar──► EquipmentAndAbilities / JobSelection / CombatSets
    │                              │                                     │
-   │                              │                                     └──Enter on ability slot──► ActionAbilities / ReactionAbilities / SupportAbilities / MovementAbilities
+   │                              │                                     └──Enter on ability slot──► SecondaryAbilities / ReactionAbilities / SupportAbilities / MovementAbilities (Primary is job-locked, no-op)
    │                              │                                     └──Enter on equipment slot──► EquippableWeapons / EquippableShields / EquippableHeadware / EquippableCombatGarb / EquippableAccessories
    │                              └──Enter on Job──► JobSelection ──Enter──► JobActionMenu ──Right+Enter──► JobChangeConfirmation
    │                                                                    └──Left+Enter──► LearnAbilities (TBD)
@@ -377,24 +377,24 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
   - `Exit Game` — confirmation modal, then quits the process.
   Wrapping: in the options list, Up on `Save` stays (or wraps to `Exit Game`? verify live). Tab wrap (E on Options → Units) confirmed.
 - [x] **`CharacterStatus` sidebar** — DONE 2026-04-14. `screen.UI` populated from `ScreenStateMachine.SidebarIndex` (now wraps both directions). Reads "Equipment & Abilities" / "Job" / "Combat Sets". No memory scan needed — sidebar is purely keyboard-driven and the state machine tracks Up/Down reliably.
-- [ ] **Equipment Effects toggle (`R` key on `EquipmentAndAbilities`)** — captured 2026-04-14 SS1 + SS2. Pressing R flips the center panel between the default "equipment + abilities list" view and an "Equipment Effects" view that summarises aggregate stat effects from the loadout (e.g. "Permanent Shell", "Immune Blindness, Sleep"). Pressing R again flips back. Two sub-views of the same screen — model as a toggle within `EquipmentAndAbilities`:
+- [x] **Equipment Effects toggle (`R` key on `EquipmentAndAbilities`)** — DONE 2026-04-14. State machine tracks `EquipmentEffectsView` (toggled by `R`); CommandWatcher surfaces it as `equipmentEffectsView` boolean on the screen response. Resets when leaving the screen. Effects panel TEXT scrape (e.g. "Permanent Shell", "Immune Blindness") still TODO — needs a memory scan or widget hook. Sub-bullets below also done:
   - Default view: `ui=<highlighted item or ability name>` (current spec).
   - Effects view: new sub-state or a flag like `EquipmentAndAbilities ui=EquipmentEffects view=Effects`. The bottom-right hint reads `[R] Equipment Effects` in the default view and `[R] View Equipment` in the effects view — confirming it's a binary toggle on the same screen.
   - ValidPaths: add `ToggleEffectsView` action that wraps the `R` key. Detection: needs a memory scan for the view flag (binary). Scrape the effects panel text as its own payload field when the flag is on.
-- [ ] **Full stats panel toggle (`1` key on `CharacterStatus`)** — captured 2026-04-14 SS3. Pressing `1` expands the header to show the full stat grid: Movement, Jump, Speed, Physical Attack, Magick Attack, Physical Evasion, Magick Evasion, Weapon Attack (R), Weapon Attack (L), Weapon Parry (R), Weapon Parry (L), Shield Physical Parry %, Shield Magick Parry %, Cloak Physical Evasion, Cloak Magick Evasion. Pressing `1` again collapses it. Bottom-right hint toggles between `[1] More` and `[1] Less`.
+- [x] **Full stats panel toggle (`1` key on `CharacterStatus`)** — DONE 2026-04-14. State machine tracks `StatsExpanded` (toggled by `1`); CommandWatcher surfaces it as `statsExpanded` boolean. Resets when leaving CharacterStatus. The actual stat NUMBERS (Move/Jump/PA/MA/PE/ME/WP-R/WP-L/Parry/etc.) still TODO — needs a memory scan for each stat's address.
   - Model as a view flag on `CharacterStatus`: `statsExpanded: true/false`.
   - When expanded, surface the full stat block in the screen response (NOT just the cursor label). This supersedes the "Full stat panel on CharacterStatus" entry below — the data IS already rendered numbers, just needs scraping when the flag is on.
   - ValidPaths: add `ToggleStatsPanel` action that wraps the `1` key.
   - Detection: needs a memory scan for the stats-expanded flag (binary).
-- [ ] **Character dialog (spacebar on `CharacterStatus`)** — pressing Space on a unit's CharacterStatus opens a character-specific flavor-text dialog with portrait (captured 2026-04-14 SS1: Kenrick says "My father is an arms merchant..."). Advances with Enter like cutscenes. New state: `CharacterDialog` with ValidPaths `Advance` (Enter) and `Close` (Escape). Low-priority since it's narrative flavor Claude doesn't strictly need, but supporting it keeps the "play like a human" principle intact — a curious player would talk to their units.
-- [ ] **Dismiss Unit flow (hold B on `CharacterStatus`)** — holding B for 3+ seconds opens a `DismissUnit` confirmation screen (captured 2026-04-14 SS2: "Wait! This is a misunderstanding, surely..." → "Dismiss Kenrick from your party?" Confirm/Back). New state: `DismissUnit` with ValidPaths `Confirm` / `Back` and `ui=Confirm`/`ui=Back` reflecting cursor. Needs a held-key helper since the input is a 3-second press, not a single Enter — add `hold_key <vk> <seconds>` action or equivalent. Action helper: `dismiss_unit <name>` (already in TODO, flesh out once this state detects).
+- [x] **Character dialog (spacebar on `CharacterStatus`)** — DONE 2026-04-14. New state `CharacterDialog` detects via state machine. Only Enter advances (Escape is a no-op on dialogs in this game). Detection live-verified.
+- [x] **Dismiss Unit flow (hold B on `CharacterStatus`)** — DONE 2026-04-14. Added `hold_key <vk> <durationMs>` action in CommandWatcher and `dismiss_unit` shell helper in fft.sh. When VK_B is held ≥3s on CharacterStatus, the state machine transitions to DismissUnit. Cursor defaults to Back (safe). `ui=Back/Confirm` reflects the toggle. Live-verified on Kenrick. Action helper `dismiss_unit <name>` (find unit, navigate to status, hold B, confirm) still TODO — current `dismiss_unit` only fires the held key, doesn't navigate.
 - [x] **Rename `Equipment_Screen` → `EquipmentAndAbilities`** — DONE 2026-04-14 (screen name only; `GameScreen.EquipmentScreen` enum still legacy, renamed in the ScreenDetectionLogic → CommandWatcher mapper). The `ui=<highlighted item name>` inner-cursor work (Ragnarok / Escutcheon / Mettle / etc.) is still TODO — requires decoding the game's cursor position inside the two-column panel.
-- [ ] **New states for ability slots** — pressing Enter on the Abilities column opens a picker specific to that slot type:
-  - `ActionAbilities` — ui=<skillset name> (Items, Arts of War, Aim, Martial Arts, White Magicks, Black Magicks, Time Magicks, ...). Screenshot showed Mettle + Items + Arts of War + Aim + Martial Arts + White/Black/Time Magicks.
+- [x] **New states for ability slots** — DONE 2026-04-14. `SecondaryAbilities` / `ReactionAbilities` / `SupportAbilities` / `MovementAbilities` detected via state machine routing on EquipmentAndAbilities Enter (right column rows 1-4). Row 0 (Primary action) is intentionally a no-op — the primary skillset is job-locked. All 4 pickers live-verified. Inner `ui=<skillset/ability name>` cursor decoding still TODO — needs the picker's selected-row address. The slot details below are now historical context:
+  - `SecondaryAbilities` — ui=<skillset name> (Items, Arts of War, Aim, Martial Arts, White Magicks, Black Magicks, Time Magicks, ...). Screenshot showed Mettle + Items + Arts of War + Aim + Martial Arts + White/Black/Time Magicks. Primary action (row 0) is job-locked — no picker opens; change job via JobSelection to change the primary skillset.
   - `ReactionAbilities` — ui=<ability name> (Parry, Counter, Auto-Potion, ...).
   - `SupportAbilities` — ui=<ability name> (Magick Defense Boost, Equip Heavy Armor, Concentration, ...).
   - `MovementAbilities` — ui=<ability name> (Movement +3, Move-Find Item, Teleport, ...).
-- [ ] **New states for equipment slots** — pressing Enter on an equipment slot opens a type-filtered picker. Right pane shows stats/description of the highlighted item.
+- [x] **New states for equipment slots** — DONE 2026-04-14. `EquippableWeapons` / `EquippableShields` / `EquippableHeadware` / `EquippableCombatGarb` / `EquippableAccessories` detected via state machine routing on EquipmentAndAbilities Enter (left column rows 0-4). All 5 pickers live-verified. `EquipmentSlot` enum added to ScreenStateModels.cs; CommandWatcher uses `CurrentEquipmentSlot` (captured at Enter time) to surface the correct slot-specific screen name. Inner `ui=<item name>` decoding still TODO. Slot details below are historical context:
   - `EquippableWeapons` — ui=<weapon name> (Ragnarok, Materia Blade, Chaos Blade, Blood Sword, Excalibur, Save the Queen, ...). Columns show Equipped/Held counts.
   - `EquippableShields` — ui=<shield name> (Escutcheon, Aegis Shield, ...).
   - `EquippableHeadware` — ui=<helm name> (Grand Helm, Crystal Helm, ...).
@@ -405,7 +405,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
   - `JobActionMenu` — modal with Learn Abilities (left) / Change Job (right). `ui=Learn Abilities` or `ui=Change Job`.
   - `JobChangeConfirmation` — yes/no after selecting Change Job. `ui=Confirm` / `ui=Cancel`.
   - `EquippableItemList` (currently `EquipmentItemList`) — already has ValidPaths; add `ui=<item name>`.
-- [ ] **`CombatSets` state** — third sidebar item under CharacterStatus; new state not modeled yet. Detect and label. (Combat sets let you save equipment loadouts — important for swapping gear pre-battle.)
+- [x] **`CombatSets` state** — DONE 2026-04-14 (boundary detection only). Pressing Enter on the third sidebar item now transitions to `CombatSets` in the state machine; Escape returns to CharacterStatus. Inner navigation NOT modeled — user explicitly opted to defer (loadouts feature not in use). Add Up/Down/Enter handlers when needed.
 
 ### Data surfacing — TODO
 
@@ -414,7 +414,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
 - [ ] **Element resistance grid** — the colored symbols on the right side of CharacterStatus show elemental absorb/null/halve/weak. Decode from memory.
 - [ ] **Equipped items with stat totals on `EquipmentAndAbilities`** — the "Equipment Effects" summary under the two columns aggregates stats from the current loadout. Surface as `equipmentStats: { hpBonus: X, paBonus: Y, ... }`.
 - [ ] **JP totals per job on `JobSelection`** — each job tile shows Lv + JP (e.g. "Lv. 8 5465 JP" for Knight). Surface as an array so Claude can see which jobs are grinded.
-- [ ] **Ability list with learned/unlearned on inside `ActionAbilities`** etc. — each ability shows JP cost + learned status (icon differs). Surface so Claude knows what's available to learn.
+- [ ] **Ability list with learned/unlearned on inside `SecondaryAbilities`** etc. — each ability shows JP cost + learned status (icon differs). Surface so Claude knows what's available to learn.
 
 ### ValidPaths — TODO
 

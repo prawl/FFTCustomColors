@@ -346,6 +346,17 @@ world_travel_to() { fft "{\"id\":\"$(id)\",\"action\":\"world_travel_to\",\"loca
 # advance_dialogue: Advance cutscene dialogue by one text box (presses Enter).
 advance_dialogue() { fft "{\"id\":\"$(id)\",\"action\":\"advance_dialogue\"}"; }
 
+# hold_key: Hold a key down for a duration, then release. Used for game
+# mechanics that need a real held press (e.g. hold-B-3s → DismissUnit).
+# Usage: hold_key <vk> [durationMs]   (default 3500ms)
+hold_key() {
+  local vk="$1"; local ms="${2:-3500}"
+  fft "{\"id\":\"$(id)\",\"action\":\"hold_key\",\"searchValue\":$vk,\"readSize\":$ms}" $((ms / 1000 + 5))
+}
+
+# dismiss_unit: Trigger the hold-B DismissUnit confirmation on CharacterStatus.
+dismiss_unit() { hold_key 66 3500; }  # 0x42 = VK_B
+
 # save: Save the game.
 save() { fft "{\"id\":\"$(id)\",\"action\":\"save\"}"; }
 

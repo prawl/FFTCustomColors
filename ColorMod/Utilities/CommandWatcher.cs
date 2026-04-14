@@ -68,7 +68,8 @@ namespace FFTColorCustomizer.Utilities
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
             "read_dialogue", "write_byte", "dump_detection_inputs",
-            "scrape_shop_items"
+            "scrape_shop_items",
+            "hold_key"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -965,6 +966,50 @@ namespace FFTColorCustomizer.Utilities
                         {
                             response.Status = "failed";
                             response.Error = $"Unknown screen: {screenName}. Valid: {string.Join(", ", Enum.GetNames<GameScreen>())}";
+                        }
+                        break;
+
+                    case "hold_key":
+                        // Holds a key down for a specified duration, then releases.
+                        // Used for game mechanics that require a real held press — e.g.
+                        // hold-B-3s → DismissUnit confirmation on CharacterStatus.
+                        // Expects command.SearchValue = VK code, command.ReadSize = ms
+                        // (reusing existing fields to avoid bloating the command model).
+                        {
+                            IntPtr gameWindow = Process.GetCurrentProcess().MainWindowHandle;
+                            if (gameWindow == IntPtr.Zero)
+                            {
+                                response.Status = "failed";
+                                response.Error = "Game window not found";
+                                break;
+                            }
+                            int vk = command.SearchValue;
+                            int holdMs = command.ReadSize > 0 ? command.ReadSize : 3500;
+                            if (vk <= 0)
+                            {
+                                response.Status = "failed";
+                                response.Error = "hold_key requires searchValue=<vk code>";
+                                break;
+                            }
+                            bool down = _inputSimulator.SendKeyDownToWindow(gameWindow, vk);
+                            Thread.Sleep(holdMs);
+                            bool up = _inputSimulator.SendKeyUpToWindow(gameWindow, vk);
+                            if (down && up)
+                            {
+                                response.Status = "completed";
+                                // Notify state machine — particularly relevant for
+                                // VK_B on CharacterStatus which should trigger DismissUnit.
+                                if (vk == 0x42 /* VK_B */ && holdMs >= 3000
+                                    && ScreenMachine?.CurrentScreen == GameScreen.CharacterStatus)
+                                {
+                                    ScreenMachine.SetScreen(GameScreen.DismissUnit);
+                                }
+                            }
+                            else
+                            {
+                                response.Status = "failed";
+                                response.Error = $"hold_key send failed (down={down} up={up})";
+                            }
                         }
                         break;
 
@@ -2289,7 +2334,14 @@ namespace FFTColorCustomizer.Utilities
                 GameScreen.EquipmentItemList or
                 GameScreen.JobScreen or
                 GameScreen.JobActionMenu or
-                GameScreen.JobChangeConfirmation;
+                GameScreen.JobChangeConfirmation or
+                GameScreen.SecondaryAbilities or
+                GameScreen.ReactionAbilities or
+                GameScreen.SupportAbilities or
+                GameScreen.MovementAbilities or
+                GameScreen.CombatSets or
+                GameScreen.CharacterDialog or
+                GameScreen.DismissUnit;
         }
 
         private DetectedScreen? DetectScreen()
@@ -2442,7 +2494,14 @@ namespace FFTColorCustomizer.Utilities
                         GameScreen.EquipmentItemList or
                         GameScreen.JobScreen or
                         GameScreen.JobActionMenu or
-                        GameScreen.JobChangeConfirmation;
+                        GameScreen.JobChangeConfirmation or
+                        GameScreen.SecondaryAbilities or
+                        GameScreen.ReactionAbilities or
+                        GameScreen.SupportAbilities or
+                        GameScreen.MovementAbilities or
+                        GameScreen.CombatSets or
+                        GameScreen.CharacterDialog or
+                        GameScreen.DismissUnit;
 
                 if (screen.Name == "PartySubScreen" || screen.Name == "PartyMenu" ||
                     (stateMachineInPartyMenu && (screen.Name == "TravelList" || screen.Name == "WorldMap")))
@@ -2457,7 +2516,25 @@ namespace FFTColorCustomizer.Utilities
                             // center panel reality (equipment + abilities). Enum rename
                             // deferred to the dedicated rename session — see TODO §10.5.
                             GameScreen.EquipmentScreen => "EquipmentAndAbilities",
-                            GameScreen.EquipmentItemList => "EquipmentItemList",
+                            // EquipmentItemList is a generic picker — resolve to the
+                            // slot-specific Equippable<Type> name using CurrentEquipmentSlot
+                            // captured at Enter time.
+                            GameScreen.EquipmentItemList => ScreenMachine.CurrentEquipmentSlot switch
+                            {
+                                EquipmentSlot.Weapon => "EquippableWeapons",
+                                EquipmentSlot.Shield => "EquippableShields",
+                                EquipmentSlot.Headware => "EquippableHeadware",
+                                EquipmentSlot.CombatGarb => "EquippableCombatGarb",
+                                EquipmentSlot.Accessory => "EquippableAccessories",
+                                _ => "EquipmentItemList"
+                            },
+                            GameScreen.SecondaryAbilities => "SecondaryAbilities",
+                            GameScreen.ReactionAbilities => "ReactionAbilities",
+                            GameScreen.SupportAbilities => "SupportAbilities",
+                            GameScreen.MovementAbilities => "MovementAbilities",
+                            GameScreen.CombatSets => "CombatSets",
+                            GameScreen.CharacterDialog => "CharacterDialog",
+                            GameScreen.DismissUnit => "DismissUnit",
                             GameScreen.JobScreen => "JobSelection",
                             GameScreen.JobActionMenu => "JobActionMenu",
                             GameScreen.JobChangeConfirmation => "JobChangeConfirmation",
@@ -2488,6 +2565,19 @@ namespace FFTColorCustomizer.Utilities
                         2 => "Combat Sets",
                         _ => null
                     };
+                    screen.StatsExpanded = ScreenMachine.StatsExpanded;
+                }
+
+                // EquipmentAndAbilities Effects view toggle.
+                if (screen.Name == "EquipmentAndAbilities" && ScreenMachine != null)
+                {
+                    screen.EquipmentEffectsView = ScreenMachine.EquipmentEffectsView;
+                }
+
+                // DismissUnit cursor label: Back (default/safe) vs Confirm.
+                if (screen.Name == "DismissUnit" && ScreenMachine != null)
+                {
+                    screen.UI = ScreenMachine.DismissConfirmSelected ? "Confirm" : "Back";
                 }
 
                 // Track world map location for auto map loading (persists to disk).
