@@ -32,6 +32,7 @@ namespace FFTColorCustomizer.Utilities
         private MapLoader? _mapLoader;
         private RosterReader? _rosterReader;
         private NameTableLookup? _rosterNameTable;
+        private HoveredUnitArray? _hoveredArray;
         private readonly BattleTurnTracker _turnTracker = new();
         private bool _movedThisTurn;
         private int _postMoveX = -1, _postMoveY = -1; // confirmed position after battle_move
@@ -2604,18 +2605,27 @@ namespace FFTColorCustomizer.Utilities
                     screen.EquipmentEffectsView = ScreenMachine.EquipmentEffectsView;
                 }
 
+                // (Per-unit equipment is surfaced via the roster grid block
+                // above — no separate "viewed unit" loadout needed now that
+                // every unit's data is attached to its grid entry.)
+
                 // DismissUnit cursor label: Back (default/safe) vs Confirm.
                 if (screen.Name == "DismissUnit" && ScreenMachine != null)
                 {
                     screen.UI = ScreenMachine.DismissConfirmSelected ? "Confirm" : "Back";
                 }
 
-                // Roster grid on the PartyMenu Units tab. One round-trip beats
-                // cursor-move + re-read cycles. See TODO §10.6.
-                if (screen.Name == "PartyMenu" && Explorer != null)
+                // Roster grid on PartyMenu + every nested PartyMenu screen so
+                // per-unit equipment is always available to Claude. One round-
+                // trip beats cursor-move + re-read cycles. See TODO §10.6.
+                bool onPartyTree = screen.Name == "PartyMenu"
+                    || screen.Name == "CharacterStatus"
+                    || screen.Name == "EquipmentAndAbilities";
+                if (onPartyTree && Explorer != null)
                 {
                     if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
                     if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+                    if (_hoveredArray == null) _hoveredArray = new HoveredUnitArray(Explorer);
                     try
                     {
                         var slots = _rosterReader.ReadAll();
@@ -2629,7 +2639,7 @@ namespace FFTColorCustomizer.Utilities
                             };
                             foreach (var s in slots)
                             {
-                                grid.Units.Add(new RosterUnit
+                                var unit = new RosterUnit
                                 {
                                     Slot = s.SlotIndex,
                                     Name = s.Name,
@@ -2637,7 +2647,30 @@ namespace FFTColorCustomizer.Utilities
                                     Job = s.JobName,
                                     Brave = s.Brave,
                                     Faith = s.Faith,
-                                });
+                                };
+                                // Equipment comes from the roster slot itself
+                                // (stable static array at 0x1411A18D0). The
+                                // hovered-unit heap array was a red herring —
+                                // verified 2026-04-14 that roster +0x0E..+0x1A
+                                // holds the canonical u16 equipment IDs for
+                                // every unit (FFTPatcher-keyed).
+                                var lo = _rosterReader.ReadLoadout(s.SlotIndex);
+                                if (lo != null)
+                                {
+                                    unit.Equipment = new Loadout
+                                    {
+                                        Weapon = lo.WeaponName,
+                                        LeftHand = lo.LeftHandName,
+                                        Shield = lo.ShieldName,
+                                        Helm = lo.HelmName,
+                                        Body = lo.BodyName,
+                                        Accessory = lo.AccessoryName,
+                                    };
+                                }
+                                // HP/MP are NOT stored in the roster — they're
+                                // runtime-computed from job base + equipment.
+                                // Deferred to a future session (see TODO §10.6).
+                                grid.Units.Add(unit);
                             }
                             screen.Roster = grid;
                         }

@@ -498,6 +498,45 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("roster")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public RosterGrid? Roster { get; set; }
+
+        /// <summary>Equipped items for the unit currently shown on
+        /// EquipmentAndAbilities / CharacterStatus. Only populated when we
+        /// can identify the viewed unit (currently Ramza-only — see TODO
+        /// §10.6 "Viewed-unit slot address").</summary>
+        [JsonPropertyName("loadout")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Loadout? Loadout { get; set; }
+    }
+
+    public class Loadout
+    {
+        [JsonPropertyName("unitName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? UnitName { get; set; }
+
+        [JsonPropertyName("weapon")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Weapon { get; set; }
+
+        [JsonPropertyName("leftHand")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? LeftHand { get; set; }
+
+        [JsonPropertyName("shield")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Shield { get; set; }
+
+        [JsonPropertyName("helm")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Helm { get; set; }
+
+        [JsonPropertyName("body")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Body { get; set; }
+
+        [JsonPropertyName("accessory")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Accessory { get; set; }
     }
 
     /// <summary>
@@ -523,6 +562,26 @@ namespace FFTColorCustomizer.Utilities
     {
         [JsonPropertyName("slot")]
         public int Slot { get; set; }
+
+        [JsonPropertyName("hp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Hp { get; set; }
+
+        [JsonPropertyName("maxHp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int MaxHp { get; set; }
+
+        [JsonPropertyName("mp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Mp { get; set; }
+
+        [JsonPropertyName("maxMp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int MaxMp { get; set; }
+
+        [JsonPropertyName("equipment")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Loadout? Equipment { get; set; }
 
         [JsonPropertyName("name")]
         public string? Name { get; set; }

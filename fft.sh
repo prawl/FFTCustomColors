@@ -739,6 +739,27 @@ us.forEach(u=>{
     LINE="$LINE status=$ST"
     echo "$LINE"
 
+    # Equipment loadout for CharacterStatus / EquipmentAndAbilities. Only
+    # populated for Ramza right now (TODO §10.6).
+    if { [ "$SCR" = "EquipmentAndAbilities" ] || [ "$SCR" = "CharacterStatus" ]; } \
+       && [ -f "$B/response.json" ]; then
+      cat "$B/response.json" | node -e "
+try{
+  const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
+  const l=j.screen&&j.screen.loadout;
+  if(!l)process.exit(0);
+  const parts=[];
+  if(l.weapon)parts.push('R='+l.weapon);
+  if(l.leftHand)parts.push('L='+l.leftHand);
+  if(l.shield)parts.push('Sh='+l.shield);
+  if(l.helm)parts.push('H='+l.helm);
+  if(l.body)parts.push('B='+l.body);
+  if(l.accessory)parts.push('A='+l.accessory);
+  console.log('  '+(l.unitName||'?')+': '+parts.join(' '));
+}catch(e){}
+" 2>/dev/null
+    fi
+
     # PartyMenu roster: compact line shows count only (display-order is NOT
     # known, so we can't show "cursor-hovered" unit reliably). -v expands to
     # the full slot-indexed list.
@@ -759,9 +780,22 @@ try{
       const nm=(u.name||'?').padEnd(12);
       const lv=('Lv.'+u.level).padEnd(6);
       const jb=(u.job||'').padEnd(16);
+      const hp=u.maxHp?('HP='+u.hp+'/'+u.maxHp).padEnd(13):''.padEnd(13);
+      const mp=u.maxMp?('MP='+u.mp+'/'+u.maxMp).padEnd(11):''.padEnd(11);
       const br=u.brave?'Br'+u.brave:'';
       const fa=u.faith?' Fa'+u.faith:'';
-      console.log('  '+sl+' '+nm+' '+lv+' '+jb+' '+br+fa);
+      console.log('  '+sl+' '+nm+' '+lv+' '+jb+' '+hp+' '+mp+' '+br+fa);
+      const e=u.equipment;
+      if(e){
+        const parts=[];
+        if(e.weapon)parts.push('R='+e.weapon);
+        if(e.leftHand)parts.push('L='+e.leftHand);
+        if(e.shield)parts.push('Sh='+e.shield);
+        if(e.helm)parts.push('H='+e.helm);
+        if(e.body)parts.push('B='+e.body);
+        if(e.accessory)parts.push('A='+e.accessory);
+        if(parts.length)console.log('        '+parts.join(' '));
+      }
     });
   }
 }catch(e){}

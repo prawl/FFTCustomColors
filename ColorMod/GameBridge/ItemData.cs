@@ -6,18 +6,23 @@ namespace FFTColorCustomizer.GameBridge
     /// Static lookup table for FFT item IDs, names, types, and key stats.
     /// Data sourced from FFTPatcher (Glain/FFTPatcher) PSP/WotL binary data.
     ///
-    /// ID DISCREPANCY NOTE:
-    /// These IDs use the canonical FFTPatcher offset ordering (0-315).
-    /// The IC Remaster appears to use DIFFERENT item IDs in memory.
-    /// Known mappings from game memory vs FFTPatcher:
-    ///   Game=156 -> FFTPatcher=37 (Chaos Blade)     diff=+119
-    ///   Game=185 -> FFTPatcher=143 (Escutcheon)     diff=+42
-    ///   Game=218 -> FFTPatcher=156 (Grand Helm)     diff=+62
-    ///   Game=37  -> FFTPatcher=185 (Maximillian)    diff=-148 (+108 mod 256)
-    ///   Game=143 -> FFTPatcher=218 (Bracer)         diff=-75  (+181 mod 256)
-    /// No consistent offset/formula found. The IC Remaster may use a completely
-    /// different item table ordering. These IDs will need to be verified and
-    /// potentially remapped once more game memory data points are available.
+    /// IDs match FFTPatcher canonical offsets (0-315). Verified 2026-04-14 via
+    /// live dumps of Ramza (Ragnarok=36, Escutcheon=143, Grand Helm=156,
+    /// Maximillian=185, Bracer=218) and Kenrick (Chaos Blade=37, Kaiser
+    /// Shield=141, Crystal Helm=154, Crystal Mail=182, Bracer=218) — every
+    /// equipped ID read from roster +0x0E..+0x1A matched the FFTPatcher key
+    /// for the displayed item name. An earlier version of this comment
+    /// claimed a Game != FFTPatcher discrepancy; that was based on a wrong
+    /// slot-offset assumption, not a real encoding difference.
+    ///
+    /// Equipment slot layout in roster (u16 LE each, 0xFF = empty):
+    ///   +0x0E: Helm
+    ///   +0x10: Body armor
+    ///   +0x12: Accessory
+    ///   +0x14: Right-hand weapon
+    ///   +0x16: Left-hand weapon (dual-wield) / empty
+    ///   +0x18: reserved / empty
+    ///   +0x1A: Left-hand shield
     /// </summary>
     public record ItemInfo(
         int Id,

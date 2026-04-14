@@ -105,6 +105,23 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Reads the 7 equipment u16 fields at +0x0E..+0x1A for a single
+        /// roster slot. Returns null if the slot is empty or the read fails.
+        /// </summary>
+        public EquipmentReader.Loadout? ReadLoadout(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= MaxSlots) return null;
+            long b = RosterBase + (long)slotIndex * SlotStride;
+            var reads = new (System.IntPtr addr, int size)[7];
+            for (int i = 0; i < 7; i++)
+                reads[i] = ((System.IntPtr)(b + 0x0E + i * 2), 2);
+            var v = _explorer.ReadMultiple(reads);
+            var u16s = new int[7];
+            for (int i = 0; i < 7; i++) u16s[i] = (int)v[i];
+            return EquipmentReader.FromSlotValues(u16s);
+        }
+
+        /// <summary>
         /// Reads all non-empty roster slots. Returns them in slot order (Ramza
         /// first). Empty slots (level == 0) are filtered out.
         /// </summary>
