@@ -42,10 +42,12 @@ namespace FFTColorCustomizer.GameBridge
                 "JobChangeConfirmation" => GetJobChangeConfirmationPaths(),
                 "TravelList" => GetTravelListPaths(),
                 "LocationMenu" => GetLocationMenuPaths(),
-                "ShopInterior" => GetShopInteriorPaths(),
+                "SettlementMenu" => GetSettlementMenuPaths(),
                 "Outfitter_Buy" => GetShopItemListPaths("Buy highlighted item (opens quantity/confirm dialog)"),
                 "Outfitter_Sell" => GetShopItemListPaths("Sell highlighted item (opens quantity/confirm dialog)"),
                 "Outfitter_Fitting" => GetShopItemListPaths("Select highlighted slot/item (advances picker)"),
+                "ShopConfirmDialog" => GetShopConfirmDialogPaths(),
+                "SaveGame_Menu" => GetSaveGameMenuPaths(),
                 "EncounterDialog" => GetEncounterDialogPaths(),
                 "GameOver" => GetGameOverPaths(),
                 "Battle_MyTurn" => GetBattleMyTurnPaths(screen),
@@ -308,7 +310,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["EnterShop"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ENTER, "Enter") },
-                    WaitForScreen = "ShopInterior",
+                    WaitForScreen = "SettlementMenu",
                     WaitTimeoutMs = 3000,
                     Desc = "Enter the highlighted shop/service"
                 },
@@ -324,7 +326,7 @@ namespace FFTColorCustomizer.GameBridge
             };
         }
 
-        private static Dictionary<string, PathEntry> GetShopInteriorPaths()
+        private static Dictionary<string, PathEntry> GetSettlementMenuPaths()
         {
             // Inside a shop with the Buy/Sell/Fitting (or equivalent) menu up.
             // Pressing Enter on the highlighted sub-action advances to
@@ -336,7 +338,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["Select"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ENTER, "Enter") },
-                    WaitUntilScreenNot = "ShopInterior",
+                    WaitUntilScreenNot = "SettlementMenu",
                     WaitTimeoutMs = 3000,
                     Desc = "Enter the highlighted sub-action (Buy/Sell/Fitting/etc.)"
                 },
@@ -362,7 +364,7 @@ namespace FFTColorCustomizer.GameBridge
             // Inside an Outfitter sub-action (Buy/Sell/Fitting). The highlighted
             // row is an item / slot / character depending on the sub-action.
             // Enter advances into the next step (quantity dialog for Buy/Sell,
-            // slot→item picker for Fitting). Escape goes back to ShopInterior.
+            // slot→item picker for Fitting). Escape goes back to SettlementMenu.
             return new()
             {
                 ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Scroll up in list" },
@@ -375,10 +377,63 @@ namespace FFTColorCustomizer.GameBridge
                 ["Cancel"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
-                    WaitForScreen = "ShopInterior",
+                    WaitForScreen = "SettlementMenu",
                     WaitTimeoutMs = 3000,
                     Desc = "Cancel, back to shop menu"
                 },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetSaveGameMenuPaths()
+        {
+            // Save slot picker inside a SettlementMenu Save Game option.
+            // Scaffold for when detection lands — NOT YET LIVE-VERIFIED. The
+            // Save screen likely shows a list of slots (slot 1, slot 2, ...);
+            // Select saves to the highlighted slot, Cancel backs out.
+            // TODO: verify slot-picker flow at Warjilis once shopTypeIndex=4
+            // is confirmed as SaveGame.
+            return new()
+            {
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Previous save slot" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Next save slot" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Save to highlighted slot (may open overwrite confirmation)"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "SettlementMenu",
+                    WaitTimeoutMs = 3000,
+                    Desc = "Cancel, back to settlement menu"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetShopConfirmDialogPaths()
+        {
+            // "Buy 3 Potions for 60 gil?" yes/no modal that appears after
+            // confirming a quantity inside Outfitter_Buy/Sell. Default cursor
+            // on Yes (Enter confirms; Escape cancels the purchase). A memory
+            // scan is needed to actually DETECT this modal — see TODO §10
+            // "Confirm dialog detection". Once detected, this ValidPaths
+            // entry ensures Claude doesn't press Enter blindly and buy by
+            // mistake.
+            return new()
+            {
+                ["Confirm"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Confirm purchase/sale — completes the transaction"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Cancel purchase/sale — returns to item list"
+                },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Toggle Yes/No cursor" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Toggle Yes/No cursor" },
             };
         }
 

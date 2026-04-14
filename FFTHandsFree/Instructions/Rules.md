@@ -55,4 +55,4 @@ You are playing this game as a new player. You are experiencing the story, learn
 
 ## Class Labeling Mode (separate from story play)
 
-Sometimes the user asks you to **label enemy classes** by looping through random encounters. In this mode you're NOT playing the story — you're running a discovery loop: flee → travel → encounter → scan → label unknowns → flee. See `ClassFingerprintLabeling.md` for the full procedure. The "Don't use training data" rule still applies (no spoilers) but the "React to story moments" guidance doesn't — this is a data-gathering exercise, not a playthrough.
+Sometimes the user asks you to **label enemy classes** by looping through random encounters. In this mode you're NOT playing the story — you're running a discovery loop: flee → travel → encounter → scan → label unknowns → flee. See `../Technical/ClassFingerprintLabeling.md` for the full procedure. The "Don't use training data" rule still applies (no spoilers) but the "React to story moments" guidance doesn't — this is a data-gathering exercise, not a playthrough.

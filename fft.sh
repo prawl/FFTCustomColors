@@ -157,9 +157,16 @@ fft() {
   [ "$SCR" = "TravelList" ] && LINE="$LINE hover=$HOV"
   [ -n "$OBJSTR" ] && LINE="$LINE $OBJSTR"
   local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
-  [ -n "$GIL" ] && LINE="$LINE gil=$GIL"
+  [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
   LINE="$LINE status=$ST"
   echo "$LINE"
+}
+
+# _fmt_gil: Render a gil amount with thousands separators.
+#   2605569 -> 2,605,569
+# Called by both fft() and screen() when appending gil=<n> to the output line.
+_fmt_gil() {
+  LC_ALL=en_US.UTF-8 printf "%'d" "$1" 2>/dev/null || echo "$1"
 }
 
 # fft_full: Send raw command JSON, wait for response, return entire JSON.
@@ -707,7 +714,7 @@ us.forEach(u=>{
     local LINE="[$SCR]"
     [ -n "$UI" ] && LINE="$LINE ui=$UI"
     LINE="$LINE loc=$LOCSTR"
-    [ -n "$GIL" ] && LINE="$LINE gil=$GIL"
+    [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
     [ -n "$SLCI" ] && LINE="$LINE row=$SLCI"
     LINE="$LINE status=$ST"
     echo "$LINE"

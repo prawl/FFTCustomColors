@@ -140,7 +140,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_ShopInterior_AtMenu_ShouldReturnShopInterior()
+        public void DetectScreen_SettlementMenu_AtShopSelector_ShouldReturnSettlementMenu()
         {
             // Inside an Outfitter, cursor on Buy/Sell/Fitting at the shop menu
             // (not yet Entered into a sub-action). shopSubMenuIndex=0 until Enter.
@@ -152,7 +152,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 5, encB: 5, isPartySubScreen: false, hover: 255,
                 locationMenuFlag: 1, insideShopFlag: 1, shopSubMenuIndex: 0);
 
-            Assert.Equal("ShopInterior", result);
+            Assert.Equal("SettlementMenu", result);
         }
 
         [Fact]
@@ -206,6 +206,35 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 locationMenuFlag: 0, insideShopFlag: 0, shopSubMenuIndex: 6);
 
             Assert.Equal("Outfitter_Fitting", result);
+        }
+
+        [Fact]
+        public void ResolveShopSubAction_Outfitter_MapsAllThreeValues()
+        {
+            Assert.Equal("Outfitter_Buy", ScreenDetectionLogic.ResolveShopSubAction(0, 1));
+            Assert.Equal("Outfitter_Sell", ScreenDetectionLogic.ResolveShopSubAction(0, 4));
+            Assert.Equal("Outfitter_Fitting", ScreenDetectionLogic.ResolveShopSubAction(0, 6));
+        }
+
+        [Fact]
+        public void ResolveShopSubAction_Outfitter_UnmappedValueReturnsNull()
+        {
+            // shopSubMenuIndex=0 means player is at the sub-action selector,
+            // not inside any of Buy/Sell/Fitting. Return null so the caller
+            // falls through to SettlementMenu.
+            Assert.Null(ScreenDetectionLogic.ResolveShopSubAction(0, 0));
+        }
+
+        [Fact]
+        public void ResolveShopSubAction_UnmappedShopTypes_ReturnNull()
+        {
+            // Tavern, Warriors' Guild, Poachers' Den sub-action values haven't
+            // been scanned yet — ResolveShopSubAction returns null for them
+            // regardless of shopSubMenuIndex, so the caller falls through to
+            // SettlementMenu until those values are mapped.
+            Assert.Null(ScreenDetectionLogic.ResolveShopSubAction(1, 1)); // Tavern
+            Assert.Null(ScreenDetectionLogic.ResolveShopSubAction(2, 1)); // WarriorsGuild
+            Assert.Null(ScreenDetectionLogic.ResolveShopSubAction(3, 1)); // PoachersDen
         }
 
         [Fact]

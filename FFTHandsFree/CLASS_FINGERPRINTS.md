@@ -86,4 +86,4 @@ When a scan shows `(?)` for an enemy:
 - `ColorMod/GameBridge/NavigationActions.cs` — `CollectUnitPositionsFull` wires everything together
 
 ## See also
-- `Instructions/ClassFingerprintLabeling.md` — battle loop procedure for collecting new fingerprints
+- `Technical/ClassFingerprintLabeling.md` — battle loop procedure for collecting new fingerprints

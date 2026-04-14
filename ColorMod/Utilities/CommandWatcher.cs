@@ -400,7 +400,7 @@ namespace FFTColorCustomizer.Utilities
                                 dBt, dBa, dBmv, dEa, dEb, !dInBattle && IsPartySubScreen(),
                                 dEv, submenuFlag: dSf, menuCursor: dMc, hover: dHover,
                                 locationMenuFlag: dLmf, insideShopFlag: dIsf,
-                                shopSubMenuIndex: dSsmi);
+                                shopSubMenuIndex: dSsmi, shopTypeIndex: dSti);
                             var snapshot = new Dictionary<string, object>
                             {
                                 ["timestamp"] = DateTime.UtcNow.ToString("o"),
@@ -2375,20 +2375,12 @@ namespace FFTColorCustomizer.Utilities
                     submenuFlag: submenuFlag, menuCursor: screen.MenuCursor,
                     hover: hover, locationMenuFlag: locationMenuFlag,
                     insideShopFlag: insideShopFlag,
-                    shopSubMenuIndex: shopSubMenuIndex);
+                    shopSubMenuIndex: shopSubMenuIndex,
+                    shopTypeIndex: shopTypeIndex);
 
-                // Shop/LocationMenu UI label from shopTypeIndex at 0x140D435F0. Mapped
-                // empirically at Dorter (4 shops). Save Game and others not yet mapped.
-                string? shopName = shopTypeIndex switch
-                {
-                    0 => "Outfitter",
-                    1 => "Tavern",
-                    2 => "WarriorsGuild",
-                    3 => "PoachersDen",
-                    _ => null
-                };
-                if (screen.Name == "LocationMenu" || screen.Name == "ShopInterior")
-                    screen.UI = shopName;
+                // Shop/LocationMenu UI label from shopTypeIndex at 0x140D435F0.
+                if (screen.Name == "LocationMenu" || screen.Name == "SettlementMenu")
+                    screen.UI = GameBridge.ShopTypeLabels.ForIndex(shopTypeIndex);
 
                 // Gil: show on shop-adjacent and purchase-decision screens only.
                 if (GameBridge.ShopGilPolicy.ShouldShowGil(screen.Name))

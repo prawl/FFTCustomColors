@@ -133,7 +133,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 ## 4. Instruction Guides (P1)
 
 - [x] **PartyManagement.md** — Written 2026-04-13.
-- [ ] **Shopping.md** — How to enter a settlement, navigate the outfitter, buy/sell items.
+- [x] **Shopping.md** — Written 2026-04-14. See `FFTHandsFree/Instructions/Shopping.md`.
 - [x] **FormationScreen.md** — Written 2026-04-13.
 - [x] **SaveLoad.md** — Written 2026-04-13.
 - [ ] **StoryScenes.md** — How story cutscenes work, dialogue advancement.
@@ -210,7 +210,20 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ### Detection — TODO
 
-- [ ] **Rename `ShopInterior` state** — the current name is misleading. What we're calling `ShopInterior` is actually the shop-type selector menu inside a settlement (the list of Outfitter / Tavern / Warriors' Guild / Poachers' Den options that appears after entering a settlement). Better name: `SettlementMenu` or similar. Update the state string in `ScreenDetectionLogic.cs`, all tests, `NavigationPaths.cs`, and the handoff/audit docs. Also consider: is the CURRENT `LocationMenu` actually the "outer" shop-list screen, or is that the map-node context? Review both names for consistency as part of this rename.
+- [x] **Rename `ShopInterior` → `SettlementMenu`** — DONE 2026-04-14. ❗ **But done WRONG.** The rename was applied to the WRONG layer — see follow-up below.
+- [ ] **Fix misaligned shop-state naming** — the 2026-04-14 rename chose the wrong layer. Current state:
+  - `LocationMenu` — fires when hovering a shop in the settlement's shop list (correct)
+  - `SettlementMenu` — fires when inside a specific shop, at the Buy/Sell/Fitting selector (misnamed — this IS the interior)
+  - `Outfitter_Buy` / `Outfitter_Sell` / `Outfitter_Fitting` — inside the Buy/Sell/Fitting list (correct)
+
+  User expectation is:
+  - `LocationMenu` stays as-is (settlement's shop-type selector — you're choosing Outfitter vs Tavern vs ...)
+  - The CURRENT `SettlementMenu` should be named **after the shop itself** — `Outfitter` / `Tavern` / `WarriorsGuild` / `PoachersDen`. The `ui=` field shows the sub-action cursor: `[Outfitter] ui=Buy`, `[Outfitter] ui=Sell`, `[Outfitter] ui=Fitting`.
+  - Sub-action lists stay as `Outfitter_Buy` / `Outfitter_Sell` / `Outfitter_Fitting`.
+
+  Fix: change detection to return `Outfitter` (or the appropriate shop name) when `insideShopFlag==1` and `shopSubMenuIndex==0`, using `shopTypeIndex` to pick the name. Drop `SettlementMenu` as a state name. Rename `GetSettlementMenuPaths` → `GetOutfitterMenuPaths` (and duplicate for Tavern / WG / PD once their interiors are distinguishable — but currently the layout is the same for all four, so one helper reused via per-shop state names works).
+
+  Also needs: a memory scan for the sub-action cursor (Buy/Sell/Fitting hover) so `ui=Buy` can actually populate — currently only known AFTER Select has been pressed (shopSubMenuIndex jumps to 1/4/6). See also the "ui label at ShopInterior" TODO entry (which is about this same gap).
 - [ ] **(NEXT) ValidPaths for the whole shop flow** [P0] — the automation unlock. Every shop screen needs a ValidPaths entry so Claude can drive the UI without knowing individual key sequences. Required entries:
   - **LocationMenu**: `EnterOutfitter`, `EnterTavern`, `EnterWarriorsGuild`, `EnterPoachersDen`, `Leave` (back to world map)
   - **ShopInterior** (shop menu): `Buy`, `Sell`, `Fitting`, `Leave`
@@ -220,7 +233,8 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
   - **Tavern / WarriorsGuild / PoachersDen**: fill in once sub-actions mapped
   - **Confirm dialogs**: `Confirm`, `Cancel` (requires the confirm-modal scan from below)
 - [x] **Gil in state** [P0 quick win] — DONE 2026-04-14. Gil at 0x140D39CD0 surfaces on shop-adjacent screens (WorldMap, PartyMenu, LocationMenu, ShopInterior, Outfitter_Buy/Sell/Fitting) via ShopGilPolicy.
-- [ ] **Format gil with thousands separators** — `gil=2605569` is hard to read at a glance. Render as `gil=2,605,569` in the screen helper output (fft.sh). Keep the raw integer in the JSON for programmatic consumers; format only at the display layer.
+- [x] **Format gil with thousands separators** — DONE 2026-04-14. `_fmt_gil` helper in fft.sh renders via `printf "%'d"` under `LC_ALL=en_US.UTF-8`. JSON unchanged.
+- [ ] **Suppress `ui=Move` outside battle** — `screen.UI` reads "Move" on WorldMap, LocationMenu, PartyMenu, etc. because the action-menu cursor stays at index 0 (which labels as "Move" per the battle menu mapping). Outside battle the label is meaningless noise. Fix: only populate `screen.UI` with the action-menu label while in `Battle_MyTurn` / `Battle_Acting`. On all other screens, either omit it or surface only context-appropriate labels (shop name on LocationMenu/SettlementMenu, etc.). Observed 2026-04-14.
 - [ ] **ui label at ShopInterior** — when hovering Buy/Sell/Fitting inside a shop without having entered, `screen.UI` should read `Buy`/`Sell`/`Fitting`. Needs a cursor-index memory scan (current shopSubMenuIndex is 0 at all three hovers). Once ui is populated, Claude can pre-check which sub-action it's about to enter.
 - [x] **Shop list cursor row index** — DONE 2026-04-14. `0x141870704` (u32) tracks the currently-highlighted row inside Outfitter_Buy/Sell/Fitting. Row 0 = top item, increments per ScrollDown. Persists across sub-action cycling. Found via 4-way module_snap diff at Dorter Outfitter (rows Oak→White→Serpent→Oak).
 - [ ] **Decode row index to item name** — with the cursor index known, resolve `ui=<item name>` by looking up the row's position in the shop's stock list. Partial data found 2026-04-14:
@@ -271,7 +285,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ### Documentation
 
-- [ ] **Shopping.md instruction guide** (also tracked in Section 4) — write once the action helpers above are stable.
+- [x] **Shopping.md instruction guide** — DONE 2026-04-14. Initial version covers detection and ValidPaths flow; will need revisions as action helpers (`buy_item`, etc.) land.
 
 ---
 

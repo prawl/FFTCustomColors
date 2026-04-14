@@ -28,7 +28,7 @@ namespace FFTColorCustomizer.GameBridge
             int encA, int encB, bool isPartySubScreen, int eventId = 0,
             int submenuFlag = 0, int menuCursor = -1, int hover = 255,
             int locationMenuFlag = 0, int insideShopFlag = 0,
-            int shopSubMenuIndex = 0)
+            int shopSubMenuIndex = 0, int shopTypeIndex = 0)
         {
             // rawLocation is the last-visited named place (village/shop/campaign ground).
             // It's STICKY — retains the last-visited location even when the player leaves.
@@ -134,33 +134,40 @@ namespace FFTColorCustomizer.GameBridge
                 if (atNamedLocation && encA != encB && !actedOrMoved && slot0 != 255)
                     return "EncounterDialog";
 
-                // Outfitter_Buy/Sell/Fitting: sub-action entered inside an Outfitter shop.
-                // shopSubMenuIndex at 0x14184276C reads 1/4/6 respectively (0 at shop
-                // menu, 255 on world map). Verified 2026-04-14 at Dorter Outfitter.
-                // These take priority over insideShopFlag because live testing showed
-                // insideShopFlag doesn't reliably fire on a fresh process — the
-                // shopSubMenuIndex value itself is the authoritative signal for submenu
-                // entry (1/4/6 are only produced by shop submenus).
-                // Tavern/Warriors' Guild/Poachers' Den values not yet mapped — add per-shop
-                // rules once scanned.
+                // Sub-action entered inside a shop/service. shopSubMenuIndex at
+                // 0x14184276C reads 0 on the shop menu, 255 on world map, and
+                // shop-specific values once a sub-action is Entered. These take
+                // priority over insideShopFlag because live testing showed
+                // insideShopFlag doesn't reliably fire on a fresh process.
+                //
+                // shopTypeIndex at 0x140D435F0 disambiguates which shop the player
+                // is currently inside (0=Outfitter, 1=Tavern, 2=WarriorsGuild,
+                // 3=PoachersDen). We key the sub-action switch on both.
+                //
+                // Mapped 2026-04-14 for Outfitter at Dorter: Buy=1, Sell=4, Fitting=6.
+                // Tavern / Warriors' Guild / Poachers' Den sub-action values NOT
+                // YET MAPPED — those shops will fall through to SettlementMenu
+                // until a scan session records their shopSubMenuIndex values.
                 if (rawLocation >= 0 && rawLocation <= 42)
                 {
-                    switch (shopSubMenuIndex)
-                    {
-                        case 1: return "Outfitter_Buy";
-                        case 4: return "Outfitter_Sell";
-                        case 6: return "Outfitter_Fitting";
-                    }
+                    string? subState = ResolveShopSubAction(shopTypeIndex, shopSubMenuIndex);
+                    if (subState != null) return subState;
                 }
 
-                // ShopInterior: player has pressed Enter on a shop/service in LocationMenu
-                // and is now inside that shop's interior screen (Outfitter Buy/Sell/Fitting,
-                // Tavern Rumors/Errands, Warriors' Guild Recruit/Rename, Poachers' Den
-                // Process/Sell Carcasses). Signal at 0x141844DD0 — verified via module
-                // diff 2026-04-14 cycling through all 4 shop types at Dorter.
-                // screen.UI set by caller from shopTypeIndex identifies which shop.
+                // SettlementMenu: player has pressed Enter on a shop/service in
+                // LocationMenu and is now at the shop-type selector (Outfitter
+                // Buy/Sell/Fitting, Tavern Rumors/Errands, Warriors' Guild
+                // Recruit/Rename, Poachers' Den Process/Sell Carcasses). Signal at
+                // 0x141844DD0 — verified via module diff 2026-04-14 cycling through
+                // all 4 shop types at Dorter. screen.UI set by caller from
+                // shopTypeIndex identifies which shop.
+                //
+                // Historical name: this state was called "ShopInterior" through
+                // 2026-04-14. Renamed to SettlementMenu because "ShopInterior"
+                // misleadingly suggested being inside the shop (Buy/Sell/Fitting
+                // submenu) rather than at the settlement's shop-selector menu.
                 if (insideShopFlag == 1 && rawLocation >= 0 && rawLocation <= 42)
-                    return "ShopInterior";
+                    return "SettlementMenu";
 
                 // LocationMenu: player is inside a named location's menu. Which specific
                 // shop/service is highlighted lives in screen.UI (populated by the caller
@@ -324,6 +331,41 @@ namespace FFTColorCustomizer.GameBridge
             var pascal = string.Concat(words.Select(w =>
                 char.ToUpper(w[0]) + w.Substring(1)));
             return $"Battle_{pascal}";
+        }
+
+        /// <summary>
+        /// Resolves the shop sub-action state name from (shopTypeIndex,
+        /// shopSubMenuIndex). Returns null if the combination isn't mapped yet
+        /// — the caller falls through to SettlementMenu in that case.
+        ///
+        /// Mapped 2026-04-14:
+        ///   Outfitter (0): Buy=1, Sell=4, Fitting=6
+        /// Unmapped (TODO — scan each shop live):
+        ///   Tavern (1): Rumors, Errands, ...?
+        ///   WarriorsGuild (2): Recruit, Rename, Dismiss, ...?
+        ///   PoachersDen (3): Process Carcasses, Sell Carcasses, ...?
+        /// </summary>
+        public static string? ResolveShopSubAction(int shopTypeIndex, int shopSubMenuIndex)
+        {
+            switch (shopTypeIndex)
+            {
+                case 0: // Outfitter — mapped
+                    return shopSubMenuIndex switch
+                    {
+                        1 => "Outfitter_Buy",
+                        4 => "Outfitter_Sell",
+                        6 => "Outfitter_Fitting",
+                        _ => null,
+                    };
+                case 1: // Tavern — TODO: scan values and add here
+                    return null;
+                case 2: // Warriors' Guild — TODO: scan values and add here
+                    return null;
+                case 3: // Poachers' Den — TODO: scan values and add here
+                    return null;
+                default:
+                    return null;
+            }
         }
     }
 }
