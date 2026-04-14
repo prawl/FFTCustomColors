@@ -402,6 +402,50 @@ After deploying the rewrite, verified live state-by-state with user providing gr
 
 ---
 
+## 54. Memory-scan session 2: LocationMenu/ShopInterior/ShopType discriminators
+
+Used new `module_snap` tool (bounded to FFT's main module writable regions,
+~100-1000x cleaner than heap_snap).
+
+### Found — 3 new screen-state addresses
+
+| Address | Purpose | Values |
+|---|---|---|
+| `0x140D43481` | `locationMenuFlag` | 1 = at LocationMenu, 0 = elsewhere |
+| `0x140D435F0` | `shopTypeIndex` | 0=Outfitter, 1=Tavern, 2=Warriors' Guild, 3=Poachers' Den |
+| `0x141844DD0` | `insideShopFlag` | 1 = inside ShopInterior, 0 = at LocationMenu or elsewhere |
+
+All three verified via 4-way snapshot diff intersection + round-trip live verification.
+
+### Detection model now
+
+- **LocationMenu** = `locationMenuFlag==1 && rawLocation in 0-42`
+- **ShopInterior** = `insideShopFlag==1 && rawLocation in 0-42`
+- **screen.UI** = shop name from `shopTypeIndex` (set by caller for both LocationMenu and ShopInterior states)
+
+### NOT found — shop sub-action cursor (Buy/Sell/Fitting etc.)
+
+Attempted to find a cursor-index for sub-actions WITHIN each shop interior:
+- Outfitter: Buy / Sell / Fitting
+- Tavern: Rumors / Errands
+- Warriors' Guild: Recruit / Rename
+- Poachers' Den: Process / Sell Carcasses
+
+Cycled cursor through each, ran 4 diffs (first→second option per shop), intersected.
+
+Only `0x141844DA8` showed a clean 0→1 transition consistent across all 4 shops
+in the diffs, BUT live verification showed it reads 1 in all resting states
+(flipping only briefly during cursor-move animations). Not a stable cursor
+index.
+
+**Conclusion:** Shop sub-action cursor state lives in UE4 widget heap (not
+in the main module we scan). Not reachable via static module addresses.
+
+**Client-side fallback:** Track cursor position by counting Down/Up keypresses
+after entering a shop. Reliable, cheap, already the pattern for other menus.
+
+---
+
 ## 1. Battle_MyTurn ✓ MATCH
 
 **Ground truth:** Ramza's turn at The Siedge Weald, action menu on Move (no action taken yet)
