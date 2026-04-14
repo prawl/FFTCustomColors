@@ -26,14 +26,17 @@ namespace FFTColorCustomizer.GameBridge
             int battleMode, int moveMode, int paused, int gameOverFlag,
             int battleTeam, int battleActed, int battleMoved,
             int encA, int encB, bool isPartySubScreen, int eventId = 0,
-            int submenuFlag = 0, int menuCursor = -1, int hover = 255)
+            int submenuFlag = 0, int menuCursor = -1, int hover = 255,
+            int locationMenuFlag = 0)
         {
-            // rawLocation AND hover together identify where the player is. rawLocation is
-            // STICKY — it retains the last-visited location even when the player leaves.
-            // hover=255 means UI focus is on a named location/menu; hover=254 means the
-            // cursor is on an open world-map tile. This splits "actually at a shop" from
-            // "on the world map with stale rawLocation."
-            bool atNamedLocation = rawLocation >= 0 && rawLocation <= 42 && hover == 255;
+            // rawLocation is the last-visited named place (village/shop/campaign ground).
+            // It's STICKY — retains the last-visited location even when the player leaves.
+            // To determine whether the player is CURRENTLY at that location, rely on
+            // locationMenuFlag (0x140D43481) — the dedicated signal verified via memory
+            // diff 2026-04-14. hover alone is unreliable (254 vs 255 depends on stale
+            // cursor state, not current screen).
+            bool atNamedLocation = rawLocation >= 0 && rawLocation <= 42
+                                   && locationMenuFlag == 1;
 
             // Unit slots: slot0=0xFF means units are placed on the battlefield. During combat
             // animations and some dialogue sequences, slot0 can flicker. slot9=0xFFFFFFFF is
@@ -130,20 +133,11 @@ namespace FFTColorCustomizer.GameBridge
                 if (atNamedLocation && encA != encB && !actedOrMoved && slot0 != 255)
                     return "EncounterDialog";
 
-                // At a named location (shop, village, campaign ground sub-selector).
-                // LIMITATION: with current 19 inputs we cannot reliably distinguish
-                // "at a location's menu" from "TravelList showing this location as a
-                // destination." Both produce rawLocation in 0-42 + hover=255.
-                // This rule falls through to TravelList below, so TravelList wins when
-                // the state is ambiguous. Accept that tradeoff for now — most interactions
-                // flow through TravelList → LocationMenu anyway, and Claude's command
-                // history tracks which one it entered.
-                // TODO: memory-scan for a menu-ID / submenu-depth signal to split.
-                //
-                // Only fire LocationMenu when we have POSITIVE evidence of an active
-                // session (slot0=0x000000FF): that state only occurs after the player
-                // entered a battle or a shop in this process lifetime.
-                if (atNamedLocation && slot0 == 255)
+                // LocationMenu: player is inside a named location's menu (Outfitter list,
+                // Tavern, Warrior Guild, Save Game, etc.). atNamedLocation already checks
+                // locationMenuFlag=1 + rawLocation in 0-42. Shop types are indistinguishable
+                // and all collapse into this single state.
+                if (atNamedLocation)
                     return "LocationMenu";
 
                 // Mid-battle dialogue with slot0 torn down: rawLocation=255 + real event +

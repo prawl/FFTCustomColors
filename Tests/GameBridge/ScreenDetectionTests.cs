@@ -125,17 +125,16 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void DetectScreen_LocationMenu_AtNamedLocation_ShouldReturnLocationMenu()
         {
-            // At a named location (shop, village, campaign ground): rawLocation=0-42 +
-            // hover=255 + slot0=0x000000FF (active session with battle sentinels set from
-            // a prior session — distinguishes from TravelList-for-this-location which has
-            // slot0=0xFFFFFFFF).
-            // Shop type (Outfitters vs Tavern vs Warrior Guild) is indistinguishable in
-            // current inputs — returns generic LocationMenu.
+            // LocationMenu: rawLocation=0-42 + hover=255 + locationMenuFlag=1 (from
+            // 0x140D43481 — the real menu-inside-location signal found via memory diff
+            // 2026-04-14). Shop types (Outfitter/Tavern/Warrior Guild/etc.) still
+            // indistinguishable, all collapse to generic LocationMenu.
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 1, rawLocation: 9, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
-                encA: 5, encB: 5, isPartySubScreen: false, hover: 255);
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 255,
+                locationMenuFlag: 1);
 
             Assert.Equal("LocationMenu", result);
         }
@@ -305,15 +304,15 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void DetectScreen_LocationMenu_WithStaleUnitSlots_ShouldReturnLocationMenu()
         {
-            // Active in-session LocationMenu: rawLocation=0-42 + hover=255 + slot0=0xFF
-            // (battle sentinels stale from a prior session in this process).
-            // Audit 2026-04-14 corrected prior assumption — rawLocation alone isn't enough;
-            // need hover=255 to split "at a location" from "world map with stale location."
+            // Active in-session LocationMenu: rawLocation=0-42 + hover=255 +
+            // locationMenuFlag=1 (the 0x140D43481 discriminator). Stale battle sentinels
+            // (slot0=0xFF) present but don't interfere because atNamedLocation overrides.
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 26, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
-                encA: 5, encB: 5, isPartySubScreen: false, hover: 255);
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 255,
+                locationMenuFlag: 1);
 
             Assert.Equal("LocationMenu", result);
         }
@@ -427,17 +426,19 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_Victory_EncANotEqualEncB_ShouldReturnBattleVictory()
+        public void DetectScreen_Victory_ShouldReturnBattleVictory()
         {
-            // Victory screen: stale battle slots, battleMode=0, acted+moved=1,
-            // encA != encB (encounter values diverge as battle ends).
-            // Previously misdetected as EncounterDialog.
+            // Victory screen: post-battle at named battle location, acted+moved=1,
+            // locationMenuFlag=1 (we're at the battle location's post-battle subscreen).
+            // Synthetic test — Battle_Victory hasn't been captured live in the audit yet
+            // because desertion has always triggered. Assumes locationMenuFlag=1 pattern
+            // consistent with other post-battle named-location states.
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 1, rawLocation: 28, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 1, battleMoved: 1,
                 encA: 6, encB: 5, isPartySubScreen: false,
-                submenuFlag: 1, menuCursor: 1);
+                submenuFlag: 0, menuCursor: 1, locationMenuFlag: 1);
 
             Assert.Equal("Battle_Victory", result);
         }
@@ -450,7 +451,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 1, battleMoved: 1,
                 encA: 6, encB: 5, isPartySubScreen: false,
-                submenuFlag: 1, menuCursor: 1);
+                submenuFlag: 0, menuCursor: 1, locationMenuFlag: 1);
 
             Assert.NotEqual("EncounterDialog", result);
         }
@@ -462,6 +463,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // post-battle sticky flags (acted=1, moved=1). Empirical from audit samples #44,
             // #45 — both observed Desertion readings had paused=1. Distinguished from Victory
             // by paused (Victory doesn't pause the game).
+            // locationMenuFlag=1 assumed since we're at a named battle location subscreen.
             //
             // Audit 2026-04-14 disproved the old encA==encB discriminator — those counters
             // drift independently and are not a reliable screen signal.
@@ -470,7 +472,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 1, battleMoved: 1,
                 encA: 10, encB: 10, isPartySubScreen: false,
-                submenuFlag: 1, menuCursor: 1);
+                submenuFlag: 1, menuCursor: 1, locationMenuFlag: 1);
 
             Assert.Equal("Battle_Desertion", result);
         }
