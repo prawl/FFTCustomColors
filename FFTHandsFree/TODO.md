@@ -53,7 +53,11 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 
 ### NEXT 5 — Do these first (identified 2026-04-12 battle testing)
 
-### Tier 1 — Unblockers (do first)
+### Tier 0 — Critical (BFS broken, need game-truth tiles)
+
+- [~] **Read valid movement tiles from game memory instead of BFS** [Movement] — Extensive search 2026-04-13 (3 agents + manual). Tile list at 0x140C66315 is perimeter outline (world coords), not valid tile set. Rendering struct at 0x140C6F400 is volatile per-frame. Heap search found movement calc struct with tileCount but couldn't decode tile indices. **Partial fix applied:** ally traversal penalty (+1 cost, can't stop) confirmed via TDD — perfect match for Kenrick's 10 tiles. Remaining issue: Wilham's tiles still have 9 extras (steep cliff transitions not handled). Next: investigate slope-direction-dependent height checks.
+
+
 
 - [ ] **Inventory quantity for Items, Throw, and Iaido** [Abilities] — Three skillsets depend on a per-character "Held" count:
   - **Items** (Chemist): each potion/ether/remedy/phoenix down has a held count. In-game shows `Potion=3, High Potion=0, X-Potion=93`.
@@ -232,7 +236,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [~] **Auto-detect battle map** — Location ID lookup + random encounter maps implemented, fingerprint fallback. BUG: after restart, location address reads 255 causing wrong map auto-detection.
 
 ### Bugs Found 2026-04-12 Session 2
-- [ ] **battle_move reports Battle_Casting instead of Battle_Moving** [State] — After `battle_move 8 7`, response header shows `[Battle_Casting]` but the actual screen state is Battle_Moving (battleMode=2). Battle_Casting (battleMode=1) is for cast-time magick targeting, not movement. The screen detection may be reading battleMode=1 during the move confirmation animation. Observed 2026-04-12.
+- [ ] **DetectScreen reports Battle_Casting when actually in Battle_Moving** [State] — battleMode flickers to 1 during move mode, causing DetectScreen to return Battle_Casting instead of Battle_Moving. This breaks `execute_action Cancel` and other commands that check screen state. The battle_move confirmation poll was fixed to ignore Battle_Casting (2026-04-13), but the general DetectScreen path still has this issue — any command that calls DetectScreen while in move mode can get the wrong state. Root cause: battleMode=1 (Casting) takes priority over battleMode=2 (Moving) in detection order, and the flicker isn't filtered. Observed 2026-04-12, 2026-04-13.
 - [ ] **Static array at 0x140893C00 is stale mid-turn** [State] — HP AND positions don't update during/after moves or attacks within a turn. Only refreshes at turn boundaries. Killed a Skeleton (HP 535→0 on screen) but array still read 535. Moved Ramza but array still showed old position. Need to find the live data source the game UI reads from.
 - [ ] **Damage/hit% preview during targeting** [State] — The game displays projected damage and hit% when hovering a target. Extensive investigation 2026-04-12:
   - **Found via probe_status:** In attacker's heap struct, hit% at statBase-62 (u16), damage at statBase-96 (u16). Verified across 3 targets (Kenrick 570/48%, Lloyd 342/50%, Wilham 364/95%). Offsets consistent for hit%, damage shifted by 4 bytes for one target.
@@ -245,7 +249,11 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Screen detection shows Cutscene during ability targeting** [State] — While in targeting mode for Aurablast (selecting a target tile), screen detection reports "Cutscene" instead of "Battle_Attacking" or "Battle_Casting". This causes key commands to fail because they check screen state. Observed 2026-04-13.
 - [ ] **Failed battle_move reports ui=Abilities instead of ui=Move** [State] — After battle_move fails validation, the response shows ui=Abilities but the in-game cursor is still on Move. The scan that runs before the move might be changing the reported ui state. Observed 2026-04-13.
 - [ ] **battle_ability selects wrong ability from list** [Execution] — battle_ability "Aurablast" selected Pummel instead. The ability list navigation (Up×N to top, Down×index) is picking the wrong index. The learned ability list may not match the hardcoded index, or the scroll navigation is off-by-one. Observed 2026-04-13.
-- [ ] **scan_move disrupts targeting mode** [State] — Running scan_move while hovering a target in Attack targeting mode disrupted the targeting (screen changed from Battle_Attacking to Battle_Acting). Scans should be read-only and not send any key inputs during targeting. Observed 2026-04-13.
+- [x] **scan_move disrupts targeting mode** [State] — Fixed 2026-04-13: removed Battle_Attacking and Battle_Casting from scan-safe screens.
+- [ ] **Abilities submenu remembers cursor position** [Execution] — After battle_ability navigates to a skillset (e.g. Martial Arts for Revive), then escapes, the submenu cursor stays on that skillset. Next battle_attack enters Martial Arts instead of Attack. Need to verify/navigate to correct submenu item rather than assuming cursor is at index 0. Observed 2026-04-13.
+- [ ] **BFS valid tiles don't match game** [Movement] — BFS computed (8,11) as valid for Kenrick at (10,9) with Move=4, but game rejected the move. Terrain height transitions or impassable tiles not properly accounted for. Observed 2026-04-13.
+- [ ] **battle_ability response says "Used" for cast-time abilities** [State] — Abilities with ct>0 (Haste ct=50) are queued, not instant. Response says "Used Haste" but spell is only queued in Combat Timeline. Unit still needs to Wait. Response should say "Queued" for ct>0 abilities. Observed 2026-04-13.
+- [ ] **Detect auto-end-turn abilities (Jump)** [Execution] — Jump auto-ends the turn (unit leaves the battlefield). battle_ability should detect this by checking if the screen transitioned past the active unit's turn after confirming. If so, report "turn ended automatically" instead of leaving Claude to issue a redundant Wait. Observed 2026-04-13.
 
 ---
 

@@ -509,7 +509,11 @@ namespace FFTColorCustomizer.GameBridge
         public string SlopeType;
 
         /// <summary>
-        /// Movement cost to enter this tile. Swamp/Marsh = 2, most others = 1.
+        /// Movement cost to enter this tile. FFT terrain costs:
+        /// - Swamp/Marsh/Poisoned marsh: 2
+        /// - Lava: 2
+        /// - Water tiles (River/Lake/Sea/Waterway/Waterfall) with depth: 1 + depth
+        /// - All others: 1
         /// </summary>
         public int MoveCost
         {
@@ -519,7 +523,15 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     case "Swamp":
                     case "Marsh":
+                    case "Poisoned marsh":
+                    case "Lava":
                         return 2;
+                    case "River":
+                    case "Lake":
+                    case "Sea":
+                    case "Waterway":
+                    case "Waterfall":
+                        return Depth > 0 ? 1 + Depth : 1;
                     default:
                         return 1;
                 }

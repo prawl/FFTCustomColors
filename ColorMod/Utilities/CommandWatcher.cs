@@ -1043,7 +1043,7 @@ namespace FFTColorCustomizer.Utilities
                             : successCount > 0 ? "partial"
                             : "failed";
 
-            // If keys succeeded and a wait condition is specified, poll until satisfied
+            // If keys succeeded, poll for wait conditions and always detect current screen
             if (response.Status != "failed")
             {
                 var waitResult = WaitForCondition(
@@ -1056,6 +1056,10 @@ namespace FFTColorCustomizer.Utilities
                     response.Status = "completed_timeout";
                     ModLogger.Log($"[CommandBridge] Command {command.Id} keys OK but wait timed out after {command.WaitTimeoutMs}ms");
                 }
+
+                // Always include current screen/UI in response, even without wait conditions
+                if (response.Screen == null)
+                    response.Screen = DetectScreen();
             }
 
             ModLogger.Log($"[CommandBridge] Command {command.Id} finished: {response.Status} ({successCount}/{command.Keys.Count} keys)");
@@ -1895,15 +1899,24 @@ namespace FFTColorCustomizer.Utilities
                 int moveStat = moveResult != null ? (int)moveResult.Value.value : 4;
                 int jumpStat = jumpResult != null ? (int)jumpResult.Value.value : 3;
 
-                // Apply movement ability bonus (e.g., Move+1=0xE6, Move+2=0xE7, Move+3=0xE8)
-                var battleState = BattleTracker?.Update();
-                int movementAbilityId = battleState?.ActiveUnit?.MovementAbility ?? 0;
-                if (movementAbilityId == 0xE6) moveStat += 1;      // Move+1
-                else if (movementAbilityId == 0xE7) moveStat += 2; // Move+2
-                else if (movementAbilityId == 0xE8) moveStat += 3; // Move+3
-                else if (movementAbilityId == 0xEB) jumpStat += 1; // Jump+1
-                else if (movementAbilityId == 0xEC) jumpStat += 2; // Jump+2
-                else if (movementAbilityId == 0xED) jumpStat += 3; // Jump+3
+                // Apply movement ability bonus from scan data (name-based, reliable)
+                // and equipment bonuses. The UI buffer only has base Move/Jump.
+                var activeAlly = _navActions?.GetActiveAlly();
+                string? movementAbilityName = activeAlly?.MovementAbility;
+                (moveStat, jumpStat) = GameBridge.MovementBfs.ApplyMovementAbility(moveStat, jumpStat, movementAbilityName);
+
+                // Fallback: try BattleTracker ability ID if name not available
+                if (movementAbilityName == null)
+                {
+                    var battleState = BattleTracker?.Update();
+                    int movementAbilityId = battleState?.ActiveUnit?.MovementAbility ?? 0;
+                    if (movementAbilityId == 0xE6) moveStat += 1;      // Move+1
+                    else if (movementAbilityId == 0xE7) moveStat += 2; // Move+2
+                    else if (movementAbilityId == 0xE8) moveStat += 3; // Move+3
+                    else if (movementAbilityId == 0xEB) jumpStat += 1; // Jump+1
+                    else if (movementAbilityId == 0xEC) jumpStat += 2; // Jump+2
+                    else if (movementAbilityId == 0xED) jumpStat += 3; // Jump+3
+                }
 
                 // Read unit's grid position
                 var gxResult = Explorer.ReadAbsolute((nint)0x140C64A54, 1);
@@ -1915,12 +1928,14 @@ namespace FFTColorCustomizer.Utilities
                 var mapData = _mapLoader?.CurrentMap;
                 if (mapData != null)
                 {
-                    // Get enemy positions from last scan (if available)
+                    // Get enemy and ally positions from last scan (if available)
                     var enemyPositions = _navActions?.GetEnemyPositions();
+                    var allyPositions = _navActions?.GetAllyPositions();
 
-                    var validTiles = ComputeValidTilesFromMap(mapData, unitGX, unitGY, moveStat, jumpStat, enemyPositions);
+                    var validTiles = GameBridge.MovementBfs.ComputeValidTiles(
+                        mapData, unitGX, unitGY, moveStat, jumpStat, enemyPositions, allyPositions);
                     screen.Tiles = validTiles;
-                    ModLogger.Log($"[Tiles] MapBFS (MAP{mapData.MapNumber:D3}): {validTiles.Count} tiles (blocked: {_blockedTiles.Count}, enemies: {enemyPositions?.Count ?? 0}). " +
+                    ModLogger.Log($"[Tiles] MapBFS (MAP{mapData.MapNumber:D3}): {validTiles.Count} tiles (blocked: {_blockedTiles.Count}, enemies: {enemyPositions?.Count ?? 0}, allies: {allyPositions?.Count ?? 0}). " +
                         $"Unit=({unitGX},{unitGY}), Move={moveStat}, Jump={jumpStat}");
                     return;
                 }
@@ -2107,7 +2122,9 @@ namespace FFTColorCustomizer.Utilities
 
                     if (Math.Abs(nh - ch) > jumpStat) continue;
 
-                    int newCost = cost + 1;
+                    int tileCost = map.Tiles[nx, ny].MoveCost;
+                    int newCost = cost + tileCost;
+                    if (newCost > moveStat) continue;
                     if (!visited.ContainsKey((nx, ny)) || visited[(nx, ny)] > newCost)
                     {
                         visited[(nx, ny)] = newCost;

@@ -1,124 +1,96 @@
-# Session Handoff — 2026-04-13 (Session 6)
+# Session Handoff — 2026-04-14 (Session 7)
 
 Delete this file after reading.
 
 ## What Happened This Session
 
-19 commits. Massive session. Live damage detection breakthrough, extensive battle testing, many bug fixes, instruction guides written.
+BFS movement overhaul + 5 targeted bug fixes. Extensive memory investigation (3 agents) for game-native valid tiles — concluded they're not at a static address. Pivoted to fixing the BFS itself with TDD, applied two confirmed rules: ally traversal penalty and movement ability bonuses.
 
 ## Current State
 
 **Branch:** `auto-play-with-claude`
-**Tests:** 1699 passing (up from 1667 at session start)
-**Game:** In battle at The Siedge Weald (loc 26). Lloyd(Dragoon) at (7,4), Ramza at (8,4) HP=84/719 Critical, Kenrick(Knight) at (6,8), Wilham(Monk) at (9,7). Two Skeletal Fiends alive at (8,2) and (8,3), one with 95 HP.
+**Tests:** 1710 passing (up from 1699)
+**Game:** Mid-battle at The Siedge Weald. Wilham's turn (Monk at 10,6). Aurablast selection broken — cursor miss. Gobbledygook killed earlier by Lloyd's Jump. Two enemies alive at (9,4) and (10,4) Skeletal Fiends.
 
-## Major Breakthroughs
+## Major Wins
 
-### 1. Live Damage Detection (THE big win)
-After extensive investigation, discovered that **readonly memory regions** (0x141xxx-0x15Bxxx) contain live HP data that updates immediately after damage — unlike the static array at `0x140893C00` which is stale mid-turn. 
+### 1. BFS Movement Fix (THE big win)
+Created `MovementBfs.cs` with TDD. Two critical rules added:
 
-**How it works:** `ReadLiveHp()` in NavigationActions.cs:
-1. Before attack: read target's HP+MaxHP and level from static array
-2. After attack: search readonly memory (broadSearch=true) for MaxHP pattern
-3. Compare HP at each match — find the one where HP changed
-4. Match by level (from static array) to confirm it's the same unit
-5. Report: HIT (preHp→postHp/maxHp), KO'd, or MISSED
+**Ally traversal penalty** — confirmed via game observation: walking THROUGH an ally tile costs +1 extra move point, and you can't STOP on an ally tile. Without this rule, BFS computed 13 tiles for Kenrick when the game showed 10. With the rule: perfect 10/10 match.
 
-**Key insight:** `SearchBytesInAllMemory` with `broadSearch: true` scans all readable memory including readonly regions. The search is split into two ranges:
-- Static array (0x14089xxxx) — stale reference for the "unchanged" copy
-- Readonly (0x141-0x15C) — live data
+**Movement ability bonuses** — `ApplyMovementAbility()` parses names like "Movement +3" and "Jump +2" and adds the bonus to base Move/Jump. Before: Ramza with Movement +3 showed 18 valid tiles (using base Move=4). After: 34 tiles (using effective Move=7). User confirmed 36 is the correct count — remaining 2 tiles are likely cliff/slope edge cases.
 
-**Verified:** HIT 386, HIT 319, HIT 252, KO (345→0), MISSED (3 correct detections)
+### 2. Five Other Bug Fixes
+- **Scan targeting disruption** — removed Battle_Attacking/Casting from scan-safe screens
+- **execute_action missing ui= field** — always DetectScreen after key press
+- **BFS terrain costs** — MapTile.MoveCost now handles Swamp/Lava (2) and depth water (1+depth)
+- **Battle_Casting misdetection** — battle_move confirmation poll ignores Battle_Casting flicker
+- **Ability list counter-delta verification** — retries lost keypresses via 0x140C0EB20 counter
 
-### 2. Damage Preview Investigation (Unsolved)
-The game displays projected damage and hit% during targeting mode. Found values in multiple locations:
-- **Attacker's heap struct:** statBase-62 (hit%), statBase-96 (damage) — worked in session 5 via probe_status but offsets are session-dependent
-- **Readonly memory:** Found via search_all with distinctive pattern (16 zeros + hit% + bytes + damage) but addresses shift between searches
-- **Problem:** Data moves in heap between reads. Can't reliably locate it.
-- **Added `read_bytes` action** for arbitrary memory reads (up to 1024 bytes) to help future investigation
-- `ReadDamagePreview()` exists in code but returns (0,0) — disabled
+### 3. Memory Investigation (negative result, but thorough)
+3 agents scanned for game-native valid tile storage. Findings in `memory/project_movement_bitmap.md`:
+- **Tile list at 0x140C66315** = perimeter outline (world coords), NOT valid tiles
+- **Rendering struct at 0x140C6F400** = volatile per-frame, counts vary per read
+- **Heap struct at 0x3D89D20** had tileCount=6 matching Wilham's tiles, but tile indices couldn't be decoded through the lookup table
+- Attack tiles are NOT at a static address — game computes them dynamically
 
-### 3. execute_action Wait Fixed
-Was completely broken — `ExecuteValidPath` bypassed the confirmation check and routed through `ExecuteNavAction` instead of the main handler. Fixed by routing battle_wait through the full handler with pre-scan and turn reset. Also removed the `needs_confirmation` check which was blocking all Waits.
-
-### 4. Ability List Navigation Fixed
-The ability list **wraps circularly** — pressing Up from index 0 goes to the bottom. The old Up×20+Down×index approach caused wrong ability selection (Aurablast→Chakra). Fixed to just Down×index from position 0 (cursor starts at 0 when entering a skillset).
-
-### 5. Many Bug Fixes
-- **Cardinal-only attack:** Reverted — FFT Attack DOES include diagonals via Manhattan distance
-- **Focus self-target:** HRange=Self abilities now show caster as target
-- **Post-move range validation:** Store confirmed position, validate from there
-- **Raw cursor trust:** Removed EffectiveMenuCursor corrections that caused wrong menu selections
-- **ui= shows Reset Move:** After moving, index 0 shows "Reset Move"
-- **Neutral unit BFS:** team=2 no longer blocks movement paths
-- **_movedThisTurn:** Only set after successful move (was set before, causing issues on failed moves)
-- **Cutscene during targeting:** Added battleMode==0 to battleModeActive when slot9 is battle sentinel
-- **Move confirmation timeout:** Increased 5s→8s for long-distance walks
-- **Cursor change logging:** Added to track ui= bugs
-
-## Key Memory Addresses
-
-| Address | Field | Notes |
-|---------|-------|-------|
-| 0x140893C00 | Static battle array | Stale mid-turn for HP/position |
-| 0x141xxx-0x15Bxxx | Readonly live data | Updates immediately after damage |
-| 0x14077D2A0 | Condensed struct | Shows active/hovered unit |
-| 0x14077D2AC | Condensed HP (u16) | Active unit during Battle_MyTurn, target during targeting |
-| 0x14077D2B0 | Condensed MaxHP (u16) | Same |
-| 0x1407FC620 | Menu cursor (byte) | 0=Move, 1=Abilities, 2=Wait, 3=Status, 4=AutoBattle |
-| 0x140C0EB20 | Submenu counter (u16) | Tracks cursor movement in ability submenus |
-
-## Battle Flow (Updated)
-
-```bash
-source ./fft.sh
-screen              # see battlefield (ui=Move at turn start)
-battle_move 7 6     # move to tile (validates against BFS)
-battle_attack 8 6   # attack (validates range from post-move position)
-                    # response: HIT (500→181/500) or MISSED! or KO'd!
-execute_action Wait # ends turn, auto-shows next screen
-```
-
-Key commands updated:
-- `battle_attack` — now reports HIT/MISS/KO with live HP detection
-- `battle_ability "Aurablast" x y` — fixed ability list navigation (Down-only)
-- `execute_action Wait` — fixed routing, 60s timeout
-- `screen` — Focus shows self, ALLY tags, server-side filtering
-
-## Known Bugs Still Open
-
-- **[Cutscene] in attack response** — Screen detection catches Cutscene during attack animation (cosmetic, attack works)
-- **battle_ability selects wrong ability** — Still possible if cursor doesn't start at index 0 after entering skillset
-- **Scan disrupts targeting mode** — Running scan_move during targeting changes screen state
-- **BFS terrain too permissive** — Height costs not matching FFT's rules
-- **Static array stale mid-turn** — Positions and HP don't update until turn boundary
-- **Damage preview unsolved** — Hit%/damage values found in heap but addresses shift between reads
+Conclusion: stop hunting game-native storage, keep improving the BFS.
 
 ## Files Changed This Session
 
 | File | Changes |
 |------|---------|
-| NavigationActions.cs | Live damage detection (ReadLiveHp, ReadStaticArrayHpAt), ability list fix (Down-only), post-move range validation, self-target tiles, raw cursor, damage preview framework |
-| CommandWatcher.cs | execute_action Wait fix, post-move position tracking, cursor logging, _movedThisTurn fix, neutral BFS |
-| ScreenDetectionLogic.cs | battleMode==0 in battleModeActive for targeting flicker |
-| MemoryExplorer.cs | broadSearch flag, read_bytes action |
-| AbilityCompactor.cs | Server-side ability filtering (new file) |
-| BattleAbilityNavigation.cs | All-skillsets fallback for FindAbility |
-| BattleTracker.cs | Sticky inBattle flag, removed dead heap code, poll diagnostic |
-| ItemData.cs | MinRange corrected (guns/bows=2, crossbows=3) |
-| AttackDirectionLogic.cs | RightDeltaFromCameraRotation for Jump fallback |
-| InputSimulator.cs | Reverted to PostMessage (SendInput failed) |
-| fft.sh | ui= in header, ALLY tags, simplified ability display, 60s Wait timeout |
-| UnitNameCache.cs | Cache enemy class names by position (new file) |
-| TODO.md | Cleaned 20+ completed items, added new bugs |
-| FormationScreen.md | New instruction guide |
-| SaveLoad.md | New instruction guide |
-| PartyManagement.md | New instruction guide |
+| ColorMod/GameBridge/MovementBfs.cs | NEW: extracted BFS from CommandWatcher, added ally penalty + ApplyMovementAbility |
+| ColorMod/GameBridge/MapLoader.cs | MoveCost handles Swamp/Marsh/Poisoned marsh/Lava (cost 2), water with depth (1+depth) |
+| ColorMod/GameBridge/NavigationActions.cs | Added GetAllyPositions(), removed Battle_Attacking/Casting from scan-safe screens, battle_move confirmation ignores Battle_Casting, added counter-delta retry for ability list nav |
+| ColorMod/Utilities/CommandWatcher.cs | execute_action always DetectScreen, wires MovementBfs with ally positions + movement ability name |
+| ColorMod/GameBridge/ScreenDetectionLogic.cs | No changes kept (tried moveMode disambiguation, reverted) |
+| Tests/GameBridge/MovementBfsTests.cs | NEW: 1 ally-penalty test + 10 theory cases for ApplyMovementAbility |
+
+## Known Bugs Still Open (in priority order)
+
+1. **Auto-Battle triggers instead of Wait** — After battle_move confirmation, execute_action Wait sometimes navigates to AutoBattle (index 4) instead of Wait (index 2). Likely menu cursor desync with ui=Reset Move state.
+2. **Submenu sticky cursor** — Abilities submenu remembers last selected skillset between visits; battle_attack assumes cursor is at Attack but it's wherever we left it.
+3. **Cast-time abilities report "Used" not "Queued"** — Haste/Gravity/etc. with ct>0 are queued, not instant. Response is misleading.
+4. **Jump auto-ends turn** — battle_ability should detect turn auto-ended and skip the redundant Wait prompt.
+5. **Aurablast cursor miss** — "Cursor miss: at (10,6) expected (9,4)" — targeting navigation didn't move cursor to target.
+6. **BFS still 2 tiles off for Ramza** — 34 found, 36 actual. Likely cliff/slope height transitions not handled per-direction.
+7. **Equipment Move/Jump bonuses** — Battle Boots, Germinas Boots, Red Shoes give Move/Jump — not yet applied. Item ID mapping is inconsistent between IC Remaster and FFTPatcher so we can't lookup by ID reliably.
+8. **Secondary skillset null** — RosterMatcher inconsistent; scan_move populates it, regular screen call doesn't.
+
+## Key Memory Addresses
+
+| Address | Field | Notes |
+|---------|-------|-------|
+| 0x140C66315 | Tile list perimeter outline | NOT valid tiles — just rendering path |
+| 0x140C6F400 | Rendering struct base | stride 0x88, flag at +0x1D, volatile per-frame |
+| 0x1407AC7E4 | Move (UI buffer) | BASE value only, no ability/equipment bonuses |
+| 0x1407AC7E6 | Jump (UI buffer) | Same |
+| 0x3D89D20+ | Movement calc struct | Has X, Y, Move, Jump, tileCount — tile indices undecoded |
 
 ## Next 5 Priorities
 
-1. **Damage preview (hit%/damage)** — Need reliable way to read projected values during targeting. Heap search finds values but they move. Consider computing damage from FFT formula instead.
-2. **BFS terrain height** — Movement validation too permissive. Need to match FFT's actual height cost rules.
-3. **Scan disrupts targeting** — scan_move should be read-only during targeting mode (no key inputs).
-4. **Move/Jump stat reading** — Equipment bonuses not reflected. Static array has base stats, need effective stats.
-5. **battle_ability wrong ability** — Cursor might not be at index 0 when entering skillset. Need counter-delta verification.
+1. **Fix menu cursor desync after move** — Auto-Battle instead of Wait is a frequent blocker. Investigate how ui=Reset Move affects cursor position tracking.
+2. **Submenu sticky cursor** — battle_attack should always verify/reset cursor to Attack (index 0) when entering submenu, not assume.
+3. **Cast-time ability response text** — Change "Used X" to "Queued X (ct=N)" for ct>0 abilities so Claude knows to Wait.
+4. **Jump auto-end detection** — battle_ability checks screen state post-confirm; if unit is no longer active, report turn ended.
+5. **Equipment Move/Jump bonuses** — Need reliable item ID mapping. Consider reading item data from heap where names might be resolved.
+
+## Battle Flow (Verified Working)
+
+```bash
+source ./fft.sh
+screen              # see battlefield, ability targets with ALLY tags
+battle_move 7 8     # now uses effective Move stat (with Movement +3 bonus)
+battle_attack 8 6   # basic attack with HIT/MISS/KO detection
+battle_ability "Gravity" 8 4  # casts with ct>0, queued in timeline
+execute_action Wait # end turn (SOMETIMES triggers AutoBattle bug)
+```
+
+## Memory Notes Added
+
+- `project_movement_bitmap.md` — game-native tile storage hunt findings
+- `feedback_revive_height.md` — Revive requires same-height tiles (VRange=0 mystery)
+- `feedback_submenu_sticky_cursor.md` — Abilities submenu remembers position
+- `feedback_cast_time_abilities.md` — ct>0 is queued, not instant

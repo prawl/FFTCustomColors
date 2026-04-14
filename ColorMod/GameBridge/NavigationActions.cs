@@ -976,11 +976,37 @@ namespace FFTColorCustomizer.GameBridge
             // Navigate to the target ability. The cursor starts at index 0 after
             // entering the skillset. Just press Down × abilityIndex.
             // (The list wraps, so pressing Up from 0 goes to the bottom — don't use Up.)
+            // Use counter-delta to verify each keypress registered.
             ModLogger.Log($"[BattleAbility] Nav: Down×{abilityIndex} (listSize={learnedAbilities?.Length ?? -1})");
+            var abilityCounterBefore = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
+            int abilityBaseline = abilityCounterBefore != null ? (int)abilityCounterBefore.Value.value : -1;
+
+            int pressesConfirmed = 0;
             for (int i = 0; i < abilityIndex; i++)
             {
                 SendKey(VK_DOWN);
                 Thread.Sleep(150);
+                pressesConfirmed++;
+
+                // Verify every 3 presses or on the last press
+                if (abilityBaseline >= 0 && (pressesConfirmed % 3 == 0 || i == abilityIndex - 1))
+                {
+                    var counterCheck = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
+                    int counterNow = counterCheck != null ? (int)counterCheck.Value.value : -1;
+                    int delta = counterNow - abilityBaseline;
+                    if (delta != pressesConfirmed && counterNow >= 0)
+                    {
+                        int missed = pressesConfirmed - delta;
+                        ModLogger.Log($"[BattleAbility] Counter mismatch: expected {pressesConfirmed}, got delta {delta}. Retrying {missed} presses.");
+                        for (int r = 0; r < missed; r++)
+                        {
+                            SendKey(VK_DOWN);
+                            Thread.Sleep(200);
+                        }
+                        // Re-read baseline for next verification batch
+                        abilityBaseline = counterNow - delta + pressesConfirmed + missed;
+                    }
+                }
             }
 
             // Step 5: Select the ability
@@ -1560,13 +1586,13 @@ namespace FFTColorCustomizer.GameBridge
             // Allowed:
             //   Battle_MyTurn       — start of player turn, no action yet
             //   Battle_Moving       — player picking a move destination
-            //   Battle_Attacking    — player picking a basic Attack target (battleMode=4)
-            //   Battle_Casting      — player picking a skillset ability target (battleMode=1)
             //   Battle_Abilities    — player browsing their ability submenu
             //   Battle_Waiting      — post-action facing selection
             //   Battle_Paused       — pause menu open over the battle
             //
             // Blocked:
+            //   Battle_Attacking    — C+Up disrupts attack targeting cursor
+            //   Battle_Casting      — C+Up disrupts spell targeting cursor
             //   Battle_Acting       — player's unit is mid-animation
             //   Battle_AlliesTurn   — neutral/NPC guest's turn
             //   Battle_EnemiesTurn  — enemy is acting
@@ -1575,7 +1601,7 @@ namespace FFTColorCustomizer.GameBridge
             //   Battle_GameOver     — KO'd
             var allowedStates = new HashSet<string>
             {
-                "Battle_MyTurn", "Battle_Moving", "Battle_Attacking", "Battle_Casting",
+                "Battle_MyTurn", "Battle_Moving",
                 "Battle_Abilities", "Battle_Waiting", "Battle_Paused"
             };
             if (!allowedStates.Contains(screen.Name))
@@ -2925,10 +2951,10 @@ namespace FFTColorCustomizer.GameBridge
             _input.SendKeyPressToWindow(_gameWindow, VK_F);
             Thread.Sleep(500);
 
-            // Poll up to 5s for Battle_MyTurn or Battle_Acting (move confirmed, back on action menu).
-            // Long-distance moves (4+ tiles) have walking animations that can exceed 3s.
-            // Wait for move animation to complete. battleMode=1 (Battle_Casting) fires
-            // transiently during move — accept it only after 1s delay to skip the transient.
+            // Poll up to 8s for the move to complete. battleMode flickers to 1
+            // (Battle_Casting) transiently during the walk animation — ignore it entirely
+            // since real casting can't happen during move confirmation. Also ignore
+            // Battle_Formation (battleMode=1 edge case).
             bool confirmed = false;
             var sw = Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 8000)
@@ -2936,15 +2962,9 @@ namespace FFTColorCustomizer.GameBridge
                 var check = _detectScreen();
                 if (check != null && check.Name != "Battle_Moving"
                     && check.Name != "Battle_Formation"
+                    && check.Name != "Battle_Casting"
                     && check.Name!.StartsWith("Battle"))
                 {
-                    // Battle_Casting is transient during move animation — only accept
-                    // after 1s to ensure it's not the brief flicker
-                    if (check.Name == "Battle_Casting" && sw.ElapsedMilliseconds < 1000)
-                    {
-                        Thread.Sleep(100);
-                        continue;
-                    }
                     confirmed = true; break;
                 }
                 Thread.Sleep(100);
@@ -3328,6 +3348,19 @@ namespace FFTColorCustomizer.GameBridge
             {
                 // Only block enemy units (team=1), not neutrals/NPCs (team=2)
                 if (u.Team == 1 && u.Hp > 0)
+                    result.Add((u.GridX, u.GridY));
+            }
+            return result;
+        }
+
+        /// <summary>Get positions of allied units (team=0, alive, not active) for BFS traversal cost.</summary>
+        public HashSet<(int, int)> GetAllyPositions()
+        {
+            var result = new HashSet<(int, int)>();
+            if (_lastScannedUnits == null) return result;
+            foreach (var u in _lastScannedUnits)
+            {
+                if (u.Team == 0 && u.Hp > 0 && !u.IsActive)
                     result.Add((u.GridX, u.GridY));
             }
             return result;
