@@ -1535,6 +1535,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x140D435F0, 1),  // 22: shopTypeIndex (0=Outfitter, 1=Tavern, 2=Warriors' Guild, 3=Poachers' Den — index of hovered shop in LocationMenu)
             ((nint)0x141844DD0, 1),  // 23: insideShopFlag (1=inside a shop/service interior after pressing Enter, 0=elsewhere)
             ((nint)0x14184276C, 1),  // 24: shopSubMenuIndex (Outfitter: 0=menu, 1=Buy, 4=Sell, 6=Fitting — other shops unmapped)
+            ((nint)0x140D39CD0, 4),  // 25: gil (player's currency, u32 little-endian)
         };
 
         /// <summary>
@@ -2371,6 +2372,10 @@ namespace FFTColorCustomizer.Utilities
                 };
                 if (screen.Name == "LocationMenu" || screen.Name == "ShopInterior")
                     screen.UI = shopName;
+
+                // Gil: show on shop-adjacent and purchase-decision screens only.
+                if (GameBridge.ShopGilPolicy.ShouldShowGil(screen.Name))
+                    screen.Gil = v[25];
 
                 if (screen.Name == "Cutscene")
                     screen.EventId = eventId;

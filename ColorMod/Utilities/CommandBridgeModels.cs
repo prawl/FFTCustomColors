@@ -454,6 +454,12 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? StoryObjectiveName { get; set; }
 
+        /// <summary>Player's current gil (currency). u32 at static 0x140D39CD0.
+        /// Omitted when zero since that usually indicates a failed read.</summary>
+        [JsonPropertyName("gil")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public long Gil { get; set; }
+
         /// <summary>Name of the active unit (e.g. "Ramza"). Null for generic units without names.</summary>
         [JsonPropertyName("activeUnitName")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

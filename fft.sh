@@ -156,6 +156,8 @@ fft() {
   # hover only during TravelList
   [ "$SCR" = "TravelList" ] && LINE="$LINE hover=$HOV"
   [ -n "$OBJSTR" ] && LINE="$LINE $OBJSTR"
+  local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
+  [ -n "$GIL" ] && LINE="$LINE gil=$GIL"
   LINE="$LINE status=$ST"
   echo "$LINE"
 }
@@ -698,8 +700,15 @@ us.forEach(u=>{
     local LOC=$(echo "$R" | grep -o '"location":[0-9]*' | head -1 | cut -d: -f2)
     local LOCNAME=$(echo "$R" | grep -o '"locationName":"[^"]*"' | head -1 | cut -d'"' -f4)
     local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
+    local UI=$(echo "$R" | grep -o '"ui":"[^"]*"' | head -1 | cut -d'"' -f4)
+    local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
     local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
-    echo "[$SCR] loc=$LOCSTR status=$ST"
+    local LINE="[$SCR]"
+    [ -n "$UI" ] && LINE="$LINE ui=$UI"
+    LINE="$LINE loc=$LOCSTR"
+    [ -n "$GIL" ] && LINE="$LINE gil=$GIL"
+    LINE="$LINE status=$ST"
+    echo "$LINE"
   fi
 }
 
