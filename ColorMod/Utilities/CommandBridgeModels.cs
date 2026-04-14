@@ -583,6 +583,15 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Loadout? Equipment { get; set; }
 
+        /// <summary>JP earned in the unit's currently-equipped class.
+        /// Read from roster +0x80 (u16). Verified 2026-04-14 live: Ramza
+        /// on Gallant Knight = 9999, Mustadio on Machinist = 152. The
+        /// broader 22-job JP array starts at +0x82 and is deferred to a
+        /// later pass (job-index mapping needs nailing down first).</summary>
+        [JsonPropertyName("jp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Jp { get; set; }
+
         [JsonPropertyName("name")]
         public string? Name { get; set; }
 

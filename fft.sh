@@ -784,7 +784,8 @@ try{
       const mp=u.maxMp?('MP='+u.mp+'/'+u.maxMp).padEnd(11):''.padEnd(11);
       const br=u.brave?'Br'+u.brave:'';
       const fa=u.faith?' Fa'+u.faith:'';
-      console.log('  '+sl+' '+nm+' '+lv+' '+jb+' '+hp+' '+mp+' '+br+fa);
+      const jp=u.jp?' JP'+u.jp:'';
+      console.log('  '+sl+' '+nm+' '+lv+' '+jb+' '+hp+' '+mp+' '+br+fa+jp);
       const e=u.equipment;
       if(e){
         const parts=[];

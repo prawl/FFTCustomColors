@@ -54,6 +54,38 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("WorldMap", paths["WorldMap"].WaitForScreen);
         }
 
+        [Theory]
+        [InlineData("PartyMenu")]
+        [InlineData("PartyMenuInventory")]
+        [InlineData("PartyMenuChronicle")]
+        [InlineData("PartyMenuOptions")]
+        public void PartyMenuAllTabs_ExposeOpenAliases(string screenName)
+        {
+            // Every tab knows how to reach every OTHER tab in one named
+            // ValidPath (OpenUnits / OpenInventory / OpenChronicle / OpenOptions).
+            // The alias on the current tab is a no-op (empty Keys).
+            var paths = NavigationPaths.GetPaths(MakeScreen(screenName));
+            Assert.NotNull(paths);
+            Assert.Contains("OpenUnits", paths!.Keys);
+            Assert.Contains("OpenInventory", paths.Keys);
+            Assert.Contains("OpenChronicle", paths.Keys);
+            Assert.Contains("OpenOptions", paths.Keys);
+        }
+
+        [Theory]
+        [InlineData("PartyMenu",          "OpenUnits")]
+        [InlineData("PartyMenuInventory", "OpenInventory")]
+        [InlineData("PartyMenuChronicle", "OpenChronicle")]
+        [InlineData("PartyMenuOptions",   "OpenOptions")]
+        public void PartyMenu_OpenAliasForCurrentTabIsNoOp(string screenName, string aliasName)
+        {
+            var paths = NavigationPaths.GetPaths(MakeScreen(screenName));
+            Assert.NotNull(paths);
+            var alias = paths![aliasName];
+            Assert.NotNull(alias.Keys);
+            Assert.Empty(alias.Keys!);
+        }
+
         [Fact]
         public void PartyMenuInventory_ExposesListAndPageNavigation()
         {

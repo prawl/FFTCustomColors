@@ -629,6 +629,33 @@ public class ScreenStateMachineTests
     }
 
     [Fact]
+    public void JobChangeConfirmation_LeftRight_TogglesSelection()
+    {
+        // Navigate: Ramza → CharacterStatus → (sidebar Job) → JobSelection →
+        // Enter on job tile → JobActionMenu → Right to "Change Job" →
+        // Enter → JobChangeConfirmation.
+        var sm = CreateAtScreen(GameScreen.JobScreen, isRamza: true);
+        sm.OnKeyPressed(VK_RETURN);         // → JobActionMenu
+        Assert.Equal(GameScreen.JobActionMenu, sm.CurrentScreen);
+        Assert.Equal(0, sm.JobActionIndex); // default: Learn Abilities
+        sm.OnKeyPressed(VK_RIGHT);          // → Change Job highlighted
+        Assert.Equal(1, sm.JobActionIndex);
+        sm.OnKeyPressed(VK_RETURN);         // → JobChangeConfirmation
+        Assert.Equal(GameScreen.JobChangeConfirmation, sm.CurrentScreen);
+        Assert.False(sm.JobChangeConfirmSelected); // defaults to Cancel
+
+        sm.OnKeyPressed(VK_RIGHT);
+        Assert.True(sm.JobChangeConfirmSelected);  // → Confirm
+        sm.OnKeyPressed(VK_LEFT);
+        Assert.False(sm.JobChangeConfirmSelected); // → Cancel
+
+        // Enter/Escape returns to CharacterStatus and resets.
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
+        Assert.False(sm.JobChangeConfirmSelected);
+    }
+
+    [Fact]
     public void KeysSinceLastSetScreen_ResetsOnSetScreen_AndCountsKeys()
     {
         var sm = new ScreenStateMachine();

@@ -2615,6 +2615,19 @@ namespace FFTColorCustomizer.Utilities
                     screen.UI = ScreenMachine.DismissConfirmSelected ? "Confirm" : "Back";
                 }
 
+                // JobActionMenu (modal on JobSelection Enter): Left=Learn
+                // Abilities, Right=Change Job. Driven by key history.
+                if (screen.Name == "JobActionMenu" && ScreenMachine != null)
+                {
+                    screen.UI = ScreenMachine.JobActionIndex == 1 ? "Change Job" : "Learn Abilities";
+                }
+
+                // JobChangeConfirmation (yes/no after Change Job).
+                if (screen.Name == "JobChangeConfirmation" && ScreenMachine != null)
+                {
+                    screen.UI = ScreenMachine.JobChangeConfirmSelected ? "Confirm" : "Cancel";
+                }
+
                 // Roster grid on PartyMenu + every nested PartyMenu screen so
                 // per-unit equipment is always available to Claude. One round-
                 // trip beats cursor-move + re-read cycles. See TODO §10.6.
@@ -2647,6 +2660,7 @@ namespace FFTColorCustomizer.Utilities
                                     Job = s.JobName,
                                     Brave = s.Brave,
                                     Faith = s.Faith,
+                                    Jp = s.CurrentJobJp,
                                 };
                                 // Equipment comes from the roster slot itself
                                 // (stable static array at 0x1411A18D0). The

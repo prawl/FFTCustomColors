@@ -37,6 +37,7 @@ namespace FFTColorCustomizer.GameBridge
             public int Level;       // +0x1D
             public int Brave;       // +0x1E
             public int Faith;       // +0x1F
+            public int CurrentJobJp; // +0x80 u16 — JP in the unit's currently-equipped class
             public int NameId;      // +0x230 (u16)
             public string? Name;    // Resolved via UnitNameLookup → NameTableLookup
             public string? JobName; // Resolved via CharacterData.GetJobName
@@ -130,7 +131,7 @@ namespace FFTColorCustomizer.GameBridge
             var result = new List<RosterSlot>();
 
             // Batch-read the small set of fields we need for every slot in one round-trip.
-            const int FieldsPerSlot = 9;
+            const int FieldsPerSlot = 10;
             var reads = new (System.IntPtr addr, int size)[MaxSlots * FieldsPerSlot];
             for (int s = 0; s < MaxSlots; s++)
             {
@@ -144,6 +145,7 @@ namespace FFTColorCustomizer.GameBridge
                 reads[s * FieldsPerSlot + 6] = ((System.IntPtr)(b + 0x1F), 1); // faith
                 reads[s * FieldsPerSlot + 7] = ((System.IntPtr)(b + 0x230), 2); // nameId u16
                 reads[s * FieldsPerSlot + 8] = ((System.IntPtr)(b + 0x20), 1); // reserved probe
+                reads[s * FieldsPerSlot + 9] = ((System.IntPtr)(b + 0x80), 2); // current-job JP u16
             }
             var v = _explorer.ReadMultiple(reads);
 
@@ -173,6 +175,7 @@ namespace FFTColorCustomizer.GameBridge
                     Level = f.Level,
                     Brave = f.Brave,
                     Faith = f.Faith,
+                    CurrentJobJp = (int)v[s * FieldsPerSlot + 9],
                     NameId = f.NameId,
                     JobName = ResolveJobName(f.NameId, f.Job),
                 };

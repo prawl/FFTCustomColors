@@ -66,6 +66,13 @@ namespace FFTColorCustomizer.GameBridge
         public bool DismissConfirmSelected { get; private set; }
 
         /// <summary>
+        /// JobChangeConfirmation cursor position: false = Cancel (default,
+        /// safe), true = Confirm. Left/Right toggle. Enter on Confirm
+        /// actually changes the unit's job.
+        /// </summary>
+        public bool JobChangeConfirmSelected { get; private set; }
+
+        /// <summary>
         /// Which equipment slot was highlighted when Enter opened the picker.
         /// Used to surface the correct Equippable&lt;Type&gt; screen name at
         /// detection time even though the state machine uses a single
@@ -487,9 +494,14 @@ namespace FFTColorCustomizer.GameBridge
                     break;
                 case VK_RETURN:
                     if (JobActionIndex == 1)
+                    {
                         CurrentScreen = GameScreen.JobChangeConfirmation;
+                        JobChangeConfirmSelected = false; // default to Cancel (safe)
+                    }
                     else
+                    {
                         CurrentScreen = GameScreen.JobScreen;
+                    }
                     break;
                 case VK_ESCAPE:
                     CurrentScreen = GameScreen.JobScreen;
@@ -499,10 +511,20 @@ namespace FFTColorCustomizer.GameBridge
 
         private void HandleJobChangeConfirmation(int vk)
         {
-            if (vk == VK_RETURN || vk == VK_ESCAPE)
+            switch (vk)
             {
-                CurrentScreen = GameScreen.CharacterStatus;
-                SidebarIndex = 0; // Returns to sidebar with Equipment selected
+                case VK_LEFT:
+                    JobChangeConfirmSelected = false; // Cancel
+                    break;
+                case VK_RIGHT:
+                    JobChangeConfirmSelected = true; // Confirm
+                    break;
+                case VK_RETURN:
+                case VK_ESCAPE:
+                    CurrentScreen = GameScreen.CharacterStatus;
+                    SidebarIndex = 0; // Returns to sidebar with Equipment selected
+                    JobChangeConfirmSelected = false; // reset
+                    break;
             }
         }
 

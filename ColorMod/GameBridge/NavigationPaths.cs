@@ -156,6 +156,8 @@ namespace FFTColorCustomizer.GameBridge
 
         private static Dictionary<string, PathEntry> GetPartyMenuPaths()
         {
+            // Tab aliases from Units: E (Inventory), EE (Chronicle), EEE (Options).
+            // Q reaches Options in one press (E wraps backward).
             return new()
             {
                 ["WorldMap"] = new PathEntry
@@ -166,6 +168,25 @@ namespace FFTColorCustomizer.GameBridge
                 },
                 ["PrevTab"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Switch to previous tab" },
                 ["NextTab"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "Switch to next tab" },
+                ["OpenUnits"] = new PathEntry { Keys = System.Array.Empty<KeyInfo>(), Desc = "(already on Units tab — no-op)" },
+                ["OpenInventory"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_E, "E") },
+                    WaitForScreen = "PartyMenuInventory",
+                    Desc = "Jump to Inventory tab (E once)"
+                },
+                ["OpenChronicle"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_E, "E"), Key(VK_E, "E") },
+                    WaitForScreen = "PartyMenuChronicle",
+                    Desc = "Jump to Chronicle tab (E twice)"
+                },
+                ["OpenOptions"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_Q, "Q") },
+                    WaitForScreen = "PartyMenuOptions",
+                    Desc = "Jump to Options tab (Q wraps backward)"
+                },
                 ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up" },
                 ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down" },
                 ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move cursor left" },
@@ -856,10 +877,31 @@ namespace FFTColorCustomizer.GameBridge
             // Inventory tab: full item catalog across categories. Columns
             // Item Name | Equipped/Held, right pane shows selected item's
             // description. Multi-page ("1/3" indicator).
+            //
+            // From Inventory: Q→Units, E→Chronicle, QQ/EE→Options.
             return new()
             {
                 ["PrevTab"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Switch to previous PartyMenu tab (wraps: Units)" },
                 ["NextTab"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "Switch to next PartyMenu tab (wraps: Chronicle)" },
+                ["OpenUnits"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_Q, "Q") },
+                    WaitForScreen = "PartyMenu",
+                    Desc = "Jump to Units tab"
+                },
+                ["OpenInventory"] = new PathEntry { Keys = System.Array.Empty<KeyInfo>(), Desc = "(already on Inventory tab — no-op)" },
+                ["OpenChronicle"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_E, "E") },
+                    WaitForScreen = "PartyMenuChronicle",
+                    Desc = "Jump to Chronicle tab"
+                },
+                ["OpenOptions"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_E, "E"), Key(VK_E, "E") },
+                    WaitForScreen = "PartyMenuOptions",
+                    Desc = "Jump to Options tab"
+                },
                 ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Scroll up in item list (wraps)" },
                 ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Scroll down in item list (wraps)" },
                 ["ChangePage"] = new PathEntry
@@ -881,10 +923,31 @@ namespace FFTColorCustomizer.GameBridge
             // Chronicle tab: 7-tile grid of lore sub-screens plus a
             // Special Lectures row. Pressing Enter on a tile opens its
             // dedicated sub-screen (not modeled yet).
+            //
+            // From Chronicle: QQ→Units, Q→Inventory, E→Options.
             return new()
             {
                 ["PrevTab"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Switch to previous PartyMenu tab (wraps: Inventory)" },
                 ["NextTab"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "Switch to next PartyMenu tab (wraps: Options)" },
+                ["OpenUnits"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_Q, "Q"), Key(VK_Q, "Q") },
+                    WaitForScreen = "PartyMenu",
+                    Desc = "Jump to Units tab"
+                },
+                ["OpenInventory"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_Q, "Q") },
+                    WaitForScreen = "PartyMenuInventory",
+                    Desc = "Jump to Inventory tab"
+                },
+                ["OpenChronicle"] = new PathEntry { Keys = System.Array.Empty<KeyInfo>(), Desc = "(already on Chronicle tab — no-op)" },
+                ["OpenOptions"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_E, "E") },
+                    WaitForScreen = "PartyMenuOptions",
+                    Desc = "Jump to Options tab"
+                },
                 ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move tile cursor up (wraps)" },
                 ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move tile cursor down (wraps)" },
                 ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move tile cursor left (wraps)" },
@@ -907,10 +970,31 @@ namespace FFTColorCustomizer.GameBridge
         {
             // Options tab: vertical list — Save / Load / Settings /
             // Return to Title Screen / Exit Game.
+            //
+            // From Options: E→Units (wraps), Q→Chronicle, QQ→Inventory.
             return new()
             {
                 ["PrevTab"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Switch to previous PartyMenu tab (wraps: Chronicle)" },
                 ["NextTab"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "Switch to next PartyMenu tab (wraps: Units)" },
+                ["OpenUnits"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_E, "E") },
+                    WaitForScreen = "PartyMenu",
+                    Desc = "Jump to Units tab (E wraps forward)"
+                },
+                ["OpenInventory"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_Q, "Q"), Key(VK_Q, "Q") },
+                    WaitForScreen = "PartyMenuInventory",
+                    Desc = "Jump to Inventory tab"
+                },
+                ["OpenChronicle"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_Q, "Q") },
+                    WaitForScreen = "PartyMenuChronicle",
+                    Desc = "Jump to Chronicle tab"
+                },
+                ["OpenOptions"] = new PathEntry { Keys = System.Array.Empty<KeyInfo>(), Desc = "(already on Options tab — no-op)" },
                 ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up (wraps)" },
                 ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down (wraps)" },
                 ["Select"] = new PathEntry
