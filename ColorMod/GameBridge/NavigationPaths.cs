@@ -23,6 +23,8 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_Q = 0x51;
         private const int VK_E = 0x45;
         private const int VK_T = 0x54;
+        private const int VK_R = 0x52;
+        private const int VK_1 = 0x31;
 
         public static Dictionary<string, PathEntry>? GetPaths(DetectedScreen screen)
         {
@@ -34,10 +36,27 @@ namespace FFTColorCustomizer.GameBridge
                 "TitleScreen" => GetTitleScreenPaths(),
                 "WorldMap" => GetWorldMapPaths(),
                 "PartyMenu" => GetPartyMenuPaths(),
+                "PartyMenuInventory" => GetPartyMenuInventoryPaths(),
+                "PartyMenuChronicle" => GetPartyMenuChroniclePaths(),
+                "PartyMenuOptions" => GetPartyMenuOptionsPaths(),
                 "CharacterStatus" => GetCharacterStatusPaths(screen),
+                "CharacterDialog" => GetCharacterDialogPaths(),
+                "DismissUnit" => GetDismissUnitPaths(),
+                "CombatSets" => GetCombatSetsPaths(),
                 "EquipmentScreen" => GetEquipmentScreenPaths(),
+                "EquipmentAndAbilities" => GetEquipmentAndAbilitiesPaths(),
                 "EquipmentItemList" => GetEquipmentItemListPaths(),
+                "EquippableWeapons" => GetEquippableItemPaths("weapon"),
+                "EquippableShields" => GetEquippableItemPaths("shield"),
+                "EquippableHeadware" => GetEquippableItemPaths("helm"),
+                "EquippableCombatGarb" => GetEquippableItemPaths("armor"),
+                "EquippableAccessories" => GetEquippableItemPaths("accessory"),
+                "ActionAbilities" => GetAbilityPickerPaths("action ability (skillset)"),
+                "ReactionAbilities" => GetAbilityPickerPaths("reaction ability"),
+                "SupportAbilities" => GetAbilityPickerPaths("support ability"),
+                "MovementAbilities" => GetAbilityPickerPaths("movement ability"),
                 "JobScreen" => GetJobScreenPaths(),
+                "JobSelection" => GetJobSelectionPaths(),
                 "JobActionMenu" => GetJobActionMenuPaths(),
                 "JobChangeConfirmation" => GetJobChangeConfirmationPaths(),
                 "TravelList" => GetTravelListPaths(),
@@ -164,20 +183,38 @@ namespace FFTColorCustomizer.GameBridge
             // We don't know sidebar index from memory, so offer all options
             return new()
             {
-                ["SidebarUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move sidebar up" },
-                ["SidebarDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move sidebar down" },
+                ["SidebarUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move sidebar up (wraps)" },
+                ["SidebarDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move sidebar down (wraps)" },
                 ["Select"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ENTER, "Enter") },
-                    Desc = "Open selected sidebar item (Equipment & Abilities / Job / Combat Sets)"
+                    Desc = "Open selected sidebar item (EquipmentAndAbilities / JobSelection / CombatSets)"
                 },
                 ["Back"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     Desc = "Back to party unit grid"
                 },
-                ["PrevUnit"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "View previous unit" },
-                ["NextUnit"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "View next unit" },
+                ["PrevUnit"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "View previous unit (wraps)" },
+                ["NextUnit"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "View next unit (wraps)" },
+                ["OpenDialog"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_SPACE, "Space") },
+                    WaitForScreen = "CharacterDialog",
+                    WaitTimeoutMs = 2000,
+                    Desc = "Open unit's flavor-text dialog (press Space)"
+                },
+                ["ToggleStatsPanel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_1, "1") },
+                    Desc = "Toggle full stat grid expansion ([1] More / [1] Less hint)"
+                },
+                // Dismiss Unit is opened by HOLDING B for 3+ seconds.
+                // Our existing `keys` infrastructure sends single presses;
+                // no hold-key helper exists yet, so we don't emit a
+                // ValidPath for DismissUnit here. Once a hold-key action
+                // lands, add: ["DismissUnit"] = { action: "hold_key",
+                // vk: VK_B, durationMs: 3500, WaitForScreen: "DismissUnit" }.
             };
         }
 
@@ -244,17 +281,28 @@ namespace FFTColorCustomizer.GameBridge
 
         private static Dictionary<string, PathEntry> GetJobActionMenuPaths()
         {
+            // Modal with Learn Abilities (left, default) / Change Job (right).
+            // Cursor defaults to Learn Abilities. Combined sequences below
+            // re-assert the cursor position before Enter so they work from
+            // either starting cursor.
             return new()
             {
                 ["LearnAbilities"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_LEFT, "Left"), Key(VK_ENTER, "Enter") },
-                    Desc = "Select Learn Abilities"
+                    Desc = "Select Learn Abilities (asserts cursor Left then Enter)"
                 },
                 ["ChangeJob"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_RIGHT, "Right"), Key(VK_ENTER, "Enter") },
-                    Desc = "Change to this job"
+                    Desc = "Change to this job (asserts cursor Right then Enter)"
+                },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move cursor to Learn Abilities (wraps)" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move cursor to Change Job (wraps)" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Activate highlighted option at current cursor position"
                 },
                 ["Cancel"] = new PathEntry
                 {
@@ -792,6 +840,282 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ENTER, "Enter") },
                     Desc = "Dismiss the desertion warning and continue"
                 }
+            };
+        }
+
+        // ============================================================
+        // PartyMenu non-Units tabs (captured 2026-04-14, TODO §10.6).
+        // Detection from memory not yet implemented — these fire once
+        // the tab-index discriminator is scanned. Until then they're
+        // only reachable by name from tests / manual dispatch.
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetPartyMenuInventoryPaths()
+        {
+            // Inventory tab: full item catalog across categories. Columns
+            // Item Name | Equipped/Held, right pane shows selected item's
+            // description. Multi-page ("1/3" indicator).
+            return new()
+            {
+                ["PrevTab"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Switch to previous PartyMenu tab (wraps: Units)" },
+                ["NextTab"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "Switch to next PartyMenu tab (wraps: Chronicle)" },
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Scroll up in item list (wraps)" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Scroll down in item list (wraps)" },
+                ["ChangePage"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_TAB, "Tab") },
+                    Desc = "Cycle item-category sub-tabs (Weapons/Shields/Helms/Armor/Accessories/Consumables)"
+                },
+                ["WorldMap"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "WorldMap",
+                    Desc = "Close PartyMenu, return to world map"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetPartyMenuChroniclePaths()
+        {
+            // Chronicle tab: 7-tile grid of lore sub-screens plus a
+            // Special Lectures row. Pressing Enter on a tile opens its
+            // dedicated sub-screen (not modeled yet).
+            return new()
+            {
+                ["PrevTab"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Switch to previous PartyMenu tab (wraps: Inventory)" },
+                ["NextTab"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "Switch to next PartyMenu tab (wraps: Options)" },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move tile cursor up (wraps)" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move tile cursor down (wraps)" },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move tile cursor left (wraps)" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move tile cursor right (wraps)" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Open highlighted chronicle tile (Encyclopedia/Events/Auracite/etc. — sub-screens not yet modeled)"
+                },
+                ["WorldMap"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "WorldMap",
+                    Desc = "Close PartyMenu, return to world map"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetPartyMenuOptionsPaths()
+        {
+            // Options tab: vertical list — Save / Load / Settings /
+            // Return to Title Screen / Exit Game.
+            return new()
+            {
+                ["PrevTab"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Switch to previous PartyMenu tab (wraps: Chronicle)" },
+                ["NextTab"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "Switch to next PartyMenu tab (wraps: Units)" },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up (wraps)" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down (wraps)" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Open highlighted option (Save/Load/Settings/Return to Title/Exit — sub-flows not yet modeled)"
+                },
+                ["WorldMap"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "WorldMap",
+                    Desc = "Close PartyMenu, return to world map"
+                },
+            };
+        }
+
+        // ============================================================
+        // CharacterStatus side-flows (spacebar dialog + hold-B dismiss).
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetCharacterDialogPaths()
+        {
+            // Flavor-text dialog opened by pressing Space on a unit's
+            // CharacterStatus screen (e.g. Kenrick's "My father is an
+            // arms merchant..." intro). Advances with Enter like
+            // cutscenes. Escape does NOT close dialogs in this game.
+            return new()
+            {
+                ["Advance"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Advance flavor dialog (press Enter). Escape does nothing on dialogs."
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetDismissUnitPaths()
+        {
+            // Confirmation screen opened by holding B for 3+ seconds on a
+            // unit's CharacterStatus screen. Cursor DEFAULTS to
+            // Back/Cancel — so a blind Enter is safe (it does NOT dismiss
+            // the unit). Left/Right toggle between Confirm and Back.
+            return new()
+            {
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Toggle cursor between Back and Confirm (wraps)" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Toggle cursor between Back and Confirm (wraps)" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Activate highlighted option (Back=safe / Confirm=permanently dismisses unit). Cursor defaults to Back."
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "CharacterStatus",
+                    Desc = "Cancel, back to character status"
+                },
+            };
+        }
+
+        // ============================================================
+        // CombatSets: third sidebar item under CharacterStatus. Not yet
+        // explored live — best-guess ValidPaths. Revisit when detection
+        // lands or a screenshot arrives.
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetCombatSetsPaths()
+        {
+            return new()
+            {
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up in loadout list (wraps)" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down in loadout list (wraps)" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Activate highlighted loadout (exact behavior not yet verified live)"
+                },
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "CharacterStatus",
+                    Desc = "Back to character status sidebar"
+                },
+            };
+        }
+
+        // ============================================================
+        // EquipmentAndAbilities: the two-column inner screen (Equipment
+        // on the left, Abilities on the right) reached by pressing Enter
+        // on CharacterStatus sidebar's "Equipment & Abilities". Pressing
+        // R toggles between the default list view and an aggregated
+        // Equipment Effects summary.
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetEquipmentAndAbilitiesPaths()
+        {
+            return new()
+            {
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up within column (wraps)" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down within column (wraps)" },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Focus Equipment column (Weapon/Shield/Helm/Armor/Accessory)" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Focus Abilities column (Action/Reaction/Support/Movement)" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Open slot picker for highlighted slot (Equippable<Type> or <Type>Abilities)"
+                },
+                ["ToggleEffectsView"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_R, "R") },
+                    Desc = "Toggle Equipment Effects summary view (aggregate stat effects) ↔ default list view"
+                },
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "CharacterStatus",
+                    Desc = "Back to character status sidebar"
+                },
+            };
+        }
+
+        // ============================================================
+        // Equippable<Type>: type-filtered item pickers reached from
+        // EquipmentAndAbilities. List of items the player owns that fit
+        // the slot; Select equips (or unequips if already equipped).
+        // Tab cycles category pages where applicable.
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetEquippableItemPaths(string itemKind)
+        {
+            return new()
+            {
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = $"Scroll up in {itemKind} list (wraps)" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = $"Scroll down in {itemKind} list (wraps)" },
+                ["ChangePage"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_TAB, "Tab") },
+                    Desc = $"Cycle {itemKind} sub-category if the picker has pages"
+                },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = $"Equip highlighted {itemKind} (or unequip if it is already equipped)"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "EquipmentAndAbilities",
+                    Desc = "Cancel without changing equipment"
+                },
+            };
+        }
+
+        // ============================================================
+        // <Slot>Abilities: pickers reached from the right column of
+        // EquipmentAndAbilities. Same shape across all four slots.
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetAbilityPickerPaths(string abilityKind)
+        {
+            return new()
+            {
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = $"Scroll up in {abilityKind} list (wraps)" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = $"Scroll down in {abilityKind} list (wraps)" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = $"Assign highlighted {abilityKind} to this slot"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "EquipmentAndAbilities",
+                    Desc = "Cancel without changing this ability slot"
+                },
+            };
+        }
+
+        // ============================================================
+        // JobSelection: grid of job tiles reached by pressing Enter on
+        // CharacterStatus sidebar's "Job". Ramza's row 0 has 8 columns
+        // (1 special + 7 generic); other units have 7. Pressing Enter
+        // on a tile opens JobActionMenu.
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetJobSelectionPaths()
+        {
+            return new()
+            {
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move job cursor up (wraps)" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move job cursor down (wraps)" },
+                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move job cursor left (wraps)" },
+                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move job cursor right (wraps)" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    WaitForScreen = "JobActionMenu",
+                    WaitTimeoutMs = 2000,
+                    Desc = "Open highlighted job's Learn Abilities / Change Job modal"
+                },
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "CharacterStatus",
+                    Desc = "Back to character status sidebar"
+                },
             };
         }
 
