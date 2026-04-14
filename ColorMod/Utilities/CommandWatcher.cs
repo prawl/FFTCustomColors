@@ -1536,6 +1536,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x141844DD0, 1),  // 23: insideShopFlag (1=inside a shop/service interior after pressing Enter, 0=elsewhere)
             ((nint)0x14184276C, 1),  // 24: shopSubMenuIndex (Outfitter: 0=menu, 1=Buy, 4=Sell, 6=Fitting — other shops unmapped)
             ((nint)0x140D39CD0, 4),  // 25: gil (player's currency, u32 little-endian)
+            ((nint)0x141870704, 4),  // 26: shopListCursorIndex (row the player is highlighting inside Outfitter_Buy/Sell/Fitting; 0-based)
         };
 
         /// <summary>
@@ -2376,6 +2377,11 @@ namespace FFTColorCustomizer.Utilities
                 // Gil: show on shop-adjacent and purchase-decision screens only.
                 if (GameBridge.ShopGilPolicy.ShouldShowGil(screen.Name))
                     screen.Gil = v[25];
+
+                // Shop list cursor row (0-based): only meaningful inside an Outfitter
+                // sub-action. -1 elsewhere so JSON omits the field.
+                if (screen.Name == "Outfitter_Buy" || screen.Name == "Outfitter_Sell" || screen.Name == "Outfitter_Fitting")
+                    screen.ShopListCursorIndex = (int)v[26];
 
                 if (screen.Name == "Cutscene")
                     screen.EventId = eventId;

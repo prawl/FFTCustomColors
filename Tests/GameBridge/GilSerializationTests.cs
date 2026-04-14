@@ -75,5 +75,51 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.False(ShopGilPolicy.ShouldShowGil(screenName),
                 $"{screenName} should NOT expose gil — it's not purchase-relevant.");
         }
+
+        [Fact]
+        public void DetectedScreen_ShopListCursorIndex_SerializesWhenPresent()
+        {
+            // shopListCursorIndex tracks the row the player is highlighting inside
+            // Outfitter_Buy/Sell/Fitting. Surfaced so Claude can later resolve
+            // ui=<item name> once the stock list decoding is in place.
+            var screen = new DetectedScreen
+            {
+                Name = "Outfitter_Buy",
+                ShopListCursorIndex = 3
+            };
+
+            var json = JsonSerializer.Serialize(screen);
+            Assert.Contains("\"shopListCursorIndex\":3", json);
+        }
+
+        [Fact]
+        public void DetectedScreen_ShopListCursorIndex_OmittedWhenNull()
+        {
+            // null = not applicable on this screen. Row 0 is a real value
+            // and must serialize (covered by the zero-is-serialized test).
+            var screen = new DetectedScreen
+            {
+                Name = "WorldMap",
+                ShopListCursorIndex = null
+            };
+
+            var json = JsonSerializer.Serialize(screen);
+            Assert.DoesNotContain("shopListCursorIndex", json);
+        }
+
+        [Fact]
+        public void DetectedScreen_ShopListCursorIndex_ZeroIsSerialized()
+        {
+            // Row 0 is the top of the list — a real value, must not be treated
+            // as "absent".
+            var screen = new DetectedScreen
+            {
+                Name = "Outfitter_Buy",
+                ShopListCursorIndex = 0
+            };
+
+            var json = JsonSerializer.Serialize(screen);
+            Assert.Contains("\"shopListCursorIndex\":0", json);
+        }
     }
 }

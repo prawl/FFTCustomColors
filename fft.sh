@@ -702,11 +702,13 @@ us.forEach(u=>{
     local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
     local UI=$(echo "$R" | grep -o '"ui":"[^"]*"' | head -1 | cut -d'"' -f4)
     local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
+    local SLCI=$(echo "$R" | grep -o '"shopListCursorIndex":[0-9]*' | head -1 | cut -d: -f2)
     local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
     local LINE="[$SCR]"
     [ -n "$UI" ] && LINE="$LINE ui=$UI"
     LINE="$LINE loc=$LOCSTR"
     [ -n "$GIL" ] && LINE="$LINE gil=$GIL"
+    [ -n "$SLCI" ] && LINE="$LINE row=$SLCI"
     LINE="$LINE status=$ST"
     echo "$LINE"
   fi

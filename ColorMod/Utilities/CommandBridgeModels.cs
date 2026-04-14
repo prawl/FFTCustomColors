@@ -460,6 +460,13 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public long Gil { get; set; }
 
+        /// <summary>Row index of the highlighted item inside Outfitter_Buy/Sell/Fitting.
+        /// u32 at static 0x141870704. 0-based, increments per ScrollDown.
+        /// null = not applicable (screens outside the Outfitter sub-actions).</summary>
+        [JsonPropertyName("shopListCursorIndex")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? ShopListCursorIndex { get; set; }
+
         /// <summary>Name of the active unit (e.g. "Ramza"). Null for generic units without names.</summary>
         [JsonPropertyName("activeUnitName")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
