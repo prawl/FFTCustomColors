@@ -120,6 +120,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ## 3. Travel System — Polish (P1)
 
+- [ ] **Block `world_travel_to` to current location** — Calling world_travel_to with the location ID of the current standing node opens the travel list with the cursor on the current node, and the blind "press Enter to confirm" flow selects it. The game then gets stuck in an undefined state (travel modal opens, input routing goes to a subwindow, subsequent Enter presses are swallowed). Detect and refuse: if `locationId == currentLocationId` (where currentLocationId is the WorldMap cursor hover OR the last-arrived location), return `{status: "rejected", error: "Already at <name>. Use execute_action EnterLocation to enter the location menu."}`. 2026-04-14 — observed breaking the Dorter shop run.
 - [ ] **Locked/unrevealed locations** — Read unlock bitmask at 0x1411A10B0 and skip locked locations.
 - [ ] **Encounter polling reliability** — Encounters sometimes trigger before polling starts.
 - [ ] **Ctrl fast-forward during travel** — Not working.
@@ -208,6 +209,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ### Detection — TODO
 
+- [ ] **Rename `ShopInterior` state** — the current name is misleading. What we're calling `ShopInterior` is actually the shop-type selector menu inside a settlement (the list of Outfitter / Tavern / Warriors' Guild / Poachers' Den options that appears after entering a settlement). Better name: `SettlementMenu` or similar. Update the state string in `ScreenDetectionLogic.cs`, all tests, `NavigationPaths.cs`, and the handoff/audit docs. Also consider: is the CURRENT `LocationMenu` actually the "outer" shop-list screen, or is that the map-node context? Review both names for consistency as part of this rename.
 - [ ] **(NEXT) ValidPaths for the whole shop flow** [P0] — the automation unlock. Every shop screen needs a ValidPaths entry so Claude can drive the UI without knowing individual key sequences. Required entries:
   - **LocationMenu**: `EnterOutfitter`, `EnterTavern`, `EnterWarriorsGuild`, `EnterPoachersDen`, `Leave` (back to world map)
   - **ShopInterior** (shop menu): `Buy`, `Sell`, `Fitting`, `Leave`

@@ -41,6 +41,11 @@ namespace FFTColorCustomizer.GameBridge
                 "JobActionMenu" => GetJobActionMenuPaths(),
                 "JobChangeConfirmation" => GetJobChangeConfirmationPaths(),
                 "TravelList" => GetTravelListPaths(),
+                "LocationMenu" => GetLocationMenuPaths(),
+                "ShopInterior" => GetShopInteriorPaths(),
+                "Outfitter_Buy" => GetShopItemListPaths("Buy highlighted item (opens quantity/confirm dialog)"),
+                "Outfitter_Sell" => GetShopItemListPaths("Sell highlighted item (opens quantity/confirm dialog)"),
+                "Outfitter_Fitting" => GetShopItemListPaths("Select highlighted slot/item (advances picker)"),
                 "EncounterDialog" => GetEncounterDialogPaths(),
                 "GameOver" => GetGameOverPaths(),
                 "Battle_MyTurn" => GetBattleMyTurnPaths(screen),
@@ -289,6 +294,90 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     WaitForScreen = "WorldMap",
                     Desc = "Close travel list"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetLocationMenuPaths()
+        {
+            // At a named location (Dorter/Warjilis/etc.) with the shop list open.
+            // Cursor highlights a shop (Outfitter/Tavern/WarriorsGuild/PoachersDen).
+            // Pressing Enter enters the highlighted shop's interior.
+            return new()
+            {
+                ["EnterShop"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    WaitForScreen = "ShopInterior",
+                    WaitTimeoutMs = 3000,
+                    Desc = "Enter the highlighted shop/service"
+                },
+                ["Leave"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "WorldMap",
+                    WaitTimeoutMs = 3000,
+                    Desc = "Leave location, return to world map"
+                },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up in shop list" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down in shop list" },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetShopInteriorPaths()
+        {
+            // Inside a shop with the Buy/Sell/Fitting (or equivalent) menu up.
+            // Pressing Enter on the highlighted sub-action advances to
+            // Outfitter_Buy / Outfitter_Sell / Outfitter_Fitting (or the
+            // corresponding sub-state for Tavern / Warriors' Guild / Poachers' Den
+            // once those are mapped).
+            return new()
+            {
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    WaitUntilScreenNot = "ShopInterior",
+                    WaitTimeoutMs = 3000,
+                    Desc = "Enter the highlighted sub-action (Buy/Sell/Fitting/etc.)"
+                },
+                ["Leave"] = new PathEntry
+                {
+                    // Escape from a shop opens a "Come back anytime" farewell
+                    // dialog. A second Enter dismisses it and returns to
+                    // LocationMenu. Sending just Escape leaves the player
+                    // stuck on the dialog.
+                    Keys = new[] { Key(VK_ESCAPE, "Escape"), Key(VK_ENTER, "Enter") },
+                    DelayBetweenMs = 300,
+                    WaitForScreen = "LocationMenu",
+                    WaitTimeoutMs = 3000,
+                    Desc = "Leave shop (dismisses farewell dialog automatically)"
+                },
+                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up in sub-action menu" },
+                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down in sub-action menu" },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetShopItemListPaths(string selectDesc)
+        {
+            // Inside an Outfitter sub-action (Buy/Sell/Fitting). The highlighted
+            // row is an item / slot / character depending on the sub-action.
+            // Enter advances into the next step (quantity dialog for Buy/Sell,
+            // slot→item picker for Fitting). Escape goes back to ShopInterior.
+            return new()
+            {
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Scroll up in list" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Scroll down in list" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = selectDesc
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "ShopInterior",
+                    WaitTimeoutMs = 3000,
+                    Desc = "Cancel, back to shop menu"
                 },
             };
         }
