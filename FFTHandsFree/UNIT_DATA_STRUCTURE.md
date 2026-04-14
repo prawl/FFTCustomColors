@@ -48,6 +48,8 @@ The pattern uses x86-64 RIP-relative addressing:
 | +0x1D | byte | level | Unit level (1-99). **`level == 0` is the true empty-slot marker** on IC remaster. |
 | +0x1E | byte | brave | Bravery (0-100). |
 | +0x1F | byte | faith | Faith (0-100). |
+| +0x32 + jobIdx*3 | 3 bytes | learned-ability bitfield (per job) | Byte 0-1: learned action abilities, MSB-first over each skillset's list. Byte 2: learned passive abilities (reaction/support/movement), MSB-first over each job's ID-sorted passive list. Verified 2026-04-14 — decoded byte 2 produces the exact set of passives shown in the game's Reaction/Support/Movement pickers. Per-job passive ID lists in `ABILITY_IDS.md` and `RosterReader.ReadLearnedPassives`. |
+| +0x80 | uint16 LE | currentJobJp | JP in the unit's currently-equipped class. |
 | +0x230 | uint16 LE | nameId | Indexes into the `CharaName-en` NXD table. Determines the character's displayed name. |
 
 ### spriteSet Values

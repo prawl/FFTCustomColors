@@ -92,3 +92,35 @@ Stores index into character's personal unlocked ability list (NOT a universal ID
 
 ## UI Ability Cursor
 `0x140C0EB20` — global counter incrementing on cursor move in ability lists. Delta from initial value = cursor position.
+
+## Per-Job Passive Ability Order (for roster byte-2 decode)
+
+Each roster slot has a per-job learned-ability bitfield at `+0x32 + jobIdx*3` (3 bytes per job). **Byte 2** tracks learned **passive** abilities (reaction/support/movement combined), MSB-first, indexed into each job's ID-sorted passive list. Bit `0x80` = first passive in the list below; bit `0x40` = second; etc.
+
+Decoded 2026-04-14 against Ramza's in-game pickers — 100% match on 19 reactions, 23 supports, 12 movements. See `RosterReader.ReadLearnedPassives`.
+
+| jobIdx | Job | Passive IDs (sorted ascending) |
+|---|---|---|
+| 0 | Squire | B4, CC, CF, DE, DF, E6 |
+| 1 | Chemist | B9, DA, DB, E0, FD |
+| 2 | Knight | BF, C6, C7, C8 |
+| 3 | Archer | A8, C4, CA, D5, E9 |
+| 4 | Monk | AF, BA, C5, D8, ED |
+| 5 | White Mage | AC, D4 |
+| 6 | Black Mage | B3, D3 |
+| 7 | Time Mage | B1, BD, E2, F2, FA |
+| 8 | Summoner | B0, CE |
+| 9 | Thief | AA, B7, C2, D7, E7, EA |
+| 10 | Orator | C0, CD, D6, D9 |
+| 11 | Mystic | B6, D2, EE, F4 |
+| 12 | Geomancer | B5, D1, F5, F8 |
+| 13 | Dragoon | AB, CB, EC |
+| 14 | Samurai | B2, C3, C9, DC, F7 |
+| 15 | Ninja | A9, C1, DD, F6 |
+| 16 | Arithmetician | BC, BE, D0, EF, F0 |
+| 17 | Bard/Dance | A7, AE, E8, FB |
+| 19 | Dark Knight | E4, E5, EB |
+
+(jobIdx 18 is reserved — no passives.)
+
+To read which passives a unit has learned: for each job, read byte at `rosterBase + slot*0x258 + 0x32 + jobIdx*3 + 2`; for each set bit at position `i` (MSB-first, `0x80 >> i`), the ability is `passiveIds[jobIdx][i]`. Classify as reaction/support/movement via the dicts in `AbilityData.cs`.

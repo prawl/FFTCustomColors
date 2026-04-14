@@ -430,7 +430,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
 - [ ] **Element resistance grid** — the colored symbols on the right side of CharacterStatus show elemental absorb/null/halve/weak. Decode from memory.
 - [ ] **Equipped items with stat totals on `EquipmentAndAbilities`** — the "Equipment Effects" summary under the two columns aggregates stats from the current loadout. Surface as `equipmentStats: { hpBonus: X, paBonus: Y, ... }`.
 - [ ] **JP totals per job on `JobSelection`** — each job tile shows Lv + JP (e.g. "Lv. 8 5465 JP" for Knight). Surface as an array so Claude can see which jobs are grinded.
-- [ ] **Ability list with learned/unlearned on inside `SecondaryAbilities`** etc. — each ability shows JP cost + learned status (icon differs). Surface so Claude knows what's available to learn.
+- [x] **Ability list with learned/unlearned inside picker screens** — DONE 2026-04-14. `screen.availableAbilities` surfaces the full learned list for SecondaryAbilities (unlocked skillsets), ReactionAbilities (19 for Ramza), SupportAbilities (23), MovementAbilities (12). SecondaryAbilities puts the equipped skillset first (matches game's default cursor); other pickers use canonical ID-sorted order with the equipped ability marked in place. Decoded via roster byte 2 of the per-job bitfield at +0x32+jobIdx*3+2 (MSB-first over each job's ID-sorted passive list — see `ABILITY_IDS.md` and `RosterReader.ReadLearnedPassives`). JP cost + "unlearned-but-could-be-learned" still TODO — requires a separate learnable-set, not just learned-set.
 
 ### ValidPaths — TODO
 
@@ -474,6 +474,8 @@ Outer detection of the 10 Chronicle tile screens shipped 2026-04-14 (§10.6 abov
 - [ ] **`OptionsSettings`** — audio / video / input config. Multi-section settings menu. Low priority for Claude-playing — only matters if we want Claude to verify text speed / autosave settings.
 
 For all of these, the same memory-hunt limitation applies: UE4 widget heap reallocates per keypress, so byte-diff approaches produce false positives (verified during the §10.6 Chronicle hunt — see `project_shop_stock_array.md`). State-machine cursor tracking + drift recovery is the working pattern. Inner-text scraping (e.g. Encyclopedia entry text) needs a different approach — possibly reading from the rendered UI widget while the menu is open.
+
+**Update 2026-04-14:** The **ability pickers** inside EquipmentAndAbilities escaped this wall by using a static-table decode instead of heap hunting — the roster's per-job bitfield at +0x32+jobIdx*3 contains byte 2 tracking learned passives MSB-first over each job's ID-sorted passive list. Zero heap search needed. Applying the same technique to Chronicle sub-screens won't work directly (those surface story text, not per-unit state), but **when a sub-screen's data is driven by persistent save state**, look for a per-unit or global bitfield before reaching for widget scans.
 
 ---
 
