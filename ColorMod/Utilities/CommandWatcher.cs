@@ -2767,124 +2767,62 @@ namespace FFTColorCustomizer.Utilities
 
                         if (screen.Name == "SecondaryAbilities")
                         {
-                            // The game's picker always shows the currently-equipped
-                            // skillset FIRST (matching the cursor's default position
-                            // when the picker opens). Then "(None)" / unlock option,
-                            // then the rest of the unlocked skillsets in canonical
-                            // (job-index) order.
+                            // The game's picker shows the currently-equipped
+                            // skillset FIRST (matching the cursor's default
+                            // position), then the rest of the unlocked skillsets
+                            // in canonical (job-index) order. No (None) entry —
+                            // to unequip, press Enter on the equipped one.
                             var unlocked = _rosterReader.ReadUnlockedSkillsets(viewedSlot);
                             string? equippedSecondary = ab?.Secondary;
                             if (equippedSecondary != null && unlocked.Contains(equippedSecondary))
                             {
                                 list.Add(new AvailableAbility { Name = equippedSecondary, IsEquipped = true });
                             }
-                            list.Add(new AvailableAbility { Name = "(None)" });
                             foreach (var s in unlocked)
                             {
                                 if (s == equippedSecondary) continue; // already first
                                 list.Add(new AvailableAbility { Name = s });
                             }
                         }
-                        else if (screen.Name == "ReactionAbilities" && ab?.Reaction != null)
+                        else if (screen.Name == "ReactionAbilities" ||
+                                 screen.Name == "SupportAbilities" ||
+                                 screen.Name == "MovementAbilities")
                         {
-                            // Read the live picker widget's master list from
-                            // heap (game-rendered order). The equipped reaction
-                            // is always first; remainder follows in display order.
-                            // Falls back to "equipped + None" if the picker
-                            // widget isn't located (e.g. signature drift).
-                            byte equippedId = (byte)AbilityData.ReactionAbilities
-                                .Where(kv => kv.Value.Name == ab.Reaction)
-                                .Select(kv => (int)kv.Key)
-                                .FirstOrDefault();
-                            if (equippedId != 0)
+                            // Decode all learned passives from roster byte 2 of
+                            // each per-job bitfield, then filter to the picker's
+                            // type. Byte 2 uses MSB-first order over each job's
+                            // ID-sorted passive list — see RosterReader.ReadLearnedPassives
+                            // and project_roster_learned_abilities.md. Verified
+                            // 100% against Ramza's 19 reactions on 2026-04-14.
+                            //
+                            // Display order: canonical (ID-sorted, grouped by job) —
+                            // matches the game's picker order. The currently-equipped
+                            // ability stays in its natural position, marked with
+                            // IsEquipped=true. Unlike the Secondary picker we do NOT
+                            // reorder the equipped item to the top.
+                            var learned = _rosterReader.ReadLearnedPassives(viewedSlot);
+                            string? equippedName = screen.Name switch
                             {
-                                if (_pickerListReader == null) _pickerListReader = new PickerListReader(Explorer);
-                                var ids = _pickerListReader.ReadMasterList(
-                                    PickerListReader.PickerType.Reaction, equippedId);
-                                if (ids.Count > 0)
+                                "ReactionAbilities" => ab?.Reaction,
+                                "SupportAbilities" => ab?.Support,
+                                "MovementAbilities" => ab?.Movement,
+                                _ => null,
+                            };
+
+                            // No (None) entry — to unequip a passive, press Enter
+                            // on the currently-equipped one.
+                            foreach (var id in learned)
+                            {
+                                string? name = null;
+                                if (screen.Name == "ReactionAbilities" && AbilityData.ReactionAbilities.TryGetValue(id, out var ra)) name = ra.Name;
+                                else if (screen.Name == "SupportAbilities" && AbilityData.SupportAbilities.TryGetValue(id, out var sa)) name = sa.Name;
+                                else if (screen.Name == "MovementAbilities" && AbilityData.MovementAbilities.TryGetValue(id, out var ma)) name = ma.Name;
+                                if (name == null) continue;
+                                list.Add(new AvailableAbility
                                 {
-                                    foreach (var id in ids)
-                                    {
-                                        var name = AbilityData.ReactionAbilities.TryGetValue(id, out var ra) ? ra.Name : null;
-                                        if (name == null) continue;
-                                        list.Add(new AvailableAbility
-                                        {
-                                            Name = name,
-                                            IsEquipped = id == equippedId,
-                                        });
-                                    }
-                                    list.Add(new AvailableAbility { Name = "(None)" });
-                                }
-                            }
-                            // Fallback if picker not located.
-                            if (list.Count == 0)
-                            {
-                                list.Add(new AvailableAbility { Name = ab.Reaction, IsEquipped = true });
-                                list.Add(new AvailableAbility { Name = "(None)" });
-                            }
-                        }
-                        else if (screen.Name == "SupportAbilities" && ab?.Support != null)
-                        {
-                            byte equippedId = (byte)AbilityData.SupportAbilities
-                                .Where(kv => kv.Value.Name == ab.Support)
-                                .Select(kv => (int)kv.Key)
-                                .FirstOrDefault();
-                            if (equippedId != 0)
-                            {
-                                if (_pickerListReader == null) _pickerListReader = new PickerListReader(Explorer);
-                                var ids = _pickerListReader.ReadMasterList(
-                                    PickerListReader.PickerType.Support, equippedId);
-                                if (ids.Count > 0)
-                                {
-                                    foreach (var id in ids)
-                                    {
-                                        var name = AbilityData.SupportAbilities.TryGetValue(id, out var sa) ? sa.Name : null;
-                                        if (name == null) continue;
-                                        list.Add(new AvailableAbility
-                                        {
-                                            Name = name,
-                                            IsEquipped = id == equippedId,
-                                        });
-                                    }
-                                    list.Add(new AvailableAbility { Name = "(None)" });
-                                }
-                            }
-                            if (list.Count == 0)
-                            {
-                                list.Add(new AvailableAbility { Name = ab.Support, IsEquipped = true });
-                                list.Add(new AvailableAbility { Name = "(None)" });
-                            }
-                        }
-                        else if (screen.Name == "MovementAbilities" && ab?.Movement != null)
-                        {
-                            byte equippedId = (byte)AbilityData.MovementAbilities
-                                .Where(kv => kv.Value.Name == ab.Movement)
-                                .Select(kv => (int)kv.Key)
-                                .FirstOrDefault();
-                            if (equippedId != 0)
-                            {
-                                if (_pickerListReader == null) _pickerListReader = new PickerListReader(Explorer);
-                                var ids = _pickerListReader.ReadMasterList(
-                                    PickerListReader.PickerType.Movement, equippedId);
-                                if (ids.Count > 0)
-                                {
-                                    foreach (var id in ids)
-                                    {
-                                        var name = AbilityData.MovementAbilities.TryGetValue(id, out var ma) ? ma.Name : null;
-                                        if (name == null) continue;
-                                        list.Add(new AvailableAbility
-                                        {
-                                            Name = name,
-                                            IsEquipped = id == equippedId,
-                                        });
-                                    }
-                                    list.Add(new AvailableAbility { Name = "(None)" });
-                                }
-                            }
-                            if (list.Count == 0)
-                            {
-                                list.Add(new AvailableAbility { Name = ab.Movement, IsEquipped = true });
-                                list.Add(new AvailableAbility { Name = "(None)" });
+                                    Name = name,
+                                    IsEquipped = name == equippedName,
+                                });
                             }
                         }
 

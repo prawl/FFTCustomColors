@@ -141,6 +141,91 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Per-job list of passive ability IDs sorted ascending. The roster's
+        /// per-job learned bitfield at +0x32 + jobIdx*3 uses BYTE 2 of that
+        /// triplet to track which of these passives the unit has purchased,
+        /// MSB-first: bit 0x80 → index 0 (lowest ID), 0x40 → index 1, etc.
+        ///
+        /// Verified 2026-04-14 live on Ramza: 19 set bits across all jobs'
+        /// byte 2 values exactly matched the 19 reactions shown in the game's
+        /// Reaction Abilities picker. Same decoding works for supports and
+        /// movements (byte 2 mixes all three types; we classify per ability ID
+        /// via AbilityData dicts).
+        /// </summary>
+        private static readonly (int jobIdx, byte[] ids)[] _passivesByJob = new[]
+        {
+            // Squire = jobIdx 0
+            (0, new byte[] { 0xB4, 0xCC, 0xCF, 0xDE, 0xDF, 0xE6 }),
+            // Chemist = 1
+            (1, new byte[] { 0xB9, 0xDA, 0xDB, 0xE0, 0xFD }),
+            // Knight = 2
+            (2, new byte[] { 0xBF, 0xC6, 0xC7, 0xC8 }),
+            // Archer = 3
+            (3, new byte[] { 0xA8, 0xC4, 0xCA, 0xD5, 0xE9 }),
+            // Monk = 4
+            (4, new byte[] { 0xAF, 0xBA, 0xC5, 0xD8, 0xED }),
+            // White Mage = 5
+            (5, new byte[] { 0xAC, 0xD4 }),
+            // Black Mage = 6
+            (6, new byte[] { 0xB3, 0xD3 }),
+            // Time Mage = 7
+            (7, new byte[] { 0xB1, 0xBD, 0xE2, 0xF2, 0xFA }),
+            // Summoner = 8
+            (8, new byte[] { 0xB0, 0xCE }),
+            // Thief = 9
+            (9, new byte[] { 0xAA, 0xB7, 0xC2, 0xD7, 0xE7, 0xEA }),
+            // Orator = 10
+            (10, new byte[] { 0xC0, 0xCD, 0xD6, 0xD9 }),
+            // Mystic = 11
+            (11, new byte[] { 0xB6, 0xD2, 0xEE, 0xF4 }),
+            // Geomancer = 12
+            (12, new byte[] { 0xB5, 0xD1, 0xF5, 0xF8 }),
+            // Dragoon = 13
+            (13, new byte[] { 0xAB, 0xCB, 0xEC }),
+            // Samurai = 14
+            (14, new byte[] { 0xB2, 0xC3, 0xC9, 0xDC, 0xF7 }),
+            // Ninja = 15
+            (15, new byte[] { 0xA9, 0xC1, 0xDD, 0xF6 }),
+            // Arithmetician = 16
+            (16, new byte[] { 0xBC, 0xBE, 0xD0, 0xEF, 0xF0 }),
+            // Bard/Dance = 17 (shared slot)
+            (17, new byte[] { 0xA7, 0xAE, 0xE8, 0xFB }),
+            // Dark Knight = 19
+            (19, new byte[] { 0xE4, 0xE5, 0xEB }),
+        };
+
+        /// <summary>
+        /// Reads every passive ability ID the unit has learned, across every job.
+        /// Decodes byte 2 of the per-job bitfield at +0x32 + jobIdx*3 + 2.
+        /// Result includes reaction, support, and movement abilities mixed;
+        /// caller classifies via AbilityData.ReactionAbilities / SupportAbilities
+        /// / MovementAbilities.
+        /// </summary>
+        public List<byte> ReadLearnedPassives(int slotIndex)
+        {
+            var result = new List<byte>();
+            if (slotIndex < 0 || slotIndex >= MaxSlots) return result;
+
+            long b = RosterBase + (long)slotIndex * SlotStride;
+            var reads = new (System.IntPtr addr, int size)[_passivesByJob.Length];
+            for (int j = 0; j < _passivesByJob.Length; j++)
+                reads[j] = ((System.IntPtr)(b + 0x32 + _passivesByJob[j].jobIdx * 3 + 2), 1);
+            var v = _explorer.ReadMultiple(reads);
+
+            for (int j = 0; j < _passivesByJob.Length; j++)
+            {
+                byte byte2 = (byte)(int)v[j];
+                var ids = _passivesByJob[j].ids;
+                for (int i = 0; i < ids.Length; i++)
+                {
+                    if ((byte2 & (0x80 >> i)) != 0)
+                        result.Add(ids[i]);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
         /// Reads which secondary skillsets the unit has unlocked. A skillset is
         /// considered unlocked iff at least one of its action-ability bits is
         /// set in the per-job learned bitfield at +0x32 + jobIdx*3 (bytes 0-1,
