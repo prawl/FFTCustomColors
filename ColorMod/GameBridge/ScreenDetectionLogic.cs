@@ -27,7 +27,8 @@ namespace FFTColorCustomizer.GameBridge
             int battleTeam, int battleActed, int battleMoved,
             int encA, int encB, bool isPartySubScreen, int eventId = 0,
             int submenuFlag = 0, int menuCursor = -1, int hover = 255,
-            int locationMenuFlag = 0, int insideShopFlag = 0)
+            int locationMenuFlag = 0, int insideShopFlag = 0,
+            int shopSubMenuIndex = 0)
         {
             // rawLocation is the last-visited named place (village/shop/campaign ground).
             // It's STICKY — retains the last-visited location even when the player leaves.
@@ -132,6 +133,25 @@ namespace FFTColorCustomizer.GameBridge
                 // practice encA!=encB is noise, so this is a secondary signal.
                 if (atNamedLocation && encA != encB && !actedOrMoved && slot0 != 255)
                     return "EncounterDialog";
+
+                // Outfitter_Buy/Sell/Fitting: sub-action entered inside an Outfitter shop.
+                // shopSubMenuIndex at 0x14184276C reads 1/4/6 respectively (0 at shop
+                // menu, 255 on world map). Verified 2026-04-14 at Dorter Outfitter.
+                // These take priority over insideShopFlag because live testing showed
+                // insideShopFlag doesn't reliably fire on a fresh process — the
+                // shopSubMenuIndex value itself is the authoritative signal for submenu
+                // entry (1/4/6 are only produced by shop submenus).
+                // Tavern/Warriors' Guild/Poachers' Den values not yet mapped — add per-shop
+                // rules once scanned.
+                if (rawLocation >= 0 && rawLocation <= 42)
+                {
+                    switch (shopSubMenuIndex)
+                    {
+                        case 1: return "Outfitter_Buy";
+                        case 4: return "Outfitter_Sell";
+                        case 6: return "Outfitter_Fitting";
+                    }
+                }
 
                 // ShopInterior: player has pressed Enter on a shop/service in LocationMenu
                 // and is now inside that shop's interior screen (Outfitter Buy/Sell/Fitting,

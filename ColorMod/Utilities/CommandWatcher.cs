@@ -391,13 +391,15 @@ namespace FFTColorCustomizer.Utilities
                             int dLmf = (int)raw[21];
                             int dSti = (int)raw[22];
                             int dIsf = (int)raw[23];
+                            int dSsmi = (int)raw[24];
                             bool dInBattle = (dS0 == 255 && dS9 == 0xFFFFFFFF)
                                 || (dS9 == 0xFFFFFFFF && (dBm == 2 || dBm == 3 || dBm == 4));
                             string detected = GameBridge.ScreenDetectionLogic.Detect(
                                 dP, dU, dLoc, dS0, dS9, dBm, dMm, dPs, dGo,
                                 dBt, dBa, dBmv, dEa, dEb, !dInBattle && IsPartySubScreen(),
                                 dEv, submenuFlag: dSf, menuCursor: dMc, hover: dHover,
-                                locationMenuFlag: dLmf, insideShopFlag: dIsf);
+                                locationMenuFlag: dLmf, insideShopFlag: dIsf,
+                                shopSubMenuIndex: dSsmi);
                             var snapshot = new Dictionary<string, object>
                             {
                                 ["timestamp"] = DateTime.UtcNow.ToString("o"),
@@ -425,7 +427,8 @@ namespace FFTColorCustomizer.Utilities
                                     ["hover"] = dHover,
                                     ["locationMenuFlag"] = dLmf,
                                     ["shopTypeIndex"] = dSti,
-                                    ["insideShopFlag"] = dIsf
+                                    ["insideShopFlag"] = dIsf,
+                                    ["shopSubMenuIndex"] = dSsmi
                                 }
                             };
                             response.Info = System.Text.Json.JsonSerializer.Serialize(snapshot,
@@ -1531,6 +1534,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x140D43481, 1),  // 21: locationMenuFlag (1=inside a named location's menu like Outfitters/Tavern list, 0=elsewhere)
             ((nint)0x140D435F0, 1),  // 22: shopTypeIndex (0=Outfitter, 1=Tavern, 2=Warriors' Guild, 3=Poachers' Den — index of hovered shop in LocationMenu)
             ((nint)0x141844DD0, 1),  // 23: insideShopFlag (1=inside a shop/service interior after pressing Enter, 0=elsewhere)
+            ((nint)0x14184276C, 1),  // 24: shopSubMenuIndex (Outfitter: 0=menu, 1=Buy, 4=Sell, 6=Fitting — other shops unmapped)
         };
 
         /// <summary>
@@ -2344,6 +2348,7 @@ namespace FFTColorCustomizer.Utilities
                 int locationMenuFlag = (int)v[21];
                 int shopTypeIndex = (int)v[22];
                 int insideShopFlag = (int)v[23];
+                int shopSubMenuIndex = (int)v[24];
                 screen.Name = GameBridge.ScreenDetectionLogic.Detect(
                     party, ui, rawLocation, slot0, slot9,
                     battleMode, moveMode, paused, gameOverFlag,
@@ -2351,7 +2356,8 @@ namespace FFTColorCustomizer.Utilities
                     eA, eB, !inBattle && IsPartySubScreen(), eventId,
                     submenuFlag: submenuFlag, menuCursor: screen.MenuCursor,
                     hover: hover, locationMenuFlag: locationMenuFlag,
-                    insideShopFlag: insideShopFlag);
+                    insideShopFlag: insideShopFlag,
+                    shopSubMenuIndex: shopSubMenuIndex);
 
                 // Shop/LocationMenu UI label from shopTypeIndex at 0x140D435F0. Mapped
                 // empirically at Dorter (4 shops). Save Game and others not yet mapped.

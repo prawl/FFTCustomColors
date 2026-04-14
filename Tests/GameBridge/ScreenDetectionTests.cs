@@ -140,6 +140,91 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_ShopInterior_AtMenu_ShouldReturnShopInterior()
+        {
+            // Inside an Outfitter, cursor on Buy/Sell/Fitting at the shop menu
+            // (not yet Entered into a sub-action). shopSubMenuIndex=0 until Enter.
+            // Verified 2026-04-14 at Dorter.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 9, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 255,
+                locationMenuFlag: 1, insideShopFlag: 1, shopSubMenuIndex: 0);
+
+            Assert.Equal("ShopInterior", result);
+        }
+
+        [Fact]
+        public void DetectScreen_ShopBuy_ShouldReturnShopBuy()
+        {
+            // shopSubMenuIndex=1 after Enter on Buy inside Outfitter.
+            // Verified 2026-04-14 at Dorter: 0x14184276C reads 1 when inside Buy.
+            // Note: insideShopFlag/locationMenuFlag both read 0 here in live testing —
+            // shopSubMenuIndex alone discriminates (255 on worldmap, 0 at shop menu,
+            // 1/4/6 inside submenus).
+            // Live state at Dorter Outfitter Buy (verified via dump_detection_inputs
+            // 2026-04-14): slot0=0xFFFFFFFF, slot9=0xFFFFFFFF, battleMode=255, hover=254.
+            // Out-of-battle branch (slot0 not 255, battleMode not in 0-5).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 9, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 254,
+                locationMenuFlag: 0, insideShopFlag: 0, shopSubMenuIndex: 1);
+
+            Assert.Equal("Outfitter_Buy", result);
+        }
+
+        [Fact]
+        public void DetectScreen_ShopSell_ShouldReturnShopSell()
+        {
+            // shopSubMenuIndex=4 after Enter on Sell inside Outfitter.
+            // Verified 2026-04-14 at Dorter: 0x14184276C reads 4 when inside Sell.
+            // Live state matches Shop_Buy — out-of-battle branch (slot0=0xFFFFFFFF).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 9, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 254,
+                locationMenuFlag: 0, insideShopFlag: 0, shopSubMenuIndex: 4);
+
+            Assert.Equal("Outfitter_Sell", result);
+        }
+
+        [Fact]
+        public void DetectScreen_ShopFitting_ShouldReturnShopFitting()
+        {
+            // shopSubMenuIndex=6 after Enter on Fitting inside Outfitter.
+            // Verified 2026-04-14 at Dorter: 0x14184276C reads 6 when inside Fitting.
+            // Live state matches Shop_Buy — out-of-battle branch (slot0=0xFFFFFFFF).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 9, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 254,
+                locationMenuFlag: 0, insideShopFlag: 0, shopSubMenuIndex: 6);
+
+            Assert.Equal("Outfitter_Fitting", result);
+        }
+
+        [Fact]
+        public void DetectScreen_ShopSubMenuIndex_OnWorldMap_ShouldNotTriggerShopScreen()
+        {
+            // Sentinel check: on WorldMap, shopSubMenuIndex reads 255.
+            // Outfitter_* rules must not fire on 255 (they only fire on 1/4/6).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 26, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 26,
+                locationMenuFlag: 0, insideShopFlag: 0, shopSubMenuIndex: 255);
+
+            Assert.DoesNotContain("Outfitter", result);
+            Assert.DoesNotContain("Shop_", result);
+        }
+
+        [Fact]
         public void DetectScreen_GameOver_ShouldReturnGameOver()
         {
             // Game over: submenuFlag=1 (repurposed), paused=1, battleMode=0

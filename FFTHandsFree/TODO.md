@@ -199,9 +199,57 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ## 10. Settlements & Shopping (P2)
 
-- [ ] Settlement menu detection: Outfitter, Tavern, Warriors' Guild, Poachers' Den
-- [ ] `buy_item` / `sell_item` / `hire_unit` / `dismiss_unit` actions
-- [ ] `save_game` / `load_game` actions
+### Detection — what's mapped
+
+- [x] LocationMenu detection (locationMenuFlag at 0x140D43481) — mapped 2026-04-14
+- [x] LocationMenu shop type (Outfitter/Tavern/WarriorsGuild/PoachersDen) via shopTypeIndex at 0x140D435F0 — mapped 2026-04-14
+- [x] ShopInterior detection (insideShopFlag at 0x141844DD0) — mapped 2026-04-14, partially reliable (doesn't always fire on a fresh process)
+- [x] Outfitter sub-actions: Outfitter_Buy / Outfitter_Sell / Outfitter_Fitting via shopSubMenuIndex at 0x14184276C (values 1/4/6) — mapped 2026-04-14
+
+### Detection — TODO
+
+- [ ] **(NEXT) ValidPaths for the whole shop flow** [P0] — the automation unlock. Every shop screen needs a ValidPaths entry so Claude can drive the UI without knowing individual key sequences. Required entries:
+  - **LocationMenu**: `EnterOutfitter`, `EnterTavern`, `EnterWarriorsGuild`, `EnterPoachersDen`, `Leave` (back to world map)
+  - **ShopInterior** (shop menu): `Buy`, `Sell`, `Fitting`, `Leave`
+  - **Outfitter_Buy**: `SelectItem <name>` (navigates to named item), `SetQuantity <n>`, `Purchase`, `Back`
+  - **Outfitter_Sell**: `SelectItem <name>`, `SetQuantity <n>`, `Sell`, `Back`
+  - **Outfitter_Fitting**: `SelectCharacter <name>`, `SelectSlot <slot>`, `SelectItem <name>`, `Equip`, `Back`
+  - **Tavern / WarriorsGuild / PoachersDen**: fill in once sub-actions mapped
+  - **Confirm dialogs**: `Confirm`, `Cancel` (requires the confirm-modal scan from below)
+- [ ] **Gil in state** [P0 quick win] — add `gil=<n>` to every screen response. Gil lives at 0x140D39CD0 (from memory notes). One-line addition to the state reporter; lets Claude see affordability at a glance instead of failing a purchase.
+- [ ] **ui label at ShopInterior** — when hovering Buy/Sell/Fitting inside a shop without having entered, `screen.UI` should read `Buy`/`Sell`/`Fitting`. Needs a cursor-index memory scan (current shopSubMenuIndex is 0 at all three hovers). Once ui is populated, Claude can pre-check which sub-action it's about to enter.
+- [ ] **Full stock list inline at Outfitter_Buy** — instead of forcing Claude to scroll through items one at a time (ui=Oak Staff → down → ui=White Staff → down...), surface the entire shop stock in the screen response. Each entry: `{name, price, type, stats}`. Stats tier by type — weapons: `wp, range, element, statMods` (e.g. `WP=5 MA+1`); armor: `hp, def, evade, statMods`; consumables: `effect` (e.g. `Restores 30 HP`, `Removes KO`). Claude picks by name, one round-trip. Matches scan_move's "see everything at once" philosophy.
+- [ ] **Full sell inventory inline at Outfitter_Sell** — same shape as Buy but for player-owned items. Each entry: `{name, heldCount, sellPrice, type, stats}`. Held count is required so Claude knows "I have 12 Potions" without separate reads.
+- [ ] **Full equipment picker inline at Outfitter_Fitting** — when picking a slot's replacement item, show all items the player owns that fit the slot, with stats, so Claude can compare current vs candidate in one look.
+- [ ] **Tavern sub-actions** — Rumors, Errands (and any others). Run 4-way module_snap diff inside each Tavern sub-action at Dorter or Warjilis. Likely uses shopSubMenuIndex but with different values, or a separate address per shop type. If it's a different address, generalize the detection rule (per-shop-type switch).
+- [ ] **Warriors' Guild sub-actions** — Recruit, Rename, Dismiss, etc. Same scan methodology.
+- [ ] **Poachers' Den sub-actions** — Process Carcasses, Sell Carcasses. Same scan methodology.
+- [ ] **Save Game menu** — encountered at Warjilis (Dorter has 4 shops, no Save). Needs its own scan; verify if it shows up as a 5th shopTypeIndex value or a distinct flag. Add the index to the shop name mapping in CommandWatcher.cs.
+- [ ] **Cursor item label inside Outfitter_Buy** — the `ui` field should show the currently-hovered item name (e.g. `ui=Oak Staff`). Memory scan needed for the item-cursor-index, then map index → item name via the shop's stock list. Same for Outfitter_Sell (your inventory) and Outfitter_Fitting (slot picker → item picker).
+- [ ] **Cursor character label inside Outfitter_Fitting** — when picking which character to equip, ui should show `ui=Ramza` etc.
+- [ ] **Confirm dialog detection** — most sub-actions have a "Buy 3 Potions for 60 gil?" yes/no modal. Memory scan for a flag that distinguishes confirm-modal-open vs item-list state, so input doesn't cascade into accidental purchase.
+
+### Action helpers — TODO
+
+- [ ] **`buy_item <name> [qty]` action** — current `buy` helper exists but probably needs updating once Outfitter_Buy item-cursor is mapped. Should: enter Buy submenu if not already, locate item by name in stock, navigate cursor, set quantity, confirm.
+- [ ] **`sell_item <name> [qty]` action** — same, but for Sell submenu.
+- [ ] **`equip_item <unit> <slot> <name>` action** — Outfitter_Fitting flow: pick character, pick slot, pick item, confirm.
+- [ ] **`hire_unit [job]` action** — Warriors' Guild Recruit. May need to surface the random recruit's stats so Claude can decide.
+- [ ] **`dismiss_unit <name>` action** — Warriors' Guild Dismiss.
+- [ ] **`rename_unit <old> <new>` action** — Warriors' Guild Rename. Text input is hard; deferred until we have a key-to-character mapping helper.
+- [ ] **`process_carcass <name>` action** — Poachers' Den Process Carcasses (turns monster carcass into rare item).
+- [ ] **`sell_carcass <name>` action** — Poachers' Den Sell Carcasses.
+- [ ] **`read_rumors` / `read_errands` action** — Tavern dialogue scrape. Returns the current rumor/errand text so Claude can react and decide.
+- [ ] **`save_game [slot]` / `load_game [slot]` actions** — wraps the Save Game flow once detected.
+
+### Shop-stock data — TODO
+
+- [ ] **Read shop stock from memory** — each shop has an inventory of items it sells, varying by location and story progress. Find the stock array in memory so `buy_item` can reference items by name without hardcoding per-shop tables.
+- [ ] **Read player inventory for Sell** — for the Sell submenu, surface what the player owns and at what price.
+
+### Documentation
+
+- [ ] **Shopping.md instruction guide** (also tracked in Section 4) — write once the action helpers above are stable.
 
 ---
 
@@ -249,7 +297,7 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation (which location IDs are multi-battle campaign grounds vs villages). Add to `project_location_ids_verified.md`.
 - [ ] **Scope `menuCursor` interpretation** — only treat as action-menu index when `submenuFlag==0 && team==0`. Inside submenus, rely on `_battleMenuTracker`.
 - [ ] **Memory scan for WorldMap vs TravelList discriminator** — these are byte-identical in current 18 inputs. Need a menu-depth or focused-widget address.
-- [ ] **Memory scan for shop-type discriminator** — Outfitters/Warrior Guild/Poachers' Den/Save Game all byte-identical at rawLocation=9, ui=1. Need a menu-ID address.
+- [x] **Memory scan for shop-type discriminator** — DONE 2026-04-14. shopTypeIndex at 0x140D435F0 distinguishes Outfitter/Tavern/WarriorsGuild/PoachersDen at LocationMenu. Outfitter sub-actions (Buy/Sell/Fitting) further split by shopSubMenuIndex at 0x14184276C. Save Game and other shop sub-actions still TODO — see Section 10.
 - [ ] **Add `hover` to ScreenDetectionLogic inputs** — currently read in DetectScreen but not passed through. May help disambiguate world-side states.
 - [ ] **Rename `clearlyOnWorldMap` to `atNamedLocation`** — the current name is actively misleading (it's TRUE when at a shop/village, not on the open world map).
 

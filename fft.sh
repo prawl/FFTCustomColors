@@ -650,6 +650,29 @@ if(activeU&&activeU.abilities){
   console.log('');
 }
 
+// Move tiles
+const vp=j.validPaths||{};
+const vmt=vp.ValidMoveTiles;
+if(vmt){
+  const tlist=(vmt.tiles||[]).map(t=>'('+t.x+','+t.y+(t.h!=null?' h='+t.h:'')+')');
+  console.log('Move tiles: '+(tlist.length?tlist.join(' '):'(none)')+(vmt.desc?'  — '+vmt.desc:''));
+}
+// Attack tiles (adjacent cardinals)
+const atk=vp.AttackTiles?.attackTiles||[];
+if(atk.length){
+  const lines=atk.map(a=>{
+    const occ=a.occupant&&a.occupant!=='empty'?' '+a.occupant:'';
+    const job=a.jobName?' ('+a.jobName+')':'';
+    const hp=a.hp!=null?' HP='+a.hp:'';
+    return a.arrow+'→('+a.x+','+a.y+')'+occ+job+hp;
+  });
+  console.log('Attack tiles: '+lines.join('  '));
+}
+// Recommended facing
+const rf=vp.RecommendedFacing;
+if(rf?.desc)console.log('Facing: '+rf.desc);
+console.log('');
+
 // Units
 console.log('Units:');
 us.forEach(u=>{
