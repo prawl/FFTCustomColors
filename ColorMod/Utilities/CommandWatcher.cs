@@ -30,6 +30,8 @@ namespace FFTColorCustomizer.Utilities
         public EventScriptLookup? ScriptLookup { get; set; }
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
+        private RosterReader? _rosterReader;
+        private NameTableLookup? _rosterNameTable;
         private readonly BattleTurnTracker _turnTracker = new();
         private bool _movedThisTurn;
         private int _postMoveX = -1, _postMoveY = -1; // confirmed position after battle_move
@@ -2503,6 +2505,34 @@ namespace FFTColorCustomizer.Utilities
                         GameScreen.CharacterDialog or
                         GameScreen.DismissUnit;
 
+                // Drift recovery: if raw detection says root PartyMenu but the state
+                // machine is in a nested PartyMenu screen (CharacterStatus, pickers,
+                // etc.) AND has observed zero key events since its last SetScreen,
+                // the state machine is stale (typically after a mod restart while
+                // the player is already in the menu). Snap it back to PartyMenu so
+                // the override below doesn't rewrite the screen name to a stale
+                // nested label. See TODO §0.
+                if (screen.Name == "PartyMenu" && ScreenMachine != null
+                    && ScreenMachine.KeysSinceLastSetScreen == 0
+                    && ScreenMachine.CurrentScreen != GameScreen.PartyMenu
+                    && ScreenMachine.CurrentScreen is
+                        GameScreen.CharacterStatus or
+                        GameScreen.EquipmentScreen or
+                        GameScreen.EquipmentItemList or
+                        GameScreen.JobScreen or
+                        GameScreen.JobActionMenu or
+                        GameScreen.JobChangeConfirmation or
+                        GameScreen.SecondaryAbilities or
+                        GameScreen.ReactionAbilities or
+                        GameScreen.SupportAbilities or
+                        GameScreen.MovementAbilities or
+                        GameScreen.CombatSets or
+                        GameScreen.CharacterDialog or
+                        GameScreen.DismissUnit)
+                {
+                    ScreenMachine.SetScreen(GameScreen.PartyMenu);
+                }
+
                 if (screen.Name == "PartySubScreen" || screen.Name == "PartyMenu" ||
                     (stateMachineInPartyMenu && (screen.Name == "TravelList" || screen.Name == "WorldMap")))
                 {
@@ -2578,6 +2608,44 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "DismissUnit" && ScreenMachine != null)
                 {
                     screen.UI = ScreenMachine.DismissConfirmSelected ? "Confirm" : "Back";
+                }
+
+                // Roster grid on the PartyMenu Units tab. One round-trip beats
+                // cursor-move + re-read cycles. See TODO §10.6.
+                if (screen.Name == "PartyMenu" && Explorer != null)
+                {
+                    if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
+                    if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+                    try
+                    {
+                        var slots = _rosterReader.ReadAll();
+                        if (slots.Count > 0)
+                        {
+                            ScreenMachine?.SetRosterCount(slots.Count);
+                            var grid = new RosterGrid
+                            {
+                                Count = slots.Count,
+                                Max = RosterReader.MaxSlots,
+                            };
+                            foreach (var s in slots)
+                            {
+                                grid.Units.Add(new RosterUnit
+                                {
+                                    Slot = s.SlotIndex,
+                                    Name = s.Name,
+                                    Level = s.Level,
+                                    Job = s.JobName,
+                                    Brave = s.Brave,
+                                    Faith = s.Faith,
+                                });
+                            }
+                            screen.Roster = grid;
+                        }
+                    }
+                    catch (Exception rex)
+                    {
+                        ModLogger.LogError($"[CommandBridge] Roster read failed: {rex.Message}");
+                    }
                 }
 
                 // Track world map location for auto map loading (persists to disk).

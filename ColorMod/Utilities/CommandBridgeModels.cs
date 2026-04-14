@@ -491,6 +491,56 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("equipmentEffectsView")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool EquipmentEffectsView { get; set; }
+
+        /// <summary>Full party roster grid surfaced on the PartyMenu Units tab.
+        /// Omitted on every other screen. Columns fixed at 5; rows flex with
+        /// roster size. See RosterReader and TODO §10.6.</summary>
+        [JsonPropertyName("roster")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public RosterGrid? Roster { get; set; }
+    }
+
+    /// <summary>
+    /// Party roster surfaced on PartyMenu. Units are ordered by memory slot
+    /// index, NOT by the game's on-screen display order — verified 2026-04-14
+    /// that the game reorders story characters onto the 5-col grid via a
+    /// separate display-order list we haven't located yet. Consumers should
+    /// treat `slot` as the canonical ID and ignore position-in-list.
+    /// </summary>
+    public class RosterGrid
+    {
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
+
+        [JsonPropertyName("max")]
+        public int Max { get; set; } = 50;
+
+        [JsonPropertyName("units")]
+        public List<RosterUnit> Units { get; set; } = new();
+    }
+
+    public class RosterUnit
+    {
+        [JsonPropertyName("slot")]
+        public int Slot { get; set; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("level")]
+        public int Level { get; set; }
+
+        [JsonPropertyName("job")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Job { get; set; }
+
+        [JsonPropertyName("brave")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Brave { get; set; }
+
+        [JsonPropertyName("faith")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Faith { get; set; }
     }
 
     public class TilePosition

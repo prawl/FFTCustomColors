@@ -627,4 +627,28 @@ public class ScreenStateMachineTests
         Assert.Equal(2, sm.CursorRow);
         Assert.Equal(0, sm.CursorCol);
     }
+
+    [Fact]
+    public void KeysSinceLastSetScreen_ResetsOnSetScreen_AndCountsKeys()
+    {
+        var sm = new ScreenStateMachine();
+        // Fresh state machine: no SetScreen yet, no keys yet.
+        Assert.Equal(0, sm.KeysSinceLastSetScreen);
+
+        sm.SetScreen(GameScreen.WorldMap);
+        Assert.Equal(0, sm.KeysSinceLastSetScreen);
+
+        sm.OnKeyPressed(VK_ESCAPE); // → PartyMenu
+        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        // The internal transition via OnKeyPressed (not SetScreen) still counts as a key.
+        Assert.Equal(1, sm.KeysSinceLastSetScreen);
+
+        sm.OnKeyPressed(VK_RETURN); // → CharacterStatus (Ramza)
+        Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
+        Assert.Equal(2, sm.KeysSinceLastSetScreen);
+
+        // Explicit SetScreen resets the counter (simulates drift-recovery snap-back).
+        sm.SetScreen(GameScreen.PartyMenu);
+        Assert.Equal(0, sm.KeysSinceLastSetScreen);
+    }
 }

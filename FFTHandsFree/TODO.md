@@ -47,6 +47,12 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ---
 
+## 0. Urgent Bugs
+
+- [ ] **State machine drifts from reality on PartyMenu entry** [Detection] — If the mod is (re)started while the player is already on `PartyMenu` (or nested deeper), the `ScreenStateMachine.CurrentScreen` stays at its stale value (often `CharacterStatus` from a prior session) and `CommandWatcher.DetectScreen` reports the stale name because the state-machine override runs unconditionally whenever raw detection returns `PartyMenu`. Repro 2026-04-14: game in root `PartyMenu` (party=1, ui=1), `screen` reports `[CharacterStatus] ui=Equipment&Abilities`. Fixes to consider: (a) when raw detection returns `"PartyMenu"` AND the state machine is in any nested PartyMenu screen BUT has received zero key events since the last WorldMap observation, snap `CurrentScreen = PartyMenu`; (b) add a bridge action `reset_menu_state` to force `SetScreen(PartyMenu)` on demand; (c) find a raw memory signal that disambiguates root PartyMenu from CharacterStatus (the ultimate fix). Discovered while starting the roster-grid work.
+
+---
+
 ## 1. Battle Execution (P0, BLOCKING)
 
 Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First battle WON autonomously.
@@ -409,7 +415,11 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
 
 ### Data surfacing — TODO
 
-- [ ] **Unit summary on `PartyMenu`** — when hovering a unit in the Units tab, surface its current stats. Screenshot shows: name, level, HP/maxHP, MP/maxMP, CT, Bravery, Faith, job name (e.g. "Gallant Knight"), job level + JP ("Lv. 8 Next: - | JP 9999"). Claude needs these to decide party composition.
+- [~] **Full roster grid on `PartyMenu` (Units tab)** — 2026-04-14 landed: slot-indexed list with slot, name, level, job, brave, faith. Empty-slot rule verified = `unitIndex != 0xFF && level > 0` (unitIndex alone wasn't enough — some story chars carry 0xFF; but filtering by it lives-correctly gives the 16/50 count). Active filter = `unitIndex != 0xFF AND level > 0`.
+  - **NOT delivered: grid row/col / navigate-by-name.** The list is ordered by memory-slot index, NOT by the on-screen display order the game renders. Investigation 2026-04-14 tried to locate a display-order array via snapshot-diff across the three sort modes (Time Recruited / Job / Level); confirmed that the expected byte sequence `00 01 02 03 04 05 0B 0C ...` (16 slot IDs in display order) is NOT present anywhere in scannable memory for any of u8, u16 LE, or u32 LE encodings. Likely stored as UE4 widget object references (8-byte pointers) that we can't trivially trace. Claude currently cannot issue `navigate_to Mustadio` — cursor nav on PartyMenu stays "press arrows, observe state."
+  - **HP/MP not in roster.** Scanned Ramza's full 0x258 bytes for his displayed HP (719 = 0x02CF) and MP (138 = 0x008A): zero matches. Theory: runtime-computed from job base + equipment bonuses, OR stored in a separate per-slot live stats table in the UE4 heap. Future scan: snapshot Ramza's 0x258 block, change his equipment, diff — any bytes that change and happen to equal displayed HP/MP are candidates.
+  - **Next steps for display-order**: (a) hook the UE4 widget render path via DLL detour, (b) correlate the cursor-moved signal with a unique per-unit memory change (cursor-hover unit data), (c) accept that navigation stays manual and surface the slot IDs so Claude can pick one and use Left/Right/Up/Down empirically.
+- [ ] **Unit summary on `PartyMenu`** — when hovering a unit in the Units tab, surface its current stats. Screenshot shows: name, level, HP/maxHP, MP/maxMP, CT, Bravery, Faith, job name (e.g. "Gallant Knight"), job level + JP ("Lv. 8 Next: - | JP 9999"). Claude needs these to decide party composition. **Blocked by HP/MP address discovery (see roster grid note above).**
 - [ ] **Full stat panel on `CharacterStatus`** — the header shows far more numbers than the party grid. The small icons on the right (7 20 24, 3 16 50%, 11 10% 0%, 75%, etc.) are attack/defense/magick/evade/movement/jump/zodiac/element stats. Decode and label each.
 - [ ] **Element resistance grid** — the colored symbols on the right side of CharacterStatus show elemental absorb/null/halve/weak. Decode from memory.
 - [ ] **Equipped items with stat totals on `EquipmentAndAbilities`** — the "Equipment Effects" summary under the two columns aggregates stats from the current loadout. Surface as `equipmentStats: { hpBonus: X, paBonus: Y, ... }`.

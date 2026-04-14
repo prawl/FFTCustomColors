@@ -27,6 +27,15 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_Y = 0x59;
 
         public GameScreen CurrentScreen { get; private set; } = GameScreen.Unknown;
+
+        /// <summary>
+        /// Count of OnKeyPressed calls since the last SetScreen(). Zero immediately
+        /// after a SetScreen — including the initial Unknown→anything transition
+        /// on mod startup. Used by CommandWatcher drift-recovery to detect a stale
+        /// state machine that's disagreeing with raw memory detection because no
+        /// keys have flowed through the state machine to drive it forward.
+        /// </summary>
+        public int KeysSinceLastSetScreen { get; private set; }
         public int CursorRow { get; private set; }
         public int CursorCol { get; private set; }
         public PartyTab Tab { get; private set; } = PartyTab.Units;
@@ -86,6 +95,7 @@ namespace FFTColorCustomizer.GameBridge
             CursorCol = 0;
             SidebarIndex = 0;
             JobActionIndex = 0;
+            KeysSinceLastSetScreen = 0;
 
             switch (screen)
             {
@@ -114,6 +124,7 @@ namespace FFTColorCustomizer.GameBridge
 
         public void OnKeyPressed(int vkCode)
         {
+            KeysSinceLastSetScreen++;
             switch (CurrentScreen)
             {
                 case GameScreen.WorldMap:

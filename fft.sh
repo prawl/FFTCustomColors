@@ -738,6 +738,35 @@ us.forEach(u=>{
     [ -n "$SLCI" ] && LINE="$LINE row=$SLCI"
     LINE="$LINE status=$ST"
     echo "$LINE"
+
+    # PartyMenu roster: compact line shows count only (display-order is NOT
+    # known, so we can't show "cursor-hovered" unit reliably). -v expands to
+    # the full slot-indexed list.
+    if [ "$SCR" = "PartyMenu" ] && [ -f "$B/response.json" ]; then
+      local vflag="false"; $verbose && vflag="true"
+      cat "$B/response.json" | node -e "
+try{
+  const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
+  const r=j.screen&&j.screen.roster;
+  if(!r||!r.units||!r.units.length)process.exit(0);
+  const verbose=$vflag;
+  if(!verbose){
+    console.log(' '+r.count+'/'+r.max+' units (use \`screen -v\` for full list)');
+  }else{
+    console.log(' '+r.count+'/'+r.max+' units (ordered by memory slot)');
+    r.units.forEach(u=>{
+      const sl=('s'+u.slot).padEnd(4);
+      const nm=(u.name||'?').padEnd(12);
+      const lv=('Lv.'+u.level).padEnd(6);
+      const jb=(u.job||'').padEnd(16);
+      const br=u.brave?'Br'+u.brave:'';
+      const fa=u.faith?' Fa'+u.faith:'';
+      console.log('  '+sl+' '+nm+' '+lv+' '+jb+' '+br+fa);
+    });
+  }
+}catch(e){}
+" 2>/dev/null
+    fi
   fi
 }
 
