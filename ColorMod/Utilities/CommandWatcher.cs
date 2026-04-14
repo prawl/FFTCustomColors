@@ -67,7 +67,8 @@ namespace FFTColorCustomizer.Utilities
             "mark_blocked", "snapshot", "heap_snapshot", "diff",
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
-            "read_dialogue", "write_byte", "dump_detection_inputs"
+            "read_dialogue", "write_byte", "dump_detection_inputs",
+            "scrape_shop_items"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -760,6 +761,21 @@ namespace FFTColorCustomizer.Utilities
                             response.Status = "error";
                             response.Error = $"Pattern parse error: {ex.Message}";
                         }
+                        break;
+
+                    case "scrape_shop_items":
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        try
+                        {
+                            var items = GameBridge.ShopItemScraper.ScrapeVisibleItems(Explorer);
+                            var sb = new System.Text.StringBuilder();
+                            sb.AppendLine($"Shop item scrape: {items.Count} items found");
+                            foreach (var item in items)
+                                sb.AppendLine($"  0x{item.Address:X}  {item.Name}");
+                            response.Info = sb.ToString();
+                            response.Status = "completed";
+                        }
+                        catch (Exception ex) { response.Status = "error"; response.Error = ex.Message; }
                         break;
 
                     case "write_byte":
