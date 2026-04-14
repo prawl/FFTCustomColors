@@ -514,6 +514,24 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("abilities")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public AbilityLoadoutPayload? Abilities { get; set; }
+
+        /// <summary>Available choices for an ability picker screen
+        /// (SecondaryAbilities / ReactionAbilities / etc.). Each entry is a
+        /// name the player could equip in that slot. The currently-equipped
+        /// entry is flagged via IsEquipped. Only populated on picker screens.</summary>
+        [JsonPropertyName("availableAbilities")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<AvailableAbility>? AvailableAbilities { get; set; }
+    }
+
+    public class AvailableAbility
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+
+        [JsonPropertyName("isEquipped")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool IsEquipped { get; set; }
     }
 
     public class AbilityLoadoutPayload

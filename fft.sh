@@ -743,33 +743,96 @@ us.forEach(u=>{
     echo "$LINE"
 
     # Equipment loadout + abilities for CharacterStatus / EquipmentAndAbilities.
-    # Only populated for Ramza right now (TODO §10.6).
+    # Layout matches the game's two-column UI: equipment slots on the left,
+    # ability slots on the right. Only populated for Ramza right now (TODO §10.6).
     if { [ "$SCR" = "EquipmentAndAbilities" ] || [ "$SCR" = "CharacterStatus" ]; } \
        && [ -f "$B/response.json" ]; then
       cat "$B/response.json" | node -e "
 try{
   const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
   const l=j.screen&&j.screen.loadout;
-  if(l){
-    const parts=[];
-    if(l.weapon)parts.push('Right Hand='+l.weapon);
-    if(l.leftHand)parts.push('Left Hand='+l.leftHand);
-    if(l.shield)parts.push('Shield='+l.shield);
-    if(l.helm)parts.push('Helm='+l.helm);
-    if(l.body)parts.push('Chest='+l.body);
-    if(l.accessory)parts.push('Accessory='+l.accessory);
-    console.log('  '+(l.unitName||'?')+': '+parts.join(' '));
-  }
   const a=j.screen&&j.screen.abilities;
-  if(a){
-    const parts=[];
-    if(a.primary)parts.push('Primary='+a.primary);
-    if(a.secondary)parts.push('Secondary='+a.secondary);
-    if(a.reaction)parts.push('Reaction='+a.reaction);
-    if(a.support)parts.push('Support='+a.support);
-    if(a.movement)parts.push('Movement='+a.movement);
-    if(parts.length)console.log('  Abilities: '+parts.join(' '));
+  if(!l&&!a)process.exit(0);
+
+  // Build rows matching the in-game layout.
+  //   Equipment column        Ability column
+  //   R Hand: Ragnarok        Primary:   Mettle
+  //   L Hand: <n/a>           Secondary: Items
+  //   Shield: Escutcheon       Reaction:  Parry
+  //   Helm:   Grand Helm       Support:   Magick Defense Boost
+  //   Chest:  Maximillian      Movement:  Movement +3
+  //   Access: Bracer
+  const eqRows=[];
+  if(l){
+    eqRows.push(['R Hand',l.weapon]);
+    if(l.leftHand)eqRows.push(['L Hand',l.leftHand]);
+    eqRows.push(['Shield',l.shield]);
+    eqRows.push(['Helm',l.helm]);
+    eqRows.push(['Chest',l.body]);
+    eqRows.push(['Access',l.accessory]);
   }
+  const abRows=a?[
+    ['Primary',a.primary],
+    ['Secondary',a.secondary],
+    ['Reaction',a.reaction],
+    ['Support',a.support],
+    ['Movement',a.movement],
+  ]:[];
+
+  // Header line matches the game's info bar: name, job, level, JP.
+  // "Next" (JP to next ability) isn't in our roster read yet — omitted.
+  const u=(j.screen&&j.screen.roster&&j.screen.roster.units&&j.screen.roster.units[0])||{};
+  const headerName=(l&&l.unitName)||u.name;
+  if(headerName){
+    const parts=[headerName];
+    if(u.job)parts.push(u.job);
+    if(u.level)parts.push('Lv '+u.level);
+    if(u.jp!==undefined)parts.push('JP '+u.jp);
+    console.log('  '+parts.join('  ')+':');
+  }
+  const rows=Math.max(eqRows.length,abRows.length);
+  // Compute left-column width from actual content so values never smash the right column.
+  const eqLabelW=6;  // 'R Hand' 'Shield' 'Helm' 'Chest' 'Access'
+  const abLabelW=10; // 'Secondary' is longest
+  const eqValW=Math.max(10,...eqRows.filter(r=>r[1]).map(r=>r[1].length));
+  const leftColW=eqLabelW+2+eqValW+4; // label + ': ' + value + 4 spaces gutter
+  const fmtLeft=(lbl,val)=>{
+    if(!val)return ''.padEnd(leftColW);
+    return ((lbl+':').padEnd(eqLabelW+2)+val).padEnd(leftColW);
+  };
+  const fmtRight=(lbl,val)=>{
+    if(!val)return '';
+    return (lbl+':').padEnd(abLabelW+2)+val;
+  };
+  console.log('    '+'Equipment'.padEnd(leftColW)+'Abilities');
+  for(let i=0;i<rows;i++){
+    const left=eqRows[i]?fmtLeft(eqRows[i][0],eqRows[i][1]):''.padEnd(leftColW);
+    const right=abRows[i]?fmtRight(abRows[i][0],abRows[i][1]):'';
+    console.log('    '+(right?left+right:left.trimEnd()));
+  }
+}catch(e){}
+" 2>/dev/null
+    fi
+
+    # Available abilities for picker screens (Secondary/Reaction/Support/Movement).
+    # Picker cursor row is not yet tracked — listing shows all options + the
+    # currently-equipped flag. ui=<equipped name> for now.
+    if { [ "$SCR" = "SecondaryAbilities" ] \
+         || [ "$SCR" = "ReactionAbilities" ] \
+         || [ "$SCR" = "SupportAbilities" ] \
+         || [ "$SCR" = "MovementAbilities" ]; } \
+       && [ -f "$B/response.json" ]; then
+      cat "$B/response.json" | node -e "
+try{
+  const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
+  const list=j.screen&&j.screen.availableAbilities;
+  if(!list||!list.length)process.exit(0);
+  const label={'SecondaryAbilities':'skillsets','ReactionAbilities':'reactions','SupportAbilities':'supports','MovementAbilities':'movement'}[j.screen.name]||'options';
+  console.log('  Available '+label+' ('+list.length+'):');
+  list.forEach(a=>{
+    const tag=a.isEquipped?'  [equipped]':'';
+    console.log('    - '+a.name+tag);
+  });
 }catch(e){}
 " 2>/dev/null
     fi

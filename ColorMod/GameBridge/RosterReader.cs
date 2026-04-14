@@ -141,6 +141,75 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Reads which secondary skillsets the unit has unlocked. A skillset is
+        /// considered unlocked iff at least one of its action-ability bits is
+        /// set in the per-job learned bitfield at +0x32 + jobIdx*3 (bytes 0-1,
+        /// MSB-first per `project_roster_learned_abilities.md`).
+        ///
+        /// This is a proxy — strictly the game considers a skillset selectable
+        /// based on job-unlock state (achieved by spending JP), but learned
+        /// abilities are a strong correlate (you can only learn abilities for
+        /// jobs you've unlocked). Returns canonical skillset names from
+        /// AbilityData.GetJobIdxBySkillsetName.
+        ///
+        /// Iterates ALL 20 job indices (0-19, with 17 shared by Bard/Dance).
+        /// </summary>
+        public List<string> ReadUnlockedSkillsets(int slotIndex)
+        {
+            var result = new List<string>();
+            if (slotIndex < 0 || slotIndex >= MaxSlots) return result;
+
+            long b = RosterBase + (long)slotIndex * SlotStride;
+            // Read all 20 jobs' bitfields in one round trip (3 bytes each, but
+            // only bytes 0-1 carry action-ability bits).
+            const int Jobs = 20;
+            var reads = new (System.IntPtr addr, int size)[Jobs * 2];
+            for (int j = 0; j < Jobs; j++)
+            {
+                reads[j * 2 + 0] = ((System.IntPtr)(b + 0x32 + j * 3 + 0), 1);
+                reads[j * 2 + 1] = ((System.IntPtr)(b + 0x32 + j * 3 + 1), 1);
+            }
+            var v = _explorer.ReadMultiple(reads);
+
+            // Map jobIdx → canonical skillset name. We use the inverse of
+            // AbilityData.GetJobIdxBySkillsetName. Mettle and Fundaments share
+            // jobIdx 0; we surface "Mettle" as the canonical name there since
+            // the game UI labels Squire's primary as Mettle in this remaster.
+            string?[] skillsets = new string?[Jobs]
+            {
+                "Mettle",         // 0 (also Fundaments)
+                "Items",          // 1
+                "Arts of War",    // 2
+                "Aim",            // 3
+                "Martial Arts",   // 4
+                "White Magicks",  // 5
+                "Black Magicks",  // 6
+                "Time Magicks",   // 7
+                "Summon",         // 8
+                "Steal",          // 9
+                "Speechcraft",    // 10
+                "Mystic Arts",    // 11
+                "Geomancy",       // 12
+                "Jump",           // 13
+                "Iaido",          // 14
+                "Throw",          // 15
+                "Arithmeticks",   // 16
+                "Bardsong",       // 17 (also Dance)
+                null,             // 18 reserved
+                "Darkness",       // 19
+            };
+            for (int j = 0; j < Jobs; j++)
+            {
+                if (skillsets[j] == null) continue;
+                int byte0 = (int)v[j * 2 + 0];
+                int byte1 = (int)v[j * 2 + 1];
+                if (byte0 != 0 || byte1 != 0)
+                    result.Add(skillsets[j]!);
+            }
+            return result;
+        }
+
+        /// <summary>
         /// Reads equipped ability slots for the given roster slot. Returns null
         /// if the slot is out of range. Slot fields that are empty (equipped
         /// flag == 0) come back as null on the AbilityLoadout. Primary is
