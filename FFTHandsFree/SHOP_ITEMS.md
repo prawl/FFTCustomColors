@@ -172,3 +172,44 @@ Early-game settlements may have fewer items.
 - Right from Tab 6 wraps to Tab 1 (Weapons)
 - To buy an item: navigate to correct tab, Down to item row, Enter (select) → Down (max qty) → Enter (confirm qty) → Enter (Buy)
 - Cursor position `0x141870704` increments per item but starts at 2, not 0
+
+## Dynamic Shop Stock — Next-Session Investigation Plan
+
+The static lists above are what Sal Ghidos sells at end-game. Early-game settlements
+carry smaller, shop-specific inventories that we haven't located in memory yet.
+Prior sessions failed to find the stock list; this section captures a concrete
+plan using knowledge gained 2026-04-14.
+
+**What we now know that we didn't before:**
+- **Item IDs are FFTPatcher-canonical (0-315) everywhere** — no game-specific
+  translation table exists. Verified via roster equipment reads on Ramza and
+  Kenrick. This means any item list in memory uses the same IDs as
+  `ItemData.cs`; we can recognize them on sight.
+- **Byte-pattern AoB scanning works** for finding specific item IDs in heap.
+  We located Mustadio's custom equipment via exact u16 match.
+
+**Recommended approach for shop stock:**
+
+1. **Pick a small, known shop.** Chapter 1 Igros Outfitter has a tiny
+   inventory that's easy to cross-reference. Enter its Buy menu.
+2. **List the first ~5 items on screen** (e.g., "Broad Sword, Long Sword,
+   Iron Sword, Leather Shield, Bronze Helm").
+3. **Look up their FFTPatcher IDs in ItemData.cs.** Build a byte sequence
+   of the u16 LE encodings for those items in display order.
+4. **`search_bytes` for that sequence.** A contiguous shop-stock array should
+   produce a small number of matches — ideally just one.
+5. **If no match:** try u8 encoding (items 0-255 fit). Try +price-word
+   interleaved (each entry might be `{id: u16, price: u32}` or similar).
+6. **Snapshot-diff approach as fallback:** enter shop A, heap_snapshot →
+   travel to shop B, heap_snapshot → diff. The inventory array should
+   appear as a block of changed bytes whose old and new values both decode
+   to valid item IDs via ItemData.
+
+**Why this is likely to work now:** we've proven the general technique
+(AoB-scan with known item IDs as anchors) on roster equipment. Shop stock
+is likely stored the same way — just in a different struct.
+
+**Candidate memory regions to prioritize:** heap near 0x4166xxxxxx (where
+the hovered-unit-array mirror lived) and anywhere near `0x14184*` where
+Outfitter-related flags already live (`insideShopFlag` at `0x14184*`,
+`shopSubMenuIndex` at `0x14184276C`).

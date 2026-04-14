@@ -80,7 +80,10 @@ Grid index = row×5 + col. Cursor starts at Ramza (0,0).
 ## Memory Layout
 
 ### Roster (AoB-found, stable at 0x1411A18D0)
-55 slots × 0x258 bytes. See UNIT_DATA_STRUCTURE.md for full field map.
+50 party slots × 0x258 bytes. See UNIT_DATA_STRUCTURE.md for the full field map. Equipment IDs at +0x0E..+0x1A (7 u16 LE slots, FFTPatcher 0-315 encoding, 0xFF = empty). Empty-slot filter: `unitIndex != 0xFF AND level > 0`. HP/MP are NOT in the roster — runtime-computed; see BATTLE_MEMORY_MAP.md §19 for the partial heap mirror.
+
+### PartyMenu Roster Grid (surfaced on screen response)
+On `PartyMenu` / `CharacterStatus` / `EquipmentAndAbilities`, `screen.roster` embeds every active party member (slot, name, level, job, brave, faith, equipment). `fft.sh screen -v` renders the full list with equipment; default `screen` shows just the count (`16/50 units`). Ordered by memory slot index — the in-game display order is NOT yet mapped (see TODO §10.6).
 
 ### UI State Buffer (0x1407AC7CA)
 | Offset | Field | Offset | Field |

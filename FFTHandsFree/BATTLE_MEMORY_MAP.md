@@ -7,7 +7,7 @@
 - Battle stat arrays are NOT populated until battle starts
 
 ## 1. Roster Array (0x1411A18D0, stride 0x258)
-Readable during battle. Key fields: spriteSet +0x00, job +0x02, secondary +0x07, reaction +0x08, support +0x0A, movement +0x0C, exp +0x1C, level +0x1D, brave +0x1E, faith +0x1F, nameId +0x230.
+Readable during AND outside battle. 50 slots. Key fields: spriteSet +0x00, job +0x02, secondary +0x07, reaction +0x08, support +0x0A, movement +0x0C, equipment u16 LE slots +0x0E..+0x1A (helm / body / acc / R-hand / L-hand / reserved / shield — FFTPatcher-canonical IDs, 0xFF = empty), exp +0x1C, level +0x1D, brave +0x1E, faith +0x1F, nameId +0x230. Empty slot = `unitIndex != 0xFF AND level > 0`. HP/MP are NOT here (runtime-computed, see §19). See UNIT_DATA_STRUCTURE.md and §18 for equipment details.
 
 ## 2. Condensed Battle Struct (0x14077D2A0, variable stride)
 Rolling turn-order queue. Slot 0 = current unit. Updates in real-time (HP changes visible). Each entry followed by FFFF-terminated ability list (stride varies per unit).
@@ -273,7 +273,68 @@ Bit decoding (MSB-first): position = `N - B`, byte = `pos/8`, bit = `7 - (pos%8)
 ## 17. Inventory — investigation paused
 Not located in memory. See `memory/project_inventory_investigation.md` for full dossier. Next step: scrape Items menu while rendered (Option C).
 
+## 18. Per-Unit Equipment (static, solved 2026-04-14)
+Equipped items for every party member live in the roster array at
+`0x1411A18D0 + slot*0x258 + 0x0E..+0x1B`. Seven u16 LE slots:
+
+- +0x0E helm / +0x10 body / +0x12 accessory / +0x14 right-hand /
+  +0x16 left-hand / +0x18 reserved / +0x1A shield
+
+IDs use the **FFTPatcher canonical encoding** (0-315) — direct lookup
+into `ItemData.Items` produces the displayed item name with no translation
+table. Verified via Ramza (Ragnarok=36, Escutcheon=143, Grand Helm=156,
+Maximillian=185, Bracer=218), Kenrick (Chaos Blade=37, Kaiser Shield=141,
+Crystal Helm=154, Crystal Mail=182), and Mustadio (Mythril Gun=72, Gold
+Hairpin=166, Jujitsu Gi=194, Hermes Shoes=213). `0xFF` / `0xFFFF` = empty.
+
+Historical note: the `ItemData.cs` header previously claimed a "Game !=
+FFTPatcher" ID discrepancy. That was based on a wrong slot-offset
+assumption (reading the 3 non-equipment u16 bytes at +0x08..+0x0D as
+item IDs). The comment has been corrected — no translation needed.
+
+See `ColorMod/GameBridge/EquipmentReader.cs` and
+`ColorMod/GameBridge/RosterReader.cs::ReadLoadout()`.
+
+## 19. Hovered-Unit Heap Mirror (partial, heap)
+A 0x200-stride heap array appears at a session-specific address (observed
+`0x4166C2E400` in one session) that contains a **runtime-computed mirror**
+of some units' condensed stats. Found via AoB scan for Ramza's 20-byte
+equipment signature combined with a discriminator byte pair `0x90 0x03`
+at struct+0x06..+0x07 (roster backup copies carry `0x90 0x06` instead).
+
+Struct layout per entry:
+- +0x14..+0x19: three non-equipment u16s (stat-max components?)
+- +0x1A..+0x27: 7 u16 equipment IDs (mirror of roster +0x0E)
+- +0x2A..+0x2D: `brave brave faith faith` (each byte doubled)
+- +0x30..+0x33: HP / MaxHP (u16 LE each) — the **runtime-computed values
+  shown on the unit card**, not stored in the roster
+- +0x34..+0x37: MP / MaxMP (u16 LE each)
+
+**What it's good for:** reading live HP/MP for the handful of units
+whose struct has been populated — typically Ramza + the first few party
+members and whichever unit's CharacterStatus has been opened.
+
+**What it's NOT good for:** reading HP/MP for every party member. The
+array is not a complete roster mirror — mid-roster story characters
+(Mustadio, Reis, Cloud, Rapha, etc.) are absent even when they're in
+the active party. Verified 2026-04-14: Mustadio's `brave brave faith
+faith` signature `3C 3C 3E 3E` does not appear anywhere in the 0x200-
+stride array.
+
+**Next session options for full-party HP/MP:**
+- (a) Find the widget struct that renders each unit's card (probably
+  lazily populated as Claude cycles Q/E through CharacterStatus).
+- (b) Recompute HP/MP from job base + equipment bonuses using FFTPatcher
+  formulas + the ItemData fields we already have.
+- (c) Walk the UE4 pointer chain from a stable exe-side static to the
+  widget data — requires a DLL detour or Cheat Engine pointer scan.
+
+See `ColorMod/GameBridge/HoveredUnitArray.cs` for the discovery +
+read implementation.
+
 ## Still Unmapped
 - Effective Move/Jump (not in static array, only UI buffer for active unit)
 - Enemy display names, party item inventory (see §17), facing direction
+- Live HP/MP for all party members outside battle (partial via §19)
+- Dynamic shop stock arrays (see SHOP_ITEMS.md for investigation plan)
 - See BATTLE_STATS_PSX_REFERENCE.md for complete PSX field layout

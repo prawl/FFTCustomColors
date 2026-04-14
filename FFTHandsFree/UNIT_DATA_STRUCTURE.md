@@ -28,8 +28,8 @@ The pattern uses x86-64 RIP-relative addressing:
 | Offset | Size | Field | Description |
 |--------|------|-------|-------------|
 | +0x00 | byte | spriteSet | Character Identity — determines which sprite the game renders. Story characters use fixed values (e.g., 128 for most story chars, 3 for Ramza Ch4). Generic units have spriteSet == job. |
-| +0x01 | byte | unitIndex | Party/roster index. `0xFF` = empty slot. Sequential for active units. |
-| +0x02 | byte | job | Current job ID. Determines abilities, stats, and job class. |
+| +0x01 | byte | unitIndex | Party/roster index. Sequential for generic recruits. **`0xFF` does NOT reliably mean empty** — verified 2026-04-14 that several story characters (Rapha, extra Construct 8 clones) carry unitIndex=0xFF while still being real active party members, and conversely some inactive template slots have level>0. The only reliable filter is `unitIndex != 0xFF AND level > 0` combined (confirmed against the game's own 16/50 headcount). |
+| +0x02 | byte | job | Current job ID. For generic units and story characters on their canonical class, this equals their nameId or a roster-range ID (74-95). Ramza uses 3 (= Gallant Knight in his case). |
 | +0x07 | byte | secondaryAbility | Index into the character's personal unlocked ability list (not a universal ID). |
 | +0x08 | byte | reactionAbility | Ability ID for equipped reaction ability (e.g., Counter=0xBA, Parry=0xBD). |
 | +0x09 | byte | reactionEquipped | 0x01 when reaction slot has an ability equipped. |
@@ -37,6 +37,17 @@ The pattern uses x86-64 RIP-relative addressing:
 | +0x0B | byte | supportEquipped | 0x01 when support slot has an ability equipped. |
 | +0x0C | byte | movementAbility | Ability ID for equipped movement ability (e.g., Move+2=0xE7). |
 | +0x0D | byte | movementEquipped | 0x01 when movement slot has an ability equipped. |
+| +0x0E | uint16 LE | equipHelm | Helm item ID (FFTPatcher-canonical, 0-315). 0xFF / 0xFFFF = empty. |
+| +0x10 | uint16 LE | equipBody | Body armor item ID. 0xFF = empty. |
+| +0x12 | uint16 LE | equipAccessory | Accessory item ID. 0xFF = empty. |
+| +0x14 | uint16 LE | equipRightHand | Right-hand weapon item ID. 0xFF = empty. |
+| +0x16 | uint16 LE | equipLeftHand | Left-hand weapon (dual-wield) item ID. 0xFF = empty for normal one-hand+shield layouts. |
+| +0x18 | uint16 LE | equipReserved | Reserved / unknown equipment slot. Typically 0xFF on all units observed. |
+| +0x1A | uint16 LE | equipShield | Left-hand shield item ID. 0xFF = empty. |
+| +0x1C | byte | exp | Experience points toward next level (0-99). |
+| +0x1D | byte | level | Unit level (1-99). **`level == 0` is the true empty-slot marker** on IC remaster. |
+| +0x1E | byte | brave | Bravery (0-100). |
+| +0x1F | byte | faith | Faith (0-100). |
 | +0x230 | uint16 LE | nameId | Indexes into the `CharaName-en` NXD table. Determines the character's displayed name. |
 
 ### spriteSet Values
@@ -79,9 +90,26 @@ The CharaName-en table schema:
 - nameId = index of their randomly-assigned name from the CharaName table
 
 ### Empty Slots
-- unitIndex = 0xFF
-- All other fields are zeroed or garbage
-- **Writing to empty slots crashes the game** — they cannot be populated programmatically
+- **True marker: `level == 0`** (verified 2026-04-14 in live PartyMenu — yields the game's own 16/50 count exactly).
+- unitIndex = 0xFF is a *secondary* filter: all empty slots have 0xFF there, but some active story-character slots do too. Always AND with the level check.
+- All other fields are zeroed or garbage on empty slots.
+- **Writing to empty slots crashes the game** — they cannot be populated programmatically.
+
+## Equipment Decoding
+
+The 7 u16 equipment IDs at roster +0x0E..+0x1A use the **FFTPatcher canonical encoding** (0-315). Verified 2026-04-14 against live Ramza and Kenrick dumps — every equipped ID read directly matched `ItemData.GetItem(id)`:
+
+| Unit | +0x0E helm | +0x10 body | +0x12 acc | +0x14 R-hand | +0x1A shield |
+|------|-----------|-----------|----------|--------------|--------------|
+| Ramza | 156=Grand Helm | 185=Maximillian | 218=Bracer | 36=Ragnarok | 143=Escutcheon |
+| Kenrick | 154=Crystal Helm | 182=Crystal Mail | 218=Bracer | 37=Chaos Blade | 141=Kaiser Shield |
+| Mustadio (custom) | 166=Gold Hairpin | 194=Jujitsu Gi | 213=Hermes Shoes | 72=Mythril Gun | 0xFF (none) |
+
+An earlier note in `ItemData.cs` claimed a "Game=N → FFTPatcher=M" translation was needed; that was based on a wrong slot-offset assumption and has been corrected. **No translation table is required.** Read the u16, look up in `ItemData.Items`, get the name.
+
+`0xFF` and `0xFFFF` both mean "empty slot" (e.g., no left-hand weapon, no second accessory). Filter those before lookup.
+
+The canonical reader is `EquipmentReader.FromSlotValues(int[7])` in `ColorMod/GameBridge/EquipmentReader.cs`. `RosterReader.ReadLoadout(slotIndex)` wraps it with the memory read.
 
 ## PSX to Ivalice Chronicles Field Mapping
 

@@ -45,6 +45,14 @@ You are playing this game as a new player. You are experiencing the story, learn
 - **Visit taverns.** Check for rumors and errands — they're part of the experience.
 - **Explore the Chronicle.** The Personae entries and Brave Story fill in the world. A curious player reads them.
 
+## Party Management
+
+- **`screen -v` on PartyMenu is your party sheet.** It lists every member's name/level/job/brave/faith plus their currently equipped weapon, shield, helm, body, and accessory. Use it before going into a shop or battle to know who's unequipped or under-geared.
+- **Equipment slot labels in the output:** `R=` right-hand weapon, `L=` left-hand weapon (dual-wield), `Sh=` shield, `H=` helm, `B=` body armor, `A=` accessory. Missing label = slot empty.
+- **SAVE before dismissing, changing jobs, or re-equipping.** The save file is the source of truth. We've lost changes this way — if the game hasn't saved, a restart reloads the last save and undoes everything.
+- **HP / MP are NOT in the roster grid yet.** You can see them on the individual unit card (CharacterStatus) but not in the party-wide view. For now, pick who to inspect via the grid (who's weakest-geared? who has no shield?) and then drill into their CharacterStatus to check their stats.
+- **Roster order in the grid ≠ on-screen grid order.** The `screen -v` list is ordered by memory slot index, not by the 5-column visual grid the game renders. Don't trust "position in list" to mean "(row, col) in game." Use cursor keys and watch the unit card to know who the game has highlighted.
+
 ## Communication Style
 
 - Keep battle commentary brief during action — don't write paragraphs between every arrow press.

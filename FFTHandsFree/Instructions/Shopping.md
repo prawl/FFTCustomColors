@@ -67,6 +67,8 @@ execute_action Cancel      # Back to SettlementMenu
 
 `screen.UI` doesn't currently show the item name at the highlighted row — only the row index (e.g. `row=2`). Matching row to item is a work in progress. For now, you'll need to look at the game screen to see what's highlighted.
 
+**2026-04-14 update — what we DO know now:** item IDs in the game's roster memory use the **FFTPatcher canonical encoding (0-315)** — the same keys as `ColorMod/GameBridge/ItemData.cs`. Verified by reading live equipment off Ramza/Kenrick/Mustadio. No translation table is needed: read the u16, look up the ID directly. This unblocks dynamic shop-stock scanning — see `SHOP_ITEMS.md` "Dynamic Shop Stock — Next-Session Investigation Plan" for the concrete AoB-scan procedure using known item IDs as anchors.
+
 ### Purchase confirmation
 
 After `Select`, the game opens a quantity selector and then a "Buy N for X gil?" confirmation modal. The modal detection isn't wired up yet (pending a memory scan), so you'll need to handle the confirmation manually for now.
