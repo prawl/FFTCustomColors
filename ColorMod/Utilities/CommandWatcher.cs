@@ -389,13 +389,14 @@ namespace FFTColorCustomizer.Utilities
                             int dEv = (int)raw[19], dMc = (int)raw[4];
                             int dHover = (int)raw[3];
                             int dLmf = (int)raw[21];
+                            int dSti = (int)raw[22];
                             bool dInBattle = (dS0 == 255 && dS9 == 0xFFFFFFFF)
                                 || (dS9 == 0xFFFFFFFF && (dBm == 2 || dBm == 3 || dBm == 4));
                             string detected = GameBridge.ScreenDetectionLogic.Detect(
                                 dP, dU, dLoc, dS0, dS9, dBm, dMm, dPs, dGo,
                                 dBt, dBa, dBmv, dEa, dEb, !dInBattle && IsPartySubScreen(),
                                 dEv, submenuFlag: dSf, menuCursor: dMc, hover: dHover,
-                                locationMenuFlag: dLmf);
+                                locationMenuFlag: dLmf, shopTypeIndex: dSti);
                             var snapshot = new Dictionary<string, object>
                             {
                                 ["timestamp"] = DateTime.UtcNow.ToString("o"),
@@ -421,7 +422,8 @@ namespace FFTColorCustomizer.Utilities
                                     ["submenuFlag"] = dSf,
                                     ["menuCursor"] = dMc,
                                     ["hover"] = dHover,
-                                    ["locationMenuFlag"] = dLmf
+                                    ["locationMenuFlag"] = dLmf,
+                                    ["shopTypeIndex"] = dSti
                                 }
                             };
                             response.Info = System.Text.Json.JsonSerializer.Serialize(snapshot,
@@ -1525,6 +1527,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x14077CA94, 2),  // 19: eventId (event file number during cutscenes, nameId during battle)
             ((nint)0x1411A0FB6, 1),  // 20: storyObjective (yellow diamond location ID on world map)
             ((nint)0x140D43481, 1),  // 21: locationMenuFlag (1=inside a named location's menu like Outfitters/Tavern list, 0=elsewhere)
+            ((nint)0x140D435F0, 1),  // 22: shopTypeIndex (0=Outfitter, 1=Tavern, 2=Warriors' Guild, 3=Poachers' Den — index of hovered shop in LocationMenu)
         };
 
         /// <summary>
@@ -2336,13 +2339,15 @@ namespace FFTColorCustomizer.Utilities
                     || (slot9 == 0xFFFFFFFF && (battleMode == 2 || battleMode == 3 || battleMode == 4));
 
                 int locationMenuFlag = (int)v[21];
+                int shopTypeIndex = (int)v[22];
                 screen.Name = GameBridge.ScreenDetectionLogic.Detect(
                     party, ui, rawLocation, slot0, slot9,
                     battleMode, moveMode, paused, gameOverFlag,
                     screen.BattleTeam, screen.BattleActed, screen.BattleMoved,
                     eA, eB, !inBattle && IsPartySubScreen(), eventId,
                     submenuFlag: submenuFlag, menuCursor: screen.MenuCursor,
-                    hover: hover, locationMenuFlag: locationMenuFlag);
+                    hover: hover, locationMenuFlag: locationMenuFlag,
+                    shopTypeIndex: shopTypeIndex);
 
                 if (screen.Name == "Cutscene")
                     screen.EventId = eventId;
