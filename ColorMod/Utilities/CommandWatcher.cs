@@ -2425,18 +2425,68 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "Battle_Abilities" && _battleMenuTracker.InSubmenu)
                     screen.UI = _battleMenuTracker.CurrentItem;
 
-                // Resolve party sub-screen to specific screen via state machine
-                if (screen.Name == "PartySubScreen")
+                // Resolve party sub-screen to specific screen via state machine.
+                // The state machine's CurrentScreen + Tab + SidebarIndex are driven by
+                // key history (entry/exit tracked in OnKeyPressed). When detection
+                // returns PartySubScreen / PartyMenu, OR when it falls through to
+                // TravelList/WorldMap while the state machine knows we're inside the
+                // party menu (e.g. Chronicle/Options tabs flip the `ui` byte to 1,
+                // which the party=0&&ui=1 rule misreads as TravelList), consult the
+                // state machine to resolve the actual nested screen name. See
+                // TODO §10.6.
+                bool stateMachineInPartyMenu = ScreenMachine != null &&
+                    ScreenMachine.CurrentScreen is
+                        GameScreen.PartyMenu or
+                        GameScreen.CharacterStatus or
+                        GameScreen.EquipmentScreen or
+                        GameScreen.EquipmentItemList or
+                        GameScreen.JobScreen or
+                        GameScreen.JobActionMenu or
+                        GameScreen.JobChangeConfirmation;
+
+                if (screen.Name == "PartySubScreen" || screen.Name == "PartyMenu" ||
+                    (stateMachineInPartyMenu && (screen.Name == "TravelList" || screen.Name == "WorldMap")))
                 {
-                    screen.Name = ScreenMachine!.CurrentScreen switch
+                    if (ScreenMachine != null)
                     {
-                        GameScreen.CharacterStatus => "CharacterStatus",
-                        GameScreen.EquipmentScreen => "EquipmentScreen",
-                        GameScreen.EquipmentItemList => "EquipmentItemList",
-                        GameScreen.JobScreen => "JobScreen",
-                        GameScreen.JobActionMenu => "JobActionMenu",
-                        GameScreen.JobChangeConfirmation => "JobChangeConfirmation",
-                        _ => "PartyMenu"
+                        screen.Name = ScreenMachine.CurrentScreen switch
+                        {
+                            GameScreen.CharacterStatus => "CharacterStatus",
+                            // GameScreen.EquipmentScreen enum name is legacy (pre-rename).
+                            // Surface as "EquipmentAndAbilities" to match the two-column
+                            // center panel reality (equipment + abilities). Enum rename
+                            // deferred to the dedicated rename session — see TODO §10.5.
+                            GameScreen.EquipmentScreen => "EquipmentAndAbilities",
+                            GameScreen.EquipmentItemList => "EquipmentItemList",
+                            GameScreen.JobScreen => "JobSelection",
+                            GameScreen.JobActionMenu => "JobActionMenu",
+                            GameScreen.JobChangeConfirmation => "JobChangeConfirmation",
+                            // On PartyMenu itself, the tab determines the screen name.
+                            GameScreen.PartyMenu => ScreenMachine.Tab switch
+                            {
+                                PartyTab.Units => "PartyMenu",
+                                PartyTab.Inventory => "PartyMenuInventory",
+                                PartyTab.Chronicle => "PartyMenuChronicle",
+                                PartyTab.Options => "PartyMenuOptions",
+                                _ => "PartyMenu"
+                            },
+                            _ => "PartyMenu"
+                        };
+                    }
+                }
+
+                // CharacterStatus sidebar label: populate screen.UI from the state
+                // machine's SidebarIndex (0=Equipment & Abilities, 1=Job, 2=Combat Sets).
+                // This replaces the need for a memory scan — sidebar is purely
+                // keyboard-driven and the state machine tracks Up/Down reliably.
+                if (screen.Name == "CharacterStatus" && ScreenMachine != null)
+                {
+                    screen.UI = ScreenMachine.SidebarIndex switch
+                    {
+                        0 => "Equipment & Abilities",
+                        1 => "Job",
+                        2 => "Combat Sets",
+                        _ => null
                     };
                 }
 
@@ -2498,6 +2548,12 @@ namespace FFTColorCustomizer.Utilities
                 // Sync state machine with memory-detected top-level screens.
                 // This ensures the state machine stays in sync even after restarts
                 // or when it drifts from reality.
+                //
+                // IMPORTANT: By this point, PartyMenu-related names have already been
+                // resolved by the override block above (screen.Name may read
+                // PartyMenuInventory / CharacterStatus / etc.). We must NOT reset the
+                // state machine to Unknown when the POST-override name is a party
+                // screen. Only reset for genuine top-level screens.
                 if (ScreenMachine != null)
                 {
                     var expected = screen.Name switch
@@ -2505,10 +2561,15 @@ namespace FFTColorCustomizer.Utilities
                         "WorldMap" => GameScreen.WorldMap,
                         "TitleScreen" => GameScreen.TitleScreen,
                         "PartyMenu" => GameScreen.PartyMenu,
-                        "TravelList" => GameScreen.Unknown,
                         "EncounterDialog" => GameScreen.Unknown,
                         "Battle" or "GameOver" => GameScreen.Unknown,
                         _ when screen.Name.StartsWith("Battle_") => GameScreen.Unknown,
+                        // "TravelList" removed: if detection landed on TravelList but
+                        // the state machine is tracking a party menu tab, the override
+                        // above would have rewritten screen.Name. If screen.Name still
+                        // reads "TravelList" here, we really are on the travel overlay
+                        // (rare but possible) — leave state machine alone rather than
+                        // clobber it with Unknown.
                         _ => (GameScreen?)null
                     };
                     if (expected.HasValue && ScreenMachine.CurrentScreen != expected.Value)

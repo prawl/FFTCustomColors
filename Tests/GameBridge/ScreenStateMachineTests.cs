@@ -244,14 +244,16 @@ public class ScreenStateMachineTests
         Assert.Equal(PartyTab.Chronicle, sm.Tab);
         sm.OnKeyPressed(VK_E); // → Options
         Assert.Equal(PartyTab.Options, sm.Tab);
-        sm.OnKeyPressed(VK_E); // stays at Options (clamped)
-        Assert.Equal(PartyTab.Options, sm.Tab);
+        sm.OnKeyPressed(VK_E); // wraps: Options → Units
+        Assert.Equal(PartyTab.Units, sm.Tab);
 
+        sm.OnKeyPressed(VK_Q); // wraps: Units → Options
+        Assert.Equal(PartyTab.Options, sm.Tab);
         sm.OnKeyPressed(VK_Q); // → Chronicle
         Assert.Equal(PartyTab.Chronicle, sm.Tab);
-        sm.OnKeyPressed(VK_Q);
-        sm.OnKeyPressed(VK_Q);
-        sm.OnKeyPressed(VK_Q); // stays at Units (clamped)
+        sm.OnKeyPressed(VK_Q); // → Inventory
+        Assert.Equal(PartyTab.Inventory, sm.Tab);
+        sm.OnKeyPressed(VK_Q); // → Units
         Assert.Equal(PartyTab.Units, sm.Tab);
     }
 
@@ -276,9 +278,11 @@ public class ScreenStateMachineTests
         Assert.Equal(1, sm.SidebarIndex);
         sm.OnKeyPressed(VK_DOWN);
         Assert.Equal(2, sm.SidebarIndex);
-        sm.OnKeyPressed(VK_DOWN); // clamped
-        Assert.Equal(2, sm.SidebarIndex);
+        sm.OnKeyPressed(VK_DOWN); // wraps: Combat Sets → Equipment & Abilities
+        Assert.Equal(0, sm.SidebarIndex);
 
+        sm.OnKeyPressed(VK_UP); // wraps: Equipment & Abilities → Combat Sets
+        Assert.Equal(2, sm.SidebarIndex);
         sm.OnKeyPressed(VK_UP);
         Assert.Equal(1, sm.SidebarIndex);
     }

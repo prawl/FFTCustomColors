@@ -331,7 +331,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
 
 ### Detection — TODO
 
-- [ ] **`PartyMenu` top-level tabs** — current state fires on `party==1`. Four tabs at the top: Units (default), Inventory, Chronicle, Options. **Tabs wrap:** pressing E on Options cycles back to Units; Q on Units cycles to Options. Memory scan needed for the active-tab index. Each tab has its OWN screen name (not just `PartyMenu ui=<tab>`) because the content differs entirely per tab:
+- [x] **`PartyMenu` top-level tabs** — DONE 2026-04-14. Uses `ScreenStateMachine.Tab` (driven by Q/E key history, now wraps both directions) to resolve detection to `PartyMenu` / `PartyMenuInventory` / `PartyMenuChronicle` / `PartyMenuOptions`. Memory scan for a tab-index byte was inconclusive — heap diff found 2029 candidates with the right 0/1/2/3 shape but none survived re-verification (UE4 widget heap reallocates per keypress). State-machine-driven detection is the working answer. Each tab has its OWN screen name (not just `PartyMenu ui=<tab>`) because the content differs entirely per tab:
   - `PartyMenu` — Units tab (the roster grid; covered below)
   - `PartyMenuInventory` — Inventory tab (item catalog; covered below)
   - `PartyMenuChronicle` — Chronicle tab (lore/events browser; covered below)
@@ -376,7 +376,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
   - `Return to Title Screen` — confirmation modal, then title.
   - `Exit Game` — confirmation modal, then quits the process.
   Wrapping: in the options list, Up on `Save` stays (or wraps to `Exit Game`? verify live). Tab wrap (E on Options → Units) confirmed.
-- [ ] **`CharacterStatus` sidebar** — when inside a unit's status screen, `ui=Equipment & Abilities` / `ui=Job` / `ui=Combat Sets` reflects the highlighted sidebar item. Memory scan needed for sidebar index.
+- [x] **`CharacterStatus` sidebar** — DONE 2026-04-14. `screen.UI` populated from `ScreenStateMachine.SidebarIndex` (now wraps both directions). Reads "Equipment & Abilities" / "Job" / "Combat Sets". No memory scan needed — sidebar is purely keyboard-driven and the state machine tracks Up/Down reliably.
 - [ ] **Equipment Effects toggle (`R` key on `EquipmentAndAbilities`)** — captured 2026-04-14 SS1 + SS2. Pressing R flips the center panel between the default "equipment + abilities list" view and an "Equipment Effects" view that summarises aggregate stat effects from the loadout (e.g. "Permanent Shell", "Immune Blindness, Sleep"). Pressing R again flips back. Two sub-views of the same screen — model as a toggle within `EquipmentAndAbilities`:
   - Default view: `ui=<highlighted item or ability name>` (current spec).
   - Effects view: new sub-state or a flag like `EquipmentAndAbilities ui=EquipmentEffects view=Effects`. The bottom-right hint reads `[R] Equipment Effects` in the default view and `[R] View Equipment` in the effects view — confirming it's a binary toggle on the same screen.
@@ -388,7 +388,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
   - Detection: needs a memory scan for the stats-expanded flag (binary).
 - [ ] **Character dialog (spacebar on `CharacterStatus`)** — pressing Space on a unit's CharacterStatus opens a character-specific flavor-text dialog with portrait (captured 2026-04-14 SS1: Kenrick says "My father is an arms merchant..."). Advances with Enter like cutscenes. New state: `CharacterDialog` with ValidPaths `Advance` (Enter) and `Close` (Escape). Low-priority since it's narrative flavor Claude doesn't strictly need, but supporting it keeps the "play like a human" principle intact — a curious player would talk to their units.
 - [ ] **Dismiss Unit flow (hold B on `CharacterStatus`)** — holding B for 3+ seconds opens a `DismissUnit` confirmation screen (captured 2026-04-14 SS2: "Wait! This is a misunderstanding, surely..." → "Dismiss Kenrick from your party?" Confirm/Back). New state: `DismissUnit` with ValidPaths `Confirm` / `Back` and `ui=Confirm`/`ui=Back` reflecting cursor. Needs a held-key helper since the input is a 3-second press, not a single Enter — add `hold_key <vk> <seconds>` action or equivalent. Action helper: `dismiss_unit <name>` (already in TODO, flesh out once this state detects).
-- [ ] **Rename `Equipment_Screen` → `EquipmentAndAbilities`** — the current name misleads; the screen has TWO columns (equipment on left, abilities on right). Single `ui=<highlighted item name>` regardless of column — Claude infers column from the name (Ragnarok=equipment, Mettle=ability). Values: `ui=Ragnarok`, `ui=Escutcheon`, `ui=Grand Helm`, `ui=Maximillian`, `ui=Bracers`, `ui=Mettle`, `ui=Items`, `ui=Parry`, `ui=Magick Defense Boost`, `ui=Movement +3`.
+- [x] **Rename `Equipment_Screen` → `EquipmentAndAbilities`** — DONE 2026-04-14 (screen name only; `GameScreen.EquipmentScreen` enum still legacy, renamed in the ScreenDetectionLogic → CommandWatcher mapper). The `ui=<highlighted item name>` inner-cursor work (Ragnarok / Escutcheon / Mettle / etc.) is still TODO — requires decoding the game's cursor position inside the two-column panel.
 - [ ] **New states for ability slots** — pressing Enter on the Abilities column opens a picker specific to that slot type:
   - `ActionAbilities` — ui=<skillset name> (Items, Arts of War, Aim, Martial Arts, White Magicks, Black Magicks, Time Magicks, ...). Screenshot showed Mettle + Items + Arts of War + Aim + Martial Arts + White/Black/Time Magicks.
   - `ReactionAbilities` — ui=<ability name> (Parry, Counter, Auto-Potion, ...).
@@ -400,7 +400,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
   - `EquippableHeadware` — ui=<helm name> (Grand Helm, Crystal Helm, ...).
   - `EquippableCombatGarb` — ui=<armor name> (Maximillian, Carabini Mail, ...).
   - `EquippableAccessories` — ui=<accessory name> (Bracers, Genji Gauntlet, Reflect Ring, ...).
-- [ ] **Rename `Job_Screen` → `JobSelection`** — `JobSelection` with `ui=<job name>` (Gallant Knight, Chemist, Knight, Archer, Monk, White Mage, Black Mage, Time Mage, Summoner, Thief, Orator, Mystic, Geomancer, Dragoon, Samurai, Ninja, Arithmetician, Bard, Mime). Grid layout: 7 cols × 3+ rows. Ramza row 0 has 1 special job (Gallant Knight) + 7 generic = 8 cols. Right pane shows selected job's flavor + level/JP.
+- [x] **Rename `Job_Screen` → `JobSelection`** — DONE 2026-04-14 (screen name only; `GameScreen.JobScreen` enum still legacy). The `ui=<job name>` inner-cursor work remains TODO — requires decoding the grid cursor inside JobSelection.
 - [ ] **Existing nested states** — these already have ValidPaths, need detection rules and `ui=`:
   - `JobActionMenu` — modal with Learn Abilities (left) / Change Job (right). `ui=Learn Abilities` or `ui=Change Job`.
   - `JobChangeConfirmation` — yes/no after selecting Change Job. `ui=Confirm` / `ui=Cancel`.
@@ -423,6 +423,15 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
 - [ ] **`Equippable_*` screens** — ScrollUp/Down / Select / Cancel, plus `ChangePage` (Tab key in game) to cycle item categories if that's how it's presented. Screenshot 3 shows `<V> Change Page` hint.
 - [ ] **`JobSelection`** — grid nav (Up/Down/Left/Right), Select (opens JobActionMenu), Back.
 - [ ] **Action helpers** — `equip_item <unit> <slot> <item>`, `change_job <unit> <job>`, `learn_ability <unit> <ability>`, `view_unit <name>`. These wrap the full navigation flow end-to-end.
+
+### Scan findings — what doesn't work for PartyMenu detection
+
+Documented 2026-04-14 after spending ~45 min trying to find the tab-index and sidebar-index bytes via memory diff.
+
+- **`module_snap` (main-module writable 0x140000000 range) does NOT contain PartyMenu UI state.** 4-way snapshots cycling through all 4 tabs produced only encounter-counter + camera-rotation false positives. Same result for CharacterStatus sidebar (Equipment→Job→CombatSets).
+- **`heap_snapshot` (UE4 heap) contains the values but they're not stable.** Diffing gave 2029 candidates with the right shape (e.g. 0/1/2 for sidebar); strict filter narrowed to 36. Live re-verification showed ZERO of the 36 actually tracked the sidebar when cycled — the widget heap is reallocated per keypress, so addresses mean different things at different times.
+- **What works:** `ScreenStateMachine` driven by key history (Q/E for tab, Up/Down for sidebar) reliably produces Tab + SidebarIndex. Use that to set `screen.Name` and `screen.UI` instead of scanning memory. This is what the current implementation does.
+- **If you need this later (e.g. for robust recovery after state-machine drift):** consider (a) hooking the game's widget render function via DLL detour, (b) finding the PartyMenu widget's vtable and reading a stable field offset from each instance, or (c) parsing the `[FFT File Logger]` output which shows distinct `.uib` loads per screen (e.g. `ffto_bravestory_top.uib` loads when entering JobSelection). Naive byte-diff is the wrong tool.
 
 ### Known gaps
 

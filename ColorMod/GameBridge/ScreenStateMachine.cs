@@ -124,12 +124,12 @@ namespace FFTColorCustomizer.GameBridge
                     CurrentScreen = GameScreen.WorldMap;
                     break;
                 case VK_Q:
-                    if (Tab > PartyTab.Units)
-                        Tab--;
+                    // Q wraps: Units → Options (leftmost → rightmost).
+                    Tab = Tab == PartyTab.Units ? PartyTab.Options : (PartyTab)(Tab - 1);
                     break;
                 case VK_E:
-                    if (Tab < PartyTab.Options)
-                        Tab++;
+                    // E wraps: Options → Units (rightmost → leftmost).
+                    Tab = Tab == PartyTab.Options ? PartyTab.Units : (PartyTab)(Tab + 1);
                     break;
                 case VK_UP:
                     if (CursorRow > 0) CursorRow--;
@@ -174,10 +174,12 @@ namespace FFTColorCustomizer.GameBridge
                     GridRows = (RosterCount + 4) / 5;
                     break;
                 case VK_UP:
-                    if (SidebarIndex > 0) SidebarIndex--;
+                    // Sidebar wraps: Equipment (0) → Combat Sets (2).
+                    SidebarIndex = SidebarIndex == 0 ? 2 : SidebarIndex - 1;
                     break;
                 case VK_DOWN:
-                    if (SidebarIndex < 2) SidebarIndex++;
+                    // Sidebar wraps: Combat Sets (2) → Equipment (0).
+                    SidebarIndex = SidebarIndex == 2 ? 0 : SidebarIndex + 1;
                     break;
                 case VK_RETURN:
                     if (SidebarIndex == 0)
@@ -196,6 +198,10 @@ namespace FFTColorCustomizer.GameBridge
                         GridColumns = IsRamza ? 8 : 6;
                         GridRows = 3;
                     }
+                    // SidebarIndex == 2 (Combat Sets) — NOT yet modeled in state machine.
+                    // The GameScreen enum doesn't have CombatSets. Detection falls back
+                    // to CharacterStatus with ui="Combat Sets" until the nested screen
+                    // is added to GameScreen and HandleCombatSets is implemented.
                     break;
             }
         }
