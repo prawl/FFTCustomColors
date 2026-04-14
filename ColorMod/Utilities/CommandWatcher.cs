@@ -33,6 +33,7 @@ namespace FFTColorCustomizer.Utilities
         private readonly BattleTurnTracker _turnTracker = new();
         private bool _movedThisTurn;
         private int _postMoveX = -1, _postMoveY = -1; // confirmed position after battle_move
+        private int _lastLoggedCursor = -1; // for UI cursor change logging
         private bool _waitConfirmPending; // Set when battle_wait rejected for no move/act; next battle_wait goes through
         private string? _lastAbilityName; // Last ability used via battle_ability, shown in ui= during targeting
         private readonly BattleMenuTracker _battleMenuTracker = new();
@@ -2225,6 +2226,11 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "Battle_MyTurn" || screen.Name == "Battle_Acting")
                 {
                     bool hasMoved = screen.BattleMoved == 1 || _movedThisTurn;
+                    if (screen.MenuCursor != _lastLoggedCursor)
+                    {
+                        ModLogger.Log($"[UI] cursor={screen.MenuCursor} screen={screen.Name} moved={hasMoved} acted={screen.BattleActed} movedThisTurn={_movedThisTurn}");
+                        _lastLoggedCursor = screen.MenuCursor;
+                    }
                     screen.UI = screen.MenuCursor switch
                     {
                         0 => hasMoved ? "Reset Move" : "Move",

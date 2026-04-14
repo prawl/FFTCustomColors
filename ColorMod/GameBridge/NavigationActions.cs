@@ -973,13 +973,10 @@ namespace FFTColorCustomizer.GameBridge
                 ModLogger.Log($"[BattleAbility] No learned ability data, using hardcoded index {abilityIndex}");
             }
 
-            // Navigate: go to top first, then down to target
-            int listSize = learnedAbilities?.Length ?? 20;
-            for (int i = 0; i < listSize; i++)
-            {
-                SendKey(VK_UP);
-                Thread.Sleep(150);
-            }
+            // Navigate to the target ability. The cursor starts at index 0 after
+            // entering the skillset. Just press Down × abilityIndex.
+            // (The list wraps, so pressing Up from 0 goes to the bottom — don't use Up.)
+            ModLogger.Log($"[BattleAbility] Nav: Down×{abilityIndex} (listSize={learnedAbilities?.Length ?? -1})");
             for (int i = 0; i < abilityIndex; i++)
             {
                 SendKey(VK_DOWN);

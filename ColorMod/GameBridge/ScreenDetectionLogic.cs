@@ -42,7 +42,10 @@ namespace FFTColorCustomizer.GameBridge
             // We split the state name (Battle_Attacking vs Battle_Casting) to let
             // downstream logic reason about "am I in a queued cast?" but the valid
             // paths and cursor interactions are identical.
-            bool battleModeActive = slot9 == 0xFFFFFFFF && (battleMode == 1 || battleMode == 2 || battleMode == 3 || battleMode == 4);
+            // battleMode can flicker to 0 during targeting animations while slot9
+            // stays at 0xFFFFFFFF. Include battleMode==0 when slot9 is the battle sentinel
+            // to prevent false Cutscene detection during brief flickers.
+            bool battleModeActive = slot9 == 0xFFFFFFFF && (battleMode == 0 || battleMode == 1 || battleMode == 2 || battleMode == 3 || battleMode == 4);
             bool clearlyOnWorldMap = rawValidLocation && party == 0 && battleMode == 0;
             // After battle ends, stale flags persist (acted=1, moved=1, slot0=255) but
             // battleMode resets to 0 and location goes to 255. Not a real battle.
