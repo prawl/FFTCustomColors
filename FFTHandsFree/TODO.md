@@ -121,7 +121,8 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 ## 3. Travel System — Polish (P1)
 
 - [ ] **Block `world_travel_to` to current location** — Calling world_travel_to with the location ID of the current standing node opens the travel list with the cursor on the current node, and the blind "press Enter to confirm" flow selects it. The game then gets stuck in an undefined state (travel modal opens, input routing goes to a subwindow, subsequent Enter presses are swallowed). Detect and refuse: if `locationId == currentLocationId` (where currentLocationId is the WorldMap cursor hover OR the last-arrived location), return `{status: "rejected", error: "Already at <name>. Use execute_action EnterLocation to enter the location menu."}`. 2026-04-14 — observed breaking the Dorter shop run.
-- [ ] **Block `EnterLocation` when WorldMap cursor isn't on the current settlement** — On WorldMap, pressing Enter only opens the LocationMenu if the cursor is actually hovering the current standing node. If the cursor is pointed at a nearby node (or anywhere else), Enter does nothing but the helper returns `completed` anyway, masking the no-op. Detect and refuse: if `hover != currentLocationId` when EnterLocation is requested, return `{status: "rejected", error: "Cursor isn't on the current location (hover=<X>, here=<Y>). Move the cursor first."}`. Bonus: a `FocusOnCurrentLocation` validPath action could auto-position the cursor before pressing Enter. 2026-04-14 — observed silently no-oping during shop verification.
+- [ ] **Pre-press `C` (or middle mouse button) to recenter cursor before `EnterLocation`** — User discovered 2026-04-14: the game binds `C` / middle-mouse to "recenter WorldMap cursor on current node". This is the clean fix for the "Enter does nothing because cursor drifted" problem. Implementation: in the `EnterLocation` ValidPath handler (NavigationPaths.cs → GetWorldMapPaths), prepend a `C` key press before the Enter. Single key, deterministic, no memory-reading needed. This supersedes the "Block EnterLocation when cursor isn't on the current settlement" TODO below — just always recenter first and the edge case disappears.
+- [x] ~~**Block `EnterLocation` when WorldMap cursor isn't on the current settlement**~~ — Superseded 2026-04-14 by the `C`-key recenter fix above. Leaving the strikethrough for history: the original symptom was `EnterLocation` silently no-oping because the cursor had drifted off the node. Instead of refusing the action, we just recenter before pressing Enter. Keeping the TODO marked done so the fix implementation is tracked in one place.
 - [ ] **Locked/unrevealed locations** — Read unlock bitmask at 0x1411A10B0 and skip locked locations.
 - [ ] **Encounter polling reliability** — Encounters sometimes trigger before polling starts.
 - [ ] **Ctrl fast-forward during travel** — Not working.
@@ -257,10 +258,27 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Full stock list inline at Outfitter_Buy** — instead of forcing Claude to scroll through items one at a time (ui=Oak Staff → down → ui=White Staff → down...), surface the entire shop stock in the screen response. Each entry: `{name, price, type, stats}`. Stats tier by type — weapons: `wp, range, element, statMods` (e.g. `WP=5 MA+1`); armor: `hp, def, evade, statMods`; consumables: `effect` (e.g. `Restores 30 HP`, `Removes KO`). Claude picks by name, one round-trip. Matches scan_move's "see everything at once" philosophy.
 - [ ] **Full sell inventory inline at Outfitter_Sell** — same shape as Buy but for player-owned items. Each entry: `{name, heldCount, sellPrice, type, stats}`. Held count is required so Claude knows "I have 12 Potions" without separate reads.
 - [ ] **Full equipment picker inline at Outfitter_Fitting** — when picking a slot's replacement item, show all items the player owns that fit the slot, with stats, so Claude can compare current vs candidate in one look.
-- [ ] **Tavern sub-actions** — Rumors, Errands (and any others). Run 4-way module_snap diff inside each Tavern sub-action at Dorter or Warjilis. Likely uses shopSubMenuIndex but with different values, or a separate address per shop type. If it's a different address, generalize the detection rule (per-shop-type switch).
-- [ ] **Warriors' Guild sub-actions** — Recruit, Rename, Dismiss, etc. Same scan methodology.
-- [ ] **Poachers' Den sub-actions** — Process Carcasses, Sell Carcasses. Same scan methodology.
+- [ ] **Tavern interior** — captured 2026-04-14 (screenshots in session). State machine:
+  - `Tavern` — inside the Tavern, two sub-actions: `ui=Rumors` and `ui=Errands`. Currently reports as `SettlementMenu ui=Tavern` (mis-named outer layer — see "Fix misaligned shop-state naming" above).
+  - `Rumors` — opens a scrollable list of rumor titles (e.g. "The Legend of the Zodiac Braves", "Zodiac Stones", "The Horror of Riovanes", "At Battle's End"). Right pane renders the body text of the highlighted rumor. `ui=<rumor title>`. Claude should be able to READ the body — likely via a new action `read_rumor` that scrapes the UE4 widget like `read_dialogue` does for cutscenes.
+  - `Errands` — list of available errands with metadata columns: `Days`, `Finder's Fee`. Right pane shows the errand description and quester (e.g. "Minimas the Mournful" — 12-14 days, 600 gil). `ui=<errand title>`. Claude should read the description, the party-size requirement, the days, the fee. Accepting an errand requires party-menu navigation (assign chosen units) — defer until party menu is complete.
+  - ValidPaths needed: `Tavern` → Rumors / Errands / Leave / CursorUp/Down; `Rumors` → ScrollUp/Down / Read / Back; `Errands` → ScrollUp/Down / Select / Back (with Select opening the party-menu for dispatch, once that flow is built).
+  - Memory scans needed: (a) Rumors vs Errands state discriminator (likely a new shopSubMenuIndex value for Tavern). (b) Rumor/errand cursor row index (probably 0x141870704 like Outfitter, to verify). (c) Scraping the body-text pane for the currently-highlighted entry.
+- [ ] **Warriors' Guild interior** — captured 2026-04-14 (screenshot in session). State machine:
+  - `Warriors_Guild` — inside the guild, two sub-actions: `ui=Recruit` and `ui=Rename`. The guildmaster has an idle dialog line ("Is there aught else?") visible but it's UI chrome, not gameplay state.
+  - `Recruit` — requires party-menu integration (new hire joins the roster). Defer until party menu is complete. The recruit flow involves picking a job/class and naming the unit.
+  - `Rename` — requires party-menu navigation to pick a unit, then text input. Also defer until party menu + text input are solved.
+  - ValidPaths needed: `Warriors_Guild` → Recruit / Rename / Leave / CursorUp/Down. Sub-action flows deferred.
+  - Memory scans needed: state discriminators for `Recruit`/`Rename` (new shopSubMenuIndex values for WG).
+- [ ] **Poachers' Den interior** — captured 2026-04-14 (screenshot in session). State machine:
+  - `Poachers_Den` — inside the den, two sub-actions: `ui=Process Carcasses` and `ui=Sell Carcasses`.
+  - `Process Carcasses` — list of monster carcasses you own; picking one trades it for a rare item. `ui=<carcass name>` while hovering a row. If the player has zero carcasses the panel renders "No carcasses to process." and the ui is empty.
+  - `Sell_Carcasses` — list of carcasses with `Held` and `Sale Price` columns, same empty-state ("No carcasses to sell."). `ui=<carcass name>` while hovering.
+  - ValidPaths needed: `Poachers_Den` → Process / Sell / Leave / CursorUp/Down; `Process_Carcasses` and `Sell_Carcasses` → ScrollUp/Down / Select / Cancel.
+  - Memory scans needed: shopSubMenuIndex values for Process/Sell sub-actions; cursor row index (probably reuses 0x141870704); carcass-name widget scraping (same problem as Outfitter items).
+  - Bonus: surface `heldCount=<n>` and `salePrice=<gil>` per row in the state response for Sell_Carcasses.
 - [ ] **Save Game menu** — encountered at Warjilis (Dorter has 4 shops, no Save). Needs its own scan; verify if it shows up as a 5th shopTypeIndex value or a distinct flag. Add the index to the shop name mapping in CommandWatcher.cs.
+- [ ] **Midlight's Deep stage selector** [LOW PRIORITY] — Midlight's Deep (location ID 22) is a special late-game dungeon. When you press Enter on the node, a vertical list of named stages appears (captured 2026-04-14: NOISSIM, TERMINATION, DELTA, VALKYRIES, YROTCIV, TIGER, BRIDGE, VOYAGE, HORROR, ...). The right pane renders a flavor-text description of the highlighted stage. This UI is structurally similar to Rumors/Errands but with its own screen name: `Midlight's_Deep` with `ui=<stage name>`. ValidPaths needed: ScrollUp/Down / Enter (commits to that stage → battle) / Back. Memory scans needed: the stage-name list (probably UE4 heap like shop items), the cursor row index (probably 0x141870704 reused), and a state discriminator for "inside Midlight's Deep node selector" vs just-standing-on-the-node. Defer until main story shopping/party/battle loops are stable — this only matters for end-game content.
 - [ ] **Cursor item label inside Outfitter_Buy** — the `ui` field should show the currently-hovered item name (e.g. `ui=Oak Staff`). Memory scan needed for the item-cursor-index, then map index → item name via the shop's stock list. Same for Outfitter_Sell (your inventory) and Outfitter_Fitting (slot picker → item picker).
 - [ ] **Cursor character label inside Outfitter_Fitting** — when picking which character to equip, ui should show `ui=Ramza` etc.
 - [ ] **Confirm dialog detection** — most sub-actions have a "Buy 3 Potions for 60 gil?" yes/no modal. Memory scan for a flag that distinguishes confirm-modal-open vs item-list state, so input doesn't cascade into accidental purchase.
@@ -289,6 +307,122 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ---
 
+## 10.5. State Naming Convention (P1)
+
+- [ ] **Normalize screen state names to Snake_Case** — the codebase currently mixes conventions: `Outfitter_Buy`, `Battle_MyTurn`, `SettlementMenu`, `PartyMenu`, `WorldMap`. Standardize on **Snake_Case with first letter capitalized per word** (`Outfitter_Buy`, `Battle_My_Turn`, `Settlement_Menu`, `Party_Menu`, `World_Map`). This affects `ScreenDetectionLogic.cs` return values, `NavigationPaths.cs` dispatch keys, every test that asserts on screen names, and `ShopGilPolicy`. Rename in one batched commit so the churn is contained. Also update instruction docs (Shopping.md, BattleTurns.md, WorldMapNav.md) that reference the state names.
+
+---
+
+## 10.6. Party Menu (P1)
+
+Captured 2026-04-14 from user screenshots. State machine already exists in `ScreenStateMachine.cs` but detection from memory only fires `PartyMenu` — all nested screens are inferred from key history and drift easily. Needs real memory-driven detection + ui labels + data surfacing.
+
+### Party Menu hierarchy
+
+```
+Party_Menu ──Enter on unit──► Character_Status ──Enter on sidebar──► Equipment_And_Abilities / Job_Selection / Combat_Sets
+   │                              │                                     │
+   │                              │                                     └──Enter on ability slot──► Action_Abilities / Reaction_Abilities / Support_Abilities / Movement_Abilities
+   │                              │                                     └──Enter on equipment slot──► Equippable_Weapons / Equippable_Shields / Equippable_Headware / Equippable_Combat_Garb / Equippable_Accessories
+   │                              └──Enter on Job──► Job_Selection ──Enter──► Job_Action_Menu ──Right+Enter──► Job_Change_Confirmation
+   │                                                                    └──Left+Enter──► Learn_Abilities (TBD)
+   └──Tab change──► Inventory / Chronicle / Options
+```
+
+### Detection — TODO
+
+- [ ] **`Party_Menu` top-level tabs** — current state fires on `party==1`. Four tabs at the top: Units (default), Inventory, Chronicle, Options. **Tabs wrap:** pressing E on Options cycles back to Units; Q on Units cycles to Options. Memory scan needed for the active-tab index. Each tab has its OWN screen name (not just `Party_Menu ui=<tab>`) because the content differs entirely per tab:
+  - `Party_Menu` — Units tab (the roster grid; covered below)
+  - `Party_Menu_Inventory` — Inventory tab (item catalog; covered below)
+  - `Party_Menu_Chronicle` — Chronicle tab (lore/events browser; covered below)
+  - `Party_Menu_Options` — Options tab (save/load/settings; covered below)
+  Shared ValidPaths across all four: `NextTab` (E wraps), `PrevTab` (Q wraps), `WorldMap` (Escape back out).
+- [ ] **Full roster grid on `Party_Menu` (Units tab)** — surface the whole 5-column roster in the state response, NOT one unit at a time. Same principle as scan_move: one round-trip beats N cursor-move + re-read cycles. Design:
+  - **Grid layout:** strictly 5 columns, rows flex based on roster count. Max roster = 50 units (16/50 shown in screenshot header — that's `current/max`). Omit empty slots; don't emit `(row, col) empty` placeholders.
+  - **Cursor wrap:** horizontal per row. Left at (0,0) wraps to (0,4) if row 0 has 5 units, otherwise to the last unit in row 0. Right at last-in-row wraps to first-in-row. Up/Down navigate rows as expected (no vertical wrap per current ScreenStateMachine tests).
+  - **Concise format per unit (default):** `(row, col) [*]Name Lv.N Job HP=h/maxh MP=m/maxm`. `*` marks current cursor. Example:
+    ```
+    (0,0) *Ramza Lv.99 Gallant Knight HP=719/719 MP=138/138
+    (0,1) Kenrick Lv.99 Monk HP=477/477 MP=115/115
+    ...
+    ```
+  - **Verbose format (add `-v` flag to screen command, matching scan_move's -v):** include Brave, Faith, CT, statuses, current equipment, reaction/support/movement abilities, learned job list. Deferred until memory scans for those fields land.
+  - **Grid movement hints:** include a small `navHints` block showing where each arrow goes from the current cursor:
+    ```
+    From (0,0) Ramza:
+      Right → (0,1) Kenrick
+      Down → (1,0) Lavian
+      Left → (0,4) Alicia [wraps]
+      Up → no-op [top row]
+    ```
+    Let Claude plan multi-step navigation in one glance.
+  - **Roster capacity:** show `16/50` so Claude can decide whether recruiting is viable.
+  - **Screen real-estate:** match the game's own 5-wide grid so Claude's mental model aligns with what would render on screen.
+- [ ] **`Party_Menu_Inventory` tab** — captured 2026-04-14 (SS3). Full item catalog the player owns across all categories (weapons, shields, helms, armor, accessories, consumables). Screenshot shows Weapons tab with columns `Item Name | Equipped/Held`. Right pane shows hover'd item's full description + WP/element/range/effect. State name: `Party_Menu_Inventory` with `ui=<item name>`. ValidPaths: ScrollUp/Down, ChangePage (cycles sub-tabs — Weapons, Shields, Helms, etc. per the `<V> Change Page` hint in bottom right), Back (Escape → WorldMap), NextTab/PrevTab (wraps to Chronicle/Units). Multi-page: SS3 shows "1/3" indicator — state should surface current page + total pages. Memory scans needed: active inventory category, cursor row, page number.
+- [ ] **`Party_Menu_Chronicle` tab** — captured 2026-04-14 (SS4). 7-tile grid of lore sub-screens: `Encyclopedia`, `State of the realm`, `Events`, `Auracite`, `Reading Materials`, `Collection`, `Errands`, plus a row of "Special Lectures" at the bottom (Stratagems for Battle, Lessons in Leadership, Akademic Report). State name: `Party_Menu_Chronicle` with `ui=<tile name>`. Each tile opens its own sub-screen — TBD separate state machine for each:
+  - `Encyclopedia` — searchable lore entries. Defer until story progresses enough to populate.
+  - `State_Of_The_Realm` — political map showing faction control. Defer.
+  - `Events` — cutscene / major-moment replay browser. Defer.
+  - `Auracite` — stone collection (?). Defer.
+  - `Reading_Materials` — in-game books / special lectures. Links to the bottom lecture list. Defer.
+  - `Collection` — bestiary / item encyclopedia. Defer.
+  - `Errands` — completed-errand log. Different from Tavern_Errands (which is accept-errand). Defer.
+  - `Special_Lectures` row — standalone lectures. Defer.
+  ValidPaths at this tile-grid level: CursorUp/Down/Left/Right, Select (opens highlighted sub-screen), Back, NextTab/PrevTab. Detailed sub-screen states are a future task — the current priority is just getting the state name + tile cursor label right.
+- [ ] **`Party_Menu_Options` tab** — captured 2026-04-14 (SS5). Vertical list of system actions: `Save`, `Load`, `Settings`, `Return to Title Screen`, `Exit Game`. State name: `Party_Menu_Options` with `ui=<action name>`. ValidPaths: CursorUp/Down, Select, Back, NextTab/PrevTab. Each Select leads to its own flow:
+  - `Save` — save-slot picker (same shape as the Warjilis Save Game menu — deduplicate once that one's detected).
+  - `Load` — load-slot picker + overwrite confirmations.
+  - `Settings` — audio/video/input config. Low priority for Claude-playing.
+  - `Return to Title Screen` — confirmation modal, then title.
+  - `Exit Game` — confirmation modal, then quits the process.
+  Wrapping: in the options list, Up on `Save` stays (or wraps to `Exit Game`? verify live). Tab wrap (E on Options → Units) confirmed.
+- [ ] **`Character_Status` sidebar** — when inside a unit's status screen, `ui=Equipment & Abilities` / `ui=Job` / `ui=Combat Sets` reflects the highlighted sidebar item. Memory scan needed for sidebar index.
+- [ ] **Character dialog (spacebar on `Character_Status`)** — pressing Space on a unit's Character_Status opens a character-specific flavor-text dialog with portrait (captured 2026-04-14 SS1: Kenrick says "My father is an arms merchant..."). Advances with Enter like cutscenes. New state: `Character_Dialog` with ValidPaths `Advance` (Enter) and `Close` (Escape). Low-priority since it's narrative flavor Claude doesn't strictly need, but supporting it keeps the "play like a human" principle intact — a curious player would talk to their units.
+- [ ] **Dismiss Unit flow (hold B on `Character_Status`)** — holding B for 3+ seconds opens a `Dismiss_Unit` confirmation screen (captured 2026-04-14 SS2: "Wait! This is a misunderstanding, surely..." → "Dismiss Kenrick from your party?" Confirm/Back). New state: `Dismiss_Unit` with ValidPaths `Confirm` / `Back` and `ui=Confirm`/`ui=Back` reflecting cursor. Needs a held-key helper since the input is a 3-second press, not a single Enter — add `hold_key <vk> <seconds>` action or equivalent. Action helper: `dismiss_unit <name>` (already in TODO, flesh out once this state detects).
+- [ ] **Rename `Equipment_Screen` → `Equipment_And_Abilities`** — the current name misleads; the screen has TWO columns (equipment on left, abilities on right). Single `ui=<highlighted item name>` regardless of column — Claude infers column from the name (Ragnarok=equipment, Mettle=ability). Values: `ui=Ragnarok`, `ui=Escutcheon`, `ui=Grand Helm`, `ui=Maximillian`, `ui=Bracers`, `ui=Mettle`, `ui=Items`, `ui=Parry`, `ui=Magick Defense Boost`, `ui=Movement +3`.
+- [ ] **New states for ability slots** — pressing Enter on the Abilities column opens a picker specific to that slot type:
+  - `Action_Abilities` — ui=<skillset name> (Items, Arts of War, Aim, Martial Arts, White Magicks, Black Magicks, Time Magicks, ...). Screenshot showed Mettle + Items + Arts of War + Aim + Martial Arts + White/Black/Time Magicks.
+  - `Reaction_Abilities` — ui=<ability name> (Parry, Counter, Auto-Potion, ...).
+  - `Support_Abilities` — ui=<ability name> (Magick Defense Boost, Equip Heavy Armor, Concentration, ...).
+  - `Movement_Abilities` — ui=<ability name> (Movement +3, Move-Find Item, Teleport, ...).
+- [ ] **New states for equipment slots** — pressing Enter on an equipment slot opens a type-filtered picker. Right pane shows stats/description of the highlighted item.
+  - `Equippable_Weapons` — ui=<weapon name> (Ragnarok, Materia Blade, Chaos Blade, Blood Sword, Excalibur, Save the Queen, ...). Columns show Equipped/Held counts.
+  - `Equippable_Shields` — ui=<shield name> (Escutcheon, Aegis Shield, ...).
+  - `Equippable_Headware` — ui=<helm name> (Grand Helm, Crystal Helm, ...).
+  - `Equippable_Combat_Garb` — ui=<armor name> (Maximillian, Carabini Mail, ...).
+  - `Equippable_Accessories` — ui=<accessory name> (Bracers, Genji Gauntlet, Reflect Ring, ...).
+- [ ] **Rename `Job_Screen` → `Job_Selection`** — `Job_Selection` with `ui=<job name>` (Gallant Knight, Chemist, Knight, Archer, Monk, White Mage, Black Mage, Time Mage, Summoner, Thief, Orator, Mystic, Geomancer, Dragoon, Samurai, Ninja, Arithmetician, Bard, Mime). Grid layout: 7 cols × 3+ rows. Ramza row 0 has 1 special job (Gallant Knight) + 7 generic = 8 cols. Right pane shows selected job's flavor + level/JP.
+- [ ] **Existing nested states** — these already have ValidPaths, need detection rules and `ui=`:
+  - `Job_Action_Menu` — modal with Learn Abilities (left) / Change Job (right). `ui=Learn Abilities` or `ui=Change Job`.
+  - `Job_Change_Confirmation` — yes/no after selecting Change Job. `ui=Confirm` / `ui=Cancel`.
+  - `Equippable_Item_List` (currently `EquipmentItemList`) — already has ValidPaths; add `ui=<item name>`.
+- [ ] **`Combat_Sets` state** — third sidebar item under Character_Status; new state not modeled yet. Detect and label. (Combat sets let you save equipment loadouts — important for swapping gear pre-battle.)
+
+### Data surfacing — TODO
+
+- [ ] **Unit summary on `Party_Menu`** — when hovering a unit in the Units tab, surface its current stats. Screenshot shows: name, level, HP/maxHP, MP/maxMP, CT, Bravery, Faith, job name (e.g. "Gallant Knight"), job level + JP ("Lv. 8 Next: - | JP 9999"). Claude needs these to decide party composition.
+- [ ] **Full stat panel on `Character_Status`** — the header shows far more numbers than the party grid. The small icons on the right (7 20 24, 3 16 50%, 11 10% 0%, 75%, etc.) are attack/defense/magick/evade/movement/jump/zodiac/element stats. Decode and label each.
+- [ ] **Element resistance grid** — the colored symbols on the right side of Character_Status show elemental absorb/null/halve/weak. Decode from memory.
+- [ ] **Equipped items with stat totals on `Equipment_And_Abilities`** — the "Equipment Effects" summary under the two columns aggregates stats from the current loadout. Surface as `equipmentStats: { hpBonus: X, paBonus: Y, ... }`.
+- [ ] **JP totals per job on `Job_Selection`** — each job tile shows Lv + JP (e.g. "Lv. 8 5465 JP" for Knight). Surface as an array so Claude can see which jobs are grinded.
+- [ ] **Ability list with learned/unlearned on inside `Action_Abilities`** etc. — each ability shows JP cost + learned status (icon differs). Surface so Claude knows what's available to learn.
+
+### ValidPaths — TODO
+
+- [ ] **`Party_Menu` tab switch actions** — `OpenInventory`, `OpenChronicle`, `OpenOptions`, `OpenUnits` in addition to the existing CursorUp/Down/Left/Right/SelectUnit/WorldMap.
+- [ ] **`Equipment_And_Abilities` directional semantics** — left column = equipment picker, right column = ability picker. Add named actions like `FocusEquipmentColumn` / `FocusAbilitiesColumn` that wrap Left/Right.
+- [ ] **`Equippable_*` screens** — ScrollUp/Down / Select / Cancel, plus `ChangePage` (Tab key in game) to cycle item categories if that's how it's presented. Screenshot 3 shows `<V> Change Page` hint.
+- [ ] **`Job_Selection`** — grid nav (Up/Down/Left/Right), Select (opens Job_Action_Menu), Back.
+- [ ] **Action helpers** — `equip_item <unit> <slot> <item>`, `change_job <unit> <job>`, `learn_ability <unit> <ability>`, `view_unit <name>`. These wrap the full navigation flow end-to-end.
+
+### Known gaps
+
+- [ ] **Rumors/Errands body text scrape depends on this** — Tavern Errands open the party menu for assigning units. Don't wire up errand acceptance until Party_Menu navigation is solid.
+- [ ] **Recruit / Rename at Warriors' Guild depend on this** — both flows transition into the party menu for unit selection or text input. Same dependency.
+- [ ] **Text input (for Rename)** — FFT lets you rename units letter-by-letter via an on-screen keyboard. Need a whole separate text-input state + action helper.
+
+---
+
 ## 11. ValidPaths — Complete Screen Coverage (P2)
 
 - [ ] Settlement menu, Outfitter, Tavern, Warriors' Guild, Poachers' Den
@@ -303,6 +437,8 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Battle_Cutscene** — Mid-battle cutscenes. Need to distinguish from regular cutscenes.
 - [ ] **SaveScreen / LoadScreen** — Indistinguishable from TitleScreen with static addresses.
 - [ ] **Settlement** — Indistinguishable from TravelList with static addresses. Could use location-based heuristic.
+- [ ] **`Battle_Objective_Choice`** [P0 — gameplay-affecting] — some story battles open with a pre-battle dialogue that forks the win condition. Examples recalled from prior playthroughs: "We must save Agrias, protect her at all cost" vs. "Focusing on defeating all enemies is priority". Picking the first changes the objective to `Protect Agrias — battle ends if she's KO'd`; picking the second leaves the standard `defeat all enemies` objective. New state distinct from `Battle_Dialogue` (which is advance-only): `Battle_Objective_Choice` with two Y/N-style options, `ui=<option A text>` / `ui=<option B text>` based on cursor. ValidPaths: `Confirm` (Enter), `CursorUp/Down` (or Left/Right — verify live). Memory scan needed: (a) discriminator for this modal vs. regular `Battle_Dialogue`, (b) cursor index, (c) option text scrape (same FString problem as shop items). Priority HIGH because picking blindly can permanently fail the battle — Claude needs to SEE the options and decide.
+- [ ] **`Recruit_Offer` modal** — end-of-battle: a defeated/befriended enemy offers to join your party (e.g. "Orlandeau wants to join your party"). Accept adds them to the roster; decline loses them forever (story-character one-shot). Possibly uses the same detection as `Battle_Objective_Choice` if both are driven by the same underlying modal system — check during scanning. New state: `Recruit_Offer` with `ui=Accept` / `ui=Decline`, ValidPaths `Confirm` / `Cancel` / `CursorUp/Down`. Also HIGH priority: wrong choice loses a unit permanently.
 
 ### Screen Detection Edge Cases
 - Battle_Paused false positives: pauseFlag=1 stale after facing confirmation
