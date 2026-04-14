@@ -89,37 +89,55 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void DetectScreen_WorldMap_ShouldReturnWorldMap()
         {
+            // WorldMap empirical signature (audit #28, post-restart + save load):
+            // rawLocation=255, party=0, ui=1, slot0=0xFFFFFFFF, battleMode=255 (uninit),
+            // moveMode=255, eventId=0xFFFF. See detection_audit.md §28.
+            //
+            // Note: a "pristine WorldMap with ui=0" state has not been directly observed in
+            // the audit — all post-load world maps read ui=1 until the user interacts. This
+            // test uses ui=1 to match reality.
             var result = ScreenDetectionLogic.Detect(
-                party: 0, ui: 0, rawLocation: 26, slot0: 0, slot9: 0,
-                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
-                battleTeam: 0, battleActed: 0, battleMoved: 0,
-                encA: 5, encB: 5, isPartySubScreen: false);
+                party: 0, ui: 1, rawLocation: 255, slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 2, battleActed: 0, battleMoved: 0,
+                encA: 8, encB: 8, isPartySubScreen: false, eventId: 0xFFFF);
 
-            Assert.Equal("WorldMap", result);
+            // With current inputs, post-load WorldMap and TravelList are byte-identical.
+            // Best-effort split routes party=0+ui=1 to TravelList. Either result indicates
+            // we're on the world-map-side of the game, which is what callers need.
+            Assert.True(result == "TravelList" || result == "WorldMap",
+                $"Expected TravelList or WorldMap, got {result}");
         }
 
         [Fact]
         public void DetectScreen_TravelList_NotInBattle_ShouldReturnTravelList()
         {
+            // TravelList: rawLocation=255, ui=1 (menu overlay on the world map).
             var result = ScreenDetectionLogic.Detect(
-                party: 0, ui: 1, rawLocation: 26, slot0: 0, slot9: 0,
+                party: 0, ui: 1, rawLocation: 255, slot0: 0, slot9: 0,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
-                encA: 5, encB: 5, isPartySubScreen: false);
+                encA: 5, encB: 5, isPartySubScreen: false, eventId: 0xFFFF);
 
             Assert.Equal("TravelList", result);
         }
 
         [Fact]
-        public void DetectScreen_EncounterDialog_ShouldReturnEncounterDialog()
+        public void DetectScreen_LocationMenu_AtNamedLocation_ShouldReturnLocationMenu()
         {
+            // At a named location (shop, village, campaign ground): rawLocation=0-42 +
+            // hover=255 + slot0=0x000000FF (active session with battle sentinels set from
+            // a prior session — distinguishes from TravelList-for-this-location which has
+            // slot0=0xFFFFFFFF).
+            // Shop type (Outfitters vs Tavern vs Warrior Guild) is indistinguishable in
+            // current inputs — returns generic LocationMenu.
             var result = ScreenDetectionLogic.Detect(
-                party: 0, ui: 0, rawLocation: 26, slot0: 0, slot9: 0,
+                party: 0, ui: 1, rawLocation: 9, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
-                encA: 5, encB: 7, isPartySubScreen: false);
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 255);
 
-            Assert.Equal("EncounterDialog", result);
+            Assert.Equal("LocationMenu", result);
         }
 
         [Fact]
@@ -192,12 +210,14 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_InBattle_SkillsetTargeting_BattleMode1_ShouldReturnBattleCasting()
+        public void DetectScreen_InBattle_SkillsetTargeting_BattleMode1_ShouldReturnBattleAttacking()
         {
             // Empirical capture during Ramza casting Tailwind: battleMode=1, slot0=150 (not 255),
             // slot9=0xFFFFFFFF, submenuFlag=1, menuCursor=1, battleActed=1, battleMoved=1,
-            // eventId=401. Previously mis-detected as Cutscene because slot0 != 255 and
-            // battleMode=1 wasn't in battleModeActive.
+            // eventId=401.
+            // Audit 2026-04-14: cast-time and instant targeting are byte-identical in memory.
+            // Battle_Casting collapsed into Battle_Attacking. Callers track cast-time via
+            // the ability that was selected (client-side state).
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 150, slot9: 0xFFFFFFFF,
                 battleMode: 1, moveMode: 255, paused: 0, gameOverFlag: 0,
@@ -205,7 +225,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false, eventId: 401,
                 submenuFlag: 1, menuCursor: 1);
 
-            Assert.Equal("Battle_Casting", result);
+            Assert.Equal("Battle_Attacking", result);
         }
 
         [Fact]
@@ -283,18 +303,19 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_WorldMap_WithStaleUnitSlots_ShouldReturnWorldMap()
+        public void DetectScreen_LocationMenu_WithStaleUnitSlots_ShouldReturnLocationMenu()
         {
-            // After leaving battle, unit slots stay populated (0xFF).
-            // If rawLocation is valid and battleMode=0, we're on the world map.
-            // The save logic depends on this to write last_location.txt.
+            // Active in-session LocationMenu: rawLocation=0-42 + hover=255 + slot0=0xFF
+            // (battle sentinels stale from a prior session in this process).
+            // Audit 2026-04-14 corrected prior assumption — rawLocation alone isn't enough;
+            // need hover=255 to split "at a location" from "world map with stale location."
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 26, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
-                encA: 5, encB: 5, isPartySubScreen: false);
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 255);
 
-            Assert.Equal("WorldMap", result);
+            Assert.Equal("LocationMenu", result);
         }
 
         // The critical regression test: battle with flickering flags
@@ -391,9 +412,10 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_RealBattleCasting_UnitsPopulated_StillWorks()
+        public void DetectScreen_RealBattleCasting_UnitsPopulated_ReturnsAttacking()
         {
-            // Real Battle_Casting: slot0=255 (0x000000FF, units exist), battleMode=1.
+            // battleMode=1 with units populated maps to Battle_Attacking after the
+            // Battle_Casting collapse (audit 2026-04-14).
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
@@ -401,7 +423,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false,
                 submenuFlag: 0, menuCursor: 0);
 
-            Assert.Equal("Battle_Casting", result);
+            Assert.Equal("Battle_Attacking", result);
         }
 
         [Fact]
@@ -434,13 +456,18 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_Desertion_EncAEqualsEncB_ShouldReturnBattleDesertion()
+        public void DetectScreen_Desertion_Paused_ShouldReturnBattleDesertion()
         {
-            // Desertion warning: same post-battle flags as Victory but encA == encB.
-            // Needs Enter to dismiss. Previously misdetected as TravelList.
+            // Desertion warning: paused=1 + submenuFlag=1 at a named battle location with
+            // post-battle sticky flags (acted=1, moved=1). Empirical from audit samples #44,
+            // #45 — both observed Desertion readings had paused=1. Distinguished from Victory
+            // by paused (Victory doesn't pause the game).
+            //
+            // Audit 2026-04-14 disproved the old encA==encB discriminator — those counters
+            // drift independently and are not a reliable screen signal.
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 1, rawLocation: 28, slot0: 255, slot9: 0xFFFFFFFF,
-                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 1, battleMoved: 1,
                 encA: 10, encB: 10, isPartySubScreen: false,
                 submenuFlag: 1, menuCursor: 1);
@@ -505,9 +532,14 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_AutoBattle_MenuCursor4_ShouldReturnBattleAutoBattle()
+        public void DetectScreen_AutoBattle_MenuCursor4_ShouldNotReturnBattleAutoBattle()
         {
-            // Auto-Battle submenu: menuCursor=4 + submenuFlag=1 + battleMode=3.
+            // Audit 2026-04-14: Battle_AutoBattle rule deleted. The real top-level AutoBattle
+            // hover has submenuFlag=0 (this test's submenuFlag=1 is a submenu state), so the
+            // old rule never fired on genuine AutoBattle hovers. It fired SPURIOUSLY inside
+            // the Abilities submenu when cursor landed at skillset index 4, root-causing the
+            // "Auto-Battle instead of Wait" bug. The UI label (already set in DetectScreen
+            // from menuCursor) handles the user-facing "hovering AutoBattle" case correctly.
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
@@ -515,7 +547,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false,
                 submenuFlag: 1, menuCursor: 4);
 
-            Assert.Equal("Battle_AutoBattle", result);
+            Assert.NotEqual("Battle_AutoBattle", result);
         }
 
         [Fact]
@@ -549,9 +581,12 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_PostBattle_StaleFlags_ShouldReturnTitleScreen()
+        public void DetectScreen_PostBattle_StaleFlags_ShouldReturnWorldMap()
         {
-            // With location=255 and no battle, should fall through to TitleScreen.
+            // After battle ends or dialogue is dismissed, stale flags persist briefly while
+            // transitioning back to world map. Verified live 2026-04-14: user confirmed this
+            // state lands on WorldMap, not TitleScreen. TitleScreen requires full uninit
+            // sentinels (slot0=0xFFFFFFFF, battleMode=255) handled by the strict rule earlier.
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
@@ -559,7 +594,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 8, encB: 8, isPartySubScreen: false,
                 submenuFlag: 1, menuCursor: 0);
 
-            Assert.Equal("TitleScreen", result);
+            Assert.Equal("WorldMap", result);
         }
 
         [Fact]

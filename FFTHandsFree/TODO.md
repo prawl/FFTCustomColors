@@ -225,6 +225,34 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - Settlement/shop screens not detected yet
 - Menu cursor unreliable after animations
 
+### Screen Detection Rewrite (P0) — identified 2026-04-14 audit
+Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the detection layer is the root cause of most UI navigation bugs ("Auto-Battle instead of Wait", cursor desync, broken world-side detection). Full data in `detection_audit.md` in repo root. Key findings in `BATTLE_MEMORY_MAP.md` §12.
+
+**Root causes:**
+- `menuCursor` is overloaded (different meaning per context: action menu vs submenu vs targeting vs pause)
+- `battleMode` is overloaded (encodes cursor-tile-class, not screen submode)
+- `encA/encB` are noise counters — every rule using them is a coincidence-detector
+- `gameOverFlag` is sticky process-lifetime — rules requiring `gameOverFlag==0` fail after first GameOver
+- `rawLocation==255 → TitleScreen` rule preempts valid world-side screens (WorldMap/TravelList/PartyMenu all fall through wrongly)
+- Two distinct TitleScreen states exist (fresh process vs post-GameOver) with different memory fingerprints
+
+**Fix tasks:**
+- [ ] **Delete `Battle_AutoBattle` rule** — UI label on Battle_MyTurn already handles cursor=4 correctly. Fixes "Auto-Battle instead of Wait" bug (TODO #1 in handoff).
+- [ ] **Collapse `Battle_Casting` into `Battle_Attacking`** — byte-identical in memory. Track cast-time via `_lastAbilityName` + ability ct lookup client-side. Fixes "Used vs Queued" response text bug.
+- [ ] **Tighten `TitleScreen` rule** — require full uninit sentinels (`slot0==0xFFFFFFFF && battleMode==255 && eventId==0xFFFF && ui==0`). Current rule catches too much.
+- [ ] **Reorder rules** — specific rules (PartyMenu via `party==1`, EncounterDialog, LoadGame, LocationMenu) must run BEFORE the TitleScreen catch-all.
+- [ ] **Remove `encA/encB`-dependent rules** — replace Battle_Victory / Battle_Desertion / EncounterDialog discriminators with stable signals (`paused`, `submenuFlag`, `acted/moved` combos).
+- [ ] **Remove `gameOverFlag==0` requirement from post-battle rules** — treat as sticky, use other signals.
+- [ ] **Fix Battle_Dialogue / Cutscene `eventId` filter** — change from `< 200` to `< 400 && != 0xFFFF` (caught eventId=302 at Orbonne pre-battle).
+- [ ] **Add `LoadGame` rule** — `gameOverFlag==1 && paused==0 && battleMode==0 && acted==0 && moved==0 && rawLocation==255`.
+- [ ] **Add `LocationMenu` rule** — `rawLocation in 0-42 && !inBattle` for shops/services/sub-battles.
+- [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation (which location IDs are multi-battle campaign grounds vs villages). Add to `project_location_ids_verified.md`.
+- [ ] **Scope `menuCursor` interpretation** — only treat as action-menu index when `submenuFlag==0 && team==0`. Inside submenus, rely on `_battleMenuTracker`.
+- [ ] **Memory scan for WorldMap vs TravelList discriminator** — these are byte-identical in current 18 inputs. Need a menu-depth or focused-widget address.
+- [ ] **Memory scan for shop-type discriminator** — Outfitters/Warrior Guild/Poachers' Den/Save Game all byte-identical at rawLocation=9, ui=1. Need a menu-ID address.
+- [ ] **Add `hover` to ScreenDetectionLogic inputs** — currently read in DetectScreen but not passed through. May help disambiguate world-side states.
+- [ ] **Rename `clearlyOnWorldMap` to `atNamedLocation`** — the current name is actively misleading (it's TRUE when at a shop/village, not on the open world map).
+
 ### Coordinate System
 - Grid coords and world coords are different systems
 - Camera auto-rotates when entering Move mode or Attack targeting — always re-read rotation

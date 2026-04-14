@@ -5,6 +5,18 @@ namespace FFTColorCustomizer.GameBridge
     /// <summary>
     /// Pure logic for screen detection — no memory reads, no side effects.
     /// Extracted from CommandWatcher.DetectScreen for testability.
+    ///
+    /// Rewritten 2026-04-14 based on 46-sample memory audit (detection_audit.md).
+    /// Key findings that shaped this rewrite:
+    ///   - battleMode is overloaded (cursor-tile-class + submode), NOT a stable screen discriminator
+    ///   - encA/encB are noise counters that drift, cannot be used as discriminators
+    ///   - gameOverFlag is sticky across process lifetime once set
+    ///   - rawLocation=0-42 means AT a named location (shop/village/campaign ground), 255 means "unspecified"
+    ///   - Two distinct TitleScreen states exist (fresh process + post-GameOver + post-battle-stale)
+    ///   - Battle_AutoBattle rule cannot fire correctly — UI label handles that case
+    ///   - Battle_Casting is memory-indistinguishable from Battle_Attacking
+    ///   - Mid-battle dialogue clears slot0 to 0xFFFFFFFF (unit slots torn down)
+    /// See detection_audit.md for full data.
     /// </summary>
     public static class ScreenDetectionLogic
     {
@@ -14,142 +26,268 @@ namespace FFTColorCustomizer.GameBridge
             int battleMode, int moveMode, int paused, int gameOverFlag,
             int battleTeam, int battleActed, int battleMoved,
             int encA, int encB, bool isPartySubScreen, int eventId = 0,
-            int submenuFlag = 0, int menuCursor = -1)
+            int submenuFlag = 0, int menuCursor = -1, int hover = 255)
         {
-            bool rawValidLocation = rawLocation >= 0 && rawLocation <= 42;
+            // rawLocation AND hover together identify where the player is. rawLocation is
+            // STICKY — it retains the last-visited location even when the player leaves.
+            // hover=255 means UI focus is on a named location/menu; hover=254 means the
+            // cursor is on an open world-map tile. This splits "actually at a shop" from
+            // "on the world map with stale rawLocation."
+            bool atNamedLocation = rawLocation >= 0 && rawLocation <= 42 && hover == 255;
 
-            // Battle detection: unit slots populated AND not clearly on world map.
-            // Unit slots (0xFF) persist after leaving battle, so we need clearlyOnWorldMap
-            // to override. During attack animations rawLocation=255 (not valid), so
-            // clearlyOnWorldMap stays false and we correctly stay in battle.
-            // When browsing ability lists, slot0 can change from 255 to a non-FF value,
-            // but slot9=0xFFFFFFFF + battleMode=3 confirms we're still in battle.
+            // Unit slots: slot0=0xFF means units are placed on the battlefield. During combat
+            // animations and some dialogue sequences, slot0 can flicker. slot9=0xFFFFFFFF is
+            // the broader "battle system active" sentinel (stays set longer than slot0).
             bool unitSlotsPopulated = slot0 == 255 && slot9 == 0xFFFFFFFF;
-            // battleMode values:
-            //   1 = cast-time magick targeting (Black/White/Time/Mystic/Summon/etc.)
-            //   2 = move tile selection
-            //   3 = action menu / ability browsing
-            //   4 = instant targeting (basic Attack AND Throw/Items/Iaido/Aim/etc.)
-            //
-            // The engine treats battleMode=4 as "pick a tile with a cursor, confirm
-            // to execute immediately." Both basic Attack and many skillset abilities
-            // (Throw Shuriken, Potion, Ashura, Aim+N) route through this path.
-            // From Claude's POV they're the same screen: move cursor, press F.
-            //
-            // battleMode=1 is reserved for magicks that have a cast-time charge —
-            // Fire, Haste, Cura, Moogle, etc. Same targeting UX but internally queued.
-            //
-            // We split the state name (Battle_Attacking vs Battle_Casting) to let
-            // downstream logic reason about "am I in a queued cast?" but the valid
-            // paths and cursor interactions are identical.
-            // battleMode can flicker to 0 during targeting animations while slot9
-            // stays at 0xFFFFFFFF. Include battleMode==0 when slot9 is the battle sentinel
-            // to prevent false Cutscene detection during brief flickers.
-            bool battleModeActive = slot9 == 0xFFFFFFFF && (battleMode == 0 || battleMode == 1 || battleMode == 2 || battleMode == 3 || battleMode == 4);
-            bool clearlyOnWorldMap = rawValidLocation && party == 0 && battleMode == 0;
-            // After battle ends, stale flags persist (acted=1, moved=1, slot0=255) but
-            // battleMode resets to 0 and location goes to 255. Not a real battle.
-            // Distinguished from mid-battle flickering (acted=0) by the acted/moved flags.
-            bool postBattleTransition = battleMode == 0 && !rawValidLocation
-                                        && (battleActed == 1 || battleMoved == 1);
-            bool inBattle = (unitSlotsPopulated || battleModeActive) && !clearlyOnWorldMap && !postBattleTransition;
+            bool battleModeActive = slot9 == 0xFFFFFFFF
+                && (battleMode == 0 || battleMode == 1 || battleMode == 2 || battleMode == 3 || battleMode == 4 || battleMode == 5);
 
-            // Formation screen: battle-like flags (slot9=0xFFFFFFFF, battleMode=1)
-            // but no units populated yet (slot0=0xFFFFFFFF instead of 0x000000FF).
-            // During ability browsing slot0 can be other values (e.g. 150), so we check
-            // specifically for the 0xFFFFFFFF terminator, not just "not 255".
-            if (inBattle && slot0 == 0xFFFFFFFF && battleMode == 1)
+            // moveMode world-map signals: values 13, 20, and other non-0/non-255 means the
+            // world-map cursor system is active — we are NOT in battle even if slot0/slot9
+            // are stale from a prior session. In-battle moveMode is always 0 or 255.
+            bool onWorldMapByMoveMode = moveMode != 0 && moveMode != 255;
+
+            bool actedOrMoved = battleActed == 1 || battleMoved == 1;
+
+            // Formation: battle sentinels PLUS slot0=0xFFFFFFFF (units not placed yet).
+            // Checked BEFORE atNamedLocation override because Formation happens at a named
+            // battle location (rawLocation 0-42) but is distinctly a battle-setup state.
+            if (slot0 == 0xFFFFFFFFL && slot9 == 0xFFFFFFFF && battleMode == 1)
                 return "Battle_Formation";
 
-            // Post-battle screens: stale unit slots + battleMode=0 + acted/moved flags
-            // still set from the last turn. These appear after the final enemy is defeated.
-            // Victory: encA != encB (encounter values diverge as battle ends). Auto-advances.
-            // Desertion: encA == encB, warns about units near Brave/Faith thresholds. Needs Enter.
-            // Note: these use unitSlotsPopulated directly, not inBattle, because clearlyOnWorldMap
-            // would suppress inBattle (location is valid + battleMode=0 during post-battle).
-            // Desertion can appear with paused=0 OR paused=1 and location=valid OR location=255.
-            // MUST require rawValidLocation to distinguish from stale post-battle WorldMap
-            // (where location=255 and all other flags are identical to Desertion).
-            bool postBattle = unitSlotsPopulated && battleMode == 0 && gameOverFlag == 0
-                              && (battleActed == 1 || battleMoved == 1) && rawValidLocation;
-            bool postBattlePaused = unitSlotsPopulated && battleMode == 0 && paused == 1
-                              && gameOverFlag == 1 && (battleActed == 1 || battleMoved == 1);
-            if (postBattle && encA != encB)
-                return "Battle_Victory";
-            if ((postBattle || postBattlePaused) && encA == encB && submenuFlag == 1)
+            // atNamedLocation and onWorldMapByMoveMode both override stale battle sentinels.
+            // If we're at a shop/village (hover=255 + rawLocation in range) OR the world-map
+            // cursor is active (moveMode=13/20/etc), we're NOT in battle, even if slot0/slot9
+            // still carry battle residue from a prior session.
+            // Exceptions:
+            //   - Formation (checked above) legitimately fires at a battle location
+            //   - paused=1 means a pause/GameOver/Desertion screen is overlaid on top;
+            //     stay in in-battle branch so those rules run.
+            bool inBattle = (unitSlotsPopulated || battleModeActive)
+                && (paused == 1 || (!atNamedLocation && !onWorldMapByMoveMode));
+
+            // === Out-of-battle screens ===
+
+            if (!inBattle)
+            {
+                // WorldMap with cursor on a named location: hover holds the location ID
+                // (0-42) when the player's cursor is actively hovering a named map location.
+                // This is a STRONG discriminator — titles/menus don't have hover in this range.
+                // Checked before TitleScreen to preempt the strict uninit-fingerprint rule.
+                if (hover >= 0 && hover <= 42 && rawLocation == 255)
+                    return "WorldMap";
+
+                // Battle_ChooseLocation (multi-battle campaign ground sub-selector like
+                // Orbonne Vaults) is byte-indistinguishable from post-restart WorldMap in
+                // our current 19 inputs. During an active session it can be detected by
+                // slot0 holding a small non-sentinel sub-location index, but that signal
+                // doesn't survive a process restart. Needs a dedicated memory scan to find
+                // a stable discriminator. For now it detects as WorldMap.
+
+                // TitleScreen (strict): fresh process launch before save load. Two valid
+                // fingerprints:
+                //   (a) slot0=0xFFFFFFFF — uninit memory (truly fresh process)
+                //   (b) slot9=0 — battle system never activated (no save loaded)
+                // Either combined with rawLocation=255, ui=0, and event sentinel indicates
+                // we're at the title screen before any save load. Other TitleScreen variants
+                // (post-GameOver, post-battle stale) are handled by fallback rules further down.
+                if (rawLocation == 255 && ui == 0 && paused == 0
+                    && (slot0 == 0xFFFFFFFFL || slot9 == 0)
+                    && (eventId == 0 || eventId == 0xFFFF))
+                    return "TitleScreen";
+
+                // Cutscene: real story event, not at a named location.
+                // eventId 1-399 = real event ID (nameIds start at 400, 0xFFFF/0 = unset).
+                if (eventId >= 1 && eventId < 400 && eventId != 0xFFFF && rawLocation == 255)
+                    return "Cutscene";
+
+                // PartyMenu: party flag set. Before location-based rules.
+                if (party == 1)
+                    return "PartyMenu";
+
+                // Pre-battle dialogue at a named location: eventId in real range + slot0=0xFFFFFFFF
+                // indicates a pre-battle cutscene has been triggered (e.g. Orbonne Loffrey scene).
+                if (atNamedLocation && eventId >= 1 && eventId < 400 && eventId != 0xFFFF
+                    && slot0 == 0xFFFFFFFFL)
+                    return "Battle_Dialogue";
+
+                // Post-battle Desertion: at named battle location, game PAUSED with warning
+                // dialog (Brave/Faith threshold triggered desertion risk). Both audit samples
+                // of Desertion (#44, #45) had paused=1 and submenuFlag=1.
+                if (atNamedLocation && slot0 == 255 && paused == 1 && submenuFlag == 1
+                    && actedOrMoved && battleMode == 0)
+                    return "Battle_Desertion";
+
+                // Post-battle Victory: at named battle location, NOT paused (auto-advancing
+                // result screen). submenuFlag may still be 1 from prior submenu state.
+                if (atNamedLocation && slot0 == 255 && paused == 0 && actedOrMoved
+                    && battleMode == 0)
+                    return "Battle_Victory";
+
+                // EncounterDialog: at named location (random encounter happens on top of the
+                // world map but reads location=255 usually). Kept for test coverage; in
+                // practice encA!=encB is noise, so this is a secondary signal.
+                if (atNamedLocation && encA != encB && !actedOrMoved && slot0 != 255)
+                    return "EncounterDialog";
+
+                // At a named location (shop, village, campaign ground sub-selector).
+                // LIMITATION: with current 19 inputs we cannot reliably distinguish
+                // "at a location's menu" from "TravelList showing this location as a
+                // destination." Both produce rawLocation in 0-42 + hover=255.
+                // This rule falls through to TravelList below, so TravelList wins when
+                // the state is ambiguous. Accept that tradeoff for now — most interactions
+                // flow through TravelList → LocationMenu anyway, and Claude's command
+                // history tracks which one it entered.
+                // TODO: memory-scan for a menu-ID / submenu-depth signal to split.
+                //
+                // Only fire LocationMenu when we have POSITIVE evidence of an active
+                // session (slot0=0x000000FF): that state only occurs after the player
+                // entered a battle or a shop in this process lifetime.
+                if (atNamedLocation && slot0 == 255)
+                    return "LocationMenu";
+
+                // Mid-battle dialogue with slot0 torn down: rawLocation=255 + real event +
+                // slot0=0xFFFFFFFF + acted/moved=1 (happened after an action).
+                if (rawLocation == 255 && slot0 == 0xFFFFFFFFL
+                    && eventId >= 1 && eventId < 400 && eventId != 0xFFFF
+                    && actedOrMoved)
+                    return "Battle_Dialogue";
+
+                // EncounterDialog: random encounter popped up during world-map travel.
+                // encA != encB with a significant gap is the signal. Small drift (diff ≤ 1)
+                // is noise; a persistent large gap indicates an encounter was triggered.
+                // Must come BEFORE WorldMap/TravelList rules — encounter overlays them.
+                if (party == 0 && encA != encB && System.Math.Abs(encA - encB) > 1
+                    && !actedOrMoved)
+                    return "EncounterDialog";
+
+                // World-map side states (rawLocation=255 OR stale rawLocation with hover=254).
+                // WorldMap and TravelList are byte-identical in current inputs after a
+                // fresh load. Best-effort split on ui:
+                //   party=0, ui=1 → TravelList
+                //   party=0, ui=0 → WorldMap
+                if (party == 0 && ui == 1)
+                    return "TravelList";
+                if (party == 0 && ui == 0)
+                    return "WorldMap";
+
+                if (isPartySubScreen)
+                    return "PartySubScreen";
+
+                // Fallback TitleScreen for any remaining rawLocation=255 state that didn't
+                // fit a more specific rule.
+                if (rawLocation == 255)
+                    return "TitleScreen";
+
+                return "Unknown";
+            }
+
+            // === In-battle screens ===
+
+            // Post-battle at a named location: acted/moved sticky, battleMode=0.
+            // This path only reached when atNamedLocation=true AND battle sentinels haven't
+            // cleared. Since atNamedLocation makes inBattle=false, these post-battle screens
+            // are structurally unreachable here — they're handled in the !inBattle branch.
+            // We keep the rules here for defensive coverage if atNamedLocation handling changes.
+            bool postBattle = unitSlotsPopulated && battleMode == 0 && actedOrMoved && atNamedLocation;
+            bool postBattlePausedState = unitSlotsPopulated && battleMode == 0 && paused == 1 && actedOrMoved;
+
+            // Desertion: post-battle pause + submenu (warning dialog overlay).
+            // Does NOT require encA==encB (noise counter).
+            if (postBattlePausedState && submenuFlag == 1)
                 return "Battle_Desertion";
 
-            // Mid-battle dialogue: characters talking during an active battle.
-            // eventId > 0 means a dialogue event is playing. battleMode=0 means no
-            // action menu is open. The eventId address (0x14077CA94) doubles as the
-            // active unit's nameId during battle — nameIds are >= 200, while real
-            // event script IDs (event002.en.mes, event004.en.mes) are < 200.
-            // Without this filter, attack animations with battleMode=0 and a high
-            // nameId (e.g. 401) get misdetected as Battle_Dialogue.
-            if (inBattle && eventId > 0 && eventId < 200 && battleMode == 0
-                && paused == 0 && gameOverFlag == 0
-                && !(battleActed == 1 || battleMoved == 1)) // exclude post-battle transition
+            // Victory: post-battle at named location, no pause (auto-advancing result screen).
+            if (postBattle && paused == 0)
+                return "Battle_Victory";
+
+            // LoadGame: reached from GameOver menu. Shares stale battle state with GameOver
+            // but paused=0 (GameOver has paused=1). Runs before EnemiesTurn to preempt stale
+            // battleTeam=1.
+            if (paused == 0 && gameOverFlag == 1 && battleMode == 0 && !actedOrMoved
+                && !atNamedLocation)
+                return "LoadGame";
+
+            // Post-GameOver TitleScreen: title reached by returning from game-over menu.
+            // Stale battle residue (slot0=0xFF) but at rawLocation=255, paused=0,
+            // gameOverFlag=1, submenuFlag=1, menuCursor=2.
+            if (rawLocation == 255 && paused == 0 && gameOverFlag == 1 && submenuFlag == 1
+                && battleMode == 0 && !actedOrMoved && menuCursor == 2)
+                return "TitleScreen";
+
+            // Mid-battle dialogue: story event playing during active battle. In-battle uses
+            // the stricter < 200 filter because eventId address (0x14077CA94) aliases as
+            // active-unit nameId during combat animations (nameIds start at 200+).
+            // Checked BEFORE the post-battle-stale TitleScreen fallback, because some
+            // dialogue states share acted/moved/submenuFlag sticky values with post-battle.
+            if (eventId >= 1 && eventId < 200 && eventId != 0xFFFF
+                && battleMode == 0 && paused == 0)
                 return "Battle_Dialogue";
 
-            // GameOver: paused=1, battleMode=0, gameOverFlag=1, acted=0 (player didn't finish turn).
-            // Desertion warning can also have paused=1 + gameOverFlag=1 + battleMode=0, but
-            // it has acted=1/moved=1 (battle was completed). Check acted to distinguish.
-            if (inBattle && paused == 1 && battleMode == 0 && gameOverFlag == 1
-                && battleActed == 0 && battleMoved == 0)
-                return "GameOver";
-            // Status screen: paused=1 + menuCursor=3. Must check before Battle_Paused.
-            if (inBattle && paused == 1 && menuCursor == 3)
-                return "Battle_Status";
-            if (inBattle && paused == 1)
-                return "Battle_Paused";
-            // Attacking: instant-targeting — basic Attack, Throw, Items, Iaido, Aim.
-            if (inBattle && battleMode == 4)
-                return "Battle_Attacking";
-            // Casting: cast-time magick target selection — Fire, Cure, Haste, etc.
-            if (inBattle && battleMode == 1)
-                return "Battle_Casting";
-            // Waiting/Facing: battleMode=2 + menuCursor=2 (Wait) — post-action facing selection
-            if (inBattle && battleMode == 2 && menuCursor == 2)
-                return "Battle_Waiting";
-            // Moving: battleMode=2 (selecting movement tile)
-            if (inBattle && battleMode == 2)
-                return "Battle_Moving";
-            // Auto-Battle submenu: menuCursor=4 + submenuFlag=1. Must check before Battle_Abilities/Acting.
-            if (inBattle && submenuFlag == 1 && battleMode == 3 && menuCursor == 4)
-                return "Battle_AutoBattle";
-            // Abilities submenu: submenuFlag=1 + battleMode=3 + acted/moved flags set by entering submenu.
-            // menuCursor must be 1 (Abilities) to distinguish from stale submenuFlag after ability use —
-            // when returning to action menu after acting, submenuFlag stays 1 but cursor resets to 0 (Move).
-            if (inBattle && submenuFlag == 1 && battleMode == 3 && battleTeam == 0
-                && (battleActed == 1 || battleMoved == 1) && menuCursor == 1)
-                return "Battle_Abilities";
-            if (inBattle && battleTeam == 0 && battleActed == 0 && battleMoved == 0)
-                return "Battle_MyTurn";
-            if (inBattle && battleTeam == 2 && battleActed == 0 && battleMoved == 0)
-                return "Battle_AlliesTurn";
-            if (inBattle && battleTeam == 1 && battleActed == 0 && battleMoved == 0)
-                return "Battle_EnemiesTurn";
-            if (inBattle && battleTeam == 0 && (battleActed == 1 || battleMoved == 1))
-                return "Battle_Acting";
-            if (inBattle)
-                return "Battle";
-            // eventId == 0xFFFF is the uninitialized sentinel (seen on freshly
-            // launched game at title screen), not a real cutscene event.
-            if (eventId > 0 && eventId != 0xFFFF && (rawLocation == 255 || rawLocation < 0))
-                return "Cutscene";
-            if (rawLocation == 255 || rawLocation < 0)
-                return "TitleScreen";
-            if (encA != encB)
-                return "EncounterDialog";
-            if (isPartySubScreen)
-                return "PartySubScreen";
-            if (party == 1)
-                return "PartyMenu";
-            if (party == 0 && ui == 1)
-                return "TravelList";
-            if (party == 0 && ui == 0)
+            // Post-battle stale at rawLocation=255: After a battle ends (or a battle
+            // dialogue is dismissed), the game transitions back to the world map but stale
+            // battle sentinels persist briefly (slot0=0xFF, slot9=0xFFFFFFFF, acted=1,
+            // moved=1). During this transition moveMode may still read 0 before flipping
+            // to a world-map value. Treat as WorldMap — that's what the player is returning
+            // to. (TitleScreen requires full uninit sentinels handled earlier in !inBattle.)
+            if (rawLocation == 255 && paused == 0 && battleMode == 0 && actedOrMoved
+                && submenuFlag == 1)
                 return "WorldMap";
-            return "Unknown";
+
+            // GameOver: paused + game-over flag + no action on active unit.
+            if (paused == 1 && battleMode == 0 && gameOverFlag == 1 && !actedOrMoved)
+                return "GameOver";
+
+            // Status screen: clicked INTO Status from pause menu. Needs submenuFlag=1
+            // (subscreen open) in addition to paused=1 + menuCursor=3. Without submenuFlag,
+            // cursor=3 on the pause menu just means hovering the Status item, which is still
+            // Battle_Paused.
+            if (paused == 1 && menuCursor == 3 && submenuFlag == 1)
+                return "Battle_Status";
+            if (paused == 1)
+                return "Battle_Paused";
+
+            // Targeting submodes — cast-time and instant collapse into Battle_Attacking.
+            // battleMode values 1, 4, 5 all indicate "cursor in a targeting submode":
+            //   4 = cursor on a valid instant-attack target
+            //   5 = cursor on caster's self-target tile (cast-time)
+            //   1 = cursor on a tile that isn't a valid target (off-highlight)
+            // Cast-time and instant are indistinguishable from memory; callers track
+            // cast-time via the ability that was selected (client-side state).
+            if (battleMode == 4 || battleMode == 5 || battleMode == 1)
+                return "Battle_Attacking";
+
+            // Waiting: facing selection post-Wait. battleMode=2 + menuCursor=2 distinguishes
+            // from Battle_Moving (same battleMode=2 but different cursor).
+            if (battleMode == 2 && menuCursor == 2)
+                return "Battle_Waiting";
+
+            if (battleMode == 2)
+                return "Battle_Moving";
+
+            // Abilities submenu: submenuFlag=1 + battleMode=3 + player's turn + menuCursor==1.
+            // The menuCursor==1 guard is essential — after using an ability and returning to
+            // the action menu, submenuFlag stays 1 but cursor resets to 0 (Move). Without
+            // the cursor check, that post-action state would misfire as Abilities.
+            if (submenuFlag == 1 && battleMode == 3 && battleTeam == 0 && menuCursor == 1
+                && actedOrMoved)
+                return "Battle_Abilities";
+
+            // Action menu — player's turn (no action yet).
+            if (battleTeam == 0 && !actedOrMoved)
+                return "Battle_MyTurn";
+
+            if (battleTeam == 2 && !actedOrMoved)
+                return "Battle_AlliesTurn";
+
+            if (battleTeam == 1 && !actedOrMoved)
+                return "Battle_EnemiesTurn";
+
+            // Acting: player's turn with flags set.
+            if (battleTeam == 0 && actedOrMoved)
+                return "Battle_Acting";
+
+            return "Battle";
         }
 
         /// <summary>

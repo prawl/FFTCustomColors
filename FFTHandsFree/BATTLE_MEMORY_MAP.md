@@ -140,6 +140,9 @@ Maps have `lower`/`upper` levels (lower is primary) and `starting_locations` for
 Story battles and random encounters at same location use DIFFERENT maps. Terrain fingerprinting uniquely identifies all 122.
 
 ## 12. Screen Detection
+
+### Current implementation (has known bugs — see detection_audit.md)
+See `ColorMod/GameBridge/ScreenDetectionLogic.cs`. Current rules:
 ```
 inBattle = (slot0==255 AND slot9==0xFFFFFFFF) OR (slot9==0xFFFFFFFF AND battleMode in {2,3,4})
 Battle_MyTurn = inBattle AND team==0 AND act==0 AND mov==0
@@ -154,10 +157,60 @@ TravelList = uiFlag(0x140D4A264)==1
 TitleScreen = location(0x14077D208)==255
 ```
 
-Battle mode values: 2=move tile selection, 3=action menu/ability browsing, 4=ability targeting.
-Submenu flag (0x140D3A10C): 1=submenu/mode active (Move, Abilities, targeting), 0=top-level menu.
+### Address reliability (verified 2026-04-14, 45-sample audit)
 
-**Known issues:** Settlement/shop not reliably detected.
+**RELIABLE:**
+- `party` — 1 in party menu / status screen, 0 otherwise
+- `rawLocation` — **0-42 means AT a named location (village/shop/campaign ground), 255 means "unspecified"**. NOT "in battle" as the code comment suggests.
+- `paused` — 1=pause menu open
+- `slot0 == 0xFFFFFFFF` — fresh process, formation, some dialogue transitions
+- `slot0 == 0x000000FF` — in-battle or stale-in-battle residue
+- `battleTeam` — 0=player, 1=enemy, 2=NPC/uninit
+
+**OVERLOADED / CONTEXT-DEPENDENT:**
+- `menuCursor` at 0x1407FC620 — meaning changes based on context:
+  - Action menu (submenuFlag=0): 0=Move, 1=Abilities, 2=Wait, 3=Status, 4=AutoBattle
+  - Abilities submenu (submenuFlag=1): skillset/ability index (can exceed 4)
+  - Targeting (battleMode=1/4/5): target list index
+  - Pause menu: pause item index
+  - Enemy turn: enemy-side cursor — do not interpret for player UI
+- `battleMode` at 0x140900650 — encodes (submode × cursor-tile-class):
+  - During Move: 2=cursor on unit's tile, 1=cursor on other tile
+  - During basic Attack: 4=on valid target, 1=on invalid tile
+  - During Cast: 5=on caster's tile, 4=on valid target, 1=on invalid
+  - Top-level menu: 3
+  - Paused: 0
+  - Fresh process: 255
+  - Formation: 1 (different meaning entirely)
+- `battleActed` / `battleMoved` at 0x14077CA8C / 0x14077CA9C — turn-state flags, BUT also flip to 1 temporarily during some pause subscreens (e.g., Status). Use with care.
+
+**UNRELIABLE — DO NOT USE:**
+- `encA / encB` at 0x140900824 / 0x140900828 — counters that drift independently and re-sync. Every rule using `encA != encB` is a coincidence-detector. Observed flipping between `2/2`, `3/3`, `5/5`, `8/8`, `10/10`, `11/11`, sometimes `6/5` briefly mid-screen.
+- `gameOverFlag` (aliased with `submenuFlag` at 0x140D3A10C) — **STICKY across process lifetime once GameOver fires**. Rules requiring `gameOverFlag==0` will fail forever after the first game-over.
+
+**UNDER-UTILIZED:**
+- `eventId` at 0x14077CA94 — range-dependent:
+  - `0xFFFF (65535)` = unset
+  - `1-399` = real story event ID (cutscene/dialogue active)
+  - `400+` = aliased active-unit nameId (not a real event)
+  - Current rule filters `eventId < 200` which misses real events in 200-399 range (e.g. Orbonne pre-battle dialogue at eventId=302)
+- `hover` at 0x140787A22 — read in DetectScreen but NOT passed to ScreenDetectionLogic.
+
+### Known bugs (from 45-sample audit 2026-04-14)
+
+See `detection_audit.md` in repo root for full sample-by-sample data. Summary:
+
+1. **`Battle_AutoBattle` rule never fires correctly** — demands `submenuFlag==1` but real top-level AutoBattle hover has `submenuFlag=0`. Fires SPURIOUSLY in Abilities submenu when cursor lands at skillset index 4. ROOT CAUSE of "Auto-Battle instead of Wait" bug.
+2. **`Battle_Casting` cannot be detected from memory** — cast-time and instant targeting produce byte-identical 18-input snapshots. Queued-vs-instant is a property of the ability, not the screen.
+3. **`WorldMap` rule unreachable** — requires `party==0 && ui==0` but actual world map has `party=0, ui=1`.
+4. **Multiple world-side screens byte-identical** — WorldMap, TravelList, PartyMenu, EncounterDialog, TitleScreen, LoadGame all fall into `rawLocation=255` catch-all. Rule ordering preempts them.
+5. **Shop types indistinguishable** — Outfitters, Warrior Guild, Poachers' Den, Save Game, Tavern all byte-identical at `rawLocation=0-42` (split only by `ui` which is coarse).
+6. **Two distinct `TitleScreen` states** — fresh-process (all uninit sentinels) vs post-GameOver (stale battle residue). Current rule catches only the first.
+7. **No rule for `LoadGame` / `LocationMenu` / `Battle_ChooseLocation`** — these states fall through to wrong detections.
+8. **`Battle_Dialogue` / `Cutscene` filter too tight** — `eventId < 200` misses real events like 302 (pre-battle Orbonne).
+9. **`Battle_Victory` / `Battle_Desertion` rules depend on `encA vs encB`** — coincidence-dependent, unreliable.
+
+Fix work tracked in TODO §12 "Screen Detection Rewrite".
 
 ## 13. Attack Sequence
 ```

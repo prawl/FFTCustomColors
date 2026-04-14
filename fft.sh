@@ -336,6 +336,14 @@ save() { fft "{\"id\":\"$(id)\",\"action\":\"save\"}"; }
 # load: Load the most recent save.
 load() { fft "{\"id\":\"$(id)\",\"action\":\"load\"}"; }
 
+# detection_dump: Dump raw screen-detection inputs + detected screen name.
+# Audit tool for verifying ScreenDetectionLogic.Detect against ground truth.
+detection_dump() { fft "{\"id\":\"$(id)\",\"action\":\"dump_detection_inputs\"}"; }
+
+# log_tail: Show the last N rows of the acted/moved sampler log.
+# Usage: log_tail [N] (default 30)
+log_tail() { tail -n "${1:-30}" "$B/acted_moved_log.csv"; }
+
 # battle_retry: Retry the current battle from the pause menu.
 battle_retry() { fft "{\"id\":\"$(id)\",\"action\":\"battle_retry\"}"; }
 

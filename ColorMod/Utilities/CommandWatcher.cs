@@ -67,7 +67,7 @@ namespace FFTColorCustomizer.Utilities
             "mark_blocked", "snapshot", "heap_snapshot", "diff",
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
-            "read_dialogue", "write_byte"
+            "read_dialogue", "write_byte", "dump_detection_inputs"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -126,6 +126,59 @@ namespace FFTColorCustomizer.Utilities
             });
 
             ModLogger.Log($"[CommandBridge] Watching for commands at: {_commandFilePath}");
+
+            // Background logger: samples battle acted/moved + submenuFlag every 200ms.
+            // Writes only on CHANGE to claude_bridge/acted_moved_log.csv so the file
+            // stays small and easy to scan. Audit tool — remove once the flags are
+            // understood.
+            Task.Run(async () =>
+            {
+                var logPath = Path.Combine(_bridgeDirectory, "acted_moved_log.csv");
+                try
+                {
+                    File.WriteAllText(logPath,
+                        "timestamp,screen,team,acted,moved,submenuFlag,menuCursor,battleMode,slot0,note\n");
+                }
+                catch { /* ignore */ }
+
+                long lastAm = -1; // packed key of (acted,moved,submenu,cursor,mode,team)
+                while (!_disposed)
+                {
+                    try
+                    {
+                        if (Explorer != null)
+                        {
+                            var v = Explorer.ReadMultiple(ScreenAddresses);
+                            int acted = (int)v[8];
+                            int moved = (int)v[9];
+                            int sub = (int)v[18];
+                            int cursor = (int)v[4];
+                            int bm = (int)v[16];
+                            int team = (int)v[7];
+                            long s0 = v[12];
+                            long s9 = v[13];
+
+                            bool inBattle = (s0 == 255 && s9 == 0xFFFFFFFF)
+                                || (s9 == 0xFFFFFFFF && (bm == 2 || bm == 3 || bm == 4));
+                            if (!inBattle) { await Task.Delay(200); continue; }
+
+                            long key = ((long)acted << 0) | ((long)moved << 4)
+                                     | ((long)sub << 8) | ((long)cursor << 12)
+                                     | ((long)bm << 20) | ((long)team << 28);
+                            if (key != lastAm)
+                            {
+                                lastAm = key;
+                                var line = string.Format(
+                                    "{0:o},{1},{2},{3},{4},{5},{6},{7},0x{8:X8},\n",
+                                    DateTime.UtcNow, "", team, acted, moved, sub, cursor, bm, s0);
+                                try { File.AppendAllText(logPath, line); } catch { }
+                            }
+                        }
+                    }
+                    catch { /* ignore sampler errors */ }
+                    await Task.Delay(200);
+                }
+            });
         }
 
         public void Stop()
@@ -321,6 +374,57 @@ namespace FFTColorCustomizer.Utilities
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         Explorer.DumpAllActiveUnits();
                         response.Status = "completed";
+                        break;
+
+                    case "dump_detection_inputs":
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        {
+                            var raw = Explorer.ReadMultiple(ScreenAddresses);
+                            int dP = (int)raw[0], dU = (int)raw[1], dLoc = (int)raw[2];
+                            long dS0 = raw[12], dS9 = raw[13];
+                            int dBm = (int)raw[16], dMm = (int)raw[15], dPs = (int)raw[14];
+                            int dSf = (int)raw[18], dGo = dSf;
+                            int dBt = (int)raw[7], dBa = (int)raw[8], dBmv = (int)raw[9];
+                            int dEa = (int)raw[5], dEb = (int)raw[6];
+                            int dEv = (int)raw[19], dMc = (int)raw[4];
+                            int dHover = (int)raw[3];
+                            bool dInBattle = (dS0 == 255 && dS9 == 0xFFFFFFFF)
+                                || (dS9 == 0xFFFFFFFF && (dBm == 2 || dBm == 3 || dBm == 4));
+                            string detected = GameBridge.ScreenDetectionLogic.Detect(
+                                dP, dU, dLoc, dS0, dS9, dBm, dMm, dPs, dGo,
+                                dBt, dBa, dBmv, dEa, dEb, !dInBattle && IsPartySubScreen(),
+                                dEv, submenuFlag: dSf, menuCursor: dMc, hover: dHover);
+                            var snapshot = new Dictionary<string, object>
+                            {
+                                ["timestamp"] = DateTime.UtcNow.ToString("o"),
+                                ["detected"] = detected,
+                                ["inputs"] = new Dictionary<string, object>
+                                {
+                                    ["party"] = dP,
+                                    ["ui"] = dU,
+                                    ["rawLocation"] = dLoc,
+                                    ["slot0"] = $"0x{dS0:X8}",
+                                    ["slot9"] = $"0x{dS9:X8}",
+                                    ["battleMode"] = dBm,
+                                    ["moveMode"] = dMm,
+                                    ["paused"] = dPs,
+                                    ["gameOverFlag"] = dGo,
+                                    ["battleTeam"] = dBt,
+                                    ["battleActed"] = dBa,
+                                    ["battleMoved"] = dBmv,
+                                    ["encA"] = dEa,
+                                    ["encB"] = dEb,
+                                    ["isPartySubScreen"] = !dInBattle && IsPartySubScreen(),
+                                    ["eventId"] = dEv,
+                                    ["submenuFlag"] = dSf,
+                                    ["menuCursor"] = dMc,
+                                    ["hover"] = dHover
+                                }
+                            };
+                            response.Info = System.Text.Json.JsonSerializer.Serialize(snapshot,
+                                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                            response.Status = "completed";
+                        }
                         break;
 
                     case "report_state":
@@ -2232,7 +2336,8 @@ namespace FFTColorCustomizer.Utilities
                     battleMode, moveMode, paused, gameOverFlag,
                     screen.BattleTeam, screen.BattleActed, screen.BattleMoved,
                     eA, eB, !inBattle && IsPartySubScreen(), eventId,
-                    submenuFlag: submenuFlag, menuCursor: screen.MenuCursor);
+                    submenuFlag: submenuFlag, menuCursor: screen.MenuCursor,
+                    hover: hover);
 
                 if (screen.Name == "Cutscene")
                     screen.EventId = eventId;
