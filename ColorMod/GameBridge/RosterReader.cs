@@ -123,6 +123,74 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Equipped non-equipment ability slots for a unit:
+        ///   - Secondary skillset name (e.g. "Items", "White Magicks") — from +0x07
+        ///   - Reaction / Support / Movement ability names — from +0x08..+0x0D
+        /// Each passive ability has an ID byte + an "equipped" flag byte. We only
+        /// surface the name when the flag byte is 1; otherwise the slot is empty.
+        /// Also reports the **primary** skillset (job-locked, derived from the
+        /// unit's currently-equipped class via CommandWatcher.GetPrimarySkillsetByJobName).
+        /// </summary>
+        public class AbilityLoadout
+        {
+            public string? Primary;       // job-locked skillset (e.g. "Mettle" for Gallant Knight)
+            public string? Secondary;     // selectable skillset
+            public string? Reaction;
+            public string? Support;
+            public string? Movement;
+        }
+
+        /// <summary>
+        /// Reads equipped ability slots for the given roster slot. Returns null
+        /// if the slot is out of range. Slot fields that are empty (equipped
+        /// flag == 0) come back as null on the AbilityLoadout. Primary is
+        /// resolved from the unit's job name via CommandWatcher.
+        /// </summary>
+        public AbilityLoadout? ReadEquippedAbilities(int slotIndex, string? jobName)
+        {
+            if (slotIndex < 0 || slotIndex >= MaxSlots) return null;
+            long b = RosterBase + (long)slotIndex * SlotStride;
+            var reads = new (System.IntPtr addr, int size)[]
+            {
+                ((System.IntPtr)(b + 0x07), 1), // secondary skillset id
+                ((System.IntPtr)(b + 0x08), 1), // reaction id
+                ((System.IntPtr)(b + 0x09), 1), // reaction equipped flag
+                ((System.IntPtr)(b + 0x0A), 1), // support id
+                ((System.IntPtr)(b + 0x0B), 1), // support equipped flag
+                ((System.IntPtr)(b + 0x0C), 1), // movement id
+                ((System.IntPtr)(b + 0x0D), 1), // movement equipped flag
+            };
+            var v = _explorer.ReadMultiple(reads);
+
+            var result = new AbilityLoadout
+            {
+                Primary = jobName != null
+                    ? Utilities.CommandWatcher.GetPrimarySkillsetByJobName(jobName)
+                    : null,
+                Secondary = Utilities.CommandWatcher.GetSkillsetName((int)v[0]),
+            };
+            if ((int)v[2] == 1)
+            {
+                byte id = (byte)(int)v[1];
+                if (AbilityData.ReactionAbilities.TryGetValue(id, out var ra))
+                    result.Reaction = ra.Name;
+            }
+            if ((int)v[4] == 1)
+            {
+                byte id = (byte)(int)v[3];
+                if (AbilityData.SupportAbilities.TryGetValue(id, out var sa))
+                    result.Support = sa.Name;
+            }
+            if ((int)v[6] == 1)
+            {
+                byte id = (byte)(int)v[5];
+                if (AbilityData.MovementAbilities.TryGetValue(id, out var ma))
+                    result.Movement = ma.Name;
+            }
+            return result;
+        }
+
+        /// <summary>
         /// Reads all non-empty roster slots. Returns them in slot order (Ramza
         /// first). Empty slots (level == 0) are filtered out.
         /// </summary>

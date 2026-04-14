@@ -49,7 +49,36 @@ namespace FFTColorCustomizer.GameBridge
 
         // Post-hold-B confirmation on CharacterStatus. Left/Right toggles
         // Confirm/Back; cursor defaults to Back so blind Enter is safe.
-        DismissUnit
+        DismissUnit,
+
+        // Chronicle tab nested screens. The Chronicle root itself surfaces
+        // as "PartyMenuChronicle" via the PartyMenu Tab. These are entered
+        // by pressing Enter on a tile in the 3-row Chronicle grid:
+        //   Row 0 (3 cols): Encyclopedia / StateOfRealm / Events
+        //   Row 1 (4 cols): Auracite / ReadingMaterials / Collection / Errands
+        //   Row 2 (3 cols): Stratagems / Lessons / AkademicReport
+        ChronicleEncyclopedia,
+        ChronicleStateOfRealm,
+        ChronicleEvents,
+        ChronicleAuracite,
+        ChronicleReadingMaterials,
+        ChronicleCollection,
+        ChronicleErrands,
+        ChronicleStratagems,
+        ChronicleLessons,
+        ChronicleAkademicReport,
+
+        // Options tab nested screens. The Options root surfaces as
+        // "PartyMenuOptions" via the PartyMenu Tab. The 5-row vertical
+        // list opens these on Enter:
+        //   0 Save     → triggers Save flow (existing handling)
+        //   1 Load     → triggers Load flow (existing handling)
+        //   2 Settings → OptionsSettings (new nested screen)
+        //   3 Return to Title → confirmation modal (TBD)
+        //   4 Exit Game → confirmation modal (TBD)
+        // Save/Load are handled by existing `save`/`load` actions and don't
+        // need a dedicated GameScreen yet. Settings is an actual screen.
+        OptionsSettings
     }
 
     /// <summary>

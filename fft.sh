@@ -727,7 +727,10 @@ us.forEach(u=>{
     local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
     # Unescape common JSON sequences so the UI label renders cleanly.
     # Example: "Equipment & Abilities" serializes as "Equipment \u0026 Abilities".
-    local UI=$(echo "$R" | grep -o '"ui":"[^"]*"' | head -1 | cut -d'"' -f4 | sed 's/\\u0026/\&/g; s/\\u0027/'"'"'/g')
+    # Pipe the file (cat handles Unix→Windows path conversion) so labels with
+    # internal spaces ("Magick Defense Boost") survive — using the stripped
+    # `$R` would smash them into "MagickDefenseBoost".
+    local UI=$(cat "$B/response.json" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.ui||'');}catch(e){}});" 2>/dev/null)
     local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
     local SLCI=$(echo "$R" | grep -o '"shopListCursorIndex":[0-9]*' | head -1 | cut -d: -f2)
     local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
@@ -739,23 +742,34 @@ us.forEach(u=>{
     LINE="$LINE status=$ST"
     echo "$LINE"
 
-    # Equipment loadout for CharacterStatus / EquipmentAndAbilities. Only
-    # populated for Ramza right now (TODO §10.6).
+    # Equipment loadout + abilities for CharacterStatus / EquipmentAndAbilities.
+    # Only populated for Ramza right now (TODO §10.6).
     if { [ "$SCR" = "EquipmentAndAbilities" ] || [ "$SCR" = "CharacterStatus" ]; } \
        && [ -f "$B/response.json" ]; then
       cat "$B/response.json" | node -e "
 try{
   const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
   const l=j.screen&&j.screen.loadout;
-  if(!l)process.exit(0);
-  const parts=[];
-  if(l.weapon)parts.push('R='+l.weapon);
-  if(l.leftHand)parts.push('L='+l.leftHand);
-  if(l.shield)parts.push('Sh='+l.shield);
-  if(l.helm)parts.push('H='+l.helm);
-  if(l.body)parts.push('B='+l.body);
-  if(l.accessory)parts.push('A='+l.accessory);
-  console.log('  '+(l.unitName||'?')+': '+parts.join(' '));
+  if(l){
+    const parts=[];
+    if(l.weapon)parts.push('Right Hand='+l.weapon);
+    if(l.leftHand)parts.push('Left Hand='+l.leftHand);
+    if(l.shield)parts.push('Shield='+l.shield);
+    if(l.helm)parts.push('Helm='+l.helm);
+    if(l.body)parts.push('Chest='+l.body);
+    if(l.accessory)parts.push('Accessory='+l.accessory);
+    console.log('  '+(l.unitName||'?')+': '+parts.join(' '));
+  }
+  const a=j.screen&&j.screen.abilities;
+  if(a){
+    const parts=[];
+    if(a.primary)parts.push('Primary='+a.primary);
+    if(a.secondary)parts.push('Secondary='+a.secondary);
+    if(a.reaction)parts.push('Reaction='+a.reaction);
+    if(a.support)parts.push('Support='+a.support);
+    if(a.movement)parts.push('Movement='+a.movement);
+    if(parts.length)console.log('  Abilities: '+parts.join(' '));
+  }
 }catch(e){}
 " 2>/dev/null
     fi

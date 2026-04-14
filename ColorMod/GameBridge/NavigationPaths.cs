@@ -178,6 +178,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["OpenChronicle"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_E, "E"), Key(VK_E, "E") },
+                    DelayBetweenMs = 300,
                     WaitForScreen = "PartyMenuChronicle",
                     Desc = "Jump to Chronicle tab (E twice)"
                 },
@@ -899,6 +900,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["OpenOptions"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_E, "E"), Key(VK_E, "E") },
+                    DelayBetweenMs = 300,
                     WaitForScreen = "PartyMenuOptions",
                     Desc = "Jump to Options tab"
                 },
@@ -932,6 +934,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["OpenUnits"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_Q, "Q"), Key(VK_Q, "Q") },
+                    DelayBetweenMs = 300,
                     WaitForScreen = "PartyMenu",
                     Desc = "Jump to Units tab"
                 },
@@ -985,6 +988,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["OpenInventory"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_Q, "Q"), Key(VK_Q, "Q") },
+                    DelayBetweenMs = 300,
                     WaitForScreen = "PartyMenuInventory",
                     Desc = "Jump to Inventory tab"
                 },

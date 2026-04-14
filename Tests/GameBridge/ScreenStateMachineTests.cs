@@ -655,6 +655,172 @@ public class ScreenStateMachineTests
         Assert.False(sm.JobChangeConfirmSelected);
     }
 
+    // --- Chronicle tab navigation (3-4-3 grid) ---
+
+    private static ScreenStateMachine AtChronicleRoot()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.PartyMenu);
+        sm.OnKeyPressed(VK_E); // Units → Inventory
+        sm.OnKeyPressed(VK_E); // Inventory → Chronicle
+        Assert.Equal(PartyTab.Chronicle, sm.Tab);
+        Assert.Equal(0, sm.ChronicleIndex);
+        return sm;
+    }
+
+    [Fact]
+    public void Chronicle_Right_FromEncyclopedia_LandsOnStateOfRealm()
+    {
+        var sm = AtChronicleRoot();
+        sm.OnKeyPressed(VK_RIGHT);
+        Assert.Equal(1, sm.ChronicleIndex);
+    }
+
+    [Fact]
+    public void Chronicle_Down_FromEncyclopedia_LandsOnAuracite()
+    {
+        // Verified live 2026-04-14: Down from row-0 lands on the column-aligned
+        // tile in row 1 (Encyc→Auracite, SoR→Reading, Events→Collection).
+        var sm = AtChronicleRoot();
+        sm.OnKeyPressed(VK_DOWN);
+        Assert.Equal(3, sm.ChronicleIndex); // Auracite
+    }
+
+    [Fact]
+    public void Chronicle_Down_FromErrands_LandsOnAkademicReport()
+    {
+        // Errands(6) is row 1 col 3, but row 2 has only 3 cols — wraps to last (Akademic).
+        var sm = AtChronicleRoot();
+        sm.OnKeyPressed(VK_DOWN);  // Encyc → Auracite (3)
+        sm.OnKeyPressed(VK_RIGHT); // → Reading (4)
+        sm.OnKeyPressed(VK_RIGHT); // → Collection (5)
+        sm.OnKeyPressed(VK_RIGHT); // → Errands (6)
+        Assert.Equal(6, sm.ChronicleIndex);
+        sm.OnKeyPressed(VK_DOWN);
+        Assert.Equal(9, sm.ChronicleIndex); // Akademic Report
+    }
+
+    [Fact]
+    public void Chronicle_Up_FromErrands_LandsOnEvents()
+    {
+        var sm = AtChronicleRoot();
+        sm.OnKeyPressed(VK_DOWN); sm.OnKeyPressed(VK_RIGHT);
+        sm.OnKeyPressed(VK_RIGHT); sm.OnKeyPressed(VK_RIGHT); // → Errands
+        Assert.Equal(6, sm.ChronicleIndex);
+        sm.OnKeyPressed(VK_UP);
+        Assert.Equal(2, sm.ChronicleIndex); // Events (col 2)
+    }
+
+    [Fact]
+    public void Chronicle_Up_FromAkademicReport_LandsOnCollection()
+    {
+        var sm = AtChronicleRoot();
+        sm.OnKeyPressed(VK_DOWN); sm.OnKeyPressed(VK_DOWN); // → Stratagems (7)
+        sm.OnKeyPressed(VK_RIGHT); sm.OnKeyPressed(VK_RIGHT); // → Akademic (9)
+        Assert.Equal(9, sm.ChronicleIndex);
+        sm.OnKeyPressed(VK_UP);
+        Assert.Equal(5, sm.ChronicleIndex); // Collection
+    }
+
+    [Fact]
+    public void Chronicle_Enter_OpensCorrespondingSubScreen()
+    {
+        var sm = AtChronicleRoot();
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.ChronicleEncyclopedia, sm.CurrentScreen);
+
+        sm.OnKeyPressed(VK_ESCAPE); // back to PartyMenu Chronicle tab
+        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(PartyTab.Chronicle, sm.Tab);
+
+        sm.OnKeyPressed(VK_DOWN); // → Auracite (3)
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.ChronicleAuracite, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void Chronicle_TabSwitch_ResetsChronicleIndex()
+    {
+        var sm = AtChronicleRoot();
+        sm.OnKeyPressed(VK_DOWN); // → Auracite
+        Assert.Equal(3, sm.ChronicleIndex);
+        sm.OnKeyPressed(VK_E); // → Options tab
+        Assert.Equal(PartyTab.Options, sm.Tab);
+        Assert.Equal(0, sm.ChronicleIndex);
+        Assert.Equal(0, sm.OptionsIndex);
+    }
+
+    // --- Options tab navigation (5 vertical items, wraps) ---
+
+    private static ScreenStateMachine AtOptionsRoot()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.PartyMenu);
+        sm.OnKeyPressed(VK_Q); // Units → Options (Q wraps)
+        Assert.Equal(PartyTab.Options, sm.Tab);
+        Assert.Equal(0, sm.OptionsIndex);
+        return sm;
+    }
+
+    [Fact]
+    public void Options_Down_AdvancesIndex_AndWraps()
+    {
+        var sm = AtOptionsRoot();
+        sm.OnKeyPressed(VK_DOWN); Assert.Equal(1, sm.OptionsIndex);
+        sm.OnKeyPressed(VK_DOWN); Assert.Equal(2, sm.OptionsIndex);
+        sm.OnKeyPressed(VK_DOWN); Assert.Equal(3, sm.OptionsIndex);
+        sm.OnKeyPressed(VK_DOWN); Assert.Equal(4, sm.OptionsIndex);
+        sm.OnKeyPressed(VK_DOWN); Assert.Equal(0, sm.OptionsIndex); // wraps
+    }
+
+    [Fact]
+    public void Options_Up_FromTop_WrapsToBottom()
+    {
+        var sm = AtOptionsRoot();
+        sm.OnKeyPressed(VK_UP);
+        Assert.Equal(4, sm.OptionsIndex); // Save → Exit Game
+    }
+
+    [Fact]
+    public void Options_EnterOnSettings_OpensOptionsSettings()
+    {
+        var sm = AtOptionsRoot();
+        sm.OnKeyPressed(VK_DOWN); sm.OnKeyPressed(VK_DOWN); // → Settings (2)
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.OptionsSettings, sm.CurrentScreen);
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(PartyTab.Options, sm.Tab);
+    }
+
+    [Fact]
+    public void Options_EnterOnSave_DoesNotChangeScreen()
+    {
+        // Save (idx 0) doesn't open a nested screen via the state machine —
+        // the actual save action is handled by the existing `save` flow.
+        var sm = AtOptionsRoot();
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void ChronicleIndexToName_KnownValues()
+    {
+        Assert.Equal("Encyclopedia",          ScreenStateMachine.ChronicleIndexToName(0));
+        Assert.Equal("State of the Realm",    ScreenStateMachine.ChronicleIndexToName(1));
+        Assert.Equal("Errands",               ScreenStateMachine.ChronicleIndexToName(6));
+        Assert.Equal("Akademic Report",       ScreenStateMachine.ChronicleIndexToName(9));
+    }
+
+    [Fact]
+    public void OptionsIndexToName_KnownValues()
+    {
+        Assert.Equal("Save",             ScreenStateMachine.OptionsIndexToName(0));
+        Assert.Equal("Settings",         ScreenStateMachine.OptionsIndexToName(2));
+        Assert.Equal("Return to Title",  ScreenStateMachine.OptionsIndexToName(3));
+        Assert.Equal("Exit Game",        ScreenStateMachine.OptionsIndexToName(4));
+    }
+
     [Fact]
     public void KeysSinceLastSetScreen_ResetsOnSetScreen_AndCountsKeys()
     {

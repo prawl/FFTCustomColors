@@ -506,6 +506,37 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("loadout")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Loadout? Loadout { get; set; }
+
+        /// <summary>Equipped abilities (Primary/Secondary/Reaction/Support/
+        /// Movement) for the unit currently shown on EquipmentAndAbilities.
+        /// Only populated when we can identify the viewed unit (currently
+        /// Ramza-only — see TODO §10.6).</summary>
+        [JsonPropertyName("abilities")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public AbilityLoadoutPayload? Abilities { get; set; }
+    }
+
+    public class AbilityLoadoutPayload
+    {
+        [JsonPropertyName("primary")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Primary { get; set; }
+
+        [JsonPropertyName("secondary")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Secondary { get; set; }
+
+        [JsonPropertyName("reaction")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Reaction { get; set; }
+
+        [JsonPropertyName("support")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Support { get; set; }
+
+        [JsonPropertyName("movement")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Movement { get; set; }
     }
 
     public class Loadout

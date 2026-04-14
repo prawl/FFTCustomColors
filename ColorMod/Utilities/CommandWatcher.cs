@@ -2504,7 +2504,18 @@ namespace FFTColorCustomizer.Utilities
                         GameScreen.MovementAbilities or
                         GameScreen.CombatSets or
                         GameScreen.CharacterDialog or
-                        GameScreen.DismissUnit;
+                        GameScreen.DismissUnit or
+                        GameScreen.ChronicleEncyclopedia or
+                        GameScreen.ChronicleStateOfRealm or
+                        GameScreen.ChronicleEvents or
+                        GameScreen.ChronicleAuracite or
+                        GameScreen.ChronicleReadingMaterials or
+                        GameScreen.ChronicleCollection or
+                        GameScreen.ChronicleErrands or
+                        GameScreen.ChronicleStratagems or
+                        GameScreen.ChronicleLessons or
+                        GameScreen.ChronicleAkademicReport or
+                        GameScreen.OptionsSettings;
 
                 // Drift recovery: if raw detection says root PartyMenu but the state
                 // machine is in a nested PartyMenu screen (CharacterStatus, pickers,
@@ -2529,7 +2540,18 @@ namespace FFTColorCustomizer.Utilities
                         GameScreen.MovementAbilities or
                         GameScreen.CombatSets or
                         GameScreen.CharacterDialog or
-                        GameScreen.DismissUnit)
+                        GameScreen.DismissUnit or
+                        GameScreen.ChronicleEncyclopedia or
+                        GameScreen.ChronicleStateOfRealm or
+                        GameScreen.ChronicleEvents or
+                        GameScreen.ChronicleAuracite or
+                        GameScreen.ChronicleReadingMaterials or
+                        GameScreen.ChronicleCollection or
+                        GameScreen.ChronicleErrands or
+                        GameScreen.ChronicleStratagems or
+                        GameScreen.ChronicleLessons or
+                        GameScreen.ChronicleAkademicReport or
+                        GameScreen.OptionsSettings)
                 {
                     ScreenMachine.SetScreen(GameScreen.PartyMenu);
                 }
@@ -2569,6 +2591,17 @@ namespace FFTColorCustomizer.Utilities
                             GameScreen.JobScreen => "JobSelection",
                             GameScreen.JobActionMenu => "JobActionMenu",
                             GameScreen.JobChangeConfirmation => "JobChangeConfirmation",
+                            GameScreen.ChronicleEncyclopedia => "ChronicleEncyclopedia",
+                            GameScreen.ChronicleStateOfRealm => "ChronicleStateOfRealm",
+                            GameScreen.ChronicleEvents => "ChronicleEvents",
+                            GameScreen.ChronicleAuracite => "ChronicleAuracite",
+                            GameScreen.ChronicleReadingMaterials => "ChronicleReadingMaterials",
+                            GameScreen.ChronicleCollection => "ChronicleCollection",
+                            GameScreen.ChronicleErrands => "ChronicleErrands",
+                            GameScreen.ChronicleStratagems => "ChronicleStratagems",
+                            GameScreen.ChronicleLessons => "ChronicleLessons",
+                            GameScreen.ChronicleAkademicReport => "ChronicleAkademicReport",
+                            GameScreen.OptionsSettings => "OptionsSettings",
                             // On PartyMenu itself, the tab determines the screen name.
                             GameScreen.PartyMenu => ScreenMachine.Tab switch
                             {
@@ -2613,6 +2646,110 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "DismissUnit" && ScreenMachine != null)
                 {
                     screen.UI = ScreenMachine.DismissConfirmSelected ? "Confirm" : "Back";
+                }
+
+                // EquipmentAndAbilities: surface the highlighted slot label as ui=
+                // and populate screen.loadout + screen.abilities for the viewed unit.
+                //
+                // Cursor-aware label resolution:
+                //   CursorCol=0 (Equipment column) → equipment item name at row R
+                //   CursorCol=1 (Ability column)   → ability slot's CURRENT value at row R
+                //     row 0 = Primary skillset (job-locked)
+                //     row 1 = Secondary skillset
+                //     row 2 = Reaction ability
+                //     row 3 = Support ability
+                //     row 4 = Movement ability
+                //
+                // Viewed-unit identification is still unsolved (TODO §10.6) — we default
+                // to slot 0 (Ramza) for now, which is correct when the player entered
+                // EquipmentAndAbilities from the Units tab cursor at row 0 col 0.
+                if (screen.Name == "EquipmentAndAbilities" && ScreenMachine != null && Explorer != null)
+                {
+                    if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
+                    if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+
+                    int viewedSlot = 0; // Ramza default — see TODO §10.6
+                    var viewed = _rosterReader.ReadAll().FirstOrDefault(s => s.SlotIndex == viewedSlot);
+                    if (viewed != null)
+                    {
+                        var lo = _rosterReader.ReadLoadout(viewedSlot);
+                        var ab = _rosterReader.ReadEquippedAbilities(viewedSlot, viewed.JobName);
+
+                        if (lo != null)
+                        {
+                            screen.Loadout = new Loadout
+                            {
+                                UnitName = viewed.Name,
+                                Weapon = lo.WeaponName,
+                                LeftHand = lo.LeftHandName,
+                                Shield = lo.ShieldName,
+                                Helm = lo.HelmName,
+                                Body = lo.BodyName,
+                                Accessory = lo.AccessoryName,
+                            };
+                        }
+                        if (ab != null)
+                        {
+                            screen.Abilities = new AbilityLoadoutPayload
+                            {
+                                Primary = ab.Primary,
+                                Secondary = ab.Secondary,
+                                Reaction = ab.Reaction,
+                                Support = ab.Support,
+                                Movement = ab.Movement,
+                            };
+                        }
+
+                        // Resolve the cursor's current item/ability name for the ui= label.
+                        int row = ScreenMachine.CursorRow;
+                        int col = ScreenMachine.CursorCol;
+                        string? cursorLabel = null;
+                        if (col == 0 && lo != null)
+                        {
+                            // Equipment column. Slot order matches the visible left
+                            // column on EquipmentAndAbilities (Weapon/Shield/Helm/Body/Accessory).
+                            cursorLabel = row switch
+                            {
+                                0 => lo.WeaponName,
+                                1 => lo.ShieldName,
+                                2 => lo.HelmName,
+                                3 => lo.BodyName,
+                                4 => lo.AccessoryName,
+                                _ => null
+                            };
+                        }
+                        else if (col == 1 && ab != null)
+                        {
+                            cursorLabel = row switch
+                            {
+                                0 => ab.Primary,
+                                1 => ab.Secondary,
+                                2 => ab.Reaction,
+                                3 => ab.Support,
+                                4 => ab.Movement,
+                                _ => null
+                            };
+                        }
+                        // Fallback to "(none)" so empty slots still get a label.
+                        if (cursorLabel != null) screen.UI = cursorLabel;
+                        else if (col == 0 || col == 1) screen.UI = "(none)";
+                    }
+                }
+
+                // PartyMenuChronicle: surface the highlighted tile name.
+                // Memory hunt for the cursor address failed (UE4 widget churn
+                // produced false positives — see project_shop_stock_array.md).
+                // State-machine ChronicleIndex is authoritative; drift recovery
+                // above snaps it back when the player re-enters the menu fresh.
+                if (screen.Name == "PartyMenuChronicle" && ScreenMachine != null)
+                {
+                    screen.UI = ScreenStateMachine.ChronicleIndexToName(ScreenMachine.ChronicleIndex);
+                }
+
+                // PartyMenuOptions: surface the highlighted option name.
+                if (screen.Name == "PartyMenuOptions" && ScreenMachine != null)
+                {
+                    screen.UI = ScreenStateMachine.OptionsIndexToName(ScreenMachine.OptionsIndex);
                 }
 
                 // JobActionMenu (modal on JobSelection Enter): Left=Learn

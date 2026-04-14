@@ -87,6 +87,22 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public AbilitySlot CurrentAbilitySlot { get; private set; } = AbilitySlot.PrimaryAction;
 
+        /// <summary>
+        /// Cursor position in the Chronicle tab grid (0..9 flat enumeration):
+        ///   0 Encyclopedia        1 StateOfRealm   2 Events
+        ///   3 Auracite            4 Reading        5 Collection   6 Errands
+        ///   7 Stratagems          8 Lessons        9 AkademicReport
+        /// Uses a flat index because the grid is non-uniform (3-4-3 rows).
+        /// Up/Down logic handles row transitions explicitly.
+        /// </summary>
+        public int ChronicleIndex { get; private set; }
+
+        /// <summary>
+        /// Cursor position in the Options tab vertical list (0..4):
+        ///   0 Save  1 Load  2 Settings  3 ReturnToTitle  4 ExitGame
+        /// </summary>
+        public int OptionsIndex { get; private set; }
+
         // Saved party menu cursor for returning from CharacterStatus
         private int _savedPartyRow;
         private int _savedPartyCol;
@@ -102,6 +118,8 @@ namespace FFTColorCustomizer.GameBridge
             CursorCol = 0;
             SidebarIndex = 0;
             JobActionIndex = 0;
+            ChronicleIndex = 0;
+            OptionsIndex = 0;
             KeysSinceLastSetScreen = 0;
 
             switch (screen)
@@ -173,6 +191,43 @@ namespace FFTColorCustomizer.GameBridge
                 case GameScreen.DismissUnit:
                     HandleDismissUnit(vkCode);
                     break;
+                case GameScreen.ChronicleEncyclopedia:
+                case GameScreen.ChronicleStateOfRealm:
+                case GameScreen.ChronicleEvents:
+                case GameScreen.ChronicleAuracite:
+                case GameScreen.ChronicleReadingMaterials:
+                case GameScreen.ChronicleCollection:
+                case GameScreen.ChronicleErrands:
+                case GameScreen.ChronicleStratagems:
+                case GameScreen.ChronicleLessons:
+                case GameScreen.ChronicleAkademicReport:
+                    HandleChronicleSubScreen(vkCode);
+                    break;
+                case GameScreen.OptionsSettings:
+                    HandleOptionsSettings(vkCode);
+                    break;
+            }
+        }
+
+        // All Chronicle sub-screens currently model only the boundary (Escape back).
+        // Inner-state navigation (Encyclopedia tabs, scrollable lists, etc.) is
+        // deferred — see TODO §10.7.
+        private void HandleChronicleSubScreen(int vk)
+        {
+            if (vk == VK_ESCAPE)
+            {
+                CurrentScreen = GameScreen.PartyMenu;
+                Tab = PartyTab.Chronicle;
+                // Cursor returns to whichever tile we entered from.
+            }
+        }
+
+        private void HandleOptionsSettings(int vk)
+        {
+            if (vk == VK_ESCAPE)
+            {
+                CurrentScreen = GameScreen.PartyMenu;
+                Tab = PartyTab.Options;
             }
         }
 
@@ -199,24 +254,43 @@ namespace FFTColorCustomizer.GameBridge
                 case VK_Q:
                     // Q wraps: Units → Options (leftmost → rightmost).
                     Tab = Tab == PartyTab.Units ? PartyTab.Options : (PartyTab)(Tab - 1);
+                    // Reset per-tab cursor on tab change so each tab starts at index 0.
+                    ChronicleIndex = 0;
+                    OptionsIndex = 0;
                     break;
                 case VK_E:
                     // E wraps: Options → Units (rightmost → leftmost).
                     Tab = Tab == PartyTab.Options ? PartyTab.Units : (PartyTab)(Tab + 1);
+                    ChronicleIndex = 0;
+                    OptionsIndex = 0;
                     break;
                 case VK_UP:
-                    if (CursorRow > 0) CursorRow--;
+                    if (Tab == PartyTab.Chronicle) ChronicleIndex = ChronicleUp(ChronicleIndex);
+                    else if (Tab == PartyTab.Options) OptionsIndex = OptionsIndex > 0 ? OptionsIndex - 1 : 4;
+                    else if (CursorRow > 0) CursorRow--;
                     break;
                 case VK_DOWN:
-                    if (CursorRow < GridRows - 1) CursorRow++;
-                    ClampCursorToRoster();
+                    if (Tab == PartyTab.Chronicle) ChronicleIndex = ChronicleDown(ChronicleIndex);
+                    else if (Tab == PartyTab.Options) OptionsIndex = OptionsIndex < 4 ? OptionsIndex + 1 : 0;
+                    else
+                    {
+                        if (CursorRow < GridRows - 1) CursorRow++;
+                        ClampCursorToRoster();
+                    }
                     break;
                 case VK_LEFT:
-                    if (CursorCol > 0) CursorCol--;
+                    if (Tab == PartyTab.Chronicle) ChronicleIndex = ChronicleLeft(ChronicleIndex);
+                    else if (Tab == PartyTab.Options) { /* Options list has no horizontal nav */ }
+                    else if (CursorCol > 0) CursorCol--;
                     break;
                 case VK_RIGHT:
-                    if (CursorCol < GridColumns - 1) CursorCol++;
-                    ClampCursorToRoster();
+                    if (Tab == PartyTab.Chronicle) ChronicleIndex = ChronicleRight(ChronicleIndex);
+                    else if (Tab == PartyTab.Options) { /* Options list has no horizontal nav */ }
+                    else
+                    {
+                        if (CursorCol < GridColumns - 1) CursorCol++;
+                        ClampCursorToRoster();
+                    }
                     break;
                 case VK_RETURN:
                     if (Tab == PartyTab.Units)
@@ -231,9 +305,95 @@ namespace FFTColorCustomizer.GameBridge
                             SidebarIndex = 0;
                         }
                     }
+                    else if (Tab == PartyTab.Chronicle)
+                    {
+                        CurrentScreen = ChronicleIndex switch
+                        {
+                            0 => GameScreen.ChronicleEncyclopedia,
+                            1 => GameScreen.ChronicleStateOfRealm,
+                            2 => GameScreen.ChronicleEvents,
+                            3 => GameScreen.ChronicleAuracite,
+                            4 => GameScreen.ChronicleReadingMaterials,
+                            5 => GameScreen.ChronicleCollection,
+                            6 => GameScreen.ChronicleErrands,
+                            7 => GameScreen.ChronicleStratagems,
+                            8 => GameScreen.ChronicleLessons,
+                            9 => GameScreen.ChronicleAkademicReport,
+                            _ => GameScreen.PartyMenu
+                        };
+                    }
+                    else if (Tab == PartyTab.Options && OptionsIndex == 2)
+                    {
+                        // Settings is the only Options entry that opens a nested
+                        // screen we model here. Save/Load/ReturnToTitle/ExitGame
+                        // trigger their own flows handled outside the menu tree.
+                        CurrentScreen = GameScreen.OptionsSettings;
+                    }
                     break;
             }
         }
+
+        // --- Chronicle grid navigation (3-4-3 layout, flat index 0..9) ---
+        // Layout:
+        //   row 0 (3 cols): 0 Encyclopedia      1 StateOfRealm    2 Events
+        //   row 1 (4 cols): 3 Auracite          4 Reading         5 Collection      6 Errands
+        //   row 2 (3 cols): 7 Stratagems        8 Lessons         9 AkademicReport
+        // Down-mapping confirmed live 2026-04-14:
+        //   Encyc(0)→Auracite(3), SoR(1)→Reading(4), Events(2)→Collection(5),
+        //   Auracite(3)→Stratagems(7), Reading(4)→Lessons(8), Collection(5)→Akademic(9),
+        //   Errands(6)→Akademic(9) (last col wraps left since row 2 is shorter).
+        // Up-mapping is the inverse. Left/Right within a row, no wrap.
+        private static int ChronicleDown(int idx) => idx switch
+        {
+            0 => 3, 1 => 4, 2 => 5,
+            3 => 7, 4 => 8, 5 => 9, 6 => 9,
+            _ => idx // bottom row stays
+        };
+        private static int ChronicleUp(int idx) => idx switch
+        {
+            3 => 0, 4 => 1, 5 => 2, 6 => 2, // Errands up → Events (col 2)
+            7 => 3, 8 => 4, 9 => 5,
+            _ => idx // top row stays
+        };
+        private static int ChronicleLeft(int idx) => idx switch
+        {
+            1 => 0, 2 => 1,
+            4 => 3, 5 => 4, 6 => 5,
+            8 => 7, 9 => 8,
+            _ => idx // leftmost stays
+        };
+        private static int ChronicleRight(int idx) => idx switch
+        {
+            0 => 1, 1 => 2,
+            3 => 4, 4 => 5, 5 => 6,
+            7 => 8, 8 => 9,
+            _ => idx // rightmost stays
+        };
+
+        public static string ChronicleIndexToName(int idx) => idx switch
+        {
+            0 => "Encyclopedia",
+            1 => "State of the Realm",
+            2 => "Events",
+            3 => "Auracite",
+            4 => "Reading Materials",
+            5 => "Collection",
+            6 => "Errands",
+            7 => "Stratagems for Battle",
+            8 => "Lessons in Leadership",
+            9 => "Akademic Report",
+            _ => "Unknown"
+        };
+
+        public static string OptionsIndexToName(int idx) => idx switch
+        {
+            0 => "Save",
+            1 => "Load",
+            2 => "Settings",
+            3 => "Return to Title",
+            4 => "Exit Game",
+            _ => "Unknown"
+        };
 
         private void HandleCharacterStatus(int vk)
         {
@@ -689,6 +849,26 @@ namespace FFTColorCustomizer.GameBridge
                     new() { Key = "enter", Vk = VK_RETURN, Description = "Dismiss confirmation", ResultScreen = "characterstatus" },
                     new() { Key = "escape", Vk = VK_ESCAPE, Description = "Dismiss confirmation", ResultScreen = "characterstatus" },
                 },
+                // Chronicle sub-screens: only the boundary is modelled. Inner-state
+                // navigation (Encyclopedia tabs, scrollable lists, etc.) is deferred
+                // — see TODO §10.7. Each sub-screen surfaces only Escape back.
+                GameScreen.ChronicleEncyclopedia or
+                GameScreen.ChronicleStateOfRealm or
+                GameScreen.ChronicleEvents or
+                GameScreen.ChronicleAuracite or
+                GameScreen.ChronicleReadingMaterials or
+                GameScreen.ChronicleCollection or
+                GameScreen.ChronicleErrands or
+                GameScreen.ChronicleStratagems or
+                GameScreen.ChronicleLessons or
+                GameScreen.ChronicleAkademicReport => new List<ValidAction>
+                {
+                    new() { Key = "escape", Vk = VK_ESCAPE, Description = "Back to Chronicle tab", ResultScreen = "partymenuchronicle" },
+                },
+                GameScreen.OptionsSettings => new List<ValidAction>
+                {
+                    new() { Key = "escape", Vk = VK_ESCAPE, Description = "Back to Options tab", ResultScreen = "partymenuoptions" },
+                },
                 _ => new List<ValidAction>()
             };
         }
@@ -718,6 +898,45 @@ namespace FFTColorCustomizer.GameBridge
                 actions.Add(new ValidAction { Key = "x", Vk = VK_X, Description = "Change combat sets" });
                 actions.Add(new ValidAction { Key = "t", Vk = VK_T, Description = "Sort units" });
                 actions.Add(new ValidAction { Key = "1", Vk = VK_1, Description = "Change display (toggle level/HP/etc.)" });
+            }
+            else if (Tab == PartyTab.Chronicle)
+            {
+                string highlighted = ChronicleIndexToName(ChronicleIndex);
+                string resultScreen = ChronicleIndex switch
+                {
+                    0 => "chronicleencyclopedia",
+                    1 => "chroniclestateofrealm",
+                    2 => "chronicleevents",
+                    3 => "chronicleauracite",
+                    4 => "chroniclereadingmaterials",
+                    5 => "chroniclecollection",
+                    6 => "chronicleerrands",
+                    7 => "chroniclestratagems",
+                    8 => "chroniclelessons",
+                    9 => "chronicleakademicreport",
+                    _ => "partymenuchronicle"
+                };
+                actions.Add(new ValidAction
+                {
+                    Key = "enter", Vk = VK_RETURN,
+                    Description = $"Open {highlighted}",
+                    ResultScreen = resultScreen
+                });
+            }
+            else if (Tab == PartyTab.Options)
+            {
+                string highlighted = OptionsIndexToName(OptionsIndex);
+                string? resultScreen = OptionsIndex switch
+                {
+                    2 => "optionssettings",
+                    _ => null // Save/Load/ReturnToTitle/ExitGame have their own flows
+                };
+                actions.Add(new ValidAction
+                {
+                    Key = "enter", Vk = VK_RETURN,
+                    Description = $"Confirm {highlighted}",
+                    ResultScreen = resultScreen
+                });
             }
 
             return actions;

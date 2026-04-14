@@ -49,6 +49,20 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+- [ ] **PartyMenu tab desync — multi-press jump paths race the game's tab-switch animation** (regression introduced 2026-04-14 alongside Chronicle/Options shipping).
+  - Repro: from any PartyMenu tab, run `execute_action OpenChronicle` (or any path with 2+ Q/E key presses). Live-verified: state machine reports `PartyMenuChronicle` but the game visually shows the previous tab (Inventory). Same desync for `OpenOptions`, `OpenInventory` from Chronicle/Options, etc.
+  - Root cause: the game's tab-switch animation eats the second key if pressed too fast. State machine ticks `Tab` per OnKeyPressed call (synchronous, in-process), so it advances even when the actual UI doesn't.
+  - First fix attempt: added `DelayBetweenMs = 300` on the multi-press tab paths in `NavigationPaths.cs` (OpenChronicle from Units, OpenOptions from Inventory, OpenUnits from Chronicle, OpenInventory from Options). 300ms didn't help — the game's animation may be longer, OR `WaitForScreen` short-circuits because it polls the OWN state-machine-derived screen name (which already says we arrived).
+  - Real fix likely needs ONE of:
+    1. **Bigger delay** (try 500ms, 750ms — empirical cap before tests of "feels slow"). Quick patch.
+    2. **Per-key wait-for-game-confirm** instead of one wait at the end. Path engine change. Robust but invasive.
+    3. **Find a memory address that reflects the actual rendered tab.** The 2026-04-14 hunt failed (UE4 widget churn — see `project_shop_stock_array.md`), but a fresh attempt could try the 0x141870xxx region where `shopListCursorIndex` lives — sister UI cursors might cluster there.
+    4. **Stop using path-collapsed multi-press.** Force consumers to call `NextTab` repeatedly and verify with `screen` between each — slower but provably correct.
+  - Workaround for now: use `NextTab`/`PrevTab` (single key) and call `screen` to verify. The single-press paths work; only the multi-press jumps desync.
+  - Inner Chronicle/Options nav (CursorUp/Down/Left/Right + Select) should be unaffected because each is a single key press.
+
+
+
 - [ ] **State machine drifts from reality on PartyMenu entry** [Detection] — If the mod is (re)started while the player is already on `PartyMenu` (or nested deeper), the `ScreenStateMachine.CurrentScreen` stays at its stale value (often `CharacterStatus` from a prior session) and `CommandWatcher.DetectScreen` reports the stale name because the state-machine override runs unconditionally whenever raw detection returns `PartyMenu`. Repro 2026-04-14: game in root `PartyMenu` (party=1, ui=1), `screen` reports `[CharacterStatus] ui=Equipment&Abilities`. Fixes to consider: (a) when raw detection returns `"PartyMenu"` AND the state machine is in any nested PartyMenu screen BUT has received zero key events since the last WorldMap observation, snap `CurrentScreen = PartyMenu`; (b) add a bridge action `reset_menu_state` to force `SetScreen(PartyMenu)` on demand; (c) find a raw memory signal that disambiguates root PartyMenu from CharacterStatus (the ultimate fix). Discovered while starting the roster-grid work.
 
 ---
@@ -365,23 +379,8 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
   - **Roster capacity:** show `16/50` so Claude can decide whether recruiting is viable.
   - **Screen real-estate:** match the game's own 5-wide grid so Claude's mental model aligns with what would render on screen.
 - [ ] **`PartyMenuInventory` tab** — captured 2026-04-14 (SS3). Full item catalog the player owns across all categories (weapons, shields, helms, armor, accessories, consumables). Screenshot shows Weapons tab with columns `Item Name | Equipped/Held`. Right pane shows hover'd item's full description + WP/element/range/effect. State name: `PartyMenuInventory` with `ui=<item name>`. ValidPaths: ScrollUp/Down, ChangePage (cycles sub-tabs — Weapons, Shields, Helms, etc. per the `<V> Change Page` hint in bottom right), Back (Escape → WorldMap), NextTab/PrevTab (wraps to Chronicle/Units). Multi-page: SS3 shows "1/3" indicator — state should surface current page + total pages. Memory scans needed: active inventory category, cursor row, page number.
-- [ ] **`PartyMenuChronicle` tab** — captured 2026-04-14 (SS4). 7-tile grid of lore sub-screens: `Encyclopedia`, `State of the realm`, `Events`, `Auracite`, `Reading Materials`, `Collection`, `Errands`, plus a row of "Special Lectures" at the bottom (Stratagems for Battle, Lessons in Leadership, Akademic Report). State name: `PartyMenuChronicle` with `ui=<tile name>`. Each tile opens its own sub-screen — TBD separate state machine for each:
-  - `Encyclopedia` — searchable lore entries. Defer until story progresses enough to populate.
-  - `StateOfTheRealm` — political map showing faction control. Defer.
-  - `Events` — cutscene / major-moment replay browser. Defer.
-  - `Auracite` — stone collection (?). Defer.
-  - `ReadingMaterials` — in-game books / special lectures. Links to the bottom lecture list. Defer.
-  - `Collection` — bestiary / item encyclopedia. Defer.
-  - `Errands` — completed-errand log. Different from Tavern_Errands (which is accept-errand). Defer.
-  - `SpecialLectures` row — standalone lectures. Defer.
-  ValidPaths at this tile-grid level: CursorUp/Down/Left/Right, Select (opens highlighted sub-screen), Back, NextTab/PrevTab. Detailed sub-screen states are a future task — the current priority is just getting the state name + tile cursor label right.
-- [ ] **`PartyMenuOptions` tab** — captured 2026-04-14 (SS5). Vertical list of system actions: `Save`, `Load`, `Settings`, `Return to Title Screen`, `Exit Game`. State name: `PartyMenuOptions` with `ui=<action name>`. ValidPaths: CursorUp/Down, Select, Back, NextTab/PrevTab. Each Select leads to its own flow:
-  - `Save` — save-slot picker (same shape as the Warjilis Save Game menu — deduplicate once that one's detected).
-  - `Load` — load-slot picker + overwrite confirmations.
-  - `Settings` — audio/video/input config. Low priority for Claude-playing.
-  - `Return to Title Screen` — confirmation modal, then title.
-  - `Exit Game` — confirmation modal, then quits the process.
-  Wrapping: in the options list, Up on `Save` stays (or wraps to `Exit Game`? verify live). Tab wrap (E on Options → Units) confirmed.
+- [x] **`PartyMenuChronicle` tab** — DONE 2026-04-14. State machine tracks `ChronicleIndex` (0-9 flat) over the 3-4-3 grid (Encyclopedia/StateOfRealm/Events / Auracite/Reading/Collection/Errands / Stratagems/Lessons/AkademicReport). `screen.UI` surfaces tile name (`Encyclopedia`, `Auracite`, etc.). Verified row transitions live: Encyc→Auracite, SoR→Reading, Events→Collection, Errands→Akademic (last col wraps left), Akademic→Collection (up). Memory hunt for the cursor address failed (UE4 widget heap reallocates per keypress producing false positives — same wall as PartyMenuInventory — see `project_shop_stock_array.md`). Each tile opens its own sub-screen via Enter, surfaces as `ChronicleEncyclopedia`/`ChronicleStateOfRealm`/etc. Sub-screens currently model only the boundary (Escape back) — inner-state navigation (Encyclopedia tabs, scrollable lists, etc.) is deferred to §10.7 below.
+- [x] **`PartyMenuOptions` tab** — DONE 2026-04-14. State machine tracks `OptionsIndex` (0-4 vertical, wraps both directions). `screen.UI` surfaces action name (`Save`, `Load`, `Settings`, `Return to Title`, `Exit Game`). Enter on Settings opens new `OptionsSettings` screen (boundary only). Save/Load/ReturnToTitle/ExitGame Enter actions don't open sub-screens via the state machine — those flows are handled by their own existing systems (`save`/`load` actions, title-screen/quit sequences not yet modelled).
 - [x] **`CharacterStatus` sidebar** — DONE 2026-04-14. `screen.UI` populated from `ScreenStateMachine.SidebarIndex` (now wraps both directions). Reads "Equipment & Abilities" / "Job" / "Combat Sets". No memory scan needed — sidebar is purely keyboard-driven and the state machine tracks Up/Down reliably.
 - [x] **Equipment Effects toggle (`R` key on `EquipmentAndAbilities`)** — DONE 2026-04-14. State machine tracks `EquipmentEffectsView` (toggled by `R`); CommandWatcher surfaces it as `equipmentEffectsView` boolean on the screen response. Resets when leaving the screen. Effects panel TEXT scrape (e.g. "Permanent Shell", "Immune Blindness") still TODO — needs a memory scan or widget hook. Sub-bullets below also done:
   - Default view: `ui=<highlighted item or ability name>` (current spec).
@@ -458,11 +457,31 @@ Documented 2026-04-14 after spending ~45 min trying to find the tab-index and si
 
 ---
 
+## 10.7. Chronicle Sub-Screen Inner States (P2)
+
+Outer detection of the 10 Chronicle tile screens shipped 2026-04-14 (§10.6 above). Each sub-screen surfaces only the boundary (Escape back to PartyMenu Chronicle tab). Inner-state navigation is deferred; this section enumerates what each one needs.
+
+- [ ] **`ChronicleEncyclopedia`** — 3-tab top header (Persons / Locales / Terms) + scrollable left list + right-pane description. ValidPaths needed: Q/E (cycle tabs), Up/Down (scroll list), Enter (no-op? or open detail), Escape (back). Inner state: `ui=<tab name> > <highlighted entry name>` (e.g. `Persons > Ramza Beoulve`). Needs entry text scrape from memory or widget cache.
+- [ ] **`ChronicleStateOfRealm`** — political map showing faction control. Behaviour TBD on first visit. Probably static info display.
+- [ ] **`ChronicleEvents`** — cutscene replay browser. Needs a scrollable list of unlocked events with `ui=<event title>`.
+- [ ] **`ChronicleAuracite`** — auracite stone collection. Probably grid of stones; needs cursor + `ui=<stone name>`.
+- [ ] **`ChronicleReadingMaterials`** — books + special lectures index. Likely a list with `ui=<book title>`.
+- [ ] **`ChronicleCollection`** — bestiary / item encyclopedia. Tabbed (monsters / items / arts?) — TBD on first visit.
+- [ ] **`ChronicleErrands`** — completed-errand log. Different from Tavern_Errands (which is accept-errand). List of past errands with `ui=<errand name>`.
+- [ ] **`ChronicleStratagems`** — Master Daravon's Stratagems for Battle lecture. Probably a static text reader; needs Enter/Escape boundaries only.
+- [ ] **`ChronicleLessons`** — Lessons in Leadership lecture. Same shape.
+- [ ] **`ChronicleAkademicReport`** — Akademic Report lecture. Same shape.
+- [ ] **`OptionsSettings`** — audio / video / input config. Multi-section settings menu. Low priority for Claude-playing — only matters if we want Claude to verify text speed / autosave settings.
+
+For all of these, the same memory-hunt limitation applies: UE4 widget heap reallocates per keypress, so byte-diff approaches produce false positives (verified during the §10.6 Chronicle hunt — see `project_shop_stock_array.md`). State-machine cursor tracking + drift recovery is the working pattern. Inner-text scraping (e.g. Encyclopedia entry text) needs a different approach — possibly reading from the rendered UI widget while the menu is open.
+
+---
+
 ## 11. ValidPaths — Complete Screen Coverage (P2)
 
 - [ ] Settlement menu, Outfitter, Tavern, Warriors' Guild, Poachers' Den
 - [ ] Save/Load screens
-- [ ] Chronicle tab, Achievements screen
+- [x] Chronicle tab + sub-tile detection — done 2026-04-14, see §10.6 / §10.7
 
 ---
 
