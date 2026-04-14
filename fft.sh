@@ -974,6 +974,12 @@ set_map() { fft "{\"id\":\"$(id)\",\"action\":\"set_map\",\"locationId\":$1}"; }
 # Usage: mark_blocked <gridX> <gridY>
 mark_blocked() { fft "{\"id\":\"$(id)\",\"action\":\"mark_blocked\",\"locationId\":$1,\"unitIndex\":$2}"; }
 
+# module_snap: Snapshot FFT's main module writable regions (~0x140000000 range).
+# Much cleaner signal for screen-state diffing than heap_snap — excludes UE4 heap
+# animation/rendering noise. Use when hunting for game-state discriminators.
+# Usage: module_snap <label>
+module_snap() { fft "{\"id\":\"$(id)\",\"action\":\"snapshot\",\"searchLabel\":\"$1\"}"; }
+
 # heap_snap: Take a heap memory snapshot (for diffing Move vs non-Move mode)
 # Usage: heap_snap <label>   (e.g. "before_move", "during_move")
 heap_snap() { fft "{\"id\":\"$(id)\",\"action\":\"heap_snapshot\",\"searchLabel\":\"$1\"}"; }
