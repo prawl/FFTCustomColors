@@ -27,7 +27,7 @@ namespace FFTColorCustomizer.GameBridge
             int battleTeam, int battleActed, int battleMoved,
             int encA, int encB, bool isPartySubScreen, int eventId = 0,
             int submenuFlag = 0, int menuCursor = -1, int hover = 255,
-            int locationMenuFlag = 0)
+            int locationMenuFlag = 0, int insideShopFlag = 0)
         {
             // rawLocation is the last-visited named place (village/shop/campaign ground).
             // It's STICKY — retains the last-visited location even when the player leaves.
@@ -132,6 +132,15 @@ namespace FFTColorCustomizer.GameBridge
                 // practice encA!=encB is noise, so this is a secondary signal.
                 if (atNamedLocation && encA != encB && !actedOrMoved && slot0 != 255)
                     return "EncounterDialog";
+
+                // ShopInterior: player has pressed Enter on a shop/service in LocationMenu
+                // and is now inside that shop's interior screen (Outfitter Buy/Sell/Fitting,
+                // Tavern Rumors/Errands, Warriors' Guild Recruit/Rename, Poachers' Den
+                // Process/Sell Carcasses). Signal at 0x141844DD0 — verified via module
+                // diff 2026-04-14 cycling through all 4 shop types at Dorter.
+                // screen.UI set by caller from shopTypeIndex identifies which shop.
+                if (insideShopFlag == 1 && rawLocation >= 0 && rawLocation <= 42)
+                    return "ShopInterior";
 
                 // LocationMenu: player is inside a named location's menu. Which specific
                 // shop/service is highlighted lives in screen.UI (populated by the caller
