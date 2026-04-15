@@ -3643,6 +3643,50 @@ namespace FFTColorCustomizer.Utilities
                 {
                     if (ScreenMachine != null)
                     {
+                        // Memory-backed Units-tab drift check. Discovered
+                        // 2026-04-15 by the flag-hunt agents: the byte at
+                        // 0x140D3A41E reliably reads 1 on PartyMenu Units
+                        // tab and 0 on ALL other PartyMenu tabs (verified
+                        // across multiple restart sessions and nav paths —
+                        // see tmp/flag_hunt_shared.md). This is the only
+                        // byte that survived cross-session stability
+                        // testing; 0x140900824 and 0x14090075C looked
+                        // promising in one session but drifted in another
+                        // (observed 824=6 in a state B had recorded as
+                        // 824=9, while the screenshot confirmed the same
+                        // game tab). The other three bytes are dropped
+                        // from this check — keep only the reliable one.
+                        //
+                        // We use this as a ONE-DIRECTION drift detector:
+                        // if SM thinks Tab==Units but memory says 41E==0,
+                        // SM is wrong and we move to Inventory as the
+                        // next-most-likely tab (Inventory is the most
+                        // common drift destination). Conversely, if SM
+                        // thinks Tab != Units but memory says 41E==1, we
+                        // snap back to Units. No multi-tab guessing.
+                        //
+                        // Only override when ScreenMachine says we're on
+                        // outer PartyMenu (not nested CharacterStatus /
+                        // picker / etc.) — those don't touch 41E.
+                        if (Explorer != null && ScreenMachine.CurrentScreen == GameScreen.PartyMenu)
+                        {
+                            var b41e = Explorer.ReadAbsolute((nint)0x140D3A41E, 1);
+                            if (b41e.HasValue)
+                            {
+                                int v41e = (int)b41e.Value.value;
+                                if (v41e == 1 && ScreenMachine.Tab != PartyTab.Units)
+                                {
+                                    ModLogger.Log($"[FlagCombo] Units-tab drift: SM={ScreenMachine.Tab} but 41E=1. Snapping to Units.");
+                                    ScreenMachine.SetTabFromMemory(PartyTab.Units);
+                                }
+                                else if (v41e == 0 && ScreenMachine.Tab == PartyTab.Units)
+                                {
+                                    ModLogger.Log($"[FlagCombo] Units-tab drift: SM=Units but 41E=0. Snapping to Inventory (most likely).");
+                                    ScreenMachine.SetTabFromMemory(PartyTab.Inventory);
+                                }
+                            }
+                        }
+
                         screen.Name = ScreenMachine.CurrentScreen switch
                         {
                             GameScreen.CharacterStatus => "CharacterStatus",

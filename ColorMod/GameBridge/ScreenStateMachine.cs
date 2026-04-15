@@ -41,6 +41,29 @@ namespace FFTColorCustomizer.GameBridge
         public int CursorRow { get; private set; }
         public int CursorCol { get; private set; }
         public PartyTab Tab { get; private set; } = PartyTab.Units;
+
+        /// <summary>
+        /// Memory-backed override for the PartyMenu tab. Used by
+        /// CommandWatcher when the 4-byte flag combo at 0x140D3A41E /
+        /// 0x140D3A41F / 0x140900824 / 0x14090075C disagrees with the
+        /// key-log-driven Tab value. Resolves state-machine drift caused
+        /// by swallowed tab-switch animations.
+        /// </summary>
+        public void SetTabFromMemory(PartyTab tab)
+        {
+            if (Tab == tab) return;
+            Tab = tab;
+            // Reset inner-nav indices when snapping — the game's sub-state
+            // also resets on tab change.
+            // (ChronicleIndex/OptionsIndex are owned by HandlePartyMenu and
+            // we don't want to stomp them mid-navigation, so only reset
+            // cursor row/col which are Units-only.)
+            if (tab == PartyTab.Units)
+            {
+                CursorRow = 0;
+                CursorCol = 0;
+            }
+        }
         public int SidebarIndex { get; private set; }
         public int GridColumns { get; private set; }
         public int GridRows { get; private set; }

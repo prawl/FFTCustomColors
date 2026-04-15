@@ -391,7 +391,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
   - **Confirm dialogs**: `Confirm`, `Cancel` (requires the confirm-modal scan from below)
 
 
-- [ ] **Suppress `ui=Move` outside battle** — `screen.UI` reads "Move" on WorldMap, LocationMenu, PartyMenu, etc. because the action-menu cursor stays at index 0 (which labels as "Move" per the battle menu mapping). Outside battle the label is meaningless noise. Fix: only populate `screen.UI` with the action-menu label while in `Battle_MyTurn` / `Battle_Acting`. On all other screens, either omit it or surface only context-appropriate labels (shop name on LocationMenu/SettlementMenu, etc.). Observed 2026-04-14.
 
 
 - [ ] **ui label at ShopInterior** — when hovering Buy/Sell/Fitting inside a shop without having entered, `screen.UI` should read `Buy`/`Sell`/`Fitting`. Needs a cursor-index memory scan (current shopSubMenuIndex is 0 at all three hovers). Once ui is populated, Claude can pre-check which sub-action it's about to enter.
@@ -824,6 +823,16 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 ## Completed — Archive
 
 Items that are fully shipped (checked `[x]`). Partial (`[~]`) items stay above in their original section.
+
+### Session 19 (2026-04-15) — verification + queued tasks
+
+- [x] **Suppress `ui=Move` outside battle** — VERIFIED already fixed. `CommandWatcher.cs:3328` sets `UI = null` at detector construction; `BattleMyTurn`/`BattleActing` block at 3405 is the only path that writes Move/Abilities/Wait/Status/AutoBattle labels. Non-battle screens show their own context labels (Ramza, Equipment & Abilities, etc.) or stay null. Live-verified 2026-04-15 on WorldMap, PartyMenu, CharacterStatus — no leak observed.
+
+- [x] **JP Next on CharacterStatus header** — SHIPPED commit fe8d41e. `AbilityJpCosts.cs` (13 skillsets + blanket Geomancy/Bardsong/Dance) → `RosterReader.ComputeNextJp(slotIndex, primarySkillset)` → `screen.nextJp` → fft.sh header rendering as `Next N`. 10 unit tests. Live-verify deferred: save has no unit with partially-learned priced primary skillset (all Lv99 generics + story chars on Limit/Holy Sword/etc).
+
+- [x] **Zodiac sign per unit (story chars)** — SHIPPED commit 1674bb6. `ZodiacData.cs` covers 13 story characters by nameId. Ramza and generics return null pending memory-hunt for the roster zodiac byte. Live-verified on Agrias (Cancer glyph ✓). 11 unit tests. Generic zodiac still TODO — hunted 0x00-0x100+ offsets with 4 anchor points (Agrias/Mustadio/Orlandeau/Cloud canonical values), no match found; encoding may be nibble-packed, outside the 0x258 stride, or non-standard.
+
+- [x] **Wire `SkillsetItemLookup` into scan_move ability surfacing** — SHIPPED commit 0c25e29. `AbilityEntry` gained `HeldCount`/`Unusable` fields. `ScanMove` reads inventory bytes once per scan and probes Items/Iaido/Throw for each ability. Live-verify deferred: requires a battle with a Chemist/Ninja/Samurai active.
 
 ### Session 18 (2026-04-15) — verified via audit agents
 
