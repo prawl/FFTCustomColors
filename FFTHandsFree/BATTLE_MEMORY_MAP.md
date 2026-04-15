@@ -161,6 +161,7 @@ TitleScreen = location(0x14077D208)==255
 
 **RELIABLE:**
 - `party` — 1 in party menu / status screen, 0 otherwise
+- `menuDepth` at **`0x14077CB67`** — byte, 0 on outer party-menu-tree screens (WorldMap / PartyMenu / CharacterStatus), **2** on inner panels (EquipmentAndAbilities / ability picker). Discovered 2026-04-14 session 13 via module-memory snapshot diff with oscillating UI states. Verified stable across repeated reads in every state tested (CS↔EqA↔picker). Primary use: **drift-check for the state machine** — if SM thinks we're on an inner panel but this reads 0 for N consecutive reads, snap back to CharacterStatus. Doesn't distinguish EqA from specific pickers (both read 2), nor WorldMap from PartyMenu from CharacterStatus (all three read 0); pair with `party` + `ui` for a full screen name.
 - `rawLocation` — **0-42 means AT a named location (village/shop/campaign ground), 255 means "unspecified"**. NOT "in battle" as the code comment suggests.
 - `paused` — 1=pause menu open
 - `slot0 == 0xFFFFFFFF` — fresh process, formation, some dialogue transitions

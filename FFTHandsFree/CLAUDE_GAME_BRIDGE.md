@@ -128,6 +128,31 @@ See ABILITY_IDS.md for reaction/support/movement ability hex IDs and secondary a
 
 For held keys (C+Up scanning, Ctrl fast-forward): use `SendInput` with `KEYEVENTF_SCANCODE` flag, `wScan = MapVirtualKey(vk, 0)`, `wVk = 0`. Also send via `keybd_event` and `PostMessage`. Re-assert held key before each action press.
 
+## Multi-Key Flows — ALWAYS batch, never chain
+
+**Rule:** any multi-step UI navigation that involves more than one key press MUST be packed into a single `{"keys":[...], "delayBetweenMs":220}` command. Chaining multiple `execute_action` / `enter_wait` / `esc_wait` calls back-to-back is **fundamentally racy** and will desync the state machine from the game.
+
+**Why (discovered 2026-04-14 session 13):**
+- Each bridge round-trip takes ~100-200ms. The state machine's `OnKeyPressed` fires INSTANTLY on key dispatch — it doesn't wait for the game to actually consume the key.
+- `enter_wait` / `esc_wait` short-circuit if the state machine is already in the target screen (because `waitForScreen` polls state-machine state, not game state). The key still gets sent, but no wait actually occurs.
+- When chained commands race, the state machine ends up N steps ahead of the actual game render. Subsequent reads then get "future state" and the helper makes wrong decisions.
+- The old chain-style `change_reaction_ability_to` helper drifted to the wrong screen 100% of the time under this pattern.
+
+**The fix:** one `fft` command containing the full key sequence. The C# bridge is single-threaded; it dispatches keys sequentially with the requested delay between each, so the game has time to render each step. No races.
+
+```bash
+# fft.sh helper _fire_keys pattern:
+fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":39,\"name\":\"Right\"},{\"vk\":40,\"name\":\"Down\"},{\"vk\":40,\"name\":\"Down\"},{\"vk\":13,\"name\":\"Enter\"},{\"vk\":40,\"name\":\"Down\"},{\"vk\":13,\"name\":\"Enter\"},{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":220}"
+```
+
+Pre-compute the full plan from one initial state read, fire the whole batch, then verify with one final read. Never poll mid-flow.
+
+See `fft.sh::_change_ability` / `_fire_keys` for the canonical implementation.
+
+## State-Machine Drift Recovery
+
+When the state machine diverges from game reality (e.g. an Enter that didn't actually register), `DetectScreen` can self-correct using memory-level ground-truth bytes. See `0x14077CB67 menuDepth` in BATTLE_MEMORY_MAP.md §12 — 0 on outer screens, 2 on inner panels. CommandWatcher debounces this with a 3-consecutive-read streak counter so it doesn't false-trigger in the brief render lag after a panel-opening Enter. When it fires, it calls `ScreenMachine.SetScreen(CharacterStatus)` + `MarkKeyProcessed()` to prevent cascade into other drift-recovery paths.
+
 ## Known Issues
 - Boot sequence needs 3s delays between Enter presses
 - Game window doesn't need focus — PostMessage works in background
