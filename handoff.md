@@ -1,165 +1,216 @@
-# Session Handoff — 2026-04-14 (Session 12)
+# Session Handoff — 2026-04-15 (Session 15)
 
 Delete this file after reading.
 
 ## TL;DR
 
-PartyMenu → CharacterStatus → EquipmentAndAbilities is now a **first-class decision surface** for Claude. Cursor position, three-column layout matching the in-game UI, full learned-ability lists for all four pickers, hover detail panel with descriptions and usage conditions. The entire "Claude has to memorize item stats out-of-band" problem went away.
+Sessions 14 and 15 had a clear arc: 14 set up the JobSelection cursor-resolver infrastructure; 15 used it to ship the full 17 ACs (almost). The other major win was codifying a **payload design principle** ("compact vs verbose vs nowhere") that killed at least one feature before it was started, and led to a sweep that trimmed dead/low-value items from the PartyMenu + Chronicle TODO sections.
 
-Biggest individual win: **byte 2 of the per-job roster bitfield is now fully decoded.** The `project_roster_learned_abilities.md` note from a past session flagged byte 2 as "fuzzy — possibly reaction/support/movement/mastery flags, several bits appear to always be set". It's neither fuzzy nor always-set — it's MSB-first over each job's ID-sorted passive list. Verified 100% live against Ramza's 19-reaction picker.
+13 commits this session, all on `auto-play-with-claude` (not pushed yet). Tests: **1914 passing** (was 1849, +65). Two real bugs surfaced and partially fixed; one bug was diagnosed wrong, fix shipped, then reverted same session — left a useful lesson.
 
-## Commits this session (on `auto-play-with-claude`, 5 commits, not yet pushed)
+## Commits this session (13, on `auto-play-with-claude`)
 
 ```
-0425407 EquipmentAndAbilities: hover detail panel + cursor row marker
-9f6fa7f docs: document byte-2 passive decode + per-job passive tables
-dd1eca4 PartyMenu pickers: decode all learned passives via roster byte 2
-6caa642 PartyMenu: ability pickers availableAbilities + two-column loadout view
-1a44eed PartyMenu: Chronicle/Options nav + ui=<ability> + abilities loadout
+3d8638b revert b453fb1 + gate JobSelection auto-resolver on MenuDepth==2
+b453fb1 state machine: PartyMenu cursor snaps to (0,0) on Escape from CharacterStatus  ← REVERTED
+292f9e5 TODO: trim PartyMenu + Chronicle stories per design principle
+3f3855f TODO: design principle for compact vs verbose vs nowhere
+5fdefa6 JobSelection: re-resolve cursor address on Up/Down (row-cross desync fix)
+a787103 screen: viewedUnit= on unit-scoped panels
+129f279 JobSelection: three-state cell classification (Locked / Visible / Unlocked)
+76c7d11 TODO: JobSelection cell state is Locked/Visible/Unlocked, not filter
+d442e0f TODO: JobSelection grid must filter to unlocked classes per unit  ← superseded
+777c189 JobSelection: story-character + gender-aware grid resolution
+c25f0f4 fft.sh: change_job_to <ClassName> helper
+4a0b53e bridge: resolve_job_cursor for JobSelection ui= + cursorRow/Col tracking
+2ddd879 state machine: JobSelection grid layout is 6/7/6 per row (Ramza verified)
 ```
 
-## What To Work On Next
+## What landed, in order
 
-**Top of the queue — picker cursor row tracking** (the last piece of the PartyMenu picker UX). Current state: `screen.availableAbilities` lists all 19 reactions for Ramza in canonical order with the equipped one flagged, but `ui=<highlighted>` on a picker screen doesn't update as the player scrolls — it stays pinned to whatever was equipped when the picker opened. Picker-cursor row is what's missing.
+### 1. JobSelection grid layout discovery + state machine fix (`2ddd879`)
 
-Known-difficult: the existing `memory/project_submenu_cursor.md` note says the battle-time abilities submenu cursor has no static address — we use the counter delta at `0x140C0EB20`. Same technique may apply to PartyMenu pickers OR the fresh investigation approach from this session (snap + diff on scroll) could surface a stable address that the earlier session missed.
+Live verification proved Ramza's JobSelection grid is **6/7/6 cells per row**, not the 8/6/6 the state machine assumed. Row 1 has 7 cells (Geomancer at the seventh position). The cursor byte is a **flat linear index 0..18**, NOT `row*6+col` as the earlier memory note said.
 
-**Also unblocked by this session:**
+- New `JobGridLayout.cs` — per-character class-name tables + `IndexToRowCol` / `RowColToIndex` / `GetRowWidth` / `EnumerateCells`.
+- `ScreenStateMachine.HandleJobScreen` now uses per-row widths via `JobGridLayout.GetRowWidth`. New `ClampJobColumnToRow` handles vertical transitions between rows of different widths.
+- 16 unit tests for the layout + per-row widths.
 
-1. **Picker cursor → detail in real time** — once cursor row is tracked, `screen.uiDetail` naturally updates to the hovered ability. The pipeline already exists; just needs the right row.
-2. **Full picker UX for Secondary** — currently Secondary picker only shows skillsets Ramza has learned; doesn't include Dancer/Onion Knight/etc. The bitfield bytes 0-1 decode (action abilities) already handles it at the ability level; we'd need to check whether the unit has the DC job unlocked without having learned any action abilities. Edge case, low priority.
-3. **Viewed-unit detection** — every "Ramza-only" limitation (the loadout, the ability list, the picker lists) snaps into place for any unit the instant we solve this. Attempts this session (3-way intersect on doubled brave/faith) produced a false positive we caught mid-session. Approach is still viable, just needs a tighter anchor.
+### 2. `resolve_job_cursor` heap rescan-on-entry resolver (`4a0b53e`)
 
-**Known bugs / TODOs to be aware of:**
+Mirrored `ResolvePickerCursor` for the JobSelection grid. Right/Left oscillation (matches the horizontal-first grid), 2-step delta verification, address-priority ranking. Auto-fires on first `screen` call per JobSelection visit; gated by `_jobCursorResolveAttempted` to prevent re-fire on every screen call.
 
-- **Tab-switch desync** — `OpenChronicle` / `OpenOptions` style multi-press paths still race the game's tab-switch animation. State machine ticks per-key even if the UI doesn't consume the second key. Documented in TODO §0. Worked around in practice by using `NextTab` / `PrevTab` (single key) and verifying with `screen` between.
-- **Heap-picker-list reader in `PickerListReader.cs` is dead code** — we left the file in the tree after the byte-2 decode replaced it. It's unreferenced but still compiles. Safe to delete in a cleanup pass; leaving for now so the pattern is documented in case a future session wants to revive heap scanning.
+`screen.CursorRow`, `screen.CursorCol`, `screen.UI` (hovered class name) all populate from the resolved heap byte. Visible ~1.5s cursor flash on first entry; subsequent reads are single-byte.
 
-## Session 12 Recap
+### 3. `change_job_to <ClassName>` helper (`c25f0f4`)
 
-### Major wins
+The "final deliverable" from session 14's AC list. Routes through JobSelection grid → JobActionMenu → JobChangeConfirmation → Confirm → dialog dismiss. Uses the resolved cursor position (from #2) so the walk starts from the unit's actual current job, not (0,0). Coordinates hardcoded for the Ramza 6/7/6 layout. Live-verified Ramza round-trip Gallant Knight ↔ Chemist ↔ Monk.
 
-1. **Full PartyMenu tree navigation shipped.** Chronicle (10 sub-screens via 3-4-3 grid nav) + Options (5-item vertical list) detected with `ui=<tile name>` on root and state-machine tracking through every transition. Tests cover every grid edge (Encyc→Auracite, Events→Collection, Errands→Akademic wrap, Akademic→Collection up, etc.).
+Landing screen after a successful change is usually `EquipmentAndAbilities` (the game auto-opens it post-change so you can re-equip), sometimes `CharacterStatus` if no gear conflicts. Helper accepts both.
 
-2. **EquipmentAndAbilities first-class.** Every cursor position surfaces:
-   - `ui=<item or ability name>` — e.g. `ui=Ragnarok`, `ui=Magick Defense Boost` (with spaces preserved — fft.sh fix to not strip them)
-   - `screen.loadout` — 6 equipment slots (unit name + R Hand / L Hand / Shield / Helm / Chest / Accessory)
-   - `screen.abilities` — Primary/Secondary/Reaction/Support/Movement
-   - `screen.uiDetail` — name, type, source job, WP/evade/range/HP/MP/pev/mev, description, usageCondition (auto-extracted from the tail of ability descriptions that contain "Usage condition:")
-   - `screen.cursorRow` / `screen.cursorCol` — authoritative cursor location
-   - Header line with name / job / level / JP matching the game's info bar
+### 4. Story-character + gender-aware grid resolution (`777c189`)
 
-3. **Three-column layout in `screen` output** matching the game's UI:
-   ```
-   Ramza  Gallant Knight  Lv 99  JP 9999:
-                  Equipment                                 Abilities                           Detail
-                  R Hand: Ragnarok                          Primary:    Mettle                  Parry (Reaction)
-                  Shield: Escutcheon (strong)               Secondary:  Items                     from Knight
-                  Helm:   Grand Helm             cursor --> Reaction:   Parry                     Block physical attacks with the
-                  Chest:  Maximillian                       Support:    Magick Defense Boost      equipped weapon.
-                  Access: Bracer                            Movement:   Movement +3
-   ```
-   `cursor -->` lives in one of two gutters (left of Equipment column when col=0, left of Abilities column when col=1) so it visually points at the right column. Detail wraps at 40 chars.
+User correction: every story character has their own unique class at (0,0), not Squire. Agrias → Holy Knight, Mustadio → Machinist, Orlandeau → Thunder God, etc. Generics get Squire. Refactored `JobGridLayout`:
 
-4. **All four ability pickers working.** SecondaryAbilities, ReactionAbilities, SupportAbilities, MovementAbilities each surface `screen.availableAbilities` with every ability the unit has learned in canonical order. For Ramza: 15+ unlocked skillsets (Secondary), 19 reactions, 23 supports, 12 movements. Currently-equipped ability is flagged via `isEquipped:true`. Secondary puts the equipped skillset FIRST (matches game's default cursor); passive pickers keep canonical ID-sorted order with the equipped entry marked in place.
+- New `StoryCharacterUniqueClass` map (13 entries: Ramza, Agrias, Mustadio, Rapha, Marach, Beowulf, Construct 8, Orlandeau, Meliadoul, Reis, Cloud, Luso, Balthier).
+- New `JobGridLayout.ForUnit(unitName, isFemale)` builds a per-unit layout by patching (0,0) and (2,4) on a shared template.
+- Gender derived from generic job ID parity (odd=male, even=female).
+- `CommandWatcher` now passes the viewed unit's name + jobId into `ForUnit`.
 
-5. **🔑 Byte 2 of the roster bitfield DECODED.** Per-job at `+0x32 + jobIdx*3 + 2`. MSB-first over each job's ID-sorted passive list. Full per-job lists documented in `ABILITY_IDS.md` "Per-Job Passive Ability Order" and coded in `RosterReader.ReadLearnedPassives`. Verified 100% on Ramza: all 19 reactions he sees in-game decode cleanly from the bitfield. This closes out a "still fuzzy" note that was hanging in memory for multiple sessions.
+Live-verified Agrias's JobSelection shows `ui=Holy Knight`.
 
-6. **Bonus during investigation:** decoded the `0x5D9B52C0` global master-item list (228 purchasable items). Proved it's a GAME-WIDE list, not per-shop — after traveling to a different town it read identical bytes. Saved to `memory/project_shop_stock_array.md` in case it's useful for a future shop-stock pass.
+### 5. `screen.viewedUnit` on unit-scoped panels (`a787103`)
 
-### State machine additions
+Added a JSON field + compact one-liner marker identifying whose nested panel is currently shown. Populated on CharacterStatus, EquipmentAndAbilities, JobSelection, all four ability pickers, all five equippable pickers, JobActionMenu, JobChangeConfirmation, CombatSets, CharacterDialog, DismissUnit. Omitted on PartyMenu (cursor moves are ABOUT-to-view, different concept) and on screens unrelated to a single unit.
 
-| Field | Type | Set by | Read by |
-|---|---|---|---|
-| `ChronicleIndex` | int (0-9) | Q/E tab switch resets; Up/Down/Left/Right via ChronicleUp/Down/Left/Right helpers | `screen.UI` on PartyMenuChronicle |
-| `OptionsIndex` | int (0-4) | Up/Down wraps both directions | `screen.UI` on PartyMenuOptions |
-| 10 new `GameScreen` enum values | — | Enter on ChronicleIndex cases | drift recovery + detector |
-| `OptionsSettings` | `GameScreen` | Enter on Options idx=2 | (boundary only) |
+```
+[JobSelection] viewedUnit=Agrias ui=Holy Knight loc=6(MagickCityofGariland) status=completed
+```
 
-### Memory addresses decoded this session
+### 6. JobSelection row-cross desync fix (`5fdefa6`)
 
-| Address | Stride | Purpose | Status |
-|---|---|---|---|
-| Roster `+0x32+jobIdx*3+2` | 1 byte per job | Learned passive bitfield (reaction + support + movement mixed, MSB-first over ID-sorted passive list) | **NEW: fully decoded** |
-| `0x5D9B52C0` | u8, ~228 bytes | Global purchasable-item master list | Confirmed global, not per-shop |
-| `0x1187E3124` | u32 | Tried at first as Try-then-Buy item ID | **False positive** — byte didn't re-track on follow-up |
-| `0x7DB0xxxx` region | — | Shop widget cache with 24-byte records | Confirmed as render-time UI cache, shared refresh tags, not master storage |
+The JobSelection widget heap reallocates per row cross — confirmed live: a resolved address `0x11EC34D3C` shuffled to `0x1370CF4A0` after a single Down. Fix: `InvalidateJobCursorOnRowCross` clears `_resolvedJobCursorAddr` + `_jobCursorResolveAttempted` whenever Up/Down fires while on JobScreen, forcing re-resolve on the next screen call. Horizontal movement is unaffected.
 
-### New files this session
+### 7. Three-state cell classification (`129f279`)
 
-| File | Purpose |
-|------|---------|
-| `ColorMod/GameBridge/PickerListReader.cs` | Heap AoB scanner for the picker widget's master list. **Dead code** after byte-2 decode — kept for pattern reference. Safe to delete. |
+User insight: every grid cell is physically rendered, but state varies per (unit, class):
+- **Locked** — no party member has this class. Shadow silhouette, no info.
+- **Visible** — someone has it but viewed unit doesn't. Normal cell, change refused.
+- **Unlocked** — viewed unit can change to it.
 
-### Files changed this session
+Proxy: a class is "unlocked for a unit" if that unit has any action-ability bit set in the corresponding job's learned bitfield (+0x32+jobIdx*3 bytes 0-1). Party-wide unlock = union across all roster slots. Squire/Chemist/own story class are always Unlocked. Mime is hardcoded Locked under the proxy (its bitfield is empty in this remaster).
 
-| File | Summary |
-|---|---|
-| `ColorMod/GameBridge/ScreenStateMachine.cs` | Chronicle 3-4-3 grid nav (ChronicleIndex), Options vertical list (OptionsIndex), tab-change resets, Up/Down/Left/Right handlers with explicit row-transition maps |
-| `ColorMod/GameBridge/ScreenStateModels.cs` | 10 new Chronicle screens + OptionsSettings in `GameScreen` enum |
-| `ColorMod/GameBridge/NavigationPaths.cs` | Chronicle/Options paths + DelayBetweenMs=300 on multi-press tab jumps (partial fix for race) |
-| `ColorMod/GameBridge/RosterReader.cs` | `ReadEquippedAbilities` (Primary/Secondary/Reaction/Support/Movement from roster +0x07..+0x0D), `ReadUnlockedSkillsets` (20-job bitfield → unlocked skillsets), `ReadLearnedPassives` (byte-2 decode across all 20 jobs) |
-| `ColorMod/Utilities/CommandBridgeModels.cs` | `Loadout`, `AbilityLoadoutPayload`, `AvailableAbility`, `UiDetail` types. New fields on `DetectedScreen`: `loadout`, `abilities`, `availableAbilities`, `uiDetail`, `cursorRow`, `cursorCol` |
-| `ColorMod/Utilities/CommandWatcher.cs` | EquipmentAndAbilities screen population (loadout, abilities, ui= cursor resolve, uiDetail, cursor pos), picker screen population (availableAbilities + picker uiDetail), `BuildUiDetail` helper, `SplitUsageCondition` helper, `PrettyItemType` helper, `SkillsetOwnerJob` helper. Drift recovery + nested-screen detector expanded to include Chronicle/Options screens. |
-| `Tests/GameBridge/ScreenStateMachineTests.cs` | 13 new tests for Chronicle 3-4-3 nav, Options vertical list, index-to-name mappings |
-| `fft.sh` | Three-column EquipmentAndAbilities layout, `cursor -->` gutter marker, detail panel with 40-char wrap, `ui` label parse via node (to preserve spaces), abilities summary line, new compact/verbose equipment labels (Right Hand / Left Hand / Shield / Helm / Chest / Accessory) |
-| `FFTHandsFree/TODO.md` | §0 new urgent-bug entry (tab desync). §10.6 Chronicle/Options marked DONE. §10.7 NEW ("Chronicle Sub-Screen Inner States"). "Ability list with learned/unlearned" marked DONE. |
-| `FFTHandsFree/ABILITY_IDS.md` | New "Per-Job Passive Ability Order" table (19 jobs, ~78 passive IDs total) |
-| `FFTHandsFree/UNIT_DATA_STRUCTURE.md` | Roster offset table extended with +0x32+jobIdx*3 learned bitfield and +0x80 currentJobJp |
+`screen.jobCellState`, `ui=` reflects state, `change_job_to` refuses cleanly on Locked/Visible. Verified live on Agrias: Holy Knight=Unlocked, Chemist=Unlocked, Dragoon=Visible (Ramza has Jump bit set; Agrias doesn't).
 
-### Memory notes added/updated
+### 8. Design principle for compact vs verbose vs nowhere (`3f3855f`)
 
-- `memory/project_roster_learned_abilities.md` — byte 2 fully decoded, experiments section added
-- `memory/project_shop_stock_array.md` — master item list confirmed global, false-positive documented
-- `memory/project_viewed_unit_tracking.md` — NEW, documents why state-machine cycling (not heap AoB) is the right fix for PartyMenu viewed-unit tracking
-- `memory/project_inventory_widget_buffer.md` — NEW, inventory widget cache at 0x7DB0xxxx decoded (24-byte records, shared refresh tags, not master store)
-- `MEMORY.md` — three new index entries
+After play-testing showed Claude greps past dense compact responses, codified when a payload field earns its spot:
 
-### Things that DIDN'T work (don't repeat)
+1. Would a human consult this on this screen?
+2. Does Claude need it to act HERE, or could they navigate to it?
+3. Would not having it cause a worse decision OR wasted round-trips?
 
-- **Heap AoB for viewed-unit cursor** — three diff attempts this session, all dead-ends. UE4 widget churn defeats byte-diff. See `project_viewed_unit_tracking.md`.
-- **Heap AoB for player inventory** — fourth attempt across multiple sessions. Persistent inventory is behind UE4 pointer chains. See `project_inventory_widget_buffer.md`.
-- **Heap AoB for picker cursor row** — ran into the same wall. But we escaped via `RosterReader.ReadLearnedPassives` which uses static roster data, zero heap scan.
-- **Heap AoB for Try-then-Buy item ID** — `0x1187E3124` false positive. Even 3-way intersects can mislead when heap churn provides enough random candidates.
+Plus a **noise penalty** — every compact field hurts the findability of others. Prefer decision aids (`jobCellState: "Visible"`) over data dumps (19 cells of raw JP).
 
-### Environment gotchas
+Heuristic: every-turn signals → compact. Planning data → verbose JSON. Mirrors-what-hovering-shows → nowhere.
 
-- **fft.sh `$R` variable strips whitespace** (`tr -d '\r\n '`) before grep parsing, which smashed "Magick Defense Boost" into "MagickDefenseBoost" in `ui=`. Fixed by reading the `ui` field via `node` from the unstripped file. Watch for other grep-derived fields that might have the same issue.
-- **`cursor -->` with em-dashes and backticks in node `-e "..."` comments** broke bash parsing — had to use plain quotes in JS comments. Don't use backticks inside double-quoted heredoc-style bash blocks.
-- **Game UI tab animations take ~300ms**. Multi-key paths that press Q/E more than once need `DelayBetweenMs >= 300`, or they race the animation and the game eats the second key. Even with delays, the state machine still desyncs when the game doesn't advance — real fix is per-key wait-for-confirmation, documented in TODO §0.
+Application killed AC5 (per-class Lv/JP grid) before any code was written.
 
-## Quick Start Next Session
+### 9. PartyMenu/Chronicle TODO trim (`292f9e5`)
+
+Swept §10.6 / §10.7 against the new principle. Dropped: element resistance grid, equipment stat aggregates, FocusEquipmentColumn / FocusAbilitiesColumn validPaths, redundant Equippable_* arrow keys, ALL §10.7 Chronicle inner states (lore content, no decision flow needs it). Marked Full Roster Grid + JobSelection ValidPaths as DONE (already shipped, stale wording). Scoped Full Stat Panel as verbose-only.
+
+### 10. JobSelection auto-resolver MenuDepth gate + cursor-snap revert (`3d8638b`)
+
+Two things bundled:
+
+**Resolver gate (kept):** the JobSelection auto-resolver fires 6 raw Right/Left keys to oscillate-find the cursor byte. If the state machine flips to JobScreen synchronously on Enter but the game is still mid-transition (~50-200ms open animation), those raw keys hit the OUTER PartyMenu cursor instead. Gate the trigger on `screen.MenuDepth == 2` (memory-confirmed inner panel render). Live-verified: clean batched nav now lands cleanly.
+
+**b453fb1 revert:** I had committed a fix snapping PartyMenu cursor to (0,0) on Escape from CharacterStatus, based on a single screenshot taken on a fresh restart. Live testing with a non-default cursor position proved the game **preserves** the entry cursor (viewing Orlandeau → Escape → cursor still on Orlandeau). Reverted; restored `_savedPartyRow/Col` restoration logic. Lesson learned: test cursor-preservation behavior with the cursor at a NON-(0,0) position before claiming the game's behavior.
+
+## Decision-design principle (worth knowing before adding payload)
+
+Codified in TODO.md. Quick rule before adding a new field anywhere on `screen`:
+
+> Write one sentence answering "what decision changes if Claude has this?" If you can't, drop it. If the answer is "Claude could plan a turn ahead," verbose. If it's "Claude needs this to pick the next action," compact. If it's "it's nice to have," nowhere.
+
+This rule killed AC5 (per-class Lv/JP) and several PartyMenu data-dump items.
+
+## What's next (priority order)
+
+### 1. PartyMenu cursor state-machine drift (open, partially mitigated)
+
+The remaining bug from this session. Repro: after a sequence of nested-screen visits, state machine's `CursorRow/Col` on PartyMenu can disagree with the in-game cursor (state says Ramza (0,0), game shows Orlandeau (2,0)). The MenuDepth gate (#10 above) eliminated one race. The other remaining race is harder — likely batched commands eating keys during transitions OR resolver bursts that drift the OUTER cursor before they return to focus.
+
+**Best fix candidate:** read the actual PartyMenu cursor byte from memory. Same heap-oscillation technique used for JobSelection. Steps:
+1. Write `ResolvePartyMenuCursor` mirroring `ResolveJobCursor` but with Right/Left + cursor wraps to handle the 5-col grid.
+2. Auto-trigger on entry to PartyMenu (gate on the appropriate menu-depth signal).
+3. Invalidate cache on every cursor key (Up/Down/Left/Right) — the widget probably reallocates per move, just like JobSelection.
+4. Replace state-machine CursorRow/Col reads with the resolved memory value when available.
+
+This is the biggest leverage left — it would make `viewedUnit`, `change_job_to`, all picker helpers, and the entire nested PartyMenu tree trustworthy under any nav pattern.
+
+### 2. JobSelection unlock-requirements text scrape (Visible cells)
+
+When a cell is Visible, the game's info panel shows the unlock requirements (e.g. "Squire Lv. 2, Chemist Lv. 3"). We don't surface that today. Two paths:
+- **Easy:** hard-code a `JobPrereqs` map (~20 entries) in `CharacterData.cs` and synthesize the requirement text. Risk: WotL prereqs may differ from canonical FFT.
+- **Hard:** memory-scan for the widget text (UE4 heap, painful).
+
+(a) is the path of least resistance. Surface as `screen.jobUnlockRequirements` when `jobCellState == "Visible"`.
+
+### 3. Verify Locked-state behavior live (deferred, blocked on save state)
+
+Current save has at least one master unit, so no cell renders as a shadow silhouette for any other unit. Need a fresh-game save (or temporarily dismiss all units except one under-leveled generic) to verify the Locked branch end-to-end. Logic is shipped; verification deferred.
+
+### 4. Verify generic male/female grids live
+
+`JobGridLayout.ForUnit` assumes Squire at (0,0), Bard (male) / Dancer (female) at (2,4) for generics. Inferred from Ramza's grid + standard FFT layout. Verify on a generic when one is recruited.
+
+### 5. PartyMenu tab multi-press desync (§0 TODO, ongoing)
+
+Pre-existing. `OpenChronicle` from Units etc. fires Q/E twice and races the tab-switch animation. Documented since session 13. Workaround: use single-press `NextTab` / `PrevTab`. Real fix needs either a memory-confirmed tab signal or per-key wait-for-game.
+
+### 6. `Next: N` JP-to-next-ability on EquipmentAndAbilities header (§0 TODO, ongoing)
+
+Pre-existing. The game's header shows `Lv. N | Next: N | JP N` for the unit's current job. We surface Lv and JP but omit Next. Compute from the learned-action-abilities bitfield + ability JP costs.
+
+### 7. Equipment-helper expansion in fft.sh
+
+`change_helm_to`, `change_garb_to`, `change_accessory_to`, etc. — stubbed pending an inventory reader. Inventory list isn't yet decoded from memory.
+
+## Memory notes saved this session
+
+- **`project_job_grid_cursor.md`** — updated with verified 6/7/6 layout, flat-linear-index formula, resolver design notes, and the row-cross desync fix.
+
+(One file; the rest of the heap-cursor learnings are now codified in code + the TODO.)
+
+## Things that DIDN'T work (avoid repeating)
+
+- **Snap-to-(0,0) on Escape from CharacterStatus.** I committed b453fb1 thinking the game resets the PartyMenu cursor on Escape. It doesn't — it preserves the entry position. The misdiagnosis came from testing with the cursor already at (0,0). Reverted in the same session. **Always test cursor-preservation behavior with a NON-default cursor position before claiming "the game does X."**
+- **Reading Lv + JP for all 19 grid cells.** Started exploring this for AC5; the design principle review killed it. Hovering shows the value; pre-populating doesn't change a decision.
+- **Equipping the wrong unit via `change_job_to` after stale state.** When state machine and game cursor disagree on PartyMenu, every downstream helper acts on the wrong unit. Fix is the PartyMenu cursor read above.
+- **Trying to rebuild the resolver on every screen call when it fails.** The first version of `ResolveJobCursor` would re-fire its 6-key oscillation every time `_resolvedJobCursorAddr` was 0 — including when the resolver legitimately failed to find a candidate. Burned ~1.5s per `screen` call. Fix: separate `_jobCursorResolveAttempted` flag that doesn't reset on failure (only on screen exit).
+
+## Environment gotchas (carried forward)
+
+- **Heap snapshots are ~200MB each.** Three of them per resolver run = ~600MB churn. Fine for our pattern (once per JobSelection entry); painful in a tight loop.
+- **`_inputSimulator.SendKeyPressToWindow` bypasses the state machine.** Resolver uses raw sends so the state machine doesn't double-tick on its dummy keys. **Important:** this is also why resolver bursts can drift the OUTER cursor when fired during a transition window — state machine doesn't know those keys happened, but the game does. The MenuDepth==2 gate is the current mitigation.
+- **JobSelection cursor cache shuffles per ROW CROSS, not per session entry.** Up/Down forces re-resolve. Left/Right keeps the cache valid.
+- **`_jobCursorResolveAttempted` flag must be cleared on screen exit AND on every Up/Down.** Both clears are needed.
+- **`StoryCharacterUniqueClass` map is the source of truth for "what class is at (0,0) for this unit."** When a new story character becomes recruitable, add them.
+
+## Quick start next session
 
 ```bash
-# Catch up
-git log --oneline -10       # 5 new session-12 commits on top of 46bf727
-cat FFTHandsFree/TODO.md    # §10.6 / §10.7 for PartyMenu status, §0 for tab desync
-
 # Baseline
-./RunTests.sh               # 1833 passing
+./RunTests.sh                # 1914 passing
 
-# Live smoke test
+# Live smoke — JobSelection + viewedUnit + cell state
 source ./fft.sh
-boot                        # or `restart` if game state suspect
-esc                         # → PartyMenu
-screen                      # 16/50 units
-execute_action SelectUnit   # → CharacterStatus on Ramza
-enter                       # → EquipmentAndAbilities — should show three columns with cursor --> on R Hand
+boot
+esc                          # → PartyMenu (cursor on Ramza)
+fft '{"id":"r","keys":[{"vk":13,"name":"enter"},{"vk":40,"name":"down"},{"vk":13,"name":"enter"}],"delayBetweenMs":500}'
+                             # → JobSelection for Ramza
+screen                       # first call — triggers auto-resolve (~1.5s flash)
+                             # second call — ui=Gallant Knight, cursorRow=0, cursorCol=0,
+                             # jobCellState=Unlocked, viewedUnit=Ramza
 
-# Try the pickers
-execute_action CursorRight  # to Abilities column
-execute_action CursorDown; execute_action CursorDown   # to Parry (Reaction slot)
-enter                       # → ReactionAbilities, lists 19 learned reactions with Parry [equipped]
-esc; esc; esc               # back out
-
-# If cursor-row picker work resumes, the recommended first test:
-#   snap while on ReactionAbilities picker, scroll once, snap, diff.
-#   Look for a byte that went N → N+1. Compare to battle-side counter
-#   at 0x140C0EB20 — same technique may apply here.
+# Live smoke — change_job_to
+change_job_to Chemist        # Ramza → Chemist (verified live this session)
 ```
 
-## One More Thing
+## Three principles to internalize before working on this codebase
 
-This session closed out a year-long-feeling puzzle (byte 2) with 10 minutes of careful bitfield analysis. The approach: collect one complete known-set (Ramza's 19 reactions from the picker), pull the 60 bytes of bitfield data (20 jobs × 3 bytes), then brute-force the decoding rule. First pass (by-type ordering) failed on Bard — Ramza had Movement+3 but the decoded bit said Fly. Second pass (by-ID ordering) matched 100%.
+1. **The CommandWatcher is now ~3800 lines and is officially a god class.** `DetectScreen` alone is ~700 lines. Refactoring into per-screen detector classes is overdue but high-churn. Don't propose it without budget.
 
-Lesson: when a byte's pattern "feels fuzzy", try structural hypotheses (order by type, order by ID, order by learn-cost, etc.) systematically against a known-good ground truth. Don't assume it's context-dependent until you've ruled out structural ordering.
+2. **Test cursor / state behavior with NON-default values before claiming "the game does X."** The b453fb1 misdiagnosis is the clearest example.
+
+3. **Every payload field has to earn its spot** (§principle in TODO.md). If you can't write a one-sentence "what decision changes if Claude has this," drop it.
+
+## Two more things
+
+The session shipped against a clear backlog (the 17 JobSelection ACs from session 14's handoff). Looking back, ~14 of those 17 are now done or correctly punted. The remaining 3 are AC12 (Job detail payload), AC13-17 (LearnAbilities sub-screen). AC12 was scoped to nothing (job descriptions can be hard-coded if needed). AC13-17 hasn't been touched and needs its own pass through the design principle before starting.
+
+The CommandWatcher god-class problem is going to bite eventually. Next person who has to add a new screen to `DetectScreen` should consider extracting at least the JobSelection block (~80 lines) into its own detector class as a proof-of-pattern. That gives a reference others can follow incrementally.
+
+Good session. Cell-state classification + viewedUnit + change_job_to are the user-visible wins; the design principle codification + TODO trim are the longer-term wins.
