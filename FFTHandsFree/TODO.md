@@ -60,12 +60,8 @@ This rule killed AC5 (per-class Lv/JP on JobSelection grid) — Claude doesn't n
 ---
 
 ## Status Key
-- [ ] Not started
-
-
-- [~] Partially done
-
-
+- [ ] Not started — atomic task, split larger items into smaller ones
+- [x] Done (archived at bottom)
 
 ---
 
@@ -97,36 +93,25 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 
 
-- [ ] **State machine sticks on PartyMenu after returning to WorldMap — reproduced LIVE 2026-04-15 session 16.** Sequence: from EquippableWeapons, sent Escape 5 times. State-machine progressed `EquippableWeapons → EquipmentAndAbilities → CharacterStatus → PartyMenu → TravelList → PartyMenu` (wrong — last Escape from TravelList should land WorldMap; instead state machine bounced back into PartyMenu). User confirmed they were on WorldMap visually, but `screen` continued to report `[PartyMenu] ui=Ramza` even after a forced `report_state` re-detect. Implication: the WorldMap detection rule isn't firing OR is preempted by something carrying the PartyMenu name forward. Worth checking ScreenDetectionLogic for a stale `party==1` byte that doesn't clear on the WorldMap return, and the TravelList→WorldMap transition in ScreenStateMachine. Manual recovery: restart the game.
-  - **2026-04-15 session 16 attempted fix — REVERTED.** Tried adding a "symmetric drift" check in `CommandWatcher.cs`: if raw detection said WorldMap/TravelList AND state machine said any party-tree screen → snap state machine to WorldMap. Live test proved this stomps every legitimate nested-panel visit, because the raw rule `party=0 && ui=1 → TravelList` ALSO matches EquipmentAndAbilities (the inner panel sets ui=1 too). Reverted the symmetric fix; left an inline `[Note ...]` block in `CommandWatcher.cs` documenting why the easy answer doesn't work. Real fix needs either (a) a more specific "outer party menu vs nested" raw signal — `MenuDepth==0 && party==0` would distinguish WorldMap-with-residual-party-byte from EqA, OR (b) trust the state-machine transition history and only snap when SM actually transitioned through PartyMenu→WorldMap path (not when it's mid-nested). The override block at line ~3481 already handles one direction (raw=PartyMenu, SM=nested → keep SM); the other direction (raw=WorldMap stale, SM=PartyMenu) needs the same care.
+- [ ] **PartyMenu state-machine drift cluster — consolidated 2026-04-15.** Two related drift classes blocking PartyMenu reliability:
+
+  **(a) Screen identity drift** — state machine reports `PartyMenu`/`PartyMenuInventory`/etc while game is actually on a different screen. Most severe case: "state sticks on PartyMenu after returning to WorldMap" (session 16 repro — 5 Escapes from EquippableWeapons, SM said PartyMenu, game on WorldMap). Root cause: WorldMap detection rule is preempted by stale `party==1` byte. First symmetric fix (CommandWatcher.cs) stomped legit nested visits because `party=0 && ui=1 → TravelList` also matches EquipmentAndAbilities. Needs either (i) a MenuDepth==0 + party==0 outer-only signal, or (ii) a new reliable screen-identity byte (see the session 18+ PartyMenu flag hunt).
+
+  **(b) Cursor row/col drift** — `_savedPartyRow/Col` carries stale values across tab switches / multi-step nav. Session 16 clean repro: `OpenUnits → SelectUnit` reported `ui=Orlandeau` and drilled into Orlandeau's stats while game actually opened Ramza's. Quick mitigation: reset CursorRow/Col to 0 on any Q/E tab-switch that lands on Units (currently only Chronicle/Options indexes get reset). Real fix: read cursor from memory.
+
+  **Row-byte hunt — groundwork landed, 6 candidates not fully verified.** `ResolvePartyMenuCursor` oscillation resolver shipped but heap does NOT store a flat-linear `row*5+col` index — all 17 column-survivors failed `+5-on-Down` verify. Hypothesis: row + col are separate bytes. `ScreenStateMachine.SetPartyMenuCursor(row,col)` API ready (3 unit tests); `resolve_party_menu_cursor` strict-mode action exists; invalidation hooks in place. Session 18 found 6 candidate row bytes via snapshot diff (`0x1407AC7CD, 0x1407AC7D1, 0x1418708CB, 0x1437436BD, 0x1437436C1, 0x14374377B`) — first one failed wrap test, other 5 UNTESTED. **Next-session plan:** 3-snapshot multi-step filter (r0 → r1 → r2), verify bytes that show exactly 0/1/2. See `project_partymenu_row_byte_hunt.md`.
 
 
 
-- [ ] **PartyMenu cursor state-machine drift — reproduced LIVE 2026-04-15 session 16 (cleanest repro yet).** Sequence: from PartyMenuInventory (cursor had never been moved on Units tab since the Inventory-resolver auto-triggered in this session), ran `execute_action OpenUnits` → one `execute_action SelectUnit`. State reported `ui=Orlandeau` (row 2 col 0) and state-machine transitioned to `CharacterStatus viewedUnit=Orlandeau`. **Game was actually on Ramza (0,0) and opened Ramza's CharacterStatus.** Implication: the OpenUnits Q-press path left the state machine believing the Units-tab cursor was at `(2,0)` even though the game had (0,0). Earlier in the session the `ResolvePartyMenuCursor` auto-trigger had fired on the Inventory tab with the real grid cursor at (0,0); when we returned to Units, the state machine's `_savedPartyRow/_savedPartyCol` carried over a stale value from some earlier navigation chain. Screenshot-validated: game showed Ramza's stats panel, our header said Orlandeau.
-  - This is distinct from the pre-existing entry below: here the drift manifested **on entry to CharacterStatus** (the `viewedUnit` field was wrong, pointing to the wrong grid index), not just on PartyMenu itself. Fix candidates overlap — need the actual cursor from memory (row byte hunt still open) or reset state-machine cursor on every tab switch back to Units.
-  - Quickest safe mitigation: on any Q/E tab switch that lands on Units, reset `CursorRow = CursorCol = 0` in `ScreenStateMachine.HandlePartyMenu`. Currently only `ChronicleIndex`/`OptionsIndex` get reset on tab changes; Units-tab cursor is preserved across tab switches, which causes the drift when the state-machine cursor disagrees with whatever position the game landed on.
+- [ ] **JobSelection: live-verify Locked-state branch** — current save has a master unit so no cell renders as shadow silhouette. Need a fresh-game save (or temp dismiss-all-but-one) to verify the Locked branch end-to-end. Three-state classification itself shipped (commit 129f279).
 
+- [ ] **JobSelection: swap Mime hardcoded-Locked for real prereq check** — Mime's learned-ability bitfield is empty in this remaster so the party-skillset-union proxy fails. Currently hardcoded as Locked. Swap to prerequisite check once real prereq data lands.
 
+- [ ] **JobSelection: unlock-requirements text on Visible cells** — surface `screen.jobUnlockRequirements` (e.g. "Squire Lv. 2, Chemist Lv. 3") when `jobCellState == "Visible"`. Path of least resistance: hard-code `JobPrereqs` map (~20 entries) in `CharacterData.cs` and synthesize the text. (Alternative: memory scan for the widget text — UE4 heap, hard.)
 
-- [ ] **PartyMenu cursor state-machine drift surfaces after multi-step nav** — observed 2026-04-15 session 15. Repro: after a sequence of nested-screen visits, the state machine's `CursorRow/Col` on PartyMenu can disagree with the in-game cursor. Example: state says cursor on Ramza (0,0), screenshot shows cursor on Orlandeau (2,0). The game preserves the entry position on Escape (verified live by viewing Orlandeau's CharacterStatus → Escape → cursor still on Orlandeau), so `_savedPartyRow/Col` restoration is correct in principle. The drift comes from earlier in the chain — specifically when batched commands arrive while the game is mid-transition (Esc-to-PartyMenu animation eats a key, or the resolver fires raw keys that move the OUTER cursor before it returns to focus). Tried snapping to (0,0) on Escape (b453fb1) but that was a misdiagnosis — reverted in the next commit. Real fix candidates: (a) read the actual PartyMenu cursor from memory (UE4 widget heap — same kind of byte we hunt for JobSelection); (b) make the state machine survive resolver-burst keys by ignoring them in the OnKeyPressed path (resolver could mark its keys as "internal"); (c) gate batched commands on a stable-screen confirmation between key presses (slow). (a) is the most accurate; (b) is the smallest behavior change.
-  - **ATTEMPTED 2026-04-15 session 16 — PARTIAL GROUNDWORK, fix did NOT land.** Built `ResolvePartyMenuCursor` heap rescan-on-entry mirroring the session-15 JobSelection resolver (oscillation + two-step verify + screenshot-style auto-gating on MenuDepth==0). Live verification with cursor at (1,2) Marach exposed the core design flaw: **the heap does NOT store a flat-linear `row*5+col` index**. All 17 column-oscillation survivors failed a `+5-on-Down` axis verify — meaning every candidate tracks column only, not a flat grid index. Hypothesis: grid cursor is stored as two separate bytes (row + col), or the row lives behind a pointer chain we haven't located. The "memory-push-into-state-machine" branch was reverted to a no-op (CommandWatcher keeps reading `ScreenMachine.CursorRow/Col` as before) to avoid actively wrong decodes; the resolver still runs as instrumentation so a future session can inspect the candidate list. **Still open — follow-up work needed:**
-    1. Find the row byte. Resolver could do a second oscillation (Down/Up) with cursor starting at col 0, pick bytes that toggle 0→1→0 on Down, then verify they're *different* addresses than the column survivors.
-    2. Update `SetPartyMenuCursor` caller to combine (row, col) from the two bytes before pushing into the state machine.
-    3. Consider alternative: walk the `ScreenMachine`-tracked cursor forward/backward based on a single memory "confidence" check (e.g. row byte alone), using col byte only for drift detection.
-    Live log line to inspect after a failed auto-resolve: `[CommandBridge] auto Party-menu cursor: N col-only candidates, no flat-linear byte survived +5-on-Down verify`. The 17 candidate addresses printed at INFO-level would be the starting point.
-    - New `ScreenStateMachine.SetPartyMenuCursor(row, col)` API landed and unit-tested (3 tests), ready for the row-byte work — no consumer yet.
-    - `resolve_party_menu_cursor` action exists in strict-mode allowlist + tests for manual re-runs.
-    - Invalidation hooks (`InvalidatePartyMenuCursorOnMove`) live in both key-loops so a future successful resolver won't go stale across user nav.
+- [ ] **JobSelection: expand `StoryCharacterUniqueClass` map** — currently verified for Ramza, Agrias, Mustadio, Rapha, Marach, Beowulf, Construct 8, Orlandeau, Meliadoul, Reis, Cloud, Luso, Balthier. Add Delita / Argath / Wiegraf / etc. when they become recruitable.
 
-
-
-- [~] **JobSelection cell state (Locked / Visible / Unlocked) per unit** — SHIPPED in part 2026-04-15 session 15 (commit 129f279). Three-state classification works via party-wide skillset union as a proxy. `screen.jobCellState` is populated; `ui=` reflects state (`(locked)` / `<name> (not unlocked)` / `<name>`). `change_job_to` refuses on Locked/Visible. Still open:
-  - **Locked-state live verification deferred** — current save has a master unit, so no cell renders as shadow silhouette for testing. Need a fresh-game save (or temporary dismiss-all-but-one) to verify the Locked branch end-to-end.
-  - **Mime is hardcoded as Locked** under the proxy because Mime's learned-ability bitfield is empty in this remaster (no action abilities for Mimic). When real prereq data lands, swap to the prerequisite check.
-  - **Unlock-requirements text scrape** (e.g. "Squire Lv. 2, Chemist Lv. 3" panel for Visible cells) NOT shipped. Two paths: (a) memory scan for the widget text (UE4 heap, hard); (b) hard-code `JobPrereqs` map (~20 entries) in `CharacterData.cs` and synthesize the text. (b) is the path of least resistance. Surface as `screen.jobUnlockRequirements` when `jobCellState == "Visible"`.
-  - **Story characters' unique class proxy** — currently uses the `StoryCharacterUniqueClass` static map in `JobGridLayout`. Names verified for Ramza, Agrias, Mustadio, Rapha, Marach, Beowulf, Construct 8, Orlandeau, Meliadoul, Reis, Cloud, Luso, Balthier. Add Delita / Argath / Wiegraf / etc. when they become recruitable.
-  - **Generic male/female grids inferred, not yet live-verified** — Squire at (0,0), Bard at (2,4) for males, Dancer at (2,4) for females. Verify on a generic when one is recruited.
-  - **JobSelection cursor row-cross desync FIXED 2026-04-15 session 15** (commit 5fdefa6). The widget heap reallocates per row cross — confirmed live: address `0x11EC34D3C` shuffled to `0x1370CF4A0` after a single Down. Fix: `InvalidateJobCursorOnRowCross` clears `_resolvedJobCursorAddr` + `_jobCursorResolveAttempted` on every Up/Down key while on JobSelection, forcing re-resolve on the next screen call. Horizontal movement (Left/Right) doesn't trigger it.
+- [ ] **JobSelection: live-verify generic male/female grids** — Squire at (0,0), Bard at (2,4) for males, Dancer at (2,4) for females — all inferred, not yet live-verified. Verify when a generic is recruited.
 
 
 
@@ -140,18 +125,18 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 
 ### Tier 0 — Critical (BFS broken, need game-truth tiles)
 
-- [~] **Read valid movement tiles from game memory instead of BFS** [Movement] — Extensive search 2026-04-13 (3 agents + manual). Tile list at 0x140C66315 is perimeter outline (world coords), not valid tile set. Rendering struct at 0x140C6F400 is volatile per-frame. Heap search found movement calc struct with tileCount but couldn't decode tile indices. **Partial fix applied:** ally traversal penalty (+1 cost, can't stop) confirmed via TDD — perfect match for Kenrick's 10 tiles. Remaining issue: Wilham's tiles still have 9 extras (steep cliff transitions not handled). Next: investigate slope-direction-dependent height checks.
+- [ ] **BFS: handle slope-direction-dependent height checks** [Movement] — Wilham's computed tiles have 9 extras vs game. Steep cliff transitions not handled by current BFS. Investigate slope-direction-dependent height costs. (Ally traversal penalty already shipped + TDD-verified on Kenrick.)
+
+- [ ] **Read valid movement tiles from game memory (decode heap tile indices)** [Movement] — Heap search found movement calc struct with tileCount but couldn't decode tile indices. Static addresses ruled out: `0x140C66315` is perimeter outline (world coords), `0x140C6F400` rendering struct is volatile per-frame. Would supersede BFS entirely. 3 prior agent search attempts 2026-04-13.
 
 
 
 
 
-- [ ] **Inventory quantity for Items, Throw, and Iaido** [Abilities] — Three skillsets depend on a per-character "Held" count:
-  - **Items** (Chemist): each potion/ether/remedy/phoenix down has a held count. In-game shows `Potion=3, High Potion=0, X-Potion=93`.
-  - **Throw** (Ninja): one entry per weapon type with the held count (`Dagger=1, Mythril Knife=2`). Each throw consumes one.
-  - **Iaido** (Samurai): draws power from held katana. Each use has ~1/8 chance to break the drawn katana, so the held count of each katana type directly gates which Iaido abilities are usable.
-
-  Our scan currently lists every ability in the skillset as if unlimited. Need to find the per-character inventory array and surface each item's held count alongside the ability entry. Emit as a `heldCount` field per ability, and optionally mark `unusable: true` when `heldCount == 0`.
+- [ ] **Wire `SkillsetItemLookup` into battle ability surfacing** [Abilities] — Infra shipped session 18 (`SkillsetItemLookup.cs` + 13 tests, `AbilityWithTiles.HeldCount`/`Unusable` fields already populated). Missing the 10-line hookup in `NavigationActions.cs` where `AbilityWithTiles` objects get built. Call `SkillsetItemLookup.TryGetHeldCount(skillset, ability.Name, inventoryBytes)` for Items/Throw/Iaido abilities; set `HeldCount` + `Unusable = (count == 0)`. Read inventory bytes ONCE per scan, not per ability. Live-verify on a unit with Items secondary. See handoff.md session 18 §2.
+  - **Items** (Chemist): potion/ether/remedy/phoenix down counts. `Potion=3, High Potion=0, X-Potion=93`.
+  - **Throw** (Ninja): one entry per weapon type.
+  - **Iaido** (Samurai): katana held counts gate which Iaido abilities are usable (~1/8 break chance per use).
 
 
 - [ ] **Cone abilities — Abyssal Blade** [AoE] — Deferred. 3-row falling-damage cone with stepped power bands. Low value (only 1 ability uses this shape) and requires map-relative orientation. Skip for now.
@@ -159,11 +144,6 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 
 
 ### Tier 2 — Core tactical depth
-
-- [ ] **Projected damage preview** [State] — When you hover a target in-game, the game shows a projected damage number. Two approaches:
-  - **Option A (fast):** Read the game's own damage preview value from memory while in Battle_Attacking/Battle_Casting.
-  - **Option B (full):** Compute damage ourselves from the FFT formula: `PA × WP × multipliers` for physical, `MA × PWR × (Faith/100) × (TargetFaith/100)` for magick.
-
 
 
 ### Tier 2.5 — Navigation completeness
@@ -180,13 +160,10 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 
 
-- [~] **execute_action responses missing ui= field** [State] — UI is set for all battle screens in DetectScreen. May be resolved by current code. Needs verification. Observed 2026-04-12.
+- [ ] **Live-verify `execute_action` responses include `ui=` field across all battle screens** [State] — UI is set for all battle screens in DetectScreen. Code path exists; needs in-game verification across Battle_MyTurn/Battle_Acting/Battle_Moving/Battle_Attacking. Observed stale 2026-04-12.
 
 
-- [~] **battle_ability selects wrong skillset for secondary abilities** [Execution] — Secondary now detected correctly (Martial Arts secondaryIdx=9 for Lloyd). First scan sometimes misses (null/null) but auto-scan catches it. Fallback to all-skillsets also works. Mostly resolved.
-
-
-- [ ] **Show hit% per target in ability tiles** [State] — When hovering a target in-game, the game shows projected hit%. Read this from memory and include it per target tile so Claude can see `(10,6)<Skeleton 73%>` instead of just `(10,6)<Skeleton>`. Would help decide between a high-damage low-accuracy Aim+20 vs reliable Attack. Could also help detect LoS blocking (0% = blocked). Identified 2026-04-12.
+- [ ] **battle_ability first-scan null/null for secondary skillset** [Execution] — Primary detection works (Martial Arts secondaryIdx=9 for Lloyd verified); auto-scan catches misses on retry; all-skillsets fallback works. Remaining: first scan sometimes returns null/null before auto-scan fires — investigate race and eliminate the initial miss.
 
 
 - [ ] **Line-of-sight blocking for ranged attacks** [Abilities] — Archer attacked Treant at (7,11) from (10,9) but a tree blocked the projectile. FFT has LoS checks for ranged abilities (bows, thrown stones, guns). We need to detect blocked paths. Options: (A) read the game's projected hit% from memory during targeting mode, (B) compute LoS from map height data, (C) enter targeting, check if game rejects tile, cancel if blocked. Option A is most practical if the address can be found. Observed 2026-04-12.
@@ -204,7 +181,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Detect disabled/grayed action menu items** [Movement] — Need to find a memory flag or detect from cursor behavior.
 
 
-- [~] **battle_retry doesn't work from GameOver screen** [Execution] — Code exists, GameOver detection fixed. Needs live testing.
+- [ ] **Live-test `battle_retry` from GameOver screen** [Execution] — Code path exists, GameOver detection fixed. Needs in-game verification after losing a battle.
 
 
 - [ ] **Re-enable Ctrl fast-forward during enemy turns** [Execution] — Tested both continuous hold and pulse approaches. Neither visibly sped up animations. Low priority.
@@ -442,12 +419,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Full stock list inline at Outfitter_Buy** — instead of forcing Claude to scroll through items one at a time (ui=Oak Staff → down → ui=White Staff → down...), surface the entire shop stock in the screen response. Each entry: `{name, price, type, stats}`. Stats tier by type — weapons: `wp, range, element, statMods` (e.g. `WP=5 MA+1`); armor: `hp, def, evade, statMods`; consumables: `effect` (e.g. `Restores 30 HP`, `Removes KO`). Claude picks by name, one round-trip. Matches scan_move's "see everything at once" philosophy.
 
 
-- [ ] **Full sell inventory inline at Outfitter_Sell** — same shape as Buy but for player-owned items. Each entry: `{name, heldCount, sellPrice, type, stats}`. Held count is required so Claude knows "I have 12 Potions" without separate reads.
-
-
-- [ ] **Full equipment picker inline at Outfitter_Fitting** — when picking a slot's replacement item, show all items the player owns that fit the slot, with stats, so Claude can compare current vs candidate in one look.
-
-
 - [ ] **Tavern interior** — captured 2026-04-14 (screenshots in session). State machine:
   - `Tavern` — inside the Tavern, two sub-actions: `ui=Rumors` and `ui=Errands`. Currently reports as `SettlementMenu ui=Tavern` (mis-named outer layer — see "Fix misaligned shop-state naming" above).
   - `Rumors` — opens a scrollable list of rumor titles (e.g. "The Legend of the Zodiac Braves", "Zodiac Stones", "The Horror of Riovanes", "At Battle's End"). Right pane renders the body text of the highlighted rumor. `ui=<rumor title>`. Claude should be able to READ the body — likely via a new action `read_rumor` that scrapes the UE4 widget like `read_dialogue` does for cutscenes.
@@ -527,7 +498,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Read shop stock from memory** — each shop has an inventory of items it sells, varying by location and story progress. Find the stock array in memory so `buy_item` can reference items by name without hardcoding per-shop tables.
 
 
-- [ ] **Read player inventory for Sell** — for the Sell submenu, surface what the player owns and at what price.
 
 
 
@@ -536,9 +506,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 ---
 
 ## 10.5. State Naming Convention (P1)
-
-- [ ] **Normalize screen state names to CamelCase (no underscores)** — the codebase currently mixes conventions: `Outfitter_Buy`, `Battle_MyTurn`, `SettlementMenu`, `PartyMenu`, `WorldMap`. Standardize on **CamelCase with no separators** (`OutfitterBuy`, `BattleMyTurn`, `SettlementMenu`, `PartyMenu`, `WorldMap`). This affects `ScreenDetectionLogic.cs` return values, `NavigationPaths.cs` dispatch keys, every test that asserts on screen names, and `ShopGilPolicy`. Rename in one batched commit so the churn is contained. Also update instruction docs (Shopping.md, BattleTurns.md, WorldMapNav.md) that reference the state names.
-
 
 
 ---
@@ -571,15 +538,12 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
   - **Recommended next approach**: heap-oscillation resolver on a hover byte (item ID or row index), same technique as `ResolveJobCursor` / `ResolvePickerCursor`. Oscillate Up/Down on the item list with cursor at a known stable position, find a byte that tracks the row index, then look up the item ID for that (category, row) pair in the static pool. Significant session to build; inventory items are variable-length per category so decoding the pool structure matters. Two prior sessions (2026-04-10 and 2026-04-14) hit similar walls on the inventory count hunt; this hover-ID hunt is narrower but still non-trivial.
 
 
-- [~] **Existing nested states ui= labels** — partial:
-  - [x] `JobActionMenu` — DONE 2026-04-15. `ui=Learn Abilities` / `ui=Change Job` driven by `JobActionIndex`.
-  - [x] `JobChangeConfirmation` — DONE 2026-04-15. `ui=Confirm` / `ui=Cancel` driven by `JobChangeConfirmSelected`.
-  - [ ] `EquippableItemList` (currently `EquipmentItemList`) — still TODO; needs cursor decode for the item list.
+- [ ] **`EquippableItemList` ui= cursor decode** — currently `EquipmentItemList`; needs cursor decode for the item list row. (`JobActionMenu` and `JobChangeConfirmation` ui= labels already shipped 2026-04-15.)
 
 
 ### Data surfacing — TODO
 
-- [~] **Unit summary on `PartyMenu`** — name / level / job / brave / faith / JP surface correctly since 2026-04-14 session 13 (display-order + viewed-unit fix). Still missing: HP / maxHP / MP / maxMP / CT. HP/MP are NOT in the roster (see grid note above — runtime-computed). CT is a battle-only concept. Path forward: either (a) recompute HP/MP from the FFTPatcher job-base + equipment-bonus formulas using `ItemData.cs`, or (b) re-visit the hovered-unit heap array (BATTLE_MEMORY_MAP.md §19) which holds computed HP/MP for a handful of units at session-specific addresses. (a) is more robust (works for every unit) and no heap scan needed; (b) is quicker to ship for whichever units the game has populated.
+- [ ] **Unit summary: add HP/maxHP/MP/maxMP to `PartyMenu` roster entries** — name/level/job/brave/faith/JP already surface correctly. HP/MP not in roster (runtime-computed). Path forward: recompute from FFTPatcher job-base + equipment-bonus formulas using `ItemData.cs`. More robust than heap scan; works for every unit. (Alternative: hovered-unit heap array at BATTLE_MEMORY_MAP.md §19, but only populated for a handful of units at session-specific addresses.)
 
 
 - [ ] **Full stat panel on `CharacterStatus` (verbose-only)** — the header shows attack/defense/magick/evade/movement/jump/zodiac/element stats. Toggled by `1` key (`statsExpanded` flag already shipped). Surface the actual numbers ONLY in `screen -v` JSON, NOT the compact line — these are build-planning data, not every-turn signals (per "What Goes In Compact vs Verbose vs Nowhere" principle). Decode in this order: Move, Jump, PA, MA, then evade/parry. Skip element resistances unless a build-decision flow demands them.
@@ -630,25 +594,18 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
 
 
 
-- [ ] **`ReturnToWorldMap` validPath on every PartyMenu-tree screen** — added 2026-04-15 session 16. Collapse the "Escape N times until WorldMap" sequence into a single named action that every nested PartyMenu-family state exposes: PartyMenu (+Inventory/Chronicle/Options), CharacterStatus, EquipmentAndAbilities, JobSelection, JobActionMenu, JobChangeConfirmation, all 4 ability pickers, all 5 equipment pickers, CombatSets, CharacterDialog, DismissUnit, Chronicle sub-screens (Encyclopedia/StateOfRealm/etc.), OptionsSettings. Each entry should send the correct number of Escape keypresses with `DelayBetweenMs ≥ 200` and `WaitForScreen = "WorldMap"`. Motivation: state-machine drift and exploratory navigation both make "I'm lost, get me home" a common primitive — today it requires multiple round-trips that can fail mid-chain if any Escape gets eaten by an animation. A single `execute_action ReturnToWorldMap` is simpler, safer, and gives us a known clean recovery point between higher-level helpers. Implementation note: encode the Escape count per source screen in `NavigationPaths.cs` (1 for PartyMenu, 2 for CharacterStatus, 3 for EquipmentAndAbilities, 4 for pickers, etc.) so each screen's path knows exactly how many keys to fire.
+**EquipmentAndAbilities action helpers** — declarative one-liners that wrap the full nav flow. All helpers are locked to the EquipmentAndAbilities state (error elsewhere), idempotent (no-op if already equipped), and validate via `screen.availableAbilities`/inventory.
 
-
-- [~] **EquipmentAndAbilities action helpers** — declarative one-liners that wrap the full nav flow. All helpers are **locked to the EquipmentAndAbilities state** — they error out with a clear message anywhere else. All helpers are **idempotent**: if the target is already in the slot, they no-op with "already equipped". All helpers **validate**: the ability must be in the unit's learned list (surfaced via `screen.availableAbilities` on pickers); the equipment must be in inventory. Session 13 (2026-04-14) landed the ability helpers; equipment helpers are stubbed pending ItemInfo / inventory work.
-  - [x] `change_reaction_ability_to <name>` — shipped session 13.
-  - [x] `change_support_ability_to <name>` — shipped session 13.
-  - [x] `change_movement_ability_to <name>` — shipped session 13.
-  - [x] `change_secondary_ability_to <skillsetName>` — shipped session 13.
-  - [x] `remove_ability <name>` — unequip a passive by re-pressing Enter on the already-equipped entry (the in-game unequip idiom).
-  - [ ] `change_right_hand_to <itemName>` — stub ("Not implemented yet"), blocked on inventory reader.
-  - [ ] `change_left_hand_to <itemName>` — stub.
-  - [ ] `change_helm_to <itemName>` — stub.
-  - [ ] `change_garb_to <itemName>` — stub. (The game calls this slot "Combat Garb" / "Chest".)
-  - [ ] `change_accessory_to <itemName>` — stub.
-  - [ ] `remove_equipment <slotName>` — stub.
-  - [x] `change_job_to <jobName>` — DONE 2026-04-15 (commit c25f0f4). Routes through JobSelection grid + JobActionMenu + JobChangeConfirmation. Refuses cleanly on Locked / Visible cell states (per the three-state classification shipped in 129f279). Live-verified Ramza round-trip Gallant Knight ↔ Chemist ↔ Monk.
-  - [ ] `dual_wield_to <leftWeapon> <rightWeapon>` — future, requires Dual Wield support ability equipped.
-  - [ ] `swap_unit_to <name>` — future, from any nested PartyMenu screen Q/E-cycles to the named unit.
-  - [ ] `unequip_all` — future, clears every equipment slot.
+- [ ] **`change_right_hand_to <itemName>` helper** — stub, blocked on inventory reader wiring to picker row index.
+- [ ] **`change_left_hand_to <itemName>` helper** — stub.
+- [ ] **`change_helm_to <itemName>` helper** — stub.
+- [ ] **`change_garb_to <itemName>` helper** — stub. (Game calls this "Combat Garb"/"Chest".)
+- [ ] **`change_accessory_to <itemName>` helper** — stub.
+- [ ] **`remove_equipment <slotName>` helper** — stub.
+- [ ] **`dual_wield_to <leftWeapon> <rightWeapon>` helper** — requires Dual Wield support ability equipped.
+- [ ] **`swap_unit_to <name>` helper** — from any nested PartyMenu screen, Q/E-cycle to named unit.
+- [ ] **`unequip_all` helper** — clear every equipment slot.
+- [ ] **`clear_abilities` helper** — set Secondary/Reaction/Support/Movement all to (none).
   - [ ] `clear_abilities` — future, sets Secondary/Reaction/Support/Movement all to (none).
 
 
@@ -737,12 +694,6 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - Two distinct TitleScreen states exist (fresh process vs post-GameOver) with different memory fingerprints
 
 **Fix tasks:**
-- [ ] **Delete `Battle_AutoBattle` rule** — UI label on Battle_MyTurn already handles cursor=4 correctly. Fixes "Auto-Battle instead of Wait" bug (TODO #1 in handoff).
-
-
-- [ ] **Collapse `Battle_Casting` into `Battle_Attacking`** — byte-identical in memory. Track cast-time via `_lastAbilityName` + ability ct lookup client-side. Fixes "Used vs Queued" response text bug.
-
-
 - [ ] **Tighten `TitleScreen` rule** — require full uninit sentinels (`slot0==0xFFFFFFFF && battleMode==255 && eventId==0xFFFF && ui==0`). Current rule catches too much.
 
 
@@ -758,12 +709,6 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Fix Battle_Dialogue / Cutscene `eventId` filter** — change from `< 200` to `< 400 && != 0xFFFF` (caught eventId=302 at Orbonne pre-battle).
 
 
-- [ ] **Add `LoadGame` rule** — `gameOverFlag==1 && paused==0 && battleMode==0 && acted==0 && moved==0 && rawLocation==255`.
-
-
-- [ ] **Add `LocationMenu` rule** — `rawLocation in 0-42 && !inBattle` for shops/services/sub-battles.
-
-
 - [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation (which location IDs are multi-battle campaign grounds vs villages). Add to `project_location_ids_verified.md`.
 
 
@@ -774,9 +719,6 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 
 
 - [ ] **Add `hover` to ScreenDetectionLogic inputs** — currently read in DetectScreen but not passed through. May help disambiguate world-side states.
-
-
-- [ ] **Rename `clearlyOnWorldMap` to `atNamedLocation`** — the current name is actively misleading (it's TRUE when at a shop/village, not on the open world map).
 
 
 
@@ -794,7 +736,7 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Post-battle memory values stuck at 255 after auto-battle** — All memory addresses stayed at 255/0xFFFFFFFF permanently. May require game restart.
 
 
-- [~] **Auto-detect battle map** — Location ID lookup + random encounter maps implemented, fingerprint fallback. BUG: after restart, location address reads 255 causing wrong map auto-detection.
+- [ ] **Fix stale location address (255) after restart breaking battle-map auto-detect** — Location ID lookup + random encounter maps + fingerprint fallback already shipped. Remaining bug: after game restart, `0x14077D208` reads 255 which defaults to the wrong map. Need a fallback read or forced re-read on first post-restart scan.
 
 
 
@@ -814,9 +756,6 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
   - **Code exists but disabled:** `ReadDamagePreview()` in NavigationActions.cs has the search + offset logic. Currently returns (0,0) because the broad search finds the wrong copy. Fix: add address range filter to skip 0x416xxx and target the 0x130-0x15A range.
 
 
-- [ ] **BFS move tiles too permissive — terrain height not properly limiting range** [Movement] — BFS at Move=4 from (10,9) includes (8,7) (distance 4) but in-game the tile isn't reachable due to terrain. The BFS validation passes but the game rejects the move. Need to verify terrain height costs in BFS match FFT's rules. Observed 2026-04-12.
-
-
 - [ ] **Screen detection shows Cutscene during ability targeting** [State] — While in targeting mode for Aurablast (selecting a target tile), screen detection reports "Cutscene" instead of "Battle_Attacking" or "Battle_Casting". This causes key commands to fail because they check screen state. Observed 2026-04-13.
 
 
@@ -827,9 +766,6 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 
 
 - [ ] **Abilities submenu remembers cursor position** [Execution] — After battle_ability navigates to a skillset (e.g. Martial Arts for Revive), then escapes, the submenu cursor stays on that skillset. Next battle_attack enters Martial Arts instead of Attack. Need to verify/navigate to correct submenu item rather than assuming cursor is at index 0. Observed 2026-04-13.
-
-
-- [ ] **BFS valid tiles don't match game** [Movement] — BFS computed (8,11) as valid for Kenrick at (10,9) with Move=4, but game rejected the move. Terrain height transitions or impassable tiles not properly accounted for. Observed 2026-04-13.
 
 
 - [ ] **battle_ability response says "Used" for cast-time abilities** [State] — Abilities with ct>0 (Haste ct=50) are queued, not instant. Response says "Used Haste" but spell is only queued in Combat Timeline. Unit still needs to Wait. Response should say "Queued" for ct>0 abilities. Observed 2026-04-13.
@@ -888,6 +824,42 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 ## Completed — Archive
 
 Items that are fully shipped (checked `[x]`). Partial (`[~]`) items stay above in their original section.
+
+### Session 18 (2026-04-15) — verified via audit agents
+
+- [x] **`change_reaction_ability_to <name>` helper** — shipped session 13.
+- [x] **`change_support_ability_to <name>` helper** — shipped session 13.
+- [x] **`change_movement_ability_to <name>` helper** — shipped session 13.
+- [x] **`change_secondary_ability_to <skillsetName>` helper** — shipped session 13.
+- [x] **`remove_ability <name>` helper** — shipped session 13. Unequip a passive by re-pressing Enter on the already-equipped entry.
+- [x] **`change_job_to <jobName>` helper** — DONE 2026-04-15 commit c25f0f4. Routes through JobSelection → JobActionMenu → JobChangeConfirmation. Refuses on Locked/Visible cells. Live-verified Ramza Gallant Knight ↔ Chemist ↔ Monk.
+- [x] **`JobActionMenu` ui= label** — DONE 2026-04-15. `ui=Learn Abilities` / `ui=Change Job` driven by `JobActionIndex`.
+- [x] **`JobChangeConfirmation` ui= label** — DONE 2026-04-15. `ui=Confirm` / `ui=Cancel` driven by `JobChangeConfirmSelected`.
+- [x] **JobSelection cursor row-cross desync** — FIXED session 15 commit 5fdefa6. Widget heap reallocates per row cross (`0x11EC34D3C` → `0x1370CF4A0` after single Down). `InvalidateJobCursorOnRowCross` clears resolved address on every Up/Down key while on JobSelection, forcing re-resolve. Horizontal movement doesn't trigger it.
+
+- [x] **JobSelection cell state (Locked / Visible / Unlocked) three-state classification** — SHIPPED session 15 commit 129f279. `screen.jobCellState` populated via party-wide skillset union proxy; `ui=` reflects state; `change_job_to` refuses on Locked/Visible. (Follow-up leaf tasks — live verification, Mime prereq, unlock text, etc. — broken out into individual open items above.)
+
+- [x] **Normalize screen state names to CamelCase (no underscores)** — DONE commit 3087140. All `Battle_*` and `Outfitter_*` state names drop underscores. `ScreenDetectionLogic.cs` returns `OutfitterSell`/`BattleAttacking`/etc. Zero underscored state names remain.
+
+- [x] **Full sell inventory inline at Outfitter_Sell** — DONE session 18 (commits 9287e5e, 93b5579). `InventoryReader.ReadSellable()` + `ItemPrices.cs` + `CommandWatcher` populates `screen.inventory` on OutfitterSell with `{name, heldCount, sellPrice, type}`. Verified + estimated sell-price distinction (`sell=` vs `sell~`).
+
+- [x] **Full equipment picker inline at Outfitter_Fitting** — DONE commit 93b5579. `screen.inventory` (ReadAll) surfaces on OutfitterFitting. Slot-type filter deferred (requires Fitting picker-depth state tracking).
+
+- [x] **Read player inventory for Sell** — DONE commit 0438aca. Inventory store cracked at `0x1411A17C0` (272 bytes, flat u8 array indexed by FFTPatcher item ID). `InventoryReader.cs` + 10 unit tests.
+
+- [x] **`ReturnToWorldMap` validPath on every PartyMenu-tree screen** — DONE commit 34b5927. `NavigationPaths.cs` has 15+ entries across PartyMenu, PartyMenuInventory, CharacterStatus, EquipmentAndAbilities, JobSelection, JobActionMenu, pickers, Chronicle, Options with graduated Escape counts (1–5).
+
+- [x] **Delete `Battle_AutoBattle` rule** — DONE. `ScreenDetectionLogic.cs:16` — UI label on Battle_MyTurn handles cursor=4.
+
+- [x] **Collapse `Battle_Casting` into `Battle_Attacking`** — DONE. `ScreenDetectionLogic.cs:17,289` — cast-time and instant collapse into BattleAttacking; ct>0 tracked client-side.
+
+- [x] **Add `LoadGame` rule** — DONE. `ScreenDetectionLogic.cs:235-240` — `slot0==255 && paused==0 && battleMode==0 && !atNamedLocation → LoadGame`.
+
+- [x] **Add `LocationMenu` rule** — DONE. `ScreenDetectionLogic.cs:172-178` — `atNamedLocation → LocationMenu`.
+
+- [x] **Rename `clearlyOnWorldMap` to `atNamedLocation`** — DONE. `ScreenDetectionLogic.cs:39` — zero `clearlyOnWorldMap` references remain.
+
+### Earlier sessions
 
 - [x] **EquipmentAndAbilities Abilities column surfaces `ui=(none)` on slots with no equipped ability** — DONE 2026-04-15 session 17 (commit e8aaa9f). Slot-aware fallback now emits `Right Hand (none)` / `Left Hand (none)` / `Headware (none)` / `Combat Garb (none)` / `Accessory (none)` on the equipment column and `Primary (none — skillset table missing for this job)` / `Secondary (empty)` / `Reaction (empty)` / `Support (empty)` / `Movement (empty)` on the ability column. Also populated 17 story-class primaries in `GetPrimarySkillsetByJobName` so Cloud/Mustadio/Rapha/etc no longer hit the Primary fallback at all. Live-verified on Cloud (`ui=Limit`) and his empty Secondary row (`ui=Secondary (empty)`). — logged 2026-04-14 session 13. Repro: open Cloud's EquipmentAndAbilities (Cloud's Primary is blank because "Soldier" isn't in `GetPrimarySkillsetByJobName`), cursor Right into the Abilities column. `ui=(none)` surfaces — bare and uninformative. Better: (a) populate the missing story-class primaries (Soldier=Limit, Dragonkin=Dragon, Steel Giant=Work, Machinist=Snipe, Skyseer/Netherseer=Sky/Nether Mantra, Divine Knight=Unyielding Blade, Templar=Spellblade, Thunder God=All Swordskills, Sky Pirate=Sky Pirating, Game Hunter=Hunting — verify each in-game before adding). (b) Change the `(none)` fallback in `CommandWatcher` EquipmentAndAbilities ability-cursor branch to `Primary (none)` / `Secondary (none)` / `Reaction (empty)` / `Support (empty)` / `Movement (empty)` so the row intent is at least visible. (c) Consider: Primary row should never surface `(none)` anyway — it's job-locked, so we should always know the primary skillset name from the job; a blank means our job-name map is incomplete.
 
