@@ -192,6 +192,28 @@ namespace FFTColorCustomizer.Utilities
         private bool _equipPickerCursorResolveAttempted = false;
 
         /// <summary>
+        /// Resolved heap address of the EquipmentAndAbilities outer panel
+        /// column 0 (equipment column) cursor row byte. Tracks which row
+        /// 0..5 (Weapon/LHand/Shield/Helm/Body/Accessory) the cursor is on
+        /// while the outer EqA panel is active (NOT the inner picker).
+        /// Same heap-shuffle story as the picker cursor — resolved on
+        /// every EqA entry and invalidated on every Up/Down/Left/Right
+        /// while EqA is active. Zero when not resolved. Live-verified
+        /// 2026-04-15 session 19: addresses in 0x7FFDD006F9xx range
+        /// appear with 6-step monotonic ascending trajectory on a
+        /// 6-snapshot Down sequence, but drift within seconds. Resolver
+        /// re-runs per entry to keep the address fresh.
+        /// </summary>
+        private long _resolvedEqaColumnCursorAddr = 0L;
+
+        /// <summary>
+        /// One-shot latch for the EqA outer column 0 cursor resolver.
+        /// Cleared on EqA exit and on every directional key while EqA
+        /// is active.
+        /// </summary>
+        private bool _eqaColumnCursorResolveAttempted = false;
+
+        /// <summary>
         /// Invalidates the cached equipment-picker cursor on any
         /// Up/Down/A/D while on an Equippable* picker screen. Up/Down shift
         /// the row index; A/D cycle tabs (which re-roll the underlying list
@@ -216,6 +238,24 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         private static bool IsOnEquipPicker(GameScreen s)
             => s == GameScreen.EquipmentItemList; // state-machine routes all 5 slot pickers through one internal screen
+
+        /// <summary>
+        /// Invalidates the cached EqA outer-panel column 0 cursor on any
+        /// Up/Down/Left/Right/Enter while the state machine thinks we're
+        /// on EquipmentAndAbilities. Up/Down shifts the row; Left/Right
+        /// shifts between equipment and ability columns (which changes
+        /// which column the resolver should track next); Enter opens a
+        /// picker (resolved address becomes irrelevant).
+        /// </summary>
+        private void InvalidateEqaColumnCursorOnMove(int vk)
+        {
+            const int VK_UP = 0x26, VK_DOWN = 0x28, VK_LEFT = 0x25, VK_RIGHT = 0x27, VK_RETURN = 0x0D;
+            if (vk != VK_UP && vk != VK_DOWN && vk != VK_LEFT && vk != VK_RIGHT && vk != VK_RETURN) return;
+            if (ScreenMachine == null) return;
+            if (ScreenMachine.CurrentScreen != GameScreen.EquipmentScreen) return;
+            _resolvedEqaColumnCursorAddr = 0L;
+            _eqaColumnCursorResolveAttempted = false;
+        }
 
         /// <summary>
         /// Pure helper for the chained-command rate-limit decision. Returns the
@@ -565,6 +605,162 @@ namespace FFTColorCustomizer.Utilities
         /// per Down). No horizontal axis (each tab is a linear list). Net-
         /// zero cursor motion, ~2s visible flash.
         /// </summary>
+        /// <summary>
+        /// Reads a 5-element u16 array from one of the EqA equipment
+        /// mirrors (0x141870854, 0x14373B004, 0x143743704) and returns
+        /// it as int[] of length 5 (UI row order: Weapon, LHand, Helm,
+        /// Body, Accessory). Returns null on read failure.
+        ///
+        /// See project_eqa_equipment_mirror.md for full context.
+        /// </summary>
+        private int[]? ReadEqaMirror(long baseAddr)
+        {
+            if (Explorer == null) return null;
+            var arr = new int[5];
+            for (int i = 0; i < 5; i++)
+            {
+                var r = Explorer.ReadAbsolute((nint)(baseAddr + i * 2), 2);
+                if (!r.HasValue) return null;
+                arr[i] = (int)r.Value.value;
+            }
+            return arr;
+        }
+
+        /// <summary>True iff two 5-element mirror arrays hold identical
+        /// values at every position.</summary>
+        private static bool MirrorsAgree(int[]? a, int[]? b)
+        {
+            if (a == null || b == null || a.Length != 5 || b.Length != 5) return false;
+            for (int i = 0; i < 5; i++) if (a[i] != b[i]) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Verifies the mirror's 5 values match the viewed unit's actual
+        /// equipment as read from the stable roster slot. The mirror MAY
+        /// be in a different order than the roster (mirror is UI row
+        /// order; roster uses a different layout), so we compare as
+        /// multisets rather than element-wise. An empty slot in the
+        /// mirror (value 0) matches any empty slot in the loadout (null
+        /// or 0).
+        /// </summary>
+        private static bool MirrorMatchesLoadout(int[] mirror, EquipmentReader.Loadout loadout)
+        {
+            // Collect roster's equipped ids into a multiset, treating
+            // unequipped as 0.
+            var rosterCounts = new Dictionary<int, int>();
+            void Add(int? id)
+            {
+                int v = id.GetValueOrDefault(0);
+                rosterCounts.TryGetValue(v, out int c);
+                rosterCounts[v] = c + 1;
+            }
+            Add(loadout.WeaponId);
+            Add(loadout.LeftHandId);
+            Add(loadout.ShieldId);     // game stores shields in LHand UI row, but roster has separate shield field
+            Add(loadout.HelmId);
+            Add(loadout.BodyId);
+            Add(loadout.AccessoryId);
+
+            // Collect mirror values into the same shape. Mirror has 5 slots.
+            // Because roster has 6 (RH/LH/Shield split) vs mirror's 5
+            // (RH/LH-or-Shield combined), we compare by building BOTH as
+            // multisets and checking that every NONZERO mirror value
+            // appears in the roster multiset.
+            var mirrorNonZero = new List<int>();
+            foreach (int v in mirror) if (v != 0 && v != 0xFFFF) mirrorNonZero.Add(v);
+
+            foreach (int v in mirrorNonZero)
+            {
+                if (!rosterCounts.TryGetValue(v, out int c) || c <= 0) return false;
+                rosterCounts[v] = c - 1;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves the heap address tracking the EqA outer panel column 0
+        /// (equipment column) cursor row byte. Mirrors the existing
+        /// ResolveEquipPickerCursor / ResolveJobCursor pattern: take a
+        /// heap snapshot, press Down, snapshot again, press Up, snapshot
+        /// a third time, look for bytes that went +1/-1, then verify with
+        /// two more Downs that the byte continues to track.
+        ///
+        /// Gated on the outer EqA panel (state machine reports
+        /// EquipmentScreen). Returns an info string for logging, null if
+        /// no cursor byte could be verified this attempt. Sets
+        /// <see cref="_resolvedEqaColumnCursorAddr"/> on success.
+        /// </summary>
+        private string? ResolveEqaColumnCursor(out int candidateCount)
+        {
+            candidateCount = 0;
+            if (Explorer == null) return null;
+            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+            if (win == IntPtr.Zero) return null;
+            const int VK_DOWN = 0x28, VK_UP = 0x26;
+
+            Thread.Sleep(700);
+            Explorer.TakeHeapSnapshot("_eqa_base");
+            _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+            Thread.Sleep(300);
+            Explorer.TakeHeapSnapshot("_eqa_adv");
+            _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+            Thread.Sleep(300);
+            Explorer.TakeHeapSnapshot("_eqa_back");
+            var cands = Explorer.FindToggleCandidates(
+                "_eqa_base", "_eqa_adv", "_eqa_back",
+                maxResults: 32, expectedDelta: 1);
+            candidateCount = cands.Count;
+
+            long verified = 0L;
+            if (cands.Count > 0)
+            {
+                var baselineVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) baselineVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(300);
+                var afterOneVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) afterOneVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(300);
+                foreach (var candAddr in cands)
+                {
+                    if (!baselineVals.TryGetValue((long)candAddr, out var baseline)) continue;
+                    if (!afterOneVals.TryGetValue((long)candAddr, out var afterOne)) continue;
+                    var afterTwo = Explorer.ReadAbsolute(candAddr, 1);
+                    if (!afterTwo.HasValue) continue;
+                    byte finalVal = (byte)afterTwo.Value.value;
+                    // Accept wrap-around too — the EqA column is a 6-row
+                    // wrapping list so Down from row 5 → row 0.
+                    bool step1Ok = afterOne == baseline + 1 || afterOne == 0;
+                    bool step2Ok = finalVal == afterOne + 1 || finalVal == 0;
+                    if (step1Ok && step2Ok)
+                    {
+                        verified = (long)candAddr;
+                        break;
+                    }
+                }
+                // Restore cursor: 2 Ups to undo the 2 Downs.
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(220);
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(220);
+            }
+            _resolvedEqaColumnCursorAddr = verified;
+
+            if (verified != 0)
+                return $"EqA column cursor: {cands.Count} candidates, verified 0x{verified:X}";
+            return $"EqA column cursor: {cands.Count} candidates, none verified";
+        }
+
         private string? ResolveEquipPickerCursor(out int candidateCount)
         {
             candidateCount = 0;
@@ -1880,6 +2076,7 @@ namespace FFTColorCustomizer.Utilities
                     InvalidateJobCursorOnRowCross(key.Vk);
                     InvalidatePartyMenuCursorOnMove(key.Vk);
                     InvalidateEquipPickerCursorOnMove(key.Vk);
+                    InvalidateEqaColumnCursorOnMove(key.Vk);
                 }
 
                 if (key.HoldMs > 0)
@@ -4283,6 +4480,105 @@ namespace FFTColorCustomizer.Utilities
                         };
                         if (detailName != null && detailRow >= 0)
                             screen.UiDetail = BuildUiDetail(detailName, col: 1, row: detailRow);
+                    }
+                }
+
+                // EquipmentAndAbilities outer panel — viewed-unit equipment
+                // mirror ground truth. Session 19 fix for the drift class
+                // that blocks every `change_*_to` equipment helper AND the
+                // "state machine says TravelList but game is on EqA" class.
+                //
+                // Discovery (session 19 live hunt): the game keeps 3
+                // synchronized mirror copies of the viewed unit's equipped
+                // items in main-module memory, in EXACT EqA UI row order:
+                //   0x141870854, 0x14373B004, 0x143743704
+                // Each mirror is a 5-element u16 array:
+                //   +0: Right Hand (Weapon)
+                //   +2: Left Hand
+                //   +4: Helm
+                //   +6: Body
+                //   +8: Accessory
+                // Values are FFTPatcher item IDs (0 = empty).
+                //
+                // Mirror 2 (0x14373B004) turned out to be a STALE cache,
+                // not a live copy. Mirrors 1 and 3 agree and update
+                // together on unit switch / equip / unequip. Cross-session
+                // verified 2026-04-15: mirror addresses survive game
+                // restart and track the currently-viewed unit (not
+                // Ramza-specific). See memory note
+                // project_eqa_equipment_mirror.md.
+                //
+                // Promotion-first logic: we read the mirrors regardless
+                // of what state machine says. If mirrors 1 and 3 agree,
+                // contain at least one non-zero item, AND match a roster
+                // unit's equipped items — we're ON EqA for that unit, full
+                // stop. Promote screen.Name to "EquipmentAndAbilities" and
+                // force screen.ViewedUnit even if the state machine
+                // disagreed. This fixes the "SM says TravelList but game
+                // is on EqA" drift class observed live with Wilham.
+                if (Explorer != null && ScreenMachine != null)
+                {
+                    var m1 = ReadEqaMirror(0x141870854);
+                    var m3 = ReadEqaMirror(0x143743704);
+                    bool hasData = m1 != null && m1.Any(v => v != 0 && v != 0xFFFF);
+
+                    if (m1 != null && hasData && MirrorsAgree(m1, m3))
+                    {
+                        // Mirrors agree and have non-zero data — look for
+                        // a roster unit whose equipment matches.
+                        if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
+                        if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+                        RosterReader.RosterSlot? matchedSlot = null;
+                        EquipmentReader.Loadout? matchedLoadout = null;
+                        foreach (var slot in _rosterReader.ReadAll())
+                        {
+                            var lo = _rosterReader.ReadLoadout(slot.SlotIndex);
+                            if (lo != null && MirrorMatchesLoadout(m1, lo))
+                            {
+                                matchedSlot = slot;
+                                matchedLoadout = lo;
+                                break;
+                            }
+                        }
+
+                        if (matchedSlot != null && matchedLoadout != null)
+                        {
+                            // We're on EqA for this unit. Promote if the
+                            // state machine thinks otherwise.
+                            if (screen.Name != "EquipmentAndAbilities")
+                            {
+                                ModLogger.Log($"[EqA promote] SM said '{screen.Name}' but mirror matches {matchedSlot.Name} equipment. Promoting to EquipmentAndAbilities.");
+                                screen.Name = "EquipmentAndAbilities";
+                                // Force SM screen to match so downstream
+                                // logic (UI labels, picker transitions)
+                                // operates on the right state.
+                                ScreenMachine.SetScreen(GameScreen.EquipmentScreen);
+                            }
+                            // Force ViewedUnit in case SM drifted to wrong unit
+                            if (screen.ViewedUnit != matchedSlot.Name)
+                            {
+                                ModLogger.Log($"[EqA promote] Setting viewedUnit='{matchedSlot.Name}' (was '{screen.ViewedUnit ?? "null"}').");
+                                screen.ViewedUnit = matchedSlot.Name;
+                            }
+
+                            // Passive drift detection at the row level:
+                            // compare mirror[cursorRow] vs state machine's
+                            // UI label.
+                            int smRow = ScreenMachine.CursorRow;
+                            if (smRow >= 0 && smRow < 5)
+                            {
+                                int itemId = m1[smRow];
+                                string? itemName = itemId > 0
+                                    ? ItemData.GetItem(itemId)?.Name
+                                    : null;
+                                string? smLabel = screen.UI;
+                                if (itemName != null && smLabel != null
+                                    && !smLabel.Contains(itemName))
+                                {
+                                    ModLogger.Log($"[EqA row drift] SM row={smRow} label='{smLabel}' but mirror says '{itemName}' at that row.");
+                                }
+                            }
+                        }
                     }
                 }
 

@@ -641,6 +641,8 @@ Reconsider any individual sub-screen only when a concrete decision flow requires
 
 ## 12. Known Issues / Blockers
 
+- [ ] **Block improper chained `fft` calls more aggressively** — Session 19 session crash: chained 4 sequential `fft` key-sending calls by overriding `_FFT_DONE=0` between them. Bridge auto-delay protection was bypassed, keys fired back-to-back without settling, game state drifted and the game crashed. `_FFT_DONE` guard exists specifically to prevent this but is too easy to defeat. Fix ideas: (a) make the override explicit (`_FFT_ALLOW_CHAIN=1` with a loud banner printed), (b) detect and reject multiple key-sending `fft` calls within N ms regardless of guard state (bridge-side rate limit, not shell-side), (c) compiler-level: collapse batch patterns by auto-merging sequential `fft`-with-keys into one request. Core rule: **game-action commands MUST be batched into one `fft` call with `keys` array + `delayBetweenMs`**; observational reads (`rv`, `block`, `screen`) are safe to chain. Document + enforce.
+
 ### Missing Screen States
 - [ ] **Battle_Cutscene** — Mid-battle cutscenes. Need to distinguish from regular cutscenes.
 
