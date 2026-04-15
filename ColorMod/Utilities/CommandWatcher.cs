@@ -626,6 +626,30 @@ namespace FFTColorCustomizer.Utilities
             return arr;
         }
 
+        /// <summary>
+        /// Reads the passive ability section of the EqA mirror struct at
+        /// offset +0x0E..+0x13. Returns (reactionId, supportId, movementId)
+        /// as a tuple — each only non-zero when the equipped-flag byte at
+        /// +0x0F/+0x11/+0x13 is set. Returns null on read failure.
+        ///
+        /// Discovered session 19: mirror struct has {u8 id, u8 flag}
+        /// pairs at offsets +0x0E..+0x13. Flag=0 means the slot is empty
+        /// regardless of the id byte (game still reads the id, so don't
+        /// trust id alone).
+        /// </summary>
+        private (int reactionId, int supportId, int movementId)? ReadEqaMirrorPassives(long baseAddr)
+        {
+            if (Explorer == null) return null;
+            var reads = new (System.IntPtr addr, int size)[6];
+            for (int i = 0; i < 6; i++) reads[i] = ((System.IntPtr)(baseAddr + 0x0E + i), 1);
+            var vals = Explorer.ReadMultiple(reads);
+            if (vals == null || vals.Length != 6) return null;
+            int reactionId  = (int)vals[1] != 0 ? (int)vals[0] : 0; // flag at +0x0F
+            int supportId   = (int)vals[3] != 0 ? (int)vals[2] : 0; // flag at +0x11
+            int movementId  = (int)vals[5] != 0 ? (int)vals[4] : 0; // flag at +0x13
+            return (reactionId, supportId, movementId);
+        }
+
         /// <summary>True iff two 5-element mirror arrays hold identical
         /// values at every position.</summary>
         private static bool MirrorsAgree(int[]? a, int[]? b)
@@ -4520,12 +4544,25 @@ namespace FFTColorCustomizer.Utilities
                 {
                     var m1 = ReadEqaMirror(0x141870854);
                     var m3 = ReadEqaMirror(0x143743704);
-                    bool hasData = m1 != null && m1.Any(v => v != 0 && v != 0xFFFF);
+                    var passivesM1 = ReadEqaMirrorPassives(0x141870854);
+                    var passivesM3 = ReadEqaMirrorPassives(0x143743704);
 
-                    if (m1 != null && hasData && MirrorsAgree(m1, m3))
+                    bool eqHasData = m1 != null && m1.Any(v => v != 0 && v != 0xFFFF);
+                    bool passivesHaveData = passivesM1.HasValue
+                        && (passivesM1.Value.reactionId > 0 || passivesM1.Value.supportId > 0 || passivesM1.Value.movementId > 0);
+                    bool mirrorsEqMatch = m1 != null && MirrorsAgree(m1, m3);
+                    bool mirrorsPassivesMatch = passivesM1.HasValue && passivesM3.HasValue
+                        && passivesM1.Value.Equals(passivesM3.Value);
+
+                    // Trust mirror if (equipment non-zero AND equip mirrors agree)
+                    // OR (passives non-zero AND passive mirrors agree).
+                    bool hasData = (eqHasData && mirrorsEqMatch) || (passivesHaveData && mirrorsPassivesMatch);
+
+                    if (m1 != null && hasData)
                     {
-                        // Mirrors agree and have non-zero data — look for
-                        // a roster unit whose equipment matches.
+                        // Look for a roster unit whose equipment matches
+                        // (if we have equipment data) or whose passives
+                        // match (if equipment is all zeros).
                         if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
                         if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
                         RosterReader.RosterSlot? matchedSlot = null;
@@ -4533,7 +4570,26 @@ namespace FFTColorCustomizer.Utilities
                         foreach (var slot in _rosterReader.ReadAll())
                         {
                             var lo = _rosterReader.ReadLoadout(slot.SlotIndex);
-                            if (lo != null && MirrorMatchesLoadout(m1, lo))
+                            if (lo == null) continue;
+                            bool eqMatch = eqHasData && MirrorMatchesLoadout(m1, lo);
+                            bool passiveMatch = false;
+                            if (passivesHaveData)
+                            {
+                                // Cross-check mirror passives against
+                                // roster's equipped abilities for this slot.
+                                var rosterAbilities = _rosterReader.ReadEquippedAbilities(slot.SlotIndex, slot.JobName);
+                                if (rosterAbilities != null)
+                                {
+                                    var mirR = passivesM1.Value.reactionId > 0 ? AbilityData.GetAbility((byte)passivesM1.Value.reactionId)?.Name : null;
+                                    var mirS = passivesM1.Value.supportId  > 0 ? AbilityData.GetAbility((byte)passivesM1.Value.supportId)?.Name  : null;
+                                    var mirM = passivesM1.Value.movementId > 0 ? AbilityData.GetAbility((byte)passivesM1.Value.movementId)?.Name : null;
+                                    // Match when all 3 agree (including nulls when both empty).
+                                    passiveMatch = (mirR ?? "") == (rosterAbilities.Reaction ?? "")
+                                                && (mirS ?? "") == (rosterAbilities.Support  ?? "")
+                                                && (mirM ?? "") == (rosterAbilities.Movement ?? "");
+                                }
+                            }
+                            if (eqMatch || passiveMatch)
                             {
                                 matchedSlot = slot;
                                 matchedLoadout = lo;
@@ -4577,6 +4633,34 @@ namespace FFTColorCustomizer.Utilities
                                 {
                                     ModLogger.Log($"[EqA row drift] SM row={smRow} label='{smLabel}' but mirror says '{itemName}' at that row.");
                                 }
+                            }
+
+                            // Ability section from mirror (+0x0E..+0x13):
+                            // read the 3 passive ability IDs (Reaction,
+                            // Support, Movement) and resolve to names.
+                            // This is MEMORY GROUND TRUTH — bypasses the
+                            // roster-bitfield reader entirely. Populates
+                            // screen.Abilities.{reaction,support,movement}.
+                            //
+                            // The AbilityLoadoutPayload struct on screen
+                            // may not exist yet when this block runs (the
+                            // roster-path code lower down initializes it
+                            // for unit-scoped screens). We create it here
+                            // if needed and overwrite the 3 passive slots;
+                            // the primary/secondary fields stay null and
+                            // will be filled by the existing roster path.
+                            var passives = ReadEqaMirrorPassives(0x141870854);
+                            if (passives.HasValue)
+                            {
+                                var (rId, sId, mId) = passives.Value;
+                                string? rName = rId > 0 ? AbilityData.GetAbility((byte)rId)?.Name : null;
+                                string? sName = sId > 0 ? AbilityData.GetAbility((byte)sId)?.Name : null;
+                                string? mName = mId > 0 ? AbilityData.GetAbility((byte)mId)?.Name : null;
+
+                                screen.Abilities ??= new AbilityLoadoutPayload();
+                                screen.Abilities.Reaction = rName;
+                                screen.Abilities.Support  = sName;
+                                screen.Abilities.Movement = mName;
                             }
                         }
                     }
