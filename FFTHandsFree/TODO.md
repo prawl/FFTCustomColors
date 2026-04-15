@@ -35,6 +35,30 @@ Give Claude the same tools a human player has, just digitized. The bridge should
 
 ---
 
+## Design Principle: What Goes In Compact vs Verbose vs Nowhere
+
+Every field on the `screen` response has to earn its spot by changing a decision Claude actually makes. Three tests:
+
+1. **Would a human consult this on this screen?** If yes → strong candidate. If no → don't surface.
+2. **Does Claude need it to act HERE, or could they navigate to it?** Need it here → surface. Could navigate → don't pre-populate.
+3. **Would not having it cause a worse decision OR wasted round-trips?** Yes → surface. No → drop.
+
+**Plus a noise penalty.** Claude greps past dense responses — every field in the compact one-liner makes other fields harder to find. There's a budget. Anything that doesn't strongly pass the three tests pays rent against that budget.
+
+**Prefer decision aids over data dumps.** `jobCellState: "Visible"` (one word, decision is obvious) beats dumping 19 grid cells of raw JP that Claude has to interpret. Surface the *conclusion*, not the inputs.
+
+**Where things go:**
+
+| Compact one-liner | Verbose JSON only | Nowhere |
+|---|---|---|
+| Things Claude reads on every turn — state name, `ui=`, `viewedUnit=`, location, status. Tight budget; add only when a missing field would cost decisions on the next action. | Things Claude reads when planning — full loadouts, ability lists, grid dumps, per-unit detail. Liberal budget; if it could plausibly inform a decision, surface it here. | Anything that mirrors what hovering already reveals in-game. Per-cell stats Claude can read by moving the cursor. Anything the game shows clearly that isn't load-bearing for a *programmatic* decision. |
+
+**Before adding a new field, write one sentence answering "what decision changes if Claude has this?"** If you can't, drop it. If the answer is "Claude could plan a turn ahead with this," verbose. If it's "Claude needs this to pick the next action," compact. If it's "it's nice to have," nowhere.
+
+This rule killed AC5 (per-class Lv/JP on JobSelection grid) — Claude doesn't need 19 JP values to decide a job change; the cell they're hovering shows it in-game already.
+
+---
+
 ## Status Key
 - [ ] Not started
 - [~] Partially done
@@ -451,7 +475,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
 - [ ] **Full stat panel on `CharacterStatus`** — the header shows far more numbers than the party grid. The small icons on the right (7 20 24, 3 16 50%, 11 10% 0%, 75%, etc.) are attack/defense/magick/evade/movement/jump/zodiac/element stats. Decode and label each.
 - [ ] **Element resistance grid** — the colored symbols on the right side of CharacterStatus show elemental absorb/null/halve/weak. Decode from memory.
 - [ ] **Equipped items with stat totals on `EquipmentAndAbilities`** — the "Equipment Effects" summary under the two columns aggregates stats from the current loadout. Surface as `equipmentStats: { hpBonus: X, paBonus: Y, ... }`.
-- [ ] **JP totals per job on `JobSelection`** — each job tile shows Lv + JP (e.g. "Lv. 8 5465 JP" for Knight). Surface as an array so Claude can see which jobs are grinded.
+- [x] **JP totals per job on `JobSelection`** — DROPPED 2026-04-15 session 15 per the "What Goes In Compact vs Verbose vs Nowhere" principle above. Claude doesn't need 19 JP values to make a job-change decision; hovering a cell already shows Lv + JP in-game (info panel). Reconsider only if a concrete decision flow emerges that needs the full grid in one round trip.
 - [x] **Ability list with learned/unlearned inside picker screens** — DONE 2026-04-14. `screen.availableAbilities` surfaces the full learned list for SecondaryAbilities (unlocked skillsets), ReactionAbilities (19 for Ramza), SupportAbilities (23), MovementAbilities (12). SecondaryAbilities puts the equipped skillset first (matches game's default cursor); other pickers use canonical ID-sorted order with the equipped ability marked in place. Decoded via roster byte 2 of the per-job bitfield at +0x32+jobIdx*3+2 (MSB-first over each job's ID-sorted passive list — see `ABILITY_IDS.md` and `RosterReader.ReadLearnedPassives`). JP cost + "unlearned-but-could-be-learned" still TODO — requires a separate learnable-set, not just learned-set.
 
 ### ValidPaths — TODO
