@@ -1049,6 +1049,16 @@ namespace FFTColorCustomizer.Utilities
         public int Faith { get; set; }
 
         /// <summary>
+        /// Zodiac sign name for this unit ("Aries", "Taurus", ..., "Pisces",
+        /// "Serpentarius"). Story characters come from the canonical table in
+        /// ZodiacData. Ramza (player-chosen) and generics return null pending
+        /// the memory-offset hunt for the roster zodiac byte.
+        /// </summary>
+        [JsonPropertyName("zodiac")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Zodiac { get; set; }
+
+        /// <summary>
         /// 0-indexed position within the PartyMenu Units grid (display order,
         /// driven by the game's Sort option — default Time Recruited). Read
         /// from roster +0x122. This is what cursorRow*gridCols + cursorCol

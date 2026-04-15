@@ -4595,6 +4595,7 @@ namespace FFTColorCustomizer.Utilities
                                     Brave = s.Brave,
                                     Faith = s.Faith,
                                     Jp = s.CurrentJobJp,
+                                    Zodiac = s.Zodiac,
                                     DisplayOrder = s.DisplayOrder,
                                 };
                                 // Equipment comes from the roster slot itself

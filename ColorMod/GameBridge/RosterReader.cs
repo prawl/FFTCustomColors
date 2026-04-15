@@ -51,6 +51,9 @@ namespace FFTColorCustomizer.GameBridge
             public int DisplayOrder; // +0x122
             public string? Name;    // Resolved via UnitNameLookup → NameTableLookup
             public string? JobName; // Resolved via CharacterData.GetJobName
+            public string? Zodiac;  // Resolved via ZodiacData.GetByNameId → canonical
+                                    // sign name; null for generics (random at recruit,
+                                    // memory offset not yet decoded — see TODO §1).
         }
 
         /// <summary>
@@ -449,6 +452,12 @@ namespace FFTColorCustomizer.GameBridge
                 // Story characters have hardcoded names keyed by nameId.
                 // Generic recruits need the per-slot name table lookup.
                 slot.Name = UnitNameLookup.GetName(f.NameId) ?? _nameTable.GetNameBySlot(s);
+
+                // Zodiac: story characters have canonical signs; generics
+                // currently return null until the roster byte is decoded.
+                var zodiacSign = ZodiacData.GetByNameId(f.NameId);
+                if (zodiacSign != null)
+                    slot.Zodiac = ZodiacData.GetSignName(zodiacSign.Value);
 
                 result.Add(slot);
             }
