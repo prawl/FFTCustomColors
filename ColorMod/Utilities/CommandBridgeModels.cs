@@ -162,6 +162,17 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Info { get; set; }
 
+        /// <summary>
+        /// Emitted when the bridge auto-delayed a game command because it arrived
+        /// too quickly after the previous one (chained-command rate limit). The
+        /// command still ran — but if this appears, the caller chained commands
+        /// with `&&` or similar when they should have used a `keys:[...]` batch.
+        /// Value is a human-readable note (e.g. "auto-delayed 180ms; use keys:[...] batch for multi-key flows").
+        /// </summary>
+        [JsonPropertyName("chainWarning")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ChainWarning { get; set; }
+
         [JsonPropertyName("processedAt")]
         public string ProcessedAt { get; set; } = "";
 

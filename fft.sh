@@ -167,6 +167,16 @@ fft() {
   [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
   LINE="$LINE status=$ST"
   echo "$LINE"
+
+  # Surface bridge's chain-warning to the terminal. The bridge auto-delays
+  # a game command that arrives too fast after the previous one (prevents
+  # key drops during menu-open animations). If this prints, the caller
+  # chained two game-affecting commands with && or similar. Fix: batch
+  # via _fire_keys / one fft call with keys:[...] and delayBetweenMs.
+  # Parse from the raw file (not $R, which had whitespace stripped) so the
+  # warning message keeps its spaces, then unescape \u0026 → &.
+  local CW=$(grep -o '"chainWarning": *"[^"]*"' "$B/response.json" | head -1 | sed -E 's/^"chainWarning": *"//; s/"$//; s/\\u0026/\&/g')
+  [ -n "$CW" ] && echo "[CHAIN WARNING] $CW" >&2
 }
 
 # _fmt_gil: Render a gil amount with thousands separators.

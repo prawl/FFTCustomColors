@@ -72,6 +72,39 @@ namespace FFTColorCustomizer.Utilities
         public bool RequireStateCheck { get; set; } = false;
         private bool _lastCommandWasQuery = false;
 
+        /// <summary>
+        /// Minimum ms between consecutive game-affecting commands. Enforced by
+        /// sleeping the newer command until the floor is met. Prevents
+        /// `&&`-chained shell commands from racing the game's key-input handler
+        /// (which drops presses that arrive during tab-switch / menu-open
+        /// animations). Observational commands (screen queries, memory reads,
+        /// snapshots) are exempt. Batched `keys:[...]` commands pace themselves
+        /// internally via DelayBetweenMs and don't trip this.
+        /// </summary>
+        private const int ChainFloorMs = 250;
+        private DateTime _lastGameCommandCompletedAt = DateTime.MinValue;
+
+        /// <summary>
+        /// Pure helper for the chained-command rate-limit decision. Returns the
+        /// number of ms the caller should sleep before processing a new command
+        /// (0 if no delay needed). Returns a chain-warning string only when a
+        /// delay is actually required. Kept static + pure so it's unit-testable.
+        /// </summary>
+        public static (int SleepMs, string? Warning) ComputeChainDelay(
+            bool isObservational,
+            DateTime lastCommandCompletedAt,
+            DateTime now,
+            int floorMs)
+        {
+            if (isObservational) return (0, null);
+            if (lastCommandCompletedAt == DateTime.MinValue) return (0, null);
+            var elapsed = (now - lastCommandCompletedAt).TotalMilliseconds;
+            if (elapsed >= floorMs) return (0, null);
+            var sleepMs = (int)System.Math.Ceiling(floorMs - elapsed);
+            var warning = $"auto-delayed {sleepMs}ms (prev game command {(int)elapsed}ms ago; floor={floorMs}ms). Use keys:[...] batch for multi-key flows instead of chaining with &&.";
+            return (sleepMs, warning);
+        }
+
         // Actions that are always allowed regardless of strict mode (info/infrastructure)
         private static readonly HashSet<string> InfrastructureActions = new()
         {
@@ -228,6 +261,21 @@ namespace FFTColorCustomizer.Utilities
                     bool isScreenQuery = (command.Keys != null && command.Keys.Count == 0)
                         && command.Action == null;
 
+                    // Chained-command rate limit: if a game-affecting command arrives
+                    // within ChainFloorMs of the previous one finishing, sleep the
+                    // newer command until the floor is met and flag the response.
+                    // Observational commands (screen query, infra/read actions) are
+                    // exempt — they don't press keys or trigger state transitions.
+                    bool isObservational = isScreenQuery
+                        || (command.Action != null && InfrastructureActions.Contains(command.Action));
+                    var (sleepMs, chainWarning) = ComputeChainDelay(
+                        isObservational, _lastGameCommandCompletedAt, DateTime.UtcNow, ChainFloorMs);
+                    if (sleepMs > 0)
+                    {
+                        ModLogger.Log($"[CommandBridge] WARN rapid-fire chain: {chainWarning}");
+                        System.Threading.Thread.Sleep(sleepMs);
+                    }
+
                     // Enforce: must call screen before any game command
                     if (RequireStateCheck && !isScreenQuery && !_lastCommandWasQuery)
                     {
@@ -251,6 +299,15 @@ namespace FFTColorCustomizer.Utilities
                     var response = ExecuteCommand(command);
                     response.Screen ??= DetectScreenSettled();
                     SyncBattleMenuTracker(response.Screen);
+
+                    // Attach rate-limit warning (set above if we auto-delayed).
+                    if (chainWarning != null) response.ChainWarning = chainWarning;
+
+                    // Stamp completion time for the rate-limit floor — but only
+                    // for game-affecting commands. Observational queries don't
+                    // press keys, so they shouldn't reset the clock.
+                    if (!isObservational)
+                        _lastGameCommandCompletedAt = DateTime.UtcNow;
 
                     // No auto-scan — Claude must call scan_move explicitly before acting.
                     // Auto-scan was removed because C+Up keypresses during settling caused
