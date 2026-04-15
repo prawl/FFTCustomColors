@@ -176,6 +176,19 @@ namespace FFTColorCustomizer.GameBridge
                 GridRows = (RosterCount + 4) / 5;
         }
 
+        /// <summary>
+        /// Bumps KeysSinceLastSetScreen without routing a key through the
+        /// per-screen handlers. Used by the drift-recovery path in
+        /// CommandWatcher to mark a SetScreen() as "intentional / not
+        /// stale" so the existing stale-check drift recovery (which gates
+        /// on KeysSinceLastSetScreen == 0) doesn't cascade-snap us further
+        /// than we meant.
+        /// </summary>
+        public void MarkKeyProcessed()
+        {
+            KeysSinceLastSetScreen++;
+        }
+
         public void OnKeyPressed(int vkCode)
         {
             KeysSinceLastSetScreen++;
@@ -588,15 +601,26 @@ namespace FFTColorCustomizer.GameBridge
         // to EquipmentAndAbilities with cursor restored.
         private void HandleAbilityPicker(int vk)
         {
+            // On the ability picker: Enter EQUIPS the highlighted ability but
+            // keeps the picker OPEN (game shows a checkmark next to the new
+            // equipped entry, cursor stays). Only Escape actually closes the
+            // picker and returns to EquipmentAndAbilities. Logged in TODO §0
+            // 2026-04-14 session 13 — previously this handler treated both
+            // keys as close events, causing the state machine to desync from
+            // the real game after the fft.sh helpers Select'd an ability.
             switch (vk)
             {
                 case VK_ESCAPE:
-                case VK_RETURN:
                     CurrentScreen = GameScreen.EquipmentScreen;
                     CursorRow = _savedEquipmentRow;
                     CursorCol = _savedEquipmentCol;
                     GridColumns = 2;
                     GridRows = 5;
+                    break;
+                case VK_RETURN:
+                    // Equip-in-place: no screen change, no cursor reset.
+                    // The picker is still open. The caller must send Escape
+                    // to close it (or another Enter to re-equip/unequip).
                     break;
             }
         }

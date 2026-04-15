@@ -38,6 +38,15 @@ namespace FFTColorCustomizer.Utilities
         private bool _movedThisTurn;
         private int _postMoveX = -1, _postMoveY = -1; // confirmed position after battle_move
         private int _lastLoggedCursor = -1; // for UI cursor change logging
+
+        /// <summary>
+        /// Count of consecutive DetectScreen calls where the state machine
+        /// thinks we're on an inner panel (EquipmentScreen / picker) but the
+        /// menu-depth byte reads 0 (outer). Used to debounce the drift-
+        /// recovery snap so it doesn't false-trigger during the brief
+        /// render lag right after a panel-opening Enter.
+        /// </summary>
+        private int _menuDepthDriftStreak = 0;
         private bool _waitConfirmPending; // Set when battle_wait rejected for no move/act; next battle_wait goes through
         private string? _lastAbilityName; // Last ability used via battle_ability, shown in ui= during targeting
         private readonly BattleMenuTracker _battleMenuTracker = new();
@@ -1602,6 +1611,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x14184276C, 1),  // 24: shopSubMenuIndex (Outfitter: 0=menu, 1=Buy, 4=Sell, 6=Fitting — other shops unmapped)
             ((nint)0x140D39CD0, 4),  // 25: gil (player's currency, u32 little-endian)
             ((nint)0x141870704, 4),  // 26: shopListCursorIndex (row the player is highlighting inside Outfitter_Buy/Sell/Fitting; 0-based)
+            ((nint)0x14077CB67, 1),  // 27: menuDepth (0=outer menu (WorldMap/PartyMenu/CharacterStatus), 2=inner panel (EquipmentAndAbilities or an ability picker). Discovered 2026-04-14 session 13 via module-memory snapshot diff; verified stable across repeated reads. Primary use: drift-check the state machine — if state machine thinks we're on EquipmentAndAbilities/picker but menuDepth reads 0, we're actually on CharacterStatus and should snap back.)
         };
 
         /// <summary>
@@ -1897,6 +1907,51 @@ namespace FFTColorCustomizer.Utilities
         /// <summary>
         /// Maps job name (from scan results) to the job's primary skillset name.
         /// </summary>
+        /// <summary>
+        /// Orders a set of passive-ability IDs by the game's canonical picker
+        /// order (the sequence the player sees in-game), returning display
+        /// names. Unlearned abilities are excluded. If <paramref name="pickerOrder"/>
+        /// is null (order not yet captured live), falls back to the byte-ID
+        /// order of the input set — this matches the legacy behavior and is
+        /// non-harmful for list-display but will cause change_*_ability_to
+        /// helpers to navigate with the wrong delta. Session 13 2026-04-14:
+        /// reaction order is captured; support and movement orders still
+        /// pending live walkthroughs.
+        /// </summary>
+        internal static List<string> OrderByPicker(
+            HashSet<byte> learnedIds,
+            byte[]? pickerOrder,
+            Dictionary<byte, AbilityData.AbilityInfo> dict)
+        {
+            var result = new List<string>();
+            if (pickerOrder != null)
+            {
+                foreach (var id in pickerOrder)
+                {
+                    if (learnedIds.Contains(id) && dict.TryGetValue(id, out var info))
+                        result.Add(info.Name);
+                }
+                // Any learned IDs not in pickerOrder (e.g. abilities we
+                // haven't observed in the live picker yet) get appended in
+                // ID order so the list is still complete.
+                foreach (var id in learnedIds)
+                {
+                    if (System.Array.IndexOf(pickerOrder, id) < 0 && dict.TryGetValue(id, out var info))
+                        result.Add(info.Name);
+                }
+            }
+            else
+            {
+                // No canonical order yet — fall back to ID-sorted.
+                var sorted = new List<byte>(learnedIds);
+                sorted.Sort();
+                foreach (var id in sorted)
+                    if (dict.TryGetValue(id, out var info))
+                        result.Add(info.Name);
+            }
+            return result;
+        }
+
         internal static string? GetPrimarySkillsetByJobName(string jobName)
         {
             return jobName switch
@@ -2540,6 +2595,7 @@ namespace FFTColorCustomizer.Utilities
                     BattleUnitId = (int)v[10],
                     BattleUnitHp = (int)v[11],
                     CameraRotation = (int)(v[17] - 1 + 4) % 4,
+                    MenuDepth = (int)v[27],
                     UI = (int)v[4] switch
                     {
                         0 => "Move",
@@ -2729,6 +2785,64 @@ namespace FFTColorCustomizer.Utilities
                     ScreenMachine.SetScreen(GameScreen.PartyMenu);
                 }
 
+                // Menu-depth drift check (discovered 2026-04-14 session 13):
+                // 0x14077CB67 is a party-menu-tree depth flag: 0 on outer
+                // screens (WorldMap / PartyMenu / CharacterStatus) and 2
+                // on inner panels (EquipmentAndAbilities / ability picker).
+                // Verified stable across repeated reads and across every
+                // oscillation we tested (CS↔EqA↔picker).
+                //
+                // If the state machine thinks we're on an inner panel but
+                // depth reads 0, we're actually on CharacterStatus and the
+                // state machine has drifted — snap it back. This catches
+                // the common desync where a helper sent Enter from CS
+                // expecting EqA, but the game didn't transition for some
+                // reason, and now every subsequent key is being routed by
+                // the state machine as if we're on EqA.
+                //
+                // Mirror: if state machine thinks we're on an outer screen
+                // (PartyMenu / CharacterStatus) but depth reads 2, we're
+                // actually deeper. We don't know exactly where (EqA vs
+                // which picker), so the safe move is NOT to auto-snap —
+                // just log for future debugging. Upward desyncs are rare
+                // because they require an Enter that we didn't track.
+                // Debounce with a streak counter: require 3 consecutive
+                // DetectScreen calls showing the mismatch before snapping.
+                // This rides out the render-lag window right after opening
+                // a panel (MenuDepth takes ~50-200ms to flip from 0 to 2
+                // after the Enter key is processed).
+                if (ScreenMachine != null)
+                {
+                    bool smOnInner = ScreenMachine.CurrentScreen is
+                        GameScreen.EquipmentScreen or
+                        GameScreen.EquipmentItemList or
+                        GameScreen.SecondaryAbilities or
+                        GameScreen.ReactionAbilities or
+                        GameScreen.SupportAbilities or
+                        GameScreen.MovementAbilities;
+                    if (smOnInner && screen.MenuDepth == 0)
+                    {
+                        _menuDepthDriftStreak++;
+                        if (_menuDepthDriftStreak >= 3)
+                        {
+                            ModLogger.Log($"[StateMachine] menu-depth drift detected: SM={ScreenMachine.CurrentScreen} but menuDepth=0 for 3 consecutive reads. Snapping back to CharacterStatus.");
+                            ScreenMachine.SetScreen(GameScreen.CharacterStatus);
+                            // Prevent cascade: the existing drift-recovery
+                            // below snaps CharacterStatus→PartyMenu when
+                            // KeysSinceLastSetScreen==0 (the marker of
+                            // "state machine is stale from restart"). Our
+                            // recovery just intentionally set CS, so bump
+                            // the counter so the stale-check doesn't fire.
+                            ScreenMachine.MarkKeyProcessed();
+                            _menuDepthDriftStreak = 0;
+                        }
+                    }
+                    else
+                    {
+                        _menuDepthDriftStreak = 0;
+                    }
+                }
+
                 if (screen.Name == "PartySubScreen" || screen.Name == "PartyMenu" ||
                     (stateMachineInPartyMenu && (screen.Name == "TravelList" || screen.Name == "WorldMap")))
                 {
@@ -2866,7 +2980,7 @@ namespace FFTColorCustomizer.Utilities
                         }
                         if (ab != null)
                         {
-                            screen.Abilities = new AbilityLoadoutPayload
+                            var payload = new AbilityLoadoutPayload
                             {
                                 Primary = ab.Primary,
                                 Secondary = ab.Secondary,
@@ -2874,6 +2988,41 @@ namespace FFTColorCustomizer.Utilities
                                 Support = ab.Support,
                                 Movement = ab.Movement,
                             };
+
+                            // Also surface the viewed unit's full learned
+                            // lists so fft.sh helpers (list_reaction_abilities
+                            // etc.) and Claude planning don't have to open
+                            // each picker just to read them. Matches the
+                            // picker-side logic (same dicts, same
+                            // classification) — see the picker branch below
+                            // in this file for the equivalent foreach.
+                            var unlocked = _rosterReader.ReadUnlockedSkillsets(viewedSlot);
+                            if (unlocked.Count > 0)
+                                payload.LearnedSecondary = unlocked;
+
+                            var passives = _rosterReader.ReadLearnedPassives(viewedSlot);
+                            // Classify into three buckets keyed by ID so we
+                            // can re-order by the game's canonical picker
+                            // order (ReactionPickerOrder etc.) rather than
+                            // the incidental learn-bitfield order, matching
+                            // what the player sees in the in-game picker.
+                            var reactionsById = new HashSet<byte>();
+                            var supportsById = new HashSet<byte>();
+                            var movementsById = new HashSet<byte>();
+                            foreach (var id in passives)
+                            {
+                                if (AbilityData.ReactionAbilities.ContainsKey(id)) reactionsById.Add(id);
+                                else if (AbilityData.SupportAbilities.ContainsKey(id)) supportsById.Add(id);
+                                else if (AbilityData.MovementAbilities.ContainsKey(id)) movementsById.Add(id);
+                            }
+                            var reactions = OrderByPicker(reactionsById, AbilityData.ReactionPickerOrder, AbilityData.ReactionAbilities);
+                            var supports = OrderByPicker(supportsById, AbilityData.SupportPickerOrder, AbilityData.SupportAbilities);
+                            var movements = OrderByPicker(movementsById, AbilityData.MovementPickerOrder, AbilityData.MovementAbilities);
+                            if (reactions.Count > 0) payload.LearnedReaction = reactions;
+                            if (supports.Count > 0) payload.LearnedSupport = supports;
+                            if (movements.Count > 0) payload.LearnedMovement = movements;
+
+                            screen.Abilities = payload;
                         }
 
                         // Resolve the cursor's current item/ability name for the ui= label.
@@ -2942,6 +3091,14 @@ namespace FFTColorCustomizer.Utilities
                      screen.Name == "SupportAbilities" ||
                      screen.Name == "MovementAbilities") && Explorer != null && ScreenMachine != null)
                 {
+                    // Clear the default "Move/Abilities/Wait" UI label that
+                    // DetectScreen sets from the battle menuCursor address —
+                    // that label is meaningless on picker screens. Picker
+                    // row-cursor tracking isn't in memory yet (TODO §10.7);
+                    // until it lands, omitting the label is better than
+                    // showing a stale wrong one.
+                    screen.UI = null;
+
                     if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
                     if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
 
@@ -2977,17 +3134,14 @@ namespace FFTColorCustomizer.Utilities
                                  screen.Name == "MovementAbilities")
                         {
                             // Decode all learned passives from roster byte 2 of
-                            // each per-job bitfield, then filter to the picker's
-                            // type. Byte 2 uses MSB-first order over each job's
-                            // ID-sorted passive list — see RosterReader.ReadLearnedPassives
-                            // and project_roster_learned_abilities.md. Verified
-                            // 100% against Ramza's 19 reactions on 2026-04-14.
-                            //
-                            // Display order: canonical (ID-sorted, grouped by job) —
-                            // matches the game's picker order. The currently-equipped
-                            // ability stays in its natural position, marked with
-                            // IsEquipped=true. Unlike the Secondary picker we do NOT
-                            // reorder the equipped item to the top.
+                            // each per-job bitfield, then re-order by the
+                            // game's canonical picker order so availableAbilities
+                            // indices match what the player sees in-game (the
+                            // fft.sh change_*_ability_to helpers compute
+                            // Up/Down deltas off these indices). Reaction
+                            // order captured live 2026-04-14 session 13;
+                            // support/movement orders pending (fall back to
+                            // ID-sort inside OrderByPicker).
                             var learned = _rosterReader.ReadLearnedPassives(viewedSlot);
                             string? equippedName = screen.Name switch
                             {
@@ -2997,20 +3151,36 @@ namespace FFTColorCustomizer.Utilities
                                 _ => null,
                             };
 
-                            // No (None) entry — to unequip a passive, press Enter
-                            // on the currently-equipped one.
-                            foreach (var id in learned)
+                            // Classify learned into the picker's bucket, then
+                            // apply OrderByPicker to get names in game order.
+                            var learnedForPicker = new HashSet<byte>();
+                            var dict = screen.Name switch
                             {
-                                string? name = null;
-                                if (screen.Name == "ReactionAbilities" && AbilityData.ReactionAbilities.TryGetValue(id, out var ra)) name = ra.Name;
-                                else if (screen.Name == "SupportAbilities" && AbilityData.SupportAbilities.TryGetValue(id, out var sa)) name = sa.Name;
-                                else if (screen.Name == "MovementAbilities" && AbilityData.MovementAbilities.TryGetValue(id, out var ma)) name = ma.Name;
-                                if (name == null) continue;
-                                list.Add(new AvailableAbility
+                                "ReactionAbilities" => AbilityData.ReactionAbilities,
+                                "SupportAbilities"  => AbilityData.SupportAbilities,
+                                "MovementAbilities" => AbilityData.MovementAbilities,
+                                _ => null,
+                            };
+                            var orderArr = screen.Name switch
+                            {
+                                "ReactionAbilities" => AbilityData.ReactionPickerOrder,
+                                "SupportAbilities"  => AbilityData.SupportPickerOrder,
+                                "MovementAbilities" => AbilityData.MovementPickerOrder,
+                                _ => null,
+                            };
+                            if (dict != null)
+                            {
+                                foreach (var id in learned)
+                                    if (dict.ContainsKey(id))
+                                        learnedForPicker.Add(id);
+                                foreach (var name in OrderByPicker(learnedForPicker, orderArr, dict))
                                 {
-                                    Name = name,
-                                    IsEquipped = name == equippedName,
-                                });
+                                    list.Add(new AvailableAbility
+                                    {
+                                        Name = name,
+                                        IsEquipped = name == equippedName,
+                                    });
+                                }
                             }
                         }
 

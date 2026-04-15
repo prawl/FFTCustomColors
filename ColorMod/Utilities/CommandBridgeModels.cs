@@ -396,6 +396,19 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("menuCursor")]
         public int MenuCursor { get; set; }
 
+        /// <summary>
+        /// Party-menu panel depth discriminator at memory address 0x14077CB67.
+        /// 0 = outer menus (WorldMap / PartyMenu / CharacterStatus),
+        /// 2 = inner panels (EquipmentAndAbilities / ability picker).
+        /// Discovered 2026-04-14 session 13. Primary use: drift-check for
+        /// the state machine — if the state machine believes we're on an
+        /// inner panel but this reads 0, we're actually on an outer screen
+        /// and should snap back. Readers should treat this as a hint, not
+        /// a full screen-name resolver (outer/inner only).
+        /// </summary>
+        [JsonPropertyName("menuDepth")]
+        public int MenuDepth { get; set; }
+
         [JsonPropertyName("ui")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? UI { get; set; }
@@ -638,6 +651,32 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("movement")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Movement { get; set; }
+
+        /// <summary>
+        /// Skillsets the viewed unit has unlocked (at least one action
+        /// ability learned in that job). Canonical order. Each entry can be
+        /// equipped in the Secondary slot. Populated on EquipmentAndAbilities
+        /// so the fft.sh `list_secondary_abilities` helper doesn't have to
+        /// open the Secondary picker just to read it.
+        /// </summary>
+        [JsonPropertyName("learnedSecondary")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? LearnedSecondary { get; set; }
+
+        /// <summary>Reaction abilities the viewed unit has learned.</summary>
+        [JsonPropertyName("learnedReaction")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? LearnedReaction { get; set; }
+
+        /// <summary>Support abilities the viewed unit has learned.</summary>
+        [JsonPropertyName("learnedSupport")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? LearnedSupport { get; set; }
+
+        /// <summary>Movement abilities the viewed unit has learned.</summary>
+        [JsonPropertyName("learnedMovement")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? LearnedMovement { get; set; }
     }
 
     public class Loadout

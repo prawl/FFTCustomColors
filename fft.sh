@@ -357,6 +357,382 @@ hold_key() {
 # dismiss_unit: Trigger the hold-B DismissUnit confirmation on CharacterStatus.
 dismiss_unit() { hold_key 66 3500; }  # 0x42 = VK_B
 
+# =============================================================================
+# EquipmentAndAbilities helpers
+# =============================================================================
+# Locked to the EquipmentAndAbilities state — all helpers error if you're
+# anywhere else. Idempotent: re-equipping an ability that's already in the slot
+# no-ops. Validation: rejects abilities the viewed unit hasn't learned (per
+# screen.availableAbilities in the picker).
+
+# Internal: current screen name. Sends a no-op key-press command to refresh
+# response.json with the current DetectedScreen, then reads screen.name.
+_current_screen() {
+  rm -f "$B/response.json"
+  echo "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}" > "$B/command.json"
+  local t=0
+  until [ -f "$B/response.json" ] || [ $t -ge 150 ]; do
+    sleep 0.02
+    t=$((t + 1))
+  done
+  if [ -f "$B/response.json" ]; then
+    tr -d '\r\n ' < "$B/response.json" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4
+  fi
+}
+
+# Internal: read the current equipped ability name for a slot type
+# (secondary / reaction / support / movement) from screen.abilities.
+_current_equipped() {
+  local field="$1"
+  node -e "
+const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const a=(r.screen&&r.screen.abilities)||{};
+console.log(a['$field']||'');
+" "$B/response.json" 2>/dev/null
+}
+
+# Internal: read availableAbilities from the currently-open picker.
+# Emits TSV: <index>\t<name>\t<isEquipped 0|1>
+_picker_list_tsv() {
+  node -e "
+const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const list=(r.screen&&r.screen.availableAbilities)||[];
+list.forEach((a,i)=>console.log(i+'\t'+a.name+'\t'+(a.isEquipped?1:0)));
+" "$B/response.json" 2>/dev/null
+}
+
+# _change_ability <slotType> <targetName>
+# slotType: secondary|reaction|support|movement
+# Packs the entire navigation as ONE fft_full multi-key batch with a
+# generous delayBetweenMs, which keeps the state machine in lockstep
+# with the game (no inter-command races). Works from either
+# EquipmentAndAbilities OR CharacterStatus with sidebar on Equipment &
+# Abilities (prepends an Enter to open the panel).
+#
+# Returns 0 on success, 1 on error (prints a human-readable message).
+_change_ability() {
+  local slotType="$1"
+  local target="$2"
+  if [ -z "$slotType" ] || [ -z "$target" ]; then
+    echo "[_change_ability] usage: _change_ability <slotType> <targetName>"
+    return 1
+  fi
+
+  local currentField pickerScreen targetRow
+  case "$slotType" in
+    secondary) currentField=secondary; pickerScreen=SecondaryAbilities; targetRow=1 ;;
+    reaction)  currentField=reaction;  pickerScreen=ReactionAbilities;  targetRow=2 ;;
+    support)   currentField=support;   pickerScreen=SupportAbilities;   targetRow=3 ;;
+    movement)  currentField=movement;  pickerScreen=MovementAbilities;  targetRow=4 ;;
+    *) echo "[_change_ability] unknown slot: $slotType"; return 1 ;;
+  esac
+
+  # One fresh state read to prep everything we need: current screen,
+  # sidebar position (for CharacterStatus entry), current equipped in
+  # this slot, and the unit's learned list for this slot (used to
+  # compute target index in the game's canonical picker order).
+  _current_screen >/dev/null
+
+  # Parse needed values in ONE node invocation so we don't round-trip
+  # the bridge for each.
+  local stateFile="$B/__state.txt"
+  node -e "
+const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const s=r.screen||{};
+const ab=s.abilities||{};
+const learned=ab['learned${currentField^}']||[];
+const cur=ab['$currentField']||'';
+const row=(typeof s.cursorRow==='number')?s.cursorRow:0;
+const col=(typeof s.cursorCol==='number')?s.cursorCol:0;
+console.log(JSON.stringify({name:s.name||'',sidebarUi:s.ui||'',cur:cur,learned:learned,row:row,col:col}));
+" "$B/response.json" 2>/dev/null > "$stateFile"
+  # Ugly-but-works: shell out to node once per field we need to extract
+  # from the single state snapshot.
+  local curScreen=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).name)" < "$stateFile")
+  local curUi=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).sidebarUi)" < "$stateFile")
+  local curEquipped=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).cur)" < "$stateFile")
+  local curRow=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).row)" < "$stateFile")
+  local curCol=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).col)" < "$stateFile")
+
+  # Build the prefix: what extra keys to send to land on EquipmentAndAbilities.
+  local -a prefix=()
+  if [ "$curScreen" = "EquipmentAndAbilities" ]; then
+    :  # already there
+  elif [ "$curScreen" = "CharacterStatus" ] && [ "$curUi" = "Equipment & Abilities" ]; then
+    # One Enter opens the panel. After the Enter the state machine's
+    # cursor will be (0, 0) on EquipmentAndAbilities by default — we
+    # treat curRow/curCol as (0, 0) from this point.
+    prefix+=("Enter")
+    curRow=0
+    curCol=0
+  else
+    echo "[change_${slotType}_ability_to] ERROR: locked to EquipmentAndAbilities state (or CharacterStatus with sidebar on Equipment & Abilities). Current: $curScreen ui=$curUi"
+    rm -f "$stateFile"
+    return 1
+  fi
+
+  # Idempotence check (only meaningful when we can already read abilities,
+  # i.e. we were on EquipmentAndAbilities to begin with). If we're entering
+  # via the prefix Enter, the `curEquipped` we read was the CharacterStatus
+  # sidebar cursor label — not the ability. Skip the idempotence short-
+  # circuit in that case and verify at the end instead.
+  if [ "${#prefix[@]}" -eq 0 ] && [ "$curEquipped" = "$target" ]; then
+    echo "[change_${slotType}_ability_to] already equipped: $target — no-op"
+    rm -f "$stateFile"
+    return 0
+  fi
+
+  # Validate the target is in the learned list (for EquipmentAndAbilities
+  # entry path; for CharacterStatus entry path we skip validation — the
+  # roster read on CharacterStatus doesn't include learned* yet).
+  if [ "${#prefix[@]}" -eq 0 ]; then
+    local targetIdx=$(node -e "
+const s=JSON.parse(require('fs').readFileSync(0,'utf8'));
+const i=s.learned.indexOf('$target');
+console.log(i);" < "$stateFile")
+    if [ "$targetIdx" -lt 0 ]; then
+      echo "[change_${slotType}_ability_to] ERROR: '$target' is not in the unit's learned ${slotType}s."
+      echo "  Available (game's picker order):"
+      node -e "
+const s=JSON.parse(require('fs').readFileSync(0,'utf8'));
+s.learned.forEach(n=>console.log('    - '+n+(n===s.cur?' [equipped]':'')));" < "$stateFile"
+      rm -f "$stateFile"
+      return 1
+    fi
+    local equippedIdx=$(node -e "
+const s=JSON.parse(require('fs').readFileSync(0,'utf8'));
+console.log(s.cur?s.learned.indexOf(s.cur):-1);" < "$stateFile")
+  fi
+  rm -f "$stateFile"
+
+  # Build the key array. Sequence:
+  #   [prefix Enter if from CharacterStatus]
+  #   nav to Abilities col (CursorRight if curCol==0)
+  #   nav to target row (CursorUp/Down delta)
+  #   Enter to open picker
+  #   [ScrollUp/Down delta in picker]   — only if we have targetIdx/equippedIdx
+  #   Select (Enter) to equip
+  #   Escape to close picker
+  local -a keys=()
+  for k in "${prefix[@]}"; do keys+=("$k"); done
+
+  # Equipment→Abilities column (col 0 → col 1)
+  if [ "$curCol" -lt 1 ]; then keys+=("CursorRight"); fi
+
+  # Walk to target row (row 0..4)
+  local r="$curRow"
+  while [ "$r" -gt "$targetRow" ]; do keys+=("CursorUp"); r=$((r - 1)); done
+  while [ "$r" -lt "$targetRow" ]; do keys+=("CursorDown"); r=$((r + 1)); done
+
+  # Open the picker
+  keys+=("Enter")
+
+  # Walk picker cursor from equipped to target (only when we pre-computed
+  # indices). When entering via CharacterStatus we don't have indices —
+  # the picker will still open on the equipped entry, but we can't
+  # determine the target offset. In that case, fall back to closing the
+  # picker with Escape and failing the helper.
+  if [ "${#prefix[@]}" -eq 0 ]; then
+    local fromIdx=${equippedIdx:--1}
+    if [ "$fromIdx" -lt 0 ]; then fromIdx=0; fi
+    local delta=$((targetIdx - fromIdx))
+    while [ "$delta" -gt 0 ]; do keys+=("Down"); delta=$((delta - 1)); done
+    while [ "$delta" -lt 0 ]; do keys+=("Up"); delta=$((delta + 1)); done
+    # Select + close
+    keys+=("Enter" "Escape")
+  else
+    # CharacterStatus entry — close the picker we just opened and bail.
+    keys+=("Escape")
+    echo "[change_${slotType}_ability_to] ERROR: entering from CharacterStatus is not yet fully supported (learned list not available until on EquipmentAndAbilities). Press Enter on 'Equipment & Abilities' sidebar first, then rerun."
+    _fire_keys "${keys[@]}" >/dev/null 2>&1
+    return 1
+  fi
+
+  # Fire the entire batch as one command with a generous per-key delay
+  # so the game has time to render between presses.
+  _fire_keys "${keys[@]}" >/dev/null 2>&1
+
+  # Verify post-state.
+  _current_screen >/dev/null
+  local newScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
+  local newEquipped=$(_current_equipped "$currentField")
+  if [ "$newScr" = "EquipmentAndAbilities" ] && [ "$newEquipped" = "$target" ]; then
+    echo "[change_${slotType}_ability_to] ${curEquipped:-(none)} -> $target"
+    return 0
+  fi
+  echo "[change_${slotType}_ability_to] ERROR: equip verification failed. Expected EquipmentAndAbilities + $target; got $newScr + ${newEquipped:-(none)}."
+  return 1
+}
+
+# _fire_keys <key1> <key2> ...
+# Sends a batch of named keys (Enter/Escape/CursorUp/Down/Left/Right/
+# ScrollUp/Down/Up/Down/Select) as a SINGLE fft command. Uses a
+# 220ms delay between keys — tuned so the game renders each step
+# before the next key fires, preventing state-machine/game desync.
+_fire_keys() {
+  local keysJson=""
+  local first=1
+  for k in "$@"; do
+    local vk name
+    case "$k" in
+      Up|CursorUp|ScrollUp)       vk=38; name=Up ;;
+      Down|CursorDown|ScrollDown) vk=40; name=Down ;;
+      Left|CursorLeft)            vk=37; name=Left ;;
+      Right|CursorRight)          vk=39; name=Right ;;
+      Enter|Select)               vk=13; name=Enter ;;
+      Escape|Cancel)              vk=27; name=Escape ;;
+      Space)                      vk=32; name=Space ;;
+      Tab)                        vk=9;  name=Tab ;;
+      *) echo "[_fire_keys] unknown key: $k" >&2; return 1 ;;
+    esac
+    if [ "$first" -eq 1 ]; then
+      keysJson="{\"vk\":$vk,\"name\":\"$name\"}"
+      first=0
+    else
+      keysJson+=",{\"vk\":$vk,\"name\":\"$name\"}"
+    fi
+  done
+  fft "{\"id\":\"$(id)\",\"keys\":[$keysJson],\"delayBetweenMs\":220}"
+}
+
+# Public helpers.
+change_reaction_ability_to() { _change_ability reaction "$*"; }
+change_support_ability_to()  { _change_ability support  "$*"; }
+change_movement_ability_to() { _change_ability movement "$*"; }
+change_secondary_ability_to() { _change_ability secondary "$*"; }
+
+# remove_ability <name>
+# Unequip a passive by re-Enter'ing its already-equipped row in the picker
+# (the in-game unequip idiom: the picker opens with cursor ON the equipped
+# entry, and pressing Enter on an already-equipped ability removes it).
+# Works from EquipmentAndAbilities; scans all three passive slots +
+# secondary to find which one holds <name>. Errors if <name> isn't
+# currently equipped anywhere.
+remove_ability() {
+  local target="$*"
+  if [ -z "$target" ]; then
+    echo "[remove_ability] usage: remove_ability <ability name>"
+    return 1
+  fi
+
+  _current_screen >/dev/null
+  local stateFile="$B/__state.txt"
+  node -e "
+const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const s=r.screen||{};
+const ab=s.abilities||{};
+console.log(JSON.stringify({
+  name: s.name||'',
+  row: (typeof s.cursorRow==='number')?s.cursorRow:0,
+  col: (typeof s.cursorCol==='number')?s.cursorCol:0,
+  secondary: ab.secondary||'',
+  reaction:  ab.reaction||'',
+  support:   ab.support||'',
+  movement:  ab.movement||'',
+}));" "$B/response.json" 2>/dev/null > "$stateFile"
+
+  local curScreen=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).name)" < "$stateFile")
+  if [ "$curScreen" != "EquipmentAndAbilities" ]; then
+    echo "[remove_ability] ERROR: locked to EquipmentAndAbilities state (current: $curScreen)."
+    rm -f "$stateFile"
+    return 1
+  fi
+
+  # Find which slot holds the target ability.
+  local slotType=""
+  for st in reaction support movement secondary; do
+    local cur=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8'))['$st'])" < "$stateFile")
+    if [ "$cur" = "$target" ]; then slotType="$st"; break; fi
+  done
+  if [ -z "$slotType" ]; then
+    echo "[remove_ability] ERROR: '$target' is not currently equipped in any ability slot."
+    rm -f "$stateFile"
+    return 1
+  fi
+
+  local targetRow curRow curCol
+  case "$slotType" in
+    secondary) targetRow=1 ;;
+    reaction)  targetRow=2 ;;
+    support)   targetRow=3 ;;
+    movement)  targetRow=4 ;;
+  esac
+  curRow=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).row)" < "$stateFile")
+  curCol=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).col)" < "$stateFile")
+  rm -f "$stateFile"
+
+  # Build the batch: nav to slot, open picker, re-Enter to unequip, Escape.
+  local -a keys=()
+  if [ "$curCol" -lt 1 ]; then keys+=("CursorRight"); fi
+  local r="$curRow"
+  while [ "$r" -gt "$targetRow" ]; do keys+=("CursorUp"); r=$((r - 1)); done
+  while [ "$r" -lt "$targetRow" ]; do keys+=("CursorDown"); r=$((r + 1)); done
+  keys+=("Enter" "Enter" "Escape")
+
+  _fire_keys "${keys[@]}" >/dev/null 2>&1
+
+  # Verify the slot is now empty.
+  _current_screen >/dev/null
+  local newEquipped=$(_current_equipped "$slotType")
+  local newScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
+  if [ "$newScr" = "EquipmentAndAbilities" ] && [ -z "$newEquipped" ]; then
+    echo "[remove_ability] removed $target from $slotType slot"
+    return 0
+  fi
+  echo "[remove_ability] ERROR: removal verification failed. Screen=$newScr, $slotType=${newEquipped:-(empty)}"
+  return 1
+}
+
+# list_<slotType>_abilities
+# Print the viewed unit's full learned list for the given ability type.
+# Reads screen.abilities.learned* (populated on EquipmentAndAbilities) so
+# there's zero picker navigation — just a single state read. Marks the
+# currently-equipped entry with [equipped].
+_list_abilities() {
+  local slotType="$1"
+  local field learnField
+  case "$slotType" in
+    secondary) field=secondary; learnField=learnedSecondary ;;
+    reaction)  field=reaction;  learnField=learnedReaction ;;
+    support)   field=support;   learnField=learnedSupport ;;
+    movement)  field=movement;  learnField=learnedMovement ;;
+    *) echo "[_list_abilities] unknown slot: $slotType"; return 1 ;;
+  esac
+
+  local scr=$(_current_screen)
+  if [ "$scr" != "EquipmentAndAbilities" ]; then
+    echo "[list_${slotType}_abilities] ERROR: locked to EquipmentAndAbilities state (current: $scr)."
+    return 1
+  fi
+
+  node -e "
+const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const a=(r.screen&&r.screen.abilities)||{};
+const equipped=a['$field']||null;
+const list=a['$learnField']||[];
+if(!list.length){console.log('[list_${slotType}_abilities] No learned ${slotType}s for this unit.');process.exit(0);}
+console.log('Learned ${slotType}s ('+list.length+'):');
+list.forEach(n=>console.log('  - '+n+(n===equipped?'  [equipped]':'')));
+" "$B/response.json"
+}
+list_reaction_abilities()  { _list_abilities reaction; }
+list_support_abilities()   { _list_abilities support; }
+list_movement_abilities()  { _list_abilities movement; }
+list_secondary_abilities() { _list_abilities secondary; }
+
+# Equipment-slot change helpers — stubs pending inventory reader.
+_not_implemented_equipment() {
+  local helper="$1"
+  echo "[$helper] Not implemented yet. Blocked on inventory reader (TODO §17 in BATTLE_MEMORY_MAP.md — item inventory not yet located in memory). When that lands, these helpers will work like change_*_ability_to but route through the Equippable<Type> picker instead of the ability picker."
+  return 1
+}
+change_right_hand_to()  { _not_implemented_equipment change_right_hand_to; }
+change_left_hand_to()   { _not_implemented_equipment change_left_hand_to; }
+change_helm_to()        { _not_implemented_equipment change_helm_to; }
+change_garb_to()        { _not_implemented_equipment change_garb_to; }
+change_accessory_to()   { _not_implemented_equipment change_accessory_to; }
+remove_equipment()      { _not_implemented_equipment remove_equipment; }
+
 # save: Save the game.
 save() { fft "{\"id\":\"$(id)\",\"action\":\"save\"}"; }
 

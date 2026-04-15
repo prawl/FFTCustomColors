@@ -11,6 +11,125 @@ namespace FFTColorCustomizer.GameBridge
     {
         public record AbilityInfo(byte Id, string Name, int JpCost, string Job, string? Description = null);
 
+        /// <summary>
+        /// Game-canonical order of reaction abilities as they appear in the
+        /// in-game Reaction picker (EquipmentAndAbilities → Reaction slot →
+        /// Enter). Verified live 2026-04-14 on Ramza (19 learned) and cross-
+        /// checked on a second character. The order is NOT alphabetical, NOT
+        /// ID-sorted, and NOT JP-cost-sorted — it's a fixed canonical list
+        /// the game uses regardless of which unit is viewing. Abilities the
+        /// unit hasn't learned are simply skipped from the visible list.
+        ///
+        /// IDs below correspond to entries in <see cref="ReactionAbilities"/>.
+        /// Entries for abilities we haven't observed in the picker yet (e.g.
+        /// Magick Counter, Absorb MP, some Arithmetician/Bard reactions) are
+        /// appended in ID order and may need to be repositioned when
+        /// verified live.
+        /// </summary>
+        public static readonly byte[] ReactionPickerOrder = new byte[]
+        {
+            0xB4, // Counter Tackle
+            0xBA, // Counter
+            0xB5, // Nature's Wrath
+            0xC5, // First Strike
+            0xB2, // Bonecrusher
+            0xBF, // Parry
+            0xC2, // Sticky Fingers
+            0xC4, // Archer's Bane
+            0xC1, // Reflexes
+            0xC3, // Shirahadori
+            0xB7, // Gil Snapper
+            0xBD, // Mana Shield
+            0xB9, // Auto-Potion
+            0xAC, // Regenerate
+            0xAF, // Critical: Recover HP
+            0xAB, // Dragonheart
+            0xAA, // Vigilance
+            0xA9, // Vanish
+            0xA8, // Speed Surge
+            // Unverified — appended in ID order pending live picker confirmation.
+            0xA7, 0xAE, 0xB0, 0xB1, 0xB3, 0xB6, 0xBC, 0xBE, 0xC0,
+        };
+
+        /// <summary>
+        /// Game-canonical order of support abilities in the Support picker.
+        /// Verified live 2026-04-14 session 13 on a fully-mastered character
+        /// (all 30 supports visible). Stat-boost cluster comes first (JP/
+        /// EXP/Doublehand/Dual Wield/Attack/Defense/Magick/Magick Def/
+        /// Swiftspell/Halve MP), then behavior mods (Brawler/Poach/Throw
+        /// Items/Concentration/Safeguard), then all Equip-*s grouped
+        /// together, then monster-related (Tame/Beast Tongue/Beastmaster),
+        /// then defensive passives (Evasive Stance/Reequip/HP Boost/
+        /// Vehemence).
+        /// </summary>
+        public static readonly byte[] SupportPickerOrder = new byte[]
+        {
+            0xCF, // JP Boost
+            0xD0, // EXP Boost
+            0xDC, // Doublehand
+            0xDD, // Dual Wield
+            0xD1, // Attack Boost
+            0xD2, // Defense Boost
+            0xD3, // Magick Boost
+            0xD4, // Magick Defense Boost
+            0xE2, // Swiftspell
+            0xCE, // Halve MP
+            0xD8, // Brawler
+            0xD7, // Poach
+            0xDA, // Throw Items
+            0xD5, // Concentration
+            0xDB, // Safeguard
+            0xC8, // Equip Swords
+            0xCA, // Equip Crossbows
+            0xCD, // Equip Guns
+            0xCC, // Equip Axes
+            0xCB, // Equip Polearms
+            0xC9, // Equip Katana
+            0xC7, // Equip Shields
+            0xC6, // Equip Heavy Armor
+            0xD6, // Tame
+            0xD9, // Beast Tongue
+            0xDE, // Beastmaster
+            0xDF, // Evasive Stance
+            0xE0, // Reequip
+            0xE4, // HP Boost
+            0xE5, // Vehemence
+        };
+
+        /// <summary>
+        /// Game-canonical order of movement abilities in the Movement
+        /// picker. Verified live 2026-04-14 session 13 from a fully-mastered
+        /// character's Movement picker (all 20 movements visible). Grouped
+        /// semantically: Movement +N, Jump +N, job-utility (Treasure
+        /// Hunter / Lifefont / Manafont / Accrue EXP|JP), surface-traversal
+        /// (Swim / Waterwalking / Lavawalking / Ignore Elevation), terrain-
+        /// immunity (Ignore Weather / Ignore Terrain), flight (Levitate /
+        /// Fly), and Teleport last.
+        /// </summary>
+        public static readonly byte[] MovementPickerOrder = new byte[]
+        {
+            0xE6, // Movement +1
+            0xE7, // Movement +2
+            0xE8, // Movement +3
+            0xE9, // Jump +1
+            0xEA, // Jump +2
+            0xEB, // Jump +3
+            0xFD, // Treasure Hunter
+            0xED, // Lifefont
+            0xEE, // Manafont
+            0xEF, // Accrue EXP
+            0xF0, // Accrue JP
+            0xF7, // Swim
+            0xF6, // Waterwalking
+            0xF8, // Lavawalking
+            0xEC, // Ignore Elevation
+            0xF4, // Ignore Weather
+            0xF5, // Ignore Terrain
+            0xFA, // Levitate
+            0xFB, // Fly
+            0xF2, // Teleport
+        };
+
         public static readonly Dictionary<byte, AbilityInfo> ReactionAbilities = new()
         {
             [0xB4] = new(0xB4, "Counter Tackle", 180, "Squire", "Upon receiving a physical attack from an adjacent unit, counterattacks with an ability equivalent to Rush. Activates even when no damage is dealt, such as when parried or evaded."),
