@@ -76,7 +76,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 - [ ] **JP Next: populate Mettle/Fundaments ability costs** — JP Next infra shipped session 19 (commit fe8d41e) for 13 skillsets but Mettle/Fundaments remain unpopulated because their IC-remaster ability IDs aren't in ABILITY_COSTS.md. Add Mettle ability costs once verified in-game (Heal/Tailwind/Chant/Steel/Shout/Ultima).
 
 
-- [ ] **JP Next: live-verify with a partially-learned priced skillset** — Couldn't verify session 19 because every unit in current save has all abilities learned OR is on an unpriced story-class skillset. Strategy: use `change_job_to` to move a Lv99 generic to a class they haven't fully unlocked (e.g. Knight → Black Mage), then verify `Next: 50` appears in the header (Black Mage cheapest = Fire 50).
+- [ ] **JP Next: live-verify with a partially-learned priced skillset** — Session 19 attempted verification via `change_job_to` but hit two blockers: (a) current save has every Lv99 generic mastered in every priced generic class, (b) `change_job_to` helper's JobSelection state-machine drift causes it to target the wrong unit (tried Kenrick → Arithmetician, landed on Ramza's JobSelection). Next session strategy: start a fresh game OR find a unit whose primary is priced AND partially learned. Alternatively, recruit a new generic at the Warriors' Guild (starts at low level, few learned abilities). Unit tests are solid (10 passing), so the blocker is purely the live state-machine drift in the JobSelection nav flow.
 
 
 
