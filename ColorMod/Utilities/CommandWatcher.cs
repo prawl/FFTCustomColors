@@ -114,6 +114,106 @@ namespace FFTColorCustomizer.Utilities
             return (sleepMs, warning);
         }
 
+        /// <summary>
+        /// Rescan-on-entry for picker cursors that live in UE4 heap (raw
+        /// addresses shuffle across game sessions — verified 2026-04-15 three
+        /// launches got three different live addresses for the same widget).
+        /// Flow:
+        ///   1. Baseline heap snapshot.
+        ///   2. Send Down key → game advances cursor by 1.
+        ///   3. Heap snapshot (advanced).
+        ///   4. Send Up key → game restores cursor.
+        ///   5. Heap snapshot (back).
+        ///   6. Intersect for clean (a→b, b→a, |Δ|=1) toggles.
+        ///   7. Verify: fire one more Down, confirm the chosen byte
+        ///      incremented by 1 (kills false positives that satisfied the
+        ///      toggle filter coincidentally — animation counters, sibling
+        ///      widget state, etc).
+        ///   8. Restore cursor to original position with one Up.
+        /// Caches the winner on _resolvedPickerCursorAddr; returns a human
+        /// info string for logging, or null on setup failure.
+        /// Side effects: 2 net-zero key pairs fired on the game window (cursor
+        /// visibly flashes Down/Up/Down/Up for ~880ms). Noticeable but
+        /// acceptable given no cleaner option without a stable pointer chain.
+        /// </summary>
+        private string? ResolvePickerCursor(out int candidateCount)
+        {
+            candidateCount = 0;
+            if (Explorer == null) return null;
+            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+            if (win == IntPtr.Zero) return null;
+            const int VK_DOWN = 0x28, VK_UP = 0x26;
+
+            // Let picker-open animation fully settle before baselining.
+            // Without this, the baseline snap captures mid-animation bytes that
+            // coincidentally satisfy the toggle filter and outrank the real cursor.
+            // 700ms empirically chosen — picker-open has a fade-in of ~400ms and
+            // a cursor-rest settle of ~200ms on top.
+            Thread.Sleep(700);
+            Explorer.TakeHeapSnapshot("_picker_base");
+            _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+            Thread.Sleep(300);  // slightly longer — some widgets lag 1 frame
+            Explorer.TakeHeapSnapshot("_picker_adv");
+            _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+            Thread.Sleep(300);
+            Explorer.TakeHeapSnapshot("_picker_back");
+            var cands = Explorer.FindToggleCandidates("_picker_base", "_picker_adv", "_picker_back", maxResults: 32, expectedDelta: 1);
+            candidateCount = cands.Count;
+
+            // Verify candidates with a stricter two-step test: fire Down (cursor
+            // must be now X+1 where X was the baseline), then fire Down AGAIN
+            // (cursor must be X+2). A simple one-Down verify lets animation
+            // counters through since they happen to increment too; two-in-a-row
+            // filters them because they typically reset between presses or
+            // advance on a different pattern. Finally restore position with 2 Ups.
+            long verified = 0L;
+            if (cands.Count > 0)
+            {
+                var baselineVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) baselineVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(300);
+                var afterOneVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) afterOneVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(300);
+                foreach (var candAddr in cands)
+                {
+                    if (!baselineVals.TryGetValue((long)candAddr, out var baseline)) continue;
+                    if (!afterOneVals.TryGetValue((long)candAddr, out var afterOne)) continue;
+                    var afterTwo = Explorer.ReadAbsolute(candAddr, 1);
+                    if (!afterTwo.HasValue) continue;
+                    byte finalVal = (byte)afterTwo.Value.value;
+                    // Must track: baseline → baseline+1 → baseline+2 (with mod wrap).
+                    // Allows wrap to 0 from list-end.
+                    bool step1Ok = afterOne == baseline + 1 || afterOne == 0;
+                    bool step2Ok = finalVal == afterOne + 1 || finalVal == 0;
+                    if (step1Ok && step2Ok)
+                    {
+                        verified = (long)candAddr;
+                        break;
+                    }
+                }
+                // Restore cursor to original position: 2 Ups to undo the 2 Downs.
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(220);
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(220);
+            }
+            _resolvedPickerCursorAddr = verified;
+            return cands.Count > 0
+                ? $"Resolved picker cursor: 0x{_resolvedPickerCursorAddr:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
+                : "No stable picker cursor byte found (0 candidates)";
+        }
+
         // Actions that are always allowed regardless of strict mode (info/infrastructure)
         private static readonly HashSet<string> InfrastructureActions = new()
         {
@@ -645,77 +745,11 @@ namespace FFTColorCustomizer.Utilities
 
                     case "resolve_picker_cursor":
                     {
-                        // Rescan-on-entry for picker cursors that live in heap
-                        // (addresses shuffle across game sessions). Flow:
-                        //   1. Baseline heap snapshot.
-                        //   2. Send Down key → game advances cursor by 1.
-                        //   3. Heap snapshot (advanced).
-                        //   4. Send Up key → game restores cursor.
-                        //   5. Heap snapshot (back).
-                        //   6. Intersect: clean (a→b, b→a, |Δ|=1) toggles are cursor candidates.
-                        // Caches the first candidate on _resolvedPickerCursor for
-                        // subsequent responses to surface ui=<highlighted> via byte read.
-                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
-                        IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
-                        if (win == IntPtr.Zero) { response.Status = "failed"; response.Error = "Game window not found"; break; }
-                        const int VK_DOWN = 0x28, VK_UP = 0x26;
-                        Explorer.TakeHeapSnapshot("_picker_base");
-                        _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
-                        Thread.Sleep(220);
-                        Explorer.TakeHeapSnapshot("_picker_adv");
-                        _inputSimulator.SendKeyPressToWindow(win, VK_UP);
-                        Thread.Sleep(220);
-                        Explorer.TakeHeapSnapshot("_picker_back");
-                        var cands = Explorer.FindToggleCandidates("_picker_base", "_picker_adv", "_picker_back", maxResults: 32, expectedDelta: 1);
-
-                        // Verify each candidate by firing another Down and reading:
-                        // the real cursor byte must have incremented by exactly 1.
-                        // This eliminates false positives (animation counters, secondary
-                        // widget state) that happened to satisfy the toggle filter.
-                        long verified = 0L;
-                        if (cands.Count > 0)
-                        {
-                            // Snapshot each candidate's current value
-                            var beforeVals = new Dictionary<long, byte>();
-                            foreach (var candAddr in cands)
-                            {
-                                var r = Explorer.ReadAbsolute(candAddr, 1);
-                                if (r.HasValue) beforeVals[(long)candAddr] = (byte)r.Value.value;
-                            }
-                            _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
-                            Thread.Sleep(220);
-                            // The one that's now exactly before+1 (or wrapped to 0 from list-end)
-                            // is the true cursor. Prefer the one with the highest priority
-                            // address (picker widget heap range) — cands are already sorted.
-                            foreach (var candAddr in cands)
-                            {
-                                if (!beforeVals.TryGetValue((long)candAddr, out var before)) continue;
-                                var after = Explorer.ReadAbsolute(candAddr, 1);
-                                if (!after.HasValue) continue;
-                                byte now = (byte)after.Value.value;
-                                if (now == before + 1 || now == 0 /* wrapped */)
-                                {
-                                    verified = (long)candAddr;
-                                    break;
-                                }
-                            }
-                            // Restore cursor to original position.
-                            _inputSimulator.SendKeyPressToWindow(win, VK_UP);
-                            Thread.Sleep(220);
-                        }
-                        _resolvedPickerCursorAddr = verified;
-                        response.Status = "completed";
-                        // Log all candidates with their priorities + verified status so
-                        // we can see which ones the filter produced and which passed verification.
-                        var candInfo = new System.Text.StringBuilder();
-                        foreach (var ca in cands)
-                        {
-                            var v = Explorer.ReadAbsolute(ca, 1);
-                            candInfo.Append($"0x{(long)ca:X}={v?.value ?? -1} ");
-                        }
-                        response.Info = cands.Count > 0
-                            ? $"Resolved picker cursor: 0x{_resolvedPickerCursorAddr:X} ({cands.Count} cands: {candInfo})"
-                            : "No stable picker cursor byte found (0 candidates)";
+                        int cCount;
+                        var info = ResolvePickerCursor(out cCount);
+                        response.Status = info != null ? "completed" : "failed";
+                        if (info == null) response.Error = "Memory explorer not initialized or game window not found";
+                        response.Info = info;
                         ModLogger.Log($"[CommandBridge] {response.Info}");
                         break;
                     }
@@ -3237,8 +3271,8 @@ namespace FFTColorCustomizer.Utilities
                 if (!isPicker && _resolvedPickerCursorAddr != 0)
                 {
                     // Left the picker — drop the cached heap address. Next picker
-                    // open re-resolves via `resolve_picker_cursor` since heap
-                    // addresses can point at stale memory after a transition.
+                    // open re-resolves since heap addresses can point at stale
+                    // memory after a screen transition.
                     _resolvedPickerCursorAddr = 0L;
                 }
                 if (isPicker && Explorer != null && ScreenMachine != null)
@@ -3343,10 +3377,19 @@ namespace FFTColorCustomizer.Utilities
                         // shuffle so we rescan on entry), surface the currently
                         // highlighted ability as ui=<name>. Falls back to null
                         // when address is 0 (unresolved) or read fails.
-                        // If we've resolved the picker cursor byte this picker-open
-                        // (via `resolve_picker_cursor` — heap addresses shuffle so we
-                        // rescan each time), surface the currently highlighted ability
-                        // as ui=<name>. Falls back to null when unresolved/read fails.
+                        // Auto-resolve the picker cursor on first picker-open this
+                        // session. Heap addresses shuffle across game launches so we
+                        // rescan each time. Costs ~1s (Down+Up+Down+Up+Up+Up = 6 keys
+                        // with 300ms each while snapshotting). Subsequent reads are
+                        // free (single byte) until screen transitions out.
+                        if (_resolvedPickerCursorAddr == 0 && list.Count > 0 && Explorer != null)
+                        {
+                            int _unused;
+                            ResolvePickerCursor(out _unused);
+                        }
+
+                        // Surface the currently highlighted ability as ui=<name>.
+                        // Falls back to null when resolver found no candidate or read fails.
                         if (_resolvedPickerCursorAddr != 0 && list.Count > 0 && Explorer != null)
                         {
                             var curByte = Explorer.ReadAbsolute((nint)_resolvedPickerCursorAddr, 1);
