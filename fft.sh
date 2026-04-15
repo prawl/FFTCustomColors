@@ -176,6 +176,29 @@ fi
 # _col <color> <text>  → wraps text with ANSI color, safe when colors disabled.
 _col() { printf '%b%s%b' "$1" "$2" "$_C_RESET"; }
 
+# _is_party_tree_screen <screenName> → 0 if on a PartyMenu-family screen.
+# PartyMenu tree screens don't benefit from loc=/objective=/gil= in the
+# compact line — the player isn't navigating the world there, so those
+# fields are pure carry-over noise that pushes meaningful signals
+# (viewedUnit, equippedItem, pickerTab, ui) further away from Claude's
+# eye. Per TODO §"What Goes In Compact vs Verbose vs Nowhere": if a
+# field doesn't change a decision on *this* screen, drop it.
+_is_party_tree_screen() {
+  case "$1" in
+    PartyMenu|PartyMenuInventory|PartyMenuChronicle|PartyMenuOptions|\
+    CharacterStatus|CharacterDialog|DismissUnit|\
+    EquipmentAndAbilities|CombatSets|\
+    JobSelection|JobActionMenu|JobChangeConfirmation|\
+    SecondaryAbilities|ReactionAbilities|SupportAbilities|MovementAbilities|\
+    EquippableWeapons|EquippableShields|EquippableHeadware|EquippableCombatGarb|EquippableAccessories|\
+    ChronicleEncyclopedia|ChronicleStateOfRealm|ChronicleEvents|ChronicleAuracite|ChronicleReading|ChronicleCollection|ChronicleErrands|ChronicleStratagems|ChronicleLessons|ChronicleAkademicReport|\
+    OptionsSettings)
+      return 0 ;;
+    *)
+      return 1 ;;
+  esac
+}
+
 # _status_col <status> → returns the color ANSI for a given status string.
 _status_col() {
   case "$1" in
@@ -241,10 +264,16 @@ _fmt_screen_compact() {
     [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
   fi
 
-  LINE="$LINE $(_col "$_C_LOC" "loc=$LOCSTR")"
-  [ "$SCR" = "TravelList" ] && [ -n "$HOV" ] && LINE="$LINE hover=$(_col "$_C_MARK" "$HOV")"
-  [ -n "$OBJSTR" ] && LINE="$LINE $(_col "$_C_LOC" "$OBJSTR")"
-  [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
+  # Suppress loc=/objective=/gil= on PartyMenu-tree screens — none of
+  # those signals change a per-action decision while the player is in
+  # equipment management. Battle screens and world-navigation screens
+  # still get them.
+  if ! _is_party_tree_screen "$SCR"; then
+    LINE="$LINE $(_col "$_C_LOC" "loc=$LOCSTR")"
+    [ "$SCR" = "TravelList" ] && [ -n "$HOV" ] && LINE="$LINE hover=$(_col "$_C_MARK" "$HOV")"
+    [ -n "$OBJSTR" ] && LINE="$LINE $(_col "$_C_LOC" "$OBJSTR")"
+    [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
+  fi
   [ -n "$SLCI" ] && LINE="$LINE row=$(_col "$_C_MARK" "$SLCI")"
   LINE="$LINE status=$(printf '%b%s%b' "$(_status_col "$ST")" "$ST" "$_C_RESET")"
 
