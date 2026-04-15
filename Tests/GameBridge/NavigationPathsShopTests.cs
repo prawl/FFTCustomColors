@@ -5,10 +5,10 @@ using Xunit;
 namespace FFTColorCustomizer.Tests.GameBridge
 {
     /// <summary>
-    /// ValidPaths coverage for the shop flow (LocationMenu → SettlementMenu →
-    /// Outfitter_Buy / Outfitter_Sell / Outfitter_Fitting). Each screen needs
-    /// a set of named actions so Claude can drive the UI without memorising
-    /// key sequences.
+    /// ValidPaths coverage for the shop flow (LocationMenu → Outfitter/Tavern/
+    /// WarriorsGuild/PoachersDen → Outfitter_Buy / Outfitter_Sell / Outfitter_Fitting).
+    /// Each screen needs a set of named actions so Claude can drive the UI
+    /// without memorising key sequences.
     /// </summary>
     public class NavigationPathsShopTests
     {
@@ -27,12 +27,18 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains("CursorDown", paths.Keys);
         }
 
-        [Fact]
-        public void SettlementMenu_ExposesSubActionActions()
+        [Theory]
+        [InlineData("Outfitter")]
+        [InlineData("Tavern")]
+        [InlineData("WarriorsGuild")]
+        [InlineData("PoachersDen")]
+        [InlineData("SaveGame")]
+        public void ShopInterior_ExposesSubActionActions(string shopName)
         {
-            // Inside the Outfitter/Tavern/etc. at the shop menu (cursor on
-            // Buy/Sell/Fitting but not yet Entered).
-            var paths = NavigationPaths.GetPaths(MakeScreen("SettlementMenu"));
+            // Inside the shop at the sub-action menu (cursor on Buy/Sell/Fitting
+            // or equivalent, not yet Entered). All shop-interior screens share
+            // the same helper paths.
+            var paths = NavigationPaths.GetPaths(MakeScreen(shopName));
 
             Assert.NotNull(paths);
             Assert.Contains("Select", paths!.Keys);
@@ -42,12 +48,12 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void SettlementMenu_Leave_DismissesFarewellDialog()
+        public void Outfitter_Leave_DismissesFarewellDialog()
         {
             // Leaving a shop shows a "Come back anytime" dialog that requires a
             // second Enter press to actually return to LocationMenu. Escape alone
             // just opens the dialog.
-            var paths = NavigationPaths.GetPaths(MakeScreen("SettlementMenu"));
+            var paths = NavigationPaths.GetPaths(MakeScreen("Outfitter"));
             var leave = paths!["Leave"];
 
             Assert.NotNull(leave.Keys);

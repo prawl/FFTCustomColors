@@ -626,6 +626,17 @@ namespace FFTColorCustomizer.Utilities
         public string? JobCellState { get; set; }
 
         /// <summary>
+        /// For JobSelection Visible cells: human-readable prerequisite
+        /// text for unlocking the hovered class (e.g. "Squire Lv. 2",
+        /// "Black Mage Lv. 3"). Synthesized from the static
+        /// JobGridLayout.JobPrereqs table. Omitted on Locked
+        /// (no info available) and Unlocked (not needed) cells.
+        /// </summary>
+        [JsonPropertyName("jobUnlockRequirements")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? JobUnlockRequirements { get; set; }
+
+        /// <summary>
         /// Name of the unit whose nested PartyMenu panel is currently
         /// shown. Populated on unit-scoped screens: CharacterStatus,
         /// EquipmentAndAbilities, JobSelection, ability pickers,

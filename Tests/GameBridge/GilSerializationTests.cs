@@ -43,14 +43,19 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
         // ShopGilPolicy decides whether gil should be surfaced on a given screen.
         // Purchase-relevant screens: WorldMap, PartyMenu, LocationMenu,
-        // SettlementMenu, Outfitter_Buy, Outfitter_Sell, Outfitter_Fitting.
+        // Outfitter/Tavern/WarriorsGuild/PoachersDen/SaveGame (shop interiors),
+        // OutfitterBuy/OutfitterSell/OutfitterFitting (sub-actions).
         // Everything else (battle states, cutscenes, title, etc.): omitted.
 
         [Theory]
         [InlineData("WorldMap")]
         [InlineData("PartyMenu")]
         [InlineData("LocationMenu")]
-        [InlineData("SettlementMenu")]
+        [InlineData("Outfitter")]
+        [InlineData("Tavern")]
+        [InlineData("WarriorsGuild")]
+        [InlineData("PoachersDen")]
+        [InlineData("SaveGame")]
         [InlineData("OutfitterBuy")]
         [InlineData("OutfitterSell")]
         [InlineData("OutfitterFitting")]

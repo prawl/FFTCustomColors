@@ -342,5 +342,56 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             Assert.Equal(expected, JobGridLayout.IsGenericFemale(jobId));
         }
+
+        [Fact]
+        public void GetUnlockRequirements_Knight_ReturnsSquireLv2()
+        {
+            Assert.Equal("Squire Lv. 2", JobGridLayout.GetUnlockRequirements("Knight"));
+        }
+
+        [Fact]
+        public void GetUnlockRequirements_Ninja_ReturnsMultiPrereq()
+        {
+            var req = JobGridLayout.GetUnlockRequirements("Ninja");
+            Assert.NotNull(req);
+            Assert.Contains("Archer", req);
+            Assert.Contains("Thief", req);
+            Assert.Contains("Geomancer", req);
+        }
+
+        [Fact]
+        public void GetUnlockRequirements_Squire_ReturnsNull()
+        {
+            // Squire is a starter class with no prereqs.
+            Assert.Null(JobGridLayout.GetUnlockRequirements("Squire"));
+        }
+
+        [Fact]
+        public void GetUnlockRequirements_Chemist_ReturnsNull()
+        {
+            Assert.Null(JobGridLayout.GetUnlockRequirements("Chemist"));
+        }
+
+        [Fact]
+        public void GetUnlockRequirements_UnknownClass_ReturnsNull()
+        {
+            Assert.Null(JobGridLayout.GetUnlockRequirements("NotARealClass"));
+        }
+
+        [Fact]
+        public void JobPrereqs_CoversAllUnlockableGenerics()
+        {
+            // Verify the table covers every generic class that has prereqs.
+            // Squire/Chemist are starters (no prereqs, not in table).
+            string[] expected = {
+                "Knight", "Archer", "Monk", "Thief", "Dragoon", "Geomancer",
+                "Samurai", "Ninja", "Bard", "Dancer", "Dark Knight",
+                "White Mage", "Black Mage", "Time Mage", "Mystic", "Orator",
+                "Summoner", "Arithmetician", "Mime", "Onion Knight",
+            };
+            foreach (var cls in expected)
+                Assert.True(JobGridLayout.JobPrereqs.ContainsKey(cls),
+                    $"JobPrereqs missing entry for {cls}");
+        }
     }
 }

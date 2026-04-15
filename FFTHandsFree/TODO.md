@@ -75,7 +75,6 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **JP Next: populate Mettle/Fundaments ability costs** — JP Next infra shipped session 19 (commit fe8d41e) for 13 skillsets but Mettle/Fundaments remain unpopulated because their IC-remaster ability IDs aren't in ABILITY_COSTS.md. Add Mettle ability costs once verified in-game (Heal/Tailwind/Chant/Steel/Shout/Ultima).
 
-- [ ] **JP Next: populate Holy Sword / Limit / Dragon / Work / Snipe costs** — Story-character primary skillsets not in ABILITY_COSTS.md. Add Cloud's Limit, Agrias's Holy Sword, Reis's Dragon, Construct 8's Work, Mustadio's Snipe, Rapha/Marach Sky/Nether Mantra, Beowulf's Spellblade, Meliadoul's Unyielding Blade, Balthier's Sky Pirating, Luso's Hunting. Needed for Next: N to populate on story characters.
 
 - [ ] **JP Next: live-verify with a partially-learned priced skillset** — Couldn't verify session 19 because every unit in current save has all abilities learned OR is on an unpriced story-class skillset. Strategy: use `change_job_to` to move a Lv99 generic to a class they haven't fully unlocked (e.g. Knight → Black Mage), then verify `Next: 50` appears in the header (Black Mage cheapest = Fire 50).
 
@@ -107,7 +106,6 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **JobSelection: unlock-requirements text on Visible cells** — surface `screen.jobUnlockRequirements` (e.g. "Squire Lv. 2, Chemist Lv. 3") when `jobCellState == "Visible"`. Path of least resistance: hard-code `JobPrereqs` map (~20 entries) in `CharacterData.cs` and synthesize the text. (Alternative: memory scan for the widget text — UE4 heap, hard.)
 
-- [ ] **JobSelection: expand `StoryCharacterUniqueClass` map** — currently verified for Ramza, Agrias, Mustadio, Rapha, Marach, Beowulf, Construct 8, Orlandeau, Meliadoul, Reis, Cloud, Luso, Balthier. Add Delita / Argath / Wiegraf / etc. when they become recruitable.
 
 - [ ] **JobSelection: live-verify generic male/female grids** — Squire at (0,0), Bard at (2,4) for males, Dancer at (2,4) for females — all inferred, not yet live-verified. Verify when a generic is recruited.
 
@@ -375,20 +373,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 ### Detection — what's mapped
 
 ### Detection — TODO
-
-- [ ] **Fix misaligned shop-state naming** — the 2026-04-14 rename chose the wrong layer. Current state:
-  - `LocationMenu` — fires when hovering a shop in the settlement's shop list (correct)
-  - `SettlementMenu` — fires when inside a specific shop, at the Buy/Sell/Fitting selector (misnamed — this IS the interior)
-  - `Outfitter_Buy` / `Outfitter_Sell` / `Outfitter_Fitting` — inside the Buy/Sell/Fitting list (correct)
-
-  User expectation is:
-  - `LocationMenu` stays as-is (settlement's shop-type selector — you're choosing Outfitter vs Tavern vs ...)
-  - The CURRENT `SettlementMenu` should be named **after the shop itself** — `Outfitter` / `Tavern` / `WarriorsGuild` / `PoachersDen`. The `ui=` field shows the sub-action cursor: `[Outfitter] ui=Buy`, `[Outfitter] ui=Sell`, `[Outfitter] ui=Fitting`.
-  - Sub-action lists stay as `Outfitter_Buy` / `Outfitter_Sell` / `Outfitter_Fitting`.
-
-  Fix: change detection to return `Outfitter` (or the appropriate shop name) when `insideShopFlag==1` and `shopSubMenuIndex==0`, using `shopTypeIndex` to pick the name. Drop `SettlementMenu` as a state name. Rename `GetSettlementMenuPaths` → `GetOutfitterMenuPaths` (and duplicate for Tavern / WG / PD once their interiors are distinguishable — but currently the layout is the same for all four, so one helper reused via per-shop state names works).
-
-  Also needs: a memory scan for the sub-action cursor (Buy/Sell/Fitting hover) so `ui=Buy` can actually populate — currently only known AFTER Select has been pressed (shopSubMenuIndex jumps to 1/4/6). See also the "ui label at ShopInterior" TODO entry (which is about this same gap).
 
 
 - [ ] **(NEXT) ValidPaths for the whole shop flow** [P0] — the automation unlock. Every shop screen needs a ValidPaths entry so Claude can drive the UI without knowing individual key sequences. Required entries:

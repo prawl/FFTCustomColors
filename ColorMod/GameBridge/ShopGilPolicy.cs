@@ -15,7 +15,13 @@ namespace FFTColorCustomizer.GameBridge
             "WorldMap",         // deciding where to travel/shop
             "PartyMenu",        // equipment browsing leads to shop decisions
             "LocationMenu",     // at a settlement, picking a shop
-            "SettlementMenu",   // inside a settlement, picking Buy/Sell/Fitting
+            // Shop interiors (shop-specific names via shopTypeIndex)
+            "Outfitter",
+            "Tavern",
+            "WarriorsGuild",
+            "PoachersDen",
+            "SaveGame",
+            // Outfitter sub-actions
             "OutfitterBuy",
             "OutfitterSell",
             "OutfitterFitting",

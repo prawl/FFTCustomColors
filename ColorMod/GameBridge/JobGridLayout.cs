@@ -70,9 +70,16 @@ namespace FFTColorCustomizer.GameBridge
                 ["Cloud"] = "Soldier",
                 ["Luso"] = "Game Hunter",
                 ["Balthier"] = "Sky Pirate",
-                // Delita / Ovelia / Alma / Wiegraf etc — only appear as
-                // NPCs or bosses, not in the party grid. Add when they
-                // become player-controllable.
+                // Complete for all recruitable FFT characters. Delita,
+                // Argath, Ovelia, Alma, Orran, Gaffgarion, Wiegraf,
+                // Zalbaag are guests/NPCs/bosses only — they appear in
+                // battle formation but NEVER join the PartyMenu roster
+                // grid. Verified via
+                // FFTHandsFree/Wiki/StoryCharacters.md 2026-04-15.
+                // Do NOT add them here — they would pollute the grid
+                // classification logic with cells that can never be
+                // hovered. Their nameIds ARE tracked by
+                // CharacterData.StoryCharacterName for in-battle display.
             };
 
         /// <summary>
@@ -134,6 +141,59 @@ namespace FFTColorCustomizer.GameBridge
             if (unitName == null) return false;
             return StoryCharacterUniqueClass.TryGetValue(unitName, out var own) && own == className;
         }
+
+        /// <summary>
+        /// Canonical prerequisite text for each unlockable generic class.
+        /// Sourced from FFTHandsFree/JOB_CLASSES.md and the FFT canon
+        /// job-unlock tree. Values are human-readable strings suitable
+        /// for direct display on the game's info panel equivalent.
+        ///
+        /// Only generic classes are included — story-character unique
+        /// classes (Gallant Knight, Holy Knight, etc.) are job-locked
+        /// to their owner and have no prerequisites in the classic
+        /// sense. Squire and Chemist are the two starter classes and
+        /// are always unlocked (no entry needed).
+        ///
+        /// "Sq2" means Squire job level 2, "Kn3" means Knight job
+        /// level 3, etc. Matches the compact wiki notation.
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, string> JobPrereqs =
+            new Dictionary<string, string>
+            {
+                // Physical tree — off Squire
+                ["Knight"]        = "Squire Lv. 2",
+                ["Archer"]        = "Squire Lv. 2",
+                ["Monk"]          = "Knight Lv. 3",
+                ["Thief"]         = "Archer Lv. 3",
+                ["Dragoon"]       = "Thief Lv. 4",
+                ["Geomancer"]     = "Monk Lv. 4",
+                ["Samurai"]       = "Knight Lv. 4, Monk Lv. 5, Dragoon Lv. 2",
+                ["Ninja"]         = "Archer Lv. 4, Thief Lv. 5, Geomancer Lv. 2",
+                ["Bard"]          = "Summoner Lv. 5, Orator Lv. 5 (male only)",
+                ["Dancer"]        = "Geomancer Lv. 5, Dragoon Lv. 5 (female only)",
+                ["Dark Knight"]   = "Knight mastered, Black Mage mastered, Samurai Lv. 8, Geomancer Lv. 8, Ninja Lv. 8, Dragoon Lv. 8, 20+ kills",
+
+                // Magick tree — off Chemist
+                ["White Mage"]    = "Chemist Lv. 2",
+                ["Black Mage"]    = "Chemist Lv. 2",
+                ["Time Mage"]     = "Black Mage Lv. 3",
+                ["Mystic"]        = "White Mage Lv. 3",
+                ["Orator"]        = "Mystic Lv. 3",
+                ["Summoner"]      = "Time Mage Lv. 3",
+                ["Arithmetician"] = "White Mage Lv. 5, Black Mage Lv. 5, Time Mage Lv. 4, Mystic Lv. 4",
+
+                // Special
+                ["Mime"]          = "Squire Lv. 8, Chemist Lv. 8, Summoner Lv. 5, Orator Lv. 5, Geomancer Lv. 5, Dragoon Lv. 5",
+                ["Onion Knight"]  = "Squire Lv. 6, Chemist Lv. 6",
+            };
+
+        /// <summary>
+        /// Returns the prerequisite text for <paramref name="className"/>,
+        /// or null if the class has no prerequisites (Squire, Chemist,
+        /// story-character unique classes).
+        /// </summary>
+        public static string? GetUnlockRequirements(string className) =>
+            JobPrereqs.TryGetValue(className, out var txt) ? txt : null;
 
         /// <summary>
         /// Three-state classification per JobSelection grid cell.

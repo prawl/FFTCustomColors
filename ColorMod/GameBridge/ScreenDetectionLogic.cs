@@ -154,20 +154,22 @@ namespace FFTColorCustomizer.GameBridge
                     if (subState != null) return subState;
                 }
 
-                // SettlementMenu: player has pressed Enter on a shop/service in
-                // LocationMenu and is now at the shop-type selector (Outfitter
+                // Shop interior: player has pressed Enter on a shop/service in
+                // LocationMenu and is now at the sub-action selector (Outfitter
                 // Buy/Sell/Fitting, Tavern Rumors/Errands, Warriors' Guild
-                // Recruit/Rename, Poachers' Den Process/Sell Carcasses). Signal at
-                // 0x141844DD0 — verified via module diff 2026-04-14 cycling through
-                // all 4 shop types at Dorter. screen.UI set by caller from
-                // shopTypeIndex identifies which shop.
+                // Recruit/Rename, Poachers' Den Process/Sell Carcasses).
+                // Signal at 0x141844DD0 — verified via module diff 2026-04-14
+                // cycling through all 4 shop types at Dorter. shopTypeIndex
+                // identifies WHICH shop; we return the shop-specific screen
+                // name so Claude sees `[Outfitter] ui=Buy` instead of the
+                // generic `[SettlementMenu] ui=Outfitter`.
                 //
-                // Historical name: this state was called "ShopInterior" through
-                // 2026-04-14. Renamed to SettlementMenu because "ShopInterior"
-                // misleadingly suggested being inside the shop (Buy/Sell/Fitting
-                // submenu) rather than at the settlement's shop-selector menu.
+                // Historical names: this state was "ShopInterior" → "SettlementMenu"
+                // → (now) shop-specific names per shopTypeIndex. The earlier
+                // renames conflated the settlement-level shop selector (which
+                // is LocationMenu) with the shop interior (which is this).
                 if (insideShopFlag == 1 && rawLocation >= 0 && rawLocation <= 42)
-                    return "SettlementMenu";
+                    return ShopTypeLabels.ForIndex(shopTypeIndex);
 
                 // LocationMenu: player is inside a named location's menu. Which specific
                 // shop/service is highlighted lives in screen.UI (populated by the caller

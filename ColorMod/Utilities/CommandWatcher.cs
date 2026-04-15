@@ -3383,8 +3383,14 @@ namespace FFTColorCustomizer.Utilities
                     shopSubMenuIndex: shopSubMenuIndex,
                     shopTypeIndex: shopTypeIndex);
 
-                // Shop/LocationMenu UI label from shopTypeIndex at 0x140D435F0.
-                if (screen.Name == "LocationMenu" || screen.Name == "SettlementMenu")
+                // LocationMenu UI label: shopTypeIndex at 0x140D435F0 names
+                // which shop the cursor is hovering in the settlement's
+                // shop list. On shop INTERIOR screens (Outfitter/Tavern/etc)
+                // the ui field would show the sub-action cursor (Buy/Sell/
+                // Fitting/Rumors/Errands) — deferred pending a memory scan
+                // for the sub-action hover index (shopSubMenuIndex only
+                // gets a distinct value AFTER Select). See TODO §10.
+                if (screen.Name == "LocationMenu")
                     screen.UI = GameBridge.ShopTypeLabels.ForIndex(shopTypeIndex);
 
                 // Gil: show on shop-adjacent and purchase-decision screens only.
@@ -4473,6 +4479,12 @@ namespace FFTColorCustomizer.Utilities
                         var cellState = JobGridLayout.ClassifyCell(
                             hoveredClass, unitName, viewedSkillsets, partySkillsets);
                         screen.JobCellState = cellState.ToString();
+
+                        // Surface unlock requirements on Visible cells only.
+                        // Locked cells are shadow silhouettes with no info
+                        // revealed in-game; Unlocked cells don't need it.
+                        if (cellState == JobGridLayout.CellState.Visible)
+                            screen.JobUnlockRequirements = JobGridLayout.GetUnlockRequirements(hoveredClass);
 
                         // Surface the class name as ui= only when the cell
                         // is at least Visible to the player (Locked cells

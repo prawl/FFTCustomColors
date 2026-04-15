@@ -116,6 +116,15 @@ namespace FFTColorCustomizer.GameBridge
             // Dark Knight / Darkness
             ["Sanguine Sword"] = 500, ["Crushing Blow"] = 300,
             ["Abyssal Blade"] = 1000, ["Unholy Sacrifice"] = 900,
+
+            // NOTE: Story-character primary skillsets (Holy Sword, Limit,
+            // Dragon, Work, Snipe, Sky Mantra, Nether Mantra, Unyielding
+            // Blade, Spellblade, Sky Pirating, Hunting, Fell Sword) are
+            // intentionally NOT populated. In canon FFT those skillsets
+            // are learned via story progression / level-up, not JP
+            // purchase — there is no "Next: N" value for them. The
+            // game doesn't show a Next value on story-class
+            // CharacterStatus headers either. Returning null is correct.
         };
 
         /// <summary>Default JP cost for every Geomancy ability (all 150).</summary>

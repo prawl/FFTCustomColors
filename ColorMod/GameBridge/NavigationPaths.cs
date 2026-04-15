@@ -63,7 +63,11 @@ namespace FFTColorCustomizer.GameBridge
                 "JobChangeConfirmation" => GetJobChangeConfirmationPaths(),
                 "TravelList" => GetTravelListPaths(),
                 "LocationMenu" => GetLocationMenuPaths(),
-                "SettlementMenu" => GetSettlementMenuPaths(),
+                "Outfitter" => GetSettlementMenuPaths(),
+                "Tavern" => GetSettlementMenuPaths(),
+                "WarriorsGuild" => GetSettlementMenuPaths(),
+                "PoachersDen" => GetSettlementMenuPaths(),
+                "SaveGame" => GetSettlementMenuPaths(),
                 "OutfitterBuy" => GetShopItemListPaths("Buy highlighted item (opens quantity/confirm dialog)"),
                 "OutfitterSell" => GetShopItemListPaths("Sell highlighted item (opens quantity/confirm dialog)"),
                 "OutfitterFitting" => GetShopItemListPaths("Select highlighted slot/item (advances picker)"),
@@ -398,7 +402,11 @@ namespace FFTColorCustomizer.GameBridge
                 ["EnterShop"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ENTER, "Enter") },
-                    WaitForScreen = "SettlementMenu",
+                    // Screen name after Enter depends on which shop was
+                    // highlighted (Outfitter/Tavern/WarriorsGuild/PoachersDen/
+                    // SaveGame). Wait until we're no longer on LocationMenu
+                    // rather than fixing a single target screen.
+                    WaitUntilScreenNot = "LocationMenu",
                     WaitTimeoutMs = 3000,
                     Desc = "Enter the highlighted shop/service"
                 },
@@ -426,8 +434,11 @@ namespace FFTColorCustomizer.GameBridge
                 ["Select"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ENTER, "Enter") },
-                    WaitUntilScreenNot = "SettlementMenu",
-                    WaitTimeoutMs = 3000,
+                    // Screen name after select depends on which shop + which
+                    // sub-action (Outfitter → OutfitterBuy/Sell/Fitting;
+                    // Tavern → Rumors/Errands; etc). Rely on the general
+                    // wait rather than a single named target screen.
+                    WaitTimeoutMs = 1500,
                     Desc = "Enter the highlighted sub-action (Buy/Sell/Fitting/etc.)"
                 },
                 ["Leave"] = new PathEntry
@@ -465,8 +476,10 @@ namespace FFTColorCustomizer.GameBridge
                 ["Cancel"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
-                    WaitForScreen = "SettlementMenu",
-                    WaitTimeoutMs = 3000,
+                    // Escape from a sub-action list returns to the parent
+                    // shop (Outfitter/Tavern/WarriorsGuild/PoachersDen/SaveGame).
+                    // We can't statically know which, so rely on timeout + poll.
+                    WaitTimeoutMs = 1500,
                     Desc = "Cancel, back to shop menu"
                 },
             };
@@ -492,8 +505,8 @@ namespace FFTColorCustomizer.GameBridge
                 ["Cancel"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
-                    WaitForScreen = "SettlementMenu",
-                    WaitTimeoutMs = 3000,
+                    // Back to the parent shop (SaveGame / Outfitter / etc).
+                    WaitTimeoutMs = 1500,
                     Desc = "Cancel, back to settlement menu"
                 },
             };

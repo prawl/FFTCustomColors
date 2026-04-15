@@ -140,19 +140,50 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_SettlementMenu_AtShopSelector_ShouldReturnSettlementMenu()
+        public void DetectScreen_ShopInterior_AtShopSelector_ShouldReturnShopTypeName()
         {
             // Inside an Outfitter, cursor on Buy/Sell/Fitting at the shop menu
             // (not yet Entered into a sub-action). shopSubMenuIndex=0 until Enter.
-            // Verified 2026-04-14 at Dorter.
+            // shopTypeIndex=0 → Outfitter. Verified 2026-04-14 at Dorter.
+            // Post-rename (session 19) the shop interior screen is named after
+            // the shop itself (Outfitter/Tavern/WarriorsGuild/PoachersDen/SaveGame).
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 1, rawLocation: 9, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 5, encB: 5, isPartySubScreen: false, hover: 255,
-                locationMenuFlag: 1, insideShopFlag: 1, shopSubMenuIndex: 0);
+                locationMenuFlag: 1, insideShopFlag: 1, shopSubMenuIndex: 0,
+                shopTypeIndex: 0);
 
-            Assert.Equal("SettlementMenu", result);
+            Assert.Equal("Outfitter", result);
+        }
+
+        [Fact]
+        public void DetectScreen_ShopInterior_Tavern_ReturnsTavern()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 9, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 255,
+                locationMenuFlag: 1, insideShopFlag: 1, shopSubMenuIndex: 0,
+                shopTypeIndex: 1);
+
+            Assert.Equal("Tavern", result);
+        }
+
+        [Fact]
+        public void DetectScreen_ShopInterior_PoachersDen_ReturnsPoachersDen()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 9, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 5, isPartySubScreen: false, hover: 255,
+                locationMenuFlag: 1, insideShopFlag: 1, shopSubMenuIndex: 0,
+                shopTypeIndex: 3);
+
+            Assert.Equal("PoachersDen", result);
         }
 
         [Fact]
