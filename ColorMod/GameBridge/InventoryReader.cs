@@ -47,6 +47,13 @@ namespace FFTColorCustomizer.GameBridge
             public string? Name { get; set; }
             public string? Type { get; set; }
             public int? SellPrice { get; set; }
+
+            /// <summary>
+            /// True when <see cref="SellPrice"/> came from a ground-truth
+            /// override in <see cref="ItemPrices.SellPriceOverrides"/>,
+            /// false when it was computed as buy/2 (estimate).
+            /// </summary>
+            public bool SellPriceVerified { get; set; }
         }
 
         /// <summary>
@@ -104,6 +111,7 @@ namespace FFTColorCustomizer.GameBridge
                     Name = info?.Name,
                     Type = info?.Type,
                     SellPrice = ItemPrices.GetSellPrice(id),
+                    SellPriceVerified = ItemPrices.IsSellPriceGroundTruth(id),
                 });
             }
             return results;

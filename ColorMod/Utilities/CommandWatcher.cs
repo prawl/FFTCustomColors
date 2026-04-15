@@ -3750,14 +3750,19 @@ namespace FFTColorCustomizer.Utilities
                 // actually shows (drift scenario documented in TODO §0).
                 // Inventory surface: PartyMenu tabs get the full list (via
                 // ReadAll); OutfitterSell gets only sellable entries (those
-                // with a known sell price). Both share the same DTO shape so
-                // fft.sh can render them with one code path.
+                // with a known sell price); OutfitterFitting gets the full
+                // list so Claude can see what's available to equip on the
+                // chosen unit/slot (filtering by slot type is a follow-up
+                // once we track the Fitting picker depth). All three share
+                // the same DTO shape so fft.sh can render them with one
+                // code path.
                 bool onPartyMenuAnyTab = screen.Name == "PartyMenu"
                     || screen.Name == "PartyMenuInventory"
                     || screen.Name == "PartyMenuChronicle"
                     || screen.Name == "PartyMenuOptions";
                 bool onOutfitterSell = screen.Name == "OutfitterSell";
-                if ((onPartyMenuAnyTab || onOutfitterSell) && Explorer != null)
+                bool onOutfitterFitting = screen.Name == "OutfitterFitting";
+                if ((onPartyMenuAnyTab || onOutfitterSell || onOutfitterFitting) && Explorer != null)
                 {
                     var invReader = new GameBridge.InventoryReader(Explorer);
                     var entries = onOutfitterSell
@@ -3775,6 +3780,7 @@ namespace FFTColorCustomizer.Utilities
                                 Name = e.Name,
                                 Type = e.Type,
                                 SellPrice = e.SellPrice,
+                                SellPriceVerified = e.SellPriceVerified,
                             });
                         }
                         screen.Inventory = payload;

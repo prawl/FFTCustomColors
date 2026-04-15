@@ -35,6 +35,37 @@ namespace FFTColorCustomizer.GameBridge
     public static class ItemPrices
     {
         /// <summary>
+        /// Ground-truth sell prices keyed by ItemData name. When populated,
+        /// these OVERRIDE the buy/2 estimate in <see cref="GetSellPrice"/>.
+        /// Captured live from the game's Outfitter Sell screen (Sale Price
+        /// column), so these match what the game actually pays you.
+        ///
+        /// Why this exists: buy/2 is inaccurate (live-verified 2026-04-15
+        /// that Dagger shows 50 in-game but we compute 100). No consistent
+        /// formula covers all items. Populating this table incrementally is
+        /// the simplest path to ground-truth pricing without a memory hunt.
+        ///
+        /// Add entries as you verify them from the game UI. Names must match
+        /// ItemData entries exactly (same resolver as BuyPricesByName) —
+        /// UnresolvedNames catches typos at test time.
+        /// </summary>
+        private static readonly Dictionary<string, int> SellPricesByName = new()
+        {
+            // TODO: populate from live Outfitter Sell screen captures.
+            // User is collecting real values; paste them here and they
+            // override GetSellPrice's buy/2 fallback automatically.
+            //
+            // Live-verified starting set (Gariland Outfitter Sell, 2026-04-15):
+            ["Dagger"]             = 50,
+            ["Mythril Knife"]      = 250,
+            ["Blind Knife"]        = 400,
+            ["Mage Masher"]        = 750,
+            ["Assassin's Dagger"]  = 2_500,
+            ["Broadsword"]         = 100,
+            ["Longsword"]          = 250,
+        };
+
+        /// <summary>
         /// Buy prices keyed by EXACT ItemData name. The name must match
         /// the string used in <see cref="ItemData.Items"/> — comparisons
         /// are case-sensitive. Add new entries here when extending coverage.
@@ -254,7 +285,16 @@ namespace FFTColorCustomizer.GameBridge
         public static readonly IReadOnlyDictionary<int, int> BuyPrices;
 
         /// <summary>
-        /// Names in <see cref="BuyPricesByName"/> that didn't resolve to any
+        /// Resolved id→sell-price OVERRIDE table. Populated from
+        /// <see cref="SellPricesByName"/> — ground-truth values captured
+        /// from the game UI. When an entry exists here, it supersedes the
+        /// buy/2 estimate in <see cref="GetSellPrice"/>.
+        /// </summary>
+        public static readonly IReadOnlyDictionary<int, int> SellPriceOverrides;
+
+        /// <summary>
+        /// Names in either <see cref="BuyPricesByName"/> or
+        /// <see cref="SellPricesByName"/> that didn't resolve to any
         /// ItemData entry. Populated at static init for diagnostic use.
         /// Empty in the steady state; non-empty means either a typo or an
         /// item ItemData doesn't know about yet.
@@ -263,30 +303,36 @@ namespace FFTColorCustomizer.GameBridge
 
         static ItemPrices()
         {
-            // Build name → id map from ItemData so we can invert BuyPricesByName.
-            // Case-sensitive exact match; duplicates in ItemData would resolve to
-            // the LAST-seen ID (none expected in the canonical table).
+            // Build name → id map from ItemData so we can invert both
+            // by-name tables. Case-sensitive exact match; duplicates in
+            // ItemData would resolve to the LAST-seen ID (none expected
+            // in the canonical table).
             var idByName = new Dictionary<string, int>();
             foreach (var kv in ItemData.Items)
             {
                 idByName[kv.Value.Name] = kv.Key;
             }
 
-            var resolved = new Dictionary<int, int>(BuyPricesByName.Count);
+            var buyResolved = new Dictionary<int, int>(BuyPricesByName.Count);
+            var sellResolved = new Dictionary<int, int>(SellPricesByName.Count);
             var unresolved = new List<string>();
             foreach (var kv in BuyPricesByName)
             {
                 if (idByName.TryGetValue(kv.Key, out var id))
-                {
-                    resolved[id] = kv.Value;
-                }
+                    buyResolved[id] = kv.Value;
                 else
-                {
                     unresolved.Add(kv.Key);
-                }
+            }
+            foreach (var kv in SellPricesByName)
+            {
+                if (idByName.TryGetValue(kv.Key, out var id))
+                    sellResolved[id] = kv.Value;
+                else
+                    unresolved.Add(kv.Key);
             }
 
-            BuyPrices = resolved;
+            BuyPrices = buyResolved;
+            SellPriceOverrides = sellResolved;
             UnresolvedNames = unresolved;
         }
 
@@ -301,26 +347,31 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
-        /// Returns the ESTIMATED sell price for an item, computed as buy
-        /// price / 2. Null if the item has no known buy price.
+        /// Returns the sell price for an item. Checks <see cref="SellPriceOverrides"/>
+        /// first (ground-truth values captured from the game UI); falls back
+        /// to buy/2 if no override exists. Null if the item has neither a
+        /// ground-truth sell price nor a known buy price.
         ///
-        /// CAVEAT: this is an estimate, not a ground-truth value. Live-verified
-        /// 2026-04-15 at Gariland Outfitter Sell: the game's displayed sell
-        /// price for at least some items doesn't match buy/2 (Dagger shows 50
-        /// in-game vs our 100; pattern varies by item). Possibilities:
-        /// (a) FFT IC uses a different formula (maybe buy/4 for some items),
-        /// (b) our SHOP_ITEMS.md buy prices are wrong for early-game shops,
-        /// (c) per-item modifiers apply.
-        /// A future session should live-read the shop's Sell screen to build
-        /// a ground-truth sell table, then this estimate becomes a fallback.
-        /// Until then, consumers should treat the returned value as "order of
-        /// magnitude correct, not exact" — useful for decisions ("sell the
-        /// 8000-gil weapon, keep the 50-gil potion") but not for budgeting.
+        /// Ground-truth values are incrementally populated as they're
+        /// live-verified at the Outfitter Sell screen. Each override
+        /// completely supersedes the estimate for that item.
         /// </summary>
         public static int? GetSellPrice(int itemId)
         {
+            if (SellPriceOverrides.TryGetValue(itemId, out var sell))
+                return sell;
             var buy = GetBuyPrice(itemId);
             return buy.HasValue ? buy.Value / 2 : (int?)null;
+        }
+
+        /// <summary>
+        /// Returns true if <see cref="GetSellPrice"/> returned a ground-truth
+        /// override (not an estimate). Consumers can use this to render a
+        /// "verified" vs "estimated" indicator.
+        /// </summary>
+        public static bool IsSellPriceGroundTruth(int itemId)
+        {
+            return SellPriceOverrides.ContainsKey(itemId);
         }
     }
 }

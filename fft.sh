@@ -1659,11 +1659,11 @@ try{
     #            picker tab layout so Claude can quickly scan "what
     #            consumables do I have" vs "what swords".
     # Verbose inventory dump — render whenever the backend populated
-    # screen.inventory on PartyMenu tabs or OutfitterSell. State-machine
-    # drift can misname the tab so we check payload presence, not screen name.
-    # On OutfitterSell each item line adds `sell=N gil` and the footer
-    # adds a total-gil-if-sold summary.
-    if [[ "$SCR" == PartyMenu* || "$SCR" == "OutfitterSell" ]] && [ -f "$B/response.json" ]; then
+    # screen.inventory on PartyMenu tabs, OutfitterSell, or OutfitterFitting.
+    # State-machine drift can misname the tab so we check payload presence,
+    # not screen name. On OutfitterSell each item line adds `sell=N gil`
+    # and the footer adds a total-gil-if-sold summary.
+    if [[ "$SCR" == PartyMenu* || "$SCR" == "OutfitterSell" || "$SCR" == "OutfitterFitting" ]] && [ -f "$B/response.json" ]; then
       if $verbose; then
         cat "$B/response.json" | node -e "
 try{
@@ -1697,9 +1697,13 @@ try{
       const base='  '+String(e.count).padStart(3)+'  '+nm;
       const idTag='  [id='+e.id+']';
       if(isSell){
-        // Sell price is a buy/2 estimate from ItemPrices.cs — not ground-truth.
-        // ~ prefix reminds Claude it's approximate until we build a verified table.
-        const sell=(e.sellPrice!=null)?('sell~'+e.sellPrice+' gil'):('sell=?');
+        // sell=N (verified ground-truth) vs sell~N (buy/2 estimate) vs sell=?
+        // The operator tells Claude how much to trust the number.
+        let sell='sell=?';
+        if(e.sellPrice!=null){
+          const op=e.sellPriceVerified?'=':'~';
+          sell='sell'+op+e.sellPrice+' gil';
+        }
         console.log(base+idTag+'  '+sell);
       }else{
         console.log(base+idTag);

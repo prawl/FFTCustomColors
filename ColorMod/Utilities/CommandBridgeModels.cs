@@ -344,6 +344,30 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("targets")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<int[]>? Targets { get; set; }  // [[x,y], [x,y], ...] compact format
+
+        /// <summary>
+        /// For consumable-backed abilities (Chemist Items / Ninja Throw /
+        /// Samurai Iaido), the number of uses remaining based on the player's
+        /// inventory count. Null for regular abilities (Fire, Cure, Attack)
+        /// whose usage isn't gated on inventory.
+        ///
+        /// Chemist Items: count of that specific consumable (Potion=3, Phoenix Down=98).
+        /// Samurai Iaido: count of the specific katana being drawn from.
+        /// Ninja Throw: sum of all weapons of the throwable type.
+        /// </summary>
+        [JsonPropertyName("heldCount")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? HeldCount { get; set; }
+
+        /// <summary>
+        /// True when the ability cannot be used right now due to an empty
+        /// stock. For Items/Iaido this means the specific item is gone; for
+        /// Throw it means the entire weapon-type stock is empty. Serialized
+        /// only when true so Claude sees a clear "unavailable" flag.
+        /// </summary>
+        [JsonPropertyName("unusable")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool Unusable { get; set; }
     }
 
     /// <summary>
@@ -884,11 +908,21 @@ namespace FFTColorCustomizer.Utilities
         /// <summary>
         /// Gil amount this item sells for at an Outfitter. Null for items
         /// without a known buy price (story drops, unique equipment).
-        /// Computed as BuyPrice / 2 via <see cref="GameBridge.ItemPrices"/>.
+        /// Prefers ground-truth values from <see cref="GameBridge.ItemPrices.SellPriceOverrides"/>,
+        /// falls back to buy/2 estimate when no override exists.
         /// </summary>
         [JsonPropertyName("sellPrice")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? SellPrice { get; set; }
+
+        /// <summary>
+        /// True when <see cref="SellPrice"/> is a ground-truth override
+        /// (captured from the game UI). False when it's a buy/2 estimate.
+        /// Omitted when SellPrice itself is null.
+        /// </summary>
+        [JsonPropertyName("sellPriceVerified")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool SellPriceVerified { get; set; }
     }
 
     /// <summary>

@@ -131,12 +131,26 @@ public class InventoryReaderTests
     [Fact]
     public void DecodeRaw_SellPricePopulated_FromItemPrices()
     {
-        // Dagger is in ItemPrices at 200 gil buy → 100 gil sell.
+        // Dagger has a ground-truth sell override of 50 gil.
         var bytes = new byte[272];
         bytes[1] = 4;
         var result = InventoryReader.DecodeRaw(bytes);
         Assert.Single(result);
-        Assert.Equal(100, result[0].SellPrice);
+        Assert.Equal(50, result[0].SellPrice);
+        Assert.True(result[0].SellPriceVerified);
+    }
+
+    [Fact]
+    public void DecodeRaw_EstimatedSellPrice_FlagIsFalse()
+    {
+        // Potion has a buy price (50) but no ground-truth sell override.
+        // GetSellPrice returns 25 as the buy/2 estimate.
+        var bytes = new byte[272];
+        bytes[240] = 5;
+        var result = InventoryReader.DecodeRaw(bytes);
+        Assert.Single(result);
+        Assert.Equal(25, result[0].SellPrice);
+        Assert.False(result[0].SellPriceVerified);
     }
 
     [Fact]
