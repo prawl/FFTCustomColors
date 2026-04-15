@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using FFTColorCustomizer.Utilities;
@@ -782,6 +783,92 @@ namespace FFTColorCustomizer.GameBridge
         /// <summary>
         /// Diffs two snapshots and writes changed addresses to file.
         /// </summary>
+        /// <summary>
+        /// Intersects three snapshots (baseline, advanced, back) to find heap
+        /// addresses that cleanly toggle: (a → b) in baseline→advanced AND
+        /// (b → a) in advanced→back. Used to rediscover picker/grid cursor
+        /// bytes whose raw addresses shuffle across game sessions.
+        /// Returns matching addresses (at most `maxResults`), filtered to
+        /// plausible small-int cursor values.
+        /// </summary>
+        public List<nint> FindToggleCandidates(
+            string baselineLabel, string advancedLabel, string backLabel,
+            int maxResults = 16,
+            int expectedDelta = 1)
+        {
+            var result = new List<nint>();
+            if (!_snapshots.ContainsKey(baselineLabel) ||
+                !_snapshots.ContainsKey(advancedLabel) ||
+                !_snapshots.ContainsKey(backLabel))
+            {
+                ModLogger.LogError("[FindToggleCandidates] Missing snapshot label");
+                return result;
+            }
+
+            var baseline = _snapshots[baselineLabel];
+            var advanced = _snapshots[advancedLabel];
+            var back = _snapshots[backLabel];
+
+            // Index advanced and back by region base for fast lookup
+            var advByBase = advanced.ToDictionary(r => r.baseAddr, r => r.data);
+            var backByBase = back.ToDictionary(r => r.baseAddr, r => r.data);
+
+            foreach (var (baseAddr, baseData) in baseline)
+            {
+                if (!advByBase.TryGetValue(baseAddr, out var advData)) continue;
+                if (!backByBase.TryGetValue(baseAddr, out var backData)) continue;
+                int len = Math.Min(Math.Min(baseData.Length, advData.Length), backData.Length);
+
+                for (int i = 0; i < len; i++)
+                {
+                    byte a = baseData[i];
+                    byte b = advData[i];
+                    byte c = backData[i];
+                    // Clean toggle: baseline=a, advanced=b (b!=a), back=a again.
+                    // Also verify delta matches expectedDelta (cursor usually moves by 1).
+                    if (b != a && c == a && Math.Abs(b - a) == expectedDelta)
+                    {
+                        // Sanity filter: both values should be plausible cursor indices
+                        // (small non-negative ints fit a picker list of <256 items).
+                        if (a < 128 && b < 128)
+                        {
+                            result.Add(baseAddr + i);
+                        }
+                    }
+                }
+            }
+
+            // Prefer addresses in the UE4 heap range (widget memory) over low
+            // module memory (game image). Cursor widgets live in heap; low
+            // addresses hitting the filter are usually false positives from
+            // animation counters or display buffers in static memory.
+            result.Sort((a, b) => CursorAddressPriority(a).CompareTo(CursorAddressPriority(b)));
+            if (result.Count > maxResults) result.RemoveRange(maxResults, result.Count - maxResults);
+            return result;
+        }
+
+        /// <summary>
+        /// Lower priority wins. Empirically the picker widget cursor lives in
+        /// the 0x100000000-0x200000000 UE4 heap range (verified 2026-04-15:
+        /// 0x1304DF6B0 session 1, 0x5BA8C268 session 2). DLL-mapped memory
+        /// (0x7FFxxxxxxxxx) and low module memory (&lt; 0x1000000) are both
+        /// common false-positive homes — down-rank them.
+        /// </summary>
+        private static int CursorAddressPriority(nint addr)
+        {
+            long a = (long)addr;
+            // 0x7FFxxxxxxxxx = Windows DLL mapping (usercode/kernel modules). False positives.
+            if (a >= 0x7FF000000000L) return 4;
+            // UE4 heap sweet-spot — pickers land here.
+            if (a >= 0x100000000L && a < 0x200000000L) return 0;
+            // Broader UE4 heap (game has multiple heap regions).
+            if (a >= 0x100000000L) return 1;
+            // Mid heap / upper module.
+            if (a >= 0x1000000L) return 2;
+            // Low module memory — most likely false positive.
+            return 3;
+        }
+
         public void DiffSnapshots(string fromLabel, string toLabel, string outputLabel)
         {
             if (!_snapshots.ContainsKey(fromLabel) || !_snapshots.ContainsKey(toLabel))

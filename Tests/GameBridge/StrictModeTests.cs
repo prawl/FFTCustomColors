@@ -37,7 +37,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
             "read_dialogue", "write_byte", "dump_detection_inputs",
             "scrape_shop_items",
-            "hold_key"
+            "hold_key",
+            "resolve_picker_cursor"
         };
 
         [Theory]

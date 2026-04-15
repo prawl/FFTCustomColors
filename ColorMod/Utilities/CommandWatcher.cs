@@ -85,6 +85,15 @@ namespace FFTColorCustomizer.Utilities
         private DateTime _lastGameCommandCompletedAt = DateTime.MinValue;
 
         /// <summary>
+        /// Cached picker-cursor address resolved by the `resolve_picker_cursor`
+        /// action. Set when state machine enters a picker; used to surface
+        /// `ui=<highlighted ability>` by reading the byte and indexing into the
+        /// picker's `availableAbilities` list. Heap addresses shuffle across
+        /// game sessions — this MUST be re-resolved each picker open.
+        /// </summary>
+        private long _resolvedPickerCursorAddr = 0L;
+
+        /// <summary>
         /// Pure helper for the chained-command rate-limit decision. Returns the
         /// number of ms the caller should sleep before processing a new command
         /// (0 if no delay needed). Returns a chain-warning string only when a
@@ -115,7 +124,8 @@ namespace FFTColorCustomizer.Utilities
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
             "read_dialogue", "write_byte", "dump_detection_inputs",
             "scrape_shop_items",
-            "hold_key"
+            "hold_key",
+            "resolve_picker_cursor"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -632,6 +642,83 @@ namespace FFTColorCustomizer.Utilities
                         Explorer.DiffSnapshots(command.FromLabel ?? "before", command.ToLabel ?? "after", command.SearchLabel ?? "result");
                         response.Status = "completed";
                         break;
+
+                    case "resolve_picker_cursor":
+                    {
+                        // Rescan-on-entry for picker cursors that live in heap
+                        // (addresses shuffle across game sessions). Flow:
+                        //   1. Baseline heap snapshot.
+                        //   2. Send Down key → game advances cursor by 1.
+                        //   3. Heap snapshot (advanced).
+                        //   4. Send Up key → game restores cursor.
+                        //   5. Heap snapshot (back).
+                        //   6. Intersect: clean (a→b, b→a, |Δ|=1) toggles are cursor candidates.
+                        // Caches the first candidate on _resolvedPickerCursor for
+                        // subsequent responses to surface ui=<highlighted> via byte read.
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+                        if (win == IntPtr.Zero) { response.Status = "failed"; response.Error = "Game window not found"; break; }
+                        const int VK_DOWN = 0x28, VK_UP = 0x26;
+                        Explorer.TakeHeapSnapshot("_picker_base");
+                        _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                        Thread.Sleep(220);
+                        Explorer.TakeHeapSnapshot("_picker_adv");
+                        _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                        Thread.Sleep(220);
+                        Explorer.TakeHeapSnapshot("_picker_back");
+                        var cands = Explorer.FindToggleCandidates("_picker_base", "_picker_adv", "_picker_back", maxResults: 32, expectedDelta: 1);
+
+                        // Verify each candidate by firing another Down and reading:
+                        // the real cursor byte must have incremented by exactly 1.
+                        // This eliminates false positives (animation counters, secondary
+                        // widget state) that happened to satisfy the toggle filter.
+                        long verified = 0L;
+                        if (cands.Count > 0)
+                        {
+                            // Snapshot each candidate's current value
+                            var beforeVals = new Dictionary<long, byte>();
+                            foreach (var candAddr in cands)
+                            {
+                                var r = Explorer.ReadAbsolute(candAddr, 1);
+                                if (r.HasValue) beforeVals[(long)candAddr] = (byte)r.Value.value;
+                            }
+                            _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                            Thread.Sleep(220);
+                            // The one that's now exactly before+1 (or wrapped to 0 from list-end)
+                            // is the true cursor. Prefer the one with the highest priority
+                            // address (picker widget heap range) — cands are already sorted.
+                            foreach (var candAddr in cands)
+                            {
+                                if (!beforeVals.TryGetValue((long)candAddr, out var before)) continue;
+                                var after = Explorer.ReadAbsolute(candAddr, 1);
+                                if (!after.HasValue) continue;
+                                byte now = (byte)after.Value.value;
+                                if (now == before + 1 || now == 0 /* wrapped */)
+                                {
+                                    verified = (long)candAddr;
+                                    break;
+                                }
+                            }
+                            // Restore cursor to original position.
+                            _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                            Thread.Sleep(220);
+                        }
+                        _resolvedPickerCursorAddr = verified;
+                        response.Status = "completed";
+                        // Log all candidates with their priorities + verified status so
+                        // we can see which ones the filter produced and which passed verification.
+                        var candInfo = new System.Text.StringBuilder();
+                        foreach (var ca in cands)
+                        {
+                            var v = Explorer.ReadAbsolute(ca, 1);
+                            candInfo.Append($"0x{(long)ca:X}={v?.value ?? -1} ");
+                        }
+                        response.Info = cands.Count > 0
+                            ? $"Resolved picker cursor: 0x{_resolvedPickerCursorAddr:X} ({cands.Count} cands: {candInfo})"
+                            : "No stable picker cursor byte found (0 candidates)";
+                        ModLogger.Log($"[CommandBridge] {response.Info}");
+                        break;
+                    }
 
                     case "read_address":
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
@@ -3143,10 +3230,18 @@ namespace FFTColorCustomizer.Utilities
                 //
                 // Viewed unit resolved the same way as EquipmentAndAbilities —
                 // state machine's ViewedGridIndex → DisplayOrder lookup.
-                if ((screen.Name == "SecondaryAbilities" ||
-                     screen.Name == "ReactionAbilities" ||
-                     screen.Name == "SupportAbilities" ||
-                     screen.Name == "MovementAbilities") && Explorer != null && ScreenMachine != null)
+                bool isPicker = screen.Name == "SecondaryAbilities" ||
+                                screen.Name == "ReactionAbilities" ||
+                                screen.Name == "SupportAbilities" ||
+                                screen.Name == "MovementAbilities";
+                if (!isPicker && _resolvedPickerCursorAddr != 0)
+                {
+                    // Left the picker — drop the cached heap address. Next picker
+                    // open re-resolves via `resolve_picker_cursor` since heap
+                    // addresses can point at stale memory after a transition.
+                    _resolvedPickerCursorAddr = 0L;
+                }
+                if (isPicker && Explorer != null && ScreenMachine != null)
                 {
                     // Clear the default "Move/Abilities/Wait" UI label that
                     // DetectScreen sets from the battle menuCursor address —
@@ -3242,6 +3337,26 @@ namespace FFTColorCustomizer.Utilities
                         }
 
                         if (list.Count > 0) screen.AvailableAbilities = list;
+
+                        // If we've resolved the picker cursor byte this session
+                        // (via `resolve_picker_cursor` action — heap addresses
+                        // shuffle so we rescan on entry), surface the currently
+                        // highlighted ability as ui=<name>. Falls back to null
+                        // when address is 0 (unresolved) or read fails.
+                        // If we've resolved the picker cursor byte this picker-open
+                        // (via `resolve_picker_cursor` — heap addresses shuffle so we
+                        // rescan each time), surface the currently highlighted ability
+                        // as ui=<name>. Falls back to null when unresolved/read fails.
+                        if (_resolvedPickerCursorAddr != 0 && list.Count > 0 && Explorer != null)
+                        {
+                            var curByte = Explorer.ReadAbsolute((nint)_resolvedPickerCursorAddr, 1);
+                            if (curByte.HasValue)
+                            {
+                                int idx = (int)curByte.Value.value;
+                                if (idx >= 0 && idx < list.Count)
+                                    screen.UI = list[idx].Name;
+                            }
+                        }
 
                         // Detail panel for the picker — fall back to the
                         // equipped ability's detail until picker-cursor row
