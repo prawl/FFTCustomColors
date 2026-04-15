@@ -650,6 +650,28 @@ namespace FFTColorCustomizer.Utilities
             return (reactionId, supportId, movementId);
         }
 
+        /// <summary>
+        /// Reads the primary/secondary skillset indices from the EqA
+        /// mirror struct at +0x0A and +0x0C. Values are raw u8 indices
+        /// into CommandWatcher.GetSkillsetName (e.g. 7=Arts of War,
+        /// 9=Martial Arts, 10=White Magicks). Returns (0, 0) when no
+        /// skillsets are set (shouldn't happen in normal play — Primary
+        /// is always set; Secondary may legitimately be 0 for units
+        /// without a secondary equipped).
+        ///
+        /// Verified 2026-04-15 session 19 on Kenrick:
+        ///   Arts of War primary → +0x0A = 7
+        ///   Martial Arts → White Magicks secondary → +0x0C went 9 → 10
+        /// </summary>
+        private (int primaryIdx, int secondaryIdx)? ReadEqaMirrorSkillsets(long baseAddr)
+        {
+            if (Explorer == null) return null;
+            var pr = Explorer.ReadAbsolute((nint)(baseAddr + 0x0A), 1);
+            var sr = Explorer.ReadAbsolute((nint)(baseAddr + 0x0C), 1);
+            if (!pr.HasValue || !sr.HasValue) return null;
+            return ((int)pr.Value.value, (int)sr.Value.value);
+        }
+
         /// <summary>True iff two 5-element mirror arrays hold identical
         /// values at every position.</summary>
         private static bool MirrorsAgree(int[]? a, int[]? b)
@@ -4661,6 +4683,21 @@ namespace FFTColorCustomizer.Utilities
                                 screen.Abilities.Reaction = rName;
                                 screen.Abilities.Support  = sName;
                                 screen.Abilities.Movement = mName;
+                            }
+
+                            // Primary + Secondary skillsets from mirror
+                            // bytes +0x0A / +0x0C. Values are indices into
+                            // the GetSkillsetName enum (7=Arts of War,
+                            // 9=Martial Arts, 10=White Magicks, etc.).
+                            var skillsets = ReadEqaMirrorSkillsets(0x141870854);
+                            if (skillsets.HasValue)
+                            {
+                                var (pIdx, secIdx) = skillsets.Value;
+                                screen.Abilities ??= new AbilityLoadoutPayload();
+                                if (pIdx > 0)
+                                    screen.Abilities.Primary = GetSkillsetName(pIdx);
+                                if (secIdx > 0)
+                                    screen.Abilities.Secondary = GetSkillsetName(secIdx);
                             }
                         }
                     }
