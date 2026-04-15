@@ -1028,6 +1028,28 @@ namespace FFTColorCustomizer.GameBridge
         public bool Arithmetickable { get; set; }
 
         /// <summary>
+        /// For consumable-backed abilities (Chemist Items / Ninja Throw /
+        /// Samurai Iaido), the number of uses remaining based on the
+        /// player's inventory count. Null for regular abilities (Fire,
+        /// Cure, Attack) whose usage isn't gated on inventory.
+        ///
+        /// Chemist Items: count of that specific consumable (Potion=3).
+        /// Samurai Iaido: count of the specific katana being drawn from.
+        /// Ninja Throw: sum of all weapons of the throwable type.
+        /// </summary>
+        [JsonPropertyName("heldCount")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? HeldCount { get; set; }
+
+        /// <summary>
+        /// True when a consumable-backed ability has zero stock — Claude
+        /// should skip it. Serialized only when true.
+        /// </summary>
+        [JsonPropertyName("unusable")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool Unusable { get; set; }
+
+        /// <summary>
         /// Valid target tiles for this ability. In compact mode (default), only
         /// tiles with occupants are included — use TotalTargets for the full count.
         /// In verbose mode, all tiles are included. Null for ineligible abilities.

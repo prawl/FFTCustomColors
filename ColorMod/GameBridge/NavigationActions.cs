@@ -1699,6 +1699,22 @@ namespace FFTColorCustomizer.GameBridge
                     aliveByPos[(posUnit.GridX, posUnit.GridY)] = posUnit;
             }
 
+            // Read the player inventory bytes ONCE per scan. Used to populate
+            // HeldCount / Unusable on Chemist Items / Samurai Iaido / Ninja Throw
+            // abilities via SkillsetItemLookup. Zero extra cost for non-inventory
+            // skillsets (the lookup returns null immediately). The inventory
+            // store is a flat u8 array at 0x1411A17C0 (272 bytes, cracked session 18).
+            byte[]? inventoryBytes = null;
+            try
+            {
+                var invReader = new InventoryReader(_explorer);
+                inventoryBytes = invReader.ReadRaw();
+            }
+            catch (System.Exception ex)
+            {
+                ModLogger.Log($"[ScanMove] inventory read failed: {ex.Message}");
+            }
+
             // Move/Jump exposed via ActiveUnit for Claude's decision-making
             foreach (var u in units)
             {
@@ -1740,6 +1756,24 @@ namespace FFTColorCustomizer.GameBridge
                             Reflectable = a.Reflectable,
                             Arithmetickable = a.Arithmetickable,
                         };
+
+                        // Inventory-gated held count for Chemist Items / Samurai
+                        // Iaido / Ninja Throw. SkillsetItemLookup returns null for
+                        // any (skillset, ability) that isn't inventory-gated, so
+                        // we probe all three and take the first non-null. Cheap
+                        // when inventoryBytes is already cached in the outer scope.
+                        if (inventoryBytes != null)
+                        {
+                            int? held =
+                                SkillsetItemLookup.TryGetHeldCount("Items", a.Name, inventoryBytes)
+                                ?? SkillsetItemLookup.TryGetHeldCount("Iaido", a.Name, inventoryBytes)
+                                ?? SkillsetItemLookup.TryGetHeldCount("Throw", a.Name, inventoryBytes);
+                            if (held.HasValue)
+                            {
+                                entry.HeldCount = held.Value;
+                                entry.Unusable = held.Value == 0;
+                            }
+                        }
 
                         // Display name for a unit. Story chars use roster name.
                         // Player recruits (team 0) can trust GetJobName(Job) because
