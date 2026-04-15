@@ -761,24 +761,49 @@ console.log(JSON.stringify({
   while [ "$c" -gt "$targetCol" ]; do keys+=("CursorLeft"); c=$((c - 1)); done
   while [ "$c" -lt "$targetCol" ]; do keys+=("CursorRight"); c=$((c + 1)); done
 
-  # Open JobActionMenu → pick "Change Job" (right of Learn Abilities) →
-  # open JobChangeConfirmation → pick Confirm (right of Cancel) →
-  # apply. The game then shows a "Job changed to X!" dialog — one more
-  # Enter dismisses it back to CharacterStatus with the new loadout.
-  keys+=("Enter")              # → JobActionMenu (cursor on Learn Abilities)
-  keys+=("CursorRight")        # → Change Job highlighted
-  keys+=("Enter")              # → JobChangeConfirmation (cursor on Cancel)
-  keys+=("CursorRight")        # → Confirm highlighted
-  keys+=("Enter")              # → apply + "Job changed!" dialog
-  keys+=("Enter")              # → dismiss dialog, land on CharacterStatus
-
+  # Walk ONLY to the target cell first — don't open JobActionMenu yet.
+  # This gives us a chance to read the cell state and bail out cleanly
+  # if the target is Locked (no party member has it) or Visible (we
+  # lack prereqs). Attempting a change on those states leaves the game
+  # in a weird state (beeps, no-op, or unexpected dialog).
   _fire_keys "${keys[@]}" >/dev/null 2>&1
 
-  # Verify: the game's post-change flow lands on EquipmentAndAbilities
-  # (so the player can re-equip gear that dropped off with the old job).
-  # From there, reading screen.abilities.primary gives the new job's
-  # skillset name, which corresponds to a known class — but the simplest
-  # check is that we landed on EquipmentAndAbilities with no error.
+  # Read the cell state the resolver just populated. screen.jobCellState
+  # is "Locked" / "Visible" / "Unlocked".
+  _current_screen >/dev/null
+  local cellState=$(node -e "
+const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+console.log((r.screen&&r.screen.jobCellState)||'');" "$B/response.json" 2>/dev/null)
+
+  case "$cellState" in
+    "Unlocked")
+      : # OK, continue below
+      ;;
+    "Locked")
+      echo "[change_job_to] ERROR: '$target' is Locked — no party member has unlocked this class yet."
+      return 1
+      ;;
+    "Visible")
+      echo "[change_job_to] ERROR: '$target' is Visible but this unit hasn't met the unlock prerequisites. Change refused."
+      return 1
+      ;;
+    "")
+      # Resolver failed or cell state didn't populate — proceed optimistically.
+      # The game will refuse on its own if the cell isn't selectable.
+      echo "[change_job_to] WARNING: cell state unknown (resolver may have failed). Proceeding optimistically."
+      ;;
+    *)
+      echo "[change_job_to] ERROR: unexpected cellState '$cellState'. Aborting."
+      return 1
+      ;;
+  esac
+
+  # Commit the change: Enter → JobActionMenu → CursorRight → Enter →
+  # JobChangeConfirmation → CursorRight → Enter → "Job changed!" dialog →
+  # Enter → CharacterStatus (or EquipmentAndAbilities if gear dropped).
+  local -a commit=("Enter" "CursorRight" "Enter" "CursorRight" "Enter" "Enter")
+  _fire_keys "${commit[@]}" >/dev/null 2>&1
+
   _current_screen >/dev/null
   local newScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
 

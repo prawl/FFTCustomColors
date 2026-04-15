@@ -565,6 +565,18 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("cursorCol")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? CursorCol { get; set; }
+
+        /// <summary>
+        /// For JobSelection only: the three-state classification of the
+        /// currently-hovered cell. "Locked" = no party member has the class
+        /// (shadow silhouette); "Visible" = someone in the party has it but
+        /// the viewed unit doesn't meet prereqs (change refused);
+        /// "Unlocked" = viewed unit can change to this class. Omitted on
+        /// other screens.
+        /// </summary>
+        [JsonPropertyName("jobCellState")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? JobCellState { get; set; }
     }
 
     public class UiDetail

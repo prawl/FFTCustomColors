@@ -239,6 +239,92 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("Black Mage", layout.GetClassAt(rc.Value.Row, rc.Value.Col));
         }
 
+        // --- CellState classification ---
+
+        [Fact]
+        public void ClassifyCell_Squire_AlwaysUnlocked_EvenWithNoLearnedAbilities()
+        {
+            // Squire is always available from game start. Even if the
+            // party-wide and unit skillset sets are empty, Squire should
+            // classify as Unlocked.
+            var empty = System.Array.Empty<string>();
+            var result = JobGridLayout.ClassifyCell("Squire", "Kenrick", empty, empty);
+            Assert.Equal(JobGridLayout.CellState.Unlocked, result);
+        }
+
+        [Fact]
+        public void ClassifyCell_Chemist_AlwaysUnlocked()
+        {
+            var empty = System.Array.Empty<string>();
+            Assert.Equal(JobGridLayout.CellState.Unlocked,
+                JobGridLayout.ClassifyCell("Chemist", "Kenrick", empty, empty));
+        }
+
+        [Fact]
+        public void ClassifyCell_OwnStoryClass_AlwaysUnlockedForOwner()
+        {
+            // Agrias should see Holy Knight as Unlocked even if no other
+            // unit has it (story classes only appear in the owner's grid).
+            var empty = System.Array.Empty<string>();
+            Assert.Equal(JobGridLayout.CellState.Unlocked,
+                JobGridLayout.ClassifyCell("Holy Knight", "Agrias", empty, empty));
+        }
+
+        [Fact]
+        public void ClassifyCell_Unlocked_WhenViewedUnitHasSkillset()
+        {
+            var viewed = new[] { "Arts of War" }; // Knight
+            var party = new[] { "Arts of War", "Items" };
+            Assert.Equal(JobGridLayout.CellState.Unlocked,
+                JobGridLayout.ClassifyCell("Knight", "Kenrick", viewed, party));
+        }
+
+        [Fact]
+        public void ClassifyCell_Visible_WhenOnlyOtherPartyMemberHasSkillset()
+        {
+            // Viewed unit has no skillsets. Party has Knight unlocked.
+            // Result: Knight is Visible to the viewed unit.
+            var viewed = System.Array.Empty<string>();
+            var party = new[] { "Arts of War" };
+            Assert.Equal(JobGridLayout.CellState.Visible,
+                JobGridLayout.ClassifyCell("Knight", "Kenrick", viewed, party));
+        }
+
+        [Fact]
+        public void ClassifyCell_Locked_WhenNoPartyMemberHasSkillset()
+        {
+            var empty = System.Array.Empty<string>();
+            Assert.Equal(JobGridLayout.CellState.Locked,
+                JobGridLayout.ClassifyCell("Knight", "Kenrick", empty, empty));
+        }
+
+        [Fact]
+        public void ClassifyCell_Mime_AlwaysLockedUnderProxyRule()
+        {
+            // Mime's learned-ability bitfield is empty in this remaster
+            // (no action abilities for Mimic), so our proxy rule can't
+            // detect when it's unlocked. Treat as Locked until real
+            // prereq data lands.
+            var viewed = new[] { "Items" };
+            var party = new[] { "Items", "Arts of War" };
+            Assert.Equal(JobGridLayout.CellState.Locked,
+                JobGridLayout.ClassifyCell("Mime", "Kenrick", viewed, party));
+        }
+
+        [Fact]
+        public void ClassifyCell_Bard_SharesBardsongSkillset_WithDancer()
+        {
+            // Bard and Dancer both map to the "Bardsong" skillset (they
+            // share jobIdx 17). If either is unlocked by the party, both
+            // cells reflect it.
+            var viewed = System.Array.Empty<string>();
+            var party = new[] { "Bardsong" };
+            Assert.Equal(JobGridLayout.CellState.Visible,
+                JobGridLayout.ClassifyCell("Bard", "Kenrick", viewed, party));
+            Assert.Equal(JobGridLayout.CellState.Visible,
+                JobGridLayout.ClassifyCell("Dancer", "Kenrick", viewed, party));
+        }
+
         [Theory]
         [InlineData(0x01, false)] // Chemist male
         [InlineData(0x02, true)]  // Chemist female

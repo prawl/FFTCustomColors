@@ -3637,7 +3637,43 @@ namespace FFTColorCustomizer.Utilities
                     screen.CursorCol = cursorCol;
 
                     var hoveredClass = layout.GetClassAt(cursorRow, cursorCol);
-                    if (hoveredClass != null) screen.UI = hoveredClass;
+                    if (hoveredClass != null)
+                    {
+                        // Classify the cell as Locked / Visible / Unlocked.
+                        // Proxy: a class is "unlocked for a unit" if that
+                        // unit has any action-ability bit set in the
+                        // corresponding job's learned bitfield. Party-wide
+                        // unlock is the union across all roster slots. See
+                        // JobGridLayout.ClassifyCell for the full rules
+                        // (including Squire/Chemist always-unlocked and
+                        // per-unit story-class-at-(0,0)).
+                        var viewedSkillsets = viewed != null
+                            ? (IReadOnlyCollection<string>)_rosterReader.ReadUnlockedSkillsets(viewed.SlotIndex)
+                            : System.Array.Empty<string>();
+                        var partySkillsets = new HashSet<string>();
+                        foreach (var slot in _rosterReader.ReadAll())
+                        {
+                            foreach (var s in _rosterReader.ReadUnlockedSkillsets(slot.SlotIndex))
+                                partySkillsets.Add(s);
+                        }
+
+                        var cellState = JobGridLayout.ClassifyCell(
+                            hoveredClass, unitName, viewedSkillsets, partySkillsets);
+                        screen.JobCellState = cellState.ToString();
+
+                        // Surface the class name as ui= only when the cell
+                        // is at least Visible to the player (Locked cells
+                        // render as shadow silhouettes in-game with no
+                        // info revealed). On Visible, add a "(not
+                        // unlocked)" marker so the caller knows change_job
+                        // won't work.
+                        screen.UI = cellState switch
+                        {
+                            JobGridLayout.CellState.Locked => "(locked)",
+                            JobGridLayout.CellState.Visible => $"{hoveredClass} (not unlocked)",
+                            _ => hoveredClass,
+                        };
+                    }
                 }
 
                 // PartyMenuChronicle: surface the highlighted tile name.
