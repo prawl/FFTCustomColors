@@ -73,21 +73,19 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
-- [ ] **CharacterStatus / EquipmentAndAbilities header missing `Next: N` (JP to next ability)** — logged 2026-04-14 session 13. The game's info bar shows four values: `Lv. N` (job level), `Next: N` (JP needed to learn the next cheapest unlearned ability in the current job), `JP N` (accumulated JP in current job). We surface Lv and JP but omit Next. Screenshot on Cloud shows `Lv. 2 Next: 116 JP 44`. Two options: (a) compute from the learned-action-abilities bitfield at roster +0x32+jobIdx*3 (bytes 0-1) cross-referenced with each skillset's ability cost table (`ABILITY_COSTS.md`) — find the cheapest unlearned ability in the unit's current skillset, return its cost; (b) find where the game stores the value (likely a widget cache we haven't located yet, same UE4 heap churn that defeated prior hunts). (a) is deterministic and session-safe; (b) would be faster to render but more fragile. Add `nextJp` to RosterSlot (or to the loadout payload) and render in fft.sh header after `Lv` and before `JP`.
+- [ ] **JP Next: populate Mettle/Fundaments ability costs** — JP Next infra shipped session 19 (commit fe8d41e) for 13 skillsets but Mettle/Fundaments remain unpopulated because their IC-remaster ability IDs aren't in ABILITY_COSTS.md. Add Mettle ability costs once verified in-game (Heal/Tailwind/Chant/Steel/Shout/Ultima).
+
+- [ ] **JP Next: populate Holy Sword / Limit / Dragon / Work / Snipe costs** — Story-character primary skillsets not in ABILITY_COSTS.md. Add Cloud's Limit, Agrias's Holy Sword, Reis's Dragon, Construct 8's Work, Mustadio's Snipe, Rapha/Marach Sky/Nether Mantra, Beowulf's Spellblade, Meliadoul's Unyielding Blade, Balthier's Sky Pirating, Luso's Hunting. Needed for Next: N to populate on story characters.
+
+- [ ] **JP Next: live-verify with a partially-learned priced skillset** — Couldn't verify session 19 because every unit in current save has all abilities learned OR is on an unpriced story-class skillset. Strategy: use `change_job_to` to move a Lv99 generic to a class they haven't fully unlocked (e.g. Knight → Black Mage), then verify `Next: 50` appears in the header (Black Mage cheapest = Fire 50).
 
 
 
-- [ ] **PartyMenu tab desync — multi-press jump paths race the game's tab-switch animation** (regression introduced 2026-04-14 alongside Chronicle/Options shipping).
-  - Repro: from any PartyMenu tab, run `execute_action OpenChronicle` (or any path with 2+ Q/E key presses). Live-verified: state machine reports `PartyMenuChronicle` but the game visually shows the previous tab (Inventory). Same desync for `OpenOptions`, `OpenInventory` from Chronicle/Options, etc.
-  - Root cause: the game's tab-switch animation eats the second key if pressed too fast. State machine ticks `Tab` per OnKeyPressed call (synchronous, in-process), so it advances even when the actual UI doesn't.
-  - First fix attempt: added `DelayBetweenMs = 300` on the multi-press tab paths in `NavigationPaths.cs` (OpenChronicle from Units, OpenOptions from Inventory, OpenUnits from Chronicle, OpenInventory from Options). 300ms didn't help — the game's animation may be longer, OR `WaitForScreen` short-circuits because it polls the OWN state-machine-derived screen name (which already says we arrived).
-  - Real fix likely needs ONE of:
-    1. **Bigger delay** (try 500ms, 750ms — empirical cap before tests of "feels slow"). Quick patch.
-    2. **Per-key wait-for-game-confirm** instead of one wait at the end. Path engine change. Robust but invasive.
-    3. **Find a memory address that reflects the actual rendered tab.** The 2026-04-14 hunt failed (UE4 widget churn — see `project_shop_stock_array.md`), but a fresh attempt could try the 0x141870xxx region where `shopListCursorIndex` lives — sister UI cursors might cluster there.
-    4. **Stop using path-collapsed multi-press.** Force consumers to call `NextTab` repeatedly and verify with `screen` between each — slower but provably correct.
-  - Workaround for now: use `NextTab`/`PrevTab` (single key) and call `screen` to verify. The single-press paths work; only the multi-press jumps desync.
-  - Inner Chronicle/Options nav (CursorUp/Down/Left/Right + Select) should be unaffected because each is a single key press.
+- [ ] **PartyMenu tab desync: try bigger DelayBetweenMs on multi-press jumps** — 300ms didn't help (was first attempt 2026-04-14). Try 500ms / 750ms empirically. Quick patch. Affects `OpenChronicle`/`OpenOptions`/`OpenUnits`/`OpenInventory` paths in `NavigationPaths.cs`.
+
+- [ ] **PartyMenu tab desync: add per-key wait-for-game-confirm** — Instead of one wait at the end of a multi-press path, block after each key until game UI confirms. Requires path-engine change; robust but invasive. Tracks fix option 2 from the original investigation.
+
+- [ ] **PartyMenu tab desync: find non-Units tab discriminator memory byte** — Session 19 flag-hunt wired the Units-bit (0x140D3A41E) which splits Units from not-Units. Chronicle/Options/Inventory still drift freely among each other. Look for a byte that distinguishes those three — try region around 0x141870xxx where `shopListCursorIndex` lives (sister UI cursors). Cross-session stability test required.
 
 
 
@@ -133,11 +131,7 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 
 
 
-- [ ] **Wire `SkillsetItemLookup` into battle ability surfacing** [Abilities] — Infra shipped session 18 (`SkillsetItemLookup.cs` + 13 tests, `AbilityWithTiles.HeldCount`/`Unusable` fields already populated). Missing the 10-line hookup in `NavigationActions.cs` where `AbilityWithTiles` objects get built. Call `SkillsetItemLookup.TryGetHeldCount(skillset, ability.Name, inventoryBytes)` for Items/Throw/Iaido abilities; set `HeldCount` + `Unusable = (count == 0)`. Read inventory bytes ONCE per scan, not per ability. Live-verify on a unit with Items secondary. See handoff.md session 18 §2.
-  - **Items** (Chemist): potion/ether/remedy/phoenix down counts. `Potion=3, High Potion=0, X-Potion=93`.
-  - **Throw** (Ninja): one entry per weapon type.
-  - **Iaido** (Samurai): katana held counts gate which Iaido abilities are usable (~1/8 break chance per use).
-
+- [ ] **Live-verify `SkillsetItemLookup` wiring in a battle** — Session 19 wired the infra (commit 0c25e29) but didn't verify in-game because the live save was out of battle. Enter a random encounter with a Chemist or Ninja or Samurai active, run `scan_move`, confirm `heldCount` and `unusable` fields populate on Items/Throw/Iaido abilities.
 
 - [ ] **Cone abilities — Abyssal Blade** [AoE] — Deferred. 3-row falling-damage cone with stepped power bands. Low value (only 1 ability uses this shape) and requires map-relative orientation. Skip for now.
 
@@ -148,7 +142,11 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 
 ### Tier 2.5 — Navigation completeness
 
-- [ ] **Chocobo riding** — Units can ride chocobos in battle, which changes their movement range and possibly their action menu. Need to detect when a unit is mounted, adjust Move stat, and handle any chocobo-specific abilities or movement restrictions.
+- [ ] **Chocobo riding: detect mounted state** [Combat] — Find memory flag that indicates a unit is currently riding a chocobo. Possibly a status byte or a separate "mount" field in the battle unit struct.
+
+- [ ] **Chocobo riding: adjust Move stat when mounted** [Combat] — Mounted units use the chocobo's Move, not their own. Override `Move` in scan_move when the mount flag is set.
+
+- [ ] **Chocobo riding: surface chocobo-specific actions** [Combat] — Mounted units have different action menu (Choco Attack, Choco Cure, etc.). Populate ability list accordingly.
 
 
 
@@ -166,7 +164,11 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **battle_ability first-scan null/null for secondary skillset** [Execution] — Primary detection works (Martial Arts secondaryIdx=9 for Lloyd verified); auto-scan catches misses on retry; all-skillsets fallback works. Remaining: first scan sometimes returns null/null before auto-scan fires — investigate race and eliminate the initial miss.
 
 
-- [ ] **Line-of-sight blocking for ranged attacks** [Abilities] — Archer attacked Treant at (7,11) from (10,9) but a tree blocked the projectile. FFT has LoS checks for ranged abilities (bows, thrown stones, guns). We need to detect blocked paths. Options: (A) read the game's projected hit% from memory during targeting mode, (B) compute LoS from map height data, (C) enter targeting, check if game rejects tile, cancel if blocked. Option A is most practical if the address can be found. Observed 2026-04-12.
+- [ ] **LoS option A: read game's projected hit% from memory during targeting** [Abilities] — Most practical approach. If hit% address can be found, 0% = blocked by LoS. Earlier investigation found hit% at `statBase-62` in attacker's heap struct but `SearchBytesInAllMemory` misses the right copy. Pick up from the damage-preview hunt (see separate task).
+
+- [ ] **LoS option B: compute LoS from map height data** [Abilities] — Fallback if memory read fails. Walk the straight-line path from attacker to target in the map grid and check if any intermediate tile's height blocks the projectile. Requires per-map terrain data already loaded.
+
+- [ ] **LoS option C: enter targeting, check if game rejects tile, cancel if blocked** [Abilities] — Brute-force fallback. Slow but reliable. Use only as last resort if A and B both fail.
 
 
 - [ ] **Equipment IDs stale across battles** [State] — Roster equipment at `+0x0E` reads the save-state equipment, not the current in-battle loadout. Need to find the live equipment address.
@@ -187,7 +189,13 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Re-enable Ctrl fast-forward during enemy turns** [Execution] — Tested both continuous hold and pulse approaches. Neither visibly sped up animations. Low priority.
 
 
-- [ ] **Populate new BattleUnitState fields from memory** [State] — deathCounter, elementAbsorb/Null/Half/Weak, chargingAbility/chargeCt, facing. All need IC remaster addresses discovered.
+- [ ] **Find IC remaster deathCounter offset** [State] — KO'd units have 3 turns before crystallizing. PSX had this at ~0x58-0x59. Find IC equivalent in battle unit struct.
+
+- [ ] **Find IC remaster element affinity bytes** [State] — Four fields: elementAbsorb, elementNull, elementHalf, elementWeak. Each is an 8-bit mask over the 8 elements (Fire/Ice/Lightning/Water/Wind/Earth/Holy/Dark). Surface on scan_move so Claude can avoid healing a Death-absorbing undead or buffing a shielded element.
+
+- [ ] **Find IC remaster chargingAbility + chargeCt bytes** [State] — Units charging a spell show in the Combat Timeline. Find which ability ID is queued and remaining CT for each charging unit. Needed to avoid wasted Silence/Stop attempts.
+
+- [ ] **Find IC remaster facing byte per unit** [State] — Direction the unit is facing (N/E/S/W). Needed for backstab targeting (Attack from behind = +50% hit rate and bonus damage). PSX had this at +0x1A area.
 
 
 - [ ] **Read death counter for KO'd units** [State] — KO'd units have 3 turns before crystallizing. Need to find the IC equivalent of PSX offset ~0x58-0x59.
@@ -202,7 +210,9 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Unit names — enemies** [Identity] — Enemy display names not found in memory. May need NXD table access or glyph-based lookup.
 
 
-- [ ] **Zodiac sign per unit** [Identity] — Needed for damage multipliers.
+- [ ] **Zodiac byte memory hunt for generics/Ramza** [Identity] — Story-character zodiacs shipped session 19 via hardcoded nameId table (`ZodiacData.cs`, commit 1674bb6). Generics and Ramza return null. Hunt attempted offsets 0x00-0x100 with 4 anchor points (Agrias=Cancer, Mustadio=Libra, Orlandeau=Scorpio, Cloud=Aquarius); no match found. Retry strategies: (a) nibble-packed encoding — search half-bytes instead of bytes, (b) outside the 0x258 slot stride — try a parallel array, (c) non-zero-indexed ordering — try +1, +3, *2 variants.
+
+- [ ] **Zodiac compatibility damage multiplier** [Combat] — Once zodiac is readable for every unit, wire `ZodiacData.GetOpposite` + Good/Bad compatibility tables into damage preview calculations. Multipliers per wiki: Best 1.5x, Good 1.25x, Bad 0.75x, Worst 0.5x. Requires projected-damage preview work (separate task) to ship first.
 
 
 - [ ] **Fix Move/Jump stat reading** [Movement] — UI buffer shows base stats, not effective (equipment bonuses missing).
@@ -396,51 +406,39 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **ui label at ShopInterior** — when hovering Buy/Sell/Fitting inside a shop without having entered, `screen.UI` should read `Buy`/`Sell`/`Fitting`. Needs a cursor-index memory scan (current shopSubMenuIndex is 0 at all three hovers). Once ui is populated, Claude can pre-check which sub-action it's about to enter.
 
 
-- [ ] **Decode row index to item name** — with the cursor index known, resolve `ui=<item name>` by looking up the row's position in the shop's stock list. Partial data found 2026-04-14:
-  - **Master item name list (weapon tab)** at `0x6007BE4` — UTF-16LE strings in a flat array (`Oak Staff\x00\x17White Staff\x00\x1BHealing Staff\x00...`). Contains ALL weapons in the game, not just any shop's stock. Length/delimiter byte between entries (0x13, 0x17, 0x1B, etc. — proportional to NEXT string length).
-  - **Master item DB (fixed-stride array)** around `0x5A1000` — 4000 u32 (a common item price) appears at 100+ addresses with exact 0x48 (72-byte) stride. This is likely the per-item record table with price, stats, name-pointer at fixed offsets inside each 72-byte slot.
-  - **Shop record candidate** around `0x8CB9FB0-0x8CBA000` — two consecutive 72-byte records observed with id-like u32 (243, 244) and price-like u32 (6990, 7000) at offsets +24 and +28 (or +8 and +12). Not yet confirmed as shop-specific.
-  - **Prices NOT stored contiguously** — direct search for sequenced u16 prices `78 00 20 03 98 08 A0 0F` (Oak/White/Serpent/Mage's Staff) found 0 matches. Each item record has gaps, so decoding requires knowing the stride.
-  - **Gariland vs Dorter diff** — 80K changed bytes, too noisy from travel encounter counters. Need a tighter methodology: either (a) take TWO Dorter snapshots with the same shop state to filter noise, intersect with Gariland diff; or (b) focus scan on the 0x5A1xxx and 0x8CBAxxx regions and look for addresses where the value changes between Gariland and Dorter while staying stable within one session.
-  - **Scan state available:** `gari_buy` and `dorter_buy` module snapshots exist in the current mod process. `diff_d_gari_dorter.txt` has the full pairwise diff (80K entries). Use as input if picking this up soon.
-  - **Followup session 2026-04-14:** Row-to-row diff (Outfitter_Buy cursor step) is only 131 addresses and includes NO price-like transitions. Confirms that scrolling doesn't re-read prices — they're all pre-loaded into the widget. Per-item UE4 FString allocations (e.g. Oak Staff at `0x15BC16868` one moment, `0x1604B0BF0` the next) confirm the shop list lives in UE4-managed heap that moves every frame/allocation — static addresses won't work for shop-specific data. Byte-pattern searches for price sequences (`78 00 20 03` u16 adjacent, `78 00 00 00 20 03 00 00` u32 adjacent) return 0 matches in PAGE_READWRITE PRIVATE, so prices are NOT stored contiguously per-shop.
-  - **Hardcoded stopgap considered and rejected 2026-04-14:** a per-(location, shopType, subAction) table maps row→item works for the two shops we've mapped but **shop stock changes per chapter** (confirmed by user). Would need per-chapter tables AND a chapter-detection scan. Brittle, silent-breakage risk when story advances. Removed.
-  - **In-process scraper approach (partially implemented, NOT YET WORKING):** `scrape_shop_items` action wired up in `ColorMod/GameBridge/ShopItemScraper.cs`. Discovers the session-specific FString vtable by finding the live "Weapons" header widget and reading the 16-byte offset BEFORE it. Then runs a vtable broad-search (capped at 20K candidates) and decodes each candidate's length + UTF-16 text from the context bytes captured during the search. Current behaviour: finds 1-3 strings per run but NOT the shop item names. Root causes observed 2026-04-14:
-    - UE4 widget allocations shift between search and decode steps (confirmed by dumping an "Oak Staff" match address moments after the search — bytes are completely different)
-    - Walking entire memory regions as `byte[]` in C# crashed the game (GC pressure / OOM in the mod process)
-    - Vtable discovery flickers per session — sometimes the "Weapons" live widget is in heap, sometimes it's been freed before my search reaches it
-    - 20K vtable candidates hit the cap before scanner reaches the 0x15Axxxxxxx range where shop widgets live
-  - **Next approach to try:** scrape-on-demand by scrolling. Instead of one-shot extracting everything, loop: scroll cursor down, read the ONE currently-highlighted item's FString (search narrowed by short-string pattern + filter by row=N memory state), advance. Trades a scan for ~10 scrolls × ~200ms each = ~2s. The "currently highlighted row" widget might be more stable than enumerating all visible rows.
-  - **What we verified works today:** 1) master item name pool at `0x6007BE4` contains all weapon names statically. 2) when a shop is open, each currently-visible item name has exactly ONE live FString in PAGE_READWRITE that matches the master name. 3) When the list scrolls, some items get reallocated (addresses shift) — but SearchBytesAllRegions picks up current live copies reliably if queried once (second query may find it freed).
-  - **Chapter detection missing:** before shop stock or chapter-gated features work, we need a stable u8/u16 read that reports the current story chapter. Memory scan needed — likely near the story objective field at `0x1411A0FB6`.
+- [ ] **Shop row→item name: implement scrape-on-demand by scrolling** — Blocked multi-approach investigation from 2026-04-14 (see git history for ShopItemScraper.cs). Best path forward: instead of one-shot extracting the whole list, loop scroll-cursor-down + read the ONE currently-highlighted item's FString (narrowed by short-string pattern + row memory state), advance. Trades a big scan for ~10 scrolls × 200ms = ~2s. Highlighted row widget may be more stable than enumerating all visible rows.
+
+- [ ] **Shop row→item name: find stable chapter byte** — Shop stock varies per story chapter. Before row→name can be cached across sessions, we need a stable u8/u16 read that reports the current story chapter. Search near the story objective field at `0x1411A0FB6`.
+
+- [ ] **Shop row→item name: document known master pools** — Memory notes for future hunters. Already verified: master item name pool at `0x6007BE4` (all weapons, UTF-16LE flat array with delimiter bytes); master item DB 72-byte stride around `0x5A1000`; shop record candidates near `0x8CB9FB0`. Not yet mappable to per-shop rows because UE4 FString allocations shift per-frame. Save to memory note file for next attempt.
 
 
 - [ ] **Full stock list inline at Outfitter_Buy** — instead of forcing Claude to scroll through items one at a time (ui=Oak Staff → down → ui=White Staff → down...), surface the entire shop stock in the screen response. Each entry: `{name, price, type, stats}`. Stats tier by type — weapons: `wp, range, element, statMods` (e.g. `WP=5 MA+1`); armor: `hp, def, evade, statMods`; consumables: `effect` (e.g. `Restores 30 HP`, `Removes KO`). Claude picks by name, one round-trip. Matches scan_move's "see everything at once" philosophy.
 
 
-- [ ] **Tavern interior** — captured 2026-04-14 (screenshots in session). State machine:
-  - `Tavern` — inside the Tavern, two sub-actions: `ui=Rumors` and `ui=Errands`. Currently reports as `SettlementMenu ui=Tavern` (mis-named outer layer — see "Fix misaligned shop-state naming" above).
-  - `Rumors` — opens a scrollable list of rumor titles (e.g. "The Legend of the Zodiac Braves", "Zodiac Stones", "The Horror of Riovanes", "At Battle's End"). Right pane renders the body text of the highlighted rumor. `ui=<rumor title>`. Claude should be able to READ the body — likely via a new action `read_rumor` that scrapes the UE4 widget like `read_dialogue` does for cutscenes.
-  - `Errands` — list of available errands with metadata columns: `Days`, `Finder's Fee`. Right pane shows the errand description and quester (e.g. "Minimas the Mournful" — 12-14 days, 600 gil). `ui=<errand title>`. Claude should read the description, the party-size requirement, the days, the fee. Accepting an errand requires party-menu navigation (assign chosen units) — defer until party menu is complete.
-  - ValidPaths needed: `Tavern` → Rumors / Errands / Leave / CursorUp/Down; `Rumors` → ScrollUp/Down / Read / Back; `Errands` → ScrollUp/Down / Select / Back (with Select opening the party-menu for dispatch, once that flow is built).
-  - Memory scans needed: (a) Rumors vs Errands state discriminator (likely a new shopSubMenuIndex value for Tavern). (b) Rumor/errand cursor row index (probably 0x141870704 like Outfitter, to verify). (c) Scraping the body-text pane for the currently-highlighted entry.
+- [ ] **Tavern interior: add `Tavern` screen state** — Sub-actions Rumors and Errands. Currently misreported as `SettlementMenu ui=Tavern`. Add screen detection via shopTypeIndex + ui= via sub-action cursor.
+
+- [ ] **Tavern: add `Rumors` screen state + ValidPaths** — ScrollUp/Down/Read/Back. Needs memory scan for rumor cursor row (try reusing 0x141870704).
+
+- [ ] **Tavern: add `Errands` screen state + ValidPaths** — ScrollUp/Down/Select/Back. Select opens party menu for dispatch (depends on party menu work).
+
+- [ ] **Tavern: `read_rumor` action (scrape body text from widget)** — Scrape the highlighted rumor's body text pane, like `read_dialogue` does for cutscenes. UE4 widget scrape; same FString challenges as shop items.
+
+- [ ] **Tavern: `read_errands` action (scrape body text + metadata)** — Return description, quester, party size, days, fee. Widget scrape.
 
 
-- [ ] **Warriors' Guild interior** — captured 2026-04-14 (screenshot in session). State machine:
-  - `Warriors_Guild` — inside the guild, two sub-actions: `ui=Recruit` and `ui=Rename`. The guildmaster has an idle dialog line ("Is there aught else?") visible but it's UI chrome, not gameplay state.
-  - `Recruit` — requires party-menu integration (new hire joins the roster). Defer until party menu is complete. The recruit flow involves picking a job/class and naming the unit.
-  - `Rename` — requires party-menu navigation to pick a unit, then text input. Also defer until party menu + text input are solved.
-  - ValidPaths needed: `Warriors_Guild` → Recruit / Rename / Leave / CursorUp/Down. Sub-action flows deferred.
-  - Memory scans needed: state discriminators for `Recruit`/`Rename` (new shopSubMenuIndex values for WG).
+- [ ] **Warriors' Guild: add `WarriorsGuild` screen state** — Sub-actions Recruit and Rename. Memory scan for shopSubMenuIndex values. ValidPaths: Recruit/Rename/Leave/CursorUp/Down.
+
+- [ ] **Warriors' Guild: `Recruit` screen + flow** — Pick job/class + name new unit. Depends on party menu integration (new hire joins roster) and text input (naming).
+
+- [ ] **Warriors' Guild: `Rename` screen + flow** — Pick existing unit + enter new name. Depends on party menu navigation + text input state.
 
 
-- [ ] **Poachers' Den interior** — captured 2026-04-14 (screenshot in session). State machine:
-  - `Poachers_Den` — inside the den, two sub-actions: `ui=Process Carcasses` and `ui=Sell Carcasses`.
-  - `Process Carcasses` — list of monster carcasses you own; picking one trades it for a rare item. `ui=<carcass name>` while hovering a row. If the player has zero carcasses the panel renders "No carcasses to process." and the ui is empty.
-  - `Sell_Carcasses` — list of carcasses with `Held` and `Sale Price` columns, same empty-state ("No carcasses to sell."). `ui=<carcass name>` while hovering.
-  - ValidPaths needed: `Poachers_Den` → Process / Sell / Leave / CursorUp/Down; `Process_Carcasses` and `Sell_Carcasses` → ScrollUp/Down / Select / Cancel.
-  - Memory scans needed: shopSubMenuIndex values for Process/Sell sub-actions; cursor row index (probably reuses 0x141870704); carcass-name widget scraping (same problem as Outfitter items).
-  - Bonus: surface `heldCount=<n>` and `salePrice=<gil>` per row in the state response for Sell_Carcasses.
+- [ ] **Poachers' Den: add `PoachersDen` screen state** — Sub-actions Process Carcasses and Sell Carcasses. Memory scan for shopSubMenuIndex values. ValidPaths: Process/Sell/Leave/CursorUp/Down.
+
+- [ ] **Poachers' Den: `ProcessCarcasses` screen + ValidPaths** — ScrollUp/Down/Select/Cancel. `ui=<carcass name>`; empty state when zero carcasses. Depends on carcass-name widget scraping.
+
+- [ ] **Poachers' Den: `SellCarcasses` screen + payload** — Same nav as Process. Surface `heldCount` and `salePrice` per row. Depends on carcass-name widget scraping.
 
 
 - [ ] **Save Game menu** — encountered at Warjilis (Dorter has 4 shops, no Save). Needs its own scan; verify if it shows up as a 5th shopTypeIndex value or a distinct flag. Add the index to the shop name mapping in CommandWatcher.cs.
