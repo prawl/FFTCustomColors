@@ -9,37 +9,37 @@ namespace FFTColorCustomizer.Tests.GameBridge
         public void ShouldScan_FirstBattleMyTurn_ReturnsTrue()
         {
             var tracker = new BattleTurnTracker();
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn"));
         }
 
         [Fact]
         public void ShouldScan_SecondBattleMyTurn_ReturnsFalse()
         {
             var tracker = new BattleTurnTracker();
-            tracker.ShouldAutoScan("Battle_MyTurn"); // first call triggers
+            tracker.ShouldAutoScan("BattleMyTurn"); // first call triggers
             tracker.MarkScanned();
-            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn")); // already scanned this turn
+            Assert.False(tracker.ShouldAutoScan("BattleMyTurn")); // already scanned this turn
         }
 
         [Fact]
         public void ShouldScan_AfterEnemyTurnThenMyTurn_ReturnsTrue()
         {
             var tracker = new BattleTurnTracker();
-            tracker.ShouldAutoScan("Battle_MyTurn");
+            tracker.ShouldAutoScan("BattleMyTurn");
             tracker.MarkScanned();
 
             // Enemy turn
-            tracker.ShouldAutoScan("Battle_EnemiesTurn");
+            tracker.ShouldAutoScan("BattleEnemiesTurn");
 
             // New turn
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn"));
         }
 
         [Fact]
         public void ShouldScan_BattleActing_ReturnsFalse()
         {
             var tracker = new BattleTurnTracker();
-            Assert.False(tracker.ShouldAutoScan("Battle_Acting"));
+            Assert.False(tracker.ShouldAutoScan("BattleActing"));
         }
 
         [Fact]
@@ -53,21 +53,21 @@ namespace FFTColorCustomizer.Tests.GameBridge
         public void ShouldScan_BattleMoving_ReturnsFalse()
         {
             var tracker = new BattleTurnTracker();
-            Assert.False(tracker.ShouldAutoScan("Battle_Moving"));
+            Assert.False(tracker.ShouldAutoScan("BattleMoving"));
         }
 
         [Fact]
         public void ShouldScan_ResetsAfterLeavingBattle()
         {
             var tracker = new BattleTurnTracker();
-            tracker.ShouldAutoScan("Battle_MyTurn");
+            tracker.ShouldAutoScan("BattleMyTurn");
             tracker.MarkScanned();
 
             // Leave battle
             tracker.ShouldAutoScan("WorldMap");
 
             // Re-enter battle
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn"));
         }
 
         [Fact]
@@ -75,8 +75,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             // If scan fails or hasn't been marked, keep returning true
             var tracker = new BattleTurnTracker();
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn"));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn"));
         }
 
         [Fact]
@@ -85,33 +85,33 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var tracker = new BattleTurnTracker();
 
             // Turn 1
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn"));
             tracker.MarkScanned();
-            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.False(tracker.ShouldAutoScan("BattleMyTurn"));
 
             // Intermediate states (enemy turn)
-            tracker.ShouldAutoScan("Battle_EnemiesTurn");
+            tracker.ShouldAutoScan("BattleEnemiesTurn");
 
             // Turn 2
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn"));
             tracker.MarkScanned();
-            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.False(tracker.ShouldAutoScan("BattleMyTurn"));
         }
 
         [Theory]
         // Allowed: player has cursor control — safe to scan (C+Up cycling won't corrupt state).
-        [InlineData("Battle_MyTurn", true)]
-        [InlineData("Battle_Moving", true)]
-        [InlineData("Battle_Attacking", true)]
-        [InlineData("Battle_Casting", true)]
-        [InlineData("Battle_Abilities", true)]
-        [InlineData("Battle_Waiting", true)]
-        [InlineData("Battle_Paused", true)]
+        [InlineData("BattleMyTurn", true)]
+        [InlineData("BattleMoving", true)]
+        [InlineData("BattleAttacking", true)]
+        [InlineData("BattleCasting", true)]
+        [InlineData("BattleAbilities", true)]
+        [InlineData("BattleWaiting", true)]
+        [InlineData("BattlePaused", true)]
         // Blocked: animations or other teams' turns — scanning would race with state changes.
-        [InlineData("Battle_EnemiesTurn", false)]
-        [InlineData("Battle_AlliesTurn", false)]
-        [InlineData("Battle_Acting", false)]
-        [InlineData("Battle_Mettle", false)]
+        [InlineData("BattleEnemiesTurn", false)]
+        [InlineData("BattleAlliesTurn", false)]
+        [InlineData("BattleActing", false)]
+        [InlineData("BattleMettle", false)]
         public void CanScan_CursorControlStates(string screenName, bool expected)
         {
             Assert.Equal(expected, BattleTurnTracker.CanScan(screenName));
@@ -121,14 +121,14 @@ namespace FFTColorCustomizer.Tests.GameBridge
         public void ShouldAutoScan_AfterEnemyTurn_ResetsForNewPlayerTurn()
         {
             var tracker = new BattleTurnTracker();
-            tracker.ShouldAutoScan("Battle_MyTurn");
+            tracker.ShouldAutoScan("BattleMyTurn");
             tracker.MarkScanned();
 
             // Enemy turn resets scannedThisTurn
-            tracker.ShouldAutoScan("Battle_EnemiesTurn");
+            tracker.ShouldAutoScan("BattleEnemiesTurn");
 
             // New player turn should auto-scan
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn"));
         }
     }
 }

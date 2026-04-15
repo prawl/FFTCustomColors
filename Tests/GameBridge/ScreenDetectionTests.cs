@@ -30,7 +30,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false);
 
-            Assert.Equal("Battle_MyTurn", result);
+            Assert.Equal("BattleMyTurn", result);
         }
 
         [Fact]
@@ -43,7 +43,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 1, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 0);
 
-            Assert.Equal("Battle_Acting", result);
+            Assert.Equal("BattleActing", result);
         }
 
         [Fact]
@@ -57,7 +57,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
                 menuCursor: 1);
 
-            Assert.Equal("Battle_Abilities", result);
+            Assert.Equal("BattleAbilities", result);
         }
 
         [Fact]
@@ -71,7 +71,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
                 menuCursor: 1);
 
-            Assert.Equal("Battle_Abilities", result);
+            Assert.Equal("BattleAbilities", result);
         }
 
         [Fact]
@@ -83,7 +83,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 1, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false);
 
-            Assert.Equal("Battle_EnemiesTurn", result);
+            Assert.Equal("BattleEnemiesTurn", result);
         }
 
         [Fact]
@@ -173,7 +173,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 5, encB: 5, isPartySubScreen: false, hover: 254,
                 locationMenuFlag: 0, insideShopFlag: 0, shopSubMenuIndex: 1);
 
-            Assert.Equal("Outfitter_Buy", result);
+            Assert.Equal("OutfitterBuy", result);
         }
 
         [Fact]
@@ -189,7 +189,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 5, encB: 5, isPartySubScreen: false, hover: 254,
                 locationMenuFlag: 0, insideShopFlag: 0, shopSubMenuIndex: 4);
 
-            Assert.Equal("Outfitter_Sell", result);
+            Assert.Equal("OutfitterSell", result);
         }
 
         [Fact]
@@ -205,15 +205,15 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 5, encB: 5, isPartySubScreen: false, hover: 254,
                 locationMenuFlag: 0, insideShopFlag: 0, shopSubMenuIndex: 6);
 
-            Assert.Equal("Outfitter_Fitting", result);
+            Assert.Equal("OutfitterFitting", result);
         }
 
         [Fact]
         public void ResolveShopSubAction_Outfitter_MapsAllThreeValues()
         {
-            Assert.Equal("Outfitter_Buy", ScreenDetectionLogic.ResolveShopSubAction(0, 1));
-            Assert.Equal("Outfitter_Sell", ScreenDetectionLogic.ResolveShopSubAction(0, 4));
-            Assert.Equal("Outfitter_Fitting", ScreenDetectionLogic.ResolveShopSubAction(0, 6));
+            Assert.Equal("OutfitterBuy", ScreenDetectionLogic.ResolveShopSubAction(0, 1));
+            Assert.Equal("OutfitterSell", ScreenDetectionLogic.ResolveShopSubAction(0, 4));
+            Assert.Equal("OutfitterFitting", ScreenDetectionLogic.ResolveShopSubAction(0, 6));
         }
 
         [Fact]
@@ -276,7 +276,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
 
-            Assert.Equal("Battle_Moving", result);
+            Assert.Equal("BattleMoving", result);
         }
 
         [Fact]
@@ -306,7 +306,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
                 menuCursor: 1);
 
-            Assert.Equal("Battle_Abilities", result);
+            Assert.Equal("BattleAbilities", result);
         }
 
         [Fact]
@@ -319,7 +319,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 1, battleMoved: 1,
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
 
-            Assert.Equal("Battle_Attacking", result);
+            Assert.Equal("BattleAttacking", result);
         }
 
         [Fact]
@@ -338,7 +338,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false, eventId: 401,
                 submenuFlag: 1, menuCursor: 1);
 
-            Assert.Equal("Battle_Attacking", result);
+            Assert.Equal("BattleAttacking", result);
         }
 
         [Fact]
@@ -351,20 +351,20 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
 
-            Assert.Equal("Battle_Moving", result);
+            Assert.Equal("BattleMoving", result);
         }
 
         [Theory]
-        [InlineData("Attack", "Battle_Attack")]
-        [InlineData("Mettle", "Battle_Mettle")]
-        [InlineData("Items", "Battle_Items")]
-        [InlineData("Arts of War", "Battle_ArtsOfWar")]
-        [InlineData("White Magicks", "Battle_WhiteMagicks")]
-        [InlineData("Black Magicks", "Battle_BlackMagicks")]
-        [InlineData("Time Magicks", "Battle_TimeMagicks")]
-        [InlineData("Steal", "Battle_Steal")]
-        [InlineData("Fundaments", "Battle_Fundaments")]
-        [InlineData("Throw", "Battle_Throw")]
+        [InlineData("Attack", "BattleAttack")]
+        [InlineData("Mettle", "BattleMettle")]
+        [InlineData("Items", "BattleItems")]
+        [InlineData("Arts of War", "BattleArtsOfWar")]
+        [InlineData("White Magicks", "BattleWhiteMagicks")]
+        [InlineData("Black Magicks", "BattleBlackMagicks")]
+        [InlineData("Time Magicks", "BattleTimeMagicks")]
+        [InlineData("Steal", "BattleSteal")]
+        [InlineData("Fundaments", "BattleFundaments")]
+        [InlineData("Throw", "BattleThrow")]
         public void DetectScreen_AbilitySubmenuSelected_ShouldReturnSpecificScreen(
             string selectedAbility, string expectedScreen)
         {
@@ -387,7 +387,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 1, battleMoved: 1,
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
 
-            Assert.Equal("Battle_Attacking", result);
+            Assert.Equal("BattleAttacking", result);
         }
 
         [Fact]
@@ -399,7 +399,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false);
 
-            Assert.Equal("Battle_Moving", result);
+            Assert.Equal("BattleMoving", result);
         }
 
         [Fact]
@@ -412,7 +412,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 1, battleMoved: 1,
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
 
-            Assert.Equal("Battle_Attacking", result);
+            Assert.Equal("BattleAttacking", result);
         }
 
         [Fact]
@@ -459,7 +459,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
                 menuCursor: 2);
 
-            Assert.Equal("Battle_Waiting", result);
+            Assert.Equal("BattleWaiting", result);
         }
 
         [Fact]
@@ -473,7 +473,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
                 menuCursor: 0);
 
-            Assert.Equal("Battle_Moving", result);
+            Assert.Equal("BattleMoving", result);
         }
 
         [Fact]
@@ -490,7 +490,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1,
                 menuCursor: 0);
 
-            Assert.Equal("Battle_Acting", result);
+            Assert.Equal("BattleActing", result);
         }
 
         [Fact]
@@ -506,7 +506,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 3, encB: 3, isPartySubScreen: false,
                 submenuFlag: 0, menuCursor: 0);
 
-            Assert.Equal("Battle_Formation", result);
+            Assert.Equal("BattleFormation", result);
         }
 
         [Fact]
@@ -521,7 +521,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 3, encB: 3, isPartySubScreen: false,
                 submenuFlag: 0, menuCursor: 0);
 
-            Assert.NotEqual("Battle_Casting", result);
+            Assert.NotEqual("BattleCasting", result);
         }
 
         [Fact]
@@ -536,7 +536,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false,
                 submenuFlag: 0, menuCursor: 0);
 
-            Assert.Equal("Battle_Attacking", result);
+            Assert.Equal("BattleAttacking", result);
         }
 
         [Fact]
@@ -554,7 +554,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 6, encB: 5, isPartySubScreen: false,
                 submenuFlag: 0, menuCursor: 1, locationMenuFlag: 1);
 
-            Assert.Equal("Battle_Victory", result);
+            Assert.Equal("BattleVictory", result);
         }
 
         [Fact]
@@ -588,7 +588,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 10, encB: 10, isPartySubScreen: false,
                 submenuFlag: 1, menuCursor: 1, locationMenuFlag: 1);
 
-            Assert.Equal("Battle_Desertion", result);
+            Assert.Equal("BattleDesertion", result);
         }
 
         [Fact]
@@ -617,7 +617,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 9, encB: 9, isPartySubScreen: false,
                 submenuFlag: 1, menuCursor: 0);
 
-            Assert.Equal("Battle_Desertion", result);
+            Assert.Equal("BattleDesertion", result);
         }
 
         [Fact]
@@ -631,7 +631,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false,
                 submenuFlag: 1, menuCursor: 3);
 
-            Assert.Equal("Battle_Status", result);
+            Assert.Equal("BattleStatus", result);
         }
 
         [Fact]
@@ -644,7 +644,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false,
                 submenuFlag: 1, menuCursor: 3);
 
-            Assert.NotEqual("Battle_Paused", result);
+            Assert.NotEqual("BattlePaused", result);
         }
 
         [Fact]
@@ -663,7 +663,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false,
                 submenuFlag: 1, menuCursor: 4);
 
-            Assert.NotEqual("Battle_AutoBattle", result);
+            Assert.NotEqual("BattleAutoBattle", result);
         }
 
         [Fact]
@@ -677,7 +677,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false,
                 submenuFlag: 0, menuCursor: 0);
 
-            Assert.Equal("Battle_Paused", result);
+            Assert.Equal("BattlePaused", result);
         }
 
         [Fact]
@@ -725,7 +725,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false, eventId: 4);
 
-            Assert.Equal("Battle_Dialogue", result);
+            Assert.Equal("BattleDialogue", result);
         }
 
         [Fact]
@@ -739,7 +739,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false, eventId: 401);
 
-            Assert.NotEqual("Battle_Dialogue", result);
+            Assert.NotEqual("BattleDialogue", result);
         }
     }
 }

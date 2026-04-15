@@ -17,7 +17,7 @@ namespace FFTColorCustomizer.GameBridge
     ///   - battle_ability postAction (damage via HP diff)
     ///   - scan_move (detect HP changes from enemy attacks between turns)
     ///   - battle_wait (turn count)
-    ///   - Battle_Victory detection (finalize battle stats)
+    ///   - BattleVictory detection (finalize battle stats)
     ///
     /// NOT YET WIRED — this is the data model and persistence layer.
     /// Hook integration is a separate step after the tracker is validated.

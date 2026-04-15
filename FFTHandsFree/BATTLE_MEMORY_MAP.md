@@ -145,11 +145,11 @@ Story battles and random encounters at same location use DIFFERENT maps. Terrain
 See `ColorMod/GameBridge/ScreenDetectionLogic.cs`. Current rules:
 ```
 inBattle = (slot0==255 AND slot9==0xFFFFFFFF) OR (slot9==0xFFFFFFFF AND battleMode in {2,3,4})
-Battle_MyTurn = inBattle AND team==0 AND act==0 AND mov==0
-Battle_Moving = inBattle AND battleMode==2
-Battle_Attacking = inBattle AND battleMode==4
-Battle_Abilities = inBattle AND submenuFlag==1 AND battleMode==3 AND team==0 AND (act==1 OR mov==1)
-Battle_Paused = inBattle AND paused==1
+BattleMyTurn = inBattle AND team==0 AND act==0 AND mov==0
+BattleMoving = inBattle AND battleMode==2
+BattleAttacking = inBattle AND battleMode==4
+BattleAbilities = inBattle AND submenuFlag==1 AND battleMode==3 AND team==0 AND (act==1 OR mov==1)
+BattlePaused = inBattle AND paused==1
 GameOver = inBattle AND paused==1 AND battleMode==0 AND gameOverFlag==1
 EncounterDialog = encA(0x140900824) != encB(0x140900828)
 PartyMenu = partyFlag(0x140D3A41E)==1
@@ -201,15 +201,15 @@ TitleScreen = location(0x14077D208)==255
 
 See `detection_audit.md` in repo root for full sample-by-sample data. Summary:
 
-1. **`Battle_AutoBattle` rule never fires correctly** — demands `submenuFlag==1` but real top-level AutoBattle hover has `submenuFlag=0`. Fires SPURIOUSLY in Abilities submenu when cursor lands at skillset index 4. ROOT CAUSE of "Auto-Battle instead of Wait" bug.
-2. **`Battle_Casting` cannot be detected from memory** — cast-time and instant targeting produce byte-identical 18-input snapshots. Queued-vs-instant is a property of the ability, not the screen.
+1. **`BattleAutoBattle` rule never fires correctly** — demands `submenuFlag==1` but real top-level AutoBattle hover has `submenuFlag=0`. Fires SPURIOUSLY in Abilities submenu when cursor lands at skillset index 4. ROOT CAUSE of "Auto-Battle instead of Wait" bug.
+2. **`BattleCasting` cannot be detected from memory** — cast-time and instant targeting produce byte-identical 18-input snapshots. Queued-vs-instant is a property of the ability, not the screen.
 3. **`WorldMap` rule unreachable** — requires `party==0 && ui==0` but actual world map has `party=0, ui=1`.
 4. **Multiple world-side screens byte-identical** — WorldMap, TravelList, PartyMenu, EncounterDialog, TitleScreen, LoadGame all fall into `rawLocation=255` catch-all. Rule ordering preempts them.
 5. **Shop types indistinguishable** — Outfitters, Warrior Guild, Poachers' Den, Save Game, Tavern all byte-identical at `rawLocation=0-42` (split only by `ui` which is coarse).
 6. **Two distinct `TitleScreen` states** — fresh-process (all uninit sentinels) vs post-GameOver (stale battle residue). Current rule catches only the first.
 7. **No rule for `LoadGame` / `LocationMenu` / `Battle_ChooseLocation`** — these states fall through to wrong detections.
-8. **`Battle_Dialogue` / `Cutscene` filter too tight** — `eventId < 200` misses real events like 302 (pre-battle Orbonne).
-9. **`Battle_Victory` / `Battle_Desertion` rules depend on `encA vs encB`** — coincidence-dependent, unreliable.
+8. **`BattleDialogue` / `Cutscene` filter too tight** — `eventId < 200` misses real events like 302 (pre-battle Orbonne).
+9. **`BattleVictory` / `BattleDesertion` rules depend on `encA vs encB`** — coincidence-dependent, unreliable.
 
 Fix work tracked in TODO §12 "Screen Detection Rewrite".
 

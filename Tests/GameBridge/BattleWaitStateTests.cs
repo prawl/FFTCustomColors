@@ -10,10 +10,10 @@ namespace FFTColorCustomizer.Tests.GameBridge
         /// BattleWait needs to detect this and skip menu navigation.
         /// </summary>
         [Theory]
-        [InlineData("Battle_MyTurn", false)]     // Normal: at action menu, needs menu nav
-        [InlineData("Battle_Acting", false)]      // Acted but not moved: still has menu
-        [InlineData("Battle_Attacking", true)]    // After Move+Act: already on facing screen
-        [InlineData("Battle_Moving", true)]       // Could also be facing screen
+        [InlineData("BattleMyTurn", false)]     // Normal: at action menu, needs menu nav
+        [InlineData("BattleActing", false)]      // Acted but not moved: still has menu
+        [InlineData("BattleAttacking", true)]    // After Move+Act: already on facing screen
+        [InlineData("BattleMoving", true)]       // Could also be facing screen
         public void ShouldSkipMenuNavigation_DetectsCorrectly(string screenName, bool expectedSkip)
         {
             bool skip = BattleWaitLogic.ShouldSkipMenuNavigation(screenName);
@@ -24,10 +24,10 @@ namespace FFTColorCustomizer.Tests.GameBridge
         /// BattleWait should accept these screen states as valid starting points.
         /// </summary>
         [Theory]
-        [InlineData("Battle_MyTurn", true)]
-        [InlineData("Battle_Acting", true)]
-        [InlineData("Battle_Attacking", true)]   // After Move+Act facing screen
-        [InlineData("Battle_Moving", true)]      // Could be facing screen variant
+        [InlineData("BattleMyTurn", true)]
+        [InlineData("BattleActing", true)]
+        [InlineData("BattleAttacking", true)]   // After Move+Act facing screen
+        [InlineData("BattleMoving", true)]      // Could be facing screen variant
         [InlineData("WorldMap", false)]
         [InlineData("TitleScreen", false)]
         [InlineData(null, false)]

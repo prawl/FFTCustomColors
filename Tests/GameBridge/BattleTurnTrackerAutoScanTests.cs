@@ -9,44 +9,44 @@ namespace FFTColorCustomizer.Tests.GameBridge
         public void ShouldAutoScan_PlayerTurn_ReturnsTrue()
         {
             var tracker = new BattleTurnTracker();
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
         }
 
         [Fact]
         public void ShouldAutoScan_AllyTurn_ReturnsFalse()
         {
             var tracker = new BattleTurnTracker();
-            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn", team: 2));
+            Assert.False(tracker.ShouldAutoScan("BattleMyTurn", team: 2));
         }
 
         [Fact]
         public void ShouldAutoScan_EnemyTurn_ReturnsFalse()
         {
             var tracker = new BattleTurnTracker();
-            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn", team: 1));
+            Assert.False(tracker.ShouldAutoScan("BattleMyTurn", team: 1));
         }
 
         [Fact]
         public void ShouldAutoScan_AfterMarkScanned_ReturnsFalse()
         {
             var tracker = new BattleTurnTracker();
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
             tracker.MarkScanned();
-            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.False(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
         }
 
         [Fact]
         public void ShouldAutoScan_NewTurnAfterEnemyPhase_ReturnsTrue()
         {
             var tracker = new BattleTurnTracker();
-            tracker.ShouldAutoScan("Battle_MyTurn", team: 0);
+            tracker.ShouldAutoScan("BattleMyTurn", team: 0);
             tracker.MarkScanned();
 
             // Enemy phase
-            tracker.ShouldAutoScan("Battle_EnemiesTurn", team: 1);
+            tracker.ShouldAutoScan("BattleEnemiesTurn", team: 1);
 
             // New player turn
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
         }
 
         [Fact]
@@ -54,15 +54,15 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             var tracker = new BattleTurnTracker();
             // Player turn, scan
-            tracker.ShouldAutoScan("Battle_MyTurn", team: 0);
+            tracker.ShouldAutoScan("BattleMyTurn", team: 0);
             tracker.MarkScanned();
 
             // Ally turn (team 2) on Battle_MyTurn — should NOT reset scan flag
-            tracker.ShouldAutoScan("Battle_MyTurn", team: 2);
+            tracker.ShouldAutoScan("BattleMyTurn", team: 2);
 
             // Still same player turn cycle — should not re-scan
             // Only resets after leaving MyTurn state entirely
-            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.False(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
         }
 
         [Fact]
@@ -70,7 +70,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             // Existing tests use the 1-param overload — make sure it still works
             var tracker = new BattleTurnTracker();
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn"));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn"));
         }
 
         [Fact]
@@ -79,15 +79,15 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var tracker = new BattleTurnTracker();
 
             // Turn 1: auto-scan fires
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
             tracker.MarkScanned();
-            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.False(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
 
             // battle_wait skips enemy/ally phases — must call ResetForNewTurn
             tracker.ResetForNewTurn();
 
             // Turn 2: auto-scan should fire again
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
         }
 
         [Fact]
@@ -99,7 +99,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var tracker = new BattleTurnTracker();
 
             // First ever check — like calling "screen" after boot lands on Battle_MyTurn
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
         }
 
         [Fact]
@@ -116,11 +116,11 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var tracker = new BattleTurnTracker();
 
             // First command hits Battle_MyTurn — scan triggers
-            Assert.True(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.True(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
             tracker.MarkScanned();
 
             // Second command (screen) — already scanned, returns false
-            Assert.False(tracker.ShouldAutoScan("Battle_MyTurn", team: 0));
+            Assert.False(tracker.ShouldAutoScan("BattleMyTurn", team: 0));
         }
     }
 }

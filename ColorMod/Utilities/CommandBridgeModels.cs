@@ -443,17 +443,17 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("battleUnitHp")]
         public int BattleUnitHp { get; set; }
 
-        /// <summary>Cursor tile X during Battle_Moving/Battle_Attacking.</summary>
+        /// <summary>Cursor tile X during BattleMoving/BattleAttacking.</summary>
         [JsonPropertyName("cursorX")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int CursorX { get; set; } = -1;
 
-        /// <summary>Cursor tile Y during Battle_Moving/Battle_Attacking.</summary>
+        /// <summary>Cursor tile Y during BattleMoving/BattleAttacking.</summary>
         [JsonPropertyName("cursorY")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int CursorY { get; set; } = -1;
 
-        /// <summary>Available tiles during Battle_Moving (list of X,Y pairs).</summary>
+        /// <summary>Available tiles during BattleMoving (list of X,Y pairs).</summary>
         [JsonPropertyName("tiles")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<TilePosition>? Tiles { get; set; }
@@ -484,7 +484,7 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public long Gil { get; set; }
 
-        /// <summary>Row index of the highlighted item inside Outfitter_Buy/Sell/Fitting.
+        /// <summary>Row index of the highlighted item inside OutfitterBuy/Sell/Fitting.
         /// u32 at static 0x141870704. 0-based, increments per ScrollDown.
         /// null = not applicable (screens outside the Outfitter sub-actions).</summary>
         [JsonPropertyName("shopListCursorIndex")]

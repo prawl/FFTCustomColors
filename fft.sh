@@ -429,7 +429,7 @@ execute_action() {
   local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
 
   # If Wait completed and we're at Battle_MyTurn, auto-show screen
-  if [ "$1" = "Wait" ] && [[ "$SCR" == "Battle_MyTurn" ]]; then
+  if [ "$1" = "Wait" ] && [[ "$SCR" == "BattleMyTurn" ]]; then
     screen
     return
   fi
@@ -1326,7 +1326,7 @@ screen() {
   local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
 
   # During Battle_MyTurn: run scan_move for full tactical view
-  if [[ "$SCR" == "Battle_MyTurn" ]]; then
+  if [[ "$SCR" == "BattleMyTurn" ]]; then
     local vflag="false"; $verbose && vflag="true"
     local raw
     raw=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"verbose\":$vflag}")

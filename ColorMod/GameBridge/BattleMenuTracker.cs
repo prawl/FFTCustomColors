@@ -110,7 +110,7 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
-        /// Called when screen returns to Battle_MyTurn after an ability use.
+        /// Called when screen returns to BattleMyTurn after an ability use.
         /// Resets all submenu/ability list state so ui= shows the correct main menu cursor.
         /// Unlike OnNewTurn, this doesn't imply a different unit — just that we're back at the action menu.
         /// </summary>
@@ -120,12 +120,12 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public void SyncForScreen(string screenName)
         {
-            if (screenName == "Battle_MyTurn" && (InSubmenu || InAbilityList))
+            if (screenName == "BattleMyTurn" && (InSubmenu || InAbilityList))
             {
                 HasActedThisTurn = true;
                 ReturnToMyTurn();
             }
-            else if (screenName != "Battle_Abilities" && (InSubmenu || InAbilityList))
+            else if (screenName != "BattleAbilities" && (InSubmenu || InAbilityList))
             {
                 HasActedThisTurn = true;
                 ReturnToMyTurn();

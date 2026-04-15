@@ -57,7 +57,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false, eventId: 4);
 
-            Assert.Equal("Battle_Dialogue", result);
+            Assert.Equal("BattleDialogue", result);
         }
 
         [Theory]
@@ -76,7 +76,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false, eventId: nameIdAsEventId);
 
-            Assert.NotEqual("Battle_Dialogue", result);
+            Assert.NotEqual("BattleDialogue", result);
             Assert.NotEqual("Cutscene", result);
             Assert.StartsWith("Battle", result);
         }

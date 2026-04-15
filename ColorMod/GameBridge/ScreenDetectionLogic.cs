@@ -13,8 +13,8 @@ namespace FFTColorCustomizer.GameBridge
     ///   - gameOverFlag is sticky across process lifetime once set
     ///   - rawLocation=0-42 means AT a named location (shop/village/campaign ground), 255 means "unspecified"
     ///   - Two distinct TitleScreen states exist (fresh process + post-GameOver + post-battle-stale)
-    ///   - Battle_AutoBattle rule cannot fire correctly — UI label handles that case
-    ///   - Battle_Casting is memory-indistinguishable from Battle_Attacking
+    ///   - BattleAutoBattle rule cannot fire correctly — UI label handles that case
+    ///   - BattleCasting is memory-indistinguishable from BattleAttacking
     ///   - Mid-battle dialogue clears slot0 to 0xFFFFFFFF (unit slots torn down)
     /// See detection_audit.md for full data.
     /// </summary>
@@ -57,7 +57,7 @@ namespace FFTColorCustomizer.GameBridge
             // Checked BEFORE atNamedLocation override because Formation happens at a named
             // battle location (rawLocation 0-42) but is distinctly a battle-setup state.
             if (slot0 == 0xFFFFFFFFL && slot9 == 0xFFFFFFFF && battleMode == 1)
-                return "Battle_Formation";
+                return "BattleFormation";
 
             // atNamedLocation and onWorldMapByMoveMode both override stale battle sentinels.
             // If we're at a shop/village (hover=255 + rawLocation in range) OR the world-map
@@ -81,7 +81,7 @@ namespace FFTColorCustomizer.GameBridge
                 if (hover >= 0 && hover <= 42 && rawLocation == 255)
                     return "WorldMap";
 
-                // Battle_ChooseLocation (multi-battle campaign ground sub-selector like
+                // BattleChooseLocation (multi-battle campaign ground sub-selector like
                 // Orbonne Vaults) is byte-indistinguishable from post-restart WorldMap in
                 // our current 19 inputs. During an active session it can be detected by
                 // slot0 holding a small non-sentinel sub-location index, but that signal
@@ -113,20 +113,20 @@ namespace FFTColorCustomizer.GameBridge
                 // indicates a pre-battle cutscene has been triggered (e.g. Orbonne Loffrey scene).
                 if (atNamedLocation && eventId >= 1 && eventId < 400 && eventId != 0xFFFF
                     && slot0 == 0xFFFFFFFFL)
-                    return "Battle_Dialogue";
+                    return "BattleDialogue";
 
                 // Post-battle Desertion: at named battle location, game PAUSED with warning
                 // dialog (Brave/Faith threshold triggered desertion risk). Both audit samples
                 // of Desertion (#44, #45) had paused=1 and submenuFlag=1.
                 if (atNamedLocation && slot0 == 255 && paused == 1 && submenuFlag == 1
                     && actedOrMoved && battleMode == 0)
-                    return "Battle_Desertion";
+                    return "BattleDesertion";
 
                 // Post-battle Victory: at named battle location, NOT paused (auto-advancing
                 // result screen). submenuFlag may still be 1 from prior submenu state.
                 if (atNamedLocation && slot0 == 255 && paused == 0 && actedOrMoved
                     && battleMode == 0)
-                    return "Battle_Victory";
+                    return "BattleVictory";
 
                 // EncounterDialog: at named location (random encounter happens on top of the
                 // world map but reads location=255 usually). Kept for test coverage; in
@@ -173,7 +173,7 @@ namespace FFTColorCustomizer.GameBridge
                 // shop/service is highlighted lives in screen.UI (populated by the caller
                 // from shopTypeIndex at 0x140D435F0), NOT as a separate screen name —
                 // consistent with how we label action-menu cursor positions (e.g.
-                // Battle_MyTurn with ui=AutoBattle).
+                // BattleMyTurn with ui=AutoBattle).
                 if (atNamedLocation)
                     return "LocationMenu";
 
@@ -182,7 +182,7 @@ namespace FFTColorCustomizer.GameBridge
                 if (rawLocation == 255 && slot0 == 0xFFFFFFFFL
                     && eventId >= 1 && eventId < 400 && eventId != 0xFFFF
                     && actedOrMoved)
-                    return "Battle_Dialogue";
+                    return "BattleDialogue";
 
                 // EncounterDialog: random encounter popped up during world-map travel.
                 // encA != encB with a significant gap is the signal. Small drift (diff ≤ 1)
@@ -226,11 +226,11 @@ namespace FFTColorCustomizer.GameBridge
             // Desertion: post-battle pause + submenu (warning dialog overlay).
             // Does NOT require encA==encB (noise counter).
             if (postBattlePausedState && submenuFlag == 1)
-                return "Battle_Desertion";
+                return "BattleDesertion";
 
             // Victory: post-battle at named location, no pause (auto-advancing result screen).
             if (postBattle && paused == 0)
-                return "Battle_Victory";
+                return "BattleVictory";
 
             // LoadGame: reached from GameOver menu. Shares stale battle state with GameOver
             // but paused=0 (GameOver has paused=1). Runs before EnemiesTurn to preempt stale
@@ -253,7 +253,7 @@ namespace FFTColorCustomizer.GameBridge
             // dialogue states share acted/moved/submenuFlag sticky values with post-battle.
             if (eventId >= 1 && eventId < 200 && eventId != 0xFFFF
                 && battleMode == 0 && paused == 0)
-                return "Battle_Dialogue";
+                return "BattleDialogue";
 
             // Post-battle stale at rawLocation=255: After a battle ends (or a battle
             // dialogue is dismissed), the game transitions back to the world map but stale
@@ -272,13 +272,13 @@ namespace FFTColorCustomizer.GameBridge
             // Status screen: clicked INTO Status from pause menu. Needs submenuFlag=1
             // (subscreen open) in addition to paused=1 + menuCursor=3. Without submenuFlag,
             // cursor=3 on the pause menu just means hovering the Status item, which is still
-            // Battle_Paused.
+            // BattlePaused.
             if (paused == 1 && menuCursor == 3 && submenuFlag == 1)
-                return "Battle_Status";
+                return "BattleStatus";
             if (paused == 1)
-                return "Battle_Paused";
+                return "BattlePaused";
 
-            // Targeting submodes — cast-time and instant collapse into Battle_Attacking.
+            // Targeting submodes — cast-time and instant collapse into BattleAttacking.
             // battleMode values 1, 4, 5 all indicate "cursor in a targeting submode":
             //   4 = cursor on a valid instant-attack target
             //   5 = cursor on caster's self-target tile (cast-time)
@@ -286,15 +286,15 @@ namespace FFTColorCustomizer.GameBridge
             // Cast-time and instant are indistinguishable from memory; callers track
             // cast-time via the ability that was selected (client-side state).
             if (battleMode == 4 || battleMode == 5 || battleMode == 1)
-                return "Battle_Attacking";
+                return "BattleAttacking";
 
             // Waiting: facing selection post-Wait. battleMode=2 + menuCursor=2 distinguishes
-            // from Battle_Moving (same battleMode=2 but different cursor).
+            // from BattleMoving (same battleMode=2 but different cursor).
             if (battleMode == 2 && menuCursor == 2)
-                return "Battle_Waiting";
+                return "BattleWaiting";
 
             if (battleMode == 2)
-                return "Battle_Moving";
+                return "BattleMoving";
 
             // Abilities submenu: submenuFlag=1 + battleMode=3 + player's turn + menuCursor==1.
             // The menuCursor==1 guard is essential — after using an ability and returning to
@@ -302,35 +302,35 @@ namespace FFTColorCustomizer.GameBridge
             // the cursor check, that post-action state would misfire as Abilities.
             if (submenuFlag == 1 && battleMode == 3 && battleTeam == 0 && menuCursor == 1
                 && actedOrMoved)
-                return "Battle_Abilities";
+                return "BattleAbilities";
 
             // Action menu — player's turn (no action yet).
             if (battleTeam == 0 && !actedOrMoved)
-                return "Battle_MyTurn";
+                return "BattleMyTurn";
 
             if (battleTeam == 2 && !actedOrMoved)
-                return "Battle_AlliesTurn";
+                return "BattleAlliesTurn";
 
             if (battleTeam == 1 && !actedOrMoved)
-                return "Battle_EnemiesTurn";
+                return "BattleEnemiesTurn";
 
             // Acting: player's turn with flags set.
             if (battleTeam == 0 && actedOrMoved)
-                return "Battle_Acting";
+                return "BattleActing";
 
             return "Battle";
         }
 
         /// <summary>
         /// Converts a selected ability/skillset name into its screen state name.
-        /// E.g. "Attack" → "Battle_Attack", "White Magicks" → "Battle_WhiteMagicks"
+        /// E.g. "Attack" → "BattleAttack", "White Magicks" → "BattleWhiteMagicks"
         /// </summary>
         public static string GetAbilityScreenName(string abilityName)
         {
             var words = abilityName.Split(' ');
             var pascal = string.Concat(words.Select(w =>
                 char.ToUpper(w[0]) + w.Substring(1)));
-            return $"Battle_{pascal}";
+            return $"Battle{pascal}";
         }
 
         /// <summary>
@@ -352,9 +352,9 @@ namespace FFTColorCustomizer.GameBridge
                 case 0: // Outfitter — mapped
                     return shopSubMenuIndex switch
                     {
-                        1 => "Outfitter_Buy",
-                        4 => "Outfitter_Sell",
-                        6 => "Outfitter_Fitting",
+                        1 => "OutfitterBuy",
+                        4 => "OutfitterSell",
+                        6 => "OutfitterFitting",
                         _ => null,
                     };
                 case 1: // Tavern — TODO: scan values and add here

@@ -34,22 +34,22 @@ You can do Move and Act in any order, or skip either. But you MUST Wait to end t
 
 | State | Meaning | What to do |
 |-------|---------|------------|
-| `Battle_MyTurn` | Your unit's turn, action menu open | Choose: move, attack, or wait |
-| `Battle_Acting` | You've partially acted (moved or used ability) | Finish your turn (attack or wait) |
-| `Battle_Moving` | Move mode, selecting a tile (battleMode=2) | Pick a tile or cancel |
-| `Battle_Abilities` | Abilities submenu open (Attack/Mettle/Items) | Pick a skillset or cancel |
-| `Battle_Attacking` | Instant targeting: basic Attack, Throw, Items, Iaido, Aim (battleMode=4) | Pick a target or cancel |
-| `Battle_Casting` | Cast-time magick targeting: Fire, Cure, Haste, Summons, etc. (battleMode=1) | Pick a target or cancel |
+| `BattleMyTurn` | Your unit's turn, action menu open | Choose: move, attack, or wait |
+| `BattleActing` | You've partially acted (moved or used ability) | Finish your turn (attack or wait) |
+| `BattleMoving` | Move mode, selecting a tile (battleMode=2) | Pick a tile or cancel |
+| `BattleAbilities` | Abilities submenu open (Attack/Mettle/Items) | Pick a skillset or cancel |
+| `BattleAttacking` | Instant targeting: basic Attack, Throw, Items, Iaido, Aim (battleMode=4) | Pick a target or cancel |
+| `BattleCasting` | Cast-time magick targeting: Fire, Cure, Haste, Summons, etc. (battleMode=1) | Pick a target or cancel |
 | `Battle_Mettle` | Mettle ability list (Focus/Rush/Shout/...) | Pick an ability or cancel |
 | `Battle_Items` | Items list (Potion/Phoenix Down/...) | Pick an item or cancel |
 | `Battle_<Skillset>` | Any other skillset ability list | Pick an ability or cancel |
-| `Battle_AlliesTurn` | NPC ally is acting | Wait — poll `screen` until `Battle_MyTurn` |
-| `Battle_EnemiesTurn` | Enemy is acting | Wait — poll `screen` until `Battle_MyTurn` |
-| `Battle_Paused` | Pause menu open | Resume, retry, or flee |
+| `BattleAlliesTurn` | NPC ally is acting | Wait — poll `screen` until `BattleMyTurn` |
+| `BattleEnemiesTurn` | Enemy is acting | Wait — poll `screen` until `BattleMyTurn` |
+| `BattlePaused` | Pause menu open | Resume, retry, or flee |
 
 The `ui=` field shows the current cursor position at each level:
-- `Battle_MyTurn ui=Abilities` — cursor on Abilities in action menu
-- `Battle_Abilities ui=Mettle` — cursor on Mettle in abilities submenu
+- `BattleMyTurn ui=Abilities` — cursor on Abilities in action menu
+- `BattleAbilities ui=Mettle` — cursor on Mettle in abilities submenu
 - `Battle_Mettle ui=Shout` — cursor on Shout in ability list
 
 ## Step-by-Step: A Full Turn
@@ -75,7 +75,7 @@ Returns structured JSON:
 
 **Duplicate units get numbered suffixes** — if you have 3 Bonesnatches on the field, they render as `(Bonesnatch #1)`, `(Bonesnatch #2)`, `(Bonesnatch #3)` so you can reference specific instances ("focus Bonesnatch #3 first"). Numbering is by scan order and stable within a single scan.
 
-**Scan is blocked during unsafe states.** scan_move returns `status=blocked` during `Battle_Acting`, `Battle_AlliesTurn`, `Battle_EnemiesTurn` because C+Up cycling can corrupt game state mid-animation. Wait for `Battle_MyTurn` before scanning.
+**Scan is blocked during unsafe states.** scan_move returns `status=blocked` during `BattleActing`, `BattleAlliesTurn`, `BattleEnemiesTurn` because C+Up cycling can corrupt game state mid-animation. Wait for `BattleMyTurn` before scanning.
 
 ### 2. Move
 
@@ -139,7 +139,7 @@ The `RecommendedFacing` in scan_move shows you the recommended direction before 
 
 ## Waiting for Other Turns
 
-`battle_wait` auto-waits through enemy/ally turns. When you see `Battle_AlliesTurn` or `Battle_EnemiesTurn`, poll `screen` until `Battle_MyTurn` returns.
+`battle_wait` auto-waits through enemy/ally turns. When you see `BattleAlliesTurn` or `BattleEnemiesTurn`, poll `screen` until `BattleMyTurn` returns.
 
 ## Quick Reference
 

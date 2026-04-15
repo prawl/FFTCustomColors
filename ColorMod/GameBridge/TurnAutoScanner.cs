@@ -4,7 +4,7 @@ namespace FFTColorCustomizer.GameBridge
 {
     /// <summary>
     /// Tracks battle turn state to determine when auto-scanning should occur.
-    /// Auto-scan triggers once per friendly turn (Battle_MyTurn), resets when
+    /// Auto-scan triggers once per friendly turn (BattleMyTurn), resets when
     /// the turn ends (any non-MyTurn battle state or leaving battle).
     /// Also caches the scan response so subsequent scan_move calls within
     /// the same turn return instantly without re-scanning.
@@ -20,23 +20,23 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>
         /// Returns true if an auto-scan should be triggered for the given screen state.
-        /// Only returns true on the first Battle_MyTurn detection after a turn transition.
+        /// Only returns true on the first BattleMyTurn detection after a turn transition.
         /// </summary>
         /// <summary>
         /// Returns true if an auto-scan should be triggered.
-        /// Only returns true for player-controlled units (team 0) on Battle_MyTurn.
+        /// Only returns true for player-controlled units (team 0) on BattleMyTurn.
         /// </summary>
         public bool ShouldAutoScan(
             string screenName, int team = 0, int unitId = -1, int unitHp = -1,
             int unitX = -1, int unitY = -1)
         {
-            bool isMyTurn = screenName == "Battle_MyTurn";
+            bool isMyTurn = screenName == "BattleMyTurn";
 
             // Only reset when truly transitioning to another unit's turn,
-            // not when visiting submenus (Battle_Abilities, Battle_Moving, etc.)
+            // not when visiting submenus (BattleAbilities, BattleMoving, etc.)
             // which are still part of the same turn.
-            bool isOtherUnitsTurn = screenName == "Battle_EnemiesTurn"
-                || screenName == "Battle_AlliesTurn";
+            bool isOtherUnitsTurn = screenName == "BattleEnemiesTurn"
+                || screenName == "BattleAlliesTurn";
             bool leftBattle = !screenName.StartsWith("Battle");
 
             if (_wasMyTurn && (isOtherUnitsTurn || leftBattle))
@@ -100,13 +100,13 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public static bool CanScan(string screenName)
         {
-            return screenName == "Battle_MyTurn"
-                || screenName == "Battle_Moving"
-                || screenName == "Battle_Attacking"
-                || screenName == "Battle_Casting"
-                || screenName == "Battle_Abilities"
-                || screenName == "Battle_Waiting"
-                || screenName == "Battle_Paused";
+            return screenName == "BattleMyTurn"
+                || screenName == "BattleMoving"
+                || screenName == "BattleAttacking"
+                || screenName == "BattleCasting"
+                || screenName == "BattleAbilities"
+                || screenName == "BattleWaiting"
+                || screenName == "BattlePaused";
         }
 
         public void ResetForNewTurn()

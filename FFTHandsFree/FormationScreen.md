@@ -7,7 +7,7 @@ The Formation screen appears before every battle. It lets you place your units o
 ## Entering Formation
 
 - After accepting a story battle or triggering a random encounter, the Formation screen loads automatically.
-- Screen detection: `Battle_Formation` (battleMode=1, slot0=0xFFFFFFFF)
+- Screen detection: `BattleFormation` (battleMode=1, slot0=0xFFFFFFFF)
 
 ## Placing Units
 

@@ -51,7 +51,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             // During battle, rawLocation is 255 — should NOT save
             var result = LocationSaveLogic.ShouldSave(
-                rawLocation: 255, screenName: "Battle_MyTurn", lastSavedLocation: 26);
+                rawLocation: 255, screenName: "BattleMyTurn", lastSavedLocation: 26);
             Assert.False(result);
         }
 
@@ -103,7 +103,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // Even if rawLocation happens to be valid during battle (e.g. location
             // didn't flip to 255 yet), don't save during battle screens
             var result = LocationSaveLogic.ShouldSave(
-                rawLocation: 26, screenName: "Battle_MyTurn", lastSavedLocation: 30);
+                rawLocation: 26, screenName: "BattleMyTurn", lastSavedLocation: 30);
             Assert.False(result);
         }
 
@@ -155,7 +155,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         public void GetEffectiveLocation_Battle_ReturnsRaw()
         {
             int loc = LocationSaveLogic.GetEffectiveLocation(
-                rawLocation: 255, hover: 18, screenName: "Battle_MyTurn");
+                rawLocation: 255, hover: 18, screenName: "BattleMyTurn");
             Assert.Equal(255, loc);
         }
     }

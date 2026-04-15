@@ -51,9 +51,9 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [InlineData("PartyMenu")]
         [InlineData("LocationMenu")]
         [InlineData("SettlementMenu")]
-        [InlineData("Outfitter_Buy")]
-        [InlineData("Outfitter_Sell")]
-        [InlineData("Outfitter_Fitting")]
+        [InlineData("OutfitterBuy")]
+        [InlineData("OutfitterSell")]
+        [InlineData("OutfitterFitting")]
         public void ShopGilPolicy_ShouldShowGil_OnShopAdjacentScreens(string screenName)
         {
             Assert.True(ShopGilPolicy.ShouldShowGil(screenName),
@@ -61,11 +61,11 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Theory]
-        [InlineData("Battle_MyTurn")]
-        [InlineData("Battle_Moving")]
-        [InlineData("Battle_Attacking")]
-        [InlineData("Battle_Formation")]
-        [InlineData("Battle_Victory")]
+        [InlineData("BattleMyTurn")]
+        [InlineData("BattleMoving")]
+        [InlineData("BattleAttacking")]
+        [InlineData("BattleFormation")]
+        [InlineData("BattleVictory")]
         [InlineData("Cutscene")]
         [InlineData("TitleScreen")]
         [InlineData("TravelList")]
@@ -84,7 +84,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // ui=<item name> once the stock list decoding is in place.
             var screen = new DetectedScreen
             {
-                Name = "Outfitter_Buy",
+                Name = "OutfitterBuy",
                 ShopListCursorIndex = 3
             };
 
@@ -114,7 +114,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // as "absent".
             var screen = new DetectedScreen
             {
-                Name = "Outfitter_Buy",
+                Name = "OutfitterBuy",
                 ShopListCursorIndex = 0
             };
 

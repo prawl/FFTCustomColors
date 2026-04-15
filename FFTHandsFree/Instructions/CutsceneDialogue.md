@@ -102,6 +102,6 @@ After a cutscene ends:
 4. advance_dialogue (repeat, reacting between advances)
 5. "Agrias is a Holy Knight? That sounds powerful."
 6. advance_dialogue...
-7. screen -> Battle_MyTurn -> "Time to fight! Let me scan the battlefield."
+7. screen -> BattleMyTurn -> "Time to fight! Let me scan the battlefield."
 8. scan_move...
 ```

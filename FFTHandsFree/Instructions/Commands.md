@@ -112,12 +112,12 @@ Always enable strict mode for play sessions.
 ## Typical Battle Flow
 
 ```bash
-screen                    # Check: Battle_MyTurn?
+screen                    # Check: BattleMyTurn?
 scan_move                 # See units, tiles, abilities, targets
 battle_move 6 5           # Move to tile
 battle_ability "Attack" 7 5  # Use ability on target
 battle_wait               # End turn + wait for next turn
-# Repeat when Battle_MyTurn returns
+# Repeat when BattleMyTurn returns
 ```
 
 ## Typical Exploration Flow
@@ -145,7 +145,7 @@ screen                    # Did it end? What screen now?
 
 Every screen has a set of valid actions. Use `execute_action <name>` to run them. The response always shows what's available next. Common ones:
 
-- **Battle_MyTurn**: Move, Attack, Wait, Pause
+- **BattleMyTurn**: Move, Attack, Wait, Pause
 - **WorldMap**: PartyMenu, TravelList
 - **Cutscene**: Advance
 - **EncounterDialog**: Fight, Flee
@@ -159,13 +159,13 @@ When in doubt, call `screen` or `execute_action` with any name — the error wil
 
 **First turn of a new battle** may return stale cached scan data. Workaround: `battle_wait` through the first turn to force a fresh scan.
 
-**`battle_flee` can leave screen state stuck** reporting `Battle_MyTurn` for several seconds after the player is back on the world map. Travel commands may still fail during this window even though you ARE on the world map. If you see a "stuck" state after flee, run `restart` to cleanly re-sync.
+**`battle_flee` can leave screen state stuck** reporting `BattleMyTurn` for several seconds after the player is back on the world map. Travel commands may still fail during this window even though you ARE on the world map. If you see a "stuck" state after flee, run `restart` to cleanly re-sync.
 
 **Formation screen lies about its state** for 3-6 seconds after `execute_action Fight`. Screen detection reports `TravelList` during this transition — don't trust it. Just `sleep 3` and blindly send the standard formation key sequence: Enter → Enter → Space → Enter.
 
 **Strict mode blocks raw key input** (`enter`, `space`, etc). Disable with `strict 0` for formation transitions or menu scraping, re-enable with `strict 1` after. For play sessions always keep strict mode ON to catch command typos.
 
-**Scan during enemy/animation turns is blocked.** `scan_move` returns `status=blocked` during Battle_Acting / Battle_AlliesTurn / Battle_EnemiesTurn because C+Up cycling can corrupt game state mid-animation. Allowed states: Battle_MyTurn, Battle_Moving, Battle_Attacking, Battle_Abilities, Battle_Waiting, Battle_Paused.
+**Scan during enemy/animation turns is blocked.** `scan_move` returns `status=blocked` during BattleActing / BattleAlliesTurn / BattleEnemiesTurn because C+Up cycling can corrupt game state mid-animation. Allowed states: BattleMyTurn, BattleMoving, BattleAttacking, BattleAbilities, BattleWaiting, BattlePaused.
 
 **Ramza's fingerprint varies per save** (his job/equipment change as you play). Don't rely on fingerprint for him — the roster lookup by nameId=1 is authoritative.
 

@@ -3,7 +3,7 @@ namespace FFTColorCustomizer.GameBridge
     /// <summary>
     /// Pure logic for BattleWait state detection.
     /// After Move+Act, the game skips the action menu and goes directly to the
-    /// facing/direction screen (detected as Battle_Attacking or Battle_Moving).
+    /// facing/direction screen (detected as BattleAttacking or BattleMoving).
     /// BattleWait needs to handle both paths: normal (menu → Wait → facing) and
     /// auto-facing (already on facing screen, just confirm direction).
     /// </summary>
@@ -15,7 +15,7 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public static bool ShouldSkipMenuNavigation(string? screenName)
         {
-            return screenName == "Battle_Attacking" || screenName == "Battle_Moving";
+            return screenName == "BattleAttacking" || screenName == "BattleMoving";
         }
 
         /// <summary>
@@ -37,10 +37,10 @@ namespace FFTColorCustomizer.GameBridge
         public static bool CanStartBattleWait(string? screenName)
         {
             if (string.IsNullOrEmpty(screenName)) return false;
-            return screenName == "Battle_MyTurn"
-                || screenName == "Battle_Acting"
-                || screenName == "Battle_Attacking"
-                || screenName == "Battle_Moving";
+            return screenName == "BattleMyTurn"
+                || screenName == "BattleActing"
+                || screenName == "BattleAttacking"
+                || screenName == "BattleMoving";
         }
     }
 }

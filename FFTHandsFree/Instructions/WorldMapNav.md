@@ -139,4 +139,4 @@ Regular story play on these maps still works (move, attack, etc.) — just don't
 
 ## Post-Flee State Gotcha
 
-After `battle_flee` succeeds, the screen state can stay stuck reporting `Battle_MyTurn` for several seconds even though the player is back on the world map. Travel commands may error out during this window. If you see this, the fast recovery is `restart` (full rebuild + relaunch). Don't try to force-send keys — you can't control a battle that's already ended.
+After `battle_flee` succeeds, the screen state can stay stuck reporting `BattleMyTurn` for several seconds even though the player is back on the world map. Travel commands may error out during this window. If you see this, the fast recovery is `restart` (full rebuild + relaunch). Don't try to force-send keys — you can't control a battle that's already ended.

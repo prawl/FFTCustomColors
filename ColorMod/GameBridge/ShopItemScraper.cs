@@ -32,7 +32,7 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>
         /// Discovers the FString vtable dynamically by searching for a known
-        /// header string ("Weapons") that's always visible in an Outfitter_Buy
+        /// header string ("Weapons") that's always visible in an OutfitterBuy
         /// shop on the weapons tab. Reads the -16 offset to extract the vtable
         /// pointer. Returns null if not found.
         /// </summary>

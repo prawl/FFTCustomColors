@@ -430,7 +430,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             tracker.OnKeyPressed(VK_RETURN); // select Rush
 
             // Screen transitions to Battle_Acting after ability use
-            tracker.SyncForScreen("Battle_Acting");
+            tracker.SyncForScreen("BattleActing");
 
             Assert.False(tracker.InSubmenu);
             Assert.False(tracker.InAbilityList);
@@ -446,7 +446,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
             tracker.OnKeyPressed(VK_DOWN); // Mettle
 
-            tracker.SyncForScreen("Battle_Abilities");
+            tracker.SyncForScreen("BattleAbilities");
 
             Assert.True(tracker.InSubmenu);
             Assert.Equal("Mettle", tracker.CurrentItem);
@@ -467,7 +467,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             tracker.OnKeyPressed(VK_RETURN); // select Haste
 
             // Ability executes, screen transitions away from Abilities
-            tracker.SyncForScreen("Battle_Attacking");
+            tracker.SyncForScreen("BattleAttacking");
 
             // Tracker should be reset AND mark that we acted
             Assert.False(tracker.InSubmenu);
@@ -485,7 +485,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var tracker = new BattleMenuTracker();
             tracker.EnterAbilitiesSubmenu(new[] { "Attack", "Mettle" });
             tracker.OnKeyPressed(VK_RETURN);
-            tracker.SyncForScreen("Battle_Acting");
+            tracker.SyncForScreen("BattleActing");
             Assert.True(tracker.HasActedThisTurn);
 
             tracker.OnNewTurn();

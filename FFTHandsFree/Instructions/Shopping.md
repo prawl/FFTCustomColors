@@ -10,7 +10,7 @@ Settlements (ID 0-14: Lesalia, Riovanes, Eagrose, Lionel, Limberry, Zeltennia, G
 The screen flow when you enter a settlement:
 
 ```
-WorldMap ──EnterLocation──► LocationMenu ──EnterShop──► SettlementMenu ──Select──► Outfitter_Buy / Outfitter_Sell / Outfitter_Fitting
+WorldMap ──EnterLocation──► LocationMenu ──EnterShop──► SettlementMenu ──Select──► OutfitterBuy / OutfitterSell / OutfitterFitting
    ▲                             │                            │                            │
    │                             │                            │                            │
    │                          Leave                         Leave                        Cancel
@@ -21,7 +21,7 @@ WorldMap ──EnterLocation──► LocationMenu ──EnterShop──► Sett
 **State names:**
 - `LocationMenu` — the shop-list inside a settlement (Outfitter / Tavern / Warriors' Guild / Poachers' Den / Save Game).
 - `SettlementMenu` — inside a chosen shop, at the sub-action selector (e.g. Buy / Sell / Fitting for an Outfitter).
-- `Outfitter_Buy`, `Outfitter_Sell`, `Outfitter_Fitting` — the per-sub-action item list.
+- `OutfitterBuy`, `OutfitterSell`, `OutfitterFitting` — the per-sub-action item list.
 
 Tavern / Warriors' Guild / Poachers' Den sub-actions aren't mapped yet — they report as `SettlementMenu` when selected.
 
@@ -34,7 +34,7 @@ source ./fft.sh
 screen                       # check current state
 execute_action EnterLocation # WorldMap → LocationMenu
 execute_action EnterShop     # LocationMenu → SettlementMenu
-execute_action Select        # SettlementMenu → Outfitter_Buy (or Sell/Fitting)
+execute_action Select        # SettlementMenu → OutfitterBuy (or Sell/Fitting)
 ```
 
 On `SettlementMenu`, the shop type is exposed via `screen.UI` (e.g. `ui=Outfitter`, `ui=Tavern`). Use `execute_action CursorDown` / `CursorUp` to change which sub-action is highlighted, then `Select` to enter.
@@ -51,7 +51,7 @@ Shops open a farewell dialog ("Come back anytime") when you exit. The `Leave` ac
 execute_action Leave   # SettlementMenu → LocationMenu (handles farewell)
 ```
 
-## Buying (Outfitter_Buy)
+## Buying (OutfitterBuy)
 
 Inside the Buy screen:
 
@@ -73,11 +73,11 @@ execute_action Cancel      # Back to SettlementMenu
 
 After `Select`, the game opens a quantity selector and then a "Buy N for X gil?" confirmation modal. The modal detection isn't wired up yet (pending a memory scan), so you'll need to handle the confirmation manually for now.
 
-## Selling (Outfitter_Sell)
+## Selling (OutfitterSell)
 
 Same shape as Buy — ScrollUp/ScrollDown, Select, Cancel. The list shows items you own that can be sold.
 
-## Fitting (Outfitter_Fitting)
+## Fitting (OutfitterFitting)
 
 Same shape — ScrollUp/ScrollDown pick a character / slot / item depending on how deep you are in the picker; Select advances; Cancel goes back.
 

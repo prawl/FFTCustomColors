@@ -382,8 +382,8 @@ namespace FFTColorCustomizer.GameBridge
 
             // Turn-ending abilities (Jump) end the turn immediately — no Wait needed.
             // If we're already on another unit's turn, return success.
-            if (screen != null && (screen.Name == "Battle_EnemiesTurn"
-                || screen.Name == "Battle_AlliesTurn"))
+            if (screen != null && (screen.Name == "BattleEnemiesTurn"
+                || screen.Name == "BattleAlliesTurn"))
             {
                 response.Status = "completed";
                 response.Info = "Turn already ended (ability ended turn automatically)";
@@ -521,8 +521,8 @@ namespace FFTColorCustomizer.GameBridge
                         lastScreen = current.Name;
                     }
 
-                    // If we hit Battle_Paused due to stale flag, send Escape to clear
-                    if (current.Name == "Battle_Paused")
+                    // If we hit BattlePaused due to stale flag, send Escape to clear
+                    if (current.Name == "BattlePaused")
                     {
                         SendKey(VK_ESCAPE);
                         Thread.Sleep(300);
@@ -530,7 +530,7 @@ namespace FFTColorCustomizer.GameBridge
                     }
 
                     // Friendly unit's turn — we're done
-                    if (current.Name == "Battle_MyTurn")
+                    if (current.Name == "BattleMyTurn")
                     {
                         response.Info = $"Friendly turn after {sw.ElapsedMilliseconds}ms";
                         break;
@@ -554,7 +554,7 @@ namespace FFTColorCustomizer.GameBridge
 
             // Auto-dismiss post-battle screens (Victory auto-advances, Desertion needs Enter)
             var postScreen = _detectScreen();
-            if (postScreen?.Name == "Battle_Desertion")
+            if (postScreen?.Name == "BattleDesertion")
             {
                 ModLogger.Log("[BattleWait] Dismissing Desertion warning");
                 // May have multiple warnings (one per unit near threshold)
@@ -563,7 +563,7 @@ namespace FFTColorCustomizer.GameBridge
                     SendKey(VK_ENTER);
                     Thread.Sleep(500);
                     postScreen = _detectScreen();
-                    if (postScreen?.Name != "Battle_Desertion") break;
+                    if (postScreen?.Name != "BattleDesertion") break;
                 }
             }
 
@@ -582,10 +582,10 @@ namespace FFTColorCustomizer.GameBridge
             int targetY = command.UnitIndex;
 
             var screen = _detectScreen();
-            if (screen == null || (screen.Name != "Battle_MyTurn" && screen.Name != "Battle_Acting"))
+            if (screen == null || (screen.Name != "BattleMyTurn" && screen.Name != "BattleActing"))
             {
                 response.Status = "failed";
-                response.Error = $"Not on Battle_MyTurn/Battle_Acting (current: {screen?.Name ?? "null"})";
+                response.Error = $"Not on BattleMyTurn/BattleActing (current: {screen?.Name ?? "null"})";
                 return response;
             }
 
@@ -604,7 +604,7 @@ namespace FFTColorCustomizer.GameBridge
 
             // Verify we're in targeting mode
             screen = _detectScreen();
-            if (screen == null || screen.Name != "Battle_Attacking")
+            if (screen == null || screen.Name != "BattleAttacking")
             {
                 response.Status = "failed";
                 response.Error = $"Failed to enter targeting mode (current: {screen?.Name ?? "null"})";
@@ -805,10 +805,10 @@ namespace FFTColorCustomizer.GameBridge
                 return BattleAttack(response, command);
 
             var screen = _detectScreen();
-            if (screen == null || (screen.Name != "Battle_MyTurn" && screen.Name != "Battle_Acting"))
+            if (screen == null || (screen.Name != "BattleMyTurn" && screen.Name != "BattleActing"))
             {
                 response.Status = "failed";
-                response.Error = $"Not on Battle_MyTurn/Battle_Acting (current: {screen?.Name ?? "null"})";
+                response.Error = $"Not on BattleMyTurn/BattleActing (current: {screen?.Name ?? "null"})";
                 return response;
             }
 
@@ -857,17 +857,17 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             // Step 3: Verify we're in the Abilities submenu. Step 1 already pressed Enter
-            // on Abilities — if screen detection is slow, we might still read Battle_MyTurn
-            // or Battle_Acting. Do NOT press Enter again here (that would select Attack
+            // on Abilities — if screen detection is slow, we might still read BattleMyTurn
+            // or BattleActing. Do NOT press Enter again here (that would select Attack
             // from the submenu, which is the bug that caused Throw Stone → Attack targeting).
             screen = _detectScreen();
-            if (screen?.Name == "Battle_MyTurn" || screen?.Name == "Battle_Acting")
+            if (screen?.Name == "BattleMyTurn" || screen?.Name == "BattleActing")
             {
                 // Still on action menu — the Enter from Step 1 didn't register.
                 // Wait longer and retry.
                 Thread.Sleep(500);
                 screen = _detectScreen();
-                if (screen?.Name == "Battle_MyTurn" || screen?.Name == "Battle_Acting")
+                if (screen?.Name == "BattleMyTurn" || screen?.Name == "BattleActing")
                 {
                     // Try Enter one more time
                     var retryRead = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
@@ -893,7 +893,7 @@ namespace FFTColorCustomizer.GameBridge
             for (int wait = 0; wait < 20; wait++)
             {
                 var subScreen = _detectScreen();
-                if (subScreen?.Name == "Battle_Abilities")
+                if (subScreen?.Name == "BattleAbilities")
                 {
                     ModLogger.Log($"[BattleAbility] Submenu detected after {wait * 150}ms");
                     break;
@@ -1040,10 +1040,10 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             // Targeted ability: we should now be in targeting mode.
-            // Battle_Attacking = basic Attack command (battleMode=4)
-            // Battle_Casting   = skillset ability target selection (battleMode=1)
+            // BattleAttacking = basic Attack command (battleMode=4)
+            // BattleCasting   = skillset ability target selection (battleMode=1)
             screen = _detectScreen();
-            if (screen == null || (screen.Name != "Battle_Attacking" && screen.Name != "Battle_Casting"))
+            if (screen == null || (screen.Name != "BattleAttacking" && screen.Name != "BattleCasting"))
             {
                 // Some abilities go straight to targeting without battleMode 1 or 4 —
                 // tolerate any in-battle state and let the caller handle it downstream.
@@ -1252,7 +1252,7 @@ namespace FFTColorCustomizer.GameBridge
                         progressed = true;
                         break;
 
-                    case "Battle_Paused":
+                    case "BattlePaused":
                         SendKey(VK_TAB);
                         Thread.Sleep(300);
                         progressed = true;
@@ -1360,7 +1360,7 @@ namespace FFTColorCustomizer.GameBridge
             if (screen == null || (screen.Name != "WorldMap" && screen.Name != "TravelList"))
             {
                 // Stale-state bypass: after battle_flee returns, screen detection can stay stuck
-                // at Battle_MyTurn because unit slot memory (0x14077CA30/54) persists until the
+                // at BattleMyTurn because unit slot memory (0x14077CA30/54) persists until the
                 // game reallocates it. The combination of:
                 //   - battleMode == 0     (no active battle)
                 //   - rawLocation valid   (distinguishes from attack-animation flicker where it's 255)
@@ -1507,18 +1507,18 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>
         /// confirm_attack: Press F twice (select target + confirm), then poll until
-        /// the battle reaches a terminal state (Battle_MyTurn, Battle, GameOver, Battle_Paused).
-        /// The attack animation can last several seconds with transient Battle_Acting/Moving states.
+        /// the battle reaches a terminal state (BattleMyTurn, Battle, GameOver, BattlePaused).
+        /// The attack animation can last several seconds with transient BattleActing/Moving states.
         /// </summary>
         private CommandResponse ConfirmAttack(CommandResponse response)
         {
             var screen = _detectScreen();
             // Accept both basic Attack targeting and skillset ability casting —
             // the F-to-confirm mechanic is the same for both.
-            if (screen == null || (screen.Name != "Battle_Attacking" && screen.Name != "Battle_Casting"))
+            if (screen == null || (screen.Name != "BattleAttacking" && screen.Name != "BattleCasting"))
             {
                 response.Status = "failed";
-                response.Error = $"Not on Battle_Attacking/Battle_Casting screen (current: {screen?.Name ?? "null"})";
+                response.Error = $"Not on BattleAttacking/BattleCasting screen (current: {screen?.Name ?? "null"})";
                 return response;
             }
 
@@ -1539,10 +1539,10 @@ namespace FFTColorCustomizer.GameBridge
                 if (screen == null) continue;
 
                 // Terminal states: the action has fully resolved
-                if (screen.Name == "Battle_MyTurn" ||
+                if (screen.Name == "BattleMyTurn" ||
                     screen.Name == "Battle" ||
                     screen.Name == "GameOver" ||
-                    screen.Name == "Battle_Paused")
+                    screen.Name == "BattlePaused")
                 {
                     response.Status = "completed";
                     return response;
@@ -1614,30 +1614,30 @@ namespace FFTColorCustomizer.GameBridge
             // the player has control of the cursor.
             //
             // Allowed:
-            //   Battle_MyTurn       — start of player turn, no action yet
-            //   Battle_Moving       — player picking a move destination
-            //   Battle_Abilities    — player browsing their ability submenu
-            //   Battle_Waiting      — post-action facing selection
-            //   Battle_Paused       — pause menu open over the battle
+            //   BattleMyTurn       — start of player turn, no action yet
+            //   BattleMoving       — player picking a move destination
+            //   BattleAbilities    — player browsing their ability submenu
+            //   BattleWaiting      — post-action facing selection
+            //   BattlePaused       — pause menu open over the battle
             //
             // Blocked:
-            //   Battle_Attacking    — C+Up disrupts attack targeting cursor
-            //   Battle_Casting      — C+Up disrupts spell targeting cursor
-            //   Battle_Acting       — player's unit is mid-animation
-            //   Battle_AlliesTurn   — neutral/NPC guest's turn
-            //   Battle_EnemiesTurn  — enemy is acting
+            //   BattleAttacking    — C+Up disrupts attack targeting cursor
+            //   BattleCasting      — C+Up disrupts spell targeting cursor
+            //   BattleActing       — player's unit is mid-animation
+            //   BattleAlliesTurn   — neutral/NPC guest's turn
+            //   BattleEnemiesTurn  — enemy is acting
             //   Battle              — ambiguous sub-state (fall-through case)
-            //   Battle_Victory      — battle over
-            //   Battle_GameOver     — KO'd
+            //   BattleVictory      — battle over
+            //   BattleGameOver     — KO'd
             var allowedStates = new HashSet<string>
             {
-                "Battle_MyTurn", "Battle_Moving",
-                "Battle_Abilities", "Battle_Waiting", "Battle_Paused"
+                "BattleMyTurn", "BattleMoving",
+                "BattleAbilities", "BattleWaiting", "BattlePaused"
             };
             if (!allowedStates.Contains(screen.Name))
             {
                 response.Status = "blocked";
-                response.Error = $"Cannot scan during {screen.Name} — wait for Battle_MyTurn";
+                response.Error = $"Cannot scan during {screen.Name} — wait for BattleMyTurn";
                 return response;
             }
 
@@ -2407,10 +2407,10 @@ namespace FFTColorCustomizer.GameBridge
         private CommandResponse AutoMove(CommandResponse response, CommandRequest command)
         {
             var screen = _detectScreen();
-            if (screen == null || screen.Name != "Battle_MyTurn")
+            if (screen == null || screen.Name != "BattleMyTurn")
             {
                 response.Status = "failed";
-                response.Error = $"Not on Battle_MyTurn (current: {screen?.Name ?? "null"})";
+                response.Error = $"Not on BattleMyTurn (current: {screen?.Name ?? "null"})";
                 return response;
             }
 
@@ -2651,7 +2651,7 @@ namespace FFTColorCustomizer.GameBridge
                 while (sw.ElapsedMilliseconds < 3000)
                 {
                     var check = _detectScreen();
-                    if (check != null && check.Name == "Battle_MyTurn") break;
+                    if (check != null && check.Name == "BattleMyTurn") break;
                     Thread.Sleep(100);
                 }
             }
@@ -2665,7 +2665,7 @@ namespace FFTColorCustomizer.GameBridge
             doWait:
             Thread.Sleep(300);
             var preWait = _detectScreen();
-            if (preWait != null && preWait.Name == "Battle_MyTurn")
+            if (preWait != null && preWait.Name == "BattleMyTurn")
             {
                 int waitCursor = preWait.MenuCursor;
                 // After battle_move, game auto-advances cursor to Abilities (1)
@@ -2700,8 +2700,8 @@ namespace FFTColorCustomizer.GameBridge
                         Thread.Sleep(300);
                         var current = _detectScreen();
                         if (current == null) continue;
-                        if (current.Name == "Battle_Paused") { SendKey(VK_ESCAPE); Thread.Sleep(300); continue; }
-                        if (current.Name == "Battle_MyTurn") { response.Error += $" | Next turn after {sw2.ElapsedMilliseconds}ms"; break; }
+                        if (current.Name == "BattlePaused") { SendKey(VK_ESCAPE); Thread.Sleep(300); continue; }
+                        if (current.Name == "BattleMyTurn") { response.Error += $" | Next turn after {sw2.ElapsedMilliseconds}ms"; break; }
                         if (current.Name == "GameOver") { response.Error += " | GAME OVER"; break; }
                     }
                 }
@@ -2847,9 +2847,9 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Enter Move mode if on Battle_MyTurn
+            // Enter Move mode if on BattleMyTurn
             var screen = _detectScreen();
-            if (screen != null && screen.Name == "Battle_MyTurn")
+            if (screen != null && screen.Name == "BattleMyTurn")
             {
                 // Menu always has 5 items — Move/ResetMove(0) is always present.
                 // Read cursor from memory and navigate to index 0.
@@ -2864,7 +2864,7 @@ namespace FFTColorCustomizer.GameBridge
                 screen = _detectScreen();
             }
 
-            if (screen == null || screen.Name != "Battle_Moving")
+            if (screen == null || screen.Name != "BattleMoving")
             {
                 response.Status = "failed";
                 response.Error = $"Not in Move mode (current: {screen?.Name ?? "null"})";
@@ -2982,17 +2982,17 @@ namespace FFTColorCustomizer.GameBridge
             Thread.Sleep(500);
 
             // Poll up to 8s for the move to complete. battleMode flickers to 1
-            // (Battle_Casting) transiently during the walk animation — ignore it entirely
+            // (BattleCasting) transiently during the walk animation — ignore it entirely
             // since real casting can't happen during move confirmation. Also ignore
-            // Battle_Formation (battleMode=1 edge case).
+            // BattleFormation (battleMode=1 edge case).
             bool confirmed = false;
             var sw = Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 8000)
             {
                 var check = _detectScreen();
-                if (check != null && check.Name != "Battle_Moving"
-                    && check.Name != "Battle_Formation"
-                    && check.Name != "Battle_Casting"
+                if (check != null && check.Name != "BattleMoving"
+                    && check.Name != "BattleFormation"
+                    && check.Name != "BattleCasting"
                     && check.Name!.StartsWith("Battle"))
                 {
                     confirmed = true; break;
@@ -3008,7 +3008,7 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             // Verify the unit actually moved by reading postAction position.
-            // If the game rejected the move (invalid tile), it returns to Battle_MyTurn
+            // If the game rejected the move (invalid tile), it returns to BattleMyTurn
             // without changing position — the "confirmed" check above can't distinguish
             // this from a successful move.
             var postCheck = ReadPostActionState();
@@ -3082,9 +3082,9 @@ namespace FFTColorCustomizer.GameBridge
             // If command.To == "execute", actually do the move
             if (command.To == "execute" && arrows.Count > 0)
             {
-                // Enter Move mode from Battle_MyTurn
+                // Enter Move mode from BattleMyTurn
                 var screen = _detectScreen();
-                if (screen != null && screen.Name == "Battle_MyTurn")
+                if (screen != null && screen.Name == "BattleMyTurn")
                 {
                     NavigateToMove(); // Navigate to Move (don't trust stale menuCursor)
                     SendKey(VK_ENTER);
@@ -3130,7 +3130,7 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(500);
 
                 var postScreen = _detectScreen();
-                if (postScreen != null && postScreen.Name == "Battle_MyTurn")
+                if (postScreen != null && postScreen.Name == "BattleMyTurn")
                     info += " | MOVE CONFIRMED";
                 else
                     info += $" | post={postScreen?.Name}";
@@ -3219,7 +3219,7 @@ namespace FFTColorCustomizer.GameBridge
 
             // Step 2: Enter Move mode
             screen = _detectScreen();
-            if (screen != null && screen.Name == "Battle_MyTurn")
+            if (screen != null && screen.Name == "BattleMyTurn")
             {
                 NavigateToMove();
                 SendKey(VK_ENTER);
@@ -3227,7 +3227,7 @@ namespace FFTColorCustomizer.GameBridge
                 screen = _detectScreen();
             }
 
-            if (screen == null || screen.Name != "Battle_Moving")
+            if (screen == null || screen.Name != "BattleMoving")
             {
                 response.Status = "failed";
                 response.Error = $"Not in Move mode (current: {screen?.Name ?? "null"})";
@@ -3260,7 +3260,7 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(500);
 
                 screen = _detectScreen();
-                if (screen != null && screen.Name == "Battle_MyTurn")
+                if (screen != null && screen.Name == "BattleMyTurn")
                 {
                     ModLogger.Log($"[MoveTo] SUCCESS at grid=({adj.gx},{adj.gy})");
                     response.Status = "completed";
@@ -4002,7 +4002,7 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
-        /// Escape out of targeting/abilities/menus back to Battle_MyTurn.
+        /// Escape out of targeting/abilities/menus back to BattleMyTurn.
         /// Sends up to 5 Escape presses, checking screen state after each.
         /// </summary>
         private void EscapeToMyTurn()
@@ -4010,7 +4010,7 @@ namespace FFTColorCustomizer.GameBridge
             for (int i = 0; i < 5; i++)
             {
                 var screen = _detectScreen();
-                if (screen?.Name == "Battle_MyTurn") return;
+                if (screen?.Name == "BattleMyTurn") return;
                 SendKey(VK_ESCAPE);
                 Thread.Sleep(300);
             }
@@ -4435,15 +4435,15 @@ namespace FFTColorCustomizer.GameBridge
 
             // Path 2: Mid-battle retry via pause menu (Tab → Retry).
             // Pause menu: Resume(0), Retry(1), Quit(2) — or similar layout.
-            if (screen.Name == "Battle_Paused" || screen.Name.StartsWith("Battle"))
+            if (screen.Name == "BattlePaused" || screen.Name.StartsWith("Battle"))
             {
                 // If not already paused, open the pause menu
-                if (screen.Name != "Battle_Paused")
+                if (screen.Name != "BattlePaused")
                 {
                     SendKey(VK_TAB);
                     Thread.Sleep(500);
                     screen = _detectScreen();
-                    if (screen?.Name != "Battle_Paused")
+                    if (screen?.Name != "BattlePaused")
                     {
                         response.Status = "failed";
                         response.Error = $"Failed to open pause menu (current: {screen?.Name ?? "null"})";

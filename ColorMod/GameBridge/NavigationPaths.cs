@@ -64,28 +64,28 @@ namespace FFTColorCustomizer.GameBridge
                 "TravelList" => GetTravelListPaths(),
                 "LocationMenu" => GetLocationMenuPaths(),
                 "SettlementMenu" => GetSettlementMenuPaths(),
-                "Outfitter_Buy" => GetShopItemListPaths("Buy highlighted item (opens quantity/confirm dialog)"),
-                "Outfitter_Sell" => GetShopItemListPaths("Sell highlighted item (opens quantity/confirm dialog)"),
-                "Outfitter_Fitting" => GetShopItemListPaths("Select highlighted slot/item (advances picker)"),
+                "OutfitterBuy" => GetShopItemListPaths("Buy highlighted item (opens quantity/confirm dialog)"),
+                "OutfitterSell" => GetShopItemListPaths("Sell highlighted item (opens quantity/confirm dialog)"),
+                "OutfitterFitting" => GetShopItemListPaths("Select highlighted slot/item (advances picker)"),
                 "ShopConfirmDialog" => GetShopConfirmDialogPaths(),
                 "SaveGame_Menu" => GetSaveGameMenuPaths(),
                 "EncounterDialog" => GetEncounterDialogPaths(),
                 "GameOver" => GetGameOverPaths(),
-                "Battle_MyTurn" => GetBattleMyTurnPaths(screen),
-                "Battle_Moving" => GetBattleMovingPaths(),
-                "Battle_Attacking" => GetBattleTargetingPaths(),
-                "Battle_Casting" => GetBattleTargetingPaths(),
-                "Battle_Acting" => GetBattleActingPaths(),
-                "Battle_Paused" => GetBattlePausedPaths(),
-                "Battle_Status" => GetBackOutPaths("You're in the Status screen! Press Escape to get back to battle."),
-                "Battle_AutoBattle" => GetBackOutPaths("You're in the Auto-Battle menu! Press Escape to get back to battle before the AI takes over."),
-                "Battle_Dialogue" => GetBattleDialoguePaths(),
-                "Battle_Victory" => null, // auto-advances, no action needed
-                "Battle_Desertion" => GetDesertionPaths(),
-                "Battle_Formation" => GetBattleFormationPaths(),
-                "Battle_Abilities" => GetBattleAbilitiesSubPaths(),
-                "Battle_AlliesTurn" => GetBattleWaitingPaths(),
-                "Battle_EnemiesTurn" => GetBattleWaitingPaths(),
+                "BattleMyTurn" => GetBattleMyTurnPaths(screen),
+                "BattleMoving" => GetBattleMovingPaths(),
+                "BattleAttacking" => GetBattleTargetingPaths(),
+                "BattleCasting" => GetBattleTargetingPaths(),
+                "BattleActing" => GetBattleActingPaths(),
+                "BattlePaused" => GetBattlePausedPaths(),
+                "BattleStatus" => GetBackOutPaths("You're in the Status screen! Press Escape to get back to battle."),
+                "BattleAutoBattle" => GetBackOutPaths("You're in the Auto-Battle menu! Press Escape to get back to battle before the AI takes over."),
+                "BattleDialogue" => GetBattleDialoguePaths(),
+                "BattleVictory" => null, // auto-advances, no action needed
+                "BattleDesertion" => GetDesertionPaths(),
+                "BattleFormation" => GetBattleFormationPaths(),
+                "BattleAbilities" => GetBattleAbilitiesSubPaths(),
+                "BattleAlliesTurn" => GetBattleWaitingPaths(),
+                "BattleEnemiesTurn" => GetBattleWaitingPaths(),
                 "Battle" => GetBattleWaitingPaths(),
                 _ when screen.Name.StartsWith("Battle_") => GetBattleAbilityListPaths(),
                 _ => null
@@ -418,7 +418,7 @@ namespace FFTColorCustomizer.GameBridge
         {
             // Inside a shop with the Buy/Sell/Fitting (or equivalent) menu up.
             // Pressing Enter on the highlighted sub-action advances to
-            // Outfitter_Buy / Outfitter_Sell / Outfitter_Fitting (or the
+            // OutfitterBuy / OutfitterSell / OutfitterFitting (or the
             // corresponding sub-state for Tavern / Warriors' Guild / Poachers' Den
             // once those are mapped).
             return new()
@@ -502,7 +502,7 @@ namespace FFTColorCustomizer.GameBridge
         private static Dictionary<string, PathEntry> GetShopConfirmDialogPaths()
         {
             // "Buy 3 Potions for 60 gil?" yes/no modal that appears after
-            // confirming a quantity inside Outfitter_Buy/Sell. Default cursor
+            // confirming a quantity inside OutfitterBuy/Sell. Default cursor
             // on Yes (Enter confirms; Escape cancels the purchase). A memory
             // scan is needed to actually DETECT this modal — see TODO §10
             // "Confirm dialog detection". Once detected, this ValidPaths
@@ -626,7 +626,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["ConfirmMove"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_F, "F") },
-                    WaitUntilScreenNot = "Battle_Moving",
+                    WaitUntilScreenNot = "BattleMoving",
                     WaitTimeoutMs = 5000,
                     Desc = "Confirm move to selected tile (F key)"
                 },
@@ -745,7 +745,7 @@ namespace FFTColorCustomizer.GameBridge
 
         private static Dictionary<string, PathEntry> GetBattleWaitingPaths()
         {
-            // Not our turn — poll screen state until Battle_MyTurn, observe what happens
+            // Not our turn — poll screen state until BattleMyTurn, observe what happens
             return new()
             {
                 ["Pause"] = new PathEntry
@@ -821,7 +821,7 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     Keys = new[] { Key(VK_SPACE, "Space"), Key(VK_ENTER, "Enter") },
                     DelayBetweenMs = 500,
-                    WaitUntilScreenNot = "Battle_Formation",
+                    WaitUntilScreenNot = "BattleFormation",
                     WaitTimeoutMs = 10000,
                     Desc = "Open Commence dialog (Space) then confirm (Enter) to start battle"
                 },
@@ -849,7 +849,7 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
-        /// Fallback for any Battle_<Skillset> screen (Battle_Mettle, Battle_Items, etc.)
+        /// Fallback for any Battle<Skillset> screen (BattleMettle, BattleItems, etc.)
         /// where Claude is browsing an ability list.
         /// </summary>
         private static Dictionary<string, PathEntry> GetBattleAbilityListPaths()

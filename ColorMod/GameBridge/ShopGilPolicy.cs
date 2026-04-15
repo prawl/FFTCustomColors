@@ -16,9 +16,9 @@ namespace FFTColorCustomizer.GameBridge
             "PartyMenu",        // equipment browsing leads to shop decisions
             "LocationMenu",     // at a settlement, picking a shop
             "SettlementMenu",   // inside a settlement, picking Buy/Sell/Fitting
-            "Outfitter_Buy",
-            "Outfitter_Sell",
-            "Outfitter_Fitting",
+            "OutfitterBuy",
+            "OutfitterSell",
+            "OutfitterFitting",
         };
 
         public static bool ShouldShowGil(string screenName) =>

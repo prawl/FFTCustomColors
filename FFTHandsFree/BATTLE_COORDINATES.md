@@ -142,7 +142,7 @@ Camera rot: 0
 Enemy found at Right x2, pos=(3,12)
 Moving Right x1 to get beside enemy...
 After move: team=0 (0=beside, not on enemy)
-[Battle_MyTurn] — confirmed!
+[BattleMyTurn] — confirmed!
 ```
 
 ## Live Unit Positions

@@ -60,7 +60,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void OutfitterBuy_ExposesItemListActions()
         {
-            var paths = NavigationPaths.GetPaths(MakeScreen("Outfitter_Buy"));
+            var paths = NavigationPaths.GetPaths(MakeScreen("OutfitterBuy"));
 
             Assert.NotNull(paths);
             Assert.Contains("ScrollUp", paths!.Keys);
@@ -72,7 +72,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void OutfitterSell_ExposesItemListActions()
         {
-            var paths = NavigationPaths.GetPaths(MakeScreen("Outfitter_Sell"));
+            var paths = NavigationPaths.GetPaths(MakeScreen("OutfitterSell"));
 
             Assert.NotNull(paths);
             Assert.Contains("ScrollUp", paths!.Keys);
@@ -84,7 +84,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void OutfitterFitting_ExposesPickerActions()
         {
-            var paths = NavigationPaths.GetPaths(MakeScreen("Outfitter_Fitting"));
+            var paths = NavigationPaths.GetPaths(MakeScreen("OutfitterFitting"));
 
             Assert.NotNull(paths);
             Assert.Contains("ScrollUp", paths!.Keys);

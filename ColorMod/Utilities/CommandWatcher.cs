@@ -1167,7 +1167,7 @@ namespace FFTColorCustomizer.Utilities
                             if (currentScreen != null && !BattleTurnTracker.CanScan(currentScreen.Name))
                             {
                                 response.Status = "blocked";
-                                response.Error = $"Cannot scan during {currentScreen.Name} — wait for Battle_MyTurn";
+                                response.Error = $"Cannot scan during {currentScreen.Name} — wait for BattleMyTurn";
                                 response.Screen = currentScreen;
                                 break;
                             }
@@ -1812,7 +1812,7 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
-        /// Execute a nav action, then auto-scan if the result lands on Battle_MyTurn for a player unit.
+        /// Execute a nav action, then auto-scan if the result lands on BattleMyTurn for a player unit.
         /// This ensures auto-scan fires regardless of which action caused the turn transition.
         /// </summary>
         private CommandResponse ExecuteNavActionWithAutoScan(CommandRequest command)
@@ -1968,7 +1968,7 @@ namespace FFTColorCustomizer.Utilities
                     {
                         // Screen changed — now settle: wait for 10 consecutive matching
                         // reads at 100ms intervals (1 second stable). Animations and
-                        // transient states (Battle_Acting during attacks) can persist
+                        // transient states (BattleActing during attacks) can persist
                         // for several hundred milliseconds.
                         string newName = lastScreen.Name;
                         int stableCount = 0;
@@ -2276,7 +2276,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x141844DD0, 1),  // 23: insideShopFlag (1=inside a shop/service interior after pressing Enter, 0=elsewhere)
             ((nint)0x14184276C, 1),  // 24: shopSubMenuIndex (Outfitter: 0=menu, 1=Buy, 4=Sell, 6=Fitting — other shops unmapped)
             ((nint)0x140D39CD0, 4),  // 25: gil (player's currency, u32 little-endian)
-            ((nint)0x141870704, 4),  // 26: shopListCursorIndex (row the player is highlighting inside Outfitter_Buy/Sell/Fitting; 0-based)
+            ((nint)0x141870704, 4),  // 26: shopListCursorIndex (row the player is highlighting inside OutfitterBuy/Sell/Fitting; 0-based)
             ((nint)0x14077CB67, 1),  // 27: menuDepth (0=outer menu (WorldMap/PartyMenu/CharacterStatus), 2=inner panel (EquipmentAndAbilities or an ability picker). Discovered 2026-04-14 session 13 via module-memory snapshot diff; verified stable across repeated reads. Primary use: drift-check the state machine — if state machine thinks we're on EquipmentAndAbilities/picker but menuDepth reads 0, we're actually on CharacterStatus and should snap back.)
         };
 
@@ -2374,12 +2374,12 @@ namespace FFTColorCustomizer.Utilities
         {
             if (screen == null) return;
 
-            if (screen.Name == "Battle_Abilities" && !_battleMenuTracker.InSubmenu)
+            if (screen.Name == "BattleAbilities" && !_battleMenuTracker.InSubmenu)
             {
                 _battleMenuTracker.EnterAbilitiesSubmenu(GetAbilitiesSubmenuItems());
                 screen.UI = _battleMenuTracker.CurrentItem;
             }
-            else if (screen.Name == "Battle_Abilities" && _battleMenuTracker.InSubmenu)
+            else if (screen.Name == "BattleAbilities" && _battleMenuTracker.InSubmenu)
             {
                 if (_battleMenuTracker.InAbilityList)
                 {
@@ -2991,7 +2991,7 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
-        /// Reads cursor grid position and computes valid movement tiles during Battle_Moving.
+        /// Reads cursor grid position and computes valid movement tiles during BattleMoving.
         /// Uses BFS with terrain heights + blocked tile cache for accuracy.
         /// </summary>
         private void PopulateBattleTileData(DetectedScreen screen)
@@ -3006,7 +3006,7 @@ namespace FFTColorCustomizer.Utilities
                 if (cursorXResult != null) screen.CursorX = (int)cursorXResult.Value.value;
                 if (cursorYResult != null) screen.CursorY = (int)cursorYResult.Value.value;
 
-                if (screen.Name != "Battle_Moving")
+                if (screen.Name != "BattleMoving")
                     return;
 
                 // Auto-load map from location ID if not already loaded
@@ -3321,7 +3321,7 @@ namespace FFTColorCustomizer.Utilities
                     // sense in battle — outside battle the cursor sits at
                     // index 0 by default and was leaking "Move" to every
                     // screen (WorldMap, PartyMenu, LocationMenu, ...). The
-                    // Battle_MyTurn / Battle_Acting block below sets UI
+                    // BattleMyTurn / BattleActing block below sets UI
                     // from MenuCursor; non-battle screens get their UI
                     // populated by their own per-screen logic (shop labels,
                     // viewed-unit, hovered item, etc.) or stay null.
@@ -3393,7 +3393,7 @@ namespace FFTColorCustomizer.Utilities
 
                 // Shop list cursor row (0-based): only meaningful inside an Outfitter
                 // sub-action. -1 elsewhere so JSON omits the field.
-                if (screen.Name == "Outfitter_Buy" || screen.Name == "Outfitter_Sell" || screen.Name == "Outfitter_Fitting")
+                if (screen.Name == "OutfitterBuy" || screen.Name == "OutfitterSell" || screen.Name == "OutfitterFitting")
                     screen.ShopListCursorIndex = (int)v[26];
 
                 if (screen.Name == "Cutscene")
@@ -3402,7 +3402,7 @@ namespace FFTColorCustomizer.Utilities
                 // Map the action menu cursor index to a label.
                 // Menu always has 5 items: Move/ResetMove(0) Abilities(1) Wait(2) Status(3) AutoBattle(4).
                 // After moving, index 0 is "Reset Move" instead of "Move".
-                if (screen.Name == "Battle_MyTurn" || screen.Name == "Battle_Acting")
+                if (screen.Name == "BattleMyTurn" || screen.Name == "BattleActing")
                 {
                     bool hasMoved = screen.BattleMoved == 1 || _movedThisTurn;
                     if (screen.MenuCursor != _lastLoggedCursor)
@@ -3422,12 +3422,12 @@ namespace FFTColorCustomizer.Utilities
                 }
 
                 // During targeting mode, show the ability being cast/used.
-                if ((screen.Name == "Battle_Attacking" || screen.Name == "Battle_Casting") && _lastAbilityName != null)
+                if ((screen.Name == "BattleAttacking" || screen.Name == "BattleCasting") && _lastAbilityName != null)
                     screen.UI = _lastAbilityName;
 
                 // Battle menu tracker: set UI from tracker if in submenu
                 // (entry/exit managed in SyncBattleMenuTracker, called after screen settles)
-                if (screen.Name == "Battle_Abilities" && _battleMenuTracker.InSubmenu)
+                if (screen.Name == "BattleAbilities" && _battleMenuTracker.InSubmenu)
                     screen.UI = _battleMenuTracker.CurrentItem;
 
                 // Resolve party sub-screen to specific screen via state machine.
@@ -4640,7 +4640,7 @@ namespace FFTColorCustomizer.Utilities
                 }
 
                 // Populate cursor tile and available tiles for battle sub-states
-                if (screen.Name == "Battle_Moving" || screen.Name == "Battle_Attacking" || screen.Name == "Battle_Casting")
+                if (screen.Name == "BattleMoving" || screen.Name == "BattleAttacking" || screen.Name == "BattleCasting")
                     PopulateBattleTileData(screen);
 
                 // Populate active unit name/job during battle from cached scan data.

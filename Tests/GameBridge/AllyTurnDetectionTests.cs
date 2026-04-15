@@ -15,7 +15,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 2, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false);
 
-            Assert.Equal("Battle_AlliesTurn", result);
+            Assert.Equal("BattleAlliesTurn", result);
         }
 
         [Fact]
@@ -28,7 +28,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false);
 
-            Assert.Equal("Battle_MyTurn", result);
+            Assert.Equal("BattleMyTurn", result);
         }
 
         [Fact]
@@ -41,7 +41,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 battleTeam: 1, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false);
 
-            Assert.Equal("Battle_EnemiesTurn", result);
+            Assert.Equal("BattleEnemiesTurn", result);
         }
     }
 }
