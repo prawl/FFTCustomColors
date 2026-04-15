@@ -142,6 +142,7 @@ fft() {
   local OBJSTR=""; [ -n "$OBJ" ] && { OBJSTR="objective=$OBJ"; [ -n "$OBJNAME" ] && OBJSTR="objective=$OBJ($OBJNAME)"; }
   local ANAME=$(echo "$R" | grep -o '"activeUnitName":"[^"]*"' | head -1 | cut -d'"' -f4)
   local AJOB=$(echo "$R" | grep -o '"activeUnitJob":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local VUNIT=$(echo "$R" | grep -o '"viewedUnit":"[^"]*"' | head -1 | cut -d'"' -f4)
   local LINE="[$SCR]"
   # active unit right after state during battle
   if [[ "$SCR" == Battle_* ]]; then
@@ -154,6 +155,10 @@ fft() {
   else
     # Non-battle screens: ui= labels sidebar items (CharacterStatus),
     # highlighted shop type (LocationMenu), etc. Unescape \u0026 → &.
+    # viewedUnit= identifies whose nested-panel we're on (populated
+    # for CharacterStatus / EquipmentAndAbilities / JobSelection /
+    # pickers / CombatSets / etc.).
+    [ -n "$VUNIT" ] && LINE="$LINE viewedUnit=$VUNIT"
     if [ -n "$UI" ]; then
       local UI_CLEAN=$(echo "$UI" | sed 's/\\u0026/\&/g; s/\\u0027/'"'"'/g')
       LINE="$LINE ui=$UI_CLEAN"
@@ -1321,10 +1326,12 @@ us.forEach(u=>{
     # internal spaces ("Magick Defense Boost") survive — using the stripped
     # `$R` would smash them into "MagickDefenseBoost".
     local UI=$(cat "$B/response.json" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.ui||'');}catch(e){}});" 2>/dev/null)
+    local VUNIT=$(cat "$B/response.json" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.viewedUnit||'');}catch(e){}});" 2>/dev/null)
     local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
     local SLCI=$(echo "$R" | grep -o '"shopListCursorIndex":[0-9]*' | head -1 | cut -d: -f2)
     local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
     local LINE="[$SCR]"
+    [ -n "$VUNIT" ] && LINE="$LINE viewedUnit=$VUNIT"
     [ -n "$UI" ] && LINE="$LINE ui=$UI"
     LINE="$LINE loc=$LOCSTR"
     [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"

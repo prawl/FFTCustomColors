@@ -3206,6 +3206,39 @@ namespace FFTColorCustomizer.Utilities
                     screen.UI = null;
                 }
 
+                // Populate screen.viewedUnit for unit-scoped screens. Resolves
+                // via the state machine's saved PartyMenu cursor (preserved
+                // across the Enter that opened CharacterStatus) → roster
+                // slot whose DisplayOrder (+0x122) matches that grid index.
+                // All nested PartyMenu panels share the same viewed unit
+                // until Escape takes us back out.
+                bool isUnitScopedScreen =
+                    screen.Name == "CharacterStatus" ||
+                    screen.Name == "EquipmentAndAbilities" ||
+                    screen.Name == "JobSelection" ||
+                    screen.Name == "JobActionMenu" ||
+                    screen.Name == "JobChangeConfirmation" ||
+                    screen.Name == "SecondaryAbilities" ||
+                    screen.Name == "ReactionAbilities" ||
+                    screen.Name == "SupportAbilities" ||
+                    screen.Name == "MovementAbilities" ||
+                    screen.Name == "EquippableWeapons" ||
+                    screen.Name == "EquippableShields" ||
+                    screen.Name == "EquippableHeadware" ||
+                    screen.Name == "EquippableCombatGarb" ||
+                    screen.Name == "EquippableAccessories" ||
+                    screen.Name == "CombatSets" ||
+                    screen.Name == "CharacterDialog" ||
+                    screen.Name == "DismissUnit";
+                if (isUnitScopedScreen && ScreenMachine != null && Explorer != null)
+                {
+                    if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
+                    if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+                    var viewedSlot = _rosterReader.GetSlotByDisplayOrder(ScreenMachine.ViewedGridIndex);
+                    if (viewedSlot?.Name != null)
+                        screen.ViewedUnit = viewedSlot.Name;
+                }
+
                 // CharacterStatus sidebar label: populate screen.UI from the state
                 // machine's SidebarIndex (0=Equipment & Abilities, 1=Job, 2=Combat Sets).
                 // This replaces the need for a memory scan — sidebar is purely

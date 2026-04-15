@@ -577,6 +577,18 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("jobCellState")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? JobCellState { get; set; }
+
+        /// <summary>
+        /// Name of the unit whose nested PartyMenu panel is currently
+        /// shown. Populated on unit-scoped screens: CharacterStatus,
+        /// EquipmentAndAbilities, JobSelection, ability pickers,
+        /// CombatSets, CharacterDialog, DismissUnit. Omitted on PartyMenu
+        /// itself, WorldMap, battle screens. Makes it possible to know
+        /// "whose ui= is this?" without correlating back to key history.
+        /// </summary>
+        [JsonPropertyName("viewedUnit")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ViewedUnit { get; set; }
     }
 
     public class UiDetail
