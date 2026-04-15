@@ -1,326 +1,446 @@
-# Session Handoff — 2026-04-15 (Sessions 16+17, rolled together)
+# Session Handoff — 2026-04-15 (Session 18)
 
 Delete this file after reading.
 
 ## TL;DR
 
-Two back-to-back sessions on `auto-play-with-claude` branch, **10 commits not
-pushed**. Focus was polish + UX wins on the PartyMenu / equipment tree plus
-a couple of memory-backed data surfacings (location unlock array, hero
-item effects). Two ambitious resolvers were attempted and punted with
-clean documentation — PartyMenu cursor byte (row not found) and
-EquippableWeapons `ui=<hovered item>` (found row byte, but picker sort
-order = inventory order, not item ID — decode blocked on the same UE4
-inventory-store problem that defeated 3 prior hunts).
+**The big one: the player inventory store is cracked.** After 5+
+sessions of failed hunts, I found it via a 2-snapshot diff on a
+single Dagger purchase. It's a flat u8 array at `0x1411A17C0`
+(272 bytes, one byte per FFTPatcher item ID), sitting exactly
+272 bytes before the roster base. Stable, session-safe, trivial
+to read.
 
-**Tests: 1954 passing** (was 1914 at start of session 16; +40 across the
-two sessions). All session work live-verified except the two
-documented-as-blocked items.
-
-## Commits this session (10, on `auto-play-with-claude`)
+**4 commits landed on `auto-play-with-claude`:**
 
 ```
-5e5ce2c More ItemInfo + unlockedLocations + picker Job/Description + tests
-0752b3f Extended ItemInfo + location unlock gate — live-verified
-e8aaa9f Four small polish wins + story-class primaries, live-verified
-34b5927 ReturnToWorldMap on every party-tree screen + investigation notes
-91b3bfa TODO.md: archive all completed [x] items to the bottom
-eea1ffe fft.sh: narrow-terminal-friendly multi-line compact render
-acbdb6d fft.sh: suppress loc=/objective=/gil= on PartyMenu-tree screens
-8c81e05 EquippableWeapons picker + consolidated compact renderer + ANSI colors
-f6839c4 EquippableWeapons picker: resolver groundwork + TODO design
-cf62557 PartyMenu cursor resolver groundwork (row byte still unlocated)
+93b5579 Sell-price overrides, OutfitterFitting inventory, SkillsetItemLookup
+9287e5e OutfitterSell: full sellable-items listing with estimated prices
+3087140 Normalize screen state names: drop underscores, use CamelCase
+0438aca Inventory store cracked + desync fixes — live-verified
 ```
 
-## What landed, grouped by theme
+**Tests: 2000 passing** (was 1956 at start of session 18; +44 across
+this session — +15 inventory, +9 ItemPrices, +13 SkillsetItemLookup,
++several desync / rename). Every change live-verified in-game.
 
-### 1. UX / rendering polish (`cf62557` through `eea1ffe`)
+Game is still running on PartyMenu Units tab (cursor on Ramza)
+if you want to pick up mid-investigation.
 
-- **Consolidated `fft.sh` compact renderer.** Before: two near-duplicate
-  renderers in `fft()` and `screen()` that drifted whenever a field was
-  added to one (I hit this mid-session when `equippedItem`/`pickerTab`
-  showed up in bridge JSON but not compact output). New `_fmt_screen_compact`
-  helper is the single source of truth; both entry points call it.
-- **ANSI colors** on the compact line: cyan screen name, green viewed/active
-  unit, yellow `ui=`, cyan `equippedItem=`/`pickerTab=`, grey metadata,
-  green/yellow/red status, magenta markers. Respects `NO_COLOR` + TTY
-  detection (Claude Code running bash via pipe → no colors → plain text;
-  user in a real terminal → colors).
-- **Narrow-terminal multi-line layout**: header line is just `[Screen] +
-  decision surface + status`; subordinates (`loc=`, `objective=`, `gil=`)
-  drop to their own indented lines. Fits any terminal.
-- **Suppress `loc=/objective=/gil=` on PartyMenu-tree screens** — they're
-  pure noise while the player is equipping/job-changing.
+## What landed, grouped by commit
 
-### 2. EquippableWeapons picker — partial surface (`f6839c4`, `8c81e05`)
+### 1. Commit `0438aca` — Inventory crack + 6 desync fixes
 
-- `ResolveEquipPickerCursor` heap-oscillation resolver — same pattern as
-  `ResolveJobCursor`/`ResolvePickerCursor`. Live-verified: the row byte
-  lives at `0x12ECCF6B0` (plus 3 aliased copies at +0x78, +0xE0, +0x120).
-- State-machine `PickerTab` tracking on A/D key history (R/L Hand pickers
-  have 3 tabs; other slots have 2). `EquipmentPickerTabs.TabName()`
-  helper maps `(slot, tabIndex)` → display name.
-- Compact line surfaces `equippedItem=<current> pickerTab=<tab> ui=<???>`.
-- **`ui=<hovered item>` still blocked** — live test proved the picker list
-  order is **per-player inventory storage order**, NOT item ID order. Even
-  with a perfect job→weapon-type table we can't map row index → item name
-  without decoding the inventory store (which has defeated 3 prior hunts).
-  Table work would still unlock `change_right_hand_to` validation + a
-  verbose `availableWeapons[]` catalog; see TODO §0 for the full
-  investigation notes.
+**Inventory store (the headline):**
+- New `InventoryReader.cs` wraps `0x1411A17C0` with `ReadRaw` /
+  `ReadAll` / `ReadByType` / `GetCount` / `DecodeRaw`. 10 unit tests
+  cover empty/null/unmapped-id/ordering.
+- `screen.inventory` populated on every PartyMenu tab (state-machine
+  can misname the tab, so we gate on `onPartyMenuAnyTab` = any of 4
+  names rather than the exact one).
+- Each entry: `{id, count, name, type}` with ItemData-resolved
+  metadata. 184 unique items / 2189 total owned on the test save,
+  including 159 katana stockpile and 1072 chemist consumables.
+- `fft.sh`: compact `inventory=N unique / M total owned` on any
+  screen where payload is populated. Verbose (`screen -v`) groups
+  by item type with per-group totals.
+- Memory note: `project_inventory_store_CRACKED.md` with the full
+  investigation narrative + **the "single-byte diff" breakthrough
+  technique** (key insight: if you can trigger a one-byte change
+  via a minimal in-game action, the diff becomes trivially small).
 
-### 3. Navigation polish (`e8aaa9f`, `34b5927`)
+**Six desync/drift fixes (first half of session, before the
+inventory pivot):**
+1. **PartyMenu tab delays 300→500ms.** The game's tab-switch
+   animation eats the second key on multi-press jumps
+   (OpenChronicle/OpenOptions/OpenUnits/OpenInventory). Bumped
+   DelayBetweenMs on all 4 paths.
+2. **CursorRow/Col reset on Q/E back to Units tab.** New
+   `ResetUnitsCursorToOrigin()` in `ScreenStateMachine` runs
+   whenever Q/E wraps/advances into the Units tab. Stops the
+   "state says Orlandeau, game shows Ramza" drift from session 16
+   repro.
+3. **Upward drift recovery via `MenuDepth==0` gate.** New
+   symmetric fix that snaps SM to WorldMap when raw detection
+   says WorldMap/TravelList AND `MenuDepth==0` AND SM reports
+   any party-tree screen for 3 consecutive reads. The MenuDepth
+   gate is what makes this safe — session 16's earlier symmetric
+   attempt was reverted because `party=0 && ui=1` also matches
+   EquipmentAndAbilities; MenuDepth==0 is true only on outer
+   screens so it distinguishes real WorldMap returns from nested
+   residual.
+4. **`ui=Move` leak on non-battle screens.** Was pre-populating
+   UI from the action-menu cursor mapping, producing misleading
+   labels like `[WorldMap] ui=Move`. Non-battle screens now get
+   null UI unless their own per-screen logic populates something.
+5. **CharacterDialog.ReturnToWorldMap leads with Enter.** Escape
+   is a no-op on flavor dialogs — was silently failing. Now sends
+   Enter (dismiss dialog) + 2 Escapes. New dedicated test.
+6. **Three new ScreenStateMachine tests** covering Units-cursor
+   reset on Q-wrap and E-wrap tab cycles.
 
-- **`ReturnToWorldMap` ValidPath** on every PartyMenu-family screen (25
-  screens). Each emits the right number of Escape presses (1–5) with a
-  200ms gap. 25 theory tests lock in the Escape counts per screen.
-  Live-invocation still needs upstream detection fix (`[TravelList]`
-  misclassification) — the path entries are correct, but the screen
-  dispatcher sometimes feeds them the wrong screen name.
-- **`EnterLocation` prepends `C`** to recenter the WorldMap cursor before
-  Enter. Live-verified.
-- **`world_travel_to` refuses same-location travel** (previously got stuck
-  on the Dorter shop run). Reads location byte at `0x14077D208` before
-  firing keys, returns `status=rejected` with remediation.
-- **`world_travel_to` refuses locked locations** — reads
-  `0x1411A10B0 + locationId`, rejects if `0x00`. Live-verified on location
-  35 (locked in endgame save).
+### 2. Commit `3087140` — CamelCase state name normalization
 
-### 4. Data surfacing for world planning (`0752b3f`, `5e5ce2c`)
+**Renames per TODO §10.5.** All `Battle_*` and `Outfitter_*`
+state names drop their underscores:
 
-- **`screen.unlockedLocations`** — array of every unlocked location ID,
-  populated on WorldMap and TravelList. Endgame save returns 50 IDs
-  (location 35 correctly excluded). Lets Claude plan routes in one
-  round-trip instead of probing.
-- **Location unlock array decoded** — `0x1411A10B0` is NOT a bitmask; it's
-  **1 byte per location** (`0x01` unlocked, `0x00` locked). Live-verified
-  with 16-byte reads on endgame save showing mostly 01s with known gaps
-  at loc 35+51.
+```
+Battle_MyTurn       → BattleMyTurn
+Battle_Acting       → BattleActing
+Battle_Moving       → BattleMoving
+Battle_Attacking    → BattleAttacking
+Battle_Casting      → BattleCasting
+Battle_Abilities    → BattleAbilities
+Battle_Waiting      → BattleWaiting
+Battle_Paused       → BattlePaused
+Battle_Status       → BattleStatus
+Battle_AutoBattle   → BattleAutoBattle
+Battle_AlliesTurn   → BattleAlliesTurn
+Battle_EnemiesTurn  → BattleEnemiesTurn
+Battle_Dialogue     → BattleDialogue
+Battle_Victory      → BattleVictory
+Battle_Desertion    → BattleDesertion
+Battle_Formation    → BattleFormation
+Battle_Cutscene     → BattleCutscene
+Battle_GameOver     → BattleGameOver
+Battle_ChooseLocation → BattleChooseLocation
+Battle_<Skillset>   → Battle<Skillset>  (dynamic via GetAbilityScreenName)
+Outfitter_Buy       → OutfitterBuy
+Outfitter_Sell      → OutfitterSell
+Outfitter_Fitting   → OutfitterFitting
+```
 
-### 5. Equipment decision data (`0752b3f`, `5e5ce2c`)
+**Scope:** 30 files touched (19 code, 8 docs, 1 fft.sh, 2 DTO
+comments). Symmetric diff — 334+/334-.
 
-- **`ItemInfo` gained 6 fields**: `AttributeBonuses`, `EquipmentEffects`,
-  `AttackEffects`, `CanDualWield`, `CanWieldTwoHanded`, `Element`.
-- **~30 hero items populated** from `FFTHandsFree/Wiki/Equipment.md` +
-  raw scrapes (`weapons.txt`/`armor.txt`/`accessories.txt`/
-  `adorments.txt` now in repo). Includes all the top-tier knight swords
-  + rings + cloaks + shoes + shields that show up repeatedly in
-  endgame loadouts.
-- **12 unit tests** in `Tests/Utilities/BuildUiDetailTests.cs` lock in
-  the round-trip from ItemData → UiDetail for specific hero items.
-  CI now catches a typo like "Auto-Shell" → "Auto-Shel" immediately.
-- **fft.sh detail panel renders the new fields**: `Bonuses: PA+3`,
-  `Effects: Auto-Shell`, `On hit: ...`, `[Dual-Wield / Two-Hand]`,
-  `[Holy]`. Live-verified on Ramza's Ragnarok.
+**Gotcha caught mid-flight:** `ScreenDetectionLogic.GetAbilityScreenName`
+was still producing `Battle_{pascal}` for dynamic skillset states
+(BattleBlackMagicks, BattleThrow, etc.). The sed missed it because
+the underscore was in an interpolation template. Fixed in the same
+commit. **If you ever do another rename like this, grep for
+interpolation templates too.**
 
-### 6. Ability picker decision data (`5e5ce2c`)
+TODO.md historical references in the Completed Archive left
+unchanged — they were accurate when written.
 
-- **`AvailableAbility` payload** gained `Job` + `Description` fields.
-- All four passive pickers + `SecondaryAbilities` now surface the source
-  job + short description per ability entry.
-- `screen -v` on pickers renders `- <name>  (<job>)  [equipped]` plus
-  wrapped description lines. Compact stays single-line.
+### 3. Commit `9287e5e` — OutfitterSell basic
 
-### 7. Story-class primary skillsets (`e8aaa9f`)
+**Ships Outfitter Sell inventory surface** using the inventory
+store. Claude can view every sellable item in one read with
+per-group gil subtotals.
 
-- 17 story-class primaries populated in `GetPrimarySkillsetByJobName`:
-  Soldier→Limit, Dragonkin→Dragon, Steel Giant→Work, Machinist/Engineer
-  →Snipe, Skyseer→Sky Mantra, Netherseer→Nether Mantra, Divine Knight
-  →Unyielding Blade, Templar→Spellblade, Thunder God/Sword Saint→Holy
-  Sword, Fell Knight→Fell Sword, Game Hunter→Hunting, Sky Pirate→Sky
-  Pirating, Arc Knight/Rune Knight→Holy Sword (placeholder). Sourced
-  from `Wiki/StoryCharacters.md`. Live-verified on Cloud.
-- Before: Cloud's EquipmentAndAbilities Primary row surfaced `ui=(none)`.
-  After: `ui=Limit`.
+**New: `ItemPrices.cs`** — a buy-price lookup sourced from
+`FFTHandsFree/SHOP_ITEMS.md` (Sal Ghidos end-game stock). Keyed
+by ItemData NAME not ID, so additions don't require ID guessing.
+Static init resolves each name to an ItemData entry and builds
+the id→price map; any name that fails to resolve lands in
+`UnresolvedNames` and fails the suite via a dedicated test.
 
-### 8. `ui=(none)` slot-aware fallback (`e8aaa9f`)
+110 entries covering knives / swords / katanas / axes / rods /
+staves / flails / books / poles / instruments / cloths / shields /
+helms / body armor / robes / shoes / cloaks / bracelets / rings.
+**Bags excluded** — IC remaster renamed them (Croakadile /
+Fallingstar / Pantherskin / Hydrascale) from the PSX names
+(Catskin / Proudhide / Hardscale); prices unverified for IC names.
 
-Bare `(none)` replaced with slot-identifying labels:
-- Equipment column: `Right Hand (none)` / `Left Hand (none)` /
-  `Headware (none)` / `Combat Garb (none)` / `Accessory (none)`.
-- Ability column: `Primary (none — skillset table missing for this job)`
-  / `Secondary (empty)` / `Reaction (empty)` / `Support (empty)` /
-  `Movement (empty)`.
-- Primary's special label is a ticket flag — a blank primary always means
-  our skillset map is incomplete for that job; `(none — ...)` makes it
-  visible instead of silently misleading.
+**Sell price formula:** buy/2. **Live-verified NOT accurate** —
+Dagger shows 50 in-game but we compute 100 (buy 200 / 2). No
+consistent ratio across items. Surfaced to Claude via:
+- Compact summary: `"~2,186,435 gil est (prices ~buy/2, not ground-truth)"`
+- Verbose per-item: `sell~N gil` (tilde = estimated)
 
-### 9. Docs + hygiene
+**InventoryReader extensions:** `InventoryEntry.SellPrice`
+populated via `ItemPrices.GetSellPrice`. New `ReadSellable()`
+filter returns only entries with known sell prices (for the
+Sell screen, as opposed to `ReadAll` for PartyMenu).
 
-- **Wiki README** (`FFTHandsFree/Wiki/README.md`) — one-page index covering
-  the 15 `.md` docs and 4 `.txt` raw scrape dumps. Explains how to use them
-  and notes ICE Enhanced Mode rule differences.
-- **TODO.md archive** — 49 completed items moved to `## Completed — Archive`
-  at the bottom, keeps the active TODO scannable.
-- **`.gitignore`** — session artifacts (`ss*.png`, `fftwin_*.png`,
-  `screenshot_crop.ps1`) so the working tree stays clean between sessions.
+**CommandWatcher:** `screen.inventory` now populates on
+OutfitterSell in addition to PartyMenu tabs.
 
-## What's NOT done (top priority for next session)
+### 4. Commit `93b5579` — Sell overrides + OutfitterFitting + SkillsetItemLookup
 
-### 1. PartyMenu cursor state-machine drift — biggest ongoing pain
+**Three tasks ship in one commit:**
 
-The single most impactful remaining bug. Repro is easy:
-1. `esc` to PartyMenu
-2. Navigate around (tab-switch + cursor moves)
-3. Return to PartyMenu Units tab
-4. State machine reports one unit hovered, game actually shows another
+**(a) Sell-price override table.** New `SellPricesByName` dict
+in `ItemPrices.cs` that OVERRIDES the buy/2 estimate when
+populated. Seed set of 7 weapon prices captured live 2026-04-15
+(Dagger=50, Mythril Knife=250, Blind Knife=400, Mage Masher=750,
+Assassin's Dagger=2500, Broadsword=100, Longsword=250).
 
-Root cause sketch: `_savedPartyRow/_savedPartyCol` carries a stale value
-across tab switches + nested-screen visits. Session 16 tried the
-"resolve row byte from memory" fix — **col byte found, row byte not
-found** (live scan returned candidates but none survived the +5-on-Down
-verify, meaning the heap doesn't store a flat `row*5+col` index;
-hypothesis is row + col are two separate bytes or row is behind a
-pointer chain). See `memory/project_partymenu_cursor.md` for details.
+**User will send more values later.** Paste them into
+`SellPricesByName` and they flow through
+`InventoryEntry.SellPrice` → `InventoryItem.SellPrice` →
+fft.sh automatically. `sell=` (verified) replaces `sell~`
+(estimated) on rendered output.
 
-Easy quick-fix worth trying: **on every Q/E tab switch that lands back
-on Units, reset `CursorRow = CursorCol = 0`**. Won't preserve intentional
-cursor placement but will stop the drift-to-wrong-unit bug. Add to
-`ScreenStateMachine.HandlePartyMenu` in the Q/E cases.
+New `IsSellPriceGroundTruth(id)` exposes the verified flag.
+`InventoryItem.SellPriceVerified` and fft.sh render the
+`=` vs `~` operator accordingly.
 
-### 2. State machine sticks on PartyMenu after returning to WorldMap
+**(b) OutfitterFitting inventory surface.** Same `screen.inventory`
+path as PartyMenu + Sell, but with `ReadAll()` (full list, not
+sellable-only). Filter by slot type is **deferred** — requires
+state-machine tracking of the Fitting picker depth
+(unit→slot→item), which has its own drift problems.
 
-Logged 2026-04-15 session 16. Repro: from EquippableWeapons, 5 Escape
-presses. State machine cycles `EqW → EqA → CS → PartyMenu → TravelList →
-PartyMenu` instead of ending at WorldMap. `screen` keeps reporting
-`[PartyMenu]` even with `report_state` re-detect.
+fft.sh verbose trigger extended to include `OutfitterFitting`.
 
-**Tried symmetric drift fix — reverted.** Adding "if raw says WorldMap/
-TravelList AND SM says party-tree → snap SM to WorldMap" stomped every
-legitimate nested-panel visit because the raw rule `party=0 && ui=1 →
-TravelList` also matches EquipmentAndAbilities. Left an inline `[Note]`
-block in `CommandWatcher.cs` documenting the failed approach.
+**(c) SkillsetItemLookup infrastructure.** New static class
+`SkillsetItemLookup.cs` maps consumable-backed ability names
+to inventory items:
+- `ItemsAbilityToItemId` (Chemist): 14 entries, ID 240-253
+- `IaidoAbilityToItemId` (Samurai): 10 entries, ID 38-47
+- `ThrowAbilityToItemType` (Ninja): 10 entries, ItemData type strings
 
-Real fix needs: either (a) a better raw signal (e.g. `MenuDepth==0 &&
-party==0` — distinguishes WorldMap with residual party byte from EqA),
-or (b) trust state-machine transition history only when it's actually
-transitioned *through* PartyMenu to WorldMap, not when mid-nested.
+`TryGetHeldCount(skillset, ability, inventoryBytes)` returns the
+held count for Items/Iaido (single-item lookup) or Throw
+(type-sum across all owned items of that type). Returns null
+for non-inventory skillsets so callers know to omit the heldCount
+field entirely.
 
-Ties into the above cursor-drift bug because fixing this + the cursor
-byte together would unlock reliable `ReturnToWorldMap` invocation.
+`AbilityWithTiles` DTO gains `HeldCount` (int?) and `Unusable`
+(bool) fields.
 
-### 3. EquippableWeapons `ui=<hovered item>` — picker sort order blocks us
+**Battle wiring NOT landed.** `NavigationActions.cs` is 4000+
+lines and end-of-session is the wrong time to touch it.
+Infrastructure is ready; a 10-line wire-up at the point where
+`AbilityWithTiles` objects get built will do it next session.
 
-Ready to ship the moment inventory-order decode lands. Today:
-- Cursor row byte found and live-readable.
-- Per-job equippability table can be built from `Wiki/weapons.txt` +
-  `Wiki/armor.txt` (authoritative per-category "can be wielded by" lists,
-  checked in this session).
-- **Missing:** mapping `(picker tab, row N)` → item name, because the game
-  sorts the picker by per-player inventory storage order, not item ID.
-  Inventory store has defeated 3 prior hunts (see `project_inventory_*`
-  memory notes) — behind UE4 pointer chain or encrypted in the UMIF
-  save container.
+13 SkillsetItemLookupTests cover Items/Iaido/Throw paths, plural
+tolerance (Eye Drop / Eye Drops), null inventory, non-inventory
+skillsets.
 
-**What to ship NEXT without inventory:**
-- **Per-job equippability table** (just the type→job mapping). Unlocks:
-  - `change_right_hand_to <name>` validation ("is this weapon type equippable
-    for this unit's job?").
-  - `availableWeapons[]` verbose catalog — list items the unit *could*
-    equip from `ItemData.Items`, even without knowing per-player inventory.
-  - "All Weapons & Shields" tab grayed-state hints.
+## What's NOT done (top priorities for next session)
 
-### 4. `nextJp` on CharacterStatus / EquipmentAndAbilities header
+### 1. **Row-byte hunt — 6 candidates found, none verified yet**
 
-Still missing. Blocked on a structured `ActionAbilityJpCost` table — the
-~200 ActionAbilityLookup records don't carry JP cost, and `ABILITY_COSTS.md`
-is human-markdown. Big scope; deferred twice this session.
+The single most impactful remaining work. The PartyMenu cursor drift
+bug is unsolvable until we have a ground-truth row byte in memory.
 
-## Memory notes saved this session (check before making assumptions)
+**What happened this session (partial progress, not committed):**
+- Snapshot at PartyMenu (r1, c0) Agrias, move Down to r2 Orlandeau,
+  snapshot, diff. **~700 changed bytes** in a single keypress (way
+  more than inventory's 175 — cursor animations are noisy).
+- Filtered for `01 → 02` transitions. **6 candidates:**
+  `0x1407AC7CD`, `0x1407AC7D1`, `0x1418708CB`, `0x1437436BD`,
+  `0x1437436C1`, `0x14374377B`.
+- Read `0x1407AC7CD` at (r0, c0) expecting 0 — got 02. **First
+  candidate FAILS the wrap-test.** The byte went 1→2→1→2 as I
+  scrolled which is why it showed up in the diff, but it doesn't
+  represent the literal row index.
+- **Other 5 candidates UNTESTED** — ran out of time.
 
-- `project_item_name_pool.md` — Item names live in a static UTF-16 pool
-  near `0x3F18000`. Game renders by ID lookup, not by heap-copying the
-  string. Hover widget does NOT store a pointer to the pool entry.
-- `project_partymenu_cursor.md` — PartyMenu cursor row byte hunt failed;
-  col byte found, flat `row*5+col` doesn't exist in heap.
-- `feedback_no_hooks_without_approval.md` — Never create Claude Code hooks
-  without explicit per-hook user approval. Session 16 almost shipped a
-  PreToolUse Bash hook for `| node` blocking; user rejected.
-- `feedback_use_node_not_python.md` — No Python on this machine. Use
-  `node` for JSON parsing and file transforms. Write multi-line scripts
-  to `tmp/script.js` (NOT inline — backticks in string literals break
-  bash quoting), `node tmp/script.js`, then `rm -rf tmp/`.
+**Next-session plan (documented in `project_partymenu_row_byte_hunt.md`):**
+1. **3-snapshot multi-step filter**. Snapshot at r0, r1, r2.
+   A real row byte must show EXACTLY `0, 1, 2` across the three.
+   That eliminates ~99% of the ~700 false positives that merely
+   transition 1→2 without hitting 0 at r0.
+2. **Verify the other 5 candidates** at (r0, c0). One of them
+   might still be correct — I stopped after the first failed.
+3. **Column byte hunt**: same technique with Left/Right, once
+   row is solved.
 
-## Things that DIDN'T work (avoid repeating)
+If row+col are both found, the entire PartyMenu drift cluster
+(the "state says X, game shows Y" class) can be fixed by reading
+them into `ScreenStateMachine.SetPartyMenuCursor(row, col)` which
+already exists from session 16.
 
-- **Symmetric state-machine drift fix** (reverted in same session): raw
-  detection's `party=0 && ui=1 → TravelList` rule matches nested panels
-  too, so any "if raw says TravelList, snap SM to WorldMap" check stomps
-  legitimate EqA visits. Inline `[Note]` in `CommandWatcher.cs` explains.
-- **Python one-liners for TODO.md restructuring** (twice): Python isn't
-  installed, triggers Microsoft Store prompt, fails silently. Use node
-  with `tmp/script.js`.
-- **PreToolUse hook without user approval**: user has final say on any
-  settings.json hook change. Memorize + document, don't install.
-- **Ambitious tasks requiring structured data we don't have**:
-  equippability table from `Wiki/*.txt` is doable; but `nextJp` needs
-  ability JP costs that are only in markdown; inventory-order decode
-  needs UE4 pointer-chain work. Know which of these is blocked before
-  starting a task from the TODO.
+### 2. **Battle wiring for Items/Throw/Iaido held counts**
 
-## Three principles to internalize before working on this codebase
+Infrastructure is ready (commit 93b5579). What's left:
+- Find the point in `NavigationActions.cs` where `AbilityWithTiles`
+  objects get built for the active unit's ability list. Around
+  lines 1720-2100 based on grep results.
+- When the ability's skillset is Items/Throw/Iaido, call
+  `SkillsetItemLookup.TryGetHeldCount(skillset, ability.Name,
+  inventoryBytes)` and populate `HeldCount` + `Unusable = (count == 0)`.
+- Needs an `InventoryReader.ReadRaw()` call once per scan and
+  pass the byte array through to the lookup (don't call
+  `ReadRaw` 50 times).
+- Live-verify on a unit with Items secondary. **User said Ramza
+  might have Items as secondary — check that first.**
+- Unit test the wiring point.
 
-1. **Live-verify before committing new features.** User requested this
-   explicitly in session 17 — no commits without in-game verification of
-   the user-visible behavior. Tests prove code compiles; only the game
-   proves the feature works. Screenshots via `powershell.exe -File
-   ./screenshot_crop.ps1` when state machine can't be trusted.
+**Estimated 1-2 hours of careful work.** `NavigationActions.cs`
+is the most complex file in the repo — take it slow.
 
-2. **The CommandWatcher god-class problem is getting worse.** ~4000 lines
-   and counting. `DetectScreen` alone is ~700. Refactoring into
-   per-screen detector classes is overdue. Don't propose it without budget,
-   but know that EVERY new feature touches this file.
+### 3. **Real sell prices (user will send them)**
 
-3. **Every payload field has to earn its spot** (§"What Goes In Compact
-   vs Verbose vs Nowhere" principle in TODO.md). Check against it before
-   adding a field to compact `screen` output. The PartyMenu-tree
-   `loc=/objective=/gil=` suppression (commit `acbdb6d`) is an example
-   of removing fields that didn't earn their rent.
+User is collecting actual sell prices from the in-game Outfitter
+Sell screen. When you get them:
+1. Paste into `SellPricesByName` in `ColorMod/GameBridge/ItemPrices.cs`
+2. Run `./RunTests.sh` — `UnresolvedNames` test catches any name
+   typos against `ItemData.Items`
+3. Done. The values flow through automatically.
+
+Current seed set (session 18 live-captured from Gariland Weapons tab):
+Dagger=50, Mythril Knife=250, Blind Knife=400, Mage Masher=750,
+Assassin's Dagger=2500, Broadsword=100, Longsword=250.
+
+**Caveat on naming:** shop display names sometimes differ from
+ItemData names. Session 18 had to fix 12 mismatches during
+`ItemPrices` build-out (Bizen Osafune → Osafune, Ame-no-Murakumo
+→ Ama-no-Murakumo, Gokuu's Pole → Gokuu Pole, Hi-Potion vs High
+Potion, singular "Bracer" vs shop "Bracers", etc.). The
+`UnresolvedNames` test will tell you which names didn't match.
+
+### 4. **State-machine detection drift on picker screens**
+
+Untouched this session but re-observed: game visually on
+EquippableWeapons picker but state machine reports
+EquipmentAndAbilities. This happens after Enter from EqA doesn't
+cleanly advance the SM. Root cause is probably the same
+"Enter that doesn't register because animation is mid-flight"
+pattern as the tab-switch delays we fixed.
+
+Would benefit from the row byte first — if we have ground-truth
+cursor data for PartyMenu, the SM can self-correct from memory
+and stop compounding drift.
+
+### 5. **Q/E tab-switch count bug**
+
+Also re-observed this session: single E keypress sometimes
+advances 2 tabs (Units → Chronicle, skipping Inventory). Might
+be a double-fire from key-event handling OR a state-machine bug
+where E is counted twice. Need to log each key fired and each
+SM transition to catch it in the act. Not pursued this session.
+
+## What's SHIPPED and production-ready
+
+- **`screen.inventory` on PartyMenu (any tab), OutfitterSell,
+  OutfitterFitting.** 184 items × 4 fields each. Compact summary
+  + verbose grouped-by-type rendering.
+- **`sell=N gil` vs `sell~N gil` distinction** on OutfitterSell.
+  7 items verified, 103 estimated.
+- **Ground-truth price override infrastructure** ready for paste.
+- **CamelCase state names everywhere.** If you're writing new
+  code, no more `Battle_XYZ` — just `BattleXYZ`.
+- **6 desync fixes** eliminating common drift classes.
+
+## Things that DIDN'T work (don't repeat)
+
+### Session 18 failed approaches:
+
+1. **Memory scan for shop sell prices (several attempts).** Found
+   the buy-price table at heap `0x15B1B3300` but it's transient
+   widget data, not persistent. Static buy prices exist somewhere
+   but weren't located. Real fix was to just hardcode from
+   SHOP_ITEMS.md.
+
+2. **Hunting sell prices via u32 LE pattern `50, 250`.** The
+   pattern shows up all over memory — too generic. `0x32 00 00 00
+   FA 00 00 00` found 1 match but it was unstable heap data.
+
+3. **Chasing vtable `0x7FFDCE029280` for picker TArray decoding.**
+   Spent 45 min on this before pivoting. Turned out to be a UE5
+   `UFunction` object, not a TArray vtable. The widget chain led
+   through UE5 internals that were genuinely hard to walk. The
+   inventory hunt via snapshot-diff was **10x faster** and found
+   a completely different answer.
+
+4. **Row-byte hunt with just 2 snapshots.** 700+ false positives
+   is too much signal to scrub by hand. Need 3-snapshot filter.
+
+5. **Direct `read_block` on guessed addresses.** Crashed the game
+   once during the shop price hunt. Memory regions that look
+   readable in the diff dump aren't always committed when you
+   read them later.
+
+### Session 18 successful techniques (do repeat):
+
+1. **Single-byte-transition snapshot diff** for minimal-state
+   changes (inventory count: 3→4 Dagger). 175 total changed
+   bytes in the diff = trivial scan.
+
+2. **Name-keyed lookup tables with ID resolution at static init.**
+   `ItemPrices.BuyPricesByName` is pattern-worthy. Adding new
+   entries can't cause ID drift.
+
+3. **Diagnostic tests that surface integration gaps.** The
+   `UnresolvedNames` test turned an invisible "typo in static
+   table" into a build failure. Reused-pattern-worthy.
+
+4. **Live-verify with screenshots BEFORE trusting state machine.**
+   State-machine drift happens silently. Screenshots catch it.
+   Session 18 used screenshots to verify OutfitterSell and
+   OutfitterBuy state was actually live before committing.
+
+## Memory notes saved this session
+
+- **`project_inventory_store_CRACKED.md`** — full inventory hunt
+  narrative + 2-snapshot technique + unblock paths
+- **`project_partymenu_row_byte_hunt.md`** — session 18 row-byte
+  investigation with the 6 candidate addresses and 3-snapshot
+  next-session plan
+
+## Updated MEMORY.md index
+
+Top entry is now `project_inventory_store_CRACKED.md` marked with
+the 🎯 breakthrough emoji.
 
 ## Quick start next session
 
 ```bash
 # Baseline check
-./RunTests.sh                # 1954 passing
+./RunTests.sh                # 2000 passing
 
-# Live smoke — test what session 16+17 added
+# Live smoke — test what session 18 added
 source ./fft.sh
-boot                          # should land on WorldMap
-screen                        # → [WorldMap] + loc + objective + gil on separate lines
-screen -v                     # dump full JSON (includes unlockedLocations array)
+# Game is still running from session 18 on PartyMenu Units tab.
+# If it's dead: `boot`
+screen                       # should show [PartyMenu] + inventory=184 unique
 
-# World-travel guardrails
-fft '{"id":"t1","action":"world_travel_to","locationId":6}'   # rejects (already there)
-fft '{"id":"t2","action":"world_travel_to","locationId":35}'  # rejects (locked)
+# Verify inventory write path
+# Navigate to PartyMenu Inventory tab:
+fft '{"id":"e","keys":[{"vk":69,"name":"E"}],"delayBetweenMs":300}'
+screen -v                    # dumps 184-item grouped listing
 
-# Equipment surface (Ragnarok hero-item data)
-# Navigate to Ramza's EquipmentAndAbilities
-fft '{"id":"nav","keys":[{"vk":27,"name":"esc"},{"vk":13,"name":"enter"},{"vk":13,"name":"enter"}],"delayBetweenMs":600}'
-screen                        # → header + "Effects: Auto-Shell" + "[Dual-Wield / Two-Hand]"
+# Verify OutfitterSell:
+# Escape to WorldMap, EnterLocation, Enter Outfitter, Down to Sell, Enter:
+fft '{"id":"x","keys":[{"vk":27,"name":"Esc"},{"vk":13,"name":"Enter"},{"vk":13,"name":"Enter"},{"vk":40,"name":"Down"},{"vk":13,"name":"Enter"}],"delayBetweenMs":500}'
+screen                       # should show [OutfitterSell] + sellable count
 
-# Story-class primary
-# Navigate to Cloud's EqA (up a few, select Cloud)
-# → ui=Limit (was ui=(none))
+# Check the 7 seeded verified prices
+screen -v | head -30         # Dagger should show sell=50 gil (NO ~)
 ```
 
-## Active TODO top of queue (in priority order)
+## Active TODO top of queue (next-session priority)
 
-1. **PartyMenu cursor drift** — quick mitigation: reset on Q/E Units return.
-2. **PartyMenu → WorldMap stuck state** — needs better raw signal.
-3. **Per-job equippability table** — port from `Wiki/weapons.txt`/
-   `armor.txt`, unlocks `change_*_to` validation + verbose
-   `availableWeapons[]`.
-4. **`nextJp` (Next: N on header)** — blocked on JP cost dict;
-   sibling ticket: port `ABILITY_COSTS.md` into a structured dict.
-5. **Inventory quantity for Items/Throw/Iaido** — Big. Blocked on the
-   inventory-store UE4 chain. Would unlock Chemist/Ninja/Samurai combat
-   AI.
+1. **Row-byte 3-snapshot hunt** — unblocks the entire PartyMenu
+   drift class. 15-30 min with the right filter.
+2. **Battle wiring for Items/Throw/Iaido held counts** — 1-2 hours
+   in NavigationActions.cs. Infrastructure ready.
+3. **Real sell prices paste** — user sending. 1 min of work when
+   they arrive.
+4. **State-machine detection drift on picker screens** — benefits
+   from row byte first.
+5. **Q/E tab-switch count bug** — needs investigation to root-cause.
 
-(Scan `FFTHandsFree/TODO.md` §0 + §10.6 for the full active list — I
-archived 49 completed items to the bottom this session so the top is
-readable now.)
+## Three principles from this session
 
-Good session. Polish wins + memory-backed data surfacings shipped; two
-ambitious resolvers punted with clean documentation. Next session can
-knock out the quick cursor-drift mitigation and start the per-job
-equippability table without much ramp-up.
+1. **Dumber is often smarter for memory hunts.** The inventory
+   store was found by snapshot-diffing a single Dagger purchase.
+   5+ prior sessions assumed sophisticated structures (TArray,
+   FString, TSparseArray) and all failed. The actual layout was
+   the simplest possible (flat u8 array, one byte per item ID).
+   **Single-byte diffs beat clever decoders.**
+
+2. **Name-keyed tables with static ID resolution beat
+   hand-curated ID tables.** The `ItemPrices.BuyPricesByName`
+   pattern means you can never drift out of sync with ItemData,
+   because the resolver will surface any mismatch as a build
+   failure. Reuse this pattern anywhere you'd otherwise hand-write
+   ID lookup tables.
+
+3. **Know when to stop probing and commit.** I lost 45 min chasing
+   the picker TArray vtable before pivoting to the inventory hunt
+   that worked. I almost lost another hour on the row-byte hunt
+   before timeboxing myself out. **Set a timebox, hit it, commit
+   partial progress.** The row byte will fall in the next session
+   with the 3-snapshot approach; the partial progress is in the
+   memory note, not lost.
+
+Good session. Inventory store cracked after 5+ failed sessions.
+30-file rename without breaking tests. 44 new tests. Four solid
+commits. Row-byte and battle wiring are the top priorities — both
+well-scoped with next-session instructions in this handoff.
