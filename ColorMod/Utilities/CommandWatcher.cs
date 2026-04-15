@@ -2619,6 +2619,29 @@ namespace FFTColorCustomizer.Utilities
                 // you verify them in-game — unverified entries are omitted
                 // so `Primary:` simply shows blank rather than a wrong name.
                 "Holy Knight" => "Holy Sword",       // Agrias — verified 2026-04-14
+                // Story-character primaries sourced from FFHandsFree/Wiki/
+                // StoryCharacters.md (2026-04-15 session 16). Names match
+                // the canonical skillsets shown in-game on the Primary row.
+                // Not yet live-verified per-class — flag any mismatch.
+                "Soldier" => "Limit",                // Cloud
+                "Machinist" => "Snipe",              // Mustadio (WotL)
+                "Engineer" => "Snipe",               // Mustadio (PSX name, same skillset)
+                "Skyseer" => "Sky Mantra",           // Rapha
+                "Heaven Knight" => "Sky Mantra",     // Rapha (PSX name)
+                "Netherseer" => "Nether Mantra",     // Marach
+                "Hell Knight" => "Nether Mantra",    // Marach (PSX name)
+                "Divine Knight" => "Unyielding Blade", // Meliadoul
+                "Templar" => "Spellblade",           // Beowulf
+                "Dragonkin" => "Dragon",             // Reis (human form)
+                "Holy Dragon" => "Dragon",           // Reis (dragon form)
+                "Steel Giant" => "Work",             // Construct 8
+                "Game Hunter" => "Hunting",          // Luso
+                "Sky Pirate" => "Sky Pirating",      // Balthier
+                "Thunder God" => "Holy Sword",       // Orlandeau — Sword Saint combines Holy/Unyielding/Fell; defaulting to Holy Sword (his strongest set). Override in-game if cursor lands on a different sub-skillset.
+                "Sword Saint" => "Holy Sword",       // Orlandeau (alt name)
+                "Fell Knight" => "Fell Sword",       // Gaffgarion
+                "Arc Knight" => "Holy Sword",        // Zalbag/Delita endgame — placeholder, verify
+                "Rune Knight" => "Holy Sword",       // Dycedarg — placeholder, verify
                 _ => null
             };
         }
@@ -3752,9 +3775,40 @@ namespace FFTColorCustomizer.Utilities
                                 _ => null
                             };
                         }
-                        // Fallback to "(none)" so empty slots still get a label.
+                        // Fallback labels for empty slots — slot-aware so the
+                        // ui= line tells Claude WHICH slot is empty, not a
+                        // bare "(none)" that erases all context. Equipment
+                        // slots use "(none)" (single weapon/shield/helm
+                        // unequipped); ability slots use "(empty)" to match
+                        // the game's own copy. Primary action is job-locked,
+                        // so a blank there means our skillset table is
+                        // incomplete — flag explicitly. See TODO §0
+                        // 2026-04-14 entry.
                         if (cursorLabel != null) screen.UI = cursorLabel;
-                        else if (col == 0 || col == 1) screen.UI = "(none)";
+                        else if (col == 0)
+                        {
+                            screen.UI = row switch
+                            {
+                                0 => "Right Hand (none)",
+                                1 => "Left Hand (none)",
+                                2 => "Headware (none)",
+                                3 => "Combat Garb (none)",
+                                4 => "Accessory (none)",
+                                _ => "(none)"
+                            };
+                        }
+                        else if (col == 1)
+                        {
+                            screen.UI = row switch
+                            {
+                                0 => "Primary (none — skillset table missing for this job)",
+                                1 => "Secondary (empty)",
+                                2 => "Reaction (empty)",
+                                3 => "Support (empty)",
+                                4 => "Movement (empty)",
+                                _ => "(empty)"
+                            };
+                        }
 
                         // Detail panel — mirrors game's right-side info panel.
                         if (cursorLabel != null)

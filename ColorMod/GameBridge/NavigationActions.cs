@@ -1326,6 +1326,22 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // Refuse same-location travel — the game opens the travel list
+            // with the cursor on the current node, the blind "press Enter to
+            // confirm" then selects it, and input routing falls into an
+            // undefined sub-window where subsequent keys get swallowed (the
+            // "Dorter shop run got stuck" repro from 2026-04-14, see TODO
+            // §3). Detect via the world location byte at 0x14077D208 and
+            // bail out with a clear remediation message before any keys fly.
+            var standingRead = _explorer?.ReadAbsolute((nint)0x14077D208, 1);
+            int standingLoc = standingRead.HasValue ? (int)standingRead.Value.value : -1;
+            if (standingLoc == locationId)
+            {
+                response.Status = "rejected";
+                response.Error = $"Already at location {locationId}. Use execute_action EnterLocation to open the location menu instead of world_travel_to.";
+                return response;
+            }
+
             var screen = _detectScreen();
             if (screen == null || (screen.Name != "WorldMap" && screen.Name != "TravelList"))
             {

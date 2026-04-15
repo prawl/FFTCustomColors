@@ -19,6 +19,7 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_RIGHT = 0x27;
         private const int VK_SPACE = 0x20;
         private const int VK_TAB = 0x09;
+        private const int VK_C = 0x43;
         private const int VK_F = 0x46;
         private const int VK_Q = 0x51;
         private const int VK_E = 0x45;
@@ -146,10 +147,19 @@ namespace FFTColorCustomizer.GameBridge
                 },
                 ["EnterLocation"] = new PathEntry
                 {
-                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    // Pre-press C to recenter the WorldMap cursor on the
+                    // current node before pressing Enter. The game's `C`
+                    // key (also middle-mouse) snaps the cursor to wherever
+                    // the player is standing — without this, a drifted
+                    // cursor causes Enter to silently no-op (the
+                    // pre-existing "Enter does nothing" failure mode
+                    // logged 2026-04-14). Single deterministic key, no
+                    // memory read needed.
+                    Keys = new[] { Key(VK_C, "C"), Key(VK_ENTER, "Enter") },
+                    DelayBetweenMs = 200,
                     WaitUntilScreenNot = "WorldMap",
                     WaitTimeoutMs = 5000,
-                    Desc = "Enter current location (may trigger encounter, settlement, or story event — wait for result)"
+                    Desc = "Recenter cursor (C) then enter current location (may trigger encounter, settlement, or story event)"
                 },
             };
         }
