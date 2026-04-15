@@ -40,7 +40,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "hold_key",
             "resolve_picker_cursor",
             "resolve_job_cursor",
-            "resolve_party_menu_cursor"
+            "resolve_party_menu_cursor",
+            "resolve_equip_picker_cursor"
         };
 
         [Theory]

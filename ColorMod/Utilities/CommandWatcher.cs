@@ -171,6 +171,49 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
+        /// Cached equipment-picker row cursor byte. Live-resolved 2026-04-15
+        /// session 16 at heap `0x12ECCF6B0` (plus 3 aliased copies at +0x78,
+        /// +0xE0, +0x120). Same heap-shuffle story as other UE4 widget
+        /// cursors — re-resolved per picker open and after every Up/Down/A/D
+        /// while the picker is active.
+        /// </summary>
+        private long _resolvedEquipPickerCursorAddr = 0L;
+
+        /// <summary>
+        /// One-shot latch for the equipment-picker resolver, mirroring
+        /// <see cref="_jobCursorResolveAttempted"/>. Cleared on picker exit
+        /// and on every directional / tab-cycle key so the next screen call
+        /// triggers a fresh resolve.
+        /// </summary>
+        private bool _equipPickerCursorResolveAttempted = false;
+
+        /// <summary>
+        /// Invalidates the cached equipment-picker cursor on any
+        /// Up/Down/A/D while on an Equippable* picker screen. Up/Down shift
+        /// the row index; A/D cycle tabs (which re-roll the underlying list
+        /// and typically reallocate the widget). Enter/Escape transition
+        /// screens — cleanup handled by the on-exit path in the screen
+        /// handler below.
+        /// </summary>
+        private void InvalidateEquipPickerCursorOnMove(int vk)
+        {
+            const int VK_UP = 0x26, VK_DOWN = 0x28, VK_A = 0x41, VK_D = 0x44;
+            if (vk != VK_UP && vk != VK_DOWN && vk != VK_A && vk != VK_D) return;
+            if (ScreenMachine == null) return;
+            if (!IsOnEquipPicker(ScreenMachine.CurrentScreen)) return;
+            _resolvedEquipPickerCursorAddr = 0L;
+            _equipPickerCursorResolveAttempted = false;
+        }
+
+        /// <summary>
+        /// True when the state machine is on any of the five equipment
+        /// pickers. Centralizes the set so new picker types only need one
+        /// touchpoint.
+        /// </summary>
+        private static bool IsOnEquipPicker(GameScreen s)
+            => s == GameScreen.EquipmentItemList; // state-machine routes all 5 slot pickers through one internal screen
+
+        /// <summary>
         /// Pure helper for the chained-command rate-limit decision. Returns the
         /// number of ms the caller should sleep before processing a new command
         /// (0 if no delay needed). Returns a chain-warning string only when a
@@ -508,6 +551,83 @@ namespace FFTColorCustomizer.Utilities
                 : "No stable party-menu cursor byte found (0 candidates)";
         }
 
+        /// <summary>
+        /// Rescan-on-entry for the equipment-picker (EquippableWeapons /
+        /// Shields / Headware / CombatGarb / Accessories) row cursor.
+        /// Mirrors <see cref="ResolvePickerCursor"/> exactly — the picker
+        /// is a vertical list, so Down/Up oscillation + 2-step verify + wrap
+        /// tolerance is the right shape. Live-verified 2026-04-15: the
+        /// resolved byte tracks row index directly (0 = top, advances by 1
+        /// per Down). No horizontal axis (each tab is a linear list). Net-
+        /// zero cursor motion, ~2s visible flash.
+        /// </summary>
+        private string? ResolveEquipPickerCursor(out int candidateCount)
+        {
+            candidateCount = 0;
+            if (Explorer == null) return null;
+            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+            if (win == IntPtr.Zero) return null;
+            const int VK_DOWN = 0x28, VK_UP = 0x26;
+
+            Thread.Sleep(700);
+            Explorer.TakeHeapSnapshot("_equip_base");
+            _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+            Thread.Sleep(300);
+            Explorer.TakeHeapSnapshot("_equip_adv");
+            _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+            Thread.Sleep(300);
+            Explorer.TakeHeapSnapshot("_equip_back");
+            var cands = Explorer.FindToggleCandidates(
+                "_equip_base", "_equip_adv", "_equip_back",
+                maxResults: 32, expectedDelta: 1);
+            candidateCount = cands.Count;
+
+            long verified = 0L;
+            if (cands.Count > 0)
+            {
+                var baselineVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) baselineVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(300);
+                var afterOneVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) afterOneVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(300);
+                foreach (var candAddr in cands)
+                {
+                    if (!baselineVals.TryGetValue((long)candAddr, out var baseline)) continue;
+                    if (!afterOneVals.TryGetValue((long)candAddr, out var afterOne)) continue;
+                    var afterTwo = Explorer.ReadAbsolute(candAddr, 1);
+                    if (!afterTwo.HasValue) continue;
+                    byte finalVal = (byte)afterTwo.Value.value;
+                    bool step1Ok = afterOne == baseline + 1 || afterOne == 0;
+                    bool step2Ok = finalVal == afterOne + 1 || finalVal == 0;
+                    if (step1Ok && step2Ok)
+                    {
+                        verified = (long)candAddr;
+                        break;
+                    }
+                }
+                // Restore cursor: 2 Ups to undo the 2 Downs.
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(220);
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(220);
+            }
+            _resolvedEquipPickerCursorAddr = verified;
+            return cands.Count > 0
+                ? $"Resolved equip-picker cursor: 0x{verified:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
+                : "No stable equip-picker cursor byte found (0 candidates)";
+        }
+
         // Actions that are always allowed regardless of strict mode (info/infrastructure)
         private static readonly HashSet<string> InfrastructureActions = new()
         {
@@ -521,7 +641,8 @@ namespace FFTColorCustomizer.Utilities
             "hold_key",
             "resolve_picker_cursor",
             "resolve_job_cursor",
-            "resolve_party_menu_cursor"
+            "resolve_party_menu_cursor",
+            "resolve_equip_picker_cursor"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -1065,6 +1186,17 @@ namespace FFTColorCustomizer.Utilities
                     {
                         int cCount;
                         var info = ResolvePartyMenuCursor(out cCount);
+                        response.Status = info != null ? "completed" : "failed";
+                        if (info == null) response.Error = "Memory explorer not initialized or game window not found";
+                        response.Info = info;
+                        ModLogger.Log($"[CommandBridge] {response.Info}");
+                        break;
+                    }
+
+                    case "resolve_equip_picker_cursor":
+                    {
+                        int cCount;
+                        var info = ResolveEquipPickerCursor(out cCount);
                         response.Status = info != null ? "completed" : "failed";
                         if (info == null) response.Error = "Memory explorer not initialized or game window not found";
                         response.Info = info;
@@ -1715,6 +1847,7 @@ namespace FFTColorCustomizer.Utilities
                         _battleMenuTracker.OnKeyPressed(key.Vk);
                     InvalidateJobCursorOnRowCross(key.Vk);
                     InvalidatePartyMenuCursorOnMove(key.Vk);
+                    InvalidateEquipPickerCursorOnMove(key.Vk);
                 }
 
                 if (key.HoldMs > 0)
@@ -1902,6 +2035,7 @@ namespace FFTColorCustomizer.Utilities
                             _battleMenuTracker.OnKeyPressed(key.Vk);
                         InvalidateJobCursorOnRowCross(key.Vk);
                         InvalidatePartyMenuCursorOnMove(key.Vk);
+                    InvalidateEquipPickerCursorOnMove(key.Vk);
                     }
 
                     if (key.HoldMs > 0)
