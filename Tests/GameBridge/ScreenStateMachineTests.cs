@@ -258,19 +258,50 @@ public class ScreenStateMachineTests
     }
 
     [Fact]
-    public void JobScreen_Ramza_8ColumnsRow0()
+    public void JobScreen_Ramza_Row0Is6Cols_Row1Is7Cols()
     {
+        // Verified live 2026-04-15: Ramza Ch4 grid is 6/7/6 cells per row.
+        // Row 0 (Gallant Knight..White Mage) = 6 cells.
+        // Row 1 (Black Mage..Geomancer) = 7 cells.
+        // Row 2 (Dragoon..Mime) = 6 cells.
         var sm = CreateAtScreen(GameScreen.JobScreen, isRamza: true);
-        Assert.Equal(8, sm.GridColumns);
 
-        // 10 Rights on 8-col grid wraps: 10 % 8 = 2
-        for (int i = 0; i < 10; i++) sm.OnKeyPressed(VK_RIGHT);
-        Assert.Equal(2, sm.CursorCol);
+        // Row 0: 6 Rights wraps back to col 0.
+        for (int i = 0; i < 6; i++) sm.OnKeyPressed(VK_RIGHT);
+        Assert.Equal(0, sm.CursorRow);
+        Assert.Equal(0, sm.CursorCol);
 
-        // Move to row 1 — 6 cols; col 2 still valid (no clamp needed).
+        // Down to row 1 (7 cols). 6 Rights lands on col 6 (Geomancer), not wrap.
         sm.OnKeyPressed(VK_DOWN);
-        Assert.Equal(6, sm.GridColumns);
-        Assert.Equal(2, sm.CursorCol);
+        Assert.Equal(1, sm.CursorRow);
+        for (int i = 0; i < 6; i++) sm.OnKeyPressed(VK_RIGHT);
+        Assert.Equal(6, sm.CursorCol);
+
+        // One more Right wraps row 1 back to col 0.
+        sm.OnKeyPressed(VK_RIGHT);
+        Assert.Equal(0, sm.CursorCol);
+
+        // Down from row 1 col 0 → row 2 col 0 (6 cols). 6 Rights wraps.
+        sm.OnKeyPressed(VK_DOWN);
+        Assert.Equal(2, sm.CursorRow);
+        for (int i = 0; i < 6; i++) sm.OnKeyPressed(VK_RIGHT);
+        Assert.Equal(0, sm.CursorCol);
+    }
+
+    [Fact]
+    public void JobScreen_Ramza_DownFromRow1Col6_ClampsToRow2LastCell()
+    {
+        // Row 1 has 7 cells; row 2 has only 6. Moving down from col 6
+        // should clamp to row 2's last valid col (5), not leave an out-of-
+        // range cursor.
+        var sm = CreateAtScreen(GameScreen.JobScreen, isRamza: true);
+        sm.OnKeyPressed(VK_DOWN);
+        for (int i = 0; i < 6; i++) sm.OnKeyPressed(VK_RIGHT); // row 1 col 6
+        Assert.Equal(6, sm.CursorCol);
+
+        sm.OnKeyPressed(VK_DOWN);
+        Assert.Equal(2, sm.CursorRow);
+        Assert.Equal(5, sm.CursorCol); // clamped from 6 → 5
     }
 
     // --- Tab Cycling ---

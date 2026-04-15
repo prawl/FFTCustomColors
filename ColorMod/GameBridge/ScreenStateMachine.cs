@@ -163,8 +163,13 @@ namespace FFTColorCustomizer.GameBridge
                     GridRows = 5;
                     break;
                 case GameScreen.JobScreen:
-                    GridColumns = IsRamza ? 8 : 6;
-                    GridRows = 3;
+                    // JobSelection grid is 6 cols wide for ALL characters
+                    // (cursor byte = row*6+col, verified 2026-04-15 via heap
+                    // cursor at 0x12E6CF3B0 — see
+                    // project_job_grid_cursor.md). Ramza gets an extra row
+                    // for Dark Knight / Mime unlocks.
+                    GridColumns = 6;
+                    GridRows = IsRamza ? 4 : 3;
                     break;
             }
         }
@@ -507,8 +512,8 @@ namespace FFTColorCustomizer.GameBridge
                         CurrentScreen = GameScreen.JobScreen;
                         CursorRow = 0;
                         CursorCol = 0;
-                        GridColumns = IsRamza ? 8 : 6;
-                        GridRows = 3;
+                        GridColumns = 6;
+                        GridRows = IsRamza ? 4 : 3;
                     }
                     else if (SidebarIndex == 2)
                     {
@@ -694,21 +699,30 @@ namespace FFTColorCustomizer.GameBridge
                     CurrentScreen = GameScreen.CharacterStatus;
                     break;
                 // JobScreen grid wraps on all axes (FFT UI convention).
+                // Row widths VARY for Ramza: 6/7/6 (Geomancer fills row 1's
+                // 7th slot). Verified live 2026-04-15 via cursor wrap tests.
+                // Use JobGridLayout.GetRowWidth to honor per-row widths when
+                // wrapping; fall back to GridColumns for non-JobScreen safety.
                 case VK_UP:
                     CursorRow = CursorRow > 0 ? CursorRow - 1 : GridRows - 1;
-                    // Ramza row 0 is wider (8 cols), rows 1-2 are narrower
-                    AdjustJobGridColumns();
+                    ClampJobColumnToRow();
                     break;
                 case VK_DOWN:
                     CursorRow = CursorRow < GridRows - 1 ? CursorRow + 1 : 0;
-                    AdjustJobGridColumns();
+                    ClampJobColumnToRow();
                     break;
                 case VK_LEFT:
-                    CursorCol = CursorCol > 0 ? CursorCol - 1 : GridColumns - 1;
+                {
+                    int width = GetJobRowWidth(CursorRow);
+                    CursorCol = CursorCol > 0 ? CursorCol - 1 : width - 1;
                     break;
+                }
                 case VK_RIGHT:
-                    CursorCol = CursorCol < GridColumns - 1 ? CursorCol + 1 : 0;
+                {
+                    int width = GetJobRowWidth(CursorRow);
+                    CursorCol = CursorCol < width - 1 ? CursorCol + 1 : 0;
                     break;
+                }
                 case VK_RETURN:
                     CurrentScreen = GameScreen.JobActionMenu;
                     JobActionIndex = 0;
@@ -718,6 +732,28 @@ namespace FFTColorCustomizer.GameBridge
                     // View toggles, no state change
                     break;
             }
+        }
+
+        // Per-row width for the JobSelection grid. Ramza's row 1 has 7 cells
+        // (Geomancer at col 6); all other rows have 6. When IsRamza is
+        // false, assume generic layout (also 6/7/6 — live verification
+        // pending per TODO §10.6 JobSelection).
+        private int GetJobRowWidth(int row)
+        {
+            var kind = IsRamza
+                ? JobGridLayout.CharacterKind.Ramza
+                : JobGridLayout.CharacterKind.GenericMale;
+            int w = JobGridLayout.GetRowWidth(kind, row);
+            return w > 0 ? w : GridColumns;
+        }
+
+        // When moving between rows, the new row may be narrower than the
+        // previous col. Clamp to the new row's last cell to avoid a
+        // phantom cursor position that doesn't exist on-screen.
+        private void ClampJobColumnToRow()
+        {
+            int width = GetJobRowWidth(CursorRow);
+            if (CursorCol >= width) CursorCol = width - 1;
         }
 
         private void HandleJobActionMenu(int vk)
@@ -763,19 +799,6 @@ namespace FFTColorCustomizer.GameBridge
                     SidebarIndex = 0; // Returns to sidebar with Equipment selected
                     JobChangeConfirmSelected = false; // reset
                     break;
-            }
-        }
-
-        private void AdjustJobGridColumns()
-        {
-            if (IsRamza)
-            {
-                // Row 0 has 8 cols (includes Dark Knight, Golden Knight)
-                // Rows 1-2 have 6 and 7 cols respectively in the doc,
-                // but standard FFT layout is 6 cols for rows 1+
-                GridColumns = CursorRow == 0 ? 8 : 6;
-                if (CursorCol >= GridColumns)
-                    CursorCol = GridColumns - 1;
             }
         }
 
