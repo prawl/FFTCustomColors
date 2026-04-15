@@ -128,50 +128,14 @@ fft() {
       return 1
     fi
   done
-  # Parse screen fields from response — read whole file, strip whitespace
+  # Render compact summary via the shared helper — see _fmt_screen_compact above.
+  # Single source of truth; screen() uses the same function.
+  _fmt_screen_compact "$B/response.json"
+
+  # Parse the status + chain-warning out of the response ourselves so we can
+  # still surface the bridge's auto-delay notice to the terminal.
   local R=$(cat "$B/response.json" | tr -d '\r\n ')
-  local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local LOC=$(echo "$R" | grep -o '"location":[0-9]*' | head -1 | cut -d: -f2)
-  local LOCNAME=$(echo "$R" | grep -o '"locationName":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local HOV=$(echo "$R" | grep -o '"hover":[0-9]*' | head -1 | cut -d: -f2)
-  local UI=$(echo "$R" | grep -o '"ui":"[^"]*"' | head -1 | cut -d'"' -f4)
   local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
-  local OBJ=$(echo "$R" | grep -o '"storyObjective":[0-9]*' | head -1 | cut -d: -f2)
-  local OBJNAME=$(echo "$R" | grep -o '"storyObjectiveName":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local OBJSTR=""; [ -n "$OBJ" ] && { OBJSTR="objective=$OBJ"; [ -n "$OBJNAME" ] && OBJSTR="objective=$OBJ($OBJNAME)"; }
-  local ANAME=$(echo "$R" | grep -o '"activeUnitName":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local AJOB=$(echo "$R" | grep -o '"activeUnitJob":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local VUNIT=$(echo "$R" | grep -o '"viewedUnit":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local LINE="[$SCR]"
-  # active unit right after state during battle
-  if [[ "$SCR" == Battle_* ]]; then
-    if [ -n "$ANAME" ] && [ -n "$AJOB" ]; then
-      LINE="$LINE ${ANAME}(${AJOB})"
-    elif [ -n "$AJOB" ]; then
-      LINE="$LINE ($AJOB)"
-    fi
-    [ -n "$UI" ] && LINE="$LINE ui=$UI"
-  else
-    # Non-battle screens: ui= labels sidebar items (CharacterStatus),
-    # highlighted shop type (LocationMenu), etc. Unescape \u0026 → &.
-    # viewedUnit= identifies whose nested-panel we're on (populated
-    # for CharacterStatus / EquipmentAndAbilities / JobSelection /
-    # pickers / CombatSets / etc.).
-    [ -n "$VUNIT" ] && LINE="$LINE viewedUnit=$VUNIT"
-    if [ -n "$UI" ]; then
-      local UI_CLEAN=$(echo "$UI" | sed 's/\\u0026/\&/g; s/\\u0027/'"'"'/g')
-      LINE="$LINE ui=$UI_CLEAN"
-    fi
-  fi
-  LINE="$LINE loc=$LOCSTR"
-  # hover only during TravelList
-  [ "$SCR" = "TravelList" ] && LINE="$LINE hover=$HOV"
-  [ -n "$OBJSTR" ] && LINE="$LINE $OBJSTR"
-  local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
-  [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
-  LINE="$LINE status=$ST"
-  echo "$LINE"
 
   # Surface bridge's chain-warning to the terminal. The bridge auto-delays
   # a game command that arrives too fast after the previous one (prevents
@@ -189,6 +153,102 @@ fft() {
 # Called by both fft() and screen() when appending gil=<n> to the output line.
 _fmt_gil() {
   LC_ALL=en_US.UTF-8 printf "%'d" "$1" 2>/dev/null || echo "$1"
+}
+
+# --- Terminal colors ---
+# Honor NO_COLOR=1 and disable when stdout isn't a terminal (piped output stays clean).
+if [ -t 1 ] && [ -z "$NO_COLOR" ]; then
+  _C_RESET='\033[0m'
+  _C_SCR='\033[1;36m'      # bright cyan  — screen name [PartyMenu]
+  _C_UI='\033[1;33m'       # bright yellow — ui= values (the decision surface)
+  _C_UNIT='\033[1;32m'     # bright green  — viewedUnit / active unit names
+  _C_EQUIP='\033[0;36m'    # cyan          — equippedItem= / pickerTab=
+  _C_LOC='\033[0;90m'      # grey          — loc=, objective= (low-signal metadata)
+  _C_OK='\033[0;32m'       # green         — status=completed
+  _C_WARN='\033[0;33m'     # yellow        — status=partial, chain-warn, chain-delay
+  _C_ERR='\033[0;31m'      # red           — status=failed, timeout, error
+  _C_MARK='\033[1;35m'     # bright magenta — cursor->, hover=, row markers
+else
+  _C_RESET=''; _C_SCR=''; _C_UI=''; _C_UNIT=''; _C_EQUIP=''
+  _C_LOC=''; _C_OK=''; _C_WARN=''; _C_ERR=''; _C_MARK=''
+fi
+
+# _col <color> <text>  → wraps text with ANSI color, safe when colors disabled.
+_col() { printf '%b%s%b' "$1" "$2" "$_C_RESET"; }
+
+# _status_col <status> → returns the color ANSI for a given status string.
+_status_col() {
+  case "$1" in
+    completed) printf '%b' "$_C_OK" ;;
+    partial)   printf '%b' "$_C_WARN" ;;
+    failed)    printf '%b' "$_C_ERR" ;;
+    *)         printf '%b' "$_C_WARN" ;;
+  esac
+}
+
+# _fmt_screen_compact: Render the one-line screen summary from a response file.
+# Single source of truth for the compact render — called by both fft() and screen()
+# so every entry point renders identically.
+# Arg: $1 = path to response.json (so we can use `node` for space-preserving field reads)
+# Consults: $SCR (screen name, already parsed by caller).
+_fmt_screen_compact() {
+  local RESP="$1"
+  local R=$(cat "$RESP" | tr -d '\r\n ')
+
+  # Simple regex extracts (no spaces to worry about).
+  local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local LOC=$(echo "$R" | grep -o '"location":[0-9]*' | head -1 | cut -d: -f2)
+  local LOCNAME=$(echo "$R" | grep -o '"locationName":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local HOV=$(echo "$R" | grep -o '"hover":[0-9]*' | head -1 | cut -d: -f2)
+  local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local OBJ=$(echo "$R" | grep -o '"storyObjective":[0-9]*' | head -1 | cut -d: -f2)
+  local OBJNAME=$(echo "$R" | grep -o '"storyObjectiveName":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local ANAME=$(echo "$R" | grep -o '"activeUnitName":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local AJOB=$(echo "$R" | grep -o '"activeUnitJob":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
+  local SLCI=$(echo "$R" | grep -o '"shopListCursorIndex":[0-9]*' | head -1 | cut -d: -f2)
+
+  # Space-bearing string fields need the JSON parser so "Equipment & Abilities"
+  # / "Magick Defense Boost" / "All Weapons & Shields" survive intact.
+  local UI=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.ui||'');}catch(e){}});" 2>/dev/null)
+  local VUNIT=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.viewedUnit||'');}catch(e){}});" 2>/dev/null)
+  local EQITEM=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.equippedItem||'');}catch(e){}});" 2>/dev/null)
+  local PTAB=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.pickerTab||'');}catch(e){}});" 2>/dev/null)
+
+  local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
+  local OBJSTR=""
+  if [ -n "$OBJ" ]; then
+    OBJSTR="objective=$OBJ"
+    [ -n "$OBJNAME" ] && OBJSTR="objective=$OBJ($OBJNAME)"
+  fi
+
+  # Build the line with color.
+  local LINE="$(_col "$_C_SCR" "[$SCR]")"
+
+  if [[ "$SCR" == Battle_* ]]; then
+    # Battle screens: active unit banner, then ui=.
+    if [ -n "$ANAME" ] && [ -n "$AJOB" ]; then
+      LINE="$LINE $(_col "$_C_UNIT" "${ANAME}")(${AJOB})"
+    elif [ -n "$AJOB" ]; then
+      LINE="$LINE ($AJOB)"
+    fi
+    [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
+  else
+    # Non-battle: viewedUnit, equippedItem, pickerTab, ui, in order of increasing specificity.
+    [ -n "$VUNIT" ] && LINE="$LINE viewedUnit=$(_col "$_C_UNIT" "$VUNIT")"
+    [ -n "$EQITEM" ] && LINE="$LINE equippedItem=$(_col "$_C_EQUIP" "$EQITEM")"
+    [ -n "$PTAB" ] && LINE="$LINE pickerTab=$(_col "$_C_EQUIP" "$PTAB")"
+    [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
+  fi
+
+  LINE="$LINE $(_col "$_C_LOC" "loc=$LOCSTR")"
+  [ "$SCR" = "TravelList" ] && [ -n "$HOV" ] && LINE="$LINE hover=$(_col "$_C_MARK" "$HOV")"
+  [ -n "$OBJSTR" ] && LINE="$LINE $(_col "$_C_LOC" "$OBJSTR")"
+  [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
+  [ -n "$SLCI" ] && LINE="$LINE row=$(_col "$_C_MARK" "$SLCI")"
+  LINE="$LINE status=$(printf '%b%s%b' "$(_status_col "$ST")" "$ST" "$_C_RESET")"
+
+  printf '%b\n' "$LINE"
 }
 
 # fft_full: Send raw command JSON, wait for response, return entire JSON.
@@ -1316,28 +1376,8 @@ us.forEach(u=>{
 });
 " 2>/dev/null
   else
-    # Non-battle: parse the response we already have
-    local LOC=$(echo "$R" | grep -o '"location":[0-9]*' | head -1 | cut -d: -f2)
-    local LOCNAME=$(echo "$R" | grep -o '"locationName":"[^"]*"' | head -1 | cut -d'"' -f4)
-    local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
-    # Unescape common JSON sequences so the UI label renders cleanly.
-    # Example: "Equipment & Abilities" serializes as "Equipment \u0026 Abilities".
-    # Pipe the file (cat handles Unix→Windows path conversion) so labels with
-    # internal spaces ("Magick Defense Boost") survive — using the stripped
-    # `$R` would smash them into "MagickDefenseBoost".
-    local UI=$(cat "$B/response.json" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.ui||'');}catch(e){}});" 2>/dev/null)
-    local VUNIT=$(cat "$B/response.json" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.viewedUnit||'');}catch(e){}});" 2>/dev/null)
-    local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
-    local SLCI=$(echo "$R" | grep -o '"shopListCursorIndex":[0-9]*' | head -1 | cut -d: -f2)
-    local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
-    local LINE="[$SCR]"
-    [ -n "$VUNIT" ] && LINE="$LINE viewedUnit=$VUNIT"
-    [ -n "$UI" ] && LINE="$LINE ui=$UI"
-    LINE="$LINE loc=$LOCSTR"
-    [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
-    [ -n "$SLCI" ] && LINE="$LINE row=$SLCI"
-    LINE="$LINE status=$ST"
-    echo "$LINE"
+    # Non-battle: render via the shared helper — same compact one-liner as fft().
+    _fmt_screen_compact "$B/response.json"
 
     # Equipment loadout + abilities for CharacterStatus / EquipmentAndAbilities.
     # Layout matches the game's two-column UI: equipment slots on the left,

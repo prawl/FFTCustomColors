@@ -18,7 +18,9 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_DOWN = 0x28;
         private const int VK_SPACE = 0x20;
         private const int VK_1 = 0x31;
+        private const int VK_A = 0x41;
         private const int VK_B = 0x42;
+        private const int VK_D = 0x44;
         private const int VK_Q = 0x51;
         private const int VK_E = 0x45;
         private const int VK_R = 0x52;
@@ -79,6 +81,15 @@ namespace FFTColorCustomizer.GameBridge
         /// EquipmentItemList game-screen internally.
         /// </summary>
         public EquipmentSlot CurrentEquipmentSlot { get; private set; } = EquipmentSlot.Weapon;
+
+        /// <summary>
+        /// Active tab index on the EquippableItemList picker (0..N-1 where N
+        /// comes from <see cref="EquipmentPickerTabs.CountFor"/> for the
+        /// current slot). Cycled by A (back) and D (forward) keys while on
+        /// the picker, wraps both directions. Reset to 0 whenever a new
+        /// picker opens (Enter on EquipmentAndAbilities' left column).
+        /// </summary>
+        public int PickerTab { get; private set; }
 
         /// <summary>
         /// Which ability slot was highlighted when Enter opened the ability picker.
@@ -149,6 +160,7 @@ namespace FFTColorCustomizer.GameBridge
             JobActionIndex = 0;
             ChronicleIndex = 0;
             OptionsIndex = 0;
+            PickerTab = 0;
             KeysSinceLastSetScreen = 0;
 
             switch (screen)
@@ -599,6 +611,7 @@ namespace FFTColorCustomizer.GameBridge
                         // surface the correct Equippable<Type> screen name.
                         CurrentEquipmentSlot = (EquipmentSlot)System.Math.Min(CursorRow, 4);
                         CurrentScreen = GameScreen.EquipmentItemList;
+                        PickerTab = 0; // every picker opens on its "Equippable <slot>" primary tab
                     }
                     else
                     {
@@ -639,6 +652,21 @@ namespace FFTColorCustomizer.GameBridge
                     CursorCol = _savedEquipmentCol;
                     GridColumns = 2;
                     GridRows = 5;
+                    PickerTab = 0; // picker closed — reset for next entry
+                    break;
+                case VK_A:
+                    // Previous tab, wraps.
+                    {
+                        int count = EquipmentPickerTabs.CountFor(CurrentEquipmentSlot);
+                        PickerTab = PickerTab > 0 ? PickerTab - 1 : count - 1;
+                    }
+                    break;
+                case VK_D:
+                    // Next tab, wraps.
+                    {
+                        int count = EquipmentPickerTabs.CountFor(CurrentEquipmentSlot);
+                        PickerTab = PickerTab < count - 1 ? PickerTab + 1 : 0;
+                    }
                     break;
             }
         }

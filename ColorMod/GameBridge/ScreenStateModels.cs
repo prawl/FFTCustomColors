@@ -97,6 +97,44 @@ namespace FFTColorCustomizer.GameBridge
     }
 
     /// <summary>
+    /// Tab strip on the EquippableItemList picker. The count varies per slot.
+    ///   R/L Hand (Weapon / Shield slots): 3 tabs, indexed 0..2
+    ///     0 = "Equippable Weapons"
+    ///     1 = "Equippable Shields"
+    ///     2 = "All Weapons &amp; Shields"  (includes grayed-out non-equippable)
+    ///   Headware / CombatGarb / Accessory: 2 tabs, indexed 0..1
+    ///     0 = "Equippable &lt;slot&gt;"
+    ///     1 = "All &lt;slot&gt;"
+    /// A cycles backward, D cycles forward, both wrap. Live-verified
+    /// 2026-04-15 session 16. State machine stores the raw index; name
+    /// resolution goes through <see cref="TabName"/> using the current
+    /// EquipmentSlot.
+    /// </summary>
+    public static class EquipmentPickerTabs
+    {
+        /// <summary>Tab count for the picker opened on a given slot.</summary>
+        public static int CountFor(EquipmentSlot slot) =>
+            slot == EquipmentSlot.Weapon || slot == EquipmentSlot.Shield ? 3 : 2;
+
+        /// <summary>Display name for a given slot + tab index.</summary>
+        public static string TabName(EquipmentSlot slot, int tabIndex) => (slot, tabIndex) switch
+        {
+            // R/L Hand tabs
+            (EquipmentSlot.Weapon or EquipmentSlot.Shield, 0) => "Equippable Weapons",
+            (EquipmentSlot.Weapon or EquipmentSlot.Shield, 1) => "Equippable Shields",
+            (EquipmentSlot.Weapon or EquipmentSlot.Shield, 2) => "All Weapons & Shields",
+            // Other slot tabs
+            (EquipmentSlot.Headware,   0) => "Equippable Headwear",
+            (EquipmentSlot.Headware,   1) => "All Headwear",
+            (EquipmentSlot.CombatGarb, 0) => "Equippable Combat Garb",
+            (EquipmentSlot.CombatGarb, 1) => "All Combat Garb",
+            (EquipmentSlot.Accessory,  0) => "Equippable Accessories",
+            (EquipmentSlot.Accessory,  1) => "All Accessories",
+            _ => "Unknown"
+        };
+    }
+
+    /// <summary>
     /// Identifies which ability slot is highlighted in the right column of
     /// EquipmentAndAbilities. Row order matches the game's right-column layout.
     /// </summary>

@@ -589,6 +589,27 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("viewedUnit")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ViewedUnit { get; set; }
+
+        /// <summary>
+        /// Name of the item currently equipped in the slot this picker was
+        /// opened for. Populated on EquippableWeapons / Shields / Headware
+        /// / CombatGarb / Accessories pickers only. Helps Claude compare
+        /// "what I have now" against the hovered alternative without
+        /// jumping back to EquipmentAndAbilities.
+        /// </summary>
+        [JsonPropertyName("equippedItem")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? EquippedItem { get; set; }
+
+        /// <summary>
+        /// Active picker-tab display name on EquippableItemList pickers.
+        /// Examples: "Equippable Weapons" / "Equippable Shields" /
+        /// "All Weapons &amp; Shields" (R/L Hand), or "Equippable Headwear" /
+        /// "All Headwear" (Helm slot), etc. A/D keys cycle tabs; wraps.
+        /// </summary>
+        [JsonPropertyName("pickerTab")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? PickerTab { get; set; }
     }
 
     public class UiDetail

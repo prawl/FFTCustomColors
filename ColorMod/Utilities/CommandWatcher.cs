@@ -3930,6 +3930,82 @@ namespace FFTColorCustomizer.Utilities
                     }
                 }
 
+                // Equipment pickers (EquippableWeapons / Shields / Headware /
+                // CombatGarb / Accessories) — partial surface per TODO §10.6.
+                // What we ship this session (session 16): memory-backed cursor
+                // row + equippedItem=<current> + pickerTab=<tab name>. What we
+                // can't ship yet: ui=<hovered item name> + availableWeapons[]
+                // list — both blocked on the per-job equippability table
+                // (TODO §0). Without that table we can know the row INDEX
+                // from memory but can't map it back to an item name, because
+                // the in-game list is filtered by the viewed unit's job and
+                // equipment proficiencies (Gallant Knight sees Ragnarok;
+                // Chemist does not). The resolver still runs so the cursor
+                // row is surfaced; a future session will close the mapping.
+                bool isEquipPicker = screen.Name == "EquippableWeapons"
+                    || screen.Name == "EquippableShields"
+                    || screen.Name == "EquippableHeadware"
+                    || screen.Name == "EquippableCombatGarb"
+                    || screen.Name == "EquippableAccessories";
+                if (!isEquipPicker && (_resolvedEquipPickerCursorAddr != 0 || _equipPickerCursorResolveAttempted))
+                {
+                    _resolvedEquipPickerCursorAddr = 0L;
+                    _equipPickerCursorResolveAttempted = false;
+                }
+                if (isEquipPicker && ScreenMachine != null && Explorer != null)
+                {
+                    // Clear the stale battle-menu carryover label.
+                    screen.UI = null;
+
+                    // Auto-resolve on first screen call per picker visit.
+                    // Gate on MenuDepth == 2 so the 6 oscillation keys don't
+                    // leak into a transitioning panel — same rationale as
+                    // the JobSelection resolver gate.
+                    if (!_equipPickerCursorResolveAttempted && screen.MenuDepth == 2)
+                    {
+                        _equipPickerCursorResolveAttempted = true;
+                        int _unused;
+                        var info = ResolveEquipPickerCursor(out _unused);
+                        if (info != null) ModLogger.Log($"[CommandBridge] auto {info}");
+                    }
+
+                    // Read the row index if we have a resolved address.
+                    int? memRow = null;
+                    if (_resolvedEquipPickerCursorAddr != 0)
+                    {
+                        var cur = Explorer.ReadAbsolute((nint)_resolvedEquipPickerCursorAddr, 1);
+                        if (cur.HasValue) memRow = (int)cur.Value.value;
+                    }
+                    if (memRow.HasValue) screen.CursorRow = memRow.Value;
+
+                    // Populate equippedItem=<current> from the viewed unit's
+                    // roster loadout. Slot-specific field read via RosterReader.
+                    if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
+                    if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+                    var viewedSlot = _rosterReader.GetSlotByDisplayOrder(ScreenMachine.ViewedGridIndex);
+                    if (viewedSlot != null)
+                    {
+                        var loadout = _rosterReader.ReadLoadout(viewedSlot.SlotIndex);
+                        string? equippedItemName = ScreenMachine.CurrentEquipmentSlot switch
+                        {
+                            EquipmentSlot.Weapon     => loadout?.WeaponName,
+                            EquipmentSlot.Shield     => loadout?.ShieldName ?? loadout?.LeftHandName,
+                            EquipmentSlot.Headware   => loadout?.HelmName,
+                            EquipmentSlot.CombatGarb => loadout?.BodyName,
+                            EquipmentSlot.Accessory  => loadout?.AccessoryName,
+                            _ => null,
+                        };
+                        screen.EquippedItem = equippedItemName;
+                    }
+
+                    // Surface the current picker tab name (state-machine
+                    // tracked — A/D key history). Depends on the slot that
+                    // opened the picker.
+                    screen.PickerTab = EquipmentPickerTabs.TabName(
+                        ScreenMachine.CurrentEquipmentSlot,
+                        ScreenMachine.PickerTab);
+                }
+
                 // JobSelection — surface cursor position + ui=<hovered job>.
                 // Heap cursor byte shuffles across game sessions, so we do
                 // rescan-on-entry (same pattern as picker cursors). Byte
