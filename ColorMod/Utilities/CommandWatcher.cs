@@ -3081,6 +3081,20 @@ namespace FFTColorCustomizer.Utilities
                     }
                 }
 
+                // Clear the default "Move/Abilities/Wait/..." UI label on screens
+                // where the battle menuCursor byte is meaningless. That byte is
+                // populated from a battle-only address and defaults to 0 → "Move"
+                // outside of battle, producing misleading labels like
+                // `[WorldMap] ui=Move` or `[TravelList] ui=Move`. Screens below
+                // that DO have a valid ui= set their own label later in this method.
+                if (screen.Name == "WorldMap" ||
+                    screen.Name == "TravelList" ||
+                    screen.Name == "TitleScreen" ||
+                    screen.Name == "EncounterDialog")
+                {
+                    screen.UI = null;
+                }
+
                 // CharacterStatus sidebar label: populate screen.UI from the state
                 // machine's SidebarIndex (0=Equipment & Abilities, 1=Job, 2=Combat Sets).
                 // This replaces the need for a memory scan — sidebar is purely
