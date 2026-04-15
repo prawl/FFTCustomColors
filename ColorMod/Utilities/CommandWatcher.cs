@@ -3748,14 +3748,21 @@ namespace FFTColorCustomizer.Utilities
                 // names keeps the payload populated even when the state
                 // machine thinks we're on a different tab than the game
                 // actually shows (drift scenario documented in TODO §0).
+                // Inventory surface: PartyMenu tabs get the full list (via
+                // ReadAll); OutfitterSell gets only sellable entries (those
+                // with a known sell price). Both share the same DTO shape so
+                // fft.sh can render them with one code path.
                 bool onPartyMenuAnyTab = screen.Name == "PartyMenu"
                     || screen.Name == "PartyMenuInventory"
                     || screen.Name == "PartyMenuChronicle"
                     || screen.Name == "PartyMenuOptions";
-                if (onPartyMenuAnyTab && Explorer != null)
+                bool onOutfitterSell = screen.Name == "OutfitterSell";
+                if ((onPartyMenuAnyTab || onOutfitterSell) && Explorer != null)
                 {
                     var invReader = new GameBridge.InventoryReader(Explorer);
-                    var entries = invReader.ReadAll();
+                    var entries = onOutfitterSell
+                        ? invReader.ReadSellable()
+                        : invReader.ReadAll();
                     if (entries.Count > 0)
                     {
                         var payload = new List<InventoryItem>(entries.Count);
@@ -3767,6 +3774,7 @@ namespace FFTColorCustomizer.Utilities
                                 Count = e.Count,
                                 Name = e.Name,
                                 Type = e.Type,
+                                SellPrice = e.SellPrice,
                             });
                         }
                         screen.Inventory = payload;

@@ -880,6 +880,15 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("type")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Type { get; set; }
+
+        /// <summary>
+        /// Gil amount this item sells for at an Outfitter. Null for items
+        /// without a known buy price (story drops, unique equipment).
+        /// Computed as BuyPrice / 2 via <see cref="GameBridge.ItemPrices"/>.
+        /// </summary>
+        [JsonPropertyName("sellPrice")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? SellPrice { get; set; }
     }
 
     /// <summary>

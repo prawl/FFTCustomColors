@@ -276,9 +276,10 @@ _fmt_screen_compact() {
   # total owned. Lets Claude see scale without iterating the full array.
   # Full inventory[] is in verbose JSON only (184+ entries would bloat compact).
   # Rendered on any screen where the backend populated screen.inventory
-  # (currently any PartyMenu tab — the state-machine tab discriminator
+  # (PartyMenu tabs + OutfitterSell — the state-machine tab discriminator
   # can drift, so we use payload presence instead of screen name).
-  local INV_SUMMARY=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const inv=j.screen?.inventory;if(!inv||!inv.length){return;}const total=inv.reduce((a,e)=>a+(e.count||0),0);process.stdout.write(inv.length+' unique / '+total+' total owned');}catch(e){}});" 2>/dev/null)
+  # OutfitterSell additionally surfaces total gil if the player sold everything.
+  local INV_SUMMARY=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const inv=j.screen?.inventory;if(!inv||!inv.length){return;}const name=j.screen?.name;const total=inv.reduce((a,e)=>a+(e.count||0),0);if(name==='OutfitterSell'){const gil=inv.reduce((a,e)=>a+((e.sellPrice||0)*(e.count||0)),0);process.stdout.write(inv.length+' sellable / '+total+' units / ~'+gil.toLocaleString()+' gil est (prices ~buy/2, not ground-truth)');}else{process.stdout.write(inv.length+' unique / '+total+' total owned');}}catch(e){}});" 2>/dev/null)
   [ -n "$INV_SUMMARY" ] && printf '%b\n' "  $(_col "$_C_LOC" "inventory=$INV_SUMMARY")"
 
   # Subordinate lines — each on its own indented line. Suppressed on
@@ -1658,15 +1659,18 @@ try{
     #            picker tab layout so Claude can quickly scan "what
     #            consumables do I have" vs "what swords".
     # Verbose inventory dump — render whenever the backend populated
-    # screen.inventory on any PartyMenu tab. State-machine drift can
-    # misname the tab so we check payload presence, not screen name.
-    if [[ "$SCR" == PartyMenu* ]] && [ -f "$B/response.json" ]; then
+    # screen.inventory on PartyMenu tabs or OutfitterSell. State-machine
+    # drift can misname the tab so we check payload presence, not screen name.
+    # On OutfitterSell each item line adds `sell=N gil` and the footer
+    # adds a total-gil-if-sold summary.
+    if [[ "$SCR" == PartyMenu* || "$SCR" == "OutfitterSell" ]] && [ -f "$B/response.json" ]; then
       if $verbose; then
         cat "$B/response.json" | node -e "
 try{
   const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
   const inv=j.screen&&j.screen.inventory;
   if(!inv||!inv.length){console.log('(inventory empty)');process.exit(0);}
+  const isSell=(j.screen.name==='OutfitterSell');
   // Group by type. Unknown types land in '(unmapped)' so Claude sees
   // items we haven't named yet (e.g. IC-exclusive items above id 315).
   const groups={};
@@ -1681,11 +1685,25 @@ try{
     if(!es)return;
     seen.add(type);
     const total=es.reduce((a,e)=>a+(e.count||0),0);
+    const groupGil=es.reduce((a,e)=>a+((e.sellPrice||0)*(e.count||0)),0);
     console.log('');
-    console.log(type+' ('+es.length+' unique, '+total+' total):');
+    if(isSell){
+      console.log(type+' ('+es.length+' unique, '+total+' units, ~'+groupGil.toLocaleString()+' gil):');
+    }else{
+      console.log(type+' ('+es.length+' unique, '+total+' total):');
+    }
     for(const e of es){
       const nm=e.name||('item_'+e.id);
-      console.log('  '+String(e.count).padStart(3)+'  '+nm+'  [id='+e.id+']');
+      const base='  '+String(e.count).padStart(3)+'  '+nm;
+      const idTag='  [id='+e.id+']';
+      if(isSell){
+        // Sell price is a buy/2 estimate from ItemPrices.cs — not ground-truth.
+        // ~ prefix reminds Claude it's approximate until we build a verified table.
+        const sell=(e.sellPrice!=null)?('sell~'+e.sellPrice+' gil'):('sell=?');
+        console.log(base+idTag+'  '+sell);
+      }else{
+        console.log(base+idTag);
+      }
     }
   };
   order.forEach(render);
@@ -1693,7 +1711,12 @@ try{
   Object.keys(groups).forEach(t=>{ if(!seen.has(t)) render(t); });
   const total=inv.reduce((a,e)=>a+(e.count||0),0);
   console.log('');
-  console.log('Total: '+inv.length+' unique items, '+total+' owned');
+  if(isSell){
+    const totalGil=inv.reduce((a,e)=>a+((e.sellPrice||0)*(e.count||0)),0);
+    console.log('Sellable: '+inv.length+' unique items, '+total+' units, ~'+totalGil.toLocaleString()+' gil if all sold');
+  }else{
+    console.log('Total: '+inv.length+' unique items, '+total+' owned');
+  }
 }catch(e){ console.error('[screen] inventory render failed: '+e.message); }
 " 2>/dev/null
       fi

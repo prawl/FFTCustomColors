@@ -127,4 +127,79 @@ public class InventoryReaderTests
         // this whole reader needs re-verification.
         Assert.Equal(RosterReader.RosterBase - 272, InventoryReader.InventoryBase);
     }
+
+    [Fact]
+    public void DecodeRaw_SellPricePopulated_FromItemPrices()
+    {
+        // Dagger is in ItemPrices at 200 gil buy → 100 gil sell.
+        var bytes = new byte[272];
+        bytes[1] = 4;
+        var result = InventoryReader.DecodeRaw(bytes);
+        Assert.Single(result);
+        Assert.Equal(100, result[0].SellPrice);
+    }
+
+    [Fact]
+    public void DecodeRaw_SellPriceNull_ForItemWithoutBuyPrice()
+    {
+        // Ragnarok (ID 36) is a story drop not sold anywhere. SellPrice null.
+        var bytes = new byte[272];
+        bytes[36] = 1;
+        var result = InventoryReader.DecodeRaw(bytes);
+        Assert.Single(result);
+        Assert.Null(result[0].SellPrice);
+    }
+
+    [Fact]
+    public void DecodeRaw_SellPriceNull_ForUnmappedItem()
+    {
+        // ID 269 is beyond ItemData's current coverage (chemistitem range
+        // tops out around 259). Not in ItemPrices. Count > 0 forces the
+        // entry to be emitted; SellPrice must be null.
+        var bytes = new byte[272];
+        bytes[269] = 1;
+        var result = InventoryReader.DecodeRaw(bytes);
+        Assert.Single(result);
+        Assert.Null(result[0].SellPrice);
+    }
+
+    [Fact]
+    public void DecodeRaw_PotionSellPrice_Is25()
+    {
+        // Potion = ID 240, buy 50 → sell 25 (/2 integer div).
+        var bytes = new byte[272];
+        bytes[240] = 10;
+        var result = InventoryReader.DecodeRaw(bytes);
+        Assert.Single(result);
+        Assert.Equal(25, result[0].SellPrice);
+    }
+
+    // ReadSellable filter tests use DecodeRaw as a helper — simulates the
+    // full pipeline without needing a live MemoryExplorer.
+
+    [Fact]
+    public void FilterSellable_OnlyEntriesWithSellPrice()
+    {
+        // Simulate a mixed inventory: 1 Dagger (sellable), 1 Ragnarok (no price).
+        var bytes = new byte[272];
+        bytes[1] = 4;   // Dagger — has sell price
+        bytes[36] = 1;  // Ragnarok — no sell price
+        bytes[240] = 5; // Potion — has sell price
+        var all = InventoryReader.DecodeRaw(bytes);
+        Assert.Equal(3, all.Count);
+        var sellable = all.FindAll(e => e.SellPrice.HasValue);
+        Assert.Equal(2, sellable.Count);
+        Assert.Contains(sellable, e => e.ItemId == 1);
+        Assert.Contains(sellable, e => e.ItemId == 240);
+        Assert.DoesNotContain(sellable, e => e.ItemId == 36);
+    }
+
+    [Fact]
+    public void FilterSellable_EmptyInventory_ReturnsEmptyList()
+    {
+        var bytes = new byte[272];
+        var all = InventoryReader.DecodeRaw(bytes);
+        var sellable = all.FindAll(e => e.SellPrice.HasValue);
+        Assert.Empty(sellable);
+    }
 }

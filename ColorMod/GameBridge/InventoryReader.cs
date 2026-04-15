@@ -37,7 +37,8 @@ namespace FFTColorCustomizer.GameBridge
         /// <summary>
         /// An item owned by the player: ID, count, and display metadata
         /// pulled from ItemData.cs. Name is null for IDs we haven't mapped
-        /// yet (items above ItemData.cs's coverage).
+        /// yet (items above ItemData.cs's coverage). SellPrice is null for
+        /// items without a known buy price (story drops, unique gear).
         /// </summary>
         public class InventoryEntry
         {
@@ -45,6 +46,7 @@ namespace FFTColorCustomizer.GameBridge
             public int Count { get; set; }
             public string? Name { get; set; }
             public string? Type { get; set; }
+            public int? SellPrice { get; set; }
         }
 
         /// <summary>
@@ -82,6 +84,8 @@ namespace FFTColorCustomizer.GameBridge
         /// Pure decode from a raw 272-byte inventory array to structured
         /// entries. Extracted for unit testing — the memory-read side is
         /// handled by ReadAll(). Ordered by item ID; zero counts skipped.
+        /// SellPrice is populated via <see cref="ItemPrices.GetSellPrice"/>
+        /// (null for items without a known buy price).
         /// </summary>
         public static List<InventoryEntry> DecodeRaw(byte[] bytes)
         {
@@ -99,9 +103,22 @@ namespace FFTColorCustomizer.GameBridge
                     Count = count,
                     Name = info?.Name,
                     Type = info?.Type,
+                    SellPrice = ItemPrices.GetSellPrice(id),
                 });
             }
             return results;
+        }
+
+        /// <summary>
+        /// Return only entries that have a known sell price — i.e. items
+        /// the player can sell at an Outfitter for a known amount of gil.
+        /// Excludes story drops and unique equipment whose sell price is
+        /// unknown. Use this for the Outfitter Sell screen listing.
+        /// </summary>
+        public List<InventoryEntry> ReadSellable()
+        {
+            var all = ReadAll();
+            return all.FindAll(e => e.SellPrice.HasValue);
         }
 
         /// <summary>
