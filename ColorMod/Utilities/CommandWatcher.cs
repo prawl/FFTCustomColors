@@ -3555,15 +3555,23 @@ namespace FFTColorCustomizer.Utilities
                 // JobSelection — surface cursor position + ui=<hovered job>.
                 // Heap cursor byte shuffles across game sessions, so we do
                 // rescan-on-entry (same pattern as picker cursors). Byte
-                // value is a flat linear index into JobGridLayout. Character
-                // kind is Ramza (ViewedGridIndex == 0) vs GenericMale/Female
-                // — generic gender isn't yet modeled, default to male until
-                // the roster reader surfaces per-unit gender. When the
-                // resolver hasn't produced an address yet, we still populate
-                // cursorRow/cursorCol from the state machine's tracked
-                // position (defaults to (0,0) on open — matches AC2/AC3
-                // defaults of Gallant Knight / Squire). ui= falls back to
-                // whatever class is at (0,0) in that case.
+                // value is a flat linear index into JobGridLayout.
+                //
+                // The grid layout varies per-character:
+                // - Story characters get their unique class at (0,0):
+                //   Ramza → Gallant Knight, Agrias → Holy Knight,
+                //   Mustadio → Machinist, etc. See
+                //   JobGridLayout.StoryCharacterUniqueClass for the full
+                //   list (verified live 2026-04-15).
+                // - Generic units get "Squire" at (0,0).
+                // - Gender toggles (2,4): Bard for males, Dancer for
+                //   females. Generic job IDs are odd=male / even=female.
+                //
+                // We identify the viewed unit via the state machine's
+                // saved PartyMenu cursor index (preserved across the
+                // Enter that opened CharacterStatus) → DisplayOrder
+                // lookup in the roster. From there, jobId parity derives
+                // gender for generics.
                 bool onJobSelection = screen.Name == "JobSelection";
                 if (!onJobSelection && (_resolvedJobCursorAddr != 0 || _jobCursorResolveAttempted))
                 {
@@ -3580,9 +3588,21 @@ namespace FFTColorCustomizer.Utilities
                     // meaningless outside battle.
                     screen.UI = null;
 
-                    var kind = ScreenMachine.IsRamza
-                        ? JobGridLayout.CharacterKind.Ramza
-                        : JobGridLayout.CharacterKind.GenericMale;
+                    // Resolve the viewed unit via the roster reader.
+                    if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
+                    if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+                    int viewedGridIndex = ScreenMachine.ViewedGridIndex;
+                    var viewed = _rosterReader.GetSlotByDisplayOrder(viewedGridIndex);
+
+                    string? unitName = viewed?.Name;
+                    bool isFemale = viewed != null && JobGridLayout.IsGenericFemale(viewed.Job);
+                    // Story characters carry their own gender implicitly
+                    // via the unique-class lookup — gender only matters
+                    // for the generic (2,4) cell, which a story
+                    // character with an out-of-range jobId won't touch
+                    // (generic rows are identical regardless of gender
+                    // for a story unit's display).
+                    var layout = JobGridLayout.ForUnit(unitName, isFemale);
 
                     // Auto-resolve the heap cursor on first JobSelection read
                     // each session (matches picker behavior). Visible ~2s
@@ -3605,7 +3625,7 @@ namespace FFTColorCustomizer.Utilities
                         if (curByte.HasValue)
                         {
                             int flatIdx = (int)curByte.Value.value;
-                            var rc = JobGridLayout.IndexToRowCol(kind, flatIdx);
+                            var rc = layout.IndexToRowCol(flatIdx);
                             if (rc.HasValue)
                             {
                                 cursorRow = rc.Value.Row;
@@ -3616,7 +3636,7 @@ namespace FFTColorCustomizer.Utilities
                     screen.CursorRow = cursorRow;
                     screen.CursorCol = cursorCol;
 
-                    var hoveredClass = JobGridLayout.GetClassAt(kind, cursorRow, cursorCol);
+                    var hoveredClass = layout.GetClassAt(cursorRow, cursorCol);
                     if (hoveredClass != null) screen.UI = hoveredClass;
                 }
 

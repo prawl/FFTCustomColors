@@ -3,17 +3,25 @@ using System.Collections.Generic;
 namespace FFTColorCustomizer.GameBridge
 {
     /// <summary>
-    /// Static layout of the JobSelection grid per character type. Row widths
-    /// VARY: for Ramza Ch4 the grid is 6/7/6 cells per row (confirmed
-    /// live 2026-04-15 via cursor wrap tests — see verify notes in
+    /// Static layout of the JobSelection grid. Row widths are 6/7/6 cells
+    /// (verified live 2026-04-15 on Ramza Ch4 + Agrias — see
     /// <c>project_job_grid_cursor.md</c>). The heap cursor byte is a FLAT
-    /// LINEAR INDEX (0..N-1) across the enumerated order, NOT <c>row*6+col</c>
-    /// — that earlier hypothesis only held within row 0 because its width is
-    /// 6. Row 1's 7th cell (Geomancer for Ramza) makes the uniform grid
-    /// formula incorrect.
+    /// LINEAR INDEX (0..N-1) row-major across the grid, NOT
+    /// <c>row*6+col</c>.
     ///
-    /// Cell names match the class labels rendered in-game — used directly
-    /// as <c>ui=&lt;hovered job&gt;</c>.
+    /// Per-character variations (confirmed live 2026-04-15):
+    /// - <b>Story characters</b> (Ramza, Agrias, Mustadio, Orlandeau…) get
+    ///   their UNIQUE class at (0,0) — Gallant Knight, Holy Knight,
+    ///   Machinist, Thunder God respectively. All other cells are the
+    ///   standard generic grid.
+    /// - <b>Generic units</b> get "Squire" at (0,0).
+    /// - <b>Gender</b> controls cell (2,4): Bard for males, Dancer for
+    ///   females. Encoded in the job ID parity (odd=male, even=female
+    ///   for generic IDs; story characters carry their own gender).
+    ///
+    /// Call <see cref="ForUnit"/> to build a layout tailored to a specific
+    /// roster slot; the legacy <see cref="CharacterKind"/> enum overloads
+    /// remain for tests + back-compat.
     /// </summary>
     public static class JobGridLayout
     {
@@ -24,133 +32,192 @@ namespace FFTColorCustomizer.GameBridge
             Ramza,
         }
 
-        // Ramza Ch4 grid, 6/7/6. Verified live 2026-04-15:
-        // - 6 Rights from Gallant Knight wraps back to Gallant Knight.
-        // - 6 Rights from Black Mage lands on Geomancer (7th cell).
-        // - 7 Rights from Black Mage wraps back to Black Mage.
-        // - Down from Black Mage → Dragoon. 6 Rights on row 2 wraps.
-        // Cell names read directly from in-game labels.
-        private static readonly string?[][] RamzaGrid =
+        // Standard per-row template used by everyone. Position (0,0) and
+        // (2,4) are placeholders that ForUnit() patches per character.
+        private const string PlaceholderZero = "__ZERO__";
+        private const string PlaceholderBard = "__BARDLIKE__";
+        private static readonly string?[][] StandardGrid =
         {
-            new string?[] { "Gallant Knight", "Chemist", "Knight", "Archer", "Monk", "White Mage" },
+            new string?[] { PlaceholderZero, "Chemist", "Knight", "Archer", "Monk", "White Mage" },
             new string?[] { "Black Mage", "Time Mage", "Summoner", "Thief", "Orator", "Mystic", "Geomancer" },
-            new string?[] { "Dragoon", "Samurai", "Ninja", "Arithmetician", "Bard", "Mime" },
-        };
-
-        // Generic male grid — inferred from Ramza's pattern, with Squire
-        // replacing Gallant Knight at (0,0) and Bard (male only) at row 2.
-        // NOT YET LIVE-VERIFIED — expect tweaks once confirmed on a generic
-        // unit.
-        private static readonly string?[][] GenericMaleGrid =
-        {
-            new string?[] { "Squire", "Chemist", "Knight", "Archer", "Monk", "White Mage" },
-            new string?[] { "Black Mage", "Time Mage", "Summoner", "Thief", "Orator", "Mystic", "Geomancer" },
-            new string?[] { "Dragoon", "Samurai", "Ninja", "Arithmetician", "Bard", "Mime" },
-        };
-
-        // Generic female grid — Dancer replaces Bard at the same cell.
-        // NOT YET LIVE-VERIFIED.
-        private static readonly string?[][] GenericFemaleGrid =
-        {
-            new string?[] { "Squire", "Chemist", "Knight", "Archer", "Monk", "White Mage" },
-            new string?[] { "Black Mage", "Time Mage", "Summoner", "Thief", "Orator", "Mystic", "Geomancer" },
-            new string?[] { "Dragoon", "Samurai", "Ninja", "Arithmetician", "Dancer", "Mime" },
-        };
-
-        private static string?[][] GetGrid(CharacterKind kind) => kind switch
-        {
-            CharacterKind.Ramza => RamzaGrid,
-            CharacterKind.GenericFemale => GenericFemaleGrid,
-            _ => GenericMaleGrid,
+            new string?[] { "Dragoon", "Samurai", "Ninja", "Arithmetician", PlaceholderBard, "Mime" },
         };
 
         /// <summary>
-        /// Number of rows in the grid for this character kind.
+        /// Story-character display name → unique class at grid (0,0).
+        /// Verified 2026-04-15: Ramza, Agrias. Others inferred from
+        /// roster job-name data (<see cref="CharacterData.JobNameById"/>)
+        /// — generally the story unit's starting job is their unique
+        /// class, which appears at (0,0) in their JobSelection grid.
+        ///
+        /// Names use the WotL localizations surfaced by
+        /// <c>NameTableLookup</c> — match exactly.
         /// </summary>
-        public static int GetRowCount(CharacterKind kind) => GetGrid(kind).Length;
-
-        /// <summary>
-        /// Number of columns in the given row (row widths vary — row 1 is 7
-        /// for Ramza, rows 0/2 are 6).
-        /// </summary>
-        public static int GetRowWidth(CharacterKind kind, int row)
-        {
-            var grid = GetGrid(kind);
-            if (row < 0 || row >= grid.Length) return 0;
-            return grid[row].Length;
-        }
-
-        /// <summary>
-        /// Returns the class name at (row, col), or null if out of range.
-        /// </summary>
-        public static string? GetClassAt(CharacterKind kind, int row, int col)
-        {
-            var grid = GetGrid(kind);
-            if (row < 0 || row >= grid.Length) return null;
-            var rowCells = grid[row];
-            if (col < 0 || col >= rowCells.Length) return null;
-            return rowCells[col];
-        }
-
-        /// <summary>
-        /// Converts a flat linear cursor index (the heap cursor byte's value)
-        /// to a (row, col) pair using the character's row widths. Returns
-        /// null if the index is out of range.
-        /// </summary>
-        public static (int Row, int Col)? IndexToRowCol(CharacterKind kind, int index)
-        {
-            if (index < 0) return null;
-            var grid = GetGrid(kind);
-            int remaining = index;
-            for (int r = 0; r < grid.Length; r++)
+        public static readonly IReadOnlyDictionary<string, string> StoryCharacterUniqueClass =
+            new Dictionary<string, string>
             {
-                int width = grid[r].Length;
-                if (remaining < width) return (r, remaining);
-                remaining -= width;
+                ["Ramza"] = "Gallant Knight",
+                ["Agrias"] = "Holy Knight",
+                ["Mustadio"] = "Machinist",
+                ["Rapha"] = "Skyseer",
+                ["Marach"] = "Netherseer",
+                ["Beowulf"] = "Templar",
+                ["Construct 8"] = "Steel Giant",
+                ["Orlandeau"] = "Thunder God",
+                ["Meliadoul"] = "Divine Knight",
+                ["Reis"] = "Dragonkin",
+                ["Cloud"] = "Soldier",
+                ["Luso"] = "Game Hunter",
+                ["Balthier"] = "Sky Pirate",
+                // Delita / Ovelia / Alma / Wiegraf etc — only appear as
+                // NPCs or bosses, not in the party grid. Add when they
+                // become player-controllable.
+            };
+
+        /// <summary>
+        /// Per-character grid snapshot. Use <see cref="ForUnit"/> to build.
+        /// Exposes the same IndexToRowCol / RowColToIndex / GetClassAt
+        /// semantics as the legacy CharacterKind overloads.
+        /// </summary>
+        public readonly struct Layout
+        {
+            private readonly string?[][] _grid;
+            internal Layout(string?[][] grid) { _grid = grid; }
+
+            public int RowCount => _grid.Length;
+
+            public int GetRowWidth(int row)
+            {
+                if (row < 0 || row >= _grid.Length) return 0;
+                return _grid[row].Length;
             }
-            return null;
-        }
 
-        /// <summary>
-        /// Inverse of <see cref="IndexToRowCol"/> — converts (row, col) to
-        /// the flat linear index. Returns -1 if (row, col) is out of range.
-        /// </summary>
-        public static int RowColToIndex(CharacterKind kind, int row, int col)
-        {
-            var grid = GetGrid(kind);
-            if (row < 0 || row >= grid.Length) return -1;
-            if (col < 0 || col >= grid[row].Length) return -1;
-            int idx = 0;
-            for (int r = 0; r < row; r++) idx += grid[r].Length;
-            return idx + col;
-        }
-
-        /// <summary>
-        /// Flat enumeration of all populated cells in grid order.
-        /// </summary>
-        public static IEnumerable<(int Row, int Col, string ClassName)> EnumerateCells(CharacterKind kind)
-        {
-            var grid = GetGrid(kind);
-            for (int r = 0; r < grid.Length; r++)
+            public string? GetClassAt(int row, int col)
             {
-                for (int c = 0; c < grid[r].Length; c++)
+                if (row < 0 || row >= _grid.Length) return null;
+                var rowCells = _grid[row];
+                if (col < 0 || col >= rowCells.Length) return null;
+                return rowCells[col];
+            }
+
+            public (int Row, int Col)? IndexToRowCol(int index)
+            {
+                if (index < 0) return null;
+                int remaining = index;
+                for (int r = 0; r < _grid.Length; r++)
                 {
-                    var name = grid[r][c];
-                    if (name != null)
-                        yield return (r, c, name);
+                    int width = _grid[r].Length;
+                    if (remaining < width) return (r, remaining);
+                    remaining -= width;
+                }
+                return null;
+            }
+
+            public int RowColToIndex(int row, int col)
+            {
+                if (row < 0 || row >= _grid.Length) return -1;
+                if (col < 0 || col >= _grid[row].Length) return -1;
+                int idx = 0;
+                for (int r = 0; r < row; r++) idx += _grid[r].Length;
+                return idx + col;
+            }
+
+            public int TotalCells
+            {
+                get
+                {
+                    int total = 0;
+                    for (int r = 0; r < _grid.Length; r++) total += _grid[r].Length;
+                    return total;
+                }
+            }
+
+            public IEnumerable<(int Row, int Col, string ClassName)> EnumerateCells()
+            {
+                for (int r = 0; r < _grid.Length; r++)
+                {
+                    for (int c = 0; c < _grid[r].Length; c++)
+                    {
+                        var name = _grid[r][c];
+                        if (name != null)
+                            yield return (r, c, name);
+                    }
                 }
             }
         }
 
         /// <summary>
-        /// Total count of populated cells in the grid.
+        /// Build the JobSelection grid for a specific unit. <paramref
+        /// name="unitName"/> is the name surfaced by the roster reader
+        /// (null or unknown → generic Squire). <paramref name="isFemale"/>
+        /// controls the Bard/Dancer cell at (2,4) — derive from the
+        /// generic job ID's parity (odd=male, even=female) for generic
+        /// units, or hard-code for known story characters.
         /// </summary>
-        public static int TotalCells(CharacterKind kind)
+        public static Layout ForUnit(string? unitName, bool isFemale)
         {
-            int total = 0;
-            var grid = GetGrid(kind);
-            for (int r = 0; r < grid.Length; r++) total += grid[r].Length;
-            return total;
+            string zeroClass = "Squire";
+            if (unitName != null && StoryCharacterUniqueClass.TryGetValue(unitName, out var story))
+            {
+                zeroClass = story;
+            }
+            string bardLike = isFemale ? "Dancer" : "Bard";
+
+            var grid = new string?[StandardGrid.Length][];
+            for (int r = 0; r < StandardGrid.Length; r++)
+            {
+                var src = StandardGrid[r];
+                var dst = new string?[src.Length];
+                for (int c = 0; c < src.Length; c++)
+                {
+                    dst[c] = src[c] switch
+                    {
+                        PlaceholderZero => zeroClass,
+                        PlaceholderBard => bardLike,
+                        _ => src[c],
+                    };
+                }
+                grid[r] = dst;
+            }
+            return new Layout(grid);
         }
+
+        /// <summary>
+        /// Infer gender from a generic job ID. Generic human jobs use
+        /// odd=male, even=female pairs. The pairs live in two ranges:
+        /// 0x01-0x24 (Chemist → Mime) and 0x4A-0x4B (Squire), plus the
+        /// WotL-exclusive 0xA4-0xA7 (Dark Knight, Onion Knight). Returns
+        /// false for any ID outside those pairs (story-character jobs
+        /// handle gender via the unique-class lookup).
+        /// </summary>
+        public static bool IsGenericFemale(int jobId)
+        {
+            bool inPair =
+                (jobId >= 0x01 && jobId <= 0x24) ||
+                (jobId >= 0x4A && jobId <= 0x4B) ||
+                (jobId >= 0xA4 && jobId <= 0xA7);
+            if (!inPair) return false;
+            return (jobId & 1) == 0;
+        }
+
+        // ================================================================
+        // Legacy CharacterKind API — kept for existing tests and
+        // back-compat. New callers should use ForUnit instead.
+        // ================================================================
+
+        private static Layout LayoutForKind(CharacterKind kind) => kind switch
+        {
+            CharacterKind.Ramza => ForUnit("Ramza", isFemale: false),
+            CharacterKind.GenericFemale => ForUnit(null, isFemale: true),
+            _ => ForUnit(null, isFemale: false),
+        };
+
+        public static int GetRowCount(CharacterKind kind) => LayoutForKind(kind).RowCount;
+        public static int GetRowWidth(CharacterKind kind, int row) => LayoutForKind(kind).GetRowWidth(row);
+        public static string? GetClassAt(CharacterKind kind, int row, int col) => LayoutForKind(kind).GetClassAt(row, col);
+        public static (int Row, int Col)? IndexToRowCol(CharacterKind kind, int index) => LayoutForKind(kind).IndexToRowCol(index);
+        public static int RowColToIndex(CharacterKind kind, int row, int col) => LayoutForKind(kind).RowColToIndex(row, col);
+        public static int TotalCells(CharacterKind kind) => LayoutForKind(kind).TotalCells;
+        public static IEnumerable<(int Row, int Col, string ClassName)> EnumerateCells(CharacterKind kind) => LayoutForKind(kind).EnumerateCells();
     }
 }
