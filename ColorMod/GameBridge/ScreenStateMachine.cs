@@ -306,32 +306,50 @@ namespace FFTColorCustomizer.GameBridge
                     ChronicleIndex = 0;
                     OptionsIndex = 0;
                     break;
+                // Grid navigation WRAPS in-game on all four axes (verified 2026-04-15
+                // live: 5 Rights from r0c0 on a 5-col PartyMenu grid returns to r0c0,
+                // not clamped at r0c4). Clamping was codified in early tests but
+                // doesn't match real UI behavior and causes the state machine to drift
+                // on rapid cursor chains.
+                // Grid navigation WRAPS in-game on all four axes (verified 2026-04-15
+                // live: 5 Rights from r0c0 on a 5-col PartyMenu grid returns to r0c0,
+                // not clamped at r0c4). Clamping was codified in early tests but
+                // doesn't match real UI behavior and causes the state machine to drift
+                // on rapid cursor chains.
                 case VK_UP:
                     if (Tab == PartyTab.Chronicle) ChronicleIndex = ChronicleUp(ChronicleIndex);
                     else if (Tab == PartyTab.Options) OptionsIndex = OptionsIndex > 0 ? OptionsIndex - 1 : 4;
-                    else if (CursorRow > 0) CursorRow--;
+                    else
+                    {
+                        CursorRow = CursorRow > 0 ? CursorRow - 1 : GridRows - 1;
+                        ClampCursorToRoster(ClampDirection.Up);
+                    }
                     break;
                 case VK_DOWN:
                     if (Tab == PartyTab.Chronicle) ChronicleIndex = ChronicleDown(ChronicleIndex);
                     else if (Tab == PartyTab.Options) OptionsIndex = OptionsIndex < 4 ? OptionsIndex + 1 : 0;
                     else
                     {
-                        if (CursorRow < GridRows - 1) CursorRow++;
-                        ClampCursorToRoster();
+                        CursorRow = CursorRow < GridRows - 1 ? CursorRow + 1 : 0;
+                        ClampCursorToRoster(ClampDirection.Down);
                     }
                     break;
                 case VK_LEFT:
                     if (Tab == PartyTab.Chronicle) ChronicleIndex = ChronicleLeft(ChronicleIndex);
                     else if (Tab == PartyTab.Options) { /* Options list has no horizontal nav */ }
-                    else if (CursorCol > 0) CursorCol--;
+                    else
+                    {
+                        CursorCol = CursorCol > 0 ? CursorCol - 1 : GridColumns - 1;
+                        ClampCursorToRoster(ClampDirection.Left);
+                    }
                     break;
                 case VK_RIGHT:
                     if (Tab == PartyTab.Chronicle) ChronicleIndex = ChronicleRight(ChronicleIndex);
                     else if (Tab == PartyTab.Options) { /* Options list has no horizontal nav */ }
                     else
                     {
-                        if (CursorCol < GridColumns - 1) CursorCol++;
-                        ClampCursorToRoster();
+                        CursorCol = CursorCol < GridColumns - 1 ? CursorCol + 1 : 0;
+                        ClampCursorToRoster(ClampDirection.Right);
                     }
                     break;
                 case VK_RETURN:
@@ -675,20 +693,21 @@ namespace FFTColorCustomizer.GameBridge
                 case VK_ESCAPE:
                     CurrentScreen = GameScreen.CharacterStatus;
                     break;
+                // JobScreen grid wraps on all axes (FFT UI convention).
                 case VK_UP:
-                    if (CursorRow > 0) CursorRow--;
+                    CursorRow = CursorRow > 0 ? CursorRow - 1 : GridRows - 1;
                     // Ramza row 0 is wider (8 cols), rows 1-2 are narrower
                     AdjustJobGridColumns();
                     break;
                 case VK_DOWN:
-                    if (CursorRow < GridRows - 1) CursorRow++;
+                    CursorRow = CursorRow < GridRows - 1 ? CursorRow + 1 : 0;
                     AdjustJobGridColumns();
                     break;
                 case VK_LEFT:
-                    if (CursorCol > 0) CursorCol--;
+                    CursorCol = CursorCol > 0 ? CursorCol - 1 : GridColumns - 1;
                     break;
                 case VK_RIGHT:
-                    if (CursorCol < GridColumns - 1) CursorCol++;
+                    CursorCol = CursorCol < GridColumns - 1 ? CursorCol + 1 : 0;
                     break;
                 case VK_RETURN:
                     CurrentScreen = GameScreen.JobActionMenu;
@@ -760,17 +779,39 @@ namespace FFTColorCustomizer.GameBridge
             }
         }
 
-        private void ClampCursorToRoster()
+        /// <summary>
+        /// Keeps the cursor within the populated portion of the roster. If the
+        /// cursor lands on an empty cell past the last unit, wraps according to
+        /// the direction of the move that caused it (verified live 2026-04-15):
+        ///   - Right past last unit → col 0 same row (if row exists), else r0c0.
+        ///   - Down past last unit → r0 same col.
+        ///   - Up/Left: the wrap already moved us into a populated row/col in
+        ///     most cases; fallback is last-populated cell.
+        /// </summary>
+        private void ClampCursorToRoster(ClampDirection dir = ClampDirection.None)
         {
             int gridIndex = CursorRow * GridColumns + CursorCol;
-            if (gridIndex >= RosterCount)
+            if (gridIndex < RosterCount) return;
+
+            if (dir == ClampDirection.Right && CursorRow * GridColumns < RosterCount)
             {
-                // Back up to last valid position
-                gridIndex = RosterCount - 1;
-                CursorRow = gridIndex / GridColumns;
-                CursorCol = gridIndex % GridColumns;
+                // Past last unit on this row → wrap to col 0 same row.
+                CursorCol = 0;
+                return;
             }
+            if (dir == ClampDirection.Down)
+            {
+                // Past last unit going down → wrap to r0 same col.
+                CursorRow = 0;
+                return;
+            }
+            // Fallback (Up/Left/None or pathological): last valid position.
+            gridIndex = RosterCount - 1;
+            CursorRow = gridIndex / GridColumns;
+            CursorCol = gridIndex % GridColumns;
         }
+
+        private enum ClampDirection { None, Right, Left, Up, Down }
 
         public ScreenState GetScreenState()
         {

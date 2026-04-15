@@ -166,33 +166,62 @@ public class ScreenStateMachineTests
     // --- Grid Navigation ---
 
     [Fact]
-    public void PartyMenu_GridNavigation_5Columns()
+    public void PartyMenu_GridNavigation_5ColumnsWrap()
     {
+        // Verified live 2026-04-15: 5 Rights from r0c0 on a 5-col grid
+        // wraps back to r0c0 in the real game, not clamped at c4.
         var sm = CreateAtScreen(GameScreen.PartyMenu);
         sm.OnKeyPressed(VK_RIGHT); // col 1
         sm.OnKeyPressed(VK_RIGHT); // col 2
         sm.OnKeyPressed(VK_RIGHT); // col 3
         sm.OnKeyPressed(VK_RIGHT); // col 4
-        sm.OnKeyPressed(VK_RIGHT); // still 4 (clamped)
-        Assert.Equal(4, sm.CursorCol);
+        sm.OnKeyPressed(VK_RIGHT); // wraps → col 0 (same row)
+        Assert.Equal(0, sm.CursorCol);
         Assert.Equal(0, sm.CursorRow);
     }
 
     [Fact]
-    public void PartyMenu_ClampsToRosterCount()
+    public void PartyMenu_LeftAtCol0_WrapsToLastCol()
     {
-        var sm = new ScreenStateMachine();
-        sm.SetRosterCount(3); // Only 3 units: positions 0,1,2
-        sm.SetScreen(GameScreen.PartyMenu);
-        sm.OnKeyPressed(VK_DOWN); // try to go to row 1, but only 3 units fit in row 0
-        Assert.Equal(0, sm.CursorRow); // clamped back
+        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        sm.OnKeyPressed(VK_LEFT); // wraps from col 0 to col 4
+        Assert.Equal(4, sm.CursorCol);
     }
 
     [Fact]
-    public void PartyMenu_UpAtTop_StaysAtTop()
+    public void PartyMenu_ClampsToRosterCountOnShortGrid()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        // 3 units fit in row 0 (cols 0,1,2). Pressing Down with no row 1 wraps
+        // to "row GridRows-1" but ClampCursorToRoster yanks us back into the
+        // populated portion. With 3 units: GridRows=1, so Down stays on row 0.
+        var sm = new ScreenStateMachine();
+        sm.SetRosterCount(3);
+        sm.SetScreen(GameScreen.PartyMenu);
+        sm.OnKeyPressed(VK_DOWN);
+        Assert.Equal(0, sm.CursorRow);
+    }
+
+    [Fact]
+    public void PartyMenu_UpAtTop_WrapsToLastRow()
+    {
+        // Grid wraps: Up from row 0 → row GridRows-1, then ClampCursorToRoster
+        // backs up if that lands past the last unit. Here the roster spans all
+        // rows so Up wraps cleanly to the bottom row.
+        var sm = new ScreenStateMachine();
+        sm.SetRosterCount(15); // fills 3 rows (5+5+5)
+        sm.SetScreen(GameScreen.PartyMenu);
         sm.OnKeyPressed(VK_UP);
+        Assert.Equal(2, sm.CursorRow);
+        Assert.Equal(0, sm.CursorCol);
+    }
+
+    [Fact]
+    public void PartyMenu_DownAtLastRow_WrapsToTop()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetRosterCount(15);
+        sm.SetScreen(GameScreen.PartyMenu);
+        for (int i = 0; i < 3; i++) sm.OnKeyPressed(VK_DOWN); // 0→1→2→0 (wrap)
         Assert.Equal(0, sm.CursorRow);
     }
 
@@ -223,8 +252,9 @@ public class ScreenStateMachineTests
         sm.OnKeyPressed(VK_RETURN); // → JobScreen
         Assert.Equal(6, sm.GridColumns);
 
+        // Wraps: 10 Rights on 6-col grid = 10 % 6 = 4
         for (int i = 0; i < 10; i++) sm.OnKeyPressed(VK_RIGHT);
-        Assert.Equal(5, sm.CursorCol); // clamped at 5
+        Assert.Equal(4, sm.CursorCol);
     }
 
     [Fact]
@@ -233,13 +263,14 @@ public class ScreenStateMachineTests
         var sm = CreateAtScreen(GameScreen.JobScreen, isRamza: true);
         Assert.Equal(8, sm.GridColumns);
 
+        // 10 Rights on 8-col grid wraps: 10 % 8 = 2
         for (int i = 0; i < 10; i++) sm.OnKeyPressed(VK_RIGHT);
-        Assert.Equal(7, sm.CursorCol); // clamped at 7
+        Assert.Equal(2, sm.CursorCol);
 
-        // Move to row 1 — should be 6 columns
+        // Move to row 1 — 6 cols; col 2 still valid (no clamp needed).
         sm.OnKeyPressed(VK_DOWN);
         Assert.Equal(6, sm.GridColumns);
-        Assert.Equal(5, sm.CursorCol); // clamped from 7 to 5
+        Assert.Equal(2, sm.CursorCol);
     }
 
     // --- Tab Cycling ---
