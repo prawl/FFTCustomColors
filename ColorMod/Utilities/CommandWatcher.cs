@@ -107,9 +107,30 @@ namespace FFTColorCustomizer.Utilities
         /// Prevents the resolver from re-firing on every subsequent
         /// `screen` call — which would fire 6 keys each time, interfering
         /// with user navigation. Reset to false when screen transitions
-        /// away from JobSelection.
+        /// away from JobSelection AND on every Up/Down key (the JobSelection
+        /// widget heap reallocates per row cross — confirmed live: a
+        /// resolved address was 0x11EC34D3C, after a single Down it
+        /// shuffled to 0x1370CF4A0).
         /// </summary>
         private bool _jobCursorResolveAttempted = false;
+
+        /// <summary>
+        /// Invalidates the cached JobSelection cursor address when the
+        /// player presses Up or Down while on JobSelection. The
+        /// underlying widget allocates a fresh memory block per row,
+        /// so the cached pointer stops being valid the moment a vertical
+        /// movement key fires. Horizontal movement (Left/Right within a
+        /// row) doesn't trigger this — those reads stay reliable.
+        /// </summary>
+        private void InvalidateJobCursorOnRowCross(int vk)
+        {
+            const int VK_UP = 0x26, VK_DOWN = 0x28;
+            if (vk != VK_UP && vk != VK_DOWN) return;
+            if (ScreenMachine == null) return;
+            if (ScreenMachine.CurrentScreen != GameScreen.JobScreen) return;
+            _resolvedJobCursorAddr = 0L;
+            _jobCursorResolveAttempted = false;
+        }
 
         /// <summary>
         /// Pure helper for the chained-command rate-limit decision. Returns the
@@ -1506,6 +1527,7 @@ namespace FFTColorCustomizer.Utilities
                     ScreenMachine?.OnKeyPressed(key.Vk);
                     if (_battleMenuTracker.InSubmenu)
                         _battleMenuTracker.OnKeyPressed(key.Vk);
+                    InvalidateJobCursorOnRowCross(key.Vk);
                 }
 
                 if (key.HoldMs > 0)
@@ -1691,6 +1713,7 @@ namespace FFTColorCustomizer.Utilities
                         ScreenMachine?.OnKeyPressed(key.Vk);
                         if (_battleMenuTracker.InSubmenu)
                             _battleMenuTracker.OnKeyPressed(key.Vk);
+                        InvalidateJobCursorOnRowCross(key.Vk);
                     }
 
                     if (key.HoldMs > 0)
