@@ -1,0 +1,17 @@
+List of Hair Adorments
+All Hair Adorments in Final Fantasy Tactics - The Ivalice Chronicles
+Armor	HP	MP	Effect	How to Get
+HairbandHairband	20	0	Blocks Doom, Undead, Blind, Silence, Toad, Poison, Slow, Immobilize, and Disable.	Poach: Pig
+BarretteBarrette	20	0	Blocks KO, Stone, Confuse, Vampire, Berserk, Stop, Charm, Traitor, and Sleep.	Initial Equipment: Alma
+Poach: Red Chocobo
+RibbonRibbon	10	0	Blocks All Status Ailments	Poach: Wild Boar
+Best Hair Adorments
+Ribbon Blocks All Status Effects
+Ribbon IconRibbon	Stats
+HP: 10
+MP: 0
+Effects: Blocks All Status Ailments
+A hair accessory made from cloth imbued with mystical energies. While equipped, grants immunity to most status ailments.
+How to Get
+Poach: Wild Boar
+Ribbon's effect makes the wearer immune to all status effects, making i

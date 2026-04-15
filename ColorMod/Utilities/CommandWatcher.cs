@@ -3419,6 +3419,22 @@ namespace FFTColorCustomizer.Utilities
                     ScreenMachine.SetScreen(GameScreen.PartyMenu);
                 }
 
+                // [Note 2026-04-15 session 16: tried to add a "symmetric"
+                // drift fix here that snapped the state machine to WorldMap
+                // whenever raw said TravelList/WorldMap and SM said
+                // party-tree. **Reverted in same session** — the raw
+                // detection rule `party=0 && ui=1 → TravelList` ALSO matches
+                // EquipmentAndAbilities (the inner panel sets ui=1 too), so
+                // the symmetric fix kicked in on every legitimate nested
+                // panel visit and stomped the state machine back to WorldMap.
+                // Live-test on Ramza's EquipmentAndAbilities reproduced this
+                // immediately: state reported [TravelList] while game was
+                // clearly on EqA. The existing override below (line ~3481)
+                // is the right pattern for the original "stuck on PartyMenu
+                // after WorldMap return" bug — it just needs more reliable
+                // signals than `party=0 && ui=1`. See TODO §0 entry on the
+                // sticky bug for the unfinished investigation.]
+
                 // Menu-depth drift check (discovered 2026-04-14 session 13):
                 // 0x14077CB67 is a party-menu-tree depth flag: 0 on outer
                 // screens (WorldMap / PartyMenu / CharacterStatus) and 2

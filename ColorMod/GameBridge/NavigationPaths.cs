@@ -166,6 +166,7 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "WorldMap",
                     Desc = "Return to world map"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(1),
                 ["PrevTab"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "Switch to previous tab" },
                 ["NextTab"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "Switch to next tab" },
                 ["OpenUnits"] = new PathEntry { Keys = System.Array.Empty<KeyInfo>(), Desc = "(already on Units tab — no-op)" },
@@ -218,6 +219,7 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     Desc = "Back to party unit grid"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(2),
                 ["PrevUnit"] = new PathEntry { Keys = new[] { Key(VK_Q, "Q") }, Desc = "View previous unit (wraps)" },
                 ["NextUnit"] = new PathEntry { Keys = new[] { Key(VK_E, "E") }, Desc = "View next unit (wraps)" },
                 ["OpenDialog"] = new PathEntry
@@ -259,6 +261,7 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     Desc = "Back to character status sidebar"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
             };
         }
 
@@ -278,6 +281,7 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     Desc = "Close list without changing"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(4),
             };
         }
 
@@ -299,6 +303,7 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     Desc = "Back to character status sidebar"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
             };
         }
 
@@ -332,6 +337,7 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     Desc = "Cancel, back to job grid"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(4),
             };
         }
 
@@ -344,6 +350,7 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ENTER, "Enter") },
                     Desc = "Dismiss confirmation"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(5),
             };
         }
 
@@ -917,6 +924,7 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "WorldMap",
                     Desc = "Close PartyMenu, return to world map"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(1),
             };
         }
 
@@ -966,6 +974,7 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "WorldMap",
                     Desc = "Close PartyMenu, return to world map"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(1),
             };
         }
 
@@ -1012,6 +1021,7 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "WorldMap",
                     Desc = "Close PartyMenu, return to world map"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(1),
             };
         }
 
@@ -1032,6 +1042,7 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ENTER, "Enter") },
                     Desc = "Advance flavor dialog (press Enter). Escape does nothing on dialogs."
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
             };
         }
 
@@ -1056,6 +1067,7 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "CharacterStatus",
                     Desc = "Cancel, back to character status"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
             };
         }
 
@@ -1082,6 +1094,7 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "CharacterStatus",
                     Desc = "Back to character status sidebar"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
             };
         }
 
@@ -1127,6 +1140,7 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "CharacterStatus",
                     Desc = "Back to character status sidebar"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
             };
         }
 
@@ -1159,6 +1173,7 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "EquipmentAndAbilities",
                     Desc = "Cancel without changing equipment"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(4),
             };
         }
 
@@ -1184,6 +1199,7 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "EquipmentAndAbilities",
                     Desc = "Cancel without changing this ability slot"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(4),
             };
         }
 
@@ -1215,10 +1231,34 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "CharacterStatus",
                     Desc = "Back to character status sidebar"
                 },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
             };
         }
 
         private static KeyInfo Key(int vk, string name) => new() { Vk = vk, Name = name };
+
+        /// <summary>
+        /// Build a <c>ReturnToWorldMap</c> path entry: N consecutive Escape
+        /// presses with a 200ms gap so the game's per-screen close
+        /// animations don't eat any of them, ending with
+        /// <c>WaitForScreen = "WorldMap"</c>. Used by every PartyMenu-tree
+        /// screen as a one-shot "get me home" recovery primitive — see
+        /// TODO §10.6 ValidPaths block. Tweak the delay if a specific
+        /// nested screen ever regresses with eaten keys.
+        /// </summary>
+        private static PathEntry ReturnToWorldMap(int escapeCount)
+        {
+            var keys = new KeyInfo[escapeCount];
+            for (int i = 0; i < escapeCount; i++) keys[i] = Key(VK_ESCAPE, "Escape");
+            return new PathEntry
+            {
+                Keys = keys,
+                DelayBetweenMs = 200,
+                WaitForScreen = "WorldMap",
+                WaitTimeoutMs = 3000,
+                Desc = $"Escape back to world map ({escapeCount} key{(escapeCount == 1 ? "" : "s")})"
+            };
+        }
     }
 
     /// <summary>

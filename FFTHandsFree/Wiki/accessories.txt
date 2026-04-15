@@ -1,0 +1,459 @@
+The following is list of accessories in Final Fantasy Tactics. The extra items introduced in the PlayStation Portable version are obtained from the Multiplayer Mode. The player will unlock these items upon finishing the game in the mobile version; after the credits have finish rolling, the game will auto-save and the PSP items will appear in the Poachers' Den.
+
+Some equipment is found as treasures on the battlefields with the Treasure Hunter ability. For the exact location on the grid, see the location article.
+
+After an accessory is unlocked, it can be bought at any outfitter.
+
+See also: Final Fantasy Tactics armor, Final Fantasy Tactics weapons, or Accessory
+
+Contents
+1	Shoes
+2	Armguards
+3	Rings
+4	Armlets
+5	Cloaks
+6	Perfume
+7	Lip rouge
+8	Other appearances
+8.1	Dissidia Final Fantasy Opera Omnia
+8.2	Pictlogica Final Fantasy
+8.3	Final Fantasy Record Keeper
+8.4	Final Fantasy Brave Exvius
+Shoes
+Accessories based on increasing movement range.
+
+Name	Effect	Acquisition	Cost
+FFT Battle Boots
+Battle Boots	Movement +1	Outfitters: 1st battle Merchant City of Dorter (Chapter 1)
+Trophy: Lenalian Plateau against Milleuda Folles
+Rare Treasure: Zeklaus Desert (random battle map) (9,10)
+Rare Poach: Red Panther
+Steal: Enemies LV10–19
+Initial: Several characters in the beginning of the game	1,000
+Battle-ready boots made from layers of leather for ease of movement. While equipped, raises the movement attribute.
+FFT Spike Boots
+Spiked Boots
+(Spike Shoes)	Jump +1	Outfitters: 2nd battle Merchant City of Dorter (Chapter 2)
+Rare Treasure: Araguay Woods (9,11)
+Steal: Enemies LV20–29	1,200
+The spiked soles of these boots improve one's footing.
+While equipped, raises the jump attribute.
+FFT Rubber Boots
+Rubber Boots	—	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Rare Treasure: Lionel Castle Gate (3,7)
+Rare Poach: Jura Aevis	1500
+Immune: Immobilize
+Negates: Lightning
+Electrically resistant boots that have been treated with a special resin.
+While equipped, grants immunity to Immobilize.
+FFT Winged Boots
+Winged Boots
+(Feather Boots)	—	Outfitters: Chapter 3
+Trophy: Mount Germinas
+Rare Treasure: Monastery Vaults First Level (7,1)	2,500
+Equip: Float
+Boots that give the sensation of walking on air.
+While equipped, grants Float.
+FFT Germinas Boots
+Germinas Boots	Movement +1
+Jump +1	Outfitters: Royal City of Lesalia (Chapter 3)
+Trophy: Mount Germinas
+Rare Treasure: Riovanes Castle Keep (7,9)
+Rare Poach: Coeurl
+Steal: Enemies LV30+	5,000
+Boots with a snug fit that greatly increases the wearer's mobility.
+While equipped, raises the movement and jump attributes.
+FFT Hermes Shoes
+Hermes Shoes
+(Sprint Shoes)	Speed +1	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Limberry Castle Gate (7,4)
+Initial: Meliadoul Tengille	7,000
+Lightweight footwear made by a famous cobbler.
+While equipped, raises speed.
+FFT Red Shoes
+Red Shoes	Magick Attack +1
+Movement +1	Initial: Alma in Chapter 3
+Outfitters: Battle of Fort Besselat (Chapter 4)	10,000
+Comfortable shoes fashioned from crimson leather with magickal properties.
+While equipped, raises magick attack power and movement.
+Ff tactics gaius caligae
+Gaius Caligae	Movement +2	Mode: Rendezvous	10
+Military sandals bearing the name of an ancient emperor.
+Battle Boots
+Battle Boots
+Spiked Boots
+Spiked Boots
+Rubber Boots
+Rubber Boots
+Winged Boots
+Winged Boots
+Germinas Boots
+Germinas Boots
+Hermes Shoes
+Hermes Shoes
+Red Shoes
+Red Shoes
+Armguards
+Accessories based on increasing attack power.
+
+Name	Effect	Acquisition	Cost
+FFT Power Gauntlet
+Power Gauntlet
+(Power Wrist)	Physical Attack +1	Outfitters: Zeirchele Falls (Chapter 2)
+Rare Treasure: Balias Tor (2,13)
+Steal: Enemies LV25–34	5,000
+Leather gauntlets that allow for a firm grip.
+While equipped, raise physical attack power.
+FFT Magepower Glove
+Magepower Glove
+(Magic Gauntlet)	Magick Attack +2	Outfitters: Chapter 3
+Rare Treasure: Monastery Vaults First Level (6,12)
+Steal: Enemies LV35–59	20,000
+Sturdy gloves imbued with magickal power.
+While equipped, raise magick attack power.
+FFT Bracer
+Bracers	Physical Attack +3	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Limberry Castle Gate (7,10)
+Steal: Enemies LV59+
+Initial: Cidolfus Orlandeau	50,000
+Gloves of thin leather that enhance the wearer's strength.
+While equipped, raise physical attack power.
+FFT Genji Glove
+Genji Glove	Physical Attack +2
+Magick Attack +2	Steal: Elmdore
+Mode: Rendezvous	10
+Vermilion gloves that boost physical and magickal prowess, made using techniques from a distant land.
+While equipped, raise physical and magick attack power.
+FF tactics brigands glove
+Brigand's Gloves	Speed +1	Mode: Rendezvous	30,000
+Equip: Haste
+Gloves that increase the wearer's mobility.
+FF tactics onion glove
+Onion Gloves	—	Mode: Melee	10
+Onion Knight only
+Immune: KO, Undead, Stone, Traitor, Blindness, Confusion, Silence, Vampire, Berserk, Toad, Poison, Slow, Stop, Charmed, Sleep, Immobilize, Disable, Doom
+Gloves forged for swordsmen who have mastered every technique and achieved knighthood's most exalted rank.
+Power Gauntlet
+Power Gauntlet
+Magepower Glove
+Magepower Glove
+Bracers
+Bracers
+Genji Glove
+Genji Glove
+Rings
+Accessories based on protection against negative statuses.
+
+Name	Effect	Acquisition	Cost
+FFT Protect Ring
+Protect Ring
+(Defense Ring)	—	Outfitters: Balias Tor (Chapter 2)
+Rare Treasure: Lionel Castle Oratory (3,6) & Sal Ghidos (0,9)
+Poach: Elder Treant
+Steal: Enemies LV24+	5,000
+Immune: Sleep, Doom
+A ring forged from metal imbued with magick that prevents the wearer falling into a deep slumber. While equipped, grants immunity to Sleep and Doom.
+FFT Magick Ring
+Magick Ring
+(Magic Ring)	—	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Outlying Church (4,4) & Sal Ghidos (0,10)
+Steal: Enemies LV24+	10,000
+Immune: Silence, Berserk
+A protective ring inlaid with a magickal gemstone.
+While equipped, grants immunity to Silence and Berserk.
+FFT Reflect Ring
+Reflect Ring	—	Outfitters: Chapter 3
+Rare Treasure: Monastery Vaults First Level (2,6) & Sal Ghidos (0,2)	10,000
+Equip: Reflect (Reflect is present even when the unit is KO'd.)
+A ring engraved with arcane symbols that reflects magicks cast upon the wearer.
+While equipped, grants Reflect.
+FFT Angel Ring
+Angel Ring	—	Outfitters: Chapter 4
+Trophy: Outlying Church
+Rare Treasure: Fort Besselat North Wall (10,0) & Sal Ghidos (9,12)	20,000
+Immune: Instant KO, Blind
+Equip: Reraise
+A ring that grants the wearer enhanced vision and divine protection.
+While equipped, grants immunity to instant KO and Blindness, and also grants Reraise at the start of battle.
+FFT Cursed Ring
+Cursed Ring	Physical Attack +1
+Magick Attack +1
+Speed +1	Treasure: Midlight's Deep (TIGER) (1,9)	10
+Equip: Undead
+Immune: Traitor
+A ring inhabited by evil spirits that imparts great power, but transforms the wearer into the living dead.
+While equipped, raises speed, physical and magick attack power, but inflicts Undead status.
+FF tactics sages ring
+Sage's Ring	—	Mode: Rendezvous	10
+Boosts: All Elements
+Absorbs: All Elements
+A ring bearing a magickal jewel.
+FFT Angel Ring
+Ring of Aptitude	—	Bonus item: The Ivalice Chronicles (Deluxe Edition)	5
+Equip: JP Boost
+A mysterious ring that increases the amount of JP and Job EXP earned in battle, allowing the wearer to master their chose job more easily. Effect does not multiply with other traits that provide the same benefit.
+Protect Ring.
+Protect Ring.
+Magick Ring
+Magick Ring
+Reflect Ring
+Reflect Ring
+Angel Ring
+Angel Ring
+Cursed Ring
+Cursed Ring
+Ring of Aptitude
+Ring of Aptitude
+Armlets
+Accessories based on protection from negative statuses. They become available at outfitters after certain story battles take place.
+
+Name	Effect	Acquisition	Cost
+FFT Diamond Bracelet
+Diamond Bracelet
+(Diamond Armlet)	Physical +1
+Magick Attack +1	Outfitters: Balias Swale (Chapter 2)
+Steal: Enemies LV25+
+Initial: Agrias Oaks	5,000
+Immune: Slow
+A bracelet embedded with shining jewels to enhance physicality.
+While equipped, raises physical and magick attack power, and grants immunity to Slow.
+FFT Guardian Bracelet
+Guardian Bracelet
+(Defense Armlet)	—	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Trophy: Monastery Vaults - Third Level
+Rare Treasure: Lionel Castle Oratory (3,8)
+Poach: Behemoth
+Steal: Enemies LV24+	7,000
+Immune: Immobilize, Disable
+A bracelet inlaid with crimson jewels that maintains the wearer's mobility.
+While equipped, grants immunity to Immobilize and Disable.
+FFT Nu Khai Armband
+Nu Khai Armband
+(N-Kai Armlet)	—	Outfitters: Chapter 3
+Rare Treasure: Monastery Vaults First Level (0,12)
+Poach: Ochu
+Steal: Enemies LV24+	10,000
+Immune: Confusion, Charmed
+Halves: Dark
+An armband worn during a ceremony to venerate gods of darkness. Protects against dark magicks.
+While equipped, grants immunity to Confusion and Charmed.
+FFT Jade Armlet
+Jade Armlet	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Trophy: Bervenia
+Rare Treasure: Riovanes Castle Roof (0,3)
+Poach: Dragon
+Steal: Enemies LV24+	10,000
+Immune: Stone, Stop
+A bracelet cut from precious stone and carefully polished. Helps maintain the wearer's sense of time.
+While equipped, grants immunity to Stone and Stop.
+FFT Japa Mala
+Japa Mala
+(108 Gems)	—	Outfitters: Monastery Vaults First Floor (Chapter 3)
+Rare Treasure: Outlying Church (4,5)
+Steal: Enemies LV24+	15,000
+Immune: Undead, Vampire, Toad, Poison
+Boosts: All Elements
+A string of 108 prayer beads made from the seeds of a sacred tree. Protects against a range of maladies and enhances the wearer's magicks.
+While equipped, grants immunity to various status ailments.
+FF tactics empyreal armband
+Empyreal Armband	Speed +1	Mode: Melee	10
+Immune: Slow, Stop, Immobilize
+An armband that contains the power of the stars.
+Diamond Bracelet
+Diamond Bracelet
+Guardian Bracelet
+Guardian Bracelet
+Nu Khai Armband
+Nu Khai Armband
+Jade Armlet
+Jade Armlet
+Japa Mala
+Japa Mala
+Cloaks
+Accessories that boosts evasion to attacks from all directions.
+
+Name	Effect	Acquisition	Cost
+FFT Shoulder Cape
+Shoulder Cape
+(Small Mantle)	(Phys.) 10%
+(Mag.) 10%	Outfitters: Zeklaus Desert (Chapter 1)
+Rare Treasure: Windmill Hut (5,8)
+Poach: Squidraken
+Steal: Enemies LV10–19	300
+A small woolen cape.
+FFT Leather Cloak
+Leather Cloak
+(Leather Mantle)	(Phys.) 15%
+(Mag.) 15%	Outfitters: Chapter 2
+Rare Treasure: Zeirchele Falls (3,1)
+Steal: Enemies LV20–29	800
+A sturdy leather cloak.
+FFT Mage's Cloak
+Mage's Cloak
+(Wizard Mantle)	(Phys.) 18%
+(Mag.) 18%
+Magick Attack +1	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Rare Treasure: Lionel Castle Oratory (4,6)
+Poach: Skeletal Fiend
+Steal: Enemies LV30–39	2,000
+A hooded cloak often worn by mages to elevate their magicks.
+While equipped, raises magick attack power.
+FFT Elven Cloak
+Elven Cloak
+(Elf Mantle)	(Phys.) 25%
+(Mag.) 25%	Outfitters: Royal City of Lesalia (Chapter 3)
+Trophy: Riovanes Castle Gate
+Rare Treasure: Riovanes Castle Roof (7,3)
+Rare Poach: Skeletal Fiend
+Steal: Enemies LV39+
+Initial: Luso Clemens, Rapha Galthena	8,000
+A short cloak made of an especially thin fabric.
+FFT Vampire Cape
+Vampire Cape
+(Dracula Mantle)	(Phys.) 28%
+(Mag.) 28%	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Limberry Castle Keep (0,10)
+Rare Poach: Mindflayer
+Steal: Enemies LV48+	15,000
+A stylish cloak with an inner lining of a different color fabric than the exterior.
+FFT Featherwave Cloak
+Featherweave Cloak
+(Feather Mantle)	(Phys.) 40%
+(Mag.) 30%	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Eagrose Castle (1,3)
+Rare Poach: Cockatrice
+Steal: Enemies LV49+
+Initial: Cloud Strife	20,000
+A cloak that is as light and soft as featherdown.
+FFT Invisibility Cloak
+Invisibility Cloak
+(Vanish Mantle)	(Phys.) 35%	Rare Treasure: Mount Germinas (5,5)
+Mode: Rendezvous	10
+Equip: Invisibility
+This cloak allows the wearer to blend in perfectly with their surroundings.
+While equipped, grants Invisibility at the start of battle.
+Shoulder Cape
+Shoulder Cape
+Leather Cloak
+Leather Cloak
+Mage's Cloak
+Mage's Cloak
+Elven Cloak
+Elven Cloak
+Vampire Cape
+Vampire Cape
+Featherweave Cloak
+Featherweave Cloak
+Invisibility Cloak
+Invisibility Cloak
+Perfume
+Accessories that give positive statuses. Can only be equipped by females and onion knights in all but The Ivalice Chronicles Enhanced Mode.
+
+Name	Effect	Acquisition	Cost
+FFT Cherche
+Envoûtement
+(Cherche)	—	Poach: Behemoth King
+Mode: Melee	30,000
+Equip: Float, Reflect
+The refreshing fragrance of this perfume makes one feel light as air, and able to repel even the mightiest of magicks.
+While equipped, grants Float and Reflect.
+FFT Sortilege
+Sortilége
+(Salty Rage)	—	Poach: Red Dragon
+Mode: Rendezvous	30,000
+Equip: Protect, Shell
+A perfume with a rich redolence that gives a sensation of being enveloped by potent blessings.
+While equipped, grants Protect and Shell.
+FFT Chantage
+Chantage	—	Poach: Swine
+Mode: Melee/Rendezvous
+Steal: Meliadoul	30,000
+Equip: Reraise, Regen
+The soothing scent of this perfume gives a sensation of endless vitality.
+While equipped, grants Regen and Reraise.
+FFT Septieme
+Septième Sens
+(Septième / Setiemson)	Magick Attack +1	Poach: Greater Hydra	30,000
+Equip: Haste, Invisibility
+A perfume with an otherworldly aroma that grants a sense of unbound celerity.
+While equipped, raises magick attack power and grants Haste. Also grants Invisibility at the start of battle.
+Envoûtement
+Envoûtement
+Sortilége
+Sortilége
+Chantage
+Chantage
+Septieme Sens
+Septieme Sens
+Lip rouge
+An accessory that gives positive statuses. Can only be equipped by females and onion knights.
+
+Name	Effect	Acquisition	Cost
+FF tactics tynar rouge
+Tynar Rouge	Physical Attack +3
+Magick Attack +3	The War of the Lions versions only: If the player keeps Agrias, Alicia, Lavian and Mustadio in the party, and the party reaches a city or a town (but not a castle town) on the 1st of Cancer in the final chapter, Mustadio buys Agrias the Tynar Rouge lip rouge. It costs 50,000 gil, but the party must have at least 500,000 gil to activate this quest.	10
+Females only
+Boosts: Holy
+Equip: Protect, Shell, Haste
+Magickal lip rouge from the popular Feyforge brand. It is a limited-edition product, making it difficult for even the richest noblewomen to obtain.
+Other appearances
+Dissidia Final Fantasy Opera Omnia
+Jade Armlet.
+Jade Armlet.
+FFTA Buster SwordThis section about equipment in Dissidia Final Fantasy Opera Omnia is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Pictlogica Final Fantasy
+The Bracer and Magepower Glove appears as an accessory.
+
+FFTA Buster SwordThis section about equipment in Pictlogica Final Fantasy is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Final Fantasy Record Keeper
+Angel Ring.
+Angel Ring.
+Bracer.
+Bracer.
+Chantage.
+Chantage.
+Cursed Ring.
+Cursed Ring.
+Empyreal Armband.
+Empyreal Armband.
+Gaius Caligae.
+Gaius Caligae.
+Genji Glove.
+Genji Glove.
+Jade Armlet.
+Jade Armlet.
+Japa Mala.
+Japa Mala.
+Magepower Glove
+Magepower Glove
+Nu Khai Armband.
+Nu Khai Armband.
+Protect Ring.
+Protect Ring.
+Red Shoes.
+Red Shoes.
+Reflect Ring.
+Reflect Ring.
+Sage's Ring.
+Sage's Ring.
+Sortilege.
+Sortilege.
+Winged Boots.
+Winged Boots.
+FFTA Buster SwordThis section about equipment in Final Fantasy Record Keeper is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Final Fantasy Brave Exvius
+Featherweave Cloak.
+Featherweave Cloak.
+Septieme.
+Septieme.
+FFTA Buster SwordThis section about equipment in Final Fantasy Brave Exvius is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Categories
+Languages
+Community content is available under CC-BY-SA unless otherwise noted.
+More Fandoms
+Fantasy Sci-fi Final Fantasy
+Discussions on this wiki
+Join the conversation
+Sign in to read what others are saying and share your thoughts.
+SIGN IN
+Don't have account?Register now

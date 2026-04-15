@@ -1,0 +1,891 @@
+Search
+Sign In
+Create a Free Account
+Final Fantasy Wiki
+Explore
+The Ivalice Chronicles
+Games
+Contents
+Community
+Search
+Sign In
+Home
+
+Explore
+Saved
+Progress
+
+History
+
+More
+Skip to content
+Final Fantasy Wiki
+Final Fantasy Wiki
+53,219
+pages
+Explore
+The Ivalice Chronicles
+Games
+Contents
+Community
+
+
+in: Armor in Final Fantasy Tactics, Armor lists
+Final Fantasy Tactics armor
+Save
+Edit
+Below is a list of the armor from all versions of Final Fantasy Tactics. The extra items in The War of the Lions version are originally obtained from the Multiplayer Mode. The player will unlock these items upon finishing the game in the mobile version; after the credits finish rolling, the game will auto-save and the new items will appear in the Poachers' Den.
+
+Some pieces of equipment are found as treasures on the battlefields with the Treasure Hunter ability. For the exact location on the grid, see the location article.
+
+
+Contents
+1	Armor
+2	Clothes
+3	Hair adornments
+4	Hats
+5	Helmets
+6	Robes
+7	Shields
+8	Other appearances
+8.1	Dissidia Final Fantasy Opera Omnia
+8.2	Pictlogica Final Fantasy
+8.3	Final Fantasy Record Keeper
+8.4	Final Fantasy Brave Exvius
+9	Non-Final Fantasy guest appearances
+9.1	Rise of Mana
+Armor
+FFT Body Icon
+Armor can be equipped by Ramza's squire job (chapter 2 onward), knights, dragoons, samurai, dark knights, onion knights, the game hunter, the sky pirate, the holy knight, the sword saint, the divine knight, and the templar, though any job can equip them if the character has equipped the ability Equip Heavy Armor of the knight. Armor is sold at castles.
+
+Name	HP Bonus	MP Bonus	Acquisition	Cost
+FFT Leather Armor
+Leather Armor	HP +10	—	Outfitters: Chapter 1
+Rare Treasure: Dorter Slums (0,5)
+Steal: Heavy-armor-wearing enemies LV≤3	200
+Armor made from layers of tanned leather.
+FFT Linen Cuirass
+Linen Cuirass	HP +20	—	Outfitters: Chapter 1
+Rare Treasure: Sand Rat Sietch (0,10)
+Steal: Heavy-armor-wearing enemies LV4–5	600
+A bronze breastplate affixed to a woven tunic.
+FFT Bronze Armor
+Bronze Armor	HP +30	—	Outfitters: Duke Larg meeting at Eagrose Castle (Chapter 1)
+Rare Treasure: Lenalian Plateau (10,6)
+Steal: Heavy-armor-wearing enemies LV6–7	800
+Simple armor fashioned from bronze.
+FFT Chainmail
+Chainmail	HP +40	—	Outfitters: Lenalian Plateau (Chapter 1)
+Rare Treasure: Ziekden Fortress (10,2)
+Steal: Heavy-armor-wearing enemies LV8–10	1300
+Armor fashioned from countless interlocking metal rings.
+FFT Mythril Armor
+Mythril Armor	HP +50	—	Outfitters: Dorter Trade City (Chapter 2)
+Trophy: Gollund Colliery Ridge
+Rare Treasure: Araguay Woods (4,2), Gollund Colliery Slope (10,5)
+Steal: Heavy-armor-wearing enemies LV11–13	2000
+Armor made from the valuable metal known as mythril. Surprisingly light and sturdy.
+FFT Plate Mail
+Plate Mail	HP +60	—	Outfitters: Zeirchele Falls (Chapter 2)
+Rare Treasure: Balias Tor (0,8)
+Steal: Heavy-armor-wearing enemies LV14–16	3000
+Mythril armor with a special design that increases its protective capabilities.
+FFT Golden Armor
+Golden Armor
+(Gold Armor)	HP +70	—	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Rare Treasure: Lionel Castle Gate (1,7)
+Initial: Agrias Oaks
+Steal: Heavy-armor-wearing enemies LV17–21	3600
+Heavy plate armor that has been adorned with gold decoration.
+FFT Diamond Armor
+Diamond Armor	HP +80	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Trophy: Dugeura Pass
+Steal: Heavy-armor-wearing enemies LV22–25	6000
+Armor that has been studded with incredibly hard gemstones.
+FFT Platinum Armor
+Platinum Armor
+(Platina Armor)	HP +90	—	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Lake Poescas (8,13)
+Steal: Heavy-armor-wearing enemies LV26–29	9000
+Brilliantly shining armor made of a lustrous white alloy of platinum and mythril.
+FFT Caribineer Mail
+Carabineer Mail
+(Carabini Mail)	HP +100	—	Outfitters: Chapter 4
+Trophy: Fort Besselat North Wall
+Rare Treasure: Fort Besselat South Wall (7,2)
+Steal: Heavy-armor-wearing enemies LV30–36	13000
+Thick mythril armor designed to withstand even the heaviest of blows.
+FFT Mirror Mail
+Mirror Mail
+(Reflect Mail)	HP +130	—	Outfitters: Battle of Fort Besselat (Chapter 4)	18000
+Equip: Reflect
+Specially crafted armor with the power to reflect magicks cast on its wearer.
+While equipped, grants Reflect.
+FFT Crystal Mail
+Crystal Armor	HP +110	—	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Fort Besselat Sluice (10,0)
+Steal: Heavy-armor-wearing enemies LV36+	19000
+Reinforced armor inlaid with crystalline jewels.
+FFT Genji Armor
+Genji Armor	HP +150	—	Steal: Elmdore
+Mode: Rendezvous
+Defeat: Aliste Rosenheim	10
+Crimson enameled armor made using the techniques of a distant land. Provides complete protection for torso and hips.
+FFtactics grand armor
+Grand Armor	HP +170	—	Mode: Rendezvous	10
+Equip: Reraise, Regen
+Legendary armor given by the gods to a knight in honor of his service. Confers divine protection to the wearer.
+FFT Maximillian
+Maximillian	HP +200	—	Rare Treasure: Midlight's Deep (HORROR) (9,2)	10
+Top-grade armor made using the finest materials and advanced techniques for unmatched strength.
+FFtactics onion armor
+Onion Armor	HP +250	—	Mode: Rendezvous	10
+Equip: Regen, Reraise, Protect, Shell
+Onion Knight only
+Armor forged for swordsmen who have mastered every technique and achieved knighthood's most exalted rank.
+Clothes
+FFT Body Icon
+Clothes can be equipped by all job classes except for knights (including special knights), dragoons, samurai, mimes, and the dragonkin. They can be bought at any outfitter that is not in a castle or the Clockwork City of Goug.
+
+Name	HP Bonus	MP Bonus	Acquisition	Cost
+FFT Clothing
+Clothing	HP +5	—	Outfitters: Chapter 1
+Rare Treasure: Dorter Slums (5,12)
+Steal: Light-armor-wearing enemies LV1–2	150
+Regular attire that can also be worn in battle.
+FFT Leather Clothing
+Leather Clothing
+(Leather Outfit)	HP +10	—	Outfitters: Dycedarg meeting at Eagrose Castle (Chapter 1)
+Rare Treasure: Sand Rat Sietch (10,0)
+Steal: Light-armor-wearing enemies LV3–4	300
+Leather attire made to be worn in battle.
+FFT Leather Plate
+Leather Plate
+(Leather Vest)	HP +18	—	Outfitters: Zeklaus Desert (Chapter 1)
+Rare Treasure: Windmill Hut (0,9)
+Steal: Light-armor-wearing enemies LV5–6	500
+Thick and sturdy battle armor made from layered leather.
+FFT Ringmail
+Ringmail
+(Chain Vest)	HP +24	—	Outfitters: Lenalian Plateau (Chapter 1)
+Rare Treasure: Ziekden Fortress (4,7)
+Steal: Light-armor-wearing enemies LV7–9	900
+A shirt made of countless interlocking metal rings.
+FFT Mythril Vest
+Mythril Vest	HP +30	—	Outfitters: Dorter Trade City (Chapter 2)
+Rare Treasure: Araguay Woods (8,5) & Gollund Colliery Slope (10,12)
+Steal: Light-armor-wearing enemies LV10–11
+Initial: Mustadio Bunansa	1500
+A vest with many small mythril plates sewn into the chest area.
+FFT Adamant Vest
+Adamant Vest
+(Adaman Vest)	HP +36	—	Outfitters: Zeirchele Falls (Chapter 2)
+Rare Treasure: Balias Tor (6,11)
+Steal: Light-armor-wearing enemies LV12–13	1600
+A vest with plates of an incredibly hard metal sewn into it.
+FFT Wizard Clothing
+Wizard Clothing
+(Wizard Outfit)	HP +42	MP +15	Outfitters: Meeting with Cardinal Delacroix at Lionel Castle (Chapter 2)
+Rare Treasure: Lionel Castle Gate (2,1)
+Steal: Light-armor-wearing enemies LV14–16	1900
+A hooded outfit often worn by mages.
+FFT Brigandine
+Brigandine	HP +50	—	Outfitters: Balias Swale (Chapter 2)
+Rare Treasure: Lesalia Castle Postern (0,10)
+Steal: Light-armor-wearing enemies LV17–20	2500
+A cloth garment with plates of an alloy of platinum and mythril sewn in for reinforcement.
+FFT Jujitsu Gi
+Jujitsu Gi
+(Judo Outfit)	HP +60	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Common Treasure: Riovanes Castle Keep (2,6)
+Steal: Light-armor-wearing enemies LV21–24
+Initial: Luso Clemens	4000
+Physical Attack +1
+Immune: Instant KO
+A singlet woven in a distant land that is favored by martial arts practitioners. Protects against sudden death.
+While equipped, raises physical attack power and grants immunity to instant KO.
+FFT Power Garb
+Power Garb
+(Power Sleeve)	HP +70	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Finnath Creek (9,4)
+Steal: Light-armor-wearing enemies LV25–28	7000
+Physical Attack +2
+Strength surges in those who don this garment. Drawstrings can be used to tuck the sleeves away.
+While equipped, raises physical attack power.
+FFT Gaia Gear
+Gaia Gear
+(Earth Clothes)	HP +85	MP +10	Outfitters: Chapter 4
+Rare Treasure: Limberry Castle Gate (2,6)
+Steal: Light-armor-wearing enemies LV29–36	10000
+Absorbs: Earth
+Boosts: Earth
+Clothing woven from brightly patterned material imbued with the power of the earth.
+FFT Black Garb
+Black Garb
+(Black Costume)	HP +100	—	Outfitters: Battle of Fort Besselat (Chapter 4)
+Steal: Light-armor-wearing enemies LV36+
+Initial: Cloud Strife	12000
+Immune: Stop
+Pitch-black clothing that is immune to changes in the passage of time. While equipped, grants immunity to Stop.
+FFT Ninja Gear
+Ninja Gear
+(Secret Clothes)	HP +20	—	Rare Treasure: Midlight's Deep (TIGER) (0,9)
+Mode: Rendezvous
+Steal: Disorder in the Order	10
+Speed +2
+Equip: Invisibility
+Lightweight clothing that allows the wearer to blend into their surroundings. Ideal for covert missions.
+While equipped, raises speed and grants Invisibility at the start of battle.
+FFT Mirage Vest
+Mirage Vest	HP +120	—	Mode: Rendezvous
+Initial: Balthier	10
+Speed +1
+Immune: Sleep, Poison, Stone
+A vest designed to increase the user's mobility. Prevents several status ailments.
+FFtactics minerva bustier
+Minerva Bustier	HP +120	—	Mode: Melee	10
+Halves: Ice, Water, Earth, Holy
+Negates: Fire, Lightning, Wind, Dark
+Females only
+Clothing blessed by a goddess. It provides protection against various elemental magicks.
+FFT Rubber Costume
+Rubber Suit
+(Rubber Costume)	HP +150	MP +30	Rare Poach: Greater Hydra
+Mode: Melee/Rendezvous	46000
+Negates: Lightning
+Electrically insulated clothing made from a special resin that molds to the contours of the wearer's body.
+FFtactics brave suit
+Brave Suit	HP +160	MP +40	Mode: Melee	10
+Equip: Regen, Reraise
+This battle garb is rumored to prevent its wearer from defeat as long as he or she has the will to fight.
+Hair adornments
+FFT Head Icon
+Can be equipped by females (prior to The Ivalice Chronicles Enhanced Mode where males can also wear them), Cloud, and onion knights.
+
+Name	HP Bonus	MP Bonus	Acquisition	Cost
+FFT Cachusha
+Hairband
+(Cachusha)	HP +20	—	Rare Poach: Pig
+Mode: Melee/Rendezvous	20000
+Immune: Doom, Undead, Blindness, Silence, Toad, Poison, Slow, Immobilize, Disable
+A finely crafted hair accessory.
+While equipped, grants immunity to various status ailments.
+FFT Barette
+Barette	HP +20	—	Rare Poach: Red Chocobo
+Mode: Rendezvous
+Initial: Alma	20000
+Immune: KO, Stone, Traitor, Confusion, Vampire, Berserk, Stop, Charmed, Sleep
+A hairpin adorned with a crimson gem.
+While equipped, grants immunity to various status ailments.
+FFT Ribbon
+Ribbon	HP +10	—	Poach: Wild Boar
+Mode: Melee/Rendezvous	30000
+Immune: Instant KO, Undead, Stone, Traitor, Blindness, Confusion, Silence, Vampire, Berserk, Toad, Poison, Slow, Stop, Charmed, Sleep, Immobilize, Doom, Disable
+A hair accessory made from cloth imbued with mystical energies.
+While equipped, grants immunity to most status ailments.
+Hairband
+Hairband
+Barette
+Barette
+Ribbon
+Ribbon
+Hats
+FFT Head Icon
+Hats can be equipped by all job classes except for knights, monks, dragoons, samurai, mimes, dark knights, and divine knight. They can be bought at any outfitter not in a castle or the Clockwork City of Goug.
+
+Name	HP Bonus	MP Bonus	Acquisition	Cost
+FFT Leather Cap
+Leather Cap	HP +8	—	Outfitters: Magick City of Gariland (Chapter 1)
+Rare Treasure: Siedge Weald (4,5)
+Steal: Enemy light armor wearers LV≤3	150
+A hat crafted from tanned leather.
+FFT Plumed Hat
+Plumed Hat
+(Feather Cap)	HP +16	MP +5	Outfitters: Dycedarg meeting at Eagrose Castle (Chapter 1)
+Rare Treasure: Sand Rat's Sietch (6,2)
+Steal: Enemy light armor wearers LV4–6	350
+A sturdy hat adorned with a fluffy white feather.
+FFT Red Hood
+Red Hood	HP +24	MP +8	Outfitters: Zeklaus Desert (Chapter 1)
+Rare Treasure: Lenalian Plateau (5,10)
+Steal: Enemy light armor wearers LV7–9	800
+A hat made from cloth dyed a deep red.
+FFT Headgear
+Headgear	HP +32	—	Outfitters: 2nd battle Merchant City of Dorter (Chapter 2)
+Rare Treasure: Araguay Woods (3,5)
+Steal: Enemy light armor wearers LV10–12
+Initial: Mustadio Bunansa	1200
+Physical Attack +1
+A leather covering that protects the wearer's head and ears. Designed with fighters in mind.
+While equipped, raises physical attack power.
+FFT Wizard's Hat
+Wizard's Hat
+(Triangle Hat)	HP +40	MP +12	Outfitters: Zeirchele Falls (Chapter 2)
+Rare Treasure: Balias Tor (6,3)
+Steal: Enemy light armor wearers LV13–15	1800
+Magick Attack +1
+A hat adorned with an arcane symbol that boosts the wearer's arcane prowess.
+While equipped, raises magick attack power.
+FFT Green Beret
+Green Beret	HP +48	—	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Rare Treasure: Golgollada Gallows (7,8)
+Steal: Enemy light armor wearers LV16–20	3000
+Speed +1
+A beret for those with little time to waste. Ideal for special missions.
+While equipped, raises speed.
+FFT Headband
+Headband
+(Twist Headband)	HP +56	—	Outfitters: Defeat Cúchulainn at Lionel Castle (Chapter 3)
+Rare Treasure: Monastery Vaults Third Level (3,11)
+Steal: Enemy light armor wearers LV21–23	5000
+Physical Attack +2
+Headgear made from a twisted towel. It seems to strengthen the wearer's resolve.
+FFT Celebrant's Miter
+Celebrant's Miter
+(Holy Miter)	HP +64	MP +20	Outfitters: Royal City of Lesalia (Chapter 3)
+Treasure: Riovanes Castle Gate (11,0)
+Steal: Enemy light armor wearers LV24–26
+Initial: Rapha Galthena & Luso Clemens	6000
+Magick Attack +1
+A hat employed by the clergy in religious ceremonies. Possesses mystical properties.
+While equipped, raises magick attack power.
+FFT Black Cowl
+Black Cowl
+(Black Hood)	HP +72	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Finnath Creek (3,14)
+Steal: Enemy light armor wearers LV27–31
+Initial: Marach Galthena	7000
+Headwear made from cloth dyed pitch-black.
+FFT Gold Hairpin
+Gold Hairpin	HP +80	MP +50	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Fort Besselat South Wall (4,7)
+Steal: Enemy light armor wearers LV32–37	12000
+Immune: Silence
+A hairpin beautifully decorated with gold inlay. Grants great weight to one's words.
+While equipped, grants immunity to Silence.
+FFT Lambent Hat
+Lambent Hat
+(Flash Hat)	HP +88	MP +15	Outfitters: Battle of Fort Besselat (Chapter 4)
+Trophy: Battle of Fort Besselat
+Rare Treasure: Fort Besselat Sluice (8,4)
+Steal: Enemy light armor wearers LV38–45	16000
+Magick Attack +1
+Speed +1
+The crystals decorating this hat increase the wearer's agility and magickal power.
+While equipped, raises speed and magick attack power.
+FFT Thief's Cap
+Thief's Cap
+(Thief Hat)	HP +100	—	Outfitters: Underground Cemetery of Limberry Castle (Chapter 4)
+Rare Treasure: Eagrose Castle Keep (4,9)
+Steal: Enemy light armor wearers LV45+
+Initial: Cloud Strife	35000
+Speed +2
+Immune: Disable, Immobilize
+A hat that increases agility and stimulates the feet.
+While equipped, raises speed and grants immunity to Immobilize and Disable.
+FF tactics brass coronet
+Brass Coronet	HP +60	MP +100	Mode: Rendezvous	10
+Magick Attack +3
+Immune: Silence
+A crown that boosts the potency of the wearer's magicks.
+FF tactics acacia hat
+Acacia Hat	HP +120	MP +20	Mode: Melee	10
+Speed +2
+Immune: Confusion, Berserk, Charmed
+A hat that increases agility and protects against certain status effects.
+Leather Cap
+Leather Cap
+Plumed Hat
+Plumed Hat
+Red Hood
+Red Hood
+Headgear
+Headgear
+Wizard's Hat
+Wizard's Hat
+Green Beret
+Green Beret
+Headband
+Headband
+Celebrant's Miter
+Celebrant's Miter
+Black Cowl
+Black Cowl
+Gold Hairpin
+Gold Hairpin
+Lambent Hat
+Lambent Hat
+Thief's Cap
+Thief's Cap
+Helmets
+FFT Head Icon
+Helmets can be equipped by Ramza's squire job (chapter 2 and onward), knights, dragoons, samurai, dark knights, onion knights, game hunter, sky pirate, sword saint, and divine knight, though any job can equip them if the character has equipped the ability Equip Heavy Armor of the knight. They can be bought at castle outfitters.
+
+Name	HP Bonus	MP Bonus	Acquisition	Cost
+FFT Leather Helm
+Leather Helm	HP +10	—	Outfitters: Dycedarg meeting at Eagrose Castle (Chapter 1)
+Rare Treasure: Siedge Weald (5,0)
+Steal: Enemy knights/dragoons/samurai LV≤3	200
+A pliant helm formed from several layers of leather.
+FFT Bronze Helm
+Bronze Helm	HP +20	—	Outfitters: Dycedarg meting at Eagrose Castle (Chapter 1)
+Rare Treasure: Sand Rat's Sietch (5,4)
+Steal: Enemy knights/dragoons/samurai LV4–6	500
+An ordinary bronze helm.
+FFT Iron Helm
+Iron Helm	HP +30	—	Outfitters: Duke Larg meeting at Eagrose Castle (Chapter 1)
+Rare Treasure: Lenalian Plateau (4,4)
+Steal: Enemy knights/dragoons/samurai LV7–8	1000
+A sturdy iron helm.
+FFT Barbut
+Barbut
+(Barbuta)	HP +40	—	Outfitters: 2nd battle Merchant City of Dorter (Chapter 2)
+Rare Treasure: Dorter Trade City (8,9)
+Steal: Enemy knights/dragoons/samurai LV9–11	1500
+A helm that covers the entire head, save an opening for the eyes and mouth.
+FFT Mythril Helm
+Mythril Helm	HP +50	—	Outfitters: Zeirchele Falls (Chapter 2)
+Trophy: Lionel Castle Gate
+Rare Treasure: Castled City of Zaland (7,6), Gollund Colliery Slope (6,10)
+Steal: Enemy knights/dragoons/samurai LV12–14	2100
+Sturdy yet lightweight, this helm is made from the valuable metal known as mythril.
+FFT Golden Helm
+Golden Helm	HP +60	—	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Rare Treasure: Golgollada Gallows (7,2)
+Steal: Enemy knights/dragoons/samurai LV15–16	2800
+A weighty helm adorned with gold ornamentation.
+FFT Close Helm
+Close Helmet
+(Cross Helm)	HP +70	—	Outfitters: Defeat Cúchulainn at Lionel Castle (Chapter 3)
+Rare Treasure: 1st battle in Mining Town of Gollund (7,2)
+Steal: Enemy knights/dragoons/samurai LV17–21	4000
+Provides complete protection for head and neck, with an additional faceguard.
+FFT Diamond Helm
+Diamond Helm	HP +80	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Riovanes Castle Gate (7,4)
+Steal: Enemy knights/dragoons/samurai LV22–24	6000
+A helmet adorned with magickal jewels of extraordinary hardness.
+FFT Platinum Helm
+Platinum Helm	HP +90	—	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Lake Poescas (5,12)
+Steal: Enemy knights/dragoons/samurai LV25–26	8000
+A brilliant helm forged from a lustrous white alloy of platinum and mythril.
+FFT Circlet
+Circlet	HP +100	—	Outfitters: Walled City of Yardrow (Chapter 3)
+Trophy: Fort Besselat South Wall
+Rare Treasure: Lake Poescas (6,5)
+Steal: Enemy knights/dragoons/samurai LV28+
+Initial: Meliadoul Tengille	10000
+Decorated with jewels and extremely lightweight, though the ears are left exposed.
+FFT Crystal Helm
+Crystal Helm	HP +120	—	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Fort Besselat Sluice (5,2)
+Steal: Enemy knights/dragoons/samurai LV27–28
+Initial: Luso Clemens, Cidolfus Orlandeau	14000
+A reinforced helm inlaid with crystalline jewels.
+FFT Genji Helm
+Genji Helm	HP +130	—	Steal: Elmdore	10
+An unusually shaped, vermilion helm forged from iron using the techniques of a distant land.
+FFT Grand Helm
+Grand Helm	HP +150	—	Rare Treasure: Midlight's Deep (HORROR) (5,8)	10
+Immune: Blindness, Sleep
+This warrior's helm offers an excellent field of vision, and may protect the wearer from misfortune.
+While equipped, grants immunity to Blindness and Sleep.
+FF tactics vanguard helm
+Vanguard Helm	HP +150	MP +20	Mode: Rendezvous	10
+A helm passed down from one veteran warrior to the next. Every pit and scratch recalls a pitched battle.
+FF tactics onion helm
+Onion Helm	HP +200	—	Mode: Melee	10
+Onion knight only
+A helm forged for swordsmen who have mastered every technique and achieved knighthood's most exalted rank.
+Leather Helm
+Leather Helm
+Bronze Helm
+Bronze Helm
+Iron Helm
+Iron Helm
+Barbut
+Barbut
+Mythril Helm
+Mythril Helm
+Golden Helm
+Golden Helm
+Close Helmet
+Close Helmet
+Diamond Helm
+Diamond Helm
+Circlet
+Circlet
+Crystal Helm
+Crystal Helm
+Genji Helm
+Genji Helm
+Grand Helm
+Grand Helm
+Robes
+FFT Body Icon
+Robes can be equipped by Ramza's squire job, knights, white mages, black mages, time mages, summoners, orators, mystics, geomancers, dragoons, samurai, arithmeticians, dark knights, onion knights, game hunter, sky pirate, skyseer, netherseer, sword saint, and divine knight. While they cannot be bought at castles or the Clockwork City of Goug or the Royal City of Lesalia, all other outfitters sell them.
+
+Name	HP Bonus	MP Bonus	Acquisition	Cost
+FFT Hempen Robe
+Hempen Robe
+(Linen Robe)	HP +10	MP +10	Outfitters: Zeklaus Desert (Chapter 1)
+Rare Treasure: Windmill Hut (3,4)
+Steal: Robe-wearing enemies LV3–4	1200
+A simple robe made from a single length of linen cloth.
+FFT Silken Robe
+Silken Robe
+(Silk Robe)	HP +20	MP +16	Outfitters: Lenalian Plateau (Chapter 1)
+Trophy: Lenalian Plateau against Milleuda Folles
+Rare Treasure: Ziekden Fortress (8,12)
+Steal: Robe-wearing enemies LV5–10	2400
+A robe made from layers of fine silk cloth.
+FFT Wizard's Robe
+Wizard's Robe	HP +30	MP +22	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Rare Treasure: Lionel Castle Gate (2,12)
+Steal: Robe-wearing enemies LV11–25
+Initial: Marach Galthena	4000
+Magick Attack +2.
+A hooded robe that completely covers the wearer's body.
+While equipped, raises magick attack power.
+FFT Chameleon Robe
+Chameleon Robe	HP +40	MP +28	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Riovanes Castle Keep (5,4)
+Rare Poach: Ochu	5000
+Absorbs: Holy
+Immune: Instant KO
+A robe dyed with pigments extracted from shining green stones, and blessed with a sacred power.
+While equipped, grants immunity to instant KO.
+FFT White Robe
+White Robe	HP +50	MP +34	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Outlying Church (2,8)
+Steal: Robe-wearing enemies LV26–30
+Initial: Rapha Galthena	9000
+Halves: Fire, Ice, Lightning
+Pure white vestments that provide some protection against elemental magicks.
+FFT Black Robe
+Black Robe	HP +60	MP +30	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Limberry Castle Gate (3,13)
+Steal: Robe-wearing enemies LV31–37	13000
+Boosts: Fire, Ice, Lightning
+Pitch-black that vestments increase the strength of some elemental magicks.
+FFT Luminous Robe
+Luminous Robe
+(Light Robe)	HP +75	MP +50	Outfitters: Battle of Fort Besselat (Chapter 4)
+Steal: Robe-wearing enemies LV37+
+Initial: Meliadoul Tengille	30000
+The material in this robe has been woven from threads that glow faintly with magick.
+FFT Lordly Robe
+Lordly Robe
+(Robe of Lords)	HP +100	MP +80	Treasure: Midlight's Deep (VOYAGE) (6,7)
+Rendezvous: "Brave Story"	10
+Physical Attack +2
+Magickal Attack +1
+Equip: Protect, Shell.
+A luxurious robe worn by high-ranking nobles. Enchanted with protective magick.
+While equipped, raises physical and magick attack power, and grants Protect and Shell.
+FF tactics sages robe
+Sage's Robe	HP +120	MP +100	Mode: Melee	10
+Halves: Fire, Ice, Lightning, Water, Wind, Earth, Holy, Dark
+A robe woven from threads that shimmer in all colors of the rainbow. Halves damage taken from elemental magick.
+Hempen Robe
+Hempen Robe
+Silken Robe
+Silken Robe
+Wizard's Robe
+Wizard's Robe
+Chameleon Robe
+Chameleon Robe
+White Robe
+White Robe
+Black Robe
+Black Robe
+Luminous Robe
+Luminous Robe
+Lordly Robe
+Lordly Robe
+Shields
+FFT Right Hand IconFFT Left Hand Icon
+Shields can be equipped by Ramza's squire job (chapter 2 and onward) and gallant knight, knights (and special knights), archers, geomancers, dragoons, dark knights, onion knights, game hunter, sky pirate, sword saint, and divine knight, though any job can equip them if the character has equipped the ability Equip Shields of the knight.
+
+Name	Phys. Ev. %	Mag. Ev. %	Acquisition	Cost
+FFT Escutcheon 1
+Escutcheon	(Phys.) 10%	(Mag.) 3%	Outfitters: Dycedarg meeting at Eagrose Castle (Chapter 1)
+Rare Treasure: Siedge Weald (9,2)
+Common Treasure: Nelveska Temple (1,2) (the rare variant is the Escutcheon (II) though name the same)
+Steal: Enemy shield-bearing classes LV1–2	400
+A shield made from inexpensive materials.
+FFT Buckler
+Buckler	(Phys.) 13%	(Mag.) 3%	Outfitters: Zeklaus Desert (Chapter 1)
+Rare Treasure: Lenalian Plateau (2,8)
+Steal: Enemy shield-bearing classes LV3–5	700
+A small shield designed for ease of use when engaging foes at close quarters.
+FFT Bronze Shield
+Bronze Shield	(Phys.) 16%	—	Outfitters: Lenalian Plateau (Chapter 1)
+Trophy: Brigands' Den
+Rare Treasure: Ziekden Fortress (3,3)
+Steal: Enemy shield-bearing classes LV6–8	1200
+A shield of beaten bronze. Can easily parry incoming attacks.
+FFT Round Shield
+Round Shield	(Phys.) 19%	—	Outfitters: 2nd battle Merchant City of Dorter (Chapter 2)
+Rare Treasure: Dorter Trade City (8,4)
+Steal: Enemy shield-bearing classes LV6–11	1600
+A sturdy shield inlaid with a complex ornamental design.
+FFT Mythril Shield
+Mythril Shield	(Phys.) 22%	(Mag.) 5%	Outfitters: Zeirchele Falls (Chapter 2)
+Trophy: Gollund Colliery Floor
+Rare Treasure: Castled City of Zaland (4,12), Gollund Colliery Slope (2,1)
+Initial: Agrias Oaks
+Steal: Enemy shield-bearing classes LV12–14	2500
+A shield constructed of the featherlight metal known as mythril. Easier to wield than it looks.
+FFT Golden Shield
+Golden Shield
+(Gold Shield)	(Phys.) 25%	—	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Rare Treasure: Golgollada Gallows (4,3)
+Steal: Enemy shield-bearing classes LV15–21	3500
+A heavy shield adorned with gold ornamentation.
+FFT Ice Shield
+Ice Shield	(Phys.) 28%	—	Outfitters: Defeat Cúchulainn at Lionel Castle (Chapter 3)
+Rare Treasure: Monastery Vaults Third Level (4,5)
+Rare Poach: Malboro
+Steal: Enemy shield-bearing classes LV22–24	6000
+Absorbs: Ice
+Halves: Fire
+Weakness: Lightning
+Decorated with azure jewels, this shield provides excellent protection against magicks.
+FFT Flame Shield
+Flame Shield	(Phys.) 31%	—	Outfitters: Defeat Cúchulainn at Lionel Castle (Chapter 3)
+Rare Treasure: Monastery Vaults Third Level (1,9)
+Rare Poach: Exploder
+Steal: Enemy shield-bearing classes LV22–24	6500
+Absorbs: Fire
+Halves: Ice
+Weakness: Water
+Decorated with crimson jewels, this shield provides excellent protection against magicks.
+FFT Aegis Shield
+Aegis Shield	(Phys.) 10%	(Mag.) 50%	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Riovanes Castle Gate (3,3)
+Steal: Enemy shield-bearing classes LV22–24
+Initial: Meliadoul Tengille	10000
+Magick Attack +1
+This shield resembles a breastplate worn by a god. Enhances both the wearer's arcane prowess and resistance.
+While equipped, raises magick attack power.
+FFT Diamond Shield
+Diamond Shield	(Phys.) 34%	(Mag.) 15%	Outfitters: Monastery Vaults First Level (Chapter 3)
+Rare Treasure: Finnath Creek (2,1)
+Steal: Enemy shield-bearing classes LV25–28	12000
+A shield made from an extremely hard mineral that provides excellent protection against magicks.
+FFT Platinum Shield
+Platinum Shield
+(Platina Shield)	(Phys.) 37%	(Mag.) 10%	Outfitters: The Horror of Riovanes (start of Chapter 4)
+Rare Treasure: Fort Besselat South Wall (2,4)
+Steal: Enemy shield-bearing classes LV25–35
+Initial: Luso Clemens	16000
+A shield forged from a lustrous white alloy of platinum and mythril.
+FFT Crystal Shield
+Crystal Shield	(Phys.) 40%	(Mag.) 15%	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Fort Besselat Sluice (1,5)
+Steal: Enemy shield-bearing classes LV35+
+Initial: Cidolfus Orlandeau	21000
+A reinforced shield inlaid with crystalline jewels.
+FFT Genji Shield
+Genji Shield	(Phys.) 43%	—	Steal: Elmdore
+Mode: Rendezvous	10
+A pitch-black shield made by foreign craftsmen. It is made of iron and has a unique shape.
+FFT Kaiser Shield
+Kaiser Shield
+(Kaiser Plate)	(Phys.) 46%	(Mag.) 20%	Rare Treasure: Midlight's Deep (VALKYRIES)
+Mode: Rendezvous (10,5)
+Steal: Disorder in the Order sidequest (The War of the Lions exclusive)	10
+Boosts: Fire, Ice, Lightning
+A shield named after a title used by emperors of eld. Increases the power of certain elemental magicks.
+FFT Venetian Shield
+Venetian Shield	(Phys.) 50%	(Mag.) 25%	Treasure: Midlight's Deep (HORROR) (4,8)
+Mode: Rendezvous
+Steal: Disorder in the Order sidequest (The War of the Lions exclusive)	10
+Halves: Fire, Ice, Lightning
+A shield that has been ostentatiously colored using special dyes and pigments. Resistant to certain elemental magicks.
+FF tactics reverie shield
+Reverie Shield	(Phys.) 50%	(Mag.) 25%	Mode: Melee	10
+Halves: Fire, Ice, Lightning, Water, Wind, Earth, Holy, Dark
+A shield imbued with resistance to various attacks.
+FFT Escutcheon 2
+Escutcheon (II)	(Phys.) 75%	(Mag.) 50%	Rare Treasure: Nelveska Temple (1,2)	400
+A shield with unrivaled blocking capabilities.
+FF tactics onion shield
+Onion Shield	(Phys.) 80%	(Mag.) 75%	Mode: Rendezvous	10
+Onion knight only
+A shield forged for swordsmen who have mastered every technique and achieved knighthood's most exalted rank.
+Escutcheon
+Escutcheon
+Buckler
+Buckler
+Bronze Shield
+Bronze Shield
+Round Shield
+Round Shield
+Mythril Shield
+Mythril Shield
+Golden Shield
+Golden Shield
+Ice Shield
+Ice Shield
+Flame Shield
+Flame Shield
+Aegis Shield
+Aegis Shield
+Diamond Shield
+Diamond Shield
+Platinum Shield
+Platinum Shield
+Crystal Shield
+Crystal Shield
+Genji Shield
+Genji Shield
+Kaiser Shield
+Kaiser Shield
+Escutcheon (II)
+Escutcheon (II)
+Other appearances
+Dissidia Final Fantasy Opera Omnia
+Adamant Vest.
+Adamant Vest.
+Escutcheon II.
+Escutcheon II.
+Grand Armor.
+Grand Armor.
+Maximillian.
+Maximillian.
+Mythril Shield.
+Mythril Shield.
+FFTA Buster SwordThis section about equipment in Dissidia Final Fantasy Opera Omnia is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Pictlogica Final Fantasy
+The Escutcheon, Lambent Hat, Lordly Robe, and Acacia Hat appear as accessories.
+
+FFTA Buster SwordThis section about equipment in Pictlogica Final Fantasy is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Final Fantasy Record Keeper
+Adaman Vest.
+Adaman Vest.
+Aegis Shield.
+Aegis Shield.
+Brass Coronet.
+Brass Coronet.
+Brigandine.
+Brigandine.
+Cachusha.
+Cachusha.
+Carabineer Mail.
+Carabineer Mail.
+Celebrant's Miter.
+Celebrant's Miter.
+Chameleon Robe.
+Chameleon Robe.
+Close Helmet.
+Close Helmet.
+Diamond Shield.
+Diamond Shield.
+Flame Shield.
+Flame Shield.
+Gaia Gear.
+Gaia Gear.
+Grand Armor.
+Grand Armor.
+Grand Helm.
+Grand Helm.
+Headband.
+Headband.
+Kaiser Shield.
+Kaiser Shield.
+Lambent Hat.
+Lambent Hat.
+Luminous Robe.
+Luminous Robe.
+Maximillian.
+Maximillian.
+Mythril Helm.
+Mythril Helm.
+Mythril Vest.
+Mythril Vest.
+Platinum Armor.
+Platinum Armor.
+Power Garb.
+Power Garb.
+Round Shield.
+Round Shield.
+Sage's Robe.
+Sage's Robe.
+Venetian Shield.
+Venetian Shield.
+FFTA Buster SwordThis section about equipment in Final Fantasy Record Keeper is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Final Fantasy Brave Exvius
+Escutcheon.
+Escutcheon.
+FFTA Buster SwordThis section about equipment in Final Fantasy Brave Exvius is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Non-Final Fantasy guest appearances
+Rise of Mana
+The Onion Gloves is wielded by Ramza Beoulve, which is usually an armor piece, as a weapon.
+
+Onion Gloves.
+Onion Gloves.
+Model.
+Model.
+Categories
+Community content is available under CC-BY-SA unless otherwise noted.
+More Fandoms
+Fantasy Sci-fi Final Fantasy
+Discussions on this wiki
+Join the conversation
+Sign in to read what others are saying and share your thoughts.
+SIGN IN
+Don't have account?Register now
+Recent Images
+Balthier B.png
+Balthier (Duellum)
+8 hours ago
+Balthier A.png
+Balthier (Duellum)
+8 hours ago
+DDFF Balthier profile.png
+Balthier (Duellum)
+8 hours ago
+
+Fandom logo
+Explore properties
+Fandom
+Fanatical
+GameSpot
+Metacritic
+TV Guide
+Honest Entertainment
+Follow Us
+Overview
+What is Fandom?
+Essentials
+About
+Careers
+Press
+Contact
+Terms of Use
+Privacy Policy
+Digital Services Act
+Global Sitemap
+Local Sitemap
+Cookie Preferences
+Community
+Community Central
+Support
+Help
+Advertise
+Media Kit
+Contact
+Fandom Apps
+Take your favorite fandoms with you and never miss a beat.
+Fandom App logo
+Store icon
+Store icon
+Final Fantasy Wiki is a Fandom Games Community.
+View Mobile Site
+We've updated our Privacy Policy. Based on your current location, certain choices, such as the ability to opt out of the sale or sharing of personal information, may not apply to you. Please review the updated policy. By continuing to use our website after April 28, 2026, you agree to the updated terms.
+Accept
+Search this wiki
+Search all wikis

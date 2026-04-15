@@ -86,6 +86,52 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Empty(alias.Keys!);
         }
 
+        // ReturnToWorldMap should appear on every PartyMenu-tree screen.
+        // Each gets a slot-appropriate Escape count (1 for PartyMenu+tabs,
+        // 2 for CharacterStatus, 3 for inner Equipment/Job/Combat/Dialog,
+        // 4 for pickers, 5 for JobChangeConfirmation). All wait for
+        // "WorldMap" and use a 200ms gap so close animations don't eat keys.
+        [Theory]
+        [InlineData("PartyMenu", 1)]
+        [InlineData("PartyMenuInventory", 1)]
+        [InlineData("PartyMenuChronicle", 1)]
+        [InlineData("PartyMenuOptions", 1)]
+        [InlineData("CharacterStatus", 2)]
+        [InlineData("CharacterDialog", 3)]
+        [InlineData("DismissUnit", 3)]
+        [InlineData("CombatSets", 3)]
+        [InlineData("EquipmentAndAbilities", 3)]
+        [InlineData("EquipmentScreen", 3)]
+        [InlineData("JobScreen", 3)]
+        [InlineData("JobSelection", 3)]
+        [InlineData("JobActionMenu", 4)]
+        [InlineData("JobChangeConfirmation", 5)]
+        [InlineData("EquipmentItemList", 4)]
+        [InlineData("EquippableWeapons", 4)]
+        [InlineData("EquippableShields", 4)]
+        [InlineData("EquippableHeadware", 4)]
+        [InlineData("EquippableCombatGarb", 4)]
+        [InlineData("EquippableAccessories", 4)]
+        [InlineData("ActionAbilities", 4)]
+        [InlineData("SecondaryAbilities", 4)]
+        [InlineData("ReactionAbilities", 4)]
+        [InlineData("SupportAbilities", 4)]
+        [InlineData("MovementAbilities", 4)]
+        public void PartyTree_ExposesReturnToWorldMap(string screenName, int expectedEscapes)
+        {
+            var paths = NavigationPaths.GetPaths(MakeScreen(screenName));
+            Assert.NotNull(paths);
+            Assert.Contains("ReturnToWorldMap", paths!.Keys);
+
+            var rwm = paths["ReturnToWorldMap"];
+            Assert.NotNull(rwm.Keys);
+            Assert.Equal(expectedEscapes, rwm.Keys!.Length);
+            foreach (var k in rwm.Keys!) Assert.Equal(VK_ESCAPE, k.Vk);
+            Assert.Equal("WorldMap", rwm.WaitForScreen);
+            // 200ms between presses so close animations don't eat keys.
+            Assert.True(rwm.DelayBetweenMs >= 200, $"delay {rwm.DelayBetweenMs}ms < 200ms minimum");
+        }
+
         [Fact]
         public void PartyMenuInventory_ExposesListAndPageNavigation()
         {

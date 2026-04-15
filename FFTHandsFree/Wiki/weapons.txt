@@ -1,0 +1,2327 @@
+Search
+Sign In
+Create a Free Account
+Final Fantasy Wiki
+Explore
+The Ivalice Chronicles
+Games
+Contents
+Community
+Search
+Sign In
+Home
+
+Explore
+Saved
+Progress
+
+History
+
+More
+Skip to content
+Final Fantasy Wiki
+Final Fantasy Wiki
+53,219
+pages
+Explore
+The Ivalice Chronicles
+Games
+Contents
+Community
+
+
+in: Weapons in Final Fantasy Tactics, Weapon lists
+English
+Final Fantasy Tactics weapons
+Save
+Edit
+FFT Right Hand IconFFT Left Hand Icon
+The following is a list of weapons from Final Fantasy Tactics and the enhanced port, The War of the Lions. The extra items introduced in the PSP version received from Multiplayer Mode will be unlocked after the player finishes the game in the mobile version. After the credits have finished rolling, the game will auto-save and all the PSP items will appear in the Poachers' Den. Multiplayer-exclusive weapons cannot be thrown with the Ninja's Throw command.
+
+Some weapons are found as treasures on the battlefields with the Treasure Hunter ability. For the exact location on the grid, see the location article.
+
+A note on formulas: The first half of the equations can be further modified by various factors. The listed formulas below are the unmodified conditions. The formulas have a math.floor (
+⌊
+ 
+⌋
+{\displaystyle \lfloor ~\rfloor }) component. Even if the the formulas appear that they could be simplified (example: Guns), they need to remain separated to distinguish the parts affected by the floor operation.
+
+See also: Final Fantasy Tactics armor or Final Fantasy Tactics accessories
+
+Contents
+1	Axes
+2	Bags
+3	Books
+4	Bows
+5	Cloths
+6	Crossbows
+7	Fell swords
+8	Flails
+9	Guns
+10	Instruments
+11	Katana
+12	Knives
+13	Knight's swords
+14	Ninja blades
+15	Poles
+16	Rods
+17	Polearms
+18	Staves
+19	Swords
+20	Throwing weapons
+21	Other
+22	Unused weapon types
+23	Other appearances
+23.1	Dissidia Final Fantasy NT
+23.2	Dissidia Final Fantasy Opera Omnia
+23.3	Pictlogica Final Fantasy
+23.4	Final Fantasy Airborne Brigade
+23.5	Final Fantasy Record Keeper
+23.6	Final Fantasy Brave Exvius
+23.6.1	War of the Visions: Final Fantasy Brave Exvius
+24	Non-Final Fantasy guest appearances
+24.1	Rise of Mana
+25	Citations
+Axes
+Axes can be wielded by squires (besides Ramza Beoulve), geomancers, and onion knights, though any job can equip them with the Equip Axes support ability of the squire (and other default jobs for units that lack squire).
+
+While axes have higher attack power and can deal more damage than weapons available at the same time, their damage is random and they could do much less than other weapons. Axes cannot be used with Dual Wield, but can be used with Doublehand. Axes do not parry. Axes have a vertical range of 2 tiles up and 3 tiles down, and can be bought at castle outfitters.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+R
+A
+N
+D
+O
+M
+(
+1
+−
+P
+H
+Y
+S
+.
+A
+T
+K
+)
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor RANDOM(1-PHYS.ATK)\rfloor \times WPN.ATK}
+Because the damage varies, the preview damage feature is less accurate on axes than on other weapon types; in The Ivalice Chronicles, the game previews the average damage rather than the maximum like in previous versions.
+
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+BattleAxe-fft-psx
+Battle Axe	9	0%	0	Outfitters: Lenalian Plateau (Chapter 1)
+Rare Treasure: Fovoham Windflats (random battle) (1,11)
+Poach: Wisenkin
+Steal: Enemy squires/geomancers LV≤11	1500
+An axe with a long handle. Designed for two-handed use, it can easily chop off an enemy's limbs. The damage dealt varies greatly.
+Giant'sAxe-fft-psx
+Giant's Axe
+(Giant Axe)	12	0%	0	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Rare Treasure: Tchigolith Fenlands (0,6)
+Rare Poach: Wisenkin
+Steal: Enemy squires/geomancers LV12–30	4000
+An axe with a large head, making it appear as a weapon used by the creatures to which it owes its name. The damage dealt varies greatly.
+Slasher-fft-psx
+Slasher	16	0%	0	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Walled City of Yardrow (4,7)
+Rare Poach: Minotaur
+Steal: Enemy squires/geomancers LV30+
+Catch: Level 90+ enemy ninja
+Effect: Slow	12000
+This axe not only has impressive destructive power, but can also slow the actions of its target. When attacking, has a chance of inflicting Slow.
+FFT Francisca
+Francisca	24	0%	0	Mode: Melee	10
+This axe's small size belies its incredible destructive power.
+FFT Golden Axe
+Golden Axe	30	0%	0	Mode: Melee/Rendezvous	10
+An axe said to have been a gift from spirits inhabiting a spring. Only the righteous may wield it.
+Bags
+Bags can only be worn by female characters regardless of job in most game versions, as well as onion knights in The War of the Lions. Bags are the only weapons that dragonkin can equip without an equipment ability. In the Enhanced Mode of The Ivalice Chronicles, bags can no longer be equipped by any female unit, and instead are exclusive weapons for the dragonkin, bard, and dancer jobs.
+
+Bags deal random damage similarly to axes and flails. Bags cannot be dual-wielded, but can be used with Doublehand. Bags have a vertical range of 2 tiles up and 3 tiles down, and can be bought at outfitters not in castles, with the exception of the outfitter at the Clockwork City of Goug. Bags cannot be thrown.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+R
+A
+N
+D
+O
+M
+(
+1
+−
+P
+H
+Y
+S
+.
+A
+T
+K
+)
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor RANDOM(1-PHYS.ATK)\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Croakadile Bag
+Catskin Bag
+(Croakadile Bag / C Bag)	10	0%	1	Outfitters: Chapter 3
+Rare Treasure: Monastery Vaults Third Level (0,0)
+Rare Poach: Vampire Cat	53000
+An expensive designer handbag that raises its holder's mystical prowess.
+The damage dealt varies greatly. While equipped, raises magick attack power.
+FFT Pantherskin Bag
+Proudhide Bag
+(Pantherskin Bag / P Bag)	12	0%	—	Outfitters: Monastery Vaults First Floor (Chapter 3)
+Rare Treasure: Finnath Creek (1,5)
+Rare Poach: Behemoth
+Trophy: Lionel Castle Second Optional Battle (War of the Lions) [Oratory]	52000
+Equip: Regen
+A handbag of simple yet fashionable design. The damage dealt varies greatly.
+While equipped, grants Regen.
+FFT Hydrascale Bag
+Hardscale Bag
+(Hydrascale Bag / H Bag)	14	0%	—	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Limberry Castle Undercroft (4,9)
+Rare Poach: Dragon	58000
++1 Speed
+A handbag that puts a spring in its holder's step, but is produced in very limited quantities. The damage dealt varies greatly.
+While equipped, raises speed.
+FFT Fallingstar Bag
+Fallingstar Bag
+(FS Bag)	20	0%	—	Rare Poach: Wild Boar
+Mode: Rendezvous	60000
+A custom-made handbag designed for battle. The damage dealt varies greatly.
+Books
+Books can be wielded by arithmeticians, mystics, and onion knights. They have a range of exactly three, and enemies closer or further away cannot be targeted. Books cannot be used with Dual Wield nor Doublehand. Books have infinite vertical range and can be bought at trading cities' outfitters.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+(
+P
+H
+Y
+S
+.
+A
+T
+K
++
+M
+A
+G
+.
+A
+T
+K
+)
+/
+2
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor (PHYS.ATK+MAG.ATK)/2\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Battle Folio
+Battle Folio
+(Battle Dict)	7	15%	—	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Trophy: Gollund, Monastery Vaults - Second Level
+Rare Treasure: Goug Lowtown (10,2)
+Steal: Enemy mystics/arithmeticians LV13–21	3000
+A book made for battle.
+Range: 3
+FFT Bestiary
+Bestiary
+(Monster Dict)	8	15%	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Yuguewood (1,11)
+Steal: Enemy mystics/arithmeticians LV22–33	6000
+A thick book describing every known beast.
+Range: 3
+FFT Papyrus Codex
+Papyrus Codex
+(Papyrus Plate)	9	15%	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Free City of Bervenia (5,7)
+Steal: Enemy mystics/arithmeticians LV34+
+Catch: Level 90–94 enemy ninja	10000
+An ancient text bound with slabs of a priceless mineral ore.
+Range: 3
+FFT Omnilex
+Omnilex
+(Madlemgen)	11	15%	—	Rare Poach: Greater Malboro
+Mode: Rendezvous
+Catch: Level 95+ enemy ninjas	30000
+A book said to contain all words in all languages.
+Range: 3
+Bows
+FFT Doublehand Icon
+Bows can be wielded by archers, as well as onion knights and the sky pirate in The War of the Lions. Bows are the only ranged weapons that can fire in an arc to shoot around certain obstacles. They cannot be used with Dual Wield nor Doublehand, and they cannot be thrown. They have more range if it targets panels below the user's height. Weather effects and nighttime will penalize bows' accuracy. Bows have a horizontal range of 3–5, +1 for every two height levels that the shooter has over the target, but will reduce panels at 4 vertical range below an enemy, with none at 6 (firing upwards has limited range). Bows are sold at castle towns and Goug.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+(
+P
+H
+Y
+S
+.
+A
+T
+K
++
+S
+P
+D
+)
+/
+2
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor (PHYS.ATK+SPD)/2\rfloor \times WPN.ATK}
+
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Longbow
+Longbow
+(Long Bow)	4	0%	—	Outfitters: Dycedarg meeting at Eagrose Castle (Chapter 1)
+Rare Treasure: Brigands' Den (9,0)
+Steal: Enemy archers at LV≤5	800
+A common type of bow that has a long range.
+Basic range: 5
+FFT Silver Bow
+Silver Bow	5	0%	—	Outfitters: Lenalian Plateau (Chapter 1)
+Rare Treasure: Fovoham Windflats (random battles) (6,13)
+Steal: Enemy archers LV6–10	1500
+A bow adorned with silver decorations, and strengthened by additional wooden components and thin plates of animal horn.
+Basic range: 5
+FFT Ice Bow
+Ice Bow	5	0%	—	Outfitters: Second battle Merchant City of Dorter (Chapter 2)
+Rare Treasure: Dorter Trade City (0,1)
+Steal: Enemy archers LV11–14	2000
+Element: Ice
+A bow that shoots freezing arrows.
+Basic range: 5
+FFT Lightning Bow
+Lightning Bow	6	0%	—	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Rare Treasure: Goug Lowtown (2,8)
+Steal: Enemy archers LV15–19	3000
+Spell Effect: Thundara
+Element: Lightning
+This bow imbues arrows with the power and speed of lightning.
+When attacking, has a chance of casting Thundara.
+Basic range: 5
+FFT Mythril Bow
+Mythril Bow	7	0%	—	Outfitters: Chapter 3
+Trophy: Gollund Colliery Floor
+Rare Treasure: Gollund Colliery Floor (10,1), Monastery Vaults Second Level (5,0)
+Steal: Enemy archers LV20–26	5000
+A bow strengthened by thin plates of mythril.
+Basic range: 5
+FFT Windslash Bow
+Windslash Bow	8	0%	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Dugeura Pass (0,0)
+Steal: Enemy archers LV27–36	8000
+Element: Wind
+A powerful bow capable of releasing arrows imbued with the power of wind.
+Basic range: 5
+FFT Artemis Bow
+Artemis Bow
+(Ultimus Bow)	10	0%	—	Mode: Melee/Rendezvous
+Rare Poach: Behemoth King
+Steal: Random enemy archers LV36+	22000
+The bow of the goddess of the hunt.
+Basic range: 5
+FFT Yoichi Bow
+Yoichi Bow	12	0%	—	Rare Treasure: Midlight's Deep (DELTA) (7,9)
+Mode: Rendezvous
+Steal: Enemy archer in Monastery Vaults Underground Library B4 & enemy archer in Midlight's Deep VOYAGE	10
+The bow of a legendary archer. Its great size allows it to generate incredible power.
+Basic range: 5.
+FFT Perseus Bow
+Perseus Bow	16	0%	—	Rare Treasure: Midlight's Deep (VOYAGE) (8,6)
+Mode: Rendezvous	10
+The bow of a mythical hero. It is constructed entirely of metal and requires great strength to draw.
+Basic range: 5
+FFT Sagittarius Bow
+Sagittarius Bow	24	0%	—	Mode: Rendezvous	10
+An enormous bow that fires meteor-like arrows.
+Cloths
+Cloths can be wielded by dancers and onion knights. They have an especially high Parry rate. Cloths cannot be used with Dual Wield nor Doublehand. Cloths have a horizontal range of 2 tiles and a vertical range of 3 tiles up and down, and outfitters sell them at trading ports.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+(
+P
+H
+Y
+S
+.
+A
+T
+K
++
+M
+A
+G
+.
+A
+T
+K
+)
+/
+2
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor (PHYS.ATK+MAG.ATK)/2\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Damask Cloth
+Damask Cloth
+(Persia)	8	50%	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Yuguewood (5,2)	7000
+A brilliantly colored cloth with luxuriant weight.
+Range: 2
+FFT Cashmere
+Cashmere	10	50%	—	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Lake Poescas (3,13)
+Common Poach: Blue Dragon	15000
+This warm and flexible woolen fabric is exquisitely soft to the touch.
+Range: 2
+FFT Wyrmweave Silk
+Wyrmweave Silk
+(Ryozan Silk)	15	50%	—	Common Poach: Tiamat
+Mode: Rendezvous	40000
+A special weaving process gives this silk the perfect balance of elegance and durability.
+Range: 2
+Crossbows
+Crossbows can be wielded by archers, onion knights, the sky pirate, and the divine knight, though any job can equip them if the character has equipped the ability Equip Crossbows of the archer. Weather effects and nighttime will penalize crossbows' accuracy. Crossbows cannot be used with Dual Wield nor Doublehand. Crossbows have a horizontal range of 3–4 tiles and an infinite vertical range, and are sold at castles and the Clockwork City of Goug.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+P
+H
+Y
+S
+.
+A
+T
+K
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor PHYS.ATK\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Bowgun
+Bowgun
+(Bow Gun)	3	5%	—	Outfitters: Meeting with Dycedarg Beoulve at Eagrose Castle (Chapter 1)
+Rare Treasure: Siedge Weald (10,10)
+Steal: Enemy archers LV≤4	400
+A crossbow that can be shot with one hand. Uses shorter bolts than a traditional crossbow.
+Range: 4
+FFT Knightslayer
+Knightslayer
+(Night Killer)	3	5%	—	Outfitters: Lenalian Plateau (Chapter 1)
+Rare Treasure: Fovoham Windflats (random battle) (4,2)
+Steal: Enemy archers LV5–10	1500
+Effect: Blindness
+This crossbow shoots specially fashioned bolts that contain a dose of blinding poison.
+When attacking, has a chance of inflicting Blindness.
+Range: 4
+FFT Crossbow
+Crossbow
+(Cross Bow)	4	5%	—	Outfitters: Meeting with Cardinal Delacroix at Lionel Castle (Chapter 2)
+Rare Treasure: Goug Lowtown (2,5)
+Steal: Enemy archers LV11–13	2000
+This crossbow uses an uses an improved cocking mechanism that increases its attack power.
+Range: 4
+FFT Poison Bow
+Poison Crossbow
+(Poison Bow)	4	5%	—	Outfitters: Chapter 3
+Rare Treasure: Monastery Vaults Second Level (4,3)
+Steal: Enemy archers LV14–23	4000
+Effect: Poison
+A crossbow specially designed to shoot poisoned bolts.
+When attacking, has a chance of inflicting Poison.
+Range: 4
+FFT Hunting Bow
+Hunting Crossbow
+(Hunting Bow)	6	5%	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Walled City of Yardrow (9,9)
+Rare Poach: Steelhawk
+Steal:' Enemy archers LV23+	8000
+A crossbow mainly employed for hunting monsters.
+Range: 4
+FFT Gastrophetes
+Gastrophetes
+(Gastrafitis)	10	5%	—	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Limberry Castle Undercroft (1,3)
+Steal: Enemy archer in Midlight's Deep (VOYAGE)	20000
+The most powerful crossbow ever created. Its large size and extreme power generate heavy recoil.
+Range: 4
+Fell swords
+Fell swords can be wielded by dark knights and onion knights. They gain extra damage for having low faith. They must be used with two hands, and thus cannot be used with Dual Wield, Doublehand, nor with a shield. Fell swords have a vertical range of 2 tiles up and 3 tiles down. These weapons are exclusive to The War of the Lions.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+P
+H
+Y
+S
+.
+A
+T
+K
+×
+(
+100
+−
+F
+A
+I
+T
+H
+)
+/
+100
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor PHYS.ATK\times (100-FAITH)/100\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Chaosbringer
+Chaosbringer	16	0%	—	Mode: Melee	10
+Effect: Blind
+Element: Dark
+The wielder of this sword bears the sins of his previous lives, robbing him or her of all hope.
+FFT Deathbringer
+Deathbringer	20	0%	—	Mode: Rendezvous	10
+Effect: Doom
+Element: Dark
+This sword brings death to all those who kill in the name of truth and justice.
+FFT Arondight
+Arondight	24	0%	—	Mode: Melee	10
+Effect: Slow
+Element: Dark
+It is said that a witch bestowed this sword to a knight who died an unnatural death.
+FFT Balmung
+Balmung	32	0%	—	Mode: Melee	10
+Effect: Stop
+Element: Dark
+A sword said to have been wielded by a hero from the north. A blue jewel is embedded in its broad handle.
+FFT Valhalla
+Valhalla	40	0%	—	Mode: Rendezvous	10
+Effect: KO
+Element: Dark
+A tainted blade spoken of in legends about the end of the world, said to feed upon the souls of its victims.
+Flails
+Flails can be wielded by squires, ninjas, onion knights, and the game hunter. They have a higher damage potential than other weapons available at the same time, but they can also do less damage. Flails can be used with Dual Wield and Doublehand. Flails have a vertical range of 2 tiles up and 3 tiles down, and are sold at merchant cities.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+R
+A
+N
+D
+O
+M
+(
+1
+−
+P
+H
+Y
+S
+.
+A
+T
+K
+)
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor RANDOM(1-PHYS.ATK)\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Iron Flail
+Iron Flail
+(Flail)	9	0%	—	Outfitters: Balias Swale (Chapter 2)
+Rare Treasure: First battle in the Mining Town of Gollund (4,1)
+Steal: Enemy squires/ninjas LV10–19	1200
+A weapon comprised of a spiked iron ball attached by chain to a wooden handle. The damage dealt varies greatly.
+FFT Flame Mace
+Flail of Flame
+(Flame Mace / Flame Whip)	11	0%	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Walled City of Yardrow (4,11)
+Rare Poach: Grenade
+Steal: Enemy squires/ninjas LV20–31	4000
+Spell Effect: Fira
+Element: Fire
+The head of this mace is loaded with gunpowder, and may spew flames when used to attack. The damage dealt varies greatly.
+When attacking, has a chance of casting Fira.
+FFT Morning Star
+Morning Star	16	0%	—	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Mount Germinas (2,7)
+Steal: Enemy squires/ninjas LV31+	9000
+Unlike more traditional designs, the spiked metal ball is attached by a chain rather than fixed directly to the wooden handle. The damage dealt varies greatly.
+FFT Scorpion Tail
+Scorpion Tail	23	0%	—	Rare Poach: Hydra
+Mode: Rendezvous
+Catch: Level 90+ enemy ninja	40000
+The metal ball is covered with large, sharpened spikes. The damage dealt varies greatly.
+FFT Vesper
+Vesper	36	0%	—	Mode: Melee	10
+A weapon named after the evenstar.
+Guns
+Guns can be wielded by chemists, orators, onion knights, machinists, and the sky pirate, though any job can equip them if the character has the orator's Equip Guns skill. Magick guns operate on a different formula than normal guns, as they use the user's faith for damage calculation. They will cast a level 1 spell 60% of the time, level 2 30%, and a level 3 10% of the time. Guns are one-handed but are incompatible with Doublehand and Dual Wield.
+
+In the PS1 version, the names of the Blaze and Glacial/Glacier Guns were mixed up.
+
+Guns have a horizontal range of 3–8 tiles, while having infinite vertical range and 100% accuracy if the line of sight is not blocked by an obstacle. The guns that can be bought can only be done so at the Clockwork City of Goug. The stoneshooter can be safely used with Reequip so long as the character switches the gun out before the start of the next battle, which will petrify them.
+
+Normal gun damage calculation
+⌊
+W
+P
+N
+.
+A
+T
+K
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle \lfloor WPN.ATK\rfloor \times WPN.ATK}
+
+Magic gun damage calculation
+⌊
+a
+F
+A
+I
+T
+H
+/
+100
+×
+d
+F
+A
+I
+T
+H
+/
+100
+×
+[
+14
+,
+ 
+18
+,
+ 
+o
+r
+ 
+24
+]
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle \lfloor aFAITH/100\times dFAITH/100\times [14,~18,~or~24]\rfloor \times WPN.ATK}
+
+Where a is the Attacker, d is the Defender. The power of the attack scales based on chance: 60% of the time it will be 14, 30% of the time will be 18, and 10% of the time will be 24.
+
+Despite guns not using the wielder's stats for damage calculation, their damage is still boosted by Attack Boost for normal guns and Magick Boost for magick guns.
+
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Romandan Pistol
+Romandan Pistol
+(Romanda Gun)	6	5%	—	Outfitters: Clockwork City of Goug (Chapter 2)
+Rare Treasure: Tchigolith Fenlands (10,11)
+Steal: Enemy chemists in Mount Bervenia (rare battle; enter from north)
+Initial: Mustadio Bunansa	5000
+A firearm commonly used in the northern nation of Romanda.
+Range: 8
+FFT Mythril Gun
+Mythril Gun	8	5%	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Trophy: Grogh Heights
+Rare Treasure: Walled City of Yardrow (9,4) & Gollund Colliery Floor (9,6) & Gollund Colliery Ridge (4,2)
+Rare Poach: Revenant
+Steal: Enemy chemist at Grogh Heights, enemy chemists in Mount Bervenia (rare battle; enter from north)	15000
+The barrel of this firearm has been fashioned from mythril.
+Range: 8
+FFT Ras Algethi
+Ras Algethi	12	5%	—	Mode: Rendezvous
+Initial: Balthier	28000
+A firearm named for Ras Algethi, the star that forms the Kneeler's head.
+FFT Stoneshooter
+Stoneshooter	16	5%	—	Steal: Enemy male chemists in Mount Bervenia (rare battle; enter from north)
+Rare Poach: Dark Behemoth	10
+Equip: Stone
+Merely holding this weapon may cause the user to feel heavy as stone. Has high attacking power, but inflicts Stone upon the wielder at the start of battle.
+Range: 8
+FFT Fomalhaut
+Fomalhaut	18	5%	—	Mode: Melee/Rendezvous	10
+A firearm named for the brightest star in the Whale's Maw.
+FFT Glacial Gun
+Glacial Gun
+(Blaze Gun)	20	5%	—	Steal: Chemist (Gollund's Colliery Slope); Barich Fendsor (Beddha Sandwaste); enemy female chemists in Mount Bervenia (rare battle; enter from north)
+Mode: Melee/Rendezvous
+Rare Treasure: Midlight's Deep (NOISSIM) (2,2)
+
+10
+Attacks either with Blizzard/Blizzara/Blizzaga.
+Element: Ice
+A magickal firearm that shoots freezing bullets.
+When attacking, has a chance of increasing the potency of the attack.
+Range: 8
+FFT Blaze Gun
+Blaze Gun
+(Glacier Gun)	21	5%	—	Steal: Enemy female chemists in Mount Bervenia (rare battle; enter from north), enemy chemist in Lost Halidom
+Mode: Melee/Rendezvous
+Rare Treasure: Midlight's Deep (NOISSIM) (0,9)	10
+Attacks either with Fire/Fira/Firaga.
+Element: Fire
+A magickal firearm that shoots flaming bullets. When attacking, has a chance of increasing the potency of the attack.
+Range: 8
+FFT Blaster
+Blaster
+(Blast Gun)	22	5%	—	Steal: Enemy female chemists in Mount Bervenia (rare battle; enter from north), Barich at the Lost Halidom
+Mode: Rendezvous
+Rare Treasure: Midlight's Deep (TIGER) (1,10)
+
+10
+Attacks either with Thunder/Thundara/Thundaga.
+Element: Lightning
+A magickal firearm that shoots electrically charged bullets. When attacking, has a chance of increasing the potency of the attack.
+Range: 8
+Instruments
+Instruments, also known as harps in the original PlayStation version, can be wielded by bards and onion knights; a bard does not need an instrument to be able to use Bardsong.. Instruments cannot be used with Dual Wield or Doublehand. Instruments, like books, have a set range of three and are unable to target panels closer or farther away. Instruments have a horizontal range of 3 and an infinite vertical range, and can be bought at merchant towns' outfitters.
+
+While attacking, the instruments will play the leitmotif of "Prelude".
+
+Damage calculation
+D
+M
+G
+=
+⌊
+(
+P
+H
+Y
+S
+.
+A
+T
+K
++
+M
+A
+G
+.
+A
+T
+K
+)
+/
+2
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor (PHYS.ATK+MAG.ATK)/2\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Lamia's Harp
+Lamia's Harp
+(Ramia Harp)	10	10%	—	Outfitters: Meeting with Cardinal Delacroix at Lionel Castle (Chapter 2)
+Rare Treasure: Goug Lowtown (4,4)	5,000
+Effect: Confusion
+The alluring notes produced by this harp may bewitch and beguile those who hear them.
+When attacking, has a chance of inflicting Confusion.
+Range: 3
+FFT Bloodstring Harp
+Bloodstring Harp
+(Bloody Strings)	13	10%	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Free City of Bervenia (0,8)	10,000
+Absorbs foe's HP
+A harp with a rich timbre and wide tonal range, but whose notes may drain an opponent's life force.
+When attacking, absorbs the target's HP.
+Range: 3
+FFT Faerie Harp
+Fairie Harp
+(Fairy Harp)	15	10%	—	Rare Treasure: Midlight's Deep (VALKYRIES) (9,5)
+Rare Poach: Treant
+Mode: Rendezvous	30,000
+Effect: Charmed
+The pure sound of this harp can charm those who hear it played.
+When attacking has a chance of inflicting Charmed.
+Range: 3
+Katana
+Katana can be wielded by samurai, onion knights, and sword saint, though any job can equip them if the character has equipped the ability Equip Katana of the samurai. Katana have a second purpose: they are required for the samurai skillset Iaido. Katana can be used with Dual Wield and Doublehand. Katana have a vertical range of 2 tiles up and 3 tiles down and can be bought at merchant towns' (trade cities) outfitters.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+P
+H
+Y
+S
+.
+A
+T
+K
+×
+B
+R
+A
+V
+E
+/
+100
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor PHYS.ATK\times BRAVE/100\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Ashura
+Ashura
+(Asura Knife)	7	15%	—	Outfitters: Meeting with Cardinal Delacroix at Lionel Castle (Chapter 2)
+Rare Treasure: Tchigolith Fenlands (11,1)
+Steal: Enemy samurai LV9–11	1600
+A katana with a brilliant white blade.
+FFT Kotesu
+Kotetsu
+(Koutetsu Knife)	8	15%	—	Outfitters: Meeting with Cardinal Delacroix at Lionel Castle (Chapter 2)
+Rare Treasure: Tchigolith Fenlands (7,4)
+Steal: Enemy samurai LV12–14	3000
+A katana whose blade is adorned with a breathtaking carving of a tiger.
+FFT Osafune
+Bizen Osafune
+(Osafune / Bizen Boat)	9	15%	—	Outfitters: Balias Swale (Chapter 2)
+Rare Treasure: Lionel Castle Oratory (4,8)
+Steal: Enemy samurai LV15–20	5000
+A katana with a blade forged of the finest iron sand by master swordsmith Nagamitsu Osafune, of the eastern land of Bizen.
+FFT Murasame
+Murasame	10	15%	—	Outfitters: Chapter 3
+Rare Treasure: Monastery Vaults Second Level (0,9)
+Steal: Enemy samurai LV21–23	7000
+Referred to as a demon sword, this katana's keen blade showers blood upon the battlefield.
+FFT Ama-no-Murakumo
+Ame-no-Murakumo
+(Ama-no-Murakumo / Heaven's Cloud)	11	15%	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Grogh Heights (9,8)
+Steal: Enemy samurai LV24–26	8000
+This katana's design was inspired by a legendary blade said to have been plucked from the tail of a dragon that marauded eastern lands.
+FFT Kiyomori
+Kiyomori	12	15%	—	Outfitters: Walled City of Yardrow (Chapter 3)
+Steal: Enemy samurai LV27–29	10000
+This exquisitely crafted katana has a beautifully patterned blade and an incredible cutting edge.
+FFT Muramasa
+Muramasa	14	15%	—	Outfitters: Chapter 4
+Rare Treasure: Limberry Castle Keep (9,0)
+Steal: Enemy samurai LV30–32	15000
+This katana is said to have drunk the blood of countless enemies.
+FFT Kiku-ichimoji
+Kiku-ichimoji
+(Kikuichimonji	15	15%	—	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Fort Besselat North Wall (0,11)
+Steal: Enemy samurai LV33+
+Catch: Level 90–94 enemy ninja	22000
+A katana with a hilt in the shape of a chrysanthemum.
+FFT Masamune
+Masamune	18	15%	—	Mode: Rendezvous
+Steal: Elmdore (PS1 / TIC), female samurai Bremondt's fight (PSP)
+Catch: Level 95 enemy ninja	10
+This katana was forged by a master swordsmith, and its sheath is inlaid with beautiful patterns.
+FFT Chirijiraden
+Chirijiraden	25	15%	—	Rare Treasure: Midlight's Deep (END) (5,12)
+Mode: Rendezvous
+Catch: Level 96+ enemy ninja	10
+This katana is decorated with intricate designs and boasts a wickedly sharp edge.
+Knives
+Knives can be wielded by squires, chemists, thieves, orators, ninja, dancers, onion knights, the game hunter, and the sky pirate. Their attack is calculated using the wielder's speed, which makes them especially beneficial for thieves and ninja. Knives can be used with Dual Wield, but they cannot be used with Doublehand. Knives have a vertical range of 2 tiles up and 3 tiles down, and are sold at the Magick City of Gariland and castles.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+(
+P
+H
+Y
+S
+.
+A
+T
+K
++
+S
+P
+D
+)
+/
+2
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor (PHYS.ATK+SPD)/2\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Dagger
+Dagger	3	5%	—	Initial: Generic female units from Warriors' Guild
+Outfitters: Magick City of Gariland (Chapter 1)
+Rare Treasure: Mandalia Plains (0,0)
+Steal: Enemy units who can use knives LV1–2	100
+Used for self-defense.
+FFT Mythril Knife
+Mythril Knife	4	5%	—	Outfitters: Meeting with Dycedarg Beoulve at Eagrose Castle (Chapter 1)
+Trophy: Gollund Colliery Slope
+Rare Treasure: Merchant City of Dorter (WotL only) (6,14) & Gollund Colliery Floor (2,2)
+Steal: Enemy units who can use knives LV3–6	500
+A sturdy, well-balanced knife forged from the feather-light metal known as mythril.
+FFT Blind Knife
+Blind Knife	4	5%	—	Outfitters: Zeklaus Desert (Chapter 1)
+Trophy: The Sand Rat's Sietch
+Rare Treasure: Zeklaus Desert (random battle map) (7,7)
+Steal: Enemy units who can use knives LV7–10	800
+Effect: Blindness
+A knife quenched in an insidious poison that robs its victim of sight.
+When attacking, has a chance of inflicting Blindness.
+FFT Mage Masher
+Mage Masher	4	5%	—	Outfitters: Brigands' Den (Chapter 1)
+Trophy: Dorter Trade City (Chapter 2)
+Rare Treasure: Windmill Hut (6,0)
+Poach: Gobbledygook
+Steal: Brigands' Den enemy thief; various randomly-spawned enemies LV11–13	1500
+Effect: Silence
+Created especially for the purpose of fighting mages, this knife has the power to rob its victims of speech.
+When attacking, has a chance of inflicting Silence.
+FFT Platinum Dagger
+Platinum Dagger
+(Platina Dagger)	5	10%	—	Outfitters: Zeirchele Falls (Chapter 2)
+Rare Treasure: Zeirchele Falls (2,5)
+Poach: Malboro
+Rare Poach: Floating Eye
+Steal: Enemy units who can use knives LV14–20	1800
+A knife with a blade made of a lustrous white alloy of platinum and mythril.
+FFT Main Gauche
+Main Gauche	6	40%	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Grogh Heights (0,1)
+Rare Poach: Ghast
+Steal: Enemy units who can use knives LV21–24	3000
+This knife is useful for both offense and defense.
+FFT Orichalcum Dirk
+Orichalcum Dirk	7	5%	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Riovanes Castle Roof (7,5)
+Steal: Enemy units who can use knives LV25–28	4000
+Light and sharp, this knife is made of an exceedingly hard metal.
+FFT Assassin's Dagger
+Assassin's Dagger
+(Assassin Dagger)	7	5%	—	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Outlying Church (7,4)
+Steal: Enemy units who can use knives LV29–32	5000
+Effect: Doom.
+Popular among assassins, this dagger has the power to consign its victims to certain death.
+When attacking, has a chance of inflicting Doom.
+FFT Air Knife
+Air Knife	10	5%	—	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Fort Besselat North Wall (3,3)
+Rare Poach: Ahriman
+Steal: Enemy units who can use knives LV32+
+Catch: Level 90–94 enemy ninja	8000
+Element: Wind
+This knife's special waved blade is imbued with the power of the wind, making it even more deadly.
+FFT Zwill Straightblade
+Zwill Straightblade
+(Zorlin Shape)	12	10%	—	Rare Poach: Plague Horror
+Mode: Melee
+Catch: Level 95+ enemy ninja	12000
+Effect: Sleep
+A knife manufactured in a region renowned for its blades.
+When attacking, has a a chance of inflicting Sleep.
+Knight's swords
+Knight's swords can be wielded by Ramza's gallant knight, knights, dark knights, onion knights, holy knight, game hunter, sky pirate, sword saint, templar, and divine knight. Knight's swords are generally more powerful than normal swords and give beneficial status effects. Knight's swords can be used with Dual Wield and Doublehand. Knight's swords have a vertical range of 2 tiles up and 3 tiles down, and cannot be bought at any outfitters.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+P
+H
+Y
+S
+.
+A
+T
+K
+×
+B
+R
+A
+V
+E
+/
+100
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor PHYS.ATK\times BRAVE/100\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Defender
+Defender	16	60%	—	Mode: Rendezvous
+Rare Poach: Elder Treant
+Steal: Meliadoul (as enemy), Dycedarg
+Catch: Level 92–94 enemy ninja	60000
+A broad-bladed knight's sword with jewels embedded in its pommel.
+FFT Save the Queen
+Save the Queen	18	30%	—	Initial: Meliadoul Tengille
+Rare Treasure: Midlight's Deep (TERMINATE) (0,1)
+Mode: Melee/Rendezvous
+Catch: Level 95 enemy ninja	10
+Equip: Protect
+A knight's sword given as a symbol of an oath of fealty. It has been blessed with a ward of protection.
+While equipped, grants Protect.
+FFT Excalibur
+Excalibur	21	35%	—	Initial: Cidolfus Orlandeau
+Rare Treasure: Midlight's Deep (YROTCIV) (2,8)
+Catch: Level 96 enemy ninja
+Mode: Rendezvous	10
+Equip: Haste
+Absorbs: Holy
+Boosts: Holy
+It is said that only the true heir to the throne can wield this legendary knight's sword. The worthy will be granted fleetness of foot and divine might.
+While equipped, grants Haste.
+FFT Ragnarok
+Ragnarok	24	20%	—	Trophy: Penultimate battle
+Rare Treasure: Midlight's Deep (VOYAGE) (3,8)
+Mode: Rendezvous
+Catch: Level 97 enemy ninja	10
+Equip: Shell
+This knight's sword is mentioned in tales about the end of the world. It provides defense against spellcraft.
+While equipped, grants Shell.
+FFT Durandal
+Durandal	26	40%	—	Mode: Rendezvous	10
+Equip: Shell, Protect
+Element: Holy
+A holy knight's sword said to have been forged by spirits.
+FFT Chaos Blade
+Chaos Blade	40	20%	—	Rare Treasure: Midlight's Deep (END) (7,10)
+Mode: Rendezvous
+Catch: Level 98–99 ninja	10
+Equip: Regen
+Effect: Stone
+This holy knight's sword is said to have been a gift from the gods themselves, and possesses mystical powers.
+While equipped, grants Regen. When used to perform a standard attack, has a chance of inflicting Stone.
+Ninja blades
+Ninja blades can be wielded by ninja, onion knights, and the sword saint. They are similar to knives, as they also use the wielder's speed stat to calculate damage. Ninja blades can be used with Dual Wield and Doublehand. They have a vertical range of 2 tiles up and 3 tiles down and can only be bought at merchant cities.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+(
+P
+H
+Y
+S
+.
+A
+T
+K
++
+S
+P
+D
+)
+/
+2
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor (PHYS.ATK+SPD)/2\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Ninja Blade
+Ninja Blade
+(Hidden Knife)	8	5%	—	Outfitters: Chapter 3
+Rare Treasure: Lesalia Castle Postern (9,8)
+Steal: Enemy ninjas LV10–12	3000
+A sword specially tailored to the needs of ninjas.
+FFT Kunai
+Kunai
+(Ninja Knife)	9	5%	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Grogh Heights (0,12)
+Rare Poach: Ghoul
+Steal: Enemy ninjas LV13–14	5000
+Designed for ninjas, blades such as this are often used in Ivalice as handheld weapons.
+FFT Kodachi
+Kodachi
+(Short Edge)	10	5%	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Riovanes Castle Roof (7,7)
+Steal: Enemy ninjas LV15–21	7000
+A lightweight blade favored by ninjas for its compact size and ease of concealment.
+FFT Ninja Longblade
+Ninja Longblade
+(Ninja Edge)	12	5%	—	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Mount Germinas (6,8)
+Steal: Enemy ninjas LV22–26	10000
+A sword with a longer blade than that of a normal ninja sword, making it more suitable for use on the battlefield.
+FFT Spellbinder
+Spellbinder
+(Spell Edge)	13	5%	—	Outfitters: Chapter 4
+Rare Treasure: Limberry Castle Keep (3,4)
+Steal: Lettie (Riovanes Castle / Limberry Castle)
+Steal: Enemy ninjas LV26+
+Catch: Level 90–94 enemy ninja	16000
+Effect: Disable
+A sword with the power to render its victim unable to fight.
+When attacking, has a chance of inflicting Disable.
+FFT Sasuke's Blade
+Sasuke's Blade
+(Sasuke Knife)	14	15%	—	Steal: Agrias's sidequest (War of the Lions)
+Rare Treasure: Nelveska Temple (1,10)
+Mode: Rendezvous
+Catch: Level 95 enemy ninja	10
+A legendary ninja's sword.
+FFT Koga Blade
+Koga Blade
+(Koga Knife)	15	5%	—	Rare Treasure: Midlight's Deep (BRIDGE) (4,12)
+Catch: Level 96+ enemy ninja	10
+A powerful ninja sword that was once used by a secret society.
+FFT Iga Blade
+Iga Blade	15	10%	—	Rare Treasure: Midlight's Deep (YROTCIV) (0,11)	10
+An exquisitely crafted ninja sword that was once used by a secret society.
+FFT Orochi
+Orochi	20	5%	—	Mode: Melee	10
+Absorbs foe's HP
+A katana that strikes like a savage serpent.
+FFT Moonsilk Blade
+Moonsilk Blade	26	5%	—	Mode: Melee	10
+The creator of this masterpiece learned the art of swordcraft in a faraway land.
+Poles
+Poles can be wielded by arithmeticians, mystics, and onion knights, as well as the skyseer and the netherseer. They have a range of two, which allows the user to avoid counterattacks from most enemy units. Because their power is calculated using the wielder's magick attack, mystics can deal decent damage with physical attacks. Poles cannot be used with Dual Wield, but they be used with Doublehand. Poles have a vertical range of 3 tiles up and down, and can be bought at outfitters bar those in the Clockwork City of Goug and castles.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+M
+A
+G
+.
+A
+T
+K
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor MAG.ATK\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Cypress Pole
+Cypress Pole
+(Cypress Rod)	6	20%	—	Outfitters: Zeirchele Falls (Chapter 2)
+Rare Treasure: Castled City of Zaland (0,9)
+Steal: Enemy mystics/arithmeticians LV9–12	1000
+A pole carved from the wood of a cypress.
+Range: 2
+FFT Battle Bamboo
+Battle Bamboo	7	20%	—	Outfitters: Cardinal Delacroix meeting at Lionel Castle (Chapter 2)
+Rare Treasure: Balias Swale (2,10)
+Steal: Enemy mystics/arithmeticians LV13–20	1400
+A thin and lithe bamboo pole that bends when swung.
+Range: 2
+FFT Musk Pole
+Musk Pole
+(Musk Rod)	8	20%	—	Outfitters: Chapter 3
+Rare Treasure: Monastery Vaults Second Level (9,4)
+Steal: Enemy mystics/arithmeticians LV21–23
+Initial: Rapha Galthena	2400
+A pole crafted from wood that exudes a musky scent.
+Range: 2
+FFT Iron Fan
+Iron Fan	9	20%	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Yuguewood (5,4)
+Steal: Enemy mystics/arithmeticians LV24–26	4000
+When folded up, this enormous fan with its ribs doubles as a fighting pole.
+Range: 2
+FFT Gokuu Pole
+Gokuu's Pole
+(Gokuu Pole)	10	20%	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Free City of Bervenia (9,10)
+Steal: Enemy mystics/arithmeticians LV27–39
+Initial: Marach Galthena	7500
+Effect: Atheist
+One strike from this battle pole can cause the target to lose their faith.
+When attacking, has a chance of granting Atheist.
+Range: 2
+FFT Ivory Pole
+Ivory Pole	11	20%	—	Rare Poach: Sekhret
+Catch: Level 95 enemy ninja	10000
+A pole made from ivory that has been specially treated for improved durability.
+Range: 2
+FFT Eight-fluted Pole
+Eight-fluted Pole
+(Octagon Rod)	12	20%	—	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Limberry Castle Undercroft (4,3)
+Steal: Enemy mystics/arithmeticians LV39+
+Catch: Level 90–94 enemy ninja	20000
+Removes: Blind, Silence, Oil, Toad, Poison, Slow, Stop, Immobilize, Disable
+A shaft of boxwood carved into an octagonal shape. Has the power to expel one's woes with a single strike.
+When attacking, has a chance of removing various status ailments.
+Range: 2
+FFT Whale Whisker
+Whale Whisker	16	20%	—	Rare Poach: Tiamat
+Mode: Melee
+Catch: Level 96+ enemy ninja	37000
+A pole made from an unidentified material that some say is a whale's whisker.
+Range: 2
+Rods
+Rods can be wielded by black mages, summoners, mystics, the netherseer, and onion knights. They usually boost certain spells or casting ability. Rods can be used with Dual Wield but cannot be used with Doublehand. Rods have a vertical range of 2 tiles up and 3 tiles down and can be bought at outfitters bar those in the Clockwork City of Goug or castles.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+P
+H
+Y
+S
+.
+A
+T
+K
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor PHYS.ATK\rfloor \times WPN.ATK}
+Some elemental rods boost damage from the element its name indicates. E.g. because the thunder rod is lightning-elemental, and also boosts lightning-elemental damage, it is more powerful in practice than its stats would suggest (in rain it would be even more powerful).
+
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Rod
+Rod	3	20%	—	Outfitters: Magick City of Gariland (Chapter 1)
+Rare Treasure: Mandalia Plains (4,12)
+Steal: Enemy black mages/summoners/mystics LV1–4	200
+A rod fashioned from evergreen wood.
+FFT Thunder Rod
+Thunder Rod	3	20%	—	Outfitters: Zeklaus Desert (Chapter 1)
+Trophy: Goug Lowtown
+Rare Treasure: Zeklaus Desert (random battle map) (3,8)
+Steal: Enemy black mages/summoners/mystics LV5–11	400
+Boosts: Lightning
+Spell Effect: Thunder
+Element: Lightning
+A rod imbued with the power of thunder.
+When attacking, has a chance of casting Thunder.
+FFT Flame Rod
+Flame Rod	3	20%	—	Outfitters: Zeklaus Desert (Chapter 1)
+Trophy: Dorter Trade City (Chapter 2)
+Rare Treasure: Brigands' Den (1,10)
+Rare Poach: Bomb
+Steal: Enemy black mages/summoners/mystics LV5–11	400
+Boosts: Fire
+Spell Effect: Fire
+Element: Fire
+A rod imbued with the power of fire.
+When attacking, has a chance of casting Fire.
+FFT Ice Rod
+Ice Rod	3	20%	—	Outfitters: Zeklaus Desert (Chapter 1)
+Rare Treasure: Brigands' Den (2,10)
+Steal: Enemy black mages/summoners/mystics LV5–11	400
+Boosts: Ice
+Spell Effect: Blizzard
+Element: Ice
+A rod imbued with the power of ice.
+When attacking, has a chance of casting Blizzard.
+FFT Poison Rod
+Poison Rod	3	20%	—	Outfitters: Zeirchele Falls (Chapter 2)
+Rare Treasure: Zeirchele Falls (4,8)
+Steal: Enemy black mages/summoners/mystics LV12–22	500
+Effect: Poison
+A rod with a crystalline tip imbued with poison.
+When attacking, has a chance of inflicting Poison.
+FFT Wizard's Rod
+Wizard's Rod
+(Wizard Rod)	4	20%	2	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Dugeura Pass (1,4)
+Common Poach: Dark Behemoth
+Steal: Enemy black mages/summoners/mystics LV22+	8000
+A rod that enhances the mystical prowess of its wielder.
+While equipped, raises magick attack power.
+FFT Dragon Rod
+Dragon Rod	5	20%	—	Steal: Enemy summoner (Mullonde Cathedral, battle 1), Cletienne Duroi (Mullonde Cathedral)
+Rare Poach: Blue Dragon
+Mode: Rendezvous	12000
+A rod wielded by a dragon master. Its tip is made from carved dragon mode.
+FFT Rod of Faith
+Rod of Faith
+(Faith Rod)	5	20%	—	Rare Treasure: Midlight's Deep (VALKYRIES) (8,4)	10
+Equip: Faith
+Effect: Faith
+This rod purges doubt from those it touches, turning them into pillars of faith.
+While equipped, grants Faith. When used to perform a standard attack, has a chance of granting Faith.
+FFT Stardust Rod
+Stardust Rod	5	20%	3	Mode: Rendezvous	10
+Spell Effect: Gravity
+A rod tipped with a meteorite fragment.
+FFT Crown Sceptre
+Crown Sceptre	5	20%	4	Mode: Rendezvous	10
+A magicked rod wielded by members of the royal guard.
+Polearms
+Polearms, also known as spears in the PlayStation version, can be wielded by dragoons, onion knights, the sky pirate, and the divine knight. Any job can equip them if the character has equipped the ability Equip Polearms of the dragoon.
+
+Polearms have a range of 2 (besides the basic javelin), which allows the user to dodge counters from weapons that only have a range of one. Polearms cannot be used with Dual Wield, but they can be used with Doublehand. Polearms have a vertical range of 3 tiles up and down, and can be bought at outfitters in castles.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+P
+H
+Y
+S
+.
+A
+T
+K
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor PHYS.ATK\rfloor \times WPN.ATK}
+Jump will do x1.5 damage if the jumper equips a polearm, but will disregard the weapon's element and added ability.
+
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Javelin 1
+Javelin	8	10%	—	Outfitters: Second battle Merchant City of Dorter (Chapter 2)
+Rare Treasure: Balias Swale (11,11)
+Common Treasure: Nelveska Temple (5,2) (the rare treasure is the Javelin "II" though they have the same name)
+Steal: Enemy dragoons LV12–15	1000
+A light and inexpensive spear.
+FFT Spear
+Spear	9	10%	—	Outfitters: Meeting with Cardinal Delacroix at Lionel Castle (Chapter 2)
+Rare Treasure: First battle Mining Town of Gollund (4,6)
+Steal: Enemy dragoons LV16–20	2000
+The most commonly used type of polearm.
+Range: 2
+FFT Mythril Spear
+Mythril Spear	10	10%	—	Outfitters: Chapter 3
+Trophy: Gollund Colliery Slope
+Rare Treasure: Yuguewood (2,7)
+Steal: Enemy dragoons LV21–24	4500
+The tip of this spear is made from the valuable metal known as mythril.
+Range: 2
+FFT Partisan
+Partisan	11	10%	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Free City of Bervenia (7,2)
+Rare Poach: Bonesnatch
+Steal: Enemy dragoons LV25–28	7000
+A polearm tipped with a broad, double-edged blade for dealing increased damage.
+Range: 2
+FFT Obelisk
+Obelisk
+(Oberisk)	12	10%	—	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Limberry Castle Undercroft (4,1)
+Steal: Enemy dragoons LV28+
+Catch: Level 90–94 enemy ninja	10000
+A hefty spear fitted with a head shaped like an obelisk.
+Range: 2
+FFT Holy Lance
+Holy Lance	14	10%	—	Common Poach: Sekhret
+Mode: Rendezvous
+Catch: Level 95 enemy ninja	18000
+Spell Effect: Holy
+Element: Holy
+This sacred weapon shines with a pure and brilliant light.
+When attacking, has a chance of casting Holy.
+Range: 2
+FFT Dragon Whisker
+Dragon Whisker	17	10%	—	Rare Poach: Red Dragon
+Mode: Melee/Rendezvous
+Catch: Level 96 ninja	44000
+A spear made from a mysterious material that some say is the whisker of a dragon.
+Range: 2
+FFT Gae Bolg
+Gae Bolg	24	15%	—	Mode: Melee	10
+A spear said to have been wielded by a child of the gods. Merely lifting it requires great strength.
+FFT Gungnir
+Gungnir	29	15%	—	Mode: Rendezvous	10
+Element: Lightning
+A spear with the power to pierce anything.
+FFT Javelin 2
+Javelin "II"	30	10%	—	Rare Treasure: Nelveska Temple (5,2)
+Catch: Level 97 ninja	1000
+A spear of unmatched attacking power.
+Range: 2
+Staves
+Staves can be wielded by white mages, time mages, summoners, mystics, the skyseer, and onion knights. Staves sometimes boost magickal attack and they have higher attack power than rods. Staves can be used with Dual Wield and Doublehand. Staves have a vertical range of 2 tiles up and 3 tiles down and can be bought at outfitters not located in castles or the Clockwork City of Goug.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+M
+A
+G
+.
+A
+T
+K
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor MAG.ATK\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Oak Staff
+Oak Staff	3	15%	—	Outfitters: Magick City of Gariland (Chapter 1)
+Rare Treasure: Mandalia Plains (8,6)
+Steal: Enemy staff-wielder jobs LV≤4	120
+A staff made from sturdy oak.
+FFT White Staff
+White Staff	3	15%	—	Outfitters: Zeklaus Desert (Chapter 1)
+Rare Treasure: Brigands' Den (5,9)
+Steal: Enemy staff-wielder jobs LV5–11	800
+Removes: Doom
+A staff carried by members of the clergy. It can stop death's slow creep.
+When attacking, has a chance of removing Doom.
+FFT Mage's Staff
+Mage's Staff
+(Wizard Staff)	4	15%	1	Outfitters: Balias Swale (Chapter 2)
+Rare Treasure: First battle Mining Town of Gollund (0,9)
+Steal: Enemy staff-wielder jobs LV15–23	4000
+This cypress staff increases the mystical prowess of its wielder.
+While equipped, raises magick attack power.
+FFT Healing Staff
+Healing Staff	4	15%	—	Initial: Alma Beoulve
+Rare Treasure: Eagrose Castle (7,3)
+Rare Poach: Dryad
+Mode: Rendezvous	4000
+Heals target.
+A staff imbued with the power of the spirits.
+When attacking, restores the target's HP.
+FFT Serpent Staff
+Serpent Staff
+(Rainbow Staff)	5	15%	—	Outfitters: Zeirchele Falls (Chapter 2)
+Rare Treasure: Castled City of Zaland (0,2)
+Steal: Enemy staff-wielder jobs LV12–14	2200
+A staff with a giant serpent's scale embedded in its tip.
+FFT Nirvana
+Nirvana	5	15%	3	Mode: Melee	10
+Element: Holy
+A staff that can only be mastered by the enlightened.
+FFT Dreamwaker
+Dreamwaker	5	15%	4	Mode: Rendezvous	10
+A powerful staff said to give life to its owner's dreams.
+FFT Golden Staff
+Golden Staff
+(Gold Staff)	6	15%	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Dugeura Pass (7,3)
+Common Poach: Treant
+Steal: Enemy staff-wielder jobs LV23+	7000
+A stately staff decorated with gold.
+FFT Zeus Mace
+Zeus Mace
+(Mace of Zeus)	6	15%	1	Rare Treasure: Midlight's Deep (DELTA) (1,6)
+Steal: Cletienne Duroi in Necrohol of Mullonde (Chapter 4)
+Trophy: Defeat Bremondt Freitberg	10
+Physical Atk+2.
+A staff that increases the might of its user.
+While equipped, raises physical and magick attack power.
+FFT Staff of the Magi
+Staff of the Magi
+(Sage Staff)	7	15%	—	Rare Treasure: Midlight's Deep (BRIDGE) (4,10)	10
+An ordinary-looking wooden stick with a curious stone embedded in its tip.
+Swords
+Swords can be wielded by squires, knights, geomancers, dark knights, onion knights, holy knight, game hunter, sky pirate, sword saint, divine knight, templar, and soldier, though any job can equip them if the character has equipped the ability Equip Swords of the knight. Swords can be used with Dual Wield and Doublehand.
+
+Swords have a vertical range of 2 tiles up and 3 tiles down. Most swords can only be bought at the outfitters in castles, but the broadsword can be also bought at the Magick City of Gariland, presumably so players can begin using the knight job at the start of the game.
+
+Damage calculation
+D
+M
+G
+=
+⌊
+P
+H
+Y
+S
+.
+A
+T
+K
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor PHYS.ATK\rfloor \times WPN.ATK}
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Nagrarok
+Nagnarok
+(Nagrarok)	1	50%	—	Rare Treasure: Nelveska Temple (3,8)
+Rare Poach: Swine
+Mode: Rendezvous
+Catch: Level 95 enemy ninja	10
+Effect: Toad
+This dark blade is mentioned in legends about the end of the world. It has the power to inflict a terrible curse.
+When attacking, has a chance of inflicting Toad.
+FFT Broadsword
+Broadsword	4	5%	—	Initial: Ramza Beoulve, generic male units from Warriors' Guild
+Outfitters: Magick City of Gariland (Chapter 1)
+Rare Treasure: Mandalia Plains (4,4)
+Steal: Enemy squires/knights/geomancers LV≤3	200
+An inexpensive and widely used sword.
+FFT Long Sword
+Longsword
+(Long Sword)	5	10%	—	Outfitters: Dycedarg meeting at Eagrose Castle (Chapter 1)
+Rare Treasure: Dorter Slums (2,14)
+Steal: Enemy squires/knights/geomancers LV4–6	900
+A sword with a sharp point, forged for the battlefield.
+FFT Iron Sword
+Iron Sword	6	5%	—	Outfitters: Zeklaus Desert (Chapter 1)
+Trophy: Brigands' Den
+Rare Treasure: Zeklaus Desert (random battle map) (3,15)
+Steal: Enemy squires/knights/geomancers LV7–8	900
+This sword has a broad and sturdy blade, but is very heavy to wield.
+FFT Mythril Sword
+Mythril Sword	7	8%	—	Outfitters: Lenalian Plateau (Chapter 1)
+Trophy: Zaland & Gollund Colliery Ridge
+Rare Treasure: Gollund Colliery Floor (3,5) & Gollund Colliery Ridge (2,5)
+Steal: Enemy squires/knights/geomancers LV9–14	1600
+A sword forged from the metal known as mythril. Its brilliant blade is incredibly lightweight.
+FFT Coral Sword
+Coral Sword	8	5%	—	Initial: Agrias Oaks
+Outfitters: Zeirchele Falls (Chapter 2)
+Rare Treasure: Zeirchele Falls (4,7)
+Common Poach: Minotaur
+Steal: Enemy squires/knights/geomancers LV15–20	3300
+Element: Lightning
+The handle of this single-edged sword has been decorated with intricate coral piecework. The blade is imbued with the power of lightning.
+FFT Blood Sword
+Blood Sword	8	5%	—	Steal: Gaffgarion at Golgollada Gallows
+Rare Treasure: Eagrose Castle (6,6) & Midlight's Deep (TERMINATE) (6,7)
+Poach: Hydra
+Mode: Melee	3300
+Absorbs foe's HP (reversed on undead)
+The blade of this sword is a deep crimson, and is said to drink the blood of its victims.
+When attacking, absorbs the target's HP.
+FFT Ancient Sword
+Ancient Sword	9	5%	—	Steal: Gaffgarion at Lionel Castle, enemy squires/knights/geomancers LV21–22
+Outfitters: From Chapter 3 onwards
+Rare Treasure: Lesalia Castle Postern (9,10)
+Rare Poach: Gobbledygook	5000
+Effect: Immobilize
+A sword constructed using ancient techniques. It has the power to stop an opponent in their tracks.
+When attacking, has a chance of inflicting Immobilize.
+FFT Sleep Blade
+Sleep Blade
+(Sleep Sword)	9	5%	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Rare Treasure: Grogh Heights (9,1)
+Rare Poach: Squidraken
+Steal: Enemy squires/knights/geomancers LV23–25	5000
+Effect: Sleep
+A wide-bladed sword with a midnight blue handle. It has the power to put the opponent into a deep slumber.
+When attacking, has a chance of inflicting Sleep.
+FFT Diamond Sword
+Diamond Sword	10	10%	—	Outfitters: Monastery Vaults - First Floor (Chapter 3)
+Rare Treasure: Dugeura Pass (4,9)
+Steal: Wiegraf Folles in Monastery Vaults, enemy squires/knights/geomancers LV26–27	8000
+An extremely hard mineral is incorporated into the blade, making it far more lethal than most swords.
+FFT Materia Blade
+Materia Blade	10	10%	—	Treasure: Mount Bervenia (PS/WotL/Classic)
+Default: Cloud (The Ivalice Chronicles)
+Mode: Melee/Rendezvous
+Catch: Level 96+ enemy ninja	10
+The sword belonging to Cloud, the extraplanar wanderer. It was designed for members of SOLDIER, allowing them to fight to their full potential.
+FFT Materia Blade
+Materia Blade+	16	10%	4	Treasure: Mount Bervenia (The Ivalice Chronicles)	5
+This materia blade has undergone augmentation to further enhance the prowess of SOLDIER members.
+While equipped, raises magick attack power.
+Cannot be thrown.
+FFT Platinum Sword
+Platinum Sword	12	10%	—	Outfitters: Walled City of Yardrow (Chapter 3)
+Rare Treasure: Mount Germinas (6,0)
+Steal: Enemy squires/knights/geomancers LV28–33	11000
+A shining sword made of a lustrous white alloy of platinum and mythril.
+FFT Icebrand
+Icebrand
+(Ice Brand)	13	10%	—	Outfitters: Chapter 4
+Rare Treasure: Limberry Castle Keep (6,2)
+Steal: Enemy squires/knights/geomancers LV34–36
+Initial: Luso	14000
+Spell Effect: Blizzara
+Element: Ice
+This magickal sword is infused with the power of ice, granting it a mystical shimmer.
+When attacking, has a chance of casting Blizzara.
+FFT Runeblade
+Runeblade
+(Rune Blade)	14	15%	2	Outfitters: Battle of Fort Besselat (Chapter 4)
+Rare Treasure: Fort Besselat North Wall (7,10)
+Steal: Enemy squires/knights/geomancers LV36+
+Catch: Level 90–94 enemy ninja
+Initial: Beowulf Cadmus	20000
+A sword inscribed with ancient runes.
+While equipped, raises magick attack power.
+FFT Moonblade
+Moonblade	20	15%	—	Mode: Rendezvous	10
+Equip: Haste
+A sword that glitters cruelly like a crescent moon.
+FFT Onion Sword
+Onion Sword	50	15%	—	Mode: Melee	10
+Onion Knight only (War of the Lions)
+A blade forged for swordsmen who have mastered every technique and achieved knighthood's most exalted rank.
+Throwing weapons
+The following items are used by ninjas or any other unit with the Throw command. They are sold at outfitters bar the places that have a castle. Throwing weapons are consumed upon use and are not equipped to the character's weapon slot.
+
+D
+M
+G
+=
+⌊
+S
+P
+E
+E
+D
+⌋
+×
+W
+P
+N
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor SPEED\rfloor \times WPN.ATK}
+
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+FFT Shuriken
+Shuriken	4	—	—	Outfitters: Second battle Merchant City of Dorter (Chapter 2)
+Common Poach: Floating Eye	50
+Throwing weapon. A weapon originating from the distant east. It spins in the air before hitting its target.
+Attack Power: 4
+FFT Fuma Shuriken
+Fuma Shuriken
+(Magic Shuriken)	7	—	—	Outfitters: Royal City of Lesalia (Chapter 3)
+Common Poach: Ahriman	300
+Throwing weapon. A pinwheel-shaped throwing star that spins at great speed.
+Attack power: 7
+FFT Yagyu Darkrood
+Yagyu Darkrood
+(Yagyu Darkness)	10	—	—	Outfitters: Chapter 4
+Common Poach: Plague Horror	1000
+Throwing weapon. A cross-shaped throwing star with hooked points for inflicting maximum damage.
+Attack power: 10
+FFT Flameburst Bomb
+Flameburst Bomb
+(Fire Ball)	8	—	—	Outfitters: Meeting with Cardinal Delacroix at Lionel Castle (Chapter 2)
+Common Poach: Bomb	250
+Element: Fire
+Throwing weapon. An explosive sphere that showers its target with flame.
+Attack power: 8
+FFT Snowmelt Bomb
+Snowmelt Bomb
+(Water Ball)	8	—	—	Outfitters: Meeting with Cardinal Delacroix at Lionel Castle (Chapter 2)
+Rare Poach: Grenade	250
+Element: Water
+Throwing weapon. An explosive sphere that drenches its target with water.
+Attack power: 8
+FFT Spark Bomb
+Spark Bomb
+(Lightning Ball)	8	—	—	Outfitters: Meeting with Cardinal Delacroix at Lionel Castle (Chapter 2)
+Poach: Exploder	250
+Element: Lightning
+Throwing weapon. An explosive sphere that electrifies its target with lightning.
+Attack Power: 8
+Other
+Characters that do not have any weapons equipped will fight unarmed for minimal damage, and damage can be boosted by having a greater bravery.
+
+The damage formula is:
+
+D
+M
+G
+=
+⌊
+P
+H
+Y
+S
+.
+A
+T
+K
+×
+(
+B
+R
+A
+V
+E
+/
+100
+)
+⌋
+×
+P
+H
+Y
+S
+.
+A
+T
+K
+{\displaystyle DMG=\lfloor PHYS.ATK\times (BRAVE/100)\rfloor \times PHYS.ATK}[1]
+If they have the Brawler support ability, innate to the monk job and also learned for 200 JP, damage is boosted, and the formula becomes:
+
+D
+M
+G
+=
+⌊
+⌊
+P
+H
+Y
+S
+.
+A
+T
+K
+×
+(
+B
+R
+A
+V
+E
+/
+100
+)
+⌋
+×
+P
+H
+Y
+S
+.
+A
+T
+K
+×
+1.5
+⌋
+{\displaystyle DMG=\lfloor \lfloor PHYS.ATK\times (BRAVE/100)\rfloor \times PHYS.ATK\times 1.5\rfloor }
+A unit can be forced to fight unarmed if they are struck by the knight and nightblade's Rend Weapon ability or by the sword saint, divine knight, and Delita's ark knight's Crush Weapon ability, or if they had the weapon stolen from them. Unarmed has a vertical range of 2 up and 3 down.
+
+Weapon	Atk	Def	Mag Pwr	Acquisition	Cost
+Unarmed	0	0%	—	Anytime	—
+Default weapon equipped when not equip with a weapon.
+Unused weapon types
+Found within the weapons' graphical in-battle sprites within the game's data, there are two unused weapons among the various weapon and shield sprites. The first appears to be a boomerang, while the second is a doll. It is unknown if the doll would have been used as a weapon or a shield, as the graphics contain both intermixed. The reason for why these equipment pieces not appear within the final product is unknown, but it could be assumed that the developers could not make them return to the owner's hand after attacking a target, much like how boomerangs behave or the doll walking back to the owner.
+
+Boomerang.
+Boomerang.
+Doll.
+Doll.
+Other appearances
+Dissidia Final Fantasy NT
+Broadsword.
+Broadsword.
+Platinum Sword.
+Platinum Sword.
+Ragnarok.
+Ragnarok.
+Runeblade.
+Runeblade.
+FFTA Buster SwordThis section about equipment in Dissidia Final Fantasy NT is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Dissidia Final Fantasy Opera Omnia
+Broadsword.
+Broadsword.
+Coral Sword.
+Coral Sword.
+Defender.
+Defender.
+Excalibur.
+Excalibur.
+Icebrand.
+Icebrand.
+Platinum Sword.
+Platinum Sword.
+Ragnarok.
+Ragnarok.
+Runeblade.
+Runeblade.
+Save the Queen.
+Save the Queen.
+FFTA Buster SwordThis section about equipment in Dissidia Final Fantasy Opera Omnia is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Pictlogica Final Fantasy
+Flameburst Bomb.
+Flameburst Bomb.
+Fuma Shuriken Rank 5 icon.
+Fuma Shuriken Rank 5 icon.
+Fuma Shuriken Rank 6 icon.
+Fuma Shuriken Rank 6 icon.
+Fuma Shuriken Rank 7 icon.
+Fuma Shuriken Rank 7 icon.
+Glacial Gun.
+Glacial Gun.
+Hydrascale Bag.
+Hydrascale Bag.
+Moonblade Rank 6 icon.
+Moonblade Rank 6 icon.
+Moonblade Rank 7 icon.
+Moonblade Rank 7 icon.
+Platinum Dagger.
+Platinum Dagger.
+Save the Queen Rank 6 icon.
+Save the Queen Rank 6 icon.
+Save the Queen Rank 7 icon.
+Save the Queen Rank 7 icon.
+Snowmelt Bomb.
+Snowmelt Bomb.
+Spark Bomb.
+Spark Bomb.
+Yagyu Darkrood.
+Yagyu Darkrood.
+FFTA Buster SwordThis section about equipment in Pictlogica Final Fantasy is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Final Fantasy Airborne Brigade
+Cypress Pole (R).
+Cypress Pole (R).
+Knightslayer (R).
+Knightslayer (R).
+Nagnarok (R).
+Nagnarok (R).
+Ninja Blade (R).
+Ninja Blade (R).
+Romandan Pistol (R).
+Romandan Pistol (R).
+Cypress Pole (R+).
+Cypress Pole (R+).
+Knightslayer (R+).
+Knightslayer (R+).
+Nagnarok (R+).
+Nagnarok (R+).
+Ninja Blade (R+).
+Ninja Blade (R+).
+Romandan Pistol (R+).
+Romandan Pistol (R+).
+Arondight (SR).
+Arondight (SR).
+Battle Folio (SR).
+Battle Folio (SR).
+Blaze Gun (SR).
+Blaze Gun (SR).
+Bloodstring Harp (SR).
+Bloodstring Harp (SR).
+Dragon Rod (SR).
+Dragon Rod (SR).
+Fuma Shuriken (SR).
+Fuma Shuriken (SR).
+Gokuu Pole (SR).
+Gokuu Pole (SR).
+Golden Staff (SR).
+Golden Staff (SR).
+Hunting Bow (SR).
+Hunting Bow (SR).
+Kiyomori (SR).
+Kiyomori (SR).
+Ninja Longblade (SR).
+Ninja Longblade (SR).
+Platinum Dagger (SR).
+Platinum Dagger (SR).
+Spellbinder (SR).
+Spellbinder (SR).
+Windslash Bow (SR).
+Windslash Bow (SR).
+Arondight (SR+).
+Arondight (SR+).
+Battle Folio (SR+).
+Battle Folio (SR+).
+Blaze Gun (SR+).
+Blaze Gun (SR+).
+Bloodstring Harp (SR+).
+Bloodstring Harp (SR+).
+Dragon Rod (SR+).
+Dragon Rod (SR+).
+Fuma Shuriken (SR+).
+Fuma Shuriken (SR+).
+Gokuu Pole (SR+).
+Gokuu Pole (SR+).
+Golden Staff (SR+).
+Golden Staff (SR+).
+Hunting Bow (SR+).
+Hunting Bow (SR+).
+Kiyomori (SR+).
+Kiyomori (SR+).
+Ninja Longblade (SR+).
+Ninja Longblade (SR+).
+Platinum Dagger (SR+).
+Platinum Dagger (SR+).
+Spellbinder (SR+).
+Spellbinder (SR+).
+Windslash Bow (SR+).
+Windslash Bow (SR+).
+Balmung (SSR).
+Balmung (SSR).
+Coral Sword (SSR).
+Coral Sword (SSR).
+Durandal (SSR).
+Durandal (SSR).
+Fairie Harp (SSR).
+Fairie Harp (SSR).
+Fomalhaut (SSR).
+Fomalhaut (SSR).
+Gastrophetes (SSR).
+Gastrophetes (SSR).
+Glacial Gun (SSR).
+Glacial Gun (SSR).
+Healing Staff (SSR).
+Healing Staff (SSR).
+Iga Blade (SSR).
+Iga Blade (SSR).
+Ivory Pole (SSR).
+Ivory Pole (SSR).
+Materia Blade (SSR).
+Materia Blade (SSR).
+Omnilex (SSR).
+Omnilex (SSR).
+Orochi (SSR).
+Orochi (SSR).
+Rod of Faith (SSR).
+Rod of Faith (SSR).
+Sage's Staff (SSR).
+Sage's Staff (SSR).
+Scorpion Tail (SSR).
+Scorpion Tail (SSR).
+Whale Whisker (SSR).
+Whale Whisker (SSR).
+Yagyu Darkrood (SSR).
+Yagyu Darkrood (SSR).
+Balmung (SSR+).
+Balmung (SSR+).
+Coral Sword (SSR+).
+Coral Sword (SSR+).
+Durandal (SSR+).
+Durandal (SSR+).
+Fomalhaut (SSR+).
+Fomalhaut (SSR+).
+Healing Staff (SSR+).
+Healing Staff (SSR+).
+Materia Blade (SSR+).
+Materia Blade (SSR+).
+Omnilex (SSR+).
+Omnilex (SSR+).
+Sage's Staff (SSR+).
+Sage's Staff (SSR+).
+Scorpion Tail (SSR+).
+Scorpion Tail (SSR+).
+Whale Whisker (SSR+).
+Whale Whisker (SSR+).
+Blaster (UR).
+Blaster (UR).
+Chaos Blade (UR).
+Chaos Blade (UR).
+Materia Blade (UR).
+Materia Blade (UR).
+Nirvana (UR).
+Nirvana (UR).
+Save the Queen (UR).
+Save the Queen (UR).
+Valhalla (UR).
+Valhalla (UR).
+Defender (UR+).
+Defender (UR+).
+Materia Blade (UR+).
+Materia Blade (UR+).
+Nirvana (UR+).
+Nirvana (UR+).
+Save the Queen (UR+).
+Save the Queen (UR+).
+Save the Queen (UUR+).
+Save the Queen (UUR+).
+Chaos Blade (CR).
+Chaos Blade (CR).
+Save the Queen (CR).
+Save the Queen (CR).
+FFTA Buster SwordThis section about equipment in Final Fantasy Airborne Brigade is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Final Fantasy Record Keeper
+Weapons
+Ancient Sword.
+Ancient Sword.
+Arondight.
+Arondight.
+Battle Bamboo.
+Battle Bamboo.
+Battle Folio.
+Battle Folio.
+Blood Sword.
+Blood Sword.
+Broadsword.
+Broadsword.
+Chaos Blade.
+Chaos Blade.
+Chaosbringer.
+Chaosbringer.
+Coral Sword.
+Coral Sword.
+Deathbringer.
+Deathbringer.
+Defender.
+Defender.
+Dragon Rod.
+Dragon Rod.
+Dreamwaker.
+Dreamwaker.
+Durandal.
+Durandal.
+Eight-fluted Pole.
+Eight-fluted Pole.
+Excalibur.
+Excalibur.
+Gastrophetes.
+Gastrophetes.
+Giant Axe.
+Giant Axe.
+Glacial Gun.
+Glacial Gun.
+Gokuu Pole.
+Gokuu Pole.
+Golden Axe.
+Golden Axe.
+Golden Staff.
+Golden Staff.
+Healing Staff.
+Healing Staff.
+Holy Lance.
+Holy Lance.
+Iga Blade.
+Iga Blade.
+Iron Fan.
+Iron Fan.
+Ivory Pole.
+Ivory Pole.
+Kiku-Ichimonji.
+Kiku-Ichimonji.
+Kiyomori.
+Kiyomori.
+Main Gauche.
+Main Gauche.
+Masamune.
+Masamune.
+Materia Blade.
+Materia Blade.
+Moonblade.
+Moonblade.
+Musk Pole.
+Musk Pole.
+Mythril Bow.
+Mythril Bow.
+Mythril Gun.
+Mythril Gun.
+Mythril Sword.
+Mythril Sword.
+Nirvana.
+Nirvana.
+Orichalcum Dirk.
+Orichalcum Dirk.
+Papyrus Codex.
+Papyrus Codex.
+Platinum Sword.
+Platinum Sword.
+Ragnarok.
+Ragnarok.
+Romandan Pistol.
+Romandan Pistol.
+Runeblade.
+Runeblade.
+Save the Queen.
+Save the Queen.
+Slasher.
+Slasher.
+Spellbinder.
+Spellbinder.
+Staff of the Magi.
+Staff of the Magi.
+Stoneshooter.
+Stoneshooter.
+White Staff.
+White Staff.
+Wizard's Rod.
+Wizard's Rod.
+Zeus Mace.
+Zeus Mace.
+Zwill Straightblade.
+Zwill Straightblade.
+Sprites
+Ragnarok.
+Ragnarok.
+FFTA Buster SwordThis section about equipment in Final Fantasy Record Keeper is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Final Fantasy Brave Exvius
+Chaos Blade.
+Chaos Blade.
+Chirijiraden.
+Chirijiraden.
+Defender.
+Defender.
+Dreamwaker.
+Dreamwaker.
+Kiyomori.
+Kiyomori.
+Moonblade.
+Moonblade.
+Pantherskin Bag.
+Pantherskin Bag.
+Romandan Pistol.
+Romandan Pistol.
+Save the Queen.
+Save the Queen.
+Vesper.
+Vesper.
+White Staff.
+White Staff.
+Relm-ffvi-snes-battleThis gallery is incomplete and requires Chaos Blade and Nagnarok added. You can help the Final Fantasy Wiki by uploading images.
+FFTA Buster SwordThis section about equipment in Final Fantasy Brave Exvius is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+War of the Visions: Final Fantasy Brave Exvius
+FFTA Buster SwordThis section about equipment in War of the Visions: Final Fantasy Brave Exvius is empty or needs to be expanded. You can help the Final Fantasy Wiki by expanding it.
+Non-Final Fantasy guest appearances
+Rise of Mana
+The Chirijiraden and Moonblade are wielded by Cidolfus Orlandeau and Agrias Oaks respectably.
+
+Chirijiraden.
+Chirijiraden.
+Moonblade.
+Moonblade.
+Citations
+ Final Fantasy Tactics Brave/Faith FAQ by Astrologist Olan 19
+Categories
+Languages
+Community content is available under CC-BY-SA unless otherwise noted.
+More Fandoms
+Fantasy Sci-fi Final Fantasy
+Discussions on this wiki
+Join the conversation
+Sign in to read what others are saying and share your thoughts.
+SIGN IN
+Don't have account?Register now
+Recent Images
+Balthier B.png
+Balthier (Duellum)
+8 hours ago
+Balthier A.png
+Balthier (Duellum)
+8 hours ago
+DDFF Balthier profile.png
+Balthier (Duellum)
+8 hours ago
+
+Fandom logo
+Explore properties
+Fandom
+Fanatical
+GameSpot
+Metacritic
+TV Guide
+Honest Entertainment
+Follow Us
+Overview
+What is Fandom?
+Essentials
+About
+Careers
+Press
+Contact
+Terms of Use
+Privacy Policy
+Digital Services Act
+Global Sitemap
+Local Sitemap
+Cookie Preferences
+Community
+Community Central
+Support
+Help
+Advertise
+Media Kit
+Contact
+Fandom Apps
+Take your favorite fandoms with you and never miss a beat.
+Fandom App logo
+Store icon
+Store icon
+Final Fantasy Wiki is a Fandom Games Community.
+View Mobile Site
+We've updated our Privacy Policy. Based on your current location, certain choices, such as the ability to opt out of the sale or sharing of personal information, may not apply to you. Please review the updated policy. By continuing to use our website after April 28, 2026, you agree to the updated terms.
+Accept
+Search this wiki
+Search all wikis
