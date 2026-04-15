@@ -3666,7 +3666,16 @@ namespace FFTColorCustomizer.Utilities
                     // If the resolver fails (no stable byte found), we don't
                     // retry — the fallback is the state machine's tracked
                     // cursor position, which handles most nav correctly.
-                    if (!_jobCursorResolveAttempted)
+                    //
+                    // Gate the trigger on screen.MenuDepth == 2 (inner panel
+                    // confirmed by memory). The state machine flips to
+                    // JobScreen synchronously on Enter, but the game's open
+                    // animation takes ~50-200ms — firing the resolver during
+                    // that window sends the 6 raw Right/Left keys into
+                    // PartyMenu / CharacterStatus / animation, drifting the
+                    // OUTER cursor. MenuDepth lags the state machine by the
+                    // same animation window, so it's the right gate.
+                    if (!_jobCursorResolveAttempted && screen.MenuDepth == 2)
                     {
                         _jobCursorResolveAttempted = true;
                         int _unused;

@@ -74,13 +74,12 @@ public class ScreenStateMachineTests
     }
 
     [Fact]
-    public void CharacterStatus_Escape_SnapsPartyMenuCursorToZero()
+    public void CharacterStatus_Escape_RestoresPartyMenuCursor()
     {
-        // Game behavior verified live 2026-04-15: on Escape from
-        // CharacterStatus the in-game cursor always returns to (0,0)
-        // regardless of where the unit was selected from. The state
-        // machine used to restore the saved cursor, which left it
-        // permanently desynced from the game.
+        // Game preserves the entry cursor position on Escape (verified
+        // live 2026-04-15). State machine restores _savedParty{Row,Col}
+        // captured at Enter time so the cursor stays where the player
+        // left it before opening CharacterStatus.
         var sm = CreateAtScreen(GameScreen.WorldMap);
         sm.OnKeyPressed(VK_ESCAPE); // → PartyMenu at (0,0)
         sm.OnKeyPressed(VK_DOWN);   // row 1
@@ -89,10 +88,10 @@ public class ScreenStateMachineTests
         sm.OnKeyPressed(VK_RETURN); // → CharacterStatus (saves 1,2)
         Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
 
-        sm.OnKeyPressed(VK_ESCAPE); // → PartyMenu, cursor SNAPS to (0,0)
+        sm.OnKeyPressed(VK_ESCAPE); // → PartyMenu, cursor restored to (1,2)
         Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
-        Assert.Equal(0, sm.CursorRow);
-        Assert.Equal(0, sm.CursorCol);
+        Assert.Equal(1, sm.CursorRow);
+        Assert.Equal(2, sm.CursorCol);
     }
 
     [Fact]
@@ -945,11 +944,12 @@ public class ScreenStateMachineTests
     }
 
     [Fact]
-    public void ViewedGridIndex_OnNestedScreen_UsesSavedCursor()
+    public void ViewedGridIndex_BackFromNestedScreen_RestoresSavedCursor()
     {
-        // ViewedGridIndex on nested screens uses _savedParty{Row,Col}
-        // captured at Enter time so the viewed unit doesn't change as
-        // the player navigates within an inner panel.
+        // Game preserves the entry cursor position on Escape from
+        // CharacterStatus. ViewedGridIndex follows because PartyMenu
+        // uses the live CursorRow/Col, which now equals the restored
+        // saved snapshot.
         var sm = CreateAtScreen(GameScreen.PartyMenu);
         sm.OnKeyPressed(VK_RIGHT);
         sm.OnKeyPressed(VK_DOWN);
@@ -957,24 +957,8 @@ public class ScreenStateMachineTests
         Assert.Equal(6, sm.ViewedGridIndex);
         sm.OnKeyPressed(VK_RETURN);
         Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
-        // While on the nested screen, ViewedGridIndex still resolves to the
-        // saved value (idx 6), so downstream lookups (loadout, abilities,
-        // viewedUnit) target the unit we entered from.
-        Assert.Equal(6, sm.ViewedGridIndex);
-    }
-
-    [Fact]
-    public void ViewedGridIndex_BackFromNestedScreen_SnapsToZero()
-    {
-        // Game behavior: on Escape from CharacterStatus, the in-game cursor
-        // snaps back to (0,0). ViewedGridIndex follows because we're now on
-        // PartyMenu and use the live CursorRow/Col, not the saved snapshot.
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
-        sm.OnKeyPressed(VK_RIGHT);
-        sm.OnKeyPressed(VK_DOWN);
-        sm.OnKeyPressed(VK_RETURN);  // → CharacterStatus, saves (1,1)
-        sm.OnKeyPressed(VK_ESCAPE);  // → PartyMenu, snaps cursor to (0,0)
+        sm.OnKeyPressed(VK_ESCAPE); // back to PartyMenu, cursor restored
         Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
-        Assert.Equal(0, sm.ViewedGridIndex);
+        Assert.Equal(6, sm.ViewedGridIndex);
     }
 }

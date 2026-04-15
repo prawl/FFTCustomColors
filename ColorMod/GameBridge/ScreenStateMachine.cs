@@ -471,18 +471,14 @@ namespace FFTColorCustomizer.GameBridge
             switch (vk)
             {
                 case VK_ESCAPE:
-                    // Game behavior verified live 2026-04-15: on Escape from
-                    // CharacterStatus the in-game cursor always SNAPS to (0,0)
-                    // regardless of where the unit was selected from. We used
-                    // to restore _savedPartyRow/_savedPartyCol, which left
-                    // the state machine permanently desynced from the game
-                    // cursor after every nested-screen round trip.
-                    // ViewedGridIndex still uses the saved snapshot for
-                    // any in-flight nested screens, but PartyMenu's own
-                    // CursorRow/Col snap back to (0,0).
+                    // Game preserves the entry cursor position on Escape
+                    // (verified live 2026-04-15 — viewing Orlandeau on
+                    // CharacterStatus, Escape returns to PartyMenu with
+                    // cursor still on Orlandeau). Restore the saved
+                    // PartyMenu cursor so state machine stays in sync.
                     CurrentScreen = GameScreen.PartyMenu;
-                    CursorRow = 0;
-                    CursorCol = 0;
+                    CursorRow = _savedPartyRow;
+                    CursorCol = _savedPartyCol;
                     GridColumns = 5;
                     GridRows = (RosterCount + 4) / 5;
                     StatsExpanded = false; // reset view toggle when leaving
