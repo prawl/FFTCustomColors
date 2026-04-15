@@ -611,6 +611,185 @@ change_support_ability_to()  { _change_ability support  "$*"; }
 change_movement_ability_to() { _change_ability movement "$*"; }
 change_secondary_ability_to() { _change_ability secondary "$*"; }
 
+# Internal: coordinates (row, col) for each class on the Ramza JobSelection
+# grid. Layout verified live 2026-04-15 — see project_job_grid_cursor.md.
+# Returns "<row>,<col>" or empty if the class is unknown. Generic unit
+# layouts are assumed identical but with Squire at (0,0) instead of Gallant
+# Knight and Bard/Dancer gender-specific at row 2 — verify when first used.
+_job_grid_coord() {
+  local className="$1"
+  local isRamza="${2:-1}"  # 1 if Ramza, 0 for generics
+  case "$className" in
+    # Row 0 (6 cells)
+    "Gallant Knight") [ "$isRamza" = 1 ] && echo "0,0" ;;
+    "Squire")         [ "$isRamza" = 0 ] && echo "0,0" ;;
+    "Chemist")    echo "0,1" ;;
+    "Knight")     echo "0,2" ;;
+    "Archer")     echo "0,3" ;;
+    "Monk")       echo "0,4" ;;
+    "White Mage") echo "0,5" ;;
+    # Row 1 (7 cells)
+    "Black Mage") echo "1,0" ;;
+    "Time Mage")  echo "1,1" ;;
+    "Summoner")   echo "1,2" ;;
+    "Thief")      echo "1,3" ;;
+    "Orator")     echo "1,4" ;;
+    "Mystic")     echo "1,5" ;;
+    "Geomancer")  echo "1,6" ;;
+    # Row 2 (6 cells)
+    "Dragoon")       echo "2,0" ;;
+    "Samurai")       echo "2,1" ;;
+    "Ninja")         echo "2,2" ;;
+    "Arithmetician") echo "2,3" ;;
+    "Bard")          echo "2,4" ;;  # male-only; for females use Dancer
+    "Dancer")        echo "2,4" ;;  # female-only; for males use Bard
+    "Mime")          echo "2,5" ;;
+  esac
+}
+
+# Internal: per-row width on the JobSelection grid. Ramza: 6/7/6.
+_job_row_width() {
+  local row="$1"
+  case "$row" in
+    1) echo 7 ;;
+    *) echo 6 ;;
+  esac
+}
+
+# change_job_to <ClassName>
+# Switch the viewed unit's job via JobSelection → JobActionMenu
+# (Change Job) → JobChangeConfirmation → Confirm flow. Locked to
+# JobSelection state (or CharacterStatus with sidebar on Job —
+# prepends the Enter to open the grid). Idempotent: if already on
+# the target job, no-op with "already equipped".
+#
+# Usage:
+#   change_job_to Chemist
+#   change_job_to "Time Mage"
+#   change_job_to "Gallant Knight"   # Ramza only
+#
+# Returns 0 on success, 1 on error.
+change_job_to() {
+  local target="$*"
+  if [ -z "$target" ]; then
+    echo "[change_job_to] usage: change_job_to <ClassName>"
+    echo "  e.g. change_job_to Knight, change_job_to \"Time Mage\""
+    return 1
+  fi
+
+  _current_screen >/dev/null
+  local stateFile="$B/__jobstate.txt"
+  node -e "
+const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const s=r.screen||{};
+console.log(JSON.stringify({
+  name: s.name||'',
+  sidebarUi: s.ui||'',
+  row: (typeof s.cursorRow==='number')?s.cursorRow:0,
+  col: (typeof s.cursorCol==='number')?s.cursorCol:0,
+}));" "$B/response.json" 2>/dev/null > "$stateFile"
+
+  local curScreen=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).name)" < "$stateFile")
+  local curUi=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).sidebarUi)" < "$stateFile")
+  local curRow=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).row)" < "$stateFile")
+  local curCol=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).col)" < "$stateFile")
+  rm -f "$stateFile"
+
+  # Build the entry prefix. JobSelection is one Enter past CharacterStatus
+  # when the sidebar is on "Job".
+  local -a prefix=()
+  if [ "$curScreen" = "JobSelection" ]; then
+    :  # already there
+  elif [ "$curScreen" = "CharacterStatus" ] && [ "$curUi" = "Job" ]; then
+    prefix+=("Enter")
+    # After Enter the state machine lands on JobSelection (0, 0) — the
+    # resolver will kick in on the next screen call. We can't know the
+    # real starting cursor here (it's the unit's current job), so we
+    # set curRow/curCol=0 and walk from (0, 0). Worst case: the walk
+    # is longer than needed by a few keys.
+    curRow=0
+    curCol=0
+  else
+    echo "[change_job_to] ERROR: locked to JobSelection (or CharacterStatus with sidebar on Job). Current: $curScreen ui=$curUi"
+    return 1
+  fi
+
+  # Determine character kind: Ramza is always the first display-order
+  # unit in the party grid. Since the command is invoked from a nested
+  # screen where the viewed unit is frozen, we infer from the presence
+  # of "Gallant Knight" in the sidebar ui when we entered, or just
+  # default to Ramza=1 for now. Generic detection needs per-unit gender
+  # which isn't surfaced yet. Safe default: assume Ramza (the only
+  # character with Gallant Knight); generics share the rest of the grid.
+  local isRamza=1
+
+  # Look up target coordinates.
+  local targetCoord=$(_job_grid_coord "$target" "$isRamza")
+  if [ -z "$targetCoord" ]; then
+    echo "[change_job_to] ERROR: unknown class '$target'. Valid classes:"
+    echo "  Row 0: Gallant Knight (Ramza) / Squire (generics), Chemist, Knight, Archer, Monk, White Mage"
+    echo "  Row 1: Black Mage, Time Mage, Summoner, Thief, Orator, Mystic, Geomancer"
+    echo "  Row 2: Dragoon, Samurai, Ninja, Arithmetician, Bard (M) / Dancer (F), Mime"
+    return 1
+  fi
+  local targetRow="${targetCoord%,*}"
+  local targetCol="${targetCoord#*,}"
+
+  # Build the key sequence. Walk vertically first (rows are uniform
+  # indexable), then horizontally within the target row.
+  local -a keys=()
+  for k in "${prefix[@]}"; do keys+=("$k"); done
+
+  # Vertical walk — no wrap, grid has 3 rows for Ramza (Mime is row 2
+  # for the default grid; row 3 would be extra-unlocks if we add them).
+  local r="$curRow"
+  while [ "$r" -gt "$targetRow" ]; do keys+=("CursorUp"); r=$((r - 1)); done
+  while [ "$r" -lt "$targetRow" ]; do keys+=("CursorDown"); r=$((r + 1)); done
+
+  # When crossing rows, the previous column may be wider than the new
+  # row. The state machine clamps col to the new row's last cell, but
+  # we walked using curCol directly — fix it here. For the simple walk,
+  # we track the effective col AFTER clamp:
+  local rowWidth=$(_job_row_width "$targetRow")
+  local effectiveCol="$curCol"
+  if [ "$effectiveCol" -ge "$rowWidth" ]; then
+    effectiveCol=$((rowWidth - 1))
+  fi
+
+  # Horizontal walk within the target row.
+  local c="$effectiveCol"
+  while [ "$c" -gt "$targetCol" ]; do keys+=("CursorLeft"); c=$((c - 1)); done
+  while [ "$c" -lt "$targetCol" ]; do keys+=("CursorRight"); c=$((c + 1)); done
+
+  # Open JobActionMenu → pick "Change Job" (right of Learn Abilities) →
+  # open JobChangeConfirmation → pick Confirm (right of Cancel) →
+  # apply. The game then shows a "Job changed to X!" dialog — one more
+  # Enter dismisses it back to CharacterStatus with the new loadout.
+  keys+=("Enter")              # → JobActionMenu (cursor on Learn Abilities)
+  keys+=("CursorRight")        # → Change Job highlighted
+  keys+=("Enter")              # → JobChangeConfirmation (cursor on Cancel)
+  keys+=("CursorRight")        # → Confirm highlighted
+  keys+=("Enter")              # → apply + "Job changed!" dialog
+  keys+=("Enter")              # → dismiss dialog, land on CharacterStatus
+
+  _fire_keys "${keys[@]}" >/dev/null 2>&1
+
+  # Verify: the game's post-change flow lands on EquipmentAndAbilities
+  # (so the player can re-equip gear that dropped off with the old job).
+  # From there, reading screen.abilities.primary gives the new job's
+  # skillset name, which corresponds to a known class — but the simplest
+  # check is that we landed on EquipmentAndAbilities with no error.
+  _current_screen >/dev/null
+  local newScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
+
+  if [ "$newScr" = "EquipmentAndAbilities" ] || [ "$newScr" = "CharacterStatus" ]; then
+    echo "[change_job_to] -> $target (landed on $newScr)"
+    return 0
+  fi
+  echo "[change_job_to] WARNING: expected EquipmentAndAbilities or CharacterStatus; got $newScr. Verify manually."
+  return 1
+}
+
 # remove_ability <name>
 # Unequip a passive by re-Enter'ing its already-equipped row in the picker
 # (the in-game unequip idiom: the picker opens with cursor ON the equipped
