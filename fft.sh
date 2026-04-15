@@ -1003,6 +1003,111 @@ console.log(JSON.stringify({
   return 1
 }
 
+# open_equipment_picker <slot>
+# DEFERRED — do not call. Ships as a no-op that prints a notice.
+#
+# Intended to navigate from EquipmentAndAbilities (or CharacterStatus
+# sidebar on Equipment & Abilities) to a requested equipment slot and
+# open its picker. Blocked on TWO missing pieces:
+#
+#   1. No memory-backed cursor for the EquipmentAndAbilities equipment
+#      column. The state machine tracks a row index but it drifts — on
+#      live test 2026-04-15 the helper navigated Down×2 + Enter from
+#      what looked like a clean CharacterStatus entry and opened the
+#      Weapons picker instead of the requested Helm picker, even
+#      though the state machine reported EquippableHeadware /
+#      equippedItem=Grand Helm. The game-side cursor state survives
+#      the CharacterStatus → EqA transition in a way we don't model.
+#
+#   2. No stable picker-list row→item-name mapping. See TODO §10.6
+#      "EquippableItemList ui= cursor decode". Inventory storage
+#      order, not item ID, drives the list.
+#
+# Either (1) or (2) must be solved first. Until then, use raw keys.
+open_equipment_picker() {
+  echo "[open_equipment_picker] DEFERRED — equipment picker navigation is"
+  echo "  blocked on memory-backed cursor tracking for EquipmentAndAbilities"
+  echo "  column 0. Live test 2026-04-15 showed row drift landing on the"
+  echo "  wrong slot (Weapons instead of Helm). Use raw keys for now:"
+  echo "    fft '{\"id\":\"...\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"},{\"vk\":40,\"name\":\"Down\"},...],\"delayBetweenMs\":250}'"
+  echo "  and verify with screenshot before selecting. Follow-up TODO §10.6."
+  return 1
+}
+
+open_equipment_picker_impl_deferred() {
+  local slot="$1"
+  if [ -z "$slot" ]; then
+    echo "[open_equipment_picker] usage: open_equipment_picker <weapon|shield|helm|garb|accessory>"
+    return 1
+  fi
+
+  # Slot → (row index in EquipmentAndAbilities column 0, screen name after Enter).
+  # Row indices match the left column order used by CommandWatcher slot
+  # tracking: 0=Weapon, 1=Shield, 2=Helm, 3=CombatGarb, 4=Accessory.
+  # The dual-hand / L-Hand row is only shown when Dual Wield support is
+  # equipped — a non-factor on first-pass Ramza/generics, so we use the
+  # standard 5-row layout.
+  local row expectedScr
+  case "$slot" in
+    weapon)    row=0; expectedScr=EquippableWeapons ;;
+    shield)    row=1; expectedScr=EquippableShields ;;
+    helm)      row=2; expectedScr=EquippableHeadware ;;
+    garb)      row=3; expectedScr=EquippableCombatGarb ;;
+    accessory) row=4; expectedScr=EquippableAccessories ;;
+    *) echo "[open_equipment_picker] unknown slot '$slot' (expected weapon|shield|helm|garb|accessory)"; return 1 ;;
+  esac
+
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name||'')" < "$B/response.json" 2>/dev/null)
+  local curUi=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.ui||'')" < "$B/response.json" 2>/dev/null)
+
+  # EquipmentAndAbilities equipment column is a 5-row wrapping list:
+  # 0=Weapon 1=Shield/LHand 2=Helm 3=CombatGarb 4=Accessory. Up wraps
+  # from row 0 to row 4; Down wraps from row 4 to row 0. When entering
+  # from CharacterStatus via Enter, the cursor lands at row 0 (Weapon).
+  # From that known baseline we press Down <row> times.
+  #
+  # From EquipmentAndAbilities directly we don't know the current row
+  # (cursor drifts and the memory-backed tracking isn't live for EqA
+  # column 0 yet). Read cursorRow if present, otherwise assume row 0
+  # and accept one potential misclick.
+  local -a keys=()
+  if [ "$curScr" = "EquipmentAndAbilities" ]; then
+    local curRow=$(node -e "const s=JSON.parse(require('fs').readFileSync(0,'utf8')).screen||{};console.log(typeof s.cursorRow==='number'?s.cursorRow:0)" < "$B/response.json" 2>/dev/null)
+    local delta=$((row - curRow))
+    if [ "$delta" -ge 0 ]; then
+      for i in $(seq 1 $delta); do keys+=("CursorDown"); done
+    else
+      local up=$((-delta))
+      for i in $(seq 1 $up); do keys+=("CursorUp"); done
+    fi
+    keys+=("Enter")
+  elif [ "$curScr" = "CharacterStatus" ] && [ "$curUi" = "Equipment & Abilities" ]; then
+    # Enter the panel — lands cursor at row 0. Then Down×row + Enter.
+    keys+=("Enter")
+    for i in $(seq 1 $row); do keys+=("CursorDown"); done
+    keys+=("Enter")
+  else
+    echo "[open_equipment_picker] ERROR: locked to EquipmentAndAbilities or CharacterStatus (sidebar on Equipment & Abilities). Current: $curScr ui=$curUi"
+    return 1
+  fi
+  # Fix the edge case: $row=0 means 'seq 1 0' produces nothing, so the
+  # only keys are Enter (+Enter for the CharacterStatus path). Both are
+  # correct — Weapon row is row 0 and opens directly.
+
+  _fire_keys "${keys[@]}" >/dev/null 2>&1
+  sleep 0.4
+  _current_screen >/dev/null
+  local newScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name||'')" < "$B/response.json" 2>/dev/null)
+
+  if [ "$newScr" = "$expectedScr" ]; then
+    echo "[open_equipment_picker] $slot picker opened — now navigate with ScrollUp/Down/Enter to select, Escape to close."
+    return 0
+  fi
+  echo "[open_equipment_picker] WARNING: expected $expectedScr, got $newScr. Drift — verify state manually."
+  return 1
+}
+
 # list_<slotType>_abilities
 # Print the viewed unit's full learned list for the given ability type.
 # Reads screen.abilities.learned* (populated on EquipmentAndAbilities) so
