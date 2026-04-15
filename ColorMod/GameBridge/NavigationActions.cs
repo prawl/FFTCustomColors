@@ -1342,6 +1342,20 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // Refuse travel to locked/unrevealed locations. Array at
+            // 0x1411A10B0 is 1 byte per location id (0x01 = unlocked,
+            // 0x00 = locked). Live-verified 2026-04-15 session 16.
+            // Without this check, world_travel_to for a locked location
+            // navigates the travel list past the locked entry and opens
+            // the wrong settlement.
+            var unlockRead = _explorer?.ReadAbsolute((nint)(0x1411A10B0 + locationId), 1);
+            if (unlockRead.HasValue && unlockRead.Value.value == 0)
+            {
+                response.Status = "rejected";
+                response.Error = $"Location {locationId} is locked (unrevealed). Advance the story to unlock it.";
+                return response;
+            }
+
             var screen = _detectScreen();
             if (screen == null || (screen.Name != "WorldMap" && screen.Name != "TravelList"))
             {

@@ -39,7 +39,18 @@ namespace FFTColorCustomizer.GameBridge
         int PhysicalEvade = 0, // physical evade % for shields/cloaks
         int MagicEvade = 0,    // magic evade % for shields/cloaks
         int HpBonus = 0,       // HP bonus for armor/helm/hat
-        int MpBonus = 0        // MP bonus for armor/helm/hat
+        int MpBonus = 0,       // MP bonus for armor/helm/hat
+        // Extended info-panel fields — mirror the 3 pages of the in-game
+        // item inspector (Outfitter Try-then-Buy, EquipmentAndAbilities
+        // `R` toggle). Populated for top hero items and anything else
+        // where the effect is decision-changing. See TODO §0.
+        // All nullable — empty means "no entry on that page" (not "unknown").
+        string? AttributeBonuses = null,   // "PA+1", "MA+2", "Speed+1", "PA+1, MA+1" — additive stat mods.
+        string? EquipmentEffects = null,   // "Permanent Shell", "Auto-Haste", "Immune Blindness", "Auto-Reraise". Passive effects while equipped.
+        string? AttackEffects = null,      // "On hit: adds Petrify (25%)", "Drain HP on hit" — weapon-only.
+        bool CanDualWield = false,         // Weapon can be paired with another via Dual Wield support.
+        bool CanWieldTwoHanded = false,    // Weapon is compatible with Doublehand support (double ATK on basic attacks).
+        string? Element = null             // "Holy", "Ice", "Fire", "Lightning", "Dark" — for weapons with an elemental property.
     );
 
     public static class ItemData
@@ -97,16 +108,30 @@ namespace FFTColorCustomizer.GameBridge
             [29] = new(29, "Icebrand", "sword", WeaponPower: 13, Range: 1, WeaponEvade: 10),
             [30] = new(30, "Runeblade", "sword", WeaponPower: 14, Range: 1, WeaponEvade: 15),
             [31] = new(31, "Nagnarok", "sword", WeaponPower: 1, Range: 1, WeaponEvade: 50),
-            [32] = new(32, "Materia Blade", "sword", WeaponPower: 10, Range: 1, WeaponEvade: 10),
+            [32] = new(32, "Materia Blade", "sword", WeaponPower: 10, Range: 1, WeaponEvade: 10,
+                EquipmentEffects: "Required for Cloud's Limit skillset",
+                CanDualWield: true, CanWieldTwoHanded: true),
 
             // ============================================================
             // KNIGHT'S SWORDS (IDs 33-37)
             // ============================================================
-            [33] = new(33, "Defender", "knightsword", WeaponPower: 16, Range: 1, WeaponEvade: 60),
-            [34] = new(34, "Save the Queen", "knightsword", WeaponPower: 18, Range: 1, WeaponEvade: 30),
-            [35] = new(35, "Excalibur", "knightsword", WeaponPower: 21, Range: 1, WeaponEvade: 35),
-            [36] = new(36, "Ragnarok", "knightsword", WeaponPower: 24, Range: 1, WeaponEvade: 20),
-            [37] = new(37, "Chaos Blade", "knightsword", WeaponPower: 40, Range: 1, WeaponEvade: 20),
+            [33] = new(33, "Defender", "knightsword", WeaponPower: 16, Range: 1, WeaponEvade: 60,
+                EquipmentEffects: "Strengthens Wind, Fire, Lightning, Water, Earth, Ice elements",
+                CanDualWield: true, CanWieldTwoHanded: true),
+            [34] = new(34, "Save the Queen", "knightsword", WeaponPower: 18, Range: 1, WeaponEvade: 30,
+                EquipmentEffects: "Auto-Protect",
+                CanDualWield: true, CanWieldTwoHanded: true),
+            [35] = new(35, "Excalibur", "knightsword", WeaponPower: 21, Range: 1, WeaponEvade: 35,
+                EquipmentEffects: "Auto-Haste",
+                Element: "Holy",
+                CanDualWield: true, CanWieldTwoHanded: true),
+            [36] = new(36, "Ragnarok", "knightsword", WeaponPower: 24, Range: 1, WeaponEvade: 20,
+                EquipmentEffects: "Auto-Shell",
+                CanDualWield: true, CanWieldTwoHanded: true),
+            [37] = new(37, "Chaos Blade", "knightsword", WeaponPower: 40, Range: 1, WeaponEvade: 20,
+                EquipmentEffects: "Auto-Regen",
+                AttackEffects: "On hit: chance to add Stone",
+                CanDualWield: true, CanWieldTwoHanded: true),
 
             // ============================================================
             // KATANAS (IDs 38-47)
@@ -273,14 +298,16 @@ namespace FFTColorCustomizer.GameBridge
             [133] = new(133, "Golden Shield", "shield", PhysicalEvade: 25),
             [134] = new(134, "Ice Shield", "shield", PhysicalEvade: 28),
             [135] = new(135, "Flame Shield", "shield", PhysicalEvade: 31),
-            [136] = new(136, "Aegis Shield", "shield", PhysicalEvade: 10, MagicEvade: 50),
+            [136] = new(136, "Aegis Shield", "shield", PhysicalEvade: 10, MagicEvade: 50,
+                AttributeBonuses: "MA+1"),
             [137] = new(137, "Diamond Shield", "shield", PhysicalEvade: 34, MagicEvade: 15),
             [138] = new(138, "Platinum Shield", "shield", PhysicalEvade: 37, MagicEvade: 10),
             [139] = new(139, "Crystal Shield", "shield", PhysicalEvade: 40, MagicEvade: 15),
             [140] = new(140, "Genji Shield", "shield", PhysicalEvade: 43),
             [141] = new(141, "Kaiser Shield", "shield", PhysicalEvade: 46, MagicEvade: 20),
             [142] = new(142, "Venetian Shield", "shield", PhysicalEvade: 50, MagicEvade: 25),
-            [143] = new(143, "Escutcheon (strong)", "shield", PhysicalEvade: 75, MagicEvade: 50),
+            [143] = new(143, "Escutcheon (strong)", "shield", PhysicalEvade: 75, MagicEvade: 50,
+                EquipmentEffects: "Best-in-slot defense (rare treasure)"),
 
             // ============================================================
             // HELMETS (IDs 144-156)
@@ -311,16 +338,19 @@ namespace FFTColorCustomizer.GameBridge
             [163] = new(163, "Headband", "hat", HpBonus: 56),
             [164] = new(164, "Celebrant's Miter", "hat", HpBonus: 64, MpBonus: 20),
             [165] = new(165, "Black Cowl", "hat", HpBonus: 72),
-            [166] = new(166, "Gold Hairpin", "hat", HpBonus: 80, MpBonus: 50),
+            [166] = new(166, "Gold Hairpin", "hat", HpBonus: 80, MpBonus: 50,
+                EquipmentEffects: "Best hat for casters (MP+50)"),
             [167] = new(167, "Lambent Hat", "hat", HpBonus: 88, MpBonus: 15),
-            [168] = new(168, "Thief's Cap", "hat", HpBonus: 100),
+            [168] = new(168, "Thief's Cap", "hat", HpBonus: 100,
+                AttributeBonuses: "Speed+2"),
 
             // ============================================================
             // HAIR ADORNMENTS (IDs 169-171)
             // ============================================================
             [169] = new(169, "Cachusha", "hairadornment", HpBonus: 20),
             [170] = new(170, "Barette", "hairadornment", HpBonus: 20),
-            [171] = new(171, "Ribbon", "hairadornment", HpBonus: 10),
+            [171] = new(171, "Ribbon", "hairadornment", HpBonus: 10,
+                EquipmentEffects: "Immune to most status ailments"),
 
             // ============================================================
             // ARMOR (IDs 172-185)
@@ -365,10 +395,13 @@ namespace FFTColorCustomizer.GameBridge
             [201] = new(201, "Silken Robe", "robe", HpBonus: 20, MpBonus: 16),
             [202] = new(202, "Wizard's Robe", "robe", HpBonus: 30, MpBonus: 22),
             [203] = new(203, "Chameleon Robe", "robe", HpBonus: 40, MpBonus: 28),
-            [204] = new(204, "White Robe", "robe", HpBonus: 50, MpBonus: 34),
-            [205] = new(205, "Black Robe", "robe", HpBonus: 60, MpBonus: 30),
+            [204] = new(204, "White Robe", "robe", HpBonus: 50, MpBonus: 34,
+                EquipmentEffects: "Strengthens Holy element"),
+            [205] = new(205, "Black Robe", "robe", HpBonus: 60, MpBonus: 30,
+                EquipmentEffects: "Strengthens Fire, Ice, Lightning"),
             [206] = new(206, "Luminous Robe", "robe", HpBonus: 75, MpBonus: 50),
-            [207] = new(207, "Lordly Robe", "robe", HpBonus: 100, MpBonus: 80),
+            [207] = new(207, "Lordly Robe", "robe", HpBonus: 100, MpBonus: 80,
+                EquipmentEffects: "Auto-Protect + Auto-Shell"),
 
             // ============================================================
             // SHOES (IDs 208-214)
@@ -378,29 +411,36 @@ namespace FFTColorCustomizer.GameBridge
             [210] = new(210, "Germinas Boots", "shoes"),
             [211] = new(211, "Rubber Boots", "shoes"),
             [212] = new(212, "Winged Boots", "shoes"),
-            [213] = new(213, "Hermes Shoes", "shoes"),
+            [213] = new(213, "Hermes Shoes", "shoes",
+                EquipmentEffects: "Auto-Haste"),
             [214] = new(214, "Red Shoes", "shoes"),
 
             // ============================================================
             // ARMGUARDS (IDs 215-218)
             // ============================================================
             [215] = new(215, "Power Gauntlet", "armguard"),
-            [216] = new(216, "Genji Glove", "armguard"),
+            [216] = new(216, "Genji Glove", "armguard",
+                AttributeBonuses: "PA+2, MA+2"),
             [217] = new(217, "Magepower Glove", "armguard"),
-            [218] = new(218, "Bracer", "armguard"),
+            [218] = new(218, "Bracer", "armguard",
+                AttributeBonuses: "PA+3"),
 
             // ============================================================
             // RINGS (IDs 219-222)
             // ============================================================
-            [219] = new(219, "Reflect Ring", "ring"),
+            [219] = new(219, "Reflect Ring", "ring",
+                EquipmentEffects: "Auto-Reflect"),
             [220] = new(220, "Protect Ring", "ring"),
             [221] = new(221, "Magick Ring", "ring"),
-            [222] = new(222, "Cursed Ring", "ring"),
+            [222] = new(222, "Cursed Ring", "ring",
+                AttributeBonuses: "PA+1, MA+1, Speed+1",
+                EquipmentEffects: "Wearer becomes Undead (magic heals become damage)"),
 
             // ============================================================
             // ARMLETS (IDs 223-228)
             // ============================================================
-            [223] = new(223, "Angel Ring", "armlet"),
+            [223] = new(223, "Angel Ring", "armlet",
+                EquipmentEffects: "Auto-Reraise; Immune Death, Blindness"),
             [224] = new(224, "Diamond Bracelet", "armlet"),
             [225] = new(225, "Jade Armlet", "armlet"),
             [226] = new(226, "Japa Mala", "armlet"),
@@ -421,7 +461,8 @@ namespace FFTColorCustomizer.GameBridge
             // ============================================================
             // PERFUMES (IDs 236-239)
             // ============================================================
-            [236] = new(236, "Chantage", "perfume"),
+            [236] = new(236, "Chantage", "perfume",
+                EquipmentEffects: "Permanent Reraise + Regen (female only)"),
             [237] = new(237, "Cherche", "perfume"),
             [238] = new(238, "Septieme", "perfume"),
             [239] = new(239, "Sortilege", "perfume"),
@@ -494,7 +535,8 @@ namespace FFTColorCustomizer.GameBridge
             [300] = new(300, "Grand Armor", "armor", HpBonus: 170),
             [301] = new(301, "Onion Armor", "armor", HpBonus: 250),
             [302] = new(302, "Minerva Bustier", "clothing", HpBonus: 120),
-            [303] = new(303, "Mirage Vest", "clothing", HpBonus: 120),
+            [303] = new(303, "Mirage Vest", "clothing", HpBonus: 120,
+                EquipmentEffects: "Auto-Reraise"),
             [304] = new(304, "Brave Suit", "clothing", HpBonus: 160, MpBonus: 40),
             [305] = new(305, "Sage's Robe", "robe", HpBonus: 120, MpBonus: 100),
 

@@ -1496,8 +1496,19 @@ try{
     if(det.mev)stats.push('M-Ev '+det.mev+'%');
     if(det.hpBonus)stats.push('+HP '+det.hpBonus);
     if(det.mpBonus)stats.push('+MP '+det.mpBonus);
+    if(det.element)stats.push('['+det.element+']');
     if(stats.length)detailLines.push('  '+stats.join('  '));
     const wrap=(s,w)=>{const out=[];let line='';for(const word of s.split(/\s+/)){if(line.length+word.length+1>w){out.push(line.trimEnd());line=word+' ';}else line+=word+' ';}if(line)out.push(line.trimEnd());return out;};
+    // Extended ItemInfo: attribute bonuses / equipment effects / attack
+    // effects / weapon-type flags. Populated for top hero items; null
+    // elsewhere. See ItemData.cs (TODO §0 2026-04-14).
+    if(det.attributeBonuses)detailLines.push('  Bonuses: '+det.attributeBonuses);
+    if(det.equipmentEffects)for(const w of wrap('Effects: '+det.equipmentEffects,40))detailLines.push('  '+w);
+    if(det.attackEffects)for(const w of wrap('On hit: '+det.attackEffects,40))detailLines.push('  '+w);
+    const flags=[];
+    if(det.canDualWield)flags.push('Dual-Wield');
+    if(det.canWieldTwoHanded)flags.push('Two-Hand');
+    if(flags.length)detailLines.push('  ['+flags.join(' / ')+']');
     if(det.description)for(const w of wrap(det.description,40))detailLines.push('  '+w);
     if(det.usageCondition){
       detailLines.push('  Usage: ');

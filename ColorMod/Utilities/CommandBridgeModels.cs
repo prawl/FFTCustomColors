@@ -674,6 +674,55 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("usageCondition")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? UsageCondition { get; set; }
+
+        /// <summary>
+        /// Additive stat modifiers granted by the item while equipped —
+        /// mirrors page 2 "Attribute Bonuses" of the in-game item info
+        /// panel (e.g. "PA+1", "MA+2", "Speed+1", "PA+1, MA+1").
+        /// </summary>
+        [JsonPropertyName("attributeBonuses")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? AttributeBonuses { get; set; }
+
+        /// <summary>
+        /// Passive effects active while the item is equipped — mirrors
+        /// "Equipment Effects" (e.g. "Auto-Haste", "Permanent Shell",
+        /// "Auto-Reraise", "Immune Blindness").
+        /// </summary>
+        [JsonPropertyName("equipmentEffects")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? EquipmentEffects { get; set; }
+
+        /// <summary>
+        /// Weapon-only: side effects of basic attacks with this weapon
+        /// (e.g. "On hit: chance to add Stone", "Drain HP on hit").
+        /// </summary>
+        [JsonPropertyName("attackEffects")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? AttackEffects { get; set; }
+
+        /// <summary>
+        /// Weapon-only: elemental property the weapon adds to basic
+        /// attacks (e.g. "Holy" on Excalibur).
+        /// </summary>
+        [JsonPropertyName("element")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Element { get; set; }
+
+        /// <summary>
+        /// Weapon-only: weapon can be paired via Dual Wield support.
+        /// </summary>
+        [JsonPropertyName("canDualWield")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool CanDualWield { get; set; }
+
+        /// <summary>
+        /// Weapon-only: weapon is compatible with Doublehand support
+        /// (double ATK on basic attacks when main-hand + no off-hand).
+        /// </summary>
+        [JsonPropertyName("canWieldTwoHanded")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool CanWieldTwoHanded { get; set; }
     }
 
     public class AvailableAbility

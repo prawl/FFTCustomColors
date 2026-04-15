@@ -2523,6 +2523,28 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
+        /// Base address of the location-unlock array (session 16, 2026-04-15).
+        /// One byte per location id, indexed 0..N. 0x01 = unlocked/revealed,
+        /// 0x00 = locked/unrevealed. Live-verified in an endgame save: most
+        /// bytes = 0x01, two bytes = 0x00 (locked story triggers).
+        /// </summary>
+        private const long LocationUnlockArrayAddr = 0x1411A10B0;
+
+        /// <summary>
+        /// Read the unlock flag for a given location ID. Returns <c>true</c>
+        /// when the location is available for travel, <c>false</c> when the
+        /// game hasn't unlocked it yet. Returns <c>null</c> if memory access
+        /// fails (Explorer not initialized or out-of-range read).
+        /// </summary>
+        internal bool? IsLocationUnlocked(int locationId)
+        {
+            if (Explorer == null || locationId < 0 || locationId > 60) return null;
+            var r = Explorer.ReadAbsolute((nint)(LocationUnlockArrayAddr + locationId), 1);
+            if (!r.HasValue) return null;
+            return r.Value.value != 0;
+        }
+
+        /// <summary>
         /// Reads the active unit's secondary ability from the roster and returns
         /// the Abilities submenu items (always "Attack" first, then the secondary).
         /// </summary>
@@ -2708,10 +2730,19 @@ namespace FFTColorCustomizer.Utilities
                         Mev = itemEntry.MagicEvade,
                         HpBonus = itemEntry.HpBonus,
                         MpBonus = itemEntry.MpBonus,
-                        // ItemData doesn't carry descriptions yet. Leave null —
-                        // the UI will show just the stats row. If we want lore
-                        // strings later, they'd come from the game's NXD item
-                        // description table.
+                        // Extended info-panel fields (TODO §0 2026-04-14).
+                        // Populated for top hero items; null elsewhere until
+                        // the bulk-populate pass lands.
+                        AttributeBonuses = itemEntry.AttributeBonuses,
+                        EquipmentEffects = itemEntry.EquipmentEffects,
+                        AttackEffects = itemEntry.AttackEffects,
+                        Element = itemEntry.Element,
+                        CanDualWield = itemEntry.CanDualWield,
+                        CanWieldTwoHanded = itemEntry.CanWieldTwoHanded,
+                        // ItemData doesn't carry free-form descriptions yet.
+                        // Leave null — the UI will show stats + the extended
+                        // fields above. If we want lore strings later, they'd
+                        // come from the game's NXD item description table.
                     };
                 }
                 return new UiDetail { Name = name };
