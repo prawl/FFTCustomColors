@@ -296,15 +296,18 @@ namespace FFTColorCustomizer.GameBridge
             [131] = new(131, "Round Shield", "shield", PhysicalEvade: 19),
             [132] = new(132, "Mythril Shield", "shield", PhysicalEvade: 22, MagicEvade: 5),
             [133] = new(133, "Golden Shield", "shield", PhysicalEvade: 25),
-            [134] = new(134, "Ice Shield", "shield", PhysicalEvade: 28),
-            [135] = new(135, "Flame Shield", "shield", PhysicalEvade: 31),
+            [134] = new(134, "Ice Shield", "shield", PhysicalEvade: 28,
+                EquipmentEffects: "Absorbs Ice; halves Fire; weak to Lightning"),
+            [135] = new(135, "Flame Shield", "shield", PhysicalEvade: 31,
+                EquipmentEffects: "Absorbs Fire; halves Ice; weak to Water"),
             [136] = new(136, "Aegis Shield", "shield", PhysicalEvade: 10, MagicEvade: 50,
                 AttributeBonuses: "MA+1"),
             [137] = new(137, "Diamond Shield", "shield", PhysicalEvade: 34, MagicEvade: 15),
             [138] = new(138, "Platinum Shield", "shield", PhysicalEvade: 37, MagicEvade: 10),
             [139] = new(139, "Crystal Shield", "shield", PhysicalEvade: 40, MagicEvade: 15),
             [140] = new(140, "Genji Shield", "shield", PhysicalEvade: 43),
-            [141] = new(141, "Kaiser Shield", "shield", PhysicalEvade: 46, MagicEvade: 20),
+            [141] = new(141, "Kaiser Shield", "shield", PhysicalEvade: 46, MagicEvade: 20,
+                EquipmentEffects: "Strengthens Fire, Ice, Lightning"),
             [142] = new(142, "Venetian Shield", "shield", PhysicalEvade: 50, MagicEvade: 25),
             [143] = new(143, "Escutcheon (strong)", "shield", PhysicalEvade: 75, MagicEvade: 50,
                 EquipmentEffects: "Best-in-slot defense (rare treasure)"),
@@ -366,7 +369,8 @@ namespace FFTColorCustomizer.GameBridge
             [180] = new(180, "Platinum Armor", "armor", HpBonus: 90),
             [181] = new(181, "Carabineer Mail", "armor", HpBonus: 100),
             [182] = new(182, "Crystal Mail", "armor", HpBonus: 110),
-            [183] = new(183, "Genji Armor", "armor", HpBonus: 150),
+            [183] = new(183, "Genji Armor", "armor", HpBonus: 150,
+                EquipmentEffects: "Rare steal from Elmdore"),
             [184] = new(184, "Mirror Mail", "armor", HpBonus: 130),
             [185] = new(185, "Maximillian", "armor", HpBonus: 200),
 
@@ -386,7 +390,8 @@ namespace FFTColorCustomizer.GameBridge
             [196] = new(196, "Gaia Gear", "clothing", HpBonus: 85, MpBonus: 10),
             [197] = new(197, "Ninja Gear", "clothing", HpBonus: 20),
             [198] = new(198, "Black Garb", "clothing", HpBonus: 100),
-            [199] = new(199, "Rubber Suit", "clothing", HpBonus: 150, MpBonus: 30),
+            [199] = new(199, "Rubber Suit", "clothing", HpBonus: 150, MpBonus: 30,
+                EquipmentEffects: "Negates Lightning"),
 
             // ============================================================
             // ROBES (IDs 200-207)
@@ -406,22 +411,29 @@ namespace FFTColorCustomizer.GameBridge
             // ============================================================
             // SHOES (IDs 208-214)
             // ============================================================
-            [208] = new(208, "Battle Boots", "shoes"),
-            [209] = new(209, "Spiked Boots", "shoes"),
-            [210] = new(210, "Germinas Boots", "shoes"),
-            [211] = new(211, "Rubber Boots", "shoes"),
+            [208] = new(208, "Battle Boots", "shoes",
+                AttributeBonuses: "Move+1"),
+            [209] = new(209, "Spiked Boots", "shoes",
+                AttributeBonuses: "Jump+1"),
+            [210] = new(210, "Germinas Boots", "shoes",
+                AttributeBonuses: "Move+1, Jump+1"),
+            [211] = new(211, "Rubber Boots", "shoes",
+                EquipmentEffects: "Immune Don't Move, Lightning"),
             [212] = new(212, "Winged Boots", "shoes"),
             [213] = new(213, "Hermes Shoes", "shoes",
                 EquipmentEffects: "Auto-Haste"),
-            [214] = new(214, "Red Shoes", "shoes"),
+            [214] = new(214, "Red Shoes", "shoes",
+                AttributeBonuses: "MA+1, Move+1"),
 
             // ============================================================
             // ARMGUARDS (IDs 215-218)
             // ============================================================
-            [215] = new(215, "Power Gauntlet", "armguard"),
+            [215] = new(215, "Power Gauntlet", "armguard",
+                AttributeBonuses: "PA+1"),
             [216] = new(216, "Genji Glove", "armguard",
                 AttributeBonuses: "PA+2, MA+2"),
-            [217] = new(217, "Magepower Glove", "armguard"),
+            [217] = new(217, "Magepower Glove", "armguard",
+                AttributeBonuses: "MA+2"),
             [218] = new(218, "Bracer", "armguard",
                 AttributeBonuses: "PA+3"),
 
@@ -444,7 +456,8 @@ namespace FFTColorCustomizer.GameBridge
             [224] = new(224, "Diamond Bracelet", "armlet"),
             [225] = new(225, "Jade Armlet", "armlet"),
             [226] = new(226, "Japa Mala", "armlet"),
-            [227] = new(227, "Nu Khai Armband", "armlet"),
+            [227] = new(227, "Nu Khai Armband", "armlet",
+                EquipmentEffects: "Immune Petrify, Stop"),
             [228] = new(228, "Guardian Bracelet", "armlet"),
 
             // ============================================================

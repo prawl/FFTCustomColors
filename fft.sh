@@ -1551,16 +1551,30 @@ try{
          || [ "$SCR" = "SupportAbilities" ] \
          || [ "$SCR" = "MovementAbilities" ]; } \
        && [ -f "$B/response.json" ]; then
+      local vflag="false"; $verbose && vflag="true"
       cat "$B/response.json" | node -e "
 try{
   const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
   const list=j.screen&&j.screen.availableAbilities;
   if(!list||!list.length)process.exit(0);
+  const verbose=$vflag;
   const label={'SecondaryAbilities':'skillsets','ReactionAbilities':'reactions','SupportAbilities':'supports','MovementAbilities':'movement'}[j.screen.name]||'options';
   console.log('  Available '+label+' ('+list.length+'):');
+  // Wrap helper — used only in verbose to keep descriptions from running off.
+  const wrap=(s,w)=>{const out=[];let line='';for(const word of s.split(/\\s+/)){if(line.length+word.length+1>w){out.push(line.trimEnd());line=word+' ';}else line+=word+' ';}if(line)out.push(line.trimEnd());return out;};
   list.forEach(a=>{
     const tag=a.isEquipped?'  [equipped]':'';
-    console.log('    - '+a.name+tag);
+    // Compact: name + [equipped] only.
+    // Verbose: name + [equipped] + job + wrapped description lines.
+    if(verbose){
+      const jobTag=a.job?'  ('+a.job+')':'';
+      console.log('    - '+a.name+jobTag+tag);
+      if(a.description){
+        for(const w of wrap(a.description,72))console.log('        '+w);
+      }
+    } else {
+      console.log('    - '+a.name+tag);
+    }
   });
 }catch(e){}
 " 2>/dev/null

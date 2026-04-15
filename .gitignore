@@ -95,3 +95,11 @@ test_*/
 !ColorMod/FFTIVC/data/enhanced/system/ffto/g2d/**/*.bin
 
 !RamzaThemes/**/*.bin
+
+# Session 16+ work artifacts — screenshots from in-game verification +
+# the screenshot helper script. Kept out of history so the working tree
+# stays clean across sessions.
+ss*.png
+screenshot_crop.ps1
+fftwin_*.png
+

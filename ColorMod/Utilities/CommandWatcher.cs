@@ -2711,7 +2711,7 @@ namespace FFTColorCustomizer.Utilities
         /// screens, pass col=1 and row=the slot type (1 secondary / 2 reaction
         /// / 3 support / 4 movement) to get the right "Type" label.
         /// </summary>
-        internal static UiDetail? BuildUiDetail(string name, int col, int row)
+        public static UiDetail? BuildUiDetail(string name, int col, int row)
         {
             // Equipment column — find the item and surface its stats.
             if (col == 0)
@@ -3621,6 +3621,27 @@ namespace FFTColorCustomizer.Utilities
                     screen.UI = null;
                 }
 
+                // Populate unlockedLocations on WorldMap / TravelList from
+                // the per-location unlock array at 0x1411A10B0 (1 byte each,
+                // 0x01 unlocked / 0x00 locked). Lets Claude plan routes in
+                // one round-trip instead of probing with world_travel_to
+                // calls. Known location IDs are 0..42 per NavigationActions
+                // TravelTabs — we read 0..52 inclusive to cover any
+                // late-game locations with a modest safety margin.
+                if ((screen.Name == "WorldMap" || screen.Name == "TravelList")
+                    && Explorer != null)
+                {
+                    var unlocked = new List<int>();
+                    for (int loc = 0; loc <= 52; loc++)
+                    {
+                        var r = Explorer.ReadAbsolute((nint)(0x1411A10B0 + loc), 1);
+                        if (r.HasValue && r.Value.value != 0)
+                            unlocked.Add(loc);
+                    }
+                    if (unlocked.Count > 0)
+                        screen.UnlockedLocations = unlocked.ToArray();
+                }
+
                 // Populate screen.viewedUnit for unit-scoped screens. Resolves
                 // via the state machine's saved PartyMenu cursor (preserved
                 // across the Enter that opened CharacterStatus) → roster
@@ -3909,14 +3930,27 @@ namespace FFTColorCustomizer.Utilities
                             // to unequip, press Enter on the equipped one.
                             var unlocked = _rosterReader.ReadUnlockedSkillsets(viewedSlot);
                             string? equippedSecondary = ab?.Secondary;
+                            // Each skillset maps to a single owning job
+                            // (Martial Arts→Monk etc.). Use that as the Job
+                            // label on the picker entry so Claude can see
+                            // where each skillset came from.
                             if (equippedSecondary != null && unlocked.Contains(equippedSecondary))
                             {
-                                list.Add(new AvailableAbility { Name = equippedSecondary, IsEquipped = true });
+                                list.Add(new AvailableAbility
+                                {
+                                    Name = equippedSecondary,
+                                    IsEquipped = true,
+                                    Job = SkillsetOwnerJob(equippedSecondary),
+                                });
                             }
                             foreach (var s in unlocked)
                             {
                                 if (s == equippedSecondary) continue; // already first
-                                list.Add(new AvailableAbility { Name = s });
+                                list.Add(new AvailableAbility
+                                {
+                                    Name = s,
+                                    Job = SkillsetOwnerJob(s),
+                                });
                             }
                         }
                         else if (screen.Name == "ReactionAbilities" ||
@@ -3965,10 +3999,22 @@ namespace FFTColorCustomizer.Utilities
                                         learnedForPicker.Add(id);
                                 foreach (var name in OrderByPicker(learnedForPicker, orderArr, dict))
                                 {
+                                    // Find the canonical AbilityInfo for this
+                                    // name so Job + Description ride along
+                                    // with each picker entry.
+                                    var info = dict.Values.FirstOrDefault(a => a.Name == name);
+                                    // Description in AbilityData can embed a
+                                    // "Usage condition:" tail; strip it for
+                                    // the compact picker row (full description
+                                    // is still in BuildUiDetail for the
+                                    // hovered entry).
+                                    var (descMain, _) = SplitUsageCondition(info?.Description);
                                     list.Add(new AvailableAbility
                                     {
                                         Name = name,
                                         IsEquipped = name == equippedName,
+                                        Job = info?.Job,
+                                        Description = descMain,
                                     });
                                 }
                             }

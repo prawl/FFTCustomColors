@@ -491,6 +491,17 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? ShopListCursorIndex { get; set; }
 
+        /// <summary>
+        /// Location IDs that are currently unlocked/revealed for travel.
+        /// Populated on WorldMap and TravelList screens only — lets Claude
+        /// plan routes without guessing which nodes are available. Sourced
+        /// from the per-location unlock array at 0x1411A10B0 (1 byte each;
+        /// 0x01 = unlocked). Omitted on every other screen.
+        /// </summary>
+        [JsonPropertyName("unlockedLocations")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int[]? UnlockedLocations { get; set; }
+
         /// <summary>Name of the active unit (e.g. "Ramza"). Null for generic units without names.</summary>
         [JsonPropertyName("activeUnitName")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -733,6 +744,26 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("isEquipped")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool IsEquipped { get; set; }
+
+        /// <summary>
+        /// Source job for this ability (e.g. "Monk" for Martial Arts,
+        /// "Ninja" for Dual Wield). Populated on ability pickers so Claude
+        /// sees "which class do I level to unlock more of this type?"
+        /// without cross-referencing. Null when the ability has no single
+        /// owning job (e.g. generic skillsets).
+        /// </summary>
+        [JsonPropertyName("job")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Job { get; set; }
+
+        /// <summary>
+        /// Short description of the ability (one sentence / short blurb).
+        /// Populated on ability pickers so Claude can compare options
+        /// without opening each detail panel in sequence.
+        /// </summary>
+        [JsonPropertyName("description")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Description { get; set; }
     }
 
     public class AbilityLoadoutPayload
