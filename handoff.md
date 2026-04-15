@@ -1,216 +1,326 @@
-# Session Handoff — 2026-04-15 (Session 15)
+# Session Handoff — 2026-04-15 (Sessions 16+17, rolled together)
 
 Delete this file after reading.
 
 ## TL;DR
 
-Sessions 14 and 15 had a clear arc: 14 set up the JobSelection cursor-resolver infrastructure; 15 used it to ship the full 17 ACs (almost). The other major win was codifying a **payload design principle** ("compact vs verbose vs nowhere") that killed at least one feature before it was started, and led to a sweep that trimmed dead/low-value items from the PartyMenu + Chronicle TODO sections.
+Two back-to-back sessions on `auto-play-with-claude` branch, **10 commits not
+pushed**. Focus was polish + UX wins on the PartyMenu / equipment tree plus
+a couple of memory-backed data surfacings (location unlock array, hero
+item effects). Two ambitious resolvers were attempted and punted with
+clean documentation — PartyMenu cursor byte (row not found) and
+EquippableWeapons `ui=<hovered item>` (found row byte, but picker sort
+order = inventory order, not item ID — decode blocked on the same UE4
+inventory-store problem that defeated 3 prior hunts).
 
-13 commits this session, all on `auto-play-with-claude` (not pushed yet). Tests: **1914 passing** (was 1849, +65). Two real bugs surfaced and partially fixed; one bug was diagnosed wrong, fix shipped, then reverted same session — left a useful lesson.
+**Tests: 1954 passing** (was 1914 at start of session 16; +40 across the
+two sessions). All session work live-verified except the two
+documented-as-blocked items.
 
-## Commits this session (13, on `auto-play-with-claude`)
-
-```
-3d8638b revert b453fb1 + gate JobSelection auto-resolver on MenuDepth==2
-b453fb1 state machine: PartyMenu cursor snaps to (0,0) on Escape from CharacterStatus  ← REVERTED
-292f9e5 TODO: trim PartyMenu + Chronicle stories per design principle
-3f3855f TODO: design principle for compact vs verbose vs nowhere
-5fdefa6 JobSelection: re-resolve cursor address on Up/Down (row-cross desync fix)
-a787103 screen: viewedUnit= on unit-scoped panels
-129f279 JobSelection: three-state cell classification (Locked / Visible / Unlocked)
-76c7d11 TODO: JobSelection cell state is Locked/Visible/Unlocked, not filter
-d442e0f TODO: JobSelection grid must filter to unlocked classes per unit  ← superseded
-777c189 JobSelection: story-character + gender-aware grid resolution
-c25f0f4 fft.sh: change_job_to <ClassName> helper
-4a0b53e bridge: resolve_job_cursor for JobSelection ui= + cursorRow/Col tracking
-2ddd879 state machine: JobSelection grid layout is 6/7/6 per row (Ramza verified)
-```
-
-## What landed, in order
-
-### 1. JobSelection grid layout discovery + state machine fix (`2ddd879`)
-
-Live verification proved Ramza's JobSelection grid is **6/7/6 cells per row**, not the 8/6/6 the state machine assumed. Row 1 has 7 cells (Geomancer at the seventh position). The cursor byte is a **flat linear index 0..18**, NOT `row*6+col` as the earlier memory note said.
-
-- New `JobGridLayout.cs` — per-character class-name tables + `IndexToRowCol` / `RowColToIndex` / `GetRowWidth` / `EnumerateCells`.
-- `ScreenStateMachine.HandleJobScreen` now uses per-row widths via `JobGridLayout.GetRowWidth`. New `ClampJobColumnToRow` handles vertical transitions between rows of different widths.
-- 16 unit tests for the layout + per-row widths.
-
-### 2. `resolve_job_cursor` heap rescan-on-entry resolver (`4a0b53e`)
-
-Mirrored `ResolvePickerCursor` for the JobSelection grid. Right/Left oscillation (matches the horizontal-first grid), 2-step delta verification, address-priority ranking. Auto-fires on first `screen` call per JobSelection visit; gated by `_jobCursorResolveAttempted` to prevent re-fire on every screen call.
-
-`screen.CursorRow`, `screen.CursorCol`, `screen.UI` (hovered class name) all populate from the resolved heap byte. Visible ~1.5s cursor flash on first entry; subsequent reads are single-byte.
-
-### 3. `change_job_to <ClassName>` helper (`c25f0f4`)
-
-The "final deliverable" from session 14's AC list. Routes through JobSelection grid → JobActionMenu → JobChangeConfirmation → Confirm → dialog dismiss. Uses the resolved cursor position (from #2) so the walk starts from the unit's actual current job, not (0,0). Coordinates hardcoded for the Ramza 6/7/6 layout. Live-verified Ramza round-trip Gallant Knight ↔ Chemist ↔ Monk.
-
-Landing screen after a successful change is usually `EquipmentAndAbilities` (the game auto-opens it post-change so you can re-equip), sometimes `CharacterStatus` if no gear conflicts. Helper accepts both.
-
-### 4. Story-character + gender-aware grid resolution (`777c189`)
-
-User correction: every story character has their own unique class at (0,0), not Squire. Agrias → Holy Knight, Mustadio → Machinist, Orlandeau → Thunder God, etc. Generics get Squire. Refactored `JobGridLayout`:
-
-- New `StoryCharacterUniqueClass` map (13 entries: Ramza, Agrias, Mustadio, Rapha, Marach, Beowulf, Construct 8, Orlandeau, Meliadoul, Reis, Cloud, Luso, Balthier).
-- New `JobGridLayout.ForUnit(unitName, isFemale)` builds a per-unit layout by patching (0,0) and (2,4) on a shared template.
-- Gender derived from generic job ID parity (odd=male, even=female).
-- `CommandWatcher` now passes the viewed unit's name + jobId into `ForUnit`.
-
-Live-verified Agrias's JobSelection shows `ui=Holy Knight`.
-
-### 5. `screen.viewedUnit` on unit-scoped panels (`a787103`)
-
-Added a JSON field + compact one-liner marker identifying whose nested panel is currently shown. Populated on CharacterStatus, EquipmentAndAbilities, JobSelection, all four ability pickers, all five equippable pickers, JobActionMenu, JobChangeConfirmation, CombatSets, CharacterDialog, DismissUnit. Omitted on PartyMenu (cursor moves are ABOUT-to-view, different concept) and on screens unrelated to a single unit.
+## Commits this session (10, on `auto-play-with-claude`)
 
 ```
-[JobSelection] viewedUnit=Agrias ui=Holy Knight loc=6(MagickCityofGariland) status=completed
+5e5ce2c More ItemInfo + unlockedLocations + picker Job/Description + tests
+0752b3f Extended ItemInfo + location unlock gate — live-verified
+e8aaa9f Four small polish wins + story-class primaries, live-verified
+34b5927 ReturnToWorldMap on every party-tree screen + investigation notes
+91b3bfa TODO.md: archive all completed [x] items to the bottom
+eea1ffe fft.sh: narrow-terminal-friendly multi-line compact render
+acbdb6d fft.sh: suppress loc=/objective=/gil= on PartyMenu-tree screens
+8c81e05 EquippableWeapons picker + consolidated compact renderer + ANSI colors
+f6839c4 EquippableWeapons picker: resolver groundwork + TODO design
+cf62557 PartyMenu cursor resolver groundwork (row byte still unlocated)
 ```
 
-### 6. JobSelection row-cross desync fix (`5fdefa6`)
+## What landed, grouped by theme
 
-The JobSelection widget heap reallocates per row cross — confirmed live: a resolved address `0x11EC34D3C` shuffled to `0x1370CF4A0` after a single Down. Fix: `InvalidateJobCursorOnRowCross` clears `_resolvedJobCursorAddr` + `_jobCursorResolveAttempted` whenever Up/Down fires while on JobScreen, forcing re-resolve on the next screen call. Horizontal movement is unaffected.
+### 1. UX / rendering polish (`cf62557` through `eea1ffe`)
 
-### 7. Three-state cell classification (`129f279`)
+- **Consolidated `fft.sh` compact renderer.** Before: two near-duplicate
+  renderers in `fft()` and `screen()` that drifted whenever a field was
+  added to one (I hit this mid-session when `equippedItem`/`pickerTab`
+  showed up in bridge JSON but not compact output). New `_fmt_screen_compact`
+  helper is the single source of truth; both entry points call it.
+- **ANSI colors** on the compact line: cyan screen name, green viewed/active
+  unit, yellow `ui=`, cyan `equippedItem=`/`pickerTab=`, grey metadata,
+  green/yellow/red status, magenta markers. Respects `NO_COLOR` + TTY
+  detection (Claude Code running bash via pipe → no colors → plain text;
+  user in a real terminal → colors).
+- **Narrow-terminal multi-line layout**: header line is just `[Screen] +
+  decision surface + status`; subordinates (`loc=`, `objective=`, `gil=`)
+  drop to their own indented lines. Fits any terminal.
+- **Suppress `loc=/objective=/gil=` on PartyMenu-tree screens** — they're
+  pure noise while the player is equipping/job-changing.
 
-User insight: every grid cell is physically rendered, but state varies per (unit, class):
-- **Locked** — no party member has this class. Shadow silhouette, no info.
-- **Visible** — someone has it but viewed unit doesn't. Normal cell, change refused.
-- **Unlocked** — viewed unit can change to it.
+### 2. EquippableWeapons picker — partial surface (`f6839c4`, `8c81e05`)
 
-Proxy: a class is "unlocked for a unit" if that unit has any action-ability bit set in the corresponding job's learned bitfield (+0x32+jobIdx*3 bytes 0-1). Party-wide unlock = union across all roster slots. Squire/Chemist/own story class are always Unlocked. Mime is hardcoded Locked under the proxy (its bitfield is empty in this remaster).
+- `ResolveEquipPickerCursor` heap-oscillation resolver — same pattern as
+  `ResolveJobCursor`/`ResolvePickerCursor`. Live-verified: the row byte
+  lives at `0x12ECCF6B0` (plus 3 aliased copies at +0x78, +0xE0, +0x120).
+- State-machine `PickerTab` tracking on A/D key history (R/L Hand pickers
+  have 3 tabs; other slots have 2). `EquipmentPickerTabs.TabName()`
+  helper maps `(slot, tabIndex)` → display name.
+- Compact line surfaces `equippedItem=<current> pickerTab=<tab> ui=<???>`.
+- **`ui=<hovered item>` still blocked** — live test proved the picker list
+  order is **per-player inventory storage order**, NOT item ID order. Even
+  with a perfect job→weapon-type table we can't map row index → item name
+  without decoding the inventory store (which has defeated 3 prior hunts).
+  Table work would still unlock `change_right_hand_to` validation + a
+  verbose `availableWeapons[]` catalog; see TODO §0 for the full
+  investigation notes.
 
-`screen.jobCellState`, `ui=` reflects state, `change_job_to` refuses cleanly on Locked/Visible. Verified live on Agrias: Holy Knight=Unlocked, Chemist=Unlocked, Dragoon=Visible (Ramza has Jump bit set; Agrias doesn't).
+### 3. Navigation polish (`e8aaa9f`, `34b5927`)
 
-### 8. Design principle for compact vs verbose vs nowhere (`3f3855f`)
+- **`ReturnToWorldMap` ValidPath** on every PartyMenu-family screen (25
+  screens). Each emits the right number of Escape presses (1–5) with a
+  200ms gap. 25 theory tests lock in the Escape counts per screen.
+  Live-invocation still needs upstream detection fix (`[TravelList]`
+  misclassification) — the path entries are correct, but the screen
+  dispatcher sometimes feeds them the wrong screen name.
+- **`EnterLocation` prepends `C`** to recenter the WorldMap cursor before
+  Enter. Live-verified.
+- **`world_travel_to` refuses same-location travel** (previously got stuck
+  on the Dorter shop run). Reads location byte at `0x14077D208` before
+  firing keys, returns `status=rejected` with remediation.
+- **`world_travel_to` refuses locked locations** — reads
+  `0x1411A10B0 + locationId`, rejects if `0x00`. Live-verified on location
+  35 (locked in endgame save).
 
-After play-testing showed Claude greps past dense compact responses, codified when a payload field earns its spot:
+### 4. Data surfacing for world planning (`0752b3f`, `5e5ce2c`)
 
-1. Would a human consult this on this screen?
-2. Does Claude need it to act HERE, or could they navigate to it?
-3. Would not having it cause a worse decision OR wasted round-trips?
+- **`screen.unlockedLocations`** — array of every unlocked location ID,
+  populated on WorldMap and TravelList. Endgame save returns 50 IDs
+  (location 35 correctly excluded). Lets Claude plan routes in one
+  round-trip instead of probing.
+- **Location unlock array decoded** — `0x1411A10B0` is NOT a bitmask; it's
+  **1 byte per location** (`0x01` unlocked, `0x00` locked). Live-verified
+  with 16-byte reads on endgame save showing mostly 01s with known gaps
+  at loc 35+51.
 
-Plus a **noise penalty** — every compact field hurts the findability of others. Prefer decision aids (`jobCellState: "Visible"`) over data dumps (19 cells of raw JP).
+### 5. Equipment decision data (`0752b3f`, `5e5ce2c`)
 
-Heuristic: every-turn signals → compact. Planning data → verbose JSON. Mirrors-what-hovering-shows → nowhere.
+- **`ItemInfo` gained 6 fields**: `AttributeBonuses`, `EquipmentEffects`,
+  `AttackEffects`, `CanDualWield`, `CanWieldTwoHanded`, `Element`.
+- **~30 hero items populated** from `FFTHandsFree/Wiki/Equipment.md` +
+  raw scrapes (`weapons.txt`/`armor.txt`/`accessories.txt`/
+  `adorments.txt` now in repo). Includes all the top-tier knight swords
+  + rings + cloaks + shoes + shields that show up repeatedly in
+  endgame loadouts.
+- **12 unit tests** in `Tests/Utilities/BuildUiDetailTests.cs` lock in
+  the round-trip from ItemData → UiDetail for specific hero items.
+  CI now catches a typo like "Auto-Shell" → "Auto-Shel" immediately.
+- **fft.sh detail panel renders the new fields**: `Bonuses: PA+3`,
+  `Effects: Auto-Shell`, `On hit: ...`, `[Dual-Wield / Two-Hand]`,
+  `[Holy]`. Live-verified on Ramza's Ragnarok.
 
-Application killed AC5 (per-class Lv/JP grid) before any code was written.
+### 6. Ability picker decision data (`5e5ce2c`)
 
-### 9. PartyMenu/Chronicle TODO trim (`292f9e5`)
+- **`AvailableAbility` payload** gained `Job` + `Description` fields.
+- All four passive pickers + `SecondaryAbilities` now surface the source
+  job + short description per ability entry.
+- `screen -v` on pickers renders `- <name>  (<job>)  [equipped]` plus
+  wrapped description lines. Compact stays single-line.
 
-Swept §10.6 / §10.7 against the new principle. Dropped: element resistance grid, equipment stat aggregates, FocusEquipmentColumn / FocusAbilitiesColumn validPaths, redundant Equippable_* arrow keys, ALL §10.7 Chronicle inner states (lore content, no decision flow needs it). Marked Full Roster Grid + JobSelection ValidPaths as DONE (already shipped, stale wording). Scoped Full Stat Panel as verbose-only.
+### 7. Story-class primary skillsets (`e8aaa9f`)
 
-### 10. JobSelection auto-resolver MenuDepth gate + cursor-snap revert (`3d8638b`)
+- 17 story-class primaries populated in `GetPrimarySkillsetByJobName`:
+  Soldier→Limit, Dragonkin→Dragon, Steel Giant→Work, Machinist/Engineer
+  →Snipe, Skyseer→Sky Mantra, Netherseer→Nether Mantra, Divine Knight
+  →Unyielding Blade, Templar→Spellblade, Thunder God/Sword Saint→Holy
+  Sword, Fell Knight→Fell Sword, Game Hunter→Hunting, Sky Pirate→Sky
+  Pirating, Arc Knight/Rune Knight→Holy Sword (placeholder). Sourced
+  from `Wiki/StoryCharacters.md`. Live-verified on Cloud.
+- Before: Cloud's EquipmentAndAbilities Primary row surfaced `ui=(none)`.
+  After: `ui=Limit`.
 
-Two things bundled:
+### 8. `ui=(none)` slot-aware fallback (`e8aaa9f`)
 
-**Resolver gate (kept):** the JobSelection auto-resolver fires 6 raw Right/Left keys to oscillate-find the cursor byte. If the state machine flips to JobScreen synchronously on Enter but the game is still mid-transition (~50-200ms open animation), those raw keys hit the OUTER PartyMenu cursor instead. Gate the trigger on `screen.MenuDepth == 2` (memory-confirmed inner panel render). Live-verified: clean batched nav now lands cleanly.
+Bare `(none)` replaced with slot-identifying labels:
+- Equipment column: `Right Hand (none)` / `Left Hand (none)` /
+  `Headware (none)` / `Combat Garb (none)` / `Accessory (none)`.
+- Ability column: `Primary (none — skillset table missing for this job)`
+  / `Secondary (empty)` / `Reaction (empty)` / `Support (empty)` /
+  `Movement (empty)`.
+- Primary's special label is a ticket flag — a blank primary always means
+  our skillset map is incomplete for that job; `(none — ...)` makes it
+  visible instead of silently misleading.
 
-**b453fb1 revert:** I had committed a fix snapping PartyMenu cursor to (0,0) on Escape from CharacterStatus, based on a single screenshot taken on a fresh restart. Live testing with a non-default cursor position proved the game **preserves** the entry cursor (viewing Orlandeau → Escape → cursor still on Orlandeau). Reverted; restored `_savedPartyRow/Col` restoration logic. Lesson learned: test cursor-preservation behavior with the cursor at a NON-(0,0) position before claiming the game's behavior.
+### 9. Docs + hygiene
 
-## Decision-design principle (worth knowing before adding payload)
+- **Wiki README** (`FFTHandsFree/Wiki/README.md`) — one-page index covering
+  the 15 `.md` docs and 4 `.txt` raw scrape dumps. Explains how to use them
+  and notes ICE Enhanced Mode rule differences.
+- **TODO.md archive** — 49 completed items moved to `## Completed — Archive`
+  at the bottom, keeps the active TODO scannable.
+- **`.gitignore`** — session artifacts (`ss*.png`, `fftwin_*.png`,
+  `screenshot_crop.ps1`) so the working tree stays clean between sessions.
 
-Codified in TODO.md. Quick rule before adding a new field anywhere on `screen`:
+## What's NOT done (top priority for next session)
 
-> Write one sentence answering "what decision changes if Claude has this?" If you can't, drop it. If the answer is "Claude could plan a turn ahead," verbose. If it's "Claude needs this to pick the next action," compact. If it's "it's nice to have," nowhere.
+### 1. PartyMenu cursor state-machine drift — biggest ongoing pain
 
-This rule killed AC5 (per-class Lv/JP) and several PartyMenu data-dump items.
+The single most impactful remaining bug. Repro is easy:
+1. `esc` to PartyMenu
+2. Navigate around (tab-switch + cursor moves)
+3. Return to PartyMenu Units tab
+4. State machine reports one unit hovered, game actually shows another
 
-## What's next (priority order)
+Root cause sketch: `_savedPartyRow/_savedPartyCol` carries a stale value
+across tab switches + nested-screen visits. Session 16 tried the
+"resolve row byte from memory" fix — **col byte found, row byte not
+found** (live scan returned candidates but none survived the +5-on-Down
+verify, meaning the heap doesn't store a flat `row*5+col` index;
+hypothesis is row + col are two separate bytes or row is behind a
+pointer chain). See `memory/project_partymenu_cursor.md` for details.
 
-### 1. PartyMenu cursor state-machine drift (open, partially mitigated)
+Easy quick-fix worth trying: **on every Q/E tab switch that lands back
+on Units, reset `CursorRow = CursorCol = 0`**. Won't preserve intentional
+cursor placement but will stop the drift-to-wrong-unit bug. Add to
+`ScreenStateMachine.HandlePartyMenu` in the Q/E cases.
 
-The remaining bug from this session. Repro: after a sequence of nested-screen visits, state machine's `CursorRow/Col` on PartyMenu can disagree with the in-game cursor (state says Ramza (0,0), game shows Orlandeau (2,0)). The MenuDepth gate (#10 above) eliminated one race. The other remaining race is harder — likely batched commands eating keys during transitions OR resolver bursts that drift the OUTER cursor before they return to focus.
+### 2. State machine sticks on PartyMenu after returning to WorldMap
 
-**Best fix candidate:** read the actual PartyMenu cursor byte from memory. Same heap-oscillation technique used for JobSelection. Steps:
-1. Write `ResolvePartyMenuCursor` mirroring `ResolveJobCursor` but with Right/Left + cursor wraps to handle the 5-col grid.
-2. Auto-trigger on entry to PartyMenu (gate on the appropriate menu-depth signal).
-3. Invalidate cache on every cursor key (Up/Down/Left/Right) — the widget probably reallocates per move, just like JobSelection.
-4. Replace state-machine CursorRow/Col reads with the resolved memory value when available.
+Logged 2026-04-15 session 16. Repro: from EquippableWeapons, 5 Escape
+presses. State machine cycles `EqW → EqA → CS → PartyMenu → TravelList →
+PartyMenu` instead of ending at WorldMap. `screen` keeps reporting
+`[PartyMenu]` even with `report_state` re-detect.
 
-This is the biggest leverage left — it would make `viewedUnit`, `change_job_to`, all picker helpers, and the entire nested PartyMenu tree trustworthy under any nav pattern.
+**Tried symmetric drift fix — reverted.** Adding "if raw says WorldMap/
+TravelList AND SM says party-tree → snap SM to WorldMap" stomped every
+legitimate nested-panel visit because the raw rule `party=0 && ui=1 →
+TravelList` also matches EquipmentAndAbilities. Left an inline `[Note]`
+block in `CommandWatcher.cs` documenting the failed approach.
 
-### 2. JobSelection unlock-requirements text scrape (Visible cells)
+Real fix needs: either (a) a better raw signal (e.g. `MenuDepth==0 &&
+party==0` — distinguishes WorldMap with residual party byte from EqA),
+or (b) trust state-machine transition history only when it's actually
+transitioned *through* PartyMenu to WorldMap, not when mid-nested.
 
-When a cell is Visible, the game's info panel shows the unlock requirements (e.g. "Squire Lv. 2, Chemist Lv. 3"). We don't surface that today. Two paths:
-- **Easy:** hard-code a `JobPrereqs` map (~20 entries) in `CharacterData.cs` and synthesize the requirement text. Risk: WotL prereqs may differ from canonical FFT.
-- **Hard:** memory-scan for the widget text (UE4 heap, painful).
+Ties into the above cursor-drift bug because fixing this + the cursor
+byte together would unlock reliable `ReturnToWorldMap` invocation.
 
-(a) is the path of least resistance. Surface as `screen.jobUnlockRequirements` when `jobCellState == "Visible"`.
+### 3. EquippableWeapons `ui=<hovered item>` — picker sort order blocks us
 
-### 3. Verify Locked-state behavior live (deferred, blocked on save state)
+Ready to ship the moment inventory-order decode lands. Today:
+- Cursor row byte found and live-readable.
+- Per-job equippability table can be built from `Wiki/weapons.txt` +
+  `Wiki/armor.txt` (authoritative per-category "can be wielded by" lists,
+  checked in this session).
+- **Missing:** mapping `(picker tab, row N)` → item name, because the game
+  sorts the picker by per-player inventory storage order, not item ID.
+  Inventory store has defeated 3 prior hunts (see `project_inventory_*`
+  memory notes) — behind UE4 pointer chain or encrypted in the UMIF
+  save container.
 
-Current save has at least one master unit, so no cell renders as a shadow silhouette for any other unit. Need a fresh-game save (or temporarily dismiss all units except one under-leveled generic) to verify the Locked branch end-to-end. Logic is shipped; verification deferred.
+**What to ship NEXT without inventory:**
+- **Per-job equippability table** (just the type→job mapping). Unlocks:
+  - `change_right_hand_to <name>` validation ("is this weapon type equippable
+    for this unit's job?").
+  - `availableWeapons[]` verbose catalog — list items the unit *could*
+    equip from `ItemData.Items`, even without knowing per-player inventory.
+  - "All Weapons & Shields" tab grayed-state hints.
 
-### 4. Verify generic male/female grids live
+### 4. `nextJp` on CharacterStatus / EquipmentAndAbilities header
 
-`JobGridLayout.ForUnit` assumes Squire at (0,0), Bard (male) / Dancer (female) at (2,4) for generics. Inferred from Ramza's grid + standard FFT layout. Verify on a generic when one is recruited.
+Still missing. Blocked on a structured `ActionAbilityJpCost` table — the
+~200 ActionAbilityLookup records don't carry JP cost, and `ABILITY_COSTS.md`
+is human-markdown. Big scope; deferred twice this session.
 
-### 5. PartyMenu tab multi-press desync (§0 TODO, ongoing)
+## Memory notes saved this session (check before making assumptions)
 
-Pre-existing. `OpenChronicle` from Units etc. fires Q/E twice and races the tab-switch animation. Documented since session 13. Workaround: use single-press `NextTab` / `PrevTab`. Real fix needs either a memory-confirmed tab signal or per-key wait-for-game.
-
-### 6. `Next: N` JP-to-next-ability on EquipmentAndAbilities header (§0 TODO, ongoing)
-
-Pre-existing. The game's header shows `Lv. N | Next: N | JP N` for the unit's current job. We surface Lv and JP but omit Next. Compute from the learned-action-abilities bitfield + ability JP costs.
-
-### 7. Equipment-helper expansion in fft.sh
-
-`change_helm_to`, `change_garb_to`, `change_accessory_to`, etc. — stubbed pending an inventory reader. Inventory list isn't yet decoded from memory.
-
-## Memory notes saved this session
-
-- **`project_job_grid_cursor.md`** — updated with verified 6/7/6 layout, flat-linear-index formula, resolver design notes, and the row-cross desync fix.
-
-(One file; the rest of the heap-cursor learnings are now codified in code + the TODO.)
+- `project_item_name_pool.md` — Item names live in a static UTF-16 pool
+  near `0x3F18000`. Game renders by ID lookup, not by heap-copying the
+  string. Hover widget does NOT store a pointer to the pool entry.
+- `project_partymenu_cursor.md` — PartyMenu cursor row byte hunt failed;
+  col byte found, flat `row*5+col` doesn't exist in heap.
+- `feedback_no_hooks_without_approval.md` — Never create Claude Code hooks
+  without explicit per-hook user approval. Session 16 almost shipped a
+  PreToolUse Bash hook for `| node` blocking; user rejected.
+- `feedback_use_node_not_python.md` — No Python on this machine. Use
+  `node` for JSON parsing and file transforms. Write multi-line scripts
+  to `tmp/script.js` (NOT inline — backticks in string literals break
+  bash quoting), `node tmp/script.js`, then `rm -rf tmp/`.
 
 ## Things that DIDN'T work (avoid repeating)
 
-- **Snap-to-(0,0) on Escape from CharacterStatus.** I committed b453fb1 thinking the game resets the PartyMenu cursor on Escape. It doesn't — it preserves the entry position. The misdiagnosis came from testing with the cursor already at (0,0). Reverted in the same session. **Always test cursor-preservation behavior with a NON-default cursor position before claiming "the game does X."**
-- **Reading Lv + JP for all 19 grid cells.** Started exploring this for AC5; the design principle review killed it. Hovering shows the value; pre-populating doesn't change a decision.
-- **Equipping the wrong unit via `change_job_to` after stale state.** When state machine and game cursor disagree on PartyMenu, every downstream helper acts on the wrong unit. Fix is the PartyMenu cursor read above.
-- **Trying to rebuild the resolver on every screen call when it fails.** The first version of `ResolveJobCursor` would re-fire its 6-key oscillation every time `_resolvedJobCursorAddr` was 0 — including when the resolver legitimately failed to find a candidate. Burned ~1.5s per `screen` call. Fix: separate `_jobCursorResolveAttempted` flag that doesn't reset on failure (only on screen exit).
+- **Symmetric state-machine drift fix** (reverted in same session): raw
+  detection's `party=0 && ui=1 → TravelList` rule matches nested panels
+  too, so any "if raw says TravelList, snap SM to WorldMap" check stomps
+  legitimate EqA visits. Inline `[Note]` in `CommandWatcher.cs` explains.
+- **Python one-liners for TODO.md restructuring** (twice): Python isn't
+  installed, triggers Microsoft Store prompt, fails silently. Use node
+  with `tmp/script.js`.
+- **PreToolUse hook without user approval**: user has final say on any
+  settings.json hook change. Memorize + document, don't install.
+- **Ambitious tasks requiring structured data we don't have**:
+  equippability table from `Wiki/*.txt` is doable; but `nextJp` needs
+  ability JP costs that are only in markdown; inventory-order decode
+  needs UE4 pointer-chain work. Know which of these is blocked before
+  starting a task from the TODO.
 
-## Environment gotchas (carried forward)
+## Three principles to internalize before working on this codebase
 
-- **Heap snapshots are ~200MB each.** Three of them per resolver run = ~600MB churn. Fine for our pattern (once per JobSelection entry); painful in a tight loop.
-- **`_inputSimulator.SendKeyPressToWindow` bypasses the state machine.** Resolver uses raw sends so the state machine doesn't double-tick on its dummy keys. **Important:** this is also why resolver bursts can drift the OUTER cursor when fired during a transition window — state machine doesn't know those keys happened, but the game does. The MenuDepth==2 gate is the current mitigation.
-- **JobSelection cursor cache shuffles per ROW CROSS, not per session entry.** Up/Down forces re-resolve. Left/Right keeps the cache valid.
-- **`_jobCursorResolveAttempted` flag must be cleared on screen exit AND on every Up/Down.** Both clears are needed.
-- **`StoryCharacterUniqueClass` map is the source of truth for "what class is at (0,0) for this unit."** When a new story character becomes recruitable, add them.
+1. **Live-verify before committing new features.** User requested this
+   explicitly in session 17 — no commits without in-game verification of
+   the user-visible behavior. Tests prove code compiles; only the game
+   proves the feature works. Screenshots via `powershell.exe -File
+   ./screenshot_crop.ps1` when state machine can't be trusted.
+
+2. **The CommandWatcher god-class problem is getting worse.** ~4000 lines
+   and counting. `DetectScreen` alone is ~700. Refactoring into
+   per-screen detector classes is overdue. Don't propose it without budget,
+   but know that EVERY new feature touches this file.
+
+3. **Every payload field has to earn its spot** (§"What Goes In Compact
+   vs Verbose vs Nowhere" principle in TODO.md). Check against it before
+   adding a field to compact `screen` output. The PartyMenu-tree
+   `loc=/objective=/gil=` suppression (commit `acbdb6d`) is an example
+   of removing fields that didn't earn their rent.
 
 ## Quick start next session
 
 ```bash
-# Baseline
-./RunTests.sh                # 1914 passing
+# Baseline check
+./RunTests.sh                # 1954 passing
 
-# Live smoke — JobSelection + viewedUnit + cell state
+# Live smoke — test what session 16+17 added
 source ./fft.sh
-boot
-esc                          # → PartyMenu (cursor on Ramza)
-fft '{"id":"r","keys":[{"vk":13,"name":"enter"},{"vk":40,"name":"down"},{"vk":13,"name":"enter"}],"delayBetweenMs":500}'
-                             # → JobSelection for Ramza
-screen                       # first call — triggers auto-resolve (~1.5s flash)
-                             # second call — ui=Gallant Knight, cursorRow=0, cursorCol=0,
-                             # jobCellState=Unlocked, viewedUnit=Ramza
+boot                          # should land on WorldMap
+screen                        # → [WorldMap] + loc + objective + gil on separate lines
+screen -v                     # dump full JSON (includes unlockedLocations array)
 
-# Live smoke — change_job_to
-change_job_to Chemist        # Ramza → Chemist (verified live this session)
+# World-travel guardrails
+fft '{"id":"t1","action":"world_travel_to","locationId":6}'   # rejects (already there)
+fft '{"id":"t2","action":"world_travel_to","locationId":35}'  # rejects (locked)
+
+# Equipment surface (Ragnarok hero-item data)
+# Navigate to Ramza's EquipmentAndAbilities
+fft '{"id":"nav","keys":[{"vk":27,"name":"esc"},{"vk":13,"name":"enter"},{"vk":13,"name":"enter"}],"delayBetweenMs":600}'
+screen                        # → header + "Effects: Auto-Shell" + "[Dual-Wield / Two-Hand]"
+
+# Story-class primary
+# Navigate to Cloud's EqA (up a few, select Cloud)
+# → ui=Limit (was ui=(none))
 ```
 
-## Three principles to internalize before working on this codebase
+## Active TODO top of queue (in priority order)
 
-1. **The CommandWatcher is now ~3800 lines and is officially a god class.** `DetectScreen` alone is ~700 lines. Refactoring into per-screen detector classes is overdue but high-churn. Don't propose it without budget.
+1. **PartyMenu cursor drift** — quick mitigation: reset on Q/E Units return.
+2. **PartyMenu → WorldMap stuck state** — needs better raw signal.
+3. **Per-job equippability table** — port from `Wiki/weapons.txt`/
+   `armor.txt`, unlocks `change_*_to` validation + verbose
+   `availableWeapons[]`.
+4. **`nextJp` (Next: N on header)** — blocked on JP cost dict;
+   sibling ticket: port `ABILITY_COSTS.md` into a structured dict.
+5. **Inventory quantity for Items/Throw/Iaido** — Big. Blocked on the
+   inventory-store UE4 chain. Would unlock Chemist/Ninja/Samurai combat
+   AI.
 
-2. **Test cursor / state behavior with NON-default values before claiming "the game does X."** The b453fb1 misdiagnosis is the clearest example.
+(Scan `FFTHandsFree/TODO.md` §0 + §10.6 for the full active list — I
+archived 49 completed items to the bottom this session so the top is
+readable now.)
 
-3. **Every payload field has to earn its spot** (§principle in TODO.md). If you can't write a one-sentence "what decision changes if Claude has this," drop it.
-
-## Two more things
-
-The session shipped against a clear backlog (the 17 JobSelection ACs from session 14's handoff). Looking back, ~14 of those 17 are now done or correctly punted. The remaining 3 are AC12 (Job detail payload), AC13-17 (LearnAbilities sub-screen). AC12 was scoped to nothing (job descriptions can be hard-coded if needed). AC13-17 hasn't been touched and needs its own pass through the design principle before starting.
-
-The CommandWatcher god-class problem is going to bite eventually. Next person who has to add a new screen to `DetectScreen` should consider extracting at least the JobSelection block (~80 lines) into its own detector class as a proof-of-pattern. That gives a reference others can follow incrementally.
-
-Good session. Cell-state classification + viewedUnit + change_job_to are the user-visible wins; the design principle codification + TODO trim are the longer-term wins.
+Good session. Polish wins + memory-backed data surfacings shipped; two
+ambitious resolvers punted with clean documentation. Next session can
+knock out the quick cursor-drift mitigation and start the per-job
+equippability table without much ramp-up.
