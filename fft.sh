@@ -245,7 +245,11 @@ _fmt_screen_compact() {
     [ -n "$OBJNAME" ] && OBJSTR="objective=$OBJ($OBJNAME)"
   fi
 
-  # Build the line with color.
+  # Header line — [Screen] + decision-surface fields + status.
+  # Keeps the essential "what / where am I / what next" anchor within
+  # a narrow terminal width. Subordinate fields (loc, objective, gil)
+  # go on their own indented lines below so Claude can see everything
+  # without wrapping at smaller widths.
   local LINE="$(_col "$_C_SCR" "[$SCR]")"
 
   if [[ "$SCR" == Battle_* ]]; then
@@ -264,20 +268,18 @@ _fmt_screen_compact() {
     [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
   fi
 
-  # Suppress loc=/objective=/gil= on PartyMenu-tree screens — none of
-  # those signals change a per-action decision while the player is in
-  # equipment management. Battle screens and world-navigation screens
-  # still get them.
-  if ! _is_party_tree_screen "$SCR"; then
-    LINE="$LINE $(_col "$_C_LOC" "loc=$LOCSTR")"
-    [ "$SCR" = "TravelList" ] && [ -n "$HOV" ] && LINE="$LINE hover=$(_col "$_C_MARK" "$HOV")"
-    [ -n "$OBJSTR" ] && LINE="$LINE $(_col "$_C_LOC" "$OBJSTR")"
-    [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
-  fi
   [ -n "$SLCI" ] && LINE="$LINE row=$(_col "$_C_MARK" "$SLCI")"
   LINE="$LINE status=$(printf '%b%s%b' "$(_status_col "$ST")" "$ST" "$_C_RESET")"
-
   printf '%b\n' "$LINE"
+
+  # Subordinate lines — each on its own indented line. Suppressed on
+  # PartyMenu-tree screens where they don't change per-action decisions.
+  if ! _is_party_tree_screen "$SCR"; then
+    printf '%b\n' "  $(_col "$_C_LOC" "loc=$LOCSTR")"
+    [ "$SCR" = "TravelList" ] && [ -n "$HOV" ] && printf '%b\n' "  hover=$(_col "$_C_MARK" "$HOV")"
+    [ -n "$OBJSTR" ] && printf '%b\n' "  $(_col "$_C_LOC" "$OBJSTR")"
+    [ -n "$GIL" ] && printf '%b\n' "  gil=$(_fmt_gil "$GIL")"
+  fi
 }
 
 # fft_full: Send raw command JSON, wait for response, return entire JSON.
