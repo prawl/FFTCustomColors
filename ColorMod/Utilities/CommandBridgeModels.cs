@@ -688,6 +688,46 @@ namespace FFTColorCustomizer.Utilities
 
         [JsonPropertyName("units")]
         public List<RosterUnit> Units { get; set; } = new();
+
+        /// <summary>
+        /// PartyMenu grid width in columns. Always 5 for the Units tab; null
+        /// when the grid isn't applicable (e.g. non-PartyMenu screens that
+        /// still carry the roster list for reference).
+        /// </summary>
+        [JsonPropertyName("gridCols")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? GridCols { get; set; }
+
+        /// <summary>
+        /// Grid rows needed to render all `Count` units at `GridCols` width.
+        /// </summary>
+        [JsonPropertyName("gridRows")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? GridRows { get; set; }
+
+        /// <summary>
+        /// 0-indexed cursor row within the Units grid (only set on PartyMenu
+        /// Units tab). Mirrors CursorRow in the state machine.
+        /// </summary>
+        [JsonPropertyName("cursorRow")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? CursorRow { get; set; }
+
+        /// <summary>
+        /// 0-indexed cursor column within the Units grid.
+        /// </summary>
+        [JsonPropertyName("cursorCol")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? CursorCol { get; set; }
+
+        /// <summary>
+        /// Name of the unit currently highlighted by the cursor (convenience
+        /// for consumers; equivalent to Units.First(u =&gt; u.DisplayOrder ==
+        /// CursorRow*GridCols + CursorCol).Name).
+        /// </summary>
+        [JsonPropertyName("hoveredName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? HoveredName { get; set; }
     }
 
     public class RosterUnit
@@ -741,6 +781,16 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("faith")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int Faith { get; set; }
+
+        /// <summary>
+        /// 0-indexed position within the PartyMenu Units grid (display order,
+        /// driven by the game's Sort option — default Time Recruited). Read
+        /// from roster +0x122. This is what cursorRow*gridCols + cursorCol
+        /// resolves to. Unlike `slot` this reflects what the player sees
+        /// visually.
+        /// </summary>
+        [JsonPropertyName("displayOrder")]
+        public int DisplayOrder { get; set; }
     }
 
     public class TilePosition

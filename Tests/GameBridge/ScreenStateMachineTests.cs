@@ -844,4 +844,51 @@ public class ScreenStateMachineTests
         sm.SetScreen(GameScreen.PartyMenu);
         Assert.Equal(0, sm.KeysSinceLastSetScreen);
     }
+
+    // --- ViewedGridIndex (maps cursor position to roster display index) ---
+
+    [Fact]
+    public void ViewedGridIndex_OnPartyMenuUnitsTab_FollowsLiveCursor()
+    {
+        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        // Roster is 17 units wide enough to scroll the cursor freely.
+        sm.OnKeyPressed(VK_RIGHT); // r0 c1
+        sm.OnKeyPressed(VK_RIGHT); // r0 c2
+        sm.OnKeyPressed(VK_DOWN);  // r1 c2
+        // 5-col grid → index = 1*5 + 2 = 7
+        Assert.Equal(7, sm.ViewedGridIndex);
+    }
+
+    [Fact]
+    public void ViewedGridIndex_OnNestedScreen_UsesSavedCursorAtEnterTime()
+    {
+        // Move cursor to (r1, c2), Enter → CharacterStatus should freeze
+        // the viewed index at 7 and not follow CursorRow/Col changes inside
+        // the nested screen.
+        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        sm.OnKeyPressed(VK_RIGHT);
+        sm.OnKeyPressed(VK_RIGHT);
+        sm.OnKeyPressed(VK_DOWN);
+        Assert.Equal(7, sm.ViewedGridIndex);
+        sm.OnKeyPressed(VK_RETURN); // → CharacterStatus (saves (1,2))
+        Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
+        // Inner navigation — sidebar Down — must not change the viewed index.
+        sm.OnKeyPressed(VK_DOWN);
+        Assert.Equal(7, sm.ViewedGridIndex);
+    }
+
+    [Fact]
+    public void ViewedGridIndex_BackFromNestedScreen_RestoresSavedCursor()
+    {
+        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        sm.OnKeyPressed(VK_RIGHT);
+        sm.OnKeyPressed(VK_DOWN);
+        // r1 c1 = idx 6
+        Assert.Equal(6, sm.ViewedGridIndex);
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
+        sm.OnKeyPressed(VK_ESCAPE); // back to PartyMenu
+        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(6, sm.ViewedGridIndex);
+    }
 }

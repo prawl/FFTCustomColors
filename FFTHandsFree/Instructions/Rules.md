@@ -47,11 +47,13 @@ You are playing this game as a new player. You are experiencing the story, learn
 
 ## Party Management
 
-- **`screen -v` on PartyMenu is your party sheet.** It lists every member's name/level/job/brave/faith plus their currently equipped weapon, shield, helm, body, and accessory. Use it before going into a shop or battle to know who's unequipped or under-geared.
-- **Equipment slot labels in the output:** `R=` right-hand weapon, `L=` left-hand weapon (dual-wield), `Sh=` shield, `H=` helm, `B=` body armor, `A=` accessory. Missing label = slot empty.
-- **SAVE before dismissing, changing jobs, or re-equipping.** The save file is the source of truth. We've lost changes this way — if the game hasn't saved, a restart reloads the last save and undoes everything.
-- **HP / MP are NOT in the roster grid yet.** You can see them on the individual unit card (CharacterStatus) but not in the party-wide view. For now, pick who to inspect via the grid (who's weakest-geared? who has no shield?) and then drill into their CharacterStatus to check their stats.
-- **Roster order in the grid ≠ on-screen grid order.** The `screen -v` list is ordered by memory slot index, not by the 5-column visual grid the game renders. Don't trust "position in list" to mean "(row, col) in game." Use cursor keys and watch the unit card to know who the game has highlighted.
+- **`screen` on PartyMenu shows the visible 5-column grid** with a `cursor->` marker on the highlighted row. Use it to see the roster at a glance and plan nav ("Agrias is at r1 c0, two Down from Ramza").
+- **`screen -v` is your party sheet.** Dumps the full roster as JSON (every member's displayOrder / name / level / job / brave / faith / JP plus their equipped weapon, shield, helm, body, accessory). Use it before going into a shop or battle to spot who's unequipped or under-geared.
+- **`ui=<name>`** on PartyMenu tells you exactly which unit the cursor is on — trust it over position-counting.
+- **Drill in with `execute_action SelectUnit`** to open CharacterStatus for the hovered unit. Inside nested screens (CharacterStatus / EquipmentAndAbilities / pickers) the header line (`Cloud  Soldier  Lv 91  JP 44:`) and all surfaced stats/equipment/abilities belong to THAT unit — no cross-contamination with Ramza.
+- **Equipment slot labels in the verbose JSON:** `weapon` = right hand, `leftHand` = dual-wield off hand, `shield` = left hand when no dual-wield, `helm`, `body`, `accessory`. Missing key = slot empty.
+- **SAVE before dismissing, changing jobs, or re-equipping.** The save file is the source of truth. If the game hasn't saved, a restart reloads the last save and undoes everything.
+- **HP / MP are NOT in the roster payload.** You can see them on the individual unit card (CharacterStatus) but not in the party-wide view. Drill into CharacterStatus to check live HP/MP.
 
 ## Communication Style
 

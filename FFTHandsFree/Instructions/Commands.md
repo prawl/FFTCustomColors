@@ -11,8 +11,8 @@ source ./fft.sh
 
 | Command | Description |
 |---------|-------------|
-| `screen` | Current screen name, location, status. On PartyMenu/CharacterStatus/EquipmentAndAbilities also prints `N/50 units` count. |
-| `screen -v` | As above, plus the full party roster (slot, name, level, job, brave/faith) with each unit's equipped items on the next line (`R=weapon L=... Sh=shield H=helm B=body A=accessory`). Use this on any PartyMenu screen to plan equipment changes, party composition, or recruiting. |
+| `screen` | Current screen name, location, status. On PartyMenu it renders the 5-column grid the game shows with a `cursor->` marker on the highlighted row, and `ui=<name>` tells you exactly which unit is hovered. |
+| `screen -v` | Verbose mode. On PartyMenu, dumps the raw roster JSON (every unit with slot, displayOrder, name, level, job, brave/faith, JP, equipment) plus grid metadata (gridCols, gridRows, cursorRow, cursorCol, hoveredName). Use when you need to scan for gear gaps, compare stats across the party, or pick by an attribute rather than by grid position. On EquipmentAndAbilities it expands the detail panel. |
 | `scan_units` | All unit positions, HP, teams, stats |
 | `scan_move` | Units + valid movement tiles + attack tiles |
 | `scan_move <mv> <jmp>` | Override Move/Jump stats for tile calculation |
@@ -149,7 +149,7 @@ Every screen has a set of valid actions. Use `execute_action <name>` to run them
 - **WorldMap**: PartyMenu, TravelList
 - **Cutscene**: Advance
 - **EncounterDialog**: Fight, Flee
-- **PartyMenu**: OpenUnits/OpenInventory/OpenChronicle/OpenOptions + Select (enters CharacterStatus for cursor's unit). The `screen.roster` block attached to the response lists every party member's slot, name, level, job, brave/faith and **current equipment** — use that to pick who to inspect/modify before navigating.
+- **PartyMenu**: OpenUnits/OpenInventory/OpenChronicle/OpenOptions + CursorUp/Down/Left/Right + SelectUnit (opens CharacterStatus for whoever the cursor is on — not necessarily Ramza). `ui=<name>` in the screen header names the hovered unit. The `screen.roster` payload lists every member sorted in display order with equipment + stats — use it to decide who to inspect before navigating the grid.
 - **CharacterStatus**: sidebar (Equipment & Abilities / Job / Combat Sets), Open dialog, Hold-B to open DismissUnit, Back
 - **EquipmentAndAbilities**: Q/E to cycle units, left column = equipment slots (Enter → EquippableWeapons/Shields/Headware/CombatGarb/Accessories picker), right column = ability slots
 

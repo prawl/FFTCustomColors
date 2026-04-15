@@ -39,6 +39,16 @@ namespace FFTColorCustomizer.GameBridge
             public int Faith;       // +0x1F
             public int CurrentJobJp; // +0x80 u16 — JP in the unit's currently-equipped class
             public int NameId;      // +0x230 (u16)
+            /// <summary>
+            /// Zero-indexed position in the PartyMenu Units grid when the Sort
+            /// option is set to "Time Recruited" (the game's default). Stored
+            /// by the engine at roster +0x122 (1 byte). Discovered 2026-04-14
+            /// by dumping all 14 active slots and finding a perfect monotonic
+            /// ranking at this offset in display order. Unlike `UnitIndex`
+            /// this is NOT the slot number — Mustadio (slot 11) has
+            /// DisplayOrder=4 because he's the 5th unit in the grid.
+            /// </summary>
+            public int DisplayOrder; // +0x122
             public string? Name;    // Resolved via UnitNameLookup → NameTableLookup
             public string? JobName; // Resolved via CharacterData.GetJobName
         }
@@ -353,7 +363,7 @@ namespace FFTColorCustomizer.GameBridge
             var result = new List<RosterSlot>();
 
             // Batch-read the small set of fields we need for every slot in one round-trip.
-            const int FieldsPerSlot = 10;
+            const int FieldsPerSlot = 11;
             var reads = new (System.IntPtr addr, int size)[MaxSlots * FieldsPerSlot];
             for (int s = 0; s < MaxSlots; s++)
             {
@@ -368,6 +378,7 @@ namespace FFTColorCustomizer.GameBridge
                 reads[s * FieldsPerSlot + 7] = ((System.IntPtr)(b + 0x230), 2); // nameId u16
                 reads[s * FieldsPerSlot + 8] = ((System.IntPtr)(b + 0x20), 1); // reserved probe
                 reads[s * FieldsPerSlot + 9] = ((System.IntPtr)(b + 0x80), 2); // current-job JP u16
+                reads[s * FieldsPerSlot + 10] = ((System.IntPtr)(b + 0x122), 1); // display order (Time Recruited)
             }
             var v = _explorer.ReadMultiple(reads);
 
@@ -399,6 +410,7 @@ namespace FFTColorCustomizer.GameBridge
                     Faith = f.Faith,
                     CurrentJobJp = (int)v[s * FieldsPerSlot + 9],
                     NameId = f.NameId,
+                    DisplayOrder = (int)v[s * FieldsPerSlot + 10],
                     JobName = ResolveJobName(f.NameId, f.Job),
                 };
 
@@ -410,6 +422,23 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Returns the roster slot at the given position in the PartyMenu grid
+        /// (left-to-right, top-to-bottom in display order). Display order is
+        /// driven by roster byte +0x122, which the game writes when sorting
+        /// under the current Sort option (default: Time Recruited). Returns
+        /// null if no slot occupies that display position (e.g. 14 units but
+        /// displayIndex=14).
+        /// </summary>
+        public RosterSlot? GetSlotByDisplayOrder(int displayIndex)
+        {
+            foreach (var slot in ReadAll())
+            {
+                if (slot.DisplayOrder == displayIndex) return slot;
+            }
+            return null;
         }
     }
 }

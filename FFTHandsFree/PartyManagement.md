@@ -74,6 +74,7 @@ Roster base `0x1411A18D0`, stride `0x258`, 50 slots max. See UNIT_DATA_STRUCTURE
 | +0x1D | Level | 1 byte | **level == 0 = empty slot** |
 | +0x1E | Brave | 1 byte | |
 | +0x1F | Faith | 1 byte | |
+| +0x122 | Display Order | 1 byte | 0-indexed position in the PartyMenu Units grid (Time Recruited sort). Ramza=0, then every other unit by recruitment order. Re-written by the game when Sort changes. |
 | +0x230 | Name ID | 2 bytes | |
 
 **Item IDs use the FFTPatcher canonical 0-315 encoding.** Directly pluck into `ItemData.GetItem(id)` — no translation table needed. Verified 2026-04-14 via Ramza and Kenrick live dumps; see UNIT_DATA_STRUCTURE.md "Equipment Decoding" section for the proof table.
@@ -93,3 +94,22 @@ Either condition alone gives wrong results:
 - `level == 0` alone: some dismissed-but-still-allocated template slots have level > 0.
 
 Both checks together match the in-game count exactly. See `RosterReader.IsEmptySlot` in `ColorMod/GameBridge/RosterReader.cs`.
+
+## PartyMenu Grid Display Order
+
+The visible 5-column grid on the Units tab is NOT memory-slot order. The game sorts units by the current "Sort" option (default: Time Recruited), and writes each unit's 0-indexed grid position to roster byte `+0x122`. To render the same grid the player sees:
+
+```csharp
+var slots = reader.ReadAll();
+slots.Sort((a, b) => a.DisplayOrder.CompareTo(b.DisplayOrder));
+// slots[0] = grid (0, 0), slots[1] = grid (0, 1), ..., slots[5] = grid (1, 0), etc.
+```
+
+To resolve a cursor at grid `(row, col)` to a roster slot, use `RosterReader.GetSlotByDisplayOrder(row * 5 + col)`. The `ScreenStateMachine` tracks the cursor as it moves around the grid and exposes the current position via `CursorRow`, `CursorCol`, and `ViewedGridIndex` (which preserves the "Enter-time" position while the player navigates nested screens like CharacterStatus / EquipmentAndAbilities).
+
+## Party Menu Player Rules Overlay
+
+- **Roster order in `screen -v` matches the grid.** After the session-13 display-order fix, `screen -v` on PartyMenu dumps a JSON payload sorted by display order (not slot order). Each unit carries a `displayOrder` field; grid metadata (`gridCols`, `gridRows`, `cursorRow`, `cursorCol`, `hoveredName`) sits on the roster object itself.
+- **Compact `screen` renders a 5-col grid** with a `cursor->` gutter on the row holding the highlighted unit, mirroring the game's visual layout.
+- **`ui=<name>`** on PartyMenu reflects the hovered unit (e.g. `ui=Agrias`) — no more stale `ui=Move`.
+- **Drilling in works for any unit.** `execute_action SelectUnit` opens the correct unit's CharacterStatus / EquipmentAndAbilities regardless of grid position.

@@ -50,6 +50,7 @@ The pattern uses x86-64 RIP-relative addressing:
 | +0x1F | byte | faith | Faith (0-100). |
 | +0x32 + jobIdx*3 | 3 bytes | learned-ability bitfield (per job) | Byte 0-1: learned action abilities, MSB-first over each skillset's list. Byte 2: learned passive abilities (reaction/support/movement), MSB-first over each job's ID-sorted passive list. Verified 2026-04-14 — decoded byte 2 produces the exact set of passives shown in the game's Reaction/Support/Movement pickers. Per-job passive ID lists in `ABILITY_IDS.md` and `RosterReader.ReadLearnedPassives`. |
 | +0x80 | uint16 LE | currentJobJp | JP in the unit's currently-equipped class. |
+| +0x122 | byte | displayOrder | 0-indexed position of this slot in the PartyMenu Units grid under the game's current Sort option (default: Time Recruited). Ramza is always 0; other units get 1..N-1 based on recruitment order. The game re-writes this byte when the player changes Sort (Job / Level / Time Recruited). Under Time Recruited this is the "recruitment rank". Not to be confused with `unitIndex` (+0x01) which is the slot number. Discovered 2026-04-14 by dumping all 14 active slots' first 600 bytes and scanning for a strictly-monotonic ranking in grid-display order. See `RosterReader.DisplayOrder` and `RosterReader.GetSlotByDisplayOrder`. |
 | +0x230 | uint16 LE | nameId | Indexes into the `CharaName-en` NXD table. Determines the character's displayed name. |
 
 ### spriteSet Values
@@ -163,7 +164,9 @@ All of these crash the game when opening the party menu:
 During reverse engineering, the following offsets were tested for the name field and had **no effect** on the displayed name:
 - +0x04 bit 7 flag
 - +0x121 (contains job-1 for story characters, 0 for generics — some other purpose)
-- +0x122, +0x124 (mirror unitIndex — related to roster management, not name)
+- +0x124 (mirror of unitIndex — related to roster management, not name)
+
+Note: `+0x122` was historically listed here as "mirrors unitIndex" — it does NOT. The earlier investigator saw Ramza's +0x122=0 matching his unitIndex=0 and generalized incorrectly. It's actually the PartyMenu grid display position (see the offsets table above). Decoded 2026-04-14 session 13.
 
 ## Roster Name Display Table (separate from the unit data array)
 

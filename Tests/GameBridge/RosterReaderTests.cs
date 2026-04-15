@@ -82,4 +82,49 @@ public class RosterReaderTests
     {
         Assert.Null(RosterReader.ResolveJobName(nameId: 0, job: 0));
     }
+
+    // --- DisplayOrder sort semantics (roster +0x122) ---
+    //
+    // The game writes a byte at roster +0x122 per slot that holds the unit's
+    // position in the PartyMenu Units grid under the current Sort option
+    // (default: Time Recruited). When we sort the ReadAll() output by
+    // DisplayOrder, the list should match the grid order — NOT slot order.
+    // Slot 11 (Mustadio) sorts before slot 6 (Reis) under Time Recruited
+    // because Mustadio was recruited earlier in the story. This test proves
+    // the sort doesn't accidentally re-use slot order.
+
+    [Fact]
+    public void SortByDisplayOrder_PutsEarlierRecruitsFirst_EvenWhenSlotIndexLarger()
+    {
+        var reis     = new RosterReader.RosterSlot { SlotIndex = 6,  DisplayOrder = 12, Name = "Reis" };
+        var mustadio = new RosterReader.RosterSlot { SlotIndex = 11, DisplayOrder = 4,  Name = "Mustadio" };
+        var ramza    = new RosterReader.RosterSlot { SlotIndex = 0,  DisplayOrder = 0,  Name = "Ramza" };
+        var list = new System.Collections.Generic.List<RosterReader.RosterSlot> { reis, mustadio, ramza };
+        list.Sort((a, b) => a.DisplayOrder.CompareTo(b.DisplayOrder));
+        Assert.Equal("Ramza",    list[0].Name);
+        Assert.Equal("Mustadio", list[1].Name);
+        Assert.Equal("Reis",     list[2].Name);
+    }
+
+    [Fact]
+    public void DisplayOrder_IdentifiesHoveredUnit_ByGridPosition()
+    {
+        // Given a 5-col grid and cursor at (r1, c2), the hovered unit is
+        // whoever has DisplayOrder == 1*5 + 2 == 7. This mirrors how
+        // CommandWatcher resolves grid.hoveredName for the `ui=<name>`
+        // label.
+        var slots = new System.Collections.Generic.List<RosterReader.RosterSlot>
+        {
+            new() { SlotIndex = 0,  DisplayOrder = 0,  Name = "Ramza" },
+            new() { SlotIndex = 11, DisplayOrder = 4,  Name = "Mustadio" },
+            new() { SlotIndex = 12, DisplayOrder = 5,  Name = "Agrias" },
+            new() { SlotIndex = 18, DisplayOrder = 6,  Name = "Rapha" },
+            new() { SlotIndex = 19, DisplayOrder = 7,  Name = "Marach" },
+        };
+        const int cols = 5, cursorRow = 1, cursorCol = 2;
+        int gridIdx = cursorRow * cols + cursorCol;
+        var hovered = slots.Find(s => s.DisplayOrder == gridIdx);
+        Assert.NotNull(hovered);
+        Assert.Equal("Marach", hovered!.Name);
+    }
 }

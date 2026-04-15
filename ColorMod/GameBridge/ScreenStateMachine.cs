@@ -107,6 +107,35 @@ namespace FFTColorCustomizer.GameBridge
         private int _savedPartyRow;
         private int _savedPartyCol;
 
+        /// <summary>
+        /// The 0-indexed display-grid position of the currently-viewed party
+        /// member. On PartyMenu root this is `CursorRow * GridColumns +
+        /// CursorCol` (what the cursor is currently on); on nested screens
+        /// (CharacterStatus, EquipmentAndAbilities, pickers, JobSelection)
+        /// it's the position at the moment Enter was pressed — preserved via
+        /// the saved row/col fields so the viewed unit doesn't change as the
+        /// user navigates within an inner screen.
+        ///
+        /// To resolve this to a roster slot, pass it to
+        /// <see cref="RosterReader.GetSlotByDisplayOrder"/>. The display
+        /// order is driven by roster byte +0x122 (Time Recruited default).
+        /// </summary>
+        public int ViewedGridIndex
+        {
+            get
+            {
+                // PartyMenu Units grid is always 5-wide. Nested screens may
+                // set GridColumns to something else (JobScreen=6 or 8,
+                // EquipmentScreen=2), so we hardcode 5 here to always refer
+                // to the party grid width.
+                const int PartyGridCols = 5;
+                if (CurrentScreen == GameScreen.PartyMenu && Tab == PartyTab.Units)
+                    return CursorRow * PartyGridCols + CursorCol;
+                // Nested screens: use the saved snapshot captured at Enter time.
+                return _savedPartyRow * PartyGridCols + _savedPartyCol;
+            }
+        }
+
         // Saved EquipmentAndAbilities cursor for returning from a picker.
         private int _savedEquipmentRow;
         private int _savedEquipmentCol;
@@ -300,6 +329,12 @@ namespace FFTColorCustomizer.GameBridge
                         {
                             _savedPartyRow = CursorRow;
                             _savedPartyCol = CursorCol;
+                            // Ramza is always display-position 0 under the
+                            // default "Time Recruited" sort. Under other
+                            // sort modes (Level / Job) Ramza can appear
+                            // elsewhere; if/when we support those, resolve
+                            // IsRamza via a roster lookup by slot identity
+                            // instead of grid position.
                             IsRamza = gridIndex == 0;
                             CurrentScreen = GameScreen.CharacterStatus;
                             SidebarIndex = 0;

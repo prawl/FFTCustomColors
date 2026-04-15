@@ -780,9 +780,14 @@ try{
   ]:[];
 
   // Header line matches the game's info bar: name, job, level, JP.
-  // "Next" (JP to next ability) isn't in our roster read yet — omitted.
-  const u=(j.screen&&j.screen.roster&&j.screen.roster.units&&j.screen.roster.units[0])||{};
-  const headerName=(l&&l.unitName)||u.name;
+  // Find the roster entry whose name matches the loadout's unit so the
+  // stats (job / level / JP) are for the CURRENTLY-VIEWED unit, not
+  // blindly roster[0]. (Pre-display-order fix this was hardcoded to
+  // units[0] which always showed Ramza's stats.)
+  const roster=(j.screen&&j.screen.roster&&j.screen.roster.units)||[];
+  const viewedName=(l&&l.unitName)||null;
+  const u=(viewedName&&roster.find(x=>x.name===viewedName))||roster[0]||{};
+  const headerName=viewedName||u.name;
   if(headerName){
     const parts=[headerName];
     if(u.job)parts.push(u.job);
@@ -882,9 +887,11 @@ try{
 " 2>/dev/null
     fi
 
-    # PartyMenu roster: compact line shows count only (display-order is NOT
-    # known, so we can't show "cursor-hovered" unit reliably). -v expands to
-    # the full slot-indexed list.
+    # PartyMenu roster:
+    #   compact: render the visual 5-col grid the game shows, with a
+    #            [cursor] bracket around the hovered unit. Display order
+    #            is driven by roster byte +0x122 (Time Recruited sort).
+    #   -v:      dump the raw roster JSON (efficient payload for tools).
     if [ "$SCR" = "PartyMenu" ] && [ -f "$B/response.json" ]; then
       local vflag="false"; $verbose && vflag="true"
       cat "$B/response.json" | node -e "
@@ -893,35 +900,48 @@ try{
   const r=j.screen&&j.screen.roster;
   if(!r||!r.units||!r.units.length)process.exit(0);
   const verbose=$vflag;
-  if(!verbose){
-    console.log(' '+r.count+'/'+r.max+' units (use \`screen -v\` for full list)');
-  }else{
-    console.log(' '+r.count+'/'+r.max+' units (ordered by memory slot)');
-    r.units.forEach(u=>{
-      const sl=('s'+u.slot).padEnd(4);
-      const nm=(u.name||'?').padEnd(12);
-      const lv=('Lv.'+u.level).padEnd(6);
-      const jb=(u.job||'').padEnd(16);
-      const hp=u.maxHp?('HP='+u.hp+'/'+u.maxHp).padEnd(13):''.padEnd(13);
-      const mp=u.maxMp?('MP='+u.mp+'/'+u.maxMp).padEnd(11):''.padEnd(11);
-      const br=u.brave?'Br'+u.brave:'';
-      const fa=u.faith?' Fa'+u.faith:'';
-      const jp=u.jp?' JP'+u.jp:'';
-      console.log('  '+sl+' '+nm+' '+lv+' '+jb+' '+hp+' '+mp+' '+br+fa+jp);
-      const e=u.equipment;
-      if(e){
-        const parts=[];
-        if(e.weapon)parts.push('R='+e.weapon);
-        if(e.leftHand)parts.push('L='+e.leftHand);
-        if(e.shield)parts.push('Sh='+e.shield);
-        if(e.helm)parts.push('H='+e.helm);
-        if(e.body)parts.push('B='+e.body);
-        if(e.accessory)parts.push('A='+e.accessory);
-        if(parts.length)console.log('        '+parts.join(' '));
-      }
-    });
+  if(verbose){
+    // Raw JSON dump so tools / advanced users get every field. We drop
+    // the full DetectedScreen wrapper — the roster is what this command
+    // is for — and pretty-print at 2-space indent.
+    console.log(JSON.stringify(r, null, 2));
+    process.exit(0);
   }
-}catch(e){}
+  // Compact: 5-col grid matching the game's layout.
+  const cols = r.gridCols || 5;
+  const rows = r.gridRows || Math.ceil(r.units.length / cols);
+  const cr = (typeof r.cursorRow === 'number') ? r.cursorRow : -1;
+  const cc = (typeof r.cursorCol === 'number') ? r.cursorCol : -1;
+  // units sorted by displayOrder by the backend. Build a row-major map.
+  const byIdx = new Array(rows * cols).fill(null);
+  r.units.forEach(u => {
+    const i = (typeof u.displayOrder === 'number') ? u.displayOrder : -1;
+    if (i >= 0 && i < byIdx.length) byIdx[i] = u;
+  });
+  console.log(' '+r.count+'/'+r.max+' units — cursor on '+(r.hoveredName||'?')+' (r'+cr+' c'+cc+'). Use \`screen -v\` for JSON.');
+  // Column headers — indented to line up with the row labels below.
+  const colLabels = [];
+  for (let c = 0; c < cols; c++) colLabels.push(('c'+c).padEnd(15));
+  // Width of the row-label gutter so headers + cells align in columns.
+  const gutterPad = '              '; // 14 spaces, matches 'r0 cursor->' width
+  console.log('  '+gutterPad+colLabels.join(''));
+  for (let rr = 0; rr < rows; rr++) {
+    const cells = [];
+    for (let c = 0; c < cols; c++) {
+      const idx = rr * cols + c;
+      const u = byIdx[idx];
+      if (!u) { cells.push(''.padEnd(15)); continue; }
+      const nm = (u.name || '?').slice(0, 12);
+      const isCursor = (rr === cr && c === cc);
+      cells.push(isCursor ? ('['+nm+']').padEnd(15) : (nm).padEnd(15));
+    }
+    // Row label uses an EquipmentAndAbilities-style 'cursor->' gutter on
+    // the row that holds the highlighted cell.
+    const rowLabel = 'r'+rr;
+    const gutter = (rr === cr) ? ' cursor->  ' : '           ';
+    console.log('  '+rowLabel+gutter+cells.join(''));
+  }
+}catch(e){ console.error('[screen] party render failed: '+e.message); }
 " 2>/dev/null
     fi
   fi

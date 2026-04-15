@@ -1926,6 +1926,10 @@ namespace FFTColorCustomizer.Utilities
                 "Gallant Knight" => "Mettle",   // Ramza Ch4
                 "Heretic" => "Mettle",         // Ramza Ch4 (legacy)
                 "Mettle" => "Mettle",
+                // Story-character canonical primary skillsets. Add more as
+                // you verify them in-game — unverified entries are omitted
+                // so `Primary:` simply shows blank rather than a wrong name.
+                "Holy Knight" => "Holy Sword",       // Agrias — verified 2026-04-14
                 _ => null
             };
         }
@@ -2829,18 +2833,21 @@ namespace FFTColorCustomizer.Utilities
                 //     row 3 = Support ability
                 //     row 4 = Movement ability
                 //
-                // Viewed-unit identification is still unsolved (TODO §10.6) — we default
-                // to slot 0 (Ramza) for now, which is correct when the player entered
-                // EquipmentAndAbilities from the Units tab cursor at row 0 col 0.
+                // Viewed unit is resolved from the state machine's saved
+                // grid position (captured when Enter opened CharacterStatus
+                // from PartyMenu) → the roster slot whose DisplayOrder matches.
+                // Display order is byte roster+0x122, set by the game's Sort
+                // option (default: Time Recruited).
                 if (screen.Name == "EquipmentAndAbilities" && ScreenMachine != null && Explorer != null)
                 {
                     if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
                     if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
 
-                    int viewedSlot = 0; // Ramza default — see TODO §10.6
-                    var viewed = _rosterReader.ReadAll().FirstOrDefault(s => s.SlotIndex == viewedSlot);
+                    int viewedGridIndex = ScreenMachine.ViewedGridIndex;
+                    var viewed = _rosterReader.GetSlotByDisplayOrder(viewedGridIndex);
                     if (viewed != null)
                     {
+                        int viewedSlot = viewed.SlotIndex;
                         var lo = _rosterReader.ReadLoadout(viewedSlot);
                         var ab = _rosterReader.ReadEquippedAbilities(viewedSlot, viewed.JobName);
 
@@ -2928,19 +2935,21 @@ namespace FFTColorCustomizer.Utilities
                 //              currently only surface the CURRENTLY-EQUIPPED ability
                 //              (from roster +0x08-+0x0D), not the full learned list.
                 //
-                // Viewed unit defaults to slot 0 (Ramza) — same as EquipmentAndAbilities.
+                // Viewed unit resolved the same way as EquipmentAndAbilities —
+                // state machine's ViewedGridIndex → DisplayOrder lookup.
                 if ((screen.Name == "SecondaryAbilities" ||
                      screen.Name == "ReactionAbilities" ||
                      screen.Name == "SupportAbilities" ||
-                     screen.Name == "MovementAbilities") && Explorer != null)
+                     screen.Name == "MovementAbilities") && Explorer != null && ScreenMachine != null)
                 {
                     if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
                     if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
 
-                    int viewedSlot = 0; // Ramza default — see TODO §10.6
-                    var viewed = _rosterReader.ReadAll().FirstOrDefault(s => s.SlotIndex == viewedSlot);
+                    int viewedGridIndex = ScreenMachine.ViewedGridIndex;
+                    var viewed = _rosterReader.GetSlotByDisplayOrder(viewedGridIndex);
                     if (viewed != null)
                     {
+                        int viewedSlot = viewed.SlotIndex;
                         var ab = _rosterReader.ReadEquippedAbilities(viewedSlot, viewed.JobName);
                         var list = new List<AvailableAbility>();
 
@@ -3079,11 +3088,39 @@ namespace FFTColorCustomizer.Utilities
                         if (slots.Count > 0)
                         {
                             ScreenMachine?.SetRosterCount(slots.Count);
+                            // Sort by DisplayOrder (+0x122) so the units list
+                            // matches the grid the player actually sees.
+                            slots.Sort((a, b) => a.DisplayOrder.CompareTo(b.DisplayOrder));
+                            const int PartyGridCols = 5;
+                            int gridRows = (slots.Count + PartyGridCols - 1) / PartyGridCols;
                             var grid = new RosterGrid
                             {
                                 Count = slots.Count,
                                 Max = RosterReader.MaxSlots,
+                                GridCols = PartyGridCols,
+                                GridRows = gridRows,
                             };
+                            // Cursor + hovered name are only populated on
+                            // PartyMenu root (Units tab). Nested screens
+                            // (CharacterStatus, EquipmentAndAbilities) still
+                            // include the full roster list but without a
+                            // grid cursor.
+                            if (screen.Name == "PartyMenu" && ScreenMachine != null
+                                && ScreenMachine.Tab == PartyTab.Units)
+                            {
+                                grid.CursorRow = ScreenMachine.CursorRow;
+                                grid.CursorCol = ScreenMachine.CursorCol;
+                                int gridIdx = ScreenMachine.CursorRow * PartyGridCols + ScreenMachine.CursorCol;
+                                var hovered = slots.FirstOrDefault(x => x.DisplayOrder == gridIdx);
+                                if (hovered != null)
+                                {
+                                    grid.HoveredName = hovered.Name;
+                                    // Surface the hovered unit as ui=<name> so
+                                    // consumers don't see the stale "ui=Move"
+                                    // that bled over from the battle menu path.
+                                    screen.UI = hovered.Name;
+                                }
+                            }
                             foreach (var s in slots)
                             {
                                 var unit = new RosterUnit
@@ -3095,6 +3132,7 @@ namespace FFTColorCustomizer.Utilities
                                     Brave = s.Brave,
                                     Faith = s.Faith,
                                     Jp = s.CurrentJobJp,
+                                    DisplayOrder = s.DisplayOrder,
                                 };
                                 // Equipment comes from the roster slot itself
                                 // (stable static array at 0x1411A18D0). The
