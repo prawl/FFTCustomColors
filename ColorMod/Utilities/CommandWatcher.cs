@@ -94,6 +94,24 @@ namespace FFTColorCustomizer.Utilities
         private long _resolvedPickerCursorAddr = 0L;
 
         /// <summary>
+        /// Cached JobSelection grid-cursor address resolved by the
+        /// `resolve_job_cursor` action. Same heap-shuffle story as the
+        /// picker — re-resolved on every JobSelection open. Byte value is a
+        /// flat linear index into JobGridLayout (0..18 for Ramza Ch4).
+        /// </summary>
+        private long _resolvedJobCursorAddr = 0L;
+
+        /// <summary>
+        /// Tracks whether the auto-resolver has ALREADY fired for the
+        /// current JobSelection visit (whether it succeeded or failed).
+        /// Prevents the resolver from re-firing on every subsequent
+        /// `screen` call — which would fire 6 keys each time, interfering
+        /// with user navigation. Reset to false when screen transitions
+        /// away from JobSelection.
+        /// </summary>
+        private bool _jobCursorResolveAttempted = false;
+
+        /// <summary>
         /// Pure helper for the chained-command rate-limit decision. Returns the
         /// number of ms the caller should sleep before processing a new command
         /// (0 if no delay needed). Returns a chain-warning string only when a
@@ -214,6 +232,87 @@ namespace FFTColorCustomizer.Utilities
                 : "No stable picker cursor byte found (0 candidates)";
         }
 
+        /// <summary>
+        /// Rescan-on-entry for the JobSelection grid cursor. Same
+        /// oscillation+verify+priority strategy as
+        /// <see cref="ResolvePickerCursor"/>, but oscillates Right/Left
+        /// instead of Down/Up because JobSelection is a horizontal-first
+        /// grid and the cursor byte is a flat linear index that advances on
+        /// Right. Net-zero cursor motion (visible ~2s flash).
+        /// </summary>
+        private string? ResolveJobCursor(out int candidateCount)
+        {
+            candidateCount = 0;
+            if (Explorer == null) return null;
+            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+            if (win == IntPtr.Zero) return null;
+            const int VK_RIGHT = 0x27, VK_LEFT = 0x25;
+
+            // Let JobSelection open animation settle before baselining.
+            // Same 700ms empirical figure as pickers.
+            Thread.Sleep(700);
+            Explorer.TakeHeapSnapshot("_jobcur_base");
+            _inputSimulator.SendKeyPressToWindow(win, VK_RIGHT);
+            Thread.Sleep(300);
+            Explorer.TakeHeapSnapshot("_jobcur_adv");
+            _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
+            Thread.Sleep(300);
+            Explorer.TakeHeapSnapshot("_jobcur_back");
+            var cands = Explorer.FindToggleCandidates(
+                "_jobcur_base", "_jobcur_adv", "_jobcur_back",
+                maxResults: 32, expectedDelta: 1);
+            candidateCount = cands.Count;
+
+            // Verify with a 2-step delta: Right, Right expects baseline +2.
+            // Catches animation counters that happen to satisfy the single-
+            // toggle filter. Then restore position with 2 Lefts.
+            long verified = 0L;
+            if (cands.Count > 0)
+            {
+                var baselineVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) baselineVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_RIGHT);
+                Thread.Sleep(300);
+                var afterOneVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) afterOneVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_RIGHT);
+                Thread.Sleep(300);
+                foreach (var candAddr in cands)
+                {
+                    if (!baselineVals.TryGetValue((long)candAddr, out var baseline)) continue;
+                    if (!afterOneVals.TryGetValue((long)candAddr, out var afterOne)) continue;
+                    var afterTwo = Explorer.ReadAbsolute(candAddr, 1);
+                    if (!afterTwo.HasValue) continue;
+                    byte finalVal = (byte)afterTwo.Value.value;
+                    // Must track: baseline → baseline+1 → baseline+2 (with mod wrap).
+                    bool step1Ok = afterOne == baseline + 1 || afterOne == 0;
+                    bool step2Ok = finalVal == afterOne + 1 || finalVal == 0;
+                    if (step1Ok && step2Ok)
+                    {
+                        verified = (long)candAddr;
+                        break;
+                    }
+                }
+                // Restore cursor: 2 Lefts to undo the 2 Rights.
+                _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
+                Thread.Sleep(220);
+                _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
+                Thread.Sleep(220);
+            }
+            _resolvedJobCursorAddr = verified;
+            return cands.Count > 0
+                ? $"Resolved job cursor: 0x{_resolvedJobCursorAddr:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
+                : "No stable job cursor byte found (0 candidates)";
+        }
+
         // Actions that are always allowed regardless of strict mode (info/infrastructure)
         private static readonly HashSet<string> InfrastructureActions = new()
         {
@@ -225,7 +324,8 @@ namespace FFTColorCustomizer.Utilities
             "read_dialogue", "write_byte", "dump_detection_inputs",
             "scrape_shop_items",
             "hold_key",
-            "resolve_picker_cursor"
+            "resolve_picker_cursor",
+            "resolve_job_cursor"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -747,6 +847,17 @@ namespace FFTColorCustomizer.Utilities
                     {
                         int cCount;
                         var info = ResolvePickerCursor(out cCount);
+                        response.Status = info != null ? "completed" : "failed";
+                        if (info == null) response.Error = "Memory explorer not initialized or game window not found";
+                        response.Info = info;
+                        ModLogger.Log($"[CommandBridge] {response.Info}");
+                        break;
+                    }
+
+                    case "resolve_job_cursor":
+                    {
+                        int cCount;
+                        var info = ResolveJobCursor(out cCount);
                         response.Status = info != null ? "completed" : "failed";
                         if (info == null) response.Error = "Memory explorer not initialized or game window not found";
                         response.Info = info;
@@ -3439,6 +3550,74 @@ namespace FFTColorCustomizer.Utilities
                         if (detailName != null && detailRow >= 0)
                             screen.UiDetail = BuildUiDetail(detailName, col: 1, row: detailRow);
                     }
+                }
+
+                // JobSelection — surface cursor position + ui=<hovered job>.
+                // Heap cursor byte shuffles across game sessions, so we do
+                // rescan-on-entry (same pattern as picker cursors). Byte
+                // value is a flat linear index into JobGridLayout. Character
+                // kind is Ramza (ViewedGridIndex == 0) vs GenericMale/Female
+                // — generic gender isn't yet modeled, default to male until
+                // the roster reader surfaces per-unit gender. When the
+                // resolver hasn't produced an address yet, we still populate
+                // cursorRow/cursorCol from the state machine's tracked
+                // position (defaults to (0,0) on open — matches AC2/AC3
+                // defaults of Gallant Knight / Squire). ui= falls back to
+                // whatever class is at (0,0) in that case.
+                bool onJobSelection = screen.Name == "JobSelection";
+                if (!onJobSelection && (_resolvedJobCursorAddr != 0 || _jobCursorResolveAttempted))
+                {
+                    // Left JobSelection — drop the cached heap address and
+                    // reset the attempt flag. Next JobSelection open will
+                    // re-resolve.
+                    _resolvedJobCursorAddr = 0L;
+                    _jobCursorResolveAttempted = false;
+                }
+                if (onJobSelection && ScreenMachine != null && Explorer != null)
+                {
+                    // Clear the stale "Move/Abilities/Wait" label that
+                    // DetectScreen sets from the battle menuCursor byte —
+                    // meaningless outside battle.
+                    screen.UI = null;
+
+                    var kind = ScreenMachine.IsRamza
+                        ? JobGridLayout.CharacterKind.Ramza
+                        : JobGridLayout.CharacterKind.GenericMale;
+
+                    // Auto-resolve the heap cursor on first JobSelection read
+                    // each session (matches picker behavior). Visible ~2s
+                    // cursor flash. Subsequent reads are single-byte reads.
+                    // If the resolver fails (no stable byte found), we don't
+                    // retry — the fallback is the state machine's tracked
+                    // cursor position, which handles most nav correctly.
+                    if (!_jobCursorResolveAttempted)
+                    {
+                        _jobCursorResolveAttempted = true;
+                        int _unused;
+                        ResolveJobCursor(out _unused);
+                    }
+
+                    int cursorRow = ScreenMachine.CursorRow;
+                    int cursorCol = ScreenMachine.CursorCol;
+                    if (_resolvedJobCursorAddr != 0)
+                    {
+                        var curByte = Explorer.ReadAbsolute((nint)_resolvedJobCursorAddr, 1);
+                        if (curByte.HasValue)
+                        {
+                            int flatIdx = (int)curByte.Value.value;
+                            var rc = JobGridLayout.IndexToRowCol(kind, flatIdx);
+                            if (rc.HasValue)
+                            {
+                                cursorRow = rc.Value.Row;
+                                cursorCol = rc.Value.Col;
+                            }
+                        }
+                    }
+                    screen.CursorRow = cursorRow;
+                    screen.CursorCol = cursorCol;
+
+                    var hoveredClass = JobGridLayout.GetClassAt(kind, cursorRow, cursorCol);
+                    if (hoveredClass != null) screen.UI = hoveredClass;
                 }
 
                 // PartyMenuChronicle: surface the highlighted tile name.
