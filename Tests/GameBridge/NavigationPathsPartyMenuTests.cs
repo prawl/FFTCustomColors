@@ -97,7 +97,9 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [InlineData("PartyMenuChronicle", 1)]
         [InlineData("PartyMenuOptions", 1)]
         [InlineData("CharacterStatus", 2)]
-        [InlineData("CharacterDialog", 3)]
+        // CharacterDialog handled separately — Escape is a no-op on flavor
+        // dialogs (Enter advances them), so its ReturnToWorldMap leads with
+        // Enter then Escapes. See CharacterDialog_ReturnToWorldMap_LeadsWithEnter.
         [InlineData("DismissUnit", 3)]
         [InlineData("CombatSets", 3)]
         [InlineData("EquipmentAndAbilities", 3)]
@@ -130,6 +132,25 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("WorldMap", rwm.WaitForScreen);
             // 200ms between presses so close animations don't eat keys.
             Assert.True(rwm.DelayBetweenMs >= 200, $"delay {rwm.DelayBetweenMs}ms < 200ms minimum");
+        }
+
+        [Fact]
+        public void CharacterDialog_ReturnToWorldMap_LeadsWithEnter()
+        {
+            var paths = NavigationPaths.GetPaths(MakeScreen("CharacterDialog"));
+            Assert.NotNull(paths);
+            Assert.Contains("ReturnToWorldMap", paths!.Keys);
+
+            var rwm = paths["ReturnToWorldMap"];
+            Assert.NotNull(rwm.Keys);
+            Assert.Equal(3, rwm.Keys!.Length);
+            // Enter dismisses the flavor dialog (Escape is a no-op on dialogs),
+            // then 2 Escapes climb out CharacterStatus → PartyMenu → WorldMap.
+            Assert.Equal(VK_ENTER, rwm.Keys[0].Vk);
+            Assert.Equal(VK_ESCAPE, rwm.Keys[1].Vk);
+            Assert.Equal(VK_ESCAPE, rwm.Keys[2].Vk);
+            Assert.Equal("WorldMap", rwm.WaitForScreen);
+            Assert.True(rwm.DelayBetweenMs >= 200);
         }
 
         [Fact]

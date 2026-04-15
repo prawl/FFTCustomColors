@@ -392,6 +392,54 @@ public class ScreenStateMachineTests
         Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
     }
 
+    // Drift mitigation (TODO §0 session 16 repro): tab-switching back
+    // to the Units tab must zero the cursor. The game restores Units to
+    // origin on tab return; preserving a stale CursorRow/Col across
+    // tab visits caused "state says Orlandeau, game shows Ramza"
+    // mis-routes on SelectUnit.
+    [Fact]
+    public void PartyMenu_TabReturnToUnits_ResetsCursorToOrigin()
+    {
+        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        // Move cursor off origin on Units tab.
+        sm.OnKeyPressed(VK_DOWN);
+        sm.OnKeyPressed(VK_RIGHT);
+        Assert.Equal(1, sm.CursorRow);
+        Assert.Equal(1, sm.CursorCol);
+
+        // Tab away to Inventory and back to Units (E wraps Options→Units, but
+        // here Q from Units lands on Options; then E×3 loops back to Units).
+        sm.OnKeyPressed(VK_E); // → Inventory
+        sm.OnKeyPressed(VK_E); // → Chronicle
+        sm.OnKeyPressed(VK_E); // → Options
+        sm.OnKeyPressed(VK_E); // → Units (wraps)
+
+        Assert.Equal(PartyTab.Units, sm.Tab);
+        Assert.Equal(0, sm.CursorRow);
+        Assert.Equal(0, sm.CursorCol);
+    }
+
+    [Fact]
+    public void PartyMenu_QWrapToUnits_ResetsCursorToOrigin()
+    {
+        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        sm.OnKeyPressed(VK_DOWN);
+        sm.OnKeyPressed(VK_RIGHT);
+        sm.OnKeyPressed(VK_RIGHT);
+        Assert.Equal(1, sm.CursorRow);
+        Assert.Equal(2, sm.CursorCol);
+
+        // Q wraps Units → Options on the first press, then Q×3 walks back to Units.
+        sm.OnKeyPressed(VK_Q); // → Options
+        sm.OnKeyPressed(VK_Q); // → Chronicle
+        sm.OnKeyPressed(VK_Q); // → Inventory
+        sm.OnKeyPressed(VK_Q); // → Units
+
+        Assert.Equal(PartyTab.Units, sm.Tab);
+        Assert.Equal(0, sm.CursorRow);
+        Assert.Equal(0, sm.CursorCol);
+    }
+
     // --- Sidebar ---
 
     [Fact]

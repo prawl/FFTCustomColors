@@ -47,6 +47,10 @@ namespace FFTColorCustomizer.Utilities
         /// render lag right after a panel-opening Enter.
         /// </summary>
         private int _menuDepthDriftStreak = 0;
+        // Mirror counter for the upward drift case: state machine still
+        // reports a party-tree screen but raw + MenuDepth show we're back
+        // on WorldMap. Same 3-frame debounce logic.
+        private int _worldMapDriftStreak = 0;
         private bool _waitConfirmPending; // Set when battle_wait rejected for no move/act; next battle_wait goes through
         private string? _lastAbilityName; // Last ability used via battle_ability, shown in ui= during targeting
         private readonly BattleMenuTracker _battleMenuTracker = new();
@@ -623,6 +627,34 @@ namespace FFTColorCustomizer.Utilities
                 Thread.Sleep(220);
             }
             _resolvedEquipPickerCursorAddr = verified;
+
+            // Investigation aid (added 2026-04-15): once we know the cursor byte
+            // address, dump 256 bytes centered on it. UE4 ListView widgets
+            // typically store row data in a struct: [vtable ptr][next ptr][prev
+            // ptr][data ptr][index/state bytes]. The cursor byte is the index;
+            // a data pointer to the row's item ID likely sits within ±64 bytes.
+            // This log line is the cheapest way to capture the layout for a
+            // future session — no action needed beyond resolving the cursor.
+            // Same blocker on EquippableWeapons + shop pickers + PartyMenuInventory:
+            // the real unlock is decoding what surrounds the cursor byte. See
+            // project_inventory_widget_buffer.md for prior 0x7DB0xxxx decode work.
+            if (verified != 0)
+            {
+                try
+                {
+                    long dumpStart = verified - 128;
+                    var dumpBytes = Explorer.ReadBlock((nint)dumpStart, 256);
+                    if (dumpBytes != null)
+                    {
+                        ModLogger.Log($"[EquipPickerProbe] cursor=0x{verified:X} bytes -128..+128:\n{dumpBytes}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.Log($"[EquipPickerProbe] dump failed: {ex.Message}");
+                }
+            }
+
             return cands.Count > 0
                 ? $"Resolved equip-picker cursor: 0x{verified:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
                 : "No stable equip-picker cursor byte found (0 candidates)";
@@ -3284,15 +3316,16 @@ namespace FFTColorCustomizer.Utilities
                     BattleUnitHp = (int)v[11],
                     CameraRotation = (int)(v[17] - 1 + 4) % 4,
                     MenuDepth = (int)v[27],
-                    UI = (int)v[4] switch
-                    {
-                        0 => "Move",
-                        1 => "Abilities",
-                        2 => "Wait",
-                        3 => "Status",
-                        4 => "AutoBattle",
-                        _ => null
-                    },
+                    // UI is left null here. The action-menu cursor mapping
+                    // (Move/Abilities/Wait/Status/AutoBattle) only makes
+                    // sense in battle — outside battle the cursor sits at
+                    // index 0 by default and was leaking "Move" to every
+                    // screen (WorldMap, PartyMenu, LocationMenu, ...). The
+                    // Battle_MyTurn / Battle_Acting block below sets UI
+                    // from MenuCursor; non-battle screens get their UI
+                    // populated by their own per-screen logic (shop labels,
+                    // viewed-unit, hovered item, etc.) or stay null.
+                    UI = null,
                 };
 
                 // Save raw location before overriding — needed for title screen detection
@@ -3545,6 +3578,64 @@ namespace FFTColorCustomizer.Utilities
                     {
                         _menuDepthDriftStreak = 0;
                     }
+
+                    // Upward drift fix (TODO §0 "stuck on PartyMenu after
+                    // returning to WorldMap"): if the state machine is in
+                    // ANY party-tree screen but raw says WorldMap AND
+                    // MenuDepth==0 for 3 consecutive reads, we know the
+                    // game is actually back on the world map. The MenuDepth
+                    // gate is what makes this safe — the prior symmetric
+                    // attempt (reverted session 16) used `party=0 && ui=1`
+                    // which also matched EquipmentAndAbilities. MenuDepth==0
+                    // is true on outer screens only, so a TravelList/WorldMap
+                    // raw + MenuDepth==0 + SM-in-party-tree combination is
+                    // a real drift signal, not a nested-panel false positive.
+                    // PartyMenu's Inventory/Chronicle/Options tabs are not
+                    // distinct GameScreen enum values — they share the
+                    // PartyMenu screen name with a Tab discriminator. So
+                    // GameScreen.PartyMenu covers all four tabs here.
+                    bool smInPartyTree = ScreenMachine.CurrentScreen is
+                        GameScreen.PartyMenu or
+                        GameScreen.CharacterStatus or
+                        GameScreen.EquipmentScreen or
+                        GameScreen.EquipmentItemList or
+                        GameScreen.JobScreen or
+                        GameScreen.JobActionMenu or
+                        GameScreen.JobChangeConfirmation or
+                        GameScreen.SecondaryAbilities or
+                        GameScreen.ReactionAbilities or
+                        GameScreen.SupportAbilities or
+                        GameScreen.MovementAbilities or
+                        GameScreen.CombatSets or
+                        GameScreen.CharacterDialog or
+                        GameScreen.DismissUnit or
+                        GameScreen.ChronicleEncyclopedia or
+                        GameScreen.ChronicleStateOfRealm or
+                        GameScreen.ChronicleEvents or
+                        GameScreen.ChronicleAuracite or
+                        GameScreen.ChronicleReadingMaterials or
+                        GameScreen.ChronicleCollection or
+                        GameScreen.ChronicleErrands or
+                        GameScreen.ChronicleStratagems or
+                        GameScreen.ChronicleLessons or
+                        GameScreen.ChronicleAkademicReport or
+                        GameScreen.OptionsSettings;
+                    bool rawSaysWorldMap = screen.Name == "WorldMap" || screen.Name == "TravelList";
+                    if (smInPartyTree && rawSaysWorldMap && screen.MenuDepth == 0)
+                    {
+                        _worldMapDriftStreak++;
+                        if (_worldMapDriftStreak >= 3)
+                        {
+                            ModLogger.Log($"[StateMachine] world-map drift detected: SM={ScreenMachine.CurrentScreen} but raw={screen.Name} + menuDepth=0 for 3 consecutive reads. Snapping back to WorldMap.");
+                            ScreenMachine.SetScreen(GameScreen.WorldMap);
+                            ScreenMachine.MarkKeyProcessed();
+                            _worldMapDriftStreak = 0;
+                        }
+                    }
+                    else
+                    {
+                        _worldMapDriftStreak = 0;
+                    }
                 }
 
                 if (screen.Name == "PartySubScreen" || screen.Name == "PartyMenu" ||
@@ -3640,6 +3731,46 @@ namespace FFTColorCustomizer.Utilities
                     }
                     if (unlocked.Count > 0)
                         screen.UnlockedLocations = unlocked.ToArray();
+                }
+
+                // Populate inventory on PartyMenuInventory from the static
+                // u8 array at 0x1411A17C0 (272 bytes = one byte per FFTPatcher
+                // item ID, count 0 means not owned). Found 2026-04-15 session 18
+                // via 2-snapshot buy-diff — see project_inventory_store_CRACKED.md.
+                // We emit every non-zero entry with ItemData-resolved name/type
+                // so Claude has a complete owned-items listing in one read.
+                //
+                // We gate on the state-machine's Tab byte rather than the
+                // detected screen name because raw detection can't tell
+                // PartyMenu tabs apart (party=1 matches all of them), and
+                // the state machine's tab tracking is currently the most
+                // reliable signal. Matching any of the 4 PartyMenu screen
+                // names keeps the payload populated even when the state
+                // machine thinks we're on a different tab than the game
+                // actually shows (drift scenario documented in TODO §0).
+                bool onPartyMenuAnyTab = screen.Name == "PartyMenu"
+                    || screen.Name == "PartyMenuInventory"
+                    || screen.Name == "PartyMenuChronicle"
+                    || screen.Name == "PartyMenuOptions";
+                if (onPartyMenuAnyTab && Explorer != null)
+                {
+                    var invReader = new GameBridge.InventoryReader(Explorer);
+                    var entries = invReader.ReadAll();
+                    if (entries.Count > 0)
+                    {
+                        var payload = new List<InventoryItem>(entries.Count);
+                        foreach (var e in entries)
+                        {
+                            payload.Add(new InventoryItem
+                            {
+                                Id = e.ItemId,
+                                Count = e.Count,
+                                Name = e.Name,
+                                Type = e.Type,
+                            });
+                        }
+                        screen.Inventory = payload;
+                    }
                 }
 
                 // Populate screen.viewedUnit for unit-scoped screens. Resolves

@@ -189,7 +189,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["OpenChronicle"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_E, "E"), Key(VK_E, "E") },
-                    DelayBetweenMs = 300,
+                    DelayBetweenMs = 500,
                     WaitForScreen = "PartyMenuChronicle",
                     Desc = "Jump to Chronicle tab (E twice)"
                 },
@@ -917,7 +917,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["OpenOptions"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_E, "E"), Key(VK_E, "E") },
-                    DelayBetweenMs = 300,
+                    DelayBetweenMs = 500,
                     WaitForScreen = "PartyMenuOptions",
                     Desc = "Jump to Options tab"
                 },
@@ -952,7 +952,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["OpenUnits"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_Q, "Q"), Key(VK_Q, "Q") },
-                    DelayBetweenMs = 300,
+                    DelayBetweenMs = 500,
                     WaitForScreen = "PartyMenu",
                     Desc = "Jump to Units tab"
                 },
@@ -1007,7 +1007,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["OpenInventory"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_Q, "Q"), Key(VK_Q, "Q") },
-                    DelayBetweenMs = 300,
+                    DelayBetweenMs = 500,
                     WaitForScreen = "PartyMenuInventory",
                     Desc = "Jump to Inventory tab"
                 },
@@ -1052,7 +1052,22 @@ namespace FFTColorCustomizer.GameBridge
                     Keys = new[] { Key(VK_ENTER, "Enter") },
                     Desc = "Advance flavor dialog (press Enter). Escape does nothing on dialogs."
                 },
-                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
+                // Escape doesn't close flavor dialogs (Enter advances them).
+                // Walk Enter once to dismiss the dialog (back to CharacterStatus),
+                // then 2 Escapes to climb out CS → PartyMenu → WorldMap.
+                ["ReturnToWorldMap"] = new PathEntry
+                {
+                    Keys = new[]
+                    {
+                        Key(VK_ENTER, "Enter"),
+                        Key(VK_ESCAPE, "Escape"),
+                        Key(VK_ESCAPE, "Escape"),
+                    },
+                    DelayBetweenMs = 200,
+                    WaitForScreen = "WorldMap",
+                    WaitTimeoutMs = 3000,
+                    Desc = "Dismiss dialog (Enter) then Escape twice to world map"
+                },
             };
         }
 

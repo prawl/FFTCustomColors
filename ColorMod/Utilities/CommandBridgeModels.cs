@@ -502,6 +502,18 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int[]? UnlockedLocations { get; set; }
 
+        /// <summary>
+        /// Player inventory. Every item the party owns with a non-zero
+        /// count, pulled from the static u8 array at 0x1411A17C0. Each
+        /// entry has itemId, count, and name/type from ItemData.cs.
+        /// Populated on PartyMenuInventory (and will expand to shop
+        /// screens + equipment pickers in follow-up work).
+        /// Null on screens where inventory is not relevant.
+        /// </summary>
+        [JsonPropertyName("inventory")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<InventoryItem>? Inventory { get; set; }
+
         /// <summary>Name of the active unit (e.g. "Ramza"). Null for generic units without names.</summary>
         [JsonPropertyName("activeUnitName")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -844,6 +856,30 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("accessory")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Accessory { get; set; }
+    }
+
+    /// <summary>
+    /// One entry in the player's owned-items inventory. Sourced from the
+    /// static u8 array at 0x1411A17C0 where each byte is the count for
+    /// the item whose FFTPatcher canonical ID equals the byte's index.
+    /// Name/type pulled from ItemData.cs; null when we haven't mapped
+    /// that ID yet.
+    /// </summary>
+    public class InventoryItem
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
+
+        [JsonPropertyName("name")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("type")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Type { get; set; }
     }
 
     /// <summary>

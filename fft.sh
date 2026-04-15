@@ -272,6 +272,15 @@ _fmt_screen_compact() {
   LINE="$LINE status=$(printf '%b%s%b' "$(_status_col "$ST")" "$ST" "$_C_RESET")"
   printf '%b\n' "$LINE"
 
+  # Inventory summary whenever it's present — count of unique items +
+  # total owned. Lets Claude see scale without iterating the full array.
+  # Full inventory[] is in verbose JSON only (184+ entries would bloat compact).
+  # Rendered on any screen where the backend populated screen.inventory
+  # (currently any PartyMenu tab — the state-machine tab discriminator
+  # can drift, so we use payload presence instead of screen name).
+  local INV_SUMMARY=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const inv=j.screen?.inventory;if(!inv||!inv.length){return;}const total=inv.reduce((a,e)=>a+(e.count||0),0);process.stdout.write(inv.length+' unique / '+total+' total owned');}catch(e){}});" 2>/dev/null)
+  [ -n "$INV_SUMMARY" ] && printf '%b\n' "  $(_col "$_C_LOC" "inventory=$INV_SUMMARY")"
+
   # Subordinate lines — each on its own indented line. Suppressed on
   # PartyMenu-tree screens where they don't change per-action decisions.
   if ! _is_party_tree_screen "$SCR"; then
@@ -1636,6 +1645,58 @@ try{
   }
 }catch(e){ console.error('[screen] party render failed: '+e.message); }
 " 2>/dev/null
+    fi
+
+    # PartyMenuInventory:
+    #   compact: just the summary line already printed above (count +
+    #            total owned). We don't dump every item by default — 184
+    #            entries would blow past the "compact doesn't burn context"
+    #            budget. Claude consults screen -v when they actually
+    #            need to look up a specific item.
+    #   -v:      full inventory[] array grouped by item type, one line per
+    #            entry with count. Grouping mirrors the shop / equipment
+    #            picker tab layout so Claude can quickly scan "what
+    #            consumables do I have" vs "what swords".
+    # Verbose inventory dump — render whenever the backend populated
+    # screen.inventory on any PartyMenu tab. State-machine drift can
+    # misname the tab so we check payload presence, not screen name.
+    if [[ "$SCR" == PartyMenu* ]] && [ -f "$B/response.json" ]; then
+      if $verbose; then
+        cat "$B/response.json" | node -e "
+try{
+  const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
+  const inv=j.screen&&j.screen.inventory;
+  if(!inv||!inv.length){console.log('(inventory empty)');process.exit(0);}
+  // Group by type. Unknown types land in '(unmapped)' so Claude sees
+  // items we haven't named yet (e.g. IC-exclusive items above id 315).
+  const groups={};
+  for(const e of inv){
+    const t=e.type||'(unmapped)';
+    (groups[t]=groups[t]||[]).push(e);
+  }
+  const order=['knife','ninjablade','sword','knightsword','katana','axe','rod','staff','flail','gun','crossbow','bow','instrument','book','polearm','pole','bag','cloth','throwing','bomb','fellsword','shield','helmet','hat','hairadornment','armor','clothing','robe','shoes','armguard','ring','armlet','cloak','perfume','liprouge','chemistitem','(unmapped)'];
+  const seen=new Set();
+  const render=(type)=>{
+    const es=groups[type];
+    if(!es)return;
+    seen.add(type);
+    const total=es.reduce((a,e)=>a+(e.count||0),0);
+    console.log('');
+    console.log(type+' ('+es.length+' unique, '+total+' total):');
+    for(const e of es){
+      const nm=e.name||('item_'+e.id);
+      console.log('  '+String(e.count).padStart(3)+'  '+nm+'  [id='+e.id+']');
+    }
+  };
+  order.forEach(render);
+  // Any groups we didn't render in the ordered list (defensive).
+  Object.keys(groups).forEach(t=>{ if(!seen.has(t)) render(t); });
+  const total=inv.reduce((a,e)=>a+(e.count||0),0);
+  console.log('');
+  console.log('Total: '+inv.length+' unique items, '+total+' owned');
+}catch(e){ console.error('[screen] inventory render failed: '+e.message); }
+" 2>/dev/null
+      fi
     fi
   fi
 }

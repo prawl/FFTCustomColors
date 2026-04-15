@@ -322,6 +322,21 @@ namespace FFTColorCustomizer.GameBridge
             }
         }
 
+        // Drift mitigation: when Q/E lands the user back on the Units tab,
+        // any stored CursorRow/Col / _savedPartyRow/Col carried over from
+        // an earlier nav chain may not match where the game actually puts
+        // the cursor on tab return. Game behavior on tab switch is to
+        // restore Units to its origin (0,0) position, so we mirror that
+        // explicitly. Stops the "state says Orlandeau, game shows Ramza"
+        // class of drift bugs (TODO §0, session 16 repro).
+        private void ResetUnitsCursorToOrigin()
+        {
+            CursorRow = 0;
+            CursorCol = 0;
+            _savedPartyRow = 0;
+            _savedPartyCol = 0;
+        }
+
         private void HandlePartyMenu(int vk)
         {
             switch (vk)
@@ -335,12 +350,14 @@ namespace FFTColorCustomizer.GameBridge
                     // Reset per-tab cursor on tab change so each tab starts at index 0.
                     ChronicleIndex = 0;
                     OptionsIndex = 0;
+                    if (Tab == PartyTab.Units) ResetUnitsCursorToOrigin();
                     break;
                 case VK_E:
                     // E wraps: Options → Units (rightmost → leftmost).
                     Tab = Tab == PartyTab.Options ? PartyTab.Units : (PartyTab)(Tab + 1);
                     ChronicleIndex = 0;
                     OptionsIndex = 0;
+                    if (Tab == PartyTab.Units) ResetUnitsCursorToOrigin();
                     break;
                 // Grid navigation WRAPS in-game on all four axes (verified 2026-04-15
                 // live: 5 Rights from r0c0 on a 5-col PartyMenu grid returns to r0c0,
