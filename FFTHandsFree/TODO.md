@@ -410,27 +410,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
   - `PartyMenuChronicle` — Chronicle tab (lore/events browser; covered below)
   - `PartyMenuOptions` — Options tab (save/load/settings; covered below)
   Shared ValidPaths across all four: `NextTab` (E wraps), `PrevTab` (Q wraps), `WorldMap` (Escape back out).
-- [ ] **Full roster grid on `PartyMenu` (Units tab)** — surface the whole 5-column roster in the state response, NOT one unit at a time. Same principle as scan_move: one round-trip beats N cursor-move + re-read cycles. Design:
-  - **Grid layout:** strictly 5 columns, rows flex based on roster count. Max roster = 50 units (16/50 shown in screenshot header — that's `current/max`). Omit empty slots; don't emit `(row, col) empty` placeholders.
-  - **Cursor wrap:** horizontal per row. Left at (0,0) wraps to (0,4) if row 0 has 5 units, otherwise to the last unit in row 0. Right at last-in-row wraps to first-in-row. Up/Down navigate rows as expected (no vertical wrap per current ScreenStateMachine tests).
-  - **Concise format per unit (default):** `(row, col) [*]Name Lv.N Job HP=h/maxh MP=m/maxm`. `*` marks current cursor. Example:
-    ```
-    (0,0) *Ramza Lv.99 Gallant Knight HP=719/719 MP=138/138
-    (0,1) Kenrick Lv.99 Monk HP=477/477 MP=115/115
-    ...
-    ```
-  - **Verbose format (add `-v` flag to screen command, matching scan_move's -v):** include Brave, Faith, CT, statuses, current equipment, reaction/support/movement abilities, learned job list. Deferred until memory scans for those fields land.
-  - **Grid movement hints:** include a small `navHints` block showing where each arrow goes from the current cursor:
-    ```
-    From (0,0) Ramza:
-      Right → (0,1) Kenrick
-      Down → (1,0) Lavian
-      Left → (0,4) Alicia [wraps]
-      Up → no-op [top row]
-    ```
-    Let Claude plan multi-step navigation in one glance.
-  - **Roster capacity:** show `16/50` so Claude can decide whether recruiting is viable.
-  - **Screen real-estate:** match the game's own 5-wide grid so Claude's mental model aligns with what would render on screen.
+- [x] **Full roster grid on `PartyMenu` (Units tab)** — DONE 2026-04-14 (see "Data surfacing" entry below for delivery notes). 5-col grid with cursor marker, name/level/job/brave/faith. `navHints` block was NOT shipped and not needed — Claude reads cursor + grid and plans navigation directly. Roster capacity (`14/50`) shipped. HP/MP per unit still missing — separate item, deferred.
 - [ ] **`PartyMenuInventory` tab** — captured 2026-04-14 (SS3). Full item catalog the player owns across all categories (weapons, shields, helms, armor, accessories, consumables). Screenshot shows Weapons tab with columns `Item Name | Equipped/Held`. Right pane shows hover'd item's full description + WP/element/range/effect. State name: `PartyMenuInventory` with `ui=<item name>`. ValidPaths: ScrollUp/Down, ChangePage (cycles sub-tabs — Weapons, Shields, Helms, etc. per the `<V> Change Page` hint in bottom right), Back (Escape → WorldMap), NextTab/PrevTab (wraps to Chronicle/Units). Multi-page: SS3 shows "1/3" indicator — state should surface current page + total pages. Memory scans needed: active inventory category, cursor row, page number.
 - [x] **`PartyMenuChronicle` tab** — DONE 2026-04-14. State machine tracks `ChronicleIndex` (0-9 flat) over the 3-4-3 grid (Encyclopedia/StateOfRealm/Events / Auracite/Reading/Collection/Errands / Stratagems/Lessons/AkademicReport). `screen.UI` surfaces tile name (`Encyclopedia`, `Auracite`, etc.). Verified row transitions live: Encyc→Auracite, SoR→Reading, Events→Collection, Errands→Akademic (last col wraps left), Akademic→Collection (up). Memory hunt for the cursor address failed (UE4 widget heap reallocates per keypress producing false positives — same wall as PartyMenuInventory — see `project_shop_stock_array.md`). Each tile opens its own sub-screen via Enter, surfaces as `ChronicleEncyclopedia`/`ChronicleStateOfRealm`/etc. Sub-screens currently model only the boundary (Escape back) — inner-state navigation (Encyclopedia tabs, scrollable lists, etc.) is deferred to §10.7 below.
 - [x] **`PartyMenuOptions` tab** — DONE 2026-04-14. State machine tracks `OptionsIndex` (0-4 vertical, wraps both directions). `screen.UI` surfaces action name (`Save`, `Load`, `Settings`, `Return to Title`, `Exit Game`). Enter on Settings opens new `OptionsSettings` screen (boundary only). Save/Load/ReturnToTitle/ExitGame Enter actions don't open sub-screens via the state machine — those flows are handled by their own existing systems (`save`/`load` actions, title-screen/quit sequences not yet modelled).
@@ -472,18 +452,18 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
   - **Custom sort modes (Job / Level) — not yet tested.** The `+0x122` byte is re-written by the game when the player changes the Sort option, so display order stays accurate under any sort — but `IsRamza` in the state machine still assumes grid-pos-0 === Ramza, which breaks under Level sort (multiple lv99 units tie; game picks one deterministically). If non-default sort becomes a goal, resolve `IsRamza` via slot identity instead of grid position. Documented inline in `ScreenStateMachine.HandlePartyMenu`.
 - [x] **Viewed-unit identification on EquipmentAndAbilities** — DONE 2026-04-14 (session 13). Resolved purely from the state machine: cursor (row, col) on PartyMenu → grid index (row × 5 + col) → roster slot whose `+0x122` byte equals that grid index (see `ScreenStateMachine.ViewedGridIndex`, `RosterReader.GetSlotByDisplayOrder`). Zero heap scan, zero AoB — the display-order byte lives in the stable roster array at `0x1411A18D0`. Previous plans (a/b/c above in the history) are no longer needed. The hovered-unit heap array from BATTLE_MEMORY_MAP.md §19 is still useful IF we want runtime HP/MP (not stored in the roster), but it's now a separate concern.
 - [~] **Unit summary on `PartyMenu`** — name / level / job / brave / faith / JP surface correctly since 2026-04-14 session 13 (display-order + viewed-unit fix). Still missing: HP / maxHP / MP / maxMP / CT. HP/MP are NOT in the roster (see grid note above — runtime-computed). CT is a battle-only concept. Path forward: either (a) recompute HP/MP from the FFTPatcher job-base + equipment-bonus formulas using `ItemData.cs`, or (b) re-visit the hovered-unit heap array (BATTLE_MEMORY_MAP.md §19) which holds computed HP/MP for a handful of units at session-specific addresses. (a) is more robust (works for every unit) and no heap scan needed; (b) is quicker to ship for whichever units the game has populated.
-- [ ] **Full stat panel on `CharacterStatus`** — the header shows far more numbers than the party grid. The small icons on the right (7 20 24, 3 16 50%, 11 10% 0%, 75%, etc.) are attack/defense/magick/evade/movement/jump/zodiac/element stats. Decode and label each.
-- [ ] **Element resistance grid** — the colored symbols on the right side of CharacterStatus show elemental absorb/null/halve/weak. Decode from memory.
-- [ ] **Equipped items with stat totals on `EquipmentAndAbilities`** — the "Equipment Effects" summary under the two columns aggregates stats from the current loadout. Surface as `equipmentStats: { hpBonus: X, paBonus: Y, ... }`.
+- [ ] **Full stat panel on `CharacterStatus` (verbose-only)** — the header shows attack/defense/magick/evade/movement/jump/zodiac/element stats. Toggled by `1` key (`statsExpanded` flag already shipped). Surface the actual numbers ONLY in `screen -v` JSON, NOT the compact line — these are build-planning data, not every-turn signals (per "What Goes In Compact vs Verbose vs Nowhere" principle). Decode in this order: Move, Jump, PA, MA, then evade/parry. Skip element resistances unless a build-decision flow demands them.
+- [x] **Element resistance grid** — DROPPED 2026-04-15 session 15. Niche planning data; Claude doesn't pick equipment reactively to elements between battles. Reconsider only if a build-optimization flow emerges.
+- [x] **Equipped items with stat totals on `EquipmentAndAbilities`** — DROPPED 2026-04-15 session 15. Equipment stats are derivable from individual `ItemInfo` records; aggregating them server-side is convenience that doesn't change a decision. If Claude needs the total, it can compute from per-item data already surfaced.
 - [x] **JP totals per job on `JobSelection`** — DROPPED 2026-04-15 session 15 per the "What Goes In Compact vs Verbose vs Nowhere" principle above. Claude doesn't need 19 JP values to make a job-change decision; hovering a cell already shows Lv + JP in-game (info panel). Reconsider only if a concrete decision flow emerges that needs the full grid in one round trip.
 - [x] **Ability list with learned/unlearned inside picker screens** — DONE 2026-04-14. `screen.availableAbilities` surfaces the full learned list for SecondaryAbilities (unlocked skillsets), ReactionAbilities (19 for Ramza), SupportAbilities (23), MovementAbilities (12). SecondaryAbilities puts the equipped skillset first (matches game's default cursor); other pickers use canonical ID-sorted order with the equipped ability marked in place. Decoded via roster byte 2 of the per-job bitfield at +0x32+jobIdx*3+2 (MSB-first over each job's ID-sorted passive list — see `ABILITY_IDS.md` and `RosterReader.ReadLearnedPassives`). JP cost + "unlearned-but-could-be-learned" still TODO — requires a separate learnable-set, not just learned-set.
 
 ### ValidPaths — TODO
 
 - [ ] **`PartyMenu` tab switch actions** — `OpenInventory`, `OpenChronicle`, `OpenOptions`, `OpenUnits` in addition to the existing CursorUp/Down/Left/Right/SelectUnit/WorldMap.
-- [ ] **`EquipmentAndAbilities` directional semantics** — left column = equipment picker, right column = ability picker. Add named actions like `FocusEquipmentColumn` / `FocusAbilitiesColumn` that wrap Left/Right.
-- [ ] **`Equippable_*` screens** — ScrollUp/Down / Select / Cancel, plus `ChangePage` (Tab key in game) to cycle item categories if that's how it's presented. Screenshot 3 shows `<V> Change Page` hint.
-- [ ] **`JobSelection`** — grid nav (Up/Down/Left/Right), Select (opens JobActionMenu), Back.
+- [x] **`EquipmentAndAbilities` directional semantics** — DROPPED 2026-04-15 session 15. `FocusEquipmentColumn` / `FocusAbilitiesColumn` were going to wrap Left/Right with named aliases. Left/Right are unambiguous; the named version adds noise to validPaths without changing any decision.
+- [ ] **`Equippable_*` screens — `ChangePage` only** — the Tab key cycles item categories (Weapons / Shields / Helms / etc.) per the `<V> Change Page` hint. Add a named `ChangePage` validPath wrapping that key. ScrollUp/Down/Select/Cancel are the raw arrow / Enter / Escape keys and don't need named wrappers.
+- [x] **`JobSelection` validPaths (grid nav, Select, Back)** — DONE 2026-04-15 session 15 (already present in the JobScreen response).
 - [~] **EquipmentAndAbilities action helpers** — declarative one-liners that wrap the full nav flow. All helpers are **locked to the EquipmentAndAbilities state** — they error out with a clear message anywhere else. All helpers are **idempotent**: if the target is already in the slot, they no-op with "already equipped". All helpers **validate**: the ability must be in the unit's learned list (surfaced via `screen.availableAbilities` on pickers); the equipment must be in inventory. Session 13 (2026-04-14) landed the ability helpers; equipment helpers are stubbed pending ItemInfo / inventory work.
   - [x] `change_reaction_ability_to <name>` — shipped session 13.
   - [x] `change_support_ability_to <name>` — shipped session 13.
@@ -519,25 +499,18 @@ Documented 2026-04-14 after spending ~45 min trying to find the tab-index and si
 
 ---
 
-## 10.7. Chronicle Sub-Screen Inner States (P2)
+## 10.7. Chronicle Sub-Screen Inner States — DROPPED 2026-04-15 session 15
 
-Outer detection of the 10 Chronicle tile screens shipped 2026-04-14 (§10.6 above). Each sub-screen surfaces only the boundary (Escape back to PartyMenu Chronicle tab). Inner-state navigation is deferred; this section enumerates what each one needs.
+The Chronicle is lore content (Encyclopedia, factions map, cutscene replays, bestiary, errand log, lectures). All inner-state surfacing was reviewed against the "What Goes In Compact vs Verbose vs Nowhere" principle and dropped:
 
-- [ ] **`ChronicleEncyclopedia`** — 3-tab top header (Persons / Locales / Terms) + scrollable left list + right-pane description. ValidPaths needed: Q/E (cycle tabs), Up/Down (scroll list), Enter (no-op? or open detail), Escape (back). Inner state: `ui=<tab name> > <highlighted entry name>` (e.g. `Persons > Ramza Beoulve`). Needs entry text scrape from memory or widget cache.
-- [ ] **`ChronicleStateOfRealm`** — political map showing faction control. Behaviour TBD on first visit. Probably static info display.
-- [ ] **`ChronicleEvents`** — cutscene replay browser. Needs a scrollable list of unlocked events with `ui=<event title>`.
-- [ ] **`ChronicleAuracite`** — auracite stone collection. Probably grid of stones; needs cursor + `ui=<stone name>`.
-- [ ] **`ChronicleReadingMaterials`** — books + special lectures index. Likely a list with `ui=<book title>`.
-- [ ] **`ChronicleCollection`** — bestiary / item encyclopedia. Tabbed (monsters / items / arts?) — TBD on first visit.
-- [ ] **`ChronicleErrands`** — completed-errand log. Different from Tavern_Errands (which is accept-errand). List of past errands with `ui=<errand name>`.
-- [ ] **`ChronicleStratagems`** — Master Daravon's Stratagems for Battle lecture. Probably a static text reader; needs Enter/Escape boundaries only.
-- [ ] **`ChronicleLessons`** — Lessons in Leadership lecture. Same shape.
-- [ ] **`ChronicleAkademicReport`** — Akademic Report lecture. Same shape.
-- [ ] **`OptionsSettings`** — audio / video / input config. Multi-section settings menu. Low priority for Claude-playing — only matters if we want Claude to verify text speed / autosave settings.
+- A human player rarely consults Chronicle mid-playthrough.
+- Each Chronicle interaction is a one-shot read with no downstream decision.
+- Without inner-state surface, Claude can still navigate by cursor + raw `screen` calls if curiosity strikes.
+- Outer boundary detection (each tile becomes its own screen state) is already shipped in §10.6 and is sufficient.
 
-For all of these, the same memory-hunt limitation applies: UE4 widget heap reallocates per keypress, so byte-diff approaches produce false positives (verified during the §10.6 Chronicle hunt — see `project_shop_stock_array.md`). State-machine cursor tracking + drift recovery is the working pattern. Inner-text scraping (e.g. Encyclopedia entry text) needs a different approach — possibly reading from the rendered UI widget while the menu is open.
+Reconsider any individual sub-screen only when a concrete decision flow requires it (e.g. "Claude needs to look up a faction location to plan a route").
 
-**Update 2026-04-14:** The **ability pickers** inside EquipmentAndAbilities escaped this wall by using a static-table decode instead of heap hunting — the roster's per-job bitfield at +0x32+jobIdx*3 contains byte 2 tracking learned passives MSB-first over each job's ID-sorted passive list. Zero heap search needed. Applying the same technique to Chronicle sub-screens won't work directly (those surface story text, not per-unit state), but **when a sub-screen's data is driven by persistent save state**, look for a per-unit or global bitfield before reaching for widget scans.
+`OptionsSettings` boundary detection stays per its existing entry. Inner Settings nav is unrelated to gameplay decisions and stays out of scope.
 
 ---
 
