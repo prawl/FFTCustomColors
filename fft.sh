@@ -796,19 +796,64 @@ try{
   const abLabelW=10; // 'Secondary' is longest
   const eqValW=Math.max(10,...eqRows.filter(r=>r[1]).map(r=>r[1].length));
   const leftColW=eqLabelW+2+eqValW+4; // label + ': ' + value + 4 spaces gutter
+  const abValW=Math.max(10,...abRows.filter(r=>r[1]).map(r=>r[1].length));
+  const midColW=abLabelW+2+abValW+4;
   const fmtLeft=(lbl,val)=>{
     if(!val)return ''.padEnd(leftColW);
     return ((lbl+':').padEnd(eqLabelW+2)+val).padEnd(leftColW);
   };
-  const fmtRight=(lbl,val)=>{
-    if(!val)return '';
-    return (lbl+':').padEnd(abLabelW+2)+val;
+  const fmtMid=(lbl,val)=>{
+    if(!val)return ''.padEnd(midColW);
+    return ((lbl+':').padEnd(abLabelW+2)+val).padEnd(midColW);
   };
-  console.log('    '+'Equipment'.padEnd(leftColW)+'Abilities');
-  for(let i=0;i<rows;i++){
+
+  // Detail panel rendered as the third column. Wraps at ~50 chars so long
+  // descriptions don't run off the terminal. Keep first-line flush with the
+  // header so the detail lines up with the other columns.
+  const det=j.screen&&j.screen.uiDetail;
+  const detailLines=[];
+  if(det){
+    detailLines.push(det.name+(det.type?' ('+det.type+')':''));
+    if(det.job)detailLines.push('  from '+det.job);
+    const stats=[];
+    if(det.wp)stats.push('WP '+det.wp);
+    if(det.wev)stats.push('Ev '+det.wev+'%');
+    if(det.range)stats.push('Range '+det.range);
+    if(det.pev)stats.push('P-Ev '+det.pev+'%');
+    if(det.mev)stats.push('M-Ev '+det.mev+'%');
+    if(det.hpBonus)stats.push('+HP '+det.hpBonus);
+    if(det.mpBonus)stats.push('+MP '+det.mpBonus);
+    if(stats.length)detailLines.push('  '+stats.join('  '));
+    const wrap=(s,w)=>{const out=[];let line='';for(const word of s.split(/\s+/)){if(line.length+word.length+1>w){out.push(line.trimEnd());line=word+' ';}else line+=word+' ';}if(line)out.push(line.trimEnd());return out;};
+    if(det.description)for(const w of wrap(det.description,40))detailLines.push('  '+w);
+    if(det.usageCondition){
+      detailLines.push('  Usage: ');
+      for(const w of wrap(det.usageCondition,38))detailLines.push('    '+w);
+    }
+  }
+
+  // Cursor row/col (only present on EquipmentAndAbilities). Render a
+  // 'cursor -->' marker in one of two gutters so it visually points at the
+  // correct column: left gutter when col=0 (Equipment), middle gutter when
+  // col=1 (Abilities). Both gutters reserve space even when empty so column
+  // layout stays constant.
+  const cRow=j.screen.cursorRow;
+  const cCol=j.screen.cursorCol;
+  const gutter='cursor --> ';
+  const blankGutter=' '.repeat(gutter.length);
+  const hasCursor=typeof cRow==='number'&&typeof cCol==='number';
+  // Header: show both gutters blank.
+  console.log('    '+blankGutter+'Equipment'.padEnd(leftColW)+blankGutter+'Abilities'.padEnd(midColW)+(detailLines.length?'Detail':''));
+  const printRows=Math.max(rows,detailLines.length);
+  for(let i=0;i<printRows;i++){
     const left=eqRows[i]?fmtLeft(eqRows[i][0],eqRows[i][1]):''.padEnd(leftColW);
-    const right=abRows[i]?fmtRight(abRows[i][0],abRows[i][1]):'';
-    console.log('    '+(right?left+right:left.trimEnd()));
+    const mid=abRows[i]?fmtMid(abRows[i][0],abRows[i][1]):''.padEnd(midColW);
+    const detail=detailLines[i]||'';
+    // Mark appears in the gutter that immediately precedes the cursor's column.
+    const markLeft=(hasCursor&&i===cRow&&cCol===0)?gutter:blankGutter;
+    const markMid=(hasCursor&&i===cRow&&cCol===1)?gutter:blankGutter;
+    const line='    '+markLeft+left+markMid+mid+detail;
+    console.log(line.trimEnd());
   }
 }catch(e){}
 " 2>/dev/null

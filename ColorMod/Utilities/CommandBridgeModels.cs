@@ -522,6 +522,89 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("availableAbilities")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<AvailableAbility>? AvailableAbilities { get; set; }
+
+        /// <summary>Detail panel for whatever the cursor is hovering in the
+        /// EquipmentAndAbilities screen or a picker. Mirrors the game's
+        /// right-side info panel so Claude can make decisions like a real
+        /// player (e.g. compare WP/evade, read ability descriptions).</summary>
+        [JsonPropertyName("uiDetail")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public UiDetail? UiDetail { get; set; }
+
+        /// <summary>Cursor row (0-based) on grid/list screens. Only populated
+        /// when the screen has a meaningful row cursor (EquipmentAndAbilities).</summary>
+        [JsonPropertyName("cursorRow")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? CursorRow { get; set; }
+
+        /// <summary>Cursor column (0-based) on grid screens.</summary>
+        [JsonPropertyName("cursorCol")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? CursorCol { get; set; }
+    }
+
+    public class UiDetail
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+
+        /// <summary>Category label — e.g. "Knight's Sword", "Reaction", "Support", "Primary skillset".</summary>
+        [JsonPropertyName("type")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Type { get; set; }
+
+        /// <summary>Source job for passive abilities / primary skillset owner.</summary>
+        [JsonPropertyName("job")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Job { get; set; }
+
+        /// <summary>Weapon power (for weapons).</summary>
+        [JsonPropertyName("wp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Wp { get; set; }
+
+        /// <summary>Weapon evade % (for weapons).</summary>
+        [JsonPropertyName("wev")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Wev { get; set; }
+
+        /// <summary>Weapon range (for weapons).</summary>
+        [JsonPropertyName("range")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Range { get; set; }
+
+        /// <summary>Physical evade % (for shields/cloaks).</summary>
+        [JsonPropertyName("pev")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Pev { get; set; }
+
+        /// <summary>Magic evade % (for shields/cloaks).</summary>
+        [JsonPropertyName("mev")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Mev { get; set; }
+
+        /// <summary>HP bonus (for armor/helm).</summary>
+        [JsonPropertyName("hpBonus")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int HpBonus { get; set; }
+
+        /// <summary>MP bonus (for armor/helm).</summary>
+        [JsonPropertyName("mpBonus")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int MpBonus { get; set; }
+
+        /// <summary>Free-form description text.</summary>
+        [JsonPropertyName("description")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Description { get; set; }
+
+        /// <summary>Optional "Usage Conditions" text shown by the game for
+        /// passive abilities that have a trigger condition (e.g. Mana Shield:
+        /// "Activates when HP loss is 1 or more"). Extracted from the tail of
+        /// Description when the ability data has a "Usage condition:" marker.</summary>
+        [JsonPropertyName("usageCondition")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? UsageCondition { get; set; }
     }
 
     public class AvailableAbility

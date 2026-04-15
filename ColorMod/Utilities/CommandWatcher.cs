@@ -1962,6 +1962,174 @@ namespace FFTColorCustomizer.Utilities
             };
         }
 
+        /// <summary>
+        /// Build the detail panel for whatever the cursor is hovering on
+        /// EquipmentAndAbilities (or a picker screen). Mirrors the game's
+        /// right-side info panel so Claude sees the same data a human player
+        /// would — WP/evade for weapons, descriptions for abilities, etc.
+        ///
+        /// `col` and `row` identify the grid cell (col 0 = equipment slot,
+        /// col 1 = ability slot; row 0..4 within each column). For picker
+        /// screens, pass col=1 and row=the slot type (1 secondary / 2 reaction
+        /// / 3 support / 4 movement) to get the right "Type" label.
+        /// </summary>
+        internal static UiDetail? BuildUiDetail(string name, int col, int row)
+        {
+            // Equipment column — find the item and surface its stats.
+            if (col == 0)
+            {
+                var itemEntry = ItemData.Items.Values.FirstOrDefault(i => i.Name == name);
+                if (itemEntry != null)
+                {
+                    return new UiDetail
+                    {
+                        Name = itemEntry.Name,
+                        Type = PrettyItemType(itemEntry.Type),
+                        Wp = itemEntry.WeaponPower,
+                        Wev = itemEntry.WeaponEvade,
+                        Range = itemEntry.Range,
+                        Pev = itemEntry.PhysicalEvade,
+                        Mev = itemEntry.MagicEvade,
+                        HpBonus = itemEntry.HpBonus,
+                        MpBonus = itemEntry.MpBonus,
+                        // ItemData doesn't carry descriptions yet. Leave null —
+                        // the UI will show just the stats row. If we want lore
+                        // strings later, they'd come from the game's NXD item
+                        // description table.
+                    };
+                }
+                return new UiDetail { Name = name };
+            }
+
+            // Ability column. Row determines category:
+            //   0 Primary skillset, 1 Secondary skillset, 2 Reaction, 3 Support, 4 Movement
+            if (col == 1)
+            {
+                // Passive lookups — direct name→info via AbilityData dicts.
+                var reaction = AbilityData.ReactionAbilities.Values.FirstOrDefault(a => a.Name == name);
+                if (reaction != null)
+                {
+                    var (desc, usage) = SplitUsageCondition(reaction.Description);
+                    return new UiDetail { Name = name, Type = "Reaction", Job = reaction.Job, Description = desc, UsageCondition = usage };
+                }
+                var support = AbilityData.SupportAbilities.Values.FirstOrDefault(a => a.Name == name);
+                if (support != null)
+                {
+                    var (desc, usage) = SplitUsageCondition(support.Description);
+                    return new UiDetail { Name = name, Type = "Support", Job = support.Job, Description = desc, UsageCondition = usage };
+                }
+                var movement = AbilityData.MovementAbilities.Values.FirstOrDefault(a => a.Name == name);
+                if (movement != null)
+                {
+                    var (desc, usage) = SplitUsageCondition(movement.Description);
+                    return new UiDetail { Name = name, Type = "Movement", Job = movement.Job, Description = desc, UsageCondition = usage };
+                }
+
+                // Skillset (Primary/Secondary slot). Map skillset name → owning job,
+                // surface as "Primary skillset" or "Secondary skillset" per row.
+                string? ownerJob = SkillsetOwnerJob(name);
+                string typeLabel = row == 0 ? "Primary skillset" : "Secondary skillset";
+                return new UiDetail { Name = name, Type = typeLabel, Job = ownerJob };
+            }
+
+            return new UiDetail { Name = name };
+        }
+
+        /// <summary>
+        /// Some ability descriptions in AbilityData.cs embed a "Usage condition:"
+        /// clause at the tail (matches the game's separate "Usage Conditions"
+        /// panel for passives like Mana Shield). Split the clause out so we
+        /// can surface it as a dedicated UiDetail.UsageCondition field.
+        /// Returns (mainDescription, usageConditionOrNull).
+        /// </summary>
+        internal static (string? main, string? usage) SplitUsageCondition(string? description)
+        {
+            if (string.IsNullOrEmpty(description)) return (description, null);
+            const string marker = "Usage condition:";
+            int idx = description.IndexOf(marker, System.StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return (description, null);
+            var main = description.Substring(0, idx).TrimEnd(' ', '.').TrimEnd() + ".";
+            var usage = description.Substring(idx + marker.Length).Trim();
+            if (usage.Length > 0) usage = char.ToUpper(usage[0]) + usage.Substring(1);
+            return (main, usage);
+        }
+
+        /// <summary>
+        /// Human-readable label for an ItemData subtype string (e.g.
+        /// "knightsword" → "Knight's Sword"). Falls back to title-casing
+        /// the raw subtype if we don't have a canonical mapping.
+        /// </summary>
+        private static string PrettyItemType(string rawType) => rawType switch
+        {
+            "knife" => "Dagger",
+            "ninjablade" => "Ninja Blade",
+            "sword" => "Sword",
+            "knightsword" => "Knight's Sword",
+            "katana" => "Katana",
+            "axe" => "Axe",
+            "rod" => "Rod",
+            "staff" => "Staff",
+            "flail" => "Flail",
+            "gun" => "Gun",
+            "crossbow" => "Crossbow",
+            "bow" => "Bow",
+            "instrument" => "Instrument",
+            "book" => "Book",
+            "polearm" => "Polearm",
+            "pole" => "Pole",
+            "bag" => "Bag",
+            "cloth" => "Cloth",
+            "throwing" => "Throwing Weapon",
+            "bomb" => "Bomb",
+            "fellsword" => "Fellsword",
+            "shield" => "Shield",
+            "helmet" => "Helmet",
+            "hat" => "Hat",
+            "hairadornment" => "Hair Adornment",
+            "armor" => "Armor",
+            "clothing" => "Clothing",
+            "robe" => "Robe",
+            "shoes" => "Shoes",
+            "armguard" => "Armguard",
+            "ring" => "Ring",
+            "armlet" => "Armlet",
+            "cloak" => "Cloak",
+            "perfume" => "Perfume",
+            "liprouge" => "Lip Rouge",
+            "chemistitem" => "Chemist Item",
+            _ => rawType,
+        };
+
+        /// <summary>
+        /// Inverse of GetPrimarySkillsetByJobName: returns the job that
+        /// teaches a given skillset (e.g. "Items" → "Chemist").
+        /// </summary>
+        private static string? SkillsetOwnerJob(string skillsetName) => skillsetName switch
+        {
+            "Mettle" => "Squire",
+            "Fundaments" => "Squire",
+            "Items" => "Chemist",
+            "Arts of War" => "Knight",
+            "Aim" => "Archer",
+            "Martial Arts" => "Monk",
+            "White Magicks" => "White Mage",
+            "Black Magicks" => "Black Mage",
+            "Time Magicks" => "Time Mage",
+            "Summon" => "Summoner",
+            "Steal" => "Thief",
+            "Speechcraft" => "Orator",
+            "Mystic Arts" => "Mystic",
+            "Geomancy" => "Geomancer",
+            "Jump" => "Dragoon",
+            "Iaido" => "Samurai",
+            "Throw" => "Ninja",
+            "Arithmeticks" => "Arithmetician",
+            "Bardsong" => "Bard",
+            "Dance" => "Dancer",
+            "Darkness" => "Dark Knight",
+            _ => null,
+        };
+
         private string? _lastLocationPath;
 
         private string GetLastLocationPath()
@@ -2734,6 +2902,17 @@ namespace FFTColorCustomizer.Utilities
                         // Fallback to "(none)" so empty slots still get a label.
                         if (cursorLabel != null) screen.UI = cursorLabel;
                         else if (col == 0 || col == 1) screen.UI = "(none)";
+
+                        // Detail panel — mirrors game's right-side info panel.
+                        if (cursorLabel != null)
+                            screen.UiDetail = BuildUiDetail(cursorLabel, col, row);
+
+                        // Expose cursor position so the shell renderer can mark
+                        // the selected row (`cursor -->` prefix on the hovered
+                        // label). EquipmentAndAbilities uses a 2×5 grid where
+                        // col 0 = equipment, col 1 = abilities.
+                        screen.CursorRow = row;
+                        screen.CursorCol = col;
                     }
                 }
 
@@ -2827,6 +3006,30 @@ namespace FFTColorCustomizer.Utilities
                         }
 
                         if (list.Count > 0) screen.AvailableAbilities = list;
+
+                        // Detail panel for the picker — fall back to the
+                        // equipped ability's detail until picker-cursor row
+                        // tracking lands (TODO §10.7). That matches what
+                        // Claude should default to (the game opens the picker
+                        // with the cursor on the equipped row).
+                        int detailRow = screen.Name switch
+                        {
+                            "SecondaryAbilities" => 1,
+                            "ReactionAbilities" => 2,
+                            "SupportAbilities" => 3,
+                            "MovementAbilities" => 4,
+                            _ => -1,
+                        };
+                        string? detailName = screen.Name switch
+                        {
+                            "SecondaryAbilities" => ab?.Secondary,
+                            "ReactionAbilities" => ab?.Reaction,
+                            "SupportAbilities" => ab?.Support,
+                            "MovementAbilities" => ab?.Movement,
+                            _ => null,
+                        };
+                        if (detailName != null && detailRow >= 0)
+                            screen.UiDetail = BuildUiDetail(detailName, col: 1, row: detailRow);
                     }
                 }
 
