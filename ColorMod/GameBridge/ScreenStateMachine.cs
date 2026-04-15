@@ -182,6 +182,25 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Force-sync the PartyMenu grid cursor from an external source
+        /// (the heap-resolved cursor byte in
+        /// <c>CommandWatcher.ResolvePartyMenuCursor</c>). Also refreshes
+        /// the saved-entry cursor used on Escape from nested panels so
+        /// restoration lands where the game actually has the cursor.
+        /// No-ops unless we're on the PartyMenu Units tab.
+        /// </summary>
+        public void SetPartyMenuCursor(int row, int col)
+        {
+            if (CurrentScreen != GameScreen.PartyMenu) return;
+            if (Tab != PartyTab.Units) return;
+            if (row < 0 || col < 0) return;
+            CursorRow = row;
+            CursorCol = col;
+            _savedPartyRow = row;
+            _savedPartyCol = col;
+        }
+
+        /// <summary>
         /// Bumps KeysSinceLastSetScreen without routing a key through the
         /// per-screen handlers. Used by the drift-recovery path in
         /// CommandWatcher to mark a SetScreen() as "intentional / not

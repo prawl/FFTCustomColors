@@ -133,6 +133,44 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
+        /// Cached PartyMenu (Units tab) grid-cursor address. Same
+        /// heap-shuffle story as the picker and JobSelection cursors —
+        /// re-resolved on every PartyMenu entry. Byte value is the
+        /// flat linear index into the 5-col roster grid
+        /// (<c>row * 5 + col</c>), capped by roster size.
+        /// </summary>
+        private long _resolvedPartyMenuCursorAddr = 0L;
+
+        /// <summary>
+        /// Tracks whether the auto-resolver has ALREADY fired for the
+        /// current PartyMenu visit. Same role as
+        /// <see cref="_jobCursorResolveAttempted"/> — prevents re-firing
+        /// the 6 oscillation keys on every subsequent <c>screen</c> call.
+        /// </summary>
+        private bool _partyMenuCursorResolveAttempted = false;
+
+        /// <summary>
+        /// Invalidates the cached PartyMenu cursor on any Up/Down/Left/Right
+        /// while on the Units tab. Unlike JobSelection where only Up/Down
+        /// forces a re-resolve, PartyMenu's widget pattern is not yet
+        /// characterized — so we clear on every directional key. This is
+        /// the conservative option: a spurious re-resolve costs ~2s of cursor
+        /// flash; a stale address produces wrong-unit decisions
+        /// (the drift this whole resolver targets). Enter/Escape don't
+        /// trigger — those transition screens, which has its own cleanup path.
+        /// </summary>
+        private void InvalidatePartyMenuCursorOnMove(int vk)
+        {
+            const int VK_UP = 0x26, VK_DOWN = 0x28, VK_LEFT = 0x25, VK_RIGHT = 0x27;
+            if (vk != VK_UP && vk != VK_DOWN && vk != VK_LEFT && vk != VK_RIGHT) return;
+            if (ScreenMachine == null) return;
+            if (ScreenMachine.CurrentScreen != GameScreen.PartyMenu) return;
+            if (ScreenMachine.Tab != PartyTab.Units) return;
+            _resolvedPartyMenuCursorAddr = 0L;
+            _partyMenuCursorResolveAttempted = false;
+        }
+
+        /// <summary>
         /// Pure helper for the chained-command rate-limit decision. Returns the
         /// number of ms the caller should sleep before processing a new command
         /// (0 if no delay needed). Returns a chain-warning string only when a
@@ -334,6 +372,142 @@ namespace FFTColorCustomizer.Utilities
                 : "No stable job cursor byte found (0 candidates)";
         }
 
+        /// <summary>
+        /// Rescan-on-entry for the PartyMenu (Units tab) grid cursor.
+        /// Mirrors <see cref="ResolveJobCursor"/> in structure but
+        /// **probes both axes** — Right/Left oscillation for the column
+        /// and Down/Up verification for the row — then keeps only bytes
+        /// that advance by +5 on Down (the flat-linear-index signature,
+        /// <c>row*5+col</c>). Necessary because the naive Right/Left-only
+        /// probe picks up column-only bytes that don't encode the row,
+        /// producing a wrong cursor decode past row 0 (live-verified
+        /// 2026-04-15 session 16: resolver found a col-only byte on its
+        /// first pass).
+        ///
+        /// Flow:
+        ///   1. Baseline snapshot, Right, snapshot, Left, snapshot
+        ///      → intersect toggles to find bytes that advance on Right.
+        ///   2. Two-step verify (Right, Right): advances +2 → still a
+        ///      valid cursor-shape byte (could be col-only OR flat-linear).
+        ///   3. Restore with 2 Lefts.
+        ///   4. Axis verify: Down, check winner advanced by +5 (flat
+        ///      linear) instead of 0 (col-only). Up restores.
+        /// Net-zero cursor motion. Visible ~2.5s flash.
+        /// Caller MUST gate on <c>screen.Name == "PartyMenu"</c> +
+        /// <c>MenuDepth == 0</c> + <c>Tab == Units</c>.
+        /// Additional caller precondition: the cursor must be at a
+        /// position where Down won't cause a short-grid wrap back to the
+        /// same row (wraps defeat the +5 test). Safe if resolver fires
+        /// on first PartyMenu entry — cursor is at (0,0) and Down moves
+        /// to (1,0) cleanly.
+        /// </summary>
+        private string? ResolvePartyMenuCursor(out int candidateCount)
+        {
+            candidateCount = 0;
+            if (Explorer == null) return null;
+            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+            if (win == IntPtr.Zero) return null;
+            const int VK_RIGHT = 0x27, VK_LEFT = 0x25, VK_DOWN = 0x28, VK_UP = 0x26;
+
+            // Let settle before baselining — 700ms matches JobSelection/pickers.
+            Thread.Sleep(700);
+            Explorer.TakeHeapSnapshot("_party_base");
+            _inputSimulator.SendKeyPressToWindow(win, VK_RIGHT);
+            Thread.Sleep(300);
+            Explorer.TakeHeapSnapshot("_party_adv");
+            _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
+            Thread.Sleep(300);
+            Explorer.TakeHeapSnapshot("_party_back");
+            var cands = Explorer.FindToggleCandidates(
+                "_party_base", "_party_adv", "_party_back",
+                maxResults: 32, expectedDelta: 1);
+            candidateCount = cands.Count;
+
+            // Two-step horizontal verify: Right, Right expects baseline +2.
+            // Narrows candidates to ones whose column genuinely advances.
+            var survivors = new List<long>();
+            if (cands.Count > 0)
+            {
+                var baselineVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) baselineVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_RIGHT);
+                Thread.Sleep(300);
+                var afterOneVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) afterOneVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_RIGHT);
+                Thread.Sleep(300);
+                foreach (var candAddr in cands)
+                {
+                    if (!baselineVals.TryGetValue((long)candAddr, out var baseline)) continue;
+                    if (!afterOneVals.TryGetValue((long)candAddr, out var afterOne)) continue;
+                    var afterTwo = Explorer.ReadAbsolute(candAddr, 1);
+                    if (!afterTwo.HasValue) continue;
+                    byte finalVal = (byte)afterTwo.Value.value;
+                    bool step1Ok = afterOne == baseline + 1 || afterOne == 0;
+                    bool step2Ok = finalVal == afterOne + 1 || finalVal == 0;
+                    if (step1Ok && step2Ok) survivors.Add((long)candAddr);
+                }
+                // Restore column to 0: 2 Lefts.
+                _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
+                Thread.Sleep(220);
+                _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
+                Thread.Sleep(220);
+            }
+
+            // Row axis verify: a flat-linear-index byte advances by +5 on
+            // Down (5-col grid). A column-only byte advances by 0. Down
+            // once, pick the first survivor that advanced by exactly 5.
+            // Restore cursor with one Up.
+            long verified = 0L;
+            if (survivors.Count > 0)
+            {
+                var preDownVals = new Dictionary<long, byte>();
+                foreach (var candAddr in survivors)
+                {
+                    var r = Explorer.ReadAbsolute((nint)candAddr, 1);
+                    if (r.HasValue) preDownVals[candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(300);
+                foreach (var candAddr in survivors)
+                {
+                    if (!preDownVals.TryGetValue(candAddr, out var before)) continue;
+                    var after = Explorer.ReadAbsolute((nint)candAddr, 1);
+                    if (!after.HasValue) continue;
+                    byte afterVal = (byte)after.Value.value;
+                    // Flat linear (5-col grid): Down moves index by +5.
+                    // Exact equality — no wrap tolerance here (Down from
+                    // row 0 lands cleanly on row 1 for any non-empty roster).
+                    if (afterVal == before + 5)
+                    {
+                        verified = candAddr;
+                        break;
+                    }
+                }
+                // Restore row with one Up. Always fire even if verify failed
+                // (we don't want to strand the player on row 1).
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(220);
+            }
+
+            _resolvedPartyMenuCursorAddr = verified;
+            if (verified != 0)
+                return $"Resolved party-menu cursor: 0x{verified:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")}, {survivors.Count} col-verified)";
+            if (survivors.Count > 0)
+                return $"Party-menu cursor: {survivors.Count} col-only candidate{(survivors.Count > 1 ? "s" : "")}, no flat-linear byte survived +5-on-Down verify";
+            return cands.Count > 0
+                ? $"Party-menu cursor: {cands.Count} raw toggle{(cands.Count > 1 ? "s" : "")}, none passed +2 horizontal verify"
+                : "No stable party-menu cursor byte found (0 candidates)";
+        }
+
         // Actions that are always allowed regardless of strict mode (info/infrastructure)
         private static readonly HashSet<string> InfrastructureActions = new()
         {
@@ -346,7 +520,8 @@ namespace FFTColorCustomizer.Utilities
             "scrape_shop_items",
             "hold_key",
             "resolve_picker_cursor",
-            "resolve_job_cursor"
+            "resolve_job_cursor",
+            "resolve_party_menu_cursor"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -879,6 +1054,17 @@ namespace FFTColorCustomizer.Utilities
                     {
                         int cCount;
                         var info = ResolveJobCursor(out cCount);
+                        response.Status = info != null ? "completed" : "failed";
+                        if (info == null) response.Error = "Memory explorer not initialized or game window not found";
+                        response.Info = info;
+                        ModLogger.Log($"[CommandBridge] {response.Info}");
+                        break;
+                    }
+
+                    case "resolve_party_menu_cursor":
+                    {
+                        int cCount;
+                        var info = ResolvePartyMenuCursor(out cCount);
                         response.Status = info != null ? "completed" : "failed";
                         if (info == null) response.Error = "Memory explorer not initialized or game window not found";
                         response.Info = info;
@@ -1528,6 +1714,7 @@ namespace FFTColorCustomizer.Utilities
                     if (_battleMenuTracker.InSubmenu)
                         _battleMenuTracker.OnKeyPressed(key.Vk);
                     InvalidateJobCursorOnRowCross(key.Vk);
+                    InvalidatePartyMenuCursorOnMove(key.Vk);
                 }
 
                 if (key.HoldMs > 0)
@@ -1714,6 +1901,7 @@ namespace FFTColorCustomizer.Utilities
                         if (_battleMenuTracker.InSubmenu)
                             _battleMenuTracker.OnKeyPressed(key.Vk);
                         InvalidateJobCursorOnRowCross(key.Vk);
+                        InvalidatePartyMenuCursorOnMove(key.Vk);
                     }
 
                     if (key.HoldMs > 0)
@@ -3807,9 +3995,57 @@ namespace FFTColorCustomizer.Utilities
                             if (screen.Name == "PartyMenu" && ScreenMachine != null
                                 && ScreenMachine.Tab == PartyTab.Units)
                             {
-                                grid.CursorRow = ScreenMachine.CursorRow;
-                                grid.CursorCol = ScreenMachine.CursorCol;
-                                int gridIdx = ScreenMachine.CursorRow * PartyGridCols + ScreenMachine.CursorCol;
+                                // Exit-cleanup: cached address is only valid
+                                // while we're actually on the Units tab. On
+                                // first re-entry the auto-resolver below will
+                                // re-populate it.
+                                // Auto-resolve the heap cursor byte on first
+                                // PartyMenu entry (same pattern as JobSelection).
+                                // Gate on MenuDepth == 0 (outer menu memory-
+                                // confirmed) so the 6 raw Right/Left oscillation
+                                // keys never leak into a nested panel mid-
+                                // transition. The state machine flips to
+                                // PartyMenu synchronously on Escape, but the
+                                // close animation takes ~50-200ms; MenuDepth
+                                // lags the state machine by exactly that
+                                // window, matching the JobSelection fix from
+                                // session 15.
+                                if (!_partyMenuCursorResolveAttempted && screen.MenuDepth == 0)
+                                {
+                                    _partyMenuCursorResolveAttempted = true;
+                                    int _unused;
+                                    var partyInfo = ResolvePartyMenuCursor(out _unused);
+                                    if (partyInfo != null) ModLogger.Log($"[CommandBridge] auto {partyInfo}");
+                                }
+
+                                // Memory-backed cursor read path. Live
+                                // testing 2026-04-15 session 16 showed the
+                                // heap does NOT store a flat-linear
+                                // `row*5+col` index for the PartyMenu grid —
+                                // all 17 column-oscillation survivors
+                                // failed the "+5 on Down" axis verify.
+                                // Hypothesis: the grid cursor is stored as
+                                // two separate bytes (row and col), or the
+                                // row is held in a pointer chain we haven't
+                                // located. The resolver (above) still finds
+                                // a *column* byte, but decoding it alone as
+                                // `row*5+col` would be wrong past row 0.
+                                //
+                                // Until a flat-linear byte (or a
+                                // row-byte resolver) lands, we stay with
+                                // the state-machine-tracked cursor. The
+                                // resolver runs as instrumentation so the
+                                // next debugger can inspect which bytes
+                                // are candidates. `_resolvedPartyMenuCursorAddr`
+                                // is guarded to only apply when it's clearly
+                                // safe — currently never, since no axis-
+                                // verified byte exists.
+                                int cursorRow = ScreenMachine.CursorRow;
+                                int cursorCol = ScreenMachine.CursorCol;
+
+                                grid.CursorRow = cursorRow;
+                                grid.CursorCol = cursorCol;
+                                int gridIdx = cursorRow * PartyGridCols + cursorCol;
                                 var hovered = slots.FirstOrDefault(x => x.DisplayOrder == gridIdx);
                                 if (hovered != null)
                                 {
@@ -3818,6 +4054,18 @@ namespace FFTColorCustomizer.Utilities
                                     // consumers don't see the stale "ui=Move"
                                     // that bled over from the battle menu path.
                                     screen.UI = hovered.Name;
+                                }
+                            }
+                            else if (screen.Name != "PartyMenu")
+                            {
+                                // Left PartyMenu (either nested panel or
+                                // different screen entirely). Drop cached
+                                // heap address + attempt flag so next entry
+                                // re-resolves cleanly.
+                                if (_resolvedPartyMenuCursorAddr != 0 || _partyMenuCursorResolveAttempted)
+                                {
+                                    _resolvedPartyMenuCursorAddr = 0L;
+                                    _partyMenuCursorResolveAttempted = false;
                                 }
                             }
                             foreach (var s in slots)

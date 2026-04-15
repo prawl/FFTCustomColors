@@ -230,6 +230,54 @@ public class ScreenStateMachineTests
     }
 
     [Fact]
+    public void SetPartyMenuCursor_UpdatesCursorAndSavedEntry()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetRosterCount(15);
+        sm.SetScreen(GameScreen.PartyMenu);
+        sm.SetPartyMenuCursor(2, 3);
+        Assert.Equal(2, sm.CursorRow);
+        Assert.Equal(3, sm.CursorCol);
+        // Entering a nested screen then Escape should restore to (2,3),
+        // proving the saved-entry cursor was also updated.
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(2, sm.CursorRow);
+        Assert.Equal(3, sm.CursorCol);
+    }
+
+    [Fact]
+    public void SetPartyMenuCursor_NoOpsOffUnitsTab()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetRosterCount(15);
+        sm.SetScreen(GameScreen.PartyMenu);
+        // Switch to Chronicle tab via Q/E — resolver should then be
+        // inert (the caller gates on Tab==Units too, but the state
+        // machine must also refuse to move the cursor if misfired).
+        sm.OnKeyPressed(VK_E); // Units → Inventory
+        sm.OnKeyPressed(VK_E); // Inventory → Chronicle
+        Assert.Equal(PartyTab.Chronicle, sm.Tab);
+        sm.SetPartyMenuCursor(2, 3);
+        // Cursor should remain at the tab's reset value (row 0, col 0)
+        // since the setter bailed.
+        Assert.Equal(0, sm.CursorRow);
+        Assert.Equal(0, sm.CursorCol);
+    }
+
+    [Fact]
+    public void SetPartyMenuCursor_NoOpsOffPartyMenu()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.WorldMap);
+        sm.SetPartyMenuCursor(2, 3);
+        Assert.Equal(0, sm.CursorRow);
+        Assert.Equal(0, sm.CursorCol);
+    }
+
+    [Fact]
     public void EquipmentScreen_GridWraps()
     {
         var sm = CreateAtScreen(GameScreen.EquipmentScreen);

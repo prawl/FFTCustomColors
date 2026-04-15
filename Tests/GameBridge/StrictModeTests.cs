@@ -39,7 +39,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "scrape_shop_items",
             "hold_key",
             "resolve_picker_cursor",
-            "resolve_job_cursor"
+            "resolve_job_cursor",
+            "resolve_party_menu_cursor"
         };
 
         [Theory]
