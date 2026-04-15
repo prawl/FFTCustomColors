@@ -1470,6 +1470,9 @@ try{
     const parts=[headerName];
     if(u.job)parts.push(u.job);
     if(u.level)parts.push('Lv '+u.level);
+    // Next: N — cheapest unlearned action ability cost in current primary skillset.
+    // Matches the game's in-game info bar between Lv and JP.
+    if(j.screen&&j.screen.nextJp!==undefined&&j.screen.nextJp!==null)parts.push('Next '+j.screen.nextJp);
     if(u.jp!==undefined)parts.push('JP '+u.jp);
     console.log('  '+parts.join('  ')+':');
   }

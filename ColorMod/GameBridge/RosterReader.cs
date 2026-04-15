@@ -305,6 +305,38 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Computes the JP cost of the cheapest unlearned ability in the unit's
+        /// CURRENT primary-job skillset — the "Next: N" value the game's
+        /// CharacterStatus header displays between Lv and JP.
+        ///
+        /// Reads the two learned-bitfield bytes at +0x32 + jobIdx*3 (bytes 0-1)
+        /// for the job matching `primarySkillsetName`, decodes the 16-entry
+        /// MSB-first bitfield, and calls AbilityJpCosts.ComputeNextJpForSkillset.
+        ///
+        /// Returns null if the skillset is unknown, the roster read fails, or
+        /// every action ability in the skillset is already learned.
+        /// </summary>
+        public int? ComputeNextJp(int slotIndex, string? primarySkillsetName)
+        {
+            if (slotIndex < 0 || slotIndex >= MaxSlots) return null;
+            if (string.IsNullOrEmpty(primarySkillsetName)) return null;
+
+            int jobIdx = AbilityData.GetJobIdxBySkillsetName(primarySkillsetName);
+            if (jobIdx < 0) return null;
+
+            long b = RosterBase + (long)slotIndex * SlotStride;
+            var reads = new (System.IntPtr addr, int size)[2];
+            reads[0] = ((System.IntPtr)(b + 0x32 + jobIdx * 3 + 0), 1);
+            reads[1] = ((System.IntPtr)(b + 0x32 + jobIdx * 3 + 1), 1);
+            var v = _explorer.ReadMultiple(reads);
+
+            byte byte0 = (byte)(int)v[0];
+            byte byte1 = (byte)(int)v[1];
+            var learned = ActionAbilityLookup.DecodeLearnedBitfield(byte0, byte1);
+            return AbilityJpCosts.ComputeNextJpForSkillset(primarySkillsetName, learned);
+        }
+
+        /// <summary>
         /// Reads equipped ability slots for the given roster slot. Returns null
         /// if the slot is out of range. Slot fields that are empty (equipped
         /// flag == 0) come back as null on the AbilityLoadout. Primary is

@@ -638,6 +638,18 @@ namespace FFTColorCustomizer.Utilities
         public string? ViewedUnit { get; set; }
 
         /// <summary>
+        /// JP cost of the cheapest unlearned action ability in the viewed
+        /// unit's CURRENT primary-job skillset. Mirrors the "Next: N" value
+        /// the game's CharacterStatus header shows between Lv and JP.
+        /// Computed via AbilityJpCosts + roster learned bitfield. Null when
+        /// the unit has learned every priced ability in the skillset, the
+        /// skillset has no cost table, or no unit is viewed.
+        /// </summary>
+        [JsonPropertyName("nextJp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? NextJp { get; set; }
+
+        /// <summary>
         /// Name of the item currently equipped in the slot this picker was
         /// opened for. Populated on EquippableWeapons / Shields / Headware
         /// / CombatGarb / Accessories pickers only. Helps Claude compare

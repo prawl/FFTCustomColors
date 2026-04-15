@@ -3818,6 +3818,20 @@ namespace FFTColorCustomizer.Utilities
                     var viewedSlot = _rosterReader.GetSlotByDisplayOrder(ScreenMachine.ViewedGridIndex);
                     if (viewedSlot?.Name != null)
                         screen.ViewedUnit = viewedSlot.Name;
+
+                    // "Next: N" header value — cheapest unlearned action ability in
+                    // the viewed unit's current primary-job skillset. Only render on
+                    // CharacterStatus / EquipmentAndAbilities where the game itself
+                    // surfaces this number.
+                    if (viewedSlot != null &&
+                        (screen.Name == "CharacterStatus" || screen.Name == "EquipmentAndAbilities"))
+                    {
+                        var primary = viewedSlot.JobName != null
+                            ? GetPrimarySkillsetByJobName(viewedSlot.JobName)
+                            : null;
+                        if (primary != null)
+                            screen.NextJp = _rosterReader.ComputeNextJp(viewedSlot.SlotIndex, primary);
+                    }
                 }
 
                 // CharacterStatus sidebar label: populate screen.UI from the state
