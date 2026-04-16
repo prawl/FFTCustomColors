@@ -2334,7 +2334,13 @@ namespace FFTColorCustomizer.Utilities
                     GameScreen.SecondaryAbilities or GameScreen.ReactionAbilities or
                     GameScreen.SupportAbilities or GameScreen.MovementAbilities or
                     GameScreen.CombatSets or GameScreen.CharacterDialog or
-                    GameScreen.DismissUnit;
+                    GameScreen.DismissUnit or
+                    GameScreen.ChronicleEncyclopedia or GameScreen.ChronicleStateOfRealm or
+                    GameScreen.ChronicleEvents or GameScreen.ChronicleAuracite or
+                    GameScreen.ChronicleReadingMaterials or GameScreen.ChronicleCollection or
+                    GameScreen.ChronicleErrands or GameScreen.ChronicleStratagems or
+                    GameScreen.ChronicleLessons or GameScreen.ChronicleAkademicReport or
+                    GameScreen.OptionsSettings;
                 bool smWasInPartyTree = _smScreenBeforeKeys is
                     GameScreen.PartyMenu or GameScreen.CharacterStatus or
                     GameScreen.EquipmentScreen or GameScreen.EquipmentItemList or
