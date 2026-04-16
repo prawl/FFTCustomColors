@@ -322,10 +322,21 @@ _show_helpers() {
   local scr="$1"
   local helpers=""
   case "$scr" in
-    WorldMap|PartyMenu)
+    WorldMap)
       helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
     open_job_selection [unit]             Jump to Job Selection
-    open_character_status [unit]          Jump to Character Status"
+    open_character_status [unit]          Jump to Character Status
+    party_summary                         Show all units at a glance
+    check_unit <name>                     Quick stat dump for one unit
+    save_and_travel <id>                  Save then travel to location
+    enter_shop                            Enter the Outfitter at current location"
+      ;;
+    PartyMenu)
+      helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
+    open_job_selection [unit]             Jump to Job Selection
+    open_character_status [unit]          Jump to Character Status
+    party_summary                         Show all units at a glance
+    check_unit <name>                     Quick stat dump for one unit"
       ;;
     EquipmentAndAbilities)
       helpers="    change_secondary_ability_to <name>   Set secondary skillset
@@ -337,15 +348,22 @@ _show_helpers() {
     list_reaction_abilities              Show learned reaction abilities
     list_support_abilities               Show learned support abilities
     list_movement_abilities              Show learned movement abilities
-    remove_equipment                     Unequip item at cursor"
+    remove_equipment                     Unequip item at cursor
+    swap_unit <name>                     Cycle Q/E to named unit"
       ;;
     CharacterStatus)
       helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
     open_job_selection [unit]             Jump to Job Selection
-    dismiss_unit                          Hold B to open dismiss confirmation"
+    dismiss_unit                          Hold B to open dismiss confirmation
+    swap_unit <name>                      Cycle Q/E to named unit
+    check_unit <name>                     Quick stat dump for one unit"
       ;;
     JobSelection)
-      helpers="    change_job_to <class>                 Change to named job class"
+      helpers="    change_job_to <class>                 Change to named job class
+    swap_unit <name>                      Cycle Q/E to named unit"
+      ;;
+    GameOver)
+      helpers="    load                                  Load most recent save"
       ;;
   esac
   if [ -n "$helpers" ]; then
@@ -665,6 +683,181 @@ open_job_selection() {
   # Enter (SelectUnit) + Down (sidebar to Job) + Enter (Select → JobSelection)
   fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"},{\"vk\":40,\"name\":\"Down\"},{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":350}" >/dev/null
   _FFT_DONE=0
+  screen
+}
+
+# =============================================================================
+# Quick helpers (aliases + one-liners)
+# =============================================================================
+
+# party_summary: Formatted one-line-per-unit roster overview.
+# Works from any screen — reads the last response's roster data, or
+# navigates to PartyMenu if roster isn't available.
+party_summary() {
+  _FFT_DONE=0
+  # Get a fresh PartyMenu read to ensure roster is populated
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
+  local hasRoster=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.roster?.units?.length>0?'yes':'no')" < "$B/response.json" 2>/dev/null)
+
+  if [ "$hasRoster" != "yes" ]; then
+    # Navigate to PartyMenu to get roster
+    if [ "$curScr" != "WorldMap" ] && [ "$curScr" != "PartyMenu" ]; then
+      fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"ReturnToWorldMap\"}" >/dev/null
+      _FFT_DONE=0
+    fi
+    fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenu\"}" >/dev/null
+    _FFT_DONE=0
+  fi
+
+  node -e "
+const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const units=j.screen?.roster?.units||[];
+if(!units.length){console.log('  (no roster data)');process.exit(0);}
+console.log('  Party ('+units.length+' units):');
+units.forEach(u=>{
+  const eq=u.equipment||{};
+  const gear=[eq.weapon,eq.leftHand,eq.shield,eq.helm,eq.body,eq.accessory].filter(Boolean);
+  const gearStr=gear.length?gear.join(', '):'(unequipped)';
+  const z=u.zodiac?' '+u.zodiac:'';
+  console.log('    '+u.name.padEnd(14)+u.job.padEnd(16)+'Lv'+String(u.level).padStart(3)+'  Br'+String(u.brave??'--').padStart(3)+' Fa'+String(u.faith??'--').padStart(3)+z);
+  console.log('      '+gearStr);
+});
+" "$B/response.json"
+}
+
+# check_unit <name>: Quick stat dump for a single unit from roster data.
+check_unit() {
+  local target="$*"
+  if [ -z "$target" ]; then echo "[check_unit] usage: check_unit <name>"; return 1; fi
+  _FFT_DONE=0
+  _current_screen >/dev/null
+  local hasRoster=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.roster?.units?.length>0?'yes':'no')" < "$B/response.json" 2>/dev/null)
+  if [ "$hasRoster" != "yes" ]; then
+    fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenu\"}" >/dev/null
+    _FFT_DONE=0
+  fi
+  local lowerTarget=$(echo "$target" | tr 'A-Z' 'a-z')
+  node -e "
+const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const units=j.screen?.roster?.units||[];
+const u=units.find(x=>(x.name||'').toLowerCase()==='$lowerTarget');
+if(!u){console.log('[check_unit] unit not found: $target');process.exit(1);}
+const eq=u.equipment||{};
+const gear=[eq.weapon,eq.leftHand,eq.shield,eq.helm,eq.body,eq.accessory].filter(Boolean);
+const parts=[u.name,u.job,'Lv '+u.level,'JP '+(u.jp??'--'),'Brave '+(u.brave??'--'),'Faith '+(u.faith??'--')];
+if(u.zodiac)parts.push('Zodiac: '+u.zodiac);
+console.log('  '+parts.join('  '));
+console.log('  HP --/--  MP --/--  PA --  MA --  Speed --  Move --  Jump --');
+console.log('  Equip: '+(gear.length?gear.join(' / '):'(none)'));
+" "$B/response.json"
+}
+
+# flee: Flee from an encounter. Alias for execute_action Flee.
+flee() { execute_action Flee; }
+
+# fight: Accept an encounter. Alias for execute_action Fight.
+fight() { execute_action Fight; }
+
+# save_and_travel <id>: Save the game then travel to a location.
+# Must be on WorldMap. Validates before acting.
+save_and_travel() {
+  local dest="$1"
+  if [ -z "$dest" ]; then echo "[save_and_travel] usage: save_and_travel <location_id>"; return 1; fi
+  _FFT_DONE=0
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
+  if [ "$curScr" != "WorldMap" ]; then
+    echo "[save_and_travel] ERROR: must be on WorldMap (current: $curScr)"
+    return 1
+  fi
+  save
+  _FFT_DONE=0
+  world_travel_to "$dest"
+}
+
+# enter_shop: From WorldMap at a settlement (IDs 0-14), navigate into the Outfitter.
+# Validates you're at a settlement before pressing anything.
+enter_shop() {
+  _FFT_DONE=0
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
+  if [ "$curScr" != "WorldMap" ]; then
+    echo "[enter_shop] ERROR: must be on WorldMap (current: $curScr)"
+    return 1
+  fi
+  local locId=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.location??-1)" < "$B/response.json" 2>/dev/null)
+  local locName=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.locationName||'unknown')" < "$B/response.json" 2>/dev/null)
+  if [ "$locId" -lt 0 ] || [ "$locId" -gt 14 ]; then
+    echo "[enter_shop] ERROR: not at a settlement (loc=$locId $locName). Settlements are IDs 0-14."
+    return 1
+  fi
+  execute_action EnterLocation >/dev/null
+  _FFT_DONE=0
+  execute_action EnterShop >/dev/null
+  _FFT_DONE=0
+  screen
+}
+
+# swap_unit <name>: Cycle Q/E to the named unit on any unit-scoped screen
+# (CharacterStatus, EquipmentAndAbilities, JobSelection). Reads the roster
+# to compute how many E presses are needed.
+swap_unit() {
+  local target="$*"
+  if [ -z "$target" ]; then echo "[swap_unit] usage: swap_unit <name>"; return 1; fi
+  _FFT_DONE=0
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
+
+  # Validate we're on a unit-scoped screen
+  case "$curScr" in
+    CharacterStatus|EquipmentAndAbilities|JobSelection) ;;
+    *) echo "[swap_unit] ERROR: must be on CharacterStatus, EquipmentAndAbilities, or JobSelection (current: $curScr)"; return 1 ;;
+  esac
+
+  # Find current and target positions in roster
+  local lowerTarget=$(echo "$target" | tr 'A-Z' 'a-z')
+  local navInfo=$(node -e "
+const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const vu=j.screen?.viewedUnit||'';
+const units=j.screen?.roster?.units||[];
+if(!units.length){process.stdout.write('NO_ROSTER');process.exit(0);}
+const curIdx=units.findIndex(x=>(x.name||'').toLowerCase()===vu.toLowerCase());
+const tgtIdx=units.findIndex(x=>(x.name||'').toLowerCase()==='$lowerTarget');
+if(tgtIdx<0){process.stdout.write('NOT_FOUND');process.exit(0);}
+if(curIdx===tgtIdx){process.stdout.write('ALREADY');process.exit(0);}
+// Forward (E) distance vs backward (Q) distance
+const n=units.length;
+const fwd=(tgtIdx-curIdx+n)%n;
+const bwd=(curIdx-tgtIdx+n)%n;
+if(fwd<=bwd)process.stdout.write('E,'+fwd);
+else process.stdout.write('Q,'+bwd);
+" "$B/response.json" 2>/dev/null)
+
+  case "$navInfo" in
+    NO_ROSTER) echo "[swap_unit] ERROR: no roster data available"; return 1 ;;
+    NOT_FOUND) echo "[swap_unit] ERROR: unit '$target' not found in roster"; return 1 ;;
+    ALREADY) echo "[swap_unit] already viewing $target"; return 0 ;;
+  esac
+
+  local dir="${navInfo%%,*}"
+  local count="${navInfo##*,}"
+  local vk name
+  if [ "$dir" = "E" ]; then vk=69; name=E; else vk=81; name=Q; fi
+
+  # Build key batch
+  local keysJson=""
+  local first=1
+  for i in $(seq 1 "$count"); do
+    [ "$first" -eq 0 ] && keysJson+=","
+    keysJson+="{\"vk\":$vk,\"name\":\"$name\"}"
+    first=0
+  done
+
+  if [ -n "$keysJson" ]; then
+    fft "{\"id\":\"$(id)\",\"keys\":[$keysJson],\"delayBetweenMs\":300}" >/dev/null
+    _FFT_DONE=0
+  fi
   screen
 }
 

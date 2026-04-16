@@ -179,10 +179,10 @@ namespace FFTColorCustomizer.GameBridge
                     // the player is standing — without this, a drifted
                     // cursor causes Enter to silently no-op (the
                     // pre-existing "Enter does nothing" failure mode
-                    // logged 2026-04-14). Single deterministic key, no
-                    // memory read needed.
+                    // logged 2026-04-14). 500ms delay so the game settles
+                    // the cursor snap before Enter fires (200ms was too fast).
                     Keys = new[] { Key(VK_C, "C"), Key(VK_ENTER, "Enter") },
-                    DelayBetweenMs = 200,
+                    DelayBetweenMs = 500,
                     WaitUntilScreenNot = "WorldMap",
                     WaitTimeoutMs = 5000,
                     Desc = "Recenter cursor (C) then enter current location (may trigger encounter, settlement, or story event)"
