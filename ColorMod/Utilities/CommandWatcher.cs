@@ -51,11 +51,6 @@ namespace FFTColorCustomizer.Utilities
         // reports a party-tree screen but raw + MenuDepth show we're back
         // on WorldMap. Same 3-frame debounce logic.
         private int _worldMapDriftStreak = 0;
-        // SM-Snap streak: requires 3 consecutive reads of (menuDepth=0 +
-        // detection=WorldMap/TravelList + SM-in-party-tree) before snapping.
-        // Prevents animation-lag false positives during legitimate transitions
-        // into EqA/pickers where MenuDepth hasn't flipped to 2 yet.
-        private int _smSnapStreak = 0;
         private bool _waitConfirmPending; // Set when battle_wait rejected for no move/act; next battle_wait goes through
         private string? _lastAbilityName; // Last ability used via battle_ability, shown in ui= during targeting
         private readonly BattleMenuTracker _battleMenuTracker = new();
@@ -2195,6 +2190,10 @@ namespace FFTColorCustomizer.Utilities
             command.WaitForScreen = path.WaitForScreen;
             command.WaitUntilScreenNot = path.WaitUntilScreenNot;
             if (path.WaitTimeoutMs > 0) command.WaitTimeoutMs = path.WaitTimeoutMs;
+            // Propagate the path's inter-key delay (e.g. 800ms for
+            // ReturnToWorldMap) so long Escape chains don't race the
+            // game's close animations.
+            if (path.DelayBetweenMs > 0) command.DelayBetweenMs = path.DelayBetweenMs;
             command.Action = null; // Clear action so ExecuteKeyCommand runs
 
             return ExecuteKeyCommand(command);
@@ -2277,15 +2276,20 @@ namespace FFTColorCustomizer.Utilities
             var _smScreenBeforeKeys = ScreenMachine?.CurrentScreen ?? GameScreen.Unknown;
 
             int successCount = 0;
+            var keySw = System.Diagnostics.Stopwatch.StartNew();
+            long lastKeyMs = 0;
             for (int i = 0; i < command.Keys.Count; i++)
             {
                 var key = command.Keys[i];
+                long nowMs = keySw.ElapsedMilliseconds;
+                long sinceLast = i == 0 ? 0 : nowMs - lastKeyMs;
                 bool success = _inputSimulator.SendKeyPressToWindow(gameWindow, key.Vk);
+                lastKeyMs = nowMs;
 
                 response.KeyResults.Add(new KeyResult { Vk = key.Vk, Success = success });
                 if (success) successCount++;
 
-                ModLogger.LogDebug($"[CommandBridge] Key {key.Name ?? key.Vk.ToString()} (0x{key.Vk:X2}): {(success ? "OK" : "FAIL")}");
+                ModLogger.LogDebug($"[CommandBridge] Key {key.Name ?? key.Vk.ToString()} (0x{key.Vk:X2}) [i={i}, +{sinceLast}ms]: {(success ? "OK" : "FAIL")}");
 
                 if (success)
                 {
@@ -4405,28 +4409,17 @@ namespace FFTColorCustomizer.Utilities
                 }
 
                 // SM override for party-tree screens.
-                //   - Trust the SM when menuDepth > 0 (inside a nested panel).
-                //   - Trust the SM when detection itself says party-tree.
-                //   - Also trust the SM when MenuDepth == 0 but we're within
-                //     the animation-lag window after a key press (SM just
-                //     processed a key and thinks we're in the tree). This
-                //     catches the CharacterStatus → EqA transition where
-                //     the MenuDepth byte takes 50-200ms to flip from 0 to 2.
-                // inAnimationLag: SM's CurrentScreen just changed during
-                // this detection cycle (either from a key press driving a
-                // transition, or from a previous snap). menuDepth may still
-                // read stale during the 50-200ms panel-open animation.
-                // Note: this is a best-effort signal; when DetectScreen is
-                // called from a 0-key query it can't tell "SM just changed",
-                // so this is mostly effective on the key-press response path.
-                bool inAnimationLag = ScreenMachine != null
-                    && ScreenMachine.LastSetScreenFromKey
-                    && ScreenMachine.KeysSinceLastSetScreen <= 1;
+                // When SM is in the party tree and detection says WorldMap/
+                // TravelList, trust the SM. JobSelection and CharacterStatus
+                // both read menuDepth=0 but are legitimately party-tree
+                // screens; detection can't disambiguate them from WorldMap
+                // when ui=1 is stale. The existing _worldMapDriftStreak
+                // (3 consecutive reads) catches the stale-SM case without
+                // needing a menuDepth gate here.
                 bool smOverrideAllowed = screen.Name == "PartySubScreen"
                     || screen.Name == "PartyMenu"
                     || (stateMachineInPartyMenu
-                        && (screen.Name == "TravelList" || screen.Name == "WorldMap")
-                        && (screen.MenuDepth > 0 || inAnimationLag));
+                        && (screen.Name == "TravelList" || screen.Name == "WorldMap"));
                 if (smOverrideAllowed)
                 {
                     if (ScreenMachine != null)
@@ -4537,30 +4530,10 @@ namespace FFTColorCustomizer.Utilities
                     }
                 }
 
-                // SM-sync: when detection says WorldMap but the SM is stale
-                // in the party tree, snap the SM. Debounced to avoid racing
-                // animation lag — MenuDepth takes 50-200ms to flip after a
-                // key press transitions between outer/inner panels. Requires
-                // 3 consecutive reads to catch true drift without stomping
-                // legitimate transitions.
-                if (!smOverrideAllowed && ScreenMachine != null
-                    && stateMachineInPartyMenu
-                    && (screen.Name == "WorldMap" || screen.Name == "TravelList"))
-                {
-                    _smSnapStreak++;
-                    if (_smSnapStreak >= 3)
-                    {
-                        var targetGs = screen.Name == "WorldMap" ? GameScreen.WorldMap : GameScreen.TravelList;
-                        ModLogger.Log($"[SM-Snap] menuDepth=0 + detection={screen.Name} + SM={ScreenMachine.CurrentScreen} for {_smSnapStreak} reads. Snapping SM to {targetGs}.");
-                        ScreenMachine.SetScreen(targetGs);
-                        ScreenMachine.MarkKeyProcessed();
-                        _smSnapStreak = 0;
-                    }
-                }
-                else
-                {
-                    _smSnapStreak = 0;
-                }
+                // Stale-SM recovery is handled by _worldMapDriftStreak
+                // further below (3 consecutive reads of raw=WorldMap +
+                // MenuDepth=0 + SM-in-party-tree). We don't need a separate
+                // SM-Snap block here.
 
                 // Clear the default "Move/Abilities/Wait/..." UI label on screens
                 // where the battle menuCursor byte is meaningless. That byte is

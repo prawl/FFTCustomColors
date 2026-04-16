@@ -1383,9 +1383,14 @@ namespace FFTColorCustomizer.GameBridge
             return new PathEntry
             {
                 Keys = keys,
-                DelayBetweenMs = 200,
+                // 800ms per Escape — each nested-screen close has a
+                // longer close animation than open transitions. 200ms was
+                // fine for 2-key escapes (PartyMenu tree) but dropped keys
+                // on 3+-key escapes from JobSelection/EqA/picker screens.
+                // 500ms still dropped keys from JobSelection; 800ms works.
+                DelayBetweenMs = 800,
                 WaitForScreen = "WorldMap",
-                WaitTimeoutMs = 3000,
+                WaitTimeoutMs = 5000,
                 Desc = $"Escape back to world map ({escapeCount} key{(escapeCount == 1 ? "" : "s")})"
             };
         }
