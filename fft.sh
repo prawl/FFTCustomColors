@@ -322,6 +322,11 @@ _show_helpers() {
   local scr="$1"
   local helpers=""
   case "$scr" in
+    WorldMap|PartyMenu)
+      helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
+    open_job_selection [unit]             Jump to Job Selection
+    open_character_status [unit]          Jump to Character Status"
+      ;;
     EquipmentAndAbilities)
       helpers="    change_secondary_ability_to <name>   Set secondary skillset
     change_reaction_ability_to <name>    Set reaction ability
@@ -335,7 +340,9 @@ _show_helpers() {
     remove_equipment                     Unequip item at cursor"
       ;;
     CharacterStatus)
-      helpers="    dismiss_unit                          Hold B to open dismiss confirmation"
+      helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
+    open_job_selection [unit]             Jump to Job Selection
+    dismiss_unit                          Hold B to open dismiss confirmation"
       ;;
     JobSelection)
       helpers="    change_job_to <class>                 Change to named job class"
@@ -490,13 +497,12 @@ execute_action() {
     return
   fi
 
-  # Otherwise show compact action result
+  # Compact one-liner with full context (ui=, viewedUnit=, EqA summary).
+  _fmt_screen_compact "$B/response.json"
+
+  # INFO/ERROR/ValidPaths from the bridge response.
   node -e "
 const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
-const s=r.screen||{};
-const ui=s.ui?' ui='+s.ui:'';
-const st=r.status&&r.status!=='completed'?' status='+r.status:'';
-console.log('['+s.name+']'+ui+st);
 if(r.info)console.log('  INFO:',r.info);
 if(r.error&&r.status!=='completed')console.log('  ERROR:',r.error);
 const vp=r.validPaths||{};
@@ -531,6 +537,136 @@ hold_key() {
 
 # dismiss_unit: Trigger the hold-B DismissUnit confirmation on CharacterStatus.
 dismiss_unit() { hold_key 66 3500; }  # 0x42 = VK_B
+
+# =============================================================================
+# Compound navigation helpers
+# =============================================================================
+# Navigate from anywhere (WorldMap or party-tree) to a specific sub-screen
+# for a specific unit, in one command. Handles the full path internally:
+# escape to WorldMap → PartyMenu → cursor to unit → CharacterStatus → target.
+
+# _nav_to_party_unit <unit_name>
+# Internal: navigate to PartyMenu with cursor on the named unit.
+# Returns 0 on success, 1 on failure. Leaves state on PartyMenu.
+_nav_to_party_unit() {
+  local target="$1"
+
+  # Compound navigators need multiple fft calls. Reset the guard between steps.
+  # This is safe because each step waits for its response before the next fires.
+  _FFT_DONE=0
+
+  # Step 1: get to WorldMap or PartyMenu
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
+  if [ "$curScr" != "WorldMap" ] && [ "$curScr" != "PartyMenu" ]; then
+    fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"ReturnToWorldMap\"}" >/dev/null
+    _FFT_DONE=0
+    _current_screen >/dev/null
+    curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
+  fi
+
+  # Step 2: open PartyMenu if on WorldMap
+  if [ "$curScr" = "WorldMap" ]; then
+    fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenu\"}" >/dev/null
+    _FFT_DONE=0
+    _current_screen >/dev/null
+    curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
+  fi
+
+  if [ "$curScr" != "PartyMenu" ]; then
+    echo "[_nav_to_party_unit] ERROR: could not reach PartyMenu (on $curScr)"
+    return 1
+  fi
+
+  # Step 3: find unit's grid position from roster
+  local gridInfo=$(cat "$B/response.json" | node -e "
+    let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
+      const j=JSON.parse(d);
+      const u=(j.screen?.roster?.units||[]).find(x=>x.name?.toLowerCase()==='$(echo "$target" | tr 'A-Z' 'a-z')');
+      if(!u){process.stdout.write('NOT_FOUND');return;}
+      const idx=u.displayOrder||0;
+      process.stdout.write(Math.floor(idx/5)+','+idx%5);
+    });" 2>/dev/null)
+
+  if [ "$gridInfo" = "NOT_FOUND" ]; then
+    echo "[_nav_to_party_unit] ERROR: unit '$target' not found in roster"
+    return 1
+  fi
+
+  local targetRow="${gridInfo%%,*}"
+  local targetCol="${gridInfo##*,}"
+
+  # Step 4: navigate cursor to the target unit in one key batch.
+  # Cursor may NOT be at (0,0) — PartyMenu preserves the last position.
+  # First reset to (0,0) by wrapping: Up enough to hit row 0, Left enough
+  # to hit col 0. With wrapping, pressing Up from row 0 goes to last row,
+  # so we need to know the grid size. Use roster count to compute rows.
+  local rosterCount=$(cat "$B/response.json" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const j=JSON.parse(d);process.stdout.write(String((j.screen?.roster?.units||[]).length))});" 2>/dev/null)
+  local gridRows=$(( (rosterCount + 4) / 5 ))
+
+  local keysJson=""
+  local first=1
+  # Reset to (0,0): Up × gridRows + Left × 5 guarantees wrap to origin
+  for i in $(seq 1 "$gridRows"); do
+    [ "$first" -eq 0 ] && keysJson+=","
+    keysJson+="{\"vk\":38,\"name\":\"Up\"}"
+    first=0
+  done
+  for i in $(seq 1 5); do
+    [ "$first" -eq 0 ] && keysJson+=","
+    keysJson+="{\"vk\":37,\"name\":\"Left\"}"
+    first=0
+  done
+  # Now navigate from (0,0) to target
+  for i in $(seq 1 "$targetRow"); do
+    [ "$first" -eq 0 ] && keysJson+=","
+    keysJson+="{\"vk\":40,\"name\":\"Down\"}"
+    first=0
+  done
+  for i in $(seq 1 "$targetCol"); do
+    [ "$first" -eq 0 ] && keysJson+=","
+    keysJson+="{\"vk\":39,\"name\":\"Right\"}"
+    first=0
+  done
+
+  if [ -n "$keysJson" ]; then
+    fft "{\"id\":\"$(id)\",\"keys\":[$keysJson],\"delayBetweenMs\":150}" >/dev/null
+    _FFT_DONE=0
+  fi
+  return 0
+}
+
+# open_character_status [unit_name]
+# Navigate to CharacterStatus for the named unit (default: Ramza).
+open_character_status() {
+  local unit="${*:-Ramza}"
+  _nav_to_party_unit "$unit" || return 1
+  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":300}" >/dev/null
+  _FFT_DONE=0
+  screen
+}
+
+# open_eqa [unit_name]
+# Navigate from anywhere to EquipmentAndAbilities for the named unit.
+open_eqa() {
+  local unit="${*:-Ramza}"
+  _nav_to_party_unit "$unit" || return 1
+  # Enter (SelectUnit → CharacterStatus) + Enter (Select → EquipmentAndAbilities)
+  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"},{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":350}" >/dev/null
+  _FFT_DONE=0
+  screen
+}
+
+# open_job_selection [unit_name]
+# Navigate from anywhere to JobSelection for the named unit.
+open_job_selection() {
+  local unit="${*:-Ramza}"
+  _nav_to_party_unit "$unit" || return 1
+  # Enter (SelectUnit) + Down (sidebar to Job) + Enter (Select → JobSelection)
+  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"},{\"vk\":40,\"name\":\"Down\"},{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":350}" >/dev/null
+  _FFT_DONE=0
+  screen
+}
 
 # =============================================================================
 # EquipmentAndAbilities helpers

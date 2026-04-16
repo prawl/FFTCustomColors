@@ -3775,6 +3775,133 @@ namespace FFTColorCustomizer.Utilities
         /// the SM already processed the key and knows the correct screen.
         /// Avoids stale-memory issues that plague detection during transitions.
         /// </summary>
+        /// <summary>
+        /// Enrich a screen with viewedUnit, sidebar UI, loadout, abilities, and
+        /// cursor label — the same data that DetectScreen populates for unit-scoped
+        /// screens. Called by both BuildScreenFromSM (key-press responses) and
+        /// could replace the inline code in DetectScreen in a future refactor.
+        /// </summary>
+        private void EnrichUnitScopedScreen(DetectedScreen screen)
+        {
+            if (ScreenMachine == null || Explorer == null) return;
+
+            // viewedUnit — resolve from SM's saved party cursor
+            bool isUnitScoped =
+                screen.Name == "CharacterStatus" ||
+                screen.Name == "EquipmentAndAbilities" ||
+                screen.Name == "JobSelection" ||
+                screen.Name == "JobActionMenu" ||
+                screen.Name == "JobChangeConfirmation" ||
+                screen.Name == "SecondaryAbilities" ||
+                screen.Name == "ReactionAbilities" ||
+                screen.Name == "SupportAbilities" ||
+                screen.Name == "MovementAbilities" ||
+                screen.Name == "EquippableWeapons" ||
+                screen.Name == "EquippableShields" ||
+                screen.Name == "EquippableHeadware" ||
+                screen.Name == "EquippableCombatGarb" ||
+                screen.Name == "EquippableAccessories" ||
+                screen.Name == "CombatSets" ||
+                screen.Name == "CharacterDialog" ||
+                screen.Name == "DismissUnit";
+            if (!isUnitScoped) return;
+
+            if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
+            if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+            var viewedSlot = _rosterReader.GetSlotByDisplayOrder(ScreenMachine.ViewedGridIndex);
+            if (viewedSlot?.Name != null)
+                screen.ViewedUnit = viewedSlot.Name;
+
+            // CharacterStatus sidebar label
+            if (screen.Name == "CharacterStatus")
+            {
+                screen.UI = ScreenMachine.SidebarIndex switch
+                {
+                    0 => "Equipment & Abilities",
+                    1 => "Job",
+                    2 => "Combat Sets",
+                    _ => null
+                };
+            }
+
+            // JobActionMenu cursor label
+            if (screen.Name == "JobActionMenu")
+            {
+                screen.UI = ScreenMachine.JobActionIndex == 0 ? "Learn Abilities" : "Change Job";
+            }
+
+            // DismissUnit cursor label
+            if (screen.Name == "DismissUnit")
+            {
+                screen.UI = ScreenMachine.DismissConfirmSelected ? "Confirm" : "Back";
+            }
+
+            // EquipmentAndAbilities: loadout + abilities + cursor label
+            if (screen.Name == "EquipmentAndAbilities" && viewedSlot != null)
+            {
+                int slotIdx = viewedSlot.SlotIndex;
+                var lo = _rosterReader.ReadLoadout(slotIdx);
+                var ab = _rosterReader.ReadEquippedAbilities(slotIdx, viewedSlot.JobName);
+
+                if (lo != null)
+                {
+                    screen.Loadout = new Loadout
+                    {
+                        UnitName = viewedSlot.Name,
+                        Weapon = lo.WeaponName,
+                        LeftHand = lo.LeftHandName,
+                        Shield = lo.ShieldName,
+                        Helm = lo.HelmName,
+                        Body = lo.BodyName,
+                        Accessory = lo.AccessoryName,
+                    };
+
+                    // Cursor label from equipment column
+                    int row = ScreenMachine.CursorRow;
+                    int col = ScreenMachine.CursorCol;
+                    if (col == 0)
+                    {
+                        screen.UI = row switch
+                        {
+                            0 => lo.WeaponName,
+                            1 => lo.ShieldName,
+                            2 => lo.HelmName,
+                            3 => lo.BodyName,
+                            4 => lo.AccessoryName,
+                            _ => null
+                        };
+                    }
+                }
+                if (ab != null)
+                {
+                    screen.Abilities = new AbilityLoadoutPayload
+                    {
+                        Primary = ab.Primary,
+                        Secondary = ab.Secondary,
+                        Reaction = ab.Reaction,
+                        Support = ab.Support,
+                        Movement = ab.Movement,
+                    };
+
+                    // Cursor label from ability column
+                    int row = ScreenMachine.CursorRow;
+                    int col = ScreenMachine.CursorCol;
+                    if (col == 1)
+                    {
+                        screen.UI = row switch
+                        {
+                            0 => ab.Primary,
+                            1 => ab.Secondary,
+                            2 => ab.Reaction,
+                            3 => ab.Support,
+                            4 => ab.Movement,
+                            _ => null
+                        };
+                    }
+                }
+            }
+        }
+
         private DetectedScreen? BuildScreenFromSM()
         {
             if (ScreenMachine == null) return null;
@@ -3829,9 +3956,9 @@ namespace FFTColorCustomizer.Utilities
 
             var screen = new DetectedScreen { Name = name };
 
-            // ViewedUnit is populated by the full DetectScreen path on
-            // `screen` reads. For key responses, the state name is the
-            // critical field — viewedUnit will appear on the next `screen`.
+            // Enrich unit-scoped screens with viewedUnit + loadout + abilities
+            // so execute_action responses show the same data as `screen`.
+            EnrichUnitScopedScreen(screen);
 
             ModLogger.Log($"[BuildScreenFromSM] {name} (SM={ScreenMachine.CurrentScreen}, Tab={ScreenMachine.Tab})");
             return screen;
