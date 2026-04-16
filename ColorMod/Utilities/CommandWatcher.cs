@@ -4069,18 +4069,30 @@ namespace FFTColorCustomizer.Utilities
                         if (Explorer != null && ScreenMachine.CurrentScreen == GameScreen.PartyMenu)
                         {
                             var b41e = Explorer.ReadAbsolute((nint)0x140D3A41E, 1);
-                            if (b41e.HasValue)
+                            var b38e = Explorer.ReadAbsolute((nint)0x140D3A38E, 1);
+                            if (b41e.HasValue && b38e.HasValue)
                             {
                                 int v41e = (int)b41e.Value.value;
+                                int v38e = (int)b38e.Value.value;
                                 if (v41e == 1 && ScreenMachine.Tab != PartyTab.Units)
                                 {
                                     ModLogger.Log($"[FlagCombo] Units-tab drift: SM={ScreenMachine.Tab} but 41E=1. Snapping to Units.");
                                     ScreenMachine.SetTabFromMemory(PartyTab.Units);
                                 }
-                                else if (v41e == 0 && ScreenMachine.Tab == PartyTab.Units)
+                                else if (v41e == 0 && v38e == 1 && ScreenMachine.Tab != PartyTab.Inventory)
                                 {
-                                    ModLogger.Log($"[FlagCombo] Units-tab drift: SM=Units but 41E=0. Snapping to Inventory (most likely).");
+                                    ModLogger.Log($"[FlagCombo] Inventory-tab drift: SM={ScreenMachine.Tab} but 38E=1, 41E=0. Snapping to Inventory.");
                                     ScreenMachine.SetTabFromMemory(PartyTab.Inventory);
+                                }
+                                else if (v41e == 0 && v38e == 0 && ScreenMachine.Tab == PartyTab.Units)
+                                {
+                                    ModLogger.Log($"[FlagCombo] Units-tab drift: SM=Units but 41E=0, 38E=0. Tab is Chronicle or Options (can't distinguish). Snapping to Chronicle (most likely).");
+                                    ScreenMachine.SetTabFromMemory(PartyTab.Chronicle);
+                                }
+                                else if (v41e == 0 && v38e == 0 && ScreenMachine.Tab == PartyTab.Inventory)
+                                {
+                                    ModLogger.Log($"[FlagCombo] Inventory-tab drift: SM=Inventory but 38E=0. Tab is Chronicle or Options (can't distinguish). Snapping to Chronicle (most likely).");
+                                    ScreenMachine.SetTabFromMemory(PartyTab.Chronicle);
                                 }
                             }
                         }
@@ -4711,7 +4723,21 @@ namespace FFTColorCustomizer.Utilities
                 // force screen.ViewedUnit even if the state machine
                 // disagreed. This fixes the "SM says TravelList but game
                 // is on EqA" drift class observed live with Wilham.
-                if (Explorer != null && ScreenMachine != null)
+                //
+                // Guard: skip EqA promotion when PartyMenu tab flags
+                // indicate we're on a PM tab. The mirror is always
+                // populated with the last-viewed unit's gear, so it will
+                // spuriously match on PartyMenu (esp. Units tab where
+                // Ramza is the default viewedUnit).
+                bool partyMenuTabFlagsActive = false;
+                if (Explorer != null)
+                {
+                    var b41e = Explorer.ReadAbsolute((nint)0x140D3A41E, 1);
+                    var b38e = Explorer.ReadAbsolute((nint)0x140D3A38E, 1);
+                    if (b41e.HasValue && b38e.HasValue)
+                        partyMenuTabFlagsActive = (int)b41e.Value.value == 1 || (int)b38e.Value.value == 1;
+                }
+                if (Explorer != null && ScreenMachine != null && !partyMenuTabFlagsActive)
                 {
                     var m1 = ReadEqaMirror(0x141870854);
                     var m3 = ReadEqaMirror(0x143743704);
