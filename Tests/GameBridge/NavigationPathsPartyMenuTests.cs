@@ -103,8 +103,6 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [InlineData("DismissUnit", 3)]
         [InlineData("CombatSets", 3)]
         [InlineData("EquipmentAndAbilities", 3)]
-        [InlineData("EquipmentScreen", 3)]
-        [InlineData("JobScreen", 3)]
         [InlineData("JobSelection", 3)]
         [InlineData("JobActionMenu", 4)]
         [InlineData("JobChangeConfirmation", 5)]
@@ -277,7 +275,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.NotNull(paths);
             Assert.Contains("ScrollUp", paths!.Keys);
             Assert.Contains("ScrollDown", paths.Keys);
-            Assert.Contains("ChangePage", paths.Keys);
+            Assert.Contains("PrevPage", paths.Keys);
+            Assert.Contains("NextPage", paths.Keys);
             Assert.Contains("Select", paths.Keys);
             Assert.Contains("Cancel", paths.Keys);
             Assert.Equal("EquipmentAndAbilities", paths["Cancel"].WaitForScreen);

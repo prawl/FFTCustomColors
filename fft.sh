@@ -192,7 +192,7 @@ _is_party_tree_screen() {
     JobSelection|JobActionMenu|JobChangeConfirmation|\
     SecondaryAbilities|ReactionAbilities|SupportAbilities|MovementAbilities|\
     EquippableWeapons|EquippableShields|EquippableHeadware|EquippableCombatGarb|EquippableAccessories|\
-    ChronicleEncyclopedia|ChronicleStateOfRealm|ChronicleEvents|ChronicleAuracite|ChronicleReading|ChronicleCollection|ChronicleErrands|ChronicleStratagems|ChronicleLessons|ChronicleAkademicReport|\
+    ChronicleEncyclopedia|ChronicleStateOfRealm|ChronicleEvents|ChronicleAuracite|ChronicleReadingMaterials|ChronicleCollection|ChronicleErrands|ChronicleStratagems|ChronicleLessons|ChronicleAkademicReport|\
     OptionsSettings)
       return 0 ;;
     *)
@@ -235,7 +235,8 @@ _fmt_screen_compact() {
   # Space-bearing string fields need the JSON parser so "Equipment & Abilities"
   # / "Magick Defense Boost" / "All Weapons & Shields" survive intact.
   local UI=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.ui||'');}catch(e){}});" 2>/dev/null)
-  local VUNIT=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.viewedUnit||'');}catch(e){}});" 2>/dev/null)
+  # viewedUnit + job: combine into "Name(Job)" when both are available.
+  local VUNIT=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const vu=j.screen?.viewedUnit||'';if(!vu){process.stdout.write('');return;}const r=(j.screen?.roster?.units||[]);const u=r.find(x=>x.name===vu)||{};const job=u.job||'';process.stdout.write(job?vu+'('+job+')':vu);}catch(e){}});" 2>/dev/null)
   local EQITEM=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.equippedItem||'');}catch(e){}});" 2>/dev/null)
   local PTAB=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.pickerTab||'');}catch(e){}});" 2>/dev/null)
 
@@ -270,7 +271,6 @@ _fmt_screen_compact() {
   fi
 
   [ -n "$SLCI" ] && LINE="$LINE row=$(_col "$_C_MARK" "$SLCI")"
-  [ "$ST" != "completed" ] && LINE="$LINE status=$(printf '%b%s%b' "$(_status_col "$ST")" "$ST" "$_C_RESET")"
 
   # World-side context — appended to same line. Suppressed on
   # PartyMenu-tree screens where they don't change per-action decisions.
@@ -282,6 +282,69 @@ _fmt_screen_compact() {
   fi
 
   printf '%b\n' "$LINE"
+
+  # EqA compact summary: two lines showing equipment and abilities at a glance.
+  # Only on EquipmentAndAbilities — enough to decide which slot to open.
+  if [ "$SCR" = "EquipmentAndAbilities" ]; then
+    cat "$RESP" | node -e "
+try{
+  const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
+  const l=j.screen&&j.screen.loadout;
+  const a=j.screen&&j.screen.abilities;
+  if(!l&&!a)process.exit(0);
+  const eq=[];
+  if(l){
+    if(l.weapon)eq.push(l.weapon); else eq.push('(none)');
+    if(l.leftHand)eq.push(l.leftHand);
+    if(l.shield)eq.push(l.shield); else if(!l.leftHand)eq.push('(none)');
+    if(l.helm)eq.push(l.helm); else eq.push('(none)');
+    if(l.body)eq.push(l.body); else eq.push('(none)');
+    if(l.accessory)eq.push(l.accessory); else eq.push('(none)');
+  }
+  const ab=[];
+  if(a){
+    ab.push(a.primary||'(none)');
+    ab.push(a.secondary||'(none)');
+    ab.push(a.reaction||'(none)');
+    ab.push(a.support||'(none)');
+    ab.push(a.movement||'(none)');
+  }
+  if(eq.length)console.log('  Equip: '+eq.join(' / '));
+  if(ab.length)console.log('  Abilities: '+ab.join(' / '));
+}catch(e){}
+" 2>/dev/null
+  fi
+}
+
+# _show_helpers: Print available shell helper commands for the current screen.
+# Shown after ValidPaths so Claude knows the high-level shortcuts.
+_show_helpers() {
+  local scr="$1"
+  local helpers=""
+  case "$scr" in
+    EquipmentAndAbilities)
+      helpers="    change_secondary_ability_to <name>   Set secondary skillset
+    change_reaction_ability_to <name>    Set reaction ability
+    change_support_ability_to <name>     Set support ability
+    change_movement_ability_to <name>    Set movement ability
+    remove_ability <name>                Unequip an ability by name
+    list_secondary_abilities             Show learned secondary skillsets
+    list_reaction_abilities              Show learned reaction abilities
+    list_support_abilities               Show learned support abilities
+    list_movement_abilities              Show learned movement abilities
+    remove_equipment                     Unequip item at cursor"
+      ;;
+    CharacterStatus)
+      helpers="    dismiss_unit                          Hold B to open dismiss confirmation"
+      ;;
+    JobSelection)
+      helpers="    change_job_to <class>                 Change to named job class"
+      ;;
+  esac
+  if [ -n "$helpers" ]; then
+    printf '  Helpers:\n%s\n' "$helpers"
+  fi
+  return 0
 }
 
 # fft_full: Send raw command JSON, wait for response, return entire JSON.
@@ -432,13 +495,17 @@ execute_action() {
 const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
 const s=r.screen||{};
 const ui=s.ui?' ui='+s.ui:'';
-console.log('['+s.name+']'+ui+' status='+r.status);
+const st=r.status&&r.status!=='completed'?' status='+r.status:'';
+console.log('['+s.name+']'+ui+st);
 if(r.info)console.log('  INFO:',r.info);
 if(r.error&&r.status!=='completed')console.log('  ERROR:',r.error);
 const vp=r.validPaths||{};
 const keys=Object.keys(vp);
 if(keys.length){console.log('  ValidPaths:');keys.forEach(k=>console.log('    '+k+': '+vp[k].desc));}
 " "$B/response.json"
+
+  # Show available shell helpers for this screen.
+  _show_helpers "$SCR"
 }
 
 # battle_wait: End turn. Handles menu navigation → Wait → confirm facing → polls until next friendly turn.
@@ -1539,9 +1606,9 @@ us.forEach(u=>{
     fi
 
     # Equipment loadout + abilities for CharacterStatus / EquipmentAndAbilities.
-    # Layout matches the game's two-column UI: equipment slots on the left,
-    # ability slots on the right. Only populated for Ramza right now (TODO §10.6).
-    if { [ "$SCR" = "EquipmentAndAbilities" ] || [ "$SCR" = "CharacterStatus" ]; } \
+    # Full two-column grid is verbose-only (planning data). Compact gets the
+    # two summary lines from _fmt_screen_compact instead.
+    if $verbose && { [ "$SCR" = "EquipmentAndAbilities" ] || [ "$SCR" = "CharacterStatus" ]; } \
        && [ -f "$B/response.json" ]; then
       cat "$B/response.json" | node -e "
 try{

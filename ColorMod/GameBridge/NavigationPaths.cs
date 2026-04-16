@@ -24,6 +24,8 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_Q = 0x51;
         private const int VK_E = 0x45;
         private const int VK_T = 0x54;
+        private const int VK_A = 0x41;
+        private const int VK_D = 0x44;
         private const int VK_R = 0x52;
         private const int VK_1 = 0x31;
 
@@ -44,9 +46,8 @@ namespace FFTColorCustomizer.GameBridge
                 "CharacterDialog" => GetCharacterDialogPaths(),
                 "DismissUnit" => GetDismissUnitPaths(),
                 "CombatSets" => GetCombatSetsPaths(),
-                "EquipmentScreen" => GetEquipmentScreenPaths(),
                 "EquipmentAndAbilities" => GetEquipmentAndAbilitiesPaths(),
-                "EquipmentItemList" => GetEquipmentItemListPaths(),
+                "EquipmentItemList" => GetEquippableItemPaths("item"),  // fallback for unknown equipment slots
                 "EquippableWeapons" => GetEquippableItemPaths("weapon"),
                 "EquippableShields" => GetEquippableItemPaths("shield"),
                 "EquippableHeadware" => GetEquippableItemPaths("helm"),
@@ -57,7 +58,6 @@ namespace FFTColorCustomizer.GameBridge
                 "ReactionAbilities" => GetAbilityPickerPaths("reaction ability"),
                 "SupportAbilities" => GetAbilityPickerPaths("support ability"),
                 "MovementAbilities" => GetAbilityPickerPaths("movement ability"),
-                "JobScreen" => GetJobScreenPaths(),
                 "JobSelection" => GetJobSelectionPaths(),
                 "JobActionMenu" => GetJobActionMenuPaths(),
                 "JobChangeConfirmation" => GetJobChangeConfirmationPaths(),
@@ -92,6 +92,19 @@ namespace FFTColorCustomizer.GameBridge
                 "BattleAlliesTurn" => GetBattleWaitingPaths(),
                 "BattleEnemiesTurn" => GetBattleWaitingPaths(),
                 "Battle" => GetBattleWaitingPaths(),
+                // Chronicle sub-screens — not yet implemented, Back only
+                "ChronicleEncyclopedia" => GetChronicleSubPaths(),
+                "ChronicleStateOfRealm" => GetChronicleSubPaths(),
+                "ChronicleEvents" => GetChronicleSubPaths(),
+                "ChronicleAuracite" => GetChronicleSubPaths(),
+                "ChronicleReadingMaterials" => GetChronicleSubPaths(),
+                "ChronicleCollection" => GetChronicleSubPaths(),
+                "ChronicleErrands" => GetChronicleSubPaths(),
+                "ChronicleStratagems" => GetChronicleSubPaths(),
+                "ChronicleLessons" => GetChronicleSubPaths(),
+                "ChronicleAkademicReport" => GetChronicleSubPaths(),
+                // Options sub-screen — not yet implemented, Back only
+                "OptionsSettings" => GetOptionsSubPaths(),
                 _ when screen.Name.StartsWith("Battle_") => GetBattleAbilityListPaths(),
                 _ => null
             };
@@ -255,70 +268,6 @@ namespace FFTColorCustomizer.GameBridge
                 // ValidPath for DismissUnit here. Once a hold-key action
                 // lands, add: ["DismissUnit"] = { action: "hold_key",
                 // vk: VK_B, durationMs: 3500, WaitForScreen: "DismissUnit" }.
-            };
-        }
-
-        private static Dictionary<string, PathEntry> GetEquipmentScreenPaths()
-        {
-            return new()
-            {
-                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up (Weapon/Shield/Helm/Armor/Accessory or Primary/Secondary/Reaction/Support/Movement)" },
-                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down" },
-                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Switch to equipment column" },
-                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Switch to ability column" },
-                ["Select"] = new PathEntry
-                {
-                    Keys = new[] { Key(VK_ENTER, "Enter") },
-                    Desc = "Open item/ability selection list for this slot"
-                },
-                ["Back"] = new PathEntry
-                {
-                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
-                    Desc = "Back to character status sidebar"
-                },
-                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
-            };
-        }
-
-        private static Dictionary<string, PathEntry> GetEquipmentItemListPaths()
-        {
-            return new()
-            {
-                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Scroll up in list" },
-                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Scroll down in list" },
-                ["Select"] = new PathEntry
-                {
-                    Keys = new[] { Key(VK_ENTER, "Enter") },
-                    Desc = "Equip selected item (or unequip if already equipped)"
-                },
-                ["Cancel"] = new PathEntry
-                {
-                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
-                    Desc = "Close list without changing"
-                },
-                ["ReturnToWorldMap"] = ReturnToWorldMap(4),
-            };
-        }
-
-        private static Dictionary<string, PathEntry> GetJobScreenPaths()
-        {
-            return new()
-            {
-                ["CursorUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Move cursor up in job grid" },
-                ["CursorDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Move cursor down" },
-                ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Move cursor left" },
-                ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Move cursor right" },
-                ["Select"] = new PathEntry
-                {
-                    Keys = new[] { Key(VK_ENTER, "Enter") },
-                    Desc = "Select job (opens Learn Abilities / Change Job menu)"
-                },
-                ["Back"] = new PathEntry
-                {
-                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
-                    Desc = "Back to character status sidebar"
-                },
-                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
             };
         }
 
@@ -1216,10 +1165,15 @@ namespace FFTColorCustomizer.GameBridge
             {
                 ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = $"Scroll up in {itemKind} list (wraps)" },
                 ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = $"Scroll down in {itemKind} list (wraps)" },
-                ["ChangePage"] = new PathEntry
+                ["PrevPage"] = new PathEntry
                 {
-                    Keys = new[] { Key(VK_TAB, "Tab") },
-                    Desc = $"Cycle {itemKind} sub-category if the picker has pages"
+                    Keys = new[] { Key(VK_A, "A") },
+                    Desc = $"Previous {itemKind} sub-category tab (wraps)"
+                },
+                ["NextPage"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_D, "D") },
+                    Desc = $"Next {itemKind} sub-category tab (wraps)"
                 },
                 ["Select"] = new PathEntry
                 {
@@ -1284,6 +1238,16 @@ namespace FFTColorCustomizer.GameBridge
                     WaitTimeoutMs = 2000,
                     Desc = "Open highlighted job's Learn Abilities / Change Job modal"
                 },
+                ["PrevUnit"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_Q, "Q") },
+                    Desc = "Switch to previous unit's job grid (wraps)"
+                },
+                ["NextUnit"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_E, "E") },
+                    Desc = "Switch to next unit's job grid (wraps)"
+                },
                 ["Back"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
@@ -1291,6 +1255,44 @@ namespace FFTColorCustomizer.GameBridge
                     Desc = "Back to character status sidebar"
                 },
                 ["ReturnToWorldMap"] = ReturnToWorldMap(3),
+            };
+        }
+
+        // ============================================================
+        // Chronicle sub-screens: not yet implemented. Provide Back to
+        // return to the Chronicle grid and ReturnToWorldMap.
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetChronicleSubPaths()
+        {
+            return new()
+            {
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "PartyMenuChronicle",
+                    Desc = "Back to Chronicle grid (sub-screen not yet implemented)"
+                },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(2),
+            };
+        }
+
+        // ============================================================
+        // Options sub-screen: not yet implemented. Provide Back to
+        // return to Options tab and ReturnToWorldMap.
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetOptionsSubPaths()
+        {
+            return new()
+            {
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "PartyMenuOptions",
+                    Desc = "Back to Options tab (sub-screen not yet implemented)"
+                },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(2),
             };
         }
 

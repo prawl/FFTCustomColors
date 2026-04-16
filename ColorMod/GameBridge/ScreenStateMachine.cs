@@ -248,6 +248,22 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Cycle the viewed unit forward (E) or backward (Q) through the roster.
+        /// Updates _savedPartyRow/_savedPartyCol so ViewedGridIndex resolves to
+        /// the correct unit. The game wraps at both ends.
+        /// </summary>
+        private void CycleViewedUnit(int direction)
+        {
+            const int cols = 5;
+            int gridIndex = _savedPartyRow * cols + _savedPartyCol;
+            gridIndex += direction;
+            if (gridIndex < 0) gridIndex = RosterCount - 1;
+            else if (gridIndex >= RosterCount) gridIndex = 0;
+            _savedPartyRow = gridIndex / cols;
+            _savedPartyCol = gridIndex % cols;
+        }
+
+        /// <summary>
         /// Force-sync the EquipmentAndAbilities column-0 cursor row from an
         /// external source — specifically the unequip-resolver in
         /// <c>CommandWatcher.ResolveEqaRow</c>. Also refreshes the saved
@@ -628,6 +644,12 @@ namespace FFTColorCustomizer.GameBridge
                     // Hint at bottom-right flips between [1] More / [1] Less.
                     StatsExpanded = !StatsExpanded;
                     break;
+                case VK_Q:
+                    CycleViewedUnit(-1);
+                    break;
+                case VK_E:
+                    CycleViewedUnit(+1);
+                    break;
                 case VK_SPACE:
                     // Space opens the unit's flavor-text dialog.
                     CurrentScreen = GameScreen.CharacterDialog;
@@ -683,6 +705,12 @@ namespace FFTColorCustomizer.GameBridge
                     break;
                 case VK_RIGHT:
                     CursorCol = CursorCol == 1 ? 0 : 1;
+                    break;
+                case VK_Q:
+                    CycleViewedUnit(-1);
+                    break;
+                case VK_E:
+                    CycleViewedUnit(+1);
                     break;
                 case VK_R:
                     // R toggles the Equipment Effects summary view in-place.
@@ -879,6 +907,12 @@ namespace FFTColorCustomizer.GameBridge
                 case VK_RETURN:
                     CurrentScreen = GameScreen.JobActionMenu;
                     JobActionIndex = 0;
+                    break;
+                case VK_Q:
+                    CycleViewedUnit(-1);
+                    break;
+                case VK_E:
+                    CycleViewedUnit(+1);
                     break;
                 case VK_T:
                 case VK_Y:
