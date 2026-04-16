@@ -73,6 +73,22 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 19 follow-ups (EqA mirror work)
+
+- [ ] **EqA Primary fallback for story classes** — 5-line fix. Session 19's EqA mirror decode populates Primary from `+0x0A` via `GetSkillsetName`, but story classes (Construct 8 Work, Reis Dragon, Cloud Limit, Agrias Holy Sword, etc.) encode as values the enum doesn't cover (Construct 8 reads 171 which is unknown). When `GetSkillsetName(pIdx)` returns null AND `matchedSlot.JobName != null`, fall back to `GetPrimarySkillsetByJobName(matchedSlot.JobName)` which already has the full story→primary mapping. File: `ColorMod/Utilities/CommandWatcher.cs`, inside the EqA promotion block just after `ReadEqaMirrorSkillsets`. See handoff.md session 19 §"What's NOT done #1".
+
+- [ ] **EqA cursor row resolver (unequip-based ground-truth)** — The EqA equipment mirror gives us slot contents but not which row the cursor is on. Session 19 verified that firing `Enter + Enter` on a slot with an equipped item unequips it (the game reads `Enter on an already-equipped item as an unequip toggle`), and the mirror byte for that slot immediately goes to 0. Resolver: on drift detected, snapshot mirror → fire `Enter + Enter` → diff → find the slot that went to 0 → that's the cursor row → fire `Enter + Escape` to re-equip + close picker. ~4 keys per resolution, slow but ground truth. Needed to unblock every `change_*_to` equipment helper that was deferred session 19.
+
+- [ ] **Apply mirror technique to ability pickers** — Session 19's EqA mirror hunt generalizes: the unequip-diff technique works wherever the game displays unit-specific data. Next targets: SecondaryAbilities / ReactionAbilities / SupportAbilities / MovementAbilities pickers (when open, they list the unit's learned abilities — each visible ability is a known byte that the game must read from somewhere stable). Hunt: on the picker, temporarily learn/unlearn one ability (via a different unit, not the one whose picker is open), snapshot + diff, find the ability ID. The picker's item list probably lives in a mirror adjacent to the EqA mirror at `0x141870854`.
+
+- [ ] **Apply mirror technique to JobSelection** — Same idea for JobSelection grid cells. When hovering a class, the info panel displays class data (JP, Lv, prereqs). Find where that hovered-class data lives by navigating to a known cell, snapshotting, navigating away, diffing. Target: a single byte that holds the hovered class index (or u16 class ID).
+
+- [ ] **Document Construct 8 locked ability slots** — Session 19 user confirmed that Construct 8 cannot unequip any abilities. The ability slots are pinned to his defaults. This means `change_reaction_ability_to` / `change_support_ability_to` / `change_movement_ability_to` helpers should refuse with a clear error when viewedUnit is Construct 8 (or any future locked-slot unit). Add a `LockedAbilityUnits` set alongside `StoryCharacterUniqueClass` in `JobGridLayout.cs` and check it in the helper guards.
+
+- [ ] **Block improper chained `fft` calls more aggressively** — Session 19 session crash: chained 4 sequential `fft` key-sending calls by overriding `_FFT_DONE=0` between them. Bridge auto-delay protection was bypassed, keys fired back-to-back without settling, game state drifted and the game crashed. `_FFT_DONE` guard exists specifically to prevent this but is too easy to defeat. Fix ideas: (a) make the override explicit (`_FFT_ALLOW_CHAIN=1` with a loud banner printed), (b) detect and reject multiple key-sending `fft` calls within N ms regardless of guard state (bridge-side rate limit, not shell-side), (c) compiler-level: collapse batch patterns by auto-merging sequential `fft`-with-keys into one request. Core rule: **game-action commands MUST be batched into one `fft` call with `keys` array + `delayBetweenMs`**; observational reads (`rv`, `block`, `screen`) are safe to chain. Document + enforce.
+
+### Earlier open items
+
 - [ ] **JP Next: populate Mettle/Fundaments ability costs** — JP Next infra shipped session 19 (commit fe8d41e) for 13 skillsets but Mettle/Fundaments remain unpopulated because their IC-remaster ability IDs aren't in ABILITY_COSTS.md. Add Mettle ability costs once verified in-game (Heal/Tailwind/Chant/Steel/Shout/Ultima).
 
 
