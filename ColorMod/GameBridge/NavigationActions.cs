@@ -352,6 +352,20 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         private CommandResponse BattleFlee(CommandResponse response)
         {
+            // Validate we're in a battle state where flee makes sense.
+            var curScreen = _detectScreen();
+            if (curScreen != null && (
+                curScreen.Name == "BattleFormation" ||
+                curScreen.Name == "EncounterDialog" ||
+                curScreen.Name == "WorldMap" ||
+                curScreen.Name == "PartyMenu"))
+            {
+                response.Status = "failed";
+                response.Error = $"Can't battle_flee from {curScreen.Name}. Start the battle first and try again.";
+                response.Screen = curScreen;
+                return response;
+            }
+
             SendKey(VK_TAB);
             Thread.Sleep(500);
             // Force cursor to top (Up at top is a no-op, so 6 presses = guaranteed top).

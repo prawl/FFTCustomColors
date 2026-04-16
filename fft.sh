@@ -144,6 +144,13 @@ fft() {
   # via _fire_keys / one fft call with keys:[...] and delayBetweenMs.
   # Parse from the raw file (not $R, which had whitespace stripped) so the
   # warning message keeps its spaces, then unescape \u0026 → &.
+  # Surface errors from failed commands.
+  if [ "$ST" = "failed" ]; then
+    local ERR=$(grep -o '"error": *"[^"]*"' "$B/response.json" | head -1 | sed -E 's/^"error": *"//; s/"$//; s/\\u0027/'"'"'/g')
+    echo "[FAILED] $ERR"
+    return 1
+  fi
+
   local CW=$(grep -o '"chainWarning": *"[^"]*"' "$B/response.json" | head -1 | sed -E 's/^"chainWarning": *"//; s/"$//; s/\\u0026/\&/g')
   [ -n "$CW" ] && echo "[CHAIN WARNING] $CW" >&2
   return 0
@@ -231,6 +238,11 @@ _fmt_screen_compact() {
   local AJOB=$(echo "$R" | grep -o '"activeUnitJob":"[^"]*"' | head -1 | cut -d'"' -f4)
   local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
   local SLCI=$(echo "$R" | grep -o '"shopListCursorIndex":[0-9]*' | head -1 | cut -d: -f2)
+  local CROW=$(echo "$R" | grep -o '"cursorRow":[0-9]*' | head -1 | cut -d: -f2)
+  local CCOL=$(echo "$R" | grep -o '"cursorCol":[0-9]*' | head -1 | cut -d: -f2)
+  local JCSTATE=$(echo "$R" | grep -o '"jobCellState":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local EVID=$(echo "$R" | grep -o '"eventId":[0-9]*' | head -1 | cut -d: -f2)
+  local JUNLOCK=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.jobUnlockRequirements||'');}catch(e){}});" 2>/dev/null)
 
   # Space-bearing string fields need the JSON parser so "Equipment & Abilities"
   # / "Magick Defense Boost" / "All Weapons & Shields" survive intact.
@@ -268,6 +280,12 @@ _fmt_screen_compact() {
     [ -n "$VUNIT" ] && LINE="$LINE viewedUnit=$(_col "$_C_UNIT" "$VUNIT")"
     [ -n "$EQITEM" ] && LINE="$LINE equippedItem=$(_col "$_C_EQUIP" "$EQITEM")"
     [ -n "$PTAB" ] && LINE="$LINE pickerTab=$(_col "$_C_EQUIP" "$PTAB")"
+    # JobSelection: cell state + cursor position + unlock requirements
+    [ -n "$JCSTATE" ] && LINE="$LINE state=$(_col "$_C_MARK" "$JCSTATE")"
+    [ -n "$CROW" ] && [ -n "$CCOL" ] && LINE="$LINE cursor=($(_col "$_C_MARK" "r${CROW},c${CCOL}"))"
+    [ -n "$JUNLOCK" ] && LINE="$LINE requires=$(_col "$_C_LOC" "$JUNLOCK")"
+    # Cutscene: event ID
+    [ -n "$EVID" ] && LINE="$LINE eventId=$(_col "$_C_MARK" "$EVID")"
   fi
 
   [ -n "$SLCI" ] && LINE="$LINE row=$(_col "$_C_MARK" "$SLCI")"
@@ -275,10 +293,12 @@ _fmt_screen_compact() {
   # World-side context — appended to same line. Suppressed on
   # PartyMenu-tree screens where they don't change per-action decisions.
   if ! _is_party_tree_screen "$SCR"; then
-    [ -n "$LOCNAME" ] && LINE="$LINE $(_col "$_C_LOC" "loc=$LOCNAME")"
-    [ "$SCR" = "TravelList" ] && [ -n "$HOV" ] && LINE="$LINE hover=$(_col "$_C_MARK" "$HOV")"
+    [ -n "$LOCNAME" ] && LINE="$LINE $(_col "$_C_LOC" "curLoc=$LOCNAME")"
     [ -n "$OBJNAME" ] && LINE="$LINE $(_col "$_C_LOC" "obj=$OBJNAME")"
-    [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
+    # Gil only on shop-adjacent screens — no decision value on WorldMap/TravelList/battle.
+    if [[ "$SCR" == LocationMenu || "$SCR" == Outfitter* || "$SCR" == Tavern || "$SCR" == WarriorsGuild || "$SCR" == PoachersDen || "$SCR" == SaveGame* || "$SCR" == ShopConfirmDialog ]]; then
+      [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
+    fi
   fi
 
   printf '%b\n' "$LINE"
@@ -329,7 +349,8 @@ _show_helpers() {
     party_summary                         Show all units at a glance
     check_unit <name>                     Quick stat dump for one unit
     save_and_travel <id>                  Save then travel to location
-    enter_shop                            Enter the Outfitter at current location"
+    enter_shop                            Enter the Outfitter at current location
+    start_encounter                       Trigger random encounter (battlegrounds only)"
       ;;
     PartyMenu)
       helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
@@ -365,13 +386,49 @@ _show_helpers() {
     swap_unit <name>                      Cycle Q/E to named unit"
       ;;
     BattleFormation)
-      helpers="    auto_place_units                      Accept default placement and start battle"
+      helpers="    auto_place_units                      Accept default placement and start battle
+    party_summary                         Show all units at a glance"
       ;;
     EncounterDialog)
       helpers="    auto_place_units                      Accept fight + place units + start battle"
       ;;
     GameOver)
       helpers="    load                                  Load most recent save"
+      ;;
+    BattleMyTurn)
+      helpers="    battle_move <x> <y>                   Move active unit to tile
+    battle_ability \"<name>\" [x y]          Use ability (coords optional for self-target)
+    battle_attack <x> <y>                 Shortcut for battle_ability \"Attack\" x y
+    battle_wait                           End turn + auto-face + wait for next turn
+    battle_flee                           Quit battle, return to world map"
+      ;;
+    BattleActing)
+      helpers="    battle_ability \"<name>\" [x y]          Use ability (if you haven't acted yet)
+    battle_wait                           End turn + auto-face + wait for next turn"
+      ;;
+    BattlePaused)
+      helpers="    battle_flee                           Quit battle, return to world map
+    battle_retry                          Retry battle from start
+    battle_retry_formation                Retry with formation screen"
+      ;;
+    TravelList)
+      helpers="    world_travel_to <id>                  Travel to location by ID"
+      ;;
+    LocationMenu)
+      helpers="    enter_shop                            Enter the Outfitter at current location"
+      ;;
+    Cutscene)
+      helpers="    advance_dialogue                      Advance one text box"
+      ;;
+    BattleDialogue)
+      helpers="    advance_dialogue                      Advance one text box"
+      ;;
+    PartyMenuInventory|PartyMenuChronicle|PartyMenuOptions)
+      helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
+    open_job_selection [unit]             Jump to Job Selection
+    open_character_status [unit]          Jump to Character Status
+    party_summary                         Show all units at a glance
+    check_unit <name>                     Quick stat dump for one unit"
       ;;
   esac
   if [ -n "$helpers" ]; then
@@ -506,6 +563,7 @@ batch() {
 # Usage: execute_action Flee, execute_action Move, execute_action Wait
 execute_action() {
   _check_total || return 1
+  _fft_guard
   rm -f "$B/response.json"
   echo "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"$1\"}" > "$B/command.json"
   local tries=0
@@ -544,7 +602,8 @@ if(keys.length){console.log('  ValidPaths:');keys.forEach(k=>console.log('    '+
 battle_wait() { fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\"}" 60; }
 
 # battle_flee: Quit battle and return to world map (Tab → Down x4 → Enter → Enter).
-battle_flee() { fft "{\"id\":\"$(id)\",\"action\":\"battle_flee\"}"; }
+# 20s timeout — the full pause menu nav + world map transition takes ~12s.
+battle_flee() { fft "{\"id\":\"$(id)\",\"action\":\"battle_flee\"}" 20; }
 
 # world_travel_to: Navigate to a world map location by ID. Opens travel list, selects, confirms.
 # Usage: world_travel_to 26   (travel to Siedge Weald)
@@ -862,6 +921,36 @@ else process.stdout.write('Q,'+bwd);
 }
 
 # auto_place_units: Accept default unit placement on BattleFormation and start battle.
+# start_encounter: Trigger random encounter at current battleground location.
+# Validates WorldMap + battleground (IDs 24-42), recenters cursor (C),
+# enters location (Enter), accepts Fight (Enter). Lands on BattleFormation.
+# Use auto_place_units after this to commence battle.
+start_encounter() {
+  _FFT_DONE=0
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
+  local curLoc=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.location??-1)" < "$B/response.json" 2>/dev/null)
+
+  if [ "$curScr" != "WorldMap" ]; then
+    echo "[start_encounter] ERROR: must be on WorldMap (current: $curScr)"
+    return 1
+  fi
+  if [ "$curLoc" -lt 24 ] || [ "$curLoc" -gt 42 ]; then
+    echo "[start_encounter] ERROR: not a battleground (curLoc=$curLoc). Battlegrounds are IDs 24-42."
+    return 1
+  fi
+
+  # Step 1: C (recenter) → Enter (trigger encounter). Wait for EncounterDialog.
+  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":67,\"name\":\"C\"},{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":500,\"waitForScreen\":\"EncounterDialog\",\"waitTimeoutMs\":8000}" >/dev/null
+  _FFT_DONE=0
+
+  # EncounterDialog animation needs ~2s before it accepts input.
+  sleep 2
+
+  # Step 2: Enter (accept Fight — cursor defaults there).
+  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"}],\"waitUntilScreenNot\":\"EncounterDialog\",\"waitTimeoutMs\":10000}"
+}
+
 # Single bridge action — C# places 4 units (Enter×2 each), commences (Space+Enter),
 # then polls until a battle state appears.
 auto_place_units() {
@@ -2011,6 +2100,68 @@ try{
   if(a){
     const ab=[a.primary,a.secondary,a.reaction,a.support,a.movement].map(x=>x||'(none)');
     console.log('  Abilities: '+ab.join(' / '));
+  }
+}catch(e){}
+" 2>/dev/null
+    fi
+
+    # JobSelection verbose: render the 3-row job grid with cursor marker.
+    # Grid layout is static per-character (story chars get unique class at
+    # (0,0), generics get Squire; males get Bard at (2,4), females Dancer).
+    # Cell states (Unlocked/Visible/Locked) only available for hovered cell
+    # today — full-grid classification is a future C# addition.
+    if $verbose && [ "$SCR" = "JobSelection" ] && [ -f "$B/response.json" ]; then
+      cat "$B/response.json" | node -e "
+try{
+  const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
+  const s=j.screen||{};
+  const cr=s.cursorRow;
+  const cc=s.cursorCol;
+  // Determine grid variant from viewedUnit.
+  const vu=s.viewedUnit||'';
+  const storyClass={
+    Ramza:'Gallant Knight',Agrias:'Holy Knight',Mustadio:'Machinist',
+    Rapha:'Skyseer',Marach:'Netherseer',Beowulf:'Templar',
+    'Construct 8':'Steel Giant',Orlandeau:'Thunder God',
+    Meliadoul:'Divine Knight',Reis:'Dragonkin',Cloud:'Soldier',
+    Luso:'Game Hunter',Balthier:'Sky Pirate'
+  };
+  const cell00=storyClass[vu]||'Squire';
+  // Gender: roster lookup for generic units. Story chars default male (Bard).
+  const roster=(s.roster&&s.roster.units)||[];
+  const unit=roster.find(u=>u.name===vu)||{};
+  const isFemale=unit.job&&['Dancer'].includes(unit.job); // rough heuristic
+  const cell24=isFemale?'Dancer':'Bard';
+  const grid=[
+    [cell00,'Chemist','Knight','Archer','Monk','White Mage'],
+    ['Black Mage','Time Mage','Summoner','Thief','Orator','Mystic','Geomancer'],
+    ['Dragoon','Samurai','Ninja','Arithmetician',cell24,'Mime'],
+  ];
+  // Header line: unit identity
+  const parts=[vu||'?'];
+  if(unit.job)parts.push(unit.job);
+  if(unit.level)parts.push('Lv '+unit.level);
+  if(unit.jp!==undefined)parts.push('JP '+unit.jp);
+  console.log('  '+parts.join('  ')+':');
+  // Column headers
+  const colW=18;
+  const gutter='cursor->  ';
+  const blank=' '.repeat(gutter.length);
+  const maxCols=Math.max(...grid.map(r=>r.length));
+  let hdr='  '+blank;
+  for(let c=0;c<maxCols;c++)hdr+=('c'+c).padEnd(colW);
+  console.log(hdr);
+  // Grid rows
+  for(let r=0;r<grid.length;r++){
+    const isCursorRow=(r===cr);
+    let line='  r'+r+(isCursorRow?' '+gutter:' '+blank);
+    for(let c=0;c<grid[r].length;c++){
+      const cls=grid[r][c];
+      const isCursor=(r===cr&&c===cc);
+      const cell=isCursor?'['+cls+']':cls;
+      line+=cell.padEnd(colW);
+    }
+    console.log(line.trimEnd());
   }
 }catch(e){}
 " 2>/dev/null

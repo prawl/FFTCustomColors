@@ -2363,7 +2363,39 @@ namespace FFTColorCustomizer.Utilities
                     && successCount > 0
                     && smInPartyTreeNow)
                 {
-                    response.Screen = BuildScreenFromSM();
+                    // SM says party tree — but verify with detection first.
+                    // If detection says we left the party tree (e.g. WorldMap
+                    // after battle_flee, or LocationMenu after shop exit),
+                    // trust detection and sync the SM. The SM only wins for
+                    // disambiguating WITHIN the party tree.
+                    var detCheck = DetectScreen();
+                    bool detectionSaysPartyTree = detCheck != null && (
+                        detCheck.Name == "PartyMenu" ||
+                        detCheck.Name == "PartyMenuInventory" ||
+                        detCheck.Name == "PartyMenuChronicle" ||
+                        detCheck.Name == "PartyMenuOptions" ||
+                        detCheck.Name == "PartySubScreen");
+                    if (detCheck != null && !detectionSaysPartyTree)
+                    {
+                        // Detection says we're NOT in the party tree — SM is stale.
+                        ModLogger.Log($"[SM-Drift] SM={ScreenMachine.CurrentScreen} but detection={detCheck.Name}. Trusting detection.");
+                        response.Screen = detCheck;
+                        var detectedGs = detCheck.Name switch
+                        {
+                            "WorldMap" => GameScreen.WorldMap,
+                            "TravelList" => GameScreen.TravelList,
+                            "LocationMenu" => GameScreen.LocationMenu,
+                            _ => (GameScreen?)null
+                        };
+                        if (detectedGs.HasValue)
+                            ScreenMachine.SetScreen(detectedGs.Value);
+                    }
+                    else
+                    {
+                        // Detection agrees we're in the party tree — use SM
+                        // for the precise sub-screen disambiguation.
+                        response.Screen = BuildScreenFromSM();
+                    }
                 }
                 // Fallback to detection if SM isn't available or didn't
                 // model the transition.
@@ -4058,11 +4090,19 @@ namespace FFTColorCustomizer.Utilities
                     if (utf.HasValue) unitsTabFlag = (int)utf.Value.value;
                     if (itf.HasValue) inventoryTabFlag = (int)itf.Value.value;
                 }
+                // Only trust the SM's party-sub-screen signal when
+                // menuDepth confirms we're in a nested panel. At depth 0
+                // we're on an outer screen (WorldMap / PartyMenu / CS) —
+                // passing isPartySubScreen=true at depth 0 causes the
+                // detection to return "PartySubScreen" for states that
+                // should be WorldMap, leading to SM-drift EqA misreports.
+                bool partySubScreenSignal = !inBattle && IsPartySubScreen()
+                    && screen.MenuDepth > 0;
                 screen.Name = GameBridge.ScreenDetectionLogic.Detect(
                     party, ui, rawLocation, slot0, slot9,
                     battleMode, moveMode, paused, gameOverFlag,
                     screen.BattleTeam, screen.BattleActed, screen.BattleMoved,
-                    eA, eB, !inBattle && IsPartySubScreen(), eventId,
+                    eA, eB, partySubScreenSignal, eventId,
                     submenuFlag: submenuFlag, menuCursor: screen.MenuCursor,
                     hover: hover, locationMenuFlag: locationMenuFlag,
                     insideShopFlag: insideShopFlag,
@@ -4346,8 +4386,16 @@ namespace FFTColorCustomizer.Utilities
                     }
                 }
 
-                if (screen.Name == "PartySubScreen" || screen.Name == "PartyMenu" ||
-                    (stateMachineInPartyMenu && (screen.Name == "TravelList" || screen.Name == "WorldMap")))
+                // SM override for party-tree screens. Only trust the SM when
+                // menuDepth > 0 OR detection itself says PartyMenu/PartySubScreen.
+                // When menuDepth == 0 and detection says WorldMap/TravelList,
+                // we're genuinely on an outer screen — the SM is stale.
+                bool smOverrideAllowed = screen.Name == "PartySubScreen"
+                    || screen.Name == "PartyMenu"
+                    || (stateMachineInPartyMenu
+                        && (screen.Name == "TravelList" || screen.Name == "WorldMap")
+                        && screen.MenuDepth > 0);
+                if (smOverrideAllowed)
                 {
                     if (ScreenMachine != null)
                     {
@@ -4457,6 +4505,19 @@ namespace FFTColorCustomizer.Utilities
                     }
                 }
 
+                // SM-sync: when detection says WorldMap but the SM is stale
+                // in the party tree, snap the SM to WorldMap immediately
+                // instead of waiting for the 3-read drift counter.
+                if (!smOverrideAllowed && ScreenMachine != null
+                    && stateMachineInPartyMenu
+                    && (screen.Name == "WorldMap" || screen.Name == "TravelList"))
+                {
+                    var targetGs = screen.Name == "WorldMap" ? GameScreen.WorldMap : GameScreen.TravelList;
+                    ModLogger.Log($"[SM-Snap] menuDepth=0 + detection={screen.Name} + SM={ScreenMachine.CurrentScreen}. Snapping SM to {targetGs}.");
+                    ScreenMachine.SetScreen(targetGs);
+                    ScreenMachine.MarkKeyProcessed();
+                }
+
                 // Clear the default "Move/Abilities/Wait/..." UI label on screens
                 // where the battle menuCursor byte is meaningless. That byte is
                 // populated from a battle-only address and defaults to 0 → "Move"
@@ -4464,10 +4525,21 @@ namespace FFTColorCustomizer.Utilities
                 // `[WorldMap] ui=Move` or `[TravelList] ui=Move`. Screens below
                 // that DO have a valid ui= set their own label later in this method.
                 if (screen.Name == "WorldMap" ||
-                    screen.Name == "TravelList" ||
-                    screen.Name == "TitleScreen" ||
-                    screen.Name == "EncounterDialog")
+                    screen.Name == "TitleScreen")
                 {
+                    screen.UI = null;
+                }
+                if (screen.Name == "EncounterDialog")
+                {
+                    // Cursor defaults to Fight on encounter dialogs.
+                    screen.UI = "Fight";
+                }
+                if (screen.Name == "TravelList")
+                {
+                    // Hover byte (0x140787A22) goes to 254 when TravelList
+                    // opens — the world-map cursor is inactive. No known
+                    // memory address for the list's highlighted row yet.
+                    // Blocked on a memory scan for the TravelList cursor.
                     screen.UI = null;
                 }
 
