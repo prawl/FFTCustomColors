@@ -1741,10 +1741,42 @@ us.forEach(u=>{
       [ -n "$INV_SUMMARY" ] && printf '%b\n' "  items=$INV_SUMMARY"
     fi
 
-    # Equipment loadout + abilities for CharacterStatus / EquipmentAndAbilities.
+    # CharacterStatus verbose: unit stat sheet from roster data.
+    # Shows the same info as the compact EqA summary but sourced from
+    # the roster (since loadout/abilities aren't populated on CS).
+    if $verbose && [ "$SCR" = "CharacterStatus" ] && [ -f "$B/response.json" ]; then
+      cat "$B/response.json" | node -e "
+try{
+  const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
+  const vu=j.screen?.viewedUnit;
+  const units=j.screen?.roster?.units||[];
+  const u=vu?units.find(x=>x.name===vu):units[0];
+  if(!u)process.exit(0);
+  // Line 1: identity
+  const parts=[u.name,u.job,'Lv '+u.level,'JP '+(u.jp??'--'),'Brave '+(u.brave??'--'),'Faith '+(u.faith??'--')];
+  if(u.zodiac)parts.push('Zodiac: '+u.zodiac);
+  console.log('  '+parts.join('  '));
+  // Line 2: stats (placeholders until memory reads land)
+  console.log('  HP --/--  MP --/--  PA --  MA --  Speed --  Move --  Jump --');
+  // Line 3: equipment
+  const eq=u.equipment||{};
+  const slots=[eq.weapon,eq.leftHand,eq.shield,eq.helm,eq.body,eq.accessory].filter(Boolean);
+  if(slots.length)console.log('  Equip: '+slots.join(' / '));
+  else console.log('  Equip: (none)');
+  // Line 4: abilities (from EqA enrichment if available, else placeholder)
+  const a=j.screen?.abilities;
+  if(a){
+    const ab=[a.primary,a.secondary,a.reaction,a.support,a.movement].map(x=>x||'(none)');
+    console.log('  Abilities: '+ab.join(' / '));
+  }
+}catch(e){}
+" 2>/dev/null
+    fi
+
+    # Equipment loadout + abilities for EquipmentAndAbilities.
     # Full two-column grid is verbose-only (planning data). Compact gets the
     # two summary lines from _fmt_screen_compact instead.
-    if $verbose && { [ "$SCR" = "EquipmentAndAbilities" ] || [ "$SCR" = "CharacterStatus" ]; } \
+    if $verbose && [ "$SCR" = "EquipmentAndAbilities" ] \
        && [ -f "$B/response.json" ]; then
       cat "$B/response.json" | node -e "
 try{

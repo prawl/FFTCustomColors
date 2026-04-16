@@ -85,13 +85,21 @@ namespace FFTColorCustomizer.GameBridge
                 "BattleStatus" => GetBackOutPaths("You're in the Status screen! Press Escape to get back to battle."),
                 "BattleAutoBattle" => GetBackOutPaths("You're in the Auto-Battle menu! Press Escape to get back to battle before the AI takes over."),
                 "BattleDialogue" => GetBattleDialoguePaths(),
-                "BattleVictory" => null, // auto-advances, no action needed
+                "BattleVictory" => GetBattleVictoryPaths(),
                 "BattleDesertion" => GetDesertionPaths(),
                 "BattleFormation" => GetBattleFormationPaths(),
                 "BattleAbilities" => GetBattleAbilitiesSubPaths(),
                 "BattleAlliesTurn" => GetBattleWaitingPaths(),
                 "BattleEnemiesTurn" => GetBattleWaitingPaths(),
                 "Battle" => GetBattleWaitingPaths(),
+                // LoadGame: file picker screen after GameOver or from title/pause menu
+                "LoadGame" => GetLoadGamePaths(),
+                // PartySubScreen: fallback when detection knows we're in the
+                // party tree but can't determine which sub-screen
+                "PartySubScreen" => GetPartySubScreenPaths(),
+                // BattleWaiting: generic waiting state (rare, usually the
+                // specific AlliesTurn/EnemiesTurn fires instead)
+                "BattleWaiting" => GetBattleWaitingPaths(),
                 // Chronicle sub-screens — not yet implemented, Back only
                 "ChronicleEncyclopedia" => GetChronicleSubPaths(),
                 "ChronicleStateOfRealm" => GetChronicleSubPaths(),
@@ -1262,6 +1270,67 @@ namespace FFTColorCustomizer.GameBridge
         // Chronicle sub-screens: not yet implemented. Provide Back to
         // return to the Chronicle grid and ReturnToWorldMap.
         // ============================================================
+
+        // ============================================================
+        // LoadGame: file picker screen reached after GameOver or from
+        // title/pause menu. Enter loads the highlighted save, Escape
+        // goes back (to title or pause menu depending on how we got here).
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetLoadGamePaths()
+        {
+            return new()
+            {
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Scroll up in save file list" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Scroll down in save file list" },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Load highlighted save file"
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Cancel, back to title/pause menu"
+                },
+            };
+        }
+
+        // ============================================================
+        // PartySubScreen: fallback when detection knows we're in the
+        // party tree but can't determine the exact sub-screen. Provide
+        // Escape to back out one level.
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetPartySubScreenPaths()
+        {
+            return new()
+            {
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Back one level (exact destination depends on current sub-screen)"
+                },
+                ["ReturnToWorldMap"] = ReturnToWorldMap(3),
+            };
+        }
+
+        // ============================================================
+        // BattleVictory: post-battle results screen. Auto-advances but
+        // Enter speeds through the rewards/JP/level-up sequence.
+        // ============================================================
+
+        private static Dictionary<string, PathEntry> GetBattleVictoryPaths()
+        {
+            return new()
+            {
+                ["Advance"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Advance through victory rewards (JP, level-ups, items)"
+                },
+            };
+        }
 
         private static Dictionary<string, PathEntry> GetChronicleSubPaths()
         {
