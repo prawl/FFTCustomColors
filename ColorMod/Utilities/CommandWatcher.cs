@@ -51,6 +51,11 @@ namespace FFTColorCustomizer.Utilities
         // reports a party-tree screen but raw + MenuDepth show we're back
         // on WorldMap. Same 3-frame debounce logic.
         private int _worldMapDriftStreak = 0;
+        // SM-Snap streak: requires 3 consecutive reads of (menuDepth=0 +
+        // detection=WorldMap/TravelList + SM-in-party-tree) before snapping.
+        // Prevents animation-lag false positives during legitimate transitions
+        // into EqA/pickers where MenuDepth hasn't flipped to 2 yet.
+        private int _smSnapStreak = 0;
         private bool _waitConfirmPending; // Set when battle_wait rejected for no move/act; next battle_wait goes through
         private string? _lastAbilityName; // Last ability used via battle_ability, shown in ui= during targeting
         private readonly BattleMenuTracker _battleMenuTracker = new();
@@ -2364,10 +2369,12 @@ namespace FFTColorCustomizer.Utilities
                     && smInPartyTreeNow)
                 {
                     // SM says party tree — but verify with detection first.
-                    // If detection says we left the party tree (e.g. WorldMap
-                    // after battle_flee, or LocationMenu after shop exit),
-                    // trust detection and sync the SM. The SM only wins for
-                    // disambiguating WITHIN the party tree.
+                    // If detection says we left the party tree AND menuDepth==0
+                    // (definitively outer screen), trust detection and sync
+                    // the SM. When menuDepth > 0, we're in a nested panel —
+                    // trust the SM because detection can be confused by
+                    // stale ui=1/unitsTabFlag=0 combinations on EqA/pickers
+                    // that make detection return TravelList spuriously.
                     var detCheck = DetectScreen();
                     bool detectionSaysPartyTree = detCheck != null && (
                         detCheck.Name == "PartyMenu" ||
@@ -2375,10 +2382,20 @@ namespace FFTColorCustomizer.Utilities
                         detCheck.Name == "PartyMenuChronicle" ||
                         detCheck.Name == "PartyMenuOptions" ||
                         detCheck.Name == "PartySubScreen");
-                    if (detCheck != null && !detectionSaysPartyTree)
+                    // Skip the drift check when the SM just transitioned
+                    // during this command — menuDepth may lag 50-200ms
+                    // before flipping from 0 to 2 after entering a nested
+                    // panel. If SM.CurrentScreen != _smScreenBeforeKeys,
+                    // the SM just updated itself; trust it through the
+                    // animation lag. Next detection cycle re-checks.
+                    bool smJustTransitioned = ScreenMachine.CurrentScreen != _smScreenBeforeKeys;
+                    if (detCheck != null && !detectionSaysPartyTree
+                        && detCheck.MenuDepth == 0
+                        && !smJustTransitioned)
                     {
-                        // Detection says we're NOT in the party tree — SM is stale.
-                        ModLogger.Log($"[SM-Drift] SM={ScreenMachine.CurrentScreen} but detection={detCheck.Name}. Trusting detection.");
+                        // Detection says we're NOT in the party tree AND
+                        // memory confirms outer screen — SM is stale.
+                        ModLogger.Log($"[SM-Drift] SM={ScreenMachine.CurrentScreen} but detection={detCheck.Name} + menuDepth=0. Trusting detection.");
                         response.Screen = detCheck;
                         var detectedGs = detCheck.Name switch
                         {
@@ -4387,15 +4404,29 @@ namespace FFTColorCustomizer.Utilities
                     }
                 }
 
-                // SM override for party-tree screens. Only trust the SM when
-                // menuDepth > 0 OR detection itself says PartyMenu/PartySubScreen.
-                // When menuDepth == 0 and detection says WorldMap/TravelList,
-                // we're genuinely on an outer screen — the SM is stale.
+                // SM override for party-tree screens.
+                //   - Trust the SM when menuDepth > 0 (inside a nested panel).
+                //   - Trust the SM when detection itself says party-tree.
+                //   - Also trust the SM when MenuDepth == 0 but we're within
+                //     the animation-lag window after a key press (SM just
+                //     processed a key and thinks we're in the tree). This
+                //     catches the CharacterStatus → EqA transition where
+                //     the MenuDepth byte takes 50-200ms to flip from 0 to 2.
+                // inAnimationLag: SM's CurrentScreen just changed during
+                // this detection cycle (either from a key press driving a
+                // transition, or from a previous snap). menuDepth may still
+                // read stale during the 50-200ms panel-open animation.
+                // Note: this is a best-effort signal; when DetectScreen is
+                // called from a 0-key query it can't tell "SM just changed",
+                // so this is mostly effective on the key-press response path.
+                bool inAnimationLag = ScreenMachine != null
+                    && ScreenMachine.LastSetScreenFromKey
+                    && ScreenMachine.KeysSinceLastSetScreen <= 1;
                 bool smOverrideAllowed = screen.Name == "PartySubScreen"
                     || screen.Name == "PartyMenu"
                     || (stateMachineInPartyMenu
                         && (screen.Name == "TravelList" || screen.Name == "WorldMap")
-                        && screen.MenuDepth > 0);
+                        && (screen.MenuDepth > 0 || inAnimationLag));
                 if (smOverrideAllowed)
                 {
                     if (ScreenMachine != null)
@@ -4507,16 +4538,28 @@ namespace FFTColorCustomizer.Utilities
                 }
 
                 // SM-sync: when detection says WorldMap but the SM is stale
-                // in the party tree, snap the SM to WorldMap immediately
-                // instead of waiting for the 3-read drift counter.
+                // in the party tree, snap the SM. Debounced to avoid racing
+                // animation lag — MenuDepth takes 50-200ms to flip after a
+                // key press transitions between outer/inner panels. Requires
+                // 3 consecutive reads to catch true drift without stomping
+                // legitimate transitions.
                 if (!smOverrideAllowed && ScreenMachine != null
                     && stateMachineInPartyMenu
                     && (screen.Name == "WorldMap" || screen.Name == "TravelList"))
                 {
-                    var targetGs = screen.Name == "WorldMap" ? GameScreen.WorldMap : GameScreen.TravelList;
-                    ModLogger.Log($"[SM-Snap] menuDepth=0 + detection={screen.Name} + SM={ScreenMachine.CurrentScreen}. Snapping SM to {targetGs}.");
-                    ScreenMachine.SetScreen(targetGs);
-                    ScreenMachine.MarkKeyProcessed();
+                    _smSnapStreak++;
+                    if (_smSnapStreak >= 3)
+                    {
+                        var targetGs = screen.Name == "WorldMap" ? GameScreen.WorldMap : GameScreen.TravelList;
+                        ModLogger.Log($"[SM-Snap] menuDepth=0 + detection={screen.Name} + SM={ScreenMachine.CurrentScreen} for {_smSnapStreak} reads. Snapping SM to {targetGs}.");
+                        ScreenMachine.SetScreen(targetGs);
+                        ScreenMachine.MarkKeyProcessed();
+                        _smSnapStreak = 0;
+                    }
+                }
+                else
+                {
+                    _smSnapStreak = 0;
                 }
 
                 // Clear the default "Move/Abilities/Wait/..." UI label on screens
