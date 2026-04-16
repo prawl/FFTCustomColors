@@ -349,18 +349,26 @@ _show_helpers() {
     list_support_abilities               Show learned support abilities
     list_movement_abilities              Show learned movement abilities
     remove_equipment                     Unequip item at cursor
-    swap_unit <name>                     Cycle Q/E to named unit"
+    swap_unit <name>                     Cycle Q/E to named unit
+    open_picker <unit> <slot>            Open equipment picker (weapon/shield/helm/garb/accessory)"
       ;;
     CharacterStatus)
       helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
     open_job_selection [unit]             Jump to Job Selection
     dismiss_unit                          Hold B to open dismiss confirmation
     swap_unit <name>                      Cycle Q/E to named unit
-    check_unit <name>                     Quick stat dump for one unit"
+    check_unit <name>                     Quick stat dump for one unit
+    open_picker <unit> <slot>             Open equipment picker (weapon/shield/helm/garb/accessory)"
       ;;
     JobSelection)
       helpers="    change_job_to <class>                 Change to named job class
     swap_unit <name>                      Cycle Q/E to named unit"
+      ;;
+    BattleFormation)
+      helpers="    auto_place_units                      Accept default placement and start battle"
+      ;;
+    EncounterDialog)
+      helpers="    auto_place_units                      Accept fight + place units + start battle"
       ;;
     GameOver)
       helpers="    load                                  Load most recent save"
@@ -858,6 +866,84 @@ else process.stdout.write('Q,'+bwd);
     fft "{\"id\":\"$(id)\",\"keys\":[$keysJson],\"delayBetweenMs\":300}" >/dev/null
     _FFT_DONE=0
   fi
+  screen
+}
+
+# auto_place_units: Accept default unit placement on BattleFormation and start battle.
+# The game pre-places your top units on blue tiles. This helper confirms the
+# default layout and commences battle. Works from BattleFormation OR right
+# after execute_action Fight (handles the 3-6s detection-unreliable transition).
+# Waits until a battle state appears (BattleMyTurn/BattleAlliesTurn/BattleEnemiesTurn).
+auto_place_units() {
+  _FFT_DONE=0
+  # The formation screen takes 3-6 seconds to appear after Fight. Detection
+  # is unreliable during this window (reports TravelList). Don't check state —
+  # just wait, then fire the sequence blind.
+  sleep 4
+  # Enter (confirm first unit placement) → Enter (confirm/dismiss) →
+  # Space (open Commence Battle dialog) → Enter (confirm Yes)
+  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"},{\"vk\":13,\"name\":\"Enter\"},{\"vk\":32,\"name\":\"Space\"},{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":500}" >/dev/null
+  _FFT_DONE=0
+  # Wait for battle to start (can take several seconds for intro animations)
+  local tries=0
+  while [ $tries -lt 30 ]; do
+    sleep 1
+    rm -f "$B/response.json"
+    echo "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}" > "$B/command.json"
+    local t=0
+    until [ -f "$B/response.json" ] || [ $t -ge 150 ]; do sleep 0.02; t=$((t+1)); done
+    local scr=$(tr -d '\r\n ' < "$B/response.json" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
+    case "$scr" in
+      BattleMyTurn|BattleAlliesTurn|BattleEnemiesTurn|BattleActing)
+        echo "[auto_place_units] Battle started ($scr)"
+        return 0 ;;
+    esac
+    tries=$((tries+1))
+  done
+  echo "[auto_place_units] WARNING: timed out waiting for battle state (last: $scr)"
+  return 1
+}
+
+# open_picker <unit> <slot>: Navigate to a specific equipment picker.
+# Slot: weapon, shield, helm, garb, accessory
+# Opens the picker but can't navigate to a specific item (picker cursor
+# tracking not yet implemented). Use ScrollDown/ScrollUp + Select manually.
+open_picker() {
+  if [ $# -lt 2 ]; then echo "[open_picker] usage: open_picker <unit> <slot>"; return 1; fi
+  local slot="${!#}"    # last arg is slot
+  local unit="${*%$slot}" # everything before last arg is unit name
+  unit="${unit% }"       # trim trailing space
+
+  # Map slot name to EqA row index (column 0)
+  local row
+  case "$slot" in
+    weapon|right_hand|right)   row=0 ;;
+    shield|left_hand|left)     row=1 ;;
+    helm|headware|head)        row=2 ;;
+    garb|armor|body|chest)     row=3 ;;
+    accessory|access)          row=4 ;;
+    *) echo "[open_picker] ERROR: unknown slot '$slot'. Use: weapon, shield, helm, garb, accessory"; return 1 ;;
+  esac
+
+  # Navigate to the unit's EqA
+  open_eqa "$unit" >/dev/null
+  _FFT_DONE=0
+
+  # Navigate to the target row in column 0 (equipment column).
+  # EqA opens with cursor at (0,0) = weapon slot. Move Down to target row.
+  local keysJson=""
+  local first=1
+  for i in $(seq 1 "$row"); do
+    [ "$first" -eq 0 ] && keysJson+=","
+    keysJson+="{\"vk\":40,\"name\":\"Down\"}"
+    first=0
+  done
+  # Add Enter to open the picker
+  [ "$first" -eq 0 ] && keysJson+=","
+  keysJson+="{\"vk\":13,\"name\":\"Enter\"}"
+
+  fft "{\"id\":\"$(id)\",\"keys\":[$keysJson],\"delayBetweenMs\":250}" >/dev/null
+  _FFT_DONE=0
   screen
 }
 
