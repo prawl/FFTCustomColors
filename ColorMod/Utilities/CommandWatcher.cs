@@ -4109,7 +4109,8 @@ namespace FFTColorCustomizer.Utilities
                     shopSubMenuIndex: shopSubMenuIndex,
                     shopTypeIndex: shopTypeIndex,
                     unitsTabFlag: unitsTabFlag, inventoryTabFlag: inventoryTabFlag,
-                    encounterFlag: encounterFlag);
+                    encounterFlag: encounterFlag,
+                    menuDepth: screen.MenuDepth);
 
                 // TravelList→WorldMap override: when the SM just left
                 // PartyMenu via a key press (Escape) and detection says

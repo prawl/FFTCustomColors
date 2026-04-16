@@ -49,7 +49,7 @@ namespace FFTColorCustomizer.GameBridge
             int locationMenuFlag = 0, int insideShopFlag = 0,
             int shopSubMenuIndex = 0, int shopTypeIndex = 0,
             int unitsTabFlag = 0, int inventoryTabFlag = 0,
-            int encounterFlag = 0)
+            int encounterFlag = 0, int menuDepth = -1)
         {
             // rawLocation is the last-visited named place (village/shop/campaign ground).
             // It's STICKY — retains the last-visited location even when the player leaves.
@@ -105,7 +105,13 @@ namespace FFTColorCustomizer.GameBridge
             // (CharacterStatus, EqA, pickers). If we return "PartyMenu" here
             // unconditionally, the stale-SM recovery block misinterprets a
             // legitimate CharacterStatus as stale and stomps it back to PartyMenu.
-            if (party == 0 && (unitsTabFlag == 1 || inventoryTabFlag == 1))
+            // menuDepth==0 means outer screen (WorldMap/PartyMenu grid/CS).
+            // The tab flags can be stale after leaving PartyMenu (e.g. after
+            // battle_flee the unitsTabFlag stays 1 on WorldMap). Only trust
+            // the flags when menuDepth is unknown (-1) or > 0 (inside a panel).
+            // When menuDepth==0, prefer the later WorldMap/TravelList rules.
+            if (party == 0 && (unitsTabFlag == 1 || inventoryTabFlag == 1)
+                && menuDepth != 0)
                 return "PartyMenu";
 
             // atNamedLocation and onWorldMapByMoveMode both override stale battle sentinels.
