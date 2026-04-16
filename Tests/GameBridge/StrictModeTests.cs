@@ -41,7 +41,9 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "resolve_picker_cursor",
             "resolve_job_cursor",
             "resolve_party_menu_cursor",
-            "resolve_equip_picker_cursor"
+            "resolve_equip_picker_cursor",
+            "resolve_eqa_row",
+            "remove_equipment_at_cursor"
         };
 
         [Theory]

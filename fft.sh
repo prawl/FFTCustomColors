@@ -1145,10 +1145,26 @@ list_support_abilities()   { _list_abilities support; }
 list_movement_abilities()  { _list_abilities movement; }
 list_secondary_abilities() { _list_abilities secondary; }
 
-# Equipment-slot change helpers — stubs pending inventory reader.
+# resolve_eqa_row: Pin the EqA column-0 cursor row via the unequip-diff trick.
+# Fires Enter+Enter to toggle the mirror, finds which slot transitioned, then
+# Enter+Escape to restore. Works on empty slots too (inverse 0→X detection).
+# Cost ~1.5s. Locks ScreenMachine.CursorRow to the resolved row.
+resolve_eqa_row() { fft "{\"id\":\"$(id)\",\"action\":\"resolve_eqa_row\"}"; }
+
+# remove_equipment: Unequip whatever is in the currently-hovered EqA slot.
+# One atomic C# action: opens the picker, toggles, reads the mirror to learn
+# which row we were on, leaves the slot empty, closes the picker. Works on
+# both populated and empty slots (empty-slot case auto-equips the first
+# picker item and then unequips it — net zero).
+remove_equipment() { fft "{\"id\":\"$(id)\",\"action\":\"remove_equipment_at_cursor\"}"; }
+
+# Equipment-slot change helpers — blocked on picker item-list decoding
+# (availableWeapons[] / per-job equippability table, TODO §0). Cursor row
+# IS now resolvable via resolve_eqa_row, but without the filtered item list
+# we can't navigate the picker to a named target.
 _not_implemented_equipment() {
   local helper="$1"
-  echo "[$helper] Not implemented yet. Blocked on inventory reader (TODO §17 in BATTLE_MEMORY_MAP.md — item inventory not yet located in memory). When that lands, these helpers will work like change_*_ability_to but route through the Equippable<Type> picker instead of the ability picker."
+  echo "[$helper] Not implemented yet. Cursor row is now resolvable via resolve_eqa_row, but picker item-list decoding (per-job equippability filter) is still pending. remove_equipment DOES work — use that if you just want to unequip the hovered slot."
   return 1
 }
 change_right_hand_to()  { _not_implemented_equipment change_right_hand_to; }
@@ -1156,7 +1172,6 @@ change_left_hand_to()   { _not_implemented_equipment change_left_hand_to; }
 change_helm_to()        { _not_implemented_equipment change_helm_to; }
 change_garb_to()        { _not_implemented_equipment change_garb_to; }
 change_accessory_to()   { _not_implemented_equipment change_accessory_to; }
-remove_equipment()      { _not_implemented_equipment remove_equipment; }
 
 # save: Save the game.
 save() { fft "{\"id\":\"$(id)\",\"action\":\"save\"}"; }

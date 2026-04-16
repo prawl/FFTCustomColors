@@ -902,6 +902,119 @@ namespace FFTColorCustomizer.Utilities
                 : "No stable equip-picker cursor byte found (0 candidates)";
         }
 
+        /// <summary>
+        /// Resolves the EqA column-0 cursor row via the unequip-diff trick.
+        /// Cursor row lives in UE4 widget heap that reallocates per keypress
+        /// so no stable memory byte exists (confirmed negative across 4 diff
+        /// test shapes session 19 + 2026-04-16). Instead we exploit the
+        /// equipment-picker toggle: Enter opens the picker for the hovered
+        /// slot, a second Enter on the currently-equipped item unequips it,
+        /// which flips that slot in the EqA mirror (0x141870854) from its
+        /// item ID to 0. We diff the mirror to find which slot transitioned,
+        /// that index IS the cursor row, then either restore (for pure
+        /// resolution) or leave the slot empty (for the remove flow).
+        ///
+        /// Edge case: if the hovered slot was already empty, the second
+        /// Enter will EQUIP the first item from the picker instead of
+        /// unequipping. The inverse transition (0 → X) is also detectable.
+        /// In that case the "restore" path unequips it again before Escape;
+        /// the "leave-empty" path ALSO has to unequip it (since we want the
+        /// final state to match the pre-call empty slot).
+        ///
+        /// Cost: 4 keypresses + 2 mirror reads, ~1.5s end-to-end.
+        /// </summary>
+        private (int row, string direction)? DoEqaRowResolve(bool restore)
+        {
+            if (Explorer == null) return null;
+            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+            if (win == IntPtr.Zero) return null;
+            const int VK_ENTER = 0x0D, VK_ESCAPE = 0x1B;
+            const long MIRROR = 0x141870854;
+
+            var before = ReadEqaMirror(MIRROR);
+            if (before == null) return null;
+
+            _inputSimulator.SendKeyPressToWindow(win, VK_ENTER);
+            Thread.Sleep(450);
+            _inputSimulator.SendKeyPressToWindow(win, VK_ENTER);
+            Thread.Sleep(450);
+
+            var after = ReadEqaMirror(MIRROR);
+            if (after == null)
+            {
+                _inputSimulator.SendKeyPressToWindow(win, VK_ESCAPE);
+                Thread.Sleep(300);
+                return null;
+            }
+
+            int resolvedRow = -1;
+            string direction = "none";
+            bool wasEmpty = false;
+            for (int i = 0; i < 5; i++)
+            {
+                if (before[i] != 0 && after[i] == 0)
+                {
+                    resolvedRow = i;
+                    direction = $"unequip {before[i]} → 0";
+                    break;
+                }
+            }
+            if (resolvedRow == -1)
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    if (before[i] == 0 && after[i] != 0)
+                    {
+                        resolvedRow = i;
+                        direction = $"equip 0 → {after[i]}";
+                        wasEmpty = true;
+                        break;
+                    }
+                }
+            }
+
+            // Final-state logic:
+            //   restore=true  → match pre-call state exactly (re-toggle if needed)
+            //   restore=false → leave slot empty (final mirror[row] == 0)
+            //
+            // After the two opening Enters:
+            //   - slot was populated  → now empty (toggle-off did the unequip)
+            //   - slot was empty      → now populated (first picker item auto-equipped)
+            //
+            // To restore: always one more Enter to re-toggle.
+            // To leave empty:
+            //   - if wasEmpty (now populated) → one more Enter to unequip
+            //   - if was populated (now empty) → no more toggles needed
+            bool needsOneMoreEnter = restore || wasEmpty;
+            if (needsOneMoreEnter)
+            {
+                _inputSimulator.SendKeyPressToWindow(win, VK_ENTER);
+                Thread.Sleep(450);
+            }
+            _inputSimulator.SendKeyPressToWindow(win, VK_ESCAPE);
+            Thread.Sleep(350);
+
+            if (resolvedRow == -1) return null;
+            ScreenMachine.SetEquipmentCursor(resolvedRow);
+            return (resolvedRow, direction);
+        }
+
+        private string? ResolveEqaRow()
+        {
+            var result = DoEqaRowResolve(restore: true);
+            if (result == null) return "ResolveEqaRow failed: mirror unreadable or no slot transition";
+            ModLogger.Log($"[ResolveEqaRow] resolved row={result.Value.row} ({result.Value.direction})");
+            return $"Resolved EqA row: {result.Value.row} ({result.Value.direction})";
+        }
+
+        private string? RemoveEquipmentAtCursor()
+        {
+            var result = DoEqaRowResolve(restore: false);
+            if (result == null) return "RemoveEquipmentAtCursor failed: mirror unreadable or no slot transition";
+            ModLogger.Log($"[RemoveEquipmentAtCursor] removed at row={result.Value.row} ({result.Value.direction})");
+            return $"Removed equipment at row: {result.Value.row} ({result.Value.direction})";
+        }
+
         // Actions that are always allowed regardless of strict mode (info/infrastructure)
         private static readonly HashSet<string> InfrastructureActions = new()
         {
@@ -916,7 +1029,9 @@ namespace FFTColorCustomizer.Utilities
             "resolve_picker_cursor",
             "resolve_job_cursor",
             "resolve_party_menu_cursor",
-            "resolve_equip_picker_cursor"
+            "resolve_equip_picker_cursor",
+            "resolve_eqa_row",
+            "remove_equipment_at_cursor"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -1473,6 +1588,40 @@ namespace FFTColorCustomizer.Utilities
                         var info = ResolveEquipPickerCursor(out cCount);
                         response.Status = info != null ? "completed" : "failed";
                         if (info == null) response.Error = "Memory explorer not initialized or game window not found";
+                        response.Info = info;
+                        ModLogger.Log($"[CommandBridge] {response.Info}");
+                        break;
+                    }
+
+                    case "resolve_eqa_row":
+                    {
+                        var info = ResolveEqaRow();
+                        response.Status = info != null && info.StartsWith("Resolved") ? "completed" : "failed";
+                        if (info == null)
+                        {
+                            response.Error = "Memory explorer not initialized or game window not found";
+                        }
+                        else if (!info.StartsWith("Resolved"))
+                        {
+                            response.Error = info;
+                        }
+                        response.Info = info;
+                        ModLogger.Log($"[CommandBridge] {response.Info}");
+                        break;
+                    }
+
+                    case "remove_equipment_at_cursor":
+                    {
+                        var info = RemoveEquipmentAtCursor();
+                        response.Status = info != null && info.StartsWith("Removed") ? "completed" : "failed";
+                        if (info == null)
+                        {
+                            response.Error = "Memory explorer not initialized or game window not found";
+                        }
+                        else if (!info.StartsWith("Removed"))
+                        {
+                            response.Error = info;
+                        }
                         response.Info = info;
                         ModLogger.Log($"[CommandBridge] {response.Info}");
                         break;
@@ -4695,7 +4844,12 @@ namespace FFTColorCustomizer.Utilities
                                 var (pIdx, secIdx) = skillsets.Value;
                                 screen.Abilities ??= new AbilityLoadoutPayload();
                                 if (pIdx > 0)
-                                    screen.Abilities.Primary = GetSkillsetName(pIdx);
+                                {
+                                    var pName = GetSkillsetName(pIdx);
+                                    if (pName == null && matchedSlot?.JobName != null)
+                                        pName = GetPrimarySkillsetByJobName(matchedSlot.JobName);
+                                    screen.Abilities.Primary = pName;
+                                }
                                 if (secIdx > 0)
                                     screen.Abilities.Secondary = GetSkillsetName(secIdx);
                             }

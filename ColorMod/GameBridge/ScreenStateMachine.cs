@@ -236,6 +236,23 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Force-sync the EquipmentAndAbilities column-0 cursor row from an
+        /// external source — specifically the unequip-resolver in
+        /// <c>CommandWatcher.ResolveEqaRow</c>. Also refreshes the saved
+        /// equipment row so Escape-from-picker returns to the right slot.
+        /// No-ops unless we're on the EquipmentScreen.
+        /// </summary>
+        public void SetEquipmentCursor(int row)
+        {
+            if (CurrentScreen != GameScreen.EquipmentScreen) return;
+            if (row < 0 || row > 4) return;
+            CursorRow = row;
+            CursorCol = 0;
+            _savedEquipmentRow = row;
+            _savedEquipmentCol = 0;
+        }
+
+        /// <summary>
         /// Bumps KeysSinceLastSetScreen without routing a key through the
         /// per-screen handlers. Used by the drift-recovery path in
         /// CommandWatcher to mark a SetScreen() as "intentional / not
