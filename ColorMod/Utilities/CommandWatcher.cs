@@ -2363,7 +2363,8 @@ namespace FFTColorCustomizer.Utilities
                     {
                         var detectedGs = response.Screen.Name switch
                         {
-                            "WorldMap" or "TravelList" => GameScreen.WorldMap,
+                            "WorldMap" => GameScreen.WorldMap,
+                            "TravelList" => GameScreen.TravelList,
                             "LocationMenu" => GameScreen.LocationMenu,
                             _ => (GameScreen?)null
                         };
@@ -3771,6 +3772,7 @@ namespace FFTColorCustomizer.Utilities
             string name = ScreenMachine.CurrentScreen switch
             {
                 GameScreen.WorldMap => "WorldMap",
+                GameScreen.TravelList => "TravelList",
                 GameScreen.LocationMenu => "LocationMenu",
                 GameScreen.CharacterStatus => "CharacterStatus",
                 GameScreen.EquipmentScreen => "EquipmentAndAbilities",

@@ -68,6 +68,8 @@ namespace FFTColorCustomizer.GameBridge
         ChronicleLessons,
         ChronicleAkademicReport,
 
+        TravelList,
+
         // LocationMenu: the shop/service selector at a named location
         // (Outfitter/Tavern/Warriors' Guild/Poachers' Den/Save Game).
         // Entered via Enter on WorldMap at a settlement. Escape returns

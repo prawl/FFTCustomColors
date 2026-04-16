@@ -286,6 +286,9 @@ namespace FFTColorCustomizer.GameBridge
                 case GameScreen.WorldMap:
                     HandleWorldMap(vkCode);
                     break;
+                case GameScreen.TravelList:
+                    HandleTravelList(vkCode);
+                    break;
                 case GameScreen.LocationMenu:
                     HandleLocationMenu(vkCode);
                     break;
@@ -379,6 +382,18 @@ namespace FFTColorCustomizer.GameBridge
             // Enter on WorldMap: could open LocationMenu (settlement),
             // trigger a story battle, or do nothing (cursor not on a node).
             // SM can't distinguish — don't transition, let detection handle it.
+            else if (vk == VK_T)
+            {
+                CurrentScreen = GameScreen.TravelList;
+            }
+        }
+
+        private void HandleTravelList(int vk)
+        {
+            if (vk == VK_ESCAPE)
+            {
+                CurrentScreen = GameScreen.WorldMap;
+            }
         }
 
         private void HandleLocationMenu(int vk)
