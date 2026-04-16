@@ -5132,7 +5132,16 @@ namespace FFTColorCustomizer.Utilities
                     or "LocationMenu" or "TitleScreen" or "Cutscene"
                     or "Outfitter" or "Tavern" or "WarriorsGuild" or "PoachersDen" or "SaveGame"
                     or "OutfitterBuy" or "OutfitterSell" or "OutfitterFitting"
-                    or "EncounterDialog" or "BattleSequence" or "BattleFormation";
+                    or "EncounterDialog" or "BattleSequence" or "BattleFormation"
+                    // Non-EqA PartyMenu tabs are certain-not-EqA: SM has
+                    // distinct states for them. The equipment mirror stays
+                    // populated on these tabs (same roster is visible) but
+                    // they are NOT EqA — don't promote.
+                    or "PartyMenuInventory" or "PartyMenuChronicle" or "PartyMenuOptions"
+                    // JobSelection and its modals: distinct from EqA, mirror
+                    // can match but screen is not EqA.
+                    or "JobSelection" or "JobActionMenu" or "JobChangeConfirmation"
+                    or "CombatSets" or "DismissUnit" or "CharacterDialog";
                 // Skip when SM is already in a party-tree screen — the mirror
                 // always matches there (same unit's gear is displayed on
                 // CharacterStatus, EqA, and pickers). Promoting would stomp
