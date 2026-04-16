@@ -146,6 +146,7 @@ fft() {
   # warning message keeps its spaces, then unescape \u0026 → &.
   local CW=$(grep -o '"chainWarning": *"[^"]*"' "$B/response.json" | head -1 | sed -E 's/^"chainWarning": *"//; s/"$//; s/\\u0026/\&/g')
   [ -n "$CW" ] && echo "[CHAIN WARNING] $CW" >&2
+  return 0
 }
 
 # _fmt_gil: Render a gil amount with thousands separators.
@@ -261,35 +262,26 @@ _fmt_screen_compact() {
     fi
     [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
   else
-    # Non-battle: viewedUnit, equippedItem, pickerTab, ui, in order of increasing specificity.
+    # Non-battle: ui= first (most decision-relevant), then viewedUnit, equippedItem, pickerTab.
+    [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
     [ -n "$VUNIT" ] && LINE="$LINE viewedUnit=$(_col "$_C_UNIT" "$VUNIT")"
     [ -n "$EQITEM" ] && LINE="$LINE equippedItem=$(_col "$_C_EQUIP" "$EQITEM")"
     [ -n "$PTAB" ] && LINE="$LINE pickerTab=$(_col "$_C_EQUIP" "$PTAB")"
-    [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
   fi
 
   [ -n "$SLCI" ] && LINE="$LINE row=$(_col "$_C_MARK" "$SLCI")"
-  LINE="$LINE status=$(printf '%b%s%b' "$(_status_col "$ST")" "$ST" "$_C_RESET")"
-  printf '%b\n' "$LINE"
+  [ "$ST" != "completed" ] && LINE="$LINE status=$(printf '%b%s%b' "$(_status_col "$ST")" "$ST" "$_C_RESET")"
 
-  # Inventory summary whenever it's present — count of unique items +
-  # total owned. Lets Claude see scale without iterating the full array.
-  # Full inventory[] is in verbose JSON only (184+ entries would bloat compact).
-  # Rendered on any screen where the backend populated screen.inventory
-  # (PartyMenu tabs + OutfitterSell — the state-machine tab discriminator
-  # can drift, so we use payload presence instead of screen name).
-  # OutfitterSell additionally surfaces total gil if the player sold everything.
-  local INV_SUMMARY=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const inv=j.screen?.inventory;if(!inv||!inv.length){return;}const name=j.screen?.name;const total=inv.reduce((a,e)=>a+(e.count||0),0);if(name==='OutfitterSell'){const gil=inv.reduce((a,e)=>a+((e.sellPrice||0)*(e.count||0)),0);process.stdout.write(inv.length+' sellable / '+total+' units / ~'+gil.toLocaleString()+' gil est (prices ~buy/2, not ground-truth)');}else{process.stdout.write(inv.length+' unique / '+total+' total owned');}}catch(e){}});" 2>/dev/null)
-  [ -n "$INV_SUMMARY" ] && printf '%b\n' "  $(_col "$_C_LOC" "inventory=$INV_SUMMARY")"
-
-  # Subordinate lines — each on its own indented line. Suppressed on
+  # World-side context — appended to same line. Suppressed on
   # PartyMenu-tree screens where they don't change per-action decisions.
   if ! _is_party_tree_screen "$SCR"; then
-    printf '%b\n' "  $(_col "$_C_LOC" "loc=$LOCSTR")"
-    [ "$SCR" = "TravelList" ] && [ -n "$HOV" ] && printf '%b\n' "  hover=$(_col "$_C_MARK" "$HOV")"
-    [ -n "$OBJSTR" ] && printf '%b\n' "  $(_col "$_C_LOC" "$OBJSTR")"
-    [ -n "$GIL" ] && printf '%b\n' "  gil=$(_fmt_gil "$GIL")"
+    [ -n "$LOCNAME" ] && LINE="$LINE $(_col "$_C_LOC" "loc=$LOCNAME")"
+    [ "$SCR" = "TravelList" ] && [ -n "$HOV" ] && LINE="$LINE hover=$(_col "$_C_MARK" "$HOV")"
+    [ -n "$OBJNAME" ] && LINE="$LINE $(_col "$_C_LOC" "obj=$OBJNAME")"
+    [ -n "$GIL" ] && LINE="$LINE gil=$(_fmt_gil "$GIL")"
   fi
+
+  printf '%b\n' "$LINE"
 }
 
 # fft_full: Send raw command JSON, wait for response, return entire JSON.
@@ -1539,6 +1531,12 @@ us.forEach(u=>{
   else
     # Non-battle: render via the shared helper — same compact one-liner as fft().
     _fmt_screen_compact "$B/response.json"
+
+    # Inventory summary (verbose only) — items=N types, M total.
+    if $verbose && [ -f "$B/response.json" ]; then
+      local INV_SUMMARY=$(cat "$B/response.json" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const inv=j.screen?.inventory;if(!inv||!inv.length){return;}const name=j.screen?.name;const total=inv.reduce((a,e)=>a+(e.count||0),0);if(name==='OutfitterSell'){const gil=inv.reduce((a,e)=>a+((e.sellPrice||0)*(e.count||0)),0);process.stdout.write(inv.length+' sellable, '+total+' total, ~'+gil.toLocaleString()+' gil est');}else{process.stdout.write(inv.length+' types, '+total+' total');}}catch(e){}});" 2>/dev/null)
+      [ -n "$INV_SUMMARY" ] && printf '%b\n' "  items=$INV_SUMMARY"
+    fi
 
     # Equipment loadout + abilities for CharacterStatus / EquipmentAndAbilities.
     # Layout matches the game's two-column UI: equipment slots on the left,

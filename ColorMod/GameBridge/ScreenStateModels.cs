@@ -68,6 +68,13 @@ namespace FFTColorCustomizer.GameBridge
         ChronicleLessons,
         ChronicleAkademicReport,
 
+        // LocationMenu: the shop/service selector at a named location
+        // (Outfitter/Tavern/Warriors' Guild/Poachers' Den/Save Game).
+        // Entered via Enter on WorldMap at a settlement. Escape returns
+        // to WorldMap. Enter on a shop opens the shop interior screen
+        // (not yet modeled in SM — falls through to detection).
+        LocationMenu,
+
         // Options tab nested screens. The Options root surfaces as
         // "PartyMenuOptions" via the PartyMenu Tab. The 5-row vertical
         // list opens these on Enter:

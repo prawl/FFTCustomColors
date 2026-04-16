@@ -625,7 +625,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void DetectScreen_RealEncounterDialog_NotInBattle_StillWorks()
         {
-            // Real encounter dialog: encA != encB but NOT post-battle (acted=0, moved=0).
+            // EncounterDialog rules disabled — encA/encB are sticky noise.
+            // With rules disabled, this falls through to something else.
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 28, slot0: 0, slot9: 0,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
@@ -633,7 +634,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 5, encB: 3, isPartySubScreen: false,
                 submenuFlag: 0, menuCursor: 0);
 
-            Assert.Equal("EncounterDialog", result);
+            Assert.NotEqual("EncounterDialog", result);
         }
 
         [Fact]
@@ -771,6 +772,104 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false, eventId: 401);
 
             Assert.NotEqual("BattleDialogue", result);
+        }
+
+        // === Tab-flag override tests (session 20, 2026-04-16) ===
+        // 0x140D3A41E (unitsTabFlag) and 0x140D3A38E (inventoryTabFlag) are
+        // cross-session-stable binary flags that override the stale party byte.
+        // When either is 1, the player is in the PartyMenu tree regardless of
+        // what party/ui/rawLocation say.
+
+        [Fact]
+        public void DetectScreen_UnitsTabFlag_OverridesStalePartyByte()
+        {
+            // Real scenario: on EqA (party sub-screen), party byte cleared to 0,
+            // ui=1, rawLocation=6. Without tab flags this falls through to
+            // TravelList. With unitsTabFlag=1, should return PartyMenu.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 6, slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 2, battleActed: 255, battleMoved: 255,
+                encA: 9, encB: 9, isPartySubScreen: true, eventId: 0xFFFF,
+                unitsTabFlag: 1, inventoryTabFlag: 0);
+
+            Assert.Equal("PartyMenu", result);
+        }
+
+        [Fact]
+        public void DetectScreen_InventoryTabFlag_OverridesStalePartyByte()
+        {
+            // On Inventory tab, party byte cleared to 0. inventoryTabFlag=1.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 6, slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 2, battleActed: 255, battleMoved: 255,
+                encA: 9, encB: 9, isPartySubScreen: true, eventId: 0xFFFF,
+                unitsTabFlag: 0, inventoryTabFlag: 1);
+
+            Assert.Equal("PartyMenu", result);
+        }
+
+        [Fact]
+        public void DetectScreen_NoTabFlags_FallsThroughToTravelList()
+        {
+            // Same inputs as above but with both tab flags off — should NOT
+            // return PartyMenu. This is the pre-fix behavior.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 6, slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 2, battleActed: 255, battleMoved: 255,
+                encA: 9, encB: 9, isPartySubScreen: true, eventId: 0xFFFF,
+                unitsTabFlag: 0, inventoryTabFlag: 0);
+
+            Assert.NotEqual("PartyMenu", result);
+        }
+
+        [Fact]
+        public void DetectScreen_UnitsTabFlag_OverridesBattleSentinels()
+        {
+            // Edge case: stale battle sentinels (slot0=0xFF, slot9=0xFFFFFFFF)
+            // that would normally put us in the battle branch. Tab flag should
+            // still win because PartyMenu is checked before inBattle.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                unitsTabFlag: 1, inventoryTabFlag: 0);
+
+            Assert.Equal("PartyMenu", result);
+        }
+
+        [Fact]
+        public void DetectScreen_TabFlag_WithPartyOne_DoesNotPreempt()
+        {
+            // When party==1, the normal `party==1 → PartyMenu` rule handles
+            // detection. Tab flags should NOT fire early — doing so would
+            // bypass the SM-based sub-screen resolution (CharacterStatus, EqA).
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 6, slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 2, battleActed: 255, battleMoved: 255,
+                encA: 9, encB: 9, isPartySubScreen: true, eventId: 0xFFFF,
+                unitsTabFlag: 1, inventoryTabFlag: 0);
+
+            // Should still return PartyMenu (via the party==1 rule, not the tab flag rule)
+            Assert.Equal("PartyMenu", result);
+        }
+
+        [Fact]
+        public void DetectScreen_TabFlags_DontFireWhenBothZero()
+        {
+            // Normal WorldMap: both tab flags off, party=0. Should detect normally.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false, hover: 5,
+                unitsTabFlag: 0, inventoryTabFlag: 0);
+
+            Assert.Equal("WorldMap", result);
         }
     }
 }

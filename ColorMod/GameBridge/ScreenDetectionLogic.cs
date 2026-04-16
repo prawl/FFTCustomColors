@@ -28,7 +28,8 @@ namespace FFTColorCustomizer.GameBridge
             int encA, int encB, bool isPartySubScreen, int eventId = 0,
             int submenuFlag = 0, int menuCursor = -1, int hover = 255,
             int locationMenuFlag = 0, int insideShopFlag = 0,
-            int shopSubMenuIndex = 0, int shopTypeIndex = 0)
+            int shopSubMenuIndex = 0, int shopTypeIndex = 0,
+            int unitsTabFlag = 0, int inventoryTabFlag = 0)
         {
             // rawLocation is the last-visited named place (village/shop/campaign ground).
             // It's STICKY — retains the last-visited location even when the player leaves.
@@ -58,6 +59,20 @@ namespace FFTColorCustomizer.GameBridge
             // battle location (rawLocation 0-42) but is distinctly a battle-setup state.
             if (slot0 == 0xFFFFFFFFL && slot9 == 0xFFFFFFFF && battleMode == 1)
                 return "BattleFormation";
+
+            // PartyMenu tab flags: 0x140D3A41E (Units) and 0x140D3A38E (Inventory)
+            // are cross-session-stable binary flags that read 1 ONLY when the
+            // player is on that specific PartyMenu tab (or a sub-screen within it:
+            // CharacterStatus, EqA, pickers, etc.).
+            //
+            // Only override when party==0 (stale byte). When party==1, the
+            // existing `party==1 → PartyMenu` rule at line ~109 handles it, and
+            // the downstream SM-based resolution distinguishes sub-screens
+            // (CharacterStatus, EqA, pickers). If we return "PartyMenu" here
+            // unconditionally, the stale-SM recovery block misinterprets a
+            // legitimate CharacterStatus as stale and stomps it back to PartyMenu.
+            if (party == 0 && (unitsTabFlag == 1 || inventoryTabFlag == 1))
+                return "PartyMenu";
 
             // atNamedLocation and onWorldMapByMoveMode both override stale battle sentinels.
             // If we're at a shop/village (hover=255 + rawLocation in range) OR the world-map
@@ -128,11 +143,14 @@ namespace FFTColorCustomizer.GameBridge
                     && battleMode == 0)
                     return "BattleVictory";
 
-                // EncounterDialog: at named location (random encounter happens on top of the
-                // world map but reads location=255 usually). Kept for test coverage; in
-                // practice encA!=encB is noise, so this is a secondary signal.
-                if (atNamedLocation && encA != encB && !actedOrMoved && slot0 != 255)
-                    return "EncounterDialog";
+                // EncounterDialog: DISABLED. encA/encB counters are sticky —
+                // gap persists from prior encounters and causes false triggers
+                // during subsequent navigation. No threshold is safe. Needs a
+                // dedicated encounter-active memory flag (0x140D87830 candidate
+                // from session 20 diff, reads 10 during encounter, 0 otherwise).
+                // TODO: wire 0x140D87830 into ScreenAddresses and use as signal.
+                // if (atNamedLocation && encounterFlag != 0 && ...)
+                //     return "EncounterDialog";
 
                 // Sub-action entered inside a shop/service. shopSubMenuIndex at
                 // 0x14184276C reads 0 on the shop menu, 255 on world map, and
@@ -186,13 +204,9 @@ namespace FFTColorCustomizer.GameBridge
                     && actedOrMoved)
                     return "BattleDialogue";
 
-                // EncounterDialog: random encounter popped up during world-map travel.
-                // encA != encB with a significant gap is the signal. Small drift (diff ≤ 1)
-                // is noise; a persistent large gap indicates an encounter was triggered.
-                // Must come BEFORE WorldMap/TravelList rules — encounter overlays them.
-                if (party == 0 && encA != encB && System.Math.Abs(encA - encB) > 1
-                    && !actedOrMoved)
-                    return "EncounterDialog";
+                // EncounterDialog: DISABLED. See note above — encA/encB sticky.
+                // if (party == 0 && encounterFlag != 0 && !actedOrMoved)
+                //     return "EncounterDialog";
 
                 // World-map side states (rawLocation=255 OR stale rawLocation with hover=254).
                 // WorldMap and TravelList are byte-identical in current inputs after a

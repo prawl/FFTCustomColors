@@ -1382,12 +1382,19 @@ namespace FFTColorCustomizer.Utilities
                             int dSsmi = (int)raw[24];
                             bool dInBattle = (dS0 == 255 && dS9 == 0xFFFFFFFF)
                                 || (dS9 == 0xFFFFFFFF && (dBm == 2 || dBm == 3 || dBm == 4));
+                            // Read tab flags for detection
+                            int dUtf = 0, dItf = 0;
+                            var dUtfR = Explorer.ReadAbsolute((nint)0x140D3A41E, 1);
+                            var dItfR = Explorer.ReadAbsolute((nint)0x140D3A38E, 1);
+                            if (dUtfR.HasValue) dUtf = (int)dUtfR.Value.value;
+                            if (dItfR.HasValue) dItf = (int)dItfR.Value.value;
                             string detected = GameBridge.ScreenDetectionLogic.Detect(
                                 dP, dU, dLoc, dS0, dS9, dBm, dMm, dPs, dGo,
                                 dBt, dBa, dBmv, dEa, dEb, !dInBattle && IsPartySubScreen(),
                                 dEv, submenuFlag: dSf, menuCursor: dMc, hover: dHover,
                                 locationMenuFlag: dLmf, insideShopFlag: dIsf,
-                                shopSubMenuIndex: dSsmi, shopTypeIndex: dSti);
+                                shopSubMenuIndex: dSsmi, shopTypeIndex: dSti,
+                                unitsTabFlag: dUtf, inventoryTabFlag: dItf);
                             var snapshot = new Dictionary<string, object>
                             {
                                 ["timestamp"] = DateTime.UtcNow.ToString("o"),
@@ -2252,6 +2259,9 @@ namespace FFTColorCustomizer.Utilities
                 return response;
             }
 
+            // Capture SM state before keys for change detection
+            var _smScreenBeforeKeys = ScreenMachine?.CurrentScreen ?? GameScreen.Unknown;
+
             int successCount = 0;
             for (int i = 0; i < command.Keys.Count; i++)
             {
@@ -2286,23 +2296,84 @@ namespace FFTColorCustomizer.Utilities
                             : successCount > 0 ? "partial"
                             : "failed";
 
-            // If keys succeeded, poll for wait conditions and always detect current screen
+            // If keys succeeded, return SM state directly instead of running
+            // detection. The SM processes each key synchronously and knows
+            // the correct screen. Detection reads stale memory bytes that
+            // take 200-500ms+ to settle after transitions, causing every
+            // "first read is wrong" bug. Detection still runs on
+            // observational `screen` reads (no keys) as a correction layer.
             if (response.Status != "failed")
             {
-                var waitResult = WaitForCondition(
-                    command.WaitForScreen, command.WaitUntilScreenNot,
-                    command.WaitForChange, command.WaitTimeoutMs);
-                if (waitResult.screen != null)
-                    response.Screen = waitResult.screen;
-                if (waitResult.timedOut)
+                // Wait conditions still use detection (they poll over time)
+                if (command.WaitForScreen != null || command.WaitUntilScreenNot != null
+                    || (command.WaitForChange != null && command.WaitForChange.Count > 0))
                 {
-                    response.Status = "completed_timeout";
-                    ModLogger.Log($"[CommandBridge] Command {command.Id} keys OK but wait timed out after {command.WaitTimeoutMs}ms");
+                    var waitResult = WaitForCondition(
+                        command.WaitForScreen, command.WaitUntilScreenNot,
+                        command.WaitForChange, command.WaitTimeoutMs);
+                    if (waitResult.screen != null)
+                        response.Screen = waitResult.screen;
+                    if (waitResult.timedOut)
+                    {
+                        response.Status = "completed_timeout";
+                        ModLogger.Log($"[CommandBridge] Command {command.Id} keys OK but wait timed out after {command.WaitTimeoutMs}ms");
+                    }
                 }
 
-                // Always include current screen/UI in response, even without wait conditions
+                // Build screen from SM state — no memory reads, no stale bytes.
+                // Only trust SM for party-tree transitions where the SM has
+                // full coverage (PartyMenu ↔ CharacterStatus ↔ EqA ↔ pickers
+                // ↔ JobSelection). For everything else (WorldMap, LocationMenu,
+                // shops, battle), fall back to detection — the SM doesn't
+                // model those transitions and will be confidently wrong.
+                bool smInPartyTreeNow = ScreenMachine?.CurrentScreen is
+                    GameScreen.PartyMenu or GameScreen.CharacterStatus or
+                    GameScreen.EquipmentScreen or GameScreen.EquipmentItemList or
+                    GameScreen.JobScreen or GameScreen.JobActionMenu or
+                    GameScreen.JobChangeConfirmation or
+                    GameScreen.SecondaryAbilities or GameScreen.ReactionAbilities or
+                    GameScreen.SupportAbilities or GameScreen.MovementAbilities or
+                    GameScreen.CombatSets or GameScreen.CharacterDialog or
+                    GameScreen.DismissUnit;
+                bool smWasInPartyTree = _smScreenBeforeKeys is
+                    GameScreen.PartyMenu or GameScreen.CharacterStatus or
+                    GameScreen.EquipmentScreen or GameScreen.EquipmentItemList or
+                    GameScreen.JobScreen or GameScreen.JobActionMenu or
+                    GameScreen.JobChangeConfirmation or
+                    GameScreen.SecondaryAbilities or GameScreen.ReactionAbilities or
+                    GameScreen.SupportAbilities or GameScreen.MovementAbilities or
+                    GameScreen.CombatSets or GameScreen.CharacterDialog or
+                    GameScreen.DismissUnit;
+                if (response.Screen == null && ScreenMachine != null
+                    && successCount > 0
+                    && smInPartyTreeNow)
+                {
+                    response.Screen = BuildScreenFromSM();
+                }
+                // Fallback to detection if SM isn't available or didn't
+                // model the transition.
                 if (response.Screen == null)
+                {
                     response.Screen = DetectScreen();
+                    // Sync SM to detection result so the SM doesn't carry
+                    // a stale state into the next key press. This handles
+                    // transitions the SM doesn't model (WorldMap↔LocationMenu,
+                    // shop screens, etc.).
+                    if (response.Screen != null && ScreenMachine != null)
+                    {
+                        var detectedGs = response.Screen.Name switch
+                        {
+                            "WorldMap" or "TravelList" => GameScreen.WorldMap,
+                            "LocationMenu" => GameScreen.LocationMenu,
+                            _ => (GameScreen?)null
+                        };
+                        if (detectedGs.HasValue && ScreenMachine.CurrentScreen != detectedGs.Value)
+                        {
+                            ModLogger.Log($"[SM-Sync] Detection={response.Screen.Name}, SM={ScreenMachine.CurrentScreen}. Syncing SM to {detectedGs.Value}.");
+                            ScreenMachine.SetScreen(detectedGs.Value);
+                        }
+                    }
+                }
             }
 
             ModLogger.Log($"[CommandBridge] Command {command.Id} finished: {response.Status} ({successCount}/{command.Keys.Count} keys)");
@@ -3687,6 +3758,73 @@ namespace FFTColorCustomizer.Utilities
                 GameScreen.DismissUnit;
         }
 
+        /// <summary>
+        /// Build a screen response from the state machine's current state,
+        /// without reading game memory. Used for key-press responses where
+        /// the SM already processed the key and knows the correct screen.
+        /// Avoids stale-memory issues that plague detection during transitions.
+        /// </summary>
+        private DetectedScreen? BuildScreenFromSM()
+        {
+            if (ScreenMachine == null) return null;
+
+            string name = ScreenMachine.CurrentScreen switch
+            {
+                GameScreen.WorldMap => "WorldMap",
+                GameScreen.LocationMenu => "LocationMenu",
+                GameScreen.CharacterStatus => "CharacterStatus",
+                GameScreen.EquipmentScreen => "EquipmentAndAbilities",
+                GameScreen.EquipmentItemList => ScreenMachine.CurrentEquipmentSlot switch
+                {
+                    EquipmentSlot.Weapon => "EquippableWeapons",
+                    EquipmentSlot.Shield => "EquippableShields",
+                    EquipmentSlot.Headware => "EquippableHeadware",
+                    EquipmentSlot.CombatGarb => "EquippableCombatGarb",
+                    EquipmentSlot.Accessory => "EquippableAccessories",
+                    _ => "EquipmentItemList"
+                },
+                GameScreen.SecondaryAbilities => "SecondaryAbilities",
+                GameScreen.ReactionAbilities => "ReactionAbilities",
+                GameScreen.SupportAbilities => "SupportAbilities",
+                GameScreen.MovementAbilities => "MovementAbilities",
+                GameScreen.CombatSets => "CombatSets",
+                GameScreen.CharacterDialog => "CharacterDialog",
+                GameScreen.DismissUnit => "DismissUnit",
+                GameScreen.JobScreen => "JobSelection",
+                GameScreen.JobActionMenu => "JobActionMenu",
+                GameScreen.JobChangeConfirmation => "JobChangeConfirmation",
+                GameScreen.ChronicleEncyclopedia => "ChronicleEncyclopedia",
+                GameScreen.ChronicleStateOfRealm => "ChronicleStateOfRealm",
+                GameScreen.ChronicleEvents => "ChronicleEvents",
+                GameScreen.ChronicleAuracite => "ChronicleAuracite",
+                GameScreen.ChronicleReadingMaterials => "ChronicleReadingMaterials",
+                GameScreen.ChronicleCollection => "ChronicleCollection",
+                GameScreen.ChronicleErrands => "ChronicleErrands",
+                GameScreen.ChronicleStratagems => "ChronicleStratagems",
+                GameScreen.ChronicleLessons => "ChronicleLessons",
+                GameScreen.ChronicleAkademicReport => "ChronicleAkademicReport",
+                GameScreen.OptionsSettings => "OptionsSettings",
+                GameScreen.PartyMenu => ScreenMachine.Tab switch
+                {
+                    PartyTab.Units => "PartyMenu",
+                    PartyTab.Inventory => "PartyMenuInventory",
+                    PartyTab.Chronicle => "PartyMenuChronicle",
+                    PartyTab.Options => "PartyMenuOptions",
+                    _ => "PartyMenu"
+                },
+                _ => "Unknown"
+            };
+
+            var screen = new DetectedScreen { Name = name };
+
+            // ViewedUnit is populated by the full DetectScreen path on
+            // `screen` reads. For key responses, the state name is the
+            // critical field — viewedUnit will appear on the next `screen`.
+
+            ModLogger.Log($"[BuildScreenFromSM] {name} (SM={ScreenMachine.CurrentScreen}, Tab={ScreenMachine.Tab})");
+            return screen;
+        }
+
         private DetectedScreen? DetectScreen()
         {
             if (Explorer == null) return null;
@@ -3764,6 +3902,16 @@ namespace FFTColorCustomizer.Utilities
                 int shopTypeIndex = (int)v[22];
                 int insideShopFlag = (int)v[23];
                 int shopSubMenuIndex = (int)v[24];
+
+                // PartyMenu tab flags — cross-session stable, override stale party byte
+                int unitsTabFlag = 0, inventoryTabFlag = 0;
+                if (Explorer != null)
+                {
+                    var utf = Explorer.ReadAbsolute((nint)0x140D3A41E, 1);
+                    var itf = Explorer.ReadAbsolute((nint)0x140D3A38E, 1);
+                    if (utf.HasValue) unitsTabFlag = (int)utf.Value.value;
+                    if (itf.HasValue) inventoryTabFlag = (int)itf.Value.value;
+                }
                 screen.Name = GameBridge.ScreenDetectionLogic.Detect(
                     party, ui, rawLocation, slot0, slot9,
                     battleMode, moveMode, paused, gameOverFlag,
@@ -3773,7 +3921,21 @@ namespace FFTColorCustomizer.Utilities
                     hover: hover, locationMenuFlag: locationMenuFlag,
                     insideShopFlag: insideShopFlag,
                     shopSubMenuIndex: shopSubMenuIndex,
-                    shopTypeIndex: shopTypeIndex);
+                    shopTypeIndex: shopTypeIndex,
+                    unitsTabFlag: unitsTabFlag, inventoryTabFlag: inventoryTabFlag);
+
+                // TravelList→WorldMap override: when the SM just left
+                // PartyMenu via a key press (Escape) and detection says
+                // TravelList, the `ui` byte is stale at 1 (takes >500ms to
+                // clear). We KNOW we're on WorldMap because we just exited
+                // PartyMenu — TravelList is unreachable via Escape from PM.
+                if (screen.Name == "TravelList" && ScreenMachine != null
+                    && ScreenMachine.LastSetScreenFromKey
+                    && ScreenMachine.CurrentScreen == GameScreen.WorldMap)
+                {
+                    ModLogger.Log($"[StateOverride] TravelList→WorldMap: SM just left PartyMenu via key, ui byte is stale.");
+                    screen.Name = "WorldMap";
+                }
 
                 // LocationMenu UI label: shopTypeIndex at 0x140D435F0 names
                 // which shop the cursor is hovering in the settlement's
@@ -3874,6 +4036,7 @@ namespace FFTColorCustomizer.Utilities
                 // nested label. See TODO §0.
                 if (screen.Name == "PartyMenu" && ScreenMachine != null
                     && ScreenMachine.KeysSinceLastSetScreen == 0
+                    && !ScreenMachine.LastSetScreenFromKey
                     && ScreenMachine.CurrentScreen != GameScreen.PartyMenu
                     && ScreenMachine.CurrentScreen is
                         GameScreen.CharacterStatus or
@@ -4066,14 +4229,14 @@ namespace FFTColorCustomizer.Utilities
                         // Only override when ScreenMachine says we're on
                         // outer PartyMenu (not nested CharacterStatus /
                         // picker / etc.) — those don't touch 41E.
-                        if (Explorer != null && ScreenMachine.CurrentScreen == GameScreen.PartyMenu)
+                        // Reuse the tab flag values read earlier (line ~3779)
+                        // to avoid a TOCTOU race where the game clears the flag
+                        // between the detection read and this correction read.
+                        if (ScreenMachine.CurrentScreen == GameScreen.PartyMenu)
                         {
-                            var b41e = Explorer.ReadAbsolute((nint)0x140D3A41E, 1);
-                            var b38e = Explorer.ReadAbsolute((nint)0x140D3A38E, 1);
-                            if (b41e.HasValue && b38e.HasValue)
                             {
-                                int v41e = (int)b41e.Value.value;
-                                int v38e = (int)b38e.Value.value;
+                                int v41e = unitsTabFlag;
+                                int v38e = inventoryTabFlag;
                                 if (v41e == 1 && ScreenMachine.Tab != PartyTab.Units)
                                 {
                                     ModLogger.Log($"[FlagCombo] Units-tab drift: SM={ScreenMachine.Tab} but 41E=1. Snapping to Units.");
@@ -4084,16 +4247,11 @@ namespace FFTColorCustomizer.Utilities
                                     ModLogger.Log($"[FlagCombo] Inventory-tab drift: SM={ScreenMachine.Tab} but 38E=1, 41E=0. Snapping to Inventory.");
                                     ScreenMachine.SetTabFromMemory(PartyTab.Inventory);
                                 }
-                                else if (v41e == 0 && v38e == 0 && ScreenMachine.Tab == PartyTab.Units)
-                                {
-                                    ModLogger.Log($"[FlagCombo] Units-tab drift: SM=Units but 41E=0, 38E=0. Tab is Chronicle or Options (can't distinguish). Snapping to Chronicle (most likely).");
-                                    ScreenMachine.SetTabFromMemory(PartyTab.Chronicle);
-                                }
-                                else if (v41e == 0 && v38e == 0 && ScreenMachine.Tab == PartyTab.Inventory)
-                                {
-                                    ModLogger.Log($"[FlagCombo] Inventory-tab drift: SM=Inventory but 38E=0. Tab is Chronicle or Options (can't distinguish). Snapping to Chronicle (most likely).");
-                                    ScreenMachine.SetTabFromMemory(PartyTab.Chronicle);
-                                }
+                                // When both flags are 0, we can't distinguish
+                                // Chronicle/Options from a transient flag-clear
+                                // during screen transitions. Don't guess —
+                                // leave the SM's current tab alone. The flags
+                                // settle within one render cycle.
                             }
                         }
 
@@ -4724,20 +4882,34 @@ namespace FFTColorCustomizer.Utilities
                 // disagreed. This fixes the "SM says TravelList but game
                 // is on EqA" drift class observed live with Wilham.
                 //
-                // Guard: skip EqA promotion when PartyMenu tab flags
-                // indicate we're on a PM tab. The mirror is always
-                // populated with the last-viewed unit's gear, so it will
-                // spuriously match on PartyMenu (esp. Units tab where
-                // Ramza is the default viewedUnit).
-                bool partyMenuTabFlagsActive = false;
-                if (Explorer != null)
-                {
-                    var b41e = Explorer.ReadAbsolute((nint)0x140D3A41E, 1);
-                    var b38e = Explorer.ReadAbsolute((nint)0x140D3A38E, 1);
-                    if (b41e.HasValue && b38e.HasValue)
-                        partyMenuTabFlagsActive = (int)b41e.Value.value == 1 || (int)b38e.Value.value == 1;
-                }
-                if (Explorer != null && ScreenMachine != null && !partyMenuTabFlagsActive)
+                // Guard: skip EqA promotion when:
+                //   (a) PartyMenu tab flags are active (mirror holds the
+                //       last-viewed unit's gear, spuriously matches on PM)
+                //   (b) Detection returned a world-map-side screen (WorldMap,
+                //       TravelList, LocationMenu, etc.) — the mirror stays
+                //       populated with stale equipment after leaving the
+                //       party tree, so it would override correct detection.
+                // Reuse cached tab flags from the detection read (line ~3776)
+                // to avoid TOCTOU race where flags flicker during transitions.
+                bool partyMenuTabFlagsActive = unitsTabFlag == 1 || inventoryTabFlag == 1;
+                bool detectionSaysWorldSide = screen.Name is "WorldMap" or "TravelList"
+                    or "LocationMenu" or "TitleScreen" or "Cutscene"
+                    or "Outfitter" or "Tavern" or "WarriorsGuild" or "PoachersDen" or "SaveGame"
+                    or "OutfitterBuy" or "OutfitterSell" or "OutfitterFitting"
+                    or "EncounterDialog" or "BattleFormation";
+                // Skip when SM is already in a party-tree screen — the mirror
+                // always matches there (same unit's gear is displayed on
+                // CharacterStatus, EqA, and pickers). Promoting would stomp
+                // a correct CharacterStatus back to EqA.
+                bool smAlreadyInPartyTree = ScreenMachine != null && ScreenMachine.CurrentScreen is
+                    GameScreen.PartyMenu or GameScreen.CharacterStatus or
+                    GameScreen.EquipmentScreen or GameScreen.EquipmentItemList or
+                    GameScreen.JobScreen or GameScreen.JobActionMenu or
+                    GameScreen.JobChangeConfirmation or
+                    GameScreen.SecondaryAbilities or GameScreen.ReactionAbilities or
+                    GameScreen.SupportAbilities or GameScreen.MovementAbilities or
+                    GameScreen.CombatSets or GameScreen.CharacterDialog or GameScreen.DismissUnit;
+                if (Explorer != null && ScreenMachine != null && !partyMenuTabFlagsActive && !detectionSaysWorldSide && !smAlreadyInPartyTree)
                 {
                     var m1 = ReadEqaMirror(0x141870854);
                     var m3 = ReadEqaMirror(0x143743704);
@@ -5179,13 +5351,19 @@ namespace FFTColorCustomizer.Utilities
                                 // lags the state machine by exactly that
                                 // window, matching the JobSelection fix from
                                 // session 15.
-                                if (!_partyMenuCursorResolveAttempted && screen.MenuDepth == 0)
-                                {
-                                    _partyMenuCursorResolveAttempted = true;
-                                    int _unused;
-                                    var partyInfo = ResolvePartyMenuCursor(out _unused);
-                                    if (partyInfo != null) ModLogger.Log($"[CommandBridge] auto {partyInfo}");
-                                }
+                                // DISABLED 2026-04-16: auto-resolve sends 8+
+                                // keypresses (Right/Left/Down/Up oscillation)
+                                // that visibly bounce the cursor and never find
+                                // a usable byte anyway. Keep the resolver
+                                // available as an explicit `resolve_party_menu_cursor`
+                                // action but don't auto-fire on screen reads.
+                                // if (!_partyMenuCursorResolveAttempted && screen.MenuDepth == 0)
+                                // {
+                                //     _partyMenuCursorResolveAttempted = true;
+                                //     int _unused;
+                                //     var partyInfo = ResolvePartyMenuCursor(out _unused);
+                                //     if (partyInfo != null) ModLogger.Log($"[CommandBridge] auto {partyInfo}");
+                                // }
 
                                 // Memory-backed cursor read path. Live
                                 // testing 2026-04-15 session 16 showed the

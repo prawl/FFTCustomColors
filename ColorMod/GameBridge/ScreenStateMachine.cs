@@ -38,6 +38,14 @@ namespace FFTColorCustomizer.GameBridge
         /// keys have flowed through the state machine to drive it forward.
         /// </summary>
         public int KeysSinceLastSetScreen { get; private set; }
+
+        /// <summary>
+        /// True when the most recent SetScreen was triggered by key processing
+        /// (a real user/script action), false when it was from initialization,
+        /// restart recovery, or drift correction. Prevents the stale-SM
+        /// recovery block from stomping a legitimate fresh transition.
+        /// </summary>
+        public bool LastSetScreenFromKey { get; private set; }
         public int CursorRow { get; private set; }
         public int CursorCol { get; private set; }
         public PartyTab Tab { get; private set; } = PartyTab.Units;
@@ -185,6 +193,10 @@ namespace FFTColorCustomizer.GameBridge
             OptionsIndex = 0;
             PickerTab = 0;
             KeysSinceLastSetScreen = 0;
+            // Don't clear LastSetScreenFromKey here — it's set by
+            // OnKeyPressed and consumed by the stale-SM check in
+            // CommandWatcher. Clearing it here would defeat the purpose
+            // since drift-correction paths also call SetScreen.
 
             switch (screen)
             {
@@ -268,10 +280,14 @@ namespace FFTColorCustomizer.GameBridge
         public void OnKeyPressed(int vkCode)
         {
             KeysSinceLastSetScreen++;
+            LastSetScreenFromKey = true;
             switch (CurrentScreen)
             {
                 case GameScreen.WorldMap:
                     HandleWorldMap(vkCode);
+                    break;
+                case GameScreen.LocationMenu:
+                    HandleLocationMenu(vkCode);
                     break;
                 case GameScreen.PartyMenu:
                     HandlePartyMenu(vkCode);
@@ -360,6 +376,19 @@ namespace FFTColorCustomizer.GameBridge
                 GridColumns = 5;
                 GridRows = (RosterCount + 4) / 5;
             }
+            // Enter on WorldMap: could open LocationMenu (settlement),
+            // trigger a story battle, or do nothing (cursor not on a node).
+            // SM can't distinguish — don't transition, let detection handle it.
+        }
+
+        private void HandleLocationMenu(int vk)
+        {
+            if (vk == VK_ESCAPE)
+            {
+                CurrentScreen = GameScreen.WorldMap;
+            }
+            // Enter on a shop opens the shop interior — not modeled in SM,
+            // falls through to detection.
         }
 
         // Drift mitigation: when Q/E lands the user back on the Units tab,
