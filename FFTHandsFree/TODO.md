@@ -73,6 +73,16 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 22 — bridge actions + authoritative detection
+
+- [ ] **C# bridge action viewedUnit lag on chain calls** — `open_eqa Cloud` from WorldMap works perfectly (correct gear + name). But `open_eqa Agrias` from inside Cloud's EqA shows Agrias's gear but Cloud's name. Root cause: escape storm drift checks in DetectScreen reset `_savedPartyRow/_savedPartyCol` after `SetViewedGridIndex` sets them. Stashed fix in `git stash list`. Approach: suppress drift checks during bridge action execution (add a flag to CommandWatcher, check it in the drift-check blocks at lines ~4280-4395). Two lines of code.
+
+- [ ] **Orlandeau primary skillset label** — `GetPrimarySkillsetByJobName` at CommandWatcher.cs line ~3168 maps "Thunder God" → "Holy Sword". His actual combined skillset (Holy Sword + Unyielding Blade + Fell Sword) should show as "Swordplay" or the specific sub-skillset the cursor is on.
+
+- [ ] **⚠ UNVERIFIED auto_place_units** — C# bridge action built (NavigationActions.cs) and shell helper wired, but never live-tested in an actual battle formation. Sequence: sleep 4s → 4×(Enter+Enter) → Space → Enter → poll for battle state.
+
+- [ ] **EnterLocation delay may need per-location tuning** — Fixed 200ms→500ms in NavigationPaths.cs for Dorter. Other settlements may need different settling times. If EnterLocation fails at a new location, increase DelayBetweenMs.
+
 ### Session 20 — state detection + EqA resolver
 
 - [ ] **Battle state verification** — Session 21 verified 11/13 with screenshots: BattleMyTurn ✅, BattleMoving ✅, BattleAbilities ✅, BattleAttacking ✅, BattleWaiting ✅, BattleStatus ✅, BattlePaused ✅, BattleFormation ✅, BattleEnemiesTurn ✅, GameOver ✅, EncounterDialog ✅. BattleVictory ❌ and BattleDesertion ❌ misdetect as BattlePaused (see bug below). BattleDialogue and Cutscene blocked by sticky gameOverFlag (see bug below). BattleActing transient (hard to catch). BattleAlliesTurn needs guest allies. 
