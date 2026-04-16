@@ -73,13 +73,25 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
-### Session 19 follow-ups (EqA mirror work)
+### Session 20 — state detection + EqA resolver
 
-- [x] **EqA Primary fallback for story classes** — DONE session 20 commit aaadbc4. Falls back to `GetPrimarySkillsetByJobName(matchedSlot.JobName)` when `GetSkillsetName(pIdx)` returns null for story-class encodings (Construct 8 Work=171, etc.).
+- [ ] **EncounterDialog detection: wire 0x140D87830 as encounter flag** — encA/encB counters are unusable (sticky noise, false triggers during navigation). Session 20 diff at TheSiedgeWeald found `0x140D87830` reads 10 during encounter, 0 on WorldMap (reverts after flee). Wire into ScreenAddresses and use as EncounterDialog signal. Needs cross-session verification.
 
-- [x] **EqA cursor row resolver (unequip-based ground-truth)** — DONE session 20 commit aaadbc4. `resolve_eqa_row` + `remove_equipment_at_cursor` strict-mode actions. Unequip-diff technique with `DoEqaRowResolve(restore)` helper. Both populated + empty-slot paths live-verified. Cursor row byte confirmed nonexistent in stable memory across 4 diff test shapes.
+- [ ] **Battle state verification** — 13 battle states untested this session (BattleMyTurn, BattleMoving, BattleAttacking, BattleAbilities, BattleActing, BattlePaused, BattleWaiting, BattleEnemiesTurn, BattleAlliesTurn, BattleVictory, BattleDesertion, BattleDialogue, BattleFormation). Enter a battle and verify each with screenshots.
 
-- [x] **Apply mirror technique to ability pickers** — CLOSED session 20. No stable main-module mirror exists — searched for all 7 of Ramza's reaction ability IDs as a contiguous sequence, 0 matches anywhere in memory with picker closed. The list is assembled dynamically in heap widget structs when the picker opens. Already solved by two existing systems: (1) `PickerListReader.cs` AoB-searches heap for the live list when picker is open, (2) `RosterReader.ReadLearnedPassives` reads learned abilities from the roster bitfield at any time (no picker needed). All 4 passive learned lists (reaction/support/movement/secondary) already surface on the `screen -v` response via `learnedReaction` / `learnedSupport` / `learnedMovement` / `learnedSecondary` fields.
+- [ ] **WorldMap `ui=` should show hovered location name** — e.g. `[WorldMap] ui=Magick City of Gariland` when cursor is over a location. Currently `ui=` is empty on WorldMap. The hover location ID is available (used for `loc=`), just needs to be surfaced as the `ui` field.
+
+- [ ] **EqA compact format: replace two-column grid with narrow-friendly layout** — The Equipment|Abilities two-column grid wraps and becomes unreadable in narrow terminal windows. Replace with a single-column vertical list or inline summary. Keep the full grid in `-v` verbose mode only.
+
+- [ ] **EqA `ui=` shows stale cursor row** — `ui=Right Hand (none)` persists even when the game cursor is elsewhere because the SM's CursorRow only updates on key tracking (which drifts). `resolve_eqa_row` fixes it but costs 4 keypresses so can't run on every `screen` read.
+
+- [ ] **Re-enable Chronicle/Options tab correction when both flags are 0** — Disabled 2026-04-16 because transient flag-clears during screen transitions caused spurious PartyMenuChronicle detection. When a Chronicle-vs-Options discriminator byte is found, re-enable.
+
+- [ ] **Replace fixed post-key delay with poll-until-stable** — Currently a fixed 350ms sleep in the detection fallback path. Replace with: read state, wait 50ms, read again, if identical return, else keep polling up to 500ms.
+
+- [ ] **`ui=<element>` must always appear on the compact one-liner after `[StateName]`** — Currently `ui=` is missing from some screen states. Every screen response should surface the currently-hovered UI element.
+
+### Earlier open items (EqA / JobSelection)
 
 - [ ] **Apply mirror technique to JobSelection** — Same idea for JobSelection grid cells. When hovering a class, the info panel displays class data (JP, Lv, prereqs). Find where that hovered-class data lives by navigating to a known cell, snapshotting, navigating away, diffing. Target: a single byte that holds the hovered class index (or u16 class ID).
 
@@ -114,23 +126,17 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 
 
-- [ ] **PartyMenu tab desync: try bigger DelayBetweenMs on multi-press jumps** — 300ms didn't help (was first attempt 2026-04-14). Try 500ms / 750ms empirically. Quick patch. Affects `OpenChronicle`/`OpenOptions`/`OpenUnits`/`OpenInventory` paths in `NavigationPaths.cs`.
+- [x] **PartyMenu tab desync: delay/confirm approaches** — SUPERSEDED by session 20 SM-first architecture. Party-tree key responses now use SM state directly, bypassing detection entirely. Multi-press tab jumps no longer cause stale reads.
 
-- [ ] **PartyMenu tab desync: add per-key wait-for-game-confirm** — Instead of one wait at the end of a multi-press path, block after each key until game UI confirms. Requires path-engine change; robust but invasive. Tracks fix option 2 from the original investigation.
-
-- [~] **PartyMenu tab desync: find non-Units tab discriminator memory byte** — **Inventory flag DONE** session 20 commit 5da81c2: `0x140D3A38E` = 1 on Inventory, 0 elsewhere (cross-session stable, sibling to Units-bit at `0x140D3A41E`). Also fixed EqA mirror promotion stomping correct PartyMenu state by guarding on tab flags. **Chronicle vs Options discriminator NOT FOUND** — hunted across 2 sessions, 4 candidates tested (`0x140900824`, `0x140900828`, `0x140C638E4`, `0x140C64900`), none survived cross-session or even within-session stability. Deferred to future session.
+- [x] **PartyMenu tab desync: find non-Units tab discriminator memory byte** — **Inventory flag DONE** session 20 commit 5da81c2: `0x140D3A38E` = 1 on Inventory. Chronicle/Options discriminator NOT FOUND — deferred. Session 20 also overhauled detection architecture (SM-first for party tree) which eliminated most tab-related drift.
 
 
 
 
 
-- [ ] **PartyMenu state-machine drift cluster — consolidated 2026-04-15.** Two related drift classes blocking PartyMenu reliability:
+- [x] **PartyMenu screen identity drift (a)** — FIXED session 20. SM-first architecture eliminates stale-byte reads for party-tree transitions. Tab flags (41E/38E) wired into detection as fallback. EqA mirror promotion guarded by tab flags + world-side detection + SM-in-party-tree check.
 
-  **(a) Screen identity drift** — state machine reports `PartyMenu`/`PartyMenuInventory`/etc while game is actually on a different screen. Most severe case: "state sticks on PartyMenu after returning to WorldMap" (session 16 repro — 5 Escapes from EquippableWeapons, SM said PartyMenu, game on WorldMap). Root cause: WorldMap detection rule is preempted by stale `party==1` byte. First symmetric fix (CommandWatcher.cs) stomped legit nested visits because `party=0 && ui=1 → TravelList` also matches EquipmentAndAbilities. Needs either (i) a MenuDepth==0 + party==0 outer-only signal, or (ii) a new reliable screen-identity byte (see the session 18+ PartyMenu flag hunt).
-
-  **(b) Cursor row/col drift** — `_savedPartyRow/Col` carries stale values across tab switches / multi-step nav. Session 16 clean repro: `OpenUnits → SelectUnit` reported `ui=Orlandeau` and drilled into Orlandeau's stats while game actually opened Ramza's. Quick mitigation: reset CursorRow/Col to 0 on any Q/E tab-switch that lands on Units (currently only Chronicle/Options indexes get reset). Real fix: read cursor from memory.
-
-  **Row-byte hunt — groundwork landed, 6 candidates not fully verified.** `ResolvePartyMenuCursor` oscillation resolver shipped but heap does NOT store a flat-linear `row*5+col` index — all 17 column-survivors failed `+5-on-Down` verify. Hypothesis: row + col are separate bytes. `ScreenStateMachine.SetPartyMenuCursor(row,col)` API ready (3 unit tests); `resolve_party_menu_cursor` strict-mode action exists; invalidation hooks in place. Session 18 found 6 candidate row bytes via snapshot diff (`0x1407AC7CD, 0x1407AC7D1, 0x1418708CB, 0x1437436BD, 0x1437436C1, 0x14374377B`) — first one failed wrap test, other 5 UNTESTED. **Next-session plan:** 3-snapshot multi-step filter (r0 → r1 → r2), verify bytes that show exactly 0/1/2. See `project_partymenu_row_byte_hunt.md`.
+- [ ] **PartyMenu cursor row/col drift (b)** — `_savedPartyRow/Col` carries stale values across tab switches / multi-step nav. Session 16 repro: `OpenUnits → SelectUnit` reported `ui=Orlandeau` and drilled into Orlandeau's stats while game actually opened Ramza's. Quick mitigation: reset CursorRow/Col to 0 on any Q/E tab-switch. Real fix: read cursor from memory. `ResolvePartyMenuCursor` auto-fire disabled session 20 (8 keypresses, never finds byte). 5 candidate row bytes from session 18 UNTESTED.
 
 
 
