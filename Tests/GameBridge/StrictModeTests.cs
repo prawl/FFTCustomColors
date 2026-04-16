@@ -25,7 +25,9 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "battle_move", "world_travel_to", "auto_move", "get_arrows",
             "advance_dialogue", "save", "load",
             "battle_retry", "battle_retry_formation",
-            "buy", "sell", "change_job"
+            "buy", "sell", "change_job",
+            "open_eqa", "open_job_selection", "open_character_status",
+            "auto_place_units"
         };
 
         private static readonly HashSet<string> AllowedInfraActions = new()

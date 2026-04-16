@@ -664,34 +664,26 @@ _nav_to_party_unit() {
 
 # open_character_status [unit_name]
 # Navigate to CharacterStatus for the named unit (default: Ramza).
+# Single bridge action — C# handles all navigation internally.
 open_character_status() {
   local unit="${*:-Ramza}"
-  _nav_to_party_unit "$unit" || return 1
-  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":300}" >/dev/null
-  _FFT_DONE=0
-  screen
+  fft "{\"id\":\"$(id)\",\"action\":\"open_character_status\",\"to\":\"$unit\"}"
 }
 
 # open_eqa [unit_name]
 # Navigate from anywhere to EquipmentAndAbilities for the named unit.
+# Single bridge action — C# handles all navigation internally.
 open_eqa() {
   local unit="${*:-Ramza}"
-  _nav_to_party_unit "$unit" || return 1
-  # Enter (SelectUnit → CharacterStatus) + Enter (Select → EquipmentAndAbilities)
-  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"},{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":350}" >/dev/null
-  _FFT_DONE=0
-  screen
+  fft "{\"id\":\"$(id)\",\"action\":\"open_eqa\",\"to\":\"$unit\"}"
 }
 
 # open_job_selection [unit_name]
 # Navigate from anywhere to JobSelection for the named unit.
+# Single bridge action — C# handles all navigation internally.
 open_job_selection() {
   local unit="${*:-Ramza}"
-  _nav_to_party_unit "$unit" || return 1
-  # Enter (SelectUnit) + Down (sidebar to Job) + Enter (Select → JobSelection)
-  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"},{\"vk\":40,\"name\":\"Down\"},{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":350}" >/dev/null
-  _FFT_DONE=0
-  screen
+  fft "{\"id\":\"$(id)\",\"action\":\"open_job_selection\",\"to\":\"$unit\"}"
 }
 
 # =============================================================================
@@ -870,38 +862,10 @@ else process.stdout.write('Q,'+bwd);
 }
 
 # auto_place_units: Accept default unit placement on BattleFormation and start battle.
-# The game pre-places your top units on blue tiles. This helper confirms the
-# default layout and commences battle. Works from BattleFormation OR right
-# after execute_action Fight (handles the 3-6s detection-unreliable transition).
-# Waits until a battle state appears (BattleMyTurn/BattleAlliesTurn/BattleEnemiesTurn).
+# Single bridge action — C# places 4 units (Enter×2 each), commences (Space+Enter),
+# then polls until a battle state appears.
 auto_place_units() {
-  _FFT_DONE=0
-  # The formation screen takes 3-6 seconds to appear after Fight. Detection
-  # is unreliable during this window (reports TravelList). Don't check state —
-  # just wait, then fire the sequence blind.
-  sleep 4
-  # Enter (confirm first unit placement) → Enter (confirm/dismiss) →
-  # Space (open Commence Battle dialog) → Enter (confirm Yes)
-  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"},{\"vk\":13,\"name\":\"Enter\"},{\"vk\":32,\"name\":\"Space\"},{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":500}" >/dev/null
-  _FFT_DONE=0
-  # Wait for battle to start (can take several seconds for intro animations)
-  local tries=0
-  while [ $tries -lt 30 ]; do
-    sleep 1
-    rm -f "$B/response.json"
-    echo "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}" > "$B/command.json"
-    local t=0
-    until [ -f "$B/response.json" ] || [ $t -ge 150 ]; do sleep 0.02; t=$((t+1)); done
-    local scr=$(tr -d '\r\n ' < "$B/response.json" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
-    case "$scr" in
-      BattleMyTurn|BattleAlliesTurn|BattleEnemiesTurn|BattleActing)
-        echo "[auto_place_units] Battle started ($scr)"
-        return 0 ;;
-    esac
-    tries=$((tries+1))
-  done
-  echo "[auto_place_units] WARNING: timed out waiting for battle state (last: $scr)"
-  return 1
+  fft "{\"id\":\"$(id)\",\"action\":\"auto_place_units\"}" 60
 }
 
 # open_picker <unit> <slot>: Navigate to a specific equipment picker.

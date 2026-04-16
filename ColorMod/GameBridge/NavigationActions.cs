@@ -315,6 +315,18 @@ namespace FFTColorCustomizer.GameBridge
                     case "change_job":
                         return ChangeJob(response, command);
 
+                    case "open_eqa":
+                        return OpenEqa(response, command.To ?? "Ramza");
+
+                    case "auto_place_units":
+                        return AutoPlaceUnits(response);
+
+                    case "open_job_selection":
+                        return OpenJobSelection(response, command.To ?? "Ramza");
+
+                    case "open_character_status":
+                        return OpenCharacterStatus(response, command.To ?? "Ramza");
+
                     default:
                         response.Status = "failed";
                         response.Error = $"Unknown navigation action: {command.Action}";
@@ -4309,6 +4321,206 @@ namespace FFTColorCustomizer.GameBridge
                 return ((int)results[0], (int)results[1]);
             }
             catch { return (-1, -1); }
+        }
+
+        // ================================================================
+        // Compound navigation: party menu tree
+        // ================================================================
+
+        /// <summary>
+        /// Navigate from any screen to a unit's EquipmentAndAbilities.
+        /// Handles: escape to WorldMap → PartyMenu → cursor to unit →
+        /// CharacterStatus → EquipmentAndAbilities. All internal, one
+        /// round-trip from Claude's perspective.
+        /// </summary>
+        private CommandResponse OpenEqa(CommandResponse response, string unitName)
+        {
+            var result = NavigateToCharacterStatus(response, unitName);
+            if (result.Status == "failed") return result;
+
+            // CharacterStatus sidebar defaults to "Equipment & Abilities" (index 0).
+            // Press Enter to open EqA.
+            SendKey(VK_ENTER);
+            Thread.Sleep(300);
+
+            var screen = _detectScreen();
+            if (screen != null)
+            {
+                result.Screen = screen;
+                result.Status = "completed";
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Navigate from any screen to a unit's JobSelection.
+        /// </summary>
+        private CommandResponse OpenJobSelection(CommandResponse response, string unitName)
+        {
+            var result = NavigateToCharacterStatus(response, unitName);
+            if (result.Status == "failed") return result;
+
+            // Sidebar: Down (to Job at index 1) → Enter
+            SendKey(VK_DOWN);
+            Thread.Sleep(200);
+            SendKey(VK_ENTER);
+            Thread.Sleep(300);
+
+            var screen = _detectScreen();
+            if (screen != null)
+            {
+                result.Screen = screen;
+                result.Status = "completed";
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Navigate from any screen to a unit's CharacterStatus.
+        /// </summary>
+        private CommandResponse OpenCharacterStatus(CommandResponse response, string unitName)
+        {
+            var result = NavigateToCharacterStatus(response, unitName);
+            if (result.Status != "failed")
+            {
+                var screen = _detectScreen();
+                if (screen != null) result.Screen = screen;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Internal: navigate to CharacterStatus for a named unit. Handles
+        /// escaping from any party-tree or WorldMap screen, opening PartyMenu,
+        /// finding the unit in the roster, navigating the grid cursor, and
+        /// pressing Enter to open CharacterStatus.
+        /// </summary>
+        private CommandResponse NavigateToCharacterStatus(CommandResponse response, string unitName)
+        {
+            // Step 1: Get to PartyMenu. Strategy depends on where we are.
+            var currentScreen = _detectScreen();
+            string currentName = currentScreen?.Name ?? "Unknown";
+
+            if (currentName == "PartyMenu")
+            {
+                // Already here — skip to step 3
+            }
+            else if (currentName == "WorldMap")
+            {
+                // One Escape opens PartyMenu from WorldMap
+                SendKey(VK_ESCAPE);
+                Thread.Sleep(500);
+            }
+            else
+            {
+                // Deep in party tree or unknown — escape to WorldMap first.
+                // Use detection between escapes to stop as soon as we hit WorldMap.
+                for (int i = 0; i < 8; i++)
+                {
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                    var check = _detectScreen();
+                    if (check?.Name == "WorldMap")
+                    {
+                        // One more Escape to open PartyMenu
+                        SendKey(VK_ESCAPE);
+                        Thread.Sleep(500);
+                        break;
+                    }
+                }
+            }
+
+            // Step 3: Find unit in roster
+            var rosterReader = new RosterReader(_explorer, _nameTable);
+            var allSlots = rosterReader.ReadAll();
+            RosterReader.RosterSlot? targetSlot = null;
+            foreach (var slot in allSlots)
+            {
+                if (slot.Name != null && slot.Name.Equals(unitName, StringComparison.OrdinalIgnoreCase))
+                {
+                    targetSlot = slot;
+                    break;
+                }
+            }
+            if (targetSlot == null)
+            {
+                response.Status = "failed";
+                response.Error = $"Unit '{unitName}' not found in roster";
+                return response;
+            }
+
+            int displayOrder = targetSlot.DisplayOrder;
+            int targetRow = displayOrder / 5;
+            int targetCol = displayOrder % 5;
+
+            // Step 4: Reset cursor to (0,0) via wrap then navigate to target.
+            // Up enough to wrap to row 0, Left enough to wrap to col 0.
+            int rosterCount = allSlots.Count;
+            int gridRows = (rosterCount + 4) / 5;
+            for (int i = 0; i < gridRows; i++) SendKey(VK_UP);
+            for (int i = 0; i < 5; i++) SendKey(VK_LEFT);
+            // Navigate to target
+            for (int i = 0; i < targetRow; i++) SendKey(VK_DOWN);
+            for (int i = 0; i < targetCol; i++) SendKey(VK_RIGHT);
+
+            // Step 5: Enter to open CharacterStatus
+            SendKey(VK_ENTER);
+            Thread.Sleep(300);
+
+            response.Status = "completed";
+            return response;
+        }
+
+        /// <summary>
+        /// auto_place_units: Accept default unit placement on BattleFormation
+        /// and start battle. Places 4 units (Enter×2 each) then commences
+        /// (Space + Enter). Polls until a battle state appears.
+        /// </summary>
+        private CommandResponse AutoPlaceUnits(CommandResponse response)
+        {
+            // Wait for formation screen to fully load (detection is unreliable
+            // for 3-6 seconds after Fight)
+            Thread.Sleep(4000);
+
+            // Place 4 units: each unit is Enter (select tile) + Enter (confirm)
+            for (int unit = 0; unit < 4; unit++)
+            {
+                SendKey(VK_ENTER);
+                Thread.Sleep(200);
+                SendKey(VK_ENTER);
+                Thread.Sleep(400);
+            }
+
+            // Commence battle: Space (open dialog) + Enter (confirm Yes)
+            SendKey(0x20); // VK_SPACE
+            Thread.Sleep(500);
+            SendKey(VK_ENTER);
+            Thread.Sleep(1000);
+
+            // Poll for battle state (intro animations can take several seconds)
+            for (int i = 0; i < 30; i++)
+            {
+                Thread.Sleep(1000);
+                var screen = _detectScreen();
+                if (screen != null)
+                {
+                    string name = screen.Name;
+                    if (name == "BattleMyTurn" || name == "BattleAlliesTurn" ||
+                        name == "BattleEnemiesTurn" || name == "BattleActing")
+                    {
+                        response.Screen = screen;
+                        response.Status = "completed";
+                        response.Info = $"Battle started ({name})";
+                        return response;
+                    }
+                }
+            }
+
+            response.Status = "completed";
+            response.Info = "Formation sequence sent, waiting for battle to start";
+            var finalScreen = _detectScreen();
+            if (finalScreen != null) response.Screen = finalScreen;
+            return response;
         }
 
         // --- Helpers ---

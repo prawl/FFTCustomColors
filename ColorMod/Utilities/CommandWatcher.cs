@@ -1041,7 +1041,9 @@ namespace FFTColorCustomizer.Utilities
             "battle_move", "world_travel_to", "auto_move", "get_arrows",
             "advance_dialogue", "save", "load",
             "battle_retry", "battle_retry_formation",
-            "buy", "sell", "change_job"
+            "buy", "sell", "change_job",
+            "open_eqa", "open_job_selection", "open_character_status",
+            "auto_place_units"
         };
 
         public CommandWatcher(string modPath, IInputSimulator inputSimulator)
@@ -2026,6 +2028,10 @@ namespace FFTColorCustomizer.Utilities
                     case "buy":
                     case "sell":
                     case "change_job":
+                    case "open_eqa":
+                    case "open_job_selection":
+                    case "open_character_status":
+                    case "auto_place_units":
                         return ExecuteNavActionWithAutoScan(command);
 
                     case "set_screen":
