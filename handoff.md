@@ -1,282 +1,203 @@
-# Session Handoff — 2026-04-16 (Session 20)
+# Session Handoff — 2026-04-16 (Session 21)
 
 Delete this file after reading.
 
 ## TL;DR
 
-**Screen state detection overhauled with SM-first architecture.** Key
-press responses now return the state machine's state directly for
-party-tree transitions (PartyMenu ↔ CS ↔ EqA ↔ pickers ↔ JobSelection
-↔ Chronicle/Options sub-screens), eliminating every "first read is
-stale" bug within that tree. Detection only runs as a fallback for
-world-side transitions (WorldMap ↔ LocationMenu ↔ shops) where the SM
-doesn't have full coverage.
+**EncounterDialog detection shipped and cross-session verified.** Dedicated
+memory flag at `0x140D87830` replaces the broken encA/encB noise counters.
+Also: comprehensive battle state verification (11/13 states screenshot-verified),
+BattleSequence scaffolding built (disabled pending memory discriminator),
+several new detection bugs discovered and filed.
 
-**Also landed:** EqA cursor row resolver via unequip-diff trick,
-`remove_equipment` atomic action, Inventory tab flag, and compact
-output cleanup.
-
-**5 commits** on `auto-play-with-claude`, all pushed:
-
-```
-aaadbc4 EqA row resolver: unequip-diff trick + remove_equipment action
-5da81c2 Inventory tab flag + EqA promotion guard for PartyMenu drift
-6112afe Screen detection overhaul: SM-first for party tree, detection fallback for world
-b8d156b Add TravelList + LocationMenu to SM, disable EncounterDialog (sticky noise)
-d24dc3e Add Chronicle/Options sub-screens to SM party-tree gate
-```
-
-**Tests: 2044 passing** (up from 2038 at session start). 6 new
-detection tests added.
+**Tests: 2048 passing** (up from 2044 at session start). 4 net new tests
+(replaced 1 old EncounterDialog test with 5 new ones).
 
 ## What landed, grouped by theme
 
-### 1. Screen detection overhaul (the headline)
+### 1. EncounterDialog detection (the headline)
 
-The fundamental architecture changed. Before: every key press ran
-full memory-based detection to determine the screen, which read stale
-bytes 200-500ms after transitions and returned wrong states. Now:
+Wired `0x140D87830` into `ScreenAddresses[28]` as a dedicated encounter
+flag. Reads 10 during encounter dialog, 0 otherwise. Reverts to 0 after
+fleeing. Replaces the old encA/encB gap-based approach which was disabled
+in session 20 due to sticky noise counters.
 
-- **Party-tree key responses**: `BuildScreenFromSM()` returns the
-  state machine's state directly. No memory reads. The SM processes
-  each key synchronously and always knows the correct screen.
-- **World-side key responses**: Fall back to `DetectScreen()` with
-  a 350ms settling delay. SM-sync corrects the SM when detection
-  returns a different screen than the SM expected.
-- **Observational `screen` reads** (no key press): Full detection
-  runs as before — correction layer for drift.
+Changes:
+- `ScreenDetectionLogic.cs`: new `encounterFlag` parameter, two rules
+  re-enabled (at named location + while traveling)
+- `CommandWatcher.cs`: address added to ScreenAddresses, wired through
+  both DetectScreen call sites + dump_detection_inputs diagnostics
+- `ScreenDetectionTests.cs`: 5 new tests (flag=0 no-trigger, at-location,
+  while-traveling, not-in-battle, not-in-partymenu)
 
-Guards that prevent false state:
-- Tab flags (0x140D3A41E, 0x140D3A38E) gate detection's PartyMenu
-  return — only fires when `party==0` (stale byte)
-- EqA mirror promotion blocked by: tab flags active, detection says
-  world-side, SM already in party tree
-- Stale-SM recovery gated on `LastSetScreenFromKey` flag
-- All tab flag reads use a single cached read per cycle (TOCTOU fix)
-
-### 2. SM coverage expanded
-
-New `GameScreen` enum values: `TravelList`, `LocationMenu`.
-
-| SM Transition | Handler |
-|---|---|
-| WorldMap + Escape → PartyMenu | existing |
-| WorldMap + T → TravelList | **new** |
-| TravelList + Escape → WorldMap | **new** |
-| LocationMenu + Escape → WorldMap | **new** |
-| Chronicle sub-screens (all 10) | **added to party-tree gate** |
-| OptionsSettings | **added to party-tree gate** |
-
-WorldMap + Enter does NOT transition in SM (can't distinguish
-settlement from battle location) — falls through to detection.
-
-### 3. EqA cursor row resolver
-
-Cursor row lives in UE4 widget heap that reallocates per keypress —
-confirmed nonexistent in stable memory across 4 diff test shapes
-(row sweep, optimize equipment, V-page cycle, R-effects toggle).
-
-Instead: unequip-diff trick. `DoEqaRowResolve(restore)` opens the
-picker (Enter), toggles the equipped item (Enter), reads the mirror
-diff to find which slot changed, then restores or keeps-empty.
-
-Two strict-mode actions:
-- `resolve_eqa_row` — resolves and restores (4 keys, ~1.5s)
-- `remove_equipment_at_cursor` — resolves and leaves slot empty (3 keys)
-
-Both paths verified: populated slot (Beowulf Shield→row 1) and
-empty slot (Lloyd Right Hand→row 0 via inverse 0→X detection).
-
-### 4. Inventory tab flag
-
-`0x140D3A38E` = 1 when Inventory tab active, 0 otherwise.
-Cross-session stable. Sibling to Units-bit at `0x140D3A41E`
-(0x90 bytes apart in the same bitfield struct). Wired into
-both detection logic and drift-correction.
-
-### 5. Compact output cleanup
-
-- `ui=` moved to second position (right after `[StateName]`)
-- `status=completed` suppressed (always completed, no signal)
-- `loc=`/`obj=`/`gil=` on same line as state name (was multi-line)
-- Location names shortened to just the name (drop numeric ID)
-- `inventory=` moved to verbose only, renamed to `items=N types, M total`
-- `return 0` added to `fft()` (was leaking exit code 1 from chain-warning check)
-
-### 6. Disabled auto-fire resolvers
-
-- `ResolvePartyMenuCursor` no longer auto-fires on first PartyMenu
-  `screen` read. It sent 8+ keypresses (Right/Left/Down/Up oscillation)
-  that visibly bounced the cursor and never found a usable byte.
-  Still available as explicit `resolve_party_menu_cursor` action.
-
-### 7. EncounterDialog investigation
-
-encA/encB counters are fundamentally unusable:
-- Drift 0-2 during normal screen transitions (noise)
-- Sticky from prior encounters (gap persists indefinitely)
-- Gap threshold of 4+ still false-triggered during navigation
-
-Session 20 diff at TheSiedgeWeald found candidate `0x140D87830`:
-reads 10 during encounter, 0 on WorldMap, reverts after flee.
-TODO added to wire as dedicated encounter flag. Needs cross-session
-verification.
-
-### 8. Story-class Primary fallback
-
-`GetSkillsetName(pIdx)` returns null for story-class encodings
-(Construct 8 Work=171). Falls back to
-`GetPrimarySkillsetByJobName(matchedSlot.JobName)` when null.
-
-## Live-verified states (session 20)
-
-Every non-battle state reachable via the bridge was verified with
-screenshot ground truth:
-
-| State | Method | Result |
-|---|---|---|
-| WorldMap | boot/Escape | ✅ |
-| TravelList | T from WorldMap | ✅ |
-| LocationMenu | Enter at settlement | ✅ |
-| Outfitter | Enter from LocationMenu | ✅ |
-| OutfitterBuy | Enter from Outfitter | ✅ |
-| OutfitterSell | Down+Enter | ✅ |
-| OutfitterFitting | Down×2+Enter | ✅ |
-| PartyMenu (Units) | Escape from WorldMap | ✅ |
-| PartyMenuInventory | E from Units | ✅ |
-| PartyMenuChronicle | E from Inventory | ✅ |
-| PartyMenuOptions | E from Chronicle | ✅ |
-| CharacterStatus | Enter from PartyMenu | ✅ |
-| EquipmentAndAbilities | Enter from CS | ✅ |
-| JobSelection | Down+Enter from CS | ✅ |
-| SecondaryAbilities | Right+Down+Enter from EqA | ✅ |
-| ReactionAbilities | Right+Down×2+Enter | ✅ |
-| SupportAbilities | Right+Down×3+Enter | ✅ |
-| MovementAbilities | Right+Down×4+Enter | ✅ |
-| ChronicleEncyclopedia | Enter on Chronicle grid | ✅ |
-| ChronicleStateOfRealm | Right+Enter | ✅ |
-| ChronicleEvents | Right×2+Enter | ✅ |
-| ChronicleAuracite | Down+Enter | ✅ |
-| ChronicleReadingMaterials | Down+Right+Enter | ✅ |
-| ChronicleCollection | Down+Right×2+Enter | ✅ |
-| ChronicleErrands | Down+Right×3+Enter | ✅ |
-| ChronicleStratagems | Down×2+Enter | ✅ |
-| ChronicleLessons | Down×2+Left+Enter | ✅ |
-| ChronicleAkademicReport | Down×2+Right×2+Enter | ✅ |
-| OptionsSettings | Down×2+Enter from Options | ✅ |
-
-## What's NOT done (top priorities for next session)
-
-### 1. EncounterDialog detection
-
-Disabled — needs `0x140D87830` wired as a dedicated encounter flag.
-Cross-session verification required. See TODO in ScreenDetectionLogic.
+Cross-session verified at TheSiedgeWeald: 2 encounters detected correctly,
+both reverted to WorldMap after flee, no false triggers on WorldMap/
+PartyMenu/LocationMenu navigation.
 
 ### 2. Battle state verification
 
-None of the 13+ battle states were tested this session. The SM-first
-architecture only handles party-tree and world-side; battle states
-still use detection exclusively. These need verification:
-BattleMyTurn, BattleMoving, BattleAttacking, BattleAbilities,
-BattleActing, BattlePaused, BattleWaiting, BattleEnemiesTurn,
-BattleAlliesTurn, BattleVictory, BattleDesertion, BattleDialogue,
-BattleFormation.
+Screenshot-verified 11 battle states against live game:
 
-### 3. Compact output gaps
+| State | Result |
+|---|---|
+| BattleMyTurn | ✅ correct |
+| BattleMoving | ✅ correct |
+| BattleAbilities | ✅ correct |
+| BattleAttacking | ✅ correct |
+| BattleWaiting | ✅ correct |
+| BattleStatus | ✅ correct |
+| BattlePaused | ✅ correct |
+| BattleFormation | ✅ correct |
+| BattleEnemiesTurn | ✅ correct |
+| GameOver | ✅ correct |
+| EncounterDialog | ✅ correct |
+| BattleVictory | ❌ misdetects as BattlePaused |
+| BattleDesertion | ❌ misdetects as BattlePaused |
 
-- WorldMap `ui=` should show hovered location name
-- EqA `ui=` shows stale cursor row (SM key-tracking drifts)
-- EqA compact format: two-column grid unreadable in narrow windows
-- Outfitter `ui=` doesn't show Buy/Sell/Fitting hover
+BattleActing too transient to catch. BattleAlliesTurn needs guest allies.
+BattleDialogue and Cutscene blocked by sticky gameOverFlag bug.
 
-### 4. Chronicle vs Options discriminator
+### 3. BattleSequence scaffolding (disabled)
 
-Still no memory byte distinguishes these tabs. Both flags at 0
-during transitions caused spurious PartyMenuChronicle detection
-(now disabled — SM doesn't guess when both flags are 0).
+Built full infrastructure for multi-stage campaign sub-selector minimap
+(e.g. Orbonne Monastery Vaults). **Detection rule disabled** because the
+screen is byte-identical to WorldMap across all 29 detection inputs when
+standing at a whitelist location.
+
+What's in place (ready to enable when discriminator found):
+- `BattleSequenceLocations` HashSet: 8 locations (Riovanes, Lionel,
+  Limberry, Zeltennia, Ziekden, Mullonde, Orbonne, Fort Besselat)
+- `NavigationPaths`: CommenceBattle (Enter) + PartyMenu (Escape)
+- SM sync: maps to GameScreen.Unknown
+- LocationSaveLogic: saves location on BattleSequence
+- Detection rule (commented out): checks slot0!=255, !onWorldMapByMoveMode,
+  rawLocation in whitelist, locationMenuFlag=0, tab flags=0
+
+### 4. OutfitterSell inventory verified
+
+`screen.inventory` on OutfitterSell was shipped in session 18 but flagged
+⚠ UNVERIFIED. Live-verified session 21: 146 sellable items displayed
+grouped by type with counts and estimated prices. Removed UNVERIFIED flag.
+
+### 5. Dorter shop stock captured via buy-diff
+
+Proved the buy-1-of-everything technique for discovering per-shop stock:
+- Read inventory before buying (snapshot A)
+- Buy 1 of each item at Dorter Outfitter
+- Read inventory after (snapshot B)
+- Diff: 120 items incremented + 10 items at 99 cap = 130 total items
+
+Dorter's complete stock: 130 items across all categories. Confirmed stock
+is per-location AND per-chapter (not global).
+
+Also found global weapons master list at `0xEA01DC` (stable main-module
+address, ~120 weapon IDs, FF-terminated). Shield stock found in heap at
+`0x15B8C42E8` but shifts on restart.
+
+## What's NOT done (top priorities for next session)
+
+### 1. BattleVictory/BattleDesertion misdetect as BattlePaused
+
+Root cause: `slot0=0x67` (not 255) during Victory/Desertion screens.
+`unitSlotsPopulated` requires slot0==255, which fails. Both rules fall
+through to BattlePaused. Fix: relax the rules to not require
+unitSlotsPopulated — use `battleModeActive && actedOrMoved && battleMode==0`
+instead. Inputs captured in TODO.
+
+### 2. Cutscene/BattleDialogue misdetect as LoadGame after GameOver
+
+Sticky `gameOverFlag=1` from prior GameOver causes LoadGame rule to
+preempt both. Fix: add `eventId < 1 || eventId >= 400` guard to LoadGame
+rule so real cutscenes (eventId 1-399) aren't swallowed.
+
+### 3. BattleSequence memory discriminator
+
+All 29 detection inputs are identical between WorldMap and BattleSequence
+at whitelist locations. Heap addresses for shop stock shift on restart.
+Next step: heap diff scan while ON the minimap vs WorldMap at same
+location, or find a stable flag in the main module.
+
+### 4. Per-shop stock list (OutfitterBuy)
+
+Global weapons master at `0xEA01DC` found (stable). Per-shop filter and
+non-weapon categories (shields, armor, hats, accessories, consumables)
+still in heap. Buy-diff technique works but is expensive in gil/time.
 
 ## Things that DIDN'T work (don't repeat)
 
-1. **Byte-level poll-until-stable** — Stale bytes stabilize at wrong
-   values before the game updates them. Polling raw bytes detects
-   "stable" and exits, but the values are stale-stable.
+1. **Location whitelist alone for BattleSequence** — False-triggers on
+   WorldMap when the save is at a whitelist location (fresh boot at
+   Orbonne detected as BattleSequence). All 29 detection inputs are
+   identical between the two screens.
 
-2. **Detection-level poll-until-stable** — Same problem at a higher
-   level. Detection stabilizes on a wrong result (TravelList instead
-   of WorldMap) because the underlying bytes are stale-stable.
+2. **menuDepth as BattleSequence discriminator** — Read 1 on first check,
+   0 on second check. Not stable on this screen.
 
-3. **encA/encB with any threshold** — Counters are sticky from prior
-   encounters. Gap of 4+ from a previous fight persists indefinitely
-   and causes false EncounterDialog triggers during normal navigation.
+3. **hover==rawLocation as discriminator** — Both WorldMap and
+   BattleSequence show hover=254 (cursor not on a location node).
 
-4. **Tab flags as unconditional PartyMenu override** — When `party==1`
-   AND tab flag fires, the early return preempts the normal detection
-   flow. This broke CharacterStatus/EqA detection because the
-   stale-SM recovery then stomped the correct sub-screen back to
-   PartyMenu.
+4. **Shop stock heap address from session 19** (`0x5D9B52C0`) — Dead
+   after restart. Heap address, not main module.
 
-5. **`LastSetScreenFromKey` set in SetScreen** — OnKeyPressed sets
-   the flag, then key handlers assign `CurrentScreen` directly (not
-   through SetScreen). Setting it in SetScreen was pointless.
+5. **AoB search for 0B0C0D0E0F** (ninja blade IDs) — 100 matches.
+   Too common a byte sequence.
 
 ## Things that DID work (repeat)
 
-1. **SM-first for party-tree transitions** — The SM processes keys
-   synchronously and is always correct for transitions it models.
-   Returning its state directly eliminates all stale-byte issues.
-   This is the right architecture.
+1. **Dedicated memory flag for EncounterDialog** — `0x140D87830` is a
+   clean binary signal (10=encounter, 0=not). No threshold math, no
+   noise. This is how all screen detection should work.
 
-2. **Detection as fallback, not primary** — Detection reads stale
-   memory. Using it only when the SM can't handle the transition
-   (world-side, shops, battle) limits the blast radius of stale bytes.
+2. **Buy-diff technique for shop stock** — Buy 1 of everything, diff
+   the 272-byte inventory array. Gives exact per-shop stock in one pass.
+   Works even when items are already owned (delta=+1 is the signal).
 
-3. **SM-sync after detection** — When detection runs as fallback,
-   syncing the SM to the detection result prevents the SM from
-   carrying stale state into the next key press.
+3. **Screenshot ground truth for state verification** — Every state
+   detection was verified against a screenshot. Caught 2 real bugs
+   (Victory/Desertion) that would have been missed by code review alone.
 
-4. **Cached tab flag reads** — Reading the flags once and reusing
-   across detection + correction blocks eliminates TOCTOU races
-   where flags flicker during transitions.
+4. **8-byte AoB for katana IDs** — Only 17 matches vs 100 for 5-byte
+   pattern. Longer patterns with less common byte values work better.
 
-5. **Screenshot ground truth** — `screenshot.ps1` as definitive
-   proof of game state. Every fix was verified against screenshots.
+## New states discovered
+
+- **BattleSequence** — Multi-stage campaign sub-selector minimap.
+  Scaffolding built, detection disabled. Needs memory discriminator.
+- **BattleChoice** — Mid-battle objective choice screen (e.g. "protect
+  him at all costs" vs "press on to battle"). Needs investigation.
 
 ## Memory notes saved this session
 
-- **`project_inventory_tab_flag.md`** — `0x140D3A38E` = 1 on
-  Inventory tab, 0 elsewhere. Cross-session stable.
-- Updated **`project_eqa_equipment_mirror.md`** description: cursor
-  row now via unequip-resolver (not "still unknown").
+None new — findings documented in TODO and this handoff.
 
 ## Quick start next session
 
 ```bash
 # Baseline check
-./RunTests.sh                # 2044 passing
+./RunTests.sh                # 2048 passing
 
-# Live smoke — test the SM-first architecture
+# Live smoke — EncounterDialog verification
 source ./fft.sh
 boot                          # if game isn't running
+world_travel_to 26            # travel to TheSiedgeWeald (may trigger encounter)
+screen                        # should show [EncounterDialog] if encounter hit
+execute_action Flee            # flee back to WorldMap
 
-# Full navigation cycle (should be 8/8 correct):
-key 27 Escape                 # [PartyMenu]
-key 13 Enter                  # [CharacterStatus]
-key 13 Enter                  # [EquipmentAndAbilities]
-key 27 Escape                 # [CharacterStatus]
-key 27 Escape                 # [PartyMenu]
-key 27 Escape                 # [WorldMap]
-
-# Tab cycling:
-key 27 Escape                 # [PartyMenu]
-fft '{"id":"e","keys":[{"vk":69,"name":"E"}],"delayBetweenMs":200}'
-# Should cycle: Inventory → Chronicle → Options → Units
+# Quick state check
+screen                        # [WorldMap]
+execute_action PartyMenu      # [PartyMenu]
+execute_action ReturnToWorldMap # [WorldMap]
 ```
 
 ## Active TODO top of queue (next-session priority)
 
-1. **EncounterDialog: wire 0x140D87830** — cross-session verify, add
-   to ScreenAddresses, re-enable EncounterDialog rule
-2. **Battle state verification** — enter a battle, verify all 13 states
-3. **WorldMap ui= location name** — surface hover location as ui field
-4. **EqA compact format** — narrow-friendly single-line layout
-5. **Chronicle vs Options discriminator** — deferred memory hunt
+1. **BattleVictory/BattleDesertion → BattlePaused bug** — relax
+   unitSlotsPopulated requirement (quick code fix + tests)
+2. **Cutscene/BattleDialogue → LoadGame bug** — add eventId guard to
+   LoadGame rule (quick code fix + tests)
+3. **BattleSequence discriminator** — heap diff scan on minimap vs
+   WorldMap at Orbonne
+4. **Per-shop stock for OutfitterBuy** — try heap search for armor/hat/
+   accessory/consumable category lists near `0xEA01DC`
+5. **BattleChoice state** — investigate memory during mid-battle
+   objective choice screen

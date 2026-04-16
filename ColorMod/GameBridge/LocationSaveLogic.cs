@@ -36,7 +36,8 @@ namespace FFTColorCustomizer.GameBridge
             if (effective == lastSavedLocation)
                 return false;
 
-            return screenName == "WorldMap" || screenName == "EncounterDialog";
+            return screenName == "WorldMap" || screenName == "EncounterDialog"
+                || screenName == "BattleSequence";
         }
     }
 }

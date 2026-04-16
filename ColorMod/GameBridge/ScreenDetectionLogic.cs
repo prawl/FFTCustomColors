@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 
 namespace FFTColorCustomizer.GameBridge
@@ -20,6 +21,24 @@ namespace FFTColorCustomizer.GameBridge
     /// </summary>
     public static class ScreenDetectionLogic
     {
+        /// <summary>
+        /// Locations with multi-stage battle sequences (campaign sub-selector minimap).
+        /// These locations show a minimap of sub-battles instead of a LocationMenu.
+        /// When rawLocation matches one of these AND locationMenuFlag=0 (not in a shop
+        /// menu), the player is on the BattleSequence screen.
+        /// </summary>
+        internal static readonly HashSet<int> BattleSequenceLocations = new()
+        {
+            1,  // Riovanes Castle
+            3,  // Lionel Castle
+            4,  // Limberry Castle
+            5,  // Zeltennia Castle
+            15, // Ziekden Fortress
+            16, // Mullonde
+            18, // Orbonne Monastery
+            21, // Fort Besselat
+        };
+
         public static string Detect(
             int party, int ui, int rawLocation,
             long slot0, long slot9,
@@ -29,7 +48,8 @@ namespace FFTColorCustomizer.GameBridge
             int submenuFlag = 0, int menuCursor = -1, int hover = 255,
             int locationMenuFlag = 0, int insideShopFlag = 0,
             int shopSubMenuIndex = 0, int shopTypeIndex = 0,
-            int unitsTabFlag = 0, int inventoryTabFlag = 0)
+            int unitsTabFlag = 0, int inventoryTabFlag = 0,
+            int encounterFlag = 0)
         {
             // rawLocation is the last-visited named place (village/shop/campaign ground).
             // It's STICKY — retains the last-visited location even when the player leaves.
@@ -59,6 +79,20 @@ namespace FFTColorCustomizer.GameBridge
             // battle location (rawLocation 0-42) but is distinctly a battle-setup state.
             if (slot0 == 0xFFFFFFFFL && slot9 == 0xFFFFFFFF && battleMode == 1)
                 return "BattleFormation";
+
+            // BattleSequence: multi-stage campaign sub-selector minimap (e.g. Orbonne
+            // Monastery Vaults). DISABLED — byte-indistinguishable from WorldMap when
+            // standing at a whitelist location (fresh boot or returning from battle).
+            // All 28 detection inputs are identical between the two screens.
+            // Needs a dedicated memory byte (heap scan on minimap screen vs WorldMap).
+            // Location whitelist: BattleSequenceLocations (1,3,4,5,15,16,18,21).
+            // See TODO for full investigation notes from session 21.
+            // if (slot0 != 255 && !onWorldMapByMoveMode
+            //     && rawLocation >= 0 && rawLocation <= 42
+            //     && locationMenuFlag == 0
+            //     && unitsTabFlag == 0 && inventoryTabFlag == 0
+            //     && BattleSequenceLocations.Contains(rawLocation))
+            //     return "BattleSequence";
 
             // PartyMenu tab flags: 0x140D3A41E (Units) and 0x140D3A38E (Inventory)
             // are cross-session-stable binary flags that read 1 ONLY when the
@@ -96,12 +130,8 @@ namespace FFTColorCustomizer.GameBridge
                 if (hover >= 0 && hover <= 42 && rawLocation == 255)
                     return "WorldMap";
 
-                // BattleChooseLocation (multi-battle campaign ground sub-selector like
-                // Orbonne Vaults) is byte-indistinguishable from post-restart WorldMap in
-                // our current 19 inputs. During an active session it can be detected by
-                // slot0 holding a small non-sentinel sub-location index, but that signal
-                // doesn't survive a process restart. Needs a dedicated memory scan to find
-                // a stable discriminator. For now it detects as WorldMap.
+                // BattleSequence (multi-stage campaign sub-selector, e.g. Orbonne Vaults)
+                // is handled below via location whitelist after LocationMenu rule.
 
                 // TitleScreen (strict): fresh process launch before save load. Two valid
                 // fingerprints:
@@ -143,14 +173,13 @@ namespace FFTColorCustomizer.GameBridge
                     && battleMode == 0)
                     return "BattleVictory";
 
-                // EncounterDialog: DISABLED. encA/encB counters are sticky —
-                // gap persists from prior encounters and causes false triggers
-                // during subsequent navigation. No threshold is safe. Needs a
-                // dedicated encounter-active memory flag (0x140D87830 candidate
-                // from session 20 diff, reads 10 during encounter, 0 otherwise).
-                // TODO: wire 0x140D87830 into ScreenAddresses and use as signal.
-                // if (atNamedLocation && encounterFlag != 0 && ...)
-                //     return "EncounterDialog";
+                // EncounterDialog: dedicated flag at 0x140D87830 reads non-zero
+                // (observed value: 10) during the encounter prompt, 0 otherwise.
+                // Replaces unusable encA/encB noise counters (session 20).
+                // Must fire BEFORE LocationMenu/shop rules — an encounter at a
+                // named location still has locationMenuFlag=1 but is NOT a shop.
+                if (encounterFlag != 0)
+                    return "EncounterDialog";
 
                 // Sub-action entered inside a shop/service. shopSubMenuIndex at
                 // 0x14184276C reads 0 on the shop menu, 255 on world map, and
@@ -197,6 +226,9 @@ namespace FFTColorCustomizer.GameBridge
                 if (atNamedLocation)
                     return "LocationMenu";
 
+                // BattleSequence handled above (before inBattle calculation) because
+                // post-sub-battle residue makes battleModeActive=true.
+
                 // Mid-battle dialogue with slot0 torn down: rawLocation=255 + real event +
                 // slot0=0xFFFFFFFF + acted/moved=1 (happened after an action).
                 if (rawLocation == 255 && slot0 == 0xFFFFFFFFL
@@ -204,9 +236,9 @@ namespace FFTColorCustomizer.GameBridge
                     && actedOrMoved)
                     return "BattleDialogue";
 
-                // EncounterDialog: DISABLED. See note above — encA/encB sticky.
-                // if (party == 0 && encounterFlag != 0 && !actedOrMoved)
-                //     return "EncounterDialog";
+                // EncounterDialog while traveling (rawLocation=255): same flag.
+                if (encounterFlag != 0)
+                    return "EncounterDialog";
 
                 // World-map side states (rawLocation=255 OR stale rawLocation with hover=254).
                 // WorldMap and TravelList are byte-identical in current inputs after a

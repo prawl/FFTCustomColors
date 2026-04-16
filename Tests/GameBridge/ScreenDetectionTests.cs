@@ -623,19 +623,89 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void DetectScreen_RealEncounterDialog_NotInBattle_StillWorks()
+        public void DetectScreen_EncounterFlag_Zero_NoEncounterDialog()
         {
-            // EncounterDialog rules disabled — encA/encB are sticky noise.
-            // With rules disabled, this falls through to something else.
+            // encounterFlag=0 means no encounter active — even with sticky encA/encB
+            // noise, EncounterDialog should NOT fire.
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 28, slot0: 0, slot9: 0,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
                 encA: 5, encB: 3, isPartySubScreen: false,
-                submenuFlag: 0, menuCursor: 0);
+                submenuFlag: 0, menuCursor: 0, locationMenuFlag: 1,
+                encounterFlag: 0);
 
             Assert.NotEqual("EncounterDialog", result);
         }
+
+        [Fact]
+        public void DetectScreen_EncounterFlag_AtNamedLocation_ReturnsEncounterDialog()
+        {
+            // encounterFlag=10 at a named location (locationMenuFlag=1) → EncounterDialog.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 28, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0, locationMenuFlag: 1,
+                encounterFlag: 10);
+
+            Assert.Equal("EncounterDialog", result);
+        }
+
+        [Fact]
+        public void DetectScreen_EncounterFlag_WhileTraveling_ReturnsEncounterDialog()
+        {
+            // encounterFlag=10 while traveling (rawLocation=255, moveMode=13) → EncounterDialog.
+            // slot9=1 to avoid TitleScreen rule (slot9=0 triggers fresh-process detection).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0, slot9: 1,
+                battleMode: 0, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                encounterFlag: 10);
+
+            Assert.Equal("EncounterDialog", result);
+        }
+
+        [Fact]
+        public void DetectScreen_EncounterFlag_DoesNotFireInBattle()
+        {
+            // encounterFlag sticky during battle should NOT cause EncounterDialog
+            // when we're actually in a battle (slot0=255, slot9=0xFFFFFFFF).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                encounterFlag: 10);
+
+            Assert.NotEqual("EncounterDialog", result);
+            Assert.StartsWith("Battle", result);
+        }
+
+        [Fact]
+        public void DetectScreen_EncounterFlag_DoesNotOverridePartyMenu()
+        {
+            // encounterFlag should not fire when party=1 (PartyMenu takes priority).
+            // slot9=1 to avoid TitleScreen rule.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 0, rawLocation: 255, slot0: 0, slot9: 1,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                encounterFlag: 10);
+
+            Assert.Equal("PartyMenu", result);
+        }
+
+        // === BattleSequence (multi-stage campaign sub-selector) ===
+        // DISABLED — BattleSequence is byte-indistinguishable from WorldMap
+        // at whitelist locations. Needs a dedicated memory discriminator.
+        // Tests preserved for when the discriminator is found.
 
         [Fact]
         public void DetectScreen_Desertion_WithPaused_ShouldReturnBattleDesertion()

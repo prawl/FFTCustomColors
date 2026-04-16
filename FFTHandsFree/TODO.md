@@ -75,9 +75,19 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Session 20 — state detection + EqA resolver
 
-- [ ] **EncounterDialog detection: wire 0x140D87830 as encounter flag** — encA/encB counters are unusable (sticky noise, false triggers during navigation). Session 20 diff at TheSiedgeWeald found `0x140D87830` reads 10 during encounter, 0 on WorldMap (reverts after flee). Wire into ScreenAddresses and use as EncounterDialog signal. Needs cross-session verification.
+- [ ] **Battle state verification** — Session 21 verified 11/13 with screenshots: BattleMyTurn ✅, BattleMoving ✅, BattleAbilities ✅, BattleAttacking ✅, BattleWaiting ✅, BattleStatus ✅, BattlePaused ✅, BattleFormation ✅, BattleEnemiesTurn ✅, GameOver ✅, EncounterDialog ✅. BattleVictory ❌ and BattleDesertion ❌ misdetect as BattlePaused (see bug below). BattleDialogue and Cutscene blocked by sticky gameOverFlag (see bug below). BattleActing transient (hard to catch). BattleAlliesTurn needs guest allies. 
 
-- [ ] **Battle state verification** — 13 battle states untested this session (BattleMyTurn, BattleMoving, BattleAttacking, BattleAbilities, BattleActing, BattlePaused, BattleWaiting, BattleEnemiesTurn, BattleAlliesTurn, BattleVictory, BattleDesertion, BattleDialogue, BattleFormation). Enter a battle and verify each with screenshots.
+- [ ] **LoadGame/SaveGame from title menu misdetect as TravelList** — Session 21: Both file picker screens (load and save) reached from title/pause menu have party=0, ui=1, slot0=0xFFFFFFFF, slot9=0xFFFFFFFF, battleMode=255, gameOverFlag=0. Matches TravelList rule (party=0, ui=1). Existing LoadGame rule only handles GameOver→LoadGame path (requires gameOverFlag=1, battleMode=0). SaveGame only handled as shop-type label (shopTypeIndex=4). Needs a discriminator byte — or accept the ambiguity since Claude uses `save`/`load` helpers which don't rely on screen detection.
+
+- [ ] **BattleSequence detection: find memory discriminator** — Session 21 built full scaffolding (whitelist of 8 locations, NavigationPaths, SM sync, LocationSaveLogic) but detection DISABLED because BattleSequence minimap is byte-identical to WorldMap at those locations across all 29 detection inputs. Whitelist approach false-triggers on fresh boot/save load at sequence locations. Scaffolding ready in ScreenDetectionLogic.cs (commented out rule + `BattleSequenceLocations` HashSet). Next step: heap diff scan while ON the minimap vs WorldMap at same location to find a dedicated flag. Locations: Riovanes(1), Lionel(3), Limberry(4), Zeltennia(5), Ziekden(15), Mullonde(16), Orbonne(18), FortBesselat(21).
+
+- [ ] **Cutscene misdetects as LoadGame after GameOver** — Session 21: sticky gameOverFlag=1 from prior GameOver causes LoadGame rule to preempt Cutscene. Inputs during real cutscene (eventId=2): gameOverFlag=1, battleMode=0, paused=0, actedOrMoved=false — all match LoadGame. Fix: LoadGame rule should additionally check that eventId is NOT in the real cutscene range (1-399), or Cutscene should be checked before LoadGame in the battle branch.
+
+- [ ] **world_travel_to status=rejected should include reason** — Session 21: `world_travel_to 9` while already at Dorter returns `status=rejected` with no explanation. Should include a reason like "Already at Merchant City of Dorter" so Claude doesn't waste a round-trip figuring out why.
+
+- [ ] **New state: BattleChoice — mid-battle objective choice screen** — Some battles pause and present 2 options (e.g. "We must press on, to battle" vs "Protect him at all costs"). Selecting an option changes the battle objective (e.g. from "defeat all" to "protect X"). Needs memory investigation to find a discriminator byte. Likely paused=1 with a unique submenu/menuCursor combo.
+
+- [ ] **BattleVictory/BattleDesertion misdetect as BattlePaused** — Session 21 at Orbonne Monastery: slot0=0x67 (not 255) during Victory and Desertion screens. `unitSlotsPopulated` (slot0==255) is false, so `postBattle` and `postBattlePausedState` both fail, and the rules fall through to BattlePaused. Fix: relax the Victory/Desertion rules to not require unitSlotsPopulated — use `battleModeActive && actedOrMoved && battleMode == 0` instead. Inputs captured: party=1, ui=1, slot0=0x67, slot9=0xFFFFFFFF, battleMode=0, paused=1, submenuFlag=1, actedOrMoved=true, eventId=303.
 
 - [ ] **WorldMap `ui=` should show hovered location name** — e.g. `[WorldMap] ui=Magick City of Gariland` when cursor is over a location. Currently `ui=` is empty on WorldMap. The hover location ID is available (used for `loc=`), just needs to be surfaced as the `ui` field.
 
@@ -103,8 +113,6 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Block improper chained `fft` calls more aggressively** — Session 19 session crash: chained 4 sequential `fft` key-sending calls by overriding `_FFT_DONE=0` between them. Bridge auto-delay protection was bypassed, keys fired back-to-back without settling, game state drifted and the game crashed. `_FFT_DONE` guard exists specifically to prevent this but is too easy to defeat. Fix ideas: (a) make the override explicit (`_FFT_ALLOW_CHAIN=1` with a loud banner printed), (b) detect and reject multiple key-sending `fft` calls within N ms regardless of guard state (bridge-side rate limit, not shell-side), (c) compiler-level: collapse batch patterns by auto-merging sequential `fft`-with-keys into one request. Core rule: **game-action commands MUST be batched into one `fft` call with `keys` array + `delayBetweenMs`**; observational reads (`rv`, `block`, `screen`) are safe to chain. Document + enforce.
 
-- [ ] **EncounterDialog detection: wire 0x140D87830 as encounter flag** — encA/encB counters are unusable (sticky noise, false triggers during navigation). Session 20 diff at TheSiedgeWeald found `0x140D87830` reads 10 during encounter, 0 on WorldMap (reverts after flee). Wire into ScreenAddresses and use as EncounterDialog signal. Needs cross-session verification.
-
 - [ ] **Replace fixed post-key delay with poll-until-stable** — Currently a fixed 250ms sleep after the last keypress before reading screen state. Works but wastes time on fast transitions and isn't long enough for slow ones (tab switches, screen exits). Replace with: read state, wait 50ms, read again, if identical return, else keep polling up to 500ms. Guarantees settled state without over-waiting.
 
 - [ ] **Re-enable Chronicle/Options tab correction when both flags are 0** — Disabled 2026-04-16 because transient flag-clears during screen transitions caused spurious PartyMenuChronicle detection. When a Chronicle-vs-Options discriminator byte is found, re-enable the `v41e==0 && v38e==0` correction branch with the new byte as a tiebreaker.
@@ -126,15 +134,6 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 
 
-- [x] **PartyMenu tab desync: delay/confirm approaches** — SUPERSEDED by session 20 SM-first architecture. Party-tree key responses now use SM state directly, bypassing detection entirely. Multi-press tab jumps no longer cause stale reads.
-
-- [x] **PartyMenu tab desync: find non-Units tab discriminator memory byte** — **Inventory flag DONE** session 20 commit 5da81c2: `0x140D3A38E` = 1 on Inventory. Chronicle/Options discriminator NOT FOUND — deferred. Session 20 also overhauled detection architecture (SM-first for party tree) which eliminated most tab-related drift.
-
-
-
-
-
-- [x] **PartyMenu screen identity drift (a)** — FIXED session 20. SM-first architecture eliminates stale-byte reads for party-tree transitions. Tab flags (41E/38E) wired into detection as fallback. EqA mirror promotion guarded by tab flags + world-side detection + SM-in-party-tree check.
 
 - [ ] **PartyMenu cursor row/col drift (b)** — `_savedPartyRow/Col` carries stale values across tab switches / multi-step nav. Session 16 repro: `OpenUnits → SelectUnit` reported `ui=Orlandeau` and drilled into Orlandeau's stats while game actually opened Ramza's. Quick mitigation: reset CursorRow/Col to 0 on any Q/E tab-switch. Real fix: read cursor from memory. `ResolvePartyMenuCursor` auto-fire disabled session 20 (8 keypresses, never finds byte). 5 candidate row bytes from session 18 UNTESTED.
 
@@ -874,7 +873,7 @@ Items that are fully shipped (checked `[x]`). Partial (`[~]`) items stay above i
 
 - [x] ⚠ UNVERIFIED — **Normalize screen state names to CamelCase (no underscores)** — DONE commit 3087140. All `Battle_*` and `Outfitter_*` state names drop underscores. `ScreenDetectionLogic.cs` returns `OutfitterSell`/`BattleAttacking`/etc. Zero underscored state names remain.
 
-- [x] ⚠ UNVERIFIED — **Full sell inventory inline at Outfitter_Sell** — DONE session 18 (commits 9287e5e, 93b5579). `InventoryReader.ReadSellable()` + `ItemPrices.cs` + `CommandWatcher` populates `screen.inventory` on OutfitterSell with `{name, heldCount, sellPrice, type}`. Verified + estimated sell-price distinction (`sell=` vs `sell~`).
+- [x] **Full sell inventory inline at Outfitter_Sell** — DONE session 18 (commits 9287e5e, 93b5579). `InventoryReader.ReadSellable()` + `ItemPrices.cs` + `CommandWatcher` populates `screen.inventory` on OutfitterSell with `{name, heldCount, sellPrice, type}`. Verified + estimated sell-price distinction (`sell=` vs `sell~`). Live-verified session 21: 146 sellable items, grouped by type, with counts and prices.
 
 - [x] ⚠ UNVERIFIED — **Full equipment picker inline at Outfitter_Fitting** — DONE commit 93b5579. `screen.inventory` (ReadAll) surfaces on OutfitterFitting. Slot-type filter deferred (requires Fitting picker-depth state tracking).
 
@@ -1073,3 +1072,15 @@ Items that are fully shipped (checked `[x]`). Partial (`[~]`) items stay above i
 
 
 - [x] ⚠ UNVERIFIED — **scan_move disrupts targeting mode** [State] — Fixed 2026-04-13: removed Battle_Attacking and Battle_Casting from scan-safe screens.
+
+
+- [x] **EncounterDialog detection: wire 0x140D87830 as encounter flag** — DONE session 21. Wired into ScreenAddresses[28], added `encounterFlag` param to `Detect()`, re-enabled both EncounterDialog rules. Cross-session verified: flag=10 during encounter, 0 after flee, no false triggers on WorldMap/PartyMenu/LocationMenu. 5 new tests (2048 total).
+
+
+- [x] **PartyMenu tab desync: delay/confirm approaches** — SUPERSEDED by session 20 SM-first architecture. Party-tree key responses now use SM state directly, bypassing detection entirely. Multi-press tab jumps no longer cause stale reads.
+
+
+- [x] **PartyMenu tab desync: find non-Units tab discriminator memory byte** — **Inventory flag DONE** session 20 commit 5da81c2: `0x140D3A38E` = 1 on Inventory. Chronicle/Options discriminator NOT FOUND — deferred. Session 20 also overhauled detection architecture (SM-first for party tree) which eliminated most tab-related drift.
+
+
+- [x] **PartyMenu screen identity drift (a)** — FIXED session 20. SM-first architecture eliminates stale-byte reads for party-tree transitions. Tab flags (41E/38E) wired into detection as fallback. EqA mirror promotion guarded by tab flags + world-side detection + SM-in-party-tree check.

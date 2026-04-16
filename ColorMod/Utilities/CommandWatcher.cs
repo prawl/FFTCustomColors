@@ -1380,6 +1380,7 @@ namespace FFTColorCustomizer.Utilities
                             int dSti = (int)raw[22];
                             int dIsf = (int)raw[23];
                             int dSsmi = (int)raw[24];
+                            int dEncF = (int)raw[28];
                             bool dInBattle = (dS0 == 255 && dS9 == 0xFFFFFFFF)
                                 || (dS9 == 0xFFFFFFFF && (dBm == 2 || dBm == 3 || dBm == 4));
                             // Read tab flags for detection
@@ -1394,7 +1395,8 @@ namespace FFTColorCustomizer.Utilities
                                 dEv, submenuFlag: dSf, menuCursor: dMc, hover: dHover,
                                 locationMenuFlag: dLmf, insideShopFlag: dIsf,
                                 shopSubMenuIndex: dSsmi, shopTypeIndex: dSti,
-                                unitsTabFlag: dUtf, inventoryTabFlag: dItf);
+                                unitsTabFlag: dUtf, inventoryTabFlag: dItf,
+                                encounterFlag: dEncF);
                             var snapshot = new Dictionary<string, object>
                             {
                                 ["timestamp"] = DateTime.UtcNow.ToString("o"),
@@ -1423,7 +1425,8 @@ namespace FFTColorCustomizer.Utilities
                                     ["locationMenuFlag"] = dLmf,
                                     ["shopTypeIndex"] = dSti,
                                     ["insideShopFlag"] = dIsf,
-                                    ["shopSubMenuIndex"] = dSsmi
+                                    ["shopSubMenuIndex"] = dSsmi,
+                                    ["encounterFlag"] = dEncF
                                 }
                             };
                             response.Info = System.Text.Json.JsonSerializer.Serialize(snapshot,
@@ -2748,6 +2751,7 @@ namespace FFTColorCustomizer.Utilities
             ((nint)0x140D39CD0, 4),  // 25: gil (player's currency, u32 little-endian)
             ((nint)0x141870704, 4),  // 26: shopListCursorIndex (row the player is highlighting inside OutfitterBuy/Sell/Fitting; 0-based)
             ((nint)0x14077CB67, 1),  // 27: menuDepth (0=outer menu (WorldMap/PartyMenu/CharacterStatus), 2=inner panel (EquipmentAndAbilities or an ability picker). Discovered 2026-04-14 session 13 via module-memory snapshot diff; verified stable across repeated reads. Primary use: drift-check the state machine — if state machine thinks we're on EquipmentAndAbilities/picker but menuDepth reads 0, we're actually on CharacterStatus and should snap back.)
+            ((nint)0x140D87830, 1),  // 28: encounterFlag (10=encounter dialog active, 0=no encounter. Session 20 diff at TheSiedgeWeald. Replaces unusable encA/encB noise counters.)
         };
 
         /// <summary>
@@ -3910,6 +3914,7 @@ namespace FFTColorCustomizer.Utilities
                 int shopTypeIndex = (int)v[22];
                 int insideShopFlag = (int)v[23];
                 int shopSubMenuIndex = (int)v[24];
+                int encounterFlag = (int)v[28];
 
                 // PartyMenu tab flags — cross-session stable, override stale party byte
                 int unitsTabFlag = 0, inventoryTabFlag = 0;
@@ -3930,7 +3935,8 @@ namespace FFTColorCustomizer.Utilities
                     insideShopFlag: insideShopFlag,
                     shopSubMenuIndex: shopSubMenuIndex,
                     shopTypeIndex: shopTypeIndex,
-                    unitsTabFlag: unitsTabFlag, inventoryTabFlag: inventoryTabFlag);
+                    unitsTabFlag: unitsTabFlag, inventoryTabFlag: inventoryTabFlag,
+                    encounterFlag: encounterFlag);
 
                 // TravelList→WorldMap override: when the SM just left
                 // PartyMenu via a key press (Escape) and detection says
@@ -4904,7 +4910,7 @@ namespace FFTColorCustomizer.Utilities
                     or "LocationMenu" or "TitleScreen" or "Cutscene"
                     or "Outfitter" or "Tavern" or "WarriorsGuild" or "PoachersDen" or "SaveGame"
                     or "OutfitterBuy" or "OutfitterSell" or "OutfitterFitting"
-                    or "EncounterDialog" or "BattleFormation";
+                    or "EncounterDialog" or "BattleSequence" or "BattleFormation";
                 // Skip when SM is already in a party-tree screen — the mirror
                 // always matches there (same unit's gear is displayed on
                 // CharacterStatus, EqA, and pickers). Promoting would stomp
@@ -5541,7 +5547,7 @@ namespace FFTColorCustomizer.Utilities
                         "WorldMap" => GameScreen.WorldMap,
                         "TitleScreen" => GameScreen.TitleScreen,
                         "PartyMenu" => GameScreen.PartyMenu,
-                        "EncounterDialog" => GameScreen.Unknown,
+                        "EncounterDialog" or "BattleSequence" => GameScreen.Unknown,
                         "Battle" or "GameOver" => GameScreen.Unknown,
                         _ when screen.Name.StartsWith("Battle_") => GameScreen.Unknown,
                         // "TravelList" removed: if detection landed on TravelList but

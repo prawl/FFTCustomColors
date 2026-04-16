@@ -73,6 +73,7 @@ namespace FFTColorCustomizer.GameBridge
                 "OutfitterFitting" => GetShopItemListPaths("Select highlighted slot/item (advances picker)"),
                 "ShopConfirmDialog" => GetShopConfirmDialogPaths(),
                 "SaveGame_Menu" => GetSaveGameMenuPaths(),
+                "BattleSequence" => GetBattleSequencePaths(),
                 "EncounterDialog" => GetEncounterDialogPaths(),
                 "GameOver" => GetGameOverPaths(),
                 "BattleMyTurn" => GetBattleMyTurnPaths(screen),
@@ -535,6 +536,26 @@ namespace FFTColorCustomizer.GameBridge
                 },
                 ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Toggle Yes/No cursor" },
                 ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Toggle Yes/No cursor" },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetBattleSequencePaths()
+        {
+            return new()
+            {
+                ["CommenceBattle"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    WaitUntilScreenNot = "BattleSequence",
+                    WaitTimeoutMs = 5000,
+                    Desc = "Start the next sub-battle in the sequence"
+                },
+                ["PartyMenu"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitForScreen = "PartyMenu",
+                    Desc = "Open party menu (change formation/equipment between battles)"
+                },
             };
         }
 
