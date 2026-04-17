@@ -3112,16 +3112,28 @@ namespace FFTColorCustomizer.GameBridge
             // (BattleCasting) transiently during the walk animation — ignore it entirely
             // since real casting can't happen during move confirmation. Also ignore
             // BattleFormation (battleMode=1 edge case).
+            //
+            // Session 28 captured a repeatable false-negative: after
+            // auto_place_units on turn 1, battle_move reports NOT CONFIRMED while
+            // the unit actually walked to the target (mod log `Unit=(newX,newY)`
+            // appeared seconds later). See TODO §0. Rich tracing below captures
+            // the detector state + screen.Name trail so next repro has enough
+            // data to root-cause.
             bool confirmed = false;
+            string lastScreenSeen = "null";
+            int polls = 0;
             var sw = Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 8000)
             {
                 var check = _detectScreen();
+                polls++;
+                if (check?.Name != null) lastScreenSeen = check.Name;
                 if (check != null && check.Name != "BattleMoving"
                     && check.Name != "BattleFormation"
                     && check.Name != "BattleCasting"
                     && check.Name!.StartsWith("Battle"))
                 {
+                    ModLogger.Log($"[MoveGrid] confirmed via screen.Name={check.Name} after {sw.ElapsedMilliseconds}ms ({polls} polls)");
                     confirmed = true; break;
                 }
                 Thread.Sleep(100);
@@ -3129,8 +3141,9 @@ namespace FFTColorCustomizer.GameBridge
 
             if (!confirmed)
             {
+                ModLogger.LogError($"[MoveGrid] TIMEOUT: 8s elapsed without confirm. lastScreenSeen={lastScreenSeen} polls={polls} target=({targetX},{targetY}) cursorFinal=({finalPos.x},{finalPos.y})");
                 response.Status = "failed";
-                response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) NOT CONFIRMED (timeout)";
+                response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) NOT CONFIRMED (timeout, lastScreen={lastScreenSeen})";
                 return response;
             }
 
