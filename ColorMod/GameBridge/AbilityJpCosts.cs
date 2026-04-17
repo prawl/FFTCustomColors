@@ -23,7 +23,23 @@ namespace FFTColorCustomizer.GameBridge
         public static readonly Dictionary<string, int> CostByName = new()
         {
             // Squire / Mettle / Fundaments
+            // Focus/Rush/Throw Stone/Salve are common to both Fundaments (generic
+            // Squire) and Mettle (Ramza's Gallant Knight unique primary). Values
+            // are IC-remaster WotL costs, live-verified session 19.
             ["Focus"] = 300, ["Rush"] = 80, ["Throw Stone"] = 90, ["Salve"] = 150,
+            // Mettle-only abilities (Ramza Gallant Knight primary). Values below
+            // are sourced from FFTHandsFree/Wiki/Abilities.md (Squire/Mettle rows)
+            // which tracks the canonical FFT wiki JP costs. IC-remaster values
+            // may differ slightly; flagged for in-game verification whenever a
+            // Mettle user has any of these unlearned (Ramza in this save has
+            // them maxed so we cannot read them locally). ComputeNextJpForSkillset
+            // now returns a non-null "Next: N" for Mettle users with unlearned
+            // entries in this set rather than silently skipping them.
+            ["Tailwind"] = 150,
+            ["Chant"]    = 300,
+            ["Steel"]    = 200,
+            ["Shout"]    = 600,
+            ["Ultima"]   = 4000,
 
             // Chemist / Items
             ["Potion"] = 30, ["Hi-Potion"] = 200, ["X-Potion"] = 300,

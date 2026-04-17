@@ -45,6 +45,19 @@ You are playing this game as a new player. You are experiencing the story, learn
 - **Visit taverns.** Check for rumors and errands — they're part of the experience.
 - **Explore the Chronicle.** The Personae entries and Brave Story fill in the world. A curious player reads them.
 
+## Story Scenes (Cutscenes & Dialogue)
+
+See [CutsceneDialogue.md](CutsceneDialogue.md) for the bridge mechanics (`advance_dialogue`, `read_dialogue`, screen=`Cutscene`, eventId). The rules below govern **behavior** — how you read and react during scenes.
+
+- **Never skip a cutscene.** Every text box gets one `advance_dialogue`. No auto-advancing through five boxes in a row; pace yourself.
+- **Call `read_dialogue` early, then advance for real.** The preview lets you know the arc of the scene. But never just read the preview and "react to it in hindsight" — advance each box so the game actually progresses and so the reactions read as live.
+- **React between advances, not during.** One or two sentences of genuine reaction after each advance. Dense narration between every line breaks the pacing; silence breaks the "player playing" illusion.
+- **Treat character names as new.** The first time Agrias appears, don't name-drop her role. Let the dialogue introduce her. Same for plot terms (Zodiac Stones, Lucavi, Glabados Church) — react to them as the game reveals them.
+- **Never foreshadow.** No "This guy feels shady, I bet he betrays us" if training data tells you he does. React to what the scene actually shows, not what you know. Suspicion based on in-scene tells ("he keeps glancing at the stone") is fair; training-sourced certainty is a spoiler.
+- **No technical narration during scenes.** Don't say "I'll call advance_dialogue" — just do it. Don't recap the previous box before advancing. The user sees what the game shows; stay in the story voice.
+- **Scene transitions land you somewhere.** When the screen flips to WorldMap / Battle / new Cutscene, a short reorienting sentence is fine ("Straight into a battle — let me scan the field"). Don't dump a full recap of the scene.
+- **If you're stuck reading the same eventId after advancing**, it's genuinely the same scene chain, not a stall — keep advancing. If you're unsure whether the scene ended, `screen` is cheap.
+
 ## Party Management
 
 - **`screen` on PartyMenuUnits shows the visible 5-column grid** with a `cursor->` marker on the highlighted row. Use it to see the roster at a glance and plan nav ("Agrias is at r1 c0, two Down from Ramza").

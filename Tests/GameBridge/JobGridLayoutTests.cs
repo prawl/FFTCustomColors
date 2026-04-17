@@ -299,14 +299,49 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void ClassifyCell_Mime_AlwaysLockedUnderProxyRule()
+        public void ClassifyCell_Mime_LockedWhenMissingPrereqSkillsets()
         {
-            // Mime's learned-ability bitfield is empty in this remaster
-            // (no action abilities for Mimic), so our proxy rule can't
-            // detect when it's unlocked. Treat as Locked until real
-            // prereq data lands.
+            // Mime's skillset-union proxy requires Summon, Speechcraft,
+            // Geomancy, and Jump. A unit with only Items (starter Chemist
+            // skillset) is nowhere close — classify as Locked.
             var viewed = new[] { "Items" };
             var party = new[] { "Items", "Arts of War" };
+            Assert.Equal(JobGridLayout.CellState.Locked,
+                JobGridLayout.ClassifyCell("Mime", "Kenrick", viewed, party));
+        }
+
+        [Fact]
+        public void ClassifyCell_Mime_VisibleWhenUnitHasAllFourPrereqSkillsets()
+        {
+            // Unit has all four non-starter prereq skillsets (Squire/Chemist
+            // are always unlocked so not checked here). Classify as Visible
+            // (on-track for Mime unlock).
+            var viewed = new[] { "Summon", "Speechcraft", "Geomancy", "Jump" };
+            var party = viewed;
+            Assert.Equal(JobGridLayout.CellState.Visible,
+                JobGridLayout.ClassifyCell("Mime", "Kenrick", viewed, party));
+        }
+
+        [Fact]
+        public void ClassifyCell_Mime_VisibleWhenPartyHasAllFourPrereqSkillsets()
+        {
+            // Unit doesn't personally have the prereqs, but the party does.
+            // Matches the game's "silhouette visible" rendering — some other
+            // recruit has invested in each prereq class enough that the
+            // cell is revealed in the grid.
+            var viewed = new[] { "Items" };
+            var party = new[] { "Items", "Summon", "Speechcraft", "Geomancy", "Jump" };
+            Assert.Equal(JobGridLayout.CellState.Visible,
+                JobGridLayout.ClassifyCell("Mime", "Kenrick", viewed, party));
+        }
+
+        [Fact]
+        public void ClassifyCell_Mime_LockedWhenPartyMissingOneSkillset()
+        {
+            // Edge case: party is one skillset short (no Geomancy anywhere
+            // in the party). Mime stays Locked until the last prereq lands.
+            var viewed = new[] { "Items" };
+            var party = new[] { "Items", "Summon", "Speechcraft", "Jump" };
             Assert.Equal(JobGridLayout.CellState.Locked,
                 JobGridLayout.ClassifyCell("Mime", "Kenrick", viewed, party));
         }

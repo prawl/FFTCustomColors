@@ -4,8 +4,9 @@
 Actual JP costs from IC remaster (WotL values). Format: `Ability | ID | Cost`
 For ability hex IDs, see ABILITY_IDS.md.
 
-## Squire
-- Focus 300, Rush 80, Throw Stone 90, Salve 150
+## Squire (Fundaments) / Ramza Gallant Knight (Mettle)
+- Fundaments: Focus 300, Rush 80, Throw Stone 90, Salve 150
+- Mettle (Ramza-only extras): Tailwind 150, Chant 300, Steel 200, Shout 600, Ultima 4000 — wiki-sourced; Ramza has these maxed in the reference save so in-game verification still pending
 - R: Counter Tackle 0xB4 180 | S: Equip Axes 0xCC 170, Beastmaster 0xDE 200, Evasive Stance 0xDF 50, JP Boost 0xCF 250 | M: Move+1 0xE6 200
 
 ## Chemist

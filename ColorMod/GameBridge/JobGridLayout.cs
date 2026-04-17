@@ -274,11 +274,38 @@ namespace FFTColorCustomizer.GameBridge
                 return CellState.Locked;
             }
 
-            // Mime's learned-ability bitfield is empty in this remaster;
-            // treat it as Locked until we have real prereq data. The game's
-            // actual Mime cell render is gated by learning ~5 abilities in
-            // every job, which is a much harder check.
-            if (className == "Mime") return CellState.Locked;
+            // Mime's learned-ability bitfield is empty in this remaster
+            // (the game's actual Mime gate requires Squire Lv. 8, Chemist
+            // Lv. 8, Summoner Lv. 5, Orator Lv. 5, Geomancer Lv. 5, Dragoon
+            // Lv. 5 — a per-job-level check we don't have data for). Proxy
+            // with a skillset-union check: if the unit has unlocked Summon,
+            // Speechcraft, Geomancy, AND Jump (Squire/Chemist are always
+            // unlocked), they've invested in every prereq class enough to
+            // be considered "on-track" for Mime — classify as Visible.
+            // Otherwise Locked. False-positive bias (shows Visible when the
+            // game still locks at <8 Squire/Chemist levels) is acceptable —
+            // selecting the cell just produces the game's "not available"
+            // sound instead of navigating into Mime.
+            if (className == "Mime")
+            {
+                bool hasMimePrereqs =
+                    viewedUnitSkillsets.Contains("Summon") &&
+                    viewedUnitSkillsets.Contains("Speechcraft") &&
+                    viewedUnitSkillsets.Contains("Geomancy") &&
+                    viewedUnitSkillsets.Contains("Jump");
+                if (hasMimePrereqs) return CellState.Visible;
+
+                // Not yet eligible for the unit itself — but another party
+                // member might have the skillset pool, which is how the
+                // game renders the Visible (silhouette) state. Apply the
+                // same union check against the party.
+                bool partyHasMimePrereqs =
+                    partySkillsets.Contains("Summon") &&
+                    partySkillsets.Contains("Speechcraft") &&
+                    partySkillsets.Contains("Geomancy") &&
+                    partySkillsets.Contains("Jump");
+                return partyHasMimePrereqs ? CellState.Visible : CellState.Locked;
+            }
 
             bool unitHas = viewedUnitSkillsets.Contains(skillset);
             if (unitHas) return CellState.Unlocked;

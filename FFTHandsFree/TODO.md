@@ -119,7 +119,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **EqA `ui=` shows stale cursor row** — `ui=Right Hand (none)` persists even when the game cursor is elsewhere because the SM's CursorRow only updates on key tracking (which drifts). `resolve_eqa_row` fixes it but costs 4 keypresses so can't run on every `screen` read.
 
-- [ ] **Re-enable Chronicle/Options tab correction when both flags are 0** — Disabled 2026-04-16 because transient flag-clears during screen transitions caused spurious PartyMenuChronicle detection. When a Chronicle-vs-Options discriminator byte is found, re-enable.
+- [ ] **Re-enable Chronicle/Options tab correction when both flags are 0** — Disabled 2026-04-16 because transient flag-clears during screen transitions caused spurious PartyMenuChronicle detection. When a Chronicle-vs-Options discriminator byte is found, re-enable. **Session 24 update:** module-memory snapshot+diff (chron→opts with chron→chron2 and opts→opts2 noise filters) surfaced `0x140900824`/`0x140900828` as promising candidates — stable 9 on Chronicle / 6 on Options within one game session. But they failed the restart test: post-restart Chronicle reads 8 (not 9) while Options stays 6. The value is a widget/load counter driven by navigation history, not a true tab discriminator. Approach for next attempt: (a) try heap diff with the `heap_snapshot` action (module snapshot misses UE4 widget state); (b) try the user's suggestion — pick an unused main-module byte and have the mod write `ScreenMachine.Tab` to it, use it as a write-back cache rather than an authoritative discriminator.
 
 - [ ] **Replace fixed post-key delay with poll-until-stable** — Currently a fixed 350ms sleep in the detection fallback path. Replace with: read state, wait 50ms, read again, if identical return, else keep polling up to 500ms.
 
@@ -299,7 +299,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Orbonne Monastery story encounter** — Loc 18 has a different encounter screen. Need to detect and handle it.
 
 
-- [ ] **Story scene handling** — Define how Claude reads dialogue, reacts to cutscenes, never skips
+- [x] **Story scene handling** — DONE session 24. Added a dedicated "Story Scenes (Cutscenes & Dialogue)" section to `FFTHandsFree/Instructions/Rules.md` covering: never skip, call read_dialogue early but advance each box for real, react between advances, treat characters/plot terms as new, no training-data foreshadowing, no technical narration, scene-transition behavior, stuck-check. Cross-references existing `CutsceneDialogue.md` for the bridge mechanics.
 
 
 
@@ -324,7 +324,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ## 4. Instruction Guides (P1)
 
-- [ ] **StoryScenes.md** — How story cutscenes work, dialogue advancement.
+- [x] **StoryScenes.md** — DONE session 24. Already covered by existing `Instructions/CutsceneDialogue.md` (bridge mechanics: advance_dialogue, read_dialogue, screen=Cutscene, eventId) plus the new `Instructions/Rules.md` "Story Scenes" section (behavior: pacing, reacting, no spoilers, transitions). No separate file needed.
 
 
 - [ ] **AbilitiesAndJobs.md** — How the job system works, JP, learning abilities.

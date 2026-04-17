@@ -214,6 +214,18 @@ namespace FFTColorCustomizer.Utilities
         private bool _eqaColumnCursorResolveAttempted = false;
 
         /// <summary>
+        /// One-shot latch for the DoEqaRowResolve auto-fire on EqA entry.
+        /// The mirror-diff resolver is expensive (~2s, 3-4 keypresses) so
+        /// we only run it ONCE per EqA entry cycle — right after detection
+        /// first reports EquipmentAndAbilities. After it sets the
+        /// ScreenMachine EquipmentCursor, Up/Down key tracking keeps
+        /// `ui=` fresh until we leave EqA (screen transition clears
+        /// this flag). Fixes the stale `ui=Right Hand (none)` surface
+        /// when the SM row drifts on entry.
+        /// </summary>
+        private bool _eqaRowAutoResolveAttempted = false;
+
+        /// <summary>
         /// Invalidates the cached equipment-picker cursor on any
         /// Up/Down/A/D while on an Equippable* picker screen. Up/Down shift
         /// the row index; A/D cycle tabs (which re-roll the underlying list
@@ -3230,8 +3242,8 @@ namespace FFTColorCustomizer.Utilities
                 "Steel Giant" => "Work",             // Construct 8
                 "Game Hunter" => "Hunting",          // Luso
                 "Sky Pirate" => "Sky Pirating",      // Balthier
-                "Thunder God" => "Holy Sword",       // Orlandeau — Sword Saint combines Holy/Unyielding/Fell; defaulting to Holy Sword (his strongest set). Override in-game if cursor lands on a different sub-skillset.
-                "Sword Saint" => "Holy Sword",       // Orlandeau (alt name)
+                "Thunder God" => "Swordplay",        // Orlandeau — Sword Saint's primary is the composite "Swordplay" (Holy + Unyielding + Fell Sword sub-skillsets). Verified live 2026-04-16 on actual EqA panel.
+                "Sword Saint" => "Swordplay",        // Orlandeau (alt name)
                 "Fell Knight" => "Fell Sword",       // Gaffgarion
                 "Arc Knight" => "Holy Sword",        // Zalbag/Delita endgame — placeholder, verify
                 "Rune Knight" => "Holy Sword",       // Dycedarg — placeholder, verify
@@ -4777,10 +4789,39 @@ namespace FFTColorCustomizer.Utilities
                 // from PartyMenu) → the roster slot whose DisplayOrder matches.
                 // Display order is byte roster+0x122, set by the game's Sort
                 // option (default: Time Recruited).
+                // Clear the EqA row auto-resolve latch whenever we're NOT on
+                // EqA. Next EqA entry re-runs the mirror-diff resolver so the
+                // ScreenMachine's column-0 cursor matches whatever row the
+                // game actually opened onto.
+                if (screen.Name != "EquipmentAndAbilities" && _eqaRowAutoResolveAttempted)
+                {
+                    _eqaRowAutoResolveAttempted = false;
+                }
                 if (screen.Name == "EquipmentAndAbilities" && ScreenMachine != null && Explorer != null)
                 {
                     if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
                     if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+
+                    // Auto-fire the mirror-diff EqA row resolver ONCE per
+                    // EqA entry. This fixes the stale `ui=Right Hand (none)`
+                    // that persists when the state machine's CursorRow
+                    // drifted before entering EqA. The resolver toggles
+                    // equip/unequip on the hovered slot, diffs the mirror to
+                    // identify which row transitioned, then restores. Cost
+                    // ~2s, 3-4 key presses. Gated on MenuDepth == 2 so the
+                    // fire doesn't race the EqA open animation (matches the
+                    // picker + JobSelection resolver gates).
+                    //
+                    // After this runs, ScreenMachine.SetEquipmentCursor
+                    // locks in the true row; Up/Down/Left/Right tracking
+                    // keeps it fresh until we leave EqA (latch clears above).
+                    if (!_eqaRowAutoResolveAttempted && screen.MenuDepth == 2)
+                    {
+                        _eqaRowAutoResolveAttempted = true;
+                        var info = DoEqaRowResolve(restore: true);
+                        if (info.HasValue)
+                            ModLogger.Log($"[CommandBridge] auto EqA row: {info.Value.row} ({info.Value.direction})");
+                    }
 
                     int viewedGridIndex = ScreenMachine.ViewedGridIndex;
                     var viewed = _rosterReader.GetSlotByDisplayOrder(viewedGridIndex);
