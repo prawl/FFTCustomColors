@@ -624,7 +624,10 @@ battle_flee() { fft "{\"id\":\"$(id)\",\"action\":\"battle_flee\"}" 20; }
 
 # world_travel_to: Navigate to a world map location by ID. Opens travel list, selects, confirms.
 # Usage: world_travel_to 26   (travel to Siedge Weald)
-world_travel_to() { fft "{\"id\":\"$(id)\",\"action\":\"world_travel_to\",\"locationId\":$1}"; }
+world_travel_to() {
+  _require_state world_travel_to "WorldMap|TravelList" || return 1
+  fft "{\"id\":\"$(id)\",\"action\":\"world_travel_to\",\"locationId\":$1}"
+}
 
 # advance_dialogue: Advance cutscene dialogue by one text box (presses Enter).
 advance_dialogue() { fft "{\"id\":\"$(id)\",\"action\":\"advance_dialogue\"}"; }
@@ -738,26 +741,35 @@ _nav_to_party_unit() {
   return 0
 }
 
+# Valid source states for party-tree compound nav helpers (open_eqa, etc.)
+# These states can reliably escape to WorldMap then open PartyMenu.
+# Shop screens, battle states, cutscenes, etc. are blocked — they need
+# to exit to WorldMap first before the helper will work safely.
+_PARTY_NAV_VALID_STATES="WorldMap|PartyMenu|PartyMenuInventory|PartyMenuChronicle|PartyMenuOptions|CharacterStatus|EquipmentAndAbilities|JobSelection|JobActionMenu|JobChangeConfirmation|CombatSets|EquippableWeapons|EquippableShields|EquippableHeadware|EquippableCombatGarb|EquippableAccessories|SecondaryAbilities|ReactionAbilities|SupportAbilities|MovementAbilities|CharacterDialog|DismissUnit"
+
 # open_character_status [unit_name]
 # Navigate to CharacterStatus for the named unit (default: Ramza).
 # Single bridge action — C# handles all navigation internally.
 open_character_status() {
+  _require_state open_character_status "$_PARTY_NAV_VALID_STATES" || return 1
   local unit="${*:-Ramza}"
   fft "{\"id\":\"$(id)\",\"action\":\"open_character_status\",\"to\":\"$unit\"}"
 }
 
 # open_eqa [unit_name]
-# Navigate from anywhere to EquipmentAndAbilities for the named unit.
+# Navigate from WorldMap/PartyMenu/party-tree to EquipmentAndAbilities.
 # Single bridge action — C# handles all navigation internally.
 open_eqa() {
+  _require_state open_eqa "$_PARTY_NAV_VALID_STATES" || return 1
   local unit="${*:-Ramza}"
   fft "{\"id\":\"$(id)\",\"action\":\"open_eqa\",\"to\":\"$unit\"}"
 }
 
 # open_job_selection [unit_name]
-# Navigate from anywhere to JobSelection for the named unit.
+# Navigate from WorldMap/PartyMenu/party-tree to JobSelection.
 # Single bridge action — C# handles all navigation internally.
 open_job_selection() {
+  _require_state open_job_selection "$_PARTY_NAV_VALID_STATES" || return 1
   local unit="${*:-Ramza}"
   fft "{\"id\":\"$(id)\",\"action\":\"open_job_selection\",\"to\":\"$unit\"}"
 }
@@ -971,6 +983,7 @@ start_encounter() {
 # Single bridge action — C# places 4 units (Enter×2 each), commences (Space+Enter),
 # then polls until a battle state appears.
 auto_place_units() {
+  _require_state auto_place_units "BattleFormation" || return 1
   fft "{\"id\":\"$(id)\",\"action\":\"auto_place_units\"}" 60
 }
 
@@ -980,6 +993,7 @@ auto_place_units() {
 # tracking not yet implemented). Use ScrollDown/ScrollUp + Select manually.
 open_picker() {
   if [ $# -lt 2 ]; then echo "[open_picker] usage: open_picker <unit> <slot>"; return 1; fi
+  _require_state open_picker "$_PARTY_NAV_VALID_STATES" || return 1
   local slot="${!#}"    # last arg is slot
   local unit="${*%$slot}" # everything before last arg is unit name
   unit="${unit% }"       # trim trailing space
@@ -1040,6 +1054,25 @@ _current_screen() {
   fi
 }
 
+# _require_state <helper_name> <allowed_states_regex>
+# Validates that the current screen matches one of the allowed states.
+# Returns 0 if valid, prints error and returns 1 if not.
+# Usage: _require_state open_eqa "WorldMap|PartyMenu|CharacterStatus|EquipmentAndAbilities|JobSelection|CombatSets" || return 1
+_require_state() {
+  local helper="$1"
+  local allowed="$2"
+  local cur=$(_current_screen)
+  if [ -z "$cur" ]; then
+    echo "[$helper] ERROR: could not detect current screen"
+    return 1
+  fi
+  if ! echo "$cur" | grep -qE "^($allowed)$"; then
+    echo "[$helper] ERROR: cannot run from $cur. Allowed states: $(echo "$allowed" | tr '|' ',' | sed 's/,/, /g')"
+    return 1
+  fi
+  return 0
+}
+
 # Internal: read the current equipped ability name for a slot type
 # (secondary / reaction / support / movement) from screen.abilities.
 _current_equipped() {
@@ -1077,6 +1110,7 @@ _change_ability() {
     echo "[_change_ability] usage: _change_ability <slotType> <targetName>"
     return 1
   fi
+  _require_state "change_${slotType}_ability_to" "EquipmentAndAbilities" || return 1
 
   local currentField pickerScreen targetRow
   case "$slotType" in
@@ -1326,6 +1360,7 @@ change_job_to() {
     echo "  e.g. change_job_to Knight, change_job_to \"Time Mage\""
     return 1
   fi
+  _require_state change_job_to "JobSelection" || return 1
 
   _current_screen >/dev/null
   local stateFile="$B/__jobstate.txt"
@@ -1478,6 +1513,7 @@ remove_ability() {
     echo "[remove_ability] usage: remove_ability <ability name>"
     return 1
   fi
+  _require_state remove_ability "EquipmentAndAbilities" || return 1
 
   _current_screen >/dev/null
   local stateFile="$B/__state.txt"
@@ -1659,6 +1695,7 @@ open_equipment_picker_impl_deferred() {
 # currently-equipped entry with [equipped].
 _list_abilities() {
   local slotType="$1"
+  _require_state "list_${slotType}_abilities" "EquipmentAndAbilities" || return 1
   local field learnField
   case "$slotType" in
     secondary) field=secondary; learnField=learnedSecondary ;;
@@ -1700,7 +1737,10 @@ resolve_eqa_row() { fft "{\"id\":\"$(id)\",\"action\":\"resolve_eqa_row\"}"; }
 # which row we were on, leaves the slot empty, closes the picker. Works on
 # both populated and empty slots (empty-slot case auto-equips the first
 # picker item and then unequips it — net zero).
-remove_equipment() { fft "{\"id\":\"$(id)\",\"action\":\"remove_equipment_at_cursor\"}"; }
+remove_equipment() {
+  _require_state remove_equipment "EquipmentAndAbilities" || return 1
+  fft "{\"id\":\"$(id)\",\"action\":\"remove_equipment_at_cursor\"}"
+}
 
 # Equipment-slot change helpers — blocked on picker item-list decoding
 # (availableWeapons[] / per-job equippability table, TODO §0). Cursor row
