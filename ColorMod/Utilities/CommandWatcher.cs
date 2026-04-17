@@ -235,6 +235,11 @@ namespace FFTColorCustomizer.Utilities
         /// when the SM row drifts on entry.
         /// </summary>
         private bool _eqaRowAutoResolveAttempted = false;
+        // Tracks the previous DetectScreen's MenuDepth while we're on EqA, so
+        // we can re-fire the row resolver after a picker opens and closes.
+        // 0 = no prior read (start of EqA session). See session 24 carryover
+        // in TODO §0 for the drift scenario this addresses.
+        private int _lastEqaMenuDepth = 0;
 
         /// <summary>
         /// Invalidates the cached equipment-picker cursor on any
@@ -485,7 +490,13 @@ namespace FFTColorCustomizer.Utilities
                 // the byte to advance by exactly 3 (with wrap). A 3-step
                 // probe is noticeably more selective than a 1-step probe —
                 // change-count widgets typically stall after the first press.
-                // Restore with 3 Lefts to leave the cursor where we found it.
+                // Restore with 3 Lefts AND verify they return the byte to
+                // its pre-probe value. Two-phase liveness:
+                //   Phase 1: 3 Rights should advance by +3 (with wrap).
+                //   Phase 2: 3 Lefts should reverse that: byte returns to start.
+                // Change-count widgets (which track any cursor change) would
+                // advance by +6 total instead of returning to baseline, so
+                // this catches them that the old 1-direction probe didn't.
                 if (verified != 0L)
                 {
                     var postRestore = Explorer.ReadAbsolute((nint)verified, 1);
@@ -495,19 +506,25 @@ namespace FFTColorCustomizer.Utilities
                         _inputSimulator.SendKeyPressToWindow(win, VK_RIGHT);
                         Thread.Sleep(250);
                     }
-                    var afterProbe = Explorer.ReadAbsolute((nint)verified, 1);
-                    byte afterProbeVal = afterProbe.HasValue ? (byte)afterProbe.Value.value : (byte)0;
+                    var afterRight = Explorer.ReadAbsolute((nint)verified, 1);
+                    byte afterRightVal = afterRight.HasValue ? (byte)afterRight.Value.value : (byte)0;
                     for (int i = 0; i < 3; i++)
                     {
                         _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
                         Thread.Sleep(220);
                     }
-                    // Expect afterProbeVal == postRestoreVal + 3 (mod 256 wrap
-                    // handled by (byte) cast). Reject if delta ≠ 3.
-                    byte expected = (byte)(postRestoreVal + 3);
-                    if (afterProbeVal != expected)
+                    var afterLeft = Explorer.ReadAbsolute((nint)verified, 1);
+                    byte afterLeftVal = afterLeft.HasValue ? (byte)afterLeft.Value.value : (byte)0;
+
+                    // Phase 1: after 3 Rights, byte should be baseline + 3 (mod 256).
+                    byte expectedRight = (byte)(postRestoreVal + 3);
+                    bool phase1Ok = afterRightVal == expectedRight;
+                    // Phase 2: after 3 Lefts, byte should return to baseline.
+                    bool phase2Ok = afterLeftVal == postRestoreVal;
+
+                    if (!phase1Ok || !phase2Ok)
                     {
-                        ModLogger.Log($"[ResolveJobCursor] liveness failed: 0x{verified:X} {postRestoreVal}→{afterProbeVal} (expected +3={expected}). Rejecting.");
+                        ModLogger.Log($"[ResolveJobCursor] liveness failed: 0x{verified:X} base={postRestoreVal}→R3={afterRightVal}(expected {expectedRight}) →L3={afterLeftVal}(expected back to {postRestoreVal}). Rejecting.");
                         verified = 0L;
                     }
                 }
@@ -5563,6 +5580,7 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name != "EquipmentAndAbilities" && _eqaRowAutoResolveAttempted)
                 {
                     _eqaRowAutoResolveAttempted = false;
+                    _lastEqaMenuDepth = 0;
                 }
                 if (screen.Name == "EquipmentAndAbilities" && ScreenMachine != null && Explorer != null)
                 {
@@ -5589,6 +5607,22 @@ namespace FFTColorCustomizer.Utilities
                         if (info.HasValue)
                             ModLogger.Log($"[CommandBridge] auto EqA row: {info.Value.row} ({info.Value.direction})");
                     }
+                    // Re-fire on drift: if MenuDepth JUST transitioned from
+                    // deeper-than-2 (inside a picker / CharacterStatus side
+                    // column) back to 2 (EqA main), the SM's cursor may have
+                    // drifted during that round trip. Re-run the resolver to
+                    // re-pin it. Costs one extra ~2s pass per picker close but
+                    // prevents stale `ui=Right Hand (none)` after equipment
+                    // edits. See session 24 TODO carryover.
+                    else if (_eqaRowAutoResolveAttempted
+                        && screen.MenuDepth == 2
+                        && _lastEqaMenuDepth > 2)
+                    {
+                        var info = DoEqaRowResolve(restore: true);
+                        if (info.HasValue)
+                            ModLogger.Log($"[CommandBridge] re-fire EqA row (picker-exit): {info.Value.row} ({info.Value.direction})");
+                    }
+                    _lastEqaMenuDepth = screen.MenuDepth;
 
                     int viewedGridIndex = ScreenMachine.ViewedGridIndex;
                     var viewed = _rosterReader.GetSlotByDisplayOrder(viewedGridIndex);
