@@ -67,6 +67,88 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal(expectedJump, jump);
         }
 
+        /// <summary>
+        /// Edge-height rule vs display-height averaging: an "Incline N" ramp
+        /// with h=0 sh=3 has its NORTH edge at 3 (top of ramp) and SOUTH edge
+        /// at 0 (bottom). A plateau to the north (Flat h=3) connects cleanly
+        /// to the ramp's NORTH edge (both = 3). The old display-height formula
+        /// would have computed the ramp's height as 0 + 3/2 = 1.5 and mistakenly
+        /// treated the plateau→ramp transition as a 1.5-height drop.
+        /// With Jump=1 the step needs edge-height delta ≤ 1 — the new rule
+        /// admits it (delta=0), the old rule would have rejected it on maps
+        /// where the plateau was higher than 1.5 above display height.
+        /// </summary>
+        [Fact]
+        public void BFS_Slope_UsesEdgeHeightNotDisplayHeight()
+        {
+            // Column of 3 tiles, y=0 = plateau at north (top-of-ramp side),
+            // y=1 = ramp rising north, y=2 = ground at south.
+            var map = new MapData
+            {
+                Width = 1, Height = 3,
+                Tiles = new MapTile[1, 3]
+            };
+            map.Tiles[0, 0] = new MapTile { Height = 3, SlopeHeight = 0, SlopeType = "Flat 0" };
+            map.Tiles[0, 1] = new MapTile { Height = 0, SlopeHeight = 3, SlopeType = "Incline N" };
+            map.Tiles[0, 2] = new MapTile { Height = 0, SlopeHeight = 0, SlopeType = "Flat 0" };
+
+            // Start at (0,2) south ground, Jump=1, Move=4.
+            // Step (0,2)→(0,1): exit N of ground = 0. Entry S of ramp = 0. Δ=0 OK.
+            // Step (0,1)→(0,0): exit N of ramp = 3. Entry S of plateau = 3. Δ=0 OK.
+            var tiles = MovementBfs.ComputeValidTiles(
+                map, unitX: 0, unitY: 2, moveStat: 4, jumpStat: 1);
+            var set = tiles.Select(t => (t.X, t.Y)).ToHashSet();
+            Assert.Contains((0, 1), set);
+            Assert.Contains((0, 0), set);
+
+            // Cliff (no ramp) with Jump=1 must reject the 3-step jump.
+            var cliff = new MapData
+            {
+                Width = 1, Height = 2,
+                Tiles = new MapTile[1, 2]
+            };
+            cliff.Tiles[0, 0] = new MapTile { Height = 0, SlopeHeight = 0, SlopeType = "Flat 0" };
+            cliff.Tiles[0, 1] = new MapTile { Height = 3, SlopeHeight = 0, SlopeType = "Flat 0" };
+            var cliffTiles = MovementBfs.ComputeValidTiles(
+                cliff, unitX: 0, unitY: 0, moveStat: 4, jumpStat: 1);
+            Assert.DoesNotContain((0, 1), cliffTiles.Select(t => (t.X, t.Y)));
+        }
+
+        /// <summary>
+        /// Incline approached from the wrong side: a unit on a h=0 flat tile
+        /// cannot step south onto an "Incline N" whose south-edge is at h=0
+        /// and north-edge is at h=3 — but wait, entering the ramp from the
+        /// NORTH side (from a unit standing north-of-the-ramp at h=0) sees
+        /// the ramp's N-edge at 3 → delta 3 > Jump=1. Rejected.
+        /// This is the regression guard against display-height averaging,
+        /// which would have computed the ramp as h=1.5 and incorrectly
+        /// admitted the 1.5-delta step.
+        /// </summary>
+        [Fact]
+        public void BFS_Slope_RejectsApproachFromWrongSide()
+        {
+            var map = new MapData
+            {
+                Width = 1, Height = 2,
+                Tiles = new MapTile[1, 2]
+            };
+            // (0,0) flat h=0, (0,1) Incline N h=0 sh=3 (N-edge=3, S-edge=0).
+            // Approaching (0,1) from (0,0) (going south→north?) — N-direction
+            // means (0,0) is NORTH of (0,1), so the step (0,0)→(0,1) is going
+            // SOUTH. Exit S of (0,0) = 0. Entry N of (0,1) = 3. Δ=3 > Jump=1.
+            // The ramp is inaccessible from its high-edge side with Jump=1.
+            map.Tiles[0, 0] = new MapTile { Height = 0, SlopeHeight = 0, SlopeType = "Flat 0" };
+            map.Tiles[0, 1] = new MapTile { Height = 0, SlopeHeight = 3, SlopeType = "Incline N" };
+            var tiles = MovementBfs.ComputeValidTiles(
+                map, unitX: 0, unitY: 0, moveStat: 4, jumpStat: 1);
+            Assert.DoesNotContain((0, 1), tiles.Select(t => (t.X, t.Y)));
+
+            // But with Jump=3 the step is admissible.
+            var tiles2 = MovementBfs.ComputeValidTiles(
+                map, unitX: 0, unitY: 0, moveStat: 4, jumpStat: 3);
+            Assert.Contains((0, 1), tiles2.Select(t => (t.X, t.Y)));
+        }
+
         private static MapData CreateFlatMap(int width, int height, int tileHeight)
         {
             var map = new MapData

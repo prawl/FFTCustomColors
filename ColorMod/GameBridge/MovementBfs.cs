@@ -42,13 +42,6 @@ namespace FFTColorCustomizer.GameBridge
             HashSet<(int, int)>? enemyPositions = null,
             HashSet<(int, int)>? allyPositions = null)
         {
-            double GetDisplayHeight(int x, int y)
-            {
-                if (!map.InBounds(x, y)) return -1;
-                var t = map.Tiles[x, y];
-                return t.Height + t.SlopeHeight / 2.0;
-            }
-
             var visited = new Dictionary<(int, int), int>();
             var queue = new Queue<(int x, int y, int cost)>();
 
@@ -57,27 +50,42 @@ namespace FFTColorCustomizer.GameBridge
             queue.Enqueue((unitX, unitY, 0));
             visited[(unitX, unitY)] = 0;
 
-            int[][] dirs = { new[] { 1, 0 }, new[] { -1, 0 }, new[] { 0, 1 }, new[] { 0, -1 } };
+            // Dir vectors paired with the Direction enum for edge-height lookup.
+            // dx/dy are added to (x,y) to get the neighbour; exitDir is the edge
+            // of the CURRENT tile we're leaving toward; entryDir is the edge of
+            // the NEXT tile we're entering through (the opposite side).
+            var steps = new (int dx, int dy, Direction exit, Direction entry)[]
+            {
+                (1, 0, Direction.E, Direction.W),
+                (-1, 0, Direction.W, Direction.E),
+                (0, 1, Direction.S, Direction.N),
+                (0, -1, Direction.N, Direction.S),
+            };
 
             while (queue.Count > 0)
             {
                 var (x, y, cost) = queue.Dequeue();
                 if (cost >= moveStat) continue;
 
-                double ch = GetDisplayHeight(x, y);
-
-                foreach (var d in dirs)
+                foreach (var s in steps)
                 {
-                    int nx = x + d[0], ny = y + d[1];
+                    int nx = x + s.dx, ny = y + s.dy;
 
                     if (!map.InBounds(nx, ny)) continue;
                     if (!map.IsWalkable(nx, ny)) continue;
                     if (enemyPositions != null && enemyPositions.Contains((nx, ny))) continue;
 
-                    double nh = GetDisplayHeight(nx, ny);
-                    if (nh < 0 || ch < 0) continue;
+                    // Canonical FFT height check: compare the CURRENT tile's
+                    // exit-edge height against the NEXT tile's entry-edge
+                    // height. Slopes raise the high edge by slope_height,
+                    // so a unit leaving a Flat 5 tile northward onto an
+                    // Incline-N tile enters at the incline's N-edge (= h + sh),
+                    // not the average display height. This matters for jump
+                    // checks on terrain with slopes and convex corners.
+                    double exitH = TileEdgeHeight.Edge(map.Tiles[x, y], s.exit);
+                    double entryH = TileEdgeHeight.Edge(map.Tiles[nx, ny], s.entry);
 
-                    if (Math.Abs(nh - ch) > jumpStat) continue;
+                    if (Math.Abs(exitH - entryH) > jumpStat) continue;
 
                     int tileCost = map.Tiles[nx, ny].MoveCost;
                     // Walking through an ally-occupied tile costs +1 move point
