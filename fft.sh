@@ -1189,10 +1189,34 @@ open_picker() {
 # any party-tree screen. Iterates Escape with detection until WorldMap.
 # Stops at 8 attempts to avoid infinite loops. Useful when Claude is
 # stuck or unsure how to back out of a nested state.
+#
+# REFUSES from battle states:
+#   - BattleMyTurn / BattleMoving / BattleAttacking / BattleCasting /
+#     BattleAbilities / BattleActing / BattleWaiting: pressing Escape
+#     cancels the current action menu or exits move mode, NOT the
+#     battle. Use `battle_flee` instead (which navigates the pause menu
+#     → Return to World Map flow correctly).
+#   - BattlePaused: Escape closes the pause menu and resumes battle.
+#     Use `execute_action ReturnToWorldMap` on that screen (dedicated
+#     navigation that handles the confirmation dialog).
+#   - BattleFormation / BattleSequence / EncounterDialog / Cutscene /
+#     GameOver: Escape either toggles menus or is a no-op. Resolve
+#     those dialogs explicitly.
+# BattleVictory and BattleDesertion are NOT blocked — those are post-
+# battle result screens where Escape/Enter actually do advance toward
+# WorldMap (verified by the game's own flow). Live-verification of
+# those two paths tracked in TODO §0.
 return_to_world_map() {
+  local cur=$(_current_screen)
+  case "$cur" in
+    BattleMyTurn|BattleMoving|BattleAttacking|BattleCasting|BattleAbilities|BattleActing|BattleWaiting|BattlePaused|BattleFormation|BattleSequence|BattleEnemiesTurn|BattleAlliesTurn|EncounterDialog|Cutscene|GameOver)
+      echo "[return_to_world_map] ERROR: cannot run from $cur. Use \`battle_flee\` for active battles, \`execute_action ReturnToWorldMap\` on BattlePaused, or resolve the $cur screen explicitly."
+      return 1
+      ;;
+  esac
   local _FFT_ALLOW_CHAIN=1
   for i in $(seq 1 8); do
-    local cur=$(_current_screen)
+    cur=$(_current_screen)
     if [ "$cur" = "WorldMap" ]; then
       screen
       return 0

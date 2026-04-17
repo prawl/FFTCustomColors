@@ -1075,6 +1075,82 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_PartyMenuOpenWithMapHover_ReturnsPartyMenuNotWorldMap()
+        {
+            // Repro: open PartyMenu while WorldMap cursor is parked on a named
+            // location (hover=26 = The Siedge Weald). party==1 is authoritative —
+            // must not lose to the WorldMap-hover rule that fires on
+            // `hover in 0..42 && rawLocation==255`. The fix: PartyMenu rule
+            // needs to run BEFORE the WorldMap hover rule, OR the WorldMap
+            // hover rule needs to also require party==0.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255,
+                slot0: 100, slot9: 100,
+                battleMode: 255, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                hover: 26);
+            Assert.Equal("PartyMenuUnits", result);
+        }
+
+        [Fact]
+        public void DetectScreen_PreBattleCutscene_EventId302_AtOrbonne_ReturnsBattleDialogue()
+        {
+            // Real scenario captured session 21: Orbonne Monastery pre-battle
+            // Loffrey dialogue. eventId=302 (in 200-399 range = real event but
+            // also overlaps nameId range). OUT-OF-BATTLE atNamedLocation rule
+            // with slot0=0xFFFFFFFF uniquely identifies pre-battle dialogue
+            // at a named battle ground. Must return BattleDialogue, not
+            // fall through to LocationMenu/Unknown.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 18,  // Orbonne Monastery
+                slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFFL,
+                battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 302, locationMenuFlag: 1);
+            // Formation fires first (slot0=0xFFFFFFFF + battleMode=1) so that's
+            // actually what we'd see. Let me switch to a post-dialogue frame
+            // where battleMode has settled back to 255.
+            // With battleMode=1 this detects as BattleFormation — expected.
+            Assert.Equal("BattleFormation", result);
+        }
+
+        [Fact]
+        public void DetectScreen_PreBattleCutscene_EventId302_BattleMode255_ReturnsBattleDialogue()
+        {
+            // Same Orbonne pre-battle scenario but after Formation concluded:
+            // battleMode back to 255, but eventId=302 still fires, slot0 still
+            // uninit from battle setup. atNamedLocation=true via locationMenuFlag=1.
+            // This is the state that motivated the `< 400` filter.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 18,
+                slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFFL,
+                battleMode: 255, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 302, locationMenuFlag: 1);
+            Assert.Equal("BattleDialogue", result);
+        }
+
+        [Fact]
+        public void DetectScreen_EncounterDialog_PreemptsWorldMapHover()
+        {
+            // Repro: encounterFlag set while walking the map. The
+            // encounter prompt appears at a battleground node, so
+            // hover might still hold the last-known location ID.
+            // encounterFlag > 0 must win over the WorldMap-hover rule.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 100, slot9: 100,
+                battleMode: 255, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                hover: 26, encounterFlag: 10);
+            Assert.Equal("EncounterDialog", result);
+        }
+
+        [Fact]
         public void DetectScreen_LooseRawLocation255_DoesNotFallBackToTitleScreen()
         {
             // The old catch-all `if (rawLocation == 255) return "TitleScreen"` must

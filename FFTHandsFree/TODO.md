@@ -79,8 +79,6 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **EqA equivalent of the above** — same pattern for EqA column-0 row: auto-resolver already fires once on EqA entry (`_eqaRowAutoResolveAttempted` latch, session 24 pt.3) and sets `ScreenMachine.SetEquipmentCursor(resolvedRow)`. But it ONLY runs once per entry. If the SM drifts DURING an EqA session (e.g. after a picker open/close), the stale cursor persists. Consider re-firing the resolver on detect-drift events (menuDepth re-read after a picker exit).
 
-- [ ] **Live-verify JP Next Mettle costs** — session 24 populated Tailwind/Chant/Steel/Shout/Ultima with Wiki-sourced values but Ramza has them all maxed in the reference save. Either recruit a fresh-state unit with Mettle access or load a fresh save. The exact IC-remaster costs may differ from Wiki values.
-
 - [ ] **Chain-nav viewedUnit lag — next attempt needs a safer harness** — session 24 tried twice, reverted both times. First broke fresh-state, second crashed the game mid-test. Don't retry blind-kick. Approach for next session: (a) write a unit test that simulates the escape-storm → detection-stale sequence, (b) add a `dry-run` mode to `NavigateToCharacterStatus` that logs the key plan without firing, (c) run the dry-run against the crashy chain input to validate the key sequence is correct BEFORE firing for real.
 
 ### Session 23 — state stability + helper hardening
@@ -91,7 +89,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Per-key-type KEY_DELAY tuning** — Current blanket 350ms in `NavigationActions.cs:215`. Cursor nav keys (Up/Down/Left/Right) likely don't need 350ms; only screen-transition keys (Enter/Escape) do. Use the `[i=N, +Nms]` timing log to measure, then split into `KEY_DELAY_NAV` (~200ms) and `KEY_DELAY_TRANSITION` (~350-500ms) constants.
 
-- [ ] **`return_to_world_map` from battle states untested** — Helper verified from EqA/JobSelection/PartyMenuUnits tree AND all non-Units tabs (PartyMenuInventory/Chronicle/Options — live-verified session 24). Still needs verification from BattlePaused, GameOver, BattleVictory, BattleDesertion paths.
+- [~] **`return_to_world_map` from battle states** — Session 26 added a state-guard refusing from Battle* / EncounterDialog / Cutscene / GameOver with a clear error pointing to the right recovery helper (battle_flee / execute_action ReturnToWorldMap). That closes the footgun. BattleVictory / BattleDesertion are NOT blocked because Escape/Enter on those screens legitimately advances toward WorldMap; they still need a live-verify at some point but the unsafe path is closed. Safe from all non-battle states (verified EqA/JobSelection/PartyMenuUnits tree + all non-Units tabs session 24; SaveSlotPicker verified session 26).
 
 
 - [ ] **Per-key detection verification (replace blind sleeps)** — Long-term fix for compound nav reliability. Each transition key should poll detection until expected state appears, instead of fixed sleep. Bigger refactor; defer until current 350ms/1000ms approach proves stable across more scenarios.
@@ -325,7 +323,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ## 5. Player Instructions & Rules (P1)
 
-- [ ] Integrate PLAYER_RULES.md into Claude's system prompt / CLAUDE.md when playing
+- [ ] Integrate PLAYER_RULES.md into Claude's system prompt / CLAUDE.md when playing — session 26 skipped (user wants to defer).
 
 
 - [ ] Add intelligence level support (Beginner/Normal/Expert context files)
@@ -736,7 +734,7 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Remove `encA/encB`-dependent rules** — replace Battle_Victory / Battle_Desertion / EncounterDialog discriminators with stable signals (`paused`, `submenuFlag`, `acted/moved` combos).
 
 
-- [ ] **Fix Battle_Dialogue / Cutscene `eventId` filter** — change from `< 200` to `< 400 && != 0xFFFF` (caught eventId=302 at Orbonne pre-battle).
+- [x] **Fix Battle_Dialogue / Cutscene `eventId` filter** — already done. Out-of-battle Cutscene rule ([ScreenDetectionLogic.cs:178](ColorMod/GameBridge/ScreenDetectionLogic.cs#L178)) and both BattleDialogue rules (lines 205 and 277) already use `eventId < 400 && != 0xFFFF`. The remaining `< 200` filter at line 344 is in the IN-battle branch, intentionally kept strict because the eventId address (0x14077CA94) aliases as active-unit nameId during combat animations (nameIds start at 200+). Session 26 added 2 tests covering eventId=302 at Orbonne pre-battle to prove the fix holds.
 
 
 - [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation (which location IDs are multi-battle campaign grounds vs villages). Add to `project_location_ids_verified.md`.
@@ -839,6 +837,8 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Re-enable strict mode** [Execution] — Disabled. Re-enable once all gameplay commands are tested.
 
 - [ ] **Remove `gameOverFlag==0` requirement from post-battle rules** — treat as sticky, use other signals. Deferred 2026-04-17 because reproducing requires losing a real battle to trigger GameOver — not cheap to set up. Re-prioritize once we're running battles regularly and this misdetection actually blocks a session (Cutscene→LoadGame collision after GameOver is the main documented symptom).
+
+- [ ] **Live-verify JP Next Mettle costs** — Wiki-sourced values (Tailwind 150, Chant 300, Steel 200, Shout 600, Ultima 4000) are populated in [AbilityJpCosts.cs:38-42](ColorMod/GameBridge/AbilityJpCosts.cs#L38-L42). Can't verify on the current save because Ramza (only Mettle user — Gallant Knight is his unique class) has them all maxed: `nextJp=null` on his EqA confirms no unlearned abilities. To verify: either load a fresh-game save, or advance the main story on a new save to a point where Ramza still has unlearned Mettle entries. IC-remaster costs might differ slightly from Wiki values. Deferred until a suitable save exists.
 
 
 

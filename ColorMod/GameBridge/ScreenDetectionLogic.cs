@@ -155,6 +155,29 @@ namespace FFTColorCustomizer.GameBridge
 
             if (!inBattle)
             {
+                // Rule order matters — specific-signal rules (party/encounter/
+                // eventId) run FIRST, then location/cursor heuristics. Rules
+                // that depend on weaker signals (hover, rawLocation alone) can
+                // over-fire if they run before authoritative flags.
+
+                // PartyMenu: party flag set. Authoritative — runs before any
+                // hover/location heuristics to prevent "opened PartyMenu while
+                // cursor was on a map location" cases from misdetecting as
+                // WorldMap.
+                if (party == 1)
+                    return "PartyMenuUnits";
+
+                // EncounterDialog: dedicated flag at 0x140D87830 reads non-zero
+                // (observed value: 10) during the encounter prompt, 0 otherwise.
+                // Runs early so hover-based world-map rules can't preempt.
+                if (encounterFlag != 0)
+                    return "EncounterDialog";
+
+                // Cutscene: real story event, not at a named location.
+                // eventId 1-399 = real event ID (nameIds start at 400, 0xFFFF/0 = unset).
+                if (eventId >= 1 && eventId < 400 && eventId != 0xFFFF && rawLocation == 255)
+                    return "Cutscene";
+
                 // WorldMap with cursor on a named location: hover holds the location ID
                 // (0-42) when the player's cursor is actively hovering a named map location.
                 // This is a STRONG discriminator — titles/menus don't have hover in this range.
@@ -177,15 +200,6 @@ namespace FFTColorCustomizer.GameBridge
                     && (eventId == 0 || eventId == 0xFFFF))
                     return "TitleScreen";
 
-                // Cutscene: real story event, not at a named location.
-                // eventId 1-399 = real event ID (nameIds start at 400, 0xFFFF/0 = unset).
-                if (eventId >= 1 && eventId < 400 && eventId != 0xFFFF && rawLocation == 255)
-                    return "Cutscene";
-
-                // PartyMenu: party flag set. Before location-based rules.
-                if (party == 1)
-                    return "PartyMenuUnits";
-
                 // Pre-battle dialogue at a named location: eventId in real range + slot0=0xFFFFFFFF
                 // indicates a pre-battle cutscene has been triggered (e.g. Orbonne Loffrey scene).
                 if (atNamedLocation && eventId >= 1 && eventId < 400 && eventId != 0xFFFF
@@ -205,13 +219,9 @@ namespace FFTColorCustomizer.GameBridge
                     && battleMode == 0)
                     return "BattleVictory";
 
-                // EncounterDialog: dedicated flag at 0x140D87830 reads non-zero
-                // (observed value: 10) during the encounter prompt, 0 otherwise.
-                // Replaces unusable encA/encB noise counters (session 20).
-                // Must fire BEFORE LocationMenu/shop rules — an encounter at a
-                // named location still has locationMenuFlag=1 but is NOT a shop.
-                if (encounterFlag != 0)
-                    return "EncounterDialog";
+                // (EncounterDialog handled at the top of this branch — runs
+                // before hover/location heuristics so the encounter prompt
+                // can't be mislabeled as WorldMap or LocationMenu.)
 
                 // Sub-action entered inside a shop/service. shopSubMenuIndex at
                 // 0x14184276C reads 0 on the shop menu, 255 on world map, and
@@ -268,9 +278,7 @@ namespace FFTColorCustomizer.GameBridge
                     && actedOrMoved)
                     return "BattleDialogue";
 
-                // EncounterDialog while traveling (rawLocation=255): same flag.
-                if (encounterFlag != 0)
-                    return "EncounterDialog";
+                // (EncounterDialog handled at top of this branch.)
 
                 // World-map side states (rawLocation=255 OR stale rawLocation with hover=254).
                 // WorldMap and TravelList are byte-identical in current inputs after a

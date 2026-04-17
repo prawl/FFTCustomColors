@@ -4743,8 +4743,124 @@ namespace FFTColorCustomizer.GameBridge
 
         private CommandResponse SaveGame(CommandResponse response)
         {
-            response.Status = "failed";
-            response.Error = "Not implemented yet";
+            // Open the in-game Save slot picker:
+            //   (any non-battle state) → WorldMap → PartyMenu(Units)
+            //   → Q to Options tab → Up×5 resets OptionsIndex to Save
+            //   → Enter → SaveSlotPicker (user then picks slot manually)
+            //
+            // SaveSlotPicker state tracking was added session 25. The actual
+            // slot selection + overwrite confirmation is intentionally left
+            // to the caller — Claude decides which slot and whether to
+            // overwrite. This action just parks the game on the picker.
+            //
+            // State guard: refuses from any Battle*/Encounter/Cutscene state
+            // because the escape storm would mis-handle those transitions.
+
+            var current = _detectScreen();
+            if (current == null)
+            {
+                response.Status = "failed";
+                response.Error = "Could not detect current screen";
+                return response;
+            }
+
+            string currentName = current.Name;
+            if (currentName.StartsWith("Battle")
+                || currentName == "EncounterDialog"
+                || currentName == "Cutscene"
+                || currentName == "BattleSequence"
+                || currentName == "GameOver")
+            {
+                response.Status = "failed";
+                response.Error = $"Cannot save from {currentName}. Resolve the battle/encounter/cutscene first.";
+                return response;
+            }
+
+            // Step 1: get to a known entry point. Two valid entry states:
+            //   (a) WorldMap — Escape-on-WorldMap opens PartyMenuUnits cleanly.
+            //   (b) PartyMenu* (any tab) — already open; can Q directly.
+            // Anything else: Escape repeatedly with 2-consecutive-read confirm
+            // (session 24 gotcha: Escape-on-WorldMap opens PartyMenu, so blind
+            // escape loops toggle — need to stop the INSTANT we see WorldMap
+            // with confidence).
+            bool startedOnPartyMenu = currentName.StartsWith("PartyMenu");
+            if (!startedOnPartyMenu && currentName != "WorldMap")
+            {
+                int consecutiveWorldMap = 0;
+                for (int i = 0; i < 10; i++)
+                {
+                    var check = _detectScreen();
+                    if (check?.Name == "WorldMap")
+                    {
+                        consecutiveWorldMap++;
+                        if (consecutiveWorldMap >= 2) break;
+                        Thread.Sleep(150);
+                        continue;
+                    }
+                    consecutiveWorldMap = 0;
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                }
+                var afterEscape = _detectScreen();
+                if (afterEscape?.Name != "WorldMap")
+                {
+                    response.Status = "failed";
+                    response.Error = $"Could not reach WorldMap from {currentName} (landed on {afterEscape?.Name ?? "?"})";
+                    return response;
+                }
+                // Fall-through to the WorldMap path below.
+            }
+
+            // Step 2: land on PartyMenu. From WorldMap one Escape opens the
+            // menu. If we're already on a PartyMenu tab, skip this step.
+            if (!startedOnPartyMenu)
+            {
+                SendKey(VK_ESCAPE);
+                Thread.Sleep(800);
+            }
+
+            // Step 3: ensure we're on the Options tab. Q cycles tabs
+            // left: Units → Options (wraps), Inventory → Units → Options
+            // (two Qs), Chronicle → Inventory (one Q), Options → Chronicle
+            // (one Q — wrong way). Safest: check the SM tab and emit the
+            // right count. When SM doesn't know (just entered), assume
+            // Units and send one Q.
+            int qCount = 1; // default: Units → Options via wrap
+            if (ScreenMachine != null)
+            {
+                qCount = ScreenMachine.Tab switch
+                {
+                    PartyTab.Units => 1,       // Units → Options (wrap left)
+                    PartyTab.Inventory => 2,   // Inventory → Units → Options
+                    PartyTab.Chronicle => 3,   // Chronicle → Inventory → Units → Options
+                    PartyTab.Options => 0,     // already there
+                    _ => 1
+                };
+            }
+            for (int i = 0; i < qCount; i++)
+            {
+                SendKey(VK_Q);
+                Thread.Sleep(300);
+            }
+
+            // Step 4: reset OptionsIndex to 0 (Save). Up×5 guarantees top
+            // regardless of where the cursor was last parked.
+            for (int i = 0; i < 5; i++)
+            {
+                SendKey(VK_UP);
+                Thread.Sleep(100);
+            }
+
+            // Step 5: Enter → SaveSlotPicker.
+            SendKey(VK_ENTER);
+            Thread.Sleep(500);
+
+            var final = _detectScreen();
+            response.Screen = final;
+            response.Status = "completed";
+            response.Info = final?.Name == "SaveSlotPicker"
+                ? "Save slot picker opened. Navigate with up/down, Enter to save to the highlighted slot."
+                : $"Opened save flow; final screen={final?.Name ?? "?"}";
             return response;
         }
 
