@@ -2334,12 +2334,16 @@ namespace FFTColorCustomizer.GameBridge
                 }
             }
 
-            // 6. Compute valid tiles if map is loaded
+            // 6. Compute valid tiles if map is loaded. Delegates to
+            // MovementBfs.ComputeValidTiles so scan_move and the live-Move-mode
+            // tile renderer share the same canonical edge-height + ally-traversal
+            // rules (session 29 pt.5/6). Previously this inlined its own BFS that
+            // used display-height averaging and treated all occupied tiles as
+            // blocking — which broke Wilham's move-through-ally paths.
             var validPaths = new Dictionary<string, PathEntry>();
             if (_mapLoader?.CurrentMap != null)
             {
                 var map = _mapLoader.CurrentMap;
-                // BFS using map data
                 double GetDisplayHeight(int x, int y)
                 {
                     if (!map.InBounds(x, y)) return -1;
@@ -2347,47 +2351,29 @@ namespace FFTColorCustomizer.GameBridge
                     return t.Height + t.SlopeHeight / 2.0;
                 }
 
-                var visited = new Dictionary<(int, int), int>();
-                var queue = new Queue<(int x, int y, int cost)>();
-                visited[(ally.GridX, ally.GridY)] = 0;
-                queue.Enqueue((ally.GridX, ally.GridY, 0));
-
-                int[][] dirs = { new[]{1,0}, new[]{-1,0}, new[]{0,1}, new[]{0,-1} };
-                while (queue.Count > 0)
+                // Build ally/enemy position sets from the scan just performed.
+                // The active unit is excluded from both sets (it's the start).
+                var enemySet = new HashSet<(int, int)>();
+                var allySet = new HashSet<(int, int)>();
+                foreach (var u in units)
                 {
-                    var (x, y, cost) = queue.Dequeue();
-                    if (cost >= moveStat) continue;
-                    double ch = GetDisplayHeight(x, y);
-                    foreach (var d in dirs)
-                    {
-                        int nx = x + d[0], ny = y + d[1];
-                        if (!map.InBounds(nx, ny)) continue;
-                        if (!map.IsWalkable(nx, ny)) continue;
-                        if (occupiedPositions.Contains((nx, ny))) continue; // all units block movement
-                        double nh = GetDisplayHeight(nx, ny);
-                        if (nh < 0 || ch < 0) continue;
-                        if (Math.Abs(nh - ch) > jumpStat) continue;
-                        int nc = cost + 1;
-                        if (nc > moveStat) continue;
-                        var key = (nx, ny);
-                        if (!visited.ContainsKey(key) || visited[key] > nc)
-                        {
-                            visited[key] = nc;
-                            queue.Enqueue((nx, ny, nc));
-                        }
-                    }
+                    if (u == ally) continue;
+                    if (u.Hp <= 0) continue;
+                    if (u.Team == 1) enemySet.Add((u.GridX, u.GridY));
+                    else if (u.Team == 0) allySet.Add((u.GridX, u.GridY));
+                    // team==2 (neutral/NPC): don't block — see feedback_summon_no_friendly_fire memory.
                 }
 
-                // Remove starting tile
-                visited.Remove((ally.GridX, ally.GridY));
+                var tiles = MovementBfs.ComputeValidTiles(
+                    map, ally.GridX, ally.GridY, moveStat, jumpStat,
+                    enemyPositions: enemySet, allyPositions: allySet);
 
-                // Self-correction: if BFS found 0 tiles, the map is probably wrong
-                if (visited.Count == 0 && moveStat > 0)
+                // Self-correction: if BFS found 0 tiles, the map is probably wrong.
+                if (tiles.Count == 0 && moveStat > 0)
                 {
                     ModLogger.Log($"[ScanMove] BFS returned 0 tiles on MAP{map.MapNumber:D3} — rejecting and retrying");
                     _mapLoader.RejectCurrentMap();
 
-                    // Retry detection
                     var allPositions2 = units.Select(u => (u.GridX, u.GridY)).ToList();
                     var heightResult2 = _explorer.ReadAbsolute((nint)0x140C6492C, 4);
                     double allyHeight2 = heightResult2 != null ? (double)heightResult2.Value.value / 10.0 : -1;
@@ -2396,7 +2382,6 @@ namespace FFTColorCustomizer.GameBridge
                     {
                         _mapLoader.LoadMap(retryMap);
                         lines.Add($"MAP{map.MapNumber:D3} rejected (0 tiles), retried → MAP{retryMap:D3}");
-                        // Recompute BFS with new map — recurse by falling through to else branch
                     }
                     else
                     {
@@ -2404,27 +2389,26 @@ namespace FFTColorCustomizer.GameBridge
                     }
                 }
 
-                // Build tile list as structured array
-                var tileList = visited
-                    .OrderBy(kv => kv.Value)
-                    .Select(kv => new Utilities.TilePosition
+                // Attach display-height so the compact renderer can show h= values.
+                var tileList = tiles
+                    .Select(tp => new Utilities.TilePosition
                     {
-                        X = kv.Key.Item1,
-                        Y = kv.Key.Item2,
-                        H = GetDisplayHeight(kv.Key.Item1, kv.Key.Item2)
+                        X = tp.X,
+                        Y = tp.Y,
+                        H = GetDisplayHeight(tp.X, tp.Y)
                     })
                     .ToList();
 
                 // Cache for battle_move validation
-                _lastValidMoveTiles = new HashSet<(int, int)>(visited.Keys);
+                _lastValidMoveTiles = new HashSet<(int, int)>(tileList.Select(t => (t.X, t.Y)));
 
                 validPaths["ValidMoveTiles"] = new PathEntry
                 {
-                    Desc = $"{tileList.Count} tiles from ({ally.GridX},{ally.GridY}) Mv={moveStat} Jmp={jumpStat} enemies={enemyPositions.Count}",
+                    Desc = $"{tileList.Count} tiles from ({ally.GridX},{ally.GridY}) Mv={moveStat} Jmp={jumpStat} enemies={enemySet.Count}",
                     Tiles = tileList
                 };
 
-                lines.Add($"validTiles={tileList.Count} move={moveStat} jump={jumpStat} enemies={enemyPositions.Count}");
+                lines.Add($"validTiles={tileList.Count} move={moveStat} jump={jumpStat} enemies={enemySet.Count} allies={allySet.Count}");
             }
             else
             {
