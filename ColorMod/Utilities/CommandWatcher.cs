@@ -1081,7 +1081,7 @@ namespace FFTColorCustomizer.Utilities
         {
             "scan_move", "scan_units", "set_map", "report_state",
             "read_address", "read_block", "batch_read",
-            "mark_blocked", "snapshot", "heap_snapshot", "diff", "find_toggle",
+            "mark_blocked", "snapshot", "heap_snapshot", "diff", "find_toggle", "dump_unit_struct",
             "dry_run_nav", "cursor_walk",
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
@@ -1788,6 +1788,68 @@ namespace FFTColorCustomizer.Utilities
                         ModLogger.Log($"[dry_run_nav] {response.Info}");
                         response.Status = plan.Ok ? "completed" : "failed";
                         if (!plan.Ok) response.Error = plan.Error;
+                        break;
+                    }
+
+                    case "dump_unit_struct":
+                    {
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        // Searches the UE4 heap for a unit struct matching the given
+                        // HP+MaxHP pair (both u16, little-endian). Dumps 256 bytes from
+                        // struct base (= match address - 0x10). Used for finding Move/Jump
+                        // offsets by correlating known values against byte positions.
+                        //
+                        // Arguments: pattern = "HHMM" where HH is HP (hex u16 little-endian)
+                        //            and MM is MaxHP (hex u16 little-endian).
+                        // Example: Kenrick HP=586 MaxHP=586 → pattern "4A024A02".
+                        if (string.IsNullOrEmpty(command.Pattern))
+                        {
+                            response.Status = "failed";
+                            response.Error = "Pattern required (HP+MaxHP as hex, e.g. '4A024A02')";
+                            break;
+                        }
+                        try
+                        {
+                            var hexClean = command.Pattern.Replace(" ", "").Replace("-", "");
+                            var patternBytes = new byte[hexClean.Length / 2];
+                            for (int i = 0; i < patternBytes.Length; i++)
+                                patternBytes[i] = Convert.ToByte(hexClean.Substring(i * 2, 2), 16);
+
+                            var matches = Explorer.SearchBytesInAllMemory(
+                                patternBytes, maxResults: 8, minAddr: 0x4000000000L, maxAddr: 0x4200000000L);
+
+                            var sb = new System.Text.StringBuilder();
+                            sb.AppendLine($"dump_unit_struct pattern={command.Pattern} → {matches.Count} matches in heap range");
+                            foreach (var m in matches)
+                            {
+                                long hpAddr = (long)m.address;
+                                long baseAddr = hpAddr - 0x10;
+                                var bytes = Explorer.Scanner.ReadBytes((nint)baseAddr, 256);
+                                if (bytes.Length == 0) continue;
+                                // Skip empty / zero structs
+                                int nonzero = 0;
+                                for (int i = 0; i < bytes.Length; i++) if (bytes[i] != 0) nonzero++;
+                                if (nonzero < 8) continue;
+                                sb.AppendLine();
+                                sb.AppendLine($"=== struct base 0x{baseAddr:X} (hp at +0x10 = 0x{hpAddr:X}) ===");
+                                // 16 bytes per line
+                                for (int row = 0; row < 256; row += 16)
+                                {
+                                    var segHex = new System.Text.StringBuilder();
+                                    for (int c = 0; c < 16; c++) segHex.Append($"{bytes[row + c]:X2} ");
+                                    sb.AppendLine($"  +0x{row:X2}: {segHex}");
+                                }
+                            }
+                            var outPath = System.IO.Path.Combine(_bridgeDirectory, "dump_unit_struct.txt");
+                            System.IO.File.WriteAllText(outPath, sb.ToString());
+                            response.Status = "completed";
+                            response.Info = $"dump_unit_struct: {matches.Count} matches → claude_bridge/dump_unit_struct.txt";
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Status = "failed";
+                            response.Error = $"dump_unit_struct failed: {ex.Message}";
+                        }
                         break;
                     }
 

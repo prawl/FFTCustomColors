@@ -3665,8 +3665,28 @@ namespace FFTColorCustomizer.GameBridge
                         unit.IsActive = true;
                         unit.Team = (int)activeReads[1];
                         unit.NameId = (int)activeReads[2];
-                        unit.Move = (int)activeReads[12];
-                        unit.Jump = (int)activeReads[13];
+                        // Try to read Move/Jump from the per-unit heap struct
+                        // (canonical per-unit effective stats). UIBuffer at +0x24/+0x26
+                        // holds the cursor-hovered unit's BASE stats — cursor-hovered
+                        // unit might not be the active unit, and base stats ignore
+                        // equipment and movement-ability bonuses.
+                        // Heap struct layout (session 29 live-verified):
+                        //   +0x10: HP (u16)
+                        //   +0x12: MaxHP (u16)
+                        //   +0x22: Move (u8)
+                        //   +0x23: Jump (u8)
+                        var heapStats = TryReadMoveJumpFromHeap(unit.Hp, unit.MaxHp);
+                        if (heapStats.HasValue)
+                        {
+                            unit.Move = heapStats.Value.move;
+                            unit.Jump = heapStats.Value.jump;
+                        }
+                        else
+                        {
+                            // Fallback to UIBuffer (may be wrong but better than nothing)
+                            unit.Move = (int)activeReads[12];
+                            unit.Jump = (int)activeReads[13];
+                        }
 
                         // Read learned abilities from condensed struct ability list
                         var abilityBytes = _explorer.Scanner.ReadBytes((nint)(AddrCondensedBase + 0x28), 64);
@@ -4633,6 +4653,43 @@ namespace FFTColorCustomizer.GameBridge
             // used for tab cycling) sleeps 350ms. Shaves ~1-2s off flows
             // that fire many cursor keys in a row (e.g. party grid nav).
             Thread.Sleep(KeyDelayClassifier.DelayMsFor(vk));
+        }
+
+        /// <summary>
+        /// Read per-unit Move/Jump from the UE4 heap unit struct. Locates the
+        /// struct by searching the heap range for the unit's HP+MaxHP u16 pair
+        /// (HP at struct+0x10, MaxHP at +0x12) and reads Move at +0x22, Jump at
+        /// +0x23. Returns null if no match found or the bytes are zero (stale
+        /// slot).
+        ///
+        /// Verified session 29 on MAP074:
+        ///   Kenrick (Knight) HP=586 MaxHP=586 → Move=3, Jump=3 ✓
+        ///   Lloyd (Dragoon)  HP=549 MaxHP=628 → Move=5, Jump=4 ✓
+        ///   Archer          HP=453 MaxHP=453 → Move=3, Jump=3 ✓ (canonical)
+        /// </summary>
+        private (int move, int jump)? TryReadMoveJumpFromHeap(int hp, int maxHp)
+        {
+            if (hp <= 0 || maxHp <= 0 || _explorer == null) return null;
+            var hpPattern = new byte[]
+            {
+                (byte)(hp & 0xFF), (byte)(hp >> 8),
+                (byte)(maxHp & 0xFF), (byte)(maxHp >> 8),
+            };
+            var matches = _explorer.SearchBytesInAllMemory(
+                hpPattern, maxResults: 8, minAddr: 0x4000000000L, maxAddr: 0x4200000000L);
+            foreach (var m in matches)
+            {
+                long baseAddr = (long)m.address - 0x10;
+                var bytes = _explorer.Scanner.ReadBytes((nint)(baseAddr + 0x22), 2);
+                if (bytes.Length != 2) continue;
+                int mv = bytes[0];
+                int jp = bytes[1];
+                // Sanity check: valid Move is 1-10, Jump is 1-8. Rejects zero
+                // slots and mis-matched structs.
+                if (mv < 1 || mv > 10 || jp < 1 || jp > 8) continue;
+                return (mv, jp);
+            }
+            return null;
         }
 
         /// <summary>
