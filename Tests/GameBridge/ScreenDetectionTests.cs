@@ -699,7 +699,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 submenuFlag: 0, menuCursor: 0,
                 encounterFlag: 10);
 
-            Assert.Equal("PartyMenu", result);
+            Assert.Equal("PartyMenuUnits", result);
         }
 
         // === BattleSequence (multi-stage campaign sub-selector) ===
@@ -863,7 +863,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 9, encB: 9, isPartySubScreen: true, eventId: 0xFFFF,
                 unitsTabFlag: 1, inventoryTabFlag: 0);
 
-            Assert.Equal("PartyMenu", result);
+            Assert.Equal("PartyMenuUnits", result);
         }
 
         [Fact]
@@ -877,7 +877,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 9, encB: 9, isPartySubScreen: true, eventId: 0xFFFF,
                 unitsTabFlag: 0, inventoryTabFlag: 1);
 
-            Assert.Equal("PartyMenu", result);
+            Assert.Equal("PartyMenuUnits", result);
         }
 
         [Fact]
@@ -892,7 +892,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 9, encB: 9, isPartySubScreen: true, eventId: 0xFFFF,
                 unitsTabFlag: 0, inventoryTabFlag: 0);
 
-            Assert.NotEqual("PartyMenu", result);
+            Assert.NotEqual("PartyMenuUnits", result);
         }
 
         [Fact]
@@ -908,7 +908,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 encA: 0, encB: 0, isPartySubScreen: false,
                 unitsTabFlag: 1, inventoryTabFlag: 0);
 
-            Assert.Equal("PartyMenu", result);
+            Assert.Equal("PartyMenuUnits", result);
         }
 
         [Fact]
@@ -925,7 +925,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 unitsTabFlag: 1, inventoryTabFlag: 0);
 
             // Should still return PartyMenu (via the party==1 rule, not the tab flag rule)
-            Assert.Equal("PartyMenu", result);
+            Assert.Equal("PartyMenuUnits", result);
         }
 
         [Fact]

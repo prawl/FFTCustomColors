@@ -8,7 +8,7 @@ namespace FFTColorCustomizer.GameBridge
         Unknown,
         TitleScreen,
         WorldMap,
-        PartyMenu,
+        PartyMenuUnits,
         CharacterStatus,
 
         // EquipmentScreen is the two-column (Equipment | Abilities) inner screen.

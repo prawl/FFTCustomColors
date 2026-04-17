@@ -13,7 +13,7 @@ namespace FFTColorCustomizer.GameBridge
         private static readonly HashSet<string> GilScreens = new()
         {
             "WorldMap",         // deciding where to travel/shop
-            "PartyMenu",        // equipment browsing leads to shop decisions
+            "PartyMenuUnits",        // equipment browsing leads to shop decisions
             "LocationMenu",     // at a settlement, picking a shop
             // Shop interiors (shop-specific names via shopTypeIndex)
             "Outfitter",

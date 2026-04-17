@@ -393,5 +393,22 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 Assert.True(JobGridLayout.JobPrereqs.ContainsKey(cls),
                     $"JobPrereqs missing entry for {cls}");
         }
+
+        [Fact]
+        public void LockedAbilityUnits_ContainsConstruct8()
+        {
+            // Construct 8's ability slots are pinned to his defaults.
+            // Session 19 user-confirmed: picker opens but Enter on an
+            // alternative is a no-op. Helpers must refuse to nav.
+            Assert.Contains("Construct 8", JobGridLayout.LockedAbilityUnits);
+        }
+
+        [Fact]
+        public void LockedAbilityUnits_DoesNotContainRamza()
+        {
+            // Ramza's abilities are freely re-equippable — sanity guard
+            // that the lock set hasn't grown to include normal units.
+            Assert.DoesNotContain("Ramza", JobGridLayout.LockedAbilityUnits);
+        }
     }
 }

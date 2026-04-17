@@ -168,7 +168,7 @@ namespace FFTColorCustomizer.Utilities
             const int VK_UP = 0x26, VK_DOWN = 0x28, VK_LEFT = 0x25, VK_RIGHT = 0x27;
             if (vk != VK_UP && vk != VK_DOWN && vk != VK_LEFT && vk != VK_RIGHT) return;
             if (ScreenMachine == null) return;
-            if (ScreenMachine.CurrentScreen != GameScreen.PartyMenu) return;
+            if (ScreenMachine.CurrentScreen != GameScreen.PartyMenuUnits) return;
             if (ScreenMachine.Tab != PartyTab.Units) return;
             _resolvedPartyMenuCursorAddr = 0L;
             _partyMenuCursorResolveAttempted = false;
@@ -480,7 +480,7 @@ namespace FFTColorCustomizer.Utilities
         ///   4. Axis verify: Down, check winner advanced by +5 (flat
         ///      linear) instead of 0 (col-only). Up restores.
         /// Net-zero cursor motion. Visible ~2.5s flash.
-        /// Caller MUST gate on <c>screen.Name == "PartyMenu"</c> +
+        /// Caller MUST gate on <c>screen.Name == "PartyMenuUnits"</c> +
         /// <c>MenuDepth == 0</c> + <c>Tab == Units</c>.
         /// Additional caller precondition: the cursor must be at a
         /// position where Down won't cause a short-grid wrap back to the
@@ -2351,7 +2351,7 @@ namespace FFTColorCustomizer.Utilities
                 // shops, battle), fall back to detection — the SM doesn't
                 // model those transitions and will be confidently wrong.
                 bool smInPartyTreeNow = ScreenMachine?.CurrentScreen is
-                    GameScreen.PartyMenu or GameScreen.CharacterStatus or
+                    GameScreen.PartyMenuUnits or GameScreen.CharacterStatus or
                     GameScreen.EquipmentScreen or GameScreen.EquipmentItemList or
                     GameScreen.JobScreen or GameScreen.JobActionMenu or
                     GameScreen.JobChangeConfirmation or
@@ -2366,7 +2366,7 @@ namespace FFTColorCustomizer.Utilities
                     GameScreen.ChronicleLessons or GameScreen.ChronicleAkademicReport or
                     GameScreen.OptionsSettings;
                 bool smWasInPartyTree = _smScreenBeforeKeys is
-                    GameScreen.PartyMenu or GameScreen.CharacterStatus or
+                    GameScreen.PartyMenuUnits or GameScreen.CharacterStatus or
                     GameScreen.EquipmentScreen or GameScreen.EquipmentItemList or
                     GameScreen.JobScreen or GameScreen.JobActionMenu or
                     GameScreen.JobChangeConfirmation or
@@ -2387,7 +2387,7 @@ namespace FFTColorCustomizer.Utilities
                     // that make detection return TravelList spuriously.
                     var detCheck = DetectScreen();
                     bool detectionSaysPartyTree = detCheck != null && (
-                        detCheck.Name == "PartyMenu" ||
+                        detCheck.Name == "PartyMenuUnits" ||
                         detCheck.Name == "PartyMenuInventory" ||
                         detCheck.Name == "PartyMenuChronicle" ||
                         detCheck.Name == "PartyMenuOptions" ||
@@ -3818,7 +3818,7 @@ namespace FFTColorCustomizer.Utilities
         {
             if (ScreenMachine == null) return false;
             return ScreenMachine.CurrentScreen is
-                GameScreen.PartyMenu or
+                GameScreen.PartyMenuUnits or
                 GameScreen.CharacterStatus or
                 GameScreen.EquipmentScreen or
                 GameScreen.EquipmentItemList or
@@ -4008,13 +4008,13 @@ namespace FFTColorCustomizer.Utilities
                 GameScreen.ChronicleLessons => "ChronicleLessons",
                 GameScreen.ChronicleAkademicReport => "ChronicleAkademicReport",
                 GameScreen.OptionsSettings => "OptionsSettings",
-                GameScreen.PartyMenu => ScreenMachine.Tab switch
+                GameScreen.PartyMenuUnits => ScreenMachine.Tab switch
                 {
-                    PartyTab.Units => "PartyMenu",
+                    PartyTab.Units => "PartyMenuUnits",
                     PartyTab.Inventory => "PartyMenuInventory",
                     PartyTab.Chronicle => "PartyMenuChronicle",
                     PartyTab.Options => "PartyMenuOptions",
-                    _ => "PartyMenu"
+                    _ => "PartyMenuUnits"
                 },
                 _ => "Unknown"
             };
@@ -4148,7 +4148,7 @@ namespace FFTColorCustomizer.Utilities
                     && ScreenMachine.LastSetScreenFromKey
                     && ScreenMachine.CurrentScreen == GameScreen.WorldMap)
                 {
-                    ModLogger.Log($"[StateOverride] TravelList→WorldMap: SM just left PartyMenu via key, ui byte is stale.");
+                    ModLogger.Log($"[StateOverride] TravelList→WorldMap: SM just left PartyMenuUnits via key, ui byte is stale.");
                     screen.Name = "WorldMap";
                 }
 
@@ -4172,7 +4172,26 @@ namespace FFTColorCustomizer.Utilities
                     screen.ShopListCursorIndex = (int)v[26];
 
                 if (screen.Name == "Cutscene")
+                {
                     screen.EventId = eventId;
+                    // Cutscenes advance on Enter (Escape is a no-op per
+                    // flavor-dialog convention). Surface ui=Advance so the
+                    // one-liner always carries a hovered-action label.
+                    screen.UI = "Advance";
+                }
+
+                // CharacterDialog (flavor-text popup, e.g. Kenrick intro).
+                // Only Enter advances. No cursor, no choice — but callers
+                // expect ui= on every screen; "Advance" makes the single
+                // action explicit.
+                if (screen.Name == "CharacterDialog")
+                    screen.UI = "Advance";
+
+                // CombatSets (third CharacterStatus sidebar page —
+                // placeholder screen, no inner cursor). Mirror the sidebar
+                // label so ui= always reflects what the player is looking at.
+                if (screen.Name == "CombatSets")
+                    screen.UI = "Combat Sets";
 
                 // Map the action menu cursor index to a label.
                 // Menu always has 5 items: Move/ResetMove(0) Abilities(1) Wait(2) Status(3) AutoBattle(4).
@@ -4216,7 +4235,7 @@ namespace FFTColorCustomizer.Utilities
                 // TODO §10.6.
                 bool stateMachineInPartyMenu = ScreenMachine != null &&
                     ScreenMachine.CurrentScreen is
-                        GameScreen.PartyMenu or
+                        GameScreen.PartyMenuUnits or
                         GameScreen.CharacterStatus or
                         GameScreen.EquipmentScreen or
                         GameScreen.EquipmentItemList or
@@ -4249,10 +4268,10 @@ namespace FFTColorCustomizer.Utilities
                 // the player is already in the menu). Snap it back to PartyMenu so
                 // the override below doesn't rewrite the screen name to a stale
                 // nested label. See TODO §0.
-                if (screen.Name == "PartyMenu" && ScreenMachine != null
+                if (screen.Name == "PartyMenuUnits" && ScreenMachine != null
                     && ScreenMachine.KeysSinceLastSetScreen == 0
                     && !ScreenMachine.LastSetScreenFromKey
-                    && ScreenMachine.CurrentScreen != GameScreen.PartyMenu
+                    && ScreenMachine.CurrentScreen != GameScreen.PartyMenuUnits
                     && ScreenMachine.CurrentScreen is
                         GameScreen.CharacterStatus or
                         GameScreen.EquipmentScreen or
@@ -4279,7 +4298,7 @@ namespace FFTColorCustomizer.Utilities
                         GameScreen.ChronicleAkademicReport or
                         GameScreen.OptionsSettings)
                 {
-                    ScreenMachine.SetScreen(GameScreen.PartyMenu);
+                    ScreenMachine.SetScreen(GameScreen.PartyMenuUnits);
                 }
 
                 // [Note 2026-04-15 session 16: tried to add a "symmetric"
@@ -4369,9 +4388,9 @@ namespace FFTColorCustomizer.Utilities
                     // PartyMenu's Inventory/Chronicle/Options tabs are not
                     // distinct GameScreen enum values — they share the
                     // PartyMenu screen name with a Tab discriminator. So
-                    // GameScreen.PartyMenu covers all four tabs here.
+                    // GameScreen.PartyMenuUnits covers all four tabs here.
                     bool smInPartyTree = ScreenMachine.CurrentScreen is
-                        GameScreen.PartyMenu or
+                        GameScreen.PartyMenuUnits or
                         GameScreen.CharacterStatus or
                         GameScreen.EquipmentScreen or
                         GameScreen.EquipmentItemList or
@@ -4402,7 +4421,7 @@ namespace FFTColorCustomizer.Utilities
                     // to distinguish them from WorldMap. SM is the only
                     // source of truth for these tabs — do NOT trigger drift
                     // recovery, or the SM gets stuck oscillating.
-                    bool smOnNonUnitsPartyTab = ScreenMachine.CurrentScreen == GameScreen.PartyMenu
+                    bool smOnNonUnitsPartyTab = ScreenMachine.CurrentScreen == GameScreen.PartyMenuUnits
                         && ScreenMachine.Tab != PartyTab.Units;
                     // JobSelection is also party-tree, menuDepth=0, and
                     // indistinguishable from WorldMap in memory. Trust SM.
@@ -4434,7 +4453,7 @@ namespace FFTColorCustomizer.Utilities
                 // (3 consecutive reads) catches the stale-SM case without
                 // needing a menuDepth gate here.
                 bool smOverrideAllowed = screen.Name == "PartySubScreen"
-                    || screen.Name == "PartyMenu"
+                    || screen.Name == "PartyMenuUnits"
                     || (stateMachineInPartyMenu
                         && (screen.Name == "TravelList" || screen.Name == "WorldMap"));
                 if (smOverrideAllowed)
@@ -4469,7 +4488,7 @@ namespace FFTColorCustomizer.Utilities
                         // Reuse the tab flag values read earlier (line ~3779)
                         // to avoid a TOCTOU race where the game clears the flag
                         // between the detection read and this correction read.
-                        if (ScreenMachine.CurrentScreen == GameScreen.PartyMenu)
+                        if (ScreenMachine.CurrentScreen == GameScreen.PartyMenuUnits)
                         {
                             {
                                 int v41e = unitsTabFlag;
@@ -4534,15 +4553,15 @@ namespace FFTColorCustomizer.Utilities
                             GameScreen.ChronicleAkademicReport => "ChronicleAkademicReport",
                             GameScreen.OptionsSettings => "OptionsSettings",
                             // On PartyMenu itself, the tab determines the screen name.
-                            GameScreen.PartyMenu => ScreenMachine.Tab switch
+                            GameScreen.PartyMenuUnits => ScreenMachine.Tab switch
                             {
-                                PartyTab.Units => "PartyMenu",
+                                PartyTab.Units => "PartyMenuUnits",
                                 PartyTab.Inventory => "PartyMenuInventory",
                                 PartyTab.Chronicle => "PartyMenuChronicle",
                                 PartyTab.Options => "PartyMenuOptions",
-                                _ => "PartyMenu"
+                                _ => "PartyMenuUnits"
                             },
-                            _ => "PartyMenu"
+                            _ => "PartyMenuUnits"
                         };
                     }
                 }
@@ -4562,6 +4581,16 @@ namespace FFTColorCustomizer.Utilities
                     screen.Name == "TitleScreen")
                 {
                     screen.UI = null;
+                }
+                // WorldMap: surface the hovered location name as ui=.
+                // The cursor lands on your current location on entry, but
+                // can be moved to any revealed node. hover=255 means the
+                // cursor isn't over a named node yet (between locations).
+                if (screen.Name == "WorldMap" && screen.Hover >= 0 && screen.Hover < 255)
+                {
+                    var hoveredName = GetLocationName(screen.Hover);
+                    if (!string.IsNullOrEmpty(hoveredName))
+                        screen.UI = hoveredName;
                 }
                 if (screen.Name == "EncounterDialog")
                 {
@@ -4621,7 +4650,7 @@ namespace FFTColorCustomizer.Utilities
                 // once we track the Fitting picker depth). All three share
                 // the same DTO shape so fft.sh can render them with one
                 // code path.
-                bool onPartyMenuAnyTab = screen.Name == "PartyMenu"
+                bool onPartyMenuAnyTab = screen.Name == "PartyMenuUnits"
                     || screen.Name == "PartyMenuInventory"
                     || screen.Name == "PartyMenuChronicle"
                     || screen.Name == "PartyMenuOptions";
@@ -5154,12 +5183,12 @@ namespace FFTColorCustomizer.Utilities
                     // distinct states for them. The equipment mirror stays
                     // populated on these tabs (same roster is visible) but
                     // they are NOT EqA — don't promote.
-                    // Include "PartyMenu" itself — when the outer Units grid
+                    // Include "PartyMenuUnits" itself — when the outer Units grid
                     // is the real state, promoting to EqA is wrong. The
                     // EqA-promote original purpose was to rescue SM=CS
-                    // when game is on EqA; "PartyMenu" detection implies
+                    // when game is on EqA; "PartyMenuUnits" detection implies
                     // we're above CS, not at EqA.
-                    or "PartyMenu" or "PartyMenuInventory" or "PartyMenuChronicle" or "PartyMenuOptions"
+                    or "PartyMenuUnits" or "PartyMenuInventory" or "PartyMenuChronicle" or "PartyMenuOptions"
                     // JobSelection and its modals: distinct from EqA, mirror
                     // can match but screen is not EqA.
                     or "JobSelection" or "JobActionMenu" or "JobChangeConfirmation"
@@ -5169,7 +5198,7 @@ namespace FFTColorCustomizer.Utilities
                 // CharacterStatus, EqA, and pickers). Promoting would stomp
                 // a correct CharacterStatus back to EqA.
                 bool smAlreadyInPartyTree = ScreenMachine != null && ScreenMachine.CurrentScreen is
-                    GameScreen.PartyMenu or GameScreen.CharacterStatus or
+                    GameScreen.PartyMenuUnits or GameScreen.CharacterStatus or
                     GameScreen.EquipmentScreen or GameScreen.EquipmentItemList or
                     GameScreen.JobScreen or GameScreen.JobActionMenu or
                     GameScreen.JobChangeConfirmation or
@@ -5569,7 +5598,7 @@ namespace FFTColorCustomizer.Utilities
                 // Roster grid on PartyMenu + every nested PartyMenu screen so
                 // per-unit equipment is always available to Claude. One round-
                 // trip beats cursor-move + re-read cycles. See TODO §10.6.
-                bool onPartyTree = screen.Name == "PartyMenu"
+                bool onPartyTree = screen.Name == "PartyMenuUnits"
                     || screen.Name == "CharacterStatus"
                     || screen.Name == "EquipmentAndAbilities";
                 if (onPartyTree && Explorer != null)
@@ -5600,7 +5629,7 @@ namespace FFTColorCustomizer.Utilities
                             // (CharacterStatus, EquipmentAndAbilities) still
                             // include the full roster list but without a
                             // grid cursor.
-                            if (screen.Name == "PartyMenu" && ScreenMachine != null
+                            if (screen.Name == "PartyMenuUnits" && ScreenMachine != null
                                 && ScreenMachine.Tab == PartyTab.Units)
                             {
                                 // Exit-cleanup: cached address is only valid
@@ -5670,7 +5699,7 @@ namespace FFTColorCustomizer.Utilities
                                     screen.UI = hovered.Name;
                                 }
                             }
-                            else if (screen.Name != "PartyMenu")
+                            else if (screen.Name != "PartyMenuUnits")
                             {
                                 // Left PartyMenu (either nested panel or
                                 // different screen entirely). Drop cached
@@ -5799,7 +5828,7 @@ namespace FFTColorCustomizer.Utilities
                     {
                         "WorldMap" => GameScreen.WorldMap,
                         "TitleScreen" => GameScreen.TitleScreen,
-                        "PartyMenu" => GameScreen.PartyMenu,
+                        "PartyMenuUnits" => GameScreen.PartyMenuUnits,
                         "EncounterDialog" or "BattleSequence" => GameScreen.Unknown,
                         "Battle" or "GameOver" => GameScreen.Unknown,
                         _ when screen.Name.StartsWith("Battle_") => GameScreen.Unknown,

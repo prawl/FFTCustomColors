@@ -66,7 +66,7 @@ namespace FFTColorCustomizer.Utilities
         public bool Verbose { get; set; }
 
         /// <summary>
-        /// Target screen for "navigate" action (e.g. "PartyMenu", "JobScreen").
+        /// Target screen for "navigate" action (e.g. "PartyMenuUnits", "JobScreen").
         /// </summary>
         [JsonPropertyName("to")]
         public string? To { get; set; }

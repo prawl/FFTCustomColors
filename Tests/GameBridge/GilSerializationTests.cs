@@ -49,7 +49,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
         [Theory]
         [InlineData("WorldMap")]
-        [InlineData("PartyMenu")]
+        [InlineData("PartyMenuUnits")]
         [InlineData("LocationMenu")]
         [InlineData("Outfitter")]
         [InlineData("Tavern")]

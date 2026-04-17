@@ -55,7 +55,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Theory]
-        [InlineData("PartyMenu")]
+        [InlineData("PartyMenuUnits")]
         [InlineData("PartyMenuInventory")]
         [InlineData("PartyMenuChronicle")]
         [InlineData("PartyMenuOptions")]
@@ -73,7 +73,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Theory]
-        [InlineData("PartyMenu",          "OpenUnits")]
+        [InlineData("PartyMenuUnits",          "OpenUnits")]
         [InlineData("PartyMenuInventory", "OpenInventory")]
         [InlineData("PartyMenuChronicle", "OpenChronicle")]
         [InlineData("PartyMenuOptions",   "OpenOptions")]
@@ -92,7 +92,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         // 4 for pickers, 5 for JobChangeConfirmation). All wait for
         // "WorldMap" and use a 200ms gap so close animations don't eat keys.
         [Theory]
-        [InlineData("PartyMenu", 1)]
+        [InlineData("PartyMenuUnits", 1)]
         [InlineData("PartyMenuInventory", 1)]
         [InlineData("PartyMenuChronicle", 1)]
         [InlineData("PartyMenuOptions", 1)]

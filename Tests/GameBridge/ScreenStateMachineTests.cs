@@ -50,7 +50,7 @@ public class ScreenStateMachineTests
     {
         var sm = CreateAtScreen(GameScreen.WorldMap);
         sm.OnKeyPressed(VK_ESCAPE);
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
         Assert.Equal(PartyTab.Units, sm.Tab);
         Assert.Equal(0, sm.CursorRow);
         Assert.Equal(0, sm.CursorCol);
@@ -59,7 +59,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void PartyMenu_Escape_TransitionsToWorldMap()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_ESCAPE);
         Assert.Equal(GameScreen.WorldMap, sm.CurrentScreen);
     }
@@ -67,7 +67,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void PartyMenu_Enter_TransitionsToCharacterStatus()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_RETURN);
         Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
         Assert.Equal(0, sm.SidebarIndex);
@@ -89,7 +89,7 @@ public class ScreenStateMachineTests
         Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
 
         sm.OnKeyPressed(VK_ESCAPE); // → PartyMenu, cursor restored to (1,2)
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
         Assert.Equal(1, sm.CursorRow);
         Assert.Equal(2, sm.CursorCol);
     }
@@ -174,7 +174,7 @@ public class ScreenStateMachineTests
     {
         // Verified live 2026-04-15: 5 Rights from r0c0 on a 5-col grid
         // wraps back to r0c0 in the real game, not clamped at c4.
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_RIGHT); // col 1
         sm.OnKeyPressed(VK_RIGHT); // col 2
         sm.OnKeyPressed(VK_RIGHT); // col 3
@@ -187,7 +187,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void PartyMenu_LeftAtCol0_WrapsToLastCol()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_LEFT); // wraps from col 0 to col 4
         Assert.Equal(4, sm.CursorCol);
     }
@@ -200,7 +200,7 @@ public class ScreenStateMachineTests
         // populated portion. With 3 units: GridRows=1, so Down stays on row 0.
         var sm = new ScreenStateMachine();
         sm.SetRosterCount(3);
-        sm.SetScreen(GameScreen.PartyMenu);
+        sm.SetScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_DOWN);
         Assert.Equal(0, sm.CursorRow);
     }
@@ -213,7 +213,7 @@ public class ScreenStateMachineTests
         // rows so Up wraps cleanly to the bottom row.
         var sm = new ScreenStateMachine();
         sm.SetRosterCount(15); // fills 3 rows (5+5+5)
-        sm.SetScreen(GameScreen.PartyMenu);
+        sm.SetScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_UP);
         Assert.Equal(2, sm.CursorRow);
         Assert.Equal(0, sm.CursorCol);
@@ -224,7 +224,7 @@ public class ScreenStateMachineTests
     {
         var sm = new ScreenStateMachine();
         sm.SetRosterCount(15);
-        sm.SetScreen(GameScreen.PartyMenu);
+        sm.SetScreen(GameScreen.PartyMenuUnits);
         for (int i = 0; i < 3; i++) sm.OnKeyPressed(VK_DOWN); // 0→1→2→0 (wrap)
         Assert.Equal(0, sm.CursorRow);
     }
@@ -234,7 +234,7 @@ public class ScreenStateMachineTests
     {
         var sm = new ScreenStateMachine();
         sm.SetRosterCount(15);
-        sm.SetScreen(GameScreen.PartyMenu);
+        sm.SetScreen(GameScreen.PartyMenuUnits);
         sm.SetPartyMenuCursor(2, 3);
         Assert.Equal(2, sm.CursorRow);
         Assert.Equal(3, sm.CursorCol);
@@ -243,7 +243,7 @@ public class ScreenStateMachineTests
         sm.OnKeyPressed(VK_RETURN);
         Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
         sm.OnKeyPressed(VK_ESCAPE);
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
         Assert.Equal(2, sm.CursorRow);
         Assert.Equal(3, sm.CursorCol);
     }
@@ -253,7 +253,7 @@ public class ScreenStateMachineTests
     {
         var sm = new ScreenStateMachine();
         sm.SetRosterCount(15);
-        sm.SetScreen(GameScreen.PartyMenu);
+        sm.SetScreen(GameScreen.PartyMenuUnits);
         // Switch to Chronicle tab via Q/E — resolver should then be
         // inert (the caller gates on Tab==Units too, but the state
         // machine must also refuse to move the cursor if misfired).
@@ -361,7 +361,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void PartyMenu_TabCycling()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         Assert.Equal(PartyTab.Units, sm.Tab);
 
         sm.OnKeyPressed(VK_E); // → Inventory
@@ -386,10 +386,10 @@ public class ScreenStateMachineTests
     [Fact]
     public void PartyMenu_EnterOnNonUnitsTab_DoesNothing()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_E); // → Inventory tab
         sm.OnKeyPressed(VK_RETURN); // should NOT transition
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
     }
 
     // Drift mitigation (TODO §0 session 16 repro): tab-switching back
@@ -400,7 +400,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void PartyMenu_TabReturnToUnits_ResetsCursorToOrigin()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         // Move cursor off origin on Units tab.
         sm.OnKeyPressed(VK_DOWN);
         sm.OnKeyPressed(VK_RIGHT);
@@ -422,7 +422,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void PartyMenu_QWrapToUnits_ResetsCursorToOrigin()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_DOWN);
         sm.OnKeyPressed(VK_RIGHT);
         sm.OnKeyPressed(VK_RIGHT);
@@ -471,7 +471,7 @@ public class ScreenStateMachineTests
         sm.SetScreen(GameScreen.WorldMap);
 
         sm.OnKeyPressed(VK_ESCAPE); // → PartyMenu
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
 
         sm.OnKeyPressed(VK_RETURN); // → CharacterStatus
         Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
@@ -484,7 +484,7 @@ public class ScreenStateMachineTests
         Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
 
         sm.OnKeyPressed(VK_ESCAPE); // → PartyMenu
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
 
         sm.OnKeyPressed(VK_ESCAPE); // → WorldMap
         Assert.Equal(GameScreen.WorldMap, sm.CurrentScreen);
@@ -503,7 +503,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void GetValidActions_PartyMenu_IncludesTabKeys()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         var actions = sm.GetValidActions();
         Assert.Contains(actions, a => a.Key == "q");
         Assert.Contains(actions, a => a.Key == "e");
@@ -524,12 +524,12 @@ public class ScreenStateMachineTests
     [Fact]
     public void GetScreenState_PartyMenu_IncludesAllFields()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_DOWN);
         sm.OnKeyPressed(VK_RIGHT);
 
         var state = sm.GetScreenState();
-        Assert.Equal("partymenu", state.Screen);
+        Assert.Equal("partymenuunits", state.Screen);
         Assert.Equal(1, state.CursorRow);
         Assert.Equal(1, state.CursorCol);
         Assert.Equal("Units", state.Tab);
@@ -554,7 +554,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void SetScreen_ResetsContext()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_DOWN);
         sm.OnKeyPressed(VK_RIGHT);
         sm.OnKeyPressed(VK_E); // Inventory tab
@@ -570,7 +570,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void PartyMenu_EnterAtIndex0_SetsIsRamza()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_RETURN); // index 0 = Ramza
         Assert.True(sm.IsRamza);
     }
@@ -578,7 +578,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void PartyMenu_EnterAtIndex1_DoesNotSetIsRamza()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_RIGHT); // col 1
         sm.OnKeyPressed(VK_RETURN); // index 1 = not Ramza
         Assert.False(sm.IsRamza);
@@ -822,7 +822,7 @@ public class ScreenStateMachineTests
     private static ScreenStateMachine AtChronicleRoot()
     {
         var sm = new ScreenStateMachine();
-        sm.SetScreen(GameScreen.PartyMenu);
+        sm.SetScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_E); // Units → Inventory
         sm.OnKeyPressed(VK_E); // Inventory → Chronicle
         Assert.Equal(PartyTab.Chronicle, sm.Tab);
@@ -892,7 +892,7 @@ public class ScreenStateMachineTests
         Assert.Equal(GameScreen.ChronicleEncyclopedia, sm.CurrentScreen);
 
         sm.OnKeyPressed(VK_ESCAPE); // back to PartyMenu Chronicle tab
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
         Assert.Equal(PartyTab.Chronicle, sm.Tab);
 
         sm.OnKeyPressed(VK_DOWN); // → Auracite (3)
@@ -917,7 +917,7 @@ public class ScreenStateMachineTests
     private static ScreenStateMachine AtOptionsRoot()
     {
         var sm = new ScreenStateMachine();
-        sm.SetScreen(GameScreen.PartyMenu);
+        sm.SetScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_Q); // Units → Options (Q wraps)
         Assert.Equal(PartyTab.Options, sm.Tab);
         Assert.Equal(0, sm.OptionsIndex);
@@ -951,7 +951,7 @@ public class ScreenStateMachineTests
         sm.OnKeyPressed(VK_RETURN);
         Assert.Equal(GameScreen.OptionsSettings, sm.CurrentScreen);
         sm.OnKeyPressed(VK_ESCAPE);
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
         Assert.Equal(PartyTab.Options, sm.Tab);
     }
 
@@ -962,7 +962,7 @@ public class ScreenStateMachineTests
         // the actual save action is handled by the existing `save` flow.
         var sm = AtOptionsRoot();
         sm.OnKeyPressed(VK_RETURN);
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
     }
 
     [Fact]
@@ -994,7 +994,7 @@ public class ScreenStateMachineTests
         Assert.Equal(0, sm.KeysSinceLastSetScreen);
 
         sm.OnKeyPressed(VK_ESCAPE); // → PartyMenu
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
         // The internal transition via OnKeyPressed (not SetScreen) still counts as a key.
         Assert.Equal(1, sm.KeysSinceLastSetScreen);
 
@@ -1003,7 +1003,7 @@ public class ScreenStateMachineTests
         Assert.Equal(2, sm.KeysSinceLastSetScreen);
 
         // Explicit SetScreen resets the counter (simulates drift-recovery snap-back).
-        sm.SetScreen(GameScreen.PartyMenu);
+        sm.SetScreen(GameScreen.PartyMenuUnits);
         Assert.Equal(0, sm.KeysSinceLastSetScreen);
     }
 
@@ -1012,7 +1012,7 @@ public class ScreenStateMachineTests
     [Fact]
     public void ViewedGridIndex_OnPartyMenuUnitsTab_FollowsLiveCursor()
     {
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         // Roster is 17 units wide enough to scroll the cursor freely.
         sm.OnKeyPressed(VK_RIGHT); // r0 c1
         sm.OnKeyPressed(VK_RIGHT); // r0 c2
@@ -1027,7 +1027,7 @@ public class ScreenStateMachineTests
         // Move cursor to (r1, c2), Enter → CharacterStatus should freeze
         // the viewed index at 7 and not follow CursorRow/Col changes inside
         // the nested screen.
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_RIGHT);
         sm.OnKeyPressed(VK_RIGHT);
         sm.OnKeyPressed(VK_DOWN);
@@ -1046,7 +1046,7 @@ public class ScreenStateMachineTests
         // CharacterStatus. ViewedGridIndex follows because PartyMenu
         // uses the live CursorRow/Col, which now equals the restored
         // saved snapshot.
-        var sm = CreateAtScreen(GameScreen.PartyMenu);
+        var sm = CreateAtScreen(GameScreen.PartyMenuUnits);
         sm.OnKeyPressed(VK_RIGHT);
         sm.OnKeyPressed(VK_DOWN);
         // r1 c1 = idx 6
@@ -1054,7 +1054,7 @@ public class ScreenStateMachineTests
         sm.OnKeyPressed(VK_RETURN);
         Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
         sm.OnKeyPressed(VK_ESCAPE); // back to PartyMenu, cursor restored
-        Assert.Equal(GameScreen.PartyMenu, sm.CurrentScreen);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
         Assert.Equal(6, sm.ViewedGridIndex);
     }
 }

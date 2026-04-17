@@ -102,7 +102,7 @@ namespace FFTColorCustomizer.GameBridge
             // Only override when party==0 (stale byte). When party==1, the
             // existing `party==1 → PartyMenu` rule at line ~109 handles it, and
             // the downstream SM-based resolution distinguishes sub-screens
-            // (CharacterStatus, EqA, pickers). If we return "PartyMenu" here
+            // (CharacterStatus, EqA, pickers). If we return "PartyMenuUnits" here
             // unconditionally, the stale-SM recovery block misinterprets a
             // legitimate CharacterStatus as stale and stomps it back to PartyMenu.
             // menuDepth==0 means outer screen (WorldMap/PartyMenu grid/CS).
@@ -112,7 +112,7 @@ namespace FFTColorCustomizer.GameBridge
             // When menuDepth==0, prefer the later WorldMap/TravelList rules.
             if (party == 0 && (unitsTabFlag == 1 || inventoryTabFlag == 1)
                 && menuDepth != 0)
-                return "PartyMenu";
+                return "PartyMenuUnits";
 
             // atNamedLocation and onWorldMapByMoveMode both override stale battle sentinels.
             // If we're at a shop/village (hover=255 + rawLocation in range) OR the world-map
@@ -158,7 +158,7 @@ namespace FFTColorCustomizer.GameBridge
 
                 // PartyMenu: party flag set. Before location-based rules.
                 if (party == 1)
-                    return "PartyMenu";
+                    return "PartyMenuUnits";
 
                 // Pre-battle dialogue at a named location: eventId in real range + slot0=0xFFFFFFFF
                 // indicates a pre-battle cutscene has been triggered (e.g. Orbonne Loffrey scene).

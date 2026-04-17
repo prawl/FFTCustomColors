@@ -368,7 +368,7 @@ namespace FFTColorCustomizer.GameBridge
                 curScreen.Name == "BattleFormation" ||
                 curScreen.Name == "EncounterDialog" ||
                 curScreen.Name == "WorldMap" ||
-                curScreen.Name == "PartyMenu"))
+                curScreen.Name == "PartyMenuUnits"))
             {
                 response.Status = "failed";
                 response.Error = $"Can't battle_flee from {curScreen.Name}. Start the battle first and try again.";
@@ -1259,10 +1259,10 @@ namespace FFTColorCustomizer.GameBridge
                         break;
 
                     case "WorldMap":
-                        if (targetScreen.Equals("PartyMenu", StringComparison.OrdinalIgnoreCase))
+                        if (targetScreen.Equals("PartyMenuUnits", StringComparison.OrdinalIgnoreCase))
                         {
                             SendKey(VK_ESCAPE);
-                            WaitForScreen("PartyMenu", 2000);
+                            WaitForScreen("PartyMenuUnits", 2000);
                             progressed = true;
                         }
                         else if (targetScreen.Equals("TravelList", StringComparison.OrdinalIgnoreCase))
@@ -1273,7 +1273,7 @@ namespace FFTColorCustomizer.GameBridge
                         }
                         break;
 
-                    case "PartyMenu":
+                    case "PartyMenuUnits":
                         if (targetScreen.Equals("WorldMap", StringComparison.OrdinalIgnoreCase))
                         {
                             SendKey(VK_ESCAPE);
@@ -4458,7 +4458,7 @@ namespace FFTColorCustomizer.GameBridge
             string currentName = currentScreen?.Name ?? "Unknown";
 
             bool needWrap = false;
-            if (currentName == "PartyMenu")
+            if (currentName == "PartyMenuUnits")
             {
                 // Cursor unknown — need to reset to (0, 0).
                 needWrap = true;

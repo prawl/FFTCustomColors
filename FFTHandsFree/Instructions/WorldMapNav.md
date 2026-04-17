@@ -6,7 +6,7 @@
 ```bash
 screen                    # Check current screen and location
 world_travel_to <id>      # Travel to a location by ID
-execute_action <name>     # Execute a validPath (PartyMenu, TravelList, etc.)
+execute_action <name>     # Execute a validPath (PartyMenuUnits, TravelList, etc.)
 save                      # Save the game
 load                      # Load most recent save
 ```
@@ -47,7 +47,7 @@ The **Formation Screen** appears:
 | `WorldMap` | Standing on a location node |
 | `TravelList` | Travel list is open, selecting destination |
 | `EncounterDialog` | Random encounter popup (Fight/Flee) |
-| `PartyMenu` | Party management menu |
+| `PartyMenuUnits` | Party management menu (Units tab) |
 
 ## Reading the Screen
 

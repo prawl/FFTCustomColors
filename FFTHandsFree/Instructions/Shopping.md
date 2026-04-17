@@ -41,7 +41,7 @@ On `SettlementMenu`, the shop type is exposed via `screen.UI` (e.g. `ui=Outfitte
 
 ## Gil
 
-Your current gil shows up in the screen line as `gil=2,605,569` whenever you're on a shop-adjacent screen (WorldMap, PartyMenu, LocationMenu, SettlementMenu, Outfitter_*). Check before you buy.
+Your current gil shows up in the screen line as `gil=2,605,569` whenever you're on a shop-adjacent screen (WorldMap, PartyMenuUnits, LocationMenu, SettlementMenu, Outfitter_*). Check before you buy.
 
 ## Leaving a shop
 

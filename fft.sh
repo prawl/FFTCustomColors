@@ -151,6 +151,15 @@ fft() {
     return 1
   fi
 
+  # Surface rejection reasons. Rejected commands are valid but refused (e.g.
+  # already at destination, locked location). The error field carries the
+  # reason; print it so Claude doesn't waste a round-trip figuring out why.
+  if [ "$ST" = "rejected" ]; then
+    local ERR=$(grep -o '"error": *"[^"]*"' "$B/response.json" | head -1 | sed -E 's/^"error": *"//; s/"$//; s/\\u0027/'"'"'/g')
+    [ -n "$ERR" ] && echo "[REJECTED] $ERR"
+    return 1
+  fi
+
   local CW=$(grep -o '"chainWarning": *"[^"]*"' "$B/response.json" | head -1 | sed -E 's/^"chainWarning": *"//; s/"$//; s/\\u0026/\&/g')
   [ -n "$CW" ] && echo "[CHAIN WARNING] $CW" >&2
   return 0
@@ -167,7 +176,7 @@ _fmt_gil() {
 # Honor NO_COLOR=1 and disable when stdout isn't a terminal (piped output stays clean).
 if [ -t 1 ] && [ -z "$NO_COLOR" ]; then
   _C_RESET='\033[0m'
-  _C_SCR='\033[1;36m'      # bright cyan  — screen name [PartyMenu]
+  _C_SCR='\033[1;36m'      # bright cyan  — screen name [PartyMenuUnits]
   _C_UI='\033[1;33m'       # bright yellow — ui= values (the decision surface)
   _C_UNIT='\033[1;32m'     # bright green  — viewedUnit / active unit names
   _C_EQUIP='\033[0;36m'    # cyan          — equippedItem= / pickerTab=
@@ -184,8 +193,8 @@ fi
 # _col <color> <text>  → wraps text with ANSI color, safe when colors disabled.
 _col() { printf '%b%s%b' "$1" "$2" "$_C_RESET"; }
 
-# _is_party_tree_screen <screenName> → 0 if on a PartyMenu-family screen.
-# PartyMenu tree screens don't benefit from loc=/objective=/gil= in the
+# _is_party_tree_screen <screenName> → 0 if on a PartyMenuUnits-family screen.
+# PartyMenuUnits tree screens don't benefit from loc=/objective=/gil= in the
 # compact line — the player isn't navigating the world there, so those
 # fields are pure carry-over noise that pushes meaningful signals
 # (viewedUnit, equippedItem, pickerTab, ui) further away from Claude's
@@ -193,7 +202,7 @@ _col() { printf '%b%s%b' "$1" "$2" "$_C_RESET"; }
 # field doesn't change a decision on *this* screen, drop it.
 _is_party_tree_screen() {
   case "$1" in
-    PartyMenu|PartyMenuInventory|PartyMenuChronicle|PartyMenuOptions|\
+    PartyMenuUnits|PartyMenuInventory|PartyMenuChronicle|PartyMenuOptions|\
     CharacterStatus|CharacterDialog|DismissUnit|\
     EquipmentAndAbilities|CombatSets|\
     JobSelection|JobActionMenu|JobChangeConfirmation|\
@@ -291,7 +300,7 @@ _fmt_screen_compact() {
   [ -n "$SLCI" ] && LINE="$LINE row=$(_col "$_C_MARK" "$SLCI")"
 
   # World-side context — appended to same line. Suppressed on
-  # PartyMenu-tree screens where they don't change per-action decisions.
+  # PartyMenuUnits-tree screens where they don't change per-action decisions.
   if ! _is_party_tree_screen "$SCR"; then
     [ -n "$LOCNAME" ] && LINE="$LINE $(_col "$_C_LOC" "curLoc=$LOCNAME")"
     [ -n "$OBJNAME" ] && LINE="$LINE $(_col "$_C_LOC" "obj=$OBJNAME")"
@@ -355,7 +364,7 @@ _show_helpers() {
     scan_inventory                        Open inventory tab + dump full list
     start_encounter                       Trigger random encounter (battlegrounds only)"
       ;;
-    PartyMenu)
+    PartyMenuUnits)
       helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
     open_job_selection [unit]             Jump to Job Selection
     open_character_status [unit]          Jump to Character Status
@@ -658,11 +667,11 @@ dismiss_unit() { hold_key 66 3500; }  # 0x42 = VK_B
 # =============================================================================
 # Navigate from anywhere (WorldMap or party-tree) to a specific sub-screen
 # for a specific unit, in one command. Handles the full path internally:
-# escape to WorldMap → PartyMenu → cursor to unit → CharacterStatus → target.
+# escape to WorldMap → PartyMenuUnits → cursor to unit → CharacterStatus → target.
 
 # _nav_to_party_unit <unit_name>
-# Internal: navigate to PartyMenu with cursor on the named unit.
-# Returns 0 on success, 1 on failure. Leaves state on PartyMenu.
+# Internal: navigate to PartyMenuUnits with cursor on the named unit.
+# Returns 0 on success, 1 on failure. Leaves state on PartyMenuUnits.
 _nav_to_party_unit() {
   local target="$1"
 
@@ -670,26 +679,26 @@ _nav_to_party_unit() {
   # This is safe because each step waits for its response before the next fires.
   _FFT_DONE=0
 
-  # Step 1: get to WorldMap or PartyMenu
+  # Step 1: get to WorldMap or PartyMenuUnits
   _current_screen >/dev/null
   local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
-  if [ "$curScr" != "WorldMap" ] && [ "$curScr" != "PartyMenu" ]; then
+  if [ "$curScr" != "WorldMap" ] && [ "$curScr" != "PartyMenuUnits" ]; then
     fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"ReturnToWorldMap\"}" >/dev/null
     _FFT_DONE=0
     _current_screen >/dev/null
     curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
   fi
 
-  # Step 2: open PartyMenu if on WorldMap
+  # Step 2: open PartyMenuUnits if on WorldMap
   if [ "$curScr" = "WorldMap" ]; then
-    fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenu\"}" >/dev/null
+    fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenuUnits\"}" >/dev/null
     _FFT_DONE=0
     _current_screen >/dev/null
     curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
   fi
 
-  if [ "$curScr" != "PartyMenu" ]; then
-    echo "[_nav_to_party_unit] ERROR: could not reach PartyMenu (on $curScr)"
+  if [ "$curScr" != "PartyMenuUnits" ]; then
+    echo "[_nav_to_party_unit] ERROR: could not reach PartyMenuUnits (on $curScr)"
     return 1
   fi
 
@@ -712,7 +721,7 @@ _nav_to_party_unit() {
   local targetCol="${gridInfo##*,}"
 
   # Step 4: navigate cursor to the target unit in one key batch.
-  # Cursor may NOT be at (0,0) — PartyMenu preserves the last position.
+  # Cursor may NOT be at (0,0) — PartyMenuUnits preserves the last position.
   # First reset to (0,0) by wrapping: Up enough to hit row 0, Left enough
   # to hit col 0. With wrapping, pressing Up from row 0 goes to last row,
   # so we need to know the grid size. Use roster count to compute rows.
@@ -752,10 +761,10 @@ _nav_to_party_unit() {
 }
 
 # Valid source states for party-tree compound nav helpers (open_eqa, etc.)
-# These states can reliably escape to WorldMap then open PartyMenu.
+# These states can reliably escape to WorldMap then open PartyMenuUnits.
 # Shop screens, battle states, cutscenes, etc. are blocked — they need
 # to exit to WorldMap first before the helper will work safely.
-_PARTY_NAV_VALID_STATES="WorldMap|PartyMenu|PartyMenuInventory|PartyMenuChronicle|PartyMenuOptions|CharacterStatus|EquipmentAndAbilities|JobSelection|JobActionMenu|JobChangeConfirmation|CombatSets|EquippableWeapons|EquippableShields|EquippableHeadware|EquippableCombatGarb|EquippableAccessories|SecondaryAbilities|ReactionAbilities|SupportAbilities|MovementAbilities|CharacterDialog|DismissUnit"
+_PARTY_NAV_VALID_STATES="WorldMap|PartyMenuUnits|PartyMenuInventory|PartyMenuChronicle|PartyMenuOptions|CharacterStatus|EquipmentAndAbilities|JobSelection|JobActionMenu|JobChangeConfirmation|CombatSets|EquippableWeapons|EquippableShields|EquippableHeadware|EquippableCombatGarb|EquippableAccessories|SecondaryAbilities|ReactionAbilities|SupportAbilities|MovementAbilities|CharacterDialog|DismissUnit"
 
 # open_character_status [unit_name]
 # Navigate to CharacterStatus for the named unit (default: Ramza).
@@ -767,7 +776,7 @@ open_character_status() {
 }
 
 # open_eqa [unit_name]
-# Navigate from WorldMap/PartyMenu/party-tree to EquipmentAndAbilities.
+# Navigate from WorldMap/PartyMenuUnits/party-tree to EquipmentAndAbilities.
 # Single bridge action — C# handles all navigation internally.
 open_eqa() {
   _require_state open_eqa "$_PARTY_NAV_VALID_STATES" || return 1
@@ -776,7 +785,7 @@ open_eqa() {
 }
 
 # open_job_selection [unit_name]
-# Navigate from WorldMap/PartyMenu/party-tree to JobSelection.
+# Navigate from WorldMap/PartyMenuUnits/party-tree to JobSelection.
 # Single bridge action — C# handles all navigation internally.
 open_job_selection() {
   _require_state open_job_selection "$_PARTY_NAV_VALID_STATES" || return 1
@@ -790,21 +799,21 @@ open_job_selection() {
 
 # party_summary: Formatted one-line-per-unit roster overview.
 # Works from any screen — reads the last response's roster data, or
-# navigates to PartyMenu if roster isn't available.
+# navigates to PartyMenuUnits if roster isn't available.
 party_summary() {
   _FFT_DONE=0
-  # Get a fresh PartyMenu read to ensure roster is populated
+  # Get a fresh PartyMenuUnits read to ensure roster is populated
   _current_screen >/dev/null
   local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
   local hasRoster=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.roster?.units?.length>0?'yes':'no')" < "$B/response.json" 2>/dev/null)
 
   if [ "$hasRoster" != "yes" ]; then
-    # Navigate to PartyMenu to get roster
-    if [ "$curScr" != "WorldMap" ] && [ "$curScr" != "PartyMenu" ]; then
+    # Navigate to PartyMenuUnits to get roster
+    if [ "$curScr" != "WorldMap" ] && [ "$curScr" != "PartyMenuUnits" ]; then
       fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"ReturnToWorldMap\"}" >/dev/null
       _FFT_DONE=0
     fi
-    fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenu\"}" >/dev/null
+    fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenuUnits\"}" >/dev/null
     _FFT_DONE=0
   fi
 
@@ -832,7 +841,7 @@ check_unit() {
   _current_screen >/dev/null
   local hasRoster=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.roster?.units?.length>0?'yes':'no')" < "$B/response.json" 2>/dev/null)
   if [ "$hasRoster" != "yes" ]; then
-    fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenu\"}" >/dev/null
+    fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenuUnits\"}" >/dev/null
     _FFT_DONE=0
   fi
   local lowerTarget=$(echo "$target" | tr 'A-Z' 'a-z')
@@ -1063,7 +1072,7 @@ return_to_world_map() {
 # view_unit <name>: Read-only data dump for a unit. Combines roster
 # stats with EqA-derived ability assignments and JP-next info.
 # No navigation, no key presses — just reads roster from memory and
-# formats. Works from anywhere a roster is readable (PartyMenu tree
+# formats. Works from anywhere a roster is readable (PartyMenuUnits tree
 # or WorldMap). For a richer in-menu view, use open_eqa <unit>.
 view_unit() {
   local target="$*"
@@ -1184,10 +1193,10 @@ travel_safe() {
 # round-trip when planning purchases or equipment changes.
 scan_inventory() {
   _require_state scan_inventory "$_PARTY_NAV_VALID_STATES" || return 1
-  # Get to PartyMenu first (Escape until WorldMap → Escape to PartyMenu)
+  # Get to PartyMenuUnits first (Escape until WorldMap → Escape to PartyMenuUnits)
   return_to_world_map >/dev/null
   _FFT_DONE=0
-  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":0,\"waitForScreen\":\"PartyMenu\",\"waitTimeoutMs\":3000}" >/dev/null
+  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":0,\"waitForScreen\":\"PartyMenuUnits\",\"waitTimeoutMs\":3000}" >/dev/null
   _FFT_DONE=0
   # Switch to Inventory tab via E
   fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":69,\"name\":\"E\"}],\"delayBetweenMs\":0,\"waitForScreen\":\"PartyMenuInventory\",\"waitTimeoutMs\":3000}" >/dev/null
@@ -1222,7 +1231,7 @@ _current_screen() {
 # _require_state <helper_name> <allowed_states_regex>
 # Validates that the current screen matches one of the allowed states.
 # Returns 0 if valid, prints error and returns 1 if not.
-# Usage: _require_state open_eqa "WorldMap|PartyMenu|CharacterStatus|EquipmentAndAbilities|JobSelection|CombatSets" || return 1
+# Usage: _require_state open_eqa "WorldMap|PartyMenuUnits|CharacterStatus|EquipmentAndAbilities|JobSelection|CombatSets" || return 1
 _require_state() {
   local helper="$1"
   local allowed="$2"
@@ -1276,6 +1285,18 @@ _change_ability() {
     return 1
   fi
   _require_state "change_${slotType}_ability_to" "EquipmentAndAbilities" || return 1
+
+  # Guard: some units have ability slots pinned to their defaults and
+  # cannot re-equip. Construct 8 is the known case. The picker still
+  # opens but Enter on alternatives is a no-op — firing the nav keys
+  # would just waste round-trips. See JobGridLayout.LockedAbilityUnits.
+  local _vunit=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.viewedUnit||'')" < "$B/response.json" 2>/dev/null)
+  case "$_vunit" in
+    "Construct 8")
+      echo "[change_${slotType}_ability_to] ERROR: $_vunit has locked ability slots — defaults cannot be changed."
+      return 1
+      ;;
+  esac
 
   local currentField pickerScreen targetRow
   case "$slotType" in
@@ -2579,12 +2600,12 @@ try{
 " 2>/dev/null
     fi
 
-    # PartyMenu roster:
+    # PartyMenuUnits roster:
     #   compact: render the visual 5-col grid the game shows, with a
     #            [cursor] bracket around the hovered unit. Display order
     #            is driven by roster byte +0x122 (Time Recruited sort).
     #   -v:      dump the raw roster JSON (efficient payload for tools).
-    if [ "$SCR" = "PartyMenu" ] && [ -f "$B/response.json" ]; then
+    if [ "$SCR" = "PartyMenuUnits" ] && [ -f "$B/response.json" ]; then
       local vflag="false"; $verbose && vflag="true"
       cat "$B/response.json" | node -e "
 try{
@@ -2648,11 +2669,11 @@ try{
     #            picker tab layout so Claude can quickly scan "what
     #            consumables do I have" vs "what swords".
     # Verbose inventory dump — render whenever the backend populated
-    # screen.inventory on PartyMenu tabs, OutfitterSell, or OutfitterFitting.
+    # screen.inventory on PartyMenuUnits tabs, OutfitterSell, or OutfitterFitting.
     # State-machine drift can misname the tab so we check payload presence,
     # not screen name. On OutfitterSell each item line adds `sell=N gil`
     # and the footer adds a total-gil-if-sold summary.
-    if [[ "$SCR" == PartyMenu* || "$SCR" == "OutfitterSell" || "$SCR" == "OutfitterFitting" ]] && [ -f "$B/response.json" ]; then
+    if [[ "$SCR" == "PartyMenuUnits" || "$SCR" == PartyMenuInventory* || "$SCR" == PartyMenuChronicle* || "$SCR" == PartyMenuOptions* || "$SCR" == "OutfitterSell" || "$SCR" == "OutfitterFitting" ]] && [ -f "$B/response.json" ]; then
       if $verbose; then
         cat "$B/response.json" | node -e "
 try{

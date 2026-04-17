@@ -38,7 +38,7 @@ namespace FFTColorCustomizer.GameBridge
                 "Cutscene" => GetCutscenePaths(),
                 "TitleScreen" => GetTitleScreenPaths(),
                 "WorldMap" => GetWorldMapPaths(),
-                "PartyMenu" => GetPartyMenuPaths(),
+                "PartyMenuUnits" => GetPartyMenuPaths(),
                 "PartyMenuInventory" => GetPartyMenuInventoryPaths(),
                 "PartyMenuChronicle" => GetPartyMenuChroniclePaths(),
                 "PartyMenuOptions" => GetPartyMenuOptionsPaths(),
@@ -159,10 +159,10 @@ namespace FFTColorCustomizer.GameBridge
         {
             return new()
             {
-                ["PartyMenu"] = new PathEntry
+                ["PartyMenuUnits"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
-                    WaitForScreen = "PartyMenu",
+                    WaitForScreen = "PartyMenuUnits",
                     Desc = "Open party menu"
                 },
                 ["TravelList"] = new PathEntry
@@ -507,10 +507,10 @@ namespace FFTColorCustomizer.GameBridge
                     WaitTimeoutMs = 5000,
                     Desc = "Start the next sub-battle in the sequence"
                 },
-                ["PartyMenu"] = new PathEntry
+                ["PartyMenuUnits"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
-                    WaitForScreen = "PartyMenu",
+                    WaitForScreen = "PartyMenuUnits",
                     Desc = "Open party menu (change formation/equipment between battles)"
                 },
             };
@@ -895,7 +895,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["OpenUnits"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_Q, "Q") },
-                    WaitForScreen = "PartyMenu",
+                    WaitForScreen = "PartyMenuUnits",
                     Desc = "Jump to Units tab"
                 },
                 ["OpenInventory"] = new PathEntry { Keys = System.Array.Empty<KeyInfo>(), Desc = "(already on Inventory tab — no-op)" },
@@ -944,7 +944,7 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     Keys = new[] { Key(VK_Q, "Q"), Key(VK_Q, "Q") },
                     DelayBetweenMs = 500,
-                    WaitForScreen = "PartyMenu",
+                    WaitForScreen = "PartyMenuUnits",
                     Desc = "Jump to Units tab"
                 },
                 ["OpenInventory"] = new PathEntry
@@ -992,7 +992,7 @@ namespace FFTColorCustomizer.GameBridge
                 ["OpenUnits"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_E, "E") },
-                    WaitForScreen = "PartyMenu",
+                    WaitForScreen = "PartyMenuUnits",
                     Desc = "Jump to Units tab (E wraps forward)"
                 },
                 ["OpenInventory"] = new PathEntry

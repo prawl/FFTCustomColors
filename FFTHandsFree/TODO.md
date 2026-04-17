@@ -95,7 +95,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **⚠ UNVERIFIED auto_place_units** — C# bridge action built (NavigationActions.cs) and shell helper wired, but never live-tested in an actual battle formation. Sequence: sleep 4s → 4×(Enter+Enter) → Space → Enter → poll for battle state. Session 23 added state guard that requires `BattleFormation` so misuse fails fast.
 
-- [ ] **EnterLocation delay may need per-location tuning** — Fixed 200ms→500ms in NavigationPaths.cs for Dorter. Other settlements may need different settling times. If EnterLocation fails at a new location, increase DelayBetweenMs. (Session 23 also fixed the broader `DelayBetweenMs` propagation bug — every PathEntry's custom delay now actually takes effect, so any tuning will now work.)
+- [x] **EnterLocation delay may need per-location tuning** — VERIFIED session 24. Live-tested EnterLocation at Dorter, Gariland, and Lesalia with the current 500ms default — all three settlements enter cleanly. No per-location tuning required at present. If a new settlement fails, bump `DelayBetweenMs` on the EnterLocation PathEntry in NavigationPaths.cs (propagation fix from session 23 ensures it takes effect).
 
 ### Session 20 — state detection + EqA resolver
 
@@ -107,13 +107,13 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Cutscene misdetects as LoadGame after GameOver** — Session 21: sticky gameOverFlag=1 from prior GameOver causes LoadGame rule to preempt Cutscene. Inputs during real cutscene (eventId=2): gameOverFlag=1, battleMode=0, paused=0, actedOrMoved=false — all match LoadGame. Fix: LoadGame rule should additionally check that eventId is NOT in the real cutscene range (1-399), or Cutscene should be checked before LoadGame in the battle branch.
 
-- [ ] **world_travel_to status=rejected should include reason** — Session 21: `world_travel_to 9` while already at Dorter returns `status=rejected` with no explanation. Should include a reason like "Already at Merchant City of Dorter" so Claude doesn't waste a round-trip figuring out why.
+- [x] **world_travel_to status=rejected should include reason** — DONE session 24. Root cause was in `fft.sh` main `fft()` renderer: it surfaced errors only for `status=failed`, silently dropping `rejected` responses. C# side already populated a reason ("Already at location N...", "Location N is locked..."). Added a `[REJECTED] <reason>` branch mirroring `[FAILED]`. Live-verified: `world_travel_to 26` from TheSiedgeWeald now prints the reason and returns exit 1.
 
 - [ ] **New state: BattleChoice — mid-battle objective choice screen** — Some battles pause and present 2 options (e.g. "We must press on, to battle" vs "Protect him at all costs"). Selecting an option changes the battle objective (e.g. from "defeat all" to "protect X"). Needs memory investigation to find a discriminator byte. Likely paused=1 with a unique submenu/menuCursor combo.
 
 - [ ] **BattleVictory/BattleDesertion misdetect as BattlePaused** — Session 21 at Orbonne Monastery: slot0=0x67 (not 255) during Victory and Desertion screens. `unitSlotsPopulated` (slot0==255) is false, so `postBattle` and `postBattlePausedState` both fail, and the rules fall through to BattlePaused. Fix: relax the Victory/Desertion rules to not require unitSlotsPopulated — use `battleModeActive && actedOrMoved && battleMode == 0` instead. Inputs captured: party=1, ui=1, slot0=0x67, slot9=0xFFFFFFFF, battleMode=0, paused=1, submenuFlag=1, actedOrMoved=true, eventId=303.
 
-- [ ] **WorldMap `ui=` should show hovered location name** — e.g. `[WorldMap] ui=Magick City of Gariland` when cursor is over a location. Currently `ui=` is empty on WorldMap. The hover location ID is available (used for `loc=`), just needs to be surfaced as the `ui` field.
+- [x] **WorldMap `ui=` should show hovered location name** — e.g. `[WorldMap] ui=Magick City of Gariland` when cursor is over a location. Currently `ui=` is empty on WorldMap. The hover location ID is available (used for `loc=`), just needs to be surfaced as the `ui` field.
 
 - [ ] **EqA compact format: replace two-column grid with narrow-friendly layout** — The Equipment|Abilities two-column grid wraps and becomes unreadable in narrow terminal windows. Replace with a single-column vertical list or inline summary. Keep the full grid in `-v` verbose mode only.
 
@@ -123,17 +123,17 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Replace fixed post-key delay with poll-until-stable** — Currently a fixed 350ms sleep in the detection fallback path. Replace with: read state, wait 50ms, read again, if identical return, else keep polling up to 500ms.
 
-- [ ] **`ui=<element>` must always appear on the compact one-liner after `[StateName]`** — Currently `ui=` is missing from some screen states. Every screen response should surface the currently-hovered UI element.
+- [x] **`ui=<element>` must always appear on the compact one-liner after `[StateName]`** — Currently `ui=` is missing from some screen states. Every screen response should surface the currently-hovered UI element.
 
 ### Earlier open items (EqA / JobSelection)
 
 - [ ] **Apply mirror technique to JobSelection** — Same idea for JobSelection grid cells. When hovering a class, the info panel displays class data (JP, Lv, prereqs). Find where that hovered-class data lives by navigating to a known cell, snapshotting, navigating away, diffing. Target: a single byte that holds the hovered class index (or u16 class ID).
 
-- [ ] **Document Construct 8 locked ability slots** — Session 19 user confirmed that Construct 8 cannot unequip any abilities. The ability slots are pinned to his defaults. This means `change_reaction_ability_to` / `change_support_ability_to` / `change_movement_ability_to` helpers should refuse with a clear error when viewedUnit is Construct 8 (or any future locked-slot unit). Add a `LockedAbilityUnits` set alongside `StoryCharacterUniqueClass` in `JobGridLayout.cs` and check it in the helper guards.
+- [x] **Document Construct 8 locked ability slots** — DONE session 24. Added `JobGridLayout.LockedAbilityUnits` (HashSet<string>) with "Construct 8" as the initial entry. Shell-side `_change_ability` helper in fft.sh now matches viewedUnit against a locked-set and refuses with `[change_<slot>_ability_to] ERROR: Construct 8 has locked ability slots — defaults cannot be changed.` Guard verified live against all four slots (secondary/reaction/support/movement) from Construct 8's EqA. Ramza's EqA still accepts changes normally. 2 new unit tests.
 
 - [ ] **(low priority) `remove_equipment` position-agnostic entry** — MVP landed 2026-04-16 assumes the cursor is already on the target equipment row in EqA column 0. Nicer UX: accept the call from ANY UI position while `screen.Name == "EquipmentAndAbilities"` (or any parent state where `ui == "EquipmentAndAbilities"`), auto-navigate to column 0 + target row before firing the toggle. Either that or add an explicit guard in the shell helper that refuses with a clear error when the cursor isn't where the resolver expects. Today the helper just silently fires from wherever and may act on the wrong slot.
 
-- [ ] **(low priority) rename `PartyMenu` → `PartyMenuUnits` for naming consistency** — The Units tab of the outer party menu currently surfaces as state name `PartyMenu`, while the sibling tabs use `PartyMenuInventory` / `PartyMenuChronicle` / `PartyMenuOptions`. Rename `PartyMenu` → `PartyMenuUnits` everywhere: `ScreenStateMachine.cs` switch in `CommandWatcher.cs` (~line 4132), `NavigationPaths.cs` entries, `fft.sh` state whitelists, tests, and any docs. Mechanical refactor — no behavior change, just consistent naming.
+- [x] **rename `PartyMenu` → `PartyMenuUnits` for naming consistency** — DONE session 24. Renamed `GameScreen.PartyMenu` enum member, all `"PartyMenu"` string literals, all fft.sh state patterns/comparisons, all test InlineData, and user-facing Instructions docs. `PartyMenuInventory`/`Chronicle`/`Options` unchanged. Live-verified: screen output now shows `[PartyMenuUnits]` when on the Units tab. 2048 tests still passing.
 
 - [ ] **Block improper chained `fft` calls more aggressively** — Session 19 session crash: chained 4 sequential `fft` key-sending calls by overriding `_FFT_DONE=0` between them. Bridge auto-delay protection was bypassed, keys fired back-to-back without settling, game state drifted and the game crashed. `_FFT_DONE` guard exists specifically to prevent this but is too easy to defeat. Fix ideas: (a) make the override explicit (`_FFT_ALLOW_CHAIN=1` with a loud banner printed), (b) detect and reject multiple key-sending `fft` calls within N ms regardless of guard state (bridge-side rate limit, not shell-side), (c) compiler-level: collapse batch patterns by auto-merging sequential `fft`-with-keys into one request. Core rule: **game-action commands MUST be batched into one `fft` call with `keys` array + `delayBetweenMs`**; observational reads (`rv`, `block`, `screen`) are safe to chain. Document + enforce.
 
@@ -141,9 +141,9 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Re-enable Chronicle/Options tab correction when both flags are 0** — Disabled 2026-04-16 because transient flag-clears during screen transitions caused spurious PartyMenuChronicle detection. When a Chronicle-vs-Options discriminator byte is found, re-enable the `v41e==0 && v38e==0` correction branch with the new byte as a tiebreaker.
 
-- [ ] **WorldMap `ui=` should show hovered location name** — e.g. `[WorldMap] ui=Magick City of Gariland` when cursor is over a location. Currently `ui=` is empty on WorldMap. The hover location ID is available (used for `loc=`), just needs to be surfaced as the `ui` field.
+- [x] **WorldMap `ui=` should show hovered location name** — e.g. `[WorldMap] ui=Magick City of Gariland` when cursor is over a location. Currently `ui=` is empty on WorldMap. The hover location ID is available (used for `loc=`), just needs to be surfaced as the `ui` field.
 
-- [ ] **`ui=<element>` must always appear on the compact one-liner after `[StateName]`** — Currently `ui=` is missing from some screen states (e.g. `[EquipmentAndAbilities] viewedUnit=Ramza status=completed` has no `ui=`). Every screen response should surface the currently-hovered UI element as `ui=<element>` immediately after the state name bracket, so Claude always knows what's selected without needing verbose mode.
+- [x] **`ui=<element>` must always appear on the compact one-liner after `[StateName]`** — Currently `ui=` is missing from some screen states (e.g. `[EquipmentAndAbilities] viewedUnit=Ramza status=completed` has no `ui=`). Every screen response should surface the currently-hovered UI element as `ui=<element>` immediately after the state name bracket, so Claude always knows what's selected without needing verbose mode.
 
 - [ ] **EqA compact format: replace two-column grid with narrow-friendly layout** — The Equipment|Abilities two-column grid wraps and becomes unreadable in narrow terminal windows. Replace with a single-column vertical list or inline summary (e.g. `Equipment: (none)/(none)/Grand Helm/Maximillian/Bracers` + `Abilities: Mettle/Items/Counter/Concentration/Jump+2`). Keep the full grid in `-v` verbose mode only.
 

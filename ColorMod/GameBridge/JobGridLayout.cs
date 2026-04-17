@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -80,6 +81,25 @@ namespace FFTColorCustomizer.GameBridge
                 // classification logic with cells that can never be
                 // hovered. Their nameIds ARE tracked by
                 // CharacterData.StoryCharacterName for in-battle display.
+            };
+
+        /// <summary>
+        /// Units whose ability slots (Secondary / Reaction / Support /
+        /// Movement) are pinned to their default values and cannot be
+        /// changed. Opening an ability picker on these units shows the
+        /// default locked in; Enter on an alternative does nothing.
+        ///
+        /// Construct 8 is the canonical case — session 19 user confirmed
+        /// that his ability slots cannot unequip. Helpers that change
+        /// ability equipment (change_secondary_ability_to,
+        /// change_reaction_ability_to, etc.) should refuse with a clear
+        /// error when the viewed unit is in this set, so keys never fire
+        /// into a futile picker nav.
+        /// </summary>
+        public static readonly IReadOnlySet<string> LockedAbilityUnits =
+            new HashSet<string>(StringComparer.Ordinal)
+            {
+                "Construct 8",
             };
 
         /// <summary>

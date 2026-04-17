@@ -171,7 +171,7 @@ namespace FFTColorCustomizer.GameBridge
                 // EquipmentScreen=2), so we hardcode 5 here to always refer
                 // to the party grid width.
                 const int PartyGridCols = 5;
-                if (CurrentScreen == GameScreen.PartyMenu && Tab == PartyTab.Units)
+                if (CurrentScreen == GameScreen.PartyMenuUnits && Tab == PartyTab.Units)
                     return CursorRow * PartyGridCols + CursorCol;
                 // Nested screens: use the saved snapshot captured at Enter time.
                 return _savedPartyRow * PartyGridCols + _savedPartyCol;
@@ -200,7 +200,7 @@ namespace FFTColorCustomizer.GameBridge
 
             switch (screen)
             {
-                case GameScreen.PartyMenu:
+                case GameScreen.PartyMenuUnits:
                     Tab = PartyTab.Units;
                     GridColumns = 5;
                     GridRows = (RosterCount + 4) / 5;
@@ -224,7 +224,7 @@ namespace FFTColorCustomizer.GameBridge
         public void SetRosterCount(int count)
         {
             RosterCount = count;
-            if (CurrentScreen == GameScreen.PartyMenu)
+            if (CurrentScreen == GameScreen.PartyMenuUnits)
                 GridRows = (RosterCount + 4) / 5;
         }
 
@@ -238,7 +238,7 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public void SetPartyMenuCursor(int row, int col)
         {
-            if (CurrentScreen != GameScreen.PartyMenu) return;
+            if (CurrentScreen != GameScreen.PartyMenuUnits) return;
             if (Tab != PartyTab.Units) return;
             if (row < 0 || col < 0) return;
             CursorRow = row;
@@ -308,7 +308,7 @@ namespace FFTColorCustomizer.GameBridge
                 case GameScreen.LocationMenu:
                     HandleLocationMenu(vkCode);
                     break;
-                case GameScreen.PartyMenu:
+                case GameScreen.PartyMenuUnits:
                     HandlePartyMenu(vkCode);
                     break;
                 case GameScreen.CharacterStatus:
@@ -369,7 +369,7 @@ namespace FFTColorCustomizer.GameBridge
         {
             if (vk == VK_ESCAPE)
             {
-                CurrentScreen = GameScreen.PartyMenu;
+                CurrentScreen = GameScreen.PartyMenuUnits;
                 Tab = PartyTab.Chronicle;
                 // Cursor returns to whichever tile we entered from.
             }
@@ -379,7 +379,7 @@ namespace FFTColorCustomizer.GameBridge
         {
             if (vk == VK_ESCAPE)
             {
-                CurrentScreen = GameScreen.PartyMenu;
+                CurrentScreen = GameScreen.PartyMenuUnits;
                 Tab = PartyTab.Options;
             }
         }
@@ -388,7 +388,7 @@ namespace FFTColorCustomizer.GameBridge
         {
             if (vk == VK_ESCAPE)
             {
-                CurrentScreen = GameScreen.PartyMenu;
+                CurrentScreen = GameScreen.PartyMenuUnits;
                 Tab = PartyTab.Units;
                 CursorRow = 0;
                 CursorCol = 0;
@@ -538,7 +538,7 @@ namespace FFTColorCustomizer.GameBridge
                             7 => GameScreen.ChronicleStratagems,
                             8 => GameScreen.ChronicleLessons,
                             9 => GameScreen.ChronicleAkademicReport,
-                            _ => GameScreen.PartyMenu
+                            _ => GameScreen.PartyMenuUnits
                         };
                     }
                     else if (Tab == PartyTab.Options && OptionsIndex == 2)
@@ -624,7 +624,7 @@ namespace FFTColorCustomizer.GameBridge
                     // CharacterStatus, Escape returns to PartyMenu with
                     // cursor still on Orlandeau). Restore the saved
                     // PartyMenu cursor so state machine stays in sync.
-                    CurrentScreen = GameScreen.PartyMenu;
+                    CurrentScreen = GameScreen.PartyMenuUnits;
                     CursorRow = _savedPartyRow;
                     CursorCol = _savedPartyCol;
                     GridColumns = 5;
@@ -1034,7 +1034,7 @@ namespace FFTColorCustomizer.GameBridge
 
             switch (CurrentScreen)
             {
-                case GameScreen.PartyMenu:
+                case GameScreen.PartyMenuUnits:
                     state.CursorRow = CursorRow;
                     state.CursorCol = CursorCol;
                     state.Tab = Tab.ToString();
@@ -1071,7 +1071,7 @@ namespace FFTColorCustomizer.GameBridge
                 GameScreen.Unknown => "Unknown screen",
                 GameScreen.TitleScreen => "Title screen",
                 GameScreen.WorldMap => "World map",
-                GameScreen.PartyMenu => $"Party Menu - {Tab} tab, cursor at row {CursorRow} col {CursorCol} (index {CursorRow * GridColumns + CursorCol})",
+                GameScreen.PartyMenuUnits => $"Party Menu - {Tab} tab, cursor at row {CursorRow} col {CursorCol} (index {CursorRow * GridColumns + CursorCol})",
                 GameScreen.CharacterStatus => $"Character Status - sidebar position {SidebarIndex} ({GetSidebarLabel()}){(IsRamza ? " [Ramza]" : "")}",
                 GameScreen.EquipmentScreen => $"Equipment & Abilities - row {CursorRow} col {CursorCol} ({GetEquipmentSlotLabel()})",
                 GameScreen.EquipmentItemList => "Equipment item selection list",
@@ -1116,9 +1116,9 @@ namespace FFTColorCustomizer.GameBridge
                     new() { Key = "left", Vk = VK_LEFT, Description = "Move on world map" },
                     new() { Key = "right", Vk = VK_RIGHT, Description = "Move on world map" },
                     new() { Key = "enter", Vk = VK_RETURN, Description = "Enter location / travel" },
-                    new() { Key = "escape", Vk = VK_ESCAPE, Description = "Open party menu", ResultScreen = "partymenu" },
+                    new() { Key = "escape", Vk = VK_ESCAPE, Description = "Open party menu", ResultScreen = "partymenuunits" },
                 },
-                GameScreen.PartyMenu => GetPartyMenuActions(),
+                GameScreen.PartyMenuUnits => GetPartyMenuActions(),
                 GameScreen.CharacterStatus => GetCharacterStatusActions(),
                 GameScreen.EquipmentScreen => new List<ValidAction>
                 {
@@ -1273,7 +1273,7 @@ namespace FFTColorCustomizer.GameBridge
                 new() { Key = "up", Vk = VK_UP, Description = "Move sidebar up" },
                 new() { Key = "down", Vk = VK_DOWN, Description = "Move sidebar down" },
                 new() { Key = "enter", Vk = VK_RETURN, Description = enterDesc, ResultScreen = enterResult },
-                new() { Key = "escape", Vk = VK_ESCAPE, Description = "Back to party menu", ResultScreen = "partymenu" },
+                new() { Key = "escape", Vk = VK_ESCAPE, Description = "Back to party menu", ResultScreen = "partymenuunits" },
             };
         }
     }
