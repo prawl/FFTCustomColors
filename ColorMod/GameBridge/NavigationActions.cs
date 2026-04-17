@@ -214,6 +214,13 @@ namespace FFTColorCustomizer.GameBridge
 
         private const int KEY_DELAY = 150;
 
+        // Screen state machine — wired by CommandWatcher after construction.
+        // SendKey() notifies this via OnKeyPressed() so compound nav helpers
+        // (open_eqa, open_character_status, battle_flee, etc.) keep the SM
+        // in sync with the actual game state. Without this, the SM stayed
+        // at PartyMenu while the nav walked deep into CharacterStatus/EqA.
+        public ScreenStateMachine? ScreenMachine { get; set; }
+
         public NavigationActions(IInputSimulator input, MemoryExplorer explorer, Func<DetectedScreen?> detectScreen)
         {
             _input = input;
@@ -4411,40 +4418,8 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         private CommandResponse NavigateToCharacterStatus(CommandResponse response, string unitName)
         {
-            // Step 1: Get to PartyMenu. Strategy depends on where we are.
-            var currentScreen = _detectScreen();
-            string currentName = currentScreen?.Name ?? "Unknown";
-
-            if (currentName == "PartyMenu")
-            {
-                // Already here — skip to step 3
-            }
-            else if (currentName == "WorldMap")
-            {
-                // One Escape opens PartyMenu from WorldMap
-                SendKey(VK_ESCAPE);
-                Thread.Sleep(500);
-            }
-            else
-            {
-                // Deep in party tree or unknown — escape to WorldMap first.
-                // Use detection between escapes to stop as soon as we hit WorldMap.
-                for (int i = 0; i < 8; i++)
-                {
-                    SendKey(VK_ESCAPE);
-                    Thread.Sleep(300);
-                    var check = _detectScreen();
-                    if (check?.Name == "WorldMap")
-                    {
-                        // One more Escape to open PartyMenu
-                        SendKey(VK_ESCAPE);
-                        Thread.Sleep(500);
-                        break;
-                    }
-                }
-            }
-
-            // Step 3: Find unit in roster
+            // Step 1: Find the target unit in the roster first (fail-fast
+            // before any navigation).
             var rosterReader = new RosterReader(_explorer, _nameTable);
             var allSlots = rosterReader.ReadAll();
             RosterReader.RosterSlot? targetSlot = null;
@@ -4466,18 +4441,71 @@ namespace FFTColorCustomizer.GameBridge
             int displayOrder = targetSlot.DisplayOrder;
             int targetRow = displayOrder / 5;
             int targetCol = displayOrder % 5;
-
-            // Step 4: Reset cursor to (0,0) via wrap then navigate to target.
-            // Up enough to wrap to row 0, Left enough to wrap to col 0.
             int rosterCount = allSlots.Count;
             int gridRows = (rosterCount + 4) / 5;
-            for (int i = 0; i < gridRows; i++) SendKey(VK_UP);
-            for (int i = 0; i < 5; i++) SendKey(VK_LEFT);
-            // Navigate to target
+
+            // Step 2: Get to PartyMenu Units tab with cursor at known (0, 0).
+            // Strategy:
+            //   - WorldMap → one Escape opens PartyMenu with cursor at (0, 0).
+            //   - PartyMenu (already here) → wrap to (0, 0) via gridRows Ups
+            //     + 5 Lefts. Cursor could be anywhere.
+            //   - Deep in tree → Escape to WorldMap first, then one Escape
+            //     to PartyMenu.
+            var currentScreen = _detectScreen();
+            string currentName = currentScreen?.Name ?? "Unknown";
+
+            bool needWrap = false;
+            if (currentName == "PartyMenu")
+            {
+                // Cursor unknown — need to reset to (0, 0).
+                needWrap = true;
+            }
+            else if (currentName == "WorldMap")
+            {
+                // Escape opens PartyMenu, cursor always at (0, 0).
+                SendKey(VK_ESCAPE);
+                Thread.Sleep(500);
+            }
+            else
+            {
+                // Escape to WorldMap, then one more to open PartyMenu.
+                for (int i = 0; i < 8; i++)
+                {
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                    var check = _detectScreen();
+                    if (check?.Name == "WorldMap")
+                    {
+                        SendKey(VK_ESCAPE);
+                        Thread.Sleep(500);
+                        break;
+                    }
+                }
+            }
+
+            // Step 3: Sync SM roster/grid to actual counts BEFORE firing
+            // nav keys, so the SM's wrap math matches the game's.
+            if (ScreenMachine != null)
+            {
+                ScreenMachine.RosterCount = rosterCount;
+                ScreenMachine.GridRows = gridRows;
+            }
+
+            // Step 4: If we came in via the "already-on-PartyMenu" path,
+            // wrap cursor to (0, 0). Otherwise skip — cursor is at (0, 0)
+            // from the fresh PartyMenu open.
+            if (needWrap)
+            {
+                for (int i = 0; i < gridRows; i++) SendKey(VK_UP);
+                for (int i = 0; i < 5; i++) SendKey(VK_LEFT);
+            }
+
+            // Step 5: Navigate from (0, 0) to target. No wrap needed —
+            // targetRow < gridRows and targetCol < 5.
             for (int i = 0; i < targetRow; i++) SendKey(VK_DOWN);
             for (int i = 0; i < targetCol; i++) SendKey(VK_RIGHT);
 
-            // Step 5: Enter to open CharacterStatus
+            // Step 6: Enter to open CharacterStatus.
             SendKey(VK_ENTER);
             Thread.Sleep(300);
 
@@ -4542,6 +4570,11 @@ namespace FFTColorCustomizer.GameBridge
         private void SendKey(int vk)
         {
             _input.SendKeyPressToWindow(_gameWindow, vk);
+            // Keep the state machine in sync so compound nav helpers don't
+            // leave it stuck at PartyMenu while the game advances deep into
+            // CharacterStatus / EqA / pickers. Matches how CommandWatcher's
+            // key-by-key path calls OnKeyPressed after each press.
+            ScreenMachine?.OnKeyPressed(vk);
             Thread.Sleep(KEY_DELAY);
         }
 

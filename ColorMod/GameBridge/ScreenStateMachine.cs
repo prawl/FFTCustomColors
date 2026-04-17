@@ -74,7 +74,7 @@ namespace FFTColorCustomizer.GameBridge
         }
         public int SidebarIndex { get; private set; }
         public int GridColumns { get; private set; }
-        public int GridRows { get; private set; }
+        public int GridRows { get; set; }
         public bool IsRamza { get; private set; }
         public int RosterCount { get; set; } = 17;
         public int JobActionIndex { get; private set; } // 0=Learn, 1=Change

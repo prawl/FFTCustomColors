@@ -2210,7 +2210,13 @@ namespace FFTColorCustomizer.Utilities
             }
             EnsureMapLoader();
             if (_navActions != null)
+            {
                 _navActions._mapLoader = _mapLoader;
+                // Wire the SM so compound nav helpers (open_eqa, etc.) keep
+                // it in sync as they drive the UI. Reassigned each call —
+                // ScreenMachine is owned by CommandWatcher, safe to repoint.
+                _navActions.ScreenMachine = ScreenMachine;
+            }
         }
 
         private CommandResponse ExecuteNavAction(CommandRequest command)
