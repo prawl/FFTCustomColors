@@ -1064,6 +1064,7 @@ namespace FFTColorCustomizer.Utilities
             "scan_move", "scan_units", "set_map", "report_state",
             "read_address", "read_block", "batch_read",
             "mark_blocked", "snapshot", "heap_snapshot", "diff", "find_toggle",
+            "dry_run_nav",
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
             "read_dialogue", "write_byte", "dump_detection_inputs",
@@ -1714,6 +1715,38 @@ namespace FFTColorCustomizer.Utilities
                         Explorer.DiffSnapshots(command.FromLabel ?? "before", command.ToLabel ?? "after", command.SearchLabel ?? "result");
                         response.Status = "completed";
                         break;
+
+                    case "dry_run_nav":
+                    {
+                        // Plan the key sequence for a NavigateToCharacterStatus
+                        // call without firing any keys. Used as a pre-flight
+                        // safety check when debugging chain-nav crashes: log
+                        // the plan, compare against expected, validate BEFORE
+                        // committing to a live run. Addresses session 24's
+                        // "two prior attempts crashed the game" footgun.
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        string targetName = command.To ?? "";
+                        if (string.IsNullOrEmpty(targetName))
+                        { response.Status = "failed"; response.Error = "unitName required"; break; }
+                        if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
+                        if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+                        var _slots = _rosterReader.ReadAll();
+                        RosterReader.RosterSlot? tgt = null;
+                        foreach (var sx in _slots)
+                            if (sx.Name != null && sx.Name.Equals(targetName, System.StringComparison.OrdinalIgnoreCase))
+                            { tgt = sx; break; }
+                        if (tgt == null)
+                        { response.Status = "failed"; response.Error = $"Unit '{targetName}' not in roster"; break; }
+                        var curScreen = DetectScreen();
+                        string curName = curScreen?.Name ?? "Unknown";
+                        var plan = GameBridge.NavigationPlanner.PlanNavigateToCharacterStatus(
+                            curName, tgt.DisplayOrder, _slots.Count);
+                        response.Info = $"dry_run_nav {targetName}: currentScreen={curName}, displayOrder={tgt.DisplayOrder}, rosterCount={_slots.Count}\nplan: {plan.Render()}";
+                        ModLogger.Log($"[dry_run_nav] {response.Info}");
+                        response.Status = plan.Ok ? "completed" : "failed";
+                        if (!plan.Ok) response.Error = plan.Error;
+                        break;
+                    }
 
                     case "find_toggle":
                     {
