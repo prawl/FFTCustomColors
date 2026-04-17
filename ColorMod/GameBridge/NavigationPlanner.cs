@@ -21,7 +21,21 @@ namespace FFTColorCustomizer.GameBridge
         public const int VK_ESCAPE = 0x1B;
         public const int VK_ENTER = 0x0D;
 
-        public record KeyStep(int VkCode, int SettleMs, string Reason);
+        /// <summary>
+        /// A single planned key press with its settle time and rationale.
+        /// <paramref name="EarlyExitOnScreen"/> is an optional hint for the
+        /// live executor: after the SettleMs sleep, if DetectScreen reports
+        /// this screen name, SKIP the remaining steps in the current
+        /// contiguous group (see <see cref="GroupId"/>). Used for the
+        /// escape-storm where we issue up to N escapes but early-exit on
+        /// WorldMap. Null means "always execute this step".
+        /// </summary>
+        public record KeyStep(
+            int VkCode,
+            int SettleMs,
+            string Reason,
+            string? EarlyExitOnScreen = null,
+            string? GroupId = null);
 
         public record NavigateToCharacterStatusPlan(
             bool Ok,
@@ -110,12 +124,28 @@ namespace FFTColorCustomizer.GameBridge
                     break;
                 default:
                     // Deep in tree — storm Escapes to WorldMap, then one more
-                    // to open PartyMenu. Planner assumes the live code will
-                    // check between escapes; we emit the upper bound (8)
-                    // plus the PartyMenu-open Escape.
+                    // to open PartyMenu. Upper bound 8; live executor early-
+                    // exits the storm group when DetectScreen reports
+                    // "WorldMap" after any step (via EarlyExitOnScreen hint),
+                    // then fires the final "open PartyMenu" Escape which is
+                    // in a different group so it doesn't get skipped.
+                    //
+                    // Settle time: 500ms per escape. 300ms was fast enough
+                    // for the raw key press but not enough for detection to
+                    // stabilize — the SM-driven TravelList→WorldMap override
+                    // would fire mid-transition (SM predicted WorldMap via
+                    // key-count while game was still rendering PartyMenu
+                    // exit), causing the 2-read confirm to agree falsely
+                    // and the final open-PartyMenu Escape to hit WorldMap
+                    // again instead of its intended PartyMenu. Manual
+                    // stepping with ~500ms between keys works reliably.
                     for (int i = 0; i < 8; i++)
-                        steps.Add(new KeyStep(VK_ESCAPE, 300, $"deep-tree escape {i+1}/8"));
-                    steps.Add(new KeyStep(VK_ESCAPE, 500, "open PartyMenu from WorldMap"));
+                        steps.Add(new KeyStep(
+                            VK_ESCAPE, 500,
+                            $"deep-tree escape {i+1}/8",
+                            EarlyExitOnScreen: "WorldMap",
+                            GroupId: "escape-storm"));
+                    steps.Add(new KeyStep(VK_ESCAPE, 700, "open PartyMenu from WorldMap"));
                     needWrap = false;
                     break;
             }

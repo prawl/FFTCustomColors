@@ -4499,51 +4499,22 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             int displayOrder = targetSlot.DisplayOrder;
-            int targetRow = displayOrder / 5;
-            int targetCol = displayOrder % 5;
             int rosterCount = allSlots.Count;
             int gridRows = (rosterCount + 4) / 5;
 
-            // Step 2: Get to PartyMenu Units tab with cursor at known (0, 0).
-            // Strategy:
-            //   - WorldMap → one Escape opens PartyMenu with cursor at (0, 0).
-            //   - PartyMenu (already here) → wrap to (0, 0) via gridRows Ups
-            //     + 5 Lefts. Cursor could be anywhere.
-            //   - Deep in tree → Escape to WorldMap first, then one Escape
-            //     to PartyMenu.
+            // Step 2: Build the plan via NavigationPlanner. Single source of
+            // truth for the key sequence — shared with `dry_run_nav`
+            // (bridge action) and NavigationPlannerTests. Any future tweak
+            // to the sequence lands in the planner and both paths get it.
             var currentScreen = _detectScreen();
             string currentName = currentScreen?.Name ?? "Unknown";
-
-            bool needWrap = false;
-            if (currentName == "PartyMenuUnits")
+            var plan = NavigationPlanner.PlanNavigateToCharacterStatus(
+                currentName, displayOrder, rosterCount);
+            if (!plan.Ok)
             {
-                // Cursor unknown — need to reset to (0, 0).
-                needWrap = true;
-            }
-            else if (currentName == "WorldMap")
-            {
-                // Escape opens PartyMenu, cursor always at (0, 0).
-                // Long settle — PartyMenu open animation eats nav keys
-                // if they fire within ~800ms of the Escape. 500ms was too
-                // fast (Down keys silently dropped).
-                SendKey(VK_ESCAPE);
-                Thread.Sleep(1000);
-            }
-            else
-            {
-                // Escape to WorldMap, then one more to open PartyMenu.
-                for (int i = 0; i < 8; i++)
-                {
-                    SendKey(VK_ESCAPE);
-                    Thread.Sleep(300);
-                    var check = _detectScreen();
-                    if (check?.Name == "WorldMap")
-                    {
-                        SendKey(VK_ESCAPE);
-                        Thread.Sleep(500);
-                        break;
-                    }
-                }
+                response.Status = "failed";
+                response.Error = plan.Error;
+                return response;
             }
 
             // Step 3: Sync SM roster/grid to actual counts BEFORE firing
@@ -4554,23 +4525,45 @@ namespace FFTColorCustomizer.GameBridge
                 ScreenMachine.GridRows = gridRows;
             }
 
-            // Step 4: If we came in via the "already-on-PartyMenu" path,
-            // wrap cursor to (0, 0). Otherwise skip — cursor is at (0, 0)
-            // from the fresh PartyMenu open.
-            if (needWrap)
+            // Step 4: Execute the plan. Honor EarlyExitOnScreen hints for
+            // the escape-storm group — after each step's settle, poll
+            // DetectScreen with 2-consecutive-reads-agree confirmation. If
+            // both reads return the hinted screen, skip the rest of that
+            // group. 2-read confirm defends against mid-animation stale
+            // detection: between the Escape fire and full UI transition,
+            // detection may briefly return the intermediate screen. The
+            // original (pre-planner) code had this race too, but was papered
+            // over by the fact that the loop ran `DetectScreen` immediately
+            // after Thread.Sleep(300) — if it got a stale read, next
+            // iteration would see WorldMap anyway. With the planner-based
+            // execution we're more sensitive to stale reads because the
+            // escape-storm group has fixed upper bound; if we miss the
+            // transition signal, all 8 escapes fire.
+            string? skipGroupId = null;
+            foreach (var step in plan.Steps)
             {
-                for (int i = 0; i < gridRows; i++) SendKey(VK_UP);
-                for (int i = 0; i < 5; i++) SendKey(VK_LEFT);
+                if (skipGroupId != null && step.GroupId == skipGroupId) continue;
+                if (skipGroupId != null && step.GroupId != skipGroupId)
+                    skipGroupId = null;  // exited the skip group
+
+                SendKey(step.VkCode);
+                Thread.Sleep(step.SettleMs);
+
+                if (step.EarlyExitOnScreen != null)
+                {
+                    // 2-read confirm: first read may be stale during animation;
+                    // small extra delay + second read verifies the transition
+                    // stabilized before committing to the early-exit decision.
+                    var check1 = _detectScreen();
+                    if (check1?.Name == step.EarlyExitOnScreen)
+                    {
+                        Thread.Sleep(100);
+                        var check2 = _detectScreen();
+                        if (check2?.Name == step.EarlyExitOnScreen)
+                            skipGroupId = step.GroupId;
+                    }
+                }
             }
-
-            // Step 5: Navigate from (0, 0) to target. No wrap needed —
-            // targetRow < gridRows and targetCol < 5.
-            for (int i = 0; i < targetRow; i++) SendKey(VK_DOWN);
-            for (int i = 0; i < targetCol; i++) SendKey(VK_RIGHT);
-
-            // Step 6: Enter to open CharacterStatus.
-            SendKey(VK_ENTER);
-            Thread.Sleep(300);
 
             response.Status = "completed";
             return response;
