@@ -423,6 +423,23 @@ _show_helpers() {
     BattleDialogue)
       helpers="    advance_dialogue                      Advance one text box"
       ;;
+    CharacterDialog)
+      helpers="    advance_dialogue                      Advance flavor text"
+      ;;
+    BattleMoving|BattleAttacking|BattleCasting|BattleAbilities)
+      helpers="    battle_move <x> <y>                   Move active unit to tile
+    battle_ability \"<name>\" [x y]          Use ability (coords optional for self-target)
+    battle_attack <x> <y>                 Shortcut for battle_ability \"Attack\" x y
+    battle_wait                           End turn + auto-face + wait for next turn"
+      ;;
+    BattleAlliesTurn|BattleEnemiesTurn|BattleWaiting|Battle)
+      helpers="    screen                                Poll screen state until BattleMyTurn returns
+    battle_flee                           Quit battle, return to world map"
+      ;;
+    Outfitter|Tavern|WarriorsGuild|PoachersDen|SaveGame)
+      helpers="    party_summary                         Show all units at a glance
+    check_unit <name>                     Quick stat dump for one unit"
+      ;;
     PartyMenuInventory|PartyMenuChronicle|PartyMenuOptions)
       helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
     open_job_selection [unit]             Jump to Job Selection
