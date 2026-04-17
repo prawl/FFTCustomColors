@@ -101,5 +101,66 @@ namespace FFTColorCustomizer.Tests.GameBridge
             int? next = AbilityJpCosts.ComputeNextJpForSkillset("Martial Arts", new HashSet<int>());
             Assert.Equal(150, next);
         }
+
+        [Fact]
+        public void ComputeNextJp_Fundaments_NothingLearned_ReturnsRush80()
+        {
+            // Generic Squire primary. Fundaments has 4 abilities sharing
+            // names with Mettle: Focus=300, Rush=80, Throw Stone=90, Salve=150.
+            // Cheapest is Rush. Regression-guards the "Fundaments silently
+            // skipped" bug documented in TODO §Earlier open items.
+            int? next = AbilityJpCosts.ComputeNextJpForSkillset("Fundaments", new HashSet<int>());
+            Assert.Equal(80, next);
+        }
+
+        [Fact]
+        public void ComputeNextJp_Fundaments_RushLearned_ReturnsThrowStone90()
+        {
+            var fundaments = ActionAbilityLookup.GetSkillsetAbilities("Fundaments")!;
+            int rushIdx = fundaments.FindIndex(a => a.Name == "Rush");
+            int? next = AbilityJpCosts.ComputeNextJpForSkillset(
+                "Fundaments", new HashSet<int> { rushIdx });
+            Assert.Equal(90, next);
+        }
+
+        [Fact]
+        public void ComputeNextJp_Mettle_NothingLearned_ReturnsRush80()
+        {
+            // Ramza's Gallant Knight primary. Mettle = Fundaments + 5 unique
+            // (Tailwind 150, Chant 300, Steel 200, Shout 600, Ultima 4000).
+            // Cheapest overall is still Rush=80 since Mettle shares Focus/Rush/
+            // Throw Stone/Salve with Fundaments.
+            int? next = AbilityJpCosts.ComputeNextJpForSkillset("Mettle", new HashSet<int>());
+            Assert.Equal(80, next);
+        }
+
+        [Fact]
+        public void ComputeNextJp_Mettle_CheapFourLearned_ReturnsTailwind150()
+        {
+            // Focus(300), Rush(80), Throw Stone(90), Salve(150) all learned.
+            // Next cheapest is Tailwind=150 (tied with Salve but Salve learned).
+            var mettle = ActionAbilityLookup.GetSkillsetAbilities("Mettle")!;
+            var learned = new HashSet<int>();
+            foreach (var n in new[] { "Focus", "Rush", "Throw Stone", "Salve" })
+            {
+                int i = mettle.FindIndex(a => a.Name == n);
+                Assert.True(i >= 0, $"Mettle missing ability: {n}");
+                learned.Add(i);
+            }
+            int? next = AbilityJpCosts.ComputeNextJpForSkillset("Mettle", learned);
+            Assert.Equal(150, next); // Tailwind
+        }
+
+        [Fact]
+        public void GetCost_AllMettleExclusiveAbilities_Populated()
+        {
+            // Guard against partial backfill: every Mettle-only ability
+            // must have a cost so ComputeNextJp doesn't silently skip them.
+            Assert.NotNull(AbilityJpCosts.GetCost("Tailwind"));
+            Assert.NotNull(AbilityJpCosts.GetCost("Chant"));
+            Assert.NotNull(AbilityJpCosts.GetCost("Steel"));
+            Assert.NotNull(AbilityJpCosts.GetCost("Shout"));
+            Assert.NotNull(AbilityJpCosts.GetCost("Ultima"));
+        }
     }
 }
