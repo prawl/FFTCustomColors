@@ -85,9 +85,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Verify open_* compound helpers across CHAIN calls** — Fresh-state runs work after this session's fixes (`open_character_status Agrias` from WorldMap → correct unit). But chained calls (open_eqa Cloud → open_eqa Agrias) still produce the viewedUnit-lag bug. SM-sync changes in `82ccb65` may or may not have resolved this; needs explicit live test sequence cycling 3 different units through each open_* helper and verifying state matches each request. Source: `NavigationActions.cs` `NavigateToCharacterStatus` rewrite, ~line 4419.
 
-- [ ] **Track SaveSlotPicker state when entered from PartyMenuOptions → Save** — Enter on `OptionsIndex == 0` (Save) currently keeps `CurrentScreen = PartyMenuUnits` ([ScreenStateMachine.cs:959-966](ColorMod/GameBridge/ScreenStateMachine.cs#L959-L966) test asserts this) and `ResultScreen` returns `null` ([ScreenStateMachine.cs:1239-1243](ColorMod/GameBridge/ScreenStateMachine.cs#L1239-L1243)). Add `SaveSlotPicker` to the `GameScreen` enum, wire `HandlePartyMenu` Enter-on-Save to transition there, surface a `SaveSlotPicker` detection rule and ValidPaths (ScrollUp/Down/Select/Cancel already exist as `SaveGame_Menu` scaffold in [NavigationPaths.cs:446-471](ColorMod/GameBridge/NavigationPaths.cs#L446-L471) — rename or alias). Escape back to PartyMenuOptions. BattlePaused entry is out of scope for this task. Follow-up work (separate task): implementing the `save` C# action that drives this new state, plus `save_game` shell helper. There is also a second entry point from BattlePaused that we will handle separately.
-
-- [ ] **Per-key-type KEY_DELAY tuning** — Current blanket 350ms in `NavigationActions.cs:215`. Cursor nav keys (Up/Down/Left/Right) likely don't need 350ms; only screen-transition keys (Enter/Escape) do. Use the `[i=N, +Nms]` timing log to measure, then split into `KEY_DELAY_NAV` (~200ms) and `KEY_DELAY_TRANSITION` (~350-500ms) constants.
+- [ ] **Second SaveSlotPicker entry point from BattlePaused** — session 25 shipped the PartyMenuOptions → Save path. A parallel entry exists from BattlePaused → Save (user mentioned). Scoped out of session 25 because verifying from BattlePaused requires entering a real battle. Next session: confirm BattlePaused menu has a Save option, determine its cursor index, and wire the SM transition.
 
 - [~] **`return_to_world_map` from battle states** — Session 26 added a state-guard refusing from Battle* / EncounterDialog / Cutscene / GameOver with a clear error pointing to the right recovery helper (battle_flee / execute_action ReturnToWorldMap). That closes the footgun. BattleVictory / BattleDesertion are NOT blocked because Escape/Enter on those screens legitimately advances toward WorldMap; they still need a live-verify at some point but the unsafe path is closed. Safe from all non-battle states (verified EqA/JobSelection/PartyMenuUnits tree + all non-Units tabs session 24; SaveSlotPicker verified session 26).
 
@@ -451,9 +449,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Full stock list inline at Outfitter_Buy** — instead of forcing Claude to scroll through items one at a time (ui=Oak Staff → down → ui=White Staff → down...), surface the entire shop stock in the screen response. Each entry: `{name, price, type, stats}`. Stats tier by type — weapons: `wp, range, element, statMods` (e.g. `WP=5 MA+1`); armor: `hp, def, evade, statMods`; consumables: `effect` (e.g. `Restores 30 HP`, `Removes KO`). Claude picks by name, one round-trip. Matches scan_move's "see everything at once" philosophy.
 
 
-- [x] **Tavern interior: `Tavern` screen state detected** — already shipped. `insideShopFlag==1 && shopTypeIndex==1` returns "Tavern" via `ShopTypeLabels.ForIndex(1)`. ValidPaths route via `"Tavern" => GetSettlementMenuPaths()`. The remaining work (Rumors / Errands sub-actions) is the two tasks below.
-
-- [ ] **Tavern: add `TavernRumors` + `TavernErrands` screen states + ValidPaths** — blocked on a live memory scan at a tavern. Open a tavern, navigate to Rumors, read `shopSubMenuIndex` from the detection dump, then navigate to Errands and read its value. Add those values to the `case 1: // Tavern` switch in `ScreenDetectionLogic.ResolveShopSubAction` (currently returns null). Then add the two screen names to NavigationPaths + ValidPaths (ScrollUp/Down/Read/Back for Rumors; ScrollUp/Down/Select/Back for Errands). Select on Errands opens party menu for dispatch (downstream dependency on party menu work).
+(Tavern / TavernRumors / TavernErrands state tracking shipped session 26 pt.2 `d1e7160` — see archive.)
 
 - [ ] **Tavern: `read_rumor` action (scrape body text from widget)** — Scrape the highlighted rumor's body text pane, like `read_dialogue` does for cutscenes. UE4 widget scrape; same FString challenges as shop items.
 
@@ -734,9 +730,6 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Remove `encA/encB`-dependent rules** — replace Battle_Victory / Battle_Desertion / EncounterDialog discriminators with stable signals (`paused`, `submenuFlag`, `acted/moved` combos).
 
 
-- [x] **Fix Battle_Dialogue / Cutscene `eventId` filter** — already done. Out-of-battle Cutscene rule ([ScreenDetectionLogic.cs:178](ColorMod/GameBridge/ScreenDetectionLogic.cs#L178)) and both BattleDialogue rules (lines 205 and 277) already use `eventId < 400 && != 0xFFFF`. The remaining `< 200` filter at line 344 is in the IN-battle branch, intentionally kept strict because the eventId address (0x14077CA94) aliases as active-unit nameId during combat animations (nameIds start at 200+). Session 26 added 2 tests covering eventId=302 at Orbonne pre-battle to prove the fix holds.
-
-
 - [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation (which location IDs are multi-battle campaign grounds vs villages). Add to `project_location_ids_verified.md`.
 
 
@@ -746,7 +739,6 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Memory scan for WorldMap vs TravelList discriminator** — these are byte-identical in current 18 inputs. Need a menu-depth or focused-widget address.
 
 
-- [x] **Add `hover` to ScreenDetectionLogic inputs** — shipped. `hover` is a parameter of `ScreenDetectionLogic.Detect` (line 65) and is used as a discriminator for TitleScreen (`hover >= 0 && hover <= 42 && rawLocation == 255` = WorldMap hovering a named location) and for world-map side state separation. Closed 2026-04-17 as stale.
 
 
 
@@ -856,6 +848,34 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 ## Completed — Archive
 
 Items that are fully shipped (checked `[x]`). Partial (`[~]`) items stay above in their original section.
+
+### Session 26 (2026-04-17) — save action + detection cleanup + Tavern + HP/MP
+
+Commits: `473ac53` (session cmd log + KEY_DELAY split + TitleScreen tightening), `d1e7160` (Tavern + TavernRumors + TavernErrands state tracking), `7ac9f22` (HP/MP partial), `134da68` (save action + detection reorder + return_to_world_map guard).
+
+**Features landed:**
+
+- [x] **`SessionCommandLog` per-session JSONL observability** — commit `473ac53`. New `SessionCommandLog` class writes `claude_bridge/session_<stamp>.jsonl`; one line per command with id/timestamp/action/source→target/status/error/latencyMs. Never throws (observability must not take down command processing). Wired into `CommandWatcher` main + error paths. 7 unit tests.
+- [x] **Per-key-type KEY_DELAY split** — commit `473ac53`. New `KeyDelayClassifier.DelayMsFor(vk)` returns 200ms for cursor keys (Up/Down/Left/Right), 350ms for transition/tab-cycle/unknown. `NavigationActions.SendKey` uses the classifier. Shaves 1-2s off nav-heavy flows (open_eqa party grid nav). 9 unit tests.
+- [x] **`TitleScreen` rule tightened** — commit `473ac53`. Removed the loose `rawLocation==255 → TitleScreen` fallback at the end of the out-of-battle branch. Residuals now return "Unknown" so callers see ambiguity instead of being mislabeled as TitleScreen after GameOver/post-battle stale. Added 2 coverage tests.
+- [x] **`Tavern` + `TavernRumors` + `TavernErrands` SM tracking** — commit `d1e7160`. Live-scanned at Sal Ghidos: all three are byte-identical to LocationMenu in detection inputs. SM-based solution: `GameScreen.Tavern/TavernRumors/TavernErrands` enum values, `SM.TavernCursor` (0=Rumors, 1=Errands) with wrap on Up/Down, `HandleTavern`/`HandleTavernSubScreen` for Enter/Escape. `ResolveAmbiguousScreen` extended to map (SM=Tavern sub, detected=LocationMenu) → SM name. `screen` query path now syncs SM to detection for non-party-tree transitions so the SM doesn't stay stuck at WorldMap. NavigationPaths for both sub-states (Select deliberately omitted from Errands). 9 new SM tests + 3 detection tests. Live-verified full round-trip.
+- [x] **HP/MaxHp/Mp/MaxMp in roster** (partial `[~]`) — commit `7ac9f22`. Wired `HoveredUnitArray.ReadStatsIfMatches` into the roster assembly; first 4 units populate correctly (Ramza Lv99 HP 719/719 MP 138/138 verified). Other 10 units return null because the "hovered-unit array" is per-hover, not roster-wide. Full roster needs formula-based recompute (TODO §10.6).
+- [x] **Detection rule reorder** — commit `134da68`. `party==1 / encounterFlag / eventId` authoritative rules now run BEFORE hover/location heuristics. Prevents "opened PartyMenu while hovering a map location" from misdetecting as WorldMap, and EncounterDialog from losing to hover-based rules. 2 new coverage tests.
+- [x] **`eventId` filter verification** — commit `134da68`. Confirmed the out-of-battle rules already use `< 400 && != 0xFFFF` (the in-battle `< 200` is intentional — eventId address aliases as active-unit nameId during combat). 2 new tests covering Orbonne eventId=302.
+- [x] **`save` C# action implemented** — commit `134da68`. Drives from any non-battle state to SaveSlotPicker via: escape-to-WorldMap (2-consecutive-read confirm for the Escape-on-WorldMap toggle gotcha) → open PartyMenu → Q-cycle to Options tab (tab-count derived from SM) → Up×5 → Enter. State-guarded against Battle* / Encounter / Cutscene / GameOver. Live-verified from WorldMap, PartyMenuOptions, and 3-level-nested EqA.
+- [x] **`return_to_world_map` battle-state guard** — commit `134da68`. Helper refuses from 13 unsafe states (Battle* / Encounter / Cutscene / GameOver / Formation / Sequence / EnemiesTurn / AlliesTurn) with clear pointers to `battle_flee` or `execute_action ReturnToWorldMap`. Closes the footgun where Escape on BattlePaused would resume the battle.
+- [x] **Fix Battle_Dialogue / Cutscene eventId filter** — commit `134da68`. Already fixed in prior sessions; session 26 added 2 coverage tests for Orbonne eventId=302 to prove the behavior holds.
+- [x] **Add hover to ScreenDetectionLogic inputs** — closed stale. `hover` has been a parameter of `Detect` for a while (line 65); TODO entry was stale.
+
+### Session 25 (2026-04-17) — SaveSlotPicker + chain-guard pipe-subshell fix
+
+Commit: `c847d42`.
+
+**Features landed:**
+
+- [x] **Track SaveSlotPicker state (PartyMenuOptions → Save)** — commit `c847d42`. New `GameScreen.SaveSlotPicker`, `HandlePartyMenu` Enter-on-OptionsIndex-0 transition, Escape back to PartyMenuOptions. Detection override: SaveSlotPicker and TravelList are byte-identical across all 28 detection inputs (memory hunt documented in `memory/project_saveslotpicker_vs_travellist.md`). `ScreenDetectionLogic.ResolveAmbiguousScreen(SM, detected)` maps (SM=SaveSlotPicker, detected=TravelList) → "SaveSlotPicker". Wired into 3 CommandWatcher paths (screen query, key-sending fallback, execute_action path lookup). ScrollUp/Down/Select/Cancel ValidPaths via `SaveGame_Menu` alias. 7 new tests.
+- [x] **Chain guard pipe-subshell fix** — commit `c847d42`. `_FFT_DONE` shell var was bypassed when helpers were piped (`screen | tail`) because the function ran in the pipe's subshell. Added disk flag `claude_bridge/fft_done.flag` that survives subshells, cleared at `source` time. 34 composite-helper reset sites rewritten to call new `_fft_reset_guard` helper. Live-verified: piped-first-call + second-call blocks correctly with `[NO]` + exit 137.
+- [x] **`fft_resync` forbidden-state guard** — commit `c847d42`. Helper refuses from Battle*/EncounterDialog/Cutscene/BattleSequence/BattleFormation/GameOver because its escape storm mis-handles those transitions. Block-list (not allow-list) so new non-battle screens are automatically safe.
 
 ### Session 24 (2026-04-16 / 2026-04-17) — TODO cleanup sweep + ModStateFlags + Ctrl focus-leak
 
