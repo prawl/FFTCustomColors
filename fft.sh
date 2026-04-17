@@ -83,7 +83,64 @@
 B="/c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/Reloaded/Mods/FFTColorCustomizer/claude_bridge"
 
 # Block chained commands: only one fft/fft_full call allowed per session.
+#
+# Rationale: the game's render pipeline can drop keys fired back-to-back
+# without settling time between them. Session 19 crash happened when
+# four key-sending fft calls were chained via `_FFT_DONE=0` overrides
+# between each — keys fired faster than the game could render, state
+# machine and game diverged, crash.
+#
+# Current design:
+#   - First fft call sets _FFT_DONE=1.
+#   - Second fft call in the same invocation triggers the loud "[NO]"
+#     block below and kills the shell — no reset.
+#   - Composite helpers that legitimately fire multiple commands
+#     (open_eqa, unequip_all, etc.) reset `_FFT_DONE=0` between each
+#     call. This bypass is what the TODO wants to harden.
+#
+# Hardening (session 24): track key-sending fft calls per-invocation
+# via a counter. If >1 key-sending call fires without _FFT_ALLOW_CHAIN=1
+# as an explicit opt-in, surface a one-line [CHAIN WARN] to stderr on
+# every subsequent call. Keeps existing composites working while making
+# undocumented multi-key chains loud.
+#
+# Observational reads (rv, block, batch, screen, dump_*) don't count —
+# only calls whose JSON payload contains `"keys":[` or a game-action
+# verb are tallied (see _is_key_sending).
 _FFT_DONE=0
+_FFT_KEY_CALLS=0
+_FFT_CHAIN_WARNED=0
+
+_is_key_sending() {
+  # $1 = raw JSON payload sent to the bridge. Returns 0 if the command
+  # fires game keys (via non-empty "keys":[...] array OR a known
+  # game-action verb), 1 otherwise. An empty "keys":[] array is an
+  # observational no-op (used by _current_screen to refresh state).
+  case "$1" in
+    *'"keys":[]'*) return 1 ;;
+    *'"keys":['*) return 0 ;;
+    *'"action":"execute_action"'*) return 0 ;;
+    *'"action":"world_travel_to"'*) return 0 ;;
+    *'"action":"battle_'*) return 0 ;;
+    *'"action":"open_'*) return 0 ;;
+    *'"action":"advance_dialogue"'*) return 0 ;;
+    *'"action":"navigate"'*) return 0 ;;
+    *'"action":"move_to"'*) return 0 ;;
+    *'"action":"confirm_attack"'*) return 0 ;;
+    *'"action":"auto_place_units"'*) return 0 ;;
+    *'"action":"buy"'*|*'"action":"sell"'*) return 0 ;;
+    *'"action":"change_job"'*) return 0 ;;
+    *'"action":"hold_key"'*) return 0 ;;
+    *'"action":"save"'*|*'"action":"load"'*) return 0 ;;
+    *'"action":"remove_equipment_at_cursor"'*) return 0 ;;
+    *'"action":"resolve_eqa_row"'*) return 0 ;;
+    *'"action":"resolve_picker_cursor"'*) return 0 ;;
+    *'"action":"resolve_equip_picker_cursor"'*) return 0 ;;
+    *'"action":"resolve_job_cursor"'*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 _fft_guard() {
   if [ "$_FFT_DONE" -eq 1 ]; then
     echo "[NO] Only call one command at a time. Do not chain commands."
@@ -91,6 +148,19 @@ _fft_guard() {
     exit 1
   fi
   _FFT_DONE=1
+}
+
+# Called by fft()/fft_full() AFTER _fft_guard, once we know the JSON
+# payload. Increments the key-call counter; warns loudly if a second
+# key-sending call fires in this invocation without _FFT_ALLOW_CHAIN=1.
+_track_key_call() {
+  local payload="$1"
+  if ! _is_key_sending "$payload"; then return 0; fi
+  _FFT_KEY_CALLS=$((_FFT_KEY_CALLS + 1))
+  if [ "$_FFT_KEY_CALLS" -gt 1 ] && [ "${_FFT_ALLOW_CHAIN:-0}" -ne 1 ] && [ "$_FFT_CHAIN_WARNED" -eq 0 ]; then
+    echo "[CHAIN WARN] ${_FFT_KEY_CALLS} key-sending fft calls in one invocation without _FFT_ALLOW_CHAIN=1. Composite helpers must set _FFT_ALLOW_CHAIN=1 to declare intent; otherwise batch keys into one call with delayBetweenMs. See session 19 crash notes." >&2
+    _FFT_CHAIN_WARNED=1
+  fi
 }
 
 # --- Timeout tracking ---
@@ -114,6 +184,7 @@ _check_total() {
 fft() {
   _check_total || return 1
   _fft_guard
+  _track_key_call "$1"
   rm -f "$B/response.json"
   echo "$1" > "$B/command.json"
   local tries=0
@@ -478,6 +549,7 @@ _show_helpers() {
 fft_full() {
   _check_total || return 1
   _fft_guard
+  _track_key_call "$1"
   rm -f "$B/response.json"
   echo "$1" > "$B/command.json"
   local tries=0
@@ -600,6 +672,7 @@ batch() {
 execute_action() {
   _check_total || return 1
   _fft_guard
+  _track_key_call '"action":"execute_action"'
   rm -f "$B/response.json"
   echo "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"$1\"}" > "$B/command.json"
   local tries=0
@@ -673,6 +746,7 @@ dismiss_unit() { hold_key 66 3500; }  # 0x42 = VK_B
 # Internal: navigate to PartyMenuUnits with cursor on the named unit.
 # Returns 0 on success, 1 on failure. Leaves state on PartyMenuUnits.
 _nav_to_party_unit() {
+  local _FFT_ALLOW_CHAIN=1
   local target="$1"
 
   # Compound navigators need multiple fft calls. Reset the guard between steps.
@@ -869,6 +943,7 @@ fight() { execute_action Fight; }
 # save_and_travel <id>: Save the game then travel to a location.
 # Must be on WorldMap. Validates before acting.
 save_and_travel() {
+  local _FFT_ALLOW_CHAIN=1
   local dest="$1"
   if [ -z "$dest" ]; then echo "[save_and_travel] usage: save_and_travel <location_id>"; return 1; fi
   _FFT_DONE=0
@@ -886,6 +961,7 @@ save_and_travel() {
 # enter_shop: From WorldMap at a settlement (IDs 0-14), navigate into the Outfitter.
 # Validates you're at a settlement before pressing anything.
 enter_shop() {
+  local _FFT_ALLOW_CHAIN=1
   _FFT_DONE=0
   _current_screen >/dev/null
   local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
@@ -1055,6 +1131,7 @@ open_picker() {
 # Stops at 8 attempts to avoid infinite loops. Useful when Claude is
 # stuck or unsure how to back out of a nested state.
 return_to_world_map() {
+  local _FFT_ALLOW_CHAIN=1
   for i in $(seq 1 8); do
     local cur=$(_current_screen)
     if [ "$cur" = "WorldMap" ]; then
@@ -1098,7 +1175,14 @@ else console.log('  Equip: (none)');
 # Garb, Accessory): Down-walk to slot row → Enter (open picker) → Enter
 # again on currently-equipped item to unequip → wait for return to EqA.
 # Skips slots that are already empty.
+#
+# RUNTIME: ~5s per populated slot (open picker, unequip, return) plus
+# the initial open_eqa nav (~4s). Fully-equipped unit → ~25-30s total.
+# Callers MUST set Bash timeout ≥35s (45s recommended). Per-slot progress
+# is printed as each slot completes so a caller watching stdout can see
+# it hasn't hung.
 unequip_all() {
+  local _FFT_ALLOW_CHAIN=1
   local target="$*"
   if [ -z "$target" ]; then echo "[unequip_all] usage: unequip_all <name>"; return 1; fi
   _require_state unequip_all "$_PARTY_NAV_VALID_STATES" || return 1
@@ -1120,21 +1204,30 @@ unequip_all() {
     return 1
   fi
 
-  # Read current loadout from the response
-  local removed=0 skipped=0
+  echo "[unequip_all] $target: stripping 5 slots (ETA ~25s)"
+
+  # Per-slot progress: read current loadout, pretty-print item name,
+  # unequip if populated, else skip. Surface each slot as it completes
+  # so the caller can see forward progress.
+  local removed=0 skipped=0 idx=0
+  local labels=("R Hand" "Shield" "Helm" "Garb" "Accessory")
   for slot in weapon shield helm garb accessory; do
+    idx=$((idx+1))
     _current_screen >/dev/null
-    local hasItem=$(node -e "
+    local slotItem=$(node -e "
 const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
 const l=r.screen?.loadout||{};
 const map={weapon:'weapon',shield:'shield',helm:'helm',garb:'body',accessory:'accessory'};
 const v=l[map['$slot']];
-console.log(v?'1':'0');
+console.log(v||'');
 " "$B/response.json" 2>/dev/null)
-    if [ "$hasItem" = "0" ]; then
+    local label="${labels[$((idx-1))]}"
+    if [ -z "$slotItem" ]; then
+      echo "  $idx/5 $label: (empty) — skip"
       skipped=$((skipped+1))
       continue
     fi
+    echo "  $idx/5 $label: $slotItem → removing..."
     remove_equipment >/dev/null 2>&1 || true
     _FFT_DONE=0
     removed=$((removed+1))
@@ -1144,7 +1237,7 @@ console.log(v?'1':'0');
     _FFT_DONE=0
     sleep 0.2
   done
-  echo "[unequip_all] $target: removed $removed, skipped $skipped (already empty)"
+  echo "[unequip_all] $target: done — removed $removed, skipped $skipped (already empty)"
   screen
 }
 
@@ -1153,6 +1246,7 @@ console.log(v?'1':'0');
 # if EncounterDialog appears, fires Flee and re-polls until WorldMap
 # or until we've fled 5 times (suggests we're stuck on a forced battle).
 travel_safe() {
+  local _FFT_ALLOW_CHAIN=1
   local dest="$1"
   if [ -z "$dest" ]; then echo "[travel_safe] usage: travel_safe <location_id>"; return 1; fi
   _require_state travel_safe "WorldMap" || return 1
@@ -1192,6 +1286,7 @@ travel_safe() {
 # the full inventory grouped by category. Saves Claude a navigation
 # round-trip when planning purchases or equipment changes.
 scan_inventory() {
+  local _FFT_ALLOW_CHAIN=1
   _require_state scan_inventory "$_PARTY_NAV_VALID_STATES" || return 1
   # Get to PartyMenuUnits first (Escape until WorldMap → Escape to PartyMenuUnits)
   return_to_world_map >/dev/null
@@ -1278,6 +1373,7 @@ list.forEach((a,i)=>console.log(i+'\t'+a.name+'\t'+(a.isEquipped?1:0)));
 #
 # Returns 0 on success, 1 on error (prints a human-readable message).
 _change_ability() {
+  local _FFT_ALLOW_CHAIN=1
   local slotType="$1"
   local target="$2"
   if [ -z "$slotType" ] || [ -z "$target" ]; then
@@ -1923,8 +2019,41 @@ resolve_eqa_row() { fft "{\"id\":\"$(id)\",\"action\":\"resolve_eqa_row\"}"; }
 # which row we were on, leaves the slot empty, closes the picker. Works on
 # both populated and empty slots (empty-slot case auto-equips the first
 # picker item and then unequips it — net zero).
+#
+# Position-agnostic entry (added session 24): the underlying C# toggle
+# is position-sensitive — firing it on the abilities column opens an
+# ability picker instead of an equipment slot, producing a silent wrong
+# action. We inspect cursor column from the state response first and
+# auto-Left from column 1 to column 0 so the toggle always targets the
+# intended equipment slot. If the cursor is somewhere else entirely
+# (shouldn't happen on EqA), we refuse with a clear error rather than
+# guessing.
 remove_equipment() {
+  local _FFT_ALLOW_CHAIN=1
   _require_state remove_equipment "EquipmentAndAbilities" || return 1
+
+  # Pull the current cursor column. ScreenStateMachine tracks it;
+  # compact render surfaces cursor=(r<N>,c<N>) on EqA.
+  _current_screen >/dev/null
+  local curCol=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.cursorCol??-1)" < "$B/response.json" 2>/dev/null)
+
+  case "$curCol" in
+    0)
+      # Already on the equipment column — safe to toggle directly.
+      ;;
+    1)
+      # Abilities column. Fire one Left to hop to the equipment column.
+      # The toggle targets whichever row we land on (state machine
+      # preserves row across a Left press).
+      fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":37,\"name\":\"Left\"}],\"delayBetweenMs\":0}" >/dev/null
+      _FFT_DONE=0
+      ;;
+    *)
+      echo "[remove_equipment] ERROR: cursor on unexpected column ($curCol). Expected 0 (equipment) or 1 (abilities). Refusing to fire — bring the cursor to the equipment column first."
+      return 1
+      ;;
+  esac
+
   fft "{\"id\":\"$(id)\",\"action\":\"remove_equipment_at_cursor\"}"
 }
 
@@ -1997,6 +2126,7 @@ change_job() { fft "{\"id\":\"$(id)\",\"action\":\"change_job\",\"locationId\":$
 # Flees encounters at wrong locations along the way.
 # Usage: goto 26   (travel to loc 26 and fight the random encounter)
 goto() {
+  local _FFT_ALLOW_CHAIN=1
   local target=$1
   _check_total || return 1
   # Step 1: Travel to hover over target + confirm move
