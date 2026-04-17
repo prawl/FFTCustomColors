@@ -929,5 +929,39 @@ namespace FFTColorCustomizer.GameBridge
                 ModLogger.LogError($"[MemoryExplorer] Failed to write diff: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Counts byte transitions `oldVal → newVal` between two snapshots
+        /// within an address range, without writing a file. Lightweight enough
+        /// to call per flood-fill probe. Returns -1 if either snapshot missing.
+        /// </summary>
+        public int CountTransitionsInRange(
+            string fromLabel, string toLabel,
+            nint minAddr, nint maxAddr,
+            byte oldVal, byte newVal)
+        {
+            if (!_snapshots.ContainsKey(fromLabel) || !_snapshots.ContainsKey(toLabel))
+                return -1;
+
+            var fromRegions = _snapshots[fromLabel];
+            var toRegions = _snapshots[toLabel];
+            var toByBase = new Dictionary<nint, byte[]>();
+            foreach (var (baseAddr, data) in toRegions)
+                toByBase[baseAddr] = data;
+
+            int count = 0;
+            foreach (var (baseAddr, fromData) in fromRegions)
+            {
+                if (!toByBase.TryGetValue(baseAddr, out var toData)) continue;
+                int len = Math.Min(fromData.Length, toData.Length);
+                for (int i = 0; i < len; i++)
+                {
+                    nint addr = baseAddr + i;
+                    if (addr < minAddr || addr >= maxAddr) continue;
+                    if (fromData[i] == oldVal && toData[i] == newVal) count++;
+                }
+            }
+            return count;
+        }
     }
 }

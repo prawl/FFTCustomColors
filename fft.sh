@@ -2167,6 +2167,15 @@ list_secondary_abilities() { _list_abilities secondary; }
 # Cost ~1.5s. Locks ScreenMachine.CursorRow to the resolved row.
 resolve_eqa_row() { fft "{\"id\":\"$(id)\",\"action\":\"resolve_eqa_row\"}"; }
 
+# cursor_walk: Diagnostic that walks the cursor from the unit's start tile,
+# flood-fills via cursor + snapshot-diff probe (looking for 04→05 slot-flag
+# transitions that indicate cursor-on-valid-tile), and compares the
+# game-observed valid-tile set against our BFS output. Logs false positives
+# (BFS said valid, game rejected) and false negatives (game valid, BFS missed).
+# Must be called in BattleMoving with the cursor on the unit's own tile.
+# Cost: ~30-60 seconds per run (slow — diagnostic, NOT for runtime).
+cursor_walk() { fft "{\"id\":\"$(id)\",\"action\":\"cursor_walk\"}"; }
+
 # remove_equipment: Unequip whatever is in the currently-hovered EqA slot.
 # One atomic C# action: opens the picker, toggles, reads the mirror to learn
 # which row we were on, leaves the slot empty, closes the picker. Works on

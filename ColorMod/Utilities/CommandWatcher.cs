@@ -1064,7 +1064,7 @@ namespace FFTColorCustomizer.Utilities
             "scan_move", "scan_units", "set_map", "report_state",
             "read_address", "read_block", "batch_read",
             "mark_blocked", "snapshot", "heap_snapshot", "diff", "find_toggle",
-            "dry_run_nav",
+            "dry_run_nav", "cursor_walk",
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
             "read_dialogue", "write_byte", "dump_detection_inputs",
@@ -1714,6 +1714,31 @@ namespace FFTColorCustomizer.Utilities
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         Explorer.DiffSnapshots(command.FromLabel ?? "before", command.ToLabel ?? "after", command.SearchLabel ?? "result");
                         response.Status = "completed";
+                        break;
+
+                    case "cursor_walk":
+                        {
+                            var curScr = DetectScreen();
+                            if (curScr == null || curScr.Name != "BattleMoving")
+                            {
+                                response.Status = "failed";
+                                response.Error = $"cursor_walk requires BattleMoving; current={curScr?.Name ?? "Unknown"}";
+                                break;
+                            }
+                            try
+                            {
+                                var report = RunCursorWalkDiagnostic();
+                                response.Info = report;
+                                response.Status = report != null && report.StartsWith("Error") ? "failed" : "completed";
+                                if (report != null && report.StartsWith("Error")) response.Error = report;
+                            }
+                            catch (Exception ex)
+                            {
+                                response.Status = "error";
+                                response.Error = $"cursor_walk exception: {ex.Message}";
+                                ModLogger.LogError($"[cursor_walk] EXCEPTION: {ex}");
+                            }
+                        }
                         break;
 
                     case "dry_run_nav":
@@ -3949,7 +3974,12 @@ namespace FFTColorCustomizer.Utilities
                     screen.Tiles = validTiles;
                     ModLogger.Log($"[Tiles] MapBFS (MAP{mapData.MapNumber:D3}): {validTiles.Count} tiles (blocked: {_blockedTiles.Count}, enemies: {enemyPositions?.Count ?? 0}, allies: {allyPositions?.Count ?? 0}). " +
                         $"Unit=({unitGX},{unitGY}), Move={moveStat}, Jump={jumpStat}");
-                    LogBfsTileCountMismatch(validTiles.Count, screen);
+                    // MoveTileCountValidator was wired to 0x142FEA008 but that
+                    // byte does not actually encode the game's valid-tile count
+                    // (live-verified: byte=11 while 20 blue tiles visible on
+                    // Siedge Weald for Lloyd). Disabled until a real count
+                    // signal is found. See memory/project_move_bitmap_hunt_s28.md.
+                    // LogBfsTileCountMismatch(validTiles.Count, screen);
                     return;
                 }
 
@@ -3980,7 +4010,12 @@ namespace FFTColorCustomizer.Utilities
                     screen.Tiles = validTiles;
                     ModLogger.Log($"[Tiles] MemBFS: {validTiles.Count} tiles (blocked cache: {_blockedTiles.Count}). " +
                         $"Unit=({unitGX},{unitGY}), Move={moveStat}, Jump={jumpStat}");
-                    LogBfsTileCountMismatch(validTiles.Count, screen);
+                    // MoveTileCountValidator was wired to 0x142FEA008 but that
+                    // byte does not actually encode the game's valid-tile count
+                    // (live-verified: byte=11 while 20 blue tiles visible on
+                    // Siedge Weald for Lloyd). Disabled until a real count
+                    // signal is found. See memory/project_move_bitmap_hunt_s28.md.
+                    // LogBfsTileCountMismatch(validTiles.Count, screen);
                     return;
                 }
 
@@ -4074,6 +4109,214 @@ namespace FFTColorCustomizer.Utilities
                 ModLogger.Log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 if (screen != null) screen.BfsMismatchWarning = warning;
             }
+        }
+
+        /// <summary>
+        /// Diagnostic: walks the cursor through each flood-fill candidate tile
+        /// from the unit's start position, snapshots memory before + after
+        /// each move, and infers "is valid" from whether any render slot
+        /// went `04 → 05` in the slot region (cursor-on-valid-tile signal).
+        /// Returns a report comparing game-observed tiles vs our BFS result.
+        /// Slow (seconds per probe); diagnostic-only, NOT for runtime.
+        /// Must be invoked from BattleMoving with cursor on the unit's tile.
+        /// </summary>
+        public string RunCursorWalkDiagnostic()
+        {
+            if (Explorer == null) return "Error: memory explorer not initialized";
+            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+            if (win == IntPtr.Zero) return "Error: game window not found";
+
+            const int VK_RIGHT = 0x27, VK_LEFT = 0x25, VK_UP = 0x26, VK_DOWN = 0x28;
+            nint SLOT_REGION_MIN = (nint)0x140DDF000L;
+            nint SLOT_REGION_MAX = (nint)0x140DE8000L;
+            const int KEY_DELAY_MS = 300;
+            const int SETTLE_MS = 200;
+            const int MAX_KEYS_TOTAL = 400;
+
+            int ReadCursorX()
+            {
+                var r = Explorer.ReadAbsolute((nint)0x140C64A54, 1);
+                return r.HasValue ? (int)r.Value.value : -1;
+            }
+            int ReadCursorY()
+            {
+                var r = Explorer.ReadAbsolute((nint)0x140C6496C, 1);
+                return r.HasValue ? (int)r.Value.value : -1;
+            }
+
+            int startX = ReadCursorX();
+            int startY = ReadCursorY();
+            if (startX < 0 || startY < 0) return "Error: could not read cursor position";
+
+            // Capture BFS tile list NOW, before we mess with screen state via cursor moves.
+            // The cursor-walk sequence causes DetectScreen() at the end to lose the tile list.
+            var initialScreen = DetectScreen();
+            var bfsTiles = initialScreen?.Tiles?.ConvertAll(t => ((int x, int y))(t.X, t.Y)) ?? new List<(int x, int y)>();
+
+            int keyCount = 0;
+            void PressKey(int vk)
+            {
+                keyCount++;
+                _inputSimulator.SendKeyPressToWindow(win, vk);
+                Thread.Sleep(KEY_DELAY_MS);
+            }
+
+            // Calibrate arrow keys: press each once, read delta, restore.
+            (int dx, int dy) CalibrateArrow(int pressVk, int restoreVk)
+            {
+                int preX = ReadCursorX(), preY = ReadCursorY();
+                PressKey(pressVk);
+                int postX = ReadCursorX(), postY = ReadCursorY();
+                int dx = postX - preX;
+                int dy = postY - preY;
+                // If cursor didn't move (map edge), return the opposite of restoreVk as a hint — but mostly zero.
+                if (dx == 0 && dy == 0)
+                {
+                    ModLogger.Log($"[cursor_walk] WARNING: key 0x{pressVk:X2} did not move cursor from ({preX},{preY}) — map edge or blocked");
+                    return (0, 0);
+                }
+                PressKey(restoreVk);
+                int restX = ReadCursorX(), restY = ReadCursorY();
+                if (restX != preX || restY != preY)
+                {
+                    ModLogger.Log($"[cursor_walk] WARNING: restore didn't return to start: expected ({preX},{preY}) got ({restX},{restY})");
+                }
+                return (dx, dy);
+            }
+
+            // Calibrate all 4 directions by pressing each key once and
+            // observing deltas. After each press, read new position. If
+            // delta is (0,0), the direction is edge-blocked — no need to
+            // restore. If delta is non-zero, we've moved; track cumulative
+            // drift and restore all at once at the end by pressing the
+            // inverse of each delta.
+            (int dx, int dy) ObserveKey(int pressVk)
+            {
+                int preX = ReadCursorX(), preY = ReadCursorY();
+                PressKey(pressVk);
+                int postX = ReadCursorX(), postY = ReadCursorY();
+                int dx = postX - preX;
+                int dy = postY - preY;
+                if (dx == 0 && dy == 0)
+                {
+                    ModLogger.Log($"[cursor_walk] NOTE: key 0x{pressVk:X2} could not move cursor from ({preX},{preY}) — likely map edge; will rely on other directions");
+                }
+                return (dx, dy);
+            }
+
+            // Press each arrow once. Track cumulative cursor position.
+            var right = ObserveKey(VK_RIGHT);
+            var left = ObserveKey(VK_LEFT);
+            var up = ObserveKey(VK_UP);
+            var down = ObserveKey(VK_DOWN);
+            var cal = new GameBridge.ArrowKeyCalibration(right, left, up, down);
+            ModLogger.Log($"[cursor_walk] Calibration: Right={right} Left={left} Up={up} Down={down}");
+
+            // Restore to start using the completed calibration. If any key
+            // initially tested as (0,0) (edge-blocked), it may now work from
+            // a non-edge position — retry unknown keys.
+            void ReCalibrateIfZero()
+            {
+                if (right.dx == 0 && right.dy == 0) { right = ObserveKey(VK_RIGHT); cal = new GameBridge.ArrowKeyCalibration(right, left, up, down); }
+                if (left.dx == 0 && left.dy == 0) { left = ObserveKey(VK_LEFT); cal = new GameBridge.ArrowKeyCalibration(right, left, up, down); }
+                if (up.dx == 0 && up.dy == 0) { up = ObserveKey(VK_UP); cal = new GameBridge.ArrowKeyCalibration(right, left, up, down); }
+                if (down.dx == 0 && down.dy == 0) { down = ObserveKey(VK_DOWN); cal = new GameBridge.ArrowKeyCalibration(right, left, up, down); }
+            }
+
+            int curX0 = ReadCursorX(), curY0 = ReadCursorY();
+            if (curX0 != startX || curY0 != startY)
+            {
+                ModLogger.Log($"[cursor_walk] Post-calibration at ({curX0},{curY0}), navigating back to start ({startX},{startY}).");
+                // Retry (0,0) keys now that we're off the edge.
+                ReCalibrateIfZero();
+                ModLogger.Log($"[cursor_walk] Re-cal: Right={right} Left={left} Up={up} Down={down}");
+                curX0 = ReadCursorX(); curY0 = ReadCursorY();
+                var recoveryPath = cal.BuildPath(curX0, curY0, startX, startY);
+                foreach (var key in recoveryPath)
+                {
+                    int vk = key switch
+                    {
+                        GameBridge.ArrowKeyCalibration.Key.Right => VK_RIGHT,
+                        GameBridge.ArrowKeyCalibration.Key.Left => VK_LEFT,
+                        GameBridge.ArrowKeyCalibration.Key.Up => VK_UP,
+                        _ => VK_DOWN,
+                    };
+                    PressKey(vk);
+                }
+                int curX1 = ReadCursorX(), curY1 = ReadCursorY();
+                if (curX1 != startX || curY1 != startY)
+                {
+                    return $"Error: calibration drift ({curX1},{curY1}) could not recover to ({startX},{startY}). Working keys: Right={right} Left={left} Up={up} Down={down}. Aborting.";
+                }
+            }
+
+            // Helper: navigate cursor from current (cx,cy) to (tx,ty) by arrow keys.
+            // Verifies landing; if wrong, returns false so caller skips this probe.
+            bool NavigateCursor(int tx, int ty)
+            {
+                int cx = ReadCursorX(), cy = ReadCursorY();
+                var path = cal.BuildPath(cx, cy, tx, ty);
+                foreach (var key in path)
+                {
+                    if (keyCount >= MAX_KEYS_TOTAL) return false;
+                    int vk = key switch
+                    {
+                        GameBridge.ArrowKeyCalibration.Key.Right => VK_RIGHT,
+                        GameBridge.ArrowKeyCalibration.Key.Left => VK_LEFT,
+                        GameBridge.ArrowKeyCalibration.Key.Up => VK_UP,
+                        _ => VK_DOWN,
+                    };
+                    PressKey(vk);
+                }
+                int fx = ReadCursorX(), fy = ReadCursorY();
+                return fx == tx && fy == ty;
+            }
+
+            // Probe a tile: navigate, snapshot before nav was not captured here because nav mutates state.
+            // Instead: snapshot AT current (pre-probe) location, nav to target, snapshot, diff.
+            // Look for any 04→05 transition in slot region → cursor landed on a valid move tile.
+            bool IsTileValid(int tx, int ty)
+            {
+                Explorer.TakeSnapshot("_cw_before");
+                Thread.Sleep(SETTLE_MS);
+                if (!NavigateCursor(tx, ty))
+                {
+                    ModLogger.Log($"[cursor_walk] Navigation to ({tx},{ty}) failed (path rejection or key cap)");
+                    return false;
+                }
+                Thread.Sleep(SETTLE_MS);
+                Explorer.TakeSnapshot("_cw_after");
+                int transitions = Explorer.CountTransitionsInRange(
+                    "_cw_before", "_cw_after",
+                    SLOT_REGION_MIN, SLOT_REGION_MAX,
+                    oldVal: 0x04, newVal: 0x05);
+                return transitions > 0;
+            }
+
+            // Flood fill from unit's position, using the probe as validity oracle.
+            // The start tile is valid by definition.
+            var gameTiles = GameBridge.CursorFloodFill.Flood(startX, startY, t =>
+            {
+                if (t.x == startX && t.y == startY) return true;
+                if (keyCount >= MAX_KEYS_TOTAL) return false;
+                return IsTileValid(t.x, t.y);
+            });
+
+            // Restore cursor to start so we leave state clean
+            NavigateCursor(startX, startY);
+
+            var gameTilesList = gameTiles.ToList();
+            var result = GameBridge.BfsTileVerifier.Compare(bfsTiles, gameTilesList);
+            var report = GameBridge.BfsTileVerifier.FormatReport(result);
+
+            // Extra full listings for debugging
+            var gameList = string.Join(" ", gameTilesList.ConvertAll(t => $"({t.x},{t.y})"));
+            var bfsList = string.Join(" ", bfsTiles.ConvertAll(t => $"({t.x},{t.y})"));
+            ModLogger.Log($"[cursor_walk] keyCount={keyCount} start=({startX},{startY})");
+            ModLogger.Log($"[cursor_walk] game valid ({gameTilesList.Count}): {gameList}");
+            ModLogger.Log($"[cursor_walk] BFS candidates ({bfsTiles.Count}): {bfsList}");
+            ModLogger.Log($"[cursor_walk] {report}");
+            return report + $" | keys={keyCount} gameTiles=[{gameList}] bfsTiles=[{bfsList}]";
         }
 
         /// <summary>
