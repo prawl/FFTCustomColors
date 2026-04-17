@@ -20,6 +20,12 @@ namespace FFTColorCustomizer.GameBridge
             /// show an AoE preview and need an extra confirmation.
             /// </summary>
             public bool isTrueSelfOnly;
+            /// <summary>
+            /// Cast Speed. 0 = instant action. &gt;0 = charge-time spell that queues in the
+            /// Combat Timeline and resolves when its CT counter reaches 100. BattleAbility
+            /// reports "Queued ..." for ct&gt;0 to signal the turn isn't over until Wait.
+            /// </summary>
+            public int castSpeed;
         }
 
         /// <summary>
@@ -36,7 +42,8 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     skillsetName = "Attack",
                     indexInSkillset = 0,
-                    isSelfTarget = false
+                    isSelfTarget = false,
+                    castSpeed = 0
                 };
             }
 
@@ -49,7 +56,8 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     skillsetName = "Jump",
                     indexInSkillset = 0,
-                    isSelfTarget = false
+                    isSelfTarget = false,
+                    castSpeed = 0
                 };
             }
 
@@ -70,7 +78,8 @@ namespace FFTColorCustomizer.GameBridge
                                 skillsetName = skillsetName,
                                 indexInSkillset = i,
                                 isSelfTarget = isSelf,
-                                isTrueSelfOnly = isSelf && abilities[i].AoE <= 1
+                                isTrueSelfOnly = isSelf && abilities[i].AoE <= 1,
+                                castSpeed = abilities[i].CastSpeed
                             };
                         }
                     }
@@ -93,7 +102,8 @@ namespace FFTColorCustomizer.GameBridge
                             skillsetName = skillsetName,
                             indexInSkillset = i,
                             isSelfTarget = isSelf,
-                            isTrueSelfOnly = isSelf && abilities[i].AoE <= 1
+                            isTrueSelfOnly = isSelf && abilities[i].AoE <= 1,
+                            castSpeed = abilities[i].CastSpeed
                         };
                     }
                 }

@@ -261,7 +261,7 @@ namespace FFTColorCustomizer.GameBridge
                 switch (command.Action)
                 {
                     case "battle_wait":
-                        return BattleWait(response);
+                        return BattleWait(response, command);
 
                     case "battle_flee":
                         return BattleFlee(response);
@@ -415,8 +415,33 @@ namespace FFTColorCustomizer.GameBridge
             return response;
         }
 
-        private CommandResponse BattleWait(CommandResponse response)
+        /// <summary>
+        /// Parse a user-supplied cardinal direction into FacingStrategy's (dx, dy)
+        /// convention. Accepts N/S/E/W (case-insensitive) and full names. Returns
+        /// null when input is null/empty/unrecognized (caller falls back to auto-pick).
+        /// </summary>
+        public static (int dx, int dy)? ParseFacingDirection(string? input)
         {
+            if (string.IsNullOrWhiteSpace(input)) return null;
+            var s = input.Trim().ToUpperInvariant();
+            return s switch
+            {
+                "N" or "NORTH" => (0, 1),
+                "S" or "SOUTH" => (0, -1),
+                "E" or "EAST"  => (1, 0),
+                "W" or "WEST"  => (-1, 0),
+                _ => null,
+            };
+        }
+
+        private CommandResponse BattleWait(CommandResponse response, CommandRequest? command = null)
+        {
+            // Optional explicit facing from command.Pattern ("N"/"S"/"E"/"W" or full
+            // "North"/"South"/"East"/"West", case-insensitive). When set, overrides
+            // FacingStrategy.ComputeOptimalFacing. Returned as (faceDx, faceDy) in
+            // FacingStrategy's convention: (1,0)=E, (-1,0)=W, (0,1)=N, (0,-1)=S.
+            (int dx, int dy)? facingOverride = ParseFacingDirection(command?.Pattern);
+
             var screen = _detectScreen();
 
             // Turn-ending abilities (Jump) end the turn immediately — no Wait needed.
@@ -500,7 +525,9 @@ namespace FFTColorCustomizer.GameBridge
                     Team = e.Team, Hp = e.Hp, MaxHp = e.MaxHp
                 }).ToList();
 
-                var (faceDx, faceDy) = FacingStrategy.ComputeOptimalFacing(allyPos, enemyPositions);
+                var (faceDx, faceDy) = facingOverride ?? FacingStrategy.ComputeOptimalFacing(allyPos, enemyPositions);
+                if (facingOverride.HasValue)
+                    ModLogger.Log($"[BattleWait] Facing override: ({faceDx},{faceDy}) from '{command?.Pattern}'");
 
                 // Look up the Right delta in the facing table to find the facing rotation
                 var (rdx, rdy) = _lastDetectedRightDelta.Value;
@@ -637,7 +664,34 @@ namespace FFTColorCustomizer.GameBridge
             SendKey(VK_ENTER); // Open Abilities submenu
             Thread.Sleep(500);
 
-            // Step 2: Select Attack (top item in submenu)
+            // Step 2: Force submenu cursor to Attack (index 0).
+            // The Abilities submenu REMEMBERS the previous selection within a turn (e.g.
+            // after Escape from Martial Arts, re-entering lands on Martial Arts, not
+            // Attack). Resolve actual position via ui= then Up-to-top so blind Enter
+            // always picks Attack. See feedback_submenu_sticky_cursor.md.
+            var submenuItemsAtk = GetAbilitiesSubmenuItems?.Invoke() ?? new[] { "Attack" };
+            string? uiSubmenu = _detectScreen()?.UI;
+            int submenuCursor = 0;
+            if (uiSubmenu != null)
+            {
+                int uiIdx = BattleAbilityNavigation.FindSkillsetIndex(uiSubmenu, submenuItemsAtk);
+                if (uiIdx >= 0)
+                {
+                    // ui= lags by one keypress: shows where cursor WAS. Actual = next item.
+                    submenuCursor = (uiIdx + 1) % submenuItemsAtk.Length;
+                }
+            }
+            // Up (wrapping) gets us to Attack (index 0) in `submenuCursor` presses.
+            // If already at 0, no presses needed. If at 3 of 5, press Up 3 times.
+            int upsNeeded = submenuCursor;
+            ModLogger.Log($"[BattleAttack] Submenu cursor at {submenuCursor} ('{(submenuCursor < submenuItemsAtk.Length ? submenuItemsAtk[submenuCursor] : "?")}'), pressing Up x{upsNeeded}");
+            for (int i = 0; i < upsNeeded; i++)
+            {
+                SendKey(VK_UP);
+                Thread.Sleep(300);
+            }
+
+            // Now select Attack (top item in submenu)
             SendKey(VK_ENTER);
             Thread.Sleep(500);
 
@@ -771,9 +825,14 @@ namespace FFTColorCustomizer.GameBridge
             int preHp = ReadStaticArrayHpAt(targetX, targetY);
             int targetMaxHp = ReadStaticArrayMaxHpAt(targetX, targetY);
             int targetLevel = ReadStaticArrayFieldAt(targetX, targetY, 0x0D) & 0xFF; // level is 1 byte
-            int attackerMaxHp = ReadStaticArrayMaxHpAt(startPos.x, startPos.y);
-            var (projDamage, projHitPct) = ReadDamagePreview(attackerMaxHp);
-            ModLogger.Log($"[BattleAttack] Pre-attack: target HP={preHp}/{targetMaxHp} lv={targetLevel}, preview={projDamage}dmg/{projHitPct}%");
+            // Damage preview projection (projDamage, projHitPct) is NOT wired up.
+            // Session 30 hunt confirmed the preview widget data is not colocated with
+            // any (attacker MaxHP+MaxHP) or (target HP+MaxHP) pattern in 0x140xxx,
+            // 0x141xxx, 0x15Axxx, or 0x4166xxx regions. See
+            // memory/project_damage_preview_hunt_s30.md. Post-attack delta from
+            // ReadLiveHp is the ground-truth damage signal.
+            int projDamage = 0, projHitPct = 0;
+            ModLogger.Log($"[BattleAttack] Pre-attack: target HP={preHp}/{targetMaxHp} lv={targetLevel}");
 
             // Step 8: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
             SendKey(VK_ENTER);
@@ -1012,9 +1071,24 @@ namespace FFTColorCustomizer.GameBridge
                 ModLogger.Log($"[BattleAbility] No learned ability data, using hardcoded index {abilityIndex}");
             }
 
-            // Navigate to the target ability. The cursor starts at index 0 after
-            // entering the skillset. Just press Down × abilityIndex.
-            // (The list wraps, so pressing Up from 0 goes to the bottom — don't use Up.)
+            // Reset ability-list cursor to the top before counting Downs. The ability
+            // list REMEMBERS the previously-selected position within a turn (e.g. after
+            // Escape from Haste at index 4, re-entering Time Magicks still has cursor
+            // at index 4). Pressing Down×abilityIndex from that position lands on the
+            // wrong ability (off-by-prev-selection). Up wraps forward past any start
+            // position: listSize+1 Ups guarantees we end at index 0. Cheap (~0.5s) and
+            // deterministic. See feedback_submenu_sticky_cursor.md.
+            int listSize = learnedAbilities?.Length ?? 16; // Fallback: no skillset >16
+            int resetUps = listSize + 1;
+            ModLogger.Log($"[BattleAbility] Reset: Up×{resetUps} to force cursor to index 0");
+            for (int i = 0; i < resetUps; i++)
+            {
+                SendKey(VK_UP);
+                Thread.Sleep(100);
+            }
+            Thread.Sleep(200);
+
+            // Navigate to the target ability. The cursor is now at index 0.
             // Use counter-delta to verify each keypress registered.
             ModLogger.Log($"[BattleAbility] Nav: Down×{abilityIndex} (listSize={learnedAbilities?.Length ?? -1})");
             var abilityCounterBefore = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
@@ -1052,6 +1126,13 @@ namespace FFTColorCustomizer.GameBridge
             SendKey(VK_ENTER);
             Thread.Sleep(500);
 
+            // Cast-time abilities (CastSpeed > 0) queue in the Combat Timeline and
+            // resolve when their CT counter reaches 100 — the unit still needs to
+            // Wait to end the current turn. Use "Queued" instead of "Used" so Claude
+            // doesn't assume the effect landed.
+            string verb = loc.castSpeed > 0 ? "Queued" : "Used";
+            string ctSuffix = loc.castSpeed > 0 ? $" (ct={loc.castSpeed})" : "";
+
             // Step 6: Handle targeting
             if (loc.isTrueSelfOnly)
             {
@@ -1059,7 +1140,7 @@ namespace FFTColorCustomizer.GameBridge
                 SendKey(VK_ENTER);
                 Thread.Sleep(300);
                 response.Status = "completed";
-                response.Info = $"Used {abilityName} (self-target)";
+                response.Info = $"{verb} {abilityName} (self-target){ctSuffix}";
                 return response;
             }
 
@@ -1074,7 +1155,7 @@ namespace FFTColorCustomizer.GameBridge
                 SendKey(VK_ENTER); // confirm cast
                 Thread.Sleep(300);
                 response.Status = "completed";
-                response.Info = $"Used {abilityName} (self-radius AoE)";
+                response.Info = $"{verb} {abilityName} (self-radius AoE){ctSuffix}";
                 return response;
             }
 
@@ -1111,7 +1192,7 @@ namespace FFTColorCustomizer.GameBridge
                 SendKey(VK_ENTER); // Unit/Tile dialog (selects "Unit" default; harmless if no dialog)
                 Thread.Sleep(300);
                 response.Status = "completed";
-                response.Info = $"Used {abilityName} on ({targetX},{targetY}) — cursor was already on target";
+                response.Info = $"{verb} {abilityName} on ({targetX},{targetY}) — cursor was already on target{ctSuffix}";
                 return response;
             }
 
@@ -1215,7 +1296,7 @@ namespace FFTColorCustomizer.GameBridge
             Thread.Sleep(300);
 
             response.Status = "completed";
-            response.Info = $"Used {abilityName} on ({targetX},{targetY})";
+            response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){ctSuffix}";
             return response;
         }
 
@@ -2108,10 +2189,16 @@ namespace FFTColorCustomizer.GameBridge
                     IsActive = isActive,
                     CT = u.CT,
                     Speed = u.Speed,
-                    // Facing: null for now. Movement delta is unreliable because the game's
-                    // Wait AI picks a facing direction independent of movement. Need a stable
-                    // memory address for unit facing direction to populate this. See TODO.md.
-                    Facing = null,
+                    // Facing decoded from the unit's slot +0x35 byte in the static
+                    // battle array. Session 30 live-verified encoding. See
+                    // memory/project_facing_byte_s30.md. Null when out-of-range
+                    // (shouldn't occur in normal play).
+                    Facing = u.Facing,
+                    ElementAbsorb = u.ElementAbsorb,
+                    ElementNull = u.ElementCancel,
+                    ElementHalf = u.ElementHalf,
+                    ElementWeak = u.ElementWeak,
+                    ElementStrengthen = u.ElementStrengthen,
                     SecondaryAbility = u.SecondaryAbility,
                     LifeState = StatusDecoder.GetLifeState(u.StatusBytes) is var ls && ls != "alive" ? ls
                         : (u.Hp <= 0 && u.MaxHp > 0 ? "dead" : null),
@@ -3410,6 +3497,19 @@ namespace FFTColorCustomizer.GameBridge
         {
             public bool IsActive;  // true for the unit whose turn it is
             public int GridX, GridY;
+            /// <summary>Cardinal facing direction ("South"/"West"/"North"/"East") decoded
+            /// from the unit slot's +0x35 byte. Null if the byte is out of range.
+            /// Session 30 confirmed live across 4 player units at Siedge Weald.</summary>
+            public string? Facing;
+            /// <summary>Element-affinity masks from unit slot +0x5A..+0x5E. Each
+            /// field is a list of element names. Session 30 live-verified via
+            /// Flame/Ice/Kaiser/Venetian shields + Gaia Gear + Chameleon Robe.
+            /// See memory/project_element_affinity_s30.md.</summary>
+            public List<string>? ElementAbsorb;     // +0x5A — damage becomes heal
+            public List<string>? ElementCancel;     // +0x5B — complete immunity
+            public List<string>? ElementHalf;       // +0x5C — damage × 0.5
+            public List<string>? ElementWeak;       // +0x5D — damage × 1.5
+            public List<string>? ElementStrengthen; // +0x5E — own outgoing × 1.25
             public int Team;       // 0=ally, 1+=enemy
             public int Level;
             public int NameId;     // Sequential battle index (NOT roster nameId)
@@ -3643,6 +3743,31 @@ namespace FFTColorCustomizer.GameBridge
                     // Status bytes (5 bytes at +0x45)
                     var statusBytes = _explorer.Scanner.ReadBytes((nint)(slotBase + 0x45), 5);
 
+                    // Facing byte at +0x35 (immediately after gridY at +0x34).
+                    // Encoding: 0=South, 1=West, 2=North, 3=East (session 30 live-verified).
+                    var facingByteArr = _explorer.Scanner.ReadBytes((nint)(slotBase + 0x35), 1);
+                    string? facingName = facingByteArr.Length == 1
+                        ? FacingByteDecoder.DecodeName(facingByteArr[0])
+                        : null;
+
+                    // Element-affinity bytes at +0x5A..+0x5E (Absorb/Cancel/Half/Weak/Strengthen).
+                    // Same element bit layout across all 5 fields. Session 30 live-verified.
+                    var elemBytes = _explorer.Scanner.ReadBytes((nint)(slotBase + 0x5A), 5);
+                    List<string>? absorbList = null, cancelList = null, halfList = null, weakList = null, strengthenList = null;
+                    if (elemBytes.Length == 5)
+                    {
+                        var a = ElementAffinityDecoder.Decode(elemBytes[0]);
+                        var c = ElementAffinityDecoder.Decode(elemBytes[1]);
+                        var h = ElementAffinityDecoder.Decode(elemBytes[2]);
+                        var w = ElementAffinityDecoder.Decode(elemBytes[3]);
+                        var s2 = ElementAffinityDecoder.Decode(elemBytes[4]);
+                        if (a.Count > 0) absorbList = a;
+                        if (c.Count > 0) cancelList = c;
+                        if (h.Count > 0) halfList = h;
+                        if (w.Count > 0) weakList = w;
+                        if (s2.Count > 0) strengthenList = s2;
+                    }
+
                     // Check if this is the active unit (match by HP+MaxHP with condensed struct)
                     bool isActive = (hp == activeHp && maxHp == activeMaxHp);
 
@@ -3654,6 +3779,12 @@ namespace FFTColorCustomizer.GameBridge
                     var unit = new ScannedUnit
                     {
                         GridX = gx, GridY = gy,
+                        Facing = facingName,
+                        ElementAbsorb = absorbList,
+                        ElementCancel = cancelList,
+                        ElementHalf = halfList,
+                        ElementWeak = weakList,
+                        ElementStrengthen = strengthenList,
                         Level = lvl, Team = team, Exp = exp,
                         Hp = hp, MaxHp = maxHp, Mp = mp, MaxMp = maxMp,
                         Brave = brave, Faith = faith,
@@ -4176,7 +4307,8 @@ namespace FFTColorCustomizer.GameBridge
                     (byte)(attackerMaxHp & 0xFF), (byte)(attackerMaxHp >> 8),
                     (byte)(attackerMaxHp & 0xFF), (byte)(attackerMaxHp >> 8)
                 };
-                // Search readonly regions where the copy with preview data lives
+                // Search readonly regions where the copy with preview data was
+                // historically expected to live.
                 var matches = _explorer.SearchBytesInAllMemory(
                     pattern, 20, 0x140800000L, 0x15C000000L, broadSearch: true);
 
@@ -4194,7 +4326,9 @@ namespace FFTColorCustomizer.GameBridge
                     int hitPct = BitConverter.ToUInt16(hitBytes, 0);
                     int damage = BitConverter.ToUInt16(dmgBytes, 0);
 
-                    // The copy with real preview data has hit% in 1-100 range
+                    // The copy with real preview data has hit% in 1-100 range.
+                    // Session 30 live-verified this condition is never met in IC
+                    // remaster — see memory/project_damage_preview_hunt_s30.md.
                     if (hitPct < 1 || hitPct > 100) continue;
                     if (damage <= 0 || damage > 9999) continue;
 
@@ -4677,6 +4811,9 @@ namespace FFTColorCustomizer.GameBridge
             };
             var matches = _explorer.SearchBytesInAllMemory(
                 hpPattern, maxResults: 8, minAddr: 0x4000000000L, maxAddr: 0x4200000000L);
+            ModLogger.Log($"[TryReadMoveJumpFromHeap] HP={hp}/{maxHp}: {matches.Count} heap matches");
+            int accepted = 0;
+            (int move, int jump)? first = null;
             foreach (var m in matches)
             {
                 long baseAddr = (long)m.address - 0x10;
@@ -4686,10 +4823,15 @@ namespace FFTColorCustomizer.GameBridge
                 int jp = bytes[1];
                 // Sanity check: valid Move is 1-10, Jump is 1-8. Rejects zero
                 // slots and mis-matched structs.
-                if (mv < 1 || mv > 10 || jp < 1 || jp > 8) continue;
-                return (mv, jp);
+                bool valid = mv >= 1 && mv <= 10 && jp >= 1 && jp <= 8;
+                ModLogger.Log($"[TryReadMoveJumpFromHeap]   struct 0x{baseAddr:X} mv={mv} jp={jp} valid={valid}");
+                if (!valid) continue;
+                accepted++;
+                if (first == null) first = (mv, jp);
             }
-            return null;
+            if (accepted > 1)
+                ModLogger.Log($"[TryReadMoveJumpFromHeap] WARN: multiple structs passed sanity check ({accepted}) — first-match wins, may be wrong unit");
+            return first;
         }
 
         /// <summary>

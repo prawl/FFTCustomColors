@@ -945,6 +945,12 @@ namespace FFTColorCustomizer.GameBridge
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string>? ElementWeak { get; set; }
 
+        /// <summary>Elements this unit strengthens (own outgoing damage × 1.25).
+        /// Session 30 live-verified via Gaia Gear + Kaiser Shield. Null if none.</summary>
+        [JsonPropertyName("elementStrengthen")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? ElementStrengthen { get; set; }
+
         // === Charging/casting state ===
         // When a unit is charging a spell, shows the ability and remaining CT.
         // Claude needs this to: not issue commands to charging allies, know when

@@ -385,6 +385,24 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("BattleMoving", result);
         }
 
+        [Fact]
+        public void DetectScreen_InBattle_MoveMode_CursorOnOffGridTile_BattleMode1_ShouldStayBattleMoving()
+        {
+            // Session 30 live-verified: during Move mode, when the cursor sits on a
+            // tile OUTSIDE the highlighted blue move grid, battleMode flickers from
+            // 2 to 1 (same value the game uses for "off-highlight in targeting").
+            // Discriminator: menuCursor stays 0 (Move) in Move mode; targeting has
+            // menuCursor=1 (Abilities was selected to reach targeting). Without
+            // this discriminator, screen misdetects as BattleAttacking.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1, menuCursor: 0);
+
+            Assert.Equal("BattleMoving", result);
+        }
+
         [Theory]
         [InlineData("Attack", "BattleAttack")]
         [InlineData("Mettle", "BattleMettle")]

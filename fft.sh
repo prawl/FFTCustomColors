@@ -772,7 +772,17 @@ if(keys.length){console.log('  ValidPaths:');keys.forEach(k=>console.log('    '+
 }
 
 # battle_wait: End turn. Handles menu navigation → Wait → confirm facing → polls until next friendly turn.
-battle_wait() { fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\"}" 60; }
+# battle_wait [direction]: End turn, choose facing, wait for next friendly turn.
+# direction (optional): N/S/E/W or North/South/East/West (case-insensitive).
+# With no arg, the code auto-picks the optimal facing via arc scoring.
+battle_wait() {
+  local dir="${1:-}"
+  if [ -n "$dir" ]; then
+    fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\",\"pattern\":\"$dir\"}" 60
+  else
+    fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\"}" 60
+  fi
+}
 
 # battle_flee: Quit battle and return to world map (Tab → Down x4 → Enter → Enter).
 # 20s timeout — the full pause menu nav + world map transition takes ~12s.
@@ -2659,6 +2669,7 @@ us.forEach(u=>{
   const life=u.lifeState==='dead'?' DEAD':'';
   const act=u.isActive?' *':'';
   const dist=u.distance!==undefined&&!u.isActive?' d='+u.distance:'';
+  const face=u.facing?' f='+u.facing[0]:'';
   let extra='';
   if(verbose){
     extra=' PA='+u.pa+' MA='+u.ma+' Spd='+(u.speed||'?')+' CT='+(u.ct||'?')+' Br='+u.brave+' Fa='+u.faith;
@@ -2666,7 +2677,7 @@ us.forEach(u=>{
     if(u.support)extra+=' S:'+u.support;
     if(u.movement)extra+=' M:'+u.movement;
   }
-  console.log('  ['+team+']'+nm+cl+' ('+u.x+','+u.y+') HP='+u.hp+'/'+u.maxHp+dist+extra+st+life+act);
+  console.log('  ['+team+']'+nm+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+extra+st+life+act);
 });
 " 2>/dev/null
   else
@@ -3110,216 +3121,6 @@ logs() {
 scan_units() { echo "[USE screen] scan_units is deprecated. Use: screen"; screen; }
 state() { echo "[USE screen] state is deprecated. Use: screen"; screen; }
 auto_move() { echo "[DISABLED] Use battle_move, battle_attack, battle_ability, battle_wait individually."; return 1; }
-_old_scan_move() {
-  local verbose=false
-  if [ "$1" = "-v" ]; then verbose=true; shift; fi
-  local mv=${1:-0}
-  local jmp=${2:-0}
-  local vflag="false"; $verbose && vflag="true"
-  local R=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$mv,\"unitIndex\":$jmp,\"verbose\":$vflag}")
-  # Strip whitespace for reliable grep matching (JSON may be pretty-printed)
-  local RR=$(echo "$R" | tr -d '\r\n ')
-  local ST=$(echo "$RR" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
-  if [ "$ST" = "blocked" ]; then
-    local ERR=$(echo "$RR" | grep -o '"error":"[^"]*"' | head -1 | cut -d'"' -f4)
-    echo "[BLOCKED] $ERR"
-    return 1
-  fi
-  if [ "$ST" != "completed" ]; then
-    local ERR=$(echo "$RR" | grep -o '"error":"[^"]*"' | head -1 | cut -d'"' -f4)
-    echo "[FAILED] $ERR"
-    return 1
-  fi
-  # Screen line — show active unit's name + job after the screen state
-  local SCR=$(echo "$RR" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local ANAME=$(echo "$RR" | grep -o '"activeUnitName":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local AJOB=$(echo "$RR" | grep -o '"activeUnitJob":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local BWON=$(echo "$RR" | grep -o '"battleWon":true')
-  local ACTIVE_STR=""
-  if [ -n "$ANAME" ] && [ -n "$AJOB" ]; then
-    ACTIVE_STR="${ANAME} (${AJOB})"
-  elif [ -n "$AJOB" ]; then
-    ACTIVE_STR="(${AJOB})"
-  fi
-  echo "[$SCR]${ACTIVE_STR:+ ${ACTIVE_STR}} ${BWON:+*** BATTLE WON ***}"
-  # Active unit
-  local AX=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"x":[0-9]*' | head -1 | cut -d: -f2)
-  local AY=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"y":[0-9]*' | head -1 | cut -d: -f2)
-  local AHP=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"hp":[0-9]*' | head -1 | cut -d: -f2)
-  local AMHP=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"maxHp":[0-9]*' | head -1 | cut -d: -f2)
-  local AMV=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"move":[0-9]*' | head -1 | cut -d: -f2)
-  local AJP=$(echo "$RR" | grep -o '"activeUnit":{[^}]*}' | grep -o '"jump":[0-9]*' | head -1 | cut -d: -f2)
-  echo "  Active: ($AX,$AY) HP=$AHP/$AMHP Mv=$AMV Jmp=$AJP"
-  # Units summary — use node to parse JSON reliably
-  echo "  Units:"
-  # Pass the scan JSON via stdin — it's too large for argv on big scans
-  # (Throw Stone + radius AoE center lists can easily exceed ~32KB).
-  echo "$R" | node -e "
-    var d = JSON.parse(require('fs').readFileSync(0, 'utf8'));
-    var u = d.battle?.units || [];
-    // One-line formatter for an ability entry. Returns an array of strings
-    // (1-2 lines) so callers can console.log each. Line 1 is always the compact
-    // ability header; line 2, if present, is the bestCenters summary for radius
-    // abilities.
-    //
-    // Point-target (AoE=1): 'targets=N hits=M: (x,y) *(x,y)«Name» ...'
-    //   Tiles whose occupant matches the ability's intent (ally spells star
-    //   self/ally tiles; enemy spells star enemy tiles) are prefixed with '*'
-    //   and suffixed with «UnitName».
-    //
-    // Radius (AoE>1): 'centers=N' plus a 'best:' line listing top ranked splash
-    //   placements. Each best entry shows '(x,y) e:Name,Name a:Name' summarizing
-    //   which units would be caught in the splash.
-    function fmtAb(a) {
-      // Items abilities (Potion, Ether, etc.) expose heldCount from inventory.
-      // Surface it inline so Claude sees stock levels without a verbose dump:
-      //   Potion [x4] — 4 in stock
-      //   Ether [OUT] — unusable:true (0 held)
-      var stockTag = '';
-      if (a.unusable === true) stockTag = ' [OUT]';
-      else if (typeof a.heldCount === 'number') stockTag = ' [x' + a.heldCount + ']';
-      var parts = [a.name + stockTag];
-      if (a.horizontalRange) parts.push('R:' + a.horizontalRange);
-      if (a.areaOfEffect && a.areaOfEffect > 1) parts.push('AoE:' + a.areaOfEffect);
-      if (a.target) parts.push('-> ' + a.target);
-      if (a.element) parts.push('(' + a.element + ')');
-      if (a.mp) parts.push('MP ' + a.mp);
-      if (a.addedEffect) parts.push('[' + a.addedEffect + ']');
-
-      var extraLines = [];
-      // Line abilities have a bestDirections summary instead of a tile list.
-      // Detect them by the presence of bestDirections OR by HR>1 with AoE=1 and
-      // only 2-4 seed tiles (a radius HR=8 would return dozens). Simpler: trust
-      // bestDirections presence and fall through to standard rendering when absent.
-      if (a.bestDirections && a.bestDirections.length) {
-        parts.push('seeds=' + (a.validTargetTiles ? a.validTargetTiles.length : 0));
-        var dirRendered = a.bestDirections.map(function(bd) {
-          var segs = [bd.direction + '→(' + bd.seed[0] + ',' + bd.seed[1] + ')'];
-          if (bd.enemies && bd.enemies.length)
-            segs.push('e:' + bd.enemies.join(','));
-          if (bd.allies && bd.allies.length)
-            segs.push('a:' + bd.allies.join(','));
-          return segs.join(' ');
-        }).join('  ');
-        extraLines.push('best: ' + dirRendered);
-      } else if ((a.validTargetTiles && a.validTargetTiles.length) || a.totalTargets > 0) {
-        if (a.areaOfEffect && a.areaOfEffect > 1) {
-          // Radius AoE: compact center count + bestCenters summary.
-          parts.push('centers=' + (a.validTargetTiles ? a.validTargetTiles.length : 0));
-          if (a.bestCenters && a.bestCenters.length) {
-            var bestRendered = a.bestCenters.map(function(bc) {
-              var segs = ['(' + bc.x + ',' + bc.y + ')'];
-              if (bc.enemies && bc.enemies.length)
-                segs.push('e:' + bc.enemies.join(','));
-              if (bc.allies && bc.allies.length)
-                segs.push('a:' + bc.allies.join(','));
-              return segs.join(' ');
-            }).join('  ');
-            extraLines.push('best: ' + bestRendered);
-          }
-        } else {
-          // Point-target: show occupied tiles with markers.
-          // Compact mode (totalTargets > 0): only occupied tiles in the list.
-          // Verbose mode: full tile list with all tiles.
-          var wantsAlly = a.target && (a.target.indexOf('ally') !== -1 || a.target.indexOf('self') !== -1);
-          var wantsEnemy = a.target && a.target.indexOf('enemy') !== -1;
-          var tiles = a.validTargetTiles || [];
-          var total = a.totalTargets || tiles.length;
-          var hits = 0;
-          var rendered = tiles.map(function(t) {
-            var occ = t.occupant;
-            var hit =
-              (wantsAlly && (occ === 'self' || occ === 'ally')) ||
-              (wantsEnemy && occ === 'enemy');
-            if (hit) hits++;
-            var marker = hit ? '*' : '';
-            var suffix = t.unitName ? '«' + t.unitName + '»' : '';
-            return marker + '(' + t.x + ',' + t.y + ')' + suffix;
-          }).join(' ');
-          var empty = total - tiles.length;
-          var emptyStr = empty > 0 ? '  (' + empty + ' empty)' : '';
-          parts.push('hits=' + hits + ': ' + (rendered || '(none in range)') + emptyStr);
-        }
-      }
-      return [parts.join(' ')].concat(extraLines);
-    }
-    // Pre-pass: assign disambiguation suffixes to nameless units with duplicate jobs
-    // within a team. Keyed by \"team|jobName\", counts how many units share that key,
-    // then numbers them in scan order. Single instances get no suffix.
-    var groupCounts = {};
-    u.forEach(function(v) {
-      if (v.name) return;  // named story chars never get #N
-      var key = (v.team || 0) + '|' + (v.jobName || '?');
-      groupCounts[key] = (groupCounts[key] || 0) + 1;
-    });
-    var groupSeen = {};
-    function disambiguate(v) {
-      if (v.name) return null;  // named units don't need disambiguation
-      var key = (v.team || 0) + '|' + (v.jobName || '?');
-      if ((groupCounts[key] || 0) < 2) return null;  // singletons don't need numbering
-      groupSeen[key] = (groupSeen[key] || 0) + 1;
-      return '#' + groupSeen[key];
-    }
-    u.forEach(function(v) {
-      var t = v.team === 0 ? 'PLAYER' : v.team === 2 ? 'ALLY' : 'ENEMY';
-      var nm = v.name ? v.name + ' ' : '';
-      var jn = v.jobName || '?';
-      var disambig = disambiguate(v);
-      var jnStr = disambig ? jn + ' ' + disambig : jn;
-      var ex = '';
-      if (v.isActive) ex += ' *ACTIVE*';
-      if (v.lifeState) {
-        ex += ' [' + v.lifeState;
-        if (v.lifeState === 'dead' && v.deathCounter > 0)
-          ex += ' ' + v.deathCounter + '/3';
-        ex += ']';
-      }
-      if (v.statuses && v.statuses.length) ex += ' [' + v.statuses.join(',') + ']';
-      if (v.chargingAbility) ex += ' {casting ' + v.chargingAbility + ' CT=' + v.chargeCt + '}';
-      if (v.elementWeak && v.elementWeak.length) ex += ' weak:' + v.elementWeak.join(',');
-      if (v.elementAbsorb && v.elementAbsorb.length) ex += ' absorb:' + v.elementAbsorb.join(',');
-      console.log('    [' + t + '] ' + nm + '(' + jnStr + ') (' + v.x + ',' + v.y + ') HP=' + v.hp + '/' + v.maxHp + ' dist=' + (v.distance ?? '?') + ex);
-      // Show equipped passives on a second line if present
-      var passives = [];
-      if (v.reaction) passives.push('R:' + v.reaction);
-      if (v.support) passives.push('S:' + v.support);
-      if (v.movement) passives.push('M:' + v.movement);
-      if (passives.length) console.log('      equip: ' + passives.join(' | '));
-      // Show per-unit abilities for non-active units (active unit shown separately below).
-      // Each ability may render 1-2 lines (header + optional best-centers).
-      if (!v.isActive && v.abilities && v.abilities.length) {
-        v.abilities.forEach(function(a) {
-          var lines = fmtAb(a);
-          console.log('      - ' + lines[0]);
-          for (var i = 1; i < lines.length; i++) console.log('        ' + lines[i]);
-        });
-      }
-    });
-    // Tiles
-    var tiles = d.validPaths?.ValidMoveTiles;
-    if (tiles) console.log('  Tiles: ' + tiles.desc);
-    // Attack tiles
-    var atk = d.validPaths?.AttackTiles?.attackTiles || [];
-    atk.forEach(function(a) {
-      if (a.occupant !== 'empty')
-        console.log('    Attack ' + a.arrow + ' (' + a.x + ',' + a.y + '): ' + a.occupant + (a.jobName ? ' (' + a.jobName + ')' : '') + (a.hp != null ? ' HP=' + a.hp : ''));
-    });
-    // Facing
-    var f = d.validPaths?.RecommendedFacing;
-    if (f) console.log('  ' + f.desc);
-    // Abilities (active unit) — one or two lines per ability.
-    var activeUnit = d.battle?.units?.find(function(x){return x.isActive});
-    var ab = activeUnit?.abilities;
-    if (ab && ab.length) {
-      console.log('  Abilities:');
-      ab.forEach(function(a) {
-        var lines = fmtAb(a);
-        console.log('    - ' + lines[0]);
-        for (var i = 1; i < lines.length; i++) console.log('      ' + lines[i]);
-      });
-    }
-  "
-}
 
 scan_move() { echo "[USE screen] scan_move is deprecated. Use: screen"; screen; }
 scan_move_full() { echo "[USE screen -v] scan_move_full is deprecated. Use: screen -v"; screen -v; }

@@ -171,5 +171,23 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("Martial Arts", result.Value.skillsetName);
         }
 
+        [Theory]
+        // Instant action abilities have CastSpeed=0 (resolve immediately).
+        [InlineData("Focus", 0)]
+        [InlineData("Potion", 0)]
+        // Cast-time spells have CastSpeed>0 (queued; resolve when CT counter reaches 100).
+        // Values sourced from ActionAbilityLookup.cs skillset tables.
+        [InlineData("Cure", 25)]
+        [InlineData("Fire", 25)]
+        [InlineData("Firaga", 15)]
+        [InlineData("Haste", 50)]
+        [InlineData("Holy", 17)]
+        public void FindAbility_SurfacesCastSpeed(string abilityName, int expectedCastSpeed)
+        {
+            var result = BattleAbilityNavigation.FindAbility(abilityName);
+            Assert.NotNull(result);
+            Assert.Equal(expectedCastSpeed, result.Value.castSpeed);
+        }
+
     }
 }

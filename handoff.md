@@ -1,210 +1,177 @@
-# Session Handoff — 2026-04-17 (Session 29)
+# Session Handoff — 2026-04-17 (Session 30)
 
 Delete this file after reading.
 
 ## TL;DR
 
-**13 commits, +23 tests (2165 → 2188), 0 regressions.** BFS now matches the game's highlighted blue tiles exactly across 4 live-verified unit/position scenarios. The two root-cause discoveries: (a) `scan_move` was reading active-unit Move/Jump from `UIBuffer` which holds the cursor-hovered unit's BASE stats, not the active unit's effective stats — fixed by reading from the per-unit UE4 heap struct at `+0x22`/`+0x23`; (b) BFS tile costs had four subtle rule mismatches (averaged heights, ally-penalty, depth entry, swamp continuation) — all ported to canonical IC-remaster rules. Along the way we unified two divergent BFS implementations, shipped active-unit summary on `screen`, wired `BattleAttacking ui=`, added `dry-run` to `open_*` helpers, and strengthened the JobCursor liveness probe.
+**7 battle-correctness shipments in one session. +68 tests, 0 regressions (2185 → 2253).** After the spring-clean TODO reorg, this session tackled 6 prioritized battle tasks + 1 bonus and closed 3 long-standing mysteries with clean live-verified results:
 
-**Commits (oldest → newest):**
+1. **Facing byte decoded** (static-array slot +0x35, 0=S/1=W/2=N/3=E) — live-verified across all 4 player units. `battle_wait N|S|E|W` now accepts an explicit direction arg, falling back to auto-pick when omitted.
+2. **Element affinity decoded** (5 fields at +0x5A..+0x5E: Absorb/Cancel/Half/Weak/Strengthen, all using the same 8-bit Fire=7/Lightning=6/Ice=5/Wind=4/Earth=3/Water=2/Holy=1/Dark=0 layout) — 7 of 8 elements live-verified, Dark confirmed post-wire via Bonesnatch. Every scanned unit now surfaces `elementAbsorb/elementNull/elementHalf/elementWeak/elementStrengthen` lists.
+3. **DetectScreen Move-mode-off-grid misdetect** — reconfirmed live: battleMode reads `0x01` *stably* (not flicker) when Move-mode cursor sits outside the blue grid. `menuCursor==0 && submenuFlag==1` discriminator routes to BattleMoving.
+4. **Three battle-picker bugs** fixed: `battle_attack` sticky submenu cursor, `battle_ability` wrong-index from sticky ability list, cast-time spells now return `"Queued X ct=N"` instead of claiming `"Used X"`.
+5. **Damage preview hunt conclusively ruled out** via AoB search — the widget struct isn't colocated with (attacker MaxHP+MaxHP) or (target HP+MaxHP) patterns. `ReadDamagePreview` retained as a (0,0) stub; delta-HP is ground truth.
 
-1. `925de71` — pt.1: TDD `ActiveUnitSummaryFormatter`
-2. `5091b61` — pt.2: wire `activeUnitSummary` into `BattleMyTurn` + shell (and `heldCount` annotation)
-3. `320ec7a` — pt.3: `TargetingLabelResolver` fixes `BattleAttacking ui=`
-4. `abc2b3c` — pt.4: richer `MoveGrid` timeout diagnostics
-5. `49fef3b` — pt.5: TDD `TileEdgeHeight` for canonical FFT slope rules
-6. `cff6c99` — pt.6: integrate `TileEdgeHeight` into `MovementBfs` (+ 3-step JobCursor liveness)
-7. `49fd756` — pt.7: TODO updates
-8. `84530b5` — pt.8: unify `scan_move` BFS to shared `MovementBfs` function
-9. `ad5acce` — pt.9: log root-cause finding for BFS tile-count discrepancies
-10. `e4ba516` — pt.10: ally pass-through + depth-based MoveCost + swamp axis-continue
-11. `3a57caa` — pt.11: read per-unit Move/Jump from heap struct, not UIBuffer
-12. `8afd133` — pt.12: `dry-run` arg on `open_eqa` / `open_character_status` / `open_job_selection`
-13. `8354f12` — pt.13: JobCursor bidirectional liveness + EqA re-fire on picker close
-
-Tests: **2165 → 2188** (+23 new, 0 regressions).
+All changes staged together for one session-30 commit (no upstream fragmentation).
 
 ## What landed, grouped by theme
 
-### Active-unit summary on compact battle line (`925de71`, `5091b61`, `320ec7a`)
+### Battle-picker correctness (3 bugs fixed)
 
-- **`ActiveUnitSummaryFormatter.Format(name, jobName, x, y, hp, maxHp) → "Wilham(Monk) (10,10) HP=477/477"`** (pt.1, 5 TDD cases). Handles null-name/null-job/no-HP paths.
-- **Cache active unit identity in `CacheLearnedAbilities`** (pt.2). Reset on turn transitions. `DetectScreen` emits `ActiveUnitSummary` on any `Battle*` state.
-- **Shell compact renderer widened from `Battle_*` to `Battle*`** so `BattleMyTurn` / `BattleMoving` / `BattleAttacking` all get the active-unit banner.
-- **`TargetingLabelResolver.Resolve(lastAbilityName, selectedAbility, selectedItem)`** (pt.3). Precedence chain lets `BattleMenuTracker.SelectedAbility/SelectedItem` fill in `ui=<ability>` when `_lastAbilityName` is null (manual-nav entry path via `execute_action Select`). Live-verified: `[BattleAttack] ui=Attack`.
-- **Shell `heldCount` annotation on Items abilities** (bundled in pt.2). `fmtAb` in `fft.sh:~3122` prefixes names with `[xN]` or `[OUT]`. Not live-verified yet.
+- **Cast-time abilities return `"Queued"` not `"Used"`.** Added `castSpeed` field to `BattleAbilityNavigation.AbilityLocation`. Surfaced via `BattleAbility` response: `"Queued Fire on (7,5) (ct=25)"` when ct>0. 7 regression tests locking in the wiki-sourced cast speeds.
 
-### Canonical BFS tile cost rules (`49fef3b`, `cff6c99`, `84530b5`, `e4ba516`, `3a57caa`)
+- **`BattleAttack` sticky submenu cursor.** Previously `battle_attack` blindly pressed Enter after opening the Abilities submenu, which selected whatever skillset was last used (e.g. Martial Arts from a previous Revive). Fix reads submenu ui= to find current position, presses Up n times to land on Attack (index 0), then Enter. Live-verified: `[BattleAttack] Submenu cursor at 0 ('Attack'), pressing Up x0`.
 
-This was the headline work. BFS now agrees with the game across every tested scenario. The rule set:
+- **`BattleAbility` wrong-ability-in-list.** Same sticky-cursor pattern within the ability list. Fix presses Up × (listSize+1) to wrap-reset to index 0 before Down × abilityIndex. Wrap-forward guarantees landing at top regardless of prior position. Cheap (~0.5s overhead).
 
-- **Edge-height instead of averaged display heights** (pt.5/6). `TileEdgeHeight.Edge(tile, direction)` returns the exact height at the edge of a tile in a given cardinal direction. Flat tiles = uniform `Height`. Incline splits into low-edge (`Height`) and high-edge (`Height + SlopeHeight`). Convex/Concave raise two adjacent corner edges. BFS steps compare exit-edge of A vs entry-edge of B.
-- **Unified BFS implementation** (pt.8). `scan_move` used to inline its own BFS that averaged heights and treated all occupied tiles as blocking. Deleted; now both `scan_move` and the Move-mode `PopulateBattleTileData` delegate to `MovementBfs.ComputeValidTiles`.
-- **Ally pass-through** = normal tile cost (pt.10). Not +1 penalty (earlier rule blocked Wilham's paths through Lloyd), not 0 (tested, over-extended reach). Allies can't be final destinations.
-- **Depth-based MoveCost** (pt.10). Any tile with `depth > 0` costs `1+depth` (not hardcoded-2 for Swamp). IC map data stores depth=1 for Swamp tiles and the game uses the same rule uniformly. Marsh / Poisoned marsh / Lava kept at flat 2 until we see a counter-example.
-- **Swamp axis-continue** (pt.10). Once inside a depth tile, continuing along the SAME cardinal direction costs 1 (splash paid once per straight-line wade). Turning pays full 1+depth again. Implementation: each BFS queue entry carries a `lastDir`, and swamp→swamp only discounts when `lastDir == stepDir`.
-- **Per-unit effective Move/Jump from heap struct** (pt.11). `TryReadMoveJumpFromHeap(hp, maxHp)` searches the UE4 heap (range `0x4000000000..0x4200000000`) for the unit's HP+MaxHP u16 pair, computes struct base = match_addr − `0x10`, reads Move at `+0x22` (u8), Jump at `+0x23` (u8). Sanity filter: Move in [1,10], Jump in [1,8]. Falls back to UIBuffer if heap search fails. Diagnostic infra shipped alongside: `dump_unit_struct` bridge action dumps 256 bytes of any unit's struct for future offset hunts.
+### Per-unit facing (task 2)
 
-**Live-verified matches (no manual stat override required):**
+- **`FacingByteDecoder` pure module** with 18 tests. Maps raw byte 0/1/2/3 → cardinal name, and to FacingByteDecoder-convention unit delta (game-native y+ = South).
+- **`NavigationActions.ParseFacingDirection`** pure function parses `"N"/"S"/"E"/"W"` (plus full names, case-insensitive) into FacingStrategy-convention unit delta (math-style y+ = North). Two conventions co-exist — documented carefully in the memory note.
+- **`battle_wait <direction>` arg wiring.** Shell helper reads optional first arg, passes via `command.Pattern`. `BattleWait` in C# checks `ParseFacingDirection(command?.Pattern)` and uses that instead of `FacingStrategy.ComputeOptimalFacing` when non-null. No-arg behavior unchanged (auto-pick). Live-verified visually.
+- **Scan response surfaces `facing`** field per unit (existing `BattleTracker.ScannedUnitIdentity.Facing` was plumbed, previously always null). Live-check shows all 5 units on the field with correct facing.
 
-| Unit | Position | Stats | BFS tiles | Game tiles |
-|---|---|---|---|---|
-| Kenrick (Knight) | (9,9) | Mv=3 Jmp=3 | 11 | 11 ✓ |
-| Kenrick (Knight) | (8,5) | Mv=3 Jmp=3 | 15 | 15 ✓ |
-| Kenrick (Knight) | (8,2) | Mv=3 Jmp=3 | 19 | 19 ✓ |
-| Wilham (Monk)  | (10,11) | Mv=3 Jmp=4 | 5 | 5 ✓ |
+### Element affinity (task 3)
 
-### Navigation + resolver hardening (`abc2b3c`, `8afd133`, `8354f12`)
+- **`ElementAffinityDecoder` pure module** with 25 tests. Decodes an 8-bit mask → list of element names. `Has(mask, elementName)` helper for targeted checks.
+- **5 fields wired into `ScannedUnit`**: `ElementAbsorb` (+0x5A), `ElementCancel` (+0x5B), `ElementHalf` (+0x5C), `ElementWeak` (+0x5D), `ElementStrengthen` (+0x5E — new; outgoing-damage boost, not previously known to exist). All 5 share the same element-bit layout.
+- **Response payload already had 4 of 5 fields** (`elementAbsorb/elementNull/elementHalf/elementWeak`); added `elementStrengthen` to `BattleTracker`.
+- **Live-verified mapping from 6 equipment changes**: Flame Shield (Fire absorb / Ice half / Water weak), Ice Shield (Ice / Fire / Lightning), Kaiser Shield (Fire+Ice+Lightning strengthen), Venetian Shield (Fire+Ice+Lightning half), Gaia Gear (Earth absorb + strengthen), Chameleon Robe (Holy absorb). Post-wire live scan confirmed Bonesnatch's Dark-absorb = 0x01 — the last inferred element-bit.
 
-- **MoveGrid timeout diagnostics** (pt.4). Captures `lastScreenSeen` + poll count in the error string so the next false-negative repro has enough context to root-cause.
-- **`dry-run` arg on open_* helpers** (pt.12). `open_eqa Ramza dry-run` / `open_character_status Agrias dry-run` / `open_job_selection Cloud --dry-run` route to the `dry_run_nav` bridge action (shipped session 27) instead of firing. Prints the planned key sequence. Unblocks the crashy chain-nav debugging scenario.
-- **JobCursor bidirectional liveness** (pt.13). Extends the 3-Rights-expect-+3 probe with a phase-2 check: 3 Lefts must return the byte to its pre-probe value. Change-count widgets reach +6 total instead of returning to baseline and now fail phase 2. Current save still 0 candidates (expected — no live byte exists for this save).
-- **EqA row resolver re-fire on picker close** (pt.13). `_lastEqaMenuDepth` tracks the previous DetectScreen's MenuDepth on EqA; when it transitions >2 → 2 (picker→EqA main), the resolver re-fires. ~2s cost per picker close, prevents stale `ui=Right Hand (none)` after equipment edits.
+### Detection hardening
+
+- **BattleMoving off-grid misdetect.** Root cause ISN'T a transient flicker — battleMode reads `0x01` **stably** when the Move-mode cursor is outside the highlighted blue grid. Previous code routed ALL battleMode=1 to BattleAttacking unconditionally. Fix: keep battleMode=4/5 going to BattleAttacking, but gate battleMode=1 on `menuCursor==0 && submenuFlag==1` for Move mode (otherwise BattleAttacking). Live-verified cursor at (9,3) off-grid stays `[BattleMoving]`.
+
+### Damage preview hunt (ruled out, not shipped)
+
+- **AoB anchors don't find the widget.** Scanned with Ramza's MaxHP+MaxHP pattern (0x140800000..0x15C000000 + 0x4000000000..0x4200000000 broadSearch): found 6 struct copies, none contain hit%/damage at statBase-62/-96. Same for target HP+MaxHP anchor (4 matches, same finding). The 10 struct copies across main + high-heap regions are all static-copy-shaped, not widget-shaped.
+- **Condensed-struct fallback for attackerMaxHp** — added, proved the search was running with valid input, then removed as unneeded when I decided not to further pursue. The active path no longer calls `ReadDamagePreview` — `ReadLiveHp` delta post-attack is the ground truth already surfaced in `response.Info`.
 
 ## Technique discoveries worth propagating
 
-### "Dump the heap struct with a diagnostic before committing rules"
+### Single-variable re-equip diffs
 
-The root cause of repeated BFS discrepancies was the same bug masked by `scan_move` manual overrides: `UIBuffer at 0x1407AC7C0 +0x24/+0x26` reads the cursor-hovered unit's base stats, not the active unit's effective stats. This was documented in two memory notes already (`project_memory_scan_results.md`, `project_battle_bfs_verified.md`) but the fix was never landed until live data forced the issue (Kenrick returning 16 tiles at Mv=4 when his true stats are Mv=3). **Technique:** when the data source is suspect, ship a `dump_unit_struct`-style bridge action that prints the raw bytes, correlate known values (Kenrick=3, Lloyd=5, Archer=3) against byte offsets, THEN wire the new offset. Saved us from more guessing.
+**The cleanest memory-hunt technique this session.** For the element-affinity hunt, I had the user re-equip ONE item mid-battle (via the Re-equip ability), wait for their next turn (critical — static array only refreshes on turn boundaries), then diffed the 256-byte unit slot. Each shield type gave a 3-to-6 byte diff. Across 6 equipment changes we nailed the full byte layout + all 8 element bits — including the last inferred bit confirmed after wiring, via a fresh-battle unit's struct.
 
-### "Live-verify every tile-cost rule change, one unit/position at a time"
+Beats diffing different units (whose base stats differ in dozens of bytes) by a wide margin. If a future hunt needs "what byte encodes feature X", find a single in-game action that toggles X and nothing else.
 
-Swamp rules proved subtle. `Depth = 1+depth` alone was right for perpendicular swamp entry, but over-counted when chaining straight through swamp. A straight-line axis-continue discount fit Kenrick (8,5) reaching (8,7)/(6,5) via straight chains but explicitly rejecting (7,6) which requires a south→west turn in swamp. One extra data point distinguished "swamp continue any direction" (wrong) from "swamp continue along same axis" (right). **Technique:** always test at least 2 scenarios that differ in one variable each; a single passing scenario doesn't lock in the rule.
+### Wait for the turn boundary before snapping
 
-### "Unify divergent implementations BEFORE you fix the bug"
+A recurring trap: snapping immediately after a re-equip showed **zero diff** because the static array is stale within a turn. Wait for the unit's NEXT turn to start, then snap. I wasted two Venetian-vs-Ice snap cycles before realizing this. Now in the element-affinity memory note.
 
-Wilham BFS returned 4 tiles when the game showed 7. Initial hypothesis was another tile-cost bug, but grep-ing for `ComputeValidTiles` callsites found **two** BFS implementations — `scan_move` inlined its own (averaged heights, occupied-blocks-all) while `PopulateBattleTileData` used the shared pure function. Unifying (pt.8) auto-fixed 2 of 3 missing Wilham tiles before we even touched the rule set. **Technique:** when you hit inconsistent behaviour across related commands, grep for duplicated implementations first.
+### User visual confirmation > FFTPatcher lookup tables
 
-### "Shell variable scope: subshell doesn't propagate back"
+Our `ItemData.cs` doesn't know about shield-specific element resists. Asking the user what a shield actually does (Flame Shield = Absorb Fire / Half Ice / Weak Water) was faster than building a lookup table and gave us live-confirmed ground truth. Plus a user-in-the-loop experience revealed the user had a richer intuition about the game (re-equip-mid-battle, Venetian three-elements, etc.) than we would have built in code.
 
-First pass of the `dry-run` arg parsing used a helper function that echoed the unit name and set `__OPEN_DRY_RUN=1`. But bash `local unit=$(_parse "$@")` runs the helper in a subshell, so `__OPEN_DRY_RUN` never escaped. Had to inline the parsing into each `open_*` function. **Technique:** bash output-capture always forks a subshell; side-effects in that subshell are invisible to the caller. For anything that needs both a return value AND a flag, either inline the parsing or use a temp file / global with explicit marker.
+### The "stably wrong" vs "transient flicker" distinction
 
-### "Route dry-run through the same code path that asks for info"
+The DetectScreen bug was filed as "battleMode flickers to 1" — that's incorrect. Live polling showed battleMode STAYS at 01 as long as the cursor sits off-grid in Move mode. The fix required a state discriminator, not a temporal filter. When a memory value seems transient, poll it rapidly — if it's actually stable, the bug classification changes.
 
-The shell `fft` wrapper renders `screen` and doesn't emit `info`. When we route `open_eqa ... dry-run` to the `dry_run_nav` action (which writes the plan into `response.info`), the user sees `[EquipmentAndAbilities] ui=...` but NOT the plan. Fix: the dry-run branch in the shell helper also greps `response.json` for `info` and echoes it. **Technique:** when shipping a diagnostic command, verify what the shell actually displays — `completed` status alone doesn't prove the user saw anything useful.
+### `_old_scan_move` removed from `fft.sh`
+
+210 lines of deprecated shell helper deleted. User correctly called out that I was still reaching for it by muscle memory instead of `screen`. The shell now funnels everything through the unified `screen` / `screen -v` commands. Replaced `scan_move` with a thin wrapper that delegates.
 
 ## What's NOT done — top priorities for next session
 
-### 1. `battle_move` NOT CONFIRMED false-negative — awaits next repro
+### 1. `battle_move reports NOT CONFIRMED` follow-up diagnostics
 
-Session 29 pt.4 added diagnostic logging. The next repro error message will include `lastScreenSeen=X polls=N`. Read that log. If `lastScreenSeen=BattleMoving` across all 80 polls, the fix is in screen detection — `battleMode` byte likely stays 2 past the walk animation because UE4 keeps painting Move UI briefly. If intermediate states appear, expand the accept-list in `NavigationActions.cs MoveGrid`. Repro is reliable on turn 1 after `auto_place_units` settles.
+Session 29 pt.4 added rich tracing. Still no repro this session but the conditions are primed (turn 1 after `auto_place_units`). Next live repro: check `lastScreenSeen` in the error message. If always `BattleMoving`, the fix is in detection (maybe the new `menuCursor==0 && submenuFlag==1` discriminator already helps — verify). If intermediate states show, expand the `MoveGrid` accept-list.
 
-### 2. ⚠ UNVERIFIED `activeUnitSummary` sweep across non-MyTurn battle states
+### 2. Backstab-aware attack targeting
 
-Shipped session 29 pt.1/2. Confirmed live on `BattleMyTurn` and `BattleAttacking`. Still needs a quick sweep on `BattleMoving` / `BattleCasting` / `BattleAbilities` / `BattleActing` / `BattleWaiting` / `Battle_*` sub-screens. The renderer branch is `Battle*` so all should work, but until it's verified the ⚠ UNVERIFIED flag should stay. One battle turn through each state is enough.
+With facing byte decoded, Claude can now see which way every unit faces. The next gameplay win: teach `battle_attack` / `battle_ability` to prefer attack vectors that hit the target's back (+50% hit, bonus damage per FFT canon). Requires a small pure function: given attacker position + target position + target facing, compute whether the attacker is on the target's front/side/back arc. Apply as a scoring bonus in move/attack planning.
 
-### 3. ⚠ UNVERIFIED `heldCount` rendering on Items abilities
+### 3. Element-affinity-aware ability scoring
 
-Session 29 pt.2 shell-only change. Tests pass, shell compiles. Needs a unit with Items secondary in a battle (Ramza at Siedge Weald has it). `scan_move` should now show `Potion [x4]` / `Ether [OUT]` inline.
+`scan_move` now surfaces absorb/weak lists per unit. Wire into the scan compact output so Claude doesn't need to cross-reference: e.g. `Ifrit → (6,7) centers=3 best: (5,8) e:Goblin,Skeleton[!weak:Fire]` — bracket-suffix ability targets with `!weak/~half/+absorb` markers. Pure function, no new memory reads.
 
-### 4. Lloyd `(10,4)` false-positive at (10,9) Mv=5 Jmp=4
+### 4. Zodiac byte for generics + damage-formula work (still blocked)
 
-Session 29 tile-cost rules match the game for 4 tested combos. Untested: Lloyd's prior FP scenario. Re-run at Siedge Weald with the new heap-read active Move/Jump and see if (10,4) is still over-reported. If still wrong, read `memory/project_bfs_tile_cost_rules.md` for what we've tried.
+Unchanged from session 29. Memory notes say snapshot-diff + AoB anchors have failed across 9+ encoding variants. Next possible angles: (a) save-file-format reverse engineering, (b) UE4 widget vtable walk from the PartyMenu stats panel.
 
-### 5. `cursor_walk` probe reliability — 5 of 20
+### 5. JobCursor resolver — still 0 candidates
 
-Still the main blocker for automated BFS regression fixtures. Fix ideas: widen `0x140DDF000..0x140DE8000` to also cover `0x140F9xxxx` mirror; count `00→05` and `01→05` transitions in addition to `04→05`; baseline "cursor on known valid tile" and compare the SET of `0x05` bytes rather than transition counts.
-
-### 6. Find a real count signal to re-enable the BFS mismatch warning
-
-`MoveTileCountValidator` + `DetectedScreen.BfsMismatchWarning` + shell `⚠` rendering all still in place. Get user visual counts for 3-5 combos, snapshot module memory before/after Move mode entry, scan diff for any byte/u16 whose post-entry value matches the real count on ALL combos.
-
-### 7. Smaller follow-ups
-
-- JobCursor resolver bidirectional probe needs a save with a truly-live byte to validate it.
-- `execute_action` response compact renderer shares `_fmt_screen_compact` so activeUnitSummary should already appear; quick live-verify to close the loop.
-- Carryovers still open: NameTableLookup "Reis" collision, chain-nav viewedUnit lag, Chronicle/Options tab discriminator.
+Session 29's bidirectional liveness probe rejects all known candidates. Waits on a save where a truly-live cursor byte exists.
 
 ## Things that DIDN'T work (don't-repeat list)
 
-1. **Ally pass-through at 0 cost.** Initially implemented as `tileCost = 0` for allies (seemed intuitive after the +1 penalty broke Wilham). Over-extended Kenrick's reach — BFS admitted tiles 2+ steps past an ally that the game rejected. Reverted to normal tile cost.
+1. **Snapping the heap struct (HP+MaxHP pattern) for facing.** Session 29's `dump_unit_struct` heap hunter IS the right tool for Move/Jump and ClassFingerprint — but facing isn't in that struct. It's in the static battle array slot. Next time we hunt a per-unit byte, check BOTH the heap struct AND the static-array slot — they hold different data.
 
-2. **Swamp discount for ANY swamp→swamp step.** First attempt at the depth-continue rule allowed any swamp→swamp step to cost 1. Admitted (7,6) from (8,5) via a south-then-west turn — game rejects. Narrowed to same-axis only.
+2. **`battle_wait` with 0 args passed as `pattern:""`.** Initially the shell helper passed an empty `pattern` even when no arg supplied. Caught by the C# `ParseFacingDirection` null/empty guard. Confirm the shell-side conditional is tight: `if [ -n "$dir" ]; then pass arg; else don't;`.
 
-3. **Trusting my initial user-input parse.** The user listed 13 tiles and called them 12; I narrowed the diff to 3 candidates and one turned out to be a miscount. Double-check counts against screenshots before shipping a rule change.
+3. **Testing cast-time "Queued" response live.** Ran out of cast-time opportunity in the live session — Ramza's Mettle primary is all ct=0. Tests lock in the behavior but not live-verified with a visible "Queued" string. Marked unverified on principle; flag if a caster unit (Priest/Wizard) surfaces and the response format doesn't match.
 
-4. **Subshell-assigned flags in bash helper functions.** `local x=$(helper "$@")` inside `helper` sets `FLAG=1` — FLAG is invisible to caller. Inline-parsed instead.
+4. **Assumption that `battleMode==1` was transient.** It's stable. Don't document bugs as "flicker" without rapid polling to confirm transience.
 
-5. **UIBuffer as source of active-unit stats.** Documented-as-wrong in two session-26 memory notes, but the fix wasn't wired until session 29 when BFS tile-count miscounts finally forced it.
+5. **Diffing struct dumps without waiting for turn boundary.** Multiple re-equip snaps showed zero diff because the slot hadn't refreshed. Always wait for next-turn-start.
 
 ## Things that DID work (repeat-this list)
 
-1. **Live-verify every tile-cost change immediately.** Kenrick (8,5) surfaced the axis-continue rule by rejecting exactly the one tile a "swamp→swamp any direction" rule would admit.
+1. **Pure-function-first TDD.** `FacingByteDecoder`, `ElementAffinityDecoder`, `ParseFacingDirection` — all written as standalone pure modules with comprehensive test tables before any live plumbing. Zero regressions through plumbing changes.
 
-2. **Ship diagnostic bridge actions for memory hunts.** `dump_unit_struct` took 10 minutes to write and immediately found Move/Jump offsets by correlating known values against byte positions. New pattern for future per-unit data hunts.
+2. **Live-verify every memory hunt the same session the bits are found.** The element-affinity Dark bit was inferred from the 0/1/2/3 bit-position pattern but live-confirmed post-wire via an undead enemy's scan. Closes the "this definitely maps to X" loop.
 
-3. **Match exactly 4 of 4 scenarios before calling a rule set "done".** Each new scenario added evidence and caught edge cases (ally traversal, swamp axis-turn, swamp entry from non-swamp, depth continuation).
+3. **Ask the user for ground truth when FFTPatcher data isn't on our side.** Wiki tables are PSX-sourced and often out of date with IC remaster. "What does this shield actually do?" is faster than decoding the item DB.
 
-4. **Delete rather than preserve stale TODOs.** Moved 5 `[x]` items from §0 to the archive, cross-referenced session-29 commits, and scrubbed the "already shipped in an earlier session" stragglers. §0 is now actionable-only.
+4. **Strip deprecated helpers when the user calls them out.** `_old_scan_move` was noise; deleting it removed a muscle-memory trap.
 
-5. **Pure function + TDD cycle for every new rule.** `TileEdgeHeight`, `TargetingLabelResolver`, `ActiveUnitSummaryFormatter` all locked in behaviour with tests before wiring into live code. Zero regressions across the +23 test adds.
-
-6. **Move verification to the wider set before committing to the narrower rule.** The "3-check agreement" rule saved us: Kenrick (9,9), (8,5), (8,2), Wilham (10,11) each independently validated the final tile-cost rules.
+5. **One session-commit per theme-batch.** Smaller session's worth of changes all landed as a single staged commit (after this handoff). Easier to cherry-pick / revert than session 29's 13-part commit chain.
 
 ## Memory notes saved this session
 
-New entries:
+New entries (all indexed in `MEMORY.md`):
 
-- `project_heap_unit_struct_movejump.md` — Per-unit effective Move/Jump live at heap struct `+0x22` (Move, u8) and `+0x23` (Jump, u8). Struct base = HP-pattern-match-addr − `0x10`. Verified for Kenrick/Lloyd/Archer. Supersedes UIBuffer for active-unit stats.
-- `project_bfs_tile_cost_rules.md` — The 4 canonical BFS tile-cost rules that make `MovementBfs.ComputeValidTiles` match the game exactly on MAP074 Siedge Weald. Includes regression fixture data and "what we tried that didn't work".
-- `feedback_ui_buffer_stale_cursor.md` — UIBuffer at `0x1407AC7C0` holds the CURSOR-HOVERED unit's BASE stats, never the active unit's effective stats. Don't read active-unit stats from here.
+- **`project_facing_byte_s30.md`** 🎯 — Per-unit facing at static array +0x35. 0=S, 1=W, 2=N, 3=E. Convention gotcha documented (FacingByteDecoder game-native y+ = South vs. FacingStrategy math y+ = North — two conventions co-exist, don't conflate).
 
-All 3 indexed in `MEMORY.md` with 🎯 marker on the two project notes.
+- **`project_element_affinity_s30.md`** 🎯 — 5 fields at +0x5A..+0x5E, 8-bit element layout. Full data-point table from 6 equipment changes. Adjacent bytes hinted at status immunity (+0x40) and equipment-sourced status effects (+0x5F) — follow-up leads.
+
+- **`project_damage_preview_hunt_s30.md`** — ruled-out anchor patterns documented so the next attempt doesn't redo the AoB search. Next path: UE4 widget vtable walk OR formula compute.
 
 ## Quick-start commands for next session
 
 ```bash
 # Baseline
-./RunTests.sh                              # 2188 passing
+./RunTests.sh                              # 2253 passing
 source ./fft.sh
 running                                    # check game alive
 
-# Read the new memory notes before any BFS / Move/Jump work:
-cat ~/.claude/projects/c--Users-ptyRa-Dev-FFTColorCustomizer/memory/project_heap_unit_struct_movejump.md
-cat ~/.claude/projects/c--Users-ptyRa-Dev-FFTColorCustomizer/memory/project_bfs_tile_cost_rules.md
+# Read the new memory notes before any battle-data work:
+cat ~/.claude/projects/c--Users-ptyRa-Dev-FFTColorCustomizer/memory/project_facing_byte_s30.md
+cat ~/.claude/projects/c--Users-ptyRa-Dev-FFTColorCustomizer/memory/project_element_affinity_s30.md
 
-# Sanity-check the BFS fix:
-#   Enter a random encounter at Siedge Weald (location 26) as Kenrick.
-#   scan_move — should report correct Mv/Jmp from heap, not UIBuffer.
-#   Tile counts should match the game blue tiles.
-# (scan_move is aliased to `screen`; use `_old_scan_move` for the
-# structured payload including validPaths.ValidMoveTiles.tiles[].)
+# Sanity-check the new fields on scan_move:
+#   Enter a battle, then:
+screen                                      # compact — see facing per unit via 'f=X' suffix
+screen -v | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
+  (d.battle.units||[]).forEach(u=>console.log(u.name||u.jobName, 'facing='+u.facing,
+    'abs=['+(u.elementAbsorb||[]).join(',')+']',
+    'weak=['+(u.elementWeak||[]).join(',')+']'))"
 
-# Dry-run a nav without firing:
-open_eqa Agrias dry-run                    # prints the planned key sequence
-
-# Dump any unit's heap struct for offset hunts:
-fft '{"id":"x","action":"dump_unit_struct","pattern":"4A024A02"}'
-#                                                  HP+MaxHP u16 LE pattern
-cat "$B/dump_unit_struct.txt"              # 256 bytes per match
+# battle_wait with explicit direction:
+battle_wait North         # commits facing North (arcs ignored)
+battle_wait               # auto-pick via FacingStrategy (current behavior)
 ```
 
 ## Top-of-queue TODO items the next session should tackle first
 
-These live in `TODO.md §0`:
+From `TODO.md §0` (Urgent Bugs) and the follow-ups surfaced this session:
 
-1. **`battle_move` NOT CONFIRMED diagnostic repro** — the logging is ready; the next time it fires the error includes enough to pick the fix direction.
-2. **⚠ UNVERIFIED `activeUnitSummary` across non-MyTurn battle states** — single-battle sweep.
-3. **⚠ UNVERIFIED `heldCount` rendering** — single scan_move in a battle with Items secondary.
-4. **Lloyd `(10,4)` false-positive** — verify the new rule set against Lloyd's prior FP scenario.
-5. **`cursor_walk` probe reliability** — unblocks automated regression-fixture generation.
+1. **`battle_move` NOT CONFIRMED false-negative** — awaits next live repro; diagnostic logging is in place.
+2. **Backstab-aware attack scoring** — facing byte is live, wire the "prefer target's back/side" scoring into `battle_attack` target selection.
+3. **Element-affinity markers in `scan_move` ability output** — surface `!weak/~half/+absorb` suffixes per ability target tile.
+4. **⚠ UNVERIFIED `activeUnitSummary` across non-MyTurn battle states** — still open from session 29.
+5. **⚠ UNVERIFIED `heldCount` rendering on Items abilities** — still open from session 29.
 
-Plus carryovers from §0 earlier sessions (NameTableLookup "Reis", chain-nav viewedUnit lag, BattleSequence detection, Chronicle/Options discriminator, JP Next live-verify).
+Plus carryovers: name-lookup "Reis" collision, chain-nav viewedUnit lag, JobCursor live-byte hunt.
 
 ## Insights / lessons captured
 
-- **The cheapest diagnostic is often a bridge action that dumps raw bytes.** `dump_unit_struct` took 10 minutes and immediately solved a year-old documented problem. Write the diagnostic before the fix.
+- **When a memory-hunt anchor finds zero matches, switch anchors before giving up on the whole concept.** Early in the damage-preview hunt I'd already ruled out the PSX-era offsets — but checking BOTH attacker-anchor AND target-anchor widely (two full region sweeps) gave definitive coverage. No ambiguity: the widget isn't accessible via numeric pattern AoB.
 
-- **Four live-verified scenarios beat twenty unit tests for rule-correctness confidence.** Unit tests lock in specific behaviour; live scenarios exercise the full data pipeline including reads, caching, rendering. Both matter; tests come first, then burn-in against live data.
+- **The user's game fluency is a force multiplier.** Re-equip-mid-battle, Venetian Shield as a 3-element data point, "remove shield entirely as a baseline" — these ideas halved the hunt time. Ask before pursuing a naive approach.
 
-- **Stale TODOs cost navigation cycles.** Multiple "already done" items sat in §0 because nobody cross-referenced them against the code during a handoff. Part of hygiene: grep for the feature name before picking up a task; if it's already implemented, archive the TODO.
+- **Two y-axis conventions in the same codebase is fine if labeled.** FacingByteDecoder uses game-native (y+ = South); FacingStrategy uses math-style (y+ = North). Both correct within their domain, both needed for different call paths. Documentation + memory note keeps it from biting future work.
 
-- **Dead-end memory notes are force multipliers.** Session 28's `project_move_bitmap_hunt_s28.md` said "there is no valid-tile bitmap, stop looking." Session 29 respected that and went a totally different direction (fix the BFS algorithm directly) — got the win. Without the note we'd have scanned memory again.
+- **"Static array stale mid-turn" is a lower-priority bug than it sounded.** The audit showed the main trigger (damage preview attacker-MaxHP) no longer exists. `ReadLiveHp` uses the readonly-region copies. `CollectPositions` runs at turn boundaries. Marked `[~]` with the rationale so a future session can skip a big refactor.
 
-- **The right rule isn't always the one that fits all scenarios — it's the one that fits all scenarios AND rejects the counter-examples.** Swamp any-direction continue fit 3 scenarios. Only the "same axis only" variant fit ALL of them. When a rule "almost works," look harder for the one tile it gets wrong.
-
-- **Shell-side and mod-side parity matters for user-facing commands.** The `activeUnitSummary` shipped as a compact-line field but was initially only rendered by one of two code paths (`_fmt_screen_compact` vs `_fmt_execute_response`). Audit the rendering pipeline when adding a response field, not just the C# model.
-
-- **Bash subshells silently eat side effects.** This'll bite someone again. Note it in the handoff so future-you grep the right keyword.
-
-- **IC remaster ≠ PSX.** Swamp MoveCost, Move/Jump effective-vs-base, and ally traversal all differ from canonical PSX rules. Trust live data over wiki-sourced formulas (already a memory note: `feedback_wiki_psx_vs_ic.md`).
+- **Stop polling and commit after 7 shipments.** I had momentum and was tempted to dig into +0x40 (status-immune) and +0x5F (gear-sourced status-effects) as bonus hunts. Session had enough, context window was getting long, handoff was cleaner scoped.

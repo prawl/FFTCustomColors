@@ -372,11 +372,27 @@ namespace FFTColorCustomizer.GameBridge
             // battleMode values 1, 4, 5 all indicate "cursor in a targeting submode":
             //   4 = cursor on a valid instant-attack target
             //   5 = cursor on caster's self-target tile (cast-time)
-            //   1 = cursor on a tile that isn't a valid target (off-highlight)
+            //   1 = cursor on a tile that isn't a valid target (off-highlight) —
+            //       AMBIGUOUS with Move-mode's "cursor on non-movable tile". Session 30
+            //       confirmed: during BattleMoving, battleMode reads 1 when the cursor
+            //       sits on a tile outside the highlighted move grid. Discriminator:
+            //       menuCursor reflects the action menu item selected to reach this
+            //       state. Move = index 0, Abilities/targeting = index 1. When
+            //       battleMode==1 AND menuCursor==0, we're in Move mode on an
+            //       off-grid tile — route to BattleMoving, not BattleAttacking.
             // Cast-time and instant are indistinguishable from memory; callers track
             // cast-time via the ability that was selected (client-side state).
-            if (battleMode == 4 || battleMode == 5 || battleMode == 1)
+            if (battleMode == 4 || battleMode == 5)
                 return "BattleAttacking";
+            if (battleMode == 1)
+            {
+                // Move-mode-on-off-grid-tile signature: menuCursor=0 + submenuFlag=1
+                // (Move was selected from the action menu; submenu is active for the
+                // move grid UI). Real targeting has menuCursor>=1 OR submenuFlag=0.
+                if (menuCursor == 0 && submenuFlag == 1)
+                    return "BattleMoving";
+                return "BattleAttacking";
+            }
 
             // Waiting: facing selection post-Wait. battleMode=2 + menuCursor=2 distinguishes
             // from BattleMoving (same battleMode=2 but different cursor).
