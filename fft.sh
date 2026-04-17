@@ -443,7 +443,8 @@ _show_helpers() {
     check_unit <name>                     Quick stat dump for one unit
     view_unit <name>                      Read-only unit data (no nav)
     scan_inventory                        Open inventory tab + dump full list
-    return_to_world_map                   Universal escape back to WorldMap"
+    return_to_world_map                   Universal escape back to WorldMap
+    fft_resync                            Full state-reset without game restart (~5s vs ~45s)"
       ;;
     EquipmentAndAbilities)
       helpers="    change_secondary_ability_to <name>   Set secondary skillset
@@ -459,7 +460,8 @@ _show_helpers() {
     unequip_all <unit>                   Strip all equipment from a unit
     swap_unit <name>                     Cycle Q/E to named unit
     open_picker <unit> <slot>            Open equipment picker (weapon/shield/helm/garb/accessory)
-    return_to_world_map                  Universal escape back to WorldMap"
+    return_to_world_map                  Universal escape back to WorldMap
+    fft_resync                           Full state-reset without game restart (~5s vs ~45s)"
       ;;
     CharacterStatus)
       helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
@@ -468,12 +470,14 @@ _show_helpers() {
     swap_unit <name>                      Cycle Q/E to named unit
     check_unit <name>                     Quick stat dump for one unit
     open_picker <unit> <slot>             Open equipment picker (weapon/shield/helm/garb/accessory)
-    return_to_world_map                   Universal escape back to WorldMap"
+    return_to_world_map                   Universal escape back to WorldMap
+    fft_resync                            Full state-reset without game restart (~5s vs ~45s)"
       ;;
     JobSelection)
       helpers="    change_job_to <class>                 Change to named job class
     swap_unit <name>                      Cycle Q/E to named unit
-    return_to_world_map                   Universal escape back to WorldMap"
+    return_to_world_map                   Universal escape back to WorldMap
+    fft_resync                            Full state-reset without game restart (~5s vs ~45s)"
       ;;
     BattleFormation)
       helpers="    auto_place_units                      Accept default placement and start battle
@@ -659,6 +663,30 @@ block() {
 # Returns full JSON response — parse with grep or node.
 batch() {
   fft_full "{\"id\":\"$(id)\",\"action\":\"batch_read\",\"addresses\":[$1]}"
+}
+
+# get_flag <name>: Read a mod state flag. Returns value or '(unset)'.
+# Disk-backed via claude_bridge/mod_state.json — survives mod reloads but
+# not full game restarts (bridge dir may be wiped by rebuild; flags are
+# re-loaded if the file is still there).
+get_flag() {
+  local name="$1"
+  if [ -z "$name" ]; then echo "[get_flag] usage: get_flag <name>"; return 1; fi
+  fft "{\"id\":\"$(id)\",\"action\":\"get_flag\",\"searchLabel\":\"$name\"}"
+}
+
+# set_flag <name> <value>: Set a mod state flag to an integer.
+# Used for sticky UI caches / diagnostic toggles / session counters.
+# Not a save-file replacement — see ModStateFlags docs for scope.
+set_flag() {
+  local name="$1" val="$2"
+  if [ -z "$name" ] || [ -z "$val" ]; then echo "[set_flag] usage: set_flag <name> <int>"; return 1; fi
+  fft "{\"id\":\"$(id)\",\"action\":\"set_flag\",\"searchLabel\":\"$name\",\"searchValue\":$val}"
+}
+
+# list_flags: Dump all currently-set mod state flags.
+list_flags() {
+  fft "{\"id\":\"$(id)\",\"action\":\"list_flags\"}"
 }
 
 # =============================================================================
@@ -1144,6 +1172,56 @@ return_to_world_map() {
   done
   echo "[return_to_world_map] ERROR: stuck at $(_current_screen) after 8 escapes"
   return 1
+}
+
+# fft_resync: Full stuck-state recovery WITHOUT restarting the game.
+# Much faster than `restart` (~5s vs ~45s) and preserves mod memory
+# (resolved heap addresses, state flags, caches).
+#
+# Steps:
+#   1. Escape up to WorldMap with 2-consecutive-confirm detection
+#      (defends against false WorldMap reads during escape storm).
+#   2. Hard-reset the C# ScreenStateMachine to WorldMap.
+#   3. Clear every auto-resolve latch (EqA row, picker cursor, job
+#      cursor, party-menu cursor, equip-picker cursor).
+#   4. Final `screen` read to confirm recovery.
+#
+# Use when: the shell reports a state but screenshots show a different
+# game state, or a compound nav helper lands in an unexpected screen,
+# or after any suspected desync. Safe from any non-battle state.
+#
+# DO NOT use during a battle — the 10 escapes + state reset will open
+# the pause menu and rearrange battle state unpredictably.
+fft_resync() {
+  local _FFT_ALLOW_CHAIN=1
+  local consecutive=0
+  local max_attempts=10
+  echo "[fft_resync] escaping to WorldMap (max $max_attempts attempts)..."
+  for i in $(seq 1 $max_attempts); do
+    local cur=$(_current_screen)
+    if [ "$cur" = "WorldMap" ]; then
+      consecutive=$((consecutive + 1))
+      if [ $consecutive -ge 2 ]; then
+        echo "[fft_resync] confirmed WorldMap (2 consecutive reads)"
+        break
+      fi
+      sleep 0.2
+      continue
+    fi
+    consecutive=0
+    fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":0}" >/dev/null
+    _FFT_DONE=0
+    sleep 0.4
+  done
+  if [ $consecutive -lt 2 ]; then
+    echo "[fft_resync] ERROR: could not confirm WorldMap after $max_attempts attempts — detection may be broken. Try \`restart\`."
+    return 1
+  fi
+  # Reset C# state machine + all auto-resolve latches.
+  fft "{\"id\":\"$(id)\",\"action\":\"reset_state_machine\"}" 2>&1 | tail -2
+  _FFT_DONE=0
+  # Confirm via fresh screen read.
+  screen
 }
 
 # view_unit <name>: Read-only data dump for a unit. Combines roster

@@ -1474,10 +1474,28 @@ namespace FFTColorCustomizer.GameBridge
             SendKey(VK_ENTER);
             Thread.Sleep(300); // Brief wait before starting poll
 
-            // 4.5. Hold Ctrl to speed up movement
-            SendInputKeyDown(VK_CONTROL);
+            // 4.5. Hold Ctrl to speed up movement — FOCUS-AWARE.
+            //
+            // Ctrl must be asserted GLOBALLY via SendInput for FFT's
+            // DirectInput reader to register the held state (PostMessage
+            // alone doesn't satisfy DirectInput). But that means every
+            // window sees Ctrl held. If the user tabs to their terminal
+            // to type feedback, every keystroke becomes Ctrl+key — broken
+            // copy/paste, broken text input.
+            //
+            // Fix (session 24): only hold Ctrl while the game window has
+            // foreground. In the poll loop, check foreground each tick;
+            // release globally when focus leaves, re-assert when it
+            // returns. The PostMessage path keeps the game-side signal
+            // alive during poll iterations.
+            bool ctrlHeldGlobally = false;
+            if (IsGameForeground())
+            {
+                SendInputKeyDown(VK_CONTROL);
+                ctrlHeldGlobally = true;
+            }
             _input.SendKeyDownToWindow(_gameWindow, VK_CONTROL);
-            ModLogger.Log("[Travel] Holding Ctrl for fast-forward");
+            ModLogger.Log($"[Travel] Holding Ctrl for fast-forward (globalHeld={ctrlHeldGlobally})");
 
             // 5-9. Poll until arrival or encounter
             var sw = Stopwatch.StartNew();
@@ -1488,14 +1506,34 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     Thread.Sleep(200);
 
+                    // Focus-aware Ctrl-hold maintenance. If the user tabs
+                    // away, release globally so typing isn't hijacked; when
+                    // they tab back, re-assert so fast-forward resumes.
+                    bool gameFg = IsGameForeground();
+                    if (gameFg && !ctrlHeldGlobally)
+                    {
+                        // Re-assert. SetForegroundWindow in SendInputKeyDown
+                        // is a no-op here because game already IS foreground.
+                        SendInputKeyDown(VK_CONTROL);
+                        ctrlHeldGlobally = true;
+                        ModLogger.Log("[Travel] Re-asserted Ctrl (game regained focus)");
+                    }
+                    else if (!gameFg && ctrlHeldGlobally)
+                    {
+                        SendInputKeyUp(VK_CONTROL);
+                        ctrlHeldGlobally = false;
+                        ModLogger.Log("[Travel] Released global Ctrl (user tabbed away)");
+                    }
+
                     // Check encounter via memory directly (faster than DetectScreen)
                     var encA = _explorer.ReadAbsolute((nint)0x140900824, 1);
                     var encB = _explorer.ReadAbsolute((nint)0x140900828, 1);
                     if (encA != null && encB != null && encA.Value.value != encB.Value.value)
                     {
                         // 6. Encounter detected — release Ctrl and report
-                        SendInputKeyUp(VK_CONTROL);
+                        if (ctrlHeldGlobally) SendInputKeyUp(VK_CONTROL);
                         _input.SendKeyUpToWindow(_gameWindow, VK_CONTROL);
+                        ctrlHeldGlobally = false;
                         ModLogger.Log("[Travel] Encounter detected, released Ctrl");
 
                         Thread.Sleep(500); // Let dialog settle
@@ -1532,10 +1570,10 @@ namespace FFTColorCustomizer.GameBridge
             }
             finally
             {
-                // 10. Always release Ctrl
-                SendInputKeyUp(VK_CONTROL);
+                // 10. Always release Ctrl (both paths).
+                if (ctrlHeldGlobally) SendInputKeyUp(VK_CONTROL);
                 _input.SendKeyUpToWindow(_gameWindow, VK_CONTROL);
-                ModLogger.Log("[Travel] Released Ctrl");
+                ModLogger.Log("[Travel] Released Ctrl (final)");
             }
 
             return response;
@@ -2857,6 +2895,22 @@ namespace FFTColorCustomizer.GameBridge
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        /// <summary>
+        /// True if the game window currently has focus. Used to gate global
+        /// SendInput calls so we don't hijack Ctrl/other modifiers when the
+        /// user has tabbed to another app (e.g. typing feedback to the AI
+        /// while travel fast-forward is running). Session 24 investigation:
+        /// globally-held Ctrl was turning every keystroke in the user's
+        /// terminal into Ctrl+letter shortcuts.
+        /// </summary>
+        private bool IsGameForeground()
+        {
+            return GetForegroundWindow() == _gameWindow;
+        }
 
         private void SendInputKeyDown(int vk)
         {

@@ -1038,6 +1038,8 @@ namespace FFTColorCustomizer.Utilities
             "read_dialogue", "write_byte", "dump_detection_inputs",
             "scrape_shop_items",
             "hold_key",
+            "get_flag", "set_flag", "list_flags",
+            "reset_state_machine",
             "resolve_picker_cursor",
             "resolve_job_cursor",
             "resolve_party_menu_cursor",
@@ -1057,6 +1059,28 @@ namespace FFTColorCustomizer.Utilities
             "open_eqa", "open_job_selection", "open_character_status",
             "auto_place_units"
         };
+
+        /// <summary>
+        /// Disk-backed named-flag store. Lazily initialized on first access
+        /// since the bridge directory may not exist yet at construction time.
+        /// Use for session-scoped caches (e.g. "last-observed party Tab"),
+        /// cross-bridge-session counters, diagnostic toggles. See
+        /// <see cref="ModStateFlags"/> docs for when to use and NOT use.
+        /// </summary>
+        private ModStateFlags? _stateFlags;
+        public ModStateFlags StateFlags
+        {
+            get
+            {
+                if (_stateFlags == null)
+                {
+                    if (!Directory.Exists(_bridgeDirectory))
+                        Directory.CreateDirectory(_bridgeDirectory);
+                    _stateFlags = new ModStateFlags(_bridgeDirectory);
+                }
+                return _stateFlags;
+            }
+        }
 
         public CommandWatcher(string modPath, IInputSimulator inputSimulator)
         {
@@ -1678,6 +1702,44 @@ namespace FFTColorCustomizer.Utilities
                         response.Status = "completed";
                         break;
 
+                    case "get_flag":
+                    {
+                        var name = command.SearchLabel ?? "";
+                        if (string.IsNullOrEmpty(name)) { response.Status = "failed"; response.Error = "searchLabel required (flag name)"; break; }
+                        var val = StateFlags.Get(name);
+                        response.Status = "completed";
+                        response.Info = val.HasValue ? $"{name}={val.Value}" : $"{name}=(unset)";
+                        response.ReadResult = new ReadResult
+                        {
+                            Address = name,
+                            Value = val ?? 0,
+                            Size = val.HasValue ? 1 : 0,
+                            Hex = val.HasValue ? val.Value.ToString() : "null",
+                        };
+                        break;
+                    }
+
+                    case "set_flag":
+                    {
+                        var name = command.SearchLabel ?? "";
+                        if (string.IsNullOrEmpty(name)) { response.Status = "failed"; response.Error = "searchLabel required (flag name)"; break; }
+                        int val = command.SearchValue;
+                        StateFlags.Set(name, val);
+                        response.Status = "completed";
+                        response.Info = $"Set {name}={val}";
+                        break;
+                    }
+
+                    case "list_flags":
+                    {
+                        var snap = StateFlags.Snapshot();
+                        response.Status = "completed";
+                        response.Info = snap.Count == 0
+                            ? "(no flags set)"
+                            : string.Join(", ", snap.Select(kv => $"{kv.Key}={kv.Value}"));
+                        break;
+                    }
+
                     case "read_block":
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         if (string.IsNullOrEmpty(command.Address)) { response.Status = "failed"; response.Error = "Address required"; break; }
@@ -2060,6 +2122,62 @@ namespace FFTColorCustomizer.Utilities
                             response.Error = $"Unknown screen: {screenName}. Valid: {string.Join(", ", Enum.GetNames<GameScreen>())}";
                         }
                         break;
+
+                    case "reset_state_machine":
+                    {
+                        // Infra action for `fft_resync`: hard-reset the
+                        // screen state machine to WorldMap + clear every
+                        // auto-resolve latch so the next screen calls re-
+                        // run fresh. Use after an escape-storm has
+                        // confirmed the game is ACTUALLY on WorldMap and
+                        // only the SM is stale. Does NOT fire any keys —
+                        // caller is responsible for escaping to WorldMap
+                        // first.
+                        var cleared = new List<string>();
+                        if (ScreenMachine != null)
+                        {
+                            ScreenMachine.SetScreen(GameScreen.WorldMap);
+                            cleared.Add("SM→WorldMap");
+                        }
+                        if (_resolvedPickerCursorAddr != 0)
+                        {
+                            _resolvedPickerCursorAddr = 0L;
+                            cleared.Add("pickerCursor");
+                        }
+                        if (_resolvedJobCursorAddr != 0 || _jobCursorResolveAttempted)
+                        {
+                            _resolvedJobCursorAddr = 0L;
+                            _jobCursorResolveAttempted = false;
+                            cleared.Add("jobCursor");
+                        }
+                        if (_resolvedPartyMenuCursorAddr != 0)
+                        {
+                            _resolvedPartyMenuCursorAddr = 0L;
+                            cleared.Add("partyMenuCursor");
+                        }
+                        if (_resolvedEquipPickerCursorAddr != 0 || _equipPickerCursorResolveAttempted)
+                        {
+                            _resolvedEquipPickerCursorAddr = 0L;
+                            _equipPickerCursorResolveAttempted = false;
+                            cleared.Add("equipPickerCursor");
+                        }
+                        if (_resolvedEqaColumnCursorAddr != 0 || _eqaColumnCursorResolveAttempted)
+                        {
+                            _resolvedEqaColumnCursorAddr = 0L;
+                            _eqaColumnCursorResolveAttempted = false;
+                            cleared.Add("eqaColumnCursor");
+                        }
+                        if (_eqaRowAutoResolveAttempted)
+                        {
+                            _eqaRowAutoResolveAttempted = false;
+                            cleared.Add("eqaRowAutoLatch");
+                        }
+                        response.Status = "completed";
+                        response.Info = cleared.Count == 0
+                            ? "reset_state_machine: nothing to clear (already fresh)"
+                            : $"reset_state_machine cleared: {string.Join(", ", cleared)}";
+                        break;
+                    }
 
                     case "hold_key":
                         // Holds a key down for a specified duration, then releases.
