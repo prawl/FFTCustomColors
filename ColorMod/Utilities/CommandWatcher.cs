@@ -33,6 +33,7 @@ namespace FFTColorCustomizer.Utilities
         private RosterReader? _rosterReader;
         private NameTableLookup? _rosterNameTable;
         private HoveredUnitArray? _hoveredArray;
+        private HpMpCache? _hpMpCache;
         private PickerListReader? _pickerListReader;
         private readonly BattleTurnTracker _turnTracker = new();
         private bool _movedThisTurn;
@@ -5894,6 +5895,7 @@ namespace FFTColorCustomizer.Utilities
                     if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
                     if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
                     if (_hoveredArray == null) _hoveredArray = new HoveredUnitArray(Explorer);
+                    if (_hpMpCache == null) _hpMpCache = new HpMpCache(_bridgeDirectory);
                     try
                     {
                         var slots = _rosterReader.ReadAll();
@@ -6032,13 +6034,32 @@ namespace FFTColorCustomizer.Utilities
                                         Accessory = lo.AccessoryName,
                                     };
                                 }
-                                // HP/MP are runtime-computed (not in roster slot),
-                                // but the hovered-unit heap array at ~0x200 stride
-                                // mirrors every active roster slot's MaxHp/Hp/Mp
-                                // at fixed offsets (+0x30..+0x36). Read them here.
-                                // The brave/faith doubling sanity check prevents
-                                // us from picking up ghost data in a slot that
-                                // hasn't been populated with this unit.
+                                // HP/MP are runtime-computed (not in roster slot).
+                                // The hovered-unit heap array only populates ~4
+                                // slots near the cursor — for every other unit
+                                // we fall back to the per-slot disk cache.
+                                // Each live observation updates the cache keyed
+                                // by equipment signature, so subsequent reads
+                                // surface the unit's HP/MP until equipment
+                                // changes (which invalidates the entry).
+                                int[] equipSig = new int[7];
+                                if (lo != null)
+                                {
+                                    equipSig[0] = lo.HelmId ?? 0xFFFF;
+                                    equipSig[1] = lo.BodyId ?? 0xFFFF;
+                                    equipSig[2] = lo.AccessoryId ?? 0xFFFF;
+                                    equipSig[3] = lo.WeaponId ?? 0xFFFF;
+                                    equipSig[4] = lo.LeftHandId ?? 0xFFFF;
+                                    equipSig[5] = 0xFFFF;
+                                    equipSig[6] = lo.ShieldId ?? 0xFFFF;
+                                }
+                                // The HoveredUnitArray only populates ~4 slots
+                                // per read (see project_hovered_unit_array_partial.md).
+                                // HpMpCache fills the gap: every successful live
+                                // observation is persisted keyed by (slot, equipSig),
+                                // so units the player has hovered previously still
+                                // surface HP/MP on subsequent reads. Equipment
+                                // changes invalidate the cached entry.
                                 var live = _hoveredArray.ReadStatsIfMatches(
                                     arrayIndex: s.SlotIndex,
                                     expectedBrave: s.Brave,
@@ -6049,6 +6070,19 @@ namespace FFTColorCustomizer.Utilities
                                     unit.MaxHp = live.MaxHp;
                                     unit.Mp = live.Mp;
                                     unit.MaxMp = live.MaxMp;
+                                    _hpMpCache.Set(s.SlotIndex, equipSig,
+                                        live.Hp, live.MaxHp, live.Mp, live.MaxMp);
+                                }
+                                else
+                                {
+                                    var cached = _hpMpCache.Get(s.SlotIndex, equipSig);
+                                    if (cached != null)
+                                    {
+                                        unit.Hp = cached.Hp;
+                                        unit.MaxHp = cached.MaxHp;
+                                        unit.Mp = cached.Mp;
+                                        unit.MaxMp = cached.MaxMp;
+                                    }
                                 }
                                 grid.Units.Add(unit);
                             }
