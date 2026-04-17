@@ -21,7 +21,7 @@ namespace FFTColorCustomizer.GameBridge
 
             int delta = bfsCount - gameCount.Value;
             string direction = delta > 0 ? "OVERCOUNT" : "UNDERCOUNT";
-            return $"[BFS {direction}] BFS reported {bfsCount} valid tiles; game memory reports {gameCount} (delta={delta}). BFS tile list may be wrong.";
+            return $"[BFS {direction}] BFS reported {bfsCount} valid tiles; game memory reports {gameCount} (delta={delta}). BFS tile list may be wrong. See FFTHandsFree/BFS_METHODOLOGY.md for the debugging playbook.";
         }
     }
 }
