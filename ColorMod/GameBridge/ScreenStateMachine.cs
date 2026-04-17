@@ -359,6 +359,18 @@ namespace FFTColorCustomizer.GameBridge
                 case GameScreen.OptionsSettings:
                     HandleOptionsSettings(vkCode);
                     break;
+                case GameScreen.SaveSlotPicker:
+                    HandleSaveSlotPicker(vkCode);
+                    break;
+            }
+        }
+
+        private void HandleSaveSlotPicker(int vk)
+        {
+            if (vk == VK_ESCAPE)
+            {
+                CurrentScreen = GameScreen.PartyMenuUnits;
+                Tab = PartyTab.Options;
             }
         }
 
@@ -541,10 +553,14 @@ namespace FFTColorCustomizer.GameBridge
                             _ => GameScreen.PartyMenuUnits
                         };
                     }
+                    else if (Tab == PartyTab.Options && OptionsIndex == 0)
+                    {
+                        CurrentScreen = GameScreen.SaveSlotPicker;
+                    }
                     else if (Tab == PartyTab.Options && OptionsIndex == 2)
                     {
                         // Settings is the only Options entry that opens a nested
-                        // screen we model here. Save/Load/ReturnToTitle/ExitGame
+                        // screen we model here. Load/ReturnToTitle/ExitGame
                         // trigger their own flows handled outside the menu tree.
                         CurrentScreen = GameScreen.OptionsSettings;
                     }
@@ -1179,6 +1195,13 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     new() { Key = "escape", Vk = VK_ESCAPE, Description = "Back to Options tab", ResultScreen = "partymenuoptions" },
                 },
+                GameScreen.SaveSlotPicker => new List<ValidAction>
+                {
+                    new() { Key = "up", Vk = VK_UP, Description = "Previous save slot" },
+                    new() { Key = "down", Vk = VK_DOWN, Description = "Next save slot" },
+                    new() { Key = "enter", Vk = VK_RETURN, Description = "Save to highlighted slot (may open overwrite confirmation)" },
+                    new() { Key = "escape", Vk = VK_ESCAPE, Description = "Cancel, back to Options tab", ResultScreen = "partymenuoptions" },
+                },
                 _ => new List<ValidAction>()
             };
         }
@@ -1238,8 +1261,9 @@ namespace FFTColorCustomizer.GameBridge
                 string highlighted = OptionsIndexToName(OptionsIndex);
                 string? resultScreen = OptionsIndex switch
                 {
+                    0 => "saveslotpicker",
                     2 => "optionssettings",
-                    _ => null // Save/Load/ReturnToTitle/ExitGame have their own flows
+                    _ => null // Load/ReturnToTitle/ExitGame have their own flows
                 };
                 actions.Add(new ValidAction
                 {

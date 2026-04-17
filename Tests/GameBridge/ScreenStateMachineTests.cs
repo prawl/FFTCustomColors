@@ -956,13 +956,44 @@ public class ScreenStateMachineTests
     }
 
     [Fact]
-    public void Options_EnterOnSave_DoesNotChangeScreen()
+    public void Options_EnterOnSave_OpensSaveSlotPicker()
     {
-        // Save (idx 0) doesn't open a nested screen via the state machine —
-        // the actual save action is handled by the existing `save` flow.
+        // Save (idx 0) opens the in-game save-slot picker.
         var sm = AtOptionsRoot();
         sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.SaveSlotPicker, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void Options_EscapeFromSaveSlotPicker_ReturnsToPartyMenuOptions()
+    {
+        var sm = AtOptionsRoot();
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.SaveSlotPicker, sm.CurrentScreen);
+        sm.OnKeyPressed(VK_ESCAPE);
         Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
+        Assert.Equal(PartyTab.Options, sm.Tab);
+    }
+
+    [Fact]
+    public void GetValidActions_SaveSlotPicker_IncludesUpDownEnterEscape()
+    {
+        var sm = AtOptionsRoot();
+        sm.OnKeyPressed(VK_RETURN); // → SaveSlotPicker
+        var actions = sm.GetValidActions();
+        Assert.Contains(actions, a => a.Key == "up" && a.Vk == VK_UP);
+        Assert.Contains(actions, a => a.Key == "down" && a.Vk == VK_DOWN);
+        Assert.Contains(actions, a => a.Key == "enter" && a.Vk == VK_RETURN);
+        Assert.Contains(actions, a => a.Key == "escape" && a.Vk == VK_ESCAPE);
+    }
+
+    [Fact]
+    public void GetValidActions_PartyMenuOptions_EnterOnSave_ResultScreenIsSaveSlotPicker()
+    {
+        var sm = AtOptionsRoot();
+        var actions = sm.GetValidActions();
+        var enter = actions.Single(a => a.Key == "enter");
+        Assert.Equal("saveslotpicker", enter.ResultScreen);
     }
 
     [Fact]

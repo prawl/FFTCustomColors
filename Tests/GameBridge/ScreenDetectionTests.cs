@@ -941,5 +941,53 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
             Assert.Equal("WorldMap", result);
         }
+
+        // --- SM override for detection-ambiguous screens ---
+        // SaveSlotPicker shares every detection-input byte with TravelList
+        // (session 2026-04-17 memory hunt: all 28 fields identical). The SM
+        // knows we're on SaveSlotPicker because the Enter-on-Save transition
+        // is explicit. When detection returns "TravelList" but SM says
+        // SaveSlotPicker, prefer SM.
+
+        [Fact]
+        public void ResolveAmbiguous_SMOnSaveSlotPicker_DetectionTravelList_ReturnsSaveSlotPicker()
+        {
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.SaveSlotPicker,
+                detectedName: "TravelList");
+            Assert.Equal("SaveSlotPicker", result);
+        }
+
+        [Fact]
+        public void ResolveAmbiguous_SMAgreesWithDetection_PassesThrough()
+        {
+            // SM says TravelList and detection says TravelList — no override.
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.TravelList,
+                detectedName: "TravelList");
+            Assert.Equal("TravelList", result);
+        }
+
+        [Fact]
+        public void ResolveAmbiguous_SMOnSaveSlotPicker_DetectionSaysBattle_TrustsDetection()
+        {
+            // If detection says anything OTHER than TravelList, it saw a real
+            // screen change — trust detection (SM is stale).
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.SaveSlotPicker,
+                detectedName: "BattleMyTurn");
+            Assert.Equal("BattleMyTurn", result);
+        }
+
+        [Fact]
+        public void ResolveAmbiguous_SMOnSaveSlotPicker_DetectionWorldMap_TrustsDetection()
+        {
+            // Escape closes the picker; detection catches up and says WorldMap.
+            // Don't force SaveSlotPicker over that.
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.SaveSlotPicker,
+                detectedName: "WorldMap");
+            Assert.Equal("WorldMap", result);
+        }
     }
 }

@@ -39,6 +39,23 @@ namespace FFTColorCustomizer.GameBridge
             21, // Fort Besselat
         };
 
+        /// <summary>
+        /// Override detection output when the SM has stronger signal than
+        /// memory reads. Currently handles one known-collision pair:
+        /// SaveSlotPicker (from PartyMenuOptions → Save) is byte-identical
+        /// to TravelList across all 28 detection inputs. The SM tracks the
+        /// Enter-on-Save transition explicitly, so when detection sees
+        /// TravelList but SM says SaveSlotPicker, trust the SM. All other
+        /// detection results pass through unchanged — they indicate real
+        /// screen transitions the SM may have missed.
+        /// </summary>
+        public static string ResolveAmbiguousScreen(GameScreen smScreen, string detectedName)
+        {
+            if (smScreen == GameScreen.SaveSlotPicker && detectedName == "TravelList")
+                return "SaveSlotPicker";
+            return detectedName;
+        }
+
         public static string Detect(
             int party, int ui, int rawLocation,
             long slot0, long slot9,

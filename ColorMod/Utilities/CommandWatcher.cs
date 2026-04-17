@@ -1252,6 +1252,18 @@ namespace FFTColorCustomizer.Utilities
 
                     var response = ExecuteCommand(command);
                     response.Screen ??= DetectScreenSettled();
+                    // Override detection-ambiguous names where the SM has a
+                    // stronger signal (e.g. SaveSlotPicker vs TravelList).
+                    if (response.Screen != null && ScreenMachine != null)
+                    {
+                        var resolved = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                            ScreenMachine.CurrentScreen, response.Screen.Name);
+                        if (resolved != response.Screen.Name)
+                        {
+                            ModLogger.Log($"[SM-Override] Detection={response.Screen.Name} → {resolved} (SM={ScreenMachine.CurrentScreen}).");
+                            response.Screen.Name = resolved;
+                        }
+                    }
                     SyncBattleMenuTracker(response.Screen);
 
                     // Attach rate-limit warning (set above if we auto-delayed).
@@ -2264,6 +2276,21 @@ namespace FFTColorCustomizer.Utilities
                 return response;
             }
 
+            // Apply SM override for detection-ambiguous screens (SaveSlotPicker
+            // vs TravelList). Without this, execute_action looks up paths on
+            // the wrong screen name after SM transitioned but detection stayed
+            // on the collision fingerprint.
+            if (ScreenMachine != null)
+            {
+                var resolved = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                    ScreenMachine.CurrentScreen, screen.Name);
+                if (resolved != screen.Name)
+                {
+                    ModLogger.Log($"[SM-Override] execute_action: detection={screen.Name} → {resolved} (SM={ScreenMachine.CurrentScreen}).");
+                    screen.Name = resolved;
+                }
+            }
+
             var paths = NavigationPaths.GetPaths(screen);
             if (paths == null || !paths.TryGetValue(pathName, out var path))
             {
@@ -2559,11 +2586,28 @@ namespace FFTColorCustomizer.Utilities
                 if (response.Screen == null)
                 {
                     response.Screen = DetectScreen();
+                    // Override detection-ambiguous names where the SM has a
+                    // stronger signal. If we override here, also skip the
+                    // SM-sync below — syncing SM to the stale detection
+                    // result (e.g. TravelList when SM correctly says
+                    // SaveSlotPicker) would undo the valid SM state.
+                    bool overrode = false;
+                    if (response.Screen != null && ScreenMachine != null)
+                    {
+                        var resolved = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                            ScreenMachine.CurrentScreen, response.Screen.Name);
+                        if (resolved != response.Screen.Name)
+                        {
+                            ModLogger.Log($"[SM-Override] Detection={response.Screen.Name} → {resolved} (SM={ScreenMachine.CurrentScreen}).");
+                            response.Screen.Name = resolved;
+                            overrode = true;
+                        }
+                    }
                     // Sync SM to detection result so the SM doesn't carry
                     // a stale state into the next key press. This handles
                     // transitions the SM doesn't model (WorldMap↔LocationMenu,
                     // shop screens, etc.).
-                    if (response.Screen != null && ScreenMachine != null)
+                    if (!overrode && response.Screen != null && ScreenMachine != null)
                     {
                         var detectedGs = response.Screen.Name switch
                         {
@@ -4138,6 +4182,7 @@ namespace FFTColorCustomizer.Utilities
                 GameScreen.ChronicleLessons => "ChronicleLessons",
                 GameScreen.ChronicleAkademicReport => "ChronicleAkademicReport",
                 GameScreen.OptionsSettings => "OptionsSettings",
+                GameScreen.SaveSlotPicker => "SaveSlotPicker",
                 GameScreen.PartyMenuUnits => ScreenMachine.Tab switch
                 {
                     PartyTab.Units => "PartyMenuUnits",
@@ -4682,6 +4727,7 @@ namespace FFTColorCustomizer.Utilities
                             GameScreen.ChronicleLessons => "ChronicleLessons",
                             GameScreen.ChronicleAkademicReport => "ChronicleAkademicReport",
                             GameScreen.OptionsSettings => "OptionsSettings",
+                            GameScreen.SaveSlotPicker => "SaveSlotPicker",
                             // On PartyMenu itself, the tab determines the screen name.
                             GameScreen.PartyMenuUnits => ScreenMachine.Tab switch
                             {

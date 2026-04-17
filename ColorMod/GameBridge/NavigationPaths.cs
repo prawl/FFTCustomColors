@@ -73,6 +73,7 @@ namespace FFTColorCustomizer.GameBridge
                 "OutfitterFitting" => GetShopItemListPaths("Select highlighted slot/item (advances picker)"),
                 "ShopConfirmDialog" => GetShopConfirmDialogPaths(),
                 "SaveGame_Menu" => GetSaveGameMenuPaths(),
+                "SaveSlotPicker" => GetSaveGameMenuPaths(),
                 "BattleSequence" => GetBattleSequencePaths(),
                 "EncounterDialog" => GetEncounterDialogPaths(),
                 "GameOver" => GetGameOverPaths(),

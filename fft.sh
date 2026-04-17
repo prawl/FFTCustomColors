@@ -107,9 +107,19 @@ B="/c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Iva
 # Observational reads (rv, block, batch, screen, dump_*) don't count —
 # only calls whose JSON payload contains `"keys":[` or a game-action
 # verb are tallied (see _is_key_sending).
+#
+# Pipe-subshell hardening (2026-04-17): shell-var-only guards get
+# bypassed when a helper is piped (`execute_action X | tail`) because
+# the function runs in the pipe's subshell and the =1 assignment never
+# propagates back to the parent. We now mirror the guard in a disk
+# flag ($B/fft_done.flag) that survives subshells. Deleted at source
+# time so each fresh bash invocation starts clean.
 _FFT_DONE=0
 _FFT_KEY_CALLS=0
 _FFT_CHAIN_WARNED=0
+_FFT_DONE_FLAG="$B/fft_done.flag"
+_FFT_CHAIN_COUNTER="$B/fft_key_calls.count"
+rm -f "$_FFT_DONE_FLAG" "$_FFT_CHAIN_COUNTER" 2>/dev/null
 
 _is_key_sending() {
   # $1 = raw JSON payload sent to the bridge. Returns 0 if the command
@@ -142,21 +152,42 @@ _is_key_sending() {
 }
 
 _fft_guard() {
-  if [ "$_FFT_DONE" -eq 1 ]; then
+  # Two-layer chain block:
+  #   Shell var _FFT_DONE — fast, idiomatic, but lost across pipe subshells.
+  #   Disk flag $_FFT_DONE_FLAG — survives subshells, catches pipe bypass.
+  #
+  # Block if EITHER is set. Composite helpers that legitimately fire
+  # multiple sequential calls must call `_fft_reset_guard` between them
+  # (clears both layers atomically). Bare `_FFT_DONE=0` assignments are
+  # no longer sufficient — they clear only the shell var and leave the
+  # disk flag stuck, so the next call would be blocked by the flag.
+  if [ "$_FFT_DONE" -eq 1 ] || [ -f "$_FFT_DONE_FLAG" ]; then
     echo "[NO] Only call one command at a time. Do not chain commands."
     kill -9 $$ 2>/dev/null
     exit 1
   fi
   _FFT_DONE=1
+  : > "$_FFT_DONE_FLAG"
+}
+
+# _fft_reset_guard: Clear BOTH the shell var and the disk flag. Composite
+# helpers call this between their legitimate sequential fft calls.
+_fft_reset_guard() {
+  _FFT_DONE=0
+  rm -f "$_FFT_DONE_FLAG" 2>/dev/null
 }
 
 # Called by fft()/fft_full() AFTER _fft_guard, once we know the JSON
 # payload. Increments the key-call counter; warns loudly if a second
 # key-sending call fires in this invocation without _FFT_ALLOW_CHAIN=1.
+# Mirrors the counter to a disk file so pipe subshells can't reset it.
 _track_key_call() {
   local payload="$1"
   if ! _is_key_sending "$payload"; then return 0; fi
-  _FFT_KEY_CALLS=$((_FFT_KEY_CALLS + 1))
+  local disk_count=0
+  [ -f "$_FFT_CHAIN_COUNTER" ] && disk_count=$(cat "$_FFT_CHAIN_COUNTER" 2>/dev/null || echo 0)
+  _FFT_KEY_CALLS=$((disk_count + 1))
+  echo "$_FFT_KEY_CALLS" > "$_FFT_CHAIN_COUNTER"
   if [ "$_FFT_KEY_CALLS" -gt 1 ] && [ "${_FFT_ALLOW_CHAIN:-0}" -ne 1 ] && [ "$_FFT_CHAIN_WARNED" -eq 0 ]; then
     echo "[CHAIN WARN] ${_FFT_KEY_CALLS} key-sending fft calls in one invocation without _FFT_ALLOW_CHAIN=1. Composite helpers must set _FFT_ALLOW_CHAIN=1 to declare intent; otherwise batch keys into one call with delayBetweenMs. See session 19 crash notes." >&2
     _FFT_CHAIN_WARNED=1
@@ -779,14 +810,14 @@ _nav_to_party_unit() {
 
   # Compound navigators need multiple fft calls. Reset the guard between steps.
   # This is safe because each step waits for its response before the next fires.
-  _FFT_DONE=0
+  _fft_reset_guard
 
   # Step 1: get to WorldMap or PartyMenuUnits
   _current_screen >/dev/null
   local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
   if [ "$curScr" != "WorldMap" ] && [ "$curScr" != "PartyMenuUnits" ]; then
     fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"ReturnToWorldMap\"}" >/dev/null
-    _FFT_DONE=0
+    _fft_reset_guard
     _current_screen >/dev/null
     curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
   fi
@@ -794,7 +825,7 @@ _nav_to_party_unit() {
   # Step 2: open PartyMenuUnits if on WorldMap
   if [ "$curScr" = "WorldMap" ]; then
     fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenuUnits\"}" >/dev/null
-    _FFT_DONE=0
+    _fft_reset_guard
     _current_screen >/dev/null
     curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
   fi
@@ -857,7 +888,7 @@ _nav_to_party_unit() {
 
   if [ -n "$keysJson" ]; then
     fft "{\"id\":\"$(id)\",\"keys\":[$keysJson],\"delayBetweenMs\":150}" >/dev/null
-    _FFT_DONE=0
+    _fft_reset_guard
   fi
   return 0
 }
@@ -903,7 +934,7 @@ open_job_selection() {
 # Works from any screen — reads the last response's roster data, or
 # navigates to PartyMenuUnits if roster isn't available.
 party_summary() {
-  _FFT_DONE=0
+  _fft_reset_guard
   # Get a fresh PartyMenuUnits read to ensure roster is populated
   _current_screen >/dev/null
   local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
@@ -913,10 +944,10 @@ party_summary() {
     # Navigate to PartyMenuUnits to get roster
     if [ "$curScr" != "WorldMap" ] && [ "$curScr" != "PartyMenuUnits" ]; then
       fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"ReturnToWorldMap\"}" >/dev/null
-      _FFT_DONE=0
+      _fft_reset_guard
     fi
     fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenuUnits\"}" >/dev/null
-    _FFT_DONE=0
+    _fft_reset_guard
   fi
 
   node -e "
@@ -939,12 +970,12 @@ units.forEach(u=>{
 check_unit() {
   local target="$*"
   if [ -z "$target" ]; then echo "[check_unit] usage: check_unit <name>"; return 1; fi
-  _FFT_DONE=0
+  _fft_reset_guard
   _current_screen >/dev/null
   local hasRoster=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.roster?.units?.length>0?'yes':'no')" < "$B/response.json" 2>/dev/null)
   if [ "$hasRoster" != "yes" ]; then
     fft "{\"id\":\"$(id)\",\"action\":\"execute_action\",\"to\":\"PartyMenuUnits\"}" >/dev/null
-    _FFT_DONE=0
+    _fft_reset_guard
   fi
   local lowerTarget=$(echo "$target" | tr 'A-Z' 'a-z')
   node -e "
@@ -974,7 +1005,7 @@ save_and_travel() {
   local _FFT_ALLOW_CHAIN=1
   local dest="$1"
   if [ -z "$dest" ]; then echo "[save_and_travel] usage: save_and_travel <location_id>"; return 1; fi
-  _FFT_DONE=0
+  _fft_reset_guard
   _current_screen >/dev/null
   local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
   if [ "$curScr" != "WorldMap" ]; then
@@ -982,7 +1013,7 @@ save_and_travel() {
     return 1
   fi
   save
-  _FFT_DONE=0
+  _fft_reset_guard
   world_travel_to "$dest"
 }
 
@@ -990,7 +1021,7 @@ save_and_travel() {
 # Validates you're at a settlement before pressing anything.
 enter_shop() {
   local _FFT_ALLOW_CHAIN=1
-  _FFT_DONE=0
+  _fft_reset_guard
   _current_screen >/dev/null
   local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
   if [ "$curScr" != "WorldMap" ]; then
@@ -1004,9 +1035,9 @@ enter_shop() {
     return 1
   fi
   execute_action EnterLocation >/dev/null
-  _FFT_DONE=0
+  _fft_reset_guard
   execute_action EnterShop >/dev/null
-  _FFT_DONE=0
+  _fft_reset_guard
   screen
 }
 
@@ -1016,7 +1047,7 @@ enter_shop() {
 swap_unit() {
   local target="$*"
   if [ -z "$target" ]; then echo "[swap_unit] usage: swap_unit <name>"; return 1; fi
-  _FFT_DONE=0
+  _fft_reset_guard
   _current_screen >/dev/null
   local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
 
@@ -1067,7 +1098,7 @@ else process.stdout.write('Q,'+bwd);
 
   if [ -n "$keysJson" ]; then
     fft "{\"id\":\"$(id)\",\"keys\":[$keysJson],\"delayBetweenMs\":300}" >/dev/null
-    _FFT_DONE=0
+    _fft_reset_guard
   fi
   screen
 }
@@ -1078,7 +1109,7 @@ else process.stdout.write('Q,'+bwd);
 # enters location (Enter), accepts Fight (Enter). Lands on BattleFormation.
 # Use auto_place_units after this to commence battle.
 start_encounter() {
-  _FFT_DONE=0
+  _fft_reset_guard
   _current_screen >/dev/null
   local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
   local curLoc=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.location??-1)" < "$B/response.json" 2>/dev/null)
@@ -1094,7 +1125,7 @@ start_encounter() {
 
   # Step 1: C (recenter) → Enter (trigger encounter). Wait for EncounterDialog.
   fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":67,\"name\":\"C\"},{\"vk\":13,\"name\":\"Enter\"}],\"delayBetweenMs\":500,\"waitForScreen\":\"EncounterDialog\",\"waitTimeoutMs\":8000}" >/dev/null
-  _FFT_DONE=0
+  _fft_reset_guard
 
   # EncounterDialog animation needs ~2s before it accepts input.
   sleep 2
@@ -1134,7 +1165,7 @@ open_picker() {
 
   # Navigate to the unit's EqA
   open_eqa "$unit" >/dev/null
-  _FFT_DONE=0
+  _fft_reset_guard
 
   # Navigate to the target row in column 0 (equipment column).
   # EqA opens with cursor at (0,0) = weapon slot. Move Down to target row.
@@ -1150,7 +1181,7 @@ open_picker() {
   keysJson+="{\"vk\":13,\"name\":\"Enter\"}"
 
   fft "{\"id\":\"$(id)\",\"keys\":[$keysJson],\"delayBetweenMs\":250}" >/dev/null
-  _FFT_DONE=0
+  _fft_reset_guard
   screen
 }
 
@@ -1167,7 +1198,7 @@ return_to_world_map() {
       return 0
     fi
     fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":0}" >/dev/null
-    _FFT_DONE=0
+    _fft_reset_guard
     sleep 0.5
   done
   echo "[return_to_world_map] ERROR: stuck at $(_current_screen) after 8 escapes"
@@ -1190,9 +1221,27 @@ return_to_world_map() {
 # game state, or a compound nav helper lands in an unexpected screen,
 # or after any suspected desync. Safe from any non-battle state.
 #
-# DO NOT use during a battle — the 10 escapes + state reset will open
-# the pause menu and rearrange battle state unpredictably.
+# REFUSES from forbidden states: any Battle*, EncounterDialog, Cutscene,
+# BattleSequence, BattleFormation, GameOver. The 10 escapes + state
+# reset would otherwise open the pause menu / fight the encounter
+# prompt / skip cutscenes and rearrange state unpredictably. In those
+# cases resolve the encounter/battle/cutscene first (accept, flee,
+# advance, or `restart`).
 fft_resync() {
+  local cur=$(_current_screen)
+  if [ -z "$cur" ]; then
+    echo "[fft_resync] ERROR: could not detect current screen. Try \`screen\` first, or \`restart\` if the bridge is unresponsive."
+    return 1
+  fi
+  # Forbidden-from states: battle, encounter, cutscene, game-over.
+  # Cheaper than listing every safe state — new non-battle screens
+  # are automatically allowed as they get added.
+  case "$cur" in
+    Battle*|EncounterDialog|Cutscene|BattleSequence|BattleFormation|GameOver)
+      echo "[fft_resync] ERROR: cannot run from $cur — the escape storm would open the pause menu / skip a cutscene / mis-handle the encounter. Resolve the $cur first (fight/flee/advance/wait it out), or use \`restart\` if truly stuck."
+      return 1
+      ;;
+  esac
   local _FFT_ALLOW_CHAIN=1
   local consecutive=0
   local max_attempts=10
@@ -1210,7 +1259,7 @@ fft_resync() {
     fi
     consecutive=0
     fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":0}" >/dev/null
-    _FFT_DONE=0
+    _fft_reset_guard
     sleep 0.4
   done
   if [ $consecutive -lt 2 ]; then
@@ -1219,7 +1268,7 @@ fft_resync() {
   fi
   # Reset C# state machine + all auto-resolve latches.
   fft "{\"id\":\"$(id)\",\"action\":\"reset_state_machine\"}" 2>&1 | tail -2
-  _FFT_DONE=0
+  _fft_reset_guard
   # Confirm via fresh screen read.
   screen
 }
@@ -1266,7 +1315,7 @@ unequip_all() {
   _require_state unequip_all "$_PARTY_NAV_VALID_STATES" || return 1
 
   open_eqa "$target" >/dev/null
-  _FFT_DONE=0
+  _fft_reset_guard
   sleep 0.3
 
   # Verify we landed on EqA for the right unit
@@ -1307,12 +1356,12 @@ console.log(v||'');
     fi
     echo "  $idx/5 $label: $slotItem → removing..."
     remove_equipment >/dev/null 2>&1 || true
-    _FFT_DONE=0
+    _fft_reset_guard
     removed=$((removed+1))
     sleep 0.2
     # Move cursor to next slot row (Down on column 0 cycles slots)
     fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":40,\"name\":\"Down\"}],\"delayBetweenMs\":0}" >/dev/null 2>&1
-    _FFT_DONE=0
+    _fft_reset_guard
     sleep 0.2
   done
   echo "[unequip_all] $target: done — removed $removed, skipped $skipped (already empty)"
@@ -1330,7 +1379,7 @@ travel_safe() {
   _require_state travel_safe "WorldMap" || return 1
 
   world_travel_to "$dest" >/dev/null
-  _FFT_DONE=0
+  _fft_reset_guard
 
   local fled=0
   for i in $(seq 1 10); do
@@ -1348,7 +1397,7 @@ travel_safe() {
           return 1
         fi
         execute_action Flee >/dev/null 2>&1
-        _FFT_DONE=0
+        _fft_reset_guard
         fled=$((fled+1))
         ;;
       *)
@@ -1368,12 +1417,12 @@ scan_inventory() {
   _require_state scan_inventory "$_PARTY_NAV_VALID_STATES" || return 1
   # Get to PartyMenuUnits first (Escape until WorldMap → Escape to PartyMenuUnits)
   return_to_world_map >/dev/null
-  _FFT_DONE=0
+  _fft_reset_guard
   fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":0,\"waitForScreen\":\"PartyMenuUnits\",\"waitTimeoutMs\":3000}" >/dev/null
-  _FFT_DONE=0
+  _fft_reset_guard
   # Switch to Inventory tab via E
   fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":69,\"name\":\"E\"}],\"delayBetweenMs\":0,\"waitForScreen\":\"PartyMenuInventory\",\"waitTimeoutMs\":3000}" >/dev/null
-  _FFT_DONE=0
+  _fft_reset_guard
   # Dump verbose inventory
   screen -v
 }
@@ -2124,7 +2173,7 @@ remove_equipment() {
       # The toggle targets whichever row we land on (state machine
       # preserves row across a Left press).
       fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":37,\"name\":\"Left\"}],\"delayBetweenMs\":0}" >/dev/null
-      _FFT_DONE=0
+      _fft_reset_guard
       ;;
     *)
       echo "[remove_equipment] ERROR: cursor on unexpected column ($curCol). Expected 0 (equipment) or 1 (abilities). Refusing to fire — bring the cursor to the equipment column first."
@@ -2372,7 +2421,7 @@ _advance_past_title() {
 restart() {
   # Reset total-script budget — boot can legitimately take 60+ seconds.
   FFT_START=$SECONDS
-  _FFT_DONE=0
+  _fft_reset_guard
   echo "[restart] Killing game..."
   taskkill //IM FFT_enhanced.exe //F 2>/dev/null
   taskkill //IM reloaded-ii.exe //F 2>/dev/null
@@ -2402,7 +2451,7 @@ restart() {
 boot() {
   # Reset total-script budget — boot can legitimately take 60+ seconds.
   FFT_START=$SECONDS
-  _FFT_DONE=0
+  _fft_reset_guard
   if ! running >/dev/null; then
     echo "[boot] Game not running — launching..."
     _launch_game

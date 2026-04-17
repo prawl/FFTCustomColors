@@ -87,7 +87,14 @@ namespace FFTColorCustomizer.GameBridge
         //   4 Exit Game → confirmation modal (TBD)
         // Save/Load are handled by existing `save`/`load` actions and don't
         // need a dedicated GameScreen yet. Settings is an actual screen.
-        OptionsSettings
+        OptionsSettings,
+
+        // In-game Save slot picker reached from PartyMenuOptions → Save (Enter
+        // on OptionsIndex 0). Vertical list of save slots; Enter confirms the
+        // highlighted slot (may open overwrite confirmation), Escape returns
+        // to PartyMenuOptions. A separate BattlePaused → Save entry point also
+        // reaches this screen but is not yet wired up.
+        SaveSlotPicker
     }
 
     /// <summary>
