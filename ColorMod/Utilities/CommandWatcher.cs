@@ -1282,6 +1282,7 @@ namespace FFTColorCustomizer.Utilities
                     response.Screen ??= DetectScreenSettled();
                     // Override detection-ambiguous names where the SM has a
                     // stronger signal (e.g. SaveSlotPicker vs TravelList).
+                    bool screenQueryOverrode = false;
                     if (response.Screen != null && ScreenMachine != null)
                     {
                         var resolved = ScreenDetectionLogic.ResolveAmbiguousScreen(
@@ -1290,6 +1291,28 @@ namespace FFTColorCustomizer.Utilities
                         {
                             ModLogger.Log($"[SM-Override] Detection={response.Screen.Name} → {resolved} (SM={ScreenMachine.CurrentScreen}).");
                             response.Screen.Name = resolved;
+                            screenQueryOverrode = true;
+                        }
+                    }
+                    // Sync the SM to detection for screens it doesn't model
+                    // transitions into (WorldMap ↔ LocationMenu ↔ Tavern, etc.).
+                    // Without this, a `screen` query that sees "Tavern" never
+                    // updates the SM, so a later Select key won't fire
+                    // HandleTavern → TavernRumors/TavernErrands.
+                    if (!screenQueryOverrode && response.Screen != null && ScreenMachine != null)
+                    {
+                        var detectedGs = response.Screen.Name switch
+                        {
+                            "WorldMap" => GameScreen.WorldMap,
+                            "TravelList" => GameScreen.TravelList,
+                            "LocationMenu" => GameScreen.LocationMenu,
+                            "Tavern" => GameScreen.Tavern,
+                            _ => (GameScreen?)null
+                        };
+                        if (detectedGs.HasValue && ScreenMachine.CurrentScreen != detectedGs.Value)
+                        {
+                            ModLogger.Log($"[SM-Sync/query] Detection={response.Screen.Name}, SM={ScreenMachine.CurrentScreen}. Syncing SM to {detectedGs.Value}.");
+                            ScreenMachine.SetScreen(detectedGs.Value);
                         }
                     }
                     SyncBattleMenuTracker(response.Screen);
@@ -2621,6 +2644,7 @@ namespace FFTColorCustomizer.Utilities
                             "WorldMap" => GameScreen.WorldMap,
                             "TravelList" => GameScreen.TravelList,
                             "LocationMenu" => GameScreen.LocationMenu,
+                            "Tavern" => GameScreen.Tavern,
                             _ => (GameScreen?)null
                         };
                         if (detectedGs.HasValue)
@@ -2666,6 +2690,7 @@ namespace FFTColorCustomizer.Utilities
                             "WorldMap" => GameScreen.WorldMap,
                             "TravelList" => GameScreen.TravelList,
                             "LocationMenu" => GameScreen.LocationMenu,
+                            "Tavern" => GameScreen.Tavern,
                             _ => (GameScreen?)null
                         };
                         if (detectedGs.HasValue && ScreenMachine.CurrentScreen != detectedGs.Value)
@@ -4235,6 +4260,9 @@ namespace FFTColorCustomizer.Utilities
                 GameScreen.ChronicleAkademicReport => "ChronicleAkademicReport",
                 GameScreen.OptionsSettings => "OptionsSettings",
                 GameScreen.SaveSlotPicker => "SaveSlotPicker",
+                GameScreen.Tavern => "Tavern",
+                GameScreen.TavernRumors => "TavernRumors",
+                GameScreen.TavernErrands => "TavernErrands",
                 GameScreen.PartyMenuUnits => ScreenMachine.Tab switch
                 {
                     PartyTab.Units => "PartyMenuUnits",
@@ -4780,6 +4808,9 @@ namespace FFTColorCustomizer.Utilities
                             GameScreen.ChronicleAkademicReport => "ChronicleAkademicReport",
                             GameScreen.OptionsSettings => "OptionsSettings",
                             GameScreen.SaveSlotPicker => "SaveSlotPicker",
+                            GameScreen.Tavern => "Tavern",
+                            GameScreen.TavernRumors => "TavernRumors",
+                            GameScreen.TavernErrands => "TavernErrands",
                             // On PartyMenu itself, the tab determines the screen name.
                             GameScreen.PartyMenuUnits => ScreenMachine.Tab switch
                             {

@@ -53,6 +53,15 @@ namespace FFTColorCustomizer.GameBridge
         {
             if (smScreen == GameScreen.SaveSlotPicker && detectedName == "TravelList")
                 return "SaveSlotPicker";
+            // TavernRumors/TavernErrands are byte-identical to each other and to
+            // LocationMenu in all 24 detection inputs (live-verified at Sal
+            // Ghidos 2026-04-17). The SM tracks cursor-at-Enter; when it says
+            // we're on a Tavern sub-screen but detection falls through to
+            // LocationMenu, trust the SM.
+            if (smScreen == GameScreen.TavernRumors && detectedName == "LocationMenu")
+                return "TavernRumors";
+            if (smScreen == GameScreen.TavernErrands && detectedName == "LocationMenu")
+                return "TavernErrands";
             return detectedName;
         }
 

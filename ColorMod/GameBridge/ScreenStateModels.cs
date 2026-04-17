@@ -94,7 +94,24 @@ namespace FFTColorCustomizer.GameBridge
         // highlighted slot (may open overwrite confirmation), Escape returns
         // to PartyMenuOptions. A separate BattlePaused → Save entry point also
         // reaches this screen but is not yet wired up.
-        SaveSlotPicker
+        SaveSlotPicker,
+
+        // Tavern interior reached from LocationMenu → EnterShop on a Tavern.
+        // Shows two sub-action icons (Rumors, Errands) with a cursor. Selecting
+        // one opens TavernRumors or TavernErrands. Memory-indistinguishable
+        // from its two children (all 24 detection inputs identical), so the
+        // state machine is authoritative for which sub-state we're in.
+        Tavern,
+
+        // Tavern → Rumors: scrollable list of lore entries with right-pane
+        // body text. Escape returns to Tavern. Select ("read") is a no-op
+        // as far as navigation goes — it just renders the body pane.
+        TavernRumors,
+
+        // Tavern → Errands: list of dispatchable errands with fee/duration
+        // columns. Select opens the party-member picker (not yet modeled).
+        // Escape returns to Tavern.
+        TavernErrands
     }
 
     /// <summary>

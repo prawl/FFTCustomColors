@@ -145,6 +145,16 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public int OptionsIndex { get; private set; }
 
+        /// <summary>
+        /// Cursor position inside the Tavern root screen (2-option vertical,
+        /// wraps):
+        ///   0 Rumors  1 Errands
+        /// The SM owns this because the Tavern sub-actions
+        /// (TavernRumors/TavernErrands) are memory-indistinguishable from
+        /// each other — only cursor-at-Enter-time tells us which was picked.
+        /// </summary>
+        public int TavernCursor { get; private set; }
+
         // Saved party menu cursor for returning from CharacterStatus
         private int _savedPartyRow;
         private int _savedPartyCol;
@@ -362,6 +372,13 @@ namespace FFTColorCustomizer.GameBridge
                 case GameScreen.SaveSlotPicker:
                     HandleSaveSlotPicker(vkCode);
                     break;
+                case GameScreen.Tavern:
+                    HandleTavern(vkCode);
+                    break;
+                case GameScreen.TavernRumors:
+                case GameScreen.TavernErrands:
+                    HandleTavernSubScreen(vkCode);
+                    break;
             }
         }
 
@@ -372,6 +389,41 @@ namespace FFTColorCustomizer.GameBridge
                 CurrentScreen = GameScreen.PartyMenuUnits;
                 Tab = PartyTab.Options;
             }
+        }
+
+        private void HandleTavern(int vk)
+        {
+            switch (vk)
+            {
+                case VK_UP:
+                    // 2-option vertical wraps: 0 ↔ 1.
+                    TavernCursor = TavernCursor == 0 ? 1 : 0;
+                    break;
+                case VK_DOWN:
+                    TavernCursor = TavernCursor == 1 ? 0 : 1;
+                    break;
+                case VK_RETURN:
+                    // Cursor-at-Enter tells us which sub-action opened.
+                    CurrentScreen = TavernCursor == 0
+                        ? GameScreen.TavernRumors
+                        : GameScreen.TavernErrands;
+                    break;
+                case VK_ESCAPE:
+                    // Escape from Tavern opens a farewell dialog, then
+                    // returns to LocationMenu after an Enter. The SM
+                    // doesn't model the farewell dialog (no memory signal
+                    // yet), so we snap straight to LocationMenu. The
+                    // Leave validPath on Tavern handles the Enter.
+                    CurrentScreen = GameScreen.LocationMenu;
+                    TavernCursor = 0; // reset for next entry
+                    break;
+            }
+        }
+
+        private void HandleTavernSubScreen(int vk)
+        {
+            if (vk == VK_ESCAPE)
+                CurrentScreen = GameScreen.Tavern;
         }
 
         // All Chronicle sub-screens currently model only the boundary (Escape back).
@@ -1201,6 +1253,28 @@ namespace FFTColorCustomizer.GameBridge
                     new() { Key = "down", Vk = VK_DOWN, Description = "Next save slot" },
                     new() { Key = "enter", Vk = VK_RETURN, Description = "Save to highlighted slot (may open overwrite confirmation)" },
                     new() { Key = "escape", Vk = VK_ESCAPE, Description = "Cancel, back to Options tab", ResultScreen = "partymenuoptions" },
+                },
+                GameScreen.Tavern => new List<ValidAction>
+                {
+                    new() { Key = "up", Vk = VK_UP, Description = "Switch cursor (wraps: Rumors ↔ Errands)" },
+                    new() { Key = "down", Vk = VK_DOWN, Description = "Switch cursor (wraps: Rumors ↔ Errands)" },
+                    new() { Key = "enter", Vk = VK_RETURN, Description = TavernCursor == 0 ? "Open Rumors" : "Open Errands", ResultScreen = TavernCursor == 0 ? "tavernrumors" : "tavernerrands" },
+                    new() { Key = "escape", Vk = VK_ESCAPE, Description = "Leave Tavern (farewell dialog → LocationMenu)", ResultScreen = "locationmenu" },
+                },
+                GameScreen.TavernRumors => new List<ValidAction>
+                {
+                    new() { Key = "up", Vk = VK_UP, Description = "Previous rumor (body pane updates)" },
+                    new() { Key = "down", Vk = VK_DOWN, Description = "Next rumor" },
+                    new() { Key = "escape", Vk = VK_ESCAPE, Description = "Back to Tavern", ResultScreen = "tavern" },
+                },
+                GameScreen.TavernErrands => new List<ValidAction>
+                {
+                    new() { Key = "up", Vk = VK_UP, Description = "Previous errand" },
+                    new() { Key = "down", Vk = VK_DOWN, Description = "Next errand" },
+                    new() { Key = "escape", Vk = VK_ESCAPE, Description = "Back to Tavern", ResultScreen = "tavern" },
+                    // Note: Enter opens the candidate-unit picker which is not
+                    // yet modeled. Omit it here so Claude can't accidentally
+                    // dispatch an errand.
                 },
                 _ => new List<ValidAction>()
             };

@@ -74,6 +74,8 @@ namespace FFTColorCustomizer.GameBridge
                 "ShopConfirmDialog" => GetShopConfirmDialogPaths(),
                 "SaveGame_Menu" => GetSaveGameMenuPaths(),
                 "SaveSlotPicker" => GetSaveGameMenuPaths(),
+                "TavernRumors" => GetTavernRumorsPaths(),
+                "TavernErrands" => GetTavernErrandsPaths(),
                 "BattleSequence" => GetBattleSequencePaths(),
                 "EncounterDialog" => GetEncounterDialogPaths(),
                 "GameOver" => GetGameOverPaths(),
@@ -467,6 +469,44 @@ namespace FFTColorCustomizer.GameBridge
                     // Back to the parent shop (SaveGame / Outfitter / etc).
                     WaitTimeoutMs = 1500,
                     Desc = "Cancel, back to settlement menu"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetTavernRumorsPaths()
+        {
+            // Tavern → Rumors: scrollable list of lore entries. The right pane
+            // renders the highlighted rumor's body text (the actual "read"
+            // action — no Select required). Escape returns to Tavern root.
+            return new()
+            {
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Previous rumor (body pane updates)" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Next rumor" },
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitTimeoutMs = 1500,
+                    Desc = "Back to Tavern root"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetTavernErrandsPaths()
+        {
+            // Tavern → Errands: scrollable list of dispatchable errands with
+            // fee/duration columns. Select opens a candidate-unit picker
+            // (party members available for dispatch) — DO NOT press Select
+            // unless you intend to dispatch, since candidate-picker nav is
+            // not yet modeled and can trap the state machine.
+            return new()
+            {
+                ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Previous errand (body pane updates)" },
+                ["ScrollDown"] = new PathEntry { Keys = new[] { Key(VK_DOWN, "Down") }, Desc = "Next errand" },
+                ["Back"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    WaitTimeoutMs = 1500,
+                    Desc = "Back to Tavern root"
                 },
             };
         }

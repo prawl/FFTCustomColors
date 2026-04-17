@@ -1088,4 +1088,102 @@ public class ScreenStateMachineTests
         Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
         Assert.Equal(6, sm.ViewedGridIndex);
     }
+
+    // --- Tavern: Rumors / Errands sub-action tracking (session 26, 2026-04-17) ---
+    // Live-scanned at Sal Ghidos: TavernRumors and TavernErrands are
+    // byte-identical in detection inputs (same as SaveSlotPicker vs
+    // TravelList). The state machine has to track cursor + Enter to know
+    // which sub-action was selected.
+
+    [Fact]
+    public void Tavern_DefaultCursorIsRumors()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.Tavern);
+        Assert.Equal(0, sm.TavernCursor);
+    }
+
+    [Fact]
+    public void Tavern_Down_MovesCursorToErrands()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.Tavern);
+        sm.OnKeyPressed(VK_DOWN);
+        Assert.Equal(1, sm.TavernCursor);
+    }
+
+    [Fact]
+    public void Tavern_DownTwice_WrapsToRumors()
+    {
+        // 2-option vertical list wraps.
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.Tavern);
+        sm.OnKeyPressed(VK_DOWN); // → Errands
+        sm.OnKeyPressed(VK_DOWN); // → wraps to Rumors
+        Assert.Equal(0, sm.TavernCursor);
+    }
+
+    [Fact]
+    public void Tavern_Up_FromRumors_WrapsToErrands()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.Tavern);
+        sm.OnKeyPressed(VK_UP);
+        Assert.Equal(1, sm.TavernCursor);
+    }
+
+    [Fact]
+    public void Tavern_EnterOnRumors_OpensTavernRumors()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.Tavern);
+        // cursor defaults to Rumors (0)
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.TavernRumors, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void Tavern_EnterOnErrands_OpensTavernErrands()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.Tavern);
+        sm.OnKeyPressed(VK_DOWN); // cursor → Errands
+        sm.OnKeyPressed(VK_RETURN);
+        Assert.Equal(GameScreen.TavernErrands, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void TavernRumors_Escape_ReturnsToTavern()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.Tavern);
+        sm.OnKeyPressed(VK_RETURN); // → TavernRumors
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.Equal(GameScreen.Tavern, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void TavernErrands_Escape_ReturnsToTavern()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.Tavern);
+        sm.OnKeyPressed(VK_DOWN);
+        sm.OnKeyPressed(VK_RETURN); // → TavernErrands
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.Equal(GameScreen.Tavern, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void Tavern_Escape_LeavesToLocationMenu()
+    {
+        // Game actually opens a farewell dialog on Escape from the Tavern
+        // root; the SM can't model that mini-dialog (no memory signal yet)
+        // so we jump straight to LocationMenu. The Leave validPath on
+        // Tavern NavigationPaths handles the Enter that dismisses the
+        // dialog, so callers don't get stuck.
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.Tavern);
+        sm.OnKeyPressed(VK_ESCAPE);
+        Assert.Equal(GameScreen.LocationMenu, sm.CurrentScreen);
+    }
 }

@@ -990,6 +990,34 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("WorldMap", result);
         }
 
+        [Fact]
+        public void ResolveAmbiguous_SMOnTavernRumors_DetectionLocationMenu_ReturnsTavernRumors()
+        {
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.TavernRumors,
+                detectedName: "LocationMenu");
+            Assert.Equal("TavernRumors", result);
+        }
+
+        [Fact]
+        public void ResolveAmbiguous_SMOnTavernErrands_DetectionLocationMenu_ReturnsTavernErrands()
+        {
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.TavernErrands,
+                detectedName: "LocationMenu");
+            Assert.Equal("TavernErrands", result);
+        }
+
+        [Fact]
+        public void ResolveAmbiguous_SMOnTavernRumors_DetectionBattleMyTurn_TrustsDetection()
+        {
+            // Real screen transition must not be overridden.
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.TavernRumors,
+                detectedName: "BattleMyTurn");
+            Assert.Equal("BattleMyTurn", result);
+        }
+
         // --- TitleScreen tightening (session 26, 2026-04-17) ---
         // The loose `rawLocation==255 → TitleScreen` fallback used to swallow
         // valid world-side screens after a GameOver. The strict rule now
