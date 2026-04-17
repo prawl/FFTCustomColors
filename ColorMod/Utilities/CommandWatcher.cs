@@ -5086,6 +5086,31 @@ namespace FFTColorCustomizer.Utilities
                         _ => null
                     };
                     screen.StatsExpanded = ScreenMachine.StatsExpanded;
+
+                    // Verbose-only: aggregate equipment-derived stats for
+                    // the viewed unit. Wiki-independent — computed from
+                    // ItemData constants + roster equipment IDs, so IC vs
+                    // PSX multiplier differences don't affect correctness.
+                    // Caller uses this to answer "does this gear swap help?"
+                    // without needing the full HP/MP formula path.
+                    if (Explorer != null)
+                    {
+                        if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);
+                        if (_rosterReader == null) _rosterReader = new RosterReader(Explorer, _rosterNameTable);
+                        var vSlot = _rosterReader.GetSlotByDisplayOrder(ScreenMachine.ViewedGridIndex);
+                        var vLoadout = vSlot != null ? _rosterReader.ReadLoadout(vSlot.SlotIndex) : null;
+                        if (vLoadout != null)
+                        {
+                            ItemInfo? GetItem(int? id) => id.HasValue ? ItemData.GetItem(id.Value) : null;
+                            screen.DetailedStats = UnitStatsAggregator.Aggregate(
+                                helm: GetItem(vLoadout.HelmId),
+                                body: GetItem(vLoadout.BodyId),
+                                accessory: GetItem(vLoadout.AccessoryId),
+                                weapon: GetItem(vLoadout.WeaponId),
+                                leftHand: GetItem(vLoadout.LeftHandId),
+                                shield: GetItem(vLoadout.ShieldId));
+                        }
+                    }
                 }
 
                 // EquipmentAndAbilities Effects view toggle.

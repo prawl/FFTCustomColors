@@ -563,6 +563,23 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public bool EquipmentEffectsView { get; set; }
 
+        /// <summary>
+        /// Build-planning stats derived from the viewed unit's roster slot +
+        /// equipment bonuses from ItemData. Verbose-only payload; surfaced on
+        /// CharacterStatus when `screen -v` is called. Fields:
+        /// hpBonus (sum of equipped helm+body+accessory HpBonus), mpBonus
+        /// (same for MP), weaponPower / weaponRange / weaponEvade /
+        /// weaponElement (right-hand), leftHandPower (for dual-wield),
+        /// shieldPhysicalEvade / shieldMagicEvade.
+        ///
+        /// Per "What Goes In Compact vs Verbose vs Nowhere" principle, these
+        /// are build-planning data Claude consults when assembling a unit,
+        /// not per-turn decision inputs — stays out of the compact line.
+        /// </summary>
+        [JsonPropertyName("detailedStats")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public GameBridge.UnitStatsAggregate? DetailedStats { get; set; }
+
         /// <summary>Full party roster grid surfaced on the PartyMenu Units tab.
         /// Omitted on every other screen. Columns fixed at 5; rows flex with
         /// roster size. See RosterReader and TODO §10.6.</summary>
