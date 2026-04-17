@@ -4391,7 +4391,18 @@ namespace FFTColorCustomizer.Utilities
                         GameScreen.ChronicleAkademicReport or
                         GameScreen.OptionsSettings;
                     bool rawSaysWorldMap = screen.Name == "WorldMap" || screen.Name == "TravelList";
-                    if (smInPartyTree && rawSaysWorldMap && screen.MenuDepth == 0)
+                    // PartyMenu Chronicle/Options tabs have menuDepth=0 but
+                    // are legitimately party-tree states with no memory byte
+                    // to distinguish them from WorldMap. SM is the only
+                    // source of truth for these tabs — do NOT trigger drift
+                    // recovery, or the SM gets stuck oscillating.
+                    bool smOnNonUnitsPartyTab = ScreenMachine.CurrentScreen == GameScreen.PartyMenu
+                        && ScreenMachine.Tab != PartyTab.Units;
+                    // JobSelection is also party-tree, menuDepth=0, and
+                    // indistinguishable from WorldMap in memory. Trust SM.
+                    bool smOnJobSelection = ScreenMachine.CurrentScreen == GameScreen.JobScreen;
+                    if (smInPartyTree && rawSaysWorldMap && screen.MenuDepth == 0
+                        && !smOnNonUnitsPartyTab && !smOnJobSelection)
                     {
                         _worldMapDriftStreak++;
                         if (_worldMapDriftStreak >= 3)
@@ -5137,7 +5148,12 @@ namespace FFTColorCustomizer.Utilities
                     // distinct states for them. The equipment mirror stays
                     // populated on these tabs (same roster is visible) but
                     // they are NOT EqA — don't promote.
-                    or "PartyMenuInventory" or "PartyMenuChronicle" or "PartyMenuOptions"
+                    // Include "PartyMenu" itself — when the outer Units grid
+                    // is the real state, promoting to EqA is wrong. The
+                    // EqA-promote original purpose was to rescue SM=CS
+                    // when game is on EqA; "PartyMenu" detection implies
+                    // we're above CS, not at EqA.
+                    or "PartyMenu" or "PartyMenuInventory" or "PartyMenuChronicle" or "PartyMenuOptions"
                     // JobSelection and its modals: distinct from EqA, mirror
                     // can match but screen is not EqA.
                     or "JobSelection" or "JobActionMenu" or "JobChangeConfirmation"
