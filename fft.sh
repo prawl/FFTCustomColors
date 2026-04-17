@@ -82,44 +82,40 @@
 
 B="/c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/Reloaded/Mods/FFTColorCustomizer/claude_bridge"
 
-# Block chained commands: only one fft/fft_full call allowed per session.
+# Session 27 pivot: chain guard REMOVED.
 #
-# Rationale: the game's render pipeline can drop keys fired back-to-back
-# without settling time between them. Session 19 crash happened when
-# four key-sending fft calls were chained via `_FFT_DONE=0` overrides
-# between each — keys fired faster than the game could render, state
-# machine and game diverged, crash.
+# History: five prior attempts to block chained shell calls all produced
+# collateral false-positives (piped helpers mis-killed, debugging
+# sequences blocked, composite helpers needing complex reset logic)
+# without actually stopping the class of bug they targeted. Live-tested
+# across sessions: chained Bash calls like `right && sleep 0.3 && screen`
+# work reliably — the single-threaded bridge sequences game-affecting
+# commands, and the bridge-side auto-delay (C# side) handles the narrow
+# case where two key-sending commands arrive faster than the game can
+# render.
 #
-# Current design:
-#   - First fft call sets _FFT_DONE=1.
-#   - Second fft call in the same invocation triggers the loud "[NO]"
-#     block below and kills the shell — no reset.
-#   - Composite helpers that legitimately fire multiple commands
-#     (open_eqa, unequip_all, etc.) reset `_FFT_DONE=0` between each
-#     call. This bypass is what the TODO wants to harden.
+# What stayed:
+#   - `_track_key_call` + `_FFT_KEY_CALLS` counter for telemetry. A
+#     second key-sending call emits [CHAIN INFO] on stderr so the
+#     SessionCommandLog sees when chains happen.
+#   - `_is_key_sending` classifier — used by telemetry and retained in
+#     case future code needs to distinguish info vs action calls.
 #
-# Hardening (session 24): track key-sending fft calls per-invocation
-# via a counter. If >1 key-sending call fires without _FFT_ALLOW_CHAIN=1
-# as an explicit opt-in, surface a one-line [CHAIN WARN] to stderr on
-# every subsequent call. Keeps existing composites working while making
-# undocumented multi-key chains loud.
+# What got neutered (kept as no-op named functions so existing callers
+# still compile):
+#   - `_fft_guard` — now a no-op; no more `[NO] kill -9 $$`.
+#   - `_fft_reset_guard` — now a no-op; composites no longer need it.
 #
-# Observational reads (rv, block, batch, screen, dump_*) don't count —
-# only calls whose JSON payload contains `"keys":[` or a game-action
-# verb are tallied (see _is_key_sending).
-#
-# Pipe-subshell hardening (2026-04-17): shell-var-only guards get
-# bypassed when a helper is piped (`execute_action X | tail`) because
-# the function runs in the pipe's subshell and the =1 assignment never
-# propagates back to the parent. We now mirror the guard in a disk
-# flag ($B/fft_done.flag) that survives subshells. Deleted at source
-# time so each fresh bash invocation starts clean.
+# Expected behavior: any chain (reads, keys, mixes) runs to completion.
+# The bridge enforces its own per-command sequencing.
 _FFT_DONE=0
 _FFT_KEY_CALLS=0
 _FFT_CHAIN_WARNED=0
-_FFT_DONE_FLAG="$B/fft_done.flag"
+# Kept for [CHAIN WARN] telemetry only — cleared on source so each fresh
+# bash invocation starts with counter=0. The old hard-exit disk flag is
+# gone (session 27); just clean up any stale files left from prior runs.
 _FFT_CHAIN_COUNTER="$B/fft_key_calls.count"
-rm -f "$_FFT_DONE_FLAG" "$_FFT_CHAIN_COUNTER" 2>/dev/null
+rm -f "$B/fft_done.flag" "$_FFT_CHAIN_COUNTER" 2>/dev/null
 
 _is_key_sending() {
   # $1 = raw JSON payload sent to the bridge. Returns 0 if the command
@@ -152,29 +148,23 @@ _is_key_sending() {
 }
 
 _fft_guard() {
-  # Two-layer chain block:
-  #   Shell var _FFT_DONE — fast, idiomatic, but lost across pipe subshells.
-  #   Disk flag $_FFT_DONE_FLAG — survives subshells, catches pipe bypass.
-  #
-  # Block if EITHER is set. Composite helpers that legitimately fire
-  # multiple sequential calls must call `_fft_reset_guard` between them
-  # (clears both layers atomically). Bare `_FFT_DONE=0` assignments are
-  # no longer sufficient — they clear only the shell var and leave the
-  # disk flag stuck, so the next call would be blocked by the flag.
-  if [ "$_FFT_DONE" -eq 1 ] || [ -f "$_FFT_DONE_FLAG" ]; then
-    echo "[NO] Only call one command at a time. Do not chain commands."
-    kill -9 $$ 2>/dev/null
-    exit 1
-  fi
-  _FFT_DONE=1
-  : > "$_FFT_DONE_FLAG"
+  # Session 27 pivot: no-op. Five prior attempts to block chained shell
+  # calls caused collateral false-positives without stopping real races.
+  # The single-threaded bridge already sequences game-affecting commands,
+  # and the bridge-side auto-delay (`[CHAIN WARNING]` path) handles the
+  # narrow case where two key-sending commands arrive too fast. The
+  # hard-exit kept catching legitimate flows (piped helpers, debugging
+  # sequences). Left as a named no-op so existing callers stay valid.
+  _FFT_DONE=1  # kept for any downstream code that inspects it
+  return 0
 }
 
-# _fft_reset_guard: Clear BOTH the shell var and the disk flag. Composite
-# helpers call this between their legitimate sequential fft calls.
+# _fft_reset_guard: Session 27 no-op. Composite helpers still call this
+# between their sequential fft calls — kept as a named function so
+# those call sites compile; the actual block is gone.
 _fft_reset_guard() {
   _FFT_DONE=0
-  rm -f "$_FFT_DONE_FLAG" 2>/dev/null
+  return 0
 }
 
 # Called by fft()/fft_full() AFTER _fft_guard, once we know the JSON
@@ -189,7 +179,11 @@ _track_key_call() {
   _FFT_KEY_CALLS=$((disk_count + 1))
   echo "$_FFT_KEY_CALLS" > "$_FFT_CHAIN_COUNTER"
   if [ "$_FFT_KEY_CALLS" -gt 1 ] && [ "${_FFT_ALLOW_CHAIN:-0}" -ne 1 ] && [ "$_FFT_CHAIN_WARNED" -eq 0 ]; then
-    echo "[CHAIN WARN] ${_FFT_KEY_CALLS} key-sending fft calls in one invocation without _FFT_ALLOW_CHAIN=1. Composite helpers must set _FFT_ALLOW_CHAIN=1 to declare intent; otherwise batch keys into one call with delayBetweenMs. See session 19 crash notes." >&2
+    # Session 27: this is now pure telemetry — no longer blocks. The
+    # bridge-side auto-delay sequences game-affecting commands if they
+    # arrive too fast. Keep the warning so the SessionCommandLog and
+    # terminal see when chains happen, in case a real race ever surfaces.
+    echo "[CHAIN INFO] ${_FFT_KEY_CALLS} key-sending fft calls in one invocation. Bridge auto-delays if needed." >&2
     _FFT_CHAIN_WARNED=1
   fi
 }
