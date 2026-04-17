@@ -212,7 +212,10 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_Q = 0x51;
         private const int VK_E = 0x45;
 
-        private const int KEY_DELAY = 150;
+        // 150ms was too fast for PartyMenu grid nav — keys dropped during
+        // the ~200-500ms open/transition animations after Escape/Enter.
+        // 350ms matches the manual-test pace that worked reliably.
+        private const int KEY_DELAY = 350;
 
         // Screen state machine — wired by CommandWatcher after construction.
         // SendKey() notifies this via OnKeyPressed() so compound nav helpers
@@ -4463,8 +4466,11 @@ namespace FFTColorCustomizer.GameBridge
             else if (currentName == "WorldMap")
             {
                 // Escape opens PartyMenu, cursor always at (0, 0).
+                // Long settle — PartyMenu open animation eats nav keys
+                // if they fire within ~800ms of the Escape. 500ms was too
+                // fast (Down keys silently dropped).
                 SendKey(VK_ESCAPE);
-                Thread.Sleep(500);
+                Thread.Sleep(1000);
             }
             else
             {
