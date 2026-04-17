@@ -906,29 +906,80 @@ _PARTY_NAV_VALID_STATES="WorldMap|PartyMenuUnits|PartyMenuInventory|PartyMenuChr
 
 # open_character_status [unit_name]
 # Navigate to CharacterStatus for the named unit (default: Ramza).
+# Append `dry-run` to preview the key sequence without firing.
 # Single bridge action — C# handles all navigation internally.
 open_character_status() {
   _require_state open_character_status "$_PARTY_NAV_VALID_STATES" || return 1
-  local unit="${*:-Ramza}"
-  fft "{\"id\":\"$(id)\",\"action\":\"open_character_status\",\"to\":\"$unit\"}"
+  local dryRun=0
+  local args=("$@")
+  local n=${#args[@]}
+  if [ $n -gt 0 ] && { [ "${args[$((n-1))]}" = "dry-run" ] || [ "${args[$((n-1))]}" = "--dry-run" ]; }; then
+    dryRun=1
+    unset 'args[n-1]'
+  fi
+  local unit="${args[*]:-Ramza}"
+  if [ "$dryRun" = "1" ]; then
+    fft "{\"id\":\"$(id)\",\"action\":\"dry_run_nav\",\"to\":\"$unit\"}"
+    # dry_run_nav puts the plan in response.info; surface it so the caller
+    # sees the planned key sequence without needing to grep response.json.
+    local INFO=$(node -e "const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));if(j.info)console.log(j.info);" "$B/response.json" 2>/dev/null)
+    [ -n "$INFO" ] && echo "$INFO"
+    return 0
+  else
+    fft "{\"id\":\"$(id)\",\"action\":\"open_character_status\",\"to\":\"$unit\"}"
+  fi
 }
 
-# open_eqa [unit_name]
+# open_eqa [unit_name] [dry-run]
 # Navigate from WorldMap/PartyMenuUnits/party-tree to EquipmentAndAbilities.
+# Append `dry-run` to preview the key sequence without firing.
 # Single bridge action — C# handles all navigation internally.
 open_eqa() {
   _require_state open_eqa "$_PARTY_NAV_VALID_STATES" || return 1
-  local unit="${*:-Ramza}"
-  fft "{\"id\":\"$(id)\",\"action\":\"open_eqa\",\"to\":\"$unit\"}"
+  local dryRun=0
+  local args=("$@")
+  local n=${#args[@]}
+  if [ $n -gt 0 ] && { [ "${args[$((n-1))]}" = "dry-run" ] || [ "${args[$((n-1))]}" = "--dry-run" ]; }; then
+    dryRun=1
+    unset 'args[n-1]'
+  fi
+  local unit="${args[*]:-Ramza}"
+  if [ "$dryRun" = "1" ]; then
+    fft "{\"id\":\"$(id)\",\"action\":\"dry_run_nav\",\"to\":\"$unit\"}"
+    # dry_run_nav puts the plan in response.info; surface it so the caller
+    # sees the planned key sequence without needing to grep response.json.
+    local INFO=$(node -e "const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));if(j.info)console.log(j.info);" "$B/response.json" 2>/dev/null)
+    [ -n "$INFO" ] && echo "$INFO"
+    return 0
+  else
+    fft "{\"id\":\"$(id)\",\"action\":\"open_eqa\",\"to\":\"$unit\"}"
+  fi
 }
 
-# open_job_selection [unit_name]
+# open_job_selection [unit_name] [dry-run]
 # Navigate from WorldMap/PartyMenuUnits/party-tree to JobSelection.
+# Append `dry-run` to preview the key sequence without firing.
 # Single bridge action — C# handles all navigation internally.
 open_job_selection() {
   _require_state open_job_selection "$_PARTY_NAV_VALID_STATES" || return 1
-  local unit="${*:-Ramza}"
-  fft "{\"id\":\"$(id)\",\"action\":\"open_job_selection\",\"to\":\"$unit\"}"
+  local dryRun=0
+  local args=("$@")
+  local n=${#args[@]}
+  if [ $n -gt 0 ] && { [ "${args[$((n-1))]}" = "dry-run" ] || [ "${args[$((n-1))]}" = "--dry-run" ]; }; then
+    dryRun=1
+    unset 'args[n-1]'
+  fi
+  local unit="${args[*]:-Ramza}"
+  if [ "$dryRun" = "1" ]; then
+    fft "{\"id\":\"$(id)\",\"action\":\"dry_run_nav\",\"to\":\"$unit\"}"
+    # dry_run_nav puts the plan in response.info; surface it so the caller
+    # sees the planned key sequence without needing to grep response.json.
+    local INFO=$(node -e "const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));if(j.info)console.log(j.info);" "$B/response.json" 2>/dev/null)
+    [ -n "$INFO" ] && echo "$INFO"
+    return 0
+  else
+    fft "{\"id\":\"$(id)\",\"action\":\"open_job_selection\",\"to\":\"$unit\"}"
+  fi
 }
 
 # =============================================================================
