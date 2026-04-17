@@ -1082,6 +1082,26 @@ namespace FFTColorCustomizer.Utilities
             }
         }
 
+        /// <summary>
+        /// Per-session append-only JSONL log of every command processed.
+        /// Lazy-initialized so the log file is stamped at first command,
+        /// not at mod load (keeps log files in sync with actual activity).
+        /// </summary>
+        private SessionCommandLog? _sessionLog;
+        private SessionCommandLog SessionLog
+        {
+            get
+            {
+                if (_sessionLog == null)
+                {
+                    if (!Directory.Exists(_bridgeDirectory))
+                        Directory.CreateDirectory(_bridgeDirectory);
+                    _sessionLog = new SessionCommandLog(_bridgeDirectory);
+                }
+                return _sessionLog;
+            }
+        }
+
         public CommandWatcher(string modPath, IInputSimulator inputSimulator)
         {
             _inputSimulator = inputSimulator ?? throw new ArgumentNullException(nameof(inputSimulator));
@@ -1250,6 +1270,14 @@ namespace FFTColorCustomizer.Utilities
 
                     _lastCommandWasQuery = isScreenQuery;
 
+                    // Session-log: capture source screen + start time before
+                    // the command runs, so we can record the before→after
+                    // transition and round-trip latency. Pulled from SM
+                    // instead of a fresh DetectScreen() read to avoid a
+                    // second memory scan per command.
+                    string? sourceScreenName = ScreenMachine?.CurrentScreen.ToString();
+                    var commandStartedAt = DateTime.UtcNow;
+
                     var response = ExecuteCommand(command);
                     response.Screen ??= DetectScreenSettled();
                     // Override detection-ambiguous names where the SM has a
@@ -1293,6 +1321,19 @@ namespace FFTColorCustomizer.Utilities
                         response.ValidPaths ??= NavigationPaths.GetPaths(response.Screen);
                     WriteResponse(response);
 
+                    // Session observability log — one JSONL row per command.
+                    // Never throws (see SessionCommandLog docs) so it's safe
+                    // on the response path.
+                    var latencyMs = (long)(DateTime.UtcNow - commandStartedAt).TotalMilliseconds;
+                    SessionLog.Append(
+                        commandId: command.Id ?? "",
+                        action: command.Action ?? (command.Keys != null && command.Keys.Count == 0 ? "screen" : "keys"),
+                        sourceScreen: sourceScreenName,
+                        targetScreen: response.Screen?.Name,
+                        status: response.Status ?? "unknown",
+                        error: response.Error,
+                        latencyMs: latencyMs);
+
                     _lastProcessedCommandId = command.Id;
 
                     // Rename processed file to prevent re-processing
@@ -1319,6 +1360,17 @@ namespace FFTColorCustomizer.Utilities
                     if (errorResponse.Screen != null)
                         errorResponse.ValidPaths = NavigationPaths.GetPaths(errorResponse.Screen);
                     WriteResponse(errorResponse);
+
+                    // Record the error path too — these are exactly the cases
+                    // post-hoc review needs to find.
+                    SessionLog.Append(
+                        commandId: errorResponse.Id ?? "unknown",
+                        action: "exception",
+                        sourceScreen: ScreenMachine?.CurrentScreen.ToString(),
+                        targetScreen: errorResponse.Screen?.Name,
+                        status: "error",
+                        error: ex.Message,
+                        latencyMs: 0);
                 }
             }
         }

@@ -212,10 +212,13 @@ namespace FFTColorCustomizer.GameBridge
         private const int VK_Q = 0x51;
         private const int VK_E = 0x45;
 
-        // 150ms was too fast for PartyMenu grid nav — keys dropped during
-        // the ~200-500ms open/transition animations after Escape/Enter.
-        // 350ms matches the manual-test pace that worked reliably.
-        private const int KEY_DELAY = 350;
+        // Legacy constant — prefer KeyDelayClassifier.DelayMsFor(vk) which
+        // splits nav vs transition keys. Kept for any remaining callers
+        // that want the conservative value directly. 150ms was too fast
+        // for PartyMenu grid nav — keys dropped during the ~200-500ms
+        // open/transition animations after Escape/Enter. 350ms matches
+        // the manual-test pace that worked reliably for those.
+        private const int KEY_DELAY = KeyDelayClassifier.TRANSITION_DELAY_MS;
 
         // Screen state machine — wired by CommandWatcher after construction.
         // SendKey() notifies this via OnKeyPressed() so compound nav helpers
@@ -4635,7 +4638,11 @@ namespace FFTColorCustomizer.GameBridge
             // CharacterStatus / EqA / pickers. Matches how CommandWatcher's
             // key-by-key path calls OnKeyPressed after each press.
             ScreenMachine?.OnKeyPressed(vk);
-            Thread.Sleep(KEY_DELAY);
+            // Per-key classification: cursor nav keys (Up/Down/Left/Right)
+            // sleep 200ms, everything else (Enter/Escape/Space/Tab/letters
+            // used for tab cycling) sleeps 350ms. Shaves ~1-2s off flows
+            // that fire many cursor keys in a row (e.g. party grid nav).
+            Thread.Sleep(KeyDelayClassifier.DelayMsFor(vk));
         }
 
         /// <summary>

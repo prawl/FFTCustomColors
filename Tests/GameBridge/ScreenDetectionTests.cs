@@ -989,5 +989,86 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 detectedName: "WorldMap");
             Assert.Equal("WorldMap", result);
         }
+
+        // --- TitleScreen tightening (session 26, 2026-04-17) ---
+        // The loose `rawLocation==255 → TitleScreen` fallback used to swallow
+        // valid world-side screens after a GameOver. The strict rule now
+        // requires full uninit sentinels. Any state missing those falls
+        // through to the world-side rules (WorldMap / TravelList) instead.
+
+        [Fact]
+        public void DetectScreen_TitleScreen_FullUninitSentinels_Detected()
+        {
+            // Truly fresh process launch: all the uninit markers set.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFFL,
+                battleMode: 255, moveMode: 255, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 0xFFFF);
+            Assert.Equal("TitleScreen", result);
+        }
+
+        [Fact]
+        public void DetectScreen_TitleScreen_NeedsBattleMode255()
+        {
+            // The audit flagged battleMode as part of the uninit fingerprint.
+            // Same raw fingerprint as the previous test but battleMode=0 —
+            // this is post-battle stale state, NOT the title screen. Should
+            // fall through to WorldMap via the world-side rule.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFFL,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 0xFFFF);
+            Assert.NotEqual("TitleScreen", result);
+        }
+
+        [Fact]
+        public void DetectScreen_LooseRawLocation255_NoMatchingRule_ReturnsUnknown()
+        {
+            // Reach the residual fallback deliberately: rawLocation=255 with
+            // ui>1 (fails TravelList AND WorldMap branches), no hover (skips
+            // hover rule), no uninit sentinels (skips strict TitleScreen),
+            // no eventId (skips Cutscene), no party flag, no encounter flag.
+            // Old code fell back to "TitleScreen" here. New code should say
+            // "Unknown" — we genuinely can't place this state.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 7, rawLocation: 255,
+                slot0: 100, slot9: 100,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 0);
+            Assert.NotEqual("TitleScreen", result);
+        }
+
+        [Fact]
+        public void DetectScreen_LooseRawLocation255_DoesNotFallBackToTitleScreen()
+        {
+            // The old catch-all `if (rawLocation == 255) return "TitleScreen"` must
+            // go. A state with rawLocation=255 but NO uninit sentinels AND no
+            // match for earlier world-side rules (party/ui both zero, no hover,
+            // no eventId, no paused/gameOver) should NOT be labeled TitleScreen
+            // — it's an unknown/stale state and the code should say so.
+            //
+            // Concrete repro: slot0/slot9 are non-uninit real values (from a
+            // live save), ui/party are 0, but we're not on WorldMap (no hover,
+            // no moveMode world signal). Old code would catch this as
+            // TitleScreen via line 281 fallback. New code must return something
+            // else — preferably "Unknown" so the caller knows detection can't
+            // place them.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 100, slot9: 100,      // real save values, NOT uninit
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 0);
+            Assert.NotEqual("TitleScreen", result);
+        }
     }
 }

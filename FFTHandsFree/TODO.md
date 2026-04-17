@@ -453,11 +453,9 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Full stock list inline at Outfitter_Buy** — instead of forcing Claude to scroll through items one at a time (ui=Oak Staff → down → ui=White Staff → down...), surface the entire shop stock in the screen response. Each entry: `{name, price, type, stats}`. Stats tier by type — weapons: `wp, range, element, statMods` (e.g. `WP=5 MA+1`); armor: `hp, def, evade, statMods`; consumables: `effect` (e.g. `Restores 30 HP`, `Removes KO`). Claude picks by name, one round-trip. Matches scan_move's "see everything at once" philosophy.
 
 
-- [ ] **Tavern interior: add `Tavern` screen state** — Sub-actions Rumors and Errands. Currently misreported as `SettlementMenu ui=Tavern`. Add screen detection via shopTypeIndex + ui= via sub-action cursor.
+- [x] **Tavern interior: `Tavern` screen state detected** — already shipped. `insideShopFlag==1 && shopTypeIndex==1` returns "Tavern" via `ShopTypeLabels.ForIndex(1)`. ValidPaths route via `"Tavern" => GetSettlementMenuPaths()`. The remaining work (Rumors / Errands sub-actions) is the two tasks below.
 
-- [ ] **Tavern: add `Rumors` screen state + ValidPaths** — ScrollUp/Down/Read/Back. Needs memory scan for rumor cursor row (try reusing 0x141870704).
-
-- [ ] **Tavern: add `Errands` screen state + ValidPaths** — ScrollUp/Down/Select/Back. Select opens party menu for dispatch (depends on party menu work).
+- [ ] **Tavern: add `TavernRumors` + `TavernErrands` screen states + ValidPaths** — blocked on a live memory scan at a tavern. Open a tavern, navigate to Rumors, read `shopSubMenuIndex` from the detection dump, then navigate to Errands and read its value. Add those values to the `case 1: // Tavern` switch in `ScreenDetectionLogic.ResolveShopSubAction` (currently returns null). Then add the two screen names to NavigationPaths + ValidPaths (ScrollUp/Down/Read/Back for Rumors; ScrollUp/Down/Select/Back for Errands). Select on Errands opens party menu for dispatch (downstream dependency on party menu work).
 
 - [ ] **Tavern: `read_rumor` action (scrape body text from widget)** — Scrape the highlighted rumor's body text pane, like `read_dialogue` does for cutscenes. UE4 widget scrape; same FString challenges as shop items.
 
@@ -738,9 +736,6 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Remove `encA/encB`-dependent rules** — replace Battle_Victory / Battle_Desertion / EncounterDialog discriminators with stable signals (`paused`, `submenuFlag`, `acted/moved` combos).
 
 
-- [ ] **Remove `gameOverFlag==0` requirement from post-battle rules** — treat as sticky, use other signals.
-
-
 - [ ] **Fix Battle_Dialogue / Cutscene `eventId` filter** — change from `< 200` to `< 400 && != 0xFFFF` (caught eventId=302 at Orbonne pre-battle).
 
 
@@ -753,7 +748,7 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Memory scan for WorldMap vs TravelList discriminator** — these are byte-identical in current 18 inputs. Need a menu-depth or focused-widget address.
 
 
-- [ ] **Add `hover` to ScreenDetectionLogic inputs** — currently read in DetectScreen but not passed through. May help disambiguate world-side states.
+- [x] **Add `hover` to ScreenDetectionLogic inputs** — shipped. `hover` is a parameter of `ScreenDetectionLogic.Detect` (line 65) and is used as a discriminator for TitleScreen (`hover >= 0 && hover <= 42 && rawLocation == 255` = WorldMap hovering a named location) and for world-map side state separation. Closed 2026-04-17 as stale.
 
 
 
@@ -842,6 +837,8 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 ## Low Priority / Deferred
 
 - [ ] **Re-enable strict mode** [Execution] — Disabled. Re-enable once all gameplay commands are tested.
+
+- [ ] **Remove `gameOverFlag==0` requirement from post-battle rules** — treat as sticky, use other signals. Deferred 2026-04-17 because reproducing requires losing a real battle to trigger GameOver — not cheap to set up. Re-prioritize once we're running battles regularly and this misdetection actually blocks a session (Cutscene→LoadGame collision after GameOver is the main documented symptom).
 
 
 

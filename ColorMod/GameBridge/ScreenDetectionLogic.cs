@@ -276,11 +276,13 @@ namespace FFTColorCustomizer.GameBridge
                 if (isPartySubScreen)
                     return "PartySubScreen";
 
-                // Fallback TitleScreen for any remaining rawLocation=255 state that didn't
-                // fit a more specific rule.
-                if (rawLocation == 255)
-                    return "TitleScreen";
-
+                // No loose TitleScreen fallback here. The strict TitleScreen rule
+                // above (line ~166) requires proper uninit sentinels. A residual
+                // rawLocation=255 state that matches NO world-side rule (WorldMap/
+                // TravelList/Cutscene/EncounterDialog) is genuinely unknown, not
+                // a title screen. Returning "Unknown" surfaces the ambiguity so
+                // callers can investigate instead of silently mislabeling post-
+                // GameOver or post-battle stale states as TitleScreen.
                 return "Unknown";
             }
 
