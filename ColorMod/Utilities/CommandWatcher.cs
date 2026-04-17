@@ -1063,7 +1063,7 @@ namespace FFTColorCustomizer.Utilities
         {
             "scan_move", "scan_units", "set_map", "report_state",
             "read_address", "read_block", "batch_read",
-            "mark_blocked", "snapshot", "heap_snapshot", "diff",
+            "mark_blocked", "snapshot", "heap_snapshot", "diff", "find_toggle",
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
             "read_dialogue", "write_byte", "dump_detection_inputs",
@@ -1714,6 +1714,27 @@ namespace FFTColorCustomizer.Utilities
                         Explorer.DiffSnapshots(command.FromLabel ?? "before", command.ToLabel ?? "after", command.SearchLabel ?? "result");
                         response.Status = "completed";
                         break;
+
+                    case "find_toggle":
+                    {
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        // Uses 3 snapshots: baseline → advanced → back. Returns
+                        // addresses that went a→b→a with |b-a|==expectedDelta.
+                        // Useful for ad-hoc cursor byte hunts (shop rows, picker
+                        // cursors, etc.) without baking a dedicated resolver.
+                        var baseLabel = command.FromLabel ?? "base";
+                        var advLabel = command.ToLabel ?? "adv";
+                        var backLabel = command.SearchLabel ?? "back";
+                        int delta = command.SearchValue > 0 ? command.SearchValue : 1;
+                        var tc = Explorer.FindToggleCandidates(baseLabel, advLabel, backLabel, maxResults: 64, expectedDelta: delta);
+                        response.Info = $"find_toggle({baseLabel},{advLabel},{backLabel},d={delta}): {tc.Count} candidates";
+                        var sb = new System.Text.StringBuilder();
+                        foreach (var a in tc) sb.AppendLine($"  0x{(long)a:X}");
+                        var outPath = System.IO.Path.Combine(_bridgeDirectory, $"find_toggle_{command.SearchLabel ?? "result"}.txt");
+                        System.IO.File.WriteAllText(outPath, $"{response.Info}\n\n{sb}");
+                        response.Status = "completed";
+                        break;
+                    }
 
                     case "resolve_picker_cursor":
                     {
