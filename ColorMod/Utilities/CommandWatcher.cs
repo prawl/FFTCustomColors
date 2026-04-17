@@ -3949,6 +3949,7 @@ namespace FFTColorCustomizer.Utilities
                     screen.Tiles = validTiles;
                     ModLogger.Log($"[Tiles] MapBFS (MAP{mapData.MapNumber:D3}): {validTiles.Count} tiles (blocked: {_blockedTiles.Count}, enemies: {enemyPositions?.Count ?? 0}, allies: {allyPositions?.Count ?? 0}). " +
                         $"Unit=({unitGX},{unitGY}), Move={moveStat}, Jump={jumpStat}");
+                    LogBfsTileCountMismatch(validTiles.Count);
                     return;
                 }
 
@@ -3979,6 +3980,7 @@ namespace FFTColorCustomizer.Utilities
                     screen.Tiles = validTiles;
                     ModLogger.Log($"[Tiles] MemBFS: {validTiles.Count} tiles (blocked cache: {_blockedTiles.Count}). " +
                         $"Unit=({unitGX},{unitGY}), Move={moveStat}, Jump={jumpStat}");
+                    LogBfsTileCountMismatch(validTiles.Count);
                     return;
                 }
 
@@ -4020,6 +4022,28 @@ namespace FFTColorCustomizer.Utilities
             catch (Exception ex)
             {
                 ModLogger.LogError($"[CommandBridge] PopulateBattleTileData error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Reads the game's own tileCount byte at 0x142FEA008 (discovered
+        /// session 28: toggles between the previous unit's count and the
+        /// current active unit's count on Move mode entry/exit) and compares
+        /// it against the BFS-computed count. Emits a LOUD WARNING when the
+        /// two disagree so we notice when our BFS is wrong before Claude
+        /// acts on a bad tile list.
+        /// </summary>
+        private void LogBfsTileCountMismatch(int bfsCount)
+        {
+            if (Explorer == null) return;
+            var read = Explorer.ReadAbsolute((nint)0x142FEA008, 1);
+            int? gameCount = read.HasValue ? (int)read.Value.value : (int?)null;
+            var warning = GameBridge.MoveTileCountValidator.Compare(bfsCount, gameCount);
+            if (warning != null)
+            {
+                ModLogger.Log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                ModLogger.Log(warning);
+                ModLogger.Log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             }
         }
 
