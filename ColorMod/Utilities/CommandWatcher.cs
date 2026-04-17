@@ -6032,9 +6032,24 @@ namespace FFTColorCustomizer.Utilities
                                         Accessory = lo.AccessoryName,
                                     };
                                 }
-                                // HP/MP are NOT stored in the roster — they're
-                                // runtime-computed from job base + equipment.
-                                // Deferred to a future session (see TODO §10.6).
+                                // HP/MP are runtime-computed (not in roster slot),
+                                // but the hovered-unit heap array at ~0x200 stride
+                                // mirrors every active roster slot's MaxHp/Hp/Mp
+                                // at fixed offsets (+0x30..+0x36). Read them here.
+                                // The brave/faith doubling sanity check prevents
+                                // us from picking up ghost data in a slot that
+                                // hasn't been populated with this unit.
+                                var live = _hoveredArray.ReadStatsIfMatches(
+                                    arrayIndex: s.SlotIndex,
+                                    expectedBrave: s.Brave,
+                                    expectedFaith: s.Faith);
+                                if (live != null)
+                                {
+                                    unit.Hp = live.Hp;
+                                    unit.MaxHp = live.MaxHp;
+                                    unit.Mp = live.Mp;
+                                    unit.MaxMp = live.MaxMp;
+                                }
                                 grid.Units.Add(unit);
                             }
                             screen.Roster = grid;
