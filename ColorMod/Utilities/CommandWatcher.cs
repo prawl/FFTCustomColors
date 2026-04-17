@@ -3884,6 +3884,11 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name != "BattleMoving")
                     return;
 
+                // Surface the cursor tile on the compact screen line so Claude can
+                // see where the cursor is about to confirm without a separate scan.
+                if (cursorXResult != null && cursorYResult != null)
+                    screen.UI = GameBridge.BattleCursorFormatter.FormatCursor(screen.CursorX, screen.CursorY);
+
                 // Auto-load map from location ID if not already loaded
                 EnsureMapLoader();
                 if (_lastWorldMapLocation < 0)
