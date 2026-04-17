@@ -348,8 +348,11 @@ _show_helpers() {
     open_character_status [unit]          Jump to Character Status
     party_summary                         Show all units at a glance
     check_unit <name>                     Quick stat dump for one unit
+    view_unit <name>                      Read-only unit data (no nav)
     save_and_travel <id>                  Save then travel to location
+    travel_safe <id>                      Travel with auto-flee on encounters
     enter_shop                            Enter the Outfitter at current location
+    scan_inventory                        Open inventory tab + dump full list
     start_encounter                       Trigger random encounter (battlegrounds only)"
       ;;
     PartyMenu)
@@ -357,7 +360,10 @@ _show_helpers() {
     open_job_selection [unit]             Jump to Job Selection
     open_character_status [unit]          Jump to Character Status
     party_summary                         Show all units at a glance
-    check_unit <name>                     Quick stat dump for one unit"
+    check_unit <name>                     Quick stat dump for one unit
+    view_unit <name>                      Read-only unit data (no nav)
+    scan_inventory                        Open inventory tab + dump full list
+    return_to_world_map                   Universal escape back to WorldMap"
       ;;
     EquipmentAndAbilities)
       helpers="    change_secondary_ability_to <name>   Set secondary skillset
@@ -370,8 +376,10 @@ _show_helpers() {
     list_support_abilities               Show learned support abilities
     list_movement_abilities              Show learned movement abilities
     remove_equipment                     Unequip item at cursor
+    unequip_all <unit>                   Strip all equipment from a unit
     swap_unit <name>                     Cycle Q/E to named unit
-    open_picker <unit> <slot>            Open equipment picker (weapon/shield/helm/garb/accessory)"
+    open_picker <unit> <slot>            Open equipment picker (weapon/shield/helm/garb/accessory)
+    return_to_world_map                  Universal escape back to WorldMap"
       ;;
     CharacterStatus)
       helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
@@ -379,11 +387,13 @@ _show_helpers() {
     dismiss_unit                          Hold B to open dismiss confirmation
     swap_unit <name>                      Cycle Q/E to named unit
     check_unit <name>                     Quick stat dump for one unit
-    open_picker <unit> <slot>             Open equipment picker (weapon/shield/helm/garb/accessory)"
+    open_picker <unit> <slot>             Open equipment picker (weapon/shield/helm/garb/accessory)
+    return_to_world_map                   Universal escape back to WorldMap"
       ;;
     JobSelection)
       helpers="    change_job_to <class>                 Change to named job class
-    swap_unit <name>                      Cycle Q/E to named unit"
+    swap_unit <name>                      Cycle Q/E to named unit
+    return_to_world_map                   Universal escape back to WorldMap"
       ;;
     BattleFormation)
       helpers="    auto_place_units                      Accept default placement and start battle
@@ -1029,6 +1039,161 @@ open_picker() {
   fft "{\"id\":\"$(id)\",\"keys\":[$keysJson],\"delayBetweenMs\":250}" >/dev/null
   _FFT_DONE=0
   screen
+}
+
+# return_to_world_map: Universal escape hatch — get back to WorldMap from
+# any party-tree screen. Iterates Escape with detection until WorldMap.
+# Stops at 8 attempts to avoid infinite loops. Useful when Claude is
+# stuck or unsure how to back out of a nested state.
+return_to_world_map() {
+  for i in $(seq 1 8); do
+    local cur=$(_current_screen)
+    if [ "$cur" = "WorldMap" ]; then
+      screen
+      return 0
+    fi
+    fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":0}" >/dev/null
+    _FFT_DONE=0
+    sleep 0.5
+  done
+  echo "[return_to_world_map] ERROR: stuck at $(_current_screen) after 8 escapes"
+  return 1
+}
+
+# view_unit <name>: Read-only data dump for a unit. Combines roster
+# stats with EqA-derived ability assignments and JP-next info.
+# No navigation, no key presses — just reads roster from memory and
+# formats. Works from anywhere a roster is readable (PartyMenu tree
+# or WorldMap). For a richer in-menu view, use open_eqa <unit>.
+view_unit() {
+  local target="$*"
+  if [ -z "$target" ]; then echo "[view_unit] usage: view_unit <name>"; return 1; fi
+  _current_screen >/dev/null
+  local lowerTarget=$(echo "$target" | tr 'A-Z' 'a-z')
+  node -e "
+const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const units=(r.screen?.roster?.units||[]);
+if(!units.length){console.error('[view_unit] no roster data on this screen');process.exit(1);}
+const u=units.find(x=>(x.name||'').toLowerCase()==='$lowerTarget');
+if(!u){console.error('[view_unit] unit \"$target\" not found in roster');process.exit(1);}
+const eq=u.equipment||{};
+const slots=[eq.weapon,eq.leftHand,eq.shield,eq.helm,eq.body,eq.accessory].filter(Boolean);
+console.log('  '+u.name+'  '+u.job+'  Lv '+u.level+'  JP '+(u.jp??'--')+'  Brave '+(u.brave??'--')+'  Faith '+(u.faith??'--')+(u.zodiac?'  Zodiac: '+u.zodiac:''));
+if(slots.length)console.log('  Equip: '+slots.join(' / '));
+else console.log('  Equip: (none)');
+" "$B/response.json" 2>&1
+}
+
+# unequip_all <unit>: Strip all 5 equipment slots from a named unit.
+# Navigates to unit's EqA, then for each slot (R Hand, Shield, Helm,
+# Garb, Accessory): Down-walk to slot row → Enter (open picker) → Enter
+# again on currently-equipped item to unequip → wait for return to EqA.
+# Skips slots that are already empty.
+unequip_all() {
+  local target="$*"
+  if [ -z "$target" ]; then echo "[unequip_all] usage: unequip_all <name>"; return 1; fi
+  _require_state unequip_all "$_PARTY_NAV_VALID_STATES" || return 1
+
+  open_eqa "$target" >/dev/null
+  _FFT_DONE=0
+  sleep 0.3
+
+  # Verify we landed on EqA for the right unit
+  _current_screen >/dev/null
+  local landedScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).screen?.name||'')" "$B/response.json" 2>/dev/null)
+  local landedUnit=$(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).screen?.viewedUnit||'')" "$B/response.json" 2>/dev/null)
+  if [ "$landedScr" != "EquipmentAndAbilities" ]; then
+    echo "[unequip_all] ERROR: expected EquipmentAndAbilities, landed on $landedScr"
+    return 1
+  fi
+  if [ "$(echo "$landedUnit" | tr 'A-Z' 'a-z')" != "$(echo "$target" | tr 'A-Z' 'a-z')" ]; then
+    echo "[unequip_all] WARN: requested $target but viewedUnit=$landedUnit; aborting"
+    return 1
+  fi
+
+  # Read current loadout from the response
+  local removed=0 skipped=0
+  for slot in weapon shield helm garb accessory; do
+    _current_screen >/dev/null
+    local hasItem=$(node -e "
+const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+const l=r.screen?.loadout||{};
+const map={weapon:'weapon',shield:'shield',helm:'helm',garb:'body',accessory:'accessory'};
+const v=l[map['$slot']];
+console.log(v?'1':'0');
+" "$B/response.json" 2>/dev/null)
+    if [ "$hasItem" = "0" ]; then
+      skipped=$((skipped+1))
+      continue
+    fi
+    remove_equipment >/dev/null 2>&1 || true
+    _FFT_DONE=0
+    removed=$((removed+1))
+    sleep 0.2
+    # Move cursor to next slot row (Down on column 0 cycles slots)
+    fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":40,\"name\":\"Down\"}],\"delayBetweenMs\":0}" >/dev/null 2>&1
+    _FFT_DONE=0
+    sleep 0.2
+  done
+  echo "[unequip_all] $target: removed $removed, skipped $skipped (already empty)"
+  screen
+}
+
+# travel_safe <id>: world_travel_to with auto-flee on encounters.
+# Useful for non-grinding traversal. Polls screen state after travel;
+# if EncounterDialog appears, fires Flee and re-polls until WorldMap
+# or until we've fled 5 times (suggests we're stuck on a forced battle).
+travel_safe() {
+  local dest="$1"
+  if [ -z "$dest" ]; then echo "[travel_safe] usage: travel_safe <location_id>"; return 1; fi
+  _require_state travel_safe "WorldMap" || return 1
+
+  world_travel_to "$dest" >/dev/null
+  _FFT_DONE=0
+
+  local fled=0
+  for i in $(seq 1 10); do
+    sleep 1
+    local cur=$(_current_screen)
+    case "$cur" in
+      WorldMap)
+        echo "[travel_safe] arrived at $(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).screen?.locationName||'?')" "$B/response.json")"
+        screen
+        return 0
+        ;;
+      EncounterDialog)
+        if [ $fled -ge 5 ]; then
+          echo "[travel_safe] ERROR: fled 5+ times, stuck on forced battle"
+          return 1
+        fi
+        execute_action Flee >/dev/null 2>&1
+        _FFT_DONE=0
+        fled=$((fled+1))
+        ;;
+      *)
+        # Transitional state — keep polling
+        ;;
+    esac
+  done
+  echo "[travel_safe] TIMEOUT: didn't arrive at WorldMap after 10s. Current: $(_current_screen)"
+  return 1
+}
+
+# scan_inventory: Open PartyMenuInventory in verbose mode and dump
+# the full inventory grouped by category. Saves Claude a navigation
+# round-trip when planning purchases or equipment changes.
+scan_inventory() {
+  _require_state scan_inventory "$_PARTY_NAV_VALID_STATES" || return 1
+  # Get to PartyMenu first (Escape until WorldMap → Escape to PartyMenu)
+  return_to_world_map >/dev/null
+  _FFT_DONE=0
+  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":0,\"waitForScreen\":\"PartyMenu\",\"waitTimeoutMs\":3000}" >/dev/null
+  _FFT_DONE=0
+  # Switch to Inventory tab via E
+  fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":69,\"name\":\"E\"}],\"delayBetweenMs\":0,\"waitForScreen\":\"PartyMenuInventory\",\"waitTimeoutMs\":3000}" >/dev/null
+  _FFT_DONE=0
+  # Dump verbose inventory
+  screen -v
 }
 
 # =============================================================================
@@ -1759,6 +1924,23 @@ change_accessory_to()   { _not_implemented_equipment change_accessory_to; }
 
 # save: Save the game.
 save() { fft "{\"id\":\"$(id)\",\"action\":\"save\"}"; }
+
+# save_game [slot]: Navigate the in-game Save flow at a settlement
+# (LocationMenu → Save Game → SaveGame_Menu → pick slot → confirm).
+# UNIMPLEMENTED — flow needs SaveGame_Menu detection + slot picker
+# tracking. Use `save` for the underlying action stub once it works.
+save_game() {
+  echo "[save_game] NOT IMPLEMENTED — needs SaveGame_Menu navigation flow"
+  return 1
+}
+
+# load_game [slot]: Navigate the LoadGame screen (from title or pause
+# menu) → pick slot → confirm load. UNIMPLEMENTED — needs LoadGame
+# detection from non-GameOver paths and slot cursor tracking.
+load_game() {
+  echo "[load_game] NOT IMPLEMENTED — needs LoadGame navigation flow"
+  return 1
+}
 
 # load: Load the most recent save.
 load() { fft "{\"id\":\"$(id)\",\"action\":\"load\"}"; }
