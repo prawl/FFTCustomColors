@@ -9,41 +9,41 @@ namespace FFTColorCustomizer.Tests.GameBridge
     public class MovementBfsTests
     {
         /// <summary>
-        /// Ally-occupied tiles can be walked through but cost +1 move point
-        /// and cannot be a final destination. Verified in-game 2026-04-13:
-        /// Kenrick at (10,9) Move=4 Jump=4 with allies at (9,9), (10,10), (10,6).
-        /// Without ally penalty: BFS returns 13 tiles (3 extras past allies).
-        /// With ally penalty: BFS returns exactly the 10 game-valid tiles.
+        /// Ally-occupied tiles can be walked through at the normal tile cost
+        /// (no extra penalty, no discount) but cannot be a final destination.
+        /// Verified in-game 2026-04-17 (session 29): Kenrick (Knight Mv=3 Jmp=3)
+        /// at (9,9) with allies at (10,9), (10,10), (8,10). Game highlights 11
+        /// blue tiles including (10,11) and (8,11) — reached by walking through
+        /// allies at cost 1+1+1=3 = Move. A +1 penalty would make those paths
+        /// cost 6 (too far); a 0-cost pass-through over-extends reach and
+        /// matches more tiles than the game shows.
         /// </summary>
         [Fact]
-        public void BFS_AllyTiles_CostExtraAndCannotBeDestination()
+        public void BFS_AllyTiles_CanBePassedThrough_ButNotStoppedOn()
         {
-            // Flat 3x3 map, all height 0, no obstacles
+            // Flat 5x5 map, all height 0, no obstacles
             var map = CreateFlatMap(5, 5, tileHeight: 0);
 
-            // Unit at (2,2), Move=2, Jump=4
-            // Ally at (2,3) — directly adjacent
+            // Unit at (2,2), Move=3, Jump=4, ally at (2,3).
             var allyPositions = new HashSet<(int, int)> { (2, 3) };
 
             var tiles = MovementBfs.ComputeValidTiles(
-                map, unitX: 2, unitY: 2, moveStat: 2, jumpStat: 4,
+                map, unitX: 2, unitY: 2, moveStat: 3, jumpStat: 4,
                 enemyPositions: null, allyPositions: allyPositions);
 
             var tileSet = tiles.Select(t => (t.X, t.Y)).ToHashSet();
 
-            // Ally tile (2,3) should NOT be in the result (can't stop on ally)
+            // Ally tile (2,3) should NOT be in the result (can't stop on ally).
             Assert.DoesNotContain((2, 3), tileSet);
 
-            // (2,4) is 2 tiles away normally, but through ally at (2,3) costs 1+2=3 > Move=2
-            // So (2,4) should NOT be reachable
-            Assert.DoesNotContain((2, 4), tileSet);
+            // (2,4) is 2 steps away through ally at (2,3). Normal cost: 1+1=2,
+            // within Move=3, so reachable.
+            Assert.Contains((2, 4), tileSet);
 
-            // (1,2), (3,2), (2,1) should all be reachable (no ally in path, cost=1)
+            // Other directions — no allies in path, normal cost-1 per step.
             Assert.Contains((1, 2), tileSet);
             Assert.Contains((3, 2), tileSet);
             Assert.Contains((2, 1), tileSet);
-
-            // (0,2), (4,2), (2,0) should be reachable (cost=2, no ally in path)
             Assert.Contains((0, 2), tileSet);
             Assert.Contains((4, 2), tileSet);
             Assert.Contains((2, 0), tileSet);

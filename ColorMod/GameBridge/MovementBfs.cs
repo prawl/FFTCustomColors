@@ -42,29 +42,40 @@ namespace FFTColorCustomizer.GameBridge
             HashSet<(int, int)>? enemyPositions = null,
             HashSet<(int, int)>? allyPositions = null)
         {
+            // Visited state is keyed by (x, y) but stores the arrival cost.
+            // For swamp-continue bookkeeping we also need the direction of
+            // arrival so a later step onto a neighbour can tell whether it's
+            // continuing along the same axis.
             var visited = new Dictionary<(int, int), int>();
-            var queue = new Queue<(int x, int y, int cost)>();
+            // lastDir: direction the unit moved to reach this tile. -1 = start.
+            // Stored alongside cost so axis-continue can inspect it when
+            // expanding from a swamp tile.
+            var arrivalDir = new Dictionary<(int, int), int>();
+            var queue = new Queue<(int x, int y, int cost, int lastDir)>();
 
             if (!map.InBounds(unitX, unitY)) return new List<TilePosition>();
 
-            queue.Enqueue((unitX, unitY, 0));
+            queue.Enqueue((unitX, unitY, 0, -1));
             visited[(unitX, unitY)] = 0;
+            arrivalDir[(unitX, unitY)] = -1;
 
             // Dir vectors paired with the Direction enum for edge-height lookup.
             // dx/dy are added to (x,y) to get the neighbour; exitDir is the edge
             // of the CURRENT tile we're leaving toward; entryDir is the edge of
             // the NEXT tile we're entering through (the opposite side).
-            var steps = new (int dx, int dy, Direction exit, Direction entry)[]
+            // Step vectors plus a direction code (0=E, 1=W, 2=S, 3=N) used for
+            // axis-continue bookkeeping in swamp/water terrain.
+            var steps = new (int dx, int dy, Direction exit, Direction entry, int dir)[]
             {
-                (1, 0, Direction.E, Direction.W),
-                (-1, 0, Direction.W, Direction.E),
-                (0, 1, Direction.S, Direction.N),
-                (0, -1, Direction.N, Direction.S),
+                (1, 0, Direction.E, Direction.W, 0),
+                (-1, 0, Direction.W, Direction.E, 1),
+                (0, 1, Direction.S, Direction.N, 2),
+                (0, -1, Direction.N, Direction.S, 3),
             };
 
             while (queue.Count > 0)
             {
-                var (x, y, cost) = queue.Dequeue();
+                var (x, y, cost, lastDir) = queue.Dequeue();
                 if (cost >= moveStat) continue;
 
                 foreach (var s in steps)
@@ -87,16 +98,32 @@ namespace FFTColorCustomizer.GameBridge
 
                     if (Math.Abs(exitH - entryH) > jumpStat) continue;
 
-                    int tileCost = map.Tiles[nx, ny].MoveCost;
-                    // Walking through an ally-occupied tile costs +1 move point
-                    if (allyPositions != null && allyPositions.Contains((nx, ny)))
-                        tileCost += 1;
+                    // Ally pass-through costs the same as the underlying tile (session 29
+                    // live-verified: Kenrick (9,9) Mv=3 reaches (10,11) through ally tiles
+                    // — paths 1+1+1=3). Allies are walked onto normally but can't be a
+                    // final destination (removed from result below).
+                    //
+                    // Depth (swamp/water) axis-continue rule (session 29 live-verified at
+                    // Kenrick (8,5) Mv=3): entering a depth tile costs 1+depth normally,
+                    // but continuing swamp→swamp ALONG THE SAME AXIS costs only 1. Turning
+                    // within swamp (e.g. enter southward, then step west to a side swamp)
+                    // pays full 1+depth again. Live data: (8,7) and (6,5) reachable from
+                    // (8,5) at cost 3 via straight south/west paths; (7,6) rejected at
+                    // cost 3 because it requires turning in swamp.
+                    var nt = map.Tiles[nx, ny];
+                    var ct = map.Tiles[x, y];
+                    int tileCost;
+                    if (nt.Depth > 0 && ct.Depth > 0 && lastDir == s.dir)
+                        tileCost = 1; // swamp-continue along same axis
+                    else
+                        tileCost = nt.MoveCost;
                     int newCost = cost + tileCost;
                     if (newCost > moveStat) continue;
                     if (!visited.ContainsKey((nx, ny)) || visited[(nx, ny)] > newCost)
                     {
                         visited[(nx, ny)] = newCost;
-                        queue.Enqueue((nx, ny, newCost));
+                        arrivalDir[(nx, ny)] = s.dir;
+                        queue.Enqueue((nx, ny, newCost, s.dir));
                     }
                 }
             }

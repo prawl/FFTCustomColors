@@ -509,29 +509,27 @@ namespace FFTColorCustomizer.GameBridge
         public string SlopeType;
 
         /// <summary>
-        /// Movement cost to enter this tile. FFT terrain costs:
-        /// - Swamp/Marsh/Poisoned marsh: 2
-        /// - Lava: 2
-        /// - Water tiles (River/Lake/Sea/Waterway/Waterfall) with depth: 1 + depth
-        /// - All others: 1
+        /// Movement cost to enter this tile. IC remaster rules (session 29
+        /// live-verified on Siedge Weald):
+        /// - Depth-based: anything with depth > 0 costs 1 + depth. Applies
+        ///   to Swamp (typically depth=1) and River/Lake/Sea/Waterway/Waterfall.
+        ///   Classic PSX hardcoded Swamp=2 regardless — IC stores depth per-tile
+        ///   in the map data and derives the cost uniformly.
+        /// - All other surfaces: 1.
+        /// Unverified in IC: Marsh, Poisoned marsh, Lava — they keep the
+        /// PSX-default 2 until a test case surfaces.
         /// </summary>
         public int MoveCost
         {
             get
             {
+                if (Depth > 0) return 1 + Depth;
                 switch (SurfaceType)
                 {
-                    case "Swamp":
                     case "Marsh":
                     case "Poisoned marsh":
                     case "Lava":
                         return 2;
-                    case "River":
-                    case "Lake":
-                    case "Sea":
-                    case "Waterway":
-                    case "Waterfall":
-                        return Depth > 0 ? 1 + Depth : 1;
                     default:
                         return 1;
                 }
