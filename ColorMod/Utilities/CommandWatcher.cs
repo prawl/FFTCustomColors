@@ -465,11 +465,41 @@ namespace FFTColorCustomizer.Utilities
                 Thread.Sleep(220);
                 _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
                 Thread.Sleep(220);
+
+                // Liveness check: confirm the verified byte is still
+                // tracking after the oscillation window. Some candidates
+                // pass the 2-step verify because they're widget-state
+                // counters that increment on cursor CHANGE events during
+                // the rapid oscillation, but stay at 0 during real nav
+                // (observed session 27). Press Right one more time, read
+                // the byte, expect +1 from the post-restore baseline. If
+                // it doesn't follow, reject the candidate.
+                if (verified != 0L)
+                {
+                    var postRestore = Explorer.ReadAbsolute((nint)verified, 1);
+                    byte postRestoreVal = postRestore.HasValue ? (byte)postRestore.Value.value : (byte)0;
+                    _inputSimulator.SendKeyPressToWindow(win, VK_RIGHT);
+                    Thread.Sleep(300);
+                    var afterProbe = Explorer.ReadAbsolute((nint)verified, 1);
+                    byte afterProbeVal = afterProbe.HasValue ? (byte)afterProbe.Value.value : (byte)0;
+                    _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
+                    Thread.Sleep(220);
+                    // Expect afterProbeVal == postRestoreVal + 1 (or wrap).
+                    // Reject if byte didn't move — it's not live-tracking.
+                    if (afterProbeVal != (byte)(postRestoreVal + 1)
+                        && afterProbeVal != 0)
+                    {
+                        ModLogger.Log($"[ResolveJobCursor] liveness failed: 0x{verified:X} {postRestoreVal}→{afterProbeVal} (expected +1). Rejecting.");
+                        verified = 0L;
+                    }
+                }
             }
             _resolvedJobCursorAddr = verified;
-            return cands.Count > 0
+            return verified != 0L
                 ? $"Resolved job cursor: 0x{_resolvedJobCursorAddr:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
-                : "No stable job cursor byte found (0 candidates)";
+                : cands.Count > 0
+                    ? $"No live job cursor byte found ({cands.Count} candidates failed liveness)"
+                    : "No stable job cursor byte found (0 candidates)";
         }
 
         /// <summary>
@@ -5775,23 +5805,32 @@ namespace FFTColorCustomizer.Utilities
                     // retry — the fallback is the state machine's tracked
                     // cursor position, which handles most nav correctly.
                     //
-                    // Gate the trigger on screen.MenuDepth == 2 (inner panel
-                    // confirmed by memory). The state machine flips to
-                    // JobScreen synchronously on Enter, but the game's open
-                    // animation takes ~50-200ms — firing the resolver during
-                    // that window sends the 6 raw Right/Left keys into
-                    // PartyMenu / CharacterStatus / animation, drifting the
-                    // OUTER cursor. MenuDepth lags the state machine by the
-                    // same animation window, so it's the right gate.
-                    if (!_jobCursorResolveAttempted && screen.MenuDepth == 2)
+                    // Gate on animation-lag being past. JobSelection is
+                    // menuDepth=0 (per project_menudepth_gating.md), so the
+                    // older menuDepth==2 gate never fired — that's been a
+                    // silent bug since the resolver was first wired. Use the
+                    // state-machine animation-lag signal instead: the Enter
+                    // that opened JobSelection counts as KeysSinceLastSetScreen=0,
+                    // and the game needs ~50-200ms to settle before we can
+                    // safely send the resolver's 6 oscillation keys. Requiring
+                    // the caller to issue one extra `screen` read (which
+                    // typically happens naturally after open) ensures we're
+                    // past the animation window.
+                    if (!_jobCursorResolveAttempted
+                        && ScreenMachine.KeysSinceLastSetScreen >= 1)
                     {
                         _jobCursorResolveAttempted = true;
                         int _unused;
-                        ResolveJobCursor(out _unused);
+                        var info = ResolveJobCursor(out _unused);
+                        if (info != null) ModLogger.Log($"[CommandBridge] auto {info}");
                     }
 
                     int cursorRow = ScreenMachine.CursorRow;
                     int cursorCol = ScreenMachine.CursorCol;
+                    // Drift-correction reads: _resolvedJobCursorAddr is 0 unless
+                    // the resolver's liveness check passed (session 27). So
+                    // this path only executes when we have a live-tracking
+                    // cursor byte — no risk of bogus snaps.
                     if (_resolvedJobCursorAddr != 0)
                     {
                         var curByte = Explorer.ReadAbsolute((nint)_resolvedJobCursorAddr, 1);
@@ -5803,6 +5842,19 @@ namespace FFTColorCustomizer.Utilities
                             {
                                 cursorRow = rc.Value.Row;
                                 cursorCol = rc.Value.Col;
+                                // Drift-correction: snap SM to memory when
+                                // they disagree. The resolver includes a
+                                // liveness check (session 27) so _resolvedJobCursorAddr
+                                // being non-zero means the byte actually
+                                // tracks real nav, not just oscillation.
+                                // SetJobCursor is no-op when out of grid
+                                // bounds so a bad read can't corrupt the SM.
+                                if (cursorRow != ScreenMachine.CursorRow
+                                 || cursorCol != ScreenMachine.CursorCol)
+                                {
+                                    ModLogger.Log($"[SM-Drift] JobSelection ({ScreenMachine.CursorRow},{ScreenMachine.CursorCol}) → ({cursorRow},{cursorCol}) per heap byte");
+                                    ScreenMachine.SetJobCursor(cursorRow, cursorCol);
+                                }
                             }
                         }
                     }

@@ -73,6 +73,14 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 27 — pivot: stop blocking chains, start supporting them
+
+- [ ] **Remove the chain-guard hard block; keep the auto-delay** — 5 prior attempts to block chained shell calls have all caused collateral false-positives without stopping real races. Evidence from session 27: chained Bash calls like `source ./fft.sh && right && sleep 0.6 && screen` worked reliably across dozens of iterations — no detectable races, no missed keypresses, SM states matched game state, memory reads verified cleanly. The single-threaded bridge already sequences game-affecting commands, and the bridge-side auto-delay (`[CHAIN WARNING]` path) handles the narrow case where two key-sending commands arrive too fast. The hard-exit chain guard is belt-and-suspenders that catches legitimate flows.
+  - **What to remove:** the disk `claude_bridge/fft_done.flag` kill-path in `fft.sh` that produces `[NO] Only call one command at a time. Do not chain commands.` and the `kill -9 $$` it triggers. Keep `_track_key_call` as a telemetry counter if useful for the `SessionCommandLog`.
+  - **What to keep:** the bridge-side auto-delay (already active). If a genuine race surfaces, the session log captures it and we add a targeted fix for that specific case rather than a global block.
+  - **Expected wins:** faster iteration (no 3-call splits when 1 works), no false "[NO]" during debugging, cleaner read-heavy flows. Cost: theoretical loss of a safety net that hasn't actually caught real bugs in live sessions.
+  - **Audit before removing:** grep the codebase for every `_FFT_DONE`, `fft_done.flag`, `_fft_reset_guard`, `_is_key_sending` reference — 34 sites were rewritten in session 25 to reset this guard, they all become no-ops when the block is removed. Also re-read `feedback_no_auto_loops.md` / `feedback_one_at_a_time.md` memory notes — those constraints are about unbounded loops and one-step-at-a-time gameplay pacing (good), not about chained Bash helpers (bad block). Leave those intact.
+
 ### Session 24 — follow-ups from the TODO cleanup sweep
 
 - [ ] **Plumb `resolve_job_cursor` output back into SM correction** — session 24 live-observed a JobSelection desync: after Right×3 + Down, screenshot showed cursor on Archer (r0,c3) while shell reported cursor=(r0,c0). The existing heap resolver finds the real cursor byte (32 candidates, `0x13648E264` this session) but `CommandWatcher.cs ~5400` only uses `memRow` for display, not for SM drift correction. Fix: when `memRow != ScreenMachine.CursorRow || memCol != ScreenMachine.CursorCol`, snap the SM to the mem values and log the correction. Would also fix most chain-nav bugs in JobSelection paths.

@@ -277,6 +277,49 @@ public class ScreenStateMachineTests
         Assert.Equal(0, sm.CursorCol);
     }
 
+    // --- Job cursor drift correction ---
+
+    [Fact]
+    public void SetJobCursor_UpdatesRowAndCol()
+    {
+        // Scenario: SM thinks cursor is (0,0) but the resolved heap byte says
+        // (0,3). This mimics a live session 24 observation where Right×3+Down
+        // dropped keys and the SM drifted away from the game's real cursor.
+        // Correcting the SM from the heap read keeps downstream chain-nav
+        // helpers (change_job_to, etc.) sending keys from the right origin.
+        var sm = CreateAtScreen(GameScreen.JobScreen);
+        Assert.Equal(0, sm.CursorRow);
+        Assert.Equal(0, sm.CursorCol);
+        sm.SetJobCursor(0, 3);
+        Assert.Equal(0, sm.CursorRow);
+        Assert.Equal(3, sm.CursorCol);
+    }
+
+    [Fact]
+    public void SetJobCursor_NoOpsOffJobScreen()
+    {
+        var sm = CreateAtScreen(GameScreen.WorldMap);
+        sm.SetJobCursor(2, 3);
+        Assert.Equal(0, sm.CursorRow);
+        Assert.Equal(0, sm.CursorCol);
+    }
+
+    [Fact]
+    public void SetJobCursor_RejectsOutOfRangeValues()
+    {
+        // Grid is 3 rows × 6 cols (JobGridLayout). Out-of-range values
+        // should be ignored so a bad resolver read never corrupts the SM.
+        var sm = CreateAtScreen(GameScreen.JobScreen);
+        sm.SetJobCursor(-1, 0);
+        Assert.Equal(0, sm.CursorRow);
+        sm.SetJobCursor(0, -1);
+        Assert.Equal(0, sm.CursorCol);
+        sm.SetJobCursor(3, 0);  // row max is 2
+        Assert.Equal(0, sm.CursorRow);
+        sm.SetJobCursor(0, 6);  // col max is 5
+        Assert.Equal(0, sm.CursorCol);
+    }
+
     [Fact]
     public void EquipmentScreen_GridWraps()
     {

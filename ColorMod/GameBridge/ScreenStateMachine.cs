@@ -274,6 +274,29 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Force-sync the JobSelection grid cursor row/col from an external
+        /// source — specifically <c>ResolveJobCursor</c> which finds the real
+        /// cursor byte in heap. Used to correct SM drift: if the SM's tracked
+        /// cursor disagrees with the game's actual cursor (key drops,
+        /// animation races), downstream chain-nav like
+        /// <c>change_job_to Knight</c> sends keys from the wrong origin and
+        /// lands on the wrong class. Snapping the SM to memory truth before
+        /// the next helper fires is the fix.
+        ///
+        /// No-ops unless we're on the JobScreen AND the coordinates are
+        /// inside the 3×6 grid. A bad resolver read should never corrupt the
+        /// SM into an out-of-grid state.
+        /// </summary>
+        public void SetJobCursor(int row, int col)
+        {
+            if (CurrentScreen != GameScreen.JobScreen) return;
+            if (row < 0 || row > 2) return;
+            if (col < 0 || col > 5) return;
+            CursorRow = row;
+            CursorCol = col;
+        }
+
+        /// <summary>
         /// Force-sync the EquipmentAndAbilities column-0 cursor row from an
         /// external source — specifically the unequip-resolver in
         /// <c>CommandWatcher.ResolveEqaRow</c>. Also refreshes the saved
