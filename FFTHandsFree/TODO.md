@@ -73,6 +73,16 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 24 — follow-ups from the TODO cleanup sweep
+
+- [ ] **Plumb `resolve_job_cursor` output back into SM correction** — session 24 live-observed a JobSelection desync: after Right×3 + Down, screenshot showed cursor on Archer (r0,c3) while shell reported cursor=(r0,c0). The existing heap resolver finds the real cursor byte (32 candidates, `0x13648E264` this session) but `CommandWatcher.cs ~5400` only uses `memRow` for display, not for SM drift correction. Fix: when `memRow != ScreenMachine.CursorRow || memCol != ScreenMachine.CursorCol`, snap the SM to the mem values and log the correction. Would also fix most chain-nav bugs in JobSelection paths.
+
+- [ ] **EqA equivalent of the above** — same pattern for EqA column-0 row: auto-resolver already fires once on EqA entry (`_eqaRowAutoResolveAttempted` latch, session 24 pt.3) and sets `ScreenMachine.SetEquipmentCursor(resolvedRow)`. But it ONLY runs once per entry. If the SM drifts DURING an EqA session (e.g. after a picker open/close), the stale cursor persists. Consider re-firing the resolver on detect-drift events (menuDepth re-read after a picker exit).
+
+- [ ] **Live-verify JP Next Mettle costs** — session 24 populated Tailwind/Chant/Steel/Shout/Ultima with Wiki-sourced values but Ramza has them all maxed in the reference save. Either recruit a fresh-state unit with Mettle access or load a fresh save. The exact IC-remaster costs may differ from Wiki values.
+
+- [ ] **Chain-nav viewedUnit lag — next attempt needs a safer harness** — session 24 tried twice, reverted both times. First broke fresh-state, second crashed the game mid-test. Don't retry blind-kick. Approach for next session: (a) write a unit test that simulates the escape-storm → detection-stale sequence, (b) add a `dry-run` mode to `NavigateToCharacterStatus` that logs the key plan without firing, (c) run the dry-run against the crashy chain input to validate the key sequence is correct BEFORE firing for real.
+
 ### Session 23 — state stability + helper hardening
 
 - [ ] **Verify open_* compound helpers across CHAIN calls** — Fresh-state runs work after this session's fixes (`open_character_status Agrias` from WorldMap → correct unit). But chained calls (open_eqa Cloud → open_eqa Agrias) still produce the viewedUnit-lag bug. SM-sync changes in `82ccb65` may or may not have resolved this; needs explicit live test sequence cycling 3 different units through each open_* helper and verifying state matches each request. Source: `NavigationActions.cs` `NavigateToCharacterStatus` rewrite, ~line 4419.
@@ -83,7 +93,6 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **`return_to_world_map` from battle states untested** — Helper verified from EqA/JobSelection/PartyMenuUnits tree AND all non-Units tabs (PartyMenuInventory/Chronicle/Options — live-verified session 24). Still needs verification from BattlePaused, GameOver, BattleVictory, BattleDesertion paths.
 
-- [x] **`unequip_all` total runtime ~25s — caller timeout must be ≥30s** — Each slot unequip takes ~5s (open picker → Enter on equipped → wait return). Document in helper description so callers (Claude) know to set Bash timeout high. Or break into per-slot streaming with progress.
 
 - [ ] **Per-key detection verification (replace blind sleeps)** — Long-term fix for compound nav reliability. Each transition key should poll detection until expected state appears, instead of fixed sleep. Bigger refactor; defer until current 350ms/1000ms approach proves stable across more scenarios.
 
@@ -95,11 +104,10 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **⚠ UNVERIFIED auto_place_units** — C# bridge action built (NavigationActions.cs) and shell helper wired, but never live-tested in an actual battle formation. Sequence: sleep 4s → 4×(Enter+Enter) → Space → Enter → poll for battle state. Session 23 added state guard that requires `BattleFormation` so misuse fails fast.
 
-- [x] **EnterLocation delay may need per-location tuning** — VERIFIED session 24. Live-tested EnterLocation at Dorter, Gariland, and Lesalia with the current 500ms default — all three settlements enter cleanly. No per-location tuning required at present. If a new settlement fails, bump `DelayBetweenMs` on the EnterLocation PathEntry in NavigationPaths.cs (propagation fix from session 23 ensures it takes effect).
 
 ### Session 20 — state detection + EqA resolver
 
-- [ ] **Battle state verification** — Session 21 verified 11/13 with screenshots: BattleMyTurn ✅, BattleMoving ✅, BattleAbilities ✅, BattleAttacking ✅, BattleWaiting ✅, BattleStatus ✅, BattlePaused ✅, BattleFormation ✅, BattleEnemiesTurn ✅, GameOver ✅, EncounterDialog ✅. BattleVictory ❌ and BattleDesertion ❌ misdetect as BattlePaused (see bug below). BattleDialogue and Cutscene blocked by sticky gameOverFlag (see bug below). BattleActing transient (hard to catch). BattleAlliesTurn needs guest allies. 
+- [ ] **Battle state verification** — Session 21 verified 11/13 with screenshots: BattleMyTurn ✅, BattleMoving ✅, BattleAbilities ✅, BattleAttacking ✅, BattleWaiting ✅, BattleStatus ✅, BattlePaused ✅, BattleFormation ✅, BattleEnemiesTurn ✅, GameOver ✅, EncounterDialog ✅. BattleVictory ❌ and BattleDesertion ❌ misdetect as BattlePaused (see bug below). BattleDialogue and Cutscene blocked by sticky gameOverFlag (see bug below). BattleActing transient (hard to catch). BattleAlliesTurn needs guest allies.
 
 - [ ] **LoadGame/SaveGame from title menu misdetect as TravelList** — Session 21: Both file picker screens (load and save) reached from title/pause menu have party=0, ui=1, slot0=0xFFFFFFFF, slot9=0xFFFFFFFF, battleMode=255, gameOverFlag=0. Matches TravelList rule (party=0, ui=1). Existing LoadGame rule only handles GameOver→LoadGame path (requires gameOverFlag=1, battleMode=0). SaveGame only handled as shop-type label (shopTypeIndex=4). Needs a discriminator byte — or accept the ambiguity since Claude uses `save`/`load` helpers which don't rely on screen detection.
 
@@ -107,15 +115,12 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Cutscene misdetects as LoadGame after GameOver** — Session 21: sticky gameOverFlag=1 from prior GameOver causes LoadGame rule to preempt Cutscene. Inputs during real cutscene (eventId=2): gameOverFlag=1, battleMode=0, paused=0, actedOrMoved=false — all match LoadGame. Fix: LoadGame rule should additionally check that eventId is NOT in the real cutscene range (1-399), or Cutscene should be checked before LoadGame in the battle branch.
 
-- [x] **world_travel_to status=rejected should include reason** — DONE session 24. Root cause was in `fft.sh` main `fft()` renderer: it surfaced errors only for `status=failed`, silently dropping `rejected` responses. C# side already populated a reason ("Already at location N...", "Location N is locked..."). Added a `[REJECTED] <reason>` branch mirroring `[FAILED]`. Live-verified: `world_travel_to 26` from TheSiedgeWeald now prints the reason and returns exit 1.
 
 - [ ] **New state: BattleChoice — mid-battle objective choice screen** — Some battles pause and present 2 options (e.g. "We must press on, to battle" vs "Protect him at all costs"). Selecting an option changes the battle objective (e.g. from "defeat all" to "protect X"). Needs memory investigation to find a discriminator byte. Likely paused=1 with a unique submenu/menuCursor combo.
 
 - [ ] **BattleVictory/BattleDesertion misdetect as BattlePaused** — Session 21 at Orbonne Monastery: slot0=0x67 (not 255) during Victory and Desertion screens. `unitSlotsPopulated` (slot0==255) is false, so `postBattle` and `postBattlePausedState` both fail, and the rules fall through to BattlePaused. Fix: relax the Victory/Desertion rules to not require unitSlotsPopulated — use `battleModeActive && actedOrMoved && battleMode == 0` instead. Inputs captured: party=1, ui=1, slot0=0x67, slot9=0xFFFFFFFF, battleMode=0, paused=1, submenuFlag=1, actedOrMoved=true, eventId=303.
 
-- [x] **WorldMap `ui=` should show hovered location name** — e.g. `[WorldMap] ui=Magick City of Gariland` when cursor is over a location. Currently `ui=` is empty on WorldMap. The hover location ID is available (used for `loc=`), just needs to be surfaced as the `ui` field.
 
-- [x] **EqA compact format: replace two-column grid with narrow-friendly layout** — The Equipment|Abilities two-column grid wraps and becomes unreadable in narrow terminal windows. Replace with a single-column vertical list or inline summary. Keep the full grid in `-v` verbose mode only.
 
 - [ ] **EqA `ui=` shows stale cursor row** — `ui=Right Hand (none)` persists even when the game cursor is elsewhere because the SM's CursorRow only updates on key tracking (which drifts). `resolve_eqa_row` fixes it but costs 4 keypresses so can't run on every `screen` read.
 
@@ -123,31 +128,20 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Replace fixed post-key delay with poll-until-stable** — Currently a fixed 350ms sleep in the detection fallback path. Replace with: read state, wait 50ms, read again, if identical return, else keep polling up to 500ms. **Session 24 note:** attempted but punted — timing refactors are hard to validate without a safe repro harness, and an unrelated crash during chain-nav testing showed how fragile the current timing sandwich is. Needs a way to measure "did a key drop?" without firing more keys. Consider wiring up the `[i=N, +Nms]` timing log into a per-call verify-before-advance pattern before retry. Alternative cheaper win: split `KEY_DELAY` into nav (200ms) vs transition (350ms+) per TODO #82.
 
-- [x] **`ui=<element>` must always appear on the compact one-liner after `[StateName]`** — Currently `ui=` is missing from some screen states. Every screen response should surface the currently-hovered UI element.
 
 ### Earlier open items (EqA / JobSelection)
 
 - [ ] **Apply mirror technique to JobSelection** — Same idea for JobSelection grid cells. When hovering a class, the info panel displays class data (JP, Lv, prereqs). Find where that hovered-class data lives by navigating to a known cell, snapshotting, navigating away, diffing. Target: a single byte that holds the hovered class index (or u16 class ID). **Session 24 findings:** module-memory snapshot+diff with tight 0→1 ∩ 2→3 intersect returned EMPTY — no main-module byte cleanly tracks cursor index. Heap has the data (existing `resolve_job_cursor` finds it, session reported "Resolved job cursor: 0x13648E264 (32 candidates)"), but the resolved addresses shuffle per launch. **The real missing piece** isn't the byte — it's plumbing the existing resolver's output back into `ScreenMachine.CursorRow/CursorCol` correction when detection reads that the hovered class differs from the SM's cursor. Currently `CommandWatcher.cs ~5400` reads `memRow` from the resolved address but only uses it for display, not for SM drift correction. Live-observed desync: after Right×3 + Down, screenshot showed cursor on Archer (r0,c3) while shell reported cursor=(r0,c0) — the resolver would catch this if we compared hoveredClass-from-widget vs SM cursor position and snap. Next-session work: wire the existing mem-read into an SM snap when they diverge.
 
-- [x] **Document Construct 8 locked ability slots** — DONE session 24. Added `JobGridLayout.LockedAbilityUnits` (HashSet<string>) with "Construct 8" as the initial entry. Shell-side `_change_ability` helper in fft.sh now matches viewedUnit against a locked-set and refuses with `[change_<slot>_ability_to] ERROR: Construct 8 has locked ability slots — defaults cannot be changed.` Guard verified live against all four slots (secondary/reaction/support/movement) from Construct 8's EqA. Ramza's EqA still accepts changes normally. 2 new unit tests.
 
-- [x] **(low priority) `remove_equipment` position-agnostic entry** — MVP landed 2026-04-16 assumes the cursor is already on the target equipment row in EqA column 0. Nicer UX: accept the call from ANY UI position while `screen.Name == "EquipmentAndAbilities"` (or any parent state where `ui == "EquipmentAndAbilities"`), auto-navigate to column 0 + target row before firing the toggle. Either that or add an explicit guard in the shell helper that refuses with a clear error when the cursor isn't where the resolver expects. Today the helper just silently fires from wherever and may act on the wrong slot.
 
-- [x] **rename `PartyMenu` → `PartyMenuUnits` for naming consistency** — DONE session 24. Renamed `GameScreen.PartyMenu` enum member, all `"PartyMenu"` string literals, all fft.sh state patterns/comparisons, all test InlineData, and user-facing Instructions docs. `PartyMenuInventory`/`Chronicle`/`Options` unchanged. Live-verified: screen output now shows `[PartyMenuUnits]` when on the Units tab. 2048 tests still passing.
 
-- [x] **Block improper chained `fft` calls more aggressively** — Session 19 session crash: chained 4 sequential `fft` key-sending calls by overriding `_FFT_DONE=0` between them. Bridge auto-delay protection was bypassed, keys fired back-to-back without settling, game state drifted and the game crashed. `_FFT_DONE` guard exists specifically to prevent this but is too easy to defeat. Fix ideas: (a) make the override explicit (`_FFT_ALLOW_CHAIN=1` with a loud banner printed), (b) detect and reject multiple key-sending `fft` calls within N ms regardless of guard state (bridge-side rate limit, not shell-side), (c) compiler-level: collapse batch patterns by auto-merging sequential `fft`-with-keys into one request. Core rule: **game-action commands MUST be batched into one `fft` call with `keys` array + `delayBetweenMs`**; observational reads (`rv`, `block`, `screen`) are safe to chain. Document + enforce.
 
-- [ ] **Replace fixed post-key delay with poll-until-stable** — Currently a fixed 250ms sleep after the last keypress before reading screen state. Works but wastes time on fast transitions and isn't long enough for slow ones (tab switches, screen exits). Replace with: read state, wait 50ms, read again, if identical return, else keep polling up to 500ms. Guarantees settled state without over-waiting.
 
-- [ ] **Re-enable Chronicle/Options tab correction when both flags are 0** — Disabled 2026-04-16 because transient flag-clears during screen transitions caused spurious PartyMenuChronicle detection. When a Chronicle-vs-Options discriminator byte is found, re-enable the `v41e==0 && v38e==0` correction branch with the new byte as a tiebreaker.
 
-- [x] **WorldMap `ui=` should show hovered location name** — e.g. `[WorldMap] ui=Magick City of Gariland` when cursor is over a location. Currently `ui=` is empty on WorldMap. The hover location ID is available (used for `loc=`), just needs to be surfaced as the `ui` field.
 
-- [x] **`ui=<element>` must always appear on the compact one-liner after `[StateName]`** — Currently `ui=` is missing from some screen states (e.g. `[EquipmentAndAbilities] viewedUnit=Ramza status=completed` has no `ui=`). Every screen response should surface the currently-hovered UI element as `ui=<element>` immediately after the state name bracket, so Claude always knows what's selected without needing verbose mode.
 
-- [x] **EqA compact format: replace two-column grid with narrow-friendly layout** — The Equipment|Abilities two-column grid wraps and becomes unreadable in narrow terminal windows. Replace with a single-column vertical list or inline summary (e.g. `Equipment: (none)/(none)/Grand Helm/Maximillian/Bracers` + `Abilities: Mettle/Items/Counter/Concentration/Jump+2`). Keep the full grid in `-v` verbose mode only.
 
-- [ ] **EqA `ui=` shows stale cursor row** — `ui=Right Hand (none)` persists even when the game cursor is elsewhere because the SM's CursorRow only updates on key tracking (which drifts). `resolve_eqa_row` fixes it but costs 4 keypresses so can't run on every `screen` read. Options: (a) accept staleness and document it, (b) run resolver once on EqA entry and trust key-tracking after, (c) find a cheaper signal.
 
 ### Earlier open items
 
@@ -165,9 +159,8 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **JobSelection: live-verify Locked-state branch** — current save has a master unit so no cell renders as shadow silhouette. Need a fresh-game save (or temp dismiss-all-but-one) to verify the Locked branch end-to-end. Three-state classification itself shipped (commit 129f279).
 
-- [ ] **JobSelection: swap Mime hardcoded-Locked for real prereq check** — Mime's learned-ability bitfield is empty in this remaster so the party-skillset-union proxy fails. Currently hardcoded as Locked. Swap to prerequisite check once real prereq data lands.
+- [ ] **JobSelection: improve Mime proxy to a real per-level prereq check** — session 24 moved Mime from hardcoded-Locked to a skillset-union proxy (checks Summon/Speechcraft/Geomancy/Jump unlocked on unit or party; see `JobGridLayout.ClassifyCell`). Proxy has false-positives: Mime renders Visible when the game would still Lock at <Lv 8 Squire/Chemist. Real fix requires per-class-level data (Squire Lv. 8, Chemist Lv. 8, Summoner Lv. 5, Orator Lv. 5, Geomancer Lv. 5, Dragoon Lv. 5 per `JobPrereqs["Mime"]`) — either read per-class job levels from roster memory or parse the JobPrereqs string at classify time.
 
-- [x] **JobSelection: unlock-requirements text on Visible cells** — surface `screen.jobUnlockRequirements` (e.g. "Squire Lv. 2, Chemist Lv. 3") when `jobCellState == "Visible"`. Path of least resistance: hard-code `JobPrereqs` map (~20 entries) in `CharacterData.cs` and synthesize the text. (Alternative: memory scan for the widget text — UE4 heap, hard.)
 
 
 - [ ] **JobSelection: live-verify generic male/female grids** — Squire at (0,0), Bard at (2,4) for males, Dancer at (2,4) for females — all inferred, not yet live-verified. Verify when a generic is recruited.
@@ -299,7 +292,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Orbonne Monastery story encounter** — Loc 18 has a different encounter screen. Need to detect and handle it.
 
 
-- [x] **Story scene handling** — DONE session 24. Added a dedicated "Story Scenes (Cutscenes & Dialogue)" section to `FFTHandsFree/Instructions/Rules.md` covering: never skip, call read_dialogue early but advance each box for real, react between advances, treat characters/plot terms as new, no training-data foreshadowing, no technical narration, scene-transition behavior, stuck-check. Cross-references existing `CutsceneDialogue.md` for the bridge mechanics.
 
 
 
@@ -324,10 +316,8 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ## 4. Instruction Guides (P1)
 
-- [x] **StoryScenes.md** — DONE session 24. Already covered by existing `Instructions/CutsceneDialogue.md` (bridge mechanics: advance_dialogue, read_dialogue, screen=Cutscene, eventId) plus the new `Instructions/Rules.md` "Story Scenes" section (behavior: pacing, reacting, no spoilers, transitions). No separate file needed.
 
 
-- [x] **AbilitiesAndJobs.md** — DONE session 24. New `Instructions/AbilitiesAndJobs.md` (95 lines) covers: the five ability slots, JP economy, unlock tree summary, what state fields surface, how to reason about cross-class synergy, story-character ability locks (Construct 8), gotchas (Mettle vs Fundaments, Bard/Dancer gender, Mime no-abilities), and command mapping. Cross-refs existing Wiki/Jobs.md + Wiki/Abilities.md data references + ABILITY_COSTS.md.
 
 
 
@@ -704,7 +694,6 @@ Reconsider any individual sub-screen only when a concrete decision flow requires
 
 ## 12. Known Issues / Blockers
 
-- [x] **Block improper chained `fft` calls more aggressively** — Session 19 session crash: chained 4 sequential `fft` key-sending calls by overriding `_FFT_DONE=0` between them. Bridge auto-delay protection was bypassed, keys fired back-to-back without settling, game state drifted and the game crashed. `_FFT_DONE` guard exists specifically to prevent this but is too easy to defeat. Fix ideas: (a) make the override explicit (`_FFT_ALLOW_CHAIN=1` with a loud banner printed), (b) detect and reject multiple key-sending `fft` calls within N ms regardless of guard state (bridge-side rate limit, not shell-side), (c) compiler-level: collapse batch patterns by auto-merging sequential `fft`-with-keys into one request. Core rule: **game-action commands MUST be batched into one `fft` call with `keys` array + `delayBetweenMs`**; observational reads (`rv`, `block`, `screen`) are safe to chain. Document + enforce.
 
 ### Missing Screen States
 - [ ] **Battle_Cutscene** — Mid-battle cutscenes. Need to distinguish from regular cutscenes.
@@ -871,7 +860,41 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 
 Items that are fully shipped (checked `[x]`). Partial (`[~]`) items stay above in their original section.
 
-### Session 23 (2026-04-16) — state stability + helper completion
+### Session 24 (2026-04-16 / 2026-04-17) — TODO cleanup sweep + ModStateFlags + Ctrl focus-leak
+
+Commits: `91fa2cb` (rename + guards + UI backfill), `5cf018a` (shell UX + chain guard), `c5bfb01` (labels + JP + auto-resolvers + docs), `9a4acf9` (ModStateFlags + AbilitiesAndJobs.md + fft_resync + Ctrl focus-leak fix).
+
+**Core features landed:**
+
+- [x] **Rename `PartyMenu` → `PartyMenuUnits`** — commit `91fa2cb`. Enum member, string literals, shell whitelists, tests, Instructions docs. Sibling tabs (Inventory/Chronicle/Options) unchanged. Live-verified.
+- [x] **`world_travel_to status=rejected` surfaces reason** — commit `91fa2cb`. `fft.sh` renderer only surfaced errors on `failed`; added `[REJECTED] <reason>` branch. Live-verified.
+- [x] **Construct 8 locked ability slots** — commit `91fa2cb`. `JobGridLayout.LockedAbilityUnits` set + shell `_change_ability` guard. 2 new unit tests. Live-verified on all four slots.
+- [x] **WorldMap `ui=` shows hovered location name** — commit `91fa2cb`. `GetLocationName(hover)` when `hover < 255`. Live-verified.
+- [x] **`ui=<element>` backfilled** — commit `91fa2cb`. Cutscene/CharacterDialog → "Advance", CombatSets → "Combat Sets". Remaining holdouts (TravelList, TitleScreen) intentional.
+- [x] **EnterLocation delay per-location tuning** — commit `91fa2cb`. Live-verified at Dorter, Gariland, Lesalia with 500ms default. No per-location tuning needed.
+- [x] **EqA compact format single-line** — commit `5cf018a`. Already single-line (`Equip:` / `Abilities:` rows); verbose keeps the grid. Ticked after live verification.
+- [x] **JobSelection unlock-requirements text** — commit `5cf018a`. Already fully wired via `JobGridLayout.JobPrereqs` + `GetUnlockRequirements`. Ticked after live verification (Bard on Ramza → `requires=Summoner Lv. 5, Orator Lv. 5 (male only)`).
+- [x] **`unequip_all` per-slot progress + runtime docs** — commit `5cf018a`. Header comment documents ~25-30s runtime + ≥35s Bash-timeout recommendation; per-slot progress `N/5 <label>: <item> → removing...`. Live-verified on Cloud (5 empty slots).
+- [x] **`remove_equipment` position-agnostic entry** — commit `5cf018a`. Reads `cursorCol`; col 0 proceeds, col 1 auto-Lefts, else refuses. Live-verified.
+- [x] **Block improper chained `fft` calls** — commit `5cf018a`. `_is_key_sending` classifier + `_track_key_call` counter; second key-sending call without `_FFT_ALLOW_CHAIN=1` triggers `[CHAIN WARN]` to stderr. Composites annotated. Live-verified.
+- [x] **`return_to_world_map` from PartyMenuInventory/Chronicle/Options** — commit `5cf018a`. Live-verified from all three non-Units tabs.
+- [x] **Orlandeau primary skillset label** — commit `c5bfb01`. "Thunder God" → "Swordplay" (was "Holy Sword"). Live-verified.
+- [x] **JP Next: Mettle costs populated** — commit `c5bfb01`. Tailwind 150, Chant 300, Steel 200, Shout 600, Ultima 4000. Wiki-sourced; in-game verification still pending but values surface correctly.
+- [x] **EqA `ui=` auto-resolver on entry** — commit `c5bfb01`. `_eqaRowAutoResolveAttempted` latch fires `DoEqaRowResolve` once per EqA entry. Clears on EqA exit. Live-verified: `[CommandBridge] auto EqA row: 0 (unequip 36 → 0)`.
+- [x] **Mime hardcoded-Locked → skillset-union proxy** — commit `c5bfb01`. Checks viewed unit + party for Summon/Speechcraft/Geomancy/Jump. Live-verified on Orlandeau: `state=Visible requires=Squire Lv. 8...`. 3 new unit tests.
+- [x] **Story scene handling docs** — commit `c5bfb01`. `Rules.md` "Story Scenes" section + existing `CutsceneDialogue.md`. Covers both the TODO "Story scene handling" behavior item and the "StoryScenes.md" doc item.
+- [x] **AbilitiesAndJobs.md** — commit `9a4acf9`. New 95-line `Instructions/AbilitiesAndJobs.md`. Ability slots, JP economy, unlock tree, state fields, cross-class reasoning, story-character locks, gotchas, command mapping.
+- [x] **ModStateFlags helper class** — commit `9a4acf9`. Disk-backed named-flag store in `claude_bridge/mod_state.json`. Bridge actions `get_flag`/`set_flag`/`list_flags` + shell helpers. 8 unit tests. Live-verified set → disk → get round-trip.
+- [x] **Ctrl fast-forward focus-leak fix** — commit `9a4acf9`. Root cause: `SendInputKeyDown` called `SetForegroundWindow` + global `SendInput` every tick, hijacking user's terminal Ctrl state when tabbed away. Fix: `IsGameForeground()` + `ctrlHeldGlobally` state; global Ctrl released when focus leaves game, re-asserted when it returns. PostMessage path keeps DirectInput signal alive. Live-verified by user: "It works. It interrupted me but it didn't continue to hold ctrl."
+- [x] **`fft_resync` state-reset helper** — commit `9a4acf9`. Shell helper + C# `reset_state_machine` bridge action. Escapes to WorldMap with 2-consecutive-confirm, then clears SM + every auto-resolve latch. ~5s vs `restart`'s ~45s; preserves mod memory. Live-verified.
+
+**Investigated / not-shipped:**
+
+- Chronicle/Options tab discriminator — NO stable byte. `0x140900824` looked promising (9/6 within session) but failed restart test (becomes a nav-history counter). Notes added to TODO entry for next attempt.
+- JobSelection mirror-technique byte hunt — NO stable byte. Module-memory 0→1 ∩ 2→3 intersect empty. Real gap is plumbing existing `resolve_job_cursor` output into SM correction. Notes added.
+- Mod-owned memory state flags (user's idea) — VIABLE for within-session ephemeral state, infeasible for save-aware or cross-restart use. Full viability report in session log. Led to building ModStateFlags with disk backing.
+
+
 
 - [x] **Stale `unitsTabFlag`/`inventoryTabFlag` after shop exit** — FIXED commit `5dcd234`. `0x140D3A41E` was latching at 1 on WorldMap after shop exit, causing detection to return "PartyMenu" instead of "WorldMap". Added `menuDepth` parameter to `ScreenDetectionLogic.Detect`; rule now skipped when `menuDepth==0` (outer screen confirmed).
 
