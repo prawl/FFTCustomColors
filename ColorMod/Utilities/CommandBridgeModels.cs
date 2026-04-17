@@ -558,6 +558,15 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ActiveUnitJob { get; set; }
 
+        /// <summary>Formatted compact summary of the active unit during battle:
+        /// "Wilham(Monk) (10,10) HP=477/477". Populated during any Battle* state
+        /// when scan_move has cached turn-start data. Shell renders this verbatim
+        /// on the compact screen line so Claude can see whose turn it is without
+        /// calling scan_move.</summary>
+        [JsonPropertyName("activeUnitSummary")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ActiveUnitSummary { get; set; }
+
         /// <summary>CharacterStatus view toggle: `1` key expands the full stat grid
         /// (Move/Jump/PA/MA/PE/ME/weapon-parry/shield-parry/cloak-evade). When true,
         /// the game's hint reads "[1] Less" and the header shows all numeric stats.

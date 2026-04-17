@@ -341,6 +341,7 @@ _fmt_screen_compact() {
   local OBJNAME=$(echo "$R" | grep -o '"storyObjectiveName":"[^"]*"' | head -1 | cut -d'"' -f4)
   local ANAME=$(echo "$R" | grep -o '"activeUnitName":"[^"]*"' | head -1 | cut -d'"' -f4)
   local AJOB=$(echo "$R" | grep -o '"activeUnitJob":"[^"]*"' | head -1 | cut -d'"' -f4)
+  local ASUM=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.activeUnitSummary||'');}catch(e){}});" 2>/dev/null)
   local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
   local SLCI=$(echo "$R" | grep -o '"shopListCursorIndex":[0-9]*' | head -1 | cut -d: -f2)
   local CROW=$(echo "$R" | grep -o '"cursorRow":[0-9]*' | head -1 | cut -d: -f2)
@@ -372,9 +373,11 @@ _fmt_screen_compact() {
   # without wrapping at smaller widths.
   local LINE="$(_col "$_C_SCR" "[$SCR]")"
 
-  if [[ "$SCR" == Battle_* ]]; then
-    # Battle screens: active unit banner, then ui=.
-    if [ -n "$ANAME" ] && [ -n "$AJOB" ]; then
+  if [[ "$SCR" == Battle* ]]; then
+    # Battle screens: active unit banner (with position + HP when available), then ui=.
+    if [ -n "$ASUM" ]; then
+      LINE="$LINE $(_col "$_C_UNIT" "$ASUM")"
+    elif [ -n "$ANAME" ] && [ -n "$AJOB" ]; then
       LINE="$LINE $(_col "$_C_UNIT" "${ANAME}")(${AJOB})"
     elif [ -n "$AJOB" ]; then
       LINE="$LINE ($AJOB)"
@@ -3117,7 +3120,14 @@ _old_scan_move() {
     //   placements. Each best entry shows '(x,y) e:Name,Name a:Name' summarizing
     //   which units would be caught in the splash.
     function fmtAb(a) {
-      var parts = [a.name];
+      // Items abilities (Potion, Ether, etc.) expose heldCount from inventory.
+      // Surface it inline so Claude sees stock levels without a verbose dump:
+      //   Potion [x4] — 4 in stock
+      //   Ether [OUT] — unusable:true (0 held)
+      var stockTag = '';
+      if (a.unusable === true) stockTag = ' [OUT]';
+      else if (typeof a.heldCount === 'number') stockTag = ' [x' + a.heldCount + ']';
+      var parts = [a.name + stockTag];
       if (a.horizontalRange) parts.push('R:' + a.horizontalRange);
       if (a.areaOfEffect && a.areaOfEffect > 1) parts.push('AoE:' + a.areaOfEffect);
       if (a.target) parts.push('-> ' + a.target);

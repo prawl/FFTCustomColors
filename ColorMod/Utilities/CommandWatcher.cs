@@ -59,6 +59,16 @@ namespace FFTColorCustomizer.Utilities
         private string? _cachedPrimarySkillset;
         private string? _cachedSecondarySkillset;
 
+        // Active unit snapshot captured at turn start (first scan_move of each
+        // friendly turn). Shell renders these on the compact battle line so
+        // Claude knows whose turn it is without a re-scan. Cleared on turn reset.
+        private string? _cachedActiveUnitName;
+        private string? _cachedActiveUnitJob;
+        private int _cachedActiveUnitX = -1;
+        private int _cachedActiveUnitY = -1;
+        private int _cachedActiveUnitHp;
+        private int _cachedActiveUnitMaxHp;
+
         /// <summary>
         /// When true, game actions must go through validPaths. Raw key presses and
         /// actions not in the current screen's validPaths are blocked.
@@ -471,25 +481,33 @@ namespace FFTColorCustomizer.Utilities
                 // pass the 2-step verify because they're widget-state
                 // counters that increment on cursor CHANGE events during
                 // the rapid oscillation, but stay at 0 during real nav
-                // (observed session 27). Press Right one more time, read
-                // the byte, expect +1 from the post-restore baseline. If
-                // it doesn't follow, reject the candidate.
+                // (observed session 27). Press Right three times and expect
+                // the byte to advance by exactly 3 (with wrap). A 3-step
+                // probe is noticeably more selective than a 1-step probe —
+                // change-count widgets typically stall after the first press.
+                // Restore with 3 Lefts to leave the cursor where we found it.
                 if (verified != 0L)
                 {
                     var postRestore = Explorer.ReadAbsolute((nint)verified, 1);
                     byte postRestoreVal = postRestore.HasValue ? (byte)postRestore.Value.value : (byte)0;
-                    _inputSimulator.SendKeyPressToWindow(win, VK_RIGHT);
-                    Thread.Sleep(300);
+                    for (int i = 0; i < 3; i++)
+                    {
+                        _inputSimulator.SendKeyPressToWindow(win, VK_RIGHT);
+                        Thread.Sleep(250);
+                    }
                     var afterProbe = Explorer.ReadAbsolute((nint)verified, 1);
                     byte afterProbeVal = afterProbe.HasValue ? (byte)afterProbe.Value.value : (byte)0;
-                    _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
-                    Thread.Sleep(220);
-                    // Expect afterProbeVal == postRestoreVal + 1 (or wrap).
-                    // Reject if byte didn't move — it's not live-tracking.
-                    if (afterProbeVal != (byte)(postRestoreVal + 1)
-                        && afterProbeVal != 0)
+                    for (int i = 0; i < 3; i++)
                     {
-                        ModLogger.Log($"[ResolveJobCursor] liveness failed: 0x{verified:X} {postRestoreVal}→{afterProbeVal} (expected +1). Rejecting.");
+                        _inputSimulator.SendKeyPressToWindow(win, VK_LEFT);
+                        Thread.Sleep(220);
+                    }
+                    // Expect afterProbeVal == postRestoreVal + 3 (mod 256 wrap
+                    // handled by (byte) cast). Reject if delta ≠ 3.
+                    byte expected = (byte)(postRestoreVal + 3);
+                    if (afterProbeVal != expected)
+                    {
+                        ModLogger.Log($"[ResolveJobCursor] liveness failed: 0x{verified:X} {postRestoreVal}→{afterProbeVal} (expected +3={expected}). Rejecting.");
                         verified = 0L;
                     }
                 }
@@ -2195,6 +2213,7 @@ namespace FFTColorCustomizer.Utilities
                         _cachedPrimarySkillset = null;
                         _cachedSecondarySkillset = null;
                         _cachedLearnedAbilityNames = null;
+                        ClearActiveUnitCache();
                         return ExecuteNavActionWithAutoScan(command);
 
                     case "battle_flee":
@@ -3320,6 +3339,16 @@ namespace FFTColorCustomizer.Utilities
             }
         }
 
+        private void ClearActiveUnitCache()
+        {
+            _cachedActiveUnitName = null;
+            _cachedActiveUnitJob = null;
+            _cachedActiveUnitX = -1;
+            _cachedActiveUnitY = -1;
+            _cachedActiveUnitHp = 0;
+            _cachedActiveUnitMaxHp = 0;
+        }
+
         /// <summary>
         /// Cache learned ability IDs from the active unit's scan results.
         /// </summary>
@@ -3353,6 +3382,14 @@ namespace FFTColorCustomizer.Utilities
                 ? GetSkillsetName(activeUnit.SecondaryAbility)
                 : null;
             ModLogger.Log($"[CommandBridge] Skillsets: primary={_cachedPrimarySkillset ?? "null"}, secondary={_cachedSecondarySkillset ?? "null"} (secondaryIdx={activeUnit.SecondaryAbility})");
+
+            // Snapshot active unit identity for the compact battle screen line.
+            _cachedActiveUnitName = activeUnit.Name;
+            _cachedActiveUnitJob = activeUnit.JobName;
+            _cachedActiveUnitX = activeUnit.X;
+            _cachedActiveUnitY = activeUnit.Y;
+            _cachedActiveUnitHp = activeUnit.Hp;
+            _cachedActiveUnitMaxHp = activeUnit.MaxHp;
         }
 
         /// <summary>
@@ -4857,8 +4894,18 @@ namespace FFTColorCustomizer.Utilities
                 }
 
                 // During targeting mode, show the ability being cast/used.
-                if ((screen.Name == "BattleAttacking" || screen.Name == "BattleCasting") && _lastAbilityName != null)
-                    screen.UI = _lastAbilityName;
+                // _lastAbilityName is set only when entered via battle_ability/battle_attack
+                // helpers. For manual navigation (Select from BattleAbilities), fall back
+                // to the BattleMenuTracker's selected ability/item.
+                if (screen.Name == "BattleAttacking" || screen.Name == "BattleCasting")
+                {
+                    var targetingLabel = GameBridge.TargetingLabelResolver.Resolve(
+                        _lastAbilityName,
+                        _battleMenuTracker.SelectedAbility,
+                        _battleMenuTracker.SelectedItem);
+                    if (targetingLabel != null)
+                        screen.UI = targetingLabel;
+                }
 
                 // Battle menu tracker: set UI from tracker if in submenu
                 // (entry/exit managed in SyncBattleMenuTracker, called after screen settles)
@@ -6579,8 +6626,17 @@ namespace FFTColorCustomizer.Utilities
                 // reads the wrong unit on enemy turns.
                 //
                 // So active unit name/job will show as empty on the FIRST `screen` call of
-                // a battle, then populate after the first scan_move runs and caches the
-                // Active unit name/job populated by scan_move at turn start.
+                // a battle, then populate after the first scan_move runs and caches it.
+                if (screen.Name != null && screen.Name.StartsWith("Battle")
+                    && (_cachedActiveUnitName != null || _cachedActiveUnitJob != null))
+                {
+                    screen.ActiveUnitName = _cachedActiveUnitName;
+                    screen.ActiveUnitJob = _cachedActiveUnitJob;
+                    screen.ActiveUnitSummary = GameBridge.ActiveUnitSummaryFormatter.Format(
+                        _cachedActiveUnitName, _cachedActiveUnitJob,
+                        _cachedActiveUnitX, _cachedActiveUnitY,
+                        _cachedActiveUnitHp, _cachedActiveUnitMaxHp);
+                }
 
                 // Sync state machine with memory-detected top-level screens.
                 // This ensures the state machine stays in sync even after restarts
