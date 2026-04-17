@@ -482,6 +482,16 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<TilePosition>? Tiles { get; set; }
 
+        /// <summary>
+        /// Warning surfaced when our BFS tile count disagrees with the game's
+        /// own tile count (read from 0x142FEA008). Populated during BattleMoving
+        /// only when counts differ — null otherwise. Lets Claude see the
+        /// mismatch in the screen response without grepping logs.
+        /// </summary>
+        [JsonPropertyName("bfsMismatchWarning")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? BfsMismatchWarning { get; set; }
+
         /// <summary>Camera rotation (0-3). Affects which direction arrow keys move the cursor on the isometric grid.</summary>
         [JsonPropertyName("cameraRotation")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]

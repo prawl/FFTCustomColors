@@ -352,6 +352,7 @@ _fmt_screen_compact() {
   # Space-bearing string fields need the JSON parser so "Equipment & Abilities"
   # / "Magick Defense Boost" / "All Weapons & Shields" survive intact.
   local UI=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.ui||'');}catch(e){}});" 2>/dev/null)
+  local BFSMISMATCH=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.bfsMismatchWarning||'');}catch(e){}});" 2>/dev/null)
   # viewedUnit + job: combine into "Name(Job)" when both are available.
   local VUNIT=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const vu=j.screen?.viewedUnit||'';if(!vu){process.stdout.write('');return;}const r=(j.screen?.roster?.units||[]);const u=r.find(x=>x.name===vu)||{};const job=u.job||'';process.stdout.write(job?vu+'('+job+')':vu);}catch(e){}});" 2>/dev/null)
   local EQITEM=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.equippedItem||'');}catch(e){}});" 2>/dev/null)
@@ -407,6 +408,13 @@ _fmt_screen_compact() {
   fi
 
   printf '%b\n' "$LINE"
+
+  # BFS mismatch warning — surfaced loudly under the main screen line so
+  # Claude sees it without a `logs grep` round trip. Only appears when the
+  # BFS-computed tile count disagrees with the game's own count.
+  if [ -n "$BFSMISMATCH" ]; then
+    printf '  %b\n' "$(_col '\033[1;31m' "⚠ $BFSMISMATCH")"
+  fi
 
   # EqA compact summary: two lines showing equipment and abilities at a glance.
   # Only on EquipmentAndAbilities — enough to decide which slot to open.

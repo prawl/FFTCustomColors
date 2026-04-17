@@ -3949,7 +3949,7 @@ namespace FFTColorCustomizer.Utilities
                     screen.Tiles = validTiles;
                     ModLogger.Log($"[Tiles] MapBFS (MAP{mapData.MapNumber:D3}): {validTiles.Count} tiles (blocked: {_blockedTiles.Count}, enemies: {enemyPositions?.Count ?? 0}, allies: {allyPositions?.Count ?? 0}). " +
                         $"Unit=({unitGX},{unitGY}), Move={moveStat}, Jump={jumpStat}");
-                    LogBfsTileCountMismatch(validTiles.Count);
+                    LogBfsTileCountMismatch(validTiles.Count, screen);
                     return;
                 }
 
@@ -3980,7 +3980,7 @@ namespace FFTColorCustomizer.Utilities
                     screen.Tiles = validTiles;
                     ModLogger.Log($"[Tiles] MemBFS: {validTiles.Count} tiles (blocked cache: {_blockedTiles.Count}). " +
                         $"Unit=({unitGX},{unitGY}), Move={moveStat}, Jump={jumpStat}");
-                    LogBfsTileCountMismatch(validTiles.Count);
+                    LogBfsTileCountMismatch(validTiles.Count, screen);
                     return;
                 }
 
@@ -4033,7 +4033,7 @@ namespace FFTColorCustomizer.Utilities
         /// two disagree so we notice when our BFS is wrong before Claude
         /// acts on a bad tile list.
         /// </summary>
-        private void LogBfsTileCountMismatch(int bfsCount)
+        private void LogBfsTileCountMismatch(int bfsCount, DetectedScreen? screen)
         {
             if (Explorer == null) return;
             var read = Explorer.ReadAbsolute((nint)0x142FEA008, 1);
@@ -4043,7 +4043,36 @@ namespace FFTColorCustomizer.Utilities
             {
                 ModLogger.Log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 ModLogger.Log(warning);
+                // Dump rich debug info to help diagnose the mismatch without
+                // another round trip: unit position, Move/Jump, active map,
+                // and the full BFS tile list with heights.
+                try
+                {
+                    int unitX = screen?.CursorX ?? -1;
+                    int unitY = screen?.CursorY ?? -1;
+                    var moveRead = Explorer.ReadAbsolute((nint)0x1407AC7E4, 1);
+                    var jumpRead = Explorer.ReadAbsolute((nint)0x1407AC7E6, 1);
+                    int mv = moveRead.HasValue ? (int)moveRead.Value.value : -1;
+                    int jmp = jumpRead.HasValue ? (int)jumpRead.Value.value : -1;
+                    string activeAbility = _navActions?.GetActiveAlly()?.MovementAbility ?? "(none)";
+                    string activeName = _navActions?.GetActiveAlly()?.Name ?? "(unknown)";
+                    int mapNum = _mapLoader?.CurrentMapNumber ?? -1;
+                    int loc = _lastWorldMapLocation;
+                    ModLogger.Log($"[BFS DEBUG] activeUnit={activeName} pos=({unitX},{unitY}) Move={mv} Jump={jmp} movementAbility={activeAbility}");
+                    ModLogger.Log($"[BFS DEBUG] mapNumber=MAP{mapNum:D3} locationId={loc}");
+                    if (screen?.Tiles != null)
+                    {
+                        var tilesStr = string.Join(" ", screen.Tiles.ConvertAll(t => $"({t.X},{t.Y})"));
+                        ModLogger.Log($"[BFS DEBUG] bfsTiles ({screen.Tiles.Count}): {tilesStr}");
+                    }
+                    ModLogger.Log($"[BFS DEBUG] blockedTiles ({_blockedTiles.Count}): {string.Join(" ", _blockedTiles)}");
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.Log($"[BFS DEBUG] dump failed: {ex.Message}");
+                }
                 ModLogger.Log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                if (screen != null) screen.BfsMismatchWarning = warning;
             }
         }
 
