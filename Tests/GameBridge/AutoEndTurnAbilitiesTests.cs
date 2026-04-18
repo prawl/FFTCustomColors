@@ -89,5 +89,18 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // Canonical spell, just like Fire — no auto-end.
             Assert.False(AutoEndTurnAbilities.IsAutoEndTurn("Ultima"));
         }
+
+        [Theory]
+        [InlineData("Counter")]        // reaction, not active action
+        [InlineData("Reraise")]        // passive trigger
+        [InlineData("Critical: Quick")] // grants extra turn, not a user action
+        [InlineData("Throw")]           // single action but unit keeps move + Wait
+        [InlineData("Hi-Potion")]       // item, unit still needs Wait
+        [InlineData("Phoenix Down")]    // item, unit still needs Wait
+        [InlineData("Blood Price")]     // HP cost but turn continues in IC
+        public void ReactionsAndItemsAndBloodPrice_AreNotAutoEndTurn(string name)
+        {
+            Assert.False(AutoEndTurnAbilities.IsAutoEndTurn(name));
+        }
     }
 }
