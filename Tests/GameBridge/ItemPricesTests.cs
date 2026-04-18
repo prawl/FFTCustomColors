@@ -127,4 +127,72 @@ public class ItemPricesTests
         Assert.Equal(100, ItemPrices.GetSellPrice(19));  // Broadsword
         Assert.Equal(250, ItemPrices.GetSellPrice(20));  // Longsword
     }
+
+    // Additional property + edge tests (session 33 batch 7).
+
+    [Fact]
+    public void AllBuyPrices_ArePositive()
+    {
+        // A zero or negative buy price would break affordability math.
+        foreach (var kv in ItemPrices.BuyPrices)
+        {
+            Assert.True(kv.Value > 0, $"Item {kv.Key} has non-positive buy price {kv.Value}");
+        }
+    }
+
+    [Fact]
+    public void AllSellPriceOverrides_ArePositive()
+    {
+        foreach (var kv in ItemPrices.SellPriceOverrides)
+        {
+            Assert.True(kv.Value > 0, $"Item {kv.Key} has non-positive sell override {kv.Value}");
+        }
+    }
+
+    [Fact]
+    public void SellPriceOverrides_WithinTenXBuyPrice()
+    {
+        // Sanity check: an override shouldn't be absurdly larger than the buy price.
+        // NOTE: some items DO sell for more than they buy (discovered session 33
+        // batch 7: Mage Masher buys 600, sells 750). So the canonical "sell <= buy"
+        // invariant is NOT true. Use a looser sanity bound to catch data-entry
+        // typos (e.g. missing a digit) without flagging legitimate variance.
+        foreach (var kv in ItemPrices.SellPriceOverrides)
+        {
+            if (ItemPrices.BuyPrices.TryGetValue(kv.Key, out int buy))
+            {
+                Assert.True(kv.Value <= buy * 10,
+                    $"Item {kv.Key} sell override {kv.Value} is >10× buy price {buy} (likely typo)");
+            }
+        }
+    }
+
+    [Fact]
+    public void GetBuyPrice_IntMaxValue_ReturnsNull()
+    {
+        Assert.Null(ItemPrices.GetBuyPrice(int.MaxValue));
+    }
+
+    [Fact]
+    public void GetBuyPrice_IntMinValue_ReturnsNull()
+    {
+        Assert.Null(ItemPrices.GetBuyPrice(int.MinValue));
+    }
+
+    [Fact]
+    public void GetSellPrice_ConsistentWithBuyPriceExistence()
+    {
+        // If buy is known AND no override, sell is non-null (equals buy/2).
+        foreach (var kv in ItemPrices.BuyPrices)
+        {
+            if (ItemPrices.SellPriceOverrides.ContainsKey(kv.Key)) continue;
+            Assert.NotNull(ItemPrices.GetSellPrice(kv.Key));
+        }
+    }
+
+    [Fact]
+    public void IsSellPriceGroundTruth_IntMaxValue_ReturnsFalse()
+    {
+        Assert.False(ItemPrices.IsSellPriceGroundTruth(int.MaxValue));
+    }
 }

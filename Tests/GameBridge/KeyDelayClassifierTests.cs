@@ -81,5 +81,44 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 KeyDelayClassifier.TRANSITION_DELAY_MS,
                 KeyDelayClassifier.DelayMsFor(0xFF));
         }
+
+        // Edge cases (session 33 batch 7).
+
+        [Fact]
+        public void NavDelay_IsPositive()
+        {
+            Assert.True(KeyDelayClassifier.NAV_DELAY_MS > 0);
+        }
+
+        [Fact]
+        public void TransitionDelay_IsPositive()
+        {
+            Assert.True(KeyDelayClassifier.TRANSITION_DELAY_MS > 0);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(int.MaxValue)]
+        [InlineData(int.MinValue)]
+        public void OutOfRange_VkCodes_FallBackToTransitionDelay(int vk)
+        {
+            Assert.Equal(
+                KeyDelayClassifier.TRANSITION_DELAY_MS,
+                KeyDelayClassifier.DelayMsFor(vk));
+        }
+
+        [Fact]
+        public void OnlyArrowKeys_GetNavDelay()
+        {
+            // Sweep 0x00..0xFF and confirm NAV_DELAY only fires for the 4 arrow VKs.
+            int navCount = 0;
+            for (int vk = 0; vk <= 0xFF; vk++)
+            {
+                if (KeyDelayClassifier.DelayMsFor(vk) == KeyDelayClassifier.NAV_DELAY_MS)
+                    navCount++;
+            }
+            Assert.Equal(4, navCount);
+        }
     }
 }
