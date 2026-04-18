@@ -73,6 +73,34 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 33 — next-up follow-ups (from 6-task batch attempt)
+
+- [ ] **Live-verify !weak / +absorb sigils** — session 33 attempt: travel from WorldMap → Yardrow timed out on bridge, left game on OutfitterBuy and subsequent heap reads timed out. Party has no Wizard; best test candidates are Kenrick (White Mage, Holy) or Rapha (Skyseer, Holy) vs an undead enemy for `+absorb:['Dark']` / `!weak:['Holy']`. Needs: (a) stable bridge session (may need `restart`), (b) travel to a random-encounter zone with undead (Skeleton/Ghost/Ghoul), (c) scan during Holy-cast targeting menu.
+
+- [ ] **Wire TavernRumors cursorRow to screen response** — session 33 found heap address `0x13090F968` verified live at Dorter (row 0→1→2→3→wrap→0). Widget base at `0x13090F940` (+0x28 for cursor). Address is HEAP so shuffles across restarts — direct hardcoded read post-restart TIMEOUT'd. Needs pointer-chain walk via AoB anchor or widget vtable scan to re-derive at runtime. Memory note saved: `project_tavern_rumor_cursor.md`.
+
+- [ ] **BattleSequence discriminator heap-hunt** — session 33 deferred due to bridge state. Scaffolding already in `ScreenDetectionLogic.cs` (commented-out rule + `BattleSequenceLocations` HashSet). Approach: travel to Orbonne (loc 18), confirm BattleSequence minimap, `heap_snap` before entering/after leaving, diff to find a dedicated flag byte.
+
+- [ ] **SaveSlotPicker from BattlePaused** — session 33 deferred due to no live battle. Enter any battle, press Tab to pause, verify BattlePaused shows a Save option, determine cursor index, wire the `BattlePaused → SaveSlotPicker` SM transition.
+
+### Session 33 — Tavern Scope B (decoder SHIPPED, per-city mapping partial)
+
+- [x] **DECODER SHIPPED**: `WorldMesDecoder.cs` + `RumorLookup.cs` parse `world_wldmes_bin.en.bin` → 123 decoded entries. Shipped `get_rumor` / `list_rumors` bridge actions. `read_rumor "<substring>"` shell helper returns the matching body. Verified live at Dorter: "Zodiac Braves" → corpus #10, "Riovanes" → corpus #19, "These crystals" → corpus #11.
+
+- [ ] **Some rumor bodies NOT in `world_wldmes.bin`** — "At Bael's End" (Dorter row 3) doesn't match any substring in the corpus. Searched all 318 .bin files in 0000-0004 pac dirs with the word "Bael" encoded PSX-style → zero hits. Likely lives in a UE4 `.locres` file or the `0002.en.pac/fftpack/world_snplmes_bin.en.bin` (same-ish size, different encoding — includes `D1/D2/D3` multibyte sequences suggesting kanji/Japanese layered with English). Next session: (a) try extracting text from `world_snplmes_bin.en.bin` with a multibyte decoder, (b) check UE4 `Paks/*.pak` for locres files, (c) scan bigger pac dirs (0005-0011).
+
+- [x] **TavernRumors cursor-row byte FOUND**: `0x13090F968` (u8, heap widget state). Verified 0→1→2→3→wrap→0 at Dorter. Heap address so may shuffle across restarts — use via widget pointer-chain walk, not direct read, for production use. Memory file not saved this session — add if/when it proves stable across saves.
+
+- [ ] **Per-city row→corpus_index table** — only Dorter partially mapped (0→#10, 1→#11, 2→#19, 3→UNKNOWN). To finish: visit each of the 15 settlements with a Tavern, open Rumors, screenshot each row, match against corpus via `read_rumor "<phrase>"`, record the mapping. Ship as `ColorMod/Data/CityRumors.json` + wire `get_rumor` to accept `{city_id, row}` inputs. Chapter-1 subset is tractable; chapter-2+ rumors may overlap with the unmapped Bael's-End class.
+
+- [ ] **Title→corpus auto-match UX** — current `read_rumor "<phrase>"` requires Claude to know a distinctive phrase from the rumor. Titles are not in bridge state (not in RAM, not in decoded file). Without auto-assist Claude will skip rumors during play. Options: (a) screenshot + OCR the title region on TavernRumors entry, include as `rumorTitle` in `screen` response; (b) complete the per-city table above so `get_rumor` can return the body directly from cursor byte `0x13090F968`. (b) is cleaner but blocked on the Bael's-End class of rumors.
+
+- [ ] **Shopping.md: remove Tavern from "Not yet implemented"** — already done in session 32 commit `191e667`; docs say Tavern is reachable but body text isn't. Confirm this is still accurate after Scope B lands.
+
+- [ ] **Errand metadata (quester / days / fee)** — separate source from rumor bodies. Likely in an NXD layout — `tools/Nex/Layouts/ffto/Book.layout` exists but no `book.nxd` was found in `0004/nxd/` during session 32 exploration. Possible paths: (a) the `Book` layout actually targets a data file not present in this installation, (b) errand metadata is in `world_wldmes_bin.en.bin` alongside the rumor bodies and shares record structure, (c) a different layout file (`Proposal*.layout`?) — session 32 didn't find one. Re-investigate after Scope B decoder is working; can piggyback on the same parser.
+
+- [ ] **Timing threshold tuning** — `FFT_SLOW_MS=800` (default, shipped commit `d5914e2`) is generic. Session-32 live measurement showed baseline: keys ~215ms, screen-query ~180ms, scan_move ~450ms, save/travel ~4-10s. Ship a more realistic per-action threshold table if the generic 800ms prints too much yellow (`!`) during normal play. Low priority — current default is quiet in practice.
+
 ### Session 31 — next-up follow-ups (live-verify pending)
 
 - [ ] **Detection leaks CharacterStatus / CombatSets during battle_wait animations** — Session 31 `session_tail slow 1500` exposed: battle_wait rows report `sourceScreen=CharacterStatus` → `targetScreen=BattleMyTurn` with 15-23 second latencies. The player is IN battle the whole time, not on CharacterStatus. Likely a detection false-positive during facing-confirm or wait-ct animation frames where unit-slot / ui bytes transiently match CharacterStatus patterns. Doesn't break gameplay (final target is correct) but slows down logging diagnostics and could mis-route screen-gated actions. Next repro: `session_tail` during a battle, look for any `*→BattleMyTurn` with non-Battle source.

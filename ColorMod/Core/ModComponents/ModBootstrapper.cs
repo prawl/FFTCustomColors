@@ -260,6 +260,10 @@ namespace FFTColorCustomizer.Core.ModComponents
                     var scriptLookup = new EventScriptLookup(scriptsDir);
                     CommandWatcher.ScriptLookup = scriptLookup;
                     ModLogger.Log($"[GameBridge] Loaded {scriptLookup.Count} event scripts from {scriptsDir}");
+
+                    var rumorLookup = new RumorLookup();
+                    CommandWatcher.RumorLookup = rumorLookup;
+                    ModLogger.Log($"[GameBridge] Loaded {rumorLookup.Count} hardcoded rumors");
                 }
 
                 ModLogger.Log("[GameBridge] Game bridge initialized successfully");

@@ -312,14 +312,33 @@ namespace FFTColorCustomizer.GameBridge
             // We keep the rules here for defensive coverage if atNamedLocation handling changes.
             bool postBattle = unitSlotsPopulated && battleMode == 0 && actedOrMoved && atNamedLocation;
             bool postBattlePausedState = unitSlotsPopulated && battleMode == 0 && paused == 1 && actedOrMoved;
+            // Orbonne variant (session 21): slot0=0x67 + active eventId + party=1/ui=1. Narrower
+            // than postBattlePausedState to avoid swallowing stale-flag post-worldmap states.
+            bool orbonneDesertion = battleModeActive && battleMode == 0 && paused == 1
+                && actedOrMoved && slot0 != 0xFFFFFFFFL && slot0 != 255
+                && party == 1 && ui == 1 && eventId >= 1 && eventId < 400;
 
             // Desertion: post-battle pause + submenu (warning dialog overlay).
             // Does NOT require encA==encB (noise counter).
             if (postBattlePausedState && submenuFlag == 1)
                 return "BattleDesertion";
 
+            // Desertion variant from Orbonne (session 21): slot0=0x67 at rawLocation=255
+            // with active battle eventId. submenuFlag=1 indicates the warning dialog.
+            if (orbonneDesertion && submenuFlag == 1)
+                return "BattleDesertion";
+
             // Victory: post-battle at named location, no pause (auto-advancing result screen).
             if (postBattle && paused == 0)
+                return "BattleVictory";
+
+            // Victory variant from Orbonne (session 21): slot0=0x67 at rawLocation=255.
+            // Discriminator from post-battle stale flags (which have party=0, ui=0, eventId=0):
+            // Victory has an active battle eventId in range 1..399 + party=1 + ui=1.
+            if (battleModeActive && battleMode == 0 && actedOrMoved && paused == 0
+                && slot0 != 0xFFFFFFFFL && slot0 != 255
+                && party == 1 && ui == 1
+                && eventId >= 1 && eventId < 400)
                 return "BattleVictory";
 
             // LoadGame: reached from GameOver menu. Shares stale battle state with GameOver

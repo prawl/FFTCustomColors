@@ -28,6 +28,7 @@ namespace FFTColorCustomizer.Utilities
         public ScreenStateMachine? ScreenMachine { get; set; }
         public BattleTracker? BattleTracker { get; set; }
         public EventScriptLookup? ScriptLookup { get; set; }
+        public RumorLookup? RumorLookup { get; set; }
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
         private RosterReader? _rosterReader;
@@ -1102,7 +1103,7 @@ namespace FFTColorCustomizer.Utilities
             "dry_run_nav", "cursor_walk",
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
-            "read_dialogue", "write_byte", "dump_detection_inputs",
+            "read_dialogue", "get_rumor", "list_rumors", "write_byte", "dump_detection_inputs",
             "scrape_shop_items",
             "hold_key",
             "get_flag", "set_flag", "list_flags",
@@ -1671,6 +1672,63 @@ namespace FFTColorCustomizer.Utilities
                                 response.Status = "failed";
                                 response.Error = $"No script found for eventId={evtId}";
                             }
+                        }
+                        break;
+
+                    case "get_rumor":
+                        if (RumorLookup == null || RumorLookup.Count == 0)
+                        {
+                            response.Status = "failed";
+                            response.Error = "Rumor corpus not loaded (world_wldmes.bin missing from Data/?)";
+                            break;
+                        }
+                        {
+                            // Prefer substring match on a title/body fragment if provided;
+                            // otherwise fall back to integer index.
+                            WorldMesDecoder.Rumor? rumor = null;
+                            if (!string.IsNullOrWhiteSpace(command.SearchLabel))
+                            {
+                                rumor = RumorLookup.GetByBodySubstring(command.SearchLabel);
+                                if (rumor == null)
+                                {
+                                    response.Status = "failed";
+                                    response.Error = $"No rumor body contains '{command.SearchLabel}'";
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                int idx = command.UnitIndex;
+                                rumor = RumorLookup.GetByIndex(idx);
+                                if (rumor == null)
+                                {
+                                    response.Status = "failed";
+                                    response.Error = $"Rumor index {idx} out of range (corpus has {RumorLookup.Count} entries)";
+                                    break;
+                                }
+                            }
+                            response.Dialogue = $"[corpus #{rumor.Index} @0x{rumor.Offset:X}]\n{rumor.Body}";
+                            response.Status = "completed";
+                        }
+                        break;
+
+                    case "list_rumors":
+                        if (RumorLookup == null || RumorLookup.Count == 0)
+                        {
+                            response.Status = "failed";
+                            response.Error = "Rumor corpus not loaded";
+                            break;
+                        }
+                        {
+                            var sb = new System.Text.StringBuilder();
+                            sb.AppendLine($"Rumor corpus: {RumorLookup.Count} entries from {RumorLookup.SourcePath}");
+                            foreach (var r in RumorLookup.All)
+                            {
+                                var preview = r.Body.Length > 80 ? r.Body.Substring(0, 80) + "..." : r.Body;
+                                sb.AppendLine($"  [{r.Index:D2}] @0x{r.Offset:X6}: {preview.Replace('\n', ' ')}");
+                            }
+                            response.Dialogue = sb.ToString();
+                            response.Status = "completed";
                         }
                         break;
 

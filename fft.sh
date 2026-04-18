@@ -1260,36 +1260,68 @@ enter_tavern() {
 }
 
 # read_rumor [index]: On TavernRumors, scroll to rumor #index (0-based) and
-# render the screen (shows the selected row). If index is omitted, just renders
-# the current state.
+# render the screen AND the decoded body text for that row.
 #
-# LIMITATION (2026-04-18): the rumor body text is NOT yet surfaced — it lives in
-# a packed game data file (world_wldmes_bin.en.bin, PSX-encoded) that the mod
-# doesn't parse yet. For now this helper positions the cursor; the user has to
-# look at the game window for the body. Future: parse the data file at mod
-# startup and return {title, body} here.
+# Body text is read from the global rumor corpus decoded from world_wldmes.bin
+# at mod startup. NOTE: the corpus is a flat list of ~26 rumors shared across
+# all taverns; the index in this helper is the UI cursor row (0,1,2,...) which
+# maps to a per-city subset the game filters by story progress. Text returned
+# is a best-effort match against the corpus by cursor index — not guaranteed
+# to match the exact on-screen selection until we decode the per-city filter.
+#
+# Falls back to `screen` only (no body) if the mod isn't running the new
+# get_rumor action.
 read_rumor() {
-  local idx="$1"
+  # Usage:
+  #   read_rumor                     — just render current screen
+  #   read_rumor <idx>               — scroll to row N, render, return corpus[N] body
+  #   read_rumor "<title fragment>"  — look up body by body/title substring
+  #                                    (does NOT scroll the UI)
+  local arg="$1"
   _fft_reset_guard
   _current_screen >/dev/null
   local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
+
+  # String-argument mode: skip nav, just do the title lookup.
+  if [ -n "$arg" ] && ! [[ "$arg" =~ ^[0-9]+$ ]]; then
+    local q=$(printf '%s' "$arg" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))")
+    fft "{\"id\":\"$(id)\",\"action\":\"get_rumor\",\"searchLabel\":$q}" >/dev/null
+    node -e "const r=JSON.parse(require('fs').readFileSync(0,'utf8')); if(r.status==='completed') process.stdout.write(r.dialogue||''); else process.stdout.write('[lookup failed: '+(r.error||'unknown')+']')" < "$B/response.json"
+    echo ""
+    return 0
+  fi
+
+  # Numeric / no-arg: nav-then-body flow
   if [ "$curScr" = "Tavern" ]; then
-    # Open Rumors from the Tavern root — cursor defaults to Rumors so Select works.
     execute_action Select >/dev/null
     _fft_reset_guard
   elif [ "$curScr" != "TavernRumors" ]; then
     echo "[read_rumor] ERROR: must be on Tavern or TavernRumors (current: $curScr). Try: enter_tavern"
     return 1
   fi
-  if [ -n "$idx" ]; then
-    # Scroll down N times to land on row #idx. List wraps, so any idx works.
-    local n="$idx"
+  if [ -n "$arg" ]; then
+    local n="$arg"
     [ "$n" -lt 0 ] && n=0
     for i in $(seq 1 "$n"); do
       execute_action ScrollDown >/dev/null
     done
   fi
   screen
+  if [ -n "$arg" ]; then
+    fft "{\"id\":\"$(id)\",\"action\":\"get_rumor\",\"unitIndex\":$arg}" >/dev/null
+    local body=$(node -e "const r=JSON.parse(require('fs').readFileSync(0,'utf8')); if(r.status==='completed') process.stdout.write(r.dialogue||''); else process.stdout.write('[no body: '+(r.error||'unknown')+']')" < "$B/response.json" 2>/dev/null)
+    echo ""
+    echo "$body"
+  fi
+}
+
+# list_rumors: Dump the full decoded rumor corpus (~26 entries) with previews.
+# Use when you want to see every rumor text the decoder extracted, regardless
+# of which tavern/city the player is currently at.
+list_rumors() {
+  fft "{\"id\":\"$(id)\",\"action\":\"list_rumors\"}" >/dev/null
+  node -e "const r=JSON.parse(require('fs').readFileSync(0,'utf8')); process.stdout.write(r.dialogue||('[list_rumors failed: '+(r.error||'unknown')+']'))" < "$B/response.json"
+  echo ""
 }
 
 # read_errand [index]: On TavernErrands, scroll to errand #index (0-based).

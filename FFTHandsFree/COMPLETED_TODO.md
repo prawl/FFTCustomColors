@@ -581,3 +581,42 @@ Tests: 2185 → 2253 (+68 new, 0 regressions).
 - `Tests/GameBridge/ShellOutputLinterTests.cs`
 - `Tests/GameBridge/SplashAffinityAdjustmentTests.cs`
 - `FFTHandsFree/SCREEN_AUDIT.md` (battle-render audit artifact; keep until all punch-list items ship)
+
+---
+
+### Session 32 (2026-04-18) — speed audit + Tavern Scope A
+
+Commits: `d5914e2` (fft.sh speed pass S1+S2 + per-command timing prefix), `8fb6d58` (C1: skip DetectScreenSettled on screen-query), `191e667` (Tavern Scope A: enter_tavern + read_rumor + read_errand + scan_tavern).
+
+Tests: 2373 unchanged (all still passing; Scope A is pure shell).
+
+**Features landed:**
+
+- [x] **fft.sh S1: single-node fold in `_fmt_screen_compact`** — commit `d5914e2`. Replaced 7 separate `cat RESP | node -e "..."` pipelines + 14 `echo "$R" | grep -o ... | head -1 | cut` chains with ONE node pass that reads the response file once and emits tab-separated values parsed via `IFS=$'\t' read`. Windows node cold-start is ~60-100ms per spawn; old code cost ~500-700ms per render. Live-measured new render: ~100ms flat.
+
+- [x] **fft.sh S2: pure-bash `id()`** — commit `d5914e2`. Replaced `echo "c$(date +%s%N | tail -c 8)$RANDOM"` (3 subprocesses) with `echo "c${EPOCHREALTIME//.}${RANDOM}"` (zero subprocesses, bash-5-native). ~80-120ms saved per `id()` call across 70 call sites.
+
+- [x] **Per-command timing suffix** — commit `d5914e2`. Every `fft()` / `screen` call now appends `t=Nms[action]` to the main screen line, colored green/yellow/red by `FFT_SLOW_MS` threshold (default 800ms; `!` at threshold, `!!` at 2×). `[action]` tag parses `"action":"foo"` → `[foo]` or `"keys":[{"name":"Up"}]` → `[key:Up]` or empty keys → `[screen]`. `FFT_TIME=0` silences. Pairs with server-side `latencyMs` in `session_*.jsonl`. Live baseline post-commit: keys ~215ms, screen-query ~180ms, scan_move via screen ~450ms.
+
+- [x] **🎯 C1: skip `DetectScreenSettled` on pure screen queries** — commit `8fb6d58`. Screen-query commands (empty keys list, no action) can't be mid-transition — nothing just changed — so the 50ms-sleep × 3-consecutive-stable-reads settle loop is pure wasted latency on them. Added `requireSettle` parameter; the default no-arg overload keeps the old behavior. At `CommandWatcher.cs:1349` the main post-execution call site now passes `!isScreenQuery`. Live-measured: screen-query bridge time dropped from ~320ms to ~190ms median.
+
+- [x] **Tavern Scope A — `enter_tavern` shell helper** — commit `191e667`. WorldMap → LocationMenu → cursor-down to Tavern → EnterShop, with settlement-ID guard (0-14) and post-nav `ui=Tavern` verification. Live-verified at Dorter: one command lands on Tavern root.
+
+- [x] **Tavern Scope A — `read_rumor [idx]` / `read_errand [idx]`** — commit `191e667`. From Tavern root or the specific subscreen, opens the rumor/errand list and scrolls the cursor to row `idx` (0-based). Live-verified at Dorter: `read_rumor 2` lands on "The Horror of Riovanes" (screenshot-confirmed); `read_errand` lands on TavernErrands showing "Minimas the Mournful."
+
+- [x] **Tavern Scope A — `scan_tavern` shell helper** — commit `191e667`. ScrollDown-until-wrap detection by watching `cursorRow` for return to start. Caveat: `cursorRow` isn't populated on TavernRumors / TavernErrands yet, so it falls back to "≥30 entries" after max-scan. Open follow-up in §0.
+
+- [x] **`_show_helpers` entries for Tavern, TavernRumors, TavernErrands** — commit `191e667`. Split from the generic shop-group handler; each state advertises the helpers relevant to it.
+
+- [x] **Update `/prime` command** — includes the new timing-suffix explainer + `session_tail` instructions. (Not in repo; lives at `C:\Users\ptyRa\.claude\commands\prime.md`.)
+
+**Memory notes saved this session:**
+
+(None — investigation was file-format oriented, not memory-address oriented. The key finding — "rumor body text is NOT in plain-string RAM; source is `world_wldmes_bin.en.bin` PSX-encoded" — lives in TODO.md §0 Session-32 follow-ups since it blocks the Scope B work, not in a standalone memory note.)
+
+**Files added or modified:**
+
+- `fft.sh` — S1 + S2 + timing suffix + 4 Tavern helpers
+- `ColorMod/Utilities/CommandWatcher.cs` — `DetectScreenSettled(bool requireSettle)` overload
+- `FFTHandsFree/Instructions/Shopping.md` — Tavern section added
+- `FFTHandsFree/TODO.md` — Scope B + follow-ups at top of §0

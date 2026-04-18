@@ -740,6 +740,40 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("BattleDesertion", result);
         }
 
+        // Session 21 at Orbonne Monastery captured slot0=0x67 (not 255) during Victory
+        // and Desertion screens. The unitSlotsPopulated requirement (slot0==255) caused
+        // these to fall through to BattlePaused. Fix: post-battle detection should work
+        // even when slot0 is a non-sentinel value like 0x67, as long as the other battle
+        // signals (battleMode=0, actedOrMoved=true, paused=1/0) hold.
+        [Fact]
+        public void DetectScreen_Desertion_Orbonne_Slot0_0x67_ShouldReturnBattleDesertion()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0,
+                eventId: 303);
+
+            Assert.Equal("BattleDesertion", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Victory_Orbonne_Slot0_0x67_ShouldReturnBattleVictory()
+        {
+            // Same as above but paused=0 (auto-advancing victory result screen).
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 303);
+
+            Assert.Equal("BattleVictory", result);
+        }
+
         [Fact]
         public void DetectScreen_Status_Paused_MenuCursor3_ShouldReturnBattleStatus()
         {
