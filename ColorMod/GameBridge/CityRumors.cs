@@ -108,6 +108,22 @@ namespace FFTColorCustomizer.GameBridge
                 [CityId.Goug]     = Chapter1UniformRows,  // session 39
                 [CityId.Zaland]   = Chapter1UniformRows,  // session 40
                 [CityId.Lesalia]  = Chapter1UniformRows,  // session 41 (capital)
+
+                // Gollund (session 42) — FIRST divergence from the Chapter-1
+                // uniform set. Row 3 is a Gollund-specific rumor "The Haunted
+                // Mine" (corpus #20, "Monsters have taken up residence in one
+                // of the many coal mines in Gollund..."). Row 4 is the usual
+                // "At Bael's End" (unmapped). This breaks the Chapter-1 uniform
+                // hypothesis — future cities may also have local-flavor rumors
+                // slotted in at row 3 or similar.
+                [CityId.Gollund] = new Dictionary<int, int>
+                {
+                    { 0, 10 }, // Zodiac Braves
+                    { 1, 11 }, // Zodiac Stones
+                    { 2, 19 }, // Horror of Riovanes
+                    { 3, 20 }, // The Haunted Mine (Gollund-specific)
+                    // row 4: At Bael's End — unmapped
+                },
             };
 
         /// <summary>

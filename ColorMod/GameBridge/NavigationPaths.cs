@@ -1417,6 +1417,17 @@ namespace FFTColorCustomizer.GameBridge
         /// screen as a one-shot "get me home" recovery primitive — see
         /// TODO §10.6 ValidPaths block. Tweak the delay if a specific
         /// nested screen ever regresses with eaten keys.
+        ///
+        /// escapeCount = nesting depth below WorldMap:
+        ///   1 = PartyMenu tabs, LocationMenu direct-from-world
+        ///   2 = Outfitter / Tavern root (via LocationMenu)
+        ///   3 = OutfitterBuy / Sell / Fitting, TavernRumors / Errands
+        ///   4 = CharacterStatus, equipment / ability pickers one level deep
+        ///   5 = rarely needed; matches deepest observed nested-picker paths
+        ///
+        /// Each spot has a specific depth reflecting its position in the
+        /// navigation tree; not treating these as magic numbers to extract —
+        /// the integer IS the semantic (literal Escape presses to home).
         /// </summary>
         private static PathEntry ReturnToWorldMap(int escapeCount)
         {

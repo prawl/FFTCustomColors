@@ -49,5 +49,25 @@ namespace FFTColorCustomizer.GameBridge
                 || screenName == "CharacterStatus"
                 || screenName == "EquipmentAndAbilities";
         }
+
+        /// <summary>
+        /// True if the screen is one of the shop-adjacent states where the
+        /// Outfitter / Tavern / Warriors Guild / Poachers Den flow lives.
+        /// Used by gil-surfacing logic and shop navigation helpers.
+        /// Includes LocationMenu (the settlement entry lobby), Outfitter
+        /// sub-states (Buy/Sell/Fitting), Tavern sub-states (Rumors/Errands).
+        /// Disjoint with IsBattleState and the PartyMenu* predicates.
+        /// </summary>
+        public static bool IsShopState(string? screenName)
+        {
+            return screenName == "LocationMenu"
+                || screenName == "Outfitter"
+                || screenName == "OutfitterBuy"
+                || screenName == "OutfitterSell"
+                || screenName == "OutfitterFitting"
+                || screenName == "Tavern"
+                || screenName == "TavernRumors"
+                || screenName == "TavernErrands";
+        }
     }
 }

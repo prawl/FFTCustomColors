@@ -87,6 +87,12 @@ namespace FFTColorCustomizer.GameBridge
             // Live-verified at Zaland Outfitter Sell (session 40). Staves,
             // katanas, bows — ratios cluster 20-50%, generally higher than
             // swords. Healing Staff has buy unlisted in our table; skipped.
+            // Session 42 Gollund Outfitter Sell — ratio cluster near 50%.
+            ["Sleep Blade"]        = 2_500, // buy 16_000 → 16% (sword, low ratio)
+            ["Platinum Sword"]     = 5_500, // buy 20_000 → 28%
+            ["Battle Bamboo"]      = 700,   // buy 1_400 → 50% (pole)
+            ["Battle Axe"]         = 1_500, // buy 1_500 → sell=buy (!)
+            ["Giant's Axe"]        = 3_000, // buy 3_000 → sell=buy (!)
             ["Kotetsu"]            = 1_500, // buy 3_000 → 50% (katana, matches buy/2)
             ["Osafune"]            = 2_500, // buy 5_000 → 50%
             ["Murasame"]           = 3_500, // buy 7_000 → 50%

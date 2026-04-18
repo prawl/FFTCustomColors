@@ -26,6 +26,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         private const int GougLocationId = 11;
         private const int ZalandLocationId = 10;
         private const int LesaliaLocationId = 0;
+        private const int GollundLocationId = 8;
 
         [Fact]
         public void Dorter_Row0_MapsToCorpusIndex10()
@@ -242,11 +243,13 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void CitiesFor_CorpusIndex10_ReturnsAllSeededChapter1Cities()
+        public void CitiesFor_CorpusIndex10_ReturnsAllSeededCities()
         {
-            // After seeding seven Chapter-1 cities, corpus #10 maps to each at row 0.
+            // After seeding 8 cities (7 uniform + Gollund), corpus #10 maps
+            // to each at row 0. Gollund diverges from the uniform set at
+            // row 3 but still has #10 at row 0.
             var result = CityRumors.CitiesFor(10);
-            Assert.Equal(7, result.Count);
+            Assert.Equal(8, result.Count);
             Assert.Contains((DorterLocationId, 0), result);
             Assert.Contains((GarilandLocationId, 0), result);
             Assert.Contains((WarjilisLocationId, 0), result);
@@ -254,6 +257,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains((GougLocationId, 0), result);
             Assert.Contains((ZalandLocationId, 0), result);
             Assert.Contains((LesaliaLocationId, 0), result);
+            Assert.Contains((GollundLocationId, 0), result);
         }
 
         // Yardrow live-verified session 38: Chapter-1 uniform rumor set.
@@ -358,6 +362,107 @@ namespace FFTColorCustomizer.Tests.GameBridge
         public void Lesalia_Row3_BaelsEnd_ReturnsNull()
         {
             Assert.Null(CityRumors.Lookup(LesaliaLocationId, 3));
+        }
+
+        // Gollund live-verified session 42: FIRST divergence from the
+        // Chapter-1 uniform set. Row 3 is "The Haunted Mine" (corpus #20),
+        // a Gollund-specific rumor about monsters in its coal mines. Row 4
+        // is the standard unmapped "At Bael's End".
+
+        [Fact]
+        public void Gollund_Row0_MapsToZodiacBraves()
+        {
+            Assert.Equal(10, CityRumors.Lookup(GollundLocationId, 0));
+        }
+
+        [Fact]
+        public void Gollund_Row1_MapsToZodiacStones()
+        {
+            Assert.Equal(11, CityRumors.Lookup(GollundLocationId, 1));
+        }
+
+        [Fact]
+        public void Gollund_Row2_MapsToHorrorOfRiovanes()
+        {
+            Assert.Equal(19, CityRumors.Lookup(GollundLocationId, 2));
+        }
+
+        [Fact]
+        public void Gollund_Row3_HauntedMine_MapsToCorpus20()
+        {
+            // Gollund-specific rumor — the other 7 Chapter-1 cities don't
+            // have this row. Body: "Monsters have taken up residence in
+            // one of the many coal mines in Gollund..."
+            Assert.Equal(20, CityRumors.Lookup(GollundLocationId, 3));
+        }
+
+        [Fact]
+        public void Gollund_Row4_BaelsEnd_ReturnsNull()
+        {
+            // Row 4 (not row 3) is "At Bael's End" at Gollund — unmapped.
+            Assert.Null(CityRumors.Lookup(GollundLocationId, 4));
+        }
+
+        [Fact]
+        public void Gollund_IsNotChapter1UniformCity()
+        {
+            // Pin that Gollund diverges from the uniform set.
+            Assert.False(CityRumors.IsChapter1UniformCity(GollundLocationId));
+        }
+
+        [Fact]
+        public void CitiesFor_CorpusIndex20_ReturnsOnlyGollund()
+        {
+            // Corpus #20 is the Gollund-specific Haunted Mine body; should
+            // reverse-lookup to exactly one (city, row) pair.
+            var result = CityRumors.CitiesFor(20);
+            Assert.Single(result);
+            Assert.Contains((GollundLocationId, 3), result);
+        }
+
+        // Session 42: coverage stats for seed progress diagnostics.
+
+        [Fact]
+        public void CoverageStats_SettlementProgress_AboveFloor()
+        {
+            // 15 total settlements (CityId.Lesalia=0 through SalGhidos=14).
+            // Floor asserted conservatively to allow back-sliding if a chapter-2
+            // visit forces a per-city split that temporarily removes an entry.
+            // Raise this floor as coverage grows to lock in progress.
+            const int totalSettlements = 15;
+            int seededCount = 0;
+            for (int cityId = 0; cityId < totalSettlements; cityId++)
+            {
+                // Any row lookup that returns non-null means the city has
+                // at least one seed entry.
+                bool hasSeed = false;
+                for (int row = 0; row < 10; row++)
+                {
+                    if (CityRumors.Lookup(cityId, row) != null) { hasSeed = true; break; }
+                }
+                if (hasSeed) seededCount++;
+            }
+            double coverage = (double)seededCount / totalSettlements;
+            // Current floor: 8/15 (53%) — sessions 33-42 seeded 8 cities.
+            // Subtract a safety margin and pin at 40% to tolerate a single
+            // divergence-rollback without false-failing.
+            Assert.True(coverage >= 0.40,
+                $"Settlement rumor coverage has dropped below 40% ({seededCount}/{totalSettlements} = {coverage:P0})");
+        }
+
+        [Fact]
+        public void CoverageStats_Chapter1UniformCount_AtLeastSix()
+        {
+            // Floor on how many cities still match the Chapter-1 uniform set.
+            // Gollund broke the hypothesis at session 42, leaving 7. Floor at
+            // 6 so one more divergence can surface without masking the trend.
+            int uniformCount = 0;
+            for (int cityId = 0; cityId < 15; cityId++)
+            {
+                if (CityRumors.IsChapter1UniformCity(cityId)) uniformCount++;
+            }
+            Assert.True(uniformCount >= 6,
+                $"Chapter1UniformCity count dropped below 6 ({uniformCount})");
         }
 
         // Session 41: IsChapter1UniformCity — true for the 7 cities seeded

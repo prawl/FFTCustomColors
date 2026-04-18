@@ -211,6 +211,36 @@ public class ItemPricesTests
     }
 
     [Fact]
+    public void SellPriceOverrides_GollundSet_Session42()
+    {
+        // Session 42 Gollund Outfitter Sell. Battle Axe / Giant's Axe have
+        // sell == buy (novel third variant; Mage Masher/Serpent Staff are
+        // sell > buy; most swords are sell < buy).
+        int sleepId = ItemData.Items.First(kv => kv.Value.Name == "Sleep Blade").Key;
+        int platId = ItemData.Items.First(kv => kv.Value.Name == "Platinum Sword").Key;
+        int bambooId = ItemData.Items.First(kv => kv.Value.Name == "Battle Bamboo").Key;
+        int battleAxeId = ItemData.Items.First(kv => kv.Value.Name == "Battle Axe").Key;
+        int giantAxeId = ItemData.Items.First(kv => kv.Value.Name == "Giant's Axe").Key;
+
+        Assert.Equal(2_500, ItemPrices.GetSellPrice(sleepId));
+        Assert.Equal(5_500, ItemPrices.GetSellPrice(platId));
+        Assert.Equal(700, ItemPrices.GetSellPrice(bambooId));
+        Assert.Equal(1_500, ItemPrices.GetSellPrice(battleAxeId));
+        Assert.Equal(3_000, ItemPrices.GetSellPrice(giantAxeId));
+    }
+
+    [Fact]
+    public void SellPriceOverrides_BattleAxe_DocumentsSellEqualsBuy()
+    {
+        // Battle Axe: buy 1500, sell 1500. Third confirmed ratio pattern
+        // (after sell<buy default and sell>buy Mage Masher/Serpent Staff).
+        int id = ItemData.Items.First(kv => kv.Value.Name == "Battle Axe").Key;
+        int sell = ItemPrices.GetSellPrice(id)!.Value;
+        int buy = ItemPrices.GetBuyPrice(id)!.Value;
+        Assert.Equal(buy, sell);
+    }
+
+    [Fact]
     public void SellPriceOverrides_SerpentStaff_DocumentsSellAboveBuy()
     {
         // Serpent Staff: buy 2200, sell 3000. Second confirmed "sell > buy"

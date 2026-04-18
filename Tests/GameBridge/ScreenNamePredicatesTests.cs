@@ -123,5 +123,52 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.False(ScreenNamePredicates.IsPartyTree(null));
             Assert.False(ScreenNamePredicates.IsPartyTree(""));
         }
+
+        // Session 42: IsShopState — the shop-adjacent screens where the
+        // Outfitter / Tavern / Warriors Guild / Poachers Den flow lives.
+        // Used by gil-display logic and shop navigation helpers.
+
+        [Theory]
+        [InlineData("LocationMenu", true)]
+        [InlineData("Outfitter", true)]             // SettlementMenu inside Outfitter
+        [InlineData("OutfitterBuy", true)]
+        [InlineData("OutfitterSell", true)]
+        [InlineData("OutfitterFitting", true)]
+        [InlineData("Tavern", true)]
+        [InlineData("TavernRumors", true)]
+        [InlineData("TavernErrands", true)]
+        [InlineData("WorldMap", false)]
+        [InlineData("BattleMyTurn", false)]
+        [InlineData("PartyMenuUnits", false)]
+        [InlineData("CharacterStatus", false)]
+        [InlineData("Cutscene", false)]
+        public void IsShopState_Sweep(string screenName, bool expected)
+        {
+            Assert.Equal(expected, ScreenNamePredicates.IsShopState(screenName));
+        }
+
+        [Fact]
+        public void IsShopState_Null_ReturnsFalse()
+        {
+            Assert.False(ScreenNamePredicates.IsShopState(null));
+            Assert.False(ScreenNamePredicates.IsShopState(""));
+        }
+
+        [Fact]
+        public void IsShopState_And_IsBattleState_AreDisjoint()
+        {
+            // No screen is simultaneously a shop and a battle state.
+            foreach (var name in new[] {
+                "LocationMenu", "Outfitter", "OutfitterBuy", "OutfitterSell",
+                "OutfitterFitting", "Tavern", "TavernRumors", "TavernErrands",
+                "BattleMyTurn", "BattleMoving", "BattleFormation", "BattleVictory",
+                "WorldMap", "PartyMenuUnits",
+            })
+            {
+                bool shop = ScreenNamePredicates.IsShopState(name);
+                bool battle = ScreenNamePredicates.IsBattleState(name);
+                Assert.False(shop && battle, $"{name} classified as both shop and battle");
+            }
+        }
     }
 }
