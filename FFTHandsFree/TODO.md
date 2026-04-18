@@ -73,13 +73,33 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 31 — next-up follow-ups (live-verify pending)
+
+- [ ] **Live-verify `!weak` / `+absorb` / `~half` / `=null` / `^strengthen` per-tile sigils** — Session 31 shipped `ElementAffinityAnnotator` + `ValidTargetTile.Affinity` + shell render. JSON field populates correctly (confirmed via response-json inspection — Black Goblins show `elementWeak:['Ice']`). Per-tile shell sigil UNTRIGGERED in current save: all available caster abilities are non-elemental (Mettle/Monk/Time Magicks) so the marker never fires. Next repro: a Wizard with Fire + Ice-weak enemy on field, OR a White Mage with Holy + undead enemy. Confirm `<Goblin !weak>` / `<Skeleton +absorb>` style suffixes render.
+
+- [ ] **Live-verify `>BACK` / `>side` arc sigils** — Session 31 shipped `BackstabArcCalculator` + `ValidTargetTile.Arc` + `AttackTileInfo.Arc` + shell render (front omitted, only back/side show). JSON field populates correctly (confirmed: `arc:"front"` on enemy tiles during Ramza scan). Back/side sigils UNTRIGGERED in current save because all attack approaches ended up front-arc relative to east-facing goblins. Next repro: reposition Ramza west of an east-facing enemy (attacker behind target's facing axis) to trigger `>BACK`.
+
+- [ ] **Live-verify LoS `!blocked` sigil** — Session 31 shipped `LineOfSightCalculator` + `ProjectileAbilityClassifier` + wire-up + shell sigil. Code path triggers only on `Attack` (ranged weapon) or `Throw` (Ninja) skillsets. Current save has no active Archer/Gunner/Ninja — Mustadio is Machinist but unequipped; attempts to change Lloyd to Archer failed due to helper bugs. Next repro: any unit with a bow/gun/crossbow/ninja-throw + a battle map with terrain between them and an enemy.
+
+- [ ] **Live-verify Cutscene-over-LoadGame fix** — Session 31 shipped the `eventId ∈ {0, 0xFFFF}` guard on the LoadGame detection rule. Unit tests cover the transition; needs a live repro where `gameOverFlag=1` is sticky (e.g. after a GameOver → load save) while a real cutscene plays. Expected: screen reads `Cutscene` not `LoadGame`.
+
+- [ ] **Live-verify full 5-field element decode on varied enemies** — Only observed `elementWeak:['Ice']` on Black Goblins. The other 4 fields (`elementAbsorb`, `elementCancel→elementNull`, `elementHalf`, `elementStrengthen`) need per-enemy confirmation. Undead → `elementAbsorb:['Dark']` / `elementWeak:['Holy']` expected. Fire Bomb → `elementAbsorb:['Fire']` / `elementWeak:['Water','Ice']` expected. Any caster with elemental gear on the player side should show `elementStrengthen`.
+
+- [ ] **Live-verify `Potion [x4]` / `Phoenix Down [x99]` heldCount** — ✅ CONFIRMED 2026-04-17 session 31 on Ramza with Items secondary at Siedge Weald. All 18 Items entries correctly showed `[x<count>]` suffix. Non-inventory abilities render unchanged. Keep this line until it falls off the log; delete on next sweep.
+
+- [ ] **Live-verify auto-end-turn " — TURN ENDED" on abilities beyond Jump** — ✅ CONFIRMED on Lloyd's Jump at Siedge Weald. `AutoEndTurnAbilities` hashset currently has only `Jump`. If any future ability surfaces as auto-end (user observation during play), add to the set. Candidates to investigate: Wish (Orator?), some Dark Knight sacrificial attacks. No known confirmations.
+
+- [ ] **Live-verify weather damage modifier** — Session 31 shipped `WeatherDamageModifier` pure table (Rain→Lightning×1.25/Fire×0.75, Snow→Ice×1.25/Fire×0.75, Thunderstorm→Lightning×1.25). NOT yet wired into scan_move because the weather-state memory byte is unknown. Blocked on memory hunt. Validate the formula values AGAINST IC remaster once a rainy/snowy battle can be scanned. Wiki values are PSX-canonical.
+
+- [ ] **Live-verify BattleModalChoice scaffold** — Session 31 shipped `BattleModalChoice` pure helper + 6 tests. NOT wired into detection (needs discriminator memory hunt). Next session find the modal-open byte during a BattleObjectiveChoice or RecruitOffer screen (story battle required — Orbonne Monastery probably has both).
+
+- [ ] **Live-verify Reis name-lookup hardening** — Session 31 shipped `SelectBestRosterBase` low-address preference + `Invalidate()` on load action. Pure TDD only. Next recruit of a generic-named unit (Warriors' Guild) should resolve correctly to the new name, not collide with existing roster entries like "Reis".
+
 ### Session 29 — next-up follow-ups
 
 - [ ] **Fix `battle_move` NOT CONFIRMED false-negative after next live repro** — Session 29 pt.4 added diagnostic logging. Next repro error message includes `lastScreenSeen=X polls=N` for the 8s poll window. Read that log. If `lastScreenSeen=BattleMoving` across all 80 polls, fix is in screen detection (`battleMode` byte likely stays 2 past the animation); add a second signal to distinguish "Move UI open" from "unit has not moved yet". If intermediate states appear in the log, expand the accept-list in `NavigationActions.cs` `MoveGrid`.
 
 - [ ] **⚠ UNVERIFIED: `activeUnitSummary` on BattleMoving / BattleCasting / BattleAbilities / BattleActing / BattleWaiting** — Session 29 pt.1/2 widened the fft.sh compact renderer to match `Battle*` (was `Battle_*`). Confirmed on BattleMyTurn and BattleAttacking during session 29. Still needs a quick sweep — one call on each state during a battle and eyeball the line.
-
-- [ ] **⚠ UNVERIFIED: `heldCount` rendering on Items abilities** — Session 29 pt.2 added `Potion [x4]` / `Ether [OUT]` annotations to `fmtAb` in fft.sh:~3122. Tests pass, shell compiles. Needs a unit with Items secondary in a battle (Ramza at Siedge Weald has it).
 
 - [ ] **Diagnose `(10,4)` false-positive on Lloyd (Dragoon Mv=5 Jmp=4) at (10,9)** — Session 29 tile-cost rules match the game for 4 of 4 tested unit/position combos (Kenrick×3, Wilham×1). Untested: Lloyd's old FP scenario. Re-run at Siedge Weald with heap Move/Jump reading active and see if (10,4) is still over-reported. If still wrong, see `memory/project_bfs_tile_cost_rules.md` for what we've tried.
 
