@@ -272,6 +272,76 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void CoverageAudit_MostSkillsets_HaveAtLeastOneCostedAbility()
+        {
+            // For each canonical skillset except the known-uncovered Jump and
+            // Holy Sword (see ActionAbilityLookup — both collapse sub-abilities
+            // into a single entry, and cost data hasn't been backfilled),
+            // ComputeNextJpForSkillset should return non-null. Blanket-priced
+            // skillsets (Geomancy/Bardsong/Dance) count because they use a
+            // shared cost.
+            string[] coveredSkillsets = {
+                "Items", "Fundaments", "Mettle", "Summon",
+                "Martial Arts", "Black Magicks", "White Magicks", "Time Magicks",
+                "Geomancy", "Bardsong", "Dance", "Arithmeticks",
+                "Aim", "Steal", "Throw", "Iaido",
+                "Speechcraft", "Mystic Arts", "Arts of War",
+                "Darkness",
+                // EXCLUDED: "Jump" and "Holy Sword" — known-uncovered
+                // (characterized below in CoverageAudit_KnownUncoveredSkillsets).
+            };
+            var gaps = new List<string>();
+            foreach (var skillset in coveredSkillsets)
+            {
+                int? next = AbilityJpCosts.ComputeNextJpForSkillset(
+                    skillset, new HashSet<int>());
+                if (next == null) gaps.Add(skillset);
+            }
+            Assert.True(gaps.Count == 0,
+                $"Skillsets with no computable Next JP: {string.Join(", ", gaps)}");
+        }
+
+        [Fact]
+        public void CoverageAudit_KnownUncoveredSkillsets_StillReturnNull()
+        {
+            // Characterization: Jump (Dragoon) and Holy Sword (Agrias) have
+            // NO cost data backfilled — every ability returns null from
+            // GetCost, so ComputeNextJp returns null. Pin this so a future
+            // backfill is a visible breaking change (flip these asserts).
+            Assert.Null(AbilityJpCosts.ComputeNextJpForSkillset("Jump", new HashSet<int>()));
+            Assert.Null(AbilityJpCosts.ComputeNextJpForSkillset("Holy Sword", new HashSet<int>()));
+        }
+
+        [Fact]
+        public void CoverageAudit_AbilityLevelGaps_AreSparseInCoveredSkillsets()
+        {
+            // Diagnostic: for non-uncovered skillsets, gap rate must be <51%.
+            // Catches mass-regression where a backfilled skillset loses half
+            // its cost entries due to a rename or reshuffle.
+            string[] coveredSkillsets = {
+                "Items", "Fundaments", "Mettle", "Summon",
+                "Martial Arts", "Black Magicks", "White Magicks", "Time Magicks",
+                "Aim", "Steal", "Throw", "Iaido",
+                "Speechcraft", "Mystic Arts", "Arts of War",
+                "Darkness",
+                // Blanket-priced skillsets + known-uncovered Jump/Holy Sword skipped.
+            };
+            foreach (var skillset in coveredSkillsets)
+            {
+                var abilities = ActionAbilityLookup.GetSkillsetAbilities(skillset);
+                if (abilities == null) continue;
+                int missing = 0;
+                foreach (var a in abilities)
+                {
+                    if (AbilityJpCosts.GetCost(a.Name) == null) missing++;
+                }
+                double gapRate = (double)missing / abilities.Count;
+                Assert.True(gapRate < 0.51,
+                    $"Skillset '{skillset}' has {missing}/{abilities.Count} ({gapRate:P0}) abilities with unknown cost — over 50%, likely a regression");
+            }
+        }
+
+        [Fact]
         public void ComputeNextJp_OnlyUnknownCostsUnlearned_ReturnsNull()
         {
             // Edge case: if every unlearned ability in the skillset has an

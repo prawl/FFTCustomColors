@@ -107,6 +107,7 @@ namespace FFTColorCustomizer.GameBridge
                 [CityId.Yardrow]  = Chapter1UniformRows,  // session 38
                 [CityId.Goug]     = Chapter1UniformRows,  // session 39
                 [CityId.Zaland]   = Chapter1UniformRows,  // session 40
+                [CityId.Lesalia]  = Chapter1UniformRows,  // session 41 (capital)
             };
 
         /// <summary>
@@ -138,6 +139,19 @@ namespace FFTColorCustomizer.GameBridge
                 }
             }
             return hits;
+        }
+
+        /// <summary>
+        /// Returns true when the given city is seeded with the shared
+        /// Chapter1UniformRows dictionary — i.e. its rumor list matches the
+        /// hypothesis that Chapter-1 settlements show an identical rumor set.
+        /// False for non-settlement IDs, unseeded cities, or any city that
+        /// eventually gets split out to a per-city dictionary.
+        /// </summary>
+        public static bool IsChapter1UniformCity(int cityId)
+        {
+            return Table.TryGetValue(cityId, out var rows)
+                && ReferenceEquals(rows, Chapter1UniformRows);
         }
 
         /// <summary>

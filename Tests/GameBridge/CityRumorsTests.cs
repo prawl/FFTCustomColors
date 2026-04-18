@@ -25,6 +25,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         private const int YardrowLocationId = 7;
         private const int GougLocationId = 11;
         private const int ZalandLocationId = 10;
+        private const int LesaliaLocationId = 0;
 
         [Fact]
         public void Dorter_Row0_MapsToCorpusIndex10()
@@ -56,8 +57,10 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void UnknownCity_ReturnsNull()
         {
-            // Location id 0 (Lesalia) has no entries yet — should not blow up.
-            Assert.Null(CityRumors.Lookup(0, 0));
+            // Any id past 14 (SalGhidos) has no entries yet — should not blow up.
+            // (Historical: this test previously used id=0/Lesalia; Lesalia was
+            // seeded session 41 so we switched to an id beyond the settlement range.)
+            Assert.Null(CityRumors.Lookup(42, 0));
         }
 
         [Fact]
@@ -131,7 +134,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             // Round-trip: for every (city, row) in the forward table,
             // CitiesFor(lookupIndex) must include that (city, row) pair.
-            foreach (int city in new[] { DorterLocationId, GarilandLocationId, WarjilisLocationId, YardrowLocationId, GougLocationId, ZalandLocationId })
+            foreach (int city in new[] { DorterLocationId, GarilandLocationId, WarjilisLocationId, YardrowLocationId, GougLocationId, ZalandLocationId, LesaliaLocationId })
             {
                 for (int row = 0; row < 10; row++)
                 {
@@ -227,7 +230,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // Pin the invariant: all seeded Chapter-1 cities resolve row-by-row
             // to the same corpus index as Dorter. Divergence breaks this test,
             // prompting a per-chapter split.
-            foreach (int city in new[] { GarilandLocationId, WarjilisLocationId, YardrowLocationId, GougLocationId, ZalandLocationId })
+            foreach (int city in new[] { GarilandLocationId, WarjilisLocationId, YardrowLocationId, GougLocationId, ZalandLocationId, LesaliaLocationId })
             {
                 for (int row = 0; row < 3; row++)
                 {
@@ -241,15 +244,16 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void CitiesFor_CorpusIndex10_ReturnsAllSeededChapter1Cities()
         {
-            // After seeding six Chapter-1 cities, corpus #10 maps to each at row 0.
+            // After seeding seven Chapter-1 cities, corpus #10 maps to each at row 0.
             var result = CityRumors.CitiesFor(10);
-            Assert.Equal(6, result.Count);
+            Assert.Equal(7, result.Count);
             Assert.Contains((DorterLocationId, 0), result);
             Assert.Contains((GarilandLocationId, 0), result);
             Assert.Contains((WarjilisLocationId, 0), result);
             Assert.Contains((YardrowLocationId, 0), result);
             Assert.Contains((GougLocationId, 0), result);
             Assert.Contains((ZalandLocationId, 0), result);
+            Assert.Contains((LesaliaLocationId, 0), result);
         }
 
         // Yardrow live-verified session 38: Chapter-1 uniform rumor set.
@@ -328,6 +332,54 @@ namespace FFTColorCustomizer.Tests.GameBridge
         public void Zaland_Row3_BaelsEnd_ReturnsNull()
         {
             Assert.Null(CityRumors.Lookup(ZalandLocationId, 3));
+        }
+
+        // Lesalia live-verified session 41: Chapter-1 uniform rumor set (7th city).
+
+        [Fact]
+        public void Lesalia_Row0_MapsToZodiacBraves()
+        {
+            Assert.Equal(10, CityRumors.Lookup(LesaliaLocationId, 0));
+        }
+
+        [Fact]
+        public void Lesalia_Row1_MapsToZodiacStones()
+        {
+            Assert.Equal(11, CityRumors.Lookup(LesaliaLocationId, 1));
+        }
+
+        [Fact]
+        public void Lesalia_Row2_MapsToHorrorOfRiovanes()
+        {
+            Assert.Equal(19, CityRumors.Lookup(LesaliaLocationId, 2));
+        }
+
+        [Fact]
+        public void Lesalia_Row3_BaelsEnd_ReturnsNull()
+        {
+            Assert.Null(CityRumors.Lookup(LesaliaLocationId, 3));
+        }
+
+        // Session 41: IsChapter1UniformCity — true for the 7 cities seeded
+        // with the Chapter1UniformRows shared dictionary.
+
+        [Theory]
+        [InlineData(0, true)]    // Lesalia
+        [InlineData(6, true)]    // Gariland
+        [InlineData(7, true)]    // Yardrow
+        [InlineData(9, true)]    // Dorter
+        [InlineData(10, true)]   // Zaland
+        [InlineData(11, true)]   // Goug
+        [InlineData(12, true)]   // Warjilis
+        [InlineData(1, false)]   // Riovanes — battle location, not seeded
+        [InlineData(2, false)]   // Eagrose
+        [InlineData(4, false)]   // Limberry — not seeded yet
+        [InlineData(14, false)]  // Sal Ghidos — not seeded yet
+        [InlineData(-1, false)]  // invalid
+        [InlineData(42, false)]  // past settlement range
+        public void IsChapter1UniformCity_Sweep(int cityId, bool expected)
+        {
+            Assert.Equal(expected, CityRumors.IsChapter1UniformCity(cityId));
         }
 
         // Session 36: defensive validity guards on the CityRumors.Table

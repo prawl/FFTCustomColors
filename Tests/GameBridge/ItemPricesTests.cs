@@ -178,6 +178,39 @@ public class ItemPricesTests
     }
 
     [Fact]
+    public void CoverageStats_GroundTruthPercentage_AboveMinimumFloor()
+    {
+        // Diagnostic / floor-setter: what fraction of BuyPrices entries have
+        // a corresponding ground-truth sell override? As of session 40 we're
+        // around 20+ overrides out of ~100 buy entries. Assert a floor that's
+        // slightly below current coverage so the test stays green after
+        // session 40 but fires if a regression removes overrides.
+        int buyCount = ItemPrices.BuyPrices.Count;
+        int overrideCount = ItemPrices.SellPriceOverrides.Count;
+        Assert.True(buyCount > 0, "BuyPrices empty — something is very wrong");
+        double coverage = (double)overrideCount / buyCount;
+        // Current floor: 15% (very conservative — actual is ~20%+). Raise the
+        // floor as coverage grows to lock in gains.
+        Assert.True(coverage >= 0.15,
+            $"Ground-truth sell coverage has dropped below 15% ({overrideCount}/{buyCount} = {coverage:P0})");
+    }
+
+    [Fact]
+    public void CoverageStats_NoOverride_WithoutMatchingBuy_Exists()
+    {
+        // Pin that every override has a matching buy entry. Already asserted
+        // in AllSellPriceOverrides_HaveCorrespondingBuyPrice; this test adds
+        // a count caption for future diagnostic at a glance.
+        int orphaned = 0;
+        foreach (var kv in ItemPrices.SellPriceOverrides)
+        {
+            if (!ItemPrices.BuyPrices.ContainsKey(kv.Key)) orphaned++;
+        }
+        Assert.True(orphaned == 0,
+            $"{orphaned} sell overrides have no matching buy price (see AllSellPriceOverrides_HaveCorrespondingBuyPrice for details)");
+    }
+
+    [Fact]
     public void SellPriceOverrides_SerpentStaff_DocumentsSellAboveBuy()
     {
         // Serpent Staff: buy 2200, sell 3000. Second confirmed "sell > buy"

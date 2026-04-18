@@ -83,6 +83,8 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [x] **`AbilityJpCosts.ComputeNextJpForSkillset` returns 0 for unlearned Zodiark** — Fixed session 38. `ComputeNextJpForSkillset` now treats `cost <= 0` the same as `cost == null` (skip). Test `ComputeNextJp_ZeroCostSentinel_SkippedAsUnlearnable` pins correct behavior (Moogle 110 surfaces as cheapest, not Zodiark 0).
 
+- [ ] **`AbilityJpCosts` — backfill Jump and Holy Sword skillsets** — Session 41 coverage audit found both return null from `ComputeNextJpForSkillset` (100% gap rate). Jump collapses sub-abilities (H/V Jump levels 1-8), Holy Sword is Agrias's story skillset. Cost data omitted in code with a comment; a future session should either populate real JP costs or explicitly document both as no-op for Next: N. Characterization test `CoverageAudit_KnownUncoveredSkillsets_StillReturnNull` pins current behavior.
+
 ### Session 33 — next-up follow-ups (from 6-task batch attempt)
 
 - [ ] **Live-verify !weak / +absorb sigils** — session 33 attempt: travel from WorldMap → Yardrow timed out on bridge, left game on OutfitterBuy and subsequent heap reads timed out. Party has no Wizard; best test candidates are Kenrick (White Mage, Holy) or Rapha (Skyseer, Holy) vs an undead enemy for `+absorb:['Dark']` / `!weak:['Holy']`. Needs: (a) stable bridge session (may need `restart`), (b) travel to a random-encounter zone with undead (Skeleton/Ghost/Ghoul), (c) scan during Holy-cast targeting menu.
