@@ -620,3 +620,89 @@ Tests: 2373 unchanged (all still passing; Scope A is pure shell).
 - `ColorMod/Utilities/CommandWatcher.cs` — `DetectScreenSettled(bool requireSettle)` overload
 - `FFTHandsFree/Instructions/Shopping.md` — Tavern section added
 - `FFTHandsFree/TODO.md` — Scope B + follow-ups at top of §0
+
+---
+
+### Session 33 (2026-04-18) — Tavern Scope B + detection fixes + pure-class test hardening
+
+Seven commits: `c3e24a5` (decoder + BattleVictory/Desertion fix), `0917e34` (title map + Self-Destruct + Orbonne guards), `8ea53db` (per-tag timings + corpus regression + title-map workflow doc), `39fc3f9` (equippability table + ability ordering + null-safety), `c0a31bd` (ArmorEquippability + pure-class hardening), `3254c58` (ZodiacData.GetCompatibility + pure-class hardening), `7e15ff3` (KeyDelayClassifier/ItemPrices/AttackDirectionLogic/MesDecoder/CharacterData/AbilityCompactor hardening).
+
+Tests: 2373 → 2852 (+479 new, 0 regressions). Zero live-play required for any of the hardening batches.
+
+**Features landed:**
+
+- [x] **Rumor decoder SHIPPED** — commit `c3e24a5`. `WorldMesDecoder.cs` parses `world_wldmes_bin.en.bin` pre-title region into 26 Brave Story rumor bodies. PSX byte→char map extended with 0x95 space, 0x8D/0x8E punctuation variants, 0x91 quote, 0x93 apostrophe, `DA 74` "," digraph, `D1 1D` "-" digraph. `F8` paragraph space, `FE` section newline, `E3 XX` structural skip, `F5 66 F6 XX F5 YY F6 ZZ` 8-byte date-stamp glyph elision. Split strategy: FE or F5 66 glyph-start, whichever first. Batch 4 switched from file-read to hardcoded `RumorCorpus.cs` (16KB string array) to avoid shipping a 4MB binary.
+
+- [x] **`get_rumor` / `list_rumors` bridge actions + `read_rumor` / `list_rumors` shell helpers** — commits `c3e24a5`, `0917e34`. Three resolution paths: exact title match → body substring match → integer index. Live-verified at Dorter: "Zodiac Braves" → #10, "Riovanes" → #19, "These crystals" → #11.
+
+- [x] **Hardcoded title→corpus index map** — commit `0917e34`. Dictionary in `RumorLookup.cs` with 3 known Tavern rumor titles (Zodiac Braves → 10, Zodiac Stones → 11, Horror of Riovanes → 19). Case-insensitive, trims whitespace. Extended `get_rumor` action to try title lookup before body substring.
+
+- [x] **🎯 BattleVictory/BattleDesertion Orbonne variant fix** — commit `c3e24a5`. Session 21 captured slot0=0x67 (not 255) at Orbonne; old `unitSlotsPopulated`-gated rules misdetected as BattlePaused. New branches fire when `battleModeActive && battleMode==0 && party==1 && ui==1 && eventId 1..399 && slot0 != 0xFFFFFFFF && slot0 != 255`. Guard tests pin that EncounterDialog and stale-flag WorldMap post-battle states do NOT trigger the new rule.
+
+- [x] **`AutoEndTurnAbilities`: Self-Destruct added** — commit `0917e34`. Bomb monster suicide attack now treated as auto-end. Wish / Blood Price / Ultima explicitly documented as NOT auto-end. Needs live repro on a Bomb enemy.
+
+- [x] **Per-tag `FFT_SLOW_MS` thresholds** — commit `8ea53db`. Replaced flat 800ms default with per-action table: screen/snapshot 300ms, keys 400ms, scan_* 700ms, save/load/travel 8000ms, heap_diff 2000ms. Override any one via `FFT_SLOW_MS_<TAG>` env var (upper-case, non-alphanumerics → _).
+
+- [x] **TavernRumorTitleMap.md workflow doc** — commit `8ea53db`. Documents how to add new title mappings: list_rumors → read_rumor lookup → add to dict → add regression test. Also documents "Bael's End" class of unmappable titles.
+
+- [x] **WeaponEquippability pure static class** — commit `39fc3f9`. 19 weapon types × up to 12 jobs, case-insensitive. Source: Wiki/weapons.txt. Does NOT include Equip-* support-skill overrides (caller layers those on top). 48 tests.
+
+- [x] **ArmorEquippability pure static class** — commit `c0a31bd`. 6 armor types (Armor, Helmet, Robe, Shield inclusive; Clothes, Hat exclusive-list). 47 tests. Source: Wiki/armor.txt.
+
+- [x] **ZodiacData.GetCompatibility + MultiplierFor** — commit `3254c58`. Covers same/opposite sign × same/opposite gender matrix, Serpentarius neutral. 120°-apart good-pair / 150°-apart bad-pair same-gender tables deferred until live damage samples validate. Tests pin all 12 opposite pairs + involution property + symmetry of best↔worst and good↔bad.
+
+**Test hardening (+278 tests across 20 files, zero code changes):**
+
+- [x] **ExtractRumors corpus regression** — commit `8ea53db`. 9 tests pin entries 0/4/10/11/15/19 by distinctive phrase, all-non-empty, all-≥100-chars, ≥26 entries.
+- [x] **ScreenDetection TitleScreen/Orbonne/StaleWorldMap guards** — commits `8ea53db`, `3254c58`. 2 TitleScreen guards, 4 SaveSlotPicker ambiguity edges, 4 StaleWorldMap post-battle negatives.
+- [x] **BattleModalChoice edge cases** — commit `39fc3f9`. +6 tests.
+- [x] **ActionAbility skillset ordering pins** — commit `39fc3f9`. 7 tests lock Martial Arts order so the "Aurablast → Pummel" off-by-one nav bug regresses visibly.
+- [x] **AbilityJpCosts Wiki-value pins** — commit `39fc3f9`. Mettle unverified-Wiki costs + Theory sweep of 8 high-visibility spell costs.
+- [x] **RumorLookup null-safety** — commit `39fc3f9`. 11 tests.
+- [x] **AutoEndTurnAbilities negative cases** — commit `c0a31bd`. 7 tests.
+- [x] **FacingByteDecoder edges** — commit `c0a31bd`. 14 tests.
+- [x] **ElementAffinityDecoder round-trip** — commit `c0a31bd`. 19 tests.
+- [x] **ZodiacData comprehensive** — commit `c0a31bd`. 39 tests.
+- [x] **BattleFieldHelper edges** — commit `c0a31bd`. 10 tests.
+- [x] **ShopTypeLabels edges** — commit `3254c58`. 6 tests.
+- [x] **WeatherDamageModifier edges** — commit `3254c58`. 13 tests.
+- [x] **TileEdgeHeight edges** — commit `3254c58`. 16 tests.
+- [x] **StatusDecoder edges** — commit `3254c58`. 17 tests.
+- [x] **ShopGilPolicy new file** — commit `3254c58`. 34 tests.
+- [x] **KeyDelayClassifier edges** — commit `7e15ff3`. 7 tests.
+- [x] **ItemPrices property tests** — commit `7e15ff3`. 8 tests. Discovered Mage Masher sells 750 / buys 600 — sell>buy IS legitimate in FFT.
+- [x] **AttackDirectionLogic new file** — commit `7e15ff3`. 20 tests.
+- [x] **MesDecoder edges** — commit `7e15ff3`. 12 tests.
+- [x] **CharacterData.GetName** — commit `7e15ff3`. 24 tests.
+- [x] **AbilityCompactor new file** — commit `7e15ff3`. 12 tests.
+
+**Memory notes saved this session:**
+
+- `project_tavern_rumor_cursor.md` — TavernRumors cursor-row byte at heap `0x13090F968` (widget base `0x13090F940` +0x28). Verified 0→1→2→3→wrap→0 at Dorter. Heap address so may shuffle across restarts — needs pointer-chain walk for production use. Memory note includes full widget-struct layout found via snapshot-diff + xref.
+
+**Files added (new):**
+
+- `ColorMod/GameBridge/WorldMesDecoder.cs`
+- `ColorMod/GameBridge/RumorCorpus.cs`
+- `ColorMod/GameBridge/RumorLookup.cs`
+- `ColorMod/GameBridge/WeaponEquippability.cs`
+- `ColorMod/GameBridge/ArmorEquippability.cs`
+- `Tests/GameBridge/WorldMesDecoderIterationTests.cs` (iteration harness)
+- `Tests/GameBridge/WorldMesDecoderTests.cs`
+- `Tests/GameBridge/WeaponEquippabilityTests.cs`
+- `Tests/GameBridge/ArmorEquippabilityTests.cs`
+- `Tests/GameBridge/ActionAbilitySkillsetOrderingTests.cs`
+- `Tests/GameBridge/ShopGilPolicyTests.cs`
+- `Tests/GameBridge/AttackDirectionLogicTests.cs`
+- `Tests/GameBridge/AbilityCompactorTests.cs`
+- `FFTHandsFree/TavernRumorTitleMap.md`
+
+**Files modified (selected):**
+
+- `ColorMod/Core/ModComponents/ModBootstrapper.cs` — wire `RumorLookup` at init
+- `ColorMod/Utilities/CommandWatcher.cs` — `get_rumor` / `list_rumors` actions
+- `ColorMod/GameBridge/ScreenDetectionLogic.cs` — Orbonne Victory/Desertion variants
+- `ColorMod/GameBridge/ZodiacData.cs` — `GetCompatibility` + `MultiplierFor`
+- `ColorMod/GameBridge/AutoEndTurnAbilities.cs` — Self-Destruct + doc expansion
+- `fft.sh` — per-tag `_slow_threshold_for_tag` + `read_rumor` / `list_rumors` helpers
+- `FFTHandsFree/Instructions/CutsceneDialogue.md` — BattleDialogue section

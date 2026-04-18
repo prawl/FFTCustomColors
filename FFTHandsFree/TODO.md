@@ -91,13 +91,9 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **SaveSlotPicker from BattlePaused** — session 33 deferred due to no live battle. Enter any battle, press Tab to pause, verify BattlePaused shows a Save option, determine cursor index, wire the `BattlePaused → SaveSlotPicker` SM transition.
 
-### Session 33 — Tavern Scope B (decoder SHIPPED, per-city mapping partial)
-
-- [x] **DECODER SHIPPED**: `WorldMesDecoder.cs` + `RumorLookup.cs` parse `world_wldmes_bin.en.bin` → 123 decoded entries. Shipped `get_rumor` / `list_rumors` bridge actions. `read_rumor "<substring>"` shell helper returns the matching body. Verified live at Dorter: "Zodiac Braves" → corpus #10, "Riovanes" → corpus #19, "These crystals" → corpus #11.
+### Session 33 — Tavern Scope B (decoder shipped; per-city mapping partial)
 
 - [ ] **Some rumor bodies NOT in `world_wldmes.bin`** — "At Bael's End" (Dorter row 3) doesn't match any substring in the corpus. Searched all 318 .bin files in 0000-0004 pac dirs with the word "Bael" encoded PSX-style → zero hits. Likely lives in a UE4 `.locres` file or the `0002.en.pac/fftpack/world_snplmes_bin.en.bin` (same-ish size, different encoding — includes `D1/D2/D3` multibyte sequences suggesting kanji/Japanese layered with English). Next session: (a) try extracting text from `world_snplmes_bin.en.bin` with a multibyte decoder, (b) check UE4 `Paks/*.pak` for locres files, (c) scan bigger pac dirs (0005-0011).
-
-- [x] **TavernRumors cursor-row byte FOUND**: `0x13090F968` (u8, heap widget state). Verified 0→1→2→3→wrap→0 at Dorter. Heap address so may shuffle across restarts — use via widget pointer-chain walk, not direct read, for production use. Memory file not saved this session — add if/when it proves stable across saves.
 
 - [ ] **Per-city row→corpus_index table** — only Dorter partially mapped (0→#10, 1→#11, 2→#19, 3→UNKNOWN). To finish: visit each of the 15 settlements with a Tavern, open Rumors, screenshot each row, match against corpus via `read_rumor "<phrase>"`, record the mapping. Ship as `ColorMod/Data/CityRumors.json` + wire `get_rumor` to accept `{city_id, row}` inputs. Chapter-1 subset is tractable; chapter-2+ rumors may overlap with the unmapped Bael's-End class.
 
@@ -107,7 +103,6 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Errand metadata (quester / days / fee)** — separate source from rumor bodies. Likely in an NXD layout — `tools/Nex/Layouts/ffto/Book.layout` exists but no `book.nxd` was found in `0004/nxd/` during session 32 exploration. Possible paths: (a) the `Book` layout actually targets a data file not present in this installation, (b) errand metadata is in `world_wldmes_bin.en.bin` alongside the rumor bodies and shares record structure, (c) a different layout file (`Proposal*.layout`?) — session 32 didn't find one. Re-investigate after Scope B decoder is working; can piggyback on the same parser.
 
-- [ ] **Timing threshold tuning** — `FFT_SLOW_MS=800` (default, shipped commit `d5914e2`) is generic. Session-32 live measurement showed baseline: keys ~215ms, screen-query ~180ms, scan_move ~450ms, save/travel ~4-10s. Ship a more realistic per-action threshold table if the generic 800ms prints too much yellow (`!`) during normal play. Low priority — current default is quiet in practice.
 
 ### Session 31 — next-up follow-ups (live-verify pending)
 
@@ -125,7 +120,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Live-verify full 5-field element decode on varied enemies** — Only observed `elementWeak:['Ice']` on Black Goblins. The other 4 fields (`elementAbsorb`, `elementCancel→elementNull`, `elementHalf`, `elementStrengthen`) need per-enemy confirmation. Undead → `elementAbsorb:['Dark']` / `elementWeak:['Holy']` expected. Fire Bomb → `elementAbsorb:['Fire']` / `elementWeak:['Water','Ice']` expected. Any caster with elemental gear on the player side should show `elementStrengthen`.
 
-- [ ] **Expand `AutoEndTurnAbilities` set beyond Jump** — Jump confirmed live session 31 on Lloyd at Siedge Weald (`"Used Jump on (5,11) — TURN ENDED"`). `AutoEndTurnAbilities` hashset currently has only `Jump`. Investigate and add each: Wish (Orator?), Dark Knight sacrificial attacks (Blood Price?), Self-Destruct (Bomb monster). One line per ability, add after live observation.
+- [ ] **⚠ UNVERIFIED: `AutoEndTurnAbilities` — Self-Destruct** — shipped session 33 batch 2 (commit `0917e34`) as a hardcoded addition alongside Jump. Needs live repro on a Bomb monster: Self-Destruct should end the caster's turn without a Wait prompt. Wish / Blood Price still NOT in the set — per documentation comments their behavior varies by version; defer until live damage/turn data exists.
 
 - [ ] **Live-verify weather damage modifier** — Session 31 shipped `WeatherDamageModifier` pure table (Rain→Lightning×1.25/Fire×0.75, Snow→Ice×1.25/Fire×0.75, Thunderstorm→Lightning×1.25). NOT yet wired into scan_move because the weather-state memory byte is unknown. Blocked on memory hunt. Validate the formula values AGAINST IC remaster once a rainy/snowy battle can be scanned. Wiki values are PSX-canonical.
 
