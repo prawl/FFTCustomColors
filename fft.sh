@@ -2626,15 +2626,22 @@ if(activeU&&activeU.abilities){
     const affSig={absorb:'+absorb',null:'=null',half:'~half',weak:'!weak',strengthen:'^strengthen'};
     // Attack-arc sigils: back=best (backstab bonus), side=modest, front=omitted (default).
     const arcSig={back:'>BACK',side:'>side'};
-    const tiles=(a.validTargetTiles||[]).map(t=>{
+    // Compact rule: only render tiles that have an occupant. Empty tiles
+    // dilute the line — Items 27-tile spell range becomes 25 noise tuples.
+    // Trailing N-empty count preserves the range size for planning.
+    const allTiles=a.validTargetTiles||[];
+    const occupiedTiles=allTiles.filter(t=>t.occupant&&t.occupant!=='empty');
+    const emptyCount=allTiles.length-occupiedTiles.length;
+    const tiles=occupiedTiles.map(t=>{
       let s='('+t.x+','+t.y+')';
       const tag=(t.occupant==='ally'||t.occupant==='self')?' ALLY':'';
       const aff=t.affinity&&affSig[t.affinity]?' '+affSig[t.affinity]:'';
       const arc=t.arc&&arcSig[t.arc]?' '+arcSig[t.arc]:'';
       if(t.unitName)s+='<'+t.unitName+tag+aff+arc+'>';
-      else if(t.occupant&&t.occupant!=='empty')s+='<'+t.occupant+aff+arc+'>';
+      else s+='<'+t.occupant+aff+arc+'>';
       return s;
     });
+    if(emptyCount>0)tiles.push('('+emptyCount+' empty)');
     const mp=a.mpCost?' mp='+a.mpCost:'';
     const ct=a.castSpeed?' ct='+a.castSpeed:'';
     const el=a.element?' ['+a.element+']':'';
@@ -2651,15 +2658,19 @@ if(activeU&&activeU.abilities){
 const vp=j.validPaths||{};
 const vmt=vp.ValidMoveTiles;
 if(vmt){
-  const tlist=(vmt.tiles||[]).map(t=>'('+t.x+','+t.y+(t.h!=null?' h='+t.h:'')+')');
+  // Round height to integer — half-steps (h=4.5) are slope midpoints that
+  // don't change high-ground decisions. Shaves ~30% off the line length.
+  const tlist=(vmt.tiles||[]).map(t=>'('+t.x+','+t.y+(t.h!=null?' h='+Math.round(t.h):'')+')');
   console.log('Move tiles: '+(tlist.length?tlist.join(' '):'(none)')+(vmt.desc?'  — '+vmt.desc:''));
 }
-// Attack tiles (adjacent cardinals)
+// Attack tiles (adjacent cardinals). Only render when at least one
+// cardinal has an occupant — the empty-4-cardinals case is pure noise.
 const atk=vp.AttackTiles?.attackTiles||[];
-if(atk.length){
+const occupiedAtk=atk.filter(a=>a.occupant&&a.occupant!=='empty');
+if(occupiedAtk.length){
   const arcSig2={back:' >BACK',side:' >side'};
-  const lines=atk.map(a=>{
-    const occ=a.occupant&&a.occupant!=='empty'?' '+a.occupant:'';
+  const lines=occupiedAtk.map(a=>{
+    const occ=' '+a.occupant;
     const job=a.jobName?' ('+a.jobName+')':'';
     const hp=a.hp!=null?' HP='+a.hp:'';
     const arc=a.arc&&arcSig2[a.arc]?arcSig2[a.arc]:'';
@@ -2677,15 +2688,29 @@ console.log('Units:');
 us.forEach(u=>{
   const team=u.team===0?'PLAYER':u.team===2?'ALLY':'ENEMY';
   const nm=u.name?' '+u.name:'';
-  const cl=u.jobName?'('+u.jobName+')':'';
+  // When no name (typical for enemies), drop parens around job — reads
+  // cleaner as bare job name vs parenthesized job.
+  const cl=u.jobName?(u.name?'('+u.jobName+')':u.jobName):'';
+  const clSep=u.jobName?(u.name?'':' '):'';
   const st=u.statuses?.length?' ['+u.statuses.join(',')+']':'';
   const life=u.lifeState==='dead'?' DEAD':'';
   const act=u.isActive?' *':'';
   const dist=u.distance!==undefined&&!u.isActive?' d='+u.distance:'';
-  const face=u.facing?' f='+u.facing[0]:'';
+  // Facing is decision-relevant for backstab — keep on enemies only. Ally
+  // facing rarely drives the current turn (ally auto-faces on Wait).
+  const face=(u.facing&&u.team===1)?' f='+u.facing[0]:'';
   let extra='';
   if(verbose){
-    extra=' PA='+u.pa+' MA='+u.ma+' Spd='+(u.speed||'?')+' CT='+(u.ct||'?')+' Br='+u.brave+' Fa='+u.faith;
+    // Skip undefined fields — the battle scan backend doesn't always populate
+    // every stat. Avoid printing literal "undefined".
+    const parts=[];
+    if(u.pa!=null)parts.push('PA='+u.pa);
+    if(u.ma!=null)parts.push('MA='+u.ma);
+    if(u.speed!=null)parts.push('Spd='+u.speed);
+    if(u.ct!=null)parts.push('CT='+u.ct);
+    if(u.brave!=null)parts.push('Br='+u.brave);
+    if(u.faith!=null)parts.push('Fa='+u.faith);
+    if(parts.length)extra=' '+parts.join(' ');
     if(u.reaction)extra+=' R:'+u.reaction;
     if(u.support)extra+=' S:'+u.support;
     if(u.movement)extra+=' M:'+u.movement;
@@ -2695,7 +2720,7 @@ us.forEach(u=>{
     if(u.elementWeak?.length)extra+=' !weak:'+u.elementWeak.join(',');
     if(u.elementStrengthen?.length)extra+=' ^str:'+u.elementStrengthen.join(',');
   }
-  console.log('  ['+team+']'+nm+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+extra+st+life+act);
+  console.log('  ['+team+']'+nm+clSep+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+extra+st+life+act);
 });
 " 2>/dev/null
   else
