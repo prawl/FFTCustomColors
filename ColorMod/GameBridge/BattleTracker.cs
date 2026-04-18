@@ -1139,6 +1139,17 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("arc")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Arc { get; set; }
+
+        /// <summary>
+        /// True when terrain obstructs a straight-line projectile from the
+        /// caster to this tile. Null for non-projectile abilities (melee,
+        /// self-target, AoE-centered), or when the path is clear. Populated
+        /// by <see cref="LineOfSightCalculator"/> at scan time using the
+        /// loaded map's display-height data.
+        /// </summary>
+        [JsonPropertyName("losBlocked")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? LosBlocked { get; set; }
     }
 
     /// <summary>

@@ -2626,6 +2626,10 @@ if(activeU&&activeU.abilities){
     const affSig={absorb:'+absorb',null:'=null',half:'~half',weak:'!weak',strengthen:'^strengthen'};
     // Attack-arc sigils: back=best (backstab bonus), side=modest, front=omitted (default).
     const arcSig={back:'>BACK',side:'>side'};
+    // LoS sigil — projectile ability (ranged Attack / Ninja Throw) terrain-blocked.
+    // Claude should skip the tile or reposition. Null/absent = not a projectile
+    // OR path is clear.
+    const losSig=t=>t.losBlocked?' !blocked':'';
     // Compact rule: only render tiles that have an occupant. Empty tiles
     // dilute the line — Items 27-tile spell range becomes 25 noise tuples.
     // Trailing N-empty count preserves the range size for planning.
@@ -2637,8 +2641,9 @@ if(activeU&&activeU.abilities){
       const tag=(t.occupant==='ally'||t.occupant==='self')?' ALLY':'';
       const aff=t.affinity&&affSig[t.affinity]?' '+affSig[t.affinity]:'';
       const arc=t.arc&&arcSig[t.arc]?' '+arcSig[t.arc]:'';
-      if(t.unitName)s+='<'+t.unitName+tag+aff+arc+'>';
-      else s+='<'+t.occupant+aff+arc+'>';
+      const los=losSig(t);
+      if(t.unitName)s+='<'+t.unitName+tag+aff+arc+los+'>';
+      else s+='<'+t.occupant+aff+arc+los+'>';
       return s;
     });
     if(emptyCount>0)tiles.push('('+emptyCount+' empty)');

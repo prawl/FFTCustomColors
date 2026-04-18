@@ -1962,6 +1962,20 @@ namespace FFTColorCustomizer.GameBridge
                         // Uses aliveByPos for normal abilities, deadByPos for revival.
                         var tileIndex = AbilityTargetCalculator.IsRevivalAbility(a)
                             ? deadByPos : aliveByPos;
+
+                        // LoS rule: only physical projectiles (ranged Attack, Ninja
+                        // Throw) are blocked by terrain. Magic/summons fly over walls.
+                        // ProjectileAbilityClassifier encodes the canonical FFT rule.
+                        string? abilitySkillset = ActionAbilityLookup.GetSkillsetForAbilityId(a.Id);
+                        bool wantsLosCheck = abilityMap != null
+                            && AbilityTargetCalculator.IsPointTarget(a)
+                            && ProjectileAbilityClassifier.IsProjectile(abilitySkillset, a.Name, a.HRange);
+                        int attackerElev = 0;
+                        if (wantsLosCheck)
+                        {
+                            attackerElev = (int)System.Math.Round(abilityMap!.GetDisplayHeight(u.GridX, u.GridY));
+                        }
+
                         ValidTargetTile AnnotateTile(int tx, int ty)
                         {
                             var tile = new ValidTargetTile { X = tx, Y = ty };
@@ -1985,6 +1999,15 @@ namespace FFTColorCustomizer.GameBridge
                                     tile.Arc = BackstabArcCalculator.ComputeArc(
                                         u.GridX, u.GridY, occ.GridX, occ.GridY, occ.Facing);
                                 }
+                            }
+                            if (wantsLosCheck && abilityMap != null)
+                            {
+                                int targetElev = (int)System.Math.Round(abilityMap.GetDisplayHeight(tx, ty));
+                                bool clear = LineOfSightCalculator.HasLineOfSight(
+                                    u.GridX, u.GridY, attackerElev,
+                                    tx, ty, targetElev,
+                                    (x, y) => (int)System.Math.Round(abilityMap.GetDisplayHeight(x, y)));
+                                if (!clear) tile.LosBlocked = true;
                             }
                             return tile;
                         }
