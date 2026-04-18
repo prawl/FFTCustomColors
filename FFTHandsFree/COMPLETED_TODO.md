@@ -487,3 +487,97 @@ Tests: 2185 → 2253 (+68 new, 0 regressions).
 - `project_facing_byte_s30.md` 🎯 — facing byte layout + convention gotcha.
 - `project_element_affinity_s30.md` 🎯 — 5 fields, 8-element bit map, hunt technique.
 - `project_damage_preview_hunt_s30.md` — dead-end documented with ruled-out anchors + next-path suggestions.
+
+---
+
+### Session 31 (2026-04-17) — decision-aid surfacing + defensive helper hardening
+
+13 commits, 2253 → 2373 tests (+120, 0 regressions). Four ship batches.
+
+**Batch 1-2 — Decision-aid field shipping** (commit `afdc7a6`):
+
+- [x] **`heldCount` `[xN]` / `[OUT]` rendering in `fft.sh`** — C# pipe (`BattleTracker.AbilityEntry.HeldCount` + `SkillsetItemLookup`) was complete since session 29; fft.sh never consumed it. Wired at the scan-ability render site. Live-verified: Ramza's Items secondary shows `Potion [x4]`, `Hi-Potion [x1]`, `X-Potion [x94]`, `Phoenix Down [x99]`. Non-inventory abilities (Cure, Fire, Attack) render unchanged.
+
+- [x] **Element-affinity per-tile sigils + verbose unit lists** — New pure `ElementAffinityAnnotator` module (14 tests) + `ValidTargetTile.Affinity` field. Priority: absorb > null > half > weak > strengthen. Shell sigils: `+absorb / =null / ~half / !weak / ^strengthen` after the unit name. Also added `+abs: / =null: / ~half: / !weak: / ^str:` prefixes to verbose Units block. Live-verified via verbose output: `[ENEMY] Black Goblin !weak:Ice`, `[PLAYER] Ramza +abs:Earth ^str:Fire,Lightning,Ice,Earth`. Per-tile sigils untriggered live (no matching element+affinity combination in current save).
+
+- [x] **Backstab-aware arc field + sigils** — New pure `BackstabArcCalculator` module (21 tests) with dot-product-on-facing-axis rule. Added `Arc` field to `ValidTargetTile` AND `AttackTileInfo`. Shell renders `>BACK` (backstab: +50% hit, crit bonus) / `>side` (modest). Front omitted as default. Live-verified: `arc:"front"` populated on enemy tiles in Ramza's Throw Stone / Ultima / Items target lists. Sigils untriggered (all enemies east of attacker, all front-arc).
+
+- [x] **NameTableLookup Reis-collision hardening** — Pure `SelectBestRosterBase` selector (7 tests): prefer LOWEST-ADDRESS candidate whose slot 0 == "Ramza" AND count == max observed. Defends against stale high-address heap copies containing pre-recruit roster ghost data. Also: `Invalidate()` hook wired in `CommandWatcher.ExecuteNavActionWithAutoScan` on `load` action. Unverified without a fresh generic recruit.
+
+- [x] **Cutscene-over-LoadGame sticky gameOverFlag fix** — `ScreenDetectionLogic:328` LoadGame rule now requires `eventId ∈ {0, 0xFFFF}`. Real cutscenes (eventId 1..399) with sticky `gameOverFlag=1` after a prior GameOver no longer mis-detect. 3 regression tests in `CutsceneDetectionTests`.
+
+- [x] **LoS pure function + ProjectileAbilityClassifier** — Shipped `LineOfSightCalculator` (DDA walk + linear altitude interp, 13 tests). Shipped `ProjectileAbilityClassifier` pure rule: ranged `Attack` + Ninja `Throw` qualify; spells/summons/Iaido don't (9 tests). Magic flies over walls per FFT canon.
+
+- [x] **Auto-end-turn `— TURN ENDED` suffix** — New `AutoEndTurnAbilities` pure helper (8 tests). Currently Jump only. Wired into all 4 `BattleAbility` completion paths. Live-verified on Lloyd's Jump: `"Used Jump on (5,11) — TURN ENDED"`.
+
+- [x] **Weather damage modifier pure formula** — New `WeatherDamageModifier` table (12 tests). Rain → Lightning × 1.25, Fire × 0.75. Snow → Ice × 1.25, Fire × 0.75. Thunderstorm → Lightning × 1.25. PSX-canonical; needs IC remaster confirmation. Not yet wired into scan_move (blocked on weather-byte memory hunt).
+
+- [x] **BattleModalChoice scaffold** — Pure `GetHighlightedLabel` + `ValidPathNames` helper (6 tests) for the eventual `BattleObjectiveChoice` / `RecruitOffer` detection modals. Detection discriminator still needs live memory hunt.
+
+- [x] **Ability-list counter-delta Up-reset — ATTEMPTED and REVERTED** — Added counter-delta verification to the `BattleAbility` Up-wrap reset to mirror the Down-loop pattern. Broke Lloyd's Jump live: cursor counter at `0x140C0EB20` reports NEGATIVE deltas on Up-wrap (expected +3, got 0 → -6 → -24 → -65); retry math exploded. Reverted blind Up×(listSize+1). Wrap-reset is correct without verification; the counter's whole semantics is wrong for wrap scenarios.
+
+**Batch 3 — Battle render polish** (commit `90fb5fe`, 6 cleanups per `SCREEN_AUDIT.md`):
+
+- [x] **Filter empty tiles from ally-target ability lists** — Compact render used to dump the full 27-tile spell range per Items ability → ~450 coord tuples of noise per scan. Now only occupied tiles + trailing `(N empty)` count. Biggest single-scan compression of the session.
+
+- [x] **Round Move-tile heights to integer** — `h=4.5` half-step slope midpoints don't change high-ground decisions; saved ~30% line length.
+
+- [x] **Drop Attack tiles line when all 4 cardinals are empty** — Pure noise when nobody adjacent; render only when at least one occupant present.
+
+- [x] **Suppress `f=<dir>` facing suffix for allies** — Keep on enemies (backstab signal). Ally facing rarely drives current-turn decisions.
+
+- [x] **Fix empty-parens cosmetic** — `[ENEMY] (Black Goblin)` → `[ENEMY] Black Goblin` when no name.
+
+- [x] **Skip undefined stat fields in verbose** — `PA/MA/Br/Fa=undefined` was appearing because backend doesn't always populate. Conditional render.
+
+**Batch 4 — LoS wire-up + AoE affinities** (commits `59ee1e3`, `b9cb292`):
+
+- [x] **LoS wire-up into scan_move** — `NavigationActions.AnnotateTile` now populates `ValidTargetTile.LosBlocked` for point-target projectile abilities using `MapData.GetDisplayHeight` as the terrain callback. Shell renders `!blocked` sigil.
+
+- [x] **AoE `EnemyAffinities` / `AllyAffinities` parallel lists on `SplashCenter` + `DirectionalHit`** — Positionally aligned with `Enemies[]` / `Allies[]`. Populated when ability has an element + hit unit has matching affinity. Null when non-elemental.
+
+**Batch 5 — Defensive helper hardening + observability** (commits `5640e27`, `417e25c`, `c36dea1`, `9627939`, `30ab760`, `1d0e999`, `85a56ab`):
+
+- [x] **`change_job_to` verifies job actually changed post-commit** — Reads viewed unit's job BEFORE commit, reads again AFTER, errors loudly when pre==post && pre!=target. Previously the helper reported success when the commit sequence silently misfired.
+
+- [x] **`open_eqa` / `open_character_status` / `open_job_selection` verify landed viewedUnit** — New `_verify_open_viewed_unit` shell helper; WARN line when requested != landed. Converts silent helper drift into loud failure messages.
+
+- [x] **`session_tail` shell helper** — Reads most recent `claude_bridge/session_*.jsonl` (written by `SessionCommandLog`). Modes: last-N, `failed` filter, `slow [ms]` filter. Live-verified: `session_tail slow 1500` immediately exposed the new detection-leak bug (battle_wait rows reporting `sourceScreen=CharacterStatus` during facing animations).
+
+- [x] **`SessionCommandLog` — previously shipped, now marked** — Already existed (`ColorMod/GameBridge/SessionCommandLog.cs` wired in `CommandWatcher:1418`). Audit-only this session; added `session_tail` as companion reader.
+
+- [x] **Element-affinity-aware splash scoring** — New `AbilityTargetCalculator.SplashAffinityAdjustment` pure function (12 tests). Delta added to base `ComputeSplashScore`. Weights (enemy-target): weak +2, half -1, null -3, absorb -5, strengthen 0. Ally-target flips sign. Wired into both splash-center and line-direction scoring loops.
+
+- [x] **`ItemNamePoolParser` pure parser** — Pure parser for the static item-name pool at `0x3F18000` (10 tests). Decodes UTF-16LE records with sentinel-stop. Decode / GetByIndex / FindByName. Ready for when the future hover-widget resolver lands.
+
+- [x] **`ShellOutputLinterTests` — static guard on fft.sh render rules** — 4 xUnit assertions: no literal `undefined` from u.pa/u.ma/u.brave/u.faith concatenation; ally-facing hidden; `Math.round(t.h)` present on move-tile render; `occupiedAtk` filter present on Attack-tiles line. Pins the battle-render polish so future edits can't silently regress.
+
+**Technique discoveries — worth propagating:**
+
+- **Defensive post-commit verification over "landed on expected screen" proxy.** Session 31 caught `change_job_to Archer` silently lying ("landed on EqA!") while Lloyd stayed Dragoon. The fix wasn't fixing the nav — it was reading the actual post-commit state and comparing to target. Pattern: capture pre-state, run the operation, read post-state, error if pre==post && pre!=target. Applied to `change_job_to` and `open_*` helpers. Ability-slot helpers already had this pattern.
+
+- **`session_tail slow N` as a bug-finder.** Filtering the JSONL command log for slow commands surfaced three latent bugs in under a minute: (1) `open_eqa` 5937ms landing on the same screen (silent-drift), (2) `battle_wait` 15-23s with `sourceScreen=CharacterStatus` during animation frames (detection leak), (3) `open_job_selection` 11s to wrong unit (viewedUnit drift). Post-hoc latency filtering is a cheap bug finder.
+
+- **Static shell-linter xUnit tests.** Shell output isn't exercised by C# tests. Writing xUnit assertions that scan `fft.sh` as text and assert render-rule patterns pins the design discipline. Beats relying on "the next person will notice."
+
+**Investigated / reverted:**
+
+- **Counter-delta verification on ability-list Up-reset** — reverted. Counter at `0x140C0EB20` reports negative deltas on Up-wrap; the whole premise of verifying against a monotonically-increasing counter breaks when the operation's purpose is to wrap past the top.
+
+**Memory notes saved this session:**
+
+(None new — this session was about surfacing existing data in new ways and hardening helper reliability, not memory hunts. The `project_session_31_shipments.md` note created mid-session was a work-in-progress scratchpad; merged into this archive entry and deleted.)
+
+**Key files added this session:**
+
+- `ColorMod/GameBridge/AutoEndTurnAbilities.cs` + tests
+- `ColorMod/GameBridge/BackstabArcCalculator.cs` + tests
+- `ColorMod/GameBridge/BattleModalChoice.cs` + tests
+- `ColorMod/GameBridge/ElementAffinityAnnotator.cs` + tests
+- `ColorMod/GameBridge/ItemNamePoolParser.cs` + tests
+- `ColorMod/GameBridge/LineOfSightCalculator.cs` + tests
+- `ColorMod/GameBridge/ProjectileAbilityClassifier.cs` + tests
+- `ColorMod/GameBridge/WeatherDamageModifier.cs` + tests
+- `Tests/GameBridge/ShellOutputLinterTests.cs`
+- `Tests/GameBridge/SplashAffinityAdjustmentTests.cs`
+- `FFTHandsFree/SCREEN_AUDIT.md` (battle-render audit artifact; keep until all punch-list items ship)

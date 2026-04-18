@@ -89,9 +89,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Live-verify full 5-field element decode on varied enemies** — Only observed `elementWeak:['Ice']` on Black Goblins. The other 4 fields (`elementAbsorb`, `elementCancel→elementNull`, `elementHalf`, `elementStrengthen`) need per-enemy confirmation. Undead → `elementAbsorb:['Dark']` / `elementWeak:['Holy']` expected. Fire Bomb → `elementAbsorb:['Fire']` / `elementWeak:['Water','Ice']` expected. Any caster with elemental gear on the player side should show `elementStrengthen`.
 
-- [ ] **Live-verify `Potion [x4]` / `Phoenix Down [x99]` heldCount** — ✅ CONFIRMED 2026-04-17 session 31 on Ramza with Items secondary at Siedge Weald. All 18 Items entries correctly showed `[x<count>]` suffix. Non-inventory abilities render unchanged. Keep this line until it falls off the log; delete on next sweep.
-
-- [ ] **Live-verify auto-end-turn " — TURN ENDED" on abilities beyond Jump** — ✅ CONFIRMED on Lloyd's Jump at Siedge Weald. `AutoEndTurnAbilities` hashset currently has only `Jump`. If any future ability surfaces as auto-end (user observation during play), add to the set. Candidates to investigate: Wish (Orator?), some Dark Knight sacrificial attacks. No known confirmations.
+- [ ] **Expand `AutoEndTurnAbilities` set beyond Jump** — Jump confirmed live session 31 on Lloyd at Siedge Weald (`"Used Jump on (5,11) — TURN ENDED"`). `AutoEndTurnAbilities` hashset currently has only `Jump`. Investigate and add each: Wish (Orator?), Dark Knight sacrificial attacks (Blood Price?), Self-Destruct (Bomb monster). One line per ability, add after live observation.
 
 - [ ] **Live-verify weather damage modifier** — Session 31 shipped `WeatherDamageModifier` pure table (Rain→Lightning×1.25/Fire×0.75, Snow→Ice×1.25/Fire×0.75, Thunderstorm→Lightning×1.25). NOT yet wired into scan_move because the weather-state memory byte is unknown. Blocked on memory hunt. Validate the formula values AGAINST IC remaster once a rainy/snowy battle can be scanned. Wiki values are PSX-canonical.
 
@@ -419,14 +417,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 
 
-### Unit Facing Direction
-- [ ] Read unit facing direction from memory
-
-
-- [ ] Use facing data for backstab targeting
-
-
-
 ### Advanced Targeting
 - [ ] Line AoE abilities
 
@@ -642,8 +632,6 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
 
 
 
-- [x] **Session command log for post-hoc review** — SHIPPED. `ColorMod/GameBridge/SessionCommandLog.cs` appends one JSONL row per bridge command to `claude_bridge/session_<timestamp>.jsonl`. Fields: commandId, timestamp, action, sourceScreen, targetScreen, status, error, latencyMs. Wired into `CommandWatcher.cs:1418`. Session 31 audit confirmed live files exist. Future: add a `session_tail` fft.sh helper that greps the current session's log for failed/slow commands.
-
 
 
 **EquipmentAndAbilities action helpers** — declarative one-liners that wrap the full nav flow. All helpers are locked to the EquipmentAndAbilities state (error elsewhere), idempotent (no-op if already equipped), and validate via `screen.availableAbilities`/inventory.
@@ -804,8 +792,6 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 
 - [ ] **battle_ability response says "Used" for cast-time abilities** [State] — Abilities with ct>0 (Haste ct=50) are queued, not instant. Response says "Used Haste" but spell is only queued in Combat Timeline. Unit still needs to Wait. Response should say "Queued" for ct>0 abilities. Observed 2026-04-13.
 
-
-- [ ] **Detect auto-end-turn abilities (Jump)** [Execution] — Jump auto-ends the turn (unit leaves the battlefield). battle_ability should detect this by checking if the screen transitioned past the active unit's turn after confirming. If so, report "turn ended automatically" instead of leaving Claude to issue a redundant Wait. Observed 2026-04-13.
 
 
 
