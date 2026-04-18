@@ -234,6 +234,90 @@ namespace FFTColorCustomizer.Tests.GameBridge
             }
         }
 
+        // Null-safety tests for RumorLookup public API (session 33 batch 4).
+        [Fact]
+        public void RumorLookup_GetByIndex_NegativeReturnsNull()
+        {
+            var lookup = new RumorLookup();
+            Assert.Null(lookup.GetByIndex(-1));
+        }
+
+        [Fact]
+        public void RumorLookup_GetByIndex_AtBoundaryReturnsNull()
+        {
+            var lookup = new RumorLookup();
+            Assert.Null(lookup.GetByIndex(lookup.Count));
+            Assert.Null(lookup.GetByIndex(lookup.Count + 1000));
+        }
+
+        [Fact]
+        public void RumorLookup_GetByIndex_IntMaxValueReturnsNull()
+        {
+            var lookup = new RumorLookup();
+            Assert.Null(lookup.GetByIndex(int.MaxValue));
+        }
+
+        [Fact]
+        public void RumorLookup_GetByTitle_NullReturnsNull()
+        {
+            var lookup = new RumorLookup();
+            Assert.Null(lookup.GetByTitle(null!));
+        }
+
+        [Fact]
+        public void RumorLookup_GetByTitle_EmptyReturnsNull()
+        {
+            var lookup = new RumorLookup();
+            Assert.Null(lookup.GetByTitle(""));
+            Assert.Null(lookup.GetByTitle("   "));
+        }
+
+        [Fact]
+        public void RumorLookup_GetByTitle_TrimsWhitespace()
+        {
+            var lookup = new RumorLookup();
+            var r = lookup.GetByTitle("  Zodiac Stones  ");
+            Assert.NotNull(r);
+            Assert.Equal(11, r!.Index);
+        }
+
+        [Fact]
+        public void RumorLookup_GetByBodySubstring_NullReturnsNull()
+        {
+            var lookup = new RumorLookup();
+            Assert.Null(lookup.GetByBodySubstring(null!));
+        }
+
+        [Fact]
+        public void RumorLookup_GetByBodySubstring_EmptyReturnsNull()
+        {
+            var lookup = new RumorLookup();
+            Assert.Null(lookup.GetByBodySubstring(""));
+            Assert.Null(lookup.GetByBodySubstring("   "));
+        }
+
+        [Fact]
+        public void RumorLookup_GetByBodySubstring_NoMatchReturnsNull()
+        {
+            var lookup = new RumorLookup();
+            Assert.Null(lookup.GetByBodySubstring("XYZQQQNOTREAL"));
+        }
+
+        [Fact]
+        public void RumorLookup_All_ReturnsNonEmptyList()
+        {
+            var lookup = new RumorLookup();
+            Assert.NotEmpty(lookup.All);
+            Assert.Equal(lookup.Count, lookup.All.Count);
+        }
+
+        [Fact]
+        public void RumorLookup_SourcePath_IsHardcodedMarker()
+        {
+            var lookup = new RumorLookup();
+            Assert.Equal("hardcoded:RumorCorpus", lookup.SourcePath);
+        }
+
         [Fact]
         public void RumorCorpus_AllEntriesAtLeast100Chars()
         {

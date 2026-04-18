@@ -58,5 +58,55 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains("Confirm", names);
             Assert.Contains("Cancel", names);
         }
+
+        // Additional edge cases (session 33 batch 4).
+
+        [Fact]
+        public void GetHighlightedLabel_WhitespaceOnlyLabel_TreatedAsValid()
+        {
+            // Whitespace-only label is non-null and non-empty, so we return it.
+            // Caller is responsible for trimming; render layer decides how to handle.
+            Assert.Equal("   ",
+                BattleModalChoice.GetHighlightedLabel(0, "   ", "B"));
+        }
+
+        [Fact]
+        public void GetHighlightedLabel_BothOptionsNull_ReturnsNull()
+        {
+            Assert.Null(BattleModalChoice.GetHighlightedLabel(0, null, null));
+            Assert.Null(BattleModalChoice.GetHighlightedLabel(1, null, null));
+        }
+
+        [Fact]
+        public void GetHighlightedLabel_IntMaxValue_ReturnsNull()
+        {
+            Assert.Null(BattleModalChoice.GetHighlightedLabel(int.MaxValue, "A", "B"));
+        }
+
+        [Fact]
+        public void GetHighlightedLabel_IntMinValue_ReturnsNull()
+        {
+            Assert.Null(BattleModalChoice.GetHighlightedLabel(int.MinValue, "A", "B"));
+        }
+
+        [Fact]
+        public void GetHighlightedLabel_RecruitOffer_YesNoLabels()
+        {
+            // Real recruit offer uses plain Yes/No.
+            Assert.Equal("Yes",
+                BattleModalChoice.GetHighlightedLabel(0, "Yes", "No"));
+            Assert.Equal("No",
+                BattleModalChoice.GetHighlightedLabel(1, "Yes", "No"));
+        }
+
+        [Fact]
+        public void ValidPathNames_IsImmutable()
+        {
+            // Same list reference is returned each time; Contains order shouldn't vary.
+            var a = BattleModalChoice.ValidPathNames;
+            var b = BattleModalChoice.ValidPathNames;
+            Assert.Equal(a.Count, b.Count);
+            for (int i = 0; i < a.Count; i++) Assert.Equal(a[i], b[i]);
+        }
     }
 }

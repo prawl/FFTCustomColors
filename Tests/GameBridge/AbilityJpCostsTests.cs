@@ -21,6 +21,56 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Empty(AbilityJpCosts.UnresolvedNames);
         }
 
+        // Unverified-Wiki Mettle cost pins. These values come from
+        // FFTHandsFree/Wiki/Abilities.md (PSX-canonical) and have NOT yet been
+        // live-verified in IC remaster. If live readings mismatch, update both
+        // the source table AND these tests.
+        [Fact]
+        public void MettleCost_Tailwind_IsWikiValue150()
+        {
+            Assert.Equal(150, AbilityJpCosts.GetCost("Tailwind"));
+        }
+
+        [Fact]
+        public void MettleCost_Chant_IsWikiValue300()
+        {
+            Assert.Equal(300, AbilityJpCosts.GetCost("Chant"));
+        }
+
+        [Fact]
+        public void MettleCost_Steel_IsWikiValue200()
+        {
+            Assert.Equal(200, AbilityJpCosts.GetCost("Steel"));
+        }
+
+        [Fact]
+        public void MettleCost_Shout_IsWikiValue600()
+        {
+            Assert.Equal(600, AbilityJpCosts.GetCost("Shout"));
+        }
+
+        [Fact]
+        public void MettleCost_Ultima_IsWikiValue4000()
+        {
+            // Ultima is the Mettle capstone — most expensive ability in the skillset.
+            Assert.Equal(4000, AbilityJpCosts.GetCost("Ultima"));
+        }
+
+        // Pin other high-visibility costs so a bulk edit doesn't silently shift them.
+        [Theory]
+        [InlineData("Cure", 50)]
+        [InlineData("Raise", 200)]
+        [InlineData("Fire", 50)]
+        [InlineData("Firaga", 500)]
+        [InlineData("Holy", 600)]
+        [InlineData("Bahamut", 1600)]
+        [InlineData("Meteor", 1500)]
+        [InlineData("Phoenix Down", 90)]
+        public void KnownCost_MatchesWiki(string name, int expectedJp)
+        {
+            Assert.Equal(expectedJp, AbilityJpCosts.GetCost(name));
+        }
+
         [Fact]
         public void GetCost_KnownAbility_ReturnsCost()
         {

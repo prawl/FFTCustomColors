@@ -21,6 +21,10 @@ Cutscenes happen:
 - **After story battles** — resolves the scene, advances the plot
 - **Between locations** — narrator exposition, political intrigue
 
+### Related state: `BattleDialogue`
+
+Mid-battle story text (an enemy commander declares something, a unit triggers a scripted line) renders as `BattleDialogue`, not `Cutscene`. Same `advance_dialogue` command works. Difference: when it ends, you return to `BattleMyTurn` / `BattleEnemiesTurn` instead of WorldMap. The screen transition tells you which.
+
 ## Reading the Script
 
 Call `read_dialogue` (infrastructure action, always available) to load the full event script. The response `dialogue` field contains the entire scene's text:
