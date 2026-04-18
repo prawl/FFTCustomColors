@@ -75,6 +75,15 @@ namespace FFTColorCustomizer.GameBridge
             ["Blood Sword"]        = 1_250, // buy 8_000 → 15%
             ["Coral Sword"]        = 900,   // buy 10_000 → 9%
             ["Ancient Sword"]      = 2_500, // buy 13_000 → 19%
+            // Live-verified at Goug Outfitter Sell (session 39). Rod tier is
+            // ~50% (buy/2 would actually be accurate for rods) but sword tier
+            // remains under-20%. Fitter-visible prices only — story items
+            // (Materia Blade / Save the Queen / Excalibur / Ragnarok) are
+            // unsellable and not added.
+            ["Diamond Sword"]      = 4_000, // buy 25_000 → 16%
+            ["Icebrand"]           = 7_000, // buy 30_000 → 23%
+            ["Runeblade"]          = 10_000,// buy 35_000 → 29%
+            ["Wizard's Rod"]       = 4_000, // buy 8_000 → 50% (rods ≈ buy/2)
         };
 
         /// <summary>
@@ -374,6 +383,22 @@ namespace FFTColorCustomizer.GameBridge
                 return sell;
             var buy = GetBuyPrice(itemId);
             return buy.HasValue ? buy.Value / 2 : (int?)null;
+        }
+
+        /// <summary>
+        /// Combined sell-price + ground-truth accessor. Returns null when the
+        /// item has neither an override nor a known buy price; otherwise returns
+        /// the price plus a flag indicating whether it came from a live-verified
+        /// override (true) or the buy/2 estimate (false). Convenience wrapper
+        /// over <see cref="GetSellPrice"/> + <see cref="IsSellPriceGroundTruth"/>
+        /// for callers that need both atomically.
+        /// </summary>
+        public static (int Price, bool IsGroundTruth)? GetSellPriceWithEstimate(int itemId)
+        {
+            if (SellPriceOverrides.TryGetValue(itemId, out var sell))
+                return (sell, true);
+            var buy = GetBuyPrice(itemId);
+            return buy.HasValue ? (buy.Value / 2, false) : ((int Price, bool IsGroundTruth)?)null;
         }
 
         /// <summary>

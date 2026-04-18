@@ -96,16 +96,17 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.False(ScreenNamePredicates.IsPartyMenuTab(""));
         }
 
-        // IsPartyTree: PartyMenuUnits + its drilled-in descendants
-        // (CharacterStatus, EquipmentAndAbilities). Used when a helper needs
-        // to know "are we somewhere inside the unit-management tree?"
+        // IsPartyTree: PartyMenuUnits + its roster-view descendants
+        // (CharacterStatus, EquipmentAndAbilities). Scoped to match the
+        // roster-populating block in CommandWatcher — JobSelection is NOT
+        // included because its cursor is per-job-grid, not per-unit-in-roster.
 
         [Theory]
         [InlineData("PartyMenuUnits", true)]
         [InlineData("CharacterStatus", true)]
         [InlineData("EquipmentAndAbilities", true)]
-        [InlineData("JobSelection", true)]            // reached via CharacterStatus sidebar
-        [InlineData("PartyMenuInventory", false)]     // different tab — not unit tree
+        [InlineData("JobSelection", false)]           // different cursor semantics
+        [InlineData("PartyMenuInventory", false)]     // different tab
         [InlineData("PartyMenuChronicle", false)]
         [InlineData("PartyMenuOptions", false)]
         [InlineData("WorldMap", false)]

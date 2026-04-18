@@ -157,6 +157,106 @@ public class ItemPricesTests
         Assert.True(ItemPrices.IsSellPriceGroundTruth(mythrilId));
     }
 
+    [Fact]
+    public void SellPriceOverrides_GougLateGameSet_Session39()
+    {
+        // Session 39 live-captured at Goug Outfitter Sell. Swords stay
+        // under-30% of buy (16-29%); rods are ~50% (matches buy/2 fallback).
+        int diamondId = ItemData.Items.First(kv => kv.Value.Name == "Diamond Sword").Key;
+        int icebrandId = ItemData.Items.First(kv => kv.Value.Name == "Icebrand").Key;
+        int runebladeId = ItemData.Items.First(kv => kv.Value.Name == "Runeblade").Key;
+        int wizardsRodId = ItemData.Items.First(kv => kv.Value.Name == "Wizard's Rod").Key;
+
+        Assert.Equal(4_000, ItemPrices.GetSellPrice(diamondId));
+        Assert.Equal(7_000, ItemPrices.GetSellPrice(icebrandId));
+        Assert.Equal(10_000, ItemPrices.GetSellPrice(runebladeId));
+        Assert.Equal(4_000, ItemPrices.GetSellPrice(wizardsRodId));
+    }
+
+    // Session 39: GetSellPriceWithEstimate — one-call API returning both
+    // the price and whether it came from a live-verified override or the
+    // buy/2 estimate. Previously callers had to do GetSellPrice +
+    // IsSellPriceGroundTruth separately.
+
+    [Fact]
+    public void GetSellPriceWithEstimate_OverriddenItem_ReturnsGroundTruth()
+    {
+        // Dagger has a live-captured override (50). Expect ground-truth=true.
+        var result = ItemPrices.GetSellPriceWithEstimate(1);
+        Assert.NotNull(result);
+        Assert.Equal(50, result.Value.Price);
+        Assert.True(result.Value.IsGroundTruth);
+    }
+
+    [Fact]
+    public void GetSellPriceWithEstimate_NoOverride_ReturnsEstimate()
+    {
+        // Potion has no override, buy is 50, so estimate is 25, not ground-truth.
+        var result = ItemPrices.GetSellPriceWithEstimate(240);
+        Assert.NotNull(result);
+        Assert.Equal(25, result.Value.Price);
+        Assert.False(result.Value.IsGroundTruth);
+    }
+
+    [Fact]
+    public void GetSellPriceWithEstimate_UnknownItem_ReturnsNull()
+    {
+        Assert.Null(ItemPrices.GetSellPriceWithEstimate(9999));
+        Assert.Null(ItemPrices.GetSellPriceWithEstimate(-1));
+    }
+
+    [Fact]
+    public void GetSellPriceWithEstimate_AgreesWithGetSellPrice()
+    {
+        // Round-trip invariant: for every known item, the Price field of
+        // GetSellPriceWithEstimate equals GetSellPrice. No new behavior —
+        // just a more convenient accessor.
+        foreach (var kv in ItemPrices.BuyPrices)
+        {
+            var tuple = ItemPrices.GetSellPriceWithEstimate(kv.Key);
+            var direct = ItemPrices.GetSellPrice(kv.Key);
+            Assert.NotNull(tuple);
+            Assert.Equal(direct, tuple.Value.Price);
+        }
+    }
+
+    [Fact]
+    public void GetSellPriceWithEstimate_AgreesWithIsSellPriceGroundTruth()
+    {
+        // Same for the ground-truth flag.
+        foreach (var kv in ItemPrices.BuyPrices)
+        {
+            var tuple = ItemPrices.GetSellPriceWithEstimate(kv.Key);
+            Assert.NotNull(tuple);
+            Assert.Equal(ItemPrices.IsSellPriceGroundTruth(kv.Key), tuple.Value.IsGroundTruth);
+        }
+    }
+
+    [Fact]
+    public void SellPriceOverrides_SwordsFitUnder30PercentBuy_Confirmed()
+    {
+        // Explicit invariant: every sword override is under 30% of buy price.
+        // If this breaks, either we captured a typo or FFT changed the sword
+        // sell formula between captures.
+        var swordNames = new[] {
+            "Iron Sword", "Mythril Sword", "Blood Sword", "Coral Sword",
+            "Ancient Sword", "Diamond Sword", "Icebrand", "Runeblade",
+        };
+        foreach (var name in swordNames)
+        {
+            var entry = ItemData.Items.FirstOrDefault(kv => kv.Value.Name == name);
+            if (entry.Key == 0 && entry.Value == null) continue;
+            int id = entry.Key;
+            int? sell = ItemPrices.GetSellPrice(id);
+            int? buy = ItemPrices.GetBuyPrice(id);
+            Assert.NotNull(sell);
+            Assert.NotNull(buy);
+            double ratio = (double)sell!.Value / buy!.Value;
+            Assert.True(ratio < 0.30,
+                $"Sword '{name}' sell/buy ratio is {ratio:P0}, expected <30%");
+        }
+    }
+
     // Additional property + edge tests (session 33 batch 7).
 
     [Fact]

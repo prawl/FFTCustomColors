@@ -6525,12 +6525,10 @@ namespace FFTColorCustomizer.Utilities
                     screen.UI = ScreenMachine.JobChangeConfirmSelected ? "Confirm" : "Cancel";
                 }
 
-                // Roster grid on PartyMenu + every nested PartyMenu screen so
+                // Roster grid on PartyMenu + nested roster-view descendants so
                 // per-unit equipment is always available to Claude. One round-
                 // trip beats cursor-move + re-read cycles. See TODO §10.6.
-                bool onPartyTree = screen.Name == "PartyMenuUnits"
-                    || screen.Name == "CharacterStatus"
-                    || screen.Name == "EquipmentAndAbilities";
+                bool onPartyTree = FFTColorCustomizer.GameBridge.ScreenNamePredicates.IsPartyTree(screen.Name);
                 if (onPartyTree && Explorer != null)
                 {
                     if (_rosterNameTable == null) _rosterNameTable = new NameTableLookup(Explorer);

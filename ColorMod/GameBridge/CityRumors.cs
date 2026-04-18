@@ -120,6 +120,14 @@ namespace FFTColorCustomizer.GameBridge
                     { 1, 11 },
                     { 2, 19 },
                 },
+                // Goug, verified live session 39 at Goug Tavern during Chapter 1.
+                // Fifth settlement confirming Chapter-1 uniform-list hypothesis.
+                [CityId.Goug] = new Dictionary<int, int>
+                {
+                    { 0, 10 },
+                    { 1, 11 },
+                    { 2, 19 },
+                },
             };
 
         /// <summary>
