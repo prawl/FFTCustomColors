@@ -37,6 +37,41 @@ namespace FFTColorCustomizer.GameBridge
             public const int Warjilis = 12;
             public const int Bervenia = 13;
             public const int SalGhidos = 14;
+
+            private static readonly string[] NamesByIdArray =
+            {
+                "Lesalia", "Riovanes", "Eagrose", "Lionel", "Limberry",
+                "Zeltennia", "Gariland", "Yardrow", "Gollund", "Dorter",
+                "Zaland", "Goug", "Warjilis", "Bervenia", "SalGhidos",
+            };
+
+            /// <summary>
+            /// Returns the canonical settlement name for the given city id, or
+            /// null if the id is out of range. Used for friendly error messages
+            /// and diagnostic dumps.
+            /// </summary>
+            public static string? NameFor(int id)
+            {
+                if (id < 0 || id >= NamesByIdArray.Length) return null;
+                return NamesByIdArray[id];
+            }
+
+            /// <summary>
+            /// Returns the settlement id for the given name (case-insensitive),
+            /// or -1 if the name is not a canonical settlement. -1 matches the
+            /// CommandRequest.LocationId "unset" sentinel so the result can be
+            /// fed directly into get_rumor.
+            /// </summary>
+            public static int IdFor(string? name)
+            {
+                if (string.IsNullOrEmpty(name)) return -1;
+                for (int i = 0; i < NamesByIdArray.Length; i++)
+                {
+                    if (string.Equals(NamesByIdArray[i], name, System.StringComparison.OrdinalIgnoreCase))
+                        return i;
+                }
+                return -1;
+            }
         }
 
         // cityId → (row → corpusIndex). Rows that map to null / missing entries
@@ -60,6 +95,17 @@ namespace FFTColorCustomizer.GameBridge
                 // Dorter for Chapter 1 — same 4 titles in same order. If the
                 // Chapter-2+ rumor set diverges, split into a per-chapter table.
                 [CityId.Gariland] = new Dictionary<int, int>
+                {
+                    { 0, 10 },
+                    { 1, 11 },
+                    { 2, 19 },
+                },
+                // Warjilis, verified live session 37 at Warjilis Tavern during
+                // Chapter 1. Same 4 titles as Dorter/Gariland — the Chapter-1
+                // rumor list is shared across all visited cities so far. When
+                // a city finally diverges (likely a post-Chapter-2 visit), the
+                // ChapterXCityRumors split will become necessary.
+                [CityId.Warjilis] = new Dictionary<int, int>
                 {
                     { 0, 10 },
                     { 1, 11 },

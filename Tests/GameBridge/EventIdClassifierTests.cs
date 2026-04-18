@@ -57,5 +57,44 @@ namespace FFTColorCustomizer.Tests.GameBridge
             bool unset = ScreenDetectionLogic.IsEventIdUnset(eventId);
             Assert.False(real && unset);
         }
+
+        // Session 37: mid-battle eventId classifier. Stricter upper bound (200)
+        // because nameId aliases kick in during combat animations.
+
+        [Theory]
+        [InlineData(1, true)]      // lower bound
+        [InlineData(100, true)]
+        [InlineData(199, true)]    // upper bound (exclusive of 200)
+        [InlineData(0, false)]
+        [InlineData(200, false)]   // nameId-alias territory begins here
+        [InlineData(303, false)]   // valid real event but NOT a mid-battle event
+        [InlineData(399, false)]
+        [InlineData(0xFFFF, false)]
+        [InlineData(-1, false)]
+        public void IsMidBattleEvent_BoundarySweep(int eventId, bool expected)
+        {
+            Assert.Equal(expected, ScreenDetectionLogic.IsMidBattleEvent(eventId));
+        }
+
+        [Fact]
+        public void IsMidBattleEvent_Implies_IsRealEvent()
+        {
+            // Every mid-battle event is also a real event (narrower window).
+            for (int e = 0; e < 500; e++)
+            {
+                if (ScreenDetectionLogic.IsMidBattleEvent(e))
+                    Assert.True(ScreenDetectionLogic.IsRealEvent(e));
+            }
+        }
+
+        [Fact]
+        public void EventIdMidBattleMaxExclusive_IsBelowEventIdRealMax()
+        {
+            // Pin the invariant that the mid-battle bound is narrower than the
+            // full-event bound. If someone widens MidBattle past Real, the
+            // mid-battle rule becomes no-stricter-than the regular rule.
+            Assert.True(ScreenDetectionLogic.EventIdMidBattleMaxExclusive
+                < ScreenDetectionLogic.EventIdRealMaxExclusive);
+        }
     }
 }

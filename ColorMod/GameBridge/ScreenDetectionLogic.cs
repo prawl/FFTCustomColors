@@ -41,6 +41,17 @@ namespace FFTColorCustomizer.GameBridge
         public const int EventIdUnsetAlt = 0xFFFF;
 
         /// <summary>
+        /// Exclusive upper bound for mid-battle event IDs (stricter than
+        /// EventIdRealMaxExclusive). During combat animations the eventId
+        /// address (0x14077CA94) aliases as the active-unit nameId, and
+        /// nameIds start at 200 — so any eventId &gt;= 200 seen during an
+        /// active battle is almost certainly a nameId alias, not a real
+        /// story-event ID. This tighter bound protects the mid-battle
+        /// dialogue detection rule from firing on animation frames.
+        /// </summary>
+        public const int EventIdMidBattleMaxExclusive = 200;
+
+        /// <summary>
         /// Returns true when the eventId corresponds to a real story/battle
         /// event (inclusive of 1, exclusive of 400, excluding the 0xFFFF alt
         /// sentinel). Use this as the single source of truth for the real-event
@@ -61,6 +72,19 @@ namespace FFTColorCustomizer.GameBridge
         public static bool IsEventIdUnset(int eventId)
         {
             return eventId == 0 || eventId == EventIdUnsetAlt;
+        }
+
+        /// <summary>
+        /// Returns true when eventId is a real story-event ID AND below the
+        /// mid-battle nameId-alias threshold. Used for mid-battle dialogue
+        /// detection where the eventId address aliases as nameId during
+        /// animations. Stricter than <see cref="IsRealEvent"/>.
+        /// </summary>
+        public static bool IsMidBattleEvent(int eventId)
+        {
+            return eventId >= EventIdRealMin
+                && eventId < EventIdMidBattleMaxExclusive
+                && eventId != EventIdUnsetAlt;
         }
 
         /// <summary>
@@ -403,12 +427,11 @@ namespace FFTColorCustomizer.GameBridge
                 return "TitleScreen";
 
             // Mid-battle dialogue: story event playing during active battle. In-battle uses
-            // the stricter < 200 filter because eventId address (0x14077CA94) aliases as
-            // active-unit nameId during combat animations (nameIds start at 200+).
+            // the stricter < EventIdMidBattleMaxExclusive (200) filter because eventId
+            // address (0x14077CA94) aliases as active-unit nameId during combat animations.
             // Checked BEFORE the post-battle-stale TitleScreen fallback, because some
             // dialogue states share acted/moved/submenuFlag sticky values with post-battle.
-            if (eventId >= 1 && eventId < 200 && eventId != 0xFFFF
-                && battleMode == 0 && paused == 0)
+            if (IsMidBattleEvent(eventId) && battleMode == 0 && paused == 0)
                 return "BattleDialogue";
 
             // Post-battle stale at rawLocation=255: After a battle ends (or a battle

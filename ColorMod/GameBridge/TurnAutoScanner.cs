@@ -37,7 +37,7 @@ namespace FFTColorCustomizer.GameBridge
             // which are still part of the same turn.
             bool isOtherUnitsTurn = screenName == "BattleEnemiesTurn"
                 || screenName == "BattleAlliesTurn";
-            bool leftBattle = !screenName.StartsWith("Battle");
+            bool leftBattle = !ScreenNamePredicates.IsBattleState(screenName);
 
             if (_wasMyTurn && (isOtherUnitsTurn || leftBattle))
             {

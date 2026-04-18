@@ -1683,54 +1683,15 @@ namespace FFTColorCustomizer.Utilities
                             break;
                         }
                         {
-                            // Resolution order:
-                            //   1. Exact title match (hardcoded title→index map) — use for
-                            //      known rumor titles like "The Legend of the Zodiac Braves".
-                            //   2. Body substring match — use when Claude has a distinctive
-                            //      phrase from the rumor body.
-                            //   3. City + row → CityRumors table → corpus index. Use when
-                            //      the caller has the Tavern cursor position but no title.
-                            //   4. Integer index — direct corpus access.
-                            WorldMesDecoder.Rumor? rumor = null;
-                            if (!string.IsNullOrWhiteSpace(command.SearchLabel))
+                            var res = RumorResolver.Resolve(RumorLookup,
+                                command.SearchLabel, command.LocationId, command.UnitIndex);
+                            if (!res.Ok)
                             {
-                                rumor = RumorLookup.GetByTitle(command.SearchLabel)
-                                    ?? RumorLookup.GetByBodySubstring(command.SearchLabel);
-                                if (rumor == null)
-                                {
-                                    response.Status = "failed";
-                                    response.Error = $"No rumor matches title or body for '{command.SearchLabel}'";
-                                    break;
-                                }
+                                response.Status = "failed";
+                                response.Error = res.Error;
+                                break;
                             }
-                            else if (command.LocationId >= 0)
-                            {
-                                int? corpusIdx = CityRumors.Lookup(command.LocationId, command.UnitIndex);
-                                if (corpusIdx == null)
-                                {
-                                    response.Status = "failed";
-                                    response.Error = $"No rumor mapped for city {command.LocationId} row {command.UnitIndex} (see FFTHandsFree/TavernRumorTitleMap.md to add it)";
-                                    break;
-                                }
-                                rumor = RumorLookup.GetByIndex(corpusIdx.Value);
-                                if (rumor == null)
-                                {
-                                    response.Status = "failed";
-                                    response.Error = $"CityRumors mapped to corpus index {corpusIdx.Value} but lookup returned null (corpus has {RumorLookup.Count} entries)";
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                int idx = command.UnitIndex;
-                                rumor = RumorLookup.GetByIndex(idx);
-                                if (rumor == null)
-                                {
-                                    response.Status = "failed";
-                                    response.Error = $"Rumor index {idx} out of range (corpus has {RumorLookup.Count} entries)";
-                                    break;
-                                }
-                            }
+                            var rumor = res.Rumor!;
                             response.Dialogue = $"[corpus #{rumor.Index} @0x{rumor.Offset:X}]\n{rumor.Body}";
                             response.Status = "completed";
                         }
@@ -6831,7 +6792,7 @@ namespace FFTColorCustomizer.Utilities
                 //
                 // So active unit name/job will show as empty on the FIRST `screen` call of
                 // a battle, then populate after the first scan_move runs and caches it.
-                if (screen.Name != null && screen.Name.StartsWith("Battle")
+                if (FFTColorCustomizer.GameBridge.ScreenNamePredicates.IsBattleState(screen.Name)
                     && (_cachedActiveUnitName != null || _cachedActiveUnitJob != null))
                 {
                     screen.ActiveUnitName = _cachedActiveUnitName;

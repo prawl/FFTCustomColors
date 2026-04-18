@@ -1178,7 +1178,7 @@ namespace FFTColorCustomizer.GameBridge
             {
                 // Some abilities go straight to targeting without battleMode 1 or 4 —
                 // tolerate any in-battle state and let the caller handle it downstream.
-                if (screen?.Name?.StartsWith("Battle") != true)
+                if (!ScreenNamePredicates.IsBattleState(screen?.Name))
                 {
                     response.Status = "failed";
                     response.Error = $"Failed to enter targeting mode for {abilityName} (current: {screen?.Name ?? "null"})";
@@ -1499,7 +1499,7 @@ namespace FFTColorCustomizer.GameBridge
                 // means we're genuinely on the world map with stale slot memory.
                 // See memory/feedback_flee_stale_state.md.
                 bool looksStaleWorldMap = false;
-                if (screen?.Name != null && screen.Name.StartsWith("Battle"))
+                if (ScreenNamePredicates.IsBattleState(screen?.Name))
                 {
                     var bmResult = _explorer.ReadAbsolute((nint)0x140900650, 1);
                     var locResult = _explorer.ReadAbsolute((nint)0x14077D208, 1);
@@ -1729,7 +1729,7 @@ namespace FFTColorCustomizer.GameBridge
         private CommandResponse ScanUnits(CommandResponse response)
         {
             var screen = _detectScreen();
-            if (screen == null || !screen.Name.StartsWith("Battle"))
+            if (!ScreenNamePredicates.IsBattleState(screen?.Name))
             {
                 response.Status = "failed";
                 response.Error = $"Not in battle (current: {screen?.Name ?? "null"})";
@@ -1769,7 +1769,7 @@ namespace FFTColorCustomizer.GameBridge
         private CommandResponse ScanMove(CommandResponse response, CommandRequest command)
         {
             var screen = _detectScreen();
-            if (screen == null || !screen.Name.StartsWith("Battle"))
+            if (!ScreenNamePredicates.IsBattleState(screen?.Name))
             {
                 response.Status = "failed";
                 response.Error = $"Not in battle (current: {screen?.Name ?? "null"})";
@@ -3295,7 +3295,7 @@ namespace FFTColorCustomizer.GameBridge
                 if (check != null && check.Name != "BattleMoving"
                     && check.Name != "BattleFormation"
                     && check.Name != "BattleCasting"
-                    && check.Name!.StartsWith("Battle"))
+                    && ScreenNamePredicates.IsBattleState(check.Name))
                 {
                     ModLogger.Log($"[MoveGrid] confirmed via screen.Name={check.Name} after {sw.ElapsedMilliseconds}ms ({polls} polls)");
                     confirmed = true; break;
@@ -3489,7 +3489,7 @@ namespace FFTColorCustomizer.GameBridge
         private CommandResponse MoveTo(CommandResponse response, string target, int tileIndex)
         {
             var screen = _detectScreen();
-            if (screen == null || !screen.Name.StartsWith("Battle"))
+            if (!ScreenNamePredicates.IsBattleState(screen?.Name))
             {
                 response.Status = "failed";
                 response.Error = $"Not in battle (current: {screen?.Name ?? "null"})";
@@ -5047,7 +5047,7 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             string currentName = current.Name;
-            if (currentName.StartsWith("Battle")
+            if (ScreenNamePredicates.IsBattleState(currentName)
                 || currentName == "EncounterDialog"
                 || currentName == "Cutscene"
                 || currentName == "BattleSequence"
@@ -5193,7 +5193,7 @@ namespace FFTColorCustomizer.GameBridge
 
             // Path 2: Mid-battle retry via pause menu (Tab → Retry).
             // Pause menu: Resume(0), Retry(1), Quit(2) — or similar layout.
-            if (screen.Name == "BattlePaused" || screen.Name.StartsWith("Battle"))
+            if (ScreenNamePredicates.IsBattleState(screen.Name))
             {
                 // If not already paused, open the pause menu
                 if (screen.Name != "BattlePaused")

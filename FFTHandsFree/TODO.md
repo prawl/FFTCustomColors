@@ -81,6 +81,8 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **IC remaster deathCounter offset hunt** — PSX had it at ~0x58-0x59 in battle unit struct. Needs live battle with a KO'd unit to find the IC equivalent. Blocks KO/crystallize-aware tactics.
 
+- [ ] **`AbilityJpCosts.ComputeNextJpForSkillset` returns 0 for unlearned Zodiark** — Session 37 hardening found: Zodiark has cost 0 as a "unlearnable via JP" sentinel, but the `Next: N` computation doesn't filter it, so a Summoner with Zodiark unlearned shows `Next: 0`. Fix: in `ComputeNextJpForSkillset`, treat cost==0 same as cost==null (skip, don't consider as minimum). Test `ComputeNextJp_ZeroCostSentinel_SurfacesAsMin_DocumentsCurrentBehavior` pins the current wrong behavior; flip its assertion after the fix.
+
 ### Session 33 — next-up follow-ups (from 6-task batch attempt)
 
 - [ ] **Live-verify !weak / +absorb sigils** — session 33 attempt: travel from WorldMap → Yardrow timed out on bridge, left game on OutfitterBuy and subsequent heap reads timed out. Party has no Wizard; best test candidates are Kenrick (White Mage, Holy) or Rapha (Skyseer, Holy) vs an undead enemy for `+absorb:['Dark']` / `!weak:['Holy']`. Needs: (a) stable bridge session (may need `restart`), (b) travel to a random-encounter zone with undead (Skeleton/Ghost/Ghoul), (c) scan during Holy-cast targeting menu.

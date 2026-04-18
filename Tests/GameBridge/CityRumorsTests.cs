@@ -21,6 +21,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         // in CityRumors.CityId (which is the canonical source).
         private const int DorterLocationId = 9;
         private const int GarilandLocationId = 6;
+        private const int WarjilisLocationId = 12;
 
         [Fact]
         public void Dorter_Row0_MapsToCorpusIndex10()
@@ -127,7 +128,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             // Round-trip: for every (city, row) in the forward table,
             // CitiesFor(lookupIndex) must include that (city, row) pair.
-            foreach (int city in new[] { DorterLocationId, GarilandLocationId })
+            foreach (int city in new[] { DorterLocationId, GarilandLocationId, WarjilisLocationId })
             {
                 for (int row = 0; row < 10; row++)
                 {
@@ -188,6 +189,62 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var result = CityRumors.CitiesFor(10);
             Assert.Contains((DorterLocationId, 0), result);
             Assert.Contains((GarilandLocationId, 0), result);
+        }
+
+        // Warjilis live-verified session 37: same Chapter-1 rumor set.
+
+        [Fact]
+        public void Warjilis_Row0_MapsToZodiacBraves()
+        {
+            Assert.Equal(10, CityRumors.Lookup(WarjilisLocationId, 0));
+        }
+
+        [Fact]
+        public void Warjilis_Row1_MapsToZodiacStones()
+        {
+            Assert.Equal(11, CityRumors.Lookup(WarjilisLocationId, 1));
+        }
+
+        [Fact]
+        public void Warjilis_Row2_MapsToHorrorOfRiovanes()
+        {
+            Assert.Equal(19, CityRumors.Lookup(WarjilisLocationId, 2));
+        }
+
+        [Fact]
+        public void Warjilis_Row3_BaelsEnd_ReturnsNull()
+        {
+            // Same unmappable title as Dorter and Gariland row 3.
+            Assert.Null(CityRumors.Lookup(WarjilisLocationId, 3));
+        }
+
+        [Fact]
+        public void Chapter1Cities_AllMatchDorter()
+        {
+            // Pin the invariant: all seeded Chapter-1 cities resolve row-by-row
+            // to the same corpus index as Dorter. Divergence breaks this test,
+            // prompting a per-chapter split.
+            foreach (int city in new[] { GarilandLocationId, WarjilisLocationId })
+            {
+                for (int row = 0; row < 3; row++)
+                {
+                    Assert.Equal(
+                        CityRumors.Lookup(DorterLocationId, row),
+                        CityRumors.Lookup(city, row));
+                }
+            }
+        }
+
+        [Fact]
+        public void CitiesFor_CorpusIndex10_ReturnsThreeCitiesAtRow0()
+        {
+            // After seeding all three Chapter-1 cities, corpus #10 maps to
+            // (Dorter, 0), (Gariland, 0), (Warjilis, 0).
+            var result = CityRumors.CitiesFor(10);
+            Assert.Equal(3, result.Count);
+            Assert.Contains((DorterLocationId, 0), result);
+            Assert.Contains((GarilandLocationId, 0), result);
+            Assert.Contains((WarjilisLocationId, 0), result);
         }
 
         // Session 36: defensive validity guards on the CityRumors.Table
@@ -254,6 +311,64 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // If the canonical values ever change, this test surfaces the drift.
             Assert.Equal(CityRumors.CityId.Dorter, DorterLocationId);
             Assert.Equal(CityRumors.CityId.Gariland, GarilandLocationId);
+        }
+
+        // Session 37: CityId name↔id round-trip helpers (for friendly error
+        // messages and diagnostic dumps).
+
+        [Theory]
+        [InlineData(0, "Lesalia")]
+        [InlineData(6, "Gariland")]
+        [InlineData(9, "Dorter")]
+        [InlineData(12, "Warjilis")]
+        [InlineData(14, "SalGhidos")]
+        public void CityId_NameForId_RoundTrips(int id, string expectedName)
+        {
+            Assert.Equal(expectedName, CityRumors.CityId.NameFor(id));
+        }
+
+        [Fact]
+        public void CityId_NameForId_UnknownReturnsNull()
+        {
+            Assert.Null(CityRumors.CityId.NameFor(99));
+            Assert.Null(CityRumors.CityId.NameFor(-1));
+            Assert.Null(CityRumors.CityId.NameFor(15));  // just past the last settlement
+        }
+
+        [Theory]
+        [InlineData("Lesalia", 0)]
+        [InlineData("Dorter", 9)]
+        [InlineData("Warjilis", 12)]
+        public void CityId_IdForName_RoundTrips(string name, int expectedId)
+        {
+            Assert.Equal(expectedId, CityRumors.CityId.IdFor(name));
+        }
+
+        [Fact]
+        public void CityId_IdForName_CaseInsensitive()
+        {
+            Assert.Equal(9, CityRumors.CityId.IdFor("dorter"));
+            Assert.Equal(9, CityRumors.CityId.IdFor("DORTER"));
+        }
+
+        [Fact]
+        public void CityId_IdForName_UnknownReturnsMinus1()
+        {
+            Assert.Equal(-1, CityRumors.CityId.IdFor("Atlantis"));
+            Assert.Equal(-1, CityRumors.CityId.IdFor(""));
+            Assert.Equal(-1, CityRumors.CityId.IdFor(null!));
+        }
+
+        [Fact]
+        public void CityId_AllKnownIds_RoundTrip_NameThenId()
+        {
+            // Every canonical id resolves to a name that resolves back to the id.
+            for (int id = 0; id <= 14; id++)
+            {
+                string? name = CityRumors.CityId.NameFor(id);
+                Assert.NotNull(name);
+                Assert.Equal(id, CityRumors.CityId.IdFor(name!));
+            }
         }
 
         [Fact]
