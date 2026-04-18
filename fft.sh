@@ -1982,6 +1982,21 @@ console.log((r.screen&&r.screen.jobCellState)||'');" "$B/response.json" 2>/dev/n
       ;;
   esac
 
+  # Capture the viewed unit's current job BEFORE commit so we can verify
+  # the change actually took effect. If the commit sequence mis-aligns
+  # with the menu flow (e.g. Change Job button absent because target == current
+  # job, or a key drops mid-sequence), landing on EqA/CS alone doesn't prove
+  # the change — session 31 observed the helper claim success while the job
+  # was unchanged.
+  local preJobState=$(cat "$B/response.json" | node -e "
+let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{
+const j=JSON.parse(d);
+const vu=j.screen?.viewedUnit||'';
+const r=(j.screen?.roster?.units||[]);
+const u=r.find(x=>x.name===vu);
+process.stdout.write(u?u.job:'');
+}catch(e){}});" 2>/dev/null)
+
   # Commit the change: Enter → JobActionMenu → CursorRight → Enter →
   # JobChangeConfirmation → CursorRight → Enter → "Job changed!" dialog →
   # Enter → CharacterStatus (or EquipmentAndAbilities if gear dropped).
@@ -1991,8 +2006,26 @@ console.log((r.screen&&r.screen.jobCellState)||'');" "$B/response.json" 2>/dev/n
   _current_screen >/dev/null
   local newScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen.name)" < "$B/response.json" 2>/dev/null)
 
+  # Verify the job actually changed by reading the viewed unit's job from
+  # the post-commit roster. Roster data lags slightly on some screens, so
+  # bounce through PartyMenu if we're not on CS/EqA yet.
+  local newJob=$(cat "$B/response.json" | node -e "
+let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{
+const j=JSON.parse(d);
+const vu=j.screen?.viewedUnit||'';
+const r=(j.screen?.roster?.units||[]);
+const u=r.find(x=>x.name===vu);
+process.stdout.write(u?u.job:'');
+}catch(e){}});" 2>/dev/null)
+
   if [ "$newScr" = "EquipmentAndAbilities" ] || [ "$newScr" = "CharacterStatus" ]; then
-    echo "[change_job_to] -> $target (landed on $newScr)"
+    # Idempotent path: if we were already on the target class, the commit
+    # sequence may land us on EqA without a job change — that's also OK.
+    if [ -n "$newJob" ] && [ "$newJob" != "$target" ] && [ "$newJob" = "$preJobState" ]; then
+      echo "[change_job_to] ERROR: commit sequence landed on $newScr but job UNCHANGED (still $newJob). Target '$target' not applied. Likely cause: JobActionMenu commit keys mis-aligned (e.g. 'Change Job' button absent if target == current job, or an animation swallowed a key)."
+      return 1
+    fi
+    echo "[change_job_to] -> $target (landed on $newScr, job=$newJob)"
     return 0
   fi
   echo "[change_job_to] WARNING: expected EquipmentAndAbilities or CharacterStatus; got $newScr. Verify manually."
