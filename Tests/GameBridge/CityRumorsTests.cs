@@ -27,6 +27,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         private const int ZalandLocationId = 10;
         private const int LesaliaLocationId = 0;
         private const int GollundLocationId = 8;
+        private const int BerveniaLocationId = 13;
 
         [Fact]
         public void Dorter_Row0_MapsToCorpusIndex10()
@@ -135,7 +136,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             // Round-trip: for every (city, row) in the forward table,
             // CitiesFor(lookupIndex) must include that (city, row) pair.
-            foreach (int city in new[] { DorterLocationId, GarilandLocationId, WarjilisLocationId, YardrowLocationId, GougLocationId, ZalandLocationId, LesaliaLocationId })
+            foreach (int city in new[] { DorterLocationId, GarilandLocationId, WarjilisLocationId, YardrowLocationId, GougLocationId, ZalandLocationId, LesaliaLocationId, BerveniaLocationId })
             {
                 for (int row = 0; row < 10; row++)
                 {
@@ -231,7 +232,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // Pin the invariant: all seeded Chapter-1 cities resolve row-by-row
             // to the same corpus index as Dorter. Divergence breaks this test,
             // prompting a per-chapter split.
-            foreach (int city in new[] { GarilandLocationId, WarjilisLocationId, YardrowLocationId, GougLocationId, ZalandLocationId, LesaliaLocationId })
+            foreach (int city in new[] { GarilandLocationId, WarjilisLocationId, YardrowLocationId, GougLocationId, ZalandLocationId, LesaliaLocationId, BerveniaLocationId })
             {
                 for (int row = 0; row < 3; row++)
                 {
@@ -245,11 +246,11 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void CitiesFor_CorpusIndex10_ReturnsAllSeededCities()
         {
-            // After seeding 8 cities (7 uniform + Gollund), corpus #10 maps
+            // After seeding 9 cities (8 uniform + Gollund), corpus #10 maps
             // to each at row 0. Gollund diverges from the uniform set at
             // row 3 but still has #10 at row 0.
             var result = CityRumors.CitiesFor(10);
-            Assert.Equal(8, result.Count);
+            Assert.Equal(9, result.Count);
             Assert.Contains((DorterLocationId, 0), result);
             Assert.Contains((GarilandLocationId, 0), result);
             Assert.Contains((WarjilisLocationId, 0), result);
@@ -258,6 +259,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains((ZalandLocationId, 0), result);
             Assert.Contains((LesaliaLocationId, 0), result);
             Assert.Contains((GollundLocationId, 0), result);
+            Assert.Contains((BerveniaLocationId, 0), result);
         }
 
         // Yardrow live-verified session 38: Chapter-1 uniform rumor set.
@@ -410,6 +412,41 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.False(CityRumors.IsChapter1UniformCity(GollundLocationId));
         }
 
+        // Bervenia live-verified session 43: uniform Chapter-1 rumor set (9th city).
+
+        [Fact]
+        public void Bervenia_Row0_MapsToZodiacBraves()
+        {
+            Assert.Equal(10, CityRumors.Lookup(BerveniaLocationId, 0));
+        }
+
+        [Fact]
+        public void Bervenia_Row1_MapsToZodiacStones()
+        {
+            Assert.Equal(11, CityRumors.Lookup(BerveniaLocationId, 1));
+        }
+
+        [Fact]
+        public void Bervenia_Row2_MapsToHorrorOfRiovanes()
+        {
+            Assert.Equal(19, CityRumors.Lookup(BerveniaLocationId, 2));
+        }
+
+        [Fact]
+        public void Bervenia_Row3_BaelsEnd_ReturnsNull()
+        {
+            // Bervenia does NOT have its own city-specific rumor (corpus #23
+            // "Wailing Orte" donation to Dorter mentions Bervenia by name,
+            // but that rumor doesn't appear at Bervenia's tavern in Chapter 1).
+            Assert.Null(CityRumors.Lookup(BerveniaLocationId, 3));
+        }
+
+        [Fact]
+        public void Bervenia_IsChapter1UniformCity()
+        {
+            Assert.True(CityRumors.IsChapter1UniformCity(BerveniaLocationId));
+        }
+
         [Fact]
         public void CitiesFor_CorpusIndex20_ReturnsOnlyGollund()
         {
@@ -450,6 +487,49 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 $"Settlement rumor coverage has dropped below 40% ({seededCount}/{totalSettlements} = {coverage:P0})");
         }
 
+        // Session 43: TableSnapshot accessor — read-only view of the full
+        // (cityId → row → corpusIndex) table. Callers that iterate "for each
+        // seeded city, show its full rumor row list" use this instead of
+        // repeated Lookup probes.
+
+        [Fact]
+        public void TableSnapshot_ContainsAllSeededCities()
+        {
+            var snap = CityRumors.TableSnapshot;
+            Assert.Contains(DorterLocationId, snap.Keys);
+            Assert.Contains(GarilandLocationId, snap.Keys);
+            Assert.Contains(GollundLocationId, snap.Keys);
+            Assert.Contains(BerveniaLocationId, snap.Keys);
+        }
+
+        [Fact]
+        public void TableSnapshot_PerCityRowCounts()
+        {
+            var snap = CityRumors.TableSnapshot;
+            // Uniform cities have 3 rows each (rows 0, 1, 2).
+            Assert.Equal(3, snap[DorterLocationId].Count);
+            Assert.Equal(3, snap[LesaliaLocationId].Count);
+            // Gollund has 4 rows (adds #20 at row 3).
+            Assert.Equal(4, snap[GollundLocationId].Count);
+        }
+
+        [Fact]
+        public void TableSnapshot_MatchesLookupForEveryEntry()
+        {
+            // Round-trip: iterating the snapshot must return the same values
+            // as direct Lookup calls. If the snapshot diverges, callers get
+            // stale/inconsistent data.
+            var snap = CityRumors.TableSnapshot;
+            foreach (var cityEntry in snap)
+            {
+                foreach (var rowEntry in cityEntry.Value)
+                {
+                    Assert.Equal(rowEntry.Value,
+                        CityRumors.Lookup(cityEntry.Key, rowEntry.Key));
+                }
+            }
+        }
+
         [Fact]
         public void CoverageStats_Chapter1UniformCount_AtLeastSix()
         {
@@ -476,6 +556,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [InlineData(10, true)]   // Zaland
         [InlineData(11, true)]   // Goug
         [InlineData(12, true)]   // Warjilis
+        [InlineData(13, true)]   // Bervenia (session 43)
+        [InlineData(8, false)]   // Gollund — has row-3 divergence
         [InlineData(1, false)]   // Riovanes — battle location, not seeded
         [InlineData(2, false)]   // Eagrose
         [InlineData(4, false)]   // Limberry — not seeded yet

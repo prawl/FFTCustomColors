@@ -108,6 +108,7 @@ namespace FFTColorCustomizer.GameBridge
                 [CityId.Goug]     = Chapter1UniformRows,  // session 39
                 [CityId.Zaland]   = Chapter1UniformRows,  // session 40
                 [CityId.Lesalia]  = Chapter1UniformRows,  // session 41 (capital)
+                [CityId.Bervenia] = Chapter1UniformRows,  // session 43 (trade hub)
 
                 // Gollund (session 42) — FIRST divergence from the Chapter-1
                 // uniform set. Row 3 is a Gollund-specific rumor "The Haunted
@@ -169,6 +170,15 @@ namespace FFTColorCustomizer.GameBridge
             return Table.TryGetValue(cityId, out var rows)
                 && ReferenceEquals(rows, Chapter1UniformRows);
         }
+
+        /// <summary>
+        /// Read-only snapshot of the full (cityId → row → corpusIndex) table.
+        /// Useful for diagnostic callers that want to iterate "for each
+        /// seeded city, show its full rumor row list" without repeated
+        /// Lookup probes. Returned dictionaries are the live internal
+        /// references; do not mutate.
+        /// </summary>
+        public static System.Collections.Generic.IReadOnlyDictionary<int, System.Collections.Generic.IReadOnlyDictionary<int, int>> TableSnapshot => Table;
 
         /// <summary>
         /// Flat enumeration of every (cityId, row, corpusIndex) triple in the

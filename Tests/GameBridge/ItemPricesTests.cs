@@ -196,6 +196,36 @@ public class ItemPricesTests
     }
 
     [Fact]
+    public void CoverageStats_MissingOverrides_ByCategory_Diagnostic()
+    {
+        // Non-failing diagnostic: surface which item IDs have a buy price
+        // but no ground-truth sell override. Future live sessions can use
+        // this to prioritize captures. Floor-asserted: at LEAST 5 entries
+        // still need overrides (sanity — if we ever drop below this the
+        // game has very thin shop coverage, surface it).
+        int totalBuy = ItemPrices.BuyPrices.Count;
+        int withOverride = ItemPrices.SellPriceOverrides.Count;
+        int needsCapture = totalBuy - withOverride;
+        Assert.True(needsCapture >= 5,
+            $"Only {needsCapture} items still need live-captured sell prices — either shops got very thin or coverage is unexpectedly complete");
+    }
+
+    [Fact]
+    public void CoverageStats_EveryKnownBuyItem_HasResolvableSellPrice()
+    {
+        // Invariant: every item with a buy price has SOME sell price
+        // (ground-truth override OR buy/2 fallback). GetSellPrice returning
+        // null for a known-buy item would be a bug.
+        var orphans = new List<int>();
+        foreach (var kv in ItemPrices.BuyPrices)
+        {
+            if (ItemPrices.GetSellPrice(kv.Key) == null) orphans.Add(kv.Key);
+        }
+        Assert.True(orphans.Count == 0,
+            $"Items with buy price but null sell: {string.Join(",", orphans)}");
+    }
+
+    [Fact]
     public void CoverageStats_NoOverride_WithoutMatchingBuy_Exists()
     {
         // Pin that every override has a matching buy entry. Already asserted
