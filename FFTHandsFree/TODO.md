@@ -73,6 +73,12 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 43 — next-up follow-ups
+
+- [ ] **Live-verify IsPartyTree refactor didn't silently narrow CharacterStatus roster population** — Session 39 refactored the `onPartyTree` check in CommandWatcher to delegate to `ScreenNamePredicates.IsPartyTree`; session 41 tried live-verify but game crashed after the Lesalia trip. Covered by unit tests but no live confirmation. Next session with game running: open CharacterStatus on any unit, call `screen -v`, confirm `roster` field is still populated with all units. Low risk (same 3 screens covered) but pinned here until live-confirmed.
+
+- [ ] **Live-verify Gollund row 4 unmapped-error path via UI** — Session 42 wired Gollund row 3 → corpus #20 "The Haunted Mine" + row 4 → unmapped. Live-verified row 3 + UI cross-reference session 42. Row 4 verified via bridge but not UI (the "At Bael's End" body renders from a different data source we can't decode). When that source lands, seed Gollund row 4 and all 8 uniform cities' row 3.
+
 ### Session 33 batch 2 — deferred (needs live battle / environment I can't verify)
 
 - [ ] **Live-verify `execute_action` responses include `ui=` field across battle screens** — code path exists; needs in-game verification during Battle_MyTurn/Battle_Acting/Battle_Moving/Battle_Attacking. Deferred batch 2.
@@ -80,8 +86,6 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 - [ ] **PreToolUse hook to block `| node` in Bash commands** — needs explicit per-hook user approval (per `feedback_no_hooks_without_approval.md`). Defer until user green-lights.
 
 - [ ] **IC remaster deathCounter offset hunt** — PSX had it at ~0x58-0x59 in battle unit struct. Needs live battle with a KO'd unit to find the IC equivalent. Blocks KO/crystallize-aware tactics.
-
-- [x] **`AbilityJpCosts.ComputeNextJpForSkillset` returns 0 for unlearned Zodiark** — Fixed session 38. `ComputeNextJpForSkillset` now treats `cost <= 0` the same as `cost == null` (skip). Test `ComputeNextJp_ZeroCostSentinel_SkippedAsUnlearnable` pins correct behavior (Moogle 110 surfaces as cheapest, not Zodiark 0).
 
 - [ ] **`AbilityJpCosts` — backfill Jump and Holy Sword skillsets** — Session 41 coverage audit found both return null from `ComputeNextJpForSkillset` (100% gap rate). Jump collapses sub-abilities (H/V Jump levels 1-8), Holy Sword is Agrias's story skillset. Cost data omitted in code with a comment; a future session should either populate real JP costs or explicitly document both as no-op for Next: N. Characterization test `CoverageAudit_KnownUncoveredSkillsets_StillReturnNull` pins current behavior.
 
@@ -99,11 +103,11 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Some rumor bodies NOT in `world_wldmes.bin`** — "At Bael's End" (Dorter row 3) doesn't match any substring in the corpus. Searched all 318 .bin files in 0000-0004 pac dirs with the word "Bael" encoded PSX-style → zero hits. Likely lives in a UE4 `.locres` file or the `0002.en.pac/fftpack/world_snplmes_bin.en.bin` (same-ish size, different encoding — includes `D1/D2/D3` multibyte sequences suggesting kanji/Japanese layered with English). Next session: (a) try extracting text from `world_snplmes_bin.en.bin` with a multibyte decoder, (b) check UE4 `Paks/*.pak` for locres files, (c) scan bigger pac dirs (0005-0011).
 
-- [ ] **Per-city row→corpus_index table** — session 34 shipped `CityRumors.cs` keyed `cityId → row → corpusIndex` and wired `get_rumor` to accept `{locationId, unitIndex}`. Session 36 added Gariland (id=6) matching Dorter's Chapter-1 rumor set. Seeded: Dorter (0/1/2 → #10/#11/#19) + Gariland (same). Remaining: 13 more settlements (Lesalia, Riovanes, Eagrose, Lionel, Limberry, Zeltennia, Yardrow, Gollund, Zaland, Goug, Warjilis, Bervenia, Sal Ghidos). Chapter-2+ rumor sets may diverge — split per-chapter if they do. Workflow in `FFTHandsFree/TavernRumorTitleMap.md`.
+- [ ] **Per-city row→corpus_index table — remaining cities** — As of session 43: 9 of 15 settlements seeded (Dorter/Gariland/Warjilis/Yardrow/Goug/Zaland/Lesalia/Bervenia uniform via `Chapter1UniformRows` + Gollund divergent at row 3 = corpus #20). Remaining: Riovanes(1), Eagrose(2), Lionel(3), Limberry(4), Zeltennia(5), Sal Ghidos(14) — most are battle-locked or story-progression-locked in Chapter 1. Seed them when Chapter 2+ unlocks access. If any city's uniform-rows break (Chapter-2 rumor refresh), split into per-chapter tables. Workflow in `FFTHandsFree/TavernRumorTitleMap.md`.
+
+- [ ] **Candidate city-specific rumors to check at Chapter 2+** — Session 43 `CorpusCityMentionTests.cs` flagged corpus entries that name specific cities but don't appear at those cities' Chapter-1 taverns: #12 Warjilis (Baert Trading Company), #15 Lionel (Cardinal Delacroix), #23 Bervenia+Dorter (Wailing Orte). Re-check each of these cities' tavern lists after Chapter-2 story progress — likely rehost candidates.
 
 - [ ] **Title→corpus auto-match UX** — `read_rumor "<phrase>"` requires Claude to know a distinctive phrase from the rumor. Titles are not in bridge state (not in RAM, not in decoded file). Session 34 `{locationId, unitIndex}` path is the cleanest alternative but requires knowing the cursor row. Remaining options: (a) screenshot + OCR the title region on TavernRumors entry, include as `rumorTitle` in `screen` response; (b) wire the TavernRumors cursor-row byte at `0x13090F968` via the pointer-chain walk (memory note `project_tavern_rumor_cursor.md`) so `screen` surfaces `cursorRow` automatically and `read_rumor` in the UI resolves via CityRumors instead of needing a phrase. (b) still blocked on unmappable Bael's-End class.
-
-- [ ] **Shopping.md: remove Tavern from "Not yet implemented"** — already done in session 32 commit `191e667`; docs say Tavern is reachable but body text isn't. Confirm this is still accurate after Scope B lands.
 
 - [ ] **Errand metadata (quester / days / fee)** — separate source from rumor bodies. Likely in an NXD layout — `tools/Nex/Layouts/ffto/Book.layout` exists but no `book.nxd` was found in `0004/nxd/` during session 32 exploration. Possible paths: (a) the `Book` layout actually targets a data file not present in this installation, (b) errand metadata is in `world_wldmes_bin.en.bin` alongside the rumor bodies and shares record structure, (c) a different layout file (`Proposal*.layout`?) — session 32 didn't find one. Re-investigate after Scope B decoder is working; can piggyback on the same parser.
 

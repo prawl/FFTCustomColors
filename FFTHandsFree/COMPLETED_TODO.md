@@ -706,3 +706,73 @@ Tests: 2373 → 2852 (+479 new, 0 regressions). Zero live-play required for any 
 - `ColorMod/GameBridge/AutoEndTurnAbilities.cs` — Self-Destruct + doc expansion
 - `fft.sh` — per-tag `_slow_threshold_for_tag` + `read_rumor` / `list_rumors` helpers
 - `FFTHandsFree/Instructions/CutsceneDialogue.md` — BattleDialogue section
+
+---
+
+### Sessions 34-43 (2026-04-18) — Tavern rumor city+row system + test hardening + refactors
+
+Commits: `5b0a9ac` (s34-36 bundle: city+row infra, FirstSentence preview, Orbonne boundary tests, WeatherDamageModifier hardening, Gariland seed, full-suite refactors, TavernRumorTitleMap.md), `52377e5` (s37: RumorResolver pure-class extraction, ScreenNamePredicates.IsBattleState centralization across 10 callsites, EventIdMidBattleMaxExclusive constant, CityId.NameFor/IdFor, AbilityJpCosts hardening with Zodiark characterization test), `fd324e6` (s38: Zodiark 0-cost filter FIX, Yardrow seed, IsPartyMenuTab/IsPartyTree predicates, SkillsetNameReferenceTests meta-test, 5 Yardrow sword sell overrides), `8188fb7` (s39: Goug seed, GetSellPriceWithEstimate tuple API, IsPartyTree scope alignment, GameBridge/README.md), `84c971b` (s40: Zaland seed, Chapter1UniformRows constant extraction, 10 Zaland sell overrides), `1a15eaf` (s41: Lesalia seed, IsChapter1UniformCity predicate, AbilityJpCosts skillset coverage audit surfacing Jump/HolySword gaps, ItemPrices coverage floor), `48c7f94` (s42: Gollund seed + FIRST Chapter-1 divergence with corpus #20 Haunted Mine, IsShopState predicate, RumorResolver priority ambiguity tests, ReturnToWorldMap docstring, 5 more sell overrides), `3bc6d01` (s43: Bervenia seed, CityRumors.TableSnapshot accessor, CorpusCityMentionTests diagnostic, missing-override audit).
+
+Tests: 2852 → 3201 (+349 new, 0 regressions). Live-verified at 9 of 15 Chapter-1 settlements.
+
+**Infrastructure landed:**
+
+- [x] **`CityRumors.cs` — `(cityId, row) → corpusIndex` map + `CityId` constants** — Keyed by settlement id. Shared `Chapter1UniformRows` dictionary referenced by 8 uniform cities. `Lookup(city, row)`, `CitiesFor(corpusIdx)`, `IsChapter1UniformCity(city)`, `CityId.NameFor(id) / IdFor(name)` case-insensitive round-trip, `AllMappings` iterator, `TableSnapshot` read-only view.
+
+- [x] **`get_rumor` bridge action — 4-tier resolution** — Extracted to `RumorResolver.Resolve` pure function. Priority: exact title → body substring → `{locationId, unitIndex}` via CityRumors → raw integer index. `RumorResolver.Result` struct returns `{Ok, Rumor, Error}`. Priority-ambiguity tests pin that title beats substring beats city+row, and city+row only fires when searchLabel empty.
+
+- [x] **`RumorLookup.FirstSentence(string)` + `GetPreview(int)`** — Leading-sentence extraction: everything up to `.!?` or 120 chars + ellipsis. Used by `list_rumors` so previews are title-matchable at a glance.
+
+- [x] **`ScreenNamePredicates.cs` — centralized screen-name checks** — `IsBattleState` (10-callsite refactor in NavigationActions/CommandWatcher/TurnAutoScanner), `IsPartyMenuTab`, `IsPartyTree`, `IsShopState`. Null-safe predicates replace scattered StartsWith-Battle / OR-chain checks. Disjoint invariants pinned (shop vs battle, etc.).
+
+- [x] **`ScreenDetectionLogic` eventId constants + helpers** — `IsRealEvent`, `IsEventIdUnset`, `IsMidBattleEvent` + `EventIdRealMin/MaxExclusive/UnsetAlt/MidBattleMaxExclusive`. Named the magic numbers. 5 call-site refactors ran under existing 112-test ScreenDetection coverage.
+
+- [x] **`ItemPrices.GetSellPriceWithEstimate(id)`** — One-call `(Price, IsGroundTruth)?` tuple replaces paired `GetSellPrice` + `IsSellPriceGroundTruth`. `InventoryReader.DecodeRaw` adopts it.
+
+- [x] **`AbilityCompactor.IsHidden(entry)` public helper** — Extracted the `Target == enemy && !HasEnemyOccupant` check.
+
+- [x] **Bug fix: Zodiark 0-cost sentinel no longer surfaces as Next: 0** — `ComputeNextJpForSkillset` now filters `cost <= 0` alongside `cost == null`. Characterization test flipped to correct assertion (Moogle 110, not Zodiark 0).
+
+- [x] **Bug fix: Chapter-1 Orbonne Victory/Desertion variants with slot0=0x67** — New branches in ScreenDetectionLogic fire when `battleModeActive && battleMode==0 && party==1 && ui==1 && eventId 1..399 && slot0 != 0xFFFFFFFF && slot0 != 255`. Guard tests pin EncounterDialog and stale-flag WorldMap do NOT trigger.
+
+**Cities seeded live-verified (9 of 15 Chapter-1 settlements):**
+
+- [x] **8 uniform cities** — Dorter/Gariland/Warjilis/Yardrow/Goug/Zaland/Lesalia/Bervenia share `Chapter1UniformRows` = `{0: #10 Zodiac Braves, 1: #11 Zodiac Stones, 2: #19 Horror of Riovanes}`. Each live-traveled, screenshot-cross-referenced, 4 per-city tests.
+
+- [x] **Gollund (8) — FIRST Chapter-1 divergence** — Row 3 adds corpus #20 "The Haunted Mine". Own dictionary. Breaks the uniform hypothesis; `IsChapter1UniformCity(Gollund)=false`. `CitiesFor(20)` returns only `(Gollund, 3)`.
+
+**Sell-price overrides live-captured (28 new):**
+
+- [x] **Daggers/Swords/Katanas/Staves/Axes/Poles/Bows** — Gariland (archive) + Yardrow (5 swords) + Goug (4 late-game) + Zaland (10 katanas+staves) + Gollund (5 mixed). Novel ratio patterns: swords 9-29%, katanas/staves ~50%, axes sell=buy, Mage Masher/Serpent Staff sell>buy. Memory note: `project_sell_price_ratio_variance.md`.
+
+**Test hardening:**
+
+- [x] **+278 tests across 20 pure-class files (s34-36)** — Orbonne boundary sweep (+11), WeatherDamageModifier edges (+15), LocationSaveLogic (+13), StoryObjective (+4), AbilityCompactor (+5), ItemPrices (+6), CityRumors reverse-lookup (+7), RumorLookup.All ordering (+4), CityRumors validity guards (+4).
+
+- [x] **SkillsetNameReferenceTests meta-test** — Pins all 22 canonical skillset names resolve + 4 counter-examples return null. Motivated by the s37 silent-no-op finding.
+
+- [x] **CoverageAudit tests** — Surfaced 2 latent bugs: Zodiark 0-cost (fixed s38) + Jump/Holy Sword skillsets have 0% cost coverage (characterized; backfill deferred).
+
+- [x] **CorpusCityMentionTests diagnostic** — 8 tests scan corpus bodies for city-name mentions. Flagged unmapped-but-mentioned: #12 Warjilis, #15 Lionel, #23 Bervenia+Dorter — candidates for Chapter-2+ rehost.
+
+**Doc updates:**
+
+- [x] **Shopping.md: 4-tier rumor resolution**
+- [x] **TavernRumorTitleMap.md: city+row workflow section**
+- [x] **ColorMod/GameBridge/README.md (new, 58 lines)** — jump-table for all pure-class APIs
+- [x] **CLAUDE.md / README.md / docs/ARCHITECTURE.md: stale "1101 tests" count removed**
+- [x] **NavigationPaths.ReturnToWorldMap docstring** — escape-count depth semantics
+
+**Files created:**
+
+- `ColorMod/GameBridge/CityRumors.cs`
+- `ColorMod/GameBridge/RumorResolver.cs`
+- `ColorMod/GameBridge/ScreenNamePredicates.cs`
+- `ColorMod/GameBridge/README.md`
+- `Tests/GameBridge/CityRumorsTests.cs` (93 tests by s43)
+- `Tests/GameBridge/RumorResolverTests.cs` (14 tests)
+- `Tests/GameBridge/RumorPreviewTests.cs` (18 tests)
+- `Tests/GameBridge/ScreenNamePredicatesTests.cs` (68 tests by s42)
+- `Tests/GameBridge/EventIdClassifierTests.cs` (32 tests)
+- `Tests/GameBridge/SkillsetNameReferenceTests.cs` (26 tests)
+- `Tests/GameBridge/CorpusCityMentionTests.cs` (8 tests)
