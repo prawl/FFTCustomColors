@@ -94,20 +94,23 @@ Lands on the `Tavern` root screen (barkeep greeting, two options). From there:
 ```bash
 read_rumor                 # Open Rumors list
 read_rumor 2               # Open Rumors + scroll cursor to row 2 (0-based)
+read_rumor "Zodiac Braves" # Look up a rumor body by title (exact or substring match)
+read_rumor "Riovanes"      # Substring fallback — any distinctive phrase works
 read_errand                # Open Errands list
 read_errand 0              # Open Errands + land on the first errand
+list_rumors                # Dump the 26-entry hardcoded rumor corpus
 scan_tavern                # From TavernRumors/TavernErrands: count entries available
 ```
 
 **What you CAN see today:**
 - Navigate to any specific rumor or errand row with one command
 - See the `[TavernRumors]` / `[TavernErrands]` state confirmed
+- **Read rumor body text.** The bridge `get_rumor` action resolves via four tiers: exact title → body substring → `{locationId, unitIndex}` via `CityRumors` per-city row map → integer index. The shell `read_rumor` helper uses the first two tiers; direct JSON callers can use all four. The 26 brave-story rumors from `world_wldmes_bin.en.bin` are hardcoded into the mod (no external file ships) and returned as `{title, body}`.
 - Know the count of entries via `scan_tavern` (caveat: depends on `cursorRow` being surfaced — currently not wired on TavernRumors, so `scan_tavern` reports "≥30" as a placeholder)
 
-**What you CAN'T see today — the body text.**
-The rumor/errand body (the paragraph shown in the right pane) is NOT yet returned by the bridge. It lives in a packed game data file (`world_wldmes_bin.en.bin`, PSX-encoded) that the mod doesn't parse yet. Future work: decode the file at mod startup, emit `rumors.json`, return `{title, body}` from `read_rumor`.
-
-For now, if Claude needs to know what the current rumor says, the human has to look at the game window. Claude can still position the cursor, scroll through, and decide whether to engage at a meta level ("there are 4 rumors; one probably hints at a side-character recruit").
+**What you CAN'T see today — errand bodies and a few rumor titles.**
+- Errand metadata (quester / days / fee / reward) is NOT yet decoded — it likely lives in a separate NXD layout.
+- A small class of rumor titles (e.g. "At Bael's End") are NOT in the current corpus. Searching RAM for UI title text has consistently failed — the titles are composed by UE4 Slate widgets from a text table we haven't located. For rumors in the corpus, pass the title (or any distinctive phrase) to `read_rumor` to pull the body directly.
 
 ## Still not implemented
 

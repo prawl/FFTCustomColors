@@ -38,11 +38,13 @@ Use the running mod:
 
 ```bash
 source ./fft.sh
-list_rumors          # shows all 123 decoded bodies with 80-char previews
+list_rumors          # shows all 26 decoded bodies with first-sentence previews
 read_rumor "<distinctive phrase from the on-screen body>"
 ```
 
 When `read_rumor` returns a matching body, note the `[corpus #N]` index in the response header.
+
+The `list_rumors` preview is the **first sentence** of each body (via `RumorLookup.FirstSentence`), so most entries are title-matchable at a glance. If the first sentence doesn't disambiguate, fall through to `read_rumor "<phrase>"` with a distinctive mid-body phrase.
 
 ### 3. Add the entry
 
@@ -68,18 +70,25 @@ Run `./RunTests.sh` to confirm.
 
 ## Known unmappable titles
 
-Some rumors cannot be mapped because their body text is NOT in `world_wldmes.bin` at all. Example: **"At Bael's End"** (Dorter chapter-4 row 3) — the word "Bael" returns zero hits across all 318 .bin files in 0000-0004 pac dirs. These live in a different resource file we haven't reached (likely a UE4 `.locres` file or `world_snplmes_bin.en.bin` with a different multi-byte encoding). Document such cases in this file so future explorers don't waste time searching `world_wldmes.bin` for them.
+Some rumors cannot be mapped because their body text is NOT in `world_wldmes.bin` at all.
 
-### Known unmappable titles
+- **`At Bael's End`** — Dorter, chapter 4 row 3. The word "Bael" returns zero hits across all 318 .bin files in pac dirs 0000-0004 (PSX encoded). Next-investigation targets (in priority order): (a) `0002.en.pac/fftpack/world_snplmes_bin.en.bin` (~245KB, mixed encoding with `D1/D2/D3` multibyte sequences — candidate for a different decoder pass); (b) UE4 `Paks/*.pak` locres files; (c) pac dirs 0005-0011 not yet scanned.
 
-- `At Bael's End` — Dorter, chapter 4 row 3. Not in `world_wldmes.bin`.
+Document such cases here so future explorers don't waste time searching `world_wldmes.bin` for them.
+
+## City + row resolution (newer path)
+
+As of session 34, `get_rumor` also accepts `{locationId, unitIndex}` to resolve a rumor body directly from the Tavern cursor position — no title or distinctive phrase required. The table lives in [CityRumors.cs](../ColorMod/GameBridge/CityRumors.cs) keyed by settlement id → row → corpus index.
+
+When you visit a new city's Tavern, add its rows to `CityRumors.Table` alongside any new title-map entries. This lets future sessions resolve rumors from cursor position alone, which is useful once the TavernRumors cursorRow pointer-chain walk ships (memory note: `project_tavern_rumor_cursor.md`).
 
 ## Why not just use body substring matching?
 
-`read_rumor "<phrase>"` already works via body substring match — that's the fallback path when the title isn't in the map. The title map is the PREFERRED path because:
+`read_rumor "<phrase>"` already works via body substring match — that's the fallback path when neither the title nor the city+row is known. The title map + city-row path are preferred because:
 
-1. Faster — O(1) dict lookup vs O(N) substring scan
-2. Cleaner UX — Claude reads the title from screen, passes it verbatim
-3. Unambiguous — distinct titles can have overlapping body phrases
+1. **Faster** — O(1) dict lookup vs O(N) substring scan
+2. **Cleaner UX** — Claude reads the title from screen, passes it verbatim
+3. **Unambiguous** — distinct titles can have overlapping body phrases
+4. **No typos** — substring matches silently fail when the human mistypes; map lookup surfaces "no rumor matches" cleanly
 
-Keep both paths working. The map grows organically as new titles are observed.
+Keep all three paths working. The maps grow organically as new titles / city rows are observed.

@@ -22,6 +22,48 @@ namespace FFTColorCustomizer.GameBridge
     public static class ScreenDetectionLogic
     {
         /// <summary>
+        /// Minimum "real event" eventId (inclusive). Values below this are
+        /// unset sentinels (0) or invalid.
+        /// </summary>
+        public const int EventIdRealMin = 1;
+
+        /// <summary>
+        /// Exclusive upper bound for "real event" eventId. Values at or above
+        /// this are name IDs from the aliased nameId address (used during
+        /// combat animations) or invalid.
+        /// </summary>
+        public const int EventIdRealMaxExclusive = 400;
+
+        /// <summary>
+        /// Secondary "unset" sentinel. Some paths leave eventId at 0xFFFF
+        /// instead of 0 when no event is playing.
+        /// </summary>
+        public const int EventIdUnsetAlt = 0xFFFF;
+
+        /// <summary>
+        /// Returns true when the eventId corresponds to a real story/battle
+        /// event (inclusive of 1, exclusive of 400, excluding the 0xFFFF alt
+        /// sentinel). Use this as the single source of truth for the real-event
+        /// range check across all detection rules.
+        /// </summary>
+        public static bool IsRealEvent(int eventId)
+        {
+            return eventId >= EventIdRealMin
+                && eventId < EventIdRealMaxExclusive
+                && eventId != EventIdUnsetAlt;
+        }
+
+        /// <summary>
+        /// Returns true when eventId is one of the canonical unset sentinels
+        /// (0 or 0xFFFF). Disjoint with <see cref="IsRealEvent"/> — a value
+        /// cannot be both.
+        /// </summary>
+        public static bool IsEventIdUnset(int eventId)
+        {
+            return eventId == 0 || eventId == EventIdUnsetAlt;
+        }
+
+        /// <summary>
         /// Locations with multi-stage battle sequences (campaign sub-selector minimap).
         /// These locations show a minimap of sub-battles instead of a LocationMenu.
         /// When rawLocation matches one of these AND locationMenuFlag=0 (not in a shop
@@ -175,7 +217,7 @@ namespace FFTColorCustomizer.GameBridge
 
                 // Cutscene: real story event, not at a named location.
                 // eventId 1-399 = real event ID (nameIds start at 400, 0xFFFF/0 = unset).
-                if (eventId >= 1 && eventId < 400 && eventId != 0xFFFF && rawLocation == 255)
+                if (IsRealEvent(eventId) && rawLocation == 255)
                     return "Cutscene";
 
                 // WorldMap with cursor on a named location: hover holds the location ID
@@ -197,12 +239,12 @@ namespace FFTColorCustomizer.GameBridge
                 // (post-GameOver, post-battle stale) are handled by fallback rules further down.
                 if (rawLocation == 255 && ui == 0 && paused == 0
                     && (slot0 == 0xFFFFFFFFL || slot9 == 0)
-                    && (eventId == 0 || eventId == 0xFFFF))
+                    && IsEventIdUnset(eventId))
                     return "TitleScreen";
 
                 // Pre-battle dialogue at a named location: eventId in real range + slot0=0xFFFFFFFF
                 // indicates a pre-battle cutscene has been triggered (e.g. Orbonne Loffrey scene).
-                if (atNamedLocation && eventId >= 1 && eventId < 400 && eventId != 0xFFFF
+                if (atNamedLocation && IsRealEvent(eventId)
                     && slot0 == 0xFFFFFFFFL)
                     return "BattleDialogue";
 
@@ -274,7 +316,7 @@ namespace FFTColorCustomizer.GameBridge
                 // Mid-battle dialogue with slot0 torn down: rawLocation=255 + real event +
                 // slot0=0xFFFFFFFF + acted/moved=1 (happened after an action).
                 if (rawLocation == 255 && slot0 == 0xFFFFFFFFL
-                    && eventId >= 1 && eventId < 400 && eventId != 0xFFFF
+                    && IsRealEvent(eventId)
                     && actedOrMoved)
                     return "BattleDialogue";
 
@@ -316,7 +358,7 @@ namespace FFTColorCustomizer.GameBridge
             // than postBattlePausedState to avoid swallowing stale-flag post-worldmap states.
             bool orbonneDesertion = battleModeActive && battleMode == 0 && paused == 1
                 && actedOrMoved && slot0 != 0xFFFFFFFFL && slot0 != 255
-                && party == 1 && ui == 1 && eventId >= 1 && eventId < 400;
+                && party == 1 && ui == 1 && IsRealEvent(eventId);
 
             // Desertion: post-battle pause + submenu (warning dialog overlay).
             // Does NOT require encA==encB (noise counter).
@@ -338,7 +380,7 @@ namespace FFTColorCustomizer.GameBridge
             if (battleModeActive && battleMode == 0 && actedOrMoved && paused == 0
                 && slot0 != 0xFFFFFFFFL && slot0 != 255
                 && party == 1 && ui == 1
-                && eventId >= 1 && eventId < 400)
+                && IsRealEvent(eventId))
                 return "BattleVictory";
 
             // LoadGame: reached from GameOver menu. Shares stale battle state with GameOver
@@ -349,9 +391,8 @@ namespace FFTColorCustomizer.GameBridge
             // cutscene. Guard the LoadGame rule with an eventId check so a live cutscene
             // (eventId 1..399) doesn't get mis-labeled. 0 and 0xFFFF both mean "no event"
             // and are valid LoadGame states. See TODO "Cutscene misdetects as LoadGame".
-            bool eventIdIsUnset = eventId == 0 || eventId == 0xFFFF;
             if (paused == 0 && gameOverFlag == 1 && battleMode == 0 && !actedOrMoved
-                && !atNamedLocation && eventIdIsUnset)
+                && !atNamedLocation && IsEventIdUnset(eventId))
                 return "LoadGame";
 
             // Post-GameOver TitleScreen: title reached by returning from game-over menu.

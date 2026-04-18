@@ -158,5 +158,121 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 rawLocation: 255, hover: 18, screenName: "BattleMyTurn");
             Assert.Equal(255, loc);
         }
+
+        // Session 35: coverage for screens + edge inputs that weren't pinned.
+
+        [Fact]
+        public void ShouldSave_BattleSequence_AllowedScreen()
+        {
+            // BattleSequence (multi-stage minimap) is in the save allow-list
+            // alongside WorldMap / EncounterDialog. Pin it.
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 18, screenName: "BattleSequence", lastSavedLocation: 26);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void ShouldSave_BattleSequence_SameLocation_ReturnsFalse()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 18, screenName: "BattleSequence", lastSavedLocation: 18);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_BattleVictory_NotInAllowList()
+        {
+            // Victory / Desertion advance to WorldMap automatically. The save
+            // should happen from WorldMap, not from these transient screens.
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 18, screenName: "BattleVictory", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_BattleDesertion_NotInAllowList()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 18, screenName: "BattleDesertion", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_PartyMenuUnits_NotInAllowList()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 18, screenName: "PartyMenuUnits", lastSavedLocation: 26);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_WorldMap_HoverOutOfRange_FallsBackToRaw()
+        {
+            // hover=99 is out of [0, 42]; GetEffectiveLocation should fall back
+            // to rawLocation. ShouldSave then gates on the raw value.
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 26, hover: 99, screenName: "WorldMap", lastSavedLocation: 18);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void ShouldSave_WorldMap_HoverNegative_FallsBackToRaw()
+        {
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 26, hover: -1, screenName: "WorldMap", lastSavedLocation: 18);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void ShouldSave_LocationAtBoundary42_Allowed()
+        {
+            // 42 is the inclusive upper bound per GetEffectiveLocation logic.
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 42, screenName: "WorldMap", lastSavedLocation: -1);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void ShouldSave_LocationAtBoundary43_Rejected()
+        {
+            // Just past the inclusive upper bound.
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 43, screenName: "WorldMap", lastSavedLocation: -1);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ShouldSave_LocationZero_Allowed()
+        {
+            // 0 (Lesalia) is a valid location id.
+            var result = LocationSaveLogic.ShouldSave(
+                rawLocation: 0, screenName: "WorldMap", lastSavedLocation: -1);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void GetEffectiveLocation_WorldMap_HoverAtBoundary42_Returned()
+        {
+            int loc = LocationSaveLogic.GetEffectiveLocation(
+                rawLocation: 18, hover: 42, screenName: "WorldMap");
+            Assert.Equal(42, loc);
+        }
+
+        [Fact]
+        public void GetEffectiveLocation_WorldMap_HoverAtBoundary43_FallsBack()
+        {
+            int loc = LocationSaveLogic.GetEffectiveLocation(
+                rawLocation: 18, hover: 43, screenName: "WorldMap");
+            Assert.Equal(18, loc);
+        }
+
+        [Fact]
+        public void GetEffectiveLocation_TitleScreen_ReturnsRaw()
+        {
+            // Any non-WorldMap screen returns raw as-is (hover is ignored).
+            int loc = LocationSaveLogic.GetEffectiveLocation(
+                rawLocation: 255, hover: 10, screenName: "TitleScreen");
+            Assert.Equal(255, loc);
+        }
     }
 }

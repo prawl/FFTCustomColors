@@ -172,5 +172,101 @@ namespace FFTColorCustomizer.Tests.GameBridge
             double weaken = WeatherDamageModifier.GetMultiplier("Rain", "Fire");
             Assert.Equal(boost - 1.0, 1.0 - weaken, 3); // 3 decimal places
         }
+
+        // Session 34: edge-case hardening.
+
+        [Theory]
+        [InlineData(" ", "Fire")]
+        [InlineData("   ", "Fire")]
+        [InlineData("Rain", " ")]
+        [InlineData("Rain", "   ")]
+        public void GetMultiplier_WhitespaceOnly_Returns1(string weather, string element)
+        {
+            // Whitespace-only inputs should pass through harmlessly. Current impl
+            // checks IsNullOrEmpty — whitespace slips through the null guard but
+            // then fails the dictionary lookup, yielding the 1.0 pass-through.
+            // Pin that behavior so a future trim-input refactor stays neutral.
+            Assert.Equal(1.0, WeatherDamageModifier.GetMultiplier(weather, element));
+        }
+
+        [Theory]
+        [InlineData("Clear", "Fire")]
+        [InlineData("Clear", "Lightning")]
+        [InlineData("Clear", "Ice")]
+        [InlineData("Clear", "Wind")]
+        [InlineData("Clear", "Earth")]
+        [InlineData("Clear", "Water")]
+        [InlineData("Clear", "Holy")]
+        [InlineData("Clear", "Dark")]
+        public void ClearWeather_NoEffect_AllEightElements(string weather, string element)
+        {
+            // Clear is registered as an empty-effect weather. Sweep every canonical
+            // FFT element to pin that no accidental entry sneaks in.
+            Assert.Equal(1.0, WeatherDamageModifier.GetMultiplier(weather, element));
+        }
+
+        [Theory]
+        [InlineData("Rain", "Fire", 0.75)]
+        [InlineData("Rain", "Lightning", 1.25)]
+        [InlineData("Snow", "Fire", 0.75)]
+        [InlineData("Snow", "Ice", 1.25)]
+        [InlineData("Thunderstorm", "Lightning", 1.25)]
+        public void FormatMarker_RoundTripsWithGetMultiplier(string weather, string element, double expectedMultiplier)
+        {
+            // Round-trip invariant: GetMultiplier != 1.0 ⇔ FormatMarker != null.
+            // Also pin the sign: >1 → '+', <1 → '-'.
+            double m = WeatherDamageModifier.GetMultiplier(weather, element);
+            Assert.Equal(expectedMultiplier, m);
+            string? marker = WeatherDamageModifier.FormatMarker(weather, element);
+            Assert.NotNull(marker);
+            Assert.Equal(m > 1.0 ? '+' : '-', marker![0]);
+        }
+
+        [Fact]
+        public void FormatMarker_IsNull_IffMultiplierIs1()
+        {
+            // Pin the inverse direction of the round-trip: any (weather, element)
+            // that produces 1.0 must produce a null marker. Sweep a mixed set.
+            var cases = new (string w, string e)[]
+            {
+                ("Clear", "Fire"),
+                ("Sunny", "Lightning"),
+                ("Rain", "Holy"),
+                ("Snow", "Earth"),
+                ("Thunderstorm", "Water"),
+                ("Unknown", "Fire"),
+            };
+            foreach (var (w, e) in cases)
+            {
+                double m = WeatherDamageModifier.GetMultiplier(w, e);
+                string? marker = WeatherDamageModifier.FormatMarker(w, e);
+                if (m == 1.0) Assert.Null(marker);
+                else Assert.NotNull(marker);
+            }
+        }
+
+        [Fact]
+        public void FormatMarker_ElementCaseInsensitive()
+        {
+            // Pin that varying element case doesn't drop the marker.
+            Assert.Equal("+rain", WeatherDamageModifier.FormatMarker("Rain", "LIGHTNING"));
+            Assert.Equal("+rain", WeatherDamageModifier.FormatMarker("Rain", "lightning"));
+            Assert.Equal("-snow", WeatherDamageModifier.FormatMarker("Snow", "FIRE"));
+        }
+
+        [Fact]
+        public void GetMultiplier_AllMultipliers_AreStrictlyPositive()
+        {
+            // Sanity: no registered multiplier should be <= 0 (would invert or
+            // zero damage). Sweep every registered weather × every common element.
+            foreach (var weather in new[] { "Clear", "Sunny", "Rain", "Snow", "Thunderstorm" })
+            {
+                foreach (var el in new[] { "Fire", "Lightning", "Ice", "Wind", "Earth", "Water", "Holy", "Dark" })
+                {
+                    double m = WeatherDamageModifier.GetMultiplier(weather, el);
+                    Assert.True(m > 0, $"Weather={weather} Element={el} gave m={m}");
+                }
+            }
+        }
     }
 }

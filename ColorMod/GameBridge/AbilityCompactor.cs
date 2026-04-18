@@ -22,7 +22,7 @@ namespace FFTColorCustomizer.GameBridge
                 var a = abilities[i];
 
                 // Hide enemy-target abilities with no enemies in range
-                if (a.Target == "enemy" && !HasEnemyOccupant(a))
+                if (IsHidden(a))
                     continue;
 
                 // Try to collapse numbered family (Aim +1, +2, ... +20)
@@ -42,7 +42,7 @@ namespace FFTColorCustomizer.GameBridge
                             break;
 
                         // Skip hidden entries (enemy-target, no enemies)
-                        if (b.Target == "enemy" && !HasEnemyOccupant(b))
+                        if (IsHidden(b))
                         {
                             j++;
                             continue;
@@ -79,6 +79,16 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// An enemy-target ability with no enemy occupants in its valid-tile
+        /// list contributes no useful information to the ability list — the
+        /// player can't use it to hit anything. Hide it.
+        /// </summary>
+        public static bool IsHidden(AbilityEntry a)
+        {
+            return a.Target == "enemy" && !HasEnemyOccupant(a);
         }
 
         private static bool HasEnemyOccupant(AbilityEntry a)

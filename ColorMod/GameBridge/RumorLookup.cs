@@ -45,6 +45,18 @@ namespace FFTColorCustomizer.GameBridge
 
         public IReadOnlyList<WorldMesDecoder.Rumor> All => _rumors;
 
+        /// <summary>
+        /// Returns the first-sentence preview for the corpus entry at the given
+        /// index, or empty string if the index is out of range. Convenience
+        /// wrapper over GetByIndex + FirstSentence for callers that want only
+        /// the preview without the full body (e.g. title-map diagnostic tools).
+        /// </summary>
+        public string GetPreview(int index)
+        {
+            var r = GetByIndex(index);
+            return r == null ? "" : FirstSentence(r.Body);
+        }
+
         public WorldMesDecoder.Rumor? GetByBodySubstring(string needle)
         {
             if (string.IsNullOrWhiteSpace(needle)) return null;
@@ -71,5 +83,32 @@ namespace FFTColorCustomizer.GameBridge
         /// All known title → index mappings. Used by tests and diagnostic tooling.
         /// </summary>
         public static IReadOnlyDictionary<string, int> KnownTitles => TitleToIndex;
+
+        /// <summary>
+        /// Return the leading sentence of a rumor body, for diagnostic display.
+        /// Supports the title-map expansion workflow: when a new city's Tavern
+        /// is visited, the short preview is easier to cross-reference against a
+        /// UI title than a 200-400 char paragraph.
+        ///
+        /// Rule: everything up to and including the first sentence terminator
+        /// (. ! ?), OR the first 120 characters + "…", whichever is shorter.
+        /// </summary>
+        public static string FirstSentence(string? body)
+        {
+            if (string.IsNullOrEmpty(body)) return "";
+            const int maxLen = 120;
+            for (int i = 0; i < body.Length; i++)
+            {
+                char c = body[i];
+                if (c == '.' || c == '!' || c == '?')
+                {
+                    int end = i + 1;
+                    if (end > maxLen) break;
+                    return body.Substring(0, end);
+                }
+            }
+            if (body.Length <= maxLen) return body;
+            return body.Substring(0, maxLen) + "…";
+        }
     }
 }

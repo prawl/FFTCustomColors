@@ -126,7 +126,7 @@ If the mod menu appears but colors don't change, check your load order.
 ## Building from Source
 
 ```bash
-# Run tests (1101 tests)
+# Run tests (full suite, see run output for count)
 ./RunTests.sh
 
 # Build release

@@ -1688,7 +1688,9 @@ namespace FFTColorCustomizer.Utilities
                             //      known rumor titles like "The Legend of the Zodiac Braves".
                             //   2. Body substring match — use when Claude has a distinctive
                             //      phrase from the rumor body.
-                            //   3. Integer index — direct corpus access.
+                            //   3. City + row → CityRumors table → corpus index. Use when
+                            //      the caller has the Tavern cursor position but no title.
+                            //   4. Integer index — direct corpus access.
                             WorldMesDecoder.Rumor? rumor = null;
                             if (!string.IsNullOrWhiteSpace(command.SearchLabel))
                             {
@@ -1698,6 +1700,23 @@ namespace FFTColorCustomizer.Utilities
                                 {
                                     response.Status = "failed";
                                     response.Error = $"No rumor matches title or body for '{command.SearchLabel}'";
+                                    break;
+                                }
+                            }
+                            else if (command.LocationId >= 0)
+                            {
+                                int? corpusIdx = CityRumors.Lookup(command.LocationId, command.UnitIndex);
+                                if (corpusIdx == null)
+                                {
+                                    response.Status = "failed";
+                                    response.Error = $"No rumor mapped for city {command.LocationId} row {command.UnitIndex} (see FFTHandsFree/TavernRumorTitleMap.md to add it)";
+                                    break;
+                                }
+                                rumor = RumorLookup.GetByIndex(corpusIdx.Value);
+                                if (rumor == null)
+                                {
+                                    response.Status = "failed";
+                                    response.Error = $"CityRumors mapped to corpus index {corpusIdx.Value} but lookup returned null (corpus has {RumorLookup.Count} entries)";
                                     break;
                                 }
                             }
@@ -1729,7 +1748,9 @@ namespace FFTColorCustomizer.Utilities
                             sb.AppendLine($"Rumor corpus: {RumorLookup.Count} entries from {RumorLookup.SourcePath}");
                             foreach (var r in RumorLookup.All)
                             {
-                                var preview = r.Body.Length > 80 ? r.Body.Substring(0, 80) + "..." : r.Body;
+                                // Use FirstSentence so the preview is title-matchable,
+                                // not a mid-sentence truncation.
+                                var preview = FFTColorCustomizer.GameBridge.RumorLookup.FirstSentence(r.Body);
                                 sb.AppendLine($"  [{r.Index:D2}] @0x{r.Offset:X6}: {preview.Replace('\n', ' ')}");
                             }
                             response.Dialogue = sb.ToString();

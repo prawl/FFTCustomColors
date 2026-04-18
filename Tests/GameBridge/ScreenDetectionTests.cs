@@ -909,6 +909,177 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.NotEqual("BattleDesertion", result);
         }
 
+        // Session 34: property-style boundary sweep for Orbonne Victory/Desertion
+        // discriminator. The rule in ScreenDetectionLogic.cs requires:
+        //   battleModeActive && battleMode == 0 && actedOrMoved
+        //   && slot0 != 0xFFFFFFFF && slot0 != 255
+        //   && party == 1 && ui == 1
+        //   && eventId in [1, 400)
+        // Victory: paused == 0
+        // Desertion: paused == 1 && submenuFlag == 1
+        // These tests pin each boundary so a future rule tweak surfaces visibly.
+
+        [Fact]
+        public void DetectScreen_OrbonneVictory_EventId1_LowerBound_ShouldReturnVictory()
+        {
+            // eventId=1 is the inclusive lower bound of the real-event range.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 1);
+            Assert.Equal("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_OrbonneVictory_EventId399_UpperBound_ShouldReturnVictory()
+        {
+            // eventId=399 is the inclusive upper bound (the rule uses `< 400`).
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 399);
+            Assert.Equal("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_OrbonneVictory_EventId0_ShouldNotFire()
+        {
+            // eventId=0 is "unset"; Victory rule requires an active event in [1, 400).
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 0);
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_OrbonneVictory_Paused1_ShouldNotFire()
+        {
+            // Victory rule requires paused=0 (auto-advancing result screen).
+            // With paused=1 + submenuFlag=0 we're neither Victory nor Desertion.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 303);
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_OrbonneDesertion_RequiresSubmenuFlag1_Paused1WithoutSubmenu()
+        {
+            // Desertion rule requires BOTH paused=1 AND submenuFlag=1. The submenu
+            // is the "really leave?" warning overlay — without it we're in a
+            // different paused state (not Desertion).
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 303);
+            Assert.NotEqual("BattleDesertion", result);
+        }
+
+        [Fact]
+        public void DetectScreen_OrbonneDesertion_SubmenuFlag1_Paused1_ShouldReturnDesertion()
+        {
+            // Full Desertion signature: paused=1 + submenuFlag=1 + other Orbonne gates.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0,
+                eventId: 303);
+            Assert.Equal("BattleDesertion", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Orbonne_Party0_ShouldNotBeVictoryOrDesertion()
+        {
+            // party=0 disqualifies the Orbonne variant. Without the PartyMenu signal
+            // we're likely in a stale-flag state or a battle-dialogue screen.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 303);
+            Assert.NotEqual("BattleVictory", result);
+            Assert.NotEqual("BattleDesertion", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Orbonne_Ui0_ShouldNotBeVictoryOrDesertion()
+        {
+            // ui=0 disqualifies; both Orbonne rules require ui=1.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 0, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 303);
+            Assert.NotEqual("BattleVictory", result);
+            Assert.NotEqual("BattleDesertion", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Orbonne_Slot0_Ox10_NonSentinel_VariantVictory()
+        {
+            // slot0=0x10 (a different non-sentinel unit-struct value) should still
+            // fire Victory — the rule only excludes 0xFFFFFFFF and 255.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x10, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 303);
+            Assert.Equal("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_OrbonneVictory_ActedOnly_ShouldFire()
+        {
+            // actedOrMoved = acted || moved. Only-acted is sufficient.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 303);
+            Assert.Equal("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_OrbonneVictory_MovedOnly_ShouldFire()
+        {
+            // Only-moved is also sufficient for actedOrMoved.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 303);
+            Assert.Equal("BattleVictory", result);
+        }
+
         [Fact]
         public void DetectScreen_Status_Paused_MenuCursor3_ShouldReturnBattleStatus()
         {

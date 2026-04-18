@@ -548,7 +548,7 @@ FFTColorCustomizer/
 |       +-- system/ffto/g2d/            # Ramza TEX files
 |       +-- nxd/                        # NXD palette files
 |
-+-- Tests/                              # Test suite (1101 tests)
++-- Tests/                              # Test suite (run ./RunTests.sh for current count)
 |   +-- Configuration/
 |   +-- Core/
 |   +-- Integration/

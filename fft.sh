@@ -1291,12 +1291,15 @@ enter_tavern() {
 # read_rumor [index]: On TavernRumors, scroll to rumor #index (0-based) and
 # render the screen AND the decoded body text for that row.
 #
-# Body text is read from the global rumor corpus decoded from world_wldmes.bin
-# at mod startup. NOTE: the corpus is a flat list of ~26 rumors shared across
-# all taverns; the index in this helper is the UI cursor row (0,1,2,...) which
-# maps to a per-city subset the game filters by story progress. Text returned
-# is a best-effort match against the corpus by cursor index — not guaranteed
-# to match the exact on-screen selection until we decode the per-city filter.
+# Body text is read from the hardcoded 26-entry RumorCorpus decoded from
+# world_wldmes.bin (see FFTHandsFree/TavernRumorTitleMap.md). The corpus is
+# a flat list shared across all taverns; each city shows a per-story-progress
+# subset. Resolution tiers in the bridge: (1) exact title, (2) body substring,
+# (3) {locationId, row} via CityRumors.cs, (4) raw corpus index.
+#
+# The integer-index mode is a best-effort match (pass-through to corpus[N]);
+# use read_rumor "<title>" or "<phrase>" for accurate lookups, or the
+# locationId/unitIndex path from code when the cursor row is known.
 #
 # Falls back to `screen` only (no body) if the mod isn't running the new
 # get_rumor action.

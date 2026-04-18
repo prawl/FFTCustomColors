@@ -179,5 +179,158 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains("+1", result[0].Name);
             Assert.Contains("+20", result[0].Name);
         }
+
+        // Session 35: additional edge coverage.
+
+        [Fact]
+        public void Compact_NonConsecutiveFamilyMembers_NotCollapsed()
+        {
+            // Aim +1, Fire, Aim +2 — the Fire interrupts the run, so Aim
+            // entries should not collapse into a single range.
+            var input = new List<AbilityEntry>
+            {
+                MakeAbility("Aim +1", "enemy", (5, 5, "enemy")),
+                MakeAbility("Fire", "enemy", (5, 5, "enemy")),
+                MakeAbility("Aim +2", "enemy", (5, 5, "enemy")),
+            };
+            var result = AbilityCompactor.Compact(input);
+            Assert.Equal(3, result.Count);
+            Assert.Equal("Aim +1", result[0].Name);
+            Assert.Equal("Fire", result[1].Name);
+            Assert.Equal("Aim +2", result[2].Name);
+        }
+
+        [Fact]
+        public void Compact_FamilyWithHiddenMiddleEntry_SkipsAndCollapsesVisible()
+        {
+            // Aim +1 has enemies, Aim +2 doesn't, Aim +3 has enemies.
+            // The compactor skips hidden entries inside the family run and
+            // collapses the visible pair (+1, +3) — matching the existing
+            // production loop's "skip hidden, keep scanning" behavior.
+            var input = new List<AbilityEntry>
+            {
+                MakeAbility("Aim +1", "enemy", (5, 5, "enemy")),
+                MakeAbility("Aim +2", "enemy", (5, 5, "ally")),   // hidden
+                MakeAbility("Aim +3", "enemy", (5, 5, "enemy")),
+            };
+            var result = AbilityCompactor.Compact(input);
+            Assert.Single(result);
+            Assert.Contains("+1", result[0].Name);
+            Assert.Contains("+3", result[0].Name);
+        }
+
+        [Fact]
+        public void Compact_TwoIndependentFamilies_BothCollapse()
+        {
+            var input = new List<AbilityEntry>
+            {
+                MakeAbility("Aim +1", "enemy", (5, 5, "enemy")),
+                MakeAbility("Aim +2", "enemy", (5, 5, "enemy")),
+                MakeAbility("Charge +1", "enemy", (6, 6, "enemy")),
+                MakeAbility("Charge +2", "enemy", (6, 6, "enemy")),
+                MakeAbility("Charge +3", "enemy", (6, 6, "enemy")),
+            };
+            var result = AbilityCompactor.Compact(input);
+            Assert.Equal(2, result.Count);
+            Assert.Contains("Aim", result[0].Name);
+            Assert.Contains("Charge", result[1].Name);
+        }
+
+        [Fact]
+        public void Compact_CollapsedFamily_PreservesElementAndMp()
+        {
+            // When a family collapses, non-tile fields (Element, Mp, HRange,
+            // CastSpeed, AddedEffect) should come from the first entry.
+            var input = new List<AbilityEntry>
+            {
+                new AbilityEntry
+                {
+                    Name = "Fira +1",
+                    Target = "enemy",
+                    Element = "Fire",
+                    Mp = 10,
+                    HRange = "3",
+                    CastSpeed = 8,
+                    ValidTargetTiles = new List<ValidTargetTile>
+                    {
+                        new ValidTargetTile { X = 5, Y = 5, Occupant = "enemy" }
+                    },
+                    TotalTargets = 1,
+                },
+                new AbilityEntry
+                {
+                    Name = "Fira +2",
+                    Target = "enemy",
+                    Element = "Fire",
+                    Mp = 15, // different — should be overridden by first entry's value
+                    HRange = "3",
+                    CastSpeed = 8,
+                    ValidTargetTiles = new List<ValidTargetTile>
+                    {
+                        new ValidTargetTile { X = 5, Y = 5, Occupant = "enemy" }
+                    },
+                    TotalTargets = 1,
+                },
+            };
+            var result = AbilityCompactor.Compact(input);
+            Assert.Single(result);
+            Assert.Equal("Fire", result[0].Element);
+            Assert.Equal(10, result[0].Mp);
+            Assert.Equal("3", result[0].HRange);
+            Assert.Equal(8, result[0].CastSpeed);
+        }
+
+        [Fact]
+        public void Compact_NameWithoutTrailingNumber_NotCollapsed()
+        {
+            // "Cure" doesn't match the numbered-family regex — should pass
+            // through unchanged even with identical tile lists.
+            var input = new List<AbilityEntry>
+            {
+                MakeAbility("Cure", "ally", (5, 5, "ally")),
+                MakeAbility("Cura", "ally", (5, 5, "ally")),
+            };
+            var result = AbilityCompactor.Compact(input);
+            Assert.Equal(2, result.Count);
+        }
+
+        // Session 36: direct tests for the extracted IsHidden helper.
+
+        [Fact]
+        public void IsHidden_EnemyAbilityWithEnemyOccupant_False()
+        {
+            var a = MakeAbility("Fire", "enemy", (5, 5, "enemy"));
+            Assert.False(AbilityCompactor.IsHidden(a));
+        }
+
+        [Fact]
+        public void IsHidden_EnemyAbilityWithoutEnemyOccupant_True()
+        {
+            var a = MakeAbility("Fire", "enemy", (5, 5, "ally"), (5, 6, null));
+            Assert.True(AbilityCompactor.IsHidden(a));
+        }
+
+        [Fact]
+        public void IsHidden_EnemyAbilityEmptyTileList_True()
+        {
+            var a = MakeAbility("Fire", "enemy");
+            Assert.True(AbilityCompactor.IsHidden(a));
+        }
+
+        [Fact]
+        public void IsHidden_AllyTarget_AlwaysFalse_EvenWithNoTiles()
+        {
+            // Ally-target abilities aren't hidden even with no targets —
+            // the ability is still potentially useful for self-cast etc.
+            var a = MakeAbility("Cure", "ally");
+            Assert.False(AbilityCompactor.IsHidden(a));
+        }
+
+        [Fact]
+        public void IsHidden_SelfTarget_AlwaysFalse()
+        {
+            var a = MakeAbility("Shout", "self");
+            Assert.False(AbilityCompactor.IsHidden(a));
+        }
     }
 }

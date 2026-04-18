@@ -195,4 +195,71 @@ public class ItemPricesTests
     {
         Assert.False(ItemPrices.IsSellPriceGroundTruth(int.MaxValue));
     }
+
+    // Session 35: additional hardening.
+
+    [Fact]
+    public void AllSellPriceOverrides_HaveCorrespondingBuyPrice()
+    {
+        // Live-captured sell prices should always correspond to a shop-sold
+        // item (an entry in BuyPrices). An override without a buy price would
+        // mean we captured a sell number for something not in the shop list.
+        foreach (var kv in ItemPrices.SellPriceOverrides)
+        {
+            Assert.True(ItemPrices.BuyPrices.ContainsKey(kv.Key),
+                $"Sell override for item {kv.Key} has no matching buy price");
+        }
+    }
+
+    [Fact]
+    public void GetSellPrice_MatchesOverrideTable_WhenOverridePresent()
+    {
+        // Round-trip: for every override entry, GetSellPrice(id) must return
+        // the exact override value — no accidental buy/2 fallback.
+        foreach (var kv in ItemPrices.SellPriceOverrides)
+        {
+            Assert.Equal(kv.Value, ItemPrices.GetSellPrice(kv.Key));
+        }
+    }
+
+    [Fact]
+    public void IsSellPriceGroundTruth_ZeroAndNegative_ReturnFalse()
+    {
+        Assert.False(ItemPrices.IsSellPriceGroundTruth(0));
+        Assert.False(ItemPrices.IsSellPriceGroundTruth(-1));
+        Assert.False(ItemPrices.IsSellPriceGroundTruth(int.MinValue));
+    }
+
+    [Fact]
+    public void BuyPrices_And_SellPriceOverrides_AreNotNull()
+    {
+        // Sanity: the static init populates these — never null. If either
+        // were null a NullReferenceException would surface in live use.
+        Assert.NotNull(ItemPrices.BuyPrices);
+        Assert.NotNull(ItemPrices.SellPriceOverrides);
+        Assert.NotNull(ItemPrices.UnresolvedNames);
+    }
+
+    [Fact]
+    public void GetSellPrice_Override_IsReturnedRegardlessOfBuyPresence()
+    {
+        // For the Dagger override: the override is 50, buy is 200. The
+        // function must never accidentally return buy (200) or buy/2 (100).
+        int sell = ItemPrices.GetSellPrice(1)!.Value;
+        Assert.NotEqual(200, sell);
+        Assert.NotEqual(100, sell);
+        Assert.Equal(50, sell);
+    }
+
+    [Fact]
+    public void GetBuyPrice_AllKeysInBuyPricesResolve()
+    {
+        // Every ID in BuyPrices round-trips through GetBuyPrice.
+        foreach (var kv in ItemPrices.BuyPrices)
+        {
+            int? price = ItemPrices.GetBuyPrice(kv.Key);
+            Assert.NotNull(price);
+            Assert.Equal(kv.Value, price);
+        }
+    }
 }
