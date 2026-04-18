@@ -638,7 +638,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
 
 
 
-- [ ] **Session command log for post-hoc review (back burner)** — added 2026-04-15 session 16 as a future observability item. Record every command Claude issues during a play session: command ID, timestamp, action name, source screen, target screen (if validPath), success/partial/failed status, error message if any, and round-trip latency. One line per command, append-only file under `claude_bridge/` (rotate per session start). Enables "where did Claude get stuck?" review after a long play — pinpoint the exact command sequence where a helper failed, a screen mis-detected, or a batched nav drifted. Out-of-scope for this session; capture the requirement while it's fresh.
+- [x] **Session command log for post-hoc review** — SHIPPED. `ColorMod/GameBridge/SessionCommandLog.cs` appends one JSONL row per bridge command to `claude_bridge/session_<timestamp>.jsonl`. Fields: commandId, timestamp, action, sourceScreen, targetScreen, status, error, latencyMs. Wired into `CommandWatcher.cs:1418`. Session 31 audit confirmed live files exist. Future: add a `session_tail` fft.sh helper that greps the current session's log for failed/slow commands.
 
 
 

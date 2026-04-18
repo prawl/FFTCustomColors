@@ -3229,6 +3229,54 @@ logs() {
   fi
 }
 
+# session_tail [N]: Show the last N rows of the current session's command
+# log — the JSONL trail written by SessionCommandLog. Useful for post-hoc
+# "which command drifted?" review.
+#
+# Columns: time · action · source→target · status · latency · error
+#
+# Options:
+#   session_tail             → last 20 rows
+#   session_tail 50          → last 50 rows
+#   session_tail failed      → only failed/partial rows
+#   session_tail slow [ms]   → rows with latencyMs >= ms (default 2000)
+session_tail() {
+  # Find the most recent session_*.jsonl file (one per mod startup).
+  local latest=$(ls -t "$B"/session_*.jsonl 2>/dev/null | head -1)
+  if [ -z "$latest" ]; then
+    echo "[session_tail] no session log yet — start the game first"
+    return 1
+  fi
+  local mode="tail"
+  local threshold=2000
+  local limit=20
+  case "$1" in
+    failed)       mode="failed" ;;
+    slow)         mode="slow"; [ -n "$2" ] && threshold="$2" ;;
+    ''|[0-9]*)    [ -n "$1" ] && limit="$1" ;;
+    *)            echo "[session_tail] usage: session_tail [N | failed | slow [ms]]"; return 1 ;;
+  esac
+  node -e "
+const fs=require('fs');
+const lines=fs.readFileSync(process.argv[1],'utf8').split('\\n').filter(Boolean);
+const mode='$mode'; const thr=$threshold; const lim=$limit;
+const fmt=r=>{
+  const t=(r.timestamp||'').slice(11,19);
+  const src=r.sourceScreen||'?'; const tgt=r.targetScreen||'?';
+  const lat=(r.latencyMs!=null?r.latencyMs+'ms':'?');
+  const err=r.error?' err='+r.error:'';
+  return t+' '+r.action+' '+src+'→'+tgt+' '+r.status+' '+lat+err;
+};
+const all=lines.map(l=>{try{return JSON.parse(l);}catch(e){return null;}}).filter(Boolean);
+let filtered=all;
+if(mode==='failed') filtered=all.filter(r=>r.status!=='completed');
+else if(mode==='slow') filtered=all.filter(r=>r.latencyMs>=thr);
+const slice=mode==='tail'?filtered.slice(-lim):filtered;
+slice.forEach(r=>console.log(fmt(r)));
+console.log('— '+slice.length+'/'+all.length+' rows from '+process.argv[1].split(/[\\\\/]/).pop());
+" "$latest"
+}
+
 # =============================================================================
 # DEPRECATED COMMANDS — use screen instead
 # =============================================================================
