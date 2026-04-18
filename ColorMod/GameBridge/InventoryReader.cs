@@ -91,7 +91,7 @@ namespace FFTColorCustomizer.GameBridge
         /// Pure decode from a raw 272-byte inventory array to structured
         /// entries. Extracted for unit testing — the memory-read side is
         /// handled by ReadAll(). Ordered by item ID; zero counts skipped.
-        /// SellPrice is populated via <see cref="ItemPrices.GetSellPrice"/>
+        /// SellPrice is populated via <see cref="ItemPrices.GetSellPriceWithEstimate"/>
         /// (null for items without a known buy price).
         /// </summary>
         public static List<InventoryEntry> DecodeRaw(byte[] bytes)
@@ -104,14 +104,15 @@ namespace FFTColorCustomizer.GameBridge
                 int count = bytes[id];
                 if (count == 0) continue;
                 var info = ItemData.GetItem(id);
+                var sell = ItemPrices.GetSellPriceWithEstimate(id);
                 results.Add(new InventoryEntry
                 {
                     ItemId = id,
                     Count = count,
                     Name = info?.Name,
                     Type = info?.Type,
-                    SellPrice = ItemPrices.GetSellPrice(id),
-                    SellPriceVerified = ItemPrices.IsSellPriceGroundTruth(id),
+                    SellPrice = sell?.Price,
+                    SellPriceVerified = sell?.IsGroundTruth ?? false,
                 });
             }
             return results;

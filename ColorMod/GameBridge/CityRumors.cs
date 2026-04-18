@@ -74,60 +74,39 @@ namespace FFTColorCustomizer.GameBridge
             }
         }
 
+        // Chapter-1 uniform rumor row layout. Every Chapter-1 settlement
+        // visited in sessions 33-40 (Dorter/Gariland/Warjilis/Yardrow/Goug/
+        // Zaland) shows these three rumors in this order. Row 3 is always
+        // "At Bael's End" which has no matching corpus entry (different
+        // source file — see TavernRumorTitleMap.md). When a Chapter-2+
+        // settlement diverges, split this into per-chapter tables.
+        //
+        // Adding a newly-visited Chapter-1 city is one line: reference this
+        // dictionary from the Table entry.
+        internal static readonly IReadOnlyDictionary<int, int> Chapter1UniformRows =
+            new Dictionary<int, int>
+            {
+                { 0, 10 },  // "The Legend of the Zodiac Braves"
+                { 1, 11 },  // "Zodiac Stones"
+                { 2, 19 },  // "The Horror of Riovanes"
+                // row 3 unmapped — "At Bael's End" body not in world_wldmes.bin
+            };
+
         // cityId → (row → corpusIndex). Rows that map to null / missing entries
         // return null from Lookup.
-        private static readonly Dictionary<int, Dictionary<int, int>> Table =
+        private static readonly Dictionary<int, IReadOnlyDictionary<int, int>> Table =
             new()
             {
-                // Dorter, verified live session 33 at Dorter Tavern:
-                //   row 0 → "The Legend of the Zodiac Braves" (corpus #10)
-                //   row 1 → "Zodiac Stones"                   (corpus #11)
-                //   row 2 → "The Horror of Riovanes"          (corpus #19)
-                //   row 3 → "At Bael's End"                    NOT in corpus — unmapped.
-                [CityId.Dorter] = new Dictionary<int, int>
-                {
-                    { 0, 10 },
-                    { 1, 11 },
-                    { 2, 19 },
-                },
-                // Gariland, verified live session 36 at Gariland Tavern
-                // during Chapter 1 story state. Identical rumor set to
-                // Dorter for Chapter 1 — same 4 titles in same order. If the
-                // Chapter-2+ rumor set diverges, split into a per-chapter table.
-                [CityId.Gariland] = new Dictionary<int, int>
-                {
-                    { 0, 10 },
-                    { 1, 11 },
-                    { 2, 19 },
-                },
-                // Warjilis, verified live session 37 at Warjilis Tavern during
-                // Chapter 1. Same 4 titles as Dorter/Gariland — the Chapter-1
-                // rumor list is shared across all visited cities so far. When
-                // a city finally diverges (likely a post-Chapter-2 visit), the
-                // ChapterXCityRumors split will become necessary.
-                [CityId.Warjilis] = new Dictionary<int, int>
-                {
-                    { 0, 10 },
-                    { 1, 11 },
-                    { 2, 19 },
-                },
-                // Yardrow, verified live session 38 at Yardrow Tavern during
-                // Chapter 1. Fourth city confirming the Chapter-1 uniform-list
-                // hypothesis. Still same 4 titles.
-                [CityId.Yardrow] = new Dictionary<int, int>
-                {
-                    { 0, 10 },
-                    { 1, 11 },
-                    { 2, 19 },
-                },
-                // Goug, verified live session 39 at Goug Tavern during Chapter 1.
-                // Fifth settlement confirming Chapter-1 uniform-list hypothesis.
-                [CityId.Goug] = new Dictionary<int, int>
-                {
-                    { 0, 10 },
-                    { 1, 11 },
-                    { 2, 19 },
-                },
+                // Sessions 33-40 at each tavern confirmed identical rumor set
+                // during Chapter 1. As Chapter-2+ gets explored and divergences
+                // appear, split cities out of this uniform block into per-city
+                // dictionaries as needed.
+                [CityId.Dorter]   = Chapter1UniformRows,  // session 33
+                [CityId.Gariland] = Chapter1UniformRows,  // session 36
+                [CityId.Warjilis] = Chapter1UniformRows,  // session 37
+                [CityId.Yardrow]  = Chapter1UniformRows,  // session 38
+                [CityId.Goug]     = Chapter1UniformRows,  // session 39
+                [CityId.Zaland]   = Chapter1UniformRows,  // session 40
             };
 
         /// <summary>

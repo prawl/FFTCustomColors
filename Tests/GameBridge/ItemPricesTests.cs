@@ -158,6 +158,38 @@ public class ItemPricesTests
     }
 
     [Fact]
+    public void SellPriceOverrides_ZalandMixedTierSet_Session40()
+    {
+        // Session 40 live-captured at Zaland Outfitter Sell. Katanas and
+        // staves mostly cluster at 50% of buy (matching the fallback) but
+        // one staff (Serpent Staff) sells ABOVE its buy price — a known
+        // FFT quirk previously seen with Mage Masher. Pin the exact values.
+        int kotetsuId = ItemData.Items.First(kv => kv.Value.Name == "Kotetsu").Key;
+        int osafuneId = ItemData.Items.First(kv => kv.Value.Name == "Osafune").Key;
+        int kikuId = ItemData.Items.First(kv => kv.Value.Name == "Kiku-ichimonji").Key;
+        int whiteStaffId = ItemData.Items.First(kv => kv.Value.Name == "White Staff").Key;
+        int serpentId = ItemData.Items.First(kv => kv.Value.Name == "Serpent Staff").Key;
+
+        Assert.Equal(1_500, ItemPrices.GetSellPrice(kotetsuId));
+        Assert.Equal(2_500, ItemPrices.GetSellPrice(osafuneId));
+        Assert.Equal(11_000, ItemPrices.GetSellPrice(kikuId));
+        Assert.Equal(400, ItemPrices.GetSellPrice(whiteStaffId));
+        Assert.Equal(3_000, ItemPrices.GetSellPrice(serpentId));
+    }
+
+    [Fact]
+    public void SellPriceOverrides_SerpentStaff_DocumentsSellAboveBuy()
+    {
+        // Serpent Staff: buy 2200, sell 3000. Second confirmed "sell > buy"
+        // item after Mage Masher (session 33). Documents a real FFT quirk
+        // so future sanity-bound tightening knows about these cases.
+        int id = ItemData.Items.First(kv => kv.Value.Name == "Serpent Staff").Key;
+        int sell = ItemPrices.GetSellPrice(id)!.Value;
+        int buy = ItemPrices.GetBuyPrice(id)!.Value;
+        Assert.True(sell > buy, $"Expected sell > buy; got sell={sell} buy={buy}");
+    }
+
+    [Fact]
     public void SellPriceOverrides_GougLateGameSet_Session39()
     {
         // Session 39 live-captured at Goug Outfitter Sell. Swords stay

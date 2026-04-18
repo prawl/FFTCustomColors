@@ -84,6 +84,19 @@ namespace FFTColorCustomizer.GameBridge
             ["Icebrand"]           = 7_000, // buy 30_000 → 23%
             ["Runeblade"]          = 10_000,// buy 35_000 → 29%
             ["Wizard's Rod"]       = 4_000, // buy 8_000 → 50% (rods ≈ buy/2)
+            // Live-verified at Zaland Outfitter Sell (session 40). Staves,
+            // katanas, bows — ratios cluster 20-50%, generally higher than
+            // swords. Healing Staff has buy unlisted in our table; skipped.
+            ["Kotetsu"]            = 1_500, // buy 3_000 → 50% (katana, matches buy/2)
+            ["Osafune"]            = 2_500, // buy 5_000 → 50%
+            ["Murasame"]           = 3_500, // buy 7_000 → 50%
+            ["Ama-no-Murakumo"]    = 4_000, // buy 8_000 → 50%
+            ["Kiyomori"]           = 5_000, // buy 10_000 → 50%
+            ["Kiku-ichimonji"]     = 11_000,// buy 22_000 → 50%
+            ["Oak Staff"]          = 50,    // buy 120 → 41% (cheap staff)
+            ["White Staff"]        = 400,   // buy 800 → 50%
+            ["Serpent Staff"]      = 3_000, // buy 2_200 → sell>buy (game quirk, already seen with Mage Masher)
+            ["Mage's Staff"]       = 2_000, // buy 4_000 → 50%
         };
 
         /// <summary>
