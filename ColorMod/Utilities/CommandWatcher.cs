@@ -1346,7 +1346,10 @@ namespace FFTColorCustomizer.Utilities
                     var commandStartedAt = DateTime.UtcNow;
 
                     var response = ExecuteCommand(command);
-                    response.Screen ??= DetectScreenSettled();
+                    // Screen-query commands can't be mid-transition (no keys just
+                    // fired), so skip the 150ms+ settle loop. Key-sending and
+                    // action commands still settle to let UI animations finish.
+                    response.Screen ??= DetectScreenSettled(requireSettle: !isScreenQuery);
                     // Override detection-ambiguous names where the SM has a
                     // stronger signal (e.g. SaveSlotPicker vs TravelList).
                     bool screenQueryOverrode = false;
@@ -3292,10 +3295,21 @@ namespace FFTColorCustomizer.Utilities
         /// Polls DetectScreen until two consecutive reads return the same screen name,
         /// ensuring the game UI has settled after a transition. Waits up to 1s.
         /// </summary>
-        private DetectedScreen? DetectScreenSettled()
+        private DetectedScreen? DetectScreenSettled() => DetectScreenSettled(requireSettle: true);
+
+        /// <summary>
+        /// When <paramref name="requireSettle"/> is false, returns a single DetectScreen()
+        /// read without the 150ms+ settle loop. Screen-query commands (empty keys list,
+        /// no action) can't be mid-transition — nothing just changed — so forcing a
+        /// settle is pure wasted latency. Saves ~150-200ms on every `screen` call.
+        /// The key-sending and action paths still settle (the default) to let UI
+        /// animations finish before we report state.
+        /// </summary>
+        private DetectedScreen? DetectScreenSettled(bool requireSettle)
         {
             var first = DetectScreen();
             if (first == null) return null;
+            if (!requireSettle) return first;
 
             var sw = Stopwatch.StartNew();
             string lastName = first.Name;
