@@ -207,7 +207,10 @@ namespace FFTColorCustomizer.GameBridge
                     ? blanketCost
                     : GetCost(skillset[i].Name);
 
-                if (cost == null) continue;
+                // Treat cost == 0 as "unlearnable via JP" sentinel (e.g. Zodiark
+                // in Summon must be learned via enemy crystal drop). Skip those
+                // alongside unknown-cost entries so Next: N doesn't surface 0.
+                if (cost == null || cost.Value <= 0) continue;
                 if (min == null || cost.Value < min.Value) min = cost;
             }
             return min;

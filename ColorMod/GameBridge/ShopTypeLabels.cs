@@ -17,7 +17,7 @@ namespace FFTColorCustomizer.GameBridge
             1 => "Tavern",
             2 => "WarriorsGuild",
             3 => "PoachersDen",
-            4 => "SaveGame",  // TODO: verify live at Warjilis
+            4 => "SaveGame",  // TODO live-verify at a city with the SaveGame menu option (session 38: Warjilis/Yardrow don't expose it from LocationMenu)
             _ => $"Shop{shopTypeIndex}",
         };
     }

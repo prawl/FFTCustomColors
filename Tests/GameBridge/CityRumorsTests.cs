@@ -22,6 +22,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         private const int DorterLocationId = 9;
         private const int GarilandLocationId = 6;
         private const int WarjilisLocationId = 12;
+        private const int YardrowLocationId = 7;
 
         [Fact]
         public void Dorter_Row0_MapsToCorpusIndex10()
@@ -128,7 +129,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             // Round-trip: for every (city, row) in the forward table,
             // CitiesFor(lookupIndex) must include that (city, row) pair.
-            foreach (int city in new[] { DorterLocationId, GarilandLocationId, WarjilisLocationId })
+            foreach (int city in new[] { DorterLocationId, GarilandLocationId, WarjilisLocationId, YardrowLocationId })
             {
                 for (int row = 0; row < 10; row++)
                 {
@@ -224,7 +225,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // Pin the invariant: all seeded Chapter-1 cities resolve row-by-row
             // to the same corpus index as Dorter. Divergence breaks this test,
             // prompting a per-chapter split.
-            foreach (int city in new[] { GarilandLocationId, WarjilisLocationId })
+            foreach (int city in new[] { GarilandLocationId, WarjilisLocationId, YardrowLocationId })
             {
                 for (int row = 0; row < 3; row++)
                 {
@@ -236,15 +237,42 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void CitiesFor_CorpusIndex10_ReturnsThreeCitiesAtRow0()
+        public void CitiesFor_CorpusIndex10_ReturnsAllSeededChapter1Cities()
         {
-            // After seeding all three Chapter-1 cities, corpus #10 maps to
-            // (Dorter, 0), (Gariland, 0), (Warjilis, 0).
+            // After seeding all four Chapter-1 cities, corpus #10 maps to
+            // (Dorter, 0), (Gariland, 0), (Warjilis, 0), (Yardrow, 0).
             var result = CityRumors.CitiesFor(10);
-            Assert.Equal(3, result.Count);
+            Assert.Equal(4, result.Count);
             Assert.Contains((DorterLocationId, 0), result);
             Assert.Contains((GarilandLocationId, 0), result);
             Assert.Contains((WarjilisLocationId, 0), result);
+            Assert.Contains((YardrowLocationId, 0), result);
+        }
+
+        // Yardrow live-verified session 38: Chapter-1 uniform rumor set.
+
+        [Fact]
+        public void Yardrow_Row0_MapsToZodiacBraves()
+        {
+            Assert.Equal(10, CityRumors.Lookup(YardrowLocationId, 0));
+        }
+
+        [Fact]
+        public void Yardrow_Row1_MapsToZodiacStones()
+        {
+            Assert.Equal(11, CityRumors.Lookup(YardrowLocationId, 1));
+        }
+
+        [Fact]
+        public void Yardrow_Row2_MapsToHorrorOfRiovanes()
+        {
+            Assert.Equal(19, CityRumors.Lookup(YardrowLocationId, 2));
+        }
+
+        [Fact]
+        public void Yardrow_Row3_BaelsEnd_ReturnsNull()
+        {
+            Assert.Null(CityRumors.Lookup(YardrowLocationId, 3));
         }
 
         // Session 36: defensive validity guards on the CityRumors.Table

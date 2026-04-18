@@ -452,8 +452,9 @@ namespace FFTColorCustomizer.GameBridge
             // Scaffold for when detection lands — NOT YET LIVE-VERIFIED. The
             // Save screen likely shows a list of slots (slot 1, slot 2, ...);
             // Select saves to the highlighted slot, Cancel backs out.
-            // TODO: verify slot-picker flow at Warjilis once shopTypeIndex=4
-            // is confirmed as SaveGame.
+            // TODO: live-verify at a city that actually exposes the SaveGame
+            // menu option. Session 38: Warjilis and Yardrow both lack it from
+            // LocationMenu; try Lesalia or a story-progression location.
             return new()
             {
                 ["ScrollUp"] = new PathEntry { Keys = new[] { Key(VK_UP, "Up") }, Desc = "Previous save slot" },

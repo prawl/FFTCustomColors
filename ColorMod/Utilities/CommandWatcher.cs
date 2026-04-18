@@ -5490,10 +5490,7 @@ namespace FFTColorCustomizer.Utilities
                 // once we track the Fitting picker depth). All three share
                 // the same DTO shape so fft.sh can render them with one
                 // code path.
-                bool onPartyMenuAnyTab = screen.Name == "PartyMenuUnits"
-                    || screen.Name == "PartyMenuInventory"
-                    || screen.Name == "PartyMenuChronicle"
-                    || screen.Name == "PartyMenuOptions";
+                bool onPartyMenuAnyTab = FFTColorCustomizer.GameBridge.ScreenNamePredicates.IsPartyMenuTab(screen.Name);
                 bool onOutfitterSell = screen.Name == "OutfitterSell";
                 bool onOutfitterFitting = screen.Name == "OutfitterFitting";
                 if ((onPartyMenuAnyTab || onOutfitterSell || onOutfitterFitting) && Explorer != null)

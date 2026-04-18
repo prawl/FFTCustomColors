@@ -249,23 +249,20 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void ComputeNextJp_ZeroCostSentinel_SurfacesAsMin_DocumentsCurrentBehavior()
+        public void ComputeNextJp_ZeroCostSentinel_SkippedAsUnlearnable()
         {
             // Zodiark in the Summon skillset has JP cost 0 as a sentinel
-            // meaning "unlearnable via normal JP earn". Current behavior:
-            // ComputeNextJp does NOT filter 0-cost entries, so an unlearned
-            // Zodiark WILL surface as "Next: 0". This test pins the current
-            // (arguably wrong) behavior so a future filter-fix is a visible
-            // breaking change.
+            // meaning "unlearnable via normal JP earn" (must be learned via
+            // enemy crystal drop). ComputeNextJp filters cost <= 0 the same
+            // as cost == null — a 0-cost ability is NOT a valid "Next: N".
             //
-            // If a filter is added (recommended: treat 0 as "unknown cost"
-            // equivalent to null), update this test to assert the filtered
-            // result (e.g. Moogle = 8).
+            // With no summons learned, Next should be Moogle (JP cost 110),
+            // the cheapest actually-learnable entry in the skillset. NOT 0
+            // (Zodiark's sentinel).
             var summon = ActionAbilityLookup.GetSkillsetAbilities("Summon");
             Assert.NotNull(summon);
             int? next = AbilityJpCosts.ComputeNextJpForSkillset("Summon", new HashSet<int>());
-            // Document: with Zodiark unlearned and 0 cost, Next = 0.
-            Assert.Equal(0, next);
+            Assert.Equal(110, next);
         }
 
         [Fact]

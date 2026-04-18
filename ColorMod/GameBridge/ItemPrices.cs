@@ -51,9 +51,12 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         private static readonly Dictionary<string, int> SellPricesByName = new()
         {
-            // TODO: populate from live Outfitter Sell screen captures.
-            // User is collecting real values; paste them here and they
-            // override GetSellPrice's buy/2 fallback automatically.
+            // Live-verified sell prices from Outfitter Sell screen captures.
+            // Grown incrementally as cities are visited — session 33 (Gariland)
+            // added 7 daggers/swords, session 38 (Yardrow) added 5 mid-tier
+            // swords. Sell/buy ratios are wildly inconsistent (9-19% for the
+            // Yardrow sword set) so buy/2 is not a usable default; keep
+            // extending this table empirically.
             //
             // Live-verified starting set (Gariland Outfitter Sell, 2026-04-15):
             ["Dagger"]             = 50,
@@ -63,6 +66,15 @@ namespace FFTColorCustomizer.GameBridge
             ["Assassin's Dagger"]  = 2_500,
             ["Broadsword"]         = 100,
             ["Longsword"]          = 250,
+            // Live-verified expansion (Yardrow Outfitter Sell, session 38).
+            // Sell/buy ratios here are wildly inconsistent (9-19% of buy) —
+            // confirms there's no simple sell-price formula. Keep extending
+            // this table rather than trying to derive one.
+            ["Iron Sword"]         = 450,   // buy 4_000 → 11% ratio
+            ["Mythril Sword"]      = 800,   // buy 5_000 → 16%
+            ["Blood Sword"]        = 1_250, // buy 8_000 → 15%
+            ["Coral Sword"]        = 900,   // buy 10_000 → 9%
+            ["Ancient Sword"]      = 2_500, // buy 13_000 → 19%
         };
 
         /// <summary>

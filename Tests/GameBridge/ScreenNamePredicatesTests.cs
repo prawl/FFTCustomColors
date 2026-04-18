@@ -69,5 +69,58 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.False(ScreenNamePredicates.IsBattleState("CharacterStatus"));
             Assert.False(ScreenNamePredicates.IsBattleState("JobSelection"));
         }
+
+        // Session 38: IsPartyMenuTab — the 4 PartyMenu tabs only.
+        // Does NOT include drilled-in screens (CharacterStatus etc).
+
+        [Theory]
+        [InlineData("PartyMenuUnits", true)]
+        [InlineData("PartyMenuInventory", true)]
+        [InlineData("PartyMenuChronicle", true)]
+        [InlineData("PartyMenuOptions", true)]
+        [InlineData("PartyMenu", false)]             // bare prefix — not a real state
+        [InlineData("CharacterStatus", false)]       // drilled-in, not a tab
+        [InlineData("EquipmentAndAbilities", false)] // drilled-in
+        [InlineData("JobSelection", false)]          // drilled-in
+        [InlineData("WorldMap", false)]
+        [InlineData("BattleMyTurn", false)]
+        public void IsPartyMenuTab_Sweep(string screenName, bool expected)
+        {
+            Assert.Equal(expected, ScreenNamePredicates.IsPartyMenuTab(screenName));
+        }
+
+        [Fact]
+        public void IsPartyMenuTab_Null_ReturnsFalse()
+        {
+            Assert.False(ScreenNamePredicates.IsPartyMenuTab(null));
+            Assert.False(ScreenNamePredicates.IsPartyMenuTab(""));
+        }
+
+        // IsPartyTree: PartyMenuUnits + its drilled-in descendants
+        // (CharacterStatus, EquipmentAndAbilities). Used when a helper needs
+        // to know "are we somewhere inside the unit-management tree?"
+
+        [Theory]
+        [InlineData("PartyMenuUnits", true)]
+        [InlineData("CharacterStatus", true)]
+        [InlineData("EquipmentAndAbilities", true)]
+        [InlineData("JobSelection", true)]            // reached via CharacterStatus sidebar
+        [InlineData("PartyMenuInventory", false)]     // different tab — not unit tree
+        [InlineData("PartyMenuChronicle", false)]
+        [InlineData("PartyMenuOptions", false)]
+        [InlineData("WorldMap", false)]
+        [InlineData("BattleMyTurn", false)]
+        [InlineData("Tavern", false)]
+        public void IsPartyTree_Sweep(string screenName, bool expected)
+        {
+            Assert.Equal(expected, ScreenNamePredicates.IsPartyTree(screenName));
+        }
+
+        [Fact]
+        public void IsPartyTree_Null_ReturnsFalse()
+        {
+            Assert.False(ScreenNamePredicates.IsPartyTree(null));
+            Assert.False(ScreenNamePredicates.IsPartyTree(""));
+        }
     }
 }

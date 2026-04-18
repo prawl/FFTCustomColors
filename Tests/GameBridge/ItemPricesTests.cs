@@ -128,6 +128,35 @@ public class ItemPricesTests
         Assert.Equal(250, ItemPrices.GetSellPrice(20));  // Longsword
     }
 
+    [Fact]
+    public void SellPriceOverrides_YardrowSwordSet_Session38()
+    {
+        // Session 38 live-captured at Yardrow Outfitter Sell. Sword-series
+        // sell prices are dramatically below buy/2 (9-19% of buy), which
+        // pins that the buy/2 fallback would over-report payout significantly.
+        int ironId = ItemData.Items.First(kv => kv.Value.Name == "Iron Sword").Key;
+        int mythrilId = ItemData.Items.First(kv => kv.Value.Name == "Mythril Sword").Key;
+        int bloodId = ItemData.Items.First(kv => kv.Value.Name == "Blood Sword").Key;
+        int coralId = ItemData.Items.First(kv => kv.Value.Name == "Coral Sword").Key;
+        int ancientId = ItemData.Items.First(kv => kv.Value.Name == "Ancient Sword").Key;
+
+        Assert.Equal(450, ItemPrices.GetSellPrice(ironId));
+        Assert.Equal(800, ItemPrices.GetSellPrice(mythrilId));
+        Assert.Equal(1_250, ItemPrices.GetSellPrice(bloodId));
+        Assert.Equal(900, ItemPrices.GetSellPrice(coralId));
+        Assert.Equal(2_500, ItemPrices.GetSellPrice(ancientId));
+    }
+
+    [Fact]
+    public void SellPriceOverrides_YardrowSwords_AllAreGroundTruth()
+    {
+        // Pin that the new overrides register as ground-truth (not fallback).
+        int ironId = ItemData.Items.First(kv => kv.Value.Name == "Iron Sword").Key;
+        int mythrilId = ItemData.Items.First(kv => kv.Value.Name == "Mythril Sword").Key;
+        Assert.True(ItemPrices.IsSellPriceGroundTruth(ironId));
+        Assert.True(ItemPrices.IsSellPriceGroundTruth(mythrilId));
+    }
+
     // Additional property + edge tests (session 33 batch 7).
 
     [Fact]

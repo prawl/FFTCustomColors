@@ -111,6 +111,15 @@ namespace FFTColorCustomizer.GameBridge
                     { 1, 11 },
                     { 2, 19 },
                 },
+                // Yardrow, verified live session 38 at Yardrow Tavern during
+                // Chapter 1. Fourth city confirming the Chapter-1 uniform-list
+                // hypothesis. Still same 4 titles.
+                [CityId.Yardrow] = new Dictionary<int, int>
+                {
+                    { 0, 10 },
+                    { 1, 11 },
+                    { 2, 19 },
+                },
             };
 
         /// <summary>

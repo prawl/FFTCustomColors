@@ -81,7 +81,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **IC remaster deathCounter offset hunt** — PSX had it at ~0x58-0x59 in battle unit struct. Needs live battle with a KO'd unit to find the IC equivalent. Blocks KO/crystallize-aware tactics.
 
-- [ ] **`AbilityJpCosts.ComputeNextJpForSkillset` returns 0 for unlearned Zodiark** — Session 37 hardening found: Zodiark has cost 0 as a "unlearnable via JP" sentinel, but the `Next: N` computation doesn't filter it, so a Summoner with Zodiark unlearned shows `Next: 0`. Fix: in `ComputeNextJpForSkillset`, treat cost==0 same as cost==null (skip, don't consider as minimum). Test `ComputeNextJp_ZeroCostSentinel_SurfacesAsMin_DocumentsCurrentBehavior` pins the current wrong behavior; flip its assertion after the fix.
+- [x] **`AbilityJpCosts.ComputeNextJpForSkillset` returns 0 for unlearned Zodiark** — Fixed session 38. `ComputeNextJpForSkillset` now treats `cost <= 0` the same as `cost == null` (skip). Test `ComputeNextJp_ZeroCostSentinel_SkippedAsUnlearnable` pins correct behavior (Moogle 110 surfaces as cheapest, not Zodiark 0).
 
 ### Session 33 — next-up follow-ups (from 6-task batch attempt)
 
