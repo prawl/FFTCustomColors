@@ -918,6 +918,34 @@ _PARTY_NAV_VALID_STATES="WorldMap|PartyMenuUnits|PartyMenuInventory|PartyMenuChr
 # Navigate to CharacterStatus for the named unit (default: Ramza).
 # Append `dry-run` to preview the key sequence without firing.
 # Single bridge action — C# handles all navigation internally.
+# Internal: after an open_* nav action, verify the viewed unit on screen
+# matches the requested unit. Returns 0 if OK (or unable to read), 1 on
+# verified mismatch. Emits a visible WARN line on mismatch so the caller
+# sees the silent-drift case instead of silently proceeding. Case-insensitive
+# and tolerates story-character name variants.
+_verify_open_viewed_unit() {
+  local requested="$1"
+  local helperName="$2"
+  # Skip verify when request was defaulted to Ramza (single-arg default)
+  # — that's a passive "whoever is current" intent, not a precise target.
+  [ -z "$requested" ] && return 0
+  local actual=$(node -e "
+let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{
+const j=JSON.parse(d);process.stdout.write((j.screen?.viewedUnit||'').toString());
+}catch(e){}});" < "$B/response.json" 2>/dev/null)
+  # If bridge gave no viewedUnit, nothing to verify — skip (not a failure).
+  [ -z "$actual" ] && return 0
+  # Case-insensitive compare; also tolerate when the helper resolved an
+  # ambiguous name to a specific roster entry.
+  local reqLower=$(echo "$requested" | tr 'A-Z' 'a-z')
+  local actLower=$(echo "$actual"    | tr 'A-Z' 'a-z')
+  if [ "$reqLower" != "$actLower" ]; then
+    echo "[$helperName] WARN: requested viewedUnit='$requested' but landed on viewedUnit='$actual'. Helper silently drifted — downstream commands will act on the wrong unit. See TODO §0 'C# bridge action viewedUnit lag on chain calls'."
+    return 1
+  fi
+  return 0
+}
+
 open_character_status() {
   _require_state open_character_status "$_PARTY_NAV_VALID_STATES" || return 1
   local dryRun=0
@@ -927,7 +955,8 @@ open_character_status() {
     dryRun=1
     unset 'args[n-1]'
   fi
-  local unit="${args[*]:-Ramza}"
+  local unitArg="${args[*]:-}"
+  local unit="${unitArg:-Ramza}"
   if [ "$dryRun" = "1" ]; then
     fft "{\"id\":\"$(id)\",\"action\":\"dry_run_nav\",\"to\":\"$unit\"}"
     # dry_run_nav puts the plan in response.info; surface it so the caller
@@ -937,6 +966,8 @@ open_character_status() {
     return 0
   else
     fft "{\"id\":\"$(id)\",\"action\":\"open_character_status\",\"to\":\"$unit\"}"
+    # Only verify when the caller explicitly named a unit (not default).
+    [ -n "$unitArg" ] && _verify_open_viewed_unit "$unit" "open_character_status"
   fi
 }
 
@@ -953,7 +984,8 @@ open_eqa() {
     dryRun=1
     unset 'args[n-1]'
   fi
-  local unit="${args[*]:-Ramza}"
+  local unitArg="${args[*]:-}"
+  local unit="${unitArg:-Ramza}"
   if [ "$dryRun" = "1" ]; then
     fft "{\"id\":\"$(id)\",\"action\":\"dry_run_nav\",\"to\":\"$unit\"}"
     # dry_run_nav puts the plan in response.info; surface it so the caller
@@ -963,6 +995,7 @@ open_eqa() {
     return 0
   else
     fft "{\"id\":\"$(id)\",\"action\":\"open_eqa\",\"to\":\"$unit\"}"
+    [ -n "$unitArg" ] && _verify_open_viewed_unit "$unit" "open_eqa"
   fi
 }
 
@@ -979,7 +1012,8 @@ open_job_selection() {
     dryRun=1
     unset 'args[n-1]'
   fi
-  local unit="${args[*]:-Ramza}"
+  local unitArg="${args[*]:-}"
+  local unit="${unitArg:-Ramza}"
   if [ "$dryRun" = "1" ]; then
     fft "{\"id\":\"$(id)\",\"action\":\"dry_run_nav\",\"to\":\"$unit\"}"
     # dry_run_nav puts the plan in response.info; surface it so the caller
@@ -989,6 +1023,7 @@ open_job_selection() {
     return 0
   else
     fft "{\"id\":\"$(id)\",\"action\":\"open_job_selection\",\"to\":\"$unit\"}"
+    [ -n "$unitArg" ] && _verify_open_viewed_unit "$unit" "open_job_selection"
   fi
 }
 
