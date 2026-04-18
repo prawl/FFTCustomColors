@@ -105,5 +105,72 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Null(WeatherDamageModifier.FormatMarker("Rain", "Holy"));
             Assert.Null(WeatherDamageModifier.FormatMarker("Unknown", "Fire"));
         }
+
+        // Additional edge cases (session 33 batch 6).
+
+        [Theory]
+        [InlineData("Rain", "Holy")]
+        [InlineData("Rain", "Dark")]
+        [InlineData("Rain", "Water")]
+        [InlineData("Rain", "Earth")]
+        [InlineData("Snow", "Lightning")]
+        [InlineData("Snow", "Holy")]
+        [InlineData("Thunderstorm", "Fire")]
+        [InlineData("Thunderstorm", "Ice")]
+        public void GetMultiplier_NeutralElement_Returns1(string weather, string element)
+        {
+            Assert.Equal(1.0, WeatherDamageModifier.GetMultiplier(weather, element));
+        }
+
+        [Fact]
+        public void GetMultiplier_NullWeatherNullElement_Returns1()
+        {
+            Assert.Equal(1.0, WeatherDamageModifier.GetMultiplier(null, null));
+        }
+
+        [Fact]
+        public void GetMultiplier_EmptyStrings_Returns1()
+        {
+            Assert.Equal(1.0, WeatherDamageModifier.GetMultiplier("", ""));
+            Assert.Equal(1.0, WeatherDamageModifier.GetMultiplier("", "Fire"));
+            Assert.Equal(1.0, WeatherDamageModifier.GetMultiplier("Rain", ""));
+        }
+
+        [Fact]
+        public void FormatMarker_WeatherNameIsLowercased()
+        {
+            // Marker format pin: weather name rendered lowercase regardless of input case.
+            Assert.Equal("+rain", WeatherDamageModifier.FormatMarker("RAIN", "Lightning"));
+            Assert.Equal("-snow", WeatherDamageModifier.FormatMarker("Snow", "Fire"));
+        }
+
+        [Fact]
+        public void FormatMarker_NullInputs_ReturnsNull()
+        {
+            Assert.Null(WeatherDamageModifier.FormatMarker(null, null));
+            Assert.Null(WeatherDamageModifier.FormatMarker(null, "Fire"));
+            Assert.Null(WeatherDamageModifier.FormatMarker("Rain", null));
+        }
+
+        [Fact]
+        public void SunnyWeather_NoModifier_ForAnyElement()
+        {
+            // Sunny is explicitly registered (empty effects). Any element → 1.0.
+            foreach (var el in new[] { "Fire", "Lightning", "Ice", "Wind", "Earth", "Water", "Holy", "Dark" })
+            {
+                Assert.Equal(1.0, WeatherDamageModifier.GetMultiplier("Sunny", el));
+            }
+        }
+
+        [Fact]
+        public void BoostAndWeaken_AreSymmetric_WithinSameWeather()
+        {
+            // Rain boost 1.25, weaken 0.75 — the two multipliers are symmetric about 1.0.
+            // (1.25 - 1.0) == (1.0 - 0.75). Pinning this makes future balance changes
+            // visible in tests.
+            double boost = WeatherDamageModifier.GetMultiplier("Rain", "Lightning");
+            double weaken = WeatherDamageModifier.GetMultiplier("Rain", "Fire");
+            Assert.Equal(boost - 1.0, 1.0 - weaken, 3); // 3 decimal places
+        }
     }
 }

@@ -104,5 +104,53 @@ namespace FFTColorCustomizer.GameBridge
         /// <summary>Returns the opposite sign, or null for Serpentarius.</summary>
         public static Sign? GetOpposite(Sign sign) =>
             _opposite.TryGetValue(sign, out var opp) ? opp : (Sign?)null;
+
+        /// <summary>
+        /// Convert a Compatibility value to a damage multiplier per FFT rules.
+        ///   Best    → 1.50   (opposite sign, opposite gender)
+        ///   Good    → 1.25   (same sign opposite gender, or good-pair same gender)
+        ///   Neutral → 1.00
+        ///   Bad     → 0.75   (bad-pair same gender)
+        ///   Worst   → 0.50   (opposite sign, same gender)
+        /// Serpentarius is always Neutral.
+        /// </summary>
+        public static double MultiplierFor(Compatibility c) => c switch
+        {
+            Compatibility.Best    => 1.50,
+            Compatibility.Good    => 1.25,
+            Compatibility.Neutral => 1.00,
+            Compatibility.Bad     => 0.75,
+            Compatibility.Worst   => 0.50,
+            _ => 1.00,
+        };
+
+        /// <summary>
+        /// Compatibility between two signs given whether the attacker and target
+        /// share a gender. This implementation covers the strong-signal cases:
+        ///
+        ///   same sign + opposite gender → Good
+        ///   same sign + same gender     → Neutral
+        ///   opposite sign + opposite gender → Best
+        ///   opposite sign + same gender     → Worst
+        ///   Serpentarius on either side     → Neutral
+        ///
+        /// The 120°-apart "good pair" / 150°-apart "bad pair" same-gender cases
+        /// are NOT yet implemented — those return Neutral. Tracked as a follow-up
+        /// once we have live damage samples to validate the lookup tables.
+        /// </summary>
+        public static Compatibility GetCompatibility(Sign a, Sign b, bool sameGender)
+        {
+            if (a == Sign.Serpentarius || b == Sign.Serpentarius)
+                return Compatibility.Neutral;
+
+            if (a == b)
+                return sameGender ? Compatibility.Neutral : Compatibility.Good;
+
+            var oppOfA = GetOpposite(a);
+            if (oppOfA.HasValue && oppOfA.Value == b)
+                return sameGender ? Compatibility.Worst : Compatibility.Best;
+
+            return Compatibility.Neutral;
+        }
     }
 }

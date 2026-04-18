@@ -176,5 +176,105 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             Assert.Null(ZodiacData.GetByNameId(int.MaxValue));
         }
+
+        // GetCompatibility + MultiplierFor tests (session 33 batch 6).
+
+        [Fact]
+        public void GetCompatibility_SameSignOppositeGender_ReturnsGood()
+        {
+            Assert.Equal(ZodiacData.Compatibility.Good,
+                ZodiacData.GetCompatibility(ZodiacData.Sign.Aries, ZodiacData.Sign.Aries, sameGender: false));
+        }
+
+        [Fact]
+        public void GetCompatibility_SameSignSameGender_ReturnsNeutral()
+        {
+            Assert.Equal(ZodiacData.Compatibility.Neutral,
+                ZodiacData.GetCompatibility(ZodiacData.Sign.Aries, ZodiacData.Sign.Aries, sameGender: true));
+        }
+
+        [Fact]
+        public void GetCompatibility_OppositeSignOppositeGender_ReturnsBest()
+        {
+            Assert.Equal(ZodiacData.Compatibility.Best,
+                ZodiacData.GetCompatibility(ZodiacData.Sign.Aries, ZodiacData.Sign.Libra, sameGender: false));
+        }
+
+        [Fact]
+        public void GetCompatibility_OppositeSignSameGender_ReturnsWorst()
+        {
+            Assert.Equal(ZodiacData.Compatibility.Worst,
+                ZodiacData.GetCompatibility(ZodiacData.Sign.Aries, ZodiacData.Sign.Libra, sameGender: true));
+        }
+
+        [Theory]
+        [InlineData(ZodiacData.Sign.Taurus, ZodiacData.Sign.Scorpio)]
+        [InlineData(ZodiacData.Sign.Gemini, ZodiacData.Sign.Sagittarius)]
+        [InlineData(ZodiacData.Sign.Cancer, ZodiacData.Sign.Capricorn)]
+        [InlineData(ZodiacData.Sign.Leo, ZodiacData.Sign.Aquarius)]
+        [InlineData(ZodiacData.Sign.Virgo, ZodiacData.Sign.Pisces)]
+        public void GetCompatibility_AllOppositePairs_OppositeGender_Best(
+            ZodiacData.Sign a, ZodiacData.Sign b)
+        {
+            Assert.Equal(ZodiacData.Compatibility.Best,
+                ZodiacData.GetCompatibility(a, b, sameGender: false));
+        }
+
+        [Theory]
+        [InlineData(ZodiacData.Sign.Taurus, ZodiacData.Sign.Scorpio)]
+        [InlineData(ZodiacData.Sign.Leo, ZodiacData.Sign.Aquarius)]
+        public void GetCompatibility_AllOppositePairs_SameGender_Worst(
+            ZodiacData.Sign a, ZodiacData.Sign b)
+        {
+            Assert.Equal(ZodiacData.Compatibility.Worst,
+                ZodiacData.GetCompatibility(a, b, sameGender: true));
+        }
+
+        [Fact]
+        public void GetCompatibility_Serpentarius_AlwaysNeutral()
+        {
+            Assert.Equal(ZodiacData.Compatibility.Neutral,
+                ZodiacData.GetCompatibility(ZodiacData.Sign.Serpentarius, ZodiacData.Sign.Aries, sameGender: false));
+            Assert.Equal(ZodiacData.Compatibility.Neutral,
+                ZodiacData.GetCompatibility(ZodiacData.Sign.Aries, ZodiacData.Sign.Serpentarius, sameGender: true));
+            Assert.Equal(ZodiacData.Compatibility.Neutral,
+                ZodiacData.GetCompatibility(ZodiacData.Sign.Serpentarius, ZodiacData.Sign.Serpentarius, sameGender: false));
+        }
+
+        [Fact]
+        public void GetCompatibility_UnrelatedSigns_ReturnsNeutral()
+        {
+            // Aries ↔ Gemini aren't same, opposite, or in the current strong-signal
+            // tables — should default to Neutral (good/bad pair tables not yet shipped).
+            Assert.Equal(ZodiacData.Compatibility.Neutral,
+                ZodiacData.GetCompatibility(ZodiacData.Sign.Aries, ZodiacData.Sign.Gemini, sameGender: false));
+        }
+
+        [Theory]
+        [InlineData(ZodiacData.Compatibility.Best, 1.50)]
+        [InlineData(ZodiacData.Compatibility.Good, 1.25)]
+        [InlineData(ZodiacData.Compatibility.Neutral, 1.00)]
+        [InlineData(ZodiacData.Compatibility.Bad, 0.75)]
+        [InlineData(ZodiacData.Compatibility.Worst, 0.50)]
+        public void MultiplierFor_ReturnsExpectedValue(ZodiacData.Compatibility c, double expected)
+        {
+            Assert.Equal(expected, ZodiacData.MultiplierFor(c));
+        }
+
+        [Fact]
+        public void MultiplierFor_BestAndWorst_SymmetricAboutNeutral()
+        {
+            // (Best - Neutral) == (Neutral - Worst) == 0.5
+            Assert.Equal(0.5, ZodiacData.MultiplierFor(ZodiacData.Compatibility.Best) - 1.0);
+            Assert.Equal(0.5, 1.0 - ZodiacData.MultiplierFor(ZodiacData.Compatibility.Worst));
+        }
+
+        [Fact]
+        public void MultiplierFor_GoodAndBad_SymmetricAboutNeutral()
+        {
+            // (Good - Neutral) == (Neutral - Bad) == 0.25
+            Assert.Equal(0.25, ZodiacData.MultiplierFor(ZodiacData.Compatibility.Good) - 1.0);
+            Assert.Equal(0.25, 1.0 - ZodiacData.MultiplierFor(ZodiacData.Compatibility.Bad));
+        }
     }
 }

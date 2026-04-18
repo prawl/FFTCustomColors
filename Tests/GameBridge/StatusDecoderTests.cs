@@ -122,5 +122,107 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             Assert.Equal("alive", StatusDecoder.GetLifeState(null!));
         }
+
+        // Additional coverage (session 33 batch 6).
+
+        [Fact]
+        public void Decode_AllZeros_ReturnsEmpty()
+        {
+            Assert.Empty(StatusDecoder.Decode(new byte[] { 0, 0, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void Decode_NullInput_ReturnsEmpty()
+        {
+            Assert.Empty(StatusDecoder.Decode(null!));
+        }
+
+        [Fact]
+        public void Decode_TooShortInput_ReturnsEmpty()
+        {
+            // Fewer than 5 bytes — decoder should handle gracefully, not throw.
+            Assert.Empty(StatusDecoder.Decode(new byte[] { 0x80 }));
+            Assert.Empty(StatusDecoder.Decode(new byte[] { 0x80, 0x80 }));
+        }
+
+        [Theory]
+        [InlineData(3, 0x80, "Poison")]
+        [InlineData(3, 0x40, "Regen")]
+        [InlineData(3, 0x20, "Protect")]
+        [InlineData(3, 0x10, "Shell")]
+        [InlineData(3, 0x08, "Haste")]
+        [InlineData(4, 0x80, "Faith")]
+        [InlineData(4, 0x10, "Sleep")]
+        [InlineData(4, 0x02, "Reflect")]
+        public void Decode_SingleStatusBit_ReturnsThatStatus(int byteIdx, byte mask, string expected)
+        {
+            var bytes = new byte[5];
+            bytes[byteIdx] = mask;
+            var result = StatusDecoder.Decode(bytes);
+            Assert.Single(result);
+            Assert.Equal(expected, result[0]);
+        }
+
+        [Fact]
+        public void Decode_AllBitsSet_ReturnsManyStatuses()
+        {
+            // 5 bytes of 0xFF — ~40 bits set but some are reserved (not mapped).
+            // We just verify we get a non-trivial count and no crashes.
+            var result = StatusDecoder.Decode(new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+            Assert.True(result.Count >= 35, $"expected ≥35 statuses on all-FF, got {result.Count}");
+        }
+
+        [Fact]
+        public void Decode_EveryBitMapped_YieldsUniqueName()
+        {
+            // No two bit positions map to the same status name.
+            var names = new HashSet<string>();
+            for (int b = 0; b < 5; b++)
+            {
+                for (int bit = 0; bit < 8; bit++)
+                {
+                    var bytes = new byte[5];
+                    bytes[b] = (byte)(1 << bit);
+                    var result = StatusDecoder.Decode(bytes);
+                    if (result.Count == 1)
+                    {
+                        Assert.True(names.Add(result[0]),
+                            $"duplicate status name '{result[0]}' at byte {b} bit {bit}");
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public void GetLifeState_TooShortInput_ReturnsAlive()
+        {
+            // 1-byte input — decoder needs 2 to determine life state.
+            Assert.Equal("alive", StatusDecoder.GetLifeState(new byte[] { 0x20 }));
+        }
+
+        [Fact]
+        public void GetLifeState_EmptyArray_ReturnsAlive()
+        {
+            Assert.Equal("alive", StatusDecoder.GetLifeState(System.Array.Empty<byte>()));
+        }
+
+        [Fact]
+        public void Decode_CommonStatusCombination_CureAndPoison()
+        {
+            // A unit mid-combat: Poison + Haste + Protect (byte 3: 0x80|0x08|0x20 = 0xA8).
+            var result = StatusDecoder.Decode(new byte[] { 0, 0, 0, 0xA8, 0 });
+            Assert.Contains("Poison", result);
+            Assert.Contains("Haste", result);
+            Assert.Contains("Protect", result);
+            Assert.Equal(3, result.Count);
+        }
+
+        [Fact]
+        public void Decode_CrystalStatus_IsInResult()
+        {
+            // Crystal bit set (byte 0 mask 0x40).
+            var result = StatusDecoder.Decode(new byte[] { 0x40, 0, 0, 0, 0 });
+            Assert.Contains("Crystal", result);
+        }
     }
 }
