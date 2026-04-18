@@ -467,9 +467,11 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 (Tavern / TavernRumors / TavernErrands state tracking shipped session 26 pt.2 `d1e7160` — see archive.)
 
-- [ ] **Tavern: `read_rumor` action (scrape body text from widget)** — Scrape the highlighted rumor's body text pane, like `read_dialogue` does for cutscenes. UE4 widget scrape; same FString challenges as shop items.
+(Scope A shell helpers shipped session 32 — see archive. `enter_tavern`, `read_rumor [idx]`, `read_errand [idx]`, `scan_tavern` all live-verified at Dorter.)
 
-- [ ] **Tavern: `read_errands` action (scrape body text + metadata)** — Return description, quester, party size, days, fee. Widget scrape.
+- [ ] **Tavern: return body text from `read_rumor` / `read_errand`** — Session-32 investigation proved the body text is NOT in plain-string memory (0 UTF-8/UTF-16LE matches on distinctive phrases). Real source is `0002.en.pac/fftpack/world_wldmes_bin.en.bin` (3.96MB, PSX-encoded). The existing `MesDecoder.cs` handles the byte→char mapping. Needed: (a) parse the file's record structure to split rumor entries, (b) emit `claude_bridge/rumors.json` at mod startup, (c) wire `read_rumor` to look up the current row's body. Same pattern as `EventScriptLookup`. Errand metadata (quester / days / fee) likely in a parallel nxd layout — `tools/Nex/Layouts/ffto/Proposal*.layout` or similar; needs a separate extraction path.
+
+- [ ] **scan_tavern: surface `cursorRow` on TavernRumors / TavernErrands** — `scan_tavern` currently reports ">=30 entries" placeholder because the bridge doesn't expose a cursor-row byte on these screens. Find the byte (likely a u8 on the heap widget) so the wrap-detection works cleanly.
 
 
 - [ ] **Warriors' Guild: add `WarriorsGuild` screen state** — Sub-actions Recruit and Rename. Memory scan for shopSubMenuIndex values. ValidPaths: Recruit/Rename/Leave/CursorUp/Down.

@@ -81,9 +81,36 @@ Same shape as Buy — ScrollUp/ScrollDown, Select, Cancel. The list shows items 
 
 Same shape — ScrollUp/ScrollDown pick a character / slot / item depending on how deep you are in the picker; Select advances; Cancel goes back.
 
-## Not yet implemented
+## Tavern (Rumors / Errands)
 
-- Tavern (Rumors / Errands)
+Reach the Tavern with one command from WorldMap:
+
+```bash
+enter_tavern               # WorldMap → LocationMenu → cursor to Tavern → EnterShop
+```
+
+Lands on the `Tavern` root screen (barkeep greeting, two options). From there:
+
+```bash
+read_rumor                 # Open Rumors list
+read_rumor 2               # Open Rumors + scroll cursor to row 2 (0-based)
+read_errand                # Open Errands list
+read_errand 0              # Open Errands + land on the first errand
+scan_tavern                # From TavernRumors/TavernErrands: count entries available
+```
+
+**What you CAN see today:**
+- Navigate to any specific rumor or errand row with one command
+- See the `[TavernRumors]` / `[TavernErrands]` state confirmed
+- Know the count of entries via `scan_tavern` (caveat: depends on `cursorRow` being surfaced — currently not wired on TavernRumors, so `scan_tavern` reports "≥30" as a placeholder)
+
+**What you CAN'T see today — the body text.**
+The rumor/errand body (the paragraph shown in the right pane) is NOT yet returned by the bridge. It lives in a packed game data file (`world_wldmes_bin.en.bin`, PSX-encoded) that the mod doesn't parse yet. Future work: decode the file at mod startup, emit `rumors.json`, return `{title, body}` from `read_rumor`.
+
+For now, if Claude needs to know what the current rumor says, the human has to look at the game window. Claude can still position the cursor, scroll through, and decide whether to engage at a meta level ("there are 4 rumors; one probably hints at a side-character recruit").
+
+## Still not implemented
+
 - Warriors' Guild (Recruit / Rename / Dismiss)
 - Poachers' Den (Process / Sell Carcasses)
 - Save Game menu

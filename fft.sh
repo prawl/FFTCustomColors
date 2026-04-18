@@ -631,9 +631,22 @@ _show_helpers() {
       helpers="    screen                                Poll screen state until BattleMyTurn returns
     battle_flee                           Quit battle, return to world map"
       ;;
-    Outfitter|Tavern|WarriorsGuild|PoachersDen|SaveGame)
+    Outfitter|WarriorsGuild|PoachersDen|SaveGame)
       helpers="    party_summary                         Show all units at a glance
     check_unit <name>                     Quick stat dump for one unit"
+      ;;
+    Tavern)
+      helpers="    read_rumor [idx]                      Open Rumors (scroll to idx if given)
+    read_errand [idx]                     Open Errands (scroll to idx if given)
+    party_summary                         Show all units at a glance"
+      ;;
+    TavernRumors)
+      helpers="    read_rumor <idx>                      Scroll to rumor #idx (0-based)
+    scan_tavern                           Count available rumors"
+      ;;
+    TavernErrands)
+      helpers="    read_errand <idx>                     Scroll to errand #idx (0-based)
+    scan_tavern                           Count available errands"
       ;;
     PartyMenuInventory|PartyMenuChronicle|PartyMenuOptions)
       helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
@@ -1207,6 +1220,138 @@ enter_shop() {
   execute_action EnterShop >/dev/null
   _fft_reset_guard
   screen
+}
+
+# enter_tavern: From WorldMap at a settlement, navigate into the Tavern.
+# Flow: WorldMap → LocationMenu (default cursor on Outfitter) → CursorDown to
+# Tavern → EnterShop → Tavern root screen. Validates settlement ID (0-14).
+#
+# Tavern sub-actions (Rumors / Errands) are opened via `read_rumor` / `read_errand`
+# which assume you're already on the Tavern root.
+enter_tavern() {
+  local _FFT_ALLOW_CHAIN=1
+  _fft_reset_guard
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
+  if [ "$curScr" != "WorldMap" ]; then
+    echo "[enter_tavern] ERROR: must be on WorldMap (current: $curScr)"
+    return 1
+  fi
+  local locId=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.location??-1)" < "$B/response.json" 2>/dev/null)
+  local locName=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.locationName||'unknown')" < "$B/response.json" 2>/dev/null)
+  if [ "$locId" -lt 0 ] || [ "$locId" -gt 14 ]; then
+    echo "[enter_tavern] ERROR: not at a settlement (loc=$locId $locName). Settlements are IDs 0-14."
+    return 1
+  fi
+  execute_action EnterLocation >/dev/null
+  _fft_reset_guard
+  # LocationMenu opens with cursor on Outfitter; Tavern is one position down.
+  execute_action CursorDown >/dev/null
+  _fft_reset_guard
+  # Verify cursor landed on Tavern before entering.
+  local landedUI=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.ui||'')" < "$B/response.json" 2>/dev/null)
+  if [ "$landedUI" != "Tavern" ]; then
+    echo "[enter_tavern] WARN: expected ui=Tavern, got ui=$landedUI — this settlement may not have a Tavern"
+    return 1
+  fi
+  execute_action EnterShop >/dev/null
+  _fft_reset_guard
+  screen
+}
+
+# read_rumor [index]: On TavernRumors, scroll to rumor #index (0-based) and
+# render the screen (shows the selected row). If index is omitted, just renders
+# the current state.
+#
+# LIMITATION (2026-04-18): the rumor body text is NOT yet surfaced — it lives in
+# a packed game data file (world_wldmes_bin.en.bin, PSX-encoded) that the mod
+# doesn't parse yet. For now this helper positions the cursor; the user has to
+# look at the game window for the body. Future: parse the data file at mod
+# startup and return {title, body} here.
+read_rumor() {
+  local idx="$1"
+  _fft_reset_guard
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
+  if [ "$curScr" = "Tavern" ]; then
+    # Open Rumors from the Tavern root — cursor defaults to Rumors so Select works.
+    execute_action Select >/dev/null
+    _fft_reset_guard
+  elif [ "$curScr" != "TavernRumors" ]; then
+    echo "[read_rumor] ERROR: must be on Tavern or TavernRumors (current: $curScr). Try: enter_tavern"
+    return 1
+  fi
+  if [ -n "$idx" ]; then
+    # Scroll down N times to land on row #idx. List wraps, so any idx works.
+    local n="$idx"
+    [ "$n" -lt 0 ] && n=0
+    for i in $(seq 1 "$n"); do
+      execute_action ScrollDown >/dev/null
+    done
+  fi
+  screen
+}
+
+# read_errand [index]: On TavernErrands, scroll to errand #index (0-based).
+# Same flow + same body-text limitation as read_rumor.
+read_errand() {
+  local idx="$1"
+  _fft_reset_guard
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
+  if [ "$curScr" = "Tavern" ]; then
+    # On Tavern root, cursor defaults to Rumors. Move right to Errands, then Select.
+    execute_action CursorDown >/dev/null 2>&1 || execute_action Right >/dev/null 2>&1
+    _fft_reset_guard
+    execute_action Select >/dev/null
+    _fft_reset_guard
+  elif [ "$curScr" != "TavernErrands" ]; then
+    echo "[read_errand] ERROR: must be on Tavern or TavernErrands (current: $curScr). Try: enter_tavern"
+    return 1
+  fi
+  if [ -n "$idx" ]; then
+    local n="$idx"
+    [ "$n" -lt 0 ] && n=0
+    for i in $(seq 1 "$n"); do
+      execute_action ScrollDown >/dev/null
+    done
+  fi
+  screen
+}
+
+# scan_tavern: On TavernRumors or TavernErrands, scroll through every entry
+# (wrapping back to the start) and report how many distinct rows were visited.
+# Useful for Claude to know "how many rumors are available to read" before
+# deciding whether to engage.
+#
+# Caveat: counts by detecting when ScrollDown wraps back to the starting row.
+# Relies on the row-index signal being present; if it isn't (because the index
+# byte isn't surfaced yet on TavernRumors), falls back to an empirical 20-max
+# scan with deduplication by decoded title once that's wired up.
+scan_tavern() {
+  _fft_reset_guard
+  _current_screen >/dev/null
+  local curScr=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.name||'')" < "$B/response.json" 2>/dev/null)
+  case "$curScr" in
+    TavernRumors|TavernErrands) ;;
+    *) echo "[scan_tavern] ERROR: must be on TavernRumors or TavernErrands (current: $curScr)"; return 1 ;;
+  esac
+  # Get starting cursor row if available.
+  local startRow=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.cursorRow??'')" < "$B/response.json" 2>/dev/null)
+  local count=0
+  local maxScan=30
+  for i in $(seq 1 "$maxScan"); do
+    execute_action ScrollDown >/dev/null
+    _fft_reset_guard
+    count=$((count+1))
+    local nowRow=$(node -e "console.log(JSON.parse(require('fs').readFileSync(0,'utf8')).screen?.cursorRow??'')" < "$B/response.json" 2>/dev/null)
+    # Wrap detection: row returned to start → we've seen everything.
+    if [ -n "$startRow" ] && [ -n "$nowRow" ] && [ "$nowRow" = "$startRow" ] && [ "$i" -gt 1 ]; then
+      echo "[scan_tavern] $count entries on $curScr (wrapped back to row=$startRow)"
+      return 0
+    fi
+  done
+  echo "[scan_tavern] reached max-scan ($maxScan) without a clean wrap — cursorRow may not be populated; treat as ≥$maxScan entries"
 }
 
 # swap_unit <name>: Cycle Q/E to the named unit on any unit-scoped screen
