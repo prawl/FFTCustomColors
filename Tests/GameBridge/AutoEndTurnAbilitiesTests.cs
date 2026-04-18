@@ -67,5 +67,27 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // Defensive: in case a caller passes a name with whitespace.
             Assert.True(AutoEndTurnAbilities.IsAutoEndTurn("  Jump  "));
         }
+
+        [Fact]
+        public void SelfDestruct_IsAutoEndTurn()
+        {
+            // Bomb monster suicide attack — unit dies after use, turn ends automatically.
+            Assert.True(AutoEndTurnAbilities.IsAutoEndTurn("Self-Destruct"));
+        }
+
+        [Fact]
+        public void Wish_IsNotAutoEndTurn()
+        {
+            // Sacrificial heal behavior varies by version — don't assume auto-end
+            // without live confirmation.
+            Assert.False(AutoEndTurnAbilities.IsAutoEndTurn("Wish"));
+        }
+
+        [Fact]
+        public void Ultima_IsNotAutoEndTurn()
+        {
+            // Canonical spell, just like Fire — no auto-end.
+            Assert.False(AutoEndTurnAbilities.IsAutoEndTurn("Ultima"));
+        }
     }
 }

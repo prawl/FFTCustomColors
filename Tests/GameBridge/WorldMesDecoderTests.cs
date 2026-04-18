@@ -113,5 +113,61 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var rumors = WorldMesDecoder.ExtractRumors(bytes);
             Assert.Contains(rumors, r => r.Body.Contains("Fifty Years' War"));
         }
+
+        [Fact]
+        public void RumorLookup_GetByTitle_ZodiacBraves_ReturnsCorpus10()
+        {
+            var lookup = new RumorLookup();
+            var r = lookup.GetByTitle("The Legend of the Zodiac Braves");
+            Assert.NotNull(r);
+            Assert.Equal(10, r!.Index);
+            Assert.Contains("Zodiac Braves", r.Body);
+        }
+
+        [Fact]
+        public void RumorLookup_GetByTitle_ZodiacStones_ReturnsCorpus11()
+        {
+            var lookup = new RumorLookup();
+            var r = lookup.GetByTitle("Zodiac Stones");
+            Assert.NotNull(r);
+            Assert.Equal(11, r!.Index);
+            Assert.Contains("crystals", r.Body);
+        }
+
+        [Fact]
+        public void RumorLookup_GetByTitle_HorrorOfRiovanes_ReturnsCorpus19()
+        {
+            var lookup = new RumorLookup();
+            var r = lookup.GetByTitle("The Horror of Riovanes");
+            Assert.NotNull(r);
+            Assert.Equal(19, r!.Index);
+            Assert.Contains("Riovanes", r.Body);
+        }
+
+        [Fact]
+        public void RumorLookup_GetByTitle_CaseInsensitive()
+        {
+            var lookup = new RumorLookup();
+            var r = lookup.GetByTitle("zodiac stones");
+            Assert.NotNull(r);
+            Assert.Equal(11, r!.Index);
+        }
+
+        [Fact]
+        public void RumorLookup_GetByTitle_UnknownReturnsNull()
+        {
+            var lookup = new RumorLookup();
+            Assert.Null(lookup.GetByTitle("Made-Up Title That Does Not Exist"));
+        }
+
+        [Fact]
+        public void RumorLookup_KnownTitles_AllIndicesInRange()
+        {
+            var lookup = new RumorLookup();
+            foreach (var kv in RumorLookup.KnownTitles)
+            {
+                Assert.InRange(kv.Value, 0, lookup.Count - 1);
+            }
+        }
     }
 }

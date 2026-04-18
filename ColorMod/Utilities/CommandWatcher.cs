@@ -1683,16 +1683,21 @@ namespace FFTColorCustomizer.Utilities
                             break;
                         }
                         {
-                            // Prefer substring match on a title/body fragment if provided;
-                            // otherwise fall back to integer index.
+                            // Resolution order:
+                            //   1. Exact title match (hardcoded title→index map) — use for
+                            //      known rumor titles like "The Legend of the Zodiac Braves".
+                            //   2. Body substring match — use when Claude has a distinctive
+                            //      phrase from the rumor body.
+                            //   3. Integer index — direct corpus access.
                             WorldMesDecoder.Rumor? rumor = null;
                             if (!string.IsNullOrWhiteSpace(command.SearchLabel))
                             {
-                                rumor = RumorLookup.GetByBodySubstring(command.SearchLabel);
+                                rumor = RumorLookup.GetByTitle(command.SearchLabel)
+                                    ?? RumorLookup.GetByBodySubstring(command.SearchLabel);
                                 if (rumor == null)
                                 {
                                     response.Status = "failed";
-                                    response.Error = $"No rumor body contains '{command.SearchLabel}'";
+                                    response.Error = $"No rumor matches title or body for '{command.SearchLabel}'";
                                     break;
                                 }
                             }

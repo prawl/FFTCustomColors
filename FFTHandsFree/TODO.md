@@ -73,6 +73,14 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 33 batch 2 — deferred (needs live battle / environment I can't verify)
+
+- [ ] **Live-verify `execute_action` responses include `ui=` field across battle screens** — code path exists; needs in-game verification during Battle_MyTurn/Battle_Acting/Battle_Moving/Battle_Attacking. Deferred batch 2.
+
+- [ ] **PreToolUse hook to block `| node` in Bash commands** — needs explicit per-hook user approval (per `feedback_no_hooks_without_approval.md`). Defer until user green-lights.
+
+- [ ] **IC remaster deathCounter offset hunt** — PSX had it at ~0x58-0x59 in battle unit struct. Needs live battle with a KO'd unit to find the IC equivalent. Blocks KO/crystallize-aware tactics.
+
 ### Session 33 — next-up follow-ups (from 6-task batch attempt)
 
 - [ ] **Live-verify !weak / +absorb sigils** — session 33 attempt: travel from WorldMap → Yardrow timed out on bridge, left game on OutfitterBuy and subsequent heap reads timed out. Party has no Wizard; best test candidates are Kenrick (White Mage, Holy) or Rapha (Skyseer, Holy) vs an undead enemy for `+absorb:['Dark']` / `!weak:['Holy']`. Needs: (a) stable bridge session (may need `restart`), (b) travel to a random-encounter zone with undead (Skeleton/Ghost/Ghoul), (c) scan during Holy-cast targeting menu.

@@ -774,6 +774,42 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("BattleVictory", result);
         }
 
+        // Guard: the Orbonne Victory/Desertion relaxation (session 33) must NOT swallow
+        // an active EncounterDialog. EncounterDialog has party=0/ui=0 (not a PartyMenu
+        // state); the new Victory rule requires party=1+ui=1 and so can't fire on these
+        // inputs. This test proves EncounterDialog still wins when its real signals are set.
+        [Fact]
+        public void DetectScreen_EncounterDialog_NotMisdetectedAsVictory_OrbonneFix()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 0, encounterFlag: 10);
+
+            Assert.Equal("EncounterDialog", result);
+        }
+
+        // Guard: post-battle stale flags on the WorldMap (party=0, ui=0, no active event)
+        // must NOT misdetect as Victory via the Orbonne variant. The new rule requires
+        // party=1 + ui=1 + eventId 1..399, which these inputs don't satisfy.
+        [Fact]
+        public void DetectScreen_StaleWorldMap_NotMisdetectedAsVictory_OrbonneFix()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 8, encB: 8, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0,
+                eventId: 0);
+
+            Assert.NotEqual("BattleVictory", result);
+            Assert.NotEqual("BattleDesertion", result);
+        }
+
         [Fact]
         public void DetectScreen_Status_Paused_MenuCursor3_ShouldReturnBattleStatus()
         {
