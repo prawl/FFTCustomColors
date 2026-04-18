@@ -210,6 +210,12 @@ fft() {
   _check_total || return 1
   _fft_guard
   _track_key_call "$1"
+  # Shell-side timing: on by default in dev. Prints a short `t=Nms(bridge/render)`
+  # line to stderr after each command, colored green under FFT_SLOW_MS (default
+  # 800), yellow up to 2×, red beyond. FFT_TIME=0 silences. Pairs with the mod's
+  # server-side latencyMs in session_*.jsonl. Cheap — EPOCHREALTIME is a bash
+  # builtin (no subprocess).
+  local _t0=$EPOCHREALTIME
   rm -f "$B/response.json"
   echo "$1" > "$B/command.json"
   local tries=0
@@ -224,9 +230,13 @@ fft() {
       return 1
     fi
   done
+  local _t1=$EPOCHREALTIME
   # Render compact summary via the shared helper — see _fmt_screen_compact above.
-  # Single source of truth; screen() uses the same function.
+  # Single source of truth; screen() uses the same function. Pass timing so the
+  # renderer appends a `t=Nms[action]` suffix to the main [Screen] line.
+  _FFT_TIMING_SUFFIX=$(_fmt_timing "$_t0" "$_t1" "$1")
   _fmt_screen_compact "$B/response.json"
+  unset _FFT_TIMING_SUFFIX
 
   # Parse the status + chain-warning out of the response ourselves so we can
   # still surface the bridge's auto-delay notice to the terminal.
@@ -322,6 +332,42 @@ _status_col() {
   esac
 }
 
+# _fmt_timing <t0> <t1> <commandJson>
+# Returns (to stdout) a colored `t=Nms[tag]` timing suffix. No newline — caller
+# owns the line. Respects FFT_TIME (default on; set to 0 to silence) and
+# FFT_SLOW_MS (default 800). Threshold coloring: green ≤ warn, yellow to 2×,
+# red beyond.
+_fmt_timing() {
+  [ "${FFT_TIME:-1}" = "0" ] && return 0
+  local _t0="$1" _t1="$2" _cmd="$3"
+  # Action tag. "action":"foo" → [foo]. Key commands with "keys":[{"name":"Up"}]
+  # → [key:Up] (multi-key: [key:Up+Down]). Empty keys list (screen ping) → [screen].
+  local _tag
+  _tag=$(printf '%s' "$_cmd" | grep -o '"action":"[^"]*"' | head -1 | cut -d'"' -f4)
+  if [ -z "$_tag" ]; then
+    local _keys
+    _keys=$(printf '%s' "$_cmd" | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | tr '\n' '+' | sed 's/+$//')
+    if [ -n "$_keys" ]; then
+      _tag="key:$_keys"
+    elif printf '%s' "$_cmd" | grep -q '"keys":\[\]'; then
+      _tag="screen"
+    fi
+  fi
+  [ -z "$_tag" ] && _tag="?"
+  local _raw
+  _raw=$(awk -v t0="$_t0" -v t1="$_t1" -v warn="${FFT_SLOW_MS:-800}" -v tag="$_tag" \
+    'BEGIN{
+       br=(t1-t0)*1000;
+       s=""; if(br>=warn*2){s="!!"} else if(br>=warn){s="!"};
+       printf "t=%.0fms[%s]%s",br,tag,s
+     }')
+  case "$_raw" in
+    *"!!") _col "$_C_ERR"  "$_raw" ;;
+    *"!")  _col "$_C_WARN" "$_raw" ;;
+    *)     _col "$_C_OK"   "$_raw" ;;
+  esac
+}
+
 # _fmt_screen_compact: Render the one-line screen summary from a response file.
 # Single source of truth for the compact render — called by both fft() and screen()
 # so every entry point renders identically.
@@ -329,35 +375,52 @@ _status_col() {
 # Consults: $SCR (screen name, already parsed by caller).
 _fmt_screen_compact() {
   local RESP="$1"
-  local R=$(cat "$RESP" | tr -d '\r\n ')
 
-  # Simple regex extracts (no spaces to worry about).
-  local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local LOC=$(echo "$R" | grep -o '"location":[0-9]*' | head -1 | cut -d: -f2)
-  local LOCNAME=$(echo "$R" | grep -o '"locationName":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local HOV=$(echo "$R" | grep -o '"hover":[0-9]*' | head -1 | cut -d: -f2)
-  local ST=$(echo "$R" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local OBJ=$(echo "$R" | grep -o '"storyObjective":[0-9]*' | head -1 | cut -d: -f2)
-  local OBJNAME=$(echo "$R" | grep -o '"storyObjectiveName":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local ANAME=$(echo "$R" | grep -o '"activeUnitName":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local AJOB=$(echo "$R" | grep -o '"activeUnitJob":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local ASUM=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.activeUnitSummary||'');}catch(e){}});" 2>/dev/null)
-  local GIL=$(echo "$R" | grep -o '"gil":[0-9]*' | head -1 | cut -d: -f2)
-  local SLCI=$(echo "$R" | grep -o '"shopListCursorIndex":[0-9]*' | head -1 | cut -d: -f2)
-  local CROW=$(echo "$R" | grep -o '"cursorRow":[0-9]*' | head -1 | cut -d: -f2)
-  local CCOL=$(echo "$R" | grep -o '"cursorCol":[0-9]*' | head -1 | cut -d: -f2)
-  local JCSTATE=$(echo "$R" | grep -o '"jobCellState":"[^"]*"' | head -1 | cut -d'"' -f4)
-  local EVID=$(echo "$R" | grep -o '"eventId":[0-9]*' | head -1 | cut -d: -f2)
-  local JUNLOCK=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.jobUnlockRequirements||'');}catch(e){}});" 2>/dev/null)
+  # One node pass reads the file, extracts every field, emits tab-separated.
+  # Replaces what used to be ~7 node spawns + ~14 grep/cut pipelines per render.
+  # Windows node cold-start is ~60-100ms; the old code cost ~500-700ms per call.
+  local FIELDS
+  FIELDS=$(node -e "
+try{
+  const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+  const s=j.screen||{};
+  const vu=s.viewedUnit||'';
+  let vunit='';
+  if(vu){
+    const r=(s.roster&&s.roster.units)||[];
+    const u=r.find(x=>x.name===vu)||{};
+    vunit=u.job?vu+'('+u.job+')':vu;
+  }
+  const out=[
+    s.name||'',                     // 0  SCR
+    s.location??'',                 // 1  LOC
+    s.locationName||'',             // 2  LOCNAME
+    s.hover??'',                    // 3  HOV
+    s.status||'',                   // 4  ST
+    s.storyObjective??'',           // 5  OBJ
+    s.storyObjectiveName||'',       // 6  OBJNAME
+    s.activeUnitName||'',           // 7  ANAME
+    s.activeUnitJob||'',            // 8  AJOB
+    s.activeUnitSummary||'',        // 9  ASUM
+    s.gil??'',                      // 10 GIL
+    s.shopListCursorIndex??'',      // 11 SLCI
+    s.cursorRow??'',                // 12 CROW
+    s.cursorCol??'',                // 13 CCOL
+    s.jobCellState||'',             // 14 JCSTATE
+    s.eventId??'',                  // 15 EVID
+    s.jobUnlockRequirements||'',    // 16 JUNLOCK
+    s.ui||'',                       // 17 UI
+    s.bfsMismatchWarning||'',       // 18 BFSMISMATCH
+    vunit,                          // 19 VUNIT
+    s.equippedItem||'',             // 20 EQITEM
+    s.pickerTab||'',                // 21 PTAB
+  ];
+  // Sanitize: strip tabs/newlines from each field so split survives.
+  process.stdout.write(out.map(x=>String(x).replace(/[\t\n\r]/g,' ')).join('\t'));
+}catch(e){}" "$RESP" 2>/dev/null)
 
-  # Space-bearing string fields need the JSON parser so "Equipment & Abilities"
-  # / "Magick Defense Boost" / "All Weapons & Shields" survive intact.
-  local UI=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.ui||'');}catch(e){}});" 2>/dev/null)
-  local BFSMISMATCH=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.bfsMismatchWarning||'');}catch(e){}});" 2>/dev/null)
-  # viewedUnit + job: combine into "Name(Job)" when both are available.
-  local VUNIT=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const vu=j.screen?.viewedUnit||'';if(!vu){process.stdout.write('');return;}const r=(j.screen?.roster?.units||[]);const u=r.find(x=>x.name===vu)||{};const job=u.job||'';process.stdout.write(job?vu+'('+job+')':vu);}catch(e){}});" 2>/dev/null)
-  local EQITEM=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.equippedItem||'');}catch(e){}});" 2>/dev/null)
-  local PTAB=$(cat "$RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);process.stdout.write(j.screen?.pickerTab||'');}catch(e){}});" 2>/dev/null)
+  local SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB
+  IFS=$'\t' read -r SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB <<<"$FIELDS"
 
   local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
   local OBJSTR=""
@@ -410,6 +473,8 @@ _fmt_screen_compact() {
     fi
   fi
 
+  # Append timing suffix when caller pre-computed it (fft() / screen()).
+  [ -n "$_FFT_TIMING_SUFFIX" ] && LINE="$LINE $_FFT_TIMING_SUFFIX"
   printf '%b\n' "$LINE"
 
   # BFS mismatch warning — surfaced loudly under the main screen line so
@@ -608,7 +673,9 @@ fft_full() {
 }
 
 # id: Generate unique command ID. Every command needs a unique ID or the watcher skips it.
-id() { echo "c$(date +%s%N | tail -c 8)$RANDOM"; }
+# Pure-bash (no subprocesses). EPOCHREALTIME is bash-5-native; with the dot stripped
+# it yields microsecond precision. $RANDOM appended for uniqueness across fast bursts.
+id() { echo "c${EPOCHREALTIME//.}${RANDOM}"; }
 
 # =============================================================================
 # KEY PRESS HELPERS
@@ -2647,21 +2714,30 @@ screen() {
 
   # Quick screen check first
   _check_total || return 1
+  local _t0=$EPOCHREALTIME
+  local _cmd="{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}"
   rm -f "$B/response.json"
-  echo "{\"id\":\"$(id)\",\"keys\":[],\"delayBetweenMs\":0}" > "$B/command.json"
+  echo "$_cmd" > "$B/command.json"
   local tries=0
   until [ -f "$B/response.json" ]; do
     sleep 0.02; tries=$((tries+1))
     if [ $tries -ge 250 ]; then echo "[TIMEOUT]"; return 1; fi
   done
+  local _t1=$EPOCHREALTIME
   local R=$(cat "$B/response.json" | tr -d '\r\n ')
   local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
 
   # During Battle_MyTurn: run scan_move for full tactical view
   if [[ "$SCR" == "BattleMyTurn" ]]; then
     local vflag="false"; $verbose && vflag="true"
+    local _t_scan0=$EPOCHREALTIME
     local raw
-    raw=$(fft_full "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"verbose\":$vflag}")
+    local _scan_cmd="{\"id\":\"$(id)\",\"action\":\"scan_move\",\"verbose\":$vflag}"
+    raw=$(fft_full "$_scan_cmd")
+    local _t_scan1=$EPOCHREALTIME
+    # Timing suffix: the scan_move bridge time is what matters here (dominates
+    # the screen ping). _FFT_TIMING_SUFFIX is picked up by the node header below.
+    export _FFT_TIMING_SUFFIX="$(_fmt_timing "$_t_scan0" "$_t_scan1" "$_scan_cmd")"
     echo "$raw" | node -e "
 const j=JSON.parse(require('fs').readFileSync(0,'utf8'));
 const s=j.screen||{};
@@ -2681,7 +2757,8 @@ const amhp=au?.maxHp??activeU?.maxHp??'?';
 const amp=au?.mp??activeU?.mp??'?';
 const ammp=au?.maxMp??activeU?.maxMp??'?';
 const uiTag=s.ui?' ui='+s.ui:'';
-console.log('['+s.name+']'+uiTag+' '+aName+(aJob?'('+aJob+')':'')+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp);
+const tSuffix=process.env._FFT_TIMING_SUFFIX?' '+process.env._FFT_TIMING_SUFFIX:'';
+console.log('['+s.name+']'+uiTag+' '+aName+(aJob?'('+aJob+')':'')+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp+tSuffix);
 console.log('');
 
 // Abilities with target tiles (filtering/collapsing done server-side by AbilityCompactor)
@@ -2796,9 +2873,12 @@ us.forEach(u=>{
   console.log('  ['+team+']'+nm+clSep+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+extra+st+life+act);
 });
 " 2>/dev/null
+    unset _FFT_TIMING_SUFFIX
   else
     # Non-battle: render via the shared helper — same compact one-liner as fft().
+    _FFT_TIMING_SUFFIX=$(_fmt_timing "$_t0" "$_t1" "$_cmd")
     _fmt_screen_compact "$B/response.json"
+    unset _FFT_TIMING_SUFFIX
 
     # Inventory summary (verbose only) — items=N types, M total.
     if $verbose && [ -f "$B/response.json" ]; then
