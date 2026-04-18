@@ -1171,6 +1171,21 @@ namespace FFTColorCustomizer.GameBridge
         /// <summary>Display names of ally units (including the caster) in the splash.</summary>
         [JsonPropertyName("allies")]
         public List<string> Allies { get; set; } = new();
+
+        /// <summary>
+        /// Per-hit element-affinity markers, positionally aligned with Enemies[].
+        /// Each entry is "absorb"/"null"/"half"/"weak"/"strengthen" or null.
+        /// Populated only when the ability has an element AND the hit unit has a
+        /// matching affinity. Null list = ability has no element.
+        /// </summary>
+        [JsonPropertyName("enemyAffinities")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string?>? EnemyAffinities { get; set; }
+
+        /// <summary>Positionally aligned with Allies[]. Same semantics as EnemyAffinities.</summary>
+        [JsonPropertyName("allyAffinities")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string?>? AllyAffinities { get; set; }
     }
 
     /// <summary>
@@ -1198,5 +1213,15 @@ namespace FFTColorCustomizer.GameBridge
         /// <summary>Display names of ally units the line hits.</summary>
         [JsonPropertyName("allies")]
         public List<string> Allies { get; set; } = new();
+
+        /// <summary>Positionally aligned with Enemies[]. Per-hit affinity marker.</summary>
+        [JsonPropertyName("enemyAffinities")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string?>? EnemyAffinities { get; set; }
+
+        /// <summary>Positionally aligned with Allies[]. Per-hit affinity marker.</summary>
+        [JsonPropertyName("allyAffinities")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string?>? AllyAffinities { get; set; }
     }
 }

@@ -224,7 +224,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 - [ ] **LoS option A: read game's projected hit% from memory during targeting** [Abilities] — **Blocked by session 30 finding** that hit% isn't findable via flat-memory AoB search — see `memory/project_damage_preview_hunt_s30.md`. LoS-via-memory now depends on the same widget-introspection or formula-compute path that damage preview needs. Prefer LoS option B (compute from map height data) until that path lands.
 
-- [ ] **LoS option B: compute LoS from map height data** [Abilities] — Fallback if memory read fails. Walk the straight-line path from attacker to target in the map grid and check if any intermediate tile's height blocks the projectile. Requires per-map terrain data already loaded.
+- [~] **LoS option B: compute LoS from map height data** [Abilities] — Session 31: shipped. `LineOfSightCalculator` (pure, DDA walk + linear altitude interp, 13 tests) + `ProjectileAbilityClassifier` (pure rule: ranged Attack + Ninja Throw qualify, spells/summons don't, 9 tests) + wire-up in `NavigationActions.AnnotateTile` populating `ValidTargetTile.LosBlocked`. Shell renders `!blocked` sigil. Needs live verify on a bow/gun/crossbow unit with terrain blocking a shot.
 
 - [ ] **LoS option C: enter targeting, check if game rejects tile, cancel if blocked** [Abilities] — Brute-force fallback. Slow but reliable. Use only as last resort if A and B both fail.
 
@@ -706,7 +706,7 @@ Reconsider any individual sub-screen only when a concrete decision flow requires
 
 
 ### Screen Detection Edge Cases
-- Battle_Paused false positives: pauseFlag=1 stale after facing confirmation
+- Battle_Paused false positives: pauseFlag=1 stale after facing confirmation. **Session 31 investigation**: the bare `paused == 1 → BattlePaused` fallthrough at `ScreenDetectionLogic.cs:374` is too loose — any stale pause byte catches. Candidate tighten: also require `battleMode == 0 && submenuFlag == 0`, but UNTESTED because reproducing needs a live facing-confirmation screen (happens after `battle_wait` commits). Next repro: capture detection inputs DURING facing confirm (before Enter advances), compare to real pause.
 - Menu cursor unreliable after animations
 
 ### Screen Detection Rewrite (P0) — identified 2026-04-14 audit

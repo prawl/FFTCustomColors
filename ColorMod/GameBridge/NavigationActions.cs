@@ -2063,32 +2063,51 @@ namespace FFTColorCustomizer.GameBridge
                                         c.x, c.y, a, abilityMap);
                                     var enemies = new List<string>();
                                     var allies = new List<string>();
+                                    var enemyAff = new List<string?>();
+                                    var allyAff = new List<string?>();
                                     foreach (var st in splash)
                                     {
                                         if (!aliveByPos.TryGetValue(st, out var hitUnit)) continue;
+                                        string? aff = ElementAffinityAnnotator.ComputeMarker(
+                                            a.Element,
+                                            hitUnit.ElementAbsorb, hitUnit.ElementCancel,
+                                            hitUnit.ElementHalf, hitUnit.ElementWeak,
+                                            hitUnit.ElementStrengthen);
                                         if (hitUnit.Team == 0 || hitUnit.Team == 2)
                                         {
                                             // Summons: ally-target (Moogle/Carbuncle/Faerie) hits allies;
                                             // enemy-target (Shiva/Ramuh/etc.) skips allies entirely.
                                             if (!isSummon || wantsAlly)
+                                            {
                                                 allies.Add(UnitDisplayName(hitUnit));
+                                                allyAff.Add(aff);
+                                            }
                                         }
                                         else
                                         {
                                             // Summons: enemy-target hits enemies;
                                             // ally-target (Moogle/Carbuncle/Faerie) skips enemies.
                                             if (!isSummon || !wantsAlly)
+                                            {
                                                 enemies.Add(UnitDisplayName(hitUnit));
+                                                enemyAff.Add(aff);
+                                            }
                                         }
                                     }
                                     if (enemies.Count == 0 && allies.Count == 0) continue;
                                     int score = AbilityTargetCalculator.ComputeSplashScore(
                                         enemies.Count, allies.Count, wantsAlly, isSummon);
+                                    // Only attach affinity lists when the ability has an
+                                    // element AND at least one hit has a non-null marker.
+                                    bool anyEnemyAff = enemyAff.Exists(x => x != null);
+                                    bool anyAllyAff = allyAff.Exists(x => x != null);
                                     scoredCenters.Add((score, new SplashCenter
                                     {
                                         X = c.x, Y = c.y,
                                         Enemies = enemies,
                                         Allies = allies,
+                                        EnemyAffinities = anyEnemyAff ? enemyAff : null,
+                                        AllyAffinities = anyAllyAff ? allyAff : null,
                                     }));
                                 }
                                 if (scoredCenters.Count > 0)
@@ -2131,22 +2150,39 @@ namespace FFTColorCustomizer.GameBridge
                                         u.GridX, u.GridY, dx, dy, a, abilityMap);
                                     var enemies = new List<string>();
                                     var allies = new List<string>();
+                                    var enemyAff = new List<string?>();
+                                    var allyAff = new List<string?>();
                                     foreach (var lt in lineTiles)
                                     {
                                         if (!aliveByPos.TryGetValue(lt, out var hitUnit)) continue;
+                                        string? aff = ElementAffinityAnnotator.ComputeMarker(
+                                            a.Element,
+                                            hitUnit.ElementAbsorb, hitUnit.ElementCancel,
+                                            hitUnit.ElementHalf, hitUnit.ElementWeak,
+                                            hitUnit.ElementStrengthen);
                                         if (hitUnit.Team == 0 || hitUnit.Team == 2)
+                                        {
                                             allies.Add(UnitDisplayName(hitUnit));
+                                            allyAff.Add(aff);
+                                        }
                                         else
+                                        {
                                             enemies.Add(UnitDisplayName(hitUnit));
+                                            enemyAff.Add(aff);
+                                        }
                                     }
                                     if (enemies.Count == 0 && allies.Count == 0) continue;
                                     int score = wantsAllyLine ? allies.Count : (enemies.Count - allies.Count);
+                                    bool anyEnemyAff = enemyAff.Exists(x => x != null);
+                                    bool anyAllyAff = allyAff.Exists(x => x != null);
                                     scoredDirections.Add((score, new DirectionalHit
                                     {
                                         Direction = label,
                                         Seed = new[] { seedX, seedY },
                                         Enemies = enemies,
                                         Allies = allies,
+                                        EnemyAffinities = anyEnemyAff ? enemyAff : null,
+                                        AllyAffinities = anyAllyAff ? allyAff : null,
                                     }));
                                 }
                                 if (scoredDirections.Count > 0)
