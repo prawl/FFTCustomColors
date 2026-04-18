@@ -325,8 +325,14 @@ namespace FFTColorCustomizer.GameBridge
             // LoadGame: reached from GameOver menu. Shares stale battle state with GameOver
             // but paused=0 (GameOver has paused=1). Runs before EnemiesTurn to preempt stale
             // battleTeam=1.
+            //
+            // gameOverFlag is sticky — it can persist across save-reload into a later real
+            // cutscene. Guard the LoadGame rule with an eventId check so a live cutscene
+            // (eventId 1..399) doesn't get mis-labeled. 0 and 0xFFFF both mean "no event"
+            // and are valid LoadGame states. See TODO "Cutscene misdetects as LoadGame".
+            bool eventIdIsUnset = eventId == 0 || eventId == 0xFFFF;
             if (paused == 0 && gameOverFlag == 1 && battleMode == 0 && !actedOrMoved
-                && !atNamedLocation)
+                && !atNamedLocation && eventIdIsUnset)
                 return "LoadGame";
 
             // Post-GameOver TitleScreen: title reached by returning from game-over menu.

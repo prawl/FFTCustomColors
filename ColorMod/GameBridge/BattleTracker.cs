@@ -1116,6 +1116,29 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("unitName")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? UnitName { get; set; }
+
+        /// <summary>
+        /// Element-affinity marker relative to the ability's element. One of
+        /// "absorb" / "null" / "half" / "weak" / "strengthen", or null when the
+        /// ability is non-elemental, the tile is empty, or the occupant has no
+        /// affinity for the ability's element. Populated by
+        /// <see cref="ElementAffinityAnnotator"/> at scan time.
+        /// </summary>
+        [JsonPropertyName("affinity")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Affinity { get; set; }
+
+        /// <summary>
+        /// Attack arc from active unit to the occupant of this tile, relative
+        /// to the occupant's facing. One of "front" / "side" / "back", or null
+        /// when the tile is empty, the occupant's facing is unknown, or the
+        /// attacker is on the same tile. Populated by
+        /// <see cref="BackstabArcCalculator"/> at scan time. Use to prefer
+        /// rear-arc attacks (higher hit%, crit bonus in FFT canon).
+        /// </summary>
+        [JsonPropertyName("arc")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Arc { get; set; }
     }
 
     /// <summary>

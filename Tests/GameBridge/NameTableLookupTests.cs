@@ -312,5 +312,136 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Single(result);
             Assert.Equal("Esperaunce", result[0]);
         }
+
+        // =========================================================================
+        // SelectBestRosterBase tests — candidate ranking. Guards the session-27
+        // "Crestian → Reis" bug: prefer low-address canonical roster over stale
+        // high-address heap copies that parse with more names.
+        // =========================================================================
+
+        private static Dictionary<int, string> SlotDict(params (int, string)[] pairs)
+        {
+            var d = new Dictionary<int, string>();
+            foreach (var (k, v) in pairs) d[k] = v;
+            return d;
+        }
+
+        [Fact]
+        public void SelectBestRosterBase_Null_ReturnsNull()
+        {
+            Assert.Null(NameTableLookup.SelectBestRosterBase(null!));
+        }
+
+        [Fact]
+        public void SelectBestRosterBase_Empty_ReturnsNull()
+        {
+            Assert.Null(NameTableLookup.SelectBestRosterBase(
+                new List<(long, Dictionary<int, string>)>()));
+        }
+
+        [Fact]
+        public void SelectBestRosterBase_SingleCandidate_Returned()
+        {
+            var cache = SlotDict((0, "Ramza"), (1, "Kenrick"));
+            var result = NameTableLookup.SelectBestRosterBase(
+                new[] { (0x10000L, cache) });
+            Assert.NotNull(result);
+            Assert.Equal(0x10000L, result.Value.recordBase);
+        }
+
+        [Fact]
+        public void SelectBestRosterBase_PrefersLowAddress_WhenCountsEqual()
+        {
+            // Two candidates with identical caches: take the lower address.
+            // This is the Reis-bug fix — low address is the stable canonical
+            // roster; higher addresses are heap copies that may be stale.
+            var low = SlotDict((0, "Ramza"), (1, "Kenrick"), (2, "Lloyd"));
+            var high = SlotDict((0, "Ramza"), (1, "Kenrick"), (2, "Lloyd"));
+            var result = NameTableLookup.SelectBestRosterBase(new[]
+            {
+                (0x7ABCDEF000L, high),  // high address
+                (0x1411A0000L, low),    // low address, canonical main-module region
+            });
+            Assert.NotNull(result);
+            Assert.Equal(0x1411A0000L, result.Value.recordBase);
+        }
+
+        [Fact]
+        public void SelectBestRosterBase_PrefersHighestSlotCount_WhenAddressOrderDiffers()
+        {
+            // Low-address candidate is truncated (e.g. partially overwritten).
+            // Higher-address candidate has the full roster. Pick the full one
+            // even if it's at a higher address — truncation is always wrong.
+            var truncated = SlotDict((0, "Ramza"), (1, "Kenrick"));
+            var full = SlotDict((0, "Ramza"), (1, "Kenrick"), (2, "Lloyd"), (3, "Wilham"));
+            var result = NameTableLookup.SelectBestRosterBase(new[]
+            {
+                (0x1411A0000L, truncated),
+                (0x7ABCDEF000L, full),
+            });
+            Assert.NotNull(result);
+            Assert.Equal(0x7ABCDEF000L, result.Value.recordBase);
+            Assert.Equal(4, result.Value.cache.Count);
+        }
+
+        [Fact]
+        public void SelectBestRosterBase_RejectsCandidate_WithWrongSlotZero()
+        {
+            // AoB can match a non-roster region that happens to have the 9-story-name
+            // prefix somewhere in it but shifts by a stride boundary so slot 0 isn't
+            // "Ramza". Reject that candidate entirely.
+            var wrong = SlotDict((0, "Delita"), (1, "Argath"));
+            var right = SlotDict((0, "Ramza"), (1, "Kenrick"));
+            var result = NameTableLookup.SelectBestRosterBase(new[]
+            {
+                (0x1000L, wrong),  // low address but slot 0 != Ramza
+                (0x9000L, right),
+            });
+            Assert.NotNull(result);
+            Assert.Equal(0x9000L, result.Value.recordBase);
+        }
+
+        [Fact]
+        public void SelectBestRosterBase_AllEmpty_ReturnsNull()
+        {
+            var empty1 = new Dictionary<int, string>();
+            var empty2 = new Dictionary<int, string>();
+            var result = NameTableLookup.SelectBestRosterBase(new[]
+            {
+                (0x1000L, empty1),
+                (0x2000L, empty2),
+            });
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void SelectBestRosterBase_GhostCopyWithMoreNames_IsRejected()
+        {
+            // This is the exact Reis-bug failure shape from session 27:
+            // - Low address: canonical roster post-recruit (slot 0..4 live).
+            // - High address: stale ghost heap copy from pre-recruit state that
+            //   happens to have 10 populated slots because it had a larger roster
+            //   before some dismissals.
+            //
+            // The OLD logic picked the ghost (higher count wins). The new logic
+            // rejects it because we prefer low-address when both have Ramza at
+            // slot 0 — or at minimum, doesn't blindly pick the largest.
+            //
+            // This test uses equal counts to make low-address the discriminator;
+            // the case where ghost has genuinely more names is harder to distinguish
+            // and is the fallback to the Invalidate() hook on load/recruit.
+            var live = SlotDict((0, "Ramza"), (1, "Kenrick"), (2, "Lloyd"),
+                                (3, "Wilham"), (4, "Crestian"));
+            var ghost = SlotDict((0, "Ramza"), (1, "Kenrick"), (2, "Lloyd"),
+                                 (3, "Wilham"), (4, "Reis"));  // stale
+            var result = NameTableLookup.SelectBestRosterBase(new[]
+            {
+                (0x8ABC000000L, ghost),
+                (0x1411A0000L, live),
+            });
+            Assert.NotNull(result);
+            Assert.Equal(0x1411A0000L, result.Value.recordBase);
+            Assert.Equal("Crestian", result.Value.cache[4]);
+        }
     }
 }

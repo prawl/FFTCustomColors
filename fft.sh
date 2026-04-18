@@ -2620,18 +2620,29 @@ console.log('');
 if(activeU&&activeU.abilities){
   console.log('Abilities:');
   activeU.abilities.forEach(a=>{
+    // Element-affinity marker sigils: + absorb (healed), = null (no damage),
+    // ~ half (resisted), ! weak (double damage), ^ strengthen (boosts own damage).
+    // Only surfaces when ability has an element AND occupant has matching affinity.
+    const affSig={absorb:'+absorb',null:'=null',half:'~half',weak:'!weak',strengthen:'^strengthen'};
+    // Attack-arc sigils: back=best (backstab bonus), side=modest, front=omitted (default).
+    const arcSig={back:'>BACK',side:'>side'};
     const tiles=(a.validTargetTiles||[]).map(t=>{
       let s='('+t.x+','+t.y+')';
       const tag=(t.occupant==='ally'||t.occupant==='self')?' ALLY':'';
-      if(t.unitName)s+='<'+t.unitName+tag+'>';
-      else if(t.occupant&&t.occupant!=='empty')s+='<'+t.occupant+'>';
+      const aff=t.affinity&&affSig[t.affinity]?' '+affSig[t.affinity]:'';
+      const arc=t.arc&&arcSig[t.arc]?' '+arcSig[t.arc]:'';
+      if(t.unitName)s+='<'+t.unitName+tag+aff+arc+'>';
+      else if(t.occupant&&t.occupant!=='empty')s+='<'+t.occupant+aff+arc+'>';
       return s;
     });
     const mp=a.mpCost?' mp='+a.mpCost:'';
     const ct=a.castSpeed?' ct='+a.castSpeed:'';
     const el=a.element?' ['+a.element+']':'';
     const eff=a.addedEffect?' {'+a.addedEffect+'}':'';
-    console.log('  '+a.name+mp+ct+el+eff+' \\u2192 '+(tiles.length?tiles.join(' '):'(no targets in range)'));
+    // heldCount is only set for inventory-gated skillsets (Items/Iaido/Throw).
+    // Render [xN] when stocked, [OUT] when zero so Claude can pick from valid options at a glance.
+    const held=(a.heldCount!=null)?(a.heldCount>0?' [x'+a.heldCount+']':' [OUT]'):'';
+    console.log('  '+a.name+mp+ct+el+eff+held+' \\u2192 '+(tiles.length?tiles.join(' '):'(no targets in range)'));
   });
   console.log('');
 }
@@ -2646,11 +2657,13 @@ if(vmt){
 // Attack tiles (adjacent cardinals)
 const atk=vp.AttackTiles?.attackTiles||[];
 if(atk.length){
+  const arcSig2={back:' >BACK',side:' >side'};
   const lines=atk.map(a=>{
     const occ=a.occupant&&a.occupant!=='empty'?' '+a.occupant:'';
     const job=a.jobName?' ('+a.jobName+')':'';
     const hp=a.hp!=null?' HP='+a.hp:'';
-    return a.arrow+'→('+a.x+','+a.y+')'+occ+job+hp;
+    const arc=a.arc&&arcSig2[a.arc]?arcSig2[a.arc]:'';
+    return a.arrow+'→('+a.x+','+a.y+')'+occ+job+hp+arc;
   });
   console.log('Attack tiles: '+lines.join('  '));
 }
@@ -2676,6 +2689,11 @@ us.forEach(u=>{
     if(u.reaction)extra+=' R:'+u.reaction;
     if(u.support)extra+=' S:'+u.support;
     if(u.movement)extra+=' M:'+u.movement;
+    if(u.elementAbsorb?.length)extra+=' +abs:'+u.elementAbsorb.join(',');
+    if(u.elementNull?.length)extra+=' =null:'+u.elementNull.join(',');
+    if(u.elementHalf?.length)extra+=' ~half:'+u.elementHalf.join(',');
+    if(u.elementWeak?.length)extra+=' !weak:'+u.elementWeak.join(',');
+    if(u.elementStrengthen?.length)extra+=' ^str:'+u.elementStrengthen.join(',');
   }
   console.log('  ['+team+']'+nm+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+extra+st+life+act);
 });

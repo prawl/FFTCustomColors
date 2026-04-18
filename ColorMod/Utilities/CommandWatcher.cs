@@ -2674,6 +2674,16 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         private CommandResponse ExecuteNavActionWithAutoScan(CommandRequest command)
         {
+            // Invalidate roster-name cache on events that reshuffle the roster:
+            // - load: slot contents change wholesale when the save restores.
+            // - hire/dismiss/rename (future): mutate the live slots; wire when those land.
+            // Skipping "save" — save doesn't change the in-memory slots, only writes
+            // them out; cache stays valid.
+            if (command?.Action == "load" && _rosterNameTable != null)
+            {
+                _rosterNameTable.Invalidate();
+            }
+
             var response = ExecuteNavAction(command);
 
             if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId, response.Screen.BattleUnitHp))

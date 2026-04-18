@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using FFTColorCustomizer.Utilities;
 
@@ -186,6 +187,46 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Pure candidate-selection: given a list of (recordBase, parsed-cache)
+        /// pairs from AoB match probes, return the canonical roster base or
+        /// null if no candidate looks right.
+        ///
+        /// Rule: take the LOWEST-ADDRESS candidate whose slot 0 == "Ramza" AND
+        /// whose slot count equals the maximum observed across all candidates.
+        /// Low-address preference pins us to the stable main-module / static roster
+        /// region, avoiding ghost heap allocations that happen to begin with the
+        /// same 9 story names but diverge on later slots (the session-27
+        /// "Crestian → Reis" bug).
+        /// </summary>
+        public static (long recordBase, Dictionary<int, string> cache)? SelectBestRosterBase(
+            IEnumerable<(long recordBase, Dictionary<int, string> cache)> candidates)
+        {
+            if (candidates == null) return null;
+            var list = candidates.ToList();
+            if (list.Count == 0) return null;
+
+            int maxCount = 0;
+            foreach (var c in list)
+            {
+                if (c.cache != null && c.cache.Count > maxCount) maxCount = c.cache.Count;
+            }
+            if (maxCount == 0) return null;
+
+            // Order ascending by address, take first that satisfies both
+            // "slot 0 == Ramza" and "count == max". Use unsigned compare so
+            // negative-looking long values (rare, but heap addresses can run high)
+            // sort intuitively.
+            foreach (var c in list.OrderBy(c => (ulong)c.recordBase))
+            {
+                if (c.cache == null) continue;
+                if (!c.cache.TryGetValue(0, out var slot0) || slot0 != "Ramza") continue;
+                if (c.cache.Count != maxCount) continue;
+                return c;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// LEGACY: pure flat-table parser kept for backward compatibility with existing tests.
         /// This was used when we thought the name table was a flat list indexed by nameId.
         /// The real structure is per-slot records (see ParseRosterNameTable). Not used
@@ -258,8 +299,19 @@ namespace FFTColorCustomizer.GameBridge
 
                 // The anchor pattern starts at "Ramza\0" which is at +0x10 inside the
                 // first record. So record 0 starts at matchAddr - 0x10.
-                Dictionary<int, string>? best = null;
-                long bestBase = 0;
+                //
+                // Candidate selection: iterate matches in address order and take the
+                // FIRST match whose parsed cache has slot 0 == "Ramza" AND parses
+                // at least as many slots as the most-populous match. This prefers
+                // stable low-address matches (the canonical roster) over high-heap
+                // duplicates (battle scratch / dropped UI widgets that happen to
+                // begin with the same 9 story names but diverge in later slots).
+                //
+                // Historical footgun (session 27 "Crestian → Reis" bug): picking by
+                // "highest slot count wins" could select a stale heap allocation
+                // that contains a prior save's roster data, mis-labeling live
+                // recruits with names from the ghost table.
+                var candidates = new List<(long recordBase, Dictionary<int, string> cache)>();
                 foreach (var (matchAddr, _) in matches)
                 {
                     long recordBase = (long)matchAddr - NameOffsetInRecord;
@@ -269,16 +321,13 @@ namespace FFTColorCustomizer.GameBridge
                         ModLogger.Log($"[NameTableLookup]   0x{recordBase:X}: read failed or too short ({bytes?.Length ?? 0} bytes)");
                         continue;
                     }
-
                     var cache = ParseRosterNameTable(bytes);
                     ModLogger.Log($"[NameTableLookup]   0x{recordBase:X}: parsed {cache.Count} slots");
-
-                    if (cache.Count > (best?.Count ?? 0))
-                    {
-                        best = cache;
-                        bestBase = recordBase;
-                    }
+                    candidates.Add((recordBase, cache));
                 }
+                var selected = SelectBestRosterBase(candidates);
+                Dictionary<int, string>? best = selected?.cache;
+                long bestBase = selected?.recordBase ?? 0;
 
                 if (best == null || best.Count == 0)
                 {

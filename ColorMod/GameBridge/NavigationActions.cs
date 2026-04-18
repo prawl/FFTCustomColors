@@ -1081,6 +1081,12 @@ namespace FFTColorCustomizer.GameBridge
             int listSize = learnedAbilities?.Length ?? 16; // Fallback: no skillset >16
             int resetUps = listSize + 1;
             ModLogger.Log($"[BattleAbility] Reset: Up×{resetUps} to force cursor to index 0");
+            // Blind fire-and-forget. Historical note: session 31 tried counter-delta
+            // verification here to mirror the Down-loop pattern, but the cursor
+            // counter at 0x140C0EB20 reports NEGATIVE deltas on Up-wrap (observed
+            // live on Lloyd's 12-entry Jump list). Retrying against the wrong-sign
+            // delta produces an explosive retry storm. Wrap-reset is guaranteed
+            // correct after listSize+1 blind Ups — no verification needed.
             for (int i = 0; i < resetUps; i++)
             {
                 SendKey(VK_UP);
@@ -1132,6 +1138,11 @@ namespace FFTColorCustomizer.GameBridge
             // doesn't assume the effect landed.
             string verb = loc.castSpeed > 0 ? "Queued" : "Used";
             string ctSuffix = loc.castSpeed > 0 ? $" (ct={loc.castSpeed})" : "";
+            // Auto-end-turn abilities (Jump): engine ends the turn as part of the
+            // ability execution. Claude should skip the Wait step. Flag in response
+            // so `battle_ability` callers don't follow up with a redundant Wait.
+            bool autoEndsTurn = AutoEndTurnAbilities.IsAutoEndTurn(abilityName);
+            string autoEndSuffix = autoEndsTurn ? " — TURN ENDED" : "";
 
             // Step 6: Handle targeting
             if (loc.isTrueSelfOnly)
@@ -1140,7 +1151,7 @@ namespace FFTColorCustomizer.GameBridge
                 SendKey(VK_ENTER);
                 Thread.Sleep(300);
                 response.Status = "completed";
-                response.Info = $"{verb} {abilityName} (self-target){ctSuffix}";
+                response.Info = $"{verb} {abilityName} (self-target){ctSuffix}{autoEndSuffix}";
                 return response;
             }
 
@@ -1155,7 +1166,7 @@ namespace FFTColorCustomizer.GameBridge
                 SendKey(VK_ENTER); // confirm cast
                 Thread.Sleep(300);
                 response.Status = "completed";
-                response.Info = $"{verb} {abilityName} (self-radius AoE){ctSuffix}";
+                response.Info = $"{verb} {abilityName} (self-radius AoE){ctSuffix}{autoEndSuffix}";
                 return response;
             }
 
@@ -1192,7 +1203,7 @@ namespace FFTColorCustomizer.GameBridge
                 SendKey(VK_ENTER); // Unit/Tile dialog (selects "Unit" default; harmless if no dialog)
                 Thread.Sleep(300);
                 response.Status = "completed";
-                response.Info = $"{verb} {abilityName} on ({targetX},{targetY}) — cursor was already on target{ctSuffix}";
+                response.Info = $"{verb} {abilityName} on ({targetX},{targetY}) — cursor was already on target{ctSuffix}{autoEndSuffix}";
                 return response;
             }
 
@@ -1296,7 +1307,7 @@ namespace FFTColorCustomizer.GameBridge
             Thread.Sleep(300);
 
             response.Status = "completed";
-            response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){ctSuffix}";
+            response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){ctSuffix}{autoEndSuffix}";
             return response;
         }
 
@@ -1963,6 +1974,17 @@ namespace FFTColorCustomizer.GameBridge
                                 else
                                     tile.Occupant = "enemy";
                                 tile.UnitName = UnitDisplayName(occ);
+                                tile.Affinity = ElementAffinityAnnotator.ComputeMarker(
+                                    a.Element,
+                                    occ.ElementAbsorb, occ.ElementCancel, occ.ElementHalf,
+                                    occ.ElementWeak, occ.ElementStrengthen);
+                                // Attack arc: only meaningful for enemy targets (backstab
+                                // bonus applies to attacking foes), and requires known facing.
+                                if (tile.Occupant == "enemy" && !string.IsNullOrEmpty(occ.Facing))
+                                {
+                                    tile.Arc = BackstabArcCalculator.ComputeArc(
+                                        u.GridX, u.GridY, occ.GridX, occ.GridY, occ.Facing);
+                                }
                             }
                             return tile;
                         }
@@ -2525,6 +2547,11 @@ namespace FFTColorCustomizer.GameBridge
                         tile.MaxHp = occupantUnit.MaxHp;
                         tile.JobName = occupantUnit.JobNameOverride
                             ?? (occupantUnit.Team == 0 ? GameStateReporter.GetJobName(occupantUnit.Job) : null);
+                        if (occupant == "enemy" && !string.IsNullOrEmpty(occupantUnit.Facing))
+                        {
+                            tile.Arc = BackstabArcCalculator.ComputeArc(
+                                ally.GridX, ally.GridY, occupantUnit.GridX, occupantUnit.GridY, occupantUnit.Facing);
+                        }
                     }
                     attackTileList.Add(tile);
                 }

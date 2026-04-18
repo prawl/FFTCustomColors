@@ -744,7 +744,7 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - Camera auto-rotates when entering Move mode or Attack targeting — always re-read rotation
 
 ### Bugs Found 2026-04-12
-- [ ] **Ability list navigation: use counter-delta instead of brute-force scroll** — Currently presses Up×N to reset then Down×index. Could use counter-delta approach.
+- [ ] **Ability list navigation: use counter-delta instead of brute-force scroll** — Currently presses Up×N to reset then Down×index. Could use counter-delta approach. **Session 31 attempt REVERTED live** after it broke Lloyd's Jump targeting: the cursor counter at `0x140C0EB20` reports NEGATIVE deltas on Up-wrap (observed: expected +3, got 0; expected +6, got -6; expected +9, got -24 — retry math exploded). The Down loop counter-delta works fine because it never wraps; the Up-reset can't because its whole purpose is to wrap-past-the-top. Future attempts need either (a) a different counter that's monotonic under wrap, (b) a stable cursor-position memory read, or (c) a retry heuristic that detects the negative-delta case and falls back to blind presses.
 
 
 - [ ] **Detect rain/weather on battle maps** — Rain boosts Lightning spells by 25%.

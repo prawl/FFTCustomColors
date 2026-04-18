@@ -1512,6 +1512,15 @@ namespace FFTColorCustomizer.GameBridge
         [System.Text.Json.Serialization.JsonPropertyName("jobName")]
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string? JobName { get; set; }
+
+        /// <summary>
+        /// Attack arc ("front"/"side"/"back") from active unit toward this tile's
+        /// enemy occupant, given the occupant's known facing. Null when the tile
+        /// is empty, the occupant is an ally, or the facing byte isn't readable.
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("arc")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public string? Arc { get; set; }
     }
 
     public class FacingInfo
