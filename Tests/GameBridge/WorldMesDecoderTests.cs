@@ -169,5 +169,81 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 Assert.InRange(kv.Value, 0, lookup.Count - 1);
             }
         }
+
+        // Hardcoded corpus regression tests — these pin specific corpus entries so we
+        // catch any future decoder change that reshuffles the order. Uses the shipped
+        // RumorCorpus.Bodies array, not the file-based ExtractRumors (which only runs
+        // when world.bin is present).
+
+        [Fact]
+        public void RumorCorpus_HasAtLeast26Entries()
+        {
+            Assert.True(RumorCorpus.Bodies.Length >= 26,
+                $"expected >=26 hardcoded bodies, got {RumorCorpus.Bodies.Length}");
+        }
+
+        [Fact]
+        public void RumorCorpus_Entry0_IsBrigandryIntro()
+        {
+            Assert.StartsWith("Brigandry is on the rise", RumorCorpus.Bodies[0]);
+            Assert.Contains("Corpse Brigade", RumorCorpus.Bodies[0]);
+        }
+
+        [Fact]
+        public void RumorCorpus_Entry4_IsCorpseBrigadeDefeat()
+        {
+            Assert.Contains("Corpse Brigade", RumorCorpus.Bodies[4]);
+            Assert.Contains("defeated", RumorCorpus.Bodies[4]);
+        }
+
+        [Fact]
+        public void RumorCorpus_Entry10_IsZodiacBravesLegend()
+        {
+            Assert.Contains("Ivalice was united", RumorCorpus.Bodies[10]);
+            Assert.Contains("Zodiac Braves", RumorCorpus.Bodies[10]);
+        }
+
+        [Fact]
+        public void RumorCorpus_Entry11_IsZodiacStones()
+        {
+            Assert.Contains("crystals are said to date from the age of myth",
+                RumorCorpus.Bodies[11]);
+            Assert.Contains("Zodiac Stones", RumorCorpus.Bodies[11]);
+        }
+
+        [Fact]
+        public void RumorCorpus_Entry15_IsDelacroixDeath()
+        {
+            Assert.Contains("Cardinal Delacroix", RumorCorpus.Bodies[15]);
+        }
+
+        [Fact]
+        public void RumorCorpus_Entry19_IsRiovanesFiend()
+        {
+            Assert.Contains("Riovanes", RumorCorpus.Bodies[19]);
+            Assert.Contains("fiend", RumorCorpus.Bodies[19]);
+        }
+
+        [Fact]
+        public void RumorCorpus_AllEntriesNonEmpty()
+        {
+            for (int i = 0; i < RumorCorpus.Bodies.Length; i++)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(RumorCorpus.Bodies[i]),
+                    $"RumorCorpus.Bodies[{i}] is empty or whitespace");
+            }
+        }
+
+        [Fact]
+        public void RumorCorpus_AllEntriesAtLeast100Chars()
+        {
+            // Rumor bodies are always multi-sentence prose — short entries indicate
+            // a decoder bug that truncated content.
+            for (int i = 0; i < RumorCorpus.Bodies.Length; i++)
+            {
+                Assert.True(RumorCorpus.Bodies[i].Length >= 100,
+                    $"RumorCorpus.Bodies[{i}] only {RumorCorpus.Bodies[i].Length} chars: '{RumorCorpus.Bodies[i].Substring(0, System.Math.Min(60, RumorCorpus.Bodies[i].Length))}'");
+            }
+        }
     }
 }

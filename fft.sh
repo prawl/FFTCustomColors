@@ -332,11 +332,38 @@ _status_col() {
   esac
 }
 
+# Per-tag slow-warn thresholds (ms). Picked from session-32 live baselines:
+#   keys ~215ms, screen ~180ms, scan_move ~450ms, save/travel ~4-10s.
+# A tag's threshold = warn level; 2× = red ("!!"). Unmatched tags use FFT_SLOW_MS
+# (default 800). Override the whole table via FFT_SLOW_MS globally or set one
+# FFT_SLOW_MS_<TAG> env var per tag (upper-case, non-alphanumerics → _).
+_slow_threshold_for_tag() {
+  local _tag="$1"
+  # User-supplied override wins. `key:Up` → `FFT_SLOW_MS_KEY_UP`.
+  local _upper
+  _upper=$(printf '%s' "$_tag" | tr '[:lower:]:-' '[:upper:]__')
+  local _override
+  eval "_override=\${FFT_SLOW_MS_${_upper}:-}"
+  if [ -n "$_override" ]; then
+    printf '%s' "$_override"
+    return
+  fi
+  case "$_tag" in
+    screen|snapshot|heap_snapshot|diff) printf '300' ;;
+    key:*)                              printf '400' ;;
+    scan_move|scan_units|scan_tavern)   printf '700' ;;
+    save|load|world_travel_to|world_travel|enter_tavern)
+                                        printf '8000' ;;
+    snap*|search_bytes|heap_diff)       printf '2000' ;;
+    *)                                  printf '%s' "${FFT_SLOW_MS:-800}" ;;
+  esac
+}
+
 # _fmt_timing <t0> <t1> <commandJson>
 # Returns (to stdout) a colored `t=Nms[tag]` timing suffix. No newline — caller
 # owns the line. Respects FFT_TIME (default on; set to 0 to silence) and
-# FFT_SLOW_MS (default 800). Threshold coloring: green ≤ warn, yellow to 2×,
-# red beyond.
+# per-tag thresholds from `_slow_threshold_for_tag` (FFT_SLOW_MS global fallback,
+# default 800). Threshold coloring: green ≤ warn, yellow to 2×, red beyond.
 _fmt_timing() {
   [ "${FFT_TIME:-1}" = "0" ] && return 0
   local _t0="$1" _t1="$2" _cmd="$3"
@@ -354,8 +381,10 @@ _fmt_timing() {
     fi
   fi
   [ -z "$_tag" ] && _tag="?"
+  local _warn
+  _warn=$(_slow_threshold_for_tag "$_tag")
   local _raw
-  _raw=$(awk -v t0="$_t0" -v t1="$_t1" -v warn="${FFT_SLOW_MS:-800}" -v tag="$_tag" \
+  _raw=$(awk -v t0="$_t0" -v t1="$_t1" -v warn="$_warn" -v tag="$_tag" \
     'BEGIN{
        br=(t1-t0)*1000;
        s=""; if(br>=warn*2){s="!!"} else if(br>=warn){s="!"};

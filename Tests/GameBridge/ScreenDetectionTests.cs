@@ -792,6 +792,40 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("EncounterDialog", result);
         }
 
+        // Guard: TitleScreen must NOT swallow world-side screens with rawLocation=255.
+        // The old catch-all `if (rawLocation == 255) return "TitleScreen"` was removed in
+        // a prior session; these tests pin that removal so a future refactor doesn't
+        // re-introduce a loose TitleScreen rule.
+        [Fact]
+        public void DetectScreen_PartyMenu_WithRawLocation255_ShouldNotBeTitleScreen()
+        {
+            // PartyMenu reached from the world map uses party=1 signal; rawLocation remains
+            // 255 because the world-side menu doesn't set a named location.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 0, rawLocation: 255, slot0: 0x10, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+            Assert.NotEqual("TitleScreen", result);
+        }
+
+        [Fact]
+        public void DetectScreen_WorldMapHoveringLocation_ShouldNotBeTitleScreen()
+        {
+            // WorldMap with cursor hovering a named node (hover=26, Siedge Weald).
+            // rawLocation is 255 until the player lands on the node; hover holds the ID.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0x10, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                hover: 26);
+            Assert.Equal("WorldMap", result);
+            Assert.NotEqual("TitleScreen", result);
+        }
+
         // Guard: post-battle stale flags on the WorldMap (party=0, ui=0, no active event)
         // must NOT misdetect as Victory via the Orbonne variant. The new rule requires
         // party=1 + ui=1 + eventId 1..399, which these inputs don't satisfy.
@@ -806,6 +840,71 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 submenuFlag: 1, menuCursor: 0,
                 eventId: 0);
 
+            Assert.NotEqual("BattleVictory", result);
+            Assert.NotEqual("BattleDesertion", result);
+        }
+
+        // Additional post-battle stale-flag edge cases (session 33). These pin
+        // behavior across the Orbonne-variant rules and sibling post-battle fallbacks
+        // so a future rule tweak doesn't regress world-side detection.
+
+        [Fact]
+        public void DetectScreen_StaleFlags_Party1Ui0_NoEventId_ShouldNotBeVictory()
+        {
+            // party=1 is a PartyMenu signal; without a battle eventId the Orbonne Victory
+            // rule should NOT fire — even if slot0 is a non-sentinel value.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 0, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 0);
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_StaleFlags_EventId400_ShouldNotBeVictory()
+        {
+            // eventId must be 1..399 for the Orbonne Victory rule; 400+ is out of the
+            // "real battle scene" range and should fall through to other rules.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 400);
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_StaleFlags_Slot0FFFFFFFF_ShouldNotBeVictory()
+        {
+            // slot0=0xFFFFFFFF is the formation sentinel; Orbonne rules explicitly
+            // exclude this value since it means units aren't placed yet.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 303);
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_StaleFlags_NotActedOrMoved_ShouldNotBeVictory()
+        {
+            // actedOrMoved is a post-battle sticky signal; without it, we haven't
+            // completed a battle yet, so Victory/Desertion can't fire.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 255, slot0: 0x67, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 303);
             Assert.NotEqual("BattleVictory", result);
             Assert.NotEqual("BattleDesertion", result);
         }
@@ -1104,6 +1203,55 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 smScreen: GameScreen.TavernRumors,
                 detectedName: "BattleMyTurn");
             Assert.Equal("BattleMyTurn", result);
+        }
+
+        // Additional SaveSlotPicker vs TravelList ambiguity coverage (session 33).
+        // These document the full override surface so a future refactor doesn't
+        // accidentally override the wrong combinations.
+
+        [Fact]
+        public void ResolveAmbiguous_SMOnSaveSlotPicker_DetectionPartyMenuUnits_TrustsDetection()
+        {
+            // Escape from SaveSlotPicker typically lands on PartyMenuUnits (the save
+            // entry point). Don't force SaveSlotPicker there.
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.SaveSlotPicker,
+                detectedName: "PartyMenuUnits");
+            Assert.Equal("PartyMenuUnits", result);
+        }
+
+        [Fact]
+        public void ResolveAmbiguous_SMOnTravelList_DetectionTravelList_PassesThrough()
+        {
+            // The non-override case — both SM and detection agree. Important pin:
+            // make sure we don't somehow promote TravelList to SaveSlotPicker.
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.TravelList,
+                detectedName: "TravelList");
+            Assert.Equal("TravelList", result);
+            Assert.NotEqual("SaveSlotPicker", result);
+        }
+
+        [Fact]
+        public void ResolveAmbiguous_SMOnWorldMap_DetectionTravelList_TrustsDetection()
+        {
+            // SM stale; player opened the travel list but SM didn't catch the key.
+            // Detection's TravelList wins.
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.WorldMap,
+                detectedName: "TravelList");
+            Assert.Equal("TravelList", result);
+        }
+
+        [Fact]
+        public void ResolveAmbiguous_SMOnLocationMenu_DetectionLocationMenu_PassesThrough()
+        {
+            // Should NOT override to TavernRumors/TavernErrands when SM actually
+            // knows we're on the generic LocationMenu.
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                smScreen: GameScreen.LocationMenu,
+                detectedName: "LocationMenu");
+            Assert.Equal("LocationMenu", result);
         }
 
         // --- TitleScreen tightening (session 26, 2026-04-17) ---
