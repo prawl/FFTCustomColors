@@ -2097,6 +2097,11 @@ namespace FFTColorCustomizer.GameBridge
                                     if (enemies.Count == 0 && allies.Count == 0) continue;
                                     int score = AbilityTargetCalculator.ComputeSplashScore(
                                         enemies.Count, allies.Count, wantsAlly, isSummon);
+                                    // Element-affinity adjustment — weak enemies rank
+                                    // higher, absorbing enemies rank lower. Silent when
+                                    // ability has no element (affinity lists are null).
+                                    score += AbilityTargetCalculator.SplashAffinityAdjustment(
+                                        enemyAff, allyAff, wantsAlly);
                                     // Only attach affinity lists when the ability has an
                                     // element AND at least one hit has a non-null marker.
                                     bool anyEnemyAff = enemyAff.Exists(x => x != null);
@@ -2173,6 +2178,8 @@ namespace FFTColorCustomizer.GameBridge
                                     }
                                     if (enemies.Count == 0 && allies.Count == 0) continue;
                                     int score = wantsAllyLine ? allies.Count : (enemies.Count - allies.Count);
+                                    score += AbilityTargetCalculator.SplashAffinityAdjustment(
+                                        enemyAff, allyAff, wantsAllyLine);
                                     bool anyEnemyAff = enemyAff.Exists(x => x != null);
                                     bool anyAllyAff = allyAff.Exists(x => x != null);
                                     scoredDirections.Add((score, new DirectionalHit

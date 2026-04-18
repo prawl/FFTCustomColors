@@ -332,5 +332,48 @@ namespace FFTColorCustomizer.GameBridge
                 return enemyCount;
             return enemyCount - allyCount;
         }
+
+        /// <summary>
+        /// Element-affinity-aware score adjustment. Sums per-hit markers and
+        /// returns a delta to add to the base ComputeSplashScore.
+        ///
+        /// For enemy-target abilities (wantsAlly=false):
+        ///   weak +2, half -1, null -3, absorb -5, strengthen 0.
+        /// For ally-target abilities (wantsAlly=true): same magnitudes, flipped
+        /// sign — absorbing ally is a bonus (free heal), weak ally is a penalty.
+        ///
+        /// Null/empty lists and unknown markers contribute 0. Tolerates
+        /// positional nulls (a hit with no affinity data).
+        /// </summary>
+        public static int SplashAffinityAdjustment(
+            System.Collections.Generic.List<string?>? enemyAffinities,
+            System.Collections.Generic.List<string?>? allyAffinities,
+            bool wantsAlly)
+        {
+            int enemySum = SumAffinityWeights(enemyAffinities);
+            int allySum = SumAffinityWeights(allyAffinities);
+            // Ally-target: flip sign on ally hits (absorb=good, weak=bad).
+            // Enemy-target: enemy hits contribute directly.
+            return wantsAlly ? -allySum : enemySum;
+        }
+
+        private static int SumAffinityWeights(System.Collections.Generic.List<string?>? markers)
+        {
+            if (markers == null || markers.Count == 0) return 0;
+            int total = 0;
+            foreach (var m in markers)
+            {
+                total += m switch
+                {
+                    "weak"       => 2,
+                    "half"       => -1,
+                    "null"       => -3,
+                    "absorb"     => -5,
+                    "strengthen" => 0,
+                    _            => 0,
+                };
+            }
+            return total;
+        }
     }
 }
