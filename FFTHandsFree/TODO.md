@@ -83,7 +83,11 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 
 - [ ] **BattleChoice detection — use eventId whitelist approach (NEW PLAN)** — Session 44 spent time attempting a memory discriminator to distinguish BattleChoice from BattleDialogue. 10+ datapoints proved the two states share the same byte fingerprint (rawLoc, battleTeam, acted/moved, battleMode all match). Heap cursor-byte hunt found a working byte (session-specific) but re-locating it post-restart is crash-prone due to batch_read load. **User-approved alternative**: catalog BattleChoice eventIds as we encounter them and hardcode the set. At runtime: `if screen.Name == "BattleDialogue" && eventId ∈ BattleChoiceEventIds → return "BattleChoice"`. Known so far: **eventId 16 at Mandalia Plain** ("Defeat the Brigade" / "Rescue captive"). No screenshot-based detection permitted per user direction. Methodology for finding the cursor byte per-session when inside BattleChoice is documented in `memory/project_battle_choice_cursor.md` for future enabling.
 
-- [ ] **BattleVictory misdetects as BattleDesertion on Gariland post-battle** [→ line ~96] — Live-observed session 44 fresh-game Gariland win: detection returned `BattleDesertion`. Rule ordering at ScreenDetectionLogic.cs:278 with identical broad post-battle state. Blocks story-battle wrap-up autonomously.
+- [ ] **BattleVictory NOT DETECTED on Mandalia + misdetects as BattleDesertion on Gariland** [→ line ~96] — Two observed misses:
+  1. **Gariland (session 44)**: post-battle, screen returned `BattleDesertion`. Rule ordering at ScreenDetectionLogic.cs:278 — paused=1 + submenuFlag=1 matches Desertion before Victory. Fingerprint: rawLocation=6, battleTeam=0, paused=1, submenuFlag=1, menuCursor=1, eventId=12.
+  2. **Mandalia (session 44 pt 10, 2026-04-19)**: Victory banner on screen ~10s, detection returned `BattleChoice` then `BattleDialogue` — never `BattleVictory`. Fingerprint: rawLocation=24, battleTeam=**3** (new value — possibly "all teams done"), battleActed=1, battleMoved=1, battleUnitHp=350, eventId=25. battleTeam=3 is unique to this screen across 11+ prior captures (only saw 0/1/2 before). Strong candidate as the BattleVictory discriminator.
+  
+  **Proposed fix**: Add a new rule `if (atNamedLocation && battleTeam == 3 && battleActed == 1) return "BattleVictory"` — runs BEFORE the paused-based Desertion rule. Need to confirm battleTeam=3 doesn't fire on other non-Victory states.
 
 - [ ] **`scan_move` misreads team classification on Orbonne opening** [→ line ~80] — Story battles use team bytes the bridge doesn't recognize. (6,6) read as ENEMY but was an ALLY. Monster-job Ahriman at (4,5) read as PLAYER. Almost attacked an ally. Blocks autonomous story-battle play.
 
@@ -125,8 +129,6 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 
 ### Session 43 — next-up follow-ups
 
-- [x] **Live-verify IsPartyTree refactor didn't silently narrow CharacterStatus roster population** — VERIFIED 2026-04-18 session 44. Opened CharacterStatus on Ramza from Bervenia→WorldMap; `screen.roster` populated with all 15 units (Ramza, Kenrick, Lloyd, Wilham, Mustadio, Agrias, Rapha, Marach, Beowulf, Construct 8, Orlandeau, Meliadoul, Reis, Cloud, Crestian), each with full stats + equipment + displayOrder. Session 39 refactor did not narrow population.
-
 - [ ] **Live-verify Gollund row 4 unmapped-error path via UI** — Session 42 wired Gollund row 3 → corpus #20 "The Haunted Mine" + row 4 → unmapped. Live-verified row 3 + UI cross-reference session 42. Row 4 verified via bridge but not UI (the "At Bael's End" body renders from a different data source we can't decode). When that source lands, seed Gollund row 4 and all 8 uniform cities' row 3.
 
 ### Session 33 batch 2 — deferred (needs live battle / environment I can't verify)
@@ -145,11 +147,7 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 
 - [ ] **Wire TavernRumors cursorRow to screen response** — Session 33 found `0x13090F968` at Dorter. **Session 44 (2026-04-18)** confirmed the same `+0x28` widget offset holds at Bervenia — byte shifted to `0x13091F968` (widget base `0x13091F940`, +0x10000 from session 33). Triple-diff intersection (row0→1, 1→2, 2→3) + live-read verification is a RELIABLE per-session re-locator technique (yields ~5-7 candidates, narrowed to 1 by reading at current cursor). Widget header structure (self-pointer / count / tag / cursor at +0x28) is stable across both sessions. Still no stable anchor for AUTO-relocation at runtime — direct pointer-search for widget-base bytes returned 0 hits, confirming UE4 Slate vtable walk is needed. Memory note `project_tavern_rumor_cursor.md` updated with the full technique + next approaches.
 
-- [x] **BattleSequence discriminator heap-hunt — DONE (Task 24 2026-04-18)** — Main-module byte at `0x14077D1F8` reads 1 on BattleSequence minimap / 0 on plain WorldMap. Verified at Orbonne vs Bervenia. Wired into `ScreenDetectionLogic.Detect` via new `battleSequenceFlag` parameter + uncommented the dormant rule. Live-verified `screen.name == "BattleSequence"` at Orbonne minimap. 11 new unit tests (1 base case + 8 whitelist locs + 2 negative cases). Memory note `project_battle_sequence_discriminator.md`. **KNOWN EDGE CASE (carryover bug)**: see next TODO item.
-
 - [ ] **BattleSequence detection over-fires after restart at story location** — The byte at `0x14077D1F8` persists in save state. After `restart` loads a save that was mid-minimap, the game visually lands on **plain WorldMap at Orbonne** (cursor moves, Enter re-enters minimap), but the byte still reads 1 so our detection says "BattleSequence". First-frame-only misfire but real. Memory note `project_battle_sequence_flag_sticky.md` with three fix approaches (find truly-runtime flag, compound check against a cursor-active byte, or "0→1 transition detection" heuristic). Task 24 shipped with this edge case documented.
-
-- [x] **SaveSlotPicker from BattlePaused — DOES NOT EXIST (closed 2026-04-18 session 44)** — Entered a real battle at Mount Bervenia, opened the BattlePaused menu via Pause, screenshotted the full 6-item menu: Data, Retry, Load, Settings, Return to World Map, Return to Title Screen. **No Save option.** The BattlePaused → SaveSlotPicker edge is imaginary — user corrected memory that originally conjectured it. Bridge validPaths already match the 6 items (Resume/Units/Retry/Load/ReturnToWorldMap/ReturnToTitle + cursor nav) with one naming quibble (`Units` vs on-screen `Data`). See also duplicate entry at line 167 — also closed.
 
 ### Session 33 — Tavern Scope B (decoder shipped; per-city mapping partial)
 
@@ -213,8 +211,6 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 ### Session 23 — state stability + helper hardening
 
 - [ ] **Verify open_* compound helpers across CHAIN calls** — Fresh-state runs work after this session's fixes (`open_character_status Agrias` from WorldMap → correct unit). But chained calls (open_eqa Cloud → open_eqa Agrias) still produce the viewedUnit-lag bug. SM-sync changes in `82ccb65` may or may not have resolved this; needs explicit live test sequence cycling 3 different units through each open_* helper and verifying state matches each request. Source: `NavigationActions.cs` `NavigateToCharacterStatus` rewrite, ~line 4419.
-
-- [x] **Second SaveSlotPicker entry point from BattlePaused — DOES NOT EXIST (closed 2026-04-18 session 44)** — Live-verified: BattlePaused menu has 6 items (Data/Retry/Load/Settings/ReturnToWorldMap/ReturnToTitle) — no Save. See dup at line 100.
 
 - [~] **`return_to_world_map` from battle states** — Session 26 added a state-guard refusing from Battle* / EncounterDialog / Cutscene / GameOver with a clear error pointing to the right recovery helper (battle_flee / execute_action ReturnToWorldMap). That closes the footgun. BattleVictory / BattleDesertion are NOT blocked because Escape/Enter on those screens legitimately advances toward WorldMap; they still need a live-verify at some point but the unsafe path is closed. Safe from all non-battle states (verified EqA/JobSelection/PartyMenuUnits tree + all non-Units tabs session 24; SaveSlotPicker verified session 26).
 
@@ -327,8 +323,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 
 
-- [x] **Live-verify `execute_action` responses include `ui=` field across all battle screens** [State] — dup of §0 entry closed in session 44. See partial `[~]` entry at line 84 for findings (BattleMyTurn/BattleMoving/BattleAbilities populate; BattlePaused/BattleStatus/BattleAttacking are null — three gaps that need cursor-to-label decode).
-
 
 - [ ] **battle_ability first-scan null/null for secondary skillset** [Execution] — Primary detection works (Martial Arts secondaryIdx=9 for Lloyd verified); auto-scan catches misses on retry; all-skillsets fallback works. Remaining: first scan sometimes returns null/null before auto-scan fires — investigate race and eliminate the initial miss.
 
@@ -405,8 +399,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 - [ ] **Resume polling after flee** — Character continues traveling after fleeing. Need to re-enter poll loop.
 
-
-- [x] **Location address unreliable — ALREADY HANDLED (verified session 44 2026-04-18)** — `0x14077D208` does hold "last-passed-through node" during travel (live-confirmed: byte read 33 = Grogh Heights mid-transit when destination was 13 = Bervenia). But `ColorMod/GameBridge/LocationSaveLogic.cs` already handles the context: on WorldMap uses `hover` as authoritative, on EncounterDialog uses `rawLocation` (which IS the encounter location). CommandWatcher.cs:6742-6754 consumes the context-aware output via `GetEffectiveLocation`. No fix needed — the compensation exists and works.
 
 
 
@@ -817,16 +809,11 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - Two distinct TitleScreen states exist (fresh process vs post-GameOver) with different memory fingerprints
 
 **Fix tasks:**
-- [x] **Reorder rules — ALREADY DONE (verified session 44 2026-04-18)** — ScreenDetectionLogic.cs review shows specific rules already precede the TitleScreen catch-all: PartyMenu (party==1) at line 233, EncounterDialog (encounterFlag!=0) at line 239, Cutscene (IsRealEvent + rawLocation==255) at line 244, WorldMap hover-location at line 251, and finally TitleScreen at line 264. LocationMenu check runs later at line 335 (after shop sub-actions) but before any catch-all. LoadGame at line 418 is in the in-battle fallback section by design. Incremental fixes across sessions 21-26 closed this without a dedicated sweep.
-
-
 - [ ] **Remove `encA/encB`-dependent rules** — replace Battle_Victory / Battle_Desertion / EncounterDialog discriminators with stable signals (`paused`, `submenuFlag`, `acted/moved` combos).
 
 
 - [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation (which location IDs are multi-battle campaign grounds vs villages). Add to `project_location_ids_verified.md`.
 
-
-- [x] **Scope `menuCursor` interpretation — ALREADY DONE (verified session 44 2026-04-18)** — CommandWatcher.cs:5025 gates the menuCursor → "Move"/"Abilities"/"Wait"/... label mapping on `screen.Name == "BattleMyTurn" || screen.Name == "BattleActing"`, which is STRICTER than the original "submenuFlag==0 && team==0" proposal (the screen name is already derived from those flags + more). BattleAbilities uses `_battleMenuTracker.CurrentItem` at line 5061; BattleAttacking/BattleCasting use `TargetingLabelResolver.ResolveOrCursor` at line 5048 (session 44). No scope violations remain.
 
 
 - [ ] **Memory scan for WorldMap vs TravelList discriminator** — these are byte-identical in current 18 inputs. Need a menu-depth or focused-widget address.

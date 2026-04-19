@@ -776,3 +776,59 @@ Tests: 2852 → 3201 (+349 new, 0 regressions). Live-verified at 9 of 15 Chapter
 - `Tests/GameBridge/EventIdClassifierTests.cs` (32 tests)
 - `Tests/GameBridge/SkillsetNameReferenceTests.cs` (26 tests)
 - `Tests/GameBridge/CorpusCityMentionTests.cs` (8 tests)
+
+
+### Session 44 (2026-04-18 → 2026-04-19) — State-detection sweep: BattleChoice, BattleSequence, GameOver + resolvers + god_ramza
+
+Commits: `8ee63d0`, `249f660`, `856d288`, `5c0b59e`, `fe6e952`, `5954d80`, `afff421`, `daec206`, `e458f66`, `cd0d754`, `29c547c`, `4dee442`, `941646b`, `392681b`, `a01422c`, `8107123`, `c1a793c`, `ad507fb`, `a778601`, `377bfd8`
+
+**Shipped:**
+
+- [x] **Task 24: BattleSequence discriminator** — Main-module byte at `0x14077D1F8` reads 1 on the Orbonne-style minimap / 0 on plain WorldMap. New `battleSequenceFlag` param on `ScreenDetectionLogic.Detect`; the dormant rule is live. 11 tests. Live-verified at Orbonne vs Bervenia. `cd0d754`.
+- [x] **Task 29: BattleChoice detection via .mes 0xFB + runtime modal flag** — Two-part detector: (a) `eventHasChoice` = the event's `.mes` file contains byte `0xFB` (pre-scanned at load into `EventScript.HasChoice`), (b) `choiceModalFlag` = runtime byte at `0x140CBC38D` that's non-zero only while the 2-option modal is drawn. Found via 6-pass narrow-down from 2,751 candidates to ~14. Live-verified at Mandalia event 016: BattleChoice fires on modal visible, BattleDialogue on narration prefix. `a01422c` + `8107123`.
+- [x] **GameOver detection fix** — Dropped the `!actedOrMoved` requirement; `paused==1 && battleMode==0 && gameOverFlag==1` is authoritative. Live-captured fingerprint at Siedge Weald had `battleActed=1, battleMoved=1` (kill action completed immediately before the banner), which blocked the old rule. `377bfd8`.
+- [x] **Task 21: BattlePaused cursor resolver + label map** — `BattlePauseMenuLabels` with 6-item menu (Data/Retry/Load/Settings/ReturnToWorldMap/ReturnToTitle) + 11 tests. `ResolveBattlePauseCursor` method + auto-resolve wiring. Live-verified `ui="Data"` at row 0 on Mount Bervenia pause; discrimination limitation carries forward (see open `[~]`). `5954d80`.
+- [x] **Task 23: TavernRumors/Errands cursor resolver** — `ResolveTavernCursor` method + wiring, gated on `ScreenMachine.CurrentScreen == TavernRumors/Errands` (NOT `screen.Name`) because detection returns "LocationMenu" before the outer SM-override rewrites the name. Live-verified at Bervenia tavern. `daec206`.
+- [x] **Task 25: AbilityJpCosts coverage floor tests** — Three regression guards. 1) `CostByName.Count >= 50`. 2) Every JP-purchasable skillset has at least one costed ability. 3) `UnresolvedNames.Count == 0` hard floor. `29c547c`.
+- [x] **Task 26: TODO dedup sweep** — Merged 3 clusters of duplicate entries (deathCounter ×3, chargingAbility ×2, !weak/+absorb sigils ×2). Net −11 lines of stale duplication. `4dee442`.
+- [x] **Task 27: `TargetingLabelResolver.ResolveOrCursor` cursorX=-1 fix** — Returns null (not "(-1,-1)") when ability inputs are null AND cursor is uninitialized. Return type changed to `string?`. 4 new tests. `941646b`.
+- [x] **Task 30: Characterization-test sentinel** — Meta-test that pins the count of `CoverageAudit_Known*` / `*Characterization*` / `*DocumentsCurrentBehavior*` tests across the suite. Enforces the session-43 "pin the bug, flip when fixed" convention. `392681b`.
+- [x] **Session 44 pt 1: IsPartyTree refactor live-verified** — Roster populates with all 15 units on CharacterStatus. Session 39 refactor caused no regression. `8ee63d0`.
+- [x] **Session 44 pt 1: BattleAttacking ui=(x,y) fallback** — `ResolveOrCursor` returns the cursor-tile string when no ability has latched, matching BattleMoving semantics. Live-verified. `8ee63d0`.
+- [x] **Session 44 pt 4: 3 stale `[ ]` tasks closed via code audit** — "Reorder detection rules", "Scope menuCursor interpretation", "Location address unreliable" were all already handled in prior sessions without being marked done. `5c0b59e`.
+- [x] **Session 44 pt 5: BattleStatus ui=\<activeUnit\>** — New `BattleStatusUiResolver` + 2 tests; also fixed a hidden EqA-promote block at CommandWatcher:6190 that was renaming `screen.Name` from BattleStatus to EquipmentAndAbilities whenever the equipment mirror matched. `31cbe68`.
+- [x] **Session 44 pt 3: Element decode 3-of-5 fields live-confirmed** — `elementWeak` (Piscodaemon Lightning, Red Panther Earth), `elementAbsorb` (Piscodaemon Water), `elementHalf` (Knight Dark) across 4 enemy archetypes at Lenalian Plateau. `elementNull` + `elementStrengthen` still deferred (specific enemies/gear not available). `856d288`.
+- [x] **fft.sh obj= regression** — Bash `IFS=$'\t' read` was collapsing adjacent empty tab fields, shifting every field after the first empty one one slot LEFT. Fix: switch the JS-side delimiter and the bash IFS to `\x01` (non-whitespace). `afff421`.
+- [x] **SaveSlotPicker from BattlePaused — closed as myth** — User live-corrected: pause menu has 6 items (Data/Retry/Load/Settings/ReturnToWorldMap/ReturnToTitle), no Save option. Two dup TODO entries closed. `8ee63d0`.
+- [x] **Ctrl fast-forward during enemy turns** — moved from §0 to Low Priority / Deferred per user direction. No code change. `(no commit — TODO edit only)`.
+- [x] **`god_ramza` helper shipped** — writes endgame gear (Ragnarok / Kaiser Shield / Grand Helm / Maximillian / Bracer) + Brave/Faith 95 to Ramza's roster slot. Level/EXP NOT changed (leveling to 99 scaled random encounters to Lv99 enemies and killed the party). `c1a793c` + `377bfd8`.
+
+**Files created:**
+- `ColorMod/GameBridge/BattlePauseMenuLabels.cs`
+- `ColorMod/GameBridge/BattleStatusUiResolver.cs`
+- `Tests/GameBridge/BattlePauseMenuLabelsTests.cs`
+- `Tests/GameBridge/BattleStatusUiResolverTests.cs`
+- `Tests/GameBridge/CharacterizationTestSentinelTests.cs`
+
+**Files modified (major):**
+- `ColorMod/GameBridge/EventScriptLookup.cs` — new `HasChoice` bool pre-scanned at load
+- `ColorMod/GameBridge/ScreenDetectionLogic.cs` — BattleSequence, BattleChoice, GameOver rule changes + 2 new params
+- `ColorMod/GameBridge/TargetingLabelResolver.cs` — new `ResolveOrCursor` overload + -1 cursor handling
+- `ColorMod/GameBridge/NavigationPaths.cs` — BattleChoice validPath mapping
+- `ColorMod/Utilities/CommandWatcher.cs` — BattleSequence/BattleChoice/TavernRumors/BattlePaused resolvers + eventHasChoice + choiceModalFlag read
+- `fft.sh` — `god_ramza` helper + IFS regression fix
+- `Tests/GameBridge/ScreenDetectionTests.cs` — 11 BattleSequence + 4 BattleChoice + (reverted) BattleVictory tests
+- `Tests/GameBridge/TargetingLabelResolverTests.cs` — 4 new cursor-fallback tests
+- `Tests/GameBridge/AbilityJpCostsTests.cs` — 3 coverage floor tests
+
+**Memory notes added:**
+- `project_battle_pause_cursor.md` — triple-diff technique proven at BattlePaused
+- `project_tavern_rumor_cursor.md` — updated with per-session re-locator technique
+- `project_battle_sequence_discriminator.md` — hunt methodology + 2 flag addresses
+- `project_battle_sequence_flag_sticky.md` — known edge case, 3 fix approaches
+- `project_battle_choice_cursor.md` — session-cursor hunt methodology (deprioritized in favor of .mes scan)
+- `feedback_no_autonomous_save.md` — never save without explicit user ask
+- `feedback_battle_sequence_loc_auto_opens.md` — cursor-arrival opens minimap
+- `feedback_battle_sequence_exit.md` — Hold-B or restart to exit minimap
+
+**Tests:** 3201 → 3242 passing (+41). 0 regressions.
