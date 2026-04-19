@@ -465,8 +465,15 @@ namespace FFTColorCustomizer.GameBridge
                 && submenuFlag == 1)
                 return "WorldMap";
 
-            // GameOver: paused + game-over flag + no action on active unit.
-            if (paused == 1 && battleMode == 0 && gameOverFlag == 1 && !actedOrMoved)
+            // GameOver: paused + game-over flag is authoritative. Session 44
+            // 2026-04-19 live-capture at Siedge Weald showed actedOrMoved=true
+            // because a unit's action (the one that killed Ramza) completed
+            // right before the GameOver banner. The old rule's `!actedOrMoved`
+            // requirement blocked correct detection — gameOverFlag is a
+            // dedicated signal and doesn't need action-state disambiguation.
+            // Captured fingerprint: paused=1, gameOverFlag=1, battleMode=0,
+            // battleTeam=1, battleActed=1, battleMoved=1, menuCursor=4.
+            if (paused == 1 && battleMode == 0 && gameOverFlag == 1)
                 return "GameOver";
 
             // Status screen: clicked INTO Status from pause menu. Needs submenuFlag=1

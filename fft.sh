@@ -1421,11 +1421,12 @@ scan_tavern() {
   echo "[scan_tavern] reached max-scan ($maxScan) without a clean wrap — cursorRow may not be populated; treat as ≥$maxScan entries"
 }
 
-# god_ramza: Dev-mode helper that writes endgame gear + Lv 99 + Brave/Faith 95
-# to Ramza's roster slot. Used during state-collection playthroughs so battles
-# finish quickly without the user having to grind. HP/PA recompute at battle
-# entry from Lv + gear, so in-battle stats will be higher than the out-of-battle
-# PartyMenu card displays.
+# god_ramza: Dev-mode helper that writes endgame gear + Brave/Faith 95 to
+# Ramza's roster slot. Used during state-collection playthroughs so battles
+# finish quickly without the user having to grind. Level/EXP NOT changed —
+# leveling enemies to match caused random encounters to spawn with Lv 99
+# enemies that killed the party; keep Ramza at whatever level the story
+# gives him and rely on endgame gear for the speed boost.
 #
 # Writes (roster slot 0 at 0x1411A18D0):
 #   +0x0E Helm      = 156 (Grand Helm, +150 HP)
@@ -1435,8 +1436,6 @@ scan_tavern() {
 #   +0x1A Shield    = 141 (Kaiser Shield, PhysEv 46, MagEv 20)
 #   +0x16 LeftHand  = 0xFF (empty — clear any prior dual-wield)
 #   +0x18 Reserved  = 0xFF (clear)
-#   +0x1C EXP       = 99
-#   +0x1D Level     = 99
 #   +0x1E Brave     = 95
 #   +0x1F Faith     = 95
 #
@@ -1462,7 +1461,7 @@ god_ramza() {
     fft "{\"id\":\"$(id)\",\"action\":\"write_address\",\"address\":\"$addr\",\"readSize\":$val}" > /dev/null 2>&1
   }
 
-  echo "[god_ramza] writing endgame gear + Lv99 to Ramza's roster slot..."
+  echo "[god_ramza] writing endgame gear + Brave/Faith 95 to Ramza's roster slot..."
   # Equipment (u16 each)
   _write_pair 0x0E 156   # Grand Helm
   _write_pair 0x10 185   # Maximillian
@@ -1471,9 +1470,7 @@ god_ramza() {
   _write_pair 0x16 255   # Clear left-hand
   _write_pair 0x18 255   # Clear reserved
   _write_pair 0x1A 141   # Kaiser Shield
-  # Stats (u8 each)
-  _write_byte 0x1C 99    # EXP
-  _write_byte 0x1D 99    # Level
+  # Stats (u8 each) — Level/EXP intentionally left alone
   _write_byte 0x1E 95    # Brave
   _write_byte 0x1F 95    # Faith
 
