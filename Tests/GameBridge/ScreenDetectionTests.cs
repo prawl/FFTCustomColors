@@ -731,16 +731,36 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             // Captured session 44: pre-Mandalia choice prompt "1. Defeat the
             // Brigade" / "2. Rescue the captive" — rawLocation=24, eventId=16,
-            // battleTeam=0, acted/moved=1. atNamedLocation requires
-            // locationMenuFlag=1 (the game DOES set that during pre-battle
-            // scripted scenes at a location).
+            // battleTeam=0, acted/moved=1. Requires BOTH eventHasChoice (.mes
+            // has 0xFB) AND choiceModalFlag != 0 (runtime byte at 0x140C70055
+            // confirms the modal is drawn, not the narration prefix).
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 1, rawLocation: 24, slot0: 0xFFFFFFFFL, slot9: 0,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 1, battleMoved: 1,
                 encA: 0, encB: 0, isPartySubScreen: false,
-                eventId: 16, locationMenuFlag: 1, eventHasChoice: true);
+                eventId: 16, locationMenuFlag: 1, eventHasChoice: true,
+                choiceModalFlag: 1);
             Assert.Equal("BattleChoice", result);
+        }
+
+        [Fact]
+        public void DetectScreen_BattleDialogue_WhenChoiceEventButModalFlagZero()
+        {
+            // Narration prefix of a choice event (eventHasChoice=true because
+            // the .mes file contains 0xFB somewhere, but the actual modal
+            // prompt hasn't rendered yet). Must return BattleDialogue, not
+            // BattleChoice — this is the case that fires during the early
+            // lines of event 016 before the "1. Defeat / 2. Rescue" modal
+            // appears. Session 44 heap-diff found the flag.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 24, slot0: 0xFFFFFFFFL, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 16, locationMenuFlag: 1, eventHasChoice: true,
+                choiceModalFlag: 0);
+            Assert.Equal("BattleDialogue", result);
         }
 
         [Fact]

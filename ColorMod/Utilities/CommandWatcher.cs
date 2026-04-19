@@ -5153,6 +5153,27 @@ namespace FFTColorCustomizer.Utilities
                     if (script != null) eventHasChoice = script.HasChoice;
                 }
 
+                // Runtime "choice modal is drawn" flag. Session 44 4-pass
+                // narrow-down at Mandalia Plain event 016:
+                //   1. Diff narration → choice-visible: 2751 candidates went 0→1
+                //   2. Filter by "still=1 on choice screen": 992
+                //   3. Filter by "now=0 after choice resolved": 384
+                //   4. Filter by "=0 on a different (non-choice) cutscene
+                //      at same location": 367
+                //   5. Re-enter choice modal, filter by "=1 again": 174
+                //   6. After picking a choice, filter by "=0 again": 14
+                // 0x140CBC38D is the first of those 14 winners — all are in
+                // the 0x140CBxxxx / 0x140CCxxxx range (clustered widget state).
+                // Reads 1 while choice modal is visible, 0 otherwise.
+                // Paired with eventHasChoice to avoid over-firing on the
+                // narration prefix of a choice event.
+                int choiceModalFlag = 0;
+                if (eventHasChoice && Explorer != null)
+                {
+                    var cmRead = Explorer.ReadAbsolute((nint)0x140CBC38D, 1);
+                    if (cmRead.HasValue) choiceModalFlag = (int)cmRead.Value.value;
+                }
+
                 screen.Name = GameBridge.ScreenDetectionLogic.Detect(
                     party, ui, rawLocation, slot0, slot9,
                     battleMode, moveMode, paused, gameOverFlag,
@@ -5167,7 +5188,8 @@ namespace FFTColorCustomizer.Utilities
                     encounterFlag: encounterFlag,
                     menuDepth: screen.MenuDepth,
                     battleSequenceFlag: battleSequenceFlag,
-                    eventHasChoice: eventHasChoice);
+                    eventHasChoice: eventHasChoice,
+                    choiceModalFlag: choiceModalFlag);
 
                 // TravelList→WorldMap override: when the SM just left
                 // PartyMenu via a key press (Escape) and detection says
