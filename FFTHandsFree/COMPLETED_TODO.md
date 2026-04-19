@@ -832,3 +832,75 @@ Commits: `8ee63d0`, `249f660`, `856d288`, `5c0b59e`, `fe6e952`, `5954d80`, `afff
 - `feedback_battle_sequence_exit.md` — Hold-B or restart to exit minimap
 
 **Tests:** 3201 → 3242 passing (+41). 0 regressions.
+
+---
+
+### Session 45 (2026-04-19) — Live dialogue rendering + crystal/treasure state detection + BFS corpse fix
+
+**Commits:**
+- `eb53261` — auto_place_units: accept BattleDialogue/Cutscene as end states
+- `207f66b` — Surface current dialogue box on BattleDialogue/Cutscene/BattleChoice
+- `9cc1f8a` — MesDecoder: flip F8/FE roles — FE is the bubble boundary, F8 is intra-line wrap
+- `b0bea6c` — MesDecoder: 2+ consecutive 0xF8 is a bubble boundary too
+- `3e12c31` — ScreenDetectionLogic: gate BattleMoving/Attacking/Waiting on battleTeam==0
+- `155b8e6` — BFS: treat corpses like allies — pass-through, no stop
+- `d083c11` — Detect 4 crystal-pickup states: MoveConfirm / Reward / AcquireConfirm / LearnedBanner
+- `663f630` — Split BattleRewardObtainedBanner from BattleCrystalMoveConfirm
+
+**Completed tasks** (moved from TODO.md):
+- [x] **⚠ UNVERIFIED auto_place_units** — Session 45 live-verified at Dorter + Zeklaus. End-state poll loop now exits on BattleDialogue/Cutscene (~19s instead of timing out at 40s).
+- [x] **Battle state verification — BattleAlliesTurn** — Live-verified at Zeklaus (Cornell as guest ally). Remaining: BattleActing (transient, hard to catch) deferred.
+
+**Shipped features:**
+
+1. **Live in-game dialogue rendering** — `screen` on BattleDialogue/Cutscene/BattleChoice now surfaces the current box text + speaker + box index. Lets the user pace the story without screenshots. Components:
+   - `DialogueProgressTracker` — pure counter, bumps on advance, resets on eventId change. 6 tests.
+   - `MesDecoder.DecodeBoxes` — boundary rules corrected through live walkthrough: FE=bubble boundary, F8=intra-bubble line wrap, F8≥2 consecutive = also a boundary, speaker change = implicit boundary.
+   - `DetectedScreen.CurrentDialogueLine` payload — state-gated both server- and shell-side.
+   - fft.sh compact render under the main header line.
+
+2. **5 new battle screen states for crystal/treasure pickup** — all four states in the "step onto crystal" sequence plus the "Obtained X" chest banner now detected:
+   - `BattleCrystalMoveConfirm` (Yes/No "open/obtain?")
+   - `BattleCrystalReward` (Acquire/Restore HP&MP chooser)
+   - `BattleAbilityAcquireConfirm` (Yes/No "acquire this ability?")
+   - `BattleAbilityLearnedBanner` ("Ability learned!")
+   - `BattleRewardObtainedBanner` ("Obtained X!" chest loot)
+
+   Discriminator: `moveMode=255` is normal BattleMoving, `moveMode=0` + encA (0/1/2/4/7) splits the modals. 5 characterization tests.
+
+3. **BFS corpse-awareness fix** — Dead-unit tiles were being dropped entirely from BFS inputs via `if (u.Hp <= 0) continue;`. Fix classifies by lifeState: `dead`→allyPositions (pass-through, no stop), `crystal`/`treasure`→skip entirely. Same applied to `GetEnemyPositions`/`GetAllyPositions` helpers. 1 test.
+
+4. **Enemy/ally-turn state-leak fix** — `battleMode=1/2/4/5` rules (BattleMoving/Attacking/Waiting) were firing regardless of whose turn it was. Promoted the team-owner rules to run BEFORE submode rules. Live-verified at Zeklaus — enemy turns now correctly report `BattleEnemiesTurn` instead of false-positive `BattleMoving`. 3 new tests.
+
+5. **auto_place_units doesn't hang on story battles** — Pre-battle dialogue now accepted as a "battle started" end-state for the poll loop. Helper completes ~19s instead of hitting the 30s timeout.
+
+**Files created:**
+- `ColorMod/GameBridge/AutoPlaceUnitsEndState.cs`
+- `ColorMod/GameBridge/DialogueProgressTracker.cs`
+- `Tests/GameBridge/AutoPlaceUnitsEndStateTests.cs`
+- `Tests/GameBridge/DialogueProgressTrackerTests.cs`
+- `Tests/GameBridge/MesDecoderBoxGroupingTests.cs`
+- `Tests/GameBridge/CrystalStateDetectionTests.cs`
+
+**Files modified (major):**
+- `ColorMod/GameBridge/MesDecoder.cs` — new `DecodeBoxes` + `DialogueBox` record
+- `ColorMod/GameBridge/EventScriptLookup.cs` — `EventScript` record gains `Boxes` list
+- `ColorMod/GameBridge/ScreenDetectionLogic.cs` — team-owner rule promotion, 4-state crystal detection block, obtained-banner split
+- `ColorMod/GameBridge/NavigationActions.cs` — BFS corpse classification, `AdvanceDialogue` + AutoPlace end-state hook, `GetEnemy/AllyPositions` corpse-aware
+- `ColorMod/GameBridge/NavigationPaths.cs` — 4 new path dictionaries for crystal states, `GetYesNoConfirmPaths` helper
+- `ColorMod/Utilities/CommandBridgeModels.cs` — new `DialogueBoxPayload`, `CurrentDialogueLine` field
+- `ColorMod/Utilities/CommandWatcher.cs` — tracker wiring + dialogue payload population
+- `fft.sh` — compact-renderer gains DLG_SPK/DLG_TXT/DLG_POS fields, state-gated dialogue print
+
+**Memory notes added:**
+- `project_crystal_states_undetected.md` — fingerprint table for all 4 crystal states + reward banner
+- `project_battle_victory_encA255.md` — drafted fix for Victory detection via encA=255
+- `project_kill_enemies_helper.md` — search_bytes cap blocker for speedrun helper
+- `feedback_auto_place_crashes_dorter.md` — flaky formation-race warning
+
+**Tests:** 3242 → 3283 passing (+41). 0 regressions.
+
+**Technique discoveries:**
+- **Live ground-truth walkthrough beats offline byte analysis.** The MesDecoder went through 3 wrong iterations of F8/FE split rules before a user-typed bubble-by-bubble walkthrough of Dorter event 38 (45 real bubbles) settled the correct rule. Next time a boundary-rule hunt kicks off, collect one walkthrough EARLY.
+- **State discriminator quality continuum.** Single-byte sentinels like `encA=255` (Victory) are the holy grail. Multi-byte compound rules (crystal states) are next. Screenshot-matching is the worst (required for the chest-vs-crystal confusion).
+- **Commit-per-task cadence preserves reversibility.** 8 commits this session, each tight. The decoder fix required THREE commits because rules were discovered iteratively — each as its own commit lets future readers trace "when did the behavior change?".

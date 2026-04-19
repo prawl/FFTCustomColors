@@ -77,17 +77,36 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **"Claude cheat mode" — write Ramza HP/MaxHP/PA + full-absorb affinity via bridge** — User direction session 44: need to play through the game to collect all state-detection datapoints (BattleChoice eventIds, Cutscene vs BattleDialogue discriminators, new-game BattleVictory/Desertion memory patterns, etc). Plays take too long at fresh-game stats. Plan: new bridge action `cheat_mode_buff` (or similar) that pokes Ramza's battle unit struct: HP=999, MaxHP=999, PA=255, and all 5 affinity bytes at +0x5A..+0x5E set to absorb every element. Per-battle re-write needed (struct reallocates per battle). Also: add a variant that gives all teammates the same buff. **Pair with**: a toggleable "skip intro cinematics" helper if one exists. This is Option 1 from session 44 brainstorm — Option 3 (mod-side cheat config) is cleaner but takes longer; deferring.
 
+### Session 45 — new follow-ups (2026-04-19)
+
+- [ ] **Victory detection via encA=255 — TDD + ship** — Fingerprint captured this session, fix drafted. See top of State Detection consolidation below. One session: write failing test, flip rule ordering to run before BattleDialogue and BattlePaused, live-verify at next victory + desertion. Memory: `project_battle_victory_encA255.md`.
+
+- [ ] **Dialogue tracker: hook raw Enter in NavigationActions.SendKey** — Currently `DialogueProgressTracker.Advance(eventId)` only fires from `advance_dialogue` and `execute_action Advance`. Raw Enter via the `enter` shell helper advances the game but not our counter — box index drifts behind. Fix: in `NavigationActions.SendKey` (or CommandWatcher's raw-key dispatcher), when vk == VK_ENTER and current `ScreenMachine.CurrentScreen ∈ {BattleDialogue, Cutscene, BattleChoice}`, bump the tracker. Guard against double-bumping when the key came from the advance_dialogue path. TDD with a pure wrapper around the hook.
+
+- [ ] **Dialogue decoder under-splits multi-bubble paragraphs (event 38)** — Dorter event 38: 45 real bubbles, 37 decoded. Boxes 0, 5, 7 each bundle 2-3 real bubbles. FE-boundary + F8≥2-boundary + speaker-change rules don't split these. Need more .mes ground-truth data at different events to find the missing rule. Next live chance: collect bubble count for 3-4 scenes across variety (narrator-only, 2-speaker, 3+ speakers) then diff. Memory note: the transcript of Dorter 38 walkthrough is in session 45 chat history. See `ColorMod/GameBridge/MesDecoder.cs:DecodeBoxes`.
+
+- [ ] **Event 41 starts mid-.mes file (compound event offset)** — Post-Zeklaus cutscene shows Ramza's "These sand rats are long in the slaying" but the .mes file's box 0 is the pre-battle Corpse Brigade Knight line. The game has a dialogue-offset byte somewhere. Our tracker resets to 0 on eventId change which is wrong for compound events that bundle pre+during+post battle text. Either: (a) find the offset byte in memory, or (b) scan for a "[START_MARKER]" in the file that signals post-battle text. Deferred.
+
+- [ ] **Crystal-sequence states S2/S3 not live-verified** — Session 45 SHIPPED `BattleCrystalReward` (Acquire/Restore) and `BattleAbilityAcquireConfirm` (Yes/No) detection but only walked through them in the INPUT-CAPTURE phase, not with the active detection code. Next crystal pickup: verify ui= renders correctly for each state, and that encA boundary at 5 (S2 vs S3) holds across different ability lists.
+
+- [ ] **encA cross-session stability check** — encA values in crystal/chest states (0, 1, 2, 4, 7) captured this session need re-verification on a fresh boot. If encA is a heap widget-stack byte (likely), values may shuffle across restarts — then our rule's thresholds (encA>=5) break. First restart-load of a crystal or chest should re-dump detection inputs to confirm.
+
+- [ ] **`search_bytes` bridge action — add minAddr/maxAddr params** — Currently caps at 100 matches and scans from main-module first, so heap-range matches (0x4000000000+) never surface. One-line fix: plumb `command.MinAddr` / `command.MaxAddr` through to the 4-arg `Explorer.SearchBytesInAllMemory` overload. Unblocks `tmp/kill_enemies.sh` speedrun helper. Memory: `project_kill_enemies_helper.md`.
+
+- [ ] **auto_place_units pre-formation buffer** — Crashed twice at Dorter formation session 45 (worked on 3rd try). Helper sleeps 4s then sends 10 keys over 6s; story battles have a longer formation animation that races the Enter sequence. Add 5-8s more sleep OR poll for "all 4 unit portraits populated" widget state before sending Enter. Memory: `feedback_auto_place_crashes_dorter.md`.
+
 ### 🔴 State Detection — TOP PRIORITY (consolidated 2026-04-18)
 
 User direction session 44: **refocus on state-related tasks. Bad state detection blocks everything else**. These are the known screen/state-detection bugs, ordered roughly by blast radius. Items cross-reference their detailed entries below.
 
 - [ ] **BattleChoice detection — use eventId whitelist approach (NEW PLAN)** — Session 44 spent time attempting a memory discriminator to distinguish BattleChoice from BattleDialogue. 10+ datapoints proved the two states share the same byte fingerprint (rawLoc, battleTeam, acted/moved, battleMode all match). Heap cursor-byte hunt found a working byte (session-specific) but re-locating it post-restart is crash-prone due to batch_read load. **User-approved alternative**: catalog BattleChoice eventIds as we encounter them and hardcode the set. At runtime: `if screen.Name == "BattleDialogue" && eventId ∈ BattleChoiceEventIds → return "BattleChoice"`. Known so far: **eventId 16 at Mandalia Plain** ("Defeat the Brigade" / "Rescue captive"). No screenshot-based detection permitted per user direction. Methodology for finding the cursor byte per-session when inside BattleChoice is documented in `memory/project_battle_choice_cursor.md` for future enabling.
 
-- [ ] **BattleVictory NOT DETECTED on Mandalia + misdetects as BattleDesertion on Gariland** [→ line ~96] — Two observed misses:
-  1. **Gariland (session 44)**: post-battle, screen returned `BattleDesertion`. Rule ordering at ScreenDetectionLogic.cs:278 — paused=1 + submenuFlag=1 matches Desertion before Victory. Fingerprint: rawLocation=6, battleTeam=0, paused=1, submenuFlag=1, menuCursor=1, eventId=12.
-  2. **Mandalia (session 44 pt 10, 2026-04-19)**: Victory banner on screen ~10s, detection returned `BattleChoice` then `BattleDialogue` — never `BattleVictory`. Fingerprint: rawLocation=24, battleTeam=**3** (new value — possibly "all teams done"), battleActed=1, battleMoved=1, battleUnitHp=350, eventId=25. battleTeam=3 is unique to this screen across 11+ prior captures (only saw 0/1/2 before). Strong candidate as the BattleVictory discriminator.
-  
-  **Proposed fix**: Add a new rule `if (atNamedLocation && battleTeam == 3 && battleActed == 1) return "BattleVictory"` — runs BEFORE the paused-based Desertion rule. Need to confirm battleTeam=3 doesn't fire on other non-Victory states.
+- [ ] **BattleVictory detection — encA=255 sentinel (NEW PLAN, session 45)** — Session 45 2026-04-19 live-captured at Zeklaus win: `encA=255 + encB=255` is a unique sentinel. All other states captured this session had encA in [0..7], so encA=255 is clean single-byte discriminator. Session 44's `battleTeam==3` approach was reverted (a778601) because team=3 persisted into post-V dialogue; encA=255 is transient to the banner itself. **Proposed rule** (drafted, not yet shipped — next session TDD + live-verify at BattleDesertion too):
+  ```csharp
+  if (encA == 255 && encB == 255 && battleMode == 0 && paused == 0)
+      return "BattleVictory";
+  ```
+  Memory note: `memory/project_battle_victory_encA255.md`. Untested against: BattleDesertion, Mandalia victory re-play (session 44 fingerprint had rawLoc=24, battleTeam=3). Need to confirm encA=255 ALSO fires at those states before shipping.
 
 - [ ] **`scan_move` misreads team classification on Orbonne opening** [→ line ~80] — Story battles use team bytes the bridge doesn't recognize. (6,6) read as ENEMY but was an ALLY. Monster-job Ahriman at (4,5) read as PLAYER. Almost attacked an ally. Blocks autonomous story-battle play.
 
@@ -111,11 +130,9 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 
 - [ ] **Replace fixed post-key delay with poll-until-stable** [→ line ~210] — Currently a fixed 350ms sleep in detection fallback. Should poll-until-stable. Large refactor, deferred pending safer repro harness.
 
-- [ ] **BattleActing transient misses** [→ line ~191] — Battle state verification session 21: BattleActing is "transient (hard to catch)". May not be detectable reliably given its short duration.
-
 - [ ] **⚠ UNVERIFIED: `activeUnitSummary` on BattleMoving/BattleCasting/BattleAbilities/BattleActing/BattleWaiting** [→ line ~151] — Shell compact-render match widened session 29. Confirmed on MyTurn/Attacking. Other states need quick eye-check during battle.
 
-- [ ] **Battle state verification — BattleAlliesTurn, BattleActing** [→ line ~191] — Remaining unverified states from session 21's 11/13 pass.
+- [ ] **Battle state verification — BattleActing** — Session 45 live-verified BattleAlliesTurn at Zeklaus (Cornell as guest). BattleActing remains unverified — transient state, hard to catch mid-animation.
 
 ---
 
@@ -221,12 +238,8 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 
 - [ ] **C# bridge action viewedUnit lag on chain calls** — **Session 31 live repro (2026-04-17):** `open_job_selection Kenrick` from PartyMenuUnits landed on LLOYD's JobSelection, not Kenrick's. `open_eqa Lloyd` from PartyMenuUnits was a silent no-op (screen stayed on PartyMenu with cursor on Ramza). `change_job_to Archer` claimed success ("landed on EquipmentAndAbilities") but Lloyd's job was unchanged — helper returned success without the actual change going through. Pattern: open_* helpers frequently navigate to the WRONG unit, and state-mutation helpers sometimes report success without effecting the change. This blocks live-verify workflows that need to set up specific unit builds (Archer for LoS, Wizard for elemental affinity, etc.). Historical context below from sessions 22-24. `open_eqa Cloud` from WorldMap works perfectly (correct gear + name). But `open_eqa Agrias` from inside Cloud's EqA shows Agrias's gear but Cloud's name. Root cause: escape storm drift checks in DetectScreen reset `_savedPartyRow/_savedPartyCol` after `SetViewedGridIndex` sets them. Stashed fix in `git stash list`. Approach: suppress drift checks during bridge action execution (add a flag to CommandWatcher, check it in the drift-check blocks at lines ~4280-4395). Two lines of code. **Session 23 update: SM-sync from `SendKey` (commit 82ccb65) may have changed the symptom — re-test before applying the stashed approach.** **Session 24 update (2nd attempt):** live-reproduced the chain failure — `open_eqa Agrias` from Cloud's EqA fires escapes + Down + Enter that land on WorldMap and drive the WorldMap cursor (not the party grid), ending at LocationMenu instead of Agrias's EqA. Tried a fix in `NavigateToCharacterStatus` (replace detection-polling escape loop with a 2-consecutive-WorldMap-read confirmation). First attempt (unconditional 6 escapes) broke fresh-state by incorrectly assuming Escape-on-WorldMap is a no-op (it actually opens PartyMenu → toggling). Reverted. Second attempt (per-escape poll with 2-consecutive-WorldMap confirmation): not live-tested — during test setup the game CRASHED after landing on Cloud's EqA, possibly from the EqA-row auto-resolver firing at a bad animation moment. **Reverted all NavigationActions changes; code matches commit c5bfb01.** Key lesson: chain-nav + auto-resolvers together form a fragile timing sandwich; fixes need a safer repro harness than "kick it and pray" before retrying. Stash still exists for reference.
 
-- [ ] **⚠ UNVERIFIED auto_place_units** — C# bridge action built (NavigationActions.cs) and shell helper wired, but never live-tested in an actual battle formation. Sequence: sleep 4s → 4×(Enter+Enter) → Space → Enter → poll for battle state. Session 23 added state guard that requires `BattleFormation` so misuse fails fast.
-
 
 ### Session 20 — state detection + EqA resolver
-
-- [ ] **Battle state verification** — Session 21 verified 11/13 with screenshots: BattleMyTurn ✅, BattleMoving ✅, BattleAbilities ✅, BattleAttacking ✅, BattleWaiting ✅, BattleStatus ✅, BattlePaused ✅, BattleFormation ✅, BattleEnemiesTurn ✅, GameOver ✅, EncounterDialog ✅. BattleVictory ❌ and BattleDesertion ❌ misdetect as BattlePaused (see bug below). BattleDialogue and Cutscene blocked by sticky gameOverFlag (see bug below). BattleActing transient (hard to catch). BattleAlliesTurn needs guest allies.
 
 - [ ] **LoadGame/SaveGame from title menu misdetect as TravelList** — Session 21: Both file picker screens (load and save) reached from title/pause menu have party=0, ui=1, slot0=0xFFFFFFFF, slot9=0xFFFFFFFF, battleMode=255, gameOverFlag=0. Matches TravelList rule (party=0, ui=1). Existing LoadGame rule only handles GameOver→LoadGame path (requires gameOverFlag=1, battleMode=0). SaveGame only handled as shop-type label (shopTypeIndex=4). Needs a discriminator byte — or accept the ambiguity since Claude uses `save`/`load` helpers which don't rely on screen detection.
 
