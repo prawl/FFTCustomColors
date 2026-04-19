@@ -916,7 +916,69 @@ battle_flee() { fft "{\"id\":\"$(id)\",\"action\":\"battle_flee\"}" 20; }
 # Usage: world_travel_to 26   (travel to Siedge Weald)
 world_travel_to() {
   _require_state world_travel_to "WorldMap|TravelList" || return 1
-  fft "{\"id\":\"$(id)\",\"action\":\"world_travel_to\",\"locationId\":$1}"
+  local loc="$1"
+  # Accept a name (fuzzy case-insensitive substring) or a numeric ID.
+  if ! [[ "$loc" =~ ^[0-9]+$ ]]; then
+    local resolved
+    resolved=$(_resolve_location_id "$loc") || {
+      echo "[FAILED] Unknown location: '$1'. Try an ID or a unique substring of a location name." >&2
+      return 1
+    }
+    loc="$resolved"
+  fi
+  fft "{\"id\":\"$(id)\",\"action\":\"world_travel_to\",\"locationId\":$loc}"
+}
+
+# _resolve_location_id: Map a location name (case-insensitive substring) to
+# its numeric ID. Echoes the ID on success, errors on unknown/ambiguous.
+# Mirrors the dict in CommandWatcher.cs:3875 — keep in sync.
+_resolve_location_id() {
+  local q="$1"
+  local q_lower="${q,,}"
+  # One entry per line: "id|name"
+  local -a LOCATIONS=(
+    "0|Royal City of Lesalia" "1|Riovanes Castle" "2|Eagrose Castle"
+    "3|Lionel Castle" "4|Limberry Castle" "5|Zeltennia Castle"
+    "6|Magick City of Gariland" "7|Walled City of Yardrow" "8|Mining Town of Gollund"
+    "9|Merchant City of Dorter" "10|Castled City of Zaland" "11|Clockwork City of Goug"
+    "12|Port City of Warjilis" "13|Free City of Bervenia" "14|Trade City of Sal Ghidos"
+    "15|Ziekden Fortress" "16|Mullonde" "17|Brigands' Den"
+    "18|Orbonne Monastery" "19|Golgollada Gallows"
+    "21|Fort Besselat" "22|Midlight's Deep" "23|Nelveska Temple"
+    "24|Mandalia Plain" "25|Fovoham Windflats" "26|The Siedge Weald"
+    "27|Mount Bervenia" "28|Zeklaus Desert" "29|Lenalian Plateau"
+    "30|Tchigolith Fenlands" "31|The Yuguewood" "32|Araguay Woods"
+    "33|Grogh Heights" "34|Beddha Sandwaste" "35|Zeirchele Falls"
+    "36|Dorvauldar Marsh" "37|Balias Tor" "38|Dugeura Pass"
+    "39|Balias Swale" "40|Finnath Creek" "41|Lake Poescas" "42|Mount Germinas"
+  )
+  local -a matches=()
+  local entry id name name_lower
+  for entry in "${LOCATIONS[@]}"; do
+    id="${entry%%|*}"
+    name="${entry#*|}"
+    name_lower="${name,,}"
+    # Exact match wins immediately.
+    if [[ "$name_lower" == "$q_lower" ]]; then
+      echo "$id"
+      return 0
+    fi
+    if [[ "$name_lower" == *"$q_lower"* ]]; then
+      matches+=("$id|$name")
+    fi
+  done
+  if [[ ${#matches[@]} -eq 0 ]]; then
+    return 1
+  elif [[ ${#matches[@]} -eq 1 ]]; then
+    echo "${matches[0]%%|*}"
+    return 0
+  else
+    {
+      echo "Ambiguous location '$q'. Matches:"
+      printf '  %s\n' "${matches[@]}"
+    } >&2
+    return 1
+  fi
 }
 
 # advance_dialogue: Advance cutscene dialogue by one text box (presses Enter).
