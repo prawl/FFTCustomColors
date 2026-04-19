@@ -706,10 +706,20 @@ namespace FFTColorCustomizer.GameBridge
                     };
                 case 1: // Tavern — TODO: scan values and add here
                     return null;
-                case 2: // Warriors' Guild — TODO: scan values and add here
-                    return null;
-                case 3: // Poachers' Den — TODO: scan values and add here
-                    return null;
+                case 2: // Warriors' Guild — mapped 2026-04-19 at Bervenia
+                    return shopSubMenuIndex switch
+                    {
+                        0x2B => "WarriorsGuildRecruit",
+                        0x1A => "WarriorsGuildRename",
+                        _ => null,
+                    };
+                case 3: // Poachers' Den — mapped 2026-04-19 at Dorter
+                    return shopSubMenuIndex switch
+                    {
+                        0x0F => "PoachersDenProcessCarcasses",
+                        0x12 => "PoachersDenSellCarcasses",
+                        _ => null,
+                    };
                 default:
                     return null;
             }

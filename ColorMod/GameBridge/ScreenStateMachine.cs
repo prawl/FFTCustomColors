@@ -144,7 +144,8 @@ namespace FFTColorCustomizer.GameBridge
                 || name == "Tavern" || name == "TavernRumors"
                 || name == "TavernErrands" || name == "SaveSlotPicker"
                 || name.StartsWith("Outfitter") || name == "SettlementMenu"
-                || name == "WarriorsGuild" || name == "PoachersDen"
+                || name == "WarriorsGuild" || name.StartsWith("WarriorsGuild")
+                || name == "PoachersDen" || name.StartsWith("PoachersDen")
                 || name == "SaveGame" || name == "TitleScreen"
                 || name == "LoadGame")
                 return ScreenCategory.WorldSide;
