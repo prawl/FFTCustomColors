@@ -4844,17 +4844,12 @@ namespace FFTColorCustomizer.GameBridge
             {
                 Thread.Sleep(1000);
                 var screen = _detectScreen();
-                if (screen != null)
+                if (screen != null && AutoPlaceUnitsEndState.IsBattleStartedState(screen.Name))
                 {
-                    string name = screen.Name;
-                    if (name == "BattleMyTurn" || name == "BattleAlliesTurn" ||
-                        name == "BattleEnemiesTurn" || name == "BattleActing")
-                    {
-                        response.Screen = screen;
-                        response.Status = "completed";
-                        response.Info = $"Battle started ({name})";
-                        return response;
-                    }
+                    response.Screen = screen;
+                    response.Status = "completed";
+                    response.Info = $"Battle started ({screen.Name})";
+                    return response;
                 }
             }
 
