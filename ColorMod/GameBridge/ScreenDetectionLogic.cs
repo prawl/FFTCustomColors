@@ -485,6 +485,17 @@ namespace FFTColorCustomizer.GameBridge
             if (paused == 1)
                 return "BattlePaused";
 
+            // Turn-owner rules MUST run before the battleMode-based targeting/move rules:
+            // enemies and NPC allies can have battleMode 1/2/4/5 during their own actions
+            // (pathing, targeting), which previously false-triggered BattleMoving /
+            // BattleAttacking. Live-verified 2026-04-19 at Zeklaus event 40: during the
+            // enemy turn the bridge reported `BattleMoving` / `BattleAttacking` based on
+            // the enemy's own movement mode. Gate the player-only submodes on battleTeam==0.
+            if (battleTeam == 1 && !actedOrMoved)
+                return "BattleEnemiesTurn";
+            if (battleTeam == 2 && !actedOrMoved)
+                return "BattleAlliesTurn";
+
             // Targeting submodes — cast-time and instant collapse into BattleAttacking.
             // battleMode values 1, 4, 5 all indicate "cursor in a targeting submode":
             //   4 = cursor on a valid instant-attack target
@@ -528,14 +539,11 @@ namespace FFTColorCustomizer.GameBridge
                 return "BattleAbilities";
 
             // Action menu — player's turn (no action yet).
+            // Enemy/ally turn-owner rules run earlier so they can preempt the
+            // battleMode-based targeting/move rules; the old copies that sat
+            // here were redundant tombstones.
             if (battleTeam == 0 && !actedOrMoved)
                 return "BattleMyTurn";
-
-            if (battleTeam == 2 && !actedOrMoved)
-                return "BattleAlliesTurn";
-
-            if (battleTeam == 1 && !actedOrMoved)
-                return "BattleEnemiesTurn";
 
             // Acting: player's turn with flags set.
             if (battleTeam == 0 && actedOrMoved)
