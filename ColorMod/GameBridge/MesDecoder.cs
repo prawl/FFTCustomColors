@@ -12,13 +12,21 @@ namespace FFTColorCustomizer.GameBridge
         public record DialogueLine(string? Speaker, string Text);
 
         // One in-game text bubble. Boxes are the unit the user advances through
-        // with Enter — the decoder joins 0xFE line-breaks into the same Text
-        // (preserved as '\n') and only splits on 0xF8 box boundaries.
+        // with Enter.
         public record DialogueBox(string? Speaker, string Text);
 
         /// <summary>
         /// Decode raw .mes bytes into in-game dialogue BOXES (one per Enter-advance).
-        /// 0xF8 is the box boundary; 0xFE is a line-break WITHIN a box.
+        /// <para>Byte roles (verified by live walk-through of Dorter event 38 on
+        /// 2026-04-19: 45 real bubbles, 45 0xFE boundaries in the file):</para>
+        /// <list type="bullet">
+        /// <item><c>0xFE</c> = bubble boundary (one Enter-advance per run).</item>
+        /// <item><c>0xF8</c> = intra-bubble line wrap (visual newline).</item>
+        /// <item>Consecutive <c>0xFE</c> bytes collapse into ONE boundary
+        /// (the game uses runs of 2-5 FE bytes for pause/animation beats).</item>
+        /// <item>Speaker change (<c>0xE3 0x08 ... 0xE3 0x00</c>) is an implicit
+        /// bubble boundary even without a preceding <c>0xFE</c>.</item>
+        /// </list>
         /// </summary>
         public static List<DialogueBox> DecodeBoxes(byte[] bytes)
         {
@@ -40,10 +48,7 @@ namespace FFTColorCustomizer.GameBridge
 
                 if (b == 0xE3 && i + 1 < bytes.Length && bytes[i + 1] == 0x08)
                 {
-                    // Speaker change is an implicit box boundary — the game
-                    // shows a new bubble when a different character starts
-                    // talking, even without a 0xF8 marker. Flush whatever
-                    // text we've accumulated so far under the OLD speaker.
+                    // Speaker change is an implicit bubble boundary.
                     Flush();
                     i += 2;
                     var nameBuilder = new System.Text.StringBuilder();
@@ -59,8 +64,22 @@ namespace FFTColorCustomizer.GameBridge
                     continue;
                 }
 
-                if (b == 0xF8) { Flush(); i++; continue; }
-                if (b == 0xFE) { text.Append('\n'); i++; continue; }
+                if (b == 0xFE)
+                {
+                    // Any run of 0xFE bytes = one bubble boundary.
+                    while (i < bytes.Length && bytes[i] == 0xFE) i++;
+                    Flush();
+                    continue;
+                }
+
+                if (b == 0xF8)
+                {
+                    // Intra-bubble line wrap.
+                    text.Append('\n');
+                    i++;
+                    continue;
+                }
+
                 if (b == 0xE2) { i += 2; continue; }
                 if (b == 0xE3) { i += 2; continue; }
 

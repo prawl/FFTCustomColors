@@ -3,17 +3,20 @@ using Xunit;
 
 namespace FFTColorCustomizer.Tests.GameBridge;
 
-// Pins the rule that in-game dialogue BOXES are delimited by 0xF8,
-// while 0xFE is a line-break WITHIN a box. The existing DialogueLine
-// decoder flushes on both bytes (useful for preview output) but we
-// need a separate "boxes" view to track "which bubble is on screen
-// right now" — one advance = one 0xF8 boundary.
+// Pins the rule that in-game dialogue BOXES are delimited by 0xFE,
+// while 0xF8 is an intra-bubble line wrap. Verified via live walk-through
+// of Dorter event 38 (2026-04-19, 45 real bubbles): every real bubble
+// boundary corresponds to a 0xFE in the raw .mes; every 0xF8 is a visual
+// newline inside the same bubble. Speaker change (0xE3 0x08 ... 0xE3 0x00)
+// is also an implicit bubble boundary.
+//
+// Runs of multiple 0xFE collapse into one boundary (the game uses 2-5
+// consecutive FE bytes to add a pause/animation beat between bubbles).
 public class MesDecoderBoxGroupingTests
 {
     [Fact]
-    public void DecodeBoxes_SingleBox_WithNoLineBreak_ReturnsOneBox()
+    public void DecodeBoxes_SingleBox_WithNoControlBytes_ReturnsOneBox()
     {
-        // "Hi" (0x1C 0x2C) — no boundaries at all.
         var bytes = new byte[] { 0x1C, 0x2C };
         var boxes = MesDecoder.DecodeBoxes(bytes);
         Assert.Single(boxes);
@@ -21,10 +24,10 @@ public class MesDecoderBoxGroupingTests
     }
 
     [Fact]
-    public void DecodeBoxes_TwoBoxes_SeparatedByF8_ReturnsTwoBoxes()
+    public void DecodeBoxes_TwoBoxes_SeparatedByFE_ReturnsTwoBoxes()
     {
-        // "A" 0xF8 "B"
-        var bytes = new byte[] { 0x0A, 0xF8, 0x0B };
+        // "A" 0xFE "B"
+        var bytes = new byte[] { 0x0A, 0xFE, 0x0B };
         var boxes = MesDecoder.DecodeBoxes(bytes);
         Assert.Equal(2, boxes.Count);
         Assert.Equal("A", boxes[0].Text);
@@ -32,13 +35,12 @@ public class MesDecoderBoxGroupingTests
     }
 
     [Fact]
-    public void DecodeBoxes_LineBreakInBoxIsNotBoxBoundary()
+    public void DecodeBoxes_F8IsLineWrapWithinBox_NotBoundary()
     {
-        // "A" 0xFE "B" — all one box, rendered with a newline.
-        var bytes = new byte[] { 0x0A, 0xFE, 0x0B };
+        // "A" 0xF8 "B" — single bubble, rendered with a line wrap.
+        var bytes = new byte[] { 0x0A, 0xF8, 0x0B };
         var boxes = MesDecoder.DecodeBoxes(bytes);
         Assert.Single(boxes);
-        // Newline preserved so callers can render multi-line boxes as the game does.
         Assert.Contains("A", boxes[0].Text);
         Assert.Contains("B", boxes[0].Text);
     }
@@ -46,13 +48,13 @@ public class MesDecoderBoxGroupingTests
     [Fact]
     public void DecodeBoxes_PreservesSpeakerPerBox()
     {
-        // 'B'=0x0B 'o'=0x32 'b'=0x25 'E'=0x0E 'v'=0x38 'e'=0x28
-        // E3 08 <"Bob"> E3 00  "A"  0xF8  E3 08 <"Eve"> E3 00  "B"
+        // 'B'=0x0B 'o'=0x32 'b'=0x25 'E'=0x0E 'v'=0x39 'e'=0x28
+        // E3 08 <"Bob"> E3 00  "A"  0xFE  E3 08 <"Eve"> E3 00  "B"
         var bytes = new byte[]
         {
             0xE3, 0x08, 0x0B, 0x32, 0x25, 0xE3, 0x00, // speaker "Bob"
             0x0A,                                      // "A"
-            0xF8,                                      // box boundary
+            0xFE,                                      // box boundary
             0xE3, 0x08, 0x0E, 0x39, 0x28, 0xE3, 0x00, // speaker "Eve"
             0x0B,                                      // "B"
         };
@@ -70,14 +72,55 @@ public class MesDecoderBoxGroupingTests
     }
 
     [Fact]
+    public void DecodeBoxes_ConsecutiveFE_CollapseToOneBoundary()
+    {
+        // 2+ consecutive 0xFE = one boundary (pause/animation beat, not
+        // multiple empty bubbles).
+        var bytes = new byte[]
+        {
+            0x0A,             // "A"
+            0xFE, 0xFE,       // 2x FE = one boundary
+            0x0B,             // "B"
+        };
+        var boxes = MesDecoder.DecodeBoxes(bytes);
+        Assert.Equal(2, boxes.Count);
+        Assert.Equal("A", boxes[0].Text);
+        Assert.Equal("B", boxes[1].Text);
+    }
+
+    [Fact]
+    public void DecodeBoxes_FiveFE_CollapseToOneBoundary()
+    {
+        // Dorter event 38 ends Argath's paragraph with 5 consecutive FE —
+        // the game treats this as one boundary plus a beat, not 5 bubbles.
+        var bytes = new byte[] { 0x0A, 0xFE, 0xFE, 0xFE, 0xFE, 0xFE, 0x0B };
+        var boxes = MesDecoder.DecodeBoxes(bytes);
+        Assert.Equal(2, boxes.Count);
+    }
+
+    [Fact]
+    public void DecodeBoxes_F8ThenFE_F8IsLineWrap_FEIsBoundary()
+    {
+        // "Argath: We know you're of the Brigade. 'F8' There's no use hiding it. 'FE' ..."
+        // = ONE bubble with a line-wrap, then the FE closes it.
+        var bytes = new byte[]
+        {
+            0x0A,      // "A"
+            0xF8,      // line wrap (stays in bubble)
+            0x0B,      // "B"
+            0xFE,      // bubble boundary
+            0x0C,      // "C"
+        };
+        var boxes = MesDecoder.DecodeBoxes(bytes);
+        Assert.Equal(2, boxes.Count);
+        Assert.Contains("A", boxes[0].Text);
+        Assert.Contains("B", boxes[0].Text);
+        Assert.Equal("C", boxes[1].Text);
+    }
+
+    [Fact]
     public void DecodeBoxes_SpeakerChange_ImplicitlyBoundsBox()
     {
-        // E3 08 <"Bob"> E3 00  "A"  E3 08 <"Eve"> E3 00  "B"
-        // No 0xF8 between, but speaker changes — each speaker gets
-        // their own box. The game renders a new bubble when the
-        // speaker changes regardless of F8 presence (Dorter event 34
-        // starts with Swordsman: "I said I know naught of it" then
-        // Knight: "Do not speak false to me" with no F8 between).
         var bytes = new byte[]
         {
             0xE3, 0x08, 0x0B, 0x32, 0x25, 0xE3, 0x00, // speaker "Bob"
