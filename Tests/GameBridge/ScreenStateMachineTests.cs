@@ -1552,6 +1552,82 @@ public class ScreenStateMachineTests
     }
 
     // ================================================================
+    // BattleAbilities submenu SM cursor (session 47). Count varies by
+    // unit's learned skillsets (Attack + 0..2 skillsets + Wait + Status).
+    // Same unclamped-row pattern as Tavern cursor — callers clamp at
+    // render time knowing the actual menu length.
+    // ================================================================
+
+    [Fact]
+    public void BattleAbilitiesCursor_InitiallyZero()
+    {
+        var sm = new ScreenStateMachine();
+        Assert.Equal(0, sm.BattleAbilitiesCursor);
+    }
+
+    [Fact]
+    public void BattleAbilities_DownIncrementsCursor()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattleAbilities");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(1, sm.BattleAbilitiesCursor);
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(3, sm.BattleAbilitiesCursor);
+    }
+
+    [Fact]
+    public void BattleAbilitiesCursor_UpClampsAtZero()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattleAbilities");
+        const int VK_UP = 0x26;
+        sm.OnKeyPressedForDetectedScreen(VK_UP);
+        Assert.Equal(0, sm.BattleAbilitiesCursor);
+    }
+
+    [Fact]
+    public void BattleAbilitiesCursor_UpDecrements()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattleAbilities");
+        const int VK_DOWN = 0x28;
+        const int VK_UP = 0x26;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(2, sm.BattleAbilitiesCursor);
+        sm.OnKeyPressedForDetectedScreen(VK_UP);
+        Assert.Equal(1, sm.BattleAbilitiesCursor);
+    }
+
+    [Fact]
+    public void BattleAbilitiesCursor_ResetsOnTransitionInto()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattleAbilities");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(2, sm.BattleAbilitiesCursor);
+        // Leave to MyTurn, come back. Game lands on Attack (row 0) fresh.
+        sm.ObserveDetectedScreen("BattleMyTurn");
+        sm.ObserveDetectedScreen("BattleAbilities");
+        Assert.Equal(0, sm.BattleAbilitiesCursor);
+    }
+
+    [Fact]
+    public void BattleAbilitiesCursor_IgnoresKeysOffScreen()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattleMyTurn");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(0, sm.BattleAbilitiesCursor);
+    }
+
+    // ================================================================
     // AutoSnapIfCategoryMismatch — pure-C# realignment (session 46)
     // ================================================================
 

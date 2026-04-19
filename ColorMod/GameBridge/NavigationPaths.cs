@@ -32,17 +32,7 @@ namespace FFTColorCustomizer.GameBridge
         public static Dictionary<string, PathEntry>? GetPaths(DetectedScreen screen)
         {
             var paths = GetPathsRaw(screen);
-            if (paths == null) return null;
-
-            // UX compat: users reflexively type 'Leave' on shop-adjacent and
-            // picker screens. If the screen has 'Back' but no 'Leave', add
-            // 'Leave' as an alias (same PathEntry, so they're indistinguishable
-            // downstream). Screens that already define 'Leave' (e.g. Outfitter
-            // with its 2-key farewell flow) keep their own.
-            if (paths.TryGetValue("Back", out var backEntry) && !paths.ContainsKey("Leave"))
-                paths["Leave"] = backEntry;
-
-            return paths;
+            return ActionNameAliases.ApplyAliases(paths);
         }
 
         private static Dictionary<string, PathEntry>? GetPathsRaw(DetectedScreen screen)
@@ -81,7 +71,7 @@ namespace FFTColorCustomizer.GameBridge
                 "LocationMenu" => GetLocationMenuPaths(),
                 "Outfitter" => GetSettlementMenuPaths(),
                 "Tavern" => GetSettlementMenuPaths(),
-                "WarriorsGuild" => GetSettlementMenuPaths(),
+                "WarriorsGuild" => GetWarriorsGuildPaths(),
                 "PoachersDen" => GetSettlementMenuPaths(),
                 "SaveGame" => GetSettlementMenuPaths(),
                 "OutfitterBuy" => GetShopItemListPaths("Buy highlighted item (opens quantity/confirm dialog)"),
@@ -441,6 +431,33 @@ namespace FFTColorCustomizer.GameBridge
             };
         }
 
+        // Session 47: WarriorsGuild is a single-item menu at every
+        // settlement where it appears (only "Recruit" visible). Generic
+        // SettlementMenu paths exposed Select + CursorUp/Down which are
+        // no-ops here and confuse callers. The Leave post-processor alias
+        // also adds "Back" automatically.
+        private static Dictionary<string, PathEntry> GetWarriorsGuildPaths()
+        {
+            return new()
+            {
+                ["Recruit"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    WaitTimeoutMs = 1500,
+                    Desc = "Open the Recruit picker (job + random-stat offer)"
+                },
+                ["Leave"] = new PathEntry
+                {
+                    // Same farewell shape as Outfitter's Leave.
+                    Keys = new[] { Key(VK_ESCAPE, "Escape"), Key(VK_ENTER, "Enter") },
+                    DelayBetweenMs = 300,
+                    WaitForScreen = "LocationMenu",
+                    WaitTimeoutMs = 3000,
+                    Desc = "Leave Warriors' Guild (dismisses farewell dialog automatically)"
+                },
+            };
+        }
+
         private static Dictionary<string, PathEntry> GetShopItemListPaths(string selectDesc)
         {
             // Inside an Outfitter sub-action (Buy/Sell/Fitting). The highlighted
@@ -557,6 +574,19 @@ namespace FFTColorCustomizer.GameBridge
                 },
                 ["CursorLeft"] = new PathEntry { Keys = new[] { Key(VK_LEFT, "Left") }, Desc = "Toggle Yes/No cursor" },
                 ["CursorRight"] = new PathEntry { Keys = new[] { Key(VK_RIGHT, "Right") }, Desc = "Toggle Yes/No cursor" },
+                // Session 47 UX aliases. Yes is on the LEFT in the shop
+                // modal (horizontal picker), so the safe committed-Yes is
+                // CursorLeft + Enter. No = Escape shortcut.
+                ["Yes"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_LEFT, "Left"), Key(VK_ENTER, "Enter") },
+                    Desc = "Confirm purchase/sale (cursor-left → Enter so Yes is committed regardless of prior position)"
+                },
+                ["No"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Cancel purchase/sale — same as Escape"
+                },
             };
         }
 
@@ -907,6 +937,19 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     Keys = new[] { Key(VK_ESCAPE, "Escape") },
                     Desc = "Cancel — same effect as selecting No"
+                },
+                // Session 47 UX aliases. Yes is on TOP (vertical picker);
+                // CursorUp + Enter guarantees Yes is committed regardless
+                // of prior cursor position.
+                ["Yes"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_UP, "Up"), Key(VK_ENTER, "Enter") },
+                    Desc = "Commit Yes (cursor-up → Enter so Yes is committed regardless of prior position)"
+                },
+                ["No"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Commit No (Escape is equivalent to selecting No in FFT yes/no prompts)"
                 },
             };
         }

@@ -30,7 +30,9 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Theory]
         [InlineData("Outfitter")]
         [InlineData("Tavern")]
-        [InlineData("WarriorsGuild")]
+        // WarriorsGuild removed session 47 — it's a single-item menu (Recruit
+        // only at Bervenia); CursorUp/Down are no-ops there. See
+        // NavigationPathsWarriorsGuildTests for its specific surface.
         [InlineData("PoachersDen")]
         [InlineData("SaveGame")]
         public void ShopInterior_ExposesSubActionActions(string shopName)

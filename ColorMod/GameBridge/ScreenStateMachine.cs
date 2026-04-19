@@ -102,6 +102,13 @@ namespace FFTColorCustomizer.GameBridge
             {
                 TavernCursorRow = 0;
             }
+            // Session 47: BattleAbilities submenu cursor resets to Attack (0)
+            // on fresh entry. The submenu can re-open mid-turn after
+            // cancelling targeting, but the game re-lands on Attack each time.
+            if (detectedName == "BattleAbilities" && prev != "BattleAbilities")
+            {
+                BattleAbilitiesCursor = 0;
+            }
         }
 
         /// <summary>
@@ -269,6 +276,16 @@ namespace FFTColorCustomizer.GameBridge
         public int TavernCursorRow { get; private set; }
 
         /// <summary>
+        /// SM-tracked cursor row for the BattleAbilities submenu (Attack,
+        /// learned skillsets, Wait, Status). Count varies per unit based on
+        /// learned skillsets — same unclamped-row pattern as
+        /// <see cref="TavernCursorRow"/>. Row 0 = Attack on entry; Up at 0
+        /// clamps; callers that know the menu length wrap at render time.
+        /// Session 47.
+        /// </summary>
+        public int BattleAbilitiesCursor { get; private set; }
+
+        /// <summary>
         /// Apply a key press against the currently-detected (string-mirrored)
         /// screen, for screens the enum-typed state machine doesn't model
         /// transitions for. Currently handles BattlePaused cursor (Up/Down,
@@ -304,6 +321,15 @@ namespace FFTColorCustomizer.GameBridge
                     TavernCursorRow++;
                 else if (vkCode == VK_UP && TavernCursorRow > 0)
                     TavernCursorRow--;
+            }
+            // Session 47: BattleAbilities submenu. Variable length; same
+            // unclamped pattern.
+            else if (LastDetectedScreen == "BattleAbilities")
+            {
+                if (vkCode == VK_DOWN)
+                    BattleAbilitiesCursor++;
+                else if (vkCode == VK_UP && BattleAbilitiesCursor > 0)
+                    BattleAbilitiesCursor--;
             }
         }
         public int CursorRow { get; private set; }

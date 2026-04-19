@@ -2882,7 +2882,11 @@ namespace FFTColorCustomizer.Utilities
             var paths = NavigationPaths.GetPaths(screen);
             if (paths == null || !paths.TryGetValue(pathName, out var path))
             {
-                var available = paths != null ? string.Join(", ", paths.Keys) : "none";
+                // Session 47: richer fail-loud — Name — Desc for each
+                // available action, aliases coalesced. Helps the user
+                // see the purpose of each action, not just names.
+                var available = NavigationPathsDescription
+                    .FormatAvailableActions(screen.Name);
                 response.Status = "failed";
                 response.Error = $"No path '{pathName}' on screen '{screen.Name}'. Available: {available}";
                 return response;

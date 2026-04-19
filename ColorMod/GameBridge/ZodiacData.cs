@@ -106,6 +106,50 @@ namespace FFTColorCustomizer.GameBridge
             _opposite.TryGetValue(sign, out var opp) ? opp : (Sign?)null;
 
         /// <summary>
+        /// Good-pair (triangle partner) table per FFT canon. Source:
+        /// FFTHandsFree/Wiki/ZodiacAndElements.md "Zodiac Compatibility Chart".
+        /// Pattern: same-element trios (Fire/Earth/Air/Water) are Good with
+        /// each other regardless of gender. Commutative — both (a,b) and
+        /// (b,a) produce Good. Serpentarius is not in any element trio.
+        /// </summary>
+        private static readonly HashSet<(Sign, Sign)> _goodPairs = BuildPairs(new[]
+        {
+            // Fire
+            (Sign.Aries, Sign.Leo), (Sign.Aries, Sign.Sagittarius), (Sign.Leo, Sign.Sagittarius),
+            // Earth
+            (Sign.Taurus, Sign.Virgo), (Sign.Taurus, Sign.Capricorn), (Sign.Virgo, Sign.Capricorn),
+            // Air
+            (Sign.Gemini, Sign.Libra), (Sign.Gemini, Sign.Aquarius), (Sign.Libra, Sign.Aquarius),
+            // Water
+            (Sign.Cancer, Sign.Scorpio), (Sign.Cancer, Sign.Pisces), (Sign.Scorpio, Sign.Pisces),
+        });
+
+        /// <summary>
+        /// Bad-pair (square partner) table per FFT canon. Source: same Wiki
+        /// chart, "Bad (-25%)" column. Each sign has exactly 2 bad partners.
+        /// Commutative. Bad stays Bad regardless of gender.
+        /// </summary>
+        private static readonly HashSet<(Sign, Sign)> _badPairs = BuildPairs(new[]
+        {
+            (Sign.Aries, Sign.Cancer), (Sign.Aries, Sign.Capricorn),
+            (Sign.Taurus, Sign.Leo), (Sign.Taurus, Sign.Aquarius),
+            (Sign.Gemini, Sign.Virgo), (Sign.Gemini, Sign.Pisces),
+            (Sign.Cancer, Sign.Libra), // Cancer↔Aries already listed above
+            (Sign.Leo, Sign.Scorpio),
+            (Sign.Virgo, Sign.Sagittarius),
+            (Sign.Libra, Sign.Capricorn),
+            (Sign.Scorpio, Sign.Aquarius),
+            (Sign.Sagittarius, Sign.Pisces),
+        });
+
+        private static HashSet<(Sign, Sign)> BuildPairs((Sign, Sign)[] pairs)
+        {
+            var set = new HashSet<(Sign, Sign)>();
+            foreach (var (a, b) in pairs) { set.Add((a, b)); set.Add((b, a)); }
+            return set;
+        }
+
+        /// <summary>
         /// Convert a Compatibility value to a damage multiplier per FFT rules.
         ///   Best    → 1.50   (opposite sign, opposite gender)
         ///   Good    → 1.25   (same sign opposite gender, or good-pair same gender)
@@ -134,9 +178,12 @@ namespace FFTColorCustomizer.GameBridge
         ///   opposite sign + same gender     → Worst
         ///   Serpentarius on either side     → Neutral
         ///
-        /// The 120°-apart "good pair" / 150°-apart "bad pair" same-gender cases
-        /// are NOT yet implemented — those return Neutral. Tracked as a follow-up
-        /// once we have live damage samples to validate the lookup tables.
+        /// Session 47: Good/Bad pair tables shipped per
+        /// <see cref="_goodPairs"/> / <see cref="_badPairs"/>. These apply
+        /// regardless of gender (the wiki's Good/Bad columns don't split
+        /// by gender — only Best/Worst do). Opposite-sign rule takes
+        /// precedence over Good/Bad even if the pair somehow appeared in
+        /// both tables.
         /// </summary>
         public static Compatibility GetCompatibility(Sign a, Sign b, bool sameGender)
         {
@@ -149,6 +196,9 @@ namespace FFTColorCustomizer.GameBridge
             var oppOfA = GetOpposite(a);
             if (oppOfA.HasValue && oppOfA.Value == b)
                 return sameGender ? Compatibility.Worst : Compatibility.Best;
+
+            if (_goodPairs.Contains((a, b))) return Compatibility.Good;
+            if (_badPairs.Contains((a, b))) return Compatibility.Bad;
 
             return Compatibility.Neutral;
         }

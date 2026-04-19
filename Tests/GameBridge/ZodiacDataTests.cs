@@ -244,10 +244,84 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void GetCompatibility_UnrelatedSigns_ReturnsNeutral()
         {
-            // Aries ↔ Gemini aren't same, opposite, or in the current strong-signal
-            // tables — should default to Neutral (good/bad pair tables not yet shipped).
+            // Aries ↔ Gemini aren't same, opposite, or in Aries's good/bad
+            // pair tables (Aries good=Leo/Sagittarius, bad=Cancer/Capricorn).
             Assert.Equal(ZodiacData.Compatibility.Neutral,
                 ZodiacData.GetCompatibility(ZodiacData.Sign.Aries, ZodiacData.Sign.Gemini, sameGender: false));
+        }
+
+        // Good/Bad pair tables — session 47. Source:
+        // FFTHandsFree/Wiki/ZodiacAndElements.md "Zodiac Compatibility Chart".
+        // Pattern: same-element (Fire/Earth/Air/Water) trio are Good with each
+        // other; two Bad partners per sign per the Wiki's Square pattern.
+
+        [Theory]
+        // Fire trio — Aries/Leo/Sagittarius Good with each other.
+        [InlineData(ZodiacData.Sign.Aries, ZodiacData.Sign.Leo)]
+        [InlineData(ZodiacData.Sign.Aries, ZodiacData.Sign.Sagittarius)]
+        [InlineData(ZodiacData.Sign.Leo, ZodiacData.Sign.Sagittarius)]
+        // Earth trio — Taurus/Virgo/Capricorn.
+        [InlineData(ZodiacData.Sign.Taurus, ZodiacData.Sign.Virgo)]
+        [InlineData(ZodiacData.Sign.Taurus, ZodiacData.Sign.Capricorn)]
+        [InlineData(ZodiacData.Sign.Virgo, ZodiacData.Sign.Capricorn)]
+        // Air trio — Gemini/Libra/Aquarius.
+        [InlineData(ZodiacData.Sign.Gemini, ZodiacData.Sign.Libra)]
+        [InlineData(ZodiacData.Sign.Gemini, ZodiacData.Sign.Aquarius)]
+        [InlineData(ZodiacData.Sign.Libra, ZodiacData.Sign.Aquarius)]
+        // Water trio — Cancer/Scorpio/Pisces.
+        [InlineData(ZodiacData.Sign.Cancer, ZodiacData.Sign.Scorpio)]
+        [InlineData(ZodiacData.Sign.Cancer, ZodiacData.Sign.Pisces)]
+        [InlineData(ZodiacData.Sign.Scorpio, ZodiacData.Sign.Pisces)]
+        public void GetCompatibility_GoodPairs_ReturnsGood_BothGenderVariants(
+            ZodiacData.Sign a, ZodiacData.Sign b)
+        {
+            // Triangle partners (Good column in Wiki chart) stay Good
+            // regardless of gender. Commutative.
+            Assert.Equal(ZodiacData.Compatibility.Good,
+                ZodiacData.GetCompatibility(a, b, sameGender: true));
+            Assert.Equal(ZodiacData.Compatibility.Good,
+                ZodiacData.GetCompatibility(a, b, sameGender: false));
+            Assert.Equal(ZodiacData.Compatibility.Good,
+                ZodiacData.GetCompatibility(b, a, sameGender: true));
+        }
+
+        [Theory]
+        // Per Wiki chart "Bad (-25%)" column, each row.
+        [InlineData(ZodiacData.Sign.Aries, ZodiacData.Sign.Cancer)]
+        [InlineData(ZodiacData.Sign.Aries, ZodiacData.Sign.Capricorn)]
+        [InlineData(ZodiacData.Sign.Taurus, ZodiacData.Sign.Leo)]
+        [InlineData(ZodiacData.Sign.Taurus, ZodiacData.Sign.Aquarius)]
+        [InlineData(ZodiacData.Sign.Gemini, ZodiacData.Sign.Virgo)]
+        [InlineData(ZodiacData.Sign.Gemini, ZodiacData.Sign.Pisces)]
+        [InlineData(ZodiacData.Sign.Cancer, ZodiacData.Sign.Libra)] // Aries was bad for Cancer already
+        [InlineData(ZodiacData.Sign.Leo, ZodiacData.Sign.Scorpio)]
+        [InlineData(ZodiacData.Sign.Virgo, ZodiacData.Sign.Sagittarius)]
+        [InlineData(ZodiacData.Sign.Libra, ZodiacData.Sign.Capricorn)]
+        [InlineData(ZodiacData.Sign.Scorpio, ZodiacData.Sign.Aquarius)]
+        [InlineData(ZodiacData.Sign.Sagittarius, ZodiacData.Sign.Pisces)]
+        public void GetCompatibility_BadPairs_ReturnsBad_BothGenderVariants(
+            ZodiacData.Sign a, ZodiacData.Sign b)
+        {
+            // Square partners (Bad column) stay Bad regardless of gender,
+            // and commute.
+            Assert.Equal(ZodiacData.Compatibility.Bad,
+                ZodiacData.GetCompatibility(a, b, sameGender: true));
+            Assert.Equal(ZodiacData.Compatibility.Bad,
+                ZodiacData.GetCompatibility(a, b, sameGender: false));
+            Assert.Equal(ZodiacData.Compatibility.Bad,
+                ZodiacData.GetCompatibility(b, a, sameGender: true));
+        }
+
+        [Fact]
+        public void GetCompatibility_OppositeSignStillOverridesGoodBad()
+        {
+            // Aries opposite is Libra. If Aries/Libra somehow also appeared
+            // in a good/bad table, the opposite-sign rule must still win
+            // (Best/Worst per gender). Sanity check on rule precedence.
+            Assert.Equal(ZodiacData.Compatibility.Best,
+                ZodiacData.GetCompatibility(ZodiacData.Sign.Aries, ZodiacData.Sign.Libra, sameGender: false));
+            Assert.Equal(ZodiacData.Compatibility.Worst,
+                ZodiacData.GetCompatibility(ZodiacData.Sign.Aries, ZodiacData.Sign.Libra, sameGender: true));
         }
 
         [Theory]
