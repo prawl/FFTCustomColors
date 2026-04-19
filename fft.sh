@@ -701,7 +701,12 @@ _show_helpers() {
       ;;
   esac
   if [ -n "$helpers" ]; then
-    printf '  Helpers:\n%s\n' "$helpers"
+    # Session 48: collapse helpers into a single comma-separated line for
+    # compact view. Extract the first non-space token of each helper line —
+    # that's the shell function name. Descriptions are dropped here.
+    local names
+    names=$(printf '%s\n' "$helpers" | awk '{print $1}' | paste -sd, - | sed 's/,/, /g')
+    printf '  Helpers: %s\n' "$names"
   fi
   return 0
 }
