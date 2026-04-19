@@ -363,6 +363,20 @@ namespace FFTColorCustomizer.GameBridge
                     && slot0 == 0xFFFFFFFFL)
                     return "BattleDialogue";
 
+                // Session 48: formation-phase dialogue at a battle location
+                // (e.g. Mandalia Plain Brigade scene event 16, mid-formation).
+                // battleMode==1 + real event + rawLocation in range catches
+                // dialogue that fires AFTER auto_place_units but BEFORE the
+                // battle sentinels (slot0=255 / slot9=0xFFFFFFFF) flip. The
+                // existing atNamedLocation rule misses this because
+                // locationMenuFlag isn't set post-formation, and the mid-battle
+                // rule misses because slot9 isn't 0xFFFFFFFF yet. Use eventHasChoice +
+                // choiceModalFlag to distinguish BattleChoice from regular dialogue.
+                if (battleMode == 1 && IsRealEvent(eventId)
+                    && rawLocation >= 0 && rawLocation <= 42
+                    && slot9 != 0xFFFFFFFF)
+                    return (eventHasChoice && choiceModalFlag != 0) ? "BattleChoice" : "BattleDialogue";
+
                 // Post-battle Desertion: at named battle location, game PAUSED with warning
                 // dialog (Brave/Faith threshold triggered desertion risk). Both audit samples
                 // of Desertion (#44, #45) had paused=1 and submenuFlag=1.

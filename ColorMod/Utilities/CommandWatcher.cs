@@ -5483,10 +5483,17 @@ namespace FFTColorCustomizer.Utilities
                 // Reads 1 while choice modal is visible, 0 otherwise.
                 // Paired with eventHasChoice to avoid over-firing on the
                 // narration prefix of a choice event.
+                // Session 48 2026-04-19: swapped to 0x140D3706D after the old
+                // 0x140CBC38D stopped firing on Ch2 Mandalia choice modal
+                // (read 0 while the modal was live and BattleChoice should
+                // have triggered). Full-module snapshot+diff of modal-off →
+                // modal-on surfaced a cluster of 0→1 flips in 0x140D370xx;
+                // 0x140D3706D is the cleanest. Re-verified live: modal-off=0,
+                // modal-on=1. Old byte doesn't appear in the diff at all.
                 int choiceModalFlag = 0;
                 if (eventHasChoice && Explorer != null)
                 {
-                    var cmRead = Explorer.ReadAbsolute((nint)0x140CBC38D, 1);
+                    var cmRead = Explorer.ReadAbsolute((nint)0x140D3706D, 1);
                     if (cmRead.HasValue) choiceModalFlag = (int)cmRead.Value.value;
                 }
 
