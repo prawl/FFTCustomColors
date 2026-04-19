@@ -73,6 +73,18 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 47 — follow-ups (2026-04-19)
+
+- [ ] **Live-verify `buff_ramza` on a fresh-game battle** — Session 47 pt 5 shipped `BuffPlanner` + `cheat_mode_buff` bridge action + `buff_ramza` shell helper. Pure planner has 12 tests green; dispatcher writes to the battle static array. NOT yet live-tested. Next session: start a battle, call `buff_ramza`, verify `scan_move` shows Ramza with HP=999/MaxHP=999/PA=255 and that a normally-damaging hit either heals him or does 0. If it misbehaves (writes to wrong slot in a multi-party battle, persists past battle, breaks animations) — see `BuffPlanner.PlanInvincibilityWrites` offset comments + `CommandWatcher.cs` `cheat_mode_buff` case for the slot-picker heuristic.
+
+- [ ] **`execute_turn` shell wrapper** — Session 47 pt 4 shipped `TurnPlan` + `CommandWatcher.ExecuteTurn` pure orchestrator with 9 tests. Bridge-level only today — no shell helper. Callers use direct JSON: `fft '{"id":"t1","action":"execute_turn","moveX":6,"moveY":5,"abilityName":"Attack","targetX":7,"targetY":5}'`. Next session: add `fft.sh` wrapper `execute_turn` with positional args + named flags, then wire into `BattleTurns.md` as the preferred one-shot turn command.
+
+- [ ] **`swap_unit_to <name>` shell wrapper** — Session 47 pt 4 shipped `UnitCyclePlanner.Plan(fromIndex, toIndex, rosterCount)` pure planner with 12 tests. Missing: shell helper that resolves `name → displayOrder` via roster, reads current viewedUnit, feeds both into UnitCyclePlanner, dispatches Q/E sequence. One-liner once planner is wired.
+
+- [ ] **Wire `AbilityCursorDeltaPlanner.Decide` into the ability-list scroll loop** — Session 47 pt 4 shipped the pure decision function with 10 tests (sign-match + magnitude-guard trust rules). Missing: actual wiring into the Up-reset / Down-scroll loop in the battle ability nav path (currently blind Up×N + Down×index). When planner returns `TrustDelta=false`, keep current behavior; when true, skip to `RemainingKeys` count. Session 31 Up-wrap explosion is the regression guardrail.
+
+- [ ] **Extend `cheat_mode_buff` to `buff_all`** — Current impl buffs the first player-side slot only. Loop over every `inBattle=1` + team=0 slot for multi-party story battles. Reuse `BuffPlanner.PlanInvincibilityWrites`; just iterate slots in `cheat_mode_buff` case.
+
 ### Session 46 — follow-ups (2026-04-19)
 
 - [ ] **UserInputMonitor: live-verify under user-driven play** — Scaffold committed (0a19777) + bootstrap wire-up staged in working tree (ModBootstrapper.cs uncommitted) + deployed this session. Log confirms `[UserInputMonitor] started`. NOT verified that user keystrokes actually flow to the SM (user stepped away before testing). Next session: focus the game window, press Down on BattlePaused via keyboard (not bridge), then `screen` and confirm `ui=` tracks the user's cursor row. If it works, commit ModBootstrapper.cs. If it breaks things (double-counts bridge keys / lags / fires during non-game focus), revert ModBootstrapper.cs and debug the de-dup / focus-check logic in `UserInputMonitor.cs`.
@@ -105,25 +117,17 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 
 - [ ] **BattleChoice event catalog — add more entries as encountered** — Session 47 shipped `BattleChoiceEventIds.KnownEventIds` + regression-pin tests. Mandalia Plain event 16 ("Defeat the Brigade" / "Rescue captive") is the only catalogued entry. Detection uses the signal-based path (eventHasChoice + choiceModalFlag at ScreenDetectionLogic.cs:347) which works for any event with those signals, but the catalog is a documentation + regression pin. As new choice events are encountered in live play, add their IDs to the catalog and confirm detection classifies them correctly.
 
-- [ ] **`scan_move` misreads team classification on Orbonne opening** [→ line ~80] — Story battles use team bytes the bridge doesn't recognize. (6,6) read as ENEMY but was an ALLY. Monster-job Ahriman at (4,5) read as PLAYER. Almost attacked an ally. Blocks autonomous story-battle play.
+- [ ] **Detection leaks CharacterStatus / CombatSets during battle_wait animations** — session_tail shows `CharacterStatus → BattleMyTurn` transitions with 15-23s latency during battle_wait. False-positive on facing-confirm animations.
 
-- [ ] **`scan_move` reports entire skillset, not learned-only abilities** [→ line ~78] — Fresh-game Lv9 Ramza scan listed all 8 Mettle abilities (including Ultima) when only 5 were learned. Surfaces unlearned abilities as if equipped. Dangerous — almost cast Shout.
+- [ ] **Cutscene vs BattleDialogue are byte-identical** — 10+ datapoints session 44: rawLoc, battleTeam, acted/moved, eventId range all overlap. No main-module discriminator found. eventId-whitelist approach (as with BattleChoice) is the likely path here too — catalog which eventIds are "cinematic-style" (no battleboard) vs "mid-battle text."
 
-- [ ] **BattleSequence detection over-fires after restart at story location** [→ line ~108] — 0x14077D1F8 flag persists in save state. Post-restart at Orbonne labels WorldMap as BattleSequence. First-frame misfire but real. Fix options in memory note `project_battle_sequence_flag_sticky.md`.
+- [ ] **LoadGame/SaveGame from title misdetect as TravelList** — Session 21: both file pickers have party=0, ui=1, matches TravelList rule. Currently works around via shell helpers but detection itself is wrong.
 
-- [ ] **TavernRumors cursorRow — no stable anchor for auto-relocation** [→ line ~104] — Triple-diff technique re-locates byte reliably but requires ~6 bridge calls. Needs UE4 Slate vtable walk for a runtime-cheap path.
+- [ ] **Chronicle/Options tab correction disabled** — Transient flag-clears caused spurious PartyMenuChronicle detection. Heap-diff scan or mod-side write-back cache needed.
 
-- [ ] **Detection leaks CharacterStatus / CombatSets during battle_wait animations** [→ line ~127] — session_tail shows `CharacterStatus → BattleMyTurn` transitions with 15-23s latency during battle_wait. False-positive on facing-confirm animations.
+- [ ] **Replace fixed post-key delay with poll-until-stable** — Currently a fixed 350ms sleep in detection fallback. Should poll-until-stable. Large refactor, deferred pending safer repro harness.
 
-- [ ] **Cutscene vs BattleDialogue are byte-identical** [→ Task 29 investigation] — 10+ datapoints session 44: rawLoc, battleTeam, acted/moved, eventId range all overlap. No main-module discriminator found. eventId-whitelist approach (as with BattleChoice) is the likely path here too — catalog which eventIds are "cinematic-style" (no battleboard) vs "mid-battle text."
-
-- [ ] **LoadGame/SaveGame from title misdetect as TravelList** [→ line ~193] — Session 21: both file pickers have party=0, ui=1, matches TravelList rule. Currently works around via shell helpers but detection itself is wrong.
-
-- [ ] **Chronicle/Options tab correction disabled** [→ line ~208] — Transient flag-clears caused spurious PartyMenuChronicle detection. Heap-diff scan or mod-side write-back cache needed.
-
-- [ ] **Replace fixed post-key delay with poll-until-stable** [→ line ~210] — Currently a fixed 350ms sleep in detection fallback. Should poll-until-stable. Large refactor, deferred pending safer repro harness.
-
-- [ ] **⚠ UNVERIFIED: `activeUnitSummary` on BattleMoving/BattleCasting/BattleAbilities/BattleActing/BattleWaiting** [→ line ~151] — Shell compact-render match widened session 29. Confirmed on MyTurn/Attacking. Other states need quick eye-check during battle.
+- [ ] **⚠ UNVERIFIED: `activeUnitSummary` on BattleMoving/BattleCasting/BattleAbilities/BattleActing/BattleWaiting** — Shell compact-render match widened session 29. Confirmed on MyTurn/Attacking. Other states need quick eye-check during battle.
 
 - [ ] **Battle state verification — BattleActing** — Session 45 live-verified BattleAlliesTurn at Zeklaus (Cornell as guest). BattleActing remains unverified — transient state, hard to catch mid-animation.
 
