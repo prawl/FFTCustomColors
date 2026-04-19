@@ -904,3 +904,48 @@ Commits: `8ee63d0`, `249f660`, `856d288`, `5c0b59e`, `fe6e952`, `5954d80`, `afff
 - **Live ground-truth walkthrough beats offline byte analysis.** The MesDecoder went through 3 wrong iterations of F8/FE split rules before a user-typed bubble-by-bubble walkthrough of Dorter event 38 (45 real bubbles) settled the correct rule. Next time a boundary-rule hunt kicks off, collect one walkthrough EARLY.
 - **State discriminator quality continuum.** Single-byte sentinels like `encA=255` (Victory) are the holy grail. Multi-byte compound rules (crystal states) are next. Screenshot-matching is the worst (required for the chest-vs-crystal confusion).
 - **Commit-per-task cadence preserves reversibility.** 8 commits this session, each tight. The decoder fix required THREE commits because rules were discovered iteratively — each as its own commit lets future readers trace "when did the behavior change?".
+
+---
+
+### Session 46 (2026-04-19) — State-detection desync hunt + SM auto-snap + retry-storm fix
+
+Commits: `a32ab73` (state-detection fixes + SM auto-snap), `0a19777` (UserInputMonitor scaffold, inert), `35b068d` (HoveredUnitArray retry-storm fix).
+
+Tests: 3283 → 3337 (+54 new, 0 regressions).
+
+**Features landed:**
+
+- [x] **BattleVictory detection via encA=255 sentinel** — Shipped with `battleTeam==0` guard so the unique `encA=255 && encB=255` post-battle signature doesn't steal from enemy/ally-turn states. Runs BEFORE `IsMidBattleEvent` so post-victory eventId=41 no longer misroutes to BattleDialogue. Live-verified at Zeklaus win. See `ScreenDetectionLogic.cs:453-461` + `memory/project_battle_victory_encA255.md`.
+
+- [x] **BattlePaused cursor — SM-driven tracking (supersedes memory resolver)** — New `BattlePausedCursor` property on `ScreenStateMachine` with reset-on-entry (via `ObserveDetectedScreen` transition detection) and wrap-aware update on Up/Down via new `OnKeyPressedForDetectedScreen(vk)` method. CommandWatcher prefers the SM tracker over the flaky memory resolver (which latched on first-Down candidate but didn't track subsequent nav). Live-verified at Grogh Heights: `Data → Retry → Load → Settings → ReturnToWorldMap → Up → Settings` tracked exactly. 5 new tests. Replaces the `[~]` "BattlePaused cursor byte — resolver SHIPPED, discrimination LIMITED" entry from session 44.
+
+- [x] **SM auto-snap on category mismatch** — New `ScreenStateMachine.AutoSnapIfCategoryMismatch(detectedName)` + `CategorizeScreenName()` classify screens into InBattle / WorldSide / PartyTree / DialogueOrCutscene. When detection disagrees with SM's enum category, snap SM to a safe anchor (Unknown for in-battle, WorldMap for world-side, PartyMenuUnits for party tree). No keypresses fire. Dialogue/Cutscene tolerated on any category (overlay). 6 new tests.
+
+- [x] **Within-PartyTree auto-snap** — New `SnapPartyTreeOuterIfDrifted(detectedName, menuDepth)`. Detection can't distinguish PartyMenuUnits from CharacterStatus/EqA/Picker/JobScreen (memory-identical), so uses `menuDepth==0` as the authoritative "outer grid" signal. When SM is deeper but memory says outer, realign. 6 new tests. Addresses the live-repro at Dorter where bridge stayed reporting CharacterStatus after a failed SelectUnit.
+
+- [x] **`LastDetectedScreen` string mirror on SM** — New property + `ObserveDetectedScreen(detectedName)` method. Tracks ANY detection result, not just SM-modeled transitions. Fixes the session-45 bug where `sourceScreen` stuck at boot-time `TitleScreen` for entire battle sessions. Session log + ambiguity-resolver now pull from this.
+
+- [x] **Ambiguity-resolver 4-arg overload for post-load WorldMap** — `ResolveAmbiguousScreen(smScreen, detectedName, keysSinceLastSetScreen, lastSetScreenFromKey)`. Live capture 2026-04-19 at Grogh Heights confirmed post-load WorldMap and freshly-opened TravelList produce byte-identical detection inputs (`hover=254, moveMode=255, party=0, ui=1`). Detect() defaults to TravelList; the overload trusts SM when freshly-seeded (`KeysSinceLastSetScreen==0 && !LastSetScreenFromKey`). Preserves the existing "trust detection when SM is stale" contract for the normal-play path. 3 new tests.
+
+- [x] **Turn-owner rules: drop `!actedOrMoved` guard** — Enemy/ally turns now correctly report their team regardless of acted/moved flags. Stress probe showed a moved=1 enemy turn falling through to `BattleAttacking`/`BattleWaiting` as if the player were acting.
+
+- [x] **Tab-flag world-map guard** — `unitsTabFlag=1`/`inventoryTabFlag=1` detection skipped when there's an affirmative world-map signal. Stale flags after `battle_flee` no longer latch WorldMap into PartyMenuUnits.
+
+- [x] **inBattle moveMode flicker guard** — When `slot9=0xFFFFFFFF` AND `battleMode ∈ 1..5`, a one-frame `moveMode=13` flicker no longer escapes to WorldMap. Narrow scope: only active-turn frames, not post-battle stale states.
+
+- [x] **fft_resync helper removed** — User direction: "bandaid, not a fix." Removed from `fft.sh`, cleaned up 4 help-text references, deleted `feedback_use_fft_resync.md` + `feedback_fft_resync_forbidden_states.md` memory notes.
+
+- [x] **Session command log uses `LastDetectedScreen` for sourceScreen** — All 3 log sites updated. Fixes the session-45 desync where every command logged `sourceScreen: "TitleScreen"` even mid-battle.
+
+- [x] **UserInputMonitor scaffold (inert pending deploy)** — New class polls GetAsyncKeyState for nav keys every 20ms. Gated on `GetForegroundWindow == game window`. De-duped against bridge-sent keys via `MarkBridgeSent(vk)` (150ms window). Forwards user-typed keys to `OnKeyPressed` + `OnKeyPressedForDetectedScreen`. Not wired into bootstrap in the committed state — bootstrap line staged in working tree pending live-verify. Enable by uncommenting the ModBootstrapper block.
+
+- [x] **🎯 HoveredUnitArray retry-storm fix** — `Discover()` set `_discoveryAttempted = true` but never checked it. Failed scans re-ran full-heap on every `ReadStatsIfMatches` call (once per roster slot). Late-game: ~3GB of scans per screen query. Almost certainly the root of two game crashes observed earlier this session. Fix: 2-line guard. Use `Invalidate()` to force rescan after save-load. **Live-verified**: 2 scans across 73 commands (0.036/cmd) vs. previous 86 scans across 29 commands (2.97/cmd) — **83x reduction**.
+
+**Technique discoveries:**
+
+- **Adversarial-probe batteries catch bugs before live testing.** 15-probe stress battery (rule-boundary + collision + sticky-flag + sentinel-drift + crystal encA threshold) caught 7 real desyncs at unit-test time. ~47% hit rate. When a bug class exists, push adversarial inputs at the rules — don't wait to repro live.
+- **Memory-identical states need SM+key-count discrimination.** WorldMap and TravelList have byte-identical detection inputs post-load. The `keysSinceLastSetScreen==0 && !lastSetScreenFromKey` check is the cleanest way to distinguish "SM freshly-seeded after boot" from "SM stale because a user keypress wasn't observed" without a pure memory byte.
+- **The `_attempted` flag pattern must be checked, not just set.** HoveredUnitArray had the right intent but `_discoveryAttempted = true` was written but never read as a guard. Audit similar "one-shot discovery" paths for boolean fields that are written but never read.
+- **Heavy SearchBytes scans crash the host under sustained pressure.** Full-heap scans at 30+ calls/screen-query apparently trigger game-side issues. Rule: full-heap scans MUST be one-shot per session with explicit `Invalidate()` to rescan. Background timers that rescan periodically are a footgun.
+- **Keypress-based fallback tooling is a bandaid when the root is detection.** `fft_resync` compensated for state-detection bugs; removing it forced fixes to land in the detection layer. When a "recovery helper" gains complexity, that's a signal the underlying state signal is wrong.
+- **User input changes the rules for SM-tracked state.** Everything SM-tracked (cursor positions, tab indices) assumes keys flow through the bridge. User keys desync every SM-tracked field. The UserInputMonitor hook is the architectural answer — needs live-verify next session.

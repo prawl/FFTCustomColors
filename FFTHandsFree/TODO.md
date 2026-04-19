@@ -73,13 +73,34 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 46 — follow-ups (2026-04-19)
+
+- [ ] **UserInputMonitor: live-verify under user-driven play** — Scaffold committed (0a19777) + bootstrap wire-up staged in working tree (ModBootstrapper.cs uncommitted) + deployed this session. Log confirms `[UserInputMonitor] started`. NOT verified that user keystrokes actually flow to the SM (user stepped away before testing). Next session: focus the game window, press Down on BattlePaused via keyboard (not bridge), then `screen` and confirm `ui=` tracks the user's cursor row. If it works, commit ModBootstrapper.cs. If it breaks things (double-counts bridge keys / lags / fires during non-game focus), revert ModBootstrapper.cs and debug the de-dup / focus-check logic in `UserInputMonitor.cs`.
+
+- [ ] **Extend SM cursor tracking to other battle screens** — Session 46 shipped `BattlePausedCursor` tracking in the SM and wired it into detection via `OnKeyPressedForDetectedScreen`. Same pattern should extend to:
+  - **CharacterStatus sidebar** (Equipment & Abilities / Job / Combat Sets — 3 items, vertical wrap)
+  - **BattleAbilities submenu** (Attack / Skillset / Items / Wait / Status — variable count depending on unit job)
+  - **BattleMoving grid cursor** (2D x,y tracked via arrow keys + current camera rotation)
+  Each runs through the same "reset on entry, update on Up/Down/Left/Right" pattern `OnKeyPressedForDetectedScreen` uses today. The memory resolvers for BattleAbilities and the move-tile cursor are unreliable (live-captured session 46 — cursor stuck at first read). SM tracking is cheap and deterministic.
+
+- [ ] **WorldMap vs TravelList memory discriminator (optional)** — Session 46 confirmed they're byte-identical in current detection inputs (`hover=254, moveMode=255, party=0, ui=1, slot0=0xFFFFFFFF, slot9=0xFFFFFFFF` for both). Currently handled via `ResolveAmbiguousScreen` 4-arg overload: SM wins when `KeysSinceLastSetScreen==0 && !LastSetScreenFromKey`. Works but relies on SM staying in sync. A memory byte that distinguishes them would be more robust. Heap-diff between snapshots at identical external state might find one — prior attempt found 1.5M changed bytes because the "WorldMap" snapshot was accidentally PartyMenu. Retry with strict pre/post-snapshot visual confirmation.
+
+- [ ] **Audit other `SearchBytesInAllMemory` callers for retry-storm patterns** — Session 46 fixed `HoveredUnitArray.Discover()` which re-ran full-heap scans when initial discovery failed (2→3GB/screen query at worst). Other callers that might have the same latent bug:
+  - `NavigationActions.cs:4190, 4430, 4492, 4494, 4580, 4925` — most are inside user-invoked action methods but verify
+  - `ShopItemScraper.cs:43, 152` — should be one-shot per shop entry; confirm caching
+  - `PickerListReader.cs:103` — declared but unused in CommandWatcher; safe to ignore unless wired
+  - `NameTableLookup.cs:291` — already has `_buildAttempted` guard (verified session 46)
+  Pattern to check: does the caller cache success AND remember failure, or retry indefinitely on failure?
+
+- [ ] **Fight→Formation transition settle** — The 3s settle cap increase was reverted (made every menu nav slow). Formation loads after `execute_action Fight` can exceed 3s (observed 5+s). Needs per-action custom settle logic: the Fight action handler should poll until detection sees `BattleFormation` OR 10s elapsed, rather than relying on the generic settle loop. Low priority since auto-placement mostly handles the Fight flow anyway.
+
+- [ ] **`execute_action Leave` → `Back` UX gap on TavernRumors/TavernErrands/pickers** — Session 46 stress test found `execute_action Leave` silently fails on TavernRumors because the valid path there is named `Back`. Bridge doesn't error on unknown action names — just drops the command. Two fixes: (a) add `Leave` as alias for `Back` in `NavigationPaths.GetTavernRumorsPaths()` / `GetTavernErrandsPaths()` / all picker screens, OR (b) return `status=failed` with a clear "unknown action" error message when `execute_action` gets an unrecognized name. Preference is (b) — makes bugs loud. Shipping (a) as a quick compatibility shim is fine too.
+
 ### 🛠 Dev tooling — speed Ramza through battles for state-collection playthroughs
 
 - [ ] **"Claude cheat mode" — write Ramza HP/MaxHP/PA + full-absorb affinity via bridge** — User direction session 44: need to play through the game to collect all state-detection datapoints (BattleChoice eventIds, Cutscene vs BattleDialogue discriminators, new-game BattleVictory/Desertion memory patterns, etc). Plays take too long at fresh-game stats. Plan: new bridge action `cheat_mode_buff` (or similar) that pokes Ramza's battle unit struct: HP=999, MaxHP=999, PA=255, and all 5 affinity bytes at +0x5A..+0x5E set to absorb every element. Per-battle re-write needed (struct reallocates per battle). Also: add a variant that gives all teammates the same buff. **Pair with**: a toggleable "skip intro cinematics" helper if one exists. This is Option 1 from session 44 brainstorm — Option 3 (mod-side cheat config) is cleaner but takes longer; deferring.
 
 ### Session 45 — new follow-ups (2026-04-19)
-
-- [ ] **Victory detection via encA=255 — TDD + ship** — Fingerprint captured this session, fix drafted. See top of State Detection consolidation below. One session: write failing test, flip rule ordering to run before BattleDialogue and BattlePaused, live-verify at next victory + desertion. Memory: `project_battle_victory_encA255.md`.
 
 - [ ] **Dialogue tracker: hook raw Enter in NavigationActions.SendKey** — Currently `DialogueProgressTracker.Advance(eventId)` only fires from `advance_dialogue` and `execute_action Advance`. Raw Enter via the `enter` shell helper advances the game but not our counter — box index drifts behind. Fix: in `NavigationActions.SendKey` (or CommandWatcher's raw-key dispatcher), when vk == VK_ENTER and current `ScreenMachine.CurrentScreen ∈ {BattleDialogue, Cutscene, BattleChoice}`, bump the tracker. Guard against double-bumping when the key came from the advance_dialogue path. TDD with a pure wrapper around the hook.
 
@@ -101,22 +122,13 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 
 - [ ] **BattleChoice detection — use eventId whitelist approach (NEW PLAN)** — Session 44 spent time attempting a memory discriminator to distinguish BattleChoice from BattleDialogue. 10+ datapoints proved the two states share the same byte fingerprint (rawLoc, battleTeam, acted/moved, battleMode all match). Heap cursor-byte hunt found a working byte (session-specific) but re-locating it post-restart is crash-prone due to batch_read load. **User-approved alternative**: catalog BattleChoice eventIds as we encounter them and hardcode the set. At runtime: `if screen.Name == "BattleDialogue" && eventId ∈ BattleChoiceEventIds → return "BattleChoice"`. Known so far: **eventId 16 at Mandalia Plain** ("Defeat the Brigade" / "Rescue captive"). No screenshot-based detection permitted per user direction. Methodology for finding the cursor byte per-session when inside BattleChoice is documented in `memory/project_battle_choice_cursor.md` for future enabling.
 
-- [ ] **BattleVictory detection — encA=255 sentinel (NEW PLAN, session 45)** — Session 45 2026-04-19 live-captured at Zeklaus win: `encA=255 + encB=255` is a unique sentinel. All other states captured this session had encA in [0..7], so encA=255 is clean single-byte discriminator. Session 44's `battleTeam==3` approach was reverted (a778601) because team=3 persisted into post-V dialogue; encA=255 is transient to the banner itself. **Proposed rule** (drafted, not yet shipped — next session TDD + live-verify at BattleDesertion too):
-  ```csharp
-  if (encA == 255 && encB == 255 && battleMode == 0 && paused == 0)
-      return "BattleVictory";
-  ```
-  Memory note: `memory/project_battle_victory_encA255.md`. Untested against: BattleDesertion, Mandalia victory re-play (session 44 fingerprint had rawLoc=24, battleTeam=3). Need to confirm encA=255 ALSO fires at those states before shipping.
-
 - [ ] **`scan_move` misreads team classification on Orbonne opening** [→ line ~80] — Story battles use team bytes the bridge doesn't recognize. (6,6) read as ENEMY but was an ALLY. Monster-job Ahriman at (4,5) read as PLAYER. Almost attacked an ally. Blocks autonomous story-battle play.
 
 - [ ] **`scan_move` reports entire skillset, not learned-only abilities** [→ line ~78] — Fresh-game Lv9 Ramza scan listed all 8 Mettle abilities (including Ultima) when only 5 were learned. Surfaces unlearned abilities as if equipped. Dangerous — almost cast Shout.
 
 - [ ] **BattleSequence detection over-fires after restart at story location** [→ line ~108] — 0x14077D1F8 flag persists in save state. Post-restart at Orbonne labels WorldMap as BattleSequence. First-frame misfire but real. Fix options in memory note `project_battle_sequence_flag_sticky.md`.
 
-- [ ] **BattlePaused cursor resolver latches onto stale byte** [→ line ~94] — Shipped but auto-resolver picks a byte that reports initial cursor correctly, doesn't track live nav. Needs triple-diff discrimination strengthening.
-
-- [ ] **scan_tavern cursor resolver same limitation** [→ line ~523] — Same discrimination issue as BattlePaused. Ships but reports wrong count (2 vs 4 at Bervenia).
+- [ ] **scan_tavern cursor resolver memory-latch bug** [→ line ~523] — Same memory-resolver-latches-on-first-candidate issue as BattlePaused had. BattlePaused was fixed session 46 via SM-driven cursor tracking (see `BattlePausedCursor` in `ScreenStateMachine.cs`). Apply the same pattern to TavernRumors/TavernErrands: add `TavernCursorRow` property + reset on entry + update on Up/Down in `OnKeyPressedForDetectedScreen`. Reports wrong count (2 vs 4 at Bervenia).
 
 - [ ] **TavernRumors cursorRow — no stable anchor for auto-relocation** [→ line ~104] — Triple-diff technique re-locates byte reliably but requires ~6 bridge calls. Needs UE4 Slate vtable walk for a runtime-cheap path.
 
@@ -151,8 +163,6 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 ### Session 33 batch 2 — deferred (needs live battle / environment I can't verify)
 
 - [~] **Live-verify `execute_action` responses include `ui=` field across battle screens — MOSTLY DONE (session 44 parts 1+5)** — Live-tested in a Mount Bervenia random encounter. Findings: **ui POPULATES** on `BattleMyTurn` ("Move"/"Abilities"/"Status"), `BattleMoving` (tile "(8,7)"), `BattleAbilities` ("Attack"), `BattleAttacking` ("Attack" via tracker, or "(x,y)" via new cursor fallback). **`BattleStatus` fix shipped + root-cause bug found + fixed**: A hidden "EqA-promote" block at CommandWatcher:6190 was unconditionally renaming `screen.Name` from `BattleStatus` → `EquipmentAndAbilities` whenever the mirror matched the active unit's equipment — stripping the battle context. Fix: exclude `BattleStatus` from promotion. NEW pure-class `BattleStatusUiResolver` + 2 tests; `screen.UI` set from `_cachedActiveUnitName`. Post-fix log confirmed `ui='Kenrick'` set correctly inside CommandWatcher. **Remaining for next session**: BattlePaused ui decode (cursor byte CANDIDATES found — see next line). **BattleActing / BattleCasting / BattleWaiting** not exercised this session — TargetingLabelResolver change covers BattleCasting structurally. **Deprioritized (user 2026-04-18)**: the `_cachedActiveUnitName` cache-revert race between `execute_action Status` and the subsequent `screen` call — compact shell rendering already shows "Kenrick" via ASUM field so user-visible behavior is fine; do not pick up again without a direct user ask.
-
-- [~] **BattlePaused cursor byte — resolver + label map SHIPPED, discrimination LIMITED (Task 21 2026-04-18)** — Pure-class `BattlePauseMenuLabels` with 6-item map + 11 tests shipped. `ResolveBattlePauseCursor` method wired into screen detection. Live-verified at Mount Bervenia: when the resolver fires on BattlePaused entry, ui="Data" renders correctly at row 0. **Known limitation**: the 2-step Down-Down verify (mirroring ResolvePickerCursor) picks the first passing candidate out of ~32, which is a weaker filter than the manual triple-diff from session 44 pt 5 that produced only 3 candidates. The first-match byte often reports the initial row correctly at screen-open but doesn't track subsequent Down/Up navigation — stale-byte pattern. When the byte is wrong, ui= falls back to null (graceful degradation, no false labels). **Future work**: strengthen discrimination (a) 3-way toggle intersect inside the resolver, (b) iterate through all 32 candidates scoring by live-tracking fidelity, or (c) restrict candidates to address-range where session 44 manual bytes lived (~0x132xxxxxx).
 
 - [ ] **PreToolUse hook to block `| node` in Bash commands** — needs explicit per-hook user approval (per `feedback_no_hooks_without_approval.md`). Defer until user green-lights.
 
