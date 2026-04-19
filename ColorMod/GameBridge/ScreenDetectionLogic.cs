@@ -141,7 +141,8 @@ namespace FFTColorCustomizer.GameBridge
             int locationMenuFlag = 0, int insideShopFlag = 0,
             int shopSubMenuIndex = 0, int shopTypeIndex = 0,
             int unitsTabFlag = 0, int inventoryTabFlag = 0,
-            int encounterFlag = 0, int menuDepth = -1)
+            int encounterFlag = 0, int menuDepth = -1,
+            int battleSequenceFlag = 0)
         {
             // rawLocation is the last-visited named place (village/shop/campaign ground).
             // It's STICKY — retains the last-visited location even when the player leaves.
@@ -173,18 +174,17 @@ namespace FFTColorCustomizer.GameBridge
                 return "BattleFormation";
 
             // BattleSequence: multi-stage campaign sub-selector minimap (e.g. Orbonne
-            // Monastery Vaults). DISABLED — byte-indistinguishable from WorldMap when
-            // standing at a whitelist location (fresh boot or returning from battle).
-            // All 28 detection inputs are identical between the two screens.
-            // Needs a dedicated memory byte (heap scan on minimap screen vs WorldMap).
-            // Location whitelist: BattleSequenceLocations (1,3,4,5,15,16,18,21).
-            // See TODO for full investigation notes from session 21.
-            // if (slot0 != 255 && !onWorldMapByMoveMode
-            //     && rawLocation >= 0 && rawLocation <= 42
-            //     && locationMenuFlag == 0
-            //     && unitsTabFlag == 0 && inventoryTabFlag == 0
-            //     && BattleSequenceLocations.Contains(rawLocation))
-            //     return "BattleSequence";
+            // Monastery Vaults). Enabled session 44 2026-04-18 — discriminator byte
+            // hunt found `battleSequenceFlag` at 0x14077D1F8 (main module) reads 1
+            // on any BattleSequence minimap / 0 on plain WorldMap. Combined with the
+            // location whitelist (1,3,4,5,15,16,18,21 — the 8 multi-stage story
+            // locations) this disambiguates the minimap from WorldMap-at-same-loc.
+            // See memory/project_battle_sequence_discriminator.md for live-verify
+            // at Orbonne Monastery vs Bervenia.
+            if (battleSequenceFlag != 0
+                && rawLocation >= 0 && rawLocation <= 42
+                && BattleSequenceLocations.Contains(rawLocation))
+                return "BattleSequence";
 
             // PartyMenu tab flags: 0x140D3A41E (Units) and 0x140D3A38E (Inventory)
             // are cross-session-stable binary flags that read 1 ONLY when the

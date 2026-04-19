@@ -721,9 +721,74 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         // === BattleSequence (multi-stage campaign sub-selector) ===
-        // DISABLED — BattleSequence is byte-indistinguishable from WorldMap
-        // at whitelist locations. Needs a dedicated memory discriminator.
-        // Tests preserved for when the discriminator is found.
+        // Enabled session 44 2026-04-18: discriminator byte at 0x14077D1F8
+        // reads 1 on minimap / 0 on plain WorldMap. Combined with the 8-loc
+        // whitelist (Riovanes/Lionel/Limberry/Zeltennia/Ziekden/Mullonde/
+        // Orbonne/FortBesselat) distinguishes the minimap from WorldMap-at-loc.
+
+        [Fact]
+        public void DetectScreen_BattleSequence_AtOrbonneWithFlag_ReturnsBattleSequence()
+        {
+            // Live-captured session 44: at Orbonne (loc 18), minimap auto-open,
+            // battleSequenceFlag=1.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 18, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                battleSequenceFlag: 1);
+            Assert.Equal("BattleSequence", result);
+        }
+
+        [Theory]
+        [InlineData(1)]  // Riovanes Castle
+        [InlineData(3)]  // Lionel Castle
+        [InlineData(4)]  // Limberry Castle
+        [InlineData(5)]  // Zeltennia Castle
+        [InlineData(15)] // Ziekden Fortress
+        [InlineData(16)] // Mullonde
+        [InlineData(18)] // Orbonne Monastery
+        [InlineData(21)] // Fort Besselat
+        public void DetectScreen_BattleSequence_AllWhitelistLocs_FireWithFlag(int loc)
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: loc, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                battleSequenceFlag: 1);
+            Assert.Equal("BattleSequence", result);
+        }
+
+        [Fact]
+        public void DetectScreen_BattleSequence_NonWhitelistLoc_IgnoresFlag()
+        {
+            // At Bervenia (loc 13, not a BattleSequence location), even if the
+            // flag is set (which shouldn't happen in practice, but defensive),
+            // we should fall through to the normal WorldMap/LocationMenu path.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 13, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                battleSequenceFlag: 1);
+            Assert.NotEqual("BattleSequence", result);
+        }
+
+        [Fact]
+        public void DetectScreen_BattleSequence_FlagZero_ReturnsNonBattleSequence()
+        {
+            // At Orbonne (loc 18), but flag=0 means minimap isn't open —
+            // player is on plain WorldMap at Orbonne. Should NOT detect as
+            // BattleSequence.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 18, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                battleSequenceFlag: 0);
+            Assert.NotEqual("BattleSequence", result);
+        }
 
         [Fact]
         public void DetectScreen_Desertion_WithPaused_ShouldReturnBattleDesertion()

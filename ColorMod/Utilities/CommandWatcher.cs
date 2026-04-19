@@ -5128,6 +5128,19 @@ namespace FFTColorCustomizer.Utilities
                 // should be WorldMap, leading to SM-drift EqA misreports.
                 bool partySubScreenSignal = !inBattle && IsPartySubScreen()
                     && screen.MenuDepth > 0;
+
+                // BattleSequence discriminator — read the minimap-open flag.
+                // 0x14077D1F8 is 1 while a BattleSequence minimap is visible
+                // (live-verified at Orbonne session 44 vs Bervenia WorldMap).
+                // Combined with the location whitelist in ScreenDetectionLogic,
+                // disambiguates the minimap from plain WorldMap at the same loc.
+                int battleSequenceFlag = 0;
+                if (Explorer != null)
+                {
+                    var bsRead = Explorer.ReadAbsolute((nint)0x14077D1F8, 1);
+                    if (bsRead.HasValue) battleSequenceFlag = (int)bsRead.Value.value;
+                }
+
                 screen.Name = GameBridge.ScreenDetectionLogic.Detect(
                     party, ui, rawLocation, slot0, slot9,
                     battleMode, moveMode, paused, gameOverFlag,
@@ -5140,7 +5153,8 @@ namespace FFTColorCustomizer.Utilities
                     shopTypeIndex: shopTypeIndex,
                     unitsTabFlag: unitsTabFlag, inventoryTabFlag: inventoryTabFlag,
                     encounterFlag: encounterFlag,
-                    menuDepth: screen.MenuDepth);
+                    menuDepth: screen.MenuDepth,
+                    battleSequenceFlag: battleSequenceFlag);
 
                 // TravelList→WorldMap override: when the SM just left
                 // PartyMenu via a key press (Escape) and detection says
