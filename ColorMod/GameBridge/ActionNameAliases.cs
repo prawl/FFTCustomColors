@@ -31,8 +31,15 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public static readonly string[][] Groups = new[]
         {
-            // Exit verbs — Leave (shop-like) ↔ Back (menu-tree).
-            new[] { "Leave", "Back" },
+            // Exit verbs — Leave (shop-like) ↔ Back (menu-tree) ↔ Exit (common
+            // natural-language synonym). All three mean "close this screen,
+            // return to the previous one."
+            new[] { "Leave", "Back", "Exit" },
+            // Confirm-modal affirmatives — OK / Yes / Confirm. Propagates only
+            // on screens that already define one of these (confirm dialogs,
+            // crystal prompts). Picker screens use Select (different semantic)
+            // and are unaffected because they don't define any of these names.
+            new[] { "Confirm", "OK", "Yes" },
         };
 
         /// <summary>

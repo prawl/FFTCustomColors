@@ -85,6 +85,18 @@ namespace FFTColorCustomizer.GameBridge
                 if (!string.IsNullOrEmpty(screen.StoryObjectiveName))
                     sb.Append('(').Append(screen.StoryObjectiveName).Append(')');
             }
+
+            // Session 47 extension. Gil displays on shop-adjacent screens.
+            // Zero is an "unread" sentinel per the model comment — skip it.
+            if (screen.Gil > 0)
+                sb.Append(" gil=").Append(screen.Gil.ToString("N0", System.Globalization.CultureInfo.InvariantCulture));
+
+            // EventId relevant during Cutscene/BattleDialogue/BattleChoice —
+            // rendered here for world-side screens that carry scripted
+            // events (Cutscene falls into this branch since it's not a
+            // Battle* screen).
+            if (screen.EventId >= 1 && screen.EventId < 400)
+                sb.Append(" eventId=").Append(screen.EventId);
         }
     }
 }

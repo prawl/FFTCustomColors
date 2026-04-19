@@ -91,5 +91,46 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains("Leave", text);
             Assert.Contains("farewell", text, System.StringComparison.OrdinalIgnoreCase);
         }
+
+        // Session 47: FormatActionNames slim variant.
+
+        [Fact]
+        public void FormatActionNames_UnknownScreen_ReturnsNone()
+        {
+            Assert.Equal("none", NavigationPathsDescription.FormatActionNames("NotARealScreen"));
+            Assert.Equal("none", NavigationPathsDescription.FormatActionNames(null));
+            Assert.Equal("none", NavigationPathsDescription.FormatActionNames(""));
+        }
+
+        [Fact]
+        public void FormatActionNames_TavernRumors_CoalescesAliases()
+        {
+            // Exit/Leave/Back should render as one slash-separated entry.
+            var text = NavigationPathsDescription.FormatActionNames("TavernRumors");
+            Assert.Contains("Back/Leave/Exit", text);
+        }
+
+        [Fact]
+        public void FormatActionNames_NoDescriptions()
+        {
+            // Slim variant: NO "—" separators, just comma-separated names.
+            var text = NavigationPathsDescription.FormatActionNames("TavernRumors");
+            Assert.DoesNotContain("—", text);
+        }
+
+        [Fact]
+        public void FormatActionNames_Contains_EachAction()
+        {
+            var text = NavigationPathsDescription.FormatActionNames("WorldMap");
+            Assert.Contains("PartyMenuUnits", text);
+        }
+
+        [Fact]
+        public void FormatActionNames_CommaSeparated()
+        {
+            // Multiple actions separated by ", ".
+            var text = NavigationPathsDescription.FormatActionNames("WorldMap");
+            Assert.Contains(", ", text);
+        }
     }
 }

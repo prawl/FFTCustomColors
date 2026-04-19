@@ -33,6 +33,50 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Formats a comma-separated list of action names on the screen
+        /// (aliases coalesced with "/" e.g. "Leave/Back/Exit"). Cheaper
+        /// to compute + shorter than <see cref="FormatAvailableActions"/>;
+        /// use when the caller wants just the names (e.g. quick suggestion
+        /// in a terse log line, a shell completion hint).
+        /// </summary>
+        public static string FormatActionNames(string? screenName)
+        {
+            if (string.IsNullOrWhiteSpace(screenName)) return "none";
+            var paths = NavigationPaths.GetPaths(
+                new Utilities.DetectedScreen { Name = screenName });
+            if (paths == null || paths.Count == 0) return "none";
+
+            var seen = new HashSet<PathEntry>();
+            var groups = new List<List<string>>();
+            foreach (var (name, entry) in paths)
+            {
+                if (seen.Add(entry))
+                {
+                    groups.Add(new List<string> { name });
+                }
+                else
+                {
+                    foreach (var g in groups)
+                    {
+                        if (paths[g[0]] == entry)
+                        {
+                            g.Add(name);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            var sb = new StringBuilder();
+            for (int i = 0; i < groups.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append(string.Join("/", groups[i]));
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
         /// Formats the "Available: Name — Desc" block used in fail-loud
         /// errors. Lists every action on the screen with its description,
         /// one per line. Returns "none" when the screen has no paths.

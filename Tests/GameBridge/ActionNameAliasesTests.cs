@@ -106,5 +106,62 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains("Leave", paths.Keys);
             Assert.Same(paths["Back"], paths["Leave"]);
         }
+
+        // Session 47: expanded alias groups.
+
+        [Fact]
+        public void Exit_Aliased_ToBack_OnTavernScreens()
+        {
+            // Exit is a natural-language synonym users type reflexively.
+            var paths = NavigationPaths.GetPaths(new DetectedScreen { Name = "TavernRumors" });
+            Assert.NotNull(paths);
+            Assert.Contains("Exit", paths!.Keys);
+            Assert.Same(paths["Back"], paths["Exit"]);
+        }
+
+        [Fact]
+        public void Exit_Aliased_ToLeave_OnShopScreens()
+        {
+            var paths = NavigationPaths.GetPaths(new DetectedScreen { Name = "Outfitter" });
+            Assert.NotNull(paths);
+            Assert.Contains("Exit", paths!.Keys);
+            Assert.Same(paths["Leave"], paths["Exit"]);
+        }
+
+        [Fact]
+        public void OK_Aliased_ToConfirm_OnShopConfirmDialog()
+        {
+            // ShopConfirmDialog defines Confirm (plain Enter); OK auto-aliases.
+            // Yes is also already explicitly defined as a safer 2-key commit —
+            // that stays as its own distinct entry.
+            var paths = NavigationPaths.GetPaths(new DetectedScreen { Name = "ShopConfirmDialog" });
+            Assert.NotNull(paths);
+            Assert.Contains("Confirm", paths!.Keys);
+            Assert.Contains("OK", paths.Keys);
+            Assert.Same(paths["Confirm"], paths["OK"]);
+        }
+
+        [Fact]
+        public void Yes_OnConfirmDialog_StaysDistinctFromConfirm()
+        {
+            // Yes is the safe-commit (CursorLeft+Enter on horizontal Yes/No);
+            // Confirm is raw Enter. The alias post-processor must NOT collapse
+            // them onto the same entry, because they really are different.
+            var paths = NavigationPaths.GetPaths(new DetectedScreen { Name = "ShopConfirmDialog" });
+            Assert.NotNull(paths);
+            Assert.NotSame(paths!["Confirm"], paths["Yes"]);
+        }
+
+        [Fact]
+        public void NonAffirmative_Screen_DoesNotGainOK()
+        {
+            // WorldMap has no Confirm/OK/Yes — the alias group must not
+            // invent phantom entries.
+            var paths = NavigationPaths.GetPaths(new DetectedScreen { Name = "WorldMap" });
+            Assert.NotNull(paths);
+            Assert.DoesNotContain("Confirm", paths!.Keys);
+            Assert.DoesNotContain("OK", paths.Keys);
+            Assert.DoesNotContain("Yes", paths.Keys);
+        }
     }
 }

@@ -137,5 +137,71 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var line = ScreenCompactFormatter.FormatHeader(screen);
             Assert.Equal("[Cutscene]", line);
         }
+
+        // Session 47 extension: gil + eventId.
+
+        [Fact]
+        public void WorldMap_Gil_RendersFormatted()
+        {
+            var screen = new DetectedScreen
+            {
+                Name = "Outfitter",
+                Gil = 2605569,
+            };
+            var line = ScreenCompactFormatter.FormatHeader(screen);
+            // Thousands separator per invariant culture.
+            Assert.Contains("gil=2,605,569", line);
+        }
+
+        [Fact]
+        public void WorldMap_GilZero_IsOmitted()
+        {
+            // 0 is the "unread" sentinel; don't render "gil=0".
+            var screen = new DetectedScreen
+            {
+                Name = "Outfitter",
+                Gil = 0,
+            };
+            var line = ScreenCompactFormatter.FormatHeader(screen);
+            Assert.DoesNotContain("gil=", line);
+        }
+
+        [Fact]
+        public void Cutscene_EventId_RendersWithLabel()
+        {
+            var screen = new DetectedScreen
+            {
+                Name = "Cutscene",
+                EventId = 42,
+            };
+            var line = ScreenCompactFormatter.FormatHeader(screen);
+            Assert.Contains("eventId=42", line);
+        }
+
+        [Fact]
+        public void EventIdZero_IsOmitted()
+        {
+            var screen = new DetectedScreen
+            {
+                Name = "Cutscene",
+                EventId = 0,
+            };
+            var line = ScreenCompactFormatter.FormatHeader(screen);
+            Assert.DoesNotContain("eventId=", line);
+        }
+
+        [Fact]
+        public void EventId_OutOfRange_IsOmitted()
+        {
+            // Sentinel / uninitialized values (0xFFFF etc.) are outside the
+            // real-event range 1-399 and must not render.
+            var screen = new DetectedScreen
+            {
+                Name = "Cutscene",
+                EventId = 0xFFFF,
+            };
+            var line = ScreenCompactFormatter.FormatHeader(screen);
+            Assert.DoesNotContain("eventId=", line);
+        }
     }
 }
