@@ -74,9 +74,15 @@ namespace FFTColorCustomizer.GameBridge
 
                 if (b == 0xF8)
                 {
-                    // Intra-bubble line wrap.
-                    text.Append('\n');
-                    i++;
+                    // Single 0xF8 = intra-bubble line wrap.
+                    // 2+ consecutive 0xF8 = bubble boundary (same speaker
+                    // continues into a new bubble). Verified at Zeklaus
+                    // event 40 R5/R6 "Aye, that much is plain. F8 F8 Gods
+                    // be good..." — two bubbles under the same 0xE3 speaker.
+                    int f8Run = 0;
+                    while (i < bytes.Length && bytes[i] == 0xF8) { f8Run++; i++; }
+                    if (f8Run >= 2) Flush();
+                    else text.Append('\n');
                     continue;
                 }
 

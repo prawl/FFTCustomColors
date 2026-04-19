@@ -119,6 +119,36 @@ public class MesDecoderBoxGroupingTests
     }
 
     [Fact]
+    public void DecodeBoxes_ConsecutiveF8_IsBubbleBoundary()
+    {
+        // Verified at Zeklaus event 40 bubble R5/R6: "Aye, that much is plain. «F8»«F8» Gods be good, Gustav's ransom..."
+        // Two consecutive 0xF8 bytes end one bubble and start the next (within
+        // the same speaker). Single 0xF8 is still just a line wrap.
+        var bytes = new byte[] { 0x0A, 0xF8, 0xF8, 0x0B };
+        var boxes = MesDecoder.DecodeBoxes(bytes);
+        Assert.Equal(2, boxes.Count);
+        Assert.Equal("A", boxes[0].Text);
+        Assert.Equal("B", boxes[1].Text);
+    }
+
+    [Fact]
+    public void DecodeBoxes_ThreeConsecutiveF8_CollapseToOneBoundary()
+    {
+        var bytes = new byte[] { 0x0A, 0xF8, 0xF8, 0xF8, 0x0B };
+        var boxes = MesDecoder.DecodeBoxes(bytes);
+        Assert.Equal(2, boxes.Count);
+    }
+
+    [Fact]
+    public void DecodeBoxes_SingleF8_StillLineWrap()
+    {
+        // Sanity: the fix for consecutive F8 must not break the single-F8 rule.
+        var bytes = new byte[] { 0x0A, 0xF8, 0x0B };
+        var boxes = MesDecoder.DecodeBoxes(bytes);
+        Assert.Single(boxes);
+    }
+
+    [Fact]
     public void DecodeBoxes_SpeakerChange_ImplicitlyBoundsBox()
     {
         var bytes = new byte[]
