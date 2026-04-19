@@ -476,6 +476,33 @@ namespace FFTColorCustomizer.GameBridge
             if (paused == 1 && battleMode == 0 && gameOverFlag == 1)
                 return "GameOver";
 
+            // Crystal-pickup sequence: 4 modal states fired when a unit steps
+            // onto a crystallized unit's tile. Live-captured at Zeklaus event 40
+            // (2026-04-19). All share battleMode=1, submenuFlag=1, menuCursor=0,
+            // battleTeam=0 with normal BattleMoving but differ on moveMode,
+            // paused, and encA (widget-stack-depth byte). Must fire BEFORE the
+            // generic `paused==1 → BattlePaused` rule and BEFORE the
+            // `battleMode==1 → BattleMoving` rule because two crystal states
+            // have paused=1 and all four have battleMode=1. See
+            // memory/project_crystal_states_undetected.md for the fingerprint
+            // table and encA interpretation.
+            if (battleMode == 1 && submenuFlag == 1 && menuCursor == 0 && battleTeam == 0)
+            {
+                if (paused == 1)
+                {
+                    // S2 (Acquire/Restore chooser) vs S3 (Yes/No acquire confirm).
+                    // encA is a widget-stack depth byte: S2 ≈ 4, S3 ≈ 7.
+                    return encA >= 5 ? "BattleAbilityAcquireConfirm" : "BattleCrystalReward";
+                }
+                if (moveMode == 0)
+                {
+                    // S1 (MoveConfirm) has encA>0; S4 (Learned banner) has encA==0.
+                    // Normal BattleMoving uses moveMode==255 so it falls through.
+                    return encA == 0 ? "BattleAbilityLearnedBanner" : "BattleCrystalMoveConfirm";
+                }
+                // moveMode==255 falls through to the normal BattleMoving rule below.
+            }
+
             // Status screen: clicked INTO Status from pause menu. Needs submenuFlag=1
             // (subscreen open) in addition to paused=1 + menuCursor=3. Without submenuFlag,
             // cursor=3 on the pause menu just means hovering the Status item, which is still

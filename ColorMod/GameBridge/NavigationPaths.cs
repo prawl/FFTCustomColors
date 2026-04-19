@@ -89,6 +89,10 @@ namespace FFTColorCustomizer.GameBridge
                 "BattleAutoBattle" => GetBackOutPaths("You're in the Auto-Battle menu! Press Escape to get back to battle before the AI takes over."),
                 "BattleDialogue" => GetBattleDialoguePaths(),
                 "BattleChoice" => GetBattleChoicePaths(),
+                "BattleCrystalMoveConfirm" => GetYesNoConfirmPaths("Confirm moving onto the crystal (movement cannot be reset)"),
+                "BattleCrystalReward" => GetCrystalRewardPaths(),
+                "BattleAbilityAcquireConfirm" => GetYesNoConfirmPaths("Confirm acquiring the ability from the crystal"),
+                "BattleAbilityLearnedBanner" => GetBattleDialoguePaths(),
                 "BattleVictory" => GetBattleVictoryPaths(),
                 "BattleDesertion" => GetDesertionPaths(),
                 "BattleFormation" => GetBattleFormationPaths(),
@@ -856,6 +860,60 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     Keys = new[] { Key(VK_ENTER, "Enter") },
                     Desc = "Commit the highlighted choice — IRREVERSIBLE, changes battle objective"
+                },
+            };
+        }
+
+        // Generic Yes/No confirmation dialog used by crystal-sequence screens.
+        // Down toggles Yes↔No (the game's Yes/No popup is a vertical 2-item
+        // picker, Yes on top). Select confirms whichever is highlighted.
+        private static Dictionary<string, PathEntry> GetYesNoConfirmPaths(string selectDescription)
+        {
+            return new()
+            {
+                ["CursorUp"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_UP, "Up") },
+                    Desc = "Move cursor to Yes"
+                },
+                ["CursorDown"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_DOWN, "Down") },
+                    Desc = "Move cursor to No"
+                },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = selectDescription
+                },
+                ["Cancel"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ESCAPE, "Escape") },
+                    Desc = "Cancel — same effect as selecting No"
+                },
+            };
+        }
+
+        // "Abilities Conferred by the Crystal" screen — a vertical picker with
+        // "Acquire Ability" (top) and "Restore HP & MP" (bottom).
+        private static Dictionary<string, PathEntry> GetCrystalRewardPaths()
+        {
+            return new()
+            {
+                ["CursorUp"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_UP, "Up") },
+                    Desc = "Move cursor to Acquire Ability"
+                },
+                ["CursorDown"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_DOWN, "Down") },
+                    Desc = "Move cursor to Restore HP & MP"
+                },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Commit the highlighted reward (opens the confirm modal)"
                 },
             };
         }
