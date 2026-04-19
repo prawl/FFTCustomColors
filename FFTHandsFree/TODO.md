@@ -73,6 +73,56 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### 🛠 Dev tooling — speed Ramza through battles for state-collection playthroughs
+
+- [ ] **"Claude cheat mode" — write Ramza HP/MaxHP/PA + full-absorb affinity via bridge** — User direction session 44: need to play through the game to collect all state-detection datapoints (BattleChoice eventIds, Cutscene vs BattleDialogue discriminators, new-game BattleVictory/Desertion memory patterns, etc). Plays take too long at fresh-game stats. Plan: new bridge action `cheat_mode_buff` (or similar) that pokes Ramza's battle unit struct: HP=999, MaxHP=999, PA=255, and all 5 affinity bytes at +0x5A..+0x5E set to absorb every element. Per-battle re-write needed (struct reallocates per battle). Also: add a variant that gives all teammates the same buff. **Pair with**: a toggleable "skip intro cinematics" helper if one exists. This is Option 1 from session 44 brainstorm — Option 3 (mod-side cheat config) is cleaner but takes longer; deferring.
+
+### 🔴 State Detection — TOP PRIORITY (consolidated 2026-04-18)
+
+User direction session 44: **refocus on state-related tasks. Bad state detection blocks everything else**. These are the known screen/state-detection bugs, ordered roughly by blast radius. Items cross-reference their detailed entries below.
+
+- [ ] **BattleChoice detection — use eventId whitelist approach (NEW PLAN)** — Session 44 spent time attempting a memory discriminator to distinguish BattleChoice from BattleDialogue. 10+ datapoints proved the two states share the same byte fingerprint (rawLoc, battleTeam, acted/moved, battleMode all match). Heap cursor-byte hunt found a working byte (session-specific) but re-locating it post-restart is crash-prone due to batch_read load. **User-approved alternative**: catalog BattleChoice eventIds as we encounter them and hardcode the set. At runtime: `if screen.Name == "BattleDialogue" && eventId ∈ BattleChoiceEventIds → return "BattleChoice"`. Known so far: **eventId 16 at Mandalia Plain** ("Defeat the Brigade" / "Rescue captive"). No screenshot-based detection permitted per user direction. Methodology for finding the cursor byte per-session when inside BattleChoice is documented in `memory/project_battle_choice_cursor.md` for future enabling.
+
+- [ ] **BattleVictory misdetects as BattleDesertion on Gariland post-battle** [→ line ~96] — Live-observed session 44 fresh-game Gariland win: detection returned `BattleDesertion`. Rule ordering at ScreenDetectionLogic.cs:278 with identical broad post-battle state. Blocks story-battle wrap-up autonomously.
+
+- [ ] **`scan_move` misreads team classification on Orbonne opening** [→ line ~80] — Story battles use team bytes the bridge doesn't recognize. (6,6) read as ENEMY but was an ALLY. Monster-job Ahriman at (4,5) read as PLAYER. Almost attacked an ally. Blocks autonomous story-battle play.
+
+- [ ] **`scan_move` reports entire skillset, not learned-only abilities** [→ line ~78] — Fresh-game Lv9 Ramza scan listed all 8 Mettle abilities (including Ultima) when only 5 were learned. Surfaces unlearned abilities as if equipped. Dangerous — almost cast Shout.
+
+- [ ] **BattleSequence detection over-fires after restart at story location** [→ line ~108] — 0x14077D1F8 flag persists in save state. Post-restart at Orbonne labels WorldMap as BattleSequence. First-frame misfire but real. Fix options in memory note `project_battle_sequence_flag_sticky.md`.
+
+- [ ] **BattlePaused cursor resolver latches onto stale byte** [→ line ~94] — Shipped but auto-resolver picks a byte that reports initial cursor correctly, doesn't track live nav. Needs triple-diff discrimination strengthening.
+
+- [ ] **scan_tavern cursor resolver same limitation** [→ line ~523] — Same discrimination issue as BattlePaused. Ships but reports wrong count (2 vs 4 at Bervenia).
+
+- [ ] **TavernRumors cursorRow — no stable anchor for auto-relocation** [→ line ~104] — Triple-diff technique re-locates byte reliably but requires ~6 bridge calls. Needs UE4 Slate vtable walk for a runtime-cheap path.
+
+- [ ] **Detection leaks CharacterStatus / CombatSets during battle_wait animations** [→ line ~127] — session_tail shows `CharacterStatus → BattleMyTurn` transitions with 15-23s latency during battle_wait. False-positive on facing-confirm animations.
+
+- [ ] **Cutscene vs BattleDialogue are byte-identical** [→ Task 29 investigation] — 10+ datapoints session 44: rawLoc, battleTeam, acted/moved, eventId range all overlap. No main-module discriminator found. eventId-whitelist approach (as with BattleChoice) is the likely path here too — catalog which eventIds are "cinematic-style" (no battleboard) vs "mid-battle text."
+
+- [ ] **LoadGame/SaveGame from title misdetect as TravelList** [→ line ~193] — Session 21: both file pickers have party=0, ui=1, matches TravelList rule. Currently works around via shell helpers but detection itself is wrong.
+
+- [ ] **Chronicle/Options tab correction disabled** [→ line ~208] — Transient flag-clears caused spurious PartyMenuChronicle detection. Heap-diff scan or mod-side write-back cache needed.
+
+- [ ] **Replace fixed post-key delay with poll-until-stable** [→ line ~210] — Currently a fixed 350ms sleep in detection fallback. Should poll-until-stable. Large refactor, deferred pending safer repro harness.
+
+- [ ] **BattleActing transient misses** [→ line ~191] — Battle state verification session 21: BattleActing is "transient (hard to catch)". May not be detectable reliably given its short duration.
+
+- [ ] **⚠ UNVERIFIED: `activeUnitSummary` on BattleMoving/BattleCasting/BattleAbilities/BattleActing/BattleWaiting** [→ line ~151] — Shell compact-render match widened session 29. Confirmed on MyTurn/Attacking. Other states need quick eye-check during battle.
+
+- [ ] **Battle state verification — BattleAlliesTurn, BattleActing** [→ line ~191] — Remaining unverified states from session 21's 11/13 pass.
+
+---
+
+### Session 44 — urgent bugs (new)
+
+- [ ] **`scan_move` reports entire skillset, not learned-only abilities** — At Orbonne opening battle (fresh-game Lv 9 Ramza) the bridge listed Focus, Throw Stone, Salve, Tailwind, Chant, Steel, Shout, Ultima from Mettle. Actual in-game learned list (confirmed via screenshot of battle action menu): **Rush, Throw Stone, Salve, Chant** (+ Focus). Unlearned abilities (Tailwind, Steel, Shout, Ultima) were surfaced as if equipped. This is dangerous — I almost cast Shout during gameplay because the scan said it was available. Root cause: the abilities list in scan_move is probably reading from the skillset DEFINITION (ActionAbilityLookup.Skillsets["Mettle"]) rather than filtering by the unit's learned bitfield at +0x32+jobIdx*3. **Fix**: audit the scan-output path that populates `BattleState.Units[i].Abilities` — must filter by learned-bitfield just like the EqA `learnedPrimary` list does. Also: Rush is learned, Focus is (probably) learned, but scan listed Focus under Mettle when it's actually Fundaments (generic Squire starter). Lookup may be conflating Mettle/Fundaments — Ramza's Gallant Knight gets BOTH skillsets, but only subset is actual-unlocked.
+
+- [ ] **`scan_move` misreads team classification on Orbonne opening** — Fresh-game Orbonne battle: scan labeled units at (6,5), (5,5), (6,6), (6,4), (5,4), (4,4), (9,2), (5,1) as `[ENEMY]` but the in-game visual shows several of them are PLAYER-side (knights in Ramza's party, Delita, etc.). User corrected: (6,6) is an ALLY, not an enemy. Also: scan labeled the monster-job "Ahriman" at (4,5) as `[PLAYER]` which is also suspicious. Root cause unknown — possibly story battles use team bytes the bridge doesn't recognize, OR the battle unit struct positions are misaligned on this specific battle (similar to the mod-forced battles at Grogh/Dugeura). Blocks autonomous battle play on story-forced combat — I almost attacked an ally because the scan said they were an enemy. **Fix path**: dump unit structs at Orbonne opening, compare the team byte values to known-good random-encounter battles (e.g. Mount Bervenia from earlier), find the value that represents "player-side story unit" vs generic enemy.
+
+- [ ] **BattleVictory misdetects as BattleDesertion on Gariland post-battle** — User-observed session 44 2026-04-18: after winning the first Gariland battle (fresh-game), screen shows the Victory banner ("All enemies defeated!") but detection returned `BattleDesertion`. Captured fingerprint: rawLocation=6 (Gariland), battleTeam=0, battleActed=1, battleMoved=1, paused=1, submenuFlag=1, menuCursor=1, battleUnitId=1, battleUnitHp=17, eventId=12. The `BattleDesertion` rule at ScreenDetectionLogic.cs:278 (`atNamedLocation && slot0 == 255 && paused == 1 && submenuFlag == 1 && actedOrMoved && battleMode == 0`) fired because all conditions match. The `BattleVictory` rule directly below at line 284 requires `paused == 0`, so it was preempted. Need a discriminator between the two — maybe Victory has specific menuCursor (0?) while Desertion has different value, or a different `submenuFlag`-adjacent byte distinguishes them. Both screens are post-battle stale with identical broad state. Blocks story battle wrap-up autonomously.
+
 ### Session 43 — next-up follow-ups
 
 - [x] **Live-verify IsPartyTree refactor didn't silently narrow CharacterStatus roster population** — VERIFIED 2026-04-18 session 44. Opened CharacterStatus on Ramza from Bervenia→WorldMap; `screen.roster` populated with all 15 units (Ramza, Kenrick, Lloyd, Wilham, Mustadio, Agrias, Rapha, Marach, Beowulf, Construct 8, Orlandeau, Meliadoul, Reis, Cloud, Crestian), each with full stats + equipment + displayOrder. Session 39 refactor did not narrow population.
@@ -731,7 +781,11 @@ Reconsider any individual sub-screen only when a concrete decision flow requires
 
 
 ### Missing Screen States
-- [ ] **Battle_Cutscene** — Mid-battle cutscenes. Need to distinguish from regular cutscenes.
+<!-- Battle_Cutscene: REMOVED (user decision 2026-04-18 session 44).
+     Simpler two-state model: Cutscene (pre/post-battle, out of combat) vs
+     BattleDialogue (mid-combat scripted text). Do not re-introduce a
+     third state for "mid-battle cinematic" — treat those as BattleDialogue. -->
+
 
 
 - [ ] **SaveScreen / LoadScreen** — Indistinguishable from TitleScreen with static addresses.
