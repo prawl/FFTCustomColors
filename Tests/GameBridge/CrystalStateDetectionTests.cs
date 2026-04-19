@@ -66,6 +66,21 @@ public class CrystalStateDetectionTests
     }
 
     [Fact]
+    public void BattleRewardObtainedBanner_DetectedWhenEncAIsOneAndMoveMode0()
+    {
+        // Chest-obtained banner: paused=0, moveMode=0, encA=1.
+        // Verified at Zeklaus 2026-04-19 after two successive chest pickups
+        // (longsword, leather clothing) — both showed encA=1.
+        var result = ScreenDetectionLogic.Detect(
+            party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+            battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
+            battleTeam: 0, battleActed: 0, battleMoved: 0,
+            encA: 1, encB: 1, isPartySubScreen: false,
+            submenuFlag: 1, menuCursor: 0);
+        Assert.Equal("BattleRewardObtainedBanner", result);
+    }
+
+    [Fact]
     public void BattleAbilityLearnedBanner_DetectedWhenEncAIsZeroAndMoveMode0()
     {
         // S4 fingerprint: paused=0 moveMode=0 encA=0

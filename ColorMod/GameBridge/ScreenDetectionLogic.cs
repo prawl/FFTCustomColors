@@ -496,9 +496,16 @@ namespace FFTColorCustomizer.GameBridge
                 }
                 if (moveMode == 0)
                 {
-                    // S1 (MoveConfirm) has encA>0; S4 (Learned banner) has encA==0.
+                    // Three moveMode=0 + paused=0 states, disambiguated by encA:
+                    //   encA==0 → S4 "Ability learned!" banner (crystal reward)
+                    //   encA==1 → "Obtained X!" banner (chest loot dismissal)
+                    //   encA>=2 → S1 MoveConfirm Yes/No popup (crystal OR chest)
+                    // Live-captured Zeklaus 2026-04-19 across 4 pickups (crystal,
+                    // longsword chest, leather clothing chest, crystal-ability).
                     // Normal BattleMoving uses moveMode==255 so it falls through.
-                    return encA == 0 ? "BattleAbilityLearnedBanner" : "BattleCrystalMoveConfirm";
+                    if (encA == 0) return "BattleAbilityLearnedBanner";
+                    if (encA == 1) return "BattleRewardObtainedBanner";
+                    return "BattleCrystalMoveConfirm";
                 }
                 // moveMode==255 falls through to the normal BattleMoving rule below.
             }

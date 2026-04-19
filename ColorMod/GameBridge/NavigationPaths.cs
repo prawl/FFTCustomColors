@@ -93,6 +93,7 @@ namespace FFTColorCustomizer.GameBridge
                 "BattleCrystalReward" => GetCrystalRewardPaths(),
                 "BattleAbilityAcquireConfirm" => GetYesNoConfirmPaths("Confirm acquiring the ability from the crystal"),
                 "BattleAbilityLearnedBanner" => GetBattleDialoguePaths(),
+                "BattleRewardObtainedBanner" => GetBattleDialoguePaths(),
                 "BattleVictory" => GetBattleVictoryPaths(),
                 "BattleDesertion" => GetDesertionPaths(),
                 "BattleFormation" => GetBattleFormationPaths(),
