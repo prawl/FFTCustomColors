@@ -272,6 +272,55 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void CoverageFloor_CostByName_HasMinimumEntries()
+        {
+            // Regression guard: session 43 had ~60+ entries. Floor at 50 catches
+            // accidental deletion of a skillset block during refactor without
+            // being so tight that adding new blanket-priced skillsets (which
+            // don't populate CostByName) triggers it. Raise as coverage grows.
+            int count = AbilityJpCosts.CostByName.Count;
+            Assert.True(count >= 50,
+                $"CostByName dropped below 50 entries ({count}) — likely a refactor removed a skillset block");
+        }
+
+        [Fact]
+        public void CoverageFloor_AllCoveredSkillsetNames_AreNonEmpty()
+        {
+            // Diagnostic: for each of the JP-purchasable skillsets the other
+            // coverage audits track, at least ONE ability name in that
+            // skillset must resolve to a cost (blanket-priced skillsets
+            // count via ComputeNextJpForSkillset).
+            string[] coveredSkillsets = {
+                "Items", "Fundaments", "Mettle", "Summon",
+                "Martial Arts", "Black Magicks", "White Magicks", "Time Magicks",
+                "Geomancy", "Bardsong", "Dance", "Arithmeticks",
+                "Aim", "Steal", "Throw", "Iaido",
+                "Speechcraft", "Mystic Arts", "Arts of War",
+                "Darkness",
+            };
+            var fullyEmpty = new List<string>();
+            foreach (var skillset in coveredSkillsets)
+            {
+                var abilities = ActionAbilityLookup.GetSkillsetAbilities(skillset);
+                if (abilities == null) continue;
+                int? next = AbilityJpCosts.ComputeNextJpForSkillset(skillset, new HashSet<int>());
+                if (next == null) fullyEmpty.Add(skillset);
+            }
+            Assert.True(fullyEmpty.Count == 0,
+                $"Skillsets with zero cost coverage: {string.Join(", ", fullyEmpty)}");
+        }
+
+        [Fact]
+        public void CoverageFloor_UnresolvedNames_IsEmpty()
+        {
+            // Static init validates every CostByName key resolves to an
+            // ability name in some skillset. A typo (e.g. "Summon Magicks"
+            // instead of "Summon") lands here. Pin this as a hard floor —
+            // no tolerance for unresolved keys.
+            Assert.Empty(AbilityJpCosts.UnresolvedNames);
+        }
+
+        [Fact]
         public void CoverageAudit_MostSkillsets_HaveAtLeastOneCostedAbility()
         {
             // For each canonical skillset except the known-uncovered Jump and
