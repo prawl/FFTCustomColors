@@ -882,13 +882,15 @@ execute_action() {
   _fmt_screen_compact "$B/response.json"
 
   # INFO/ERROR/ValidPaths from the bridge response.
+  # Session 48: compact ValidPaths into a single comma-separated line.
+  # Descriptions are dropped in compact view — `screen -v` still shows them.
   node -e "
 const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
 if(r.info)console.log('  INFO:',r.info);
 if(r.error&&r.status!=='completed')console.log('  ERROR:',r.error);
 const vp=r.validPaths||{};
 const keys=Object.keys(vp);
-if(keys.length){console.log('  ValidPaths:');keys.forEach(k=>console.log('    '+k+': '+vp[k].desc));}
+if(keys.length)console.log('  ValidPaths: '+keys.join(', '));
 " "$B/response.json"
 
   # Show available shell helpers for this screen.

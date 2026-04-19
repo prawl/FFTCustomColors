@@ -3312,6 +3312,25 @@ namespace FFTColorCustomizer.Utilities
                         response.Status = "completed_timeout";
                         ModLogger.Log($"[CommandBridge] Command {command.Id} keys OK but wait timed out after {command.WaitTimeoutMs}ms");
                     }
+
+                    // Session 48: when a path transitions INTO WorldMap, auto-
+                    // tap C so the cursor snaps to the player's current node.
+                    // Many flows (battle_flee, Exit, Leave, auto-return) leave
+                    // the cursor a few tiles off the player, breaking the next
+                    // world_travel_to by making it target the wrong node.
+                    // Skip if the wait timed out — if we didn't actually reach
+                    // WorldMap, tapping C would fire in the wrong screen.
+                    if (!waitResult.timedOut
+                        && string.Equals(command.WaitForScreen, "WorldMap", StringComparison.OrdinalIgnoreCase))
+                    {
+                        try
+                        {
+                            IntPtr gw = Process.GetCurrentProcess().MainWindowHandle;
+                            if (gw != IntPtr.Zero)
+                                _inputSimulator.SendKeyPressToWindow(gw, 0x43); // VK_C
+                        }
+                        catch { /* best-effort — never block the response */ }
+                    }
                 }
 
                 // Build screen from SM state — no memory reads, no stale bytes.
