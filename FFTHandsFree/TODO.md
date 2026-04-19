@@ -77,32 +77,17 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **UserInputMonitor: live-verify under user-driven play** — Scaffold committed (0a19777) + bootstrap wire-up staged in working tree (ModBootstrapper.cs uncommitted) + deployed this session. Log confirms `[UserInputMonitor] started`. NOT verified that user keystrokes actually flow to the SM (user stepped away before testing). Next session: focus the game window, press Down on BattlePaused via keyboard (not bridge), then `screen` and confirm `ui=` tracks the user's cursor row. If it works, commit ModBootstrapper.cs. If it breaks things (double-counts bridge keys / lags / fires during non-game focus), revert ModBootstrapper.cs and debug the de-dup / focus-check logic in `UserInputMonitor.cs`.
 
-- [ ] **Extend SM cursor tracking to other battle screens** — Session 46 shipped `BattlePausedCursor` tracking in the SM and wired it into detection via `OnKeyPressedForDetectedScreen`. Same pattern should extend to:
-  - **CharacterStatus sidebar** (Equipment & Abilities / Job / Combat Sets — 3 items, vertical wrap)
-  - **BattleAbilities submenu** (Attack / Skillset / Items / Wait / Status — variable count depending on unit job)
-  - **BattleMoving grid cursor** (2D x,y tracked via arrow keys + current camera rotation)
-  Each runs through the same "reset on entry, update on Up/Down/Left/Right" pattern `OnKeyPressedForDetectedScreen` uses today. The memory resolvers for BattleAbilities and the move-tile cursor are unreliable (live-captured session 46 — cursor stuck at first read). SM tracking is cheap and deterministic.
+- [ ] **Extend SM cursor tracking — BattleMoving grid cursor** — Session 47 shipped CharacterStatus sidebar + BattleAbilities submenu + TavernRumors/TavernErrands via `OnKeyPressedForDetectedScreen`. Still needed: 2D x,y tracked via arrow keys + current camera rotation on BattleMoving. Cursor-rotation math complicates this one vs. the 1D cases already shipped.
 
 - [ ] **WorldMap vs TravelList memory discriminator (optional)** — Session 46 confirmed they're byte-identical in current detection inputs (`hover=254, moveMode=255, party=0, ui=1, slot0=0xFFFFFFFF, slot9=0xFFFFFFFF` for both). Currently handled via `ResolveAmbiguousScreen` 4-arg overload: SM wins when `KeysSinceLastSetScreen==0 && !LastSetScreenFromKey`. Works but relies on SM staying in sync. A memory byte that distinguishes them would be more robust. Heap-diff between snapshots at identical external state might find one — prior attempt found 1.5M changed bytes because the "WorldMap" snapshot was accidentally PartyMenu. Retry with strict pre/post-snapshot visual confirmation.
 
-- [ ] **Audit other `SearchBytesInAllMemory` callers for retry-storm patterns** — Session 46 fixed `HoveredUnitArray.Discover()` which re-ran full-heap scans when initial discovery failed (2→3GB/screen query at worst). Other callers that might have the same latent bug:
-  - `NavigationActions.cs:4190, 4430, 4492, 4494, 4580, 4925` — most are inside user-invoked action methods but verify
-  - `ShopItemScraper.cs:43, 152` — should be one-shot per shop entry; confirm caching
-  - `PickerListReader.cs:103` — declared but unused in CommandWatcher; safe to ignore unless wired
-  - `NameTableLookup.cs:291` — already has `_buildAttempted` guard (verified session 46)
-  Pattern to check: does the caller cache success AND remember failure, or retry indefinitely on failure?
-
 - [ ] **Fight→Formation transition settle** — The 3s settle cap increase was reverted (made every menu nav slow). Formation loads after `execute_action Fight` can exceed 3s (observed 5+s). Needs per-action custom settle logic: the Fight action handler should poll until detection sees `BattleFormation` OR 10s elapsed, rather than relying on the generic settle loop. Low priority since auto-placement mostly handles the Fight flow anyway.
-
-- [ ] **`execute_action Leave` → `Back` UX gap on TavernRumors/TavernErrands/pickers** — Session 46 stress test found `execute_action Leave` silently fails on TavernRumors because the valid path there is named `Back`. Bridge doesn't error on unknown action names — just drops the command. Two fixes: (a) add `Leave` as alias for `Back` in `NavigationPaths.GetTavernRumorsPaths()` / `GetTavernErrandsPaths()` / all picker screens, OR (b) return `status=failed` with a clear "unknown action" error message when `execute_action` gets an unrecognized name. Preference is (b) — makes bugs loud. Shipping (a) as a quick compatibility shim is fine too.
 
 ### 🛠 Dev tooling — speed Ramza through battles for state-collection playthroughs
 
 - [ ] **"Claude cheat mode" — write Ramza HP/MaxHP/PA + full-absorb affinity via bridge** — User direction session 44: need to play through the game to collect all state-detection datapoints (BattleChoice eventIds, Cutscene vs BattleDialogue discriminators, new-game BattleVictory/Desertion memory patterns, etc). Plays take too long at fresh-game stats. Plan: new bridge action `cheat_mode_buff` (or similar) that pokes Ramza's battle unit struct: HP=999, MaxHP=999, PA=255, and all 5 affinity bytes at +0x5A..+0x5E set to absorb every element. Per-battle re-write needed (struct reallocates per battle). Also: add a variant that gives all teammates the same buff. **Pair with**: a toggleable "skip intro cinematics" helper if one exists. This is Option 1 from session 44 brainstorm — Option 3 (mod-side cheat config) is cleaner but takes longer; deferring.
 
 ### Session 45 — new follow-ups (2026-04-19)
-
-- [ ] **Dialogue tracker: hook raw Enter in NavigationActions.SendKey** — Currently `DialogueProgressTracker.Advance(eventId)` only fires from `advance_dialogue` and `execute_action Advance`. Raw Enter via the `enter` shell helper advances the game but not our counter — box index drifts behind. Fix: in `NavigationActions.SendKey` (or CommandWatcher's raw-key dispatcher), when vk == VK_ENTER and current `ScreenMachine.CurrentScreen ∈ {BattleDialogue, Cutscene, BattleChoice}`, bump the tracker. Guard against double-bumping when the key came from the advance_dialogue path. TDD with a pure wrapper around the hook.
 
 - [ ] **Dialogue decoder under-splits multi-bubble paragraphs (event 38)** — Dorter event 38: 45 real bubbles, 37 decoded. Boxes 0, 5, 7 each bundle 2-3 real bubbles. FE-boundary + F8≥2-boundary + speaker-change rules don't split these. Need more .mes ground-truth data at different events to find the missing rule. Next live chance: collect bubble count for 3-4 scenes across variety (narrator-only, 2-speaker, 3+ speakers) then diff. Memory note: the transcript of Dorter 38 walkthrough is in session 45 chat history. See `ColorMod/GameBridge/MesDecoder.cs:DecodeBoxes`.
 
@@ -112,23 +97,19 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **encA cross-session stability check** — encA values in crystal/chest states (0, 1, 2, 4, 7) captured this session need re-verification on a fresh boot. If encA is a heap widget-stack byte (likely), values may shuffle across restarts — then our rule's thresholds (encA>=5) break. First restart-load of a crystal or chest should re-dump detection inputs to confirm.
 
-- [ ] **`search_bytes` bridge action — add minAddr/maxAddr params** — Currently caps at 100 matches and scans from main-module first, so heap-range matches (0x4000000000+) never surface. One-line fix: plumb `command.MinAddr` / `command.MaxAddr` through to the 4-arg `Explorer.SearchBytesInAllMemory` overload. Unblocks `tmp/kill_enemies.sh` speedrun helper. Memory: `project_kill_enemies_helper.md`.
-
 - [ ] **auto_place_units pre-formation buffer** — Crashed twice at Dorter formation session 45 (worked on 3rd try). Helper sleeps 4s then sends 10 keys over 6s; story battles have a longer formation animation that races the Enter sequence. Add 5-8s more sleep OR poll for "all 4 unit portraits populated" widget state before sending Enter. Memory: `feedback_auto_place_crashes_dorter.md`.
 
 ### 🔴 State Detection — TOP PRIORITY (consolidated 2026-04-18)
 
 User direction session 44: **refocus on state-related tasks. Bad state detection blocks everything else**. These are the known screen/state-detection bugs, ordered roughly by blast radius. Items cross-reference their detailed entries below.
 
-- [ ] **BattleChoice detection — use eventId whitelist approach (NEW PLAN)** — Session 44 spent time attempting a memory discriminator to distinguish BattleChoice from BattleDialogue. 10+ datapoints proved the two states share the same byte fingerprint (rawLoc, battleTeam, acted/moved, battleMode all match). Heap cursor-byte hunt found a working byte (session-specific) but re-locating it post-restart is crash-prone due to batch_read load. **User-approved alternative**: catalog BattleChoice eventIds as we encounter them and hardcode the set. At runtime: `if screen.Name == "BattleDialogue" && eventId ∈ BattleChoiceEventIds → return "BattleChoice"`. Known so far: **eventId 16 at Mandalia Plain** ("Defeat the Brigade" / "Rescue captive"). No screenshot-based detection permitted per user direction. Methodology for finding the cursor byte per-session when inside BattleChoice is documented in `memory/project_battle_choice_cursor.md` for future enabling.
+- [ ] **BattleChoice event catalog — add more entries as encountered** — Session 47 shipped `BattleChoiceEventIds.KnownEventIds` + regression-pin tests. Mandalia Plain event 16 ("Defeat the Brigade" / "Rescue captive") is the only catalogued entry. Detection uses the signal-based path (eventHasChoice + choiceModalFlag at ScreenDetectionLogic.cs:347) which works for any event with those signals, but the catalog is a documentation + regression pin. As new choice events are encountered in live play, add their IDs to the catalog and confirm detection classifies them correctly.
 
 - [ ] **`scan_move` misreads team classification on Orbonne opening** [→ line ~80] — Story battles use team bytes the bridge doesn't recognize. (6,6) read as ENEMY but was an ALLY. Monster-job Ahriman at (4,5) read as PLAYER. Almost attacked an ally. Blocks autonomous story-battle play.
 
 - [ ] **`scan_move` reports entire skillset, not learned-only abilities** [→ line ~78] — Fresh-game Lv9 Ramza scan listed all 8 Mettle abilities (including Ultima) when only 5 were learned. Surfaces unlearned abilities as if equipped. Dangerous — almost cast Shout.
 
 - [ ] **BattleSequence detection over-fires after restart at story location** [→ line ~108] — 0x14077D1F8 flag persists in save state. Post-restart at Orbonne labels WorldMap as BattleSequence. First-frame misfire but real. Fix options in memory note `project_battle_sequence_flag_sticky.md`.
-
-- [ ] **scan_tavern cursor resolver memory-latch bug** [→ line ~523] — Same memory-resolver-latches-on-first-candidate issue as BattlePaused had. BattlePaused was fixed session 46 via SM-driven cursor tracking (see `BattlePausedCursor` in `ScreenStateMachine.cs`). Apply the same pattern to TavernRumors/TavernErrands: add `TavernCursorRow` property + reset on entry + update on Up/Down in `OnKeyPressedForDetectedScreen`. Reports wrong count (2 vs 4 at Bervenia).
 
 - [ ] **TavernRumors cursorRow — no stable anchor for auto-relocation** [→ line ~104] — Triple-diff technique re-locates byte reliably but requires ~6 bridge calls. Needs UE4 Slate vtable walk for a runtime-cheap path.
 
@@ -167,8 +148,6 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 - [ ] **PreToolUse hook to block `| node` in Bash commands** — needs explicit per-hook user approval (per `feedback_no_hooks_without_approval.md`). Defer until user green-lights.
 
 - [ ] **IC remaster deathCounter offset hunt** — PSX had it at ~0x58-0x59 in battle unit struct. Needs live battle with a KO'd unit to find the IC equivalent. Blocks KO/crystallize-aware tactics. Absorbs dupes at former lines 311 ("Find IC remaster deathCounter offset") and 318 ("Read death counter for KO'd units") — same task, closed session 44 pt 8 dedup.
-
-- [ ] **`AbilityJpCosts` — backfill Jump and Holy Sword skillsets** — Session 41 coverage audit found both return null from `ComputeNextJpForSkillset` (100% gap rate). Jump collapses sub-abilities (H/V Jump levels 1-8), Holy Sword is Agrias's story skillset. Cost data omitted in code with a comment; a future session should either populate real JP costs or explicitly document both as no-op for Next: N. Characterization test `CoverageAudit_KnownUncoveredSkillsets_StillReturnNull` pins current behavior. **Session 44 attempt**: code shipped + 3202 tests green (Jump backfilled with ABILITY_COSTS.md values, Holy Sword pinned as intentional null, characterization test flipped). Restart + smoke tested clean. But live-verify of non-null Next:N for Jump blocked on this save — every JP-purchasable unit has primary fully mastered. Same blocker as Mettle live-verify deferral. Per "every task live-verified" rule, reverting edits until a partially-learned Dragoon is available.
 
 ### Session 33 — next-up follow-ups (from 6-task batch attempt)
 

@@ -949,3 +949,79 @@ Tests: 3283 → 3337 (+54 new, 0 regressions).
 - **Heavy SearchBytes scans crash the host under sustained pressure.** Full-heap scans at 30+ calls/screen-query apparently trigger game-side issues. Rule: full-heap scans MUST be one-shot per session with explicit `Invalidate()` to rescan. Background timers that rescan periodically are a footgun.
 - **Keypress-based fallback tooling is a bandaid when the root is detection.** `fft_resync` compensated for state-detection bugs; removing it forced fixes to land in the detection layer. When a "recovery helper" gains complexity, that's a signal the underlying state signal is wrong.
 - **User input changes the rules for SM-tracked state.** Everything SM-tracked (cursor positions, tab indices) assumes keys flow through the bridge. User keys desync every SM-tracked field. The UserInputMonitor hook is the architectural answer — needs live-verify next session.
+
+---
+
+### Session 47 (2026-04-19) — Code-only task sweep: 29 tasks across 3 commits, zero game verification
+
+Commits: `6818a88` (part 1: 9 tasks), `96281c8` (part 2: 10 tasks), `b47a1e0` (part 3: 10 tasks).
+
+Tests: 3337 → 3629 (+292 new, 0 regressions, 4 skipped).
+
+Session focus: every TODO item below was completable with `./RunTests.sh` alone — no game boot, no memory probes, no live-verify. Pure TDD / refactor / lookup-table ports.
+
+**Part 1 (commit `6818a88`):**
+
+- [x] **Audited `SearchBytesInAllMemory` callers for retry-storm pattern** — Session 46 fixed `HoveredUnitArray.Discover()`. This session grep'd all 10 callers (NavigationActions×6, ShopItemScraper×2, PickerListReader×1, CommandWatcher×3, NameTableLookup×1, HoveredUnitArray×1). Every caller is either already guarded (NameTableLookup `_buildAttempted`, HoveredUnitArray `_discoveryAttempted`) or only invoked via explicit user-initiated bridge commands (scan_units/scan_move/search_bytes/probe_status/dump_unit_struct) with fail-and-skip semantics (no retry loops). PickerListReader is dead code — field declared but never wired; added a guard-on-wire TODO comment. **No retry-storm candidates found.**
+
+- [x] **`execute_action` fail-loud on unknown action name** — The bridge already returned `status=failed` with an "Available: ..." error, but the list was just names. Session 47 also shipped `NavigationPathsDescription.FormatAvailableActions(screenName)` which now renders "Name — Desc; ..." (aliases coalesced with "/"). Wired into CommandWatcher:2884 so mistyped actions get actionable feedback. 4 new tests.
+
+- [x] **`Leave` alias for `Back` on TavernRumors/TavernErrands/pickers** — Added post-processor in `NavigationPaths.GetPaths` that adds Leave if Back exists (or vice versa). Session 47 part 2 extended this to a full alias-group helper (`ActionNameAliases`). 9 new tests.
+
+- [x] **SM cursor tracking: CharacterStatus sidebar** — New `SidebarIndex` updates via `OnKeyPressedForDetectedScreen` on CharacterStatus. 3-item wrap (Equipment/Job/CombatSets). Reset on transition into. 5 new tests.
+
+- [x] **SM cursor tracking: TavernRumors/TavernErrands** — New `TavernCursorRow` property, unclamped-positive pattern (list length varies per city). Reset on entry including between Rumors↔Errands. 8 new tests. Supersedes the flaky memory resolver that latched on first-Down candidate.
+
+- [x] **`JobEquippability` reverse lookup helper** — Given a job, returns all equipment types it can equip. Wraps `WeaponEquippability.AllWeaponTypes` + `ArmorEquippability.AllArmorTypes` + their per-type `CanJobEquip` into one call. 8 new tests. Supports the `availableWeapons[]` verbose catalog for EquippableWeapons picker.
+
+- [x] **Backfill `AbilityJpCosts` Jump + pin Holy Sword null** — Re-shipped session 44's reverted backfill. Added 12 per-ability costs (Horizontal +1/+2/+3/+4/+7 @ 150/350/550/800/1100, Vertical +2..+8 @ 100/250/400/550/700/1000/1500) per ABILITY_COSTS.md. Holy Sword pinned as intentional-null via renamed characterization test. 13 new tests. Session 44 was reverted for lacking live-verify; session 47 ships under the user's new "code-only" rubric.
+
+- [x] **`search_bytes` bridge action: `minAddr` / `maxAddr` params** — New optional CommandRequest fields with hex-or-decimal parsing (`ParseAddrOrDefault`). Omitted when null. CommandWatcher's `search_bytes` handler uses the 4-arg overload when either is set. Unblocks heap-targeted scans that the default 100-match cap couldn't reach through main-module noise. 8 new tests.
+
+- [x] **Hook raw Enter in `ExecuteKeyCommand` into `DialogueProgressTracker`** — New `DialogueTrackerKeyHook` pure helper + `HandleKeyPress` method. Wired into CommandWatcher's raw-key path so the `enter` shell helper bumps the box counter on Cutscene/BattleDialogue/BattleChoice. Removed the now-redundant explicit bump in `ExecuteValidPath` to avoid double-counting. 16 new tests.
+
+**Part 2 (commit `96281c8`):**
+
+- [x] **BattleChoice eventId catalog** — New `BattleChoiceEventIds` class with known list (Mandalia Plain event 16 verified session 44). Regression tests confirm signal-based detection classifies each catalogued event as BattleChoice — the list is a documentation + regression pin, not a replacement rule. 5 new tests.
+
+- [x] **Zodiac Good/Bad pair tables (triangle/square partners)** — Shipped the 120°-apart "good pair" and 150°-apart "bad pair" tables per Wiki compatibility chart. Fire/Earth/Air/Water element trios are Good with each other; 12 Bad pairs per Wiki. `GetCompatibility` now returns the right answer for every chart cell. 25 new tests.
+
+- [x] **`Yes`/`No` aliases on confirm modals (ShopConfirmDialog + crystal Yes/No)** — Yes commits safely via UP+Enter (vertical) or LEFT+Enter (horizontal) depending on modal layout; No is Escape. 11 new tests.
+
+- [x] **SM cursor tracking: BattleAbilities submenu** — New `BattleAbilitiesCursor` property, unclamped-row pattern (count varies per unit's learned skillsets). Reset on entry. 6 new tests.
+
+- [x] **WarriorsGuild dedicated single-item paths** — Session 44 confirmed Bervenia guild has one sub-action (Recruit) with no-op Up/Down. New `GetWarriorsGuildPaths` with just Recruit + Leave (removed confusing CursorUp/Down/Select). Back↔Leave alias post-processor is now bidirectional. 5 new tests.
+
+- [x] **UnlearnableAbilitySentinel audit** — Pins cost=0 entries in `AbilityJpCosts.CostByName`. Only Zodiark (Summoner capstone, crystal drop only) should be cost=0. Any other cost=0 is a regression. 4 new tests.
+
+- [x] **Extracted `ActionNameAliases` static class** — Moved inline post-processor logic from `NavigationPaths.GetPaths` into a testable class with `Groups` array for future extension. 8 new tests covering every branch.
+
+- [x] **`NavigationPathsDescription` helper** — `GetPathDescription(screen, action)` + `FormatAvailableActions(screen)` return "Name — Desc; ..." with aliases coalesced via "/". Wired into CommandWatcher's fail-loud error. 9 new tests.
+
+- [x] **CommandRequest JSON schema characterization tests** — 26 tests pinning every `[JsonPropertyName]` field, defaults, and unknown-field-tolerance. Catches silent renames that would break shell helpers (e.g. `to` → `toScreen` would break every `execute_action` call). 26 new tests.
+
+- [x] **`ScreenCompactFormatter` pure class** — Extracted from fft.sh's Node pipeline. `FormatHeader(screen, status)` returns the "[Screen] loc=... ui=... status=... objective=..." line. Shell can delegate incrementally. 10 new tests. Session 47 part 3 extended with gil + eventId rendering.
+
+**Part 3 (commit `b47a1e0`):**
+
+- [x] **`BattleWaitLogic` / `BattleFieldHelper` / `TurnOrderPredictor` / `MonsterAbilityLookup` test coverage** — 4 existing pure-logic files had zero direct tests. Added 41 tests covering `ShouldSkipMenuNavigation` / `NeedsConfirmation` / `CanStartBattleWait`, `GetOccupiedPositions` / `AllEnemiesDefeated` / defeat sentinels (crystal/treasure/petrify), CT simulation / tie-breaking / maxTurns cap, per-ability metadata + MonsterAbilities cross-check invariant.
+
+- [x] **`MesDecoder.DecodeByte` completeness audit** — Pins every byte 0x00-0xFF as either decoded-to-char or null. Catches silent additions (new byte starts decoding) AND silent deletions (an entry vanishes from DecodeByte). 5 new tests.
+
+- [x] **`ScreenCompactFormatter` extension: gil + eventId** — Gil renders with thousands separator; omitted when 0 (unread sentinel). EventId renders when in real-event range (1-399); out-of-range sentinels (0xFFFF) omitted. 5 new tests.
+
+- [x] **`ActionNameAliases.Groups` expansion** — Added `Exit` to exit verbs group; new affirmative group `Confirm`/`OK`/`Yes`. Propagates only on screens that define one of the names (WorldMap unaffected). Yes stays distinct from Confirm on ShopConfirmDialog because they have different keypress sequences. 5 new tests.
+
+- [x] **`ZodiacElementLookup` helper** — Classical-element affinity (Fire/Earth/Air/Water/None) per sign. Invariant test cross-verifies: same-element distinct signs ⇒ Good compatibility. 16 new tests.
+
+- [x] **`NavigationPathsDescription.FormatActionNames` slim variant** — Comma-separated name list with aliases coalesced via "/" (no descriptions). For terse log-line use. 5 new tests.
+
+- [x] **`AbilityJpCostsTotalsTests` — per-skillset total pins** — 14 skillsets pinned to their current total JP cost (Items 4040, Arts of War 2200, Aim 3300, White Magicks 6270, Black Magicks 4900, Summon 8400, Time Magicks 5530, Martial Arts 2700, Iaido 5500, Darkness 2700, Mettle 5870, Jump 7450, Holy Sword 0). Any add/remove/repricing of an ability fires one of these.
+
+**Technique discoveries:**
+
+- **Tests over descriptions.** In sessions 44-46, new features often landed with narrow tests pinning the new behavior. Session 47 flipped the prioritization: for 29 tasks across 3 commits, I started each task by asking "what's the pure slice I can test without touching the game?" The answer was almost always more substantial than expected — even supposedly-infra tasks (search_bytes minAddr, fail-loud) ended up with 8-26 new tests pinning the JSON shape, error message format, alias propagation rules.
+- **Coverage audit is a cheap bug-finder.** Walking `for f in ColorMod/GameBridge/*.cs` and finding files WITHOUT corresponding test files surfaced 4 fully-untested pure-logic classes (BattleWaitLogic, BattleFieldHelper, TurnOrderPredictor, MonsterAbilityLookup). All tested green on first TDD pass — no bugs found — but the coverage pin prevents future regressions.
+- **Characterization tests pin known limitations.** Several tasks (BattleChoice eventIds, Holy Sword null, UnlearnableAbilitySentinel zodiark-only, MesDecoder completeness) went from "we know this is narrow but haven't written it down" to "any silent change fires a test." Cheap insurance.
+- **Refactor-with-tests over refactor-without.** The `ActionNameAliases` extraction could have been a pure cleanup with zero functional change. Instead shipped with 8 new tests covering every branch — doubles as a pin against future regression and documents the alias semantics for the next contributor.
+- **Totals pins catch bulk-edit drift.** `AbilityJpCostsTotalsTests` pins 14 sums. A single cost change fires exactly one test; a bulk rename fires many. The `WhiteMagicks_Total` test caught my first sum estimate being wrong (4550 vs actual 4900) — had I shipped without verifying, a later dev would have seen a failing test with no clear pathway to update the pinned value. Running `dotnet test` against each pin surfaced the actual number before commit.
