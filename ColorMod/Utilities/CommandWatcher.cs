@@ -5064,6 +5064,12 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "BattleAbilities" && _battleMenuTracker.InSubmenu)
                     screen.UI = _battleMenuTracker.CurrentItem;
 
+                // BattleStatus shows the active unit's CharacterStatus panel
+                // in-battle. menuCursor is stale (still reads 3 from the
+                // action menu). Use the cached active-unit name instead.
+                if (screen.Name == "BattleStatus")
+                    screen.UI = GameBridge.BattleStatusUiResolver.Resolve(_cachedActiveUnitName);
+
                 // Resolve party sub-screen to specific screen via state machine.
                 // The state machine's CurrentScreen + Tab + SidebarIndex are driven by
                 // key history (entry/exit tracked in OnKeyPressed). When detection
@@ -6177,8 +6183,15 @@ namespace FFTColorCustomizer.Utilities
                         if (matchedSlot != null && matchedLoadout != null)
                         {
                             // We're on EqA for this unit. Promote if the
-                            // state machine thinks otherwise.
-                            if (screen.Name != "EquipmentAndAbilities")
+                            // state machine thinks otherwise — but NOT from
+                            // BattleStatus, which is an in-battle overlay
+                            // that shows the CharacterStatus panel and
+                            // happens to render the same equipment mirror.
+                            // Promoting from BattleStatus would mis-classify
+                            // the screen as a PartyMenu path and strip the
+                            // battle context (active unit name, etc.).
+                            if (screen.Name != "EquipmentAndAbilities"
+                                && screen.Name != "BattleStatus")
                             {
                                 ModLogger.Log($"[EqA promote] SM said '{screen.Name}' but mirror matches {matchedSlot.Name} equipment. Promoting to EquipmentAndAbilities.");
                                 screen.Name = "EquipmentAndAbilities";
