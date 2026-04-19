@@ -142,7 +142,8 @@ namespace FFTColorCustomizer.GameBridge
             int shopSubMenuIndex = 0, int shopTypeIndex = 0,
             int unitsTabFlag = 0, int inventoryTabFlag = 0,
             int encounterFlag = 0, int menuDepth = -1,
-            int battleSequenceFlag = 0)
+            int battleSequenceFlag = 0,
+            bool eventHasChoice = false)
         {
             // rawLocation is the last-visited named place (village/shop/campaign ground).
             // It's STICKY — retains the last-visited location even when the player leaves.
@@ -266,6 +267,20 @@ namespace FFTColorCustomizer.GameBridge
                     && IsEventIdUnset(eventId))
                     return "TitleScreen";
 
+                // BattleChoice: story dialogue with a 2-option objective prompt
+                // (e.g. "1. Defeat the Brigade" / "2. Rescue the captive" at
+                // Mandalia Plain event 016). Indistinguishable from BattleDialogue
+                // at the memory-byte level — 11 live datapoints session 44 confirmed
+                // both share rawLoc/battleTeam/acted/moved fingerprint. Discriminator
+                // comes from the .mes script data itself: choice events contain the
+                // 0xFB marker byte. EventScriptLookup pre-scans every .mes at load
+                // and sets `HasChoice` on the EventScript record; CommandWatcher
+                // passes that bool in as `eventHasChoice`.
+                if (atNamedLocation && IsRealEvent(eventId)
+                    && slot0 == 0xFFFFFFFFL
+                    && eventHasChoice)
+                    return "BattleChoice";
+
                 // Pre-battle dialogue at a named location: eventId in real range + slot0=0xFFFFFFFF
                 // indicates a pre-battle cutscene has been triggered (e.g. Orbonne Loffrey scene).
                 if (atNamedLocation && IsRealEvent(eventId)
@@ -342,7 +357,7 @@ namespace FFTColorCustomizer.GameBridge
                 if (rawLocation == 255 && slot0 == 0xFFFFFFFFL
                     && IsRealEvent(eventId)
                     && actedOrMoved)
-                    return "BattleDialogue";
+                    return eventHasChoice ? "BattleChoice" : "BattleDialogue";
 
                 // (EncounterDialog handled at top of this branch.)
 
@@ -432,7 +447,7 @@ namespace FFTColorCustomizer.GameBridge
             // Checked BEFORE the post-battle-stale TitleScreen fallback, because some
             // dialogue states share acted/moved/submenuFlag sticky values with post-battle.
             if (IsMidBattleEvent(eventId) && battleMode == 0 && paused == 0)
-                return "BattleDialogue";
+                return eventHasChoice ? "BattleChoice" : "BattleDialogue";
 
             // Post-battle stale at rawLocation=255: After a battle ends (or a battle
             // dialogue is dismissed), the game transitions back to the world map but stale

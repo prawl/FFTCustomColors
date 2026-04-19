@@ -720,6 +720,59 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("PartyMenuUnits", result);
         }
 
+        // === BattleChoice (pre/mid-battle objective choice prompt) ===
+        // Session 44 2026-04-18: discriminator is the 0xFB byte presence in
+        // the event's .mes script data, scanned once at EventScriptLookup
+        // init. At runtime, the new `eventHasChoice` parameter is true only
+        // for known-choice events (e.g. event 016 at Mandalia Plain).
+
+        [Fact]
+        public void DetectScreen_BattleChoice_WhenEventHasChoice_AtNamedLocation()
+        {
+            // Captured session 44: pre-Mandalia choice prompt "1. Defeat the
+            // Brigade" / "2. Rescue the captive" — rawLocation=24, eventId=16,
+            // battleTeam=0, acted/moved=1. atNamedLocation requires
+            // locationMenuFlag=1 (the game DOES set that during pre-battle
+            // scripted scenes at a location).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 24, slot0: 0xFFFFFFFFL, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 16, locationMenuFlag: 1, eventHasChoice: true);
+            Assert.Equal("BattleChoice", result);
+        }
+
+        [Fact]
+        public void DetectScreen_BattleDialogue_WhenEventHasNoChoice_FallsThroughToDialogue()
+        {
+            // Same fingerprint, but eventHasChoice=false (event002 Orbonne
+            // opening, or event010 Gariland pre-battle). Must return
+            // BattleDialogue, not BattleChoice.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 24, slot0: 0xFFFFFFFFL, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 10, locationMenuFlag: 1, eventHasChoice: false);
+            Assert.Equal("BattleDialogue", result);
+        }
+
+        [Fact]
+        public void DetectScreen_BattleChoice_DoesNotFire_WithoutSlot0Sentinel()
+        {
+            // eventHasChoice=true but slot0 != 0xFFFFFFFF (e.g. still mid-
+            // combat with units loaded). Should not fire — BattleChoice
+            // requires the same sentinel pattern as BattleDialogue.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 24, slot0: 0x42, slot9: 0,
+                battleMode: 2, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 16, eventHasChoice: true);
+            Assert.NotEqual("BattleChoice", result);
+        }
+
         // === BattleSequence (multi-stage campaign sub-selector) ===
         // Enabled session 44 2026-04-18: discriminator byte at 0x14077D1F8
         // reads 1 on minimap / 0 on plain WorldMap. Combined with the 8-loc

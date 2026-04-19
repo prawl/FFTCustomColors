@@ -11,7 +11,17 @@ namespace FFTColorCustomizer.GameBridge
     /// </summary>
     public class EventScriptLookup
     {
-        public record EventScript(int EventId, List<MesDecoder.DialogueLine> Lines);
+        /// <summary>
+        /// Decoded event-script record.
+        /// <para>HasChoice: true when the raw .mes bytes contain the 0xFB marker — a
+        /// byte that ONLY appears in mid-story choice prompts (e.g. "1. Defeat the
+        /// Brigade" / "2. Rescue the captive" at Mandalia Plain event 016). All
+        /// observed non-choice events (2, 5, 6, 8, 10, 11, 12) have zero 0xFB
+        /// bytes. This flag is the discriminator that separates BattleChoice from
+        /// ordinary BattleDialogue/Cutscene when the bridge's memory-only
+        /// detection can't tell them apart — session 44 2026-04-18 finding.</para>
+        /// </summary>
+        public record EventScript(int EventId, List<MesDecoder.DialogueLine> Lines, bool HasChoice);
 
         private readonly Dictionary<int, EventScript> _scripts = new();
         private readonly string _mesDirectory;
@@ -32,8 +42,12 @@ namespace FFTColorCustomizer.GameBridge
                 var numPart = filename.Replace("event", "").Replace(".en", "");
                 if (int.TryParse(numPart, out int eventId))
                 {
-                    var lines = MesDecoder.DecodeFile(file);
-                    _scripts[eventId] = new EventScript(eventId, lines);
+                    var bytes = File.ReadAllBytes(file);
+                    var lines = MesDecoder.DecodeBytes(bytes, out _);
+                    // 0xFB is the choice-prompt marker (verified empirically:
+                    // event016 has it, events 2/5/6/8/10/11/12 do not).
+                    bool hasChoice = System.Array.IndexOf(bytes, (byte)0xFB) >= 0;
+                    _scripts[eventId] = new EventScript(eventId, lines, hasChoice);
                 }
             }
         }

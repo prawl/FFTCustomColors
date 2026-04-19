@@ -5141,6 +5141,18 @@ namespace FFTColorCustomizer.Utilities
                     if (bsRead.HasValue) battleSequenceFlag = (int)bsRead.Value.value;
                 }
 
+                // BattleChoice discriminator — check if the current event's
+                // .mes script contains the 0xFB choice marker. Session 44
+                // empirical finding: event016 (Mandalia Plain choice) is the
+                // only observed event with 0xFB. Pre-scanned into the
+                // EventScript.HasChoice bool at mod init.
+                bool eventHasChoice = false;
+                if (ScriptLookup != null && eventId >= 1 && eventId < 400)
+                {
+                    var script = ScriptLookup.GetScript(eventId);
+                    if (script != null) eventHasChoice = script.HasChoice;
+                }
+
                 screen.Name = GameBridge.ScreenDetectionLogic.Detect(
                     party, ui, rawLocation, slot0, slot9,
                     battleMode, moveMode, paused, gameOverFlag,
@@ -5154,7 +5166,8 @@ namespace FFTColorCustomizer.Utilities
                     unitsTabFlag: unitsTabFlag, inventoryTabFlag: inventoryTabFlag,
                     encounterFlag: encounterFlag,
                     menuDepth: screen.MenuDepth,
-                    battleSequenceFlag: battleSequenceFlag);
+                    battleSequenceFlag: battleSequenceFlag,
+                    eventHasChoice: eventHasChoice);
 
                 // TravelList→WorldMap override: when the SM just left
                 // PartyMenu via a key press (Escape) and detection says

@@ -88,6 +88,7 @@ namespace FFTColorCustomizer.GameBridge
                 "BattleStatus" => GetBackOutPaths("You're in the Status screen! Press Escape to get back to battle."),
                 "BattleAutoBattle" => GetBackOutPaths("You're in the Auto-Battle menu! Press Escape to get back to battle before the AI takes over."),
                 "BattleDialogue" => GetBattleDialoguePaths(),
+                "BattleChoice" => GetBattleChoicePaths(),
                 "BattleVictory" => GetBattleVictoryPaths(),
                 "BattleDesertion" => GetDesertionPaths(),
                 "BattleFormation" => GetBattleFormationPaths(),
@@ -833,6 +834,28 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     Keys = new[] { Key(VK_ENTER, "Enter") },
                     Desc = "Advance dialogue (press Enter to continue)"
+                },
+            };
+        }
+
+        private static Dictionary<string, PathEntry> GetBattleChoicePaths()
+        {
+            return new()
+            {
+                ["CursorUp"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_UP, "Up") },
+                    Desc = "Move cursor to previous choice (menu does NOT wrap)"
+                },
+                ["CursorDown"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_DOWN, "Down") },
+                    Desc = "Move cursor to next choice (menu does NOT wrap)"
+                },
+                ["Select"] = new PathEntry
+                {
+                    Keys = new[] { Key(VK_ENTER, "Enter") },
+                    Desc = "Commit the highlighted choice — IRREVERSIBLE, changes battle objective"
                 },
             };
         }
