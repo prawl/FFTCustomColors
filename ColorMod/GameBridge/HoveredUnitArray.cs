@@ -83,6 +83,15 @@ namespace FFTColorCustomizer.GameBridge
         public bool Discover()
         {
             if (_arrayBase != 0) return true;
+            // Session 46: respect the "attempted once and failed" guard.
+            // Previously Discover re-ran the full 200MB heap scan on every
+            // call when the base wasn't found — and ReadStatsIfMatches is
+            // called once per roster slot (15+ times per party-tree screen
+            // query), multiplying into ~3GB of scans per query. Game crashed
+            // under the pressure. Now we scan once per session; use
+            // Invalidate() to force a rescan after save-load / known
+            // reallocation events.
+            if (_discoveryAttempted) return false;
             _discoveryAttempted = true;
 
             // Read Ramza's roster bytes 0x08..0x1B = 20 bytes, the 7-slot
