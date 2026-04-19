@@ -49,6 +49,31 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains((2, 0), tileSet);
         }
 
+        // Corpses (dead units, not crystallized) behave like allies for BFS:
+        // units can WALK THROUGH a corpse at normal cost, but cannot STOP on
+        // it. Caller classifies dead units and adds them to allyPositions.
+        // Crystallized and treasure units disappear — their tile is empty.
+        [Fact]
+        public void BFS_CorpseTile_PassThroughButNotStop()
+        {
+            var map = CreateFlatMap(5, 5, tileHeight: 0);
+
+            // Corpse at (2,3) — caller should push into allyPositions.
+            var corpsePositions = new HashSet<(int, int)> { (2, 3) };
+
+            var tiles = MovementBfs.ComputeValidTiles(
+                map, unitX: 2, unitY: 2, moveStat: 3, jumpStat: 4,
+                enemyPositions: null, allyPositions: corpsePositions);
+
+            var tileSet = tiles.Select(t => (t.X, t.Y)).ToHashSet();
+
+            // Corpse tile NOT reachable (can't stop there).
+            Assert.DoesNotContain((2, 3), tileSet);
+
+            // Beyond-corpse tile (2,4) IS reachable — passed through corpse at cost 1+1=2.
+            Assert.Contains((2, 4), tileSet);
+        }
+
         [Theory]
         [InlineData("Movement +1", 4, 4, 5, 4)]
         [InlineData("Movement +2", 4, 4, 6, 4)]

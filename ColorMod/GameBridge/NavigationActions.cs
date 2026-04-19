@@ -2528,12 +2528,23 @@ namespace FFTColorCustomizer.GameBridge
 
                 // Build ally/enemy position sets from the scan just performed.
                 // The active unit is excluded from both sets (it's the start).
+                // Dead units (corpses) occupy their tile and cannot be stopped on,
+                // but DO allow pass-through — same BFS semantics as allies. Crystal
+                // and treasure "units" have left the field, so their tile is empty
+                // (skip them entirely).
                 var enemySet = new HashSet<(int, int)>();
                 var allySet = new HashSet<(int, int)>();
                 foreach (var u in units)
                 {
                     if (u == ally) continue;
-                    if (u.Hp <= 0) continue;
+                    var lifeState = StatusDecoder.GetLifeState(u.StatusBytes);
+                    if (lifeState == "crystal" || lifeState == "treasure") continue;
+                    if (lifeState == "dead")
+                    {
+                        allySet.Add((u.GridX, u.GridY));
+                        continue;
+                    }
+                    if (u.Hp <= 0) continue; // extra safety: HP=0 but lifeState=alive shouldn't happen
                     if (u.Team == 1) enemySet.Add((u.GridX, u.GridY));
                     else if (u.Team == 0) allySet.Add((u.GridX, u.GridY));
                     // team==2 (neutral/NPC): don't block — see feedback_summon_no_friendly_fire memory.
@@ -3686,13 +3697,17 @@ namespace FFTColorCustomizer.GameBridge
         private HashSet<(int x, int y)>? _lastValidMoveTiles;
 
 
-        /// <summary>Get enemy grid positions from last scan for BFS blocking.</summary>
+        /// <summary>Get enemy grid positions from last scan for BFS blocking.
+        /// Only live enemies block — dead enemy tiles are traversable (see
+        /// GetAllyPositions which includes corpses).</summary>
         public HashSet<(int, int)> GetEnemyPositions()
         {
             var result = new HashSet<(int, int)>();
             if (_lastScannedUnits == null) return result;
             foreach (var u in _lastScannedUnits)
             {
+                var lifeState = StatusDecoder.GetLifeState(u.StatusBytes);
+                if (lifeState != "alive") continue;
                 // Only block enemy units (team=1), not neutrals/NPCs (team=2)
                 if (u.Team == 1 && u.Hp > 0)
                     result.Add((u.GridX, u.GridY));
@@ -3700,13 +3715,23 @@ namespace FFTColorCustomizer.GameBridge
             return result;
         }
 
-        /// <summary>Get positions of allied units (team=0, alive, not active) for BFS traversal cost.</summary>
+        /// <summary>Get positions of allied units and corpses (pass-through but
+        /// not stoppable). Corpses behave the same as allies for BFS purposes —
+        /// crystallized / treasure units' tiles are empty.</summary>
         public HashSet<(int, int)> GetAllyPositions()
         {
             var result = new HashSet<(int, int)>();
             if (_lastScannedUnits == null) return result;
             foreach (var u in _lastScannedUnits)
             {
+                var lifeState = StatusDecoder.GetLifeState(u.StatusBytes);
+                if (lifeState == "crystal" || lifeState == "treasure") continue;
+                // Corpses block stopping but not pass-through — add regardless of team.
+                if (lifeState == "dead")
+                {
+                    result.Add((u.GridX, u.GridY));
+                    continue;
+                }
                 if (u.Team == 0 && u.Hp > 0 && !u.IsActive)
                     result.Add((u.GridX, u.GridY));
             }
