@@ -158,6 +158,17 @@ namespace FFTColorCustomizer.Utilities
         private long _resolvedPartyMenuCursorAddr = 0L;
 
         /// <summary>
+        /// Cached BattlePaused menu cursor address — heap byte tracking the
+        /// 0..5 cursor row across the 6-item pause menu (Data, Retry, Load,
+        /// Settings, ReturnToWorldMap, ReturnToTitle). Shuffles across game
+        /// restarts per memory note `project_battle_pause_cursor.md`.
+        /// Session 44 found it via the triple-diff technique; this field
+        /// caches the resolved address for the current BattlePaused visit.
+        /// </summary>
+        private long _resolvedBattlePauseCursorAddr = 0L;
+        private bool _battlePauseCursorResolveAttempted = false;
+
+        /// <summary>
         /// Tracks whether the auto-resolver has ALREADY fired for the
         /// current PartyMenu visit. Same role as
         /// <see cref="_jobCursorResolveAttempted"/> — prevents re-firing
@@ -405,6 +416,89 @@ namespace FFTColorCustomizer.Utilities
             return cands.Count > 0
                 ? $"Resolved picker cursor: 0x{_resolvedPickerCursorAddr:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
                 : "No stable picker cursor byte found (0 candidates)";
+        }
+
+        /// <summary>
+        /// Rescan-on-entry for the BattlePaused menu cursor. 6-item menu
+        /// (Data / Retry / Load / Settings / ReturnToWorldMap /
+        /// ReturnToTitleScreen). Byte is on the heap and shuffles across
+        /// game restarts — session 44 hunt documented in
+        /// `project_battle_pause_cursor.md`. Oscillates Down/Up like
+        /// <see cref="ResolvePickerCursor"/>. Net-zero cursor motion after
+        /// restore. Visible ~2s flash through the menu.
+        /// </summary>
+        private string? ResolveBattlePauseCursor(out int candidateCount)
+        {
+            candidateCount = 0;
+            if (Explorer == null) return null;
+            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+            if (win == IntPtr.Zero) return null;
+            const int VK_DOWN = 0x28, VK_UP = 0x26;
+
+            // Pause menu opens snappier than pickers — 400ms settle is enough
+            // per live observations. But we need the widget state to stabilize
+            // before baselining or we catch transient animation bytes.
+            Thread.Sleep(400);
+            Explorer.TakeHeapSnapshot("_bpause_base");
+            _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+            Thread.Sleep(250);
+            Explorer.TakeHeapSnapshot("_bpause_adv");
+            _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+            Thread.Sleep(250);
+            Explorer.TakeHeapSnapshot("_bpause_back");
+            var cands = Explorer.FindToggleCandidates("_bpause_base", "_bpause_adv", "_bpause_back", maxResults: 32, expectedDelta: 1);
+            candidateCount = cands.Count;
+
+            // Two-step verify matching ResolvePickerCursor exactly. The
+            // first candidate that passes `baseline → baseline+1 → baseline+2`
+            // (with wrap-to-0 allowed) wins. BattlePaused yields ~32
+            // toggle candidates in practice vs ~4 for pickers, so the first
+            // accepted may not be the real cursor — see TODO entry for
+            // known-limitation follow-up.
+            long verified = 0L;
+            if (cands.Count > 0)
+            {
+                var baselineVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) baselineVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(250);
+                var afterOneVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) afterOneVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(250);
+                foreach (var candAddr in cands)
+                {
+                    if (!baselineVals.TryGetValue((long)candAddr, out var baseline)) continue;
+                    if (!afterOneVals.TryGetValue((long)candAddr, out var afterOne)) continue;
+                    var afterTwo = Explorer.ReadAbsolute(candAddr, 1);
+                    if (!afterTwo.HasValue) continue;
+                    byte finalVal = (byte)afterTwo.Value.value;
+                    bool step1Ok = afterOne == baseline + 1 || afterOne == 0;
+                    bool step2Ok = finalVal == afterOne + 1 || finalVal == 0;
+                    if (step1Ok && step2Ok)
+                    {
+                        verified = (long)candAddr;
+                        break;
+                    }
+                }
+                // Restore: 2 Ups to undo the 2 Downs.
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(200);
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(200);
+            }
+            _resolvedBattlePauseCursorAddr = verified;
+            return cands.Count > 0
+                ? $"Resolved BattlePaused cursor: 0x{_resolvedBattlePauseCursorAddr:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
+                : "No stable BattlePaused cursor byte found (0 candidates)";
         }
 
         /// <summary>
@@ -6350,6 +6444,40 @@ namespace FFTColorCustomizer.Utilities
                     screen.PickerTab = EquipmentPickerTabs.TabName(
                         ScreenMachine.CurrentEquipmentSlot,
                         ScreenMachine.PickerTab);
+                }
+
+                // BattlePaused cursor resolver: the heap byte shuffles across
+                // restarts (see project_battle_pause_cursor.md). Auto-resolve
+                // on first visit per screen-open, read the row on subsequent
+                // calls, map the row to a menu label. Cleared when leaving
+                // BattlePaused so the next open re-resolves.
+                bool isBattlePaused = screen.Name == "BattlePaused";
+                if (!isBattlePaused && (_resolvedBattlePauseCursorAddr != 0 || _battlePauseCursorResolveAttempted))
+                {
+                    _resolvedBattlePauseCursorAddr = 0L;
+                    _battlePauseCursorResolveAttempted = false;
+                }
+                if (isBattlePaused && Explorer != null)
+                {
+                    if (!_battlePauseCursorResolveAttempted)
+                    {
+                        _battlePauseCursorResolveAttempted = true;
+                        int _unused;
+                        var info = ResolveBattlePauseCursor(out _unused);
+                        if (info != null) ModLogger.Log($"[CommandBridge] auto {info}");
+                    }
+
+                    if (_resolvedBattlePauseCursorAddr != 0)
+                    {
+                        var cur = Explorer.ReadAbsolute((nint)_resolvedBattlePauseCursorAddr, 1);
+                        if (cur.HasValue)
+                        {
+                            int row = (int)cur.Value.value;
+                            screen.CursorRow = row;
+                            var label = GameBridge.BattlePauseMenuLabels.ForRow(row);
+                            if (label != null) screen.UI = label;
+                        }
+                    }
                 }
 
                 // JobSelection — surface cursor position + ui=<hovered job>.
