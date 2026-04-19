@@ -611,6 +611,22 @@ namespace FFTColorCustomizer.GameBridge
                     WaitForScreen = "PartyMenuUnits",
                     Desc = "Open party menu (change formation/equipment between battles)"
                 },
+                // Session 48: Flee compound action. Hold-B-3.5s opens a Yes/No
+                // modal with Yes preselected; the follow-up Enter tap auto-
+                // confirms so callers never see the modal as a state. Game
+                // reverts any changes made since entering the location and
+                // returns the player to WorldMap.
+                ["Flee"] = new PathEntry
+                {
+                    Action = "hold_key",
+                    Vk = 0x42, // VK_B
+                    DurationMs = 3500,
+                    FollowUpVk = 0x0D, // VK_ENTER
+                    FollowUpDelayMs = 400, // modal fade-in buffer
+                    WaitForScreen = "WorldMap",
+                    WaitTimeoutMs = 6000,
+                    Desc = "Flee the battle sequence (hold B 3.5s + auto-confirm → WorldMap; reverts progress)"
+                },
             };
         }
 
@@ -1611,6 +1627,25 @@ namespace FFTColorCustomizer.GameBridge
         [System.Text.Json.Serialization.JsonPropertyName("locationId")]
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
         public int LocationId { get; set; }
+
+        // Session 48: hold-B paths (e.g. BattleSequence Flee, DismissUnit). When
+        // Action="hold_key", these feed into the hold_key bridge action via the
+        // same searchValue/readSize fields the shell helper uses.
+        [System.Text.Json.Serialization.JsonPropertyName("vk")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int Vk { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("durationMs")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int DurationMs { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("followUpVk")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int FollowUpVk { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("followUpDelayMs")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public int FollowUpDelayMs { get; set; }
 
         [System.Text.Json.Serialization.JsonPropertyName("delayBetweenMs")]
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]

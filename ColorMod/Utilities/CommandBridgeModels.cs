@@ -149,6 +149,19 @@ namespace FFTColorCustomizer.Utilities
         public int UnitIndex { get; set; } = 0;
 
         /// <summary>
+        /// Session 48: optional follow-up key for hold_key. When non-zero, hold_key
+        /// releases the held key, waits FollowUpDelayMs, then taps FollowUpVk once.
+        /// Used for "hold B → modal appears → press Enter to confirm" flows like
+        /// BattleSequence Flee where the caller shouldn't have to script the
+        /// post-release press.
+        /// </summary>
+        [JsonPropertyName("followUpVk")]
+        public int FollowUpVk { get; set; } = 0;
+
+        [JsonPropertyName("followUpDelayMs")]
+        public int FollowUpDelayMs { get; set; } = 0;
+
+        /// <summary>
         /// Direction for "battle_attack" action (e.g. "up", "down", "left", "right").
         /// </summary>
         [JsonPropertyName("direction")]

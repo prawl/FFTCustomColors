@@ -209,13 +209,13 @@ namespace FFTColorCustomizer.GameBridge
                 return "BattleFormation";
 
             // BattleSequence: multi-stage campaign sub-selector minimap (e.g. Orbonne
-            // Monastery Vaults). Enabled session 44 2026-04-18 — discriminator byte
-            // hunt found `battleSequenceFlag` at 0x14077D1F8 (main module) reads 1
-            // on any BattleSequence minimap / 0 on plain WorldMap. Combined with the
-            // location whitelist (1,3,4,5,15,16,18,21 — the 8 multi-stage story
+            // Monastery Vaults). Enabled session 44; session 48 2026-04-19 swapped
+            // the discriminator byte from the save-baked 0x14077D1F8 to the runtime
+            // 0x1407774B4 (reads 2 when panel open, 1 when closed). Combined with
+            // the location whitelist (1,3,4,5,15,16,18,21 — 8 multi-stage story
             // locations) this disambiguates the minimap from WorldMap-at-same-loc.
-            // See memory/project_battle_sequence_discriminator.md for live-verify
-            // at Orbonne Monastery vs Bervenia.
+            // See memory/project_battle_sequence_flag_sticky.md for why the old
+            // flag was replaced.
             if (battleSequenceFlag != 0
                 && rawLocation >= 0 && rawLocation <= 42
                 && BattleSequenceLocations.Contains(rawLocation))

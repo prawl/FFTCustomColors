@@ -2894,6 +2894,18 @@ namespace FFTColorCustomizer.Utilities
                                 {
                                     ScreenMachine.SetScreen(GameScreen.DismissUnit);
                                 }
+
+                                // Session 48: optional follow-up key tap. Used by
+                                // BattleSequence Flee: hold-B opens the Yes/No
+                                // modal with Yes preselected; we immediately tap
+                                // Enter so the caller never sees the intermediate
+                                // confirmation as a state.
+                                if (command.FollowUpVk > 0)
+                                {
+                                    int followDelay = command.FollowUpDelayMs > 0 ? command.FollowUpDelayMs : 300;
+                                    Thread.Sleep(followDelay);
+                                    _inputSimulator.SendKeyPressToWindow(gameWindow, command.FollowUpVk);
+                                }
                             }
                             else
                             {
@@ -3060,6 +3072,20 @@ namespace FFTColorCustomizer.Utilities
             {
                 command.Action = path.Action;
                 if (path.LocationId != 0) command.LocationId = path.LocationId;
+                // Session 48: hold_key paths pass vk via searchValue, durationMs
+                // via readSize — the same fields hold_key's case-statement reads.
+                if (path.Action == "hold_key")
+                {
+                    if (path.Vk != 0) command.SearchValue = path.Vk;
+                    if (path.DurationMs != 0) command.ReadSize = path.DurationMs;
+                    if (path.FollowUpVk != 0) command.FollowUpVk = path.FollowUpVk;
+                    if (path.FollowUpDelayMs != 0) command.FollowUpDelayMs = path.FollowUpDelayMs;
+                    // hold_key lives in the main ProcessCommand switch, not
+                    // NavigationActions. Route through ExecuteAction so it
+                    // actually dispatches instead of falling to "unknown nav
+                    // action".
+                    return ExecuteAction(command);
+                }
 
                 if (path.Action == "battle_wait")
                 {
@@ -5415,15 +5441,20 @@ namespace FFTColorCustomizer.Utilities
                     && screen.MenuDepth > 0;
 
                 // BattleSequence discriminator — read the minimap-open flag.
-                // 0x14077D1F8 is 1 while a BattleSequence minimap is visible
-                // (live-verified at Orbonne session 44 vs Bervenia WorldMap).
-                // Combined with the location whitelist in ScreenDetectionLogic,
-                // disambiguates the minimap from plain WorldMap at the same loc.
+                // BattleSequence discriminator (session 48 2026-04-19):
+                // 0x1407774B4 is a u32 that reads 2 while the minimap panel is
+                // OPEN and 1 on plain WorldMap (at a BattleSequence location).
+                // Replaces the older 0x14077D1F8 probe, which got baked into the
+                // save state and read 1 even after the panel was closed — see
+                // memory/project_battle_sequence_flag_sticky.md. Live-verified
+                // at Orbonne this session: open=2, close=1, reopen=2, close=1.
+                // We set the flag only when the byte == 2 so the plain-WorldMap
+                // case returns to the default detection.
                 int battleSequenceFlag = 0;
                 if (Explorer != null)
                 {
-                    var bsRead = Explorer.ReadAbsolute((nint)0x14077D1F8, 1);
-                    if (bsRead.HasValue) battleSequenceFlag = (int)bsRead.Value.value;
+                    var bsRead = Explorer.ReadAbsolute((nint)0x1407774B4, 4);
+                    if (bsRead.HasValue && bsRead.Value.value == 2) battleSequenceFlag = 1;
                 }
 
                 // BattleChoice discriminator — check if the current event's
