@@ -85,6 +85,23 @@ namespace FFTColorCustomizer.GameBridge
             {
                 BattlePausedCursor = 0;
             }
+            // Session 47: CharacterStatus sidebar follows the same pattern.
+            // Fresh entry lands the cursor on Equipment & Abilities (0).
+            if (detectedName == "CharacterStatus" && prev != "CharacterStatus")
+            {
+                SidebarIndex = 0;
+            }
+            // Session 47: TavernRumors/TavernErrands row tracking. Reset
+            // on any transition between the two sub-screens OR entering
+            // from a non-tavern-list state — the game places the cursor
+            // at row 0 on each fresh open.
+            bool enteringTavernList =
+                (detectedName == "TavernRumors" || detectedName == "TavernErrands")
+                && prev != detectedName;
+            if (enteringTavernList)
+            {
+                TavernCursorRow = 0;
+            }
         }
 
         /// <summary>
@@ -240,6 +257,18 @@ namespace FFTColorCustomizer.GameBridge
         public int BattlePausedCursor { get; private set; }
 
         /// <summary>
+        /// SM-tracked cursor row for TavernRumors and TavernErrands lists.
+        /// Session 47: supersedes the flaky memory resolver that latched on
+        /// first Down press but stopped tracking thereafter. Unlike
+        /// <see cref="BattlePausedCursor"/> and <see cref="SidebarIndex"/>,
+        /// the tavern list length varies per city (and between Rumors and
+        /// Errands), so the SM tracks an unclamped positive row; callers
+        /// that know the list size should clamp at the upper bound when
+        /// rendering. Up at row 0 stays at 0 (no negative rows).
+        /// </summary>
+        public int TavernCursorRow { get; private set; }
+
+        /// <summary>
         /// Apply a key press against the currently-detected (string-mirrored)
         /// screen, for screens the enum-typed state machine doesn't model
         /// transitions for. Currently handles BattlePaused cursor (Up/Down,
@@ -255,6 +284,26 @@ namespace FFTColorCustomizer.GameBridge
                     BattlePausedCursor = (BattlePausedCursor + 1) % 6;
                 else if (vkCode == VK_UP)
                     BattlePausedCursor = (BattlePausedCursor + 5) % 6; // -1 mod 6
+            }
+            // Session 47: CharacterStatus sidebar (3 items: Equipment & Abilities /
+            // Job / Combat Sets). Vertical wrap like BattlePaused.
+            else if (LastDetectedScreen == "CharacterStatus")
+            {
+                if (vkCode == VK_DOWN)
+                    SidebarIndex = (SidebarIndex + 1) % 3;
+                else if (vkCode == VK_UP)
+                    SidebarIndex = (SidebarIndex + 2) % 3; // -1 mod 3
+            }
+            // Session 47: TavernRumors/TavernErrands row tracking. Unclamped
+            // positive — the list length varies per city and we don't want
+            // the SM to silently wrap past the last real row.
+            else if (LastDetectedScreen == "TavernRumors"
+                  || LastDetectedScreen == "TavernErrands")
+            {
+                if (vkCode == VK_DOWN)
+                    TavernCursorRow++;
+                else if (vkCode == VK_UP && TavernCursorRow > 0)
+                    TavernCursorRow--;
             }
         }
         public int CursorRow { get; private set; }

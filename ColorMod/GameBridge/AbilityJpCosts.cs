@@ -106,10 +106,26 @@ namespace FFTColorCustomizer.GameBridge
 
             // Geomancer / Geomancy — all 150 each (applied as blanket in ComputeNextJpForSkillset)
 
-            // Dragoon / Jump — the individual Horizontal/Vertical Jump levels aren't
-            // surfaced as separate entries in ActionAbilityLookup (they collapse into
-            // a single "Jump" entry via CollapseJumpAbilities). Cost data omitted for
-            // now; ComputeNextJpForSkillset returns null for Jump.
+            // Dragoon / Jump — per-level costs from FFTHandsFree/ABILITY_COSTS.md line 61.
+            // Note: in-battle the 12 individual +N abilities are collapsed via
+            // CollapseJumpAbilities into a single "Jump" entry, but in the Learn
+            // Abilities screen each +N is priced and learned separately. Per-ability
+            // costs ARE needed here so ComputeNextJpForSkillset("Jump") can find the
+            // cheapest unlearned level. Wiki-sourced values — IC remaster costs may
+            // differ slightly, flagged for live verification if a partially-learned
+            // Dragoon save becomes available.
+            ["Horizontal Jump +1"] = 150,
+            ["Horizontal Jump +2"] = 350,
+            ["Horizontal Jump +3"] = 550,
+            ["Horizontal Jump +4"] = 800,
+            ["Horizontal Jump +7"] = 1100,
+            ["Vertical Jump +2"] = 100,
+            ["Vertical Jump +3"] = 250,
+            ["Vertical Jump +4"] = 400,
+            ["Vertical Jump +5"] = 550,
+            ["Vertical Jump +6"] = 700,
+            ["Vertical Jump +7"] = 1000,
+            ["Vertical Jump +8"] = 1500,
 
             // Samurai / Iaido — skillset uses "Bizen Osafune" and "Ame-no-Murakumo"
             ["Ashura"] = 100, ["Kotetsu"] = 200, ["Bizen Osafune"] = 300, ["Murasame"] = 400,

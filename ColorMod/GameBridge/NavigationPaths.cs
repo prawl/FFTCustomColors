@@ -31,6 +31,22 @@ namespace FFTColorCustomizer.GameBridge
 
         public static Dictionary<string, PathEntry>? GetPaths(DetectedScreen screen)
         {
+            var paths = GetPathsRaw(screen);
+            if (paths == null) return null;
+
+            // UX compat: users reflexively type 'Leave' on shop-adjacent and
+            // picker screens. If the screen has 'Back' but no 'Leave', add
+            // 'Leave' as an alias (same PathEntry, so they're indistinguishable
+            // downstream). Screens that already define 'Leave' (e.g. Outfitter
+            // with its 2-key farewell flow) keep their own.
+            if (paths.TryGetValue("Back", out var backEntry) && !paths.ContainsKey("Leave"))
+                paths["Leave"] = backEntry;
+
+            return paths;
+        }
+
+        private static Dictionary<string, PathEntry>? GetPathsRaw(DetectedScreen screen)
+        {
             if (screen == null) return null;
 
             return screen.Name switch

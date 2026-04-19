@@ -1369,6 +1369,189 @@ public class ScreenStateMachineTests
     }
 
     // ================================================================
+    // CharacterStatus sidebar SM-side cursor tracking (session 47)
+    // Supplements the enum-typed HandleCharacterStatus path: drives
+    // SidebarIndex from the detection string too, so user-direct keys
+    // keep it aligned without relying on the enum-typed SM being in sync.
+    // ================================================================
+
+    [Fact]
+    public void CharacterStatusSidebar_DownIncrementsWithWrap()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("CharacterStatus");
+        const int VK_DOWN = 0x28;
+        // 0 (Equipment) → 1 (Job)
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(1, sm.SidebarIndex);
+        // 1 → 2 (Combat Sets)
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(2, sm.SidebarIndex);
+        // 2 → wraps to 0
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(0, sm.SidebarIndex);
+    }
+
+    [Fact]
+    public void CharacterStatusSidebar_UpDecrementsWithWrap()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("CharacterStatus");
+        const int VK_UP = 0x26;
+        // 0 → wraps to 2 (Combat Sets)
+        sm.OnKeyPressedForDetectedScreen(VK_UP);
+        Assert.Equal(2, sm.SidebarIndex);
+        // 2 → 1
+        sm.OnKeyPressedForDetectedScreen(VK_UP);
+        Assert.Equal(1, sm.SidebarIndex);
+    }
+
+    [Fact]
+    public void CharacterStatusSidebar_IgnoresKeyPressesOffScreen()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattleMyTurn");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        // Not on CharacterStatus — sidebar shouldn't move.
+        Assert.Equal(0, sm.SidebarIndex);
+    }
+
+    [Fact]
+    public void CharacterStatusSidebar_ResetsOnTransitionInto()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("CharacterStatus");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(2, sm.SidebarIndex);
+        // Leave...
+        sm.ObserveDetectedScreen("PartyMenuUnits");
+        // ...and re-enter. Sidebar resets to Equipment (0), which is where
+        // the game returns the cursor on fresh entry.
+        sm.ObserveDetectedScreen("CharacterStatus");
+        Assert.Equal(0, sm.SidebarIndex);
+    }
+
+    [Fact]
+    public void CharacterStatusSidebar_DoesNotAffectBattlePausedCursor()
+    {
+        // Guard: the two cursor-tracked screens share one entry point.
+        // Pressing Down on CharacterStatus must not move BattlePausedCursor.
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("CharacterStatus");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(1, sm.SidebarIndex);
+        Assert.Equal(0, sm.BattlePausedCursor);
+    }
+
+    // ================================================================
+    // Tavern cursor SM-side tracking (session 47). Unlike BattlePaused
+    // and CharacterStatus, the list length varies per city so there's
+    // no wrap at SM level — the row just moves up/down and is clamped
+    // at 0 (can't go negative). Callers that know the list length
+    // should wrap/clamp at rendering time.
+    // ================================================================
+
+    [Fact]
+    public void TavernCursorRow_InitiallyZero()
+    {
+        var sm = new ScreenStateMachine();
+        Assert.Equal(0, sm.TavernCursorRow);
+    }
+
+    [Fact]
+    public void TavernRumors_DownIncrementsTavernCursor()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("TavernRumors");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(1, sm.TavernCursorRow);
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(3, sm.TavernCursorRow);
+    }
+
+    [Fact]
+    public void TavernErrands_DownIncrementsTavernCursor()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("TavernErrands");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(1, sm.TavernCursorRow);
+    }
+
+    [Fact]
+    public void TavernCursorRow_UpClampsAtZero()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("TavernRumors");
+        const int VK_UP = 0x26;
+        // Going Up at row 0 stays at 0 (no wrap — unknown list size).
+        sm.OnKeyPressedForDetectedScreen(VK_UP);
+        Assert.Equal(0, sm.TavernCursorRow);
+    }
+
+    [Fact]
+    public void TavernCursorRow_UpDecrementsFromPositive()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("TavernRumors");
+        const int VK_DOWN = 0x28;
+        const int VK_UP = 0x26;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(2, sm.TavernCursorRow);
+        sm.OnKeyPressedForDetectedScreen(VK_UP);
+        Assert.Equal(1, sm.TavernCursorRow);
+    }
+
+    [Fact]
+    public void TavernCursorRow_ResetsOnTransitionInto()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("TavernRumors");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(2, sm.TavernCursorRow);
+        // Leave to Tavern root...
+        sm.ObserveDetectedScreen("Tavern");
+        // ...and re-enter. Row resets to 0 since that's where the game
+        // places the cursor on fresh entry.
+        sm.ObserveDetectedScreen("TavernRumors");
+        Assert.Equal(0, sm.TavernCursorRow);
+    }
+
+    [Fact]
+    public void TavernCursorRow_ResetsWhenSwitchingBetweenRumorsAndErrands()
+    {
+        // Moving between the two tavern sub-screens counts as a fresh
+        // entry. Row resets to 0 on each transition.
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("TavernRumors");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(1, sm.TavernCursorRow);
+        sm.ObserveDetectedScreen("TavernErrands");
+        Assert.Equal(0, sm.TavernCursorRow);
+    }
+
+    [Fact]
+    public void TavernCursorRow_IgnoresKeysOffTavern()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("WorldMap");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(0, sm.TavernCursorRow);
+    }
+
+    // ================================================================
     // AutoSnapIfCategoryMismatch — pure-C# realignment (session 46)
     // ================================================================
 

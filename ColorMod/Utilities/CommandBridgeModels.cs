@@ -59,6 +59,45 @@ namespace FFTColorCustomizer.Utilities
         public string? Pattern { get; set; }
 
         /// <summary>
+        /// Lower bound for search_bytes scan range (inclusive). Hex string,
+        /// e.g. "0x4000000000" for heap-only scans. Null = full memory.
+        /// Session 47 addition (TODO §0 session 45 follow-up) — unblocks
+        /// scans targeting the unit-struct heap range that the default
+        /// 100-match cap couldn't reach through main-module noise.
+        /// </summary>
+        [JsonPropertyName("minAddr")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? MinAddr { get; set; }
+
+        /// <summary>
+        /// Upper bound for search_bytes scan range (exclusive). Hex string.
+        /// Null = full memory.
+        /// </summary>
+        [JsonPropertyName("maxAddr")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? MaxAddr { get; set; }
+
+        /// <summary>
+        /// Parses a hex-or-decimal address string to a long. Accepts
+        /// "0x4000000000", "4000000000" (hex without prefix, since raw
+        /// addresses in this codebase are always hex), or decimal. Invalid
+        /// / null / empty returns <paramref name="defaultValue"/>.
+        /// </summary>
+        public static long ParseAddrOrDefault(string? s, long defaultValue)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return defaultValue;
+            var trimmed = s.Trim();
+            // Strip 0x/0X prefix if present; address strings in this codebase
+            // are always hex (same convention as every other handler).
+            if (trimmed.StartsWith("0x", System.StringComparison.OrdinalIgnoreCase))
+                trimmed = trimmed.Substring(2);
+            if (long.TryParse(trimmed, System.Globalization.NumberStyles.HexNumber,
+                              System.Globalization.CultureInfo.InvariantCulture, out long hex))
+                return hex;
+            return defaultValue;
+        }
+
+        /// <summary>
         /// When true, scan_move returns full tile lists for every ability.
         /// When false (default), only occupied tiles are included + a totalTargets count.
         /// </summary>

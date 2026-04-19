@@ -75,7 +75,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // See memory/feedback_characterization_tests_for_known_bugs.md
             // for the full convention.
             var tests = FindCharacterizationTests();
-            const int expected = 1; // Current: AbilityJpCostsTests.CoverageAudit_KnownUncoveredSkillsets_StillReturnNull
+            const int expected = 1; // Current: AbilityJpCostsTests.HolySword_IntentionallyUncovered_Characterization (session 47 renamed from CoverageAudit_KnownUncoveredSkillsets_StillReturnNull after Jump was backfilled)
             Assert.True(
                 tests.Count == expected,
                 $"Expected {expected} characterization tests, found {tests.Count}:\n  " +
@@ -100,12 +100,13 @@ namespace FFTColorCustomizer.Tests.GameBridge
         public void FindCharacterizationTests_Includes_KnownEntry()
         {
             // Concrete assertion: the scanner finds the known characterization
-            // test AbilityJpCostsTests.CoverageAudit_KnownUncoveredSkillsets_StillReturnNull.
-            // If this fires, either that test was deleted (did the underlying
-            // bug get fixed? update expected= in the count test above) or the
-            // scanner regex regressed.
+            // test AbilityJpCostsTests.HolySword_IntentionallyUncovered_ReturnsNull
+            // (session 47 — formerly CoverageAudit_KnownUncoveredSkillsets_StillReturnNull
+            // before Jump was backfilled). If this fires, either that test was
+            // deleted (did the underlying bug get fixed? update expected= in the
+            // count test above) or the scanner regex regressed.
             var tests = FindCharacterizationTests();
-            Assert.Contains(tests, t => t.Contains("CoverageAudit_KnownUncoveredSkillsets_StillReturnNull"));
+            Assert.Contains(tests, t => t.Contains("HolySword_IntentionallyUncovered"));
         }
     }
 }

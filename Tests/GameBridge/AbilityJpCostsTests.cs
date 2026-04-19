@@ -336,8 +336,9 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 "Aim", "Steal", "Throw", "Iaido",
                 "Speechcraft", "Mystic Arts", "Arts of War",
                 "Darkness",
-                // EXCLUDED: "Jump" and "Holy Sword" — known-uncovered
-                // (characterized below in CoverageAudit_KnownUncoveredSkillsets).
+                "Jump", // session 47: Jump costs backfilled (Horizontal/Vertical).
+                // EXCLUDED: "Holy Sword" — intentionally uncovered (Agrias story
+                // class, not learnable via JP). See HolySword_IntentionallyUncovered.
             };
             var gaps = new List<string>();
             foreach (var skillset in coveredSkillsets)
@@ -351,14 +352,47 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void CoverageAudit_KnownUncoveredSkillsets_StillReturnNull()
+        public void HolySword_IntentionallyUncovered_Characterization()
         {
-            // Characterization: Jump (Dragoon) and Holy Sword (Agrias) have
-            // NO cost data backfilled — every ability returns null from
-            // GetCost, so ComputeNextJp returns null. Pin this so a future
-            // backfill is a visible breaking change (flip these asserts).
-            Assert.Null(AbilityJpCosts.ComputeNextJpForSkillset("Jump", new HashSet<int>()));
+            // Holy Sword (Agrias's unique class primary) is NOT learnable via
+            // JP purchase in canon FFT — Agrias comes pre-learned. The game
+            // doesn't render a "Next: N" on her CharacterStatus header
+            // either, so returning null is correct. Pin as explicit
+            // characterization per session 47 TODO follow-up: this test
+            // documents intended current behavior; flip the assert only if
+            // story-class primaries ever become JP-purchasable.
             Assert.Null(AbilityJpCosts.ComputeNextJpForSkillset("Holy Sword", new HashSet<int>()));
+        }
+
+        [Fact]
+        public void Jump_NowCovered_ReturnsCheapest()
+        {
+            // Session 47: backfilled Horizontal/Vertical Jump costs from
+            // FFTHandsFree/ABILITY_COSTS.md line 61. With nothing learned,
+            // the cheapest unlearned ability is Vertical Jump +2 at 100 JP.
+            int? next = AbilityJpCosts.ComputeNextJpForSkillset("Jump", new HashSet<int>());
+            Assert.Equal(100, next);
+        }
+
+        [Theory]
+        [InlineData("Horizontal Jump +1", 150)]
+        [InlineData("Horizontal Jump +2", 350)]
+        [InlineData("Horizontal Jump +3", 550)]
+        [InlineData("Horizontal Jump +4", 800)]
+        [InlineData("Horizontal Jump +7", 1100)]
+        [InlineData("Vertical Jump +2", 100)]
+        [InlineData("Vertical Jump +3", 250)]
+        [InlineData("Vertical Jump +4", 400)]
+        [InlineData("Vertical Jump +5", 550)]
+        [InlineData("Vertical Jump +6", 700)]
+        [InlineData("Vertical Jump +7", 1000)]
+        [InlineData("Vertical Jump +8", 1500)]
+        public void Jump_PerAbilityCosts_MatchAbilityCostsMd(string name, int expectedJp)
+        {
+            // Per ABILITY_COSTS.md line 61 (PSX-canonical Wiki values).
+            // IC-remaster costs may differ slightly — flagged for live
+            // verification when a partially-learned Dragoon is available.
+            Assert.Equal(expectedJp, AbilityJpCosts.GetCost(name));
         }
 
         [Fact]
@@ -373,7 +407,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 "Aim", "Steal", "Throw", "Iaido",
                 "Speechcraft", "Mystic Arts", "Arts of War",
                 "Darkness",
-                // Blanket-priced skillsets + known-uncovered Jump/Holy Sword skipped.
+                "Jump", // session 47: Jump costs backfilled.
+                // Blanket-priced skillsets + known-uncovered Holy Sword skipped.
             };
             foreach (var skillset in coveredSkillsets)
             {

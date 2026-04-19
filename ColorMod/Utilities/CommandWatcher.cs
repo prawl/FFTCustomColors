@@ -44,6 +44,10 @@ namespace FFTColorCustomizer.Utilities
         private NameTableLookup? _rosterNameTable;
         private HoveredUnitArray? _hoveredArray;
         private HpMpCache? _hpMpCache;
+        // TODO(audit session 47): PickerListReader is declared but never wired
+        // into any dispatch path. If it gets wired, it MUST add a per-call guard
+        // before the inner 32-iteration SearchBytesInAllMemory loop (see
+        // HoveredUnitArray._discoveryAttempted pattern, session 46 fix).
         private PickerListReader? _pickerListReader;
         private readonly BattleTurnTracker _turnTracker = new();
         private bool _movedThisTurn;
@@ -2354,7 +2358,17 @@ namespace FFTColorCustomizer.Utilities
                             for (int i = 0; i < patternBytes.Length; i++)
                                 patternBytes[i] = Convert.ToByte(hexClean.Substring(i * 2, 2), 16);
 
-                            var matches = Explorer.SearchBytesInAllMemory(patternBytes, 100);
+                            // Session 47: honor optional minAddr/maxAddr range
+                            // params. Defaults preserve prior behavior (full
+                            // memory scan) when callers omit both. Narrow
+                            // ranges unblock heap-targeted searches — the
+                            // default 100-match cap previously filled up on
+                            // main-module hits before reaching 0x4000000000+.
+                            long minA = CommandRequest.ParseAddrOrDefault(command.MinAddr, 0L);
+                            long maxA = CommandRequest.ParseAddrOrDefault(command.MaxAddr, long.MaxValue);
+                            var matches = (command.MinAddr != null || command.MaxAddr != null)
+                                ? Explorer.SearchBytesInAllMemory(patternBytes, 100, minA, maxA)
+                                : Explorer.SearchBytesInAllMemory(patternBytes, 100);
 
                             // Write results to file
                             var sb = new System.Text.StringBuilder();
@@ -2874,15 +2888,12 @@ namespace FFTColorCustomizer.Utilities
                 return response;
             }
 
-            // Bump dialogue-box counter when the player advances on a dialogue
-            // screen via execute_action Advance. Matches the advance_dialogue
-            // hook so both paths keep the tracker in step.
-            if (pathName == "Advance" &&
-                (screen.Name == "Cutscene" || screen.Name == "BattleDialogue" || screen.Name == "BattleChoice") &&
-                screen.EventId >= 1 && screen.EventId < 400)
-            {
-                _dialogueTracker.Advance(screen.EventId);
-            }
+            // Note (session 47): the previous explicit `_dialogueTracker.Advance`
+            // for `Advance` validPath was removed. ExecuteKeyCommand now bumps
+            // via DialogueTrackerKeyHook on any raw Enter landing on a
+            // dialogue screen, so the Advance validPath (which dispatches
+            // Enter through ExecuteKeyCommand) gets its bump there. Keeping
+            // the explicit bump here would double-count.
 
             // If the path specifies a high-level action, delegate.
             // battle_wait needs special handling (confirmation, pre-scan, turn reset)
@@ -3062,6 +3073,26 @@ namespace FFTColorCustomizer.Utilities
                     InvalidatePartyMenuCursorOnMove(key.Vk);
                     InvalidateEquipPickerCursorOnMove(key.Vk);
                     InvalidateEqaColumnCursorOnMove(key.Vk);
+
+                    // Session 47: raw Enter on a dialogue screen advances
+                    // the box counter. advance_dialogue and
+                    // `execute_action Advance` both bump explicitly on
+                    // other paths — advance_dialogue dispatches via
+                    // NavigationActions.SendKey (NOT this method), so
+                    // no double-bump risk there. The `Advance` validPath
+                    // used to bump at ExecuteValidPath:2898 then fall
+                    // through here; that explicit bump is now redundant
+                    // and has been removed.
+                    if (Explorer != null
+                        && (key.Vk == 0x0D) // VK_ENTER
+                        && ScreenMachine?.LastDetectedScreen != null)
+                    {
+                        var evtRead = Explorer.ReadAbsolute((nint)0x14077CA94, 2);
+                        int evt = evtRead.HasValue ? (int)evtRead.Value.value : 0;
+                        GameBridge.DialogueTrackerKeyHook.HandleKeyPress(
+                            _dialogueTracker, key.Vk,
+                            ScreenMachine.LastDetectedScreen, evt);
+                    }
                 }
 
                 if (key.HoldMs > 0)
