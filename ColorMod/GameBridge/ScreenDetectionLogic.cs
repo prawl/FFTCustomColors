@@ -523,6 +523,16 @@ namespace FFTColorCustomizer.GameBridge
                 && battleTeam == 0)
                 return "BattleVictory";
 
+            // Session 48: ally-turn dialogue. When battleTeam==2 (neutral/ally
+            // phase), combat-animation nameId aliasing doesn't apply because
+            // active combat is team 0 or 1. That lets us use the looser
+            // IsRealEvent range (< 400) instead of the 200 cap, so eventIds
+            // like 302 (Orbonne Vaults Loffrey pre-stage) no longer fall
+            // through to BattleAlliesTurn. Checked BEFORE the turn-owner
+            // fallthrough at battleTeam==2 → BattleAlliesTurn.
+            if (battleTeam == 2 && IsRealEvent(eventId) && battleMode == 0 && paused == 0)
+                return (eventHasChoice && choiceModalFlag != 0) ? "BattleChoice" : "BattleDialogue";
+
             // Mid-battle dialogue: story event playing during active battle. In-battle uses
             // the stricter < EventIdMidBattleMaxExclusive (200) filter because eventId
             // address (0x14077CA94) aliases as active-unit nameId during combat animations.

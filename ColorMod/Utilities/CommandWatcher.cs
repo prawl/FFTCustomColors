@@ -6760,8 +6760,17 @@ namespace FFTColorCustomizer.Utilities
                             // Promoting from BattleStatus would mis-classify
                             // the screen as a PartyMenu path and strip the
                             // battle context (active unit name, etc.).
+                            //
+                            // Session 48: also NEVER promote from BattleDialogue
+                            // or BattleChoice — pre-stage / mid-stage story
+                            // events at battle locations coincidentally pass
+                            // the equipment-mirror fingerprint (party unit's
+                            // gear sits in the mirror bytes throughout the
+                            // battle) and were getting clobbered into EqA.
                             if (screen.Name != "EquipmentAndAbilities"
-                                && screen.Name != "BattleStatus")
+                                && screen.Name != "BattleStatus"
+                                && screen.Name != "BattleDialogue"
+                                && screen.Name != "BattleChoice")
                             {
                                 ModLogger.Log($"[EqA promote] SM said '{screen.Name}' but mirror matches {matchedSlot.Name} equipment. Promoting to EquipmentAndAbilities.");
                                 screen.Name = "EquipmentAndAbilities";
