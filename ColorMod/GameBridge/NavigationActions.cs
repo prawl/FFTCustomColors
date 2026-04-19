@@ -3778,6 +3778,7 @@ namespace FFTColorCustomizer.GameBridge
             });
             int activeHp = (int)activeReads[6];
             int activeMaxHp = (int)activeReads[7];
+            int activeNameId = (int)activeReads[2];
 
             // === Phase 2: Scan static battle array for ALL units ===
             // The battle array has fixed-stride 0x200 slots with this layout per slot:
@@ -4152,6 +4153,28 @@ namespace FFTColorCustomizer.GameBridge
                                 unit.JobNameOverride = rosterJobName;
                         }
                         ModLogger.Log($"[CollectPositions] Matched ({unit.GridX},{unit.GridY}) as {unit.Name ?? $"unit"} job={m.Job} bra={m.Brave} fai={m.Faith} (rosterNameId={m.NameId}){(storyJob != null ? $" → storyJob={storyJob}" : "")}");
+                    }
+
+                    // Session 48 fix: the HP-only isActive check at line 3886
+                    // can flag MULTIPLE slots as active when two units share HP
+                    // (Lv 1 Ramza + Lv 1 Delita both at 49/49 in Mandalia
+                    // Ch2). That makes downstream scan output attribute the
+                    // active-unit ability list to the wrong slot. After
+                    // roster-match resolves nameIds, keep IsActive only on the
+                    // unit whose RosterNameId matches the condensed struct's
+                    // active nameId. If no roster-matched unit claims it,
+                    // leave the HP-match result as fallback (unmatched active
+                    // unit like Delita pre-recruitment).
+                    var activeCandidates = units.Where(u => u.IsActive).ToList();
+                    if (activeCandidates.Count > 1 && activeNameId > 0)
+                    {
+                        var trueActive = activeCandidates.FirstOrDefault(u => u.RosterNameId == activeNameId);
+                        if (trueActive != null)
+                        {
+                            foreach (var u in activeCandidates)
+                                if (u != trueActive) u.IsActive = false;
+                            ModLogger.Log($"[CollectPositions] De-duped active: kept ({trueActive.GridX},{trueActive.GridY}) nameId={activeNameId}, demoted {activeCandidates.Count - 1} HP-match duplicate(s)");
+                        }
                     }
                 }
             }
