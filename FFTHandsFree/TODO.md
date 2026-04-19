@@ -365,7 +365,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Resume polling after flee** — Character continues traveling after fleeing. Need to re-enter poll loop.
 
 
-- [ ] **Location address unreliable** — 0x14077D208 stores last-passed-through node, not standing position.
+- [x] **Location address unreliable — ALREADY HANDLED (verified session 44 2026-04-18)** — `0x14077D208` does hold "last-passed-through node" during travel (live-confirmed: byte read 33 = Grogh Heights mid-transit when destination was 13 = Bervenia). But `ColorMod/GameBridge/LocationSaveLogic.cs` already handles the context: on WorldMap uses `hover` as authoritative, on EncounterDialog uses `rawLocation` (which IS the encounter location). CommandWatcher.cs:6742-6754 consumes the context-aware output via `GetEffectiveLocation`. No fix needed — the compensation exists and works.
 
 
 
@@ -772,7 +772,7 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - Two distinct TitleScreen states exist (fresh process vs post-GameOver) with different memory fingerprints
 
 **Fix tasks:**
-- [ ] **Reorder rules** — specific rules (PartyMenu via `party==1`, EncounterDialog, LoadGame, LocationMenu) must run BEFORE the TitleScreen catch-all.
+- [x] **Reorder rules — ALREADY DONE (verified session 44 2026-04-18)** — ScreenDetectionLogic.cs review shows specific rules already precede the TitleScreen catch-all: PartyMenu (party==1) at line 233, EncounterDialog (encounterFlag!=0) at line 239, Cutscene (IsRealEvent + rawLocation==255) at line 244, WorldMap hover-location at line 251, and finally TitleScreen at line 264. LocationMenu check runs later at line 335 (after shop sub-actions) but before any catch-all. LoadGame at line 418 is in the in-battle fallback section by design. Incremental fixes across sessions 21-26 closed this without a dedicated sweep.
 
 
 - [ ] **Remove `encA/encB`-dependent rules** — replace Battle_Victory / Battle_Desertion / EncounterDialog discriminators with stable signals (`paused`, `submenuFlag`, `acted/moved` combos).
@@ -781,7 +781,7 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation (which location IDs are multi-battle campaign grounds vs villages). Add to `project_location_ids_verified.md`.
 
 
-- [ ] **Scope `menuCursor` interpretation** — only treat as action-menu index when `submenuFlag==0 && team==0`. Inside submenus, rely on `_battleMenuTracker`.
+- [x] **Scope `menuCursor` interpretation — ALREADY DONE (verified session 44 2026-04-18)** — CommandWatcher.cs:5025 gates the menuCursor → "Move"/"Abilities"/"Wait"/... label mapping on `screen.Name == "BattleMyTurn" || screen.Name == "BattleActing"`, which is STRICTER than the original "submenuFlag==0 && team==0" proposal (the screen name is already derived from those flags + more). BattleAbilities uses `_battleMenuTracker.CurrentItem` at line 5061; BattleAttacking/BattleCasting use `TargetingLabelResolver.ResolveOrCursor` at line 5048 (session 44). No scope violations remain.
 
 
 - [ ] **Memory scan for WorldMap vs TravelList discriminator** — these are byte-identical in current 18 inputs. Need a menu-depth or focused-widget address.
