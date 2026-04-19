@@ -444,12 +444,15 @@ try{
     s.equippedItem||'',             // 20 EQITEM
     s.pickerTab||'',                // 21 PTAB
   ];
-  // Sanitize: strip tabs/newlines from each field so split survives.
-  process.stdout.write(out.map(x=>String(x).replace(/[\t\n\r]/g,' ')).join('\t'));
+  // Sanitize: strip delimiter/newlines from each field. Use non-whitespace
+  // delimiter (\x01) because bash 'IFS=\$\\\\t read' collapses consecutive
+  // tabs (tab is treated as whitespace), dropping empty fields and shifting
+  // everything after. \\x01 is not whitespace so empty fields survive.
+  process.stdout.write(out.map(x=>String(x).replace(/[\x01\n\r]/g,' ')).join('\x01'));
 }catch(e){}" "$RESP" 2>/dev/null)
 
   local SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB
-  IFS=$'\t' read -r SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB <<<"$FIELDS"
+  IFS=$'\x01' read -r SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB <<<"$FIELDS"
 
   local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
   local OBJSTR=""
