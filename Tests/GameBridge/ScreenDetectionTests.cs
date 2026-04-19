@@ -720,51 +720,6 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("PartyMenuUnits", result);
         }
 
-        // === BattleVictory via battleTeam=3 ===
-        // Session 44 live-captured 2 datapoints at Mandalia Plain, both had
-        // battleTeam=3. No prior non-Victory capture across 11+ observations
-        // had team=3 (only 0/1/2). Single-byte discriminator.
-
-        [Fact]
-        public void DetectScreen_BattleVictory_V1_Fingerprint()
-        {
-            // Capture 1: rawLocation=24, ui=1, battleActed=1, battleMoved=1,
-            // eventId=25. Was previously misdetecting as BattleChoice (modal
-            // flag false positive) or BattleDesertion.
-            var result = ScreenDetectionLogic.Detect(
-                party: 0, ui: 1, rawLocation: 24, slot0: 0, slot9: 0,
-                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
-                battleTeam: 3, battleActed: 1, battleMoved: 1,
-                encA: 0, encB: 0, isPartySubScreen: false);
-            Assert.Equal("BattleVictory", result);
-        }
-
-        [Fact]
-        public void DetectScreen_BattleVictory_V2_Fingerprint()
-        {
-            // Capture 2: rawLocation=255, ui=0, battleActed=255, battleMoved=255,
-            // eventId=23. Was previously misdetecting as BattlePaused.
-            var result = ScreenDetectionLogic.Detect(
-                party: 0, ui: 0, rawLocation: 255, slot0: 0, slot9: 0,
-                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
-                battleTeam: 3, battleActed: 255, battleMoved: 255,
-                encA: 0, encB: 0, isPartySubScreen: false);
-            Assert.Equal("BattleVictory", result);
-        }
-
-        [Fact]
-        public void DetectScreen_BattleTeam_NotThree_DoesNotFireVictory()
-        {
-            // Sanity: team=0/1/2 should never classify as Victory. Use a
-            // BattleMyTurn-ish input with team=0.
-            var result = ScreenDetectionLogic.Detect(
-                party: 0, ui: 1, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFFL,
-                battleMode: 2, moveMode: 0, paused: 0, gameOverFlag: 0,
-                battleTeam: 0, battleActed: 0, battleMoved: 0,
-                encA: 0, encB: 0, isPartySubScreen: false);
-            Assert.NotEqual("BattleVictory", result);
-        }
-
         // === BattleChoice (pre/mid-battle objective choice prompt) ===
         // Session 44 2026-04-18: discriminator is the 0xFB byte presence in
         // the event's .mes script data, scanned once at EventScriptLookup

@@ -169,22 +169,6 @@ namespace FFTColorCustomizer.GameBridge
 
             bool actedOrMoved = battleActed == 1 || battleMoved == 1;
 
-            // BattleVictory — fires during the post-battle "Experience Gained"
-            // banner + the brief transitional window after. Discriminator:
-            // `battleTeam == 3` — a value observed only on Victory screens
-            // across 11+ prior non-Victory captures session 44 (team 0=player,
-            // 1=enemy, 2=neutral/start, 3=all-teams-done post-battle).
-            //
-            // Placed BEFORE the inBattle branch to win over BattlePaused
-            // (which also gets battleTeam=3 on V2 fingerprint) and BEFORE
-            // BattleDesertion (which fires on atNamedLocation+paused on V1).
-            // 2 datapoints (Mandalia): rawLocation varied (24 vs 255),
-            // ui varied (1 vs 0), battleActed/Moved varied (1 vs 255),
-            // but team=3 held in both. Both had battleUnitHp=350 but unit
-            // tracking isn't the discriminator.
-            if (battleTeam == 3)
-                return "BattleVictory";
-
             // Formation: battle sentinels PLUS slot0=0xFFFFFFFF (units not placed yet).
             // Checked BEFORE atNamedLocation override because Formation happens at a named
             // battle location (rawLocation 0-42) but is distinctly a battle-setup state.
