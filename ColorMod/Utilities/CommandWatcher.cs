@@ -169,6 +169,15 @@ namespace FFTColorCustomizer.Utilities
         private bool _battlePauseCursorResolveAttempted = false;
 
         /// <summary>
+        /// Cached TavernRumors / TavernErrands cursor address — heap byte
+        /// tracking the cursor row within the rumor/errand list. Shuffles
+        /// across game restarts per memory note `project_tavern_rumor_cursor.md`.
+        /// Cleared when leaving the tavern screen so re-entry re-resolves.
+        /// </summary>
+        private long _resolvedTavernCursorAddr = 0L;
+        private bool _tavernCursorResolveAttempted = false;
+
+        /// <summary>
         /// Tracks whether the auto-resolver has ALREADY fired for the
         /// current PartyMenu visit. Same role as
         /// <see cref="_jobCursorResolveAttempted"/> — prevents re-firing
@@ -499,6 +508,80 @@ namespace FFTColorCustomizer.Utilities
             return cands.Count > 0
                 ? $"Resolved BattlePaused cursor: 0x{_resolvedBattlePauseCursorAddr:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
                 : "No stable BattlePaused cursor byte found (0 candidates)";
+        }
+
+        /// <summary>
+        /// Rescan-on-entry for the TavernRumors / TavernErrands list cursor.
+        /// Byte is on the heap and shuffles across game restarts — session 44
+        /// hunt documented in `project_tavern_rumor_cursor.md` (Dorter +
+        /// Bervenia both showed the byte at widget_base+0x28). Oscillates
+        /// Down/Up like <see cref="ResolvePickerCursor"/>. Net-zero cursor
+        /// motion after restore. Visible ~2s flash through the list.
+        /// </summary>
+        private string? ResolveTavernCursor(out int candidateCount)
+        {
+            candidateCount = 0;
+            if (Explorer == null) return null;
+            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+            if (win == IntPtr.Zero) return null;
+            const int VK_DOWN = 0x28, VK_UP = 0x26;
+
+            // Tavern list opens fast — 400ms settle.
+            Thread.Sleep(400);
+            Explorer.TakeHeapSnapshot("_tavern_base");
+            _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+            Thread.Sleep(250);
+            Explorer.TakeHeapSnapshot("_tavern_adv");
+            _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+            Thread.Sleep(250);
+            Explorer.TakeHeapSnapshot("_tavern_back");
+            var cands = Explorer.FindToggleCandidates("_tavern_base", "_tavern_adv", "_tavern_back", maxResults: 32, expectedDelta: 1);
+            candidateCount = cands.Count;
+
+            long verified = 0L;
+            if (cands.Count > 0)
+            {
+                var baselineVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) baselineVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(250);
+                var afterOneVals = new Dictionary<long, byte>();
+                foreach (var candAddr in cands)
+                {
+                    var r = Explorer.ReadAbsolute(candAddr, 1);
+                    if (r.HasValue) afterOneVals[(long)candAddr] = (byte)r.Value.value;
+                }
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(250);
+                foreach (var candAddr in cands)
+                {
+                    if (!baselineVals.TryGetValue((long)candAddr, out var baseline)) continue;
+                    if (!afterOneVals.TryGetValue((long)candAddr, out var afterOne)) continue;
+                    var afterTwo = Explorer.ReadAbsolute(candAddr, 1);
+                    if (!afterTwo.HasValue) continue;
+                    byte finalVal = (byte)afterTwo.Value.value;
+                    bool step1Ok = afterOne == baseline + 1 || afterOne == 0;
+                    bool step2Ok = finalVal == afterOne + 1 || finalVal == 0;
+                    if (step1Ok && step2Ok)
+                    {
+                        verified = (long)candAddr;
+                        break;
+                    }
+                }
+                // Restore: 2 Ups.
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(200);
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(200);
+            }
+            _resolvedTavernCursorAddr = verified;
+            return cands.Count > 0
+                ? $"Resolved Tavern cursor: 0x{_resolvedTavernCursorAddr:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
+                : "No stable Tavern cursor byte found (0 candidates)";
         }
 
         /// <summary>
@@ -6477,6 +6560,40 @@ namespace FFTColorCustomizer.Utilities
                             var label = GameBridge.BattlePauseMenuLabels.ForRow(row);
                             if (label != null) screen.UI = label;
                         }
+                    }
+                }
+
+                // TavernRumors / TavernErrands cursor resolver. Heap byte
+                // shuffles across restarts per project_tavern_rumor_cursor.md.
+                // Gate on the State Machine's CurrentScreen, NOT screen.Name,
+                // because no memory byte distinguishes TavernRumors/Errands
+                // from LocationMenu — detection returns "LocationMenu" and
+                // the outer command-handler rewrites the name via SM-override
+                // only at response-serialization time, which runs AFTER this
+                // resolver. The SM itself is the authoritative source for
+                // these virtual sub-states (set by user actions, not memory).
+                bool isTavernList = ScreenMachine != null
+                    && (ScreenMachine.CurrentScreen == GameScreen.TavernRumors
+                        || ScreenMachine.CurrentScreen == GameScreen.TavernErrands);
+                if (!isTavernList && (_resolvedTavernCursorAddr != 0 || _tavernCursorResolveAttempted))
+                {
+                    _resolvedTavernCursorAddr = 0L;
+                    _tavernCursorResolveAttempted = false;
+                }
+                if (isTavernList && Explorer != null)
+                {
+                    if (!_tavernCursorResolveAttempted)
+                    {
+                        _tavernCursorResolveAttempted = true;
+                        int _unused;
+                        var info = ResolveTavernCursor(out _unused);
+                        if (info != null) ModLogger.Log($"[CommandBridge] auto {info}");
+                    }
+
+                    if (_resolvedTavernCursorAddr != 0)
+                    {
+                        var cur = Explorer.ReadAbsolute((nint)_resolvedTavernCursorAddr, 1);
+                        if (cur.HasValue) screen.CursorRow = (int)cur.Value.value;
                     }
                 }
 
