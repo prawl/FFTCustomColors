@@ -16,5 +16,20 @@ namespace FFTColorCustomizer.GameBridge
         {
             return lastAbilityName ?? selectedAbility ?? selectedItem;
         }
+
+        /// <summary>
+        /// Same precedence as Resolve, but falls back to the cursor tile
+        /// "(x,y)" when all three ability inputs are null — mirrors
+        /// BattleMoving's ui= behavior so targeting screens always surface
+        /// *something* actionable even when the player navigates menus
+        /// manually (no battle_ability helper + no tracker latch).
+        /// </summary>
+        public static string ResolveOrCursor(
+            string? lastAbilityName, string? selectedAbility, string? selectedItem,
+            int cursorX, int cursorY)
+        {
+            return Resolve(lastAbilityName, selectedAbility, selectedItem)
+                ?? BattleCursorFormatter.FormatCursor(cursorX, cursorY);
+        }
     }
 }

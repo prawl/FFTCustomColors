@@ -75,19 +75,19 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Session 43 — next-up follow-ups
 
-- [ ] **Live-verify IsPartyTree refactor didn't silently narrow CharacterStatus roster population** — Session 39 refactored the `onPartyTree` check in CommandWatcher to delegate to `ScreenNamePredicates.IsPartyTree`; session 41 tried live-verify but game crashed after the Lesalia trip. Covered by unit tests but no live confirmation. Next session with game running: open CharacterStatus on any unit, call `screen -v`, confirm `roster` field is still populated with all units. Low risk (same 3 screens covered) but pinned here until live-confirmed.
+- [x] **Live-verify IsPartyTree refactor didn't silently narrow CharacterStatus roster population** — VERIFIED 2026-04-18 session 44. Opened CharacterStatus on Ramza from Bervenia→WorldMap; `screen.roster` populated with all 15 units (Ramza, Kenrick, Lloyd, Wilham, Mustadio, Agrias, Rapha, Marach, Beowulf, Construct 8, Orlandeau, Meliadoul, Reis, Cloud, Crestian), each with full stats + equipment + displayOrder. Session 39 refactor did not narrow population.
 
 - [ ] **Live-verify Gollund row 4 unmapped-error path via UI** — Session 42 wired Gollund row 3 → corpus #20 "The Haunted Mine" + row 4 → unmapped. Live-verified row 3 + UI cross-reference session 42. Row 4 verified via bridge but not UI (the "At Bael's End" body renders from a different data source we can't decode). When that source lands, seed Gollund row 4 and all 8 uniform cities' row 3.
 
 ### Session 33 batch 2 — deferred (needs live battle / environment I can't verify)
 
-- [ ] **Live-verify `execute_action` responses include `ui=` field across battle screens** — code path exists; needs in-game verification during Battle_MyTurn/Battle_Acting/Battle_Moving/Battle_Attacking. Deferred batch 2.
+- [~] **Live-verify `execute_action` responses include `ui=` field across battle screens — MOSTLY DONE (session 44 2026-04-18)** — Live-tested in a Mount Bervenia random encounter. Findings: **ui POPULATES** on `BattleMyTurn` ("Move"/"Abilities"/"Status"), `BattleMoving` (tile like "(8,7)"), `BattleAbilities` ("Attack"), `BattleAttacking` ("Attack" via tracker, or "(x,y)" via new cursor fallback — see fix below). **Still null on `BattlePaused` + `BattleStatus`** (separate sub-tasks). **Fix shipped session 44**: `TargetingLabelResolver.ResolveOrCursor(...)` + CommandWatcher call-site swap so BattleAttacking/BattleCasting always surface either the latched ability name OR the cursor tile, matching BattleMoving's semantics. 4 new tests + live-verified after restart. Separate finding: `execute_action` response `screen.name` can lag a step during rapid transitions; subsequent `screen` call returns fresh state. **Remaining sub-tasks split out**: BattleStatus ui decode (viewer screen, no cursor — likely "ui=stat-tab" if tabs exist, else drop the expectation); BattlePaused ui decode (pause-menu cursor byte hunt — 0x1407FC620 reads the battle-action-menu cursor, not pause). BattleActing / BattleCasting / BattleWaiting not exercised this session — TargetingLabelResolver change covers BattleCasting structurally.
 
 - [ ] **PreToolUse hook to block `| node` in Bash commands** — needs explicit per-hook user approval (per `feedback_no_hooks_without_approval.md`). Defer until user green-lights.
 
 - [ ] **IC remaster deathCounter offset hunt** — PSX had it at ~0x58-0x59 in battle unit struct. Needs live battle with a KO'd unit to find the IC equivalent. Blocks KO/crystallize-aware tactics.
 
-- [ ] **`AbilityJpCosts` — backfill Jump and Holy Sword skillsets** — Session 41 coverage audit found both return null from `ComputeNextJpForSkillset` (100% gap rate). Jump collapses sub-abilities (H/V Jump levels 1-8), Holy Sword is Agrias's story skillset. Cost data omitted in code with a comment; a future session should either populate real JP costs or explicitly document both as no-op for Next: N. Characterization test `CoverageAudit_KnownUncoveredSkillsets_StillReturnNull` pins current behavior.
+- [ ] **`AbilityJpCosts` — backfill Jump and Holy Sword skillsets** — Session 41 coverage audit found both return null from `ComputeNextJpForSkillset` (100% gap rate). Jump collapses sub-abilities (H/V Jump levels 1-8), Holy Sword is Agrias's story skillset. Cost data omitted in code with a comment; a future session should either populate real JP costs or explicitly document both as no-op for Next: N. Characterization test `CoverageAudit_KnownUncoveredSkillsets_StillReturnNull` pins current behavior. **Session 44 attempt**: code shipped + 3202 tests green (Jump backfilled with ABILITY_COSTS.md values, Holy Sword pinned as intentional null, characterization test flipped). Restart + smoke tested clean. But live-verify of non-null Next:N for Jump blocked on this save — every JP-purchasable unit has primary fully mastered. Same blocker as Mettle live-verify deferral. Per "every task live-verified" rule, reverting edits until a partially-learned Dragoon is available.
 
 ### Session 33 — next-up follow-ups (from 6-task batch attempt)
 
@@ -97,7 +97,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **BattleSequence discriminator heap-hunt** — session 33 deferred due to bridge state. Scaffolding already in `ScreenDetectionLogic.cs` (commented-out rule + `BattleSequenceLocations` HashSet). Approach: travel to Orbonne (loc 18), confirm BattleSequence minimap, `heap_snap` before entering/after leaving, diff to find a dedicated flag byte.
 
-- [ ] **SaveSlotPicker from BattlePaused** — session 33 deferred due to no live battle. Enter any battle, press Tab to pause, verify BattlePaused shows a Save option, determine cursor index, wire the `BattlePaused → SaveSlotPicker` SM transition.
+- [x] **SaveSlotPicker from BattlePaused — DOES NOT EXIST (closed 2026-04-18 session 44)** — Entered a real battle at Mount Bervenia, opened the BattlePaused menu via Pause, screenshotted the full 6-item menu: Data, Retry, Load, Settings, Return to World Map, Return to Title Screen. **No Save option.** The BattlePaused → SaveSlotPicker edge is imaginary — user corrected memory that originally conjectured it. Bridge validPaths already match the 6 items (Resume/Units/Retry/Load/ReturnToWorldMap/ReturnToTitle + cursor nav) with one naming quibble (`Units` vs on-screen `Data`). See also duplicate entry at line 167 — also closed.
 
 ### Session 33 — Tavern Scope B (decoder shipped; per-city mapping partial)
 
@@ -164,7 +164,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Verify open_* compound helpers across CHAIN calls** — Fresh-state runs work after this session's fixes (`open_character_status Agrias` from WorldMap → correct unit). But chained calls (open_eqa Cloud → open_eqa Agrias) still produce the viewedUnit-lag bug. SM-sync changes in `82ccb65` may or may not have resolved this; needs explicit live test sequence cycling 3 different units through each open_* helper and verifying state matches each request. Source: `NavigationActions.cs` `NavigateToCharacterStatus` rewrite, ~line 4419.
 
-- [ ] **Second SaveSlotPicker entry point from BattlePaused** — session 25 shipped the PartyMenuOptions → Save path. A parallel entry exists from BattlePaused → Save (user mentioned). Scoped out of session 25 because verifying from BattlePaused requires entering a real battle. Next session: confirm BattlePaused menu has a Save option, determine its cursor index, and wire the SM transition.
+- [x] **Second SaveSlotPicker entry point from BattlePaused — DOES NOT EXIST (closed 2026-04-18 session 44)** — Live-verified: BattlePaused menu has 6 items (Data/Retry/Load/Settings/ReturnToWorldMap/ReturnToTitle) — no Save. See dup at line 100.
 
 - [~] **`return_to_world_map` from battle states** — Session 26 added a state-guard refusing from Battle* / EncounterDialog / Cutscene / GameOver with a clear error pointing to the right recovery helper (battle_flee / execute_action ReturnToWorldMap). That closes the footgun. BattleVictory / BattleDesertion are NOT blocked because Escape/Enter on those screens legitimately advances toward WorldMap; they still need a live-verify at some point but the unsafe path is closed. Safe from all non-battle states (verified EqA/JobSelection/PartyMenuUnits tree + all non-Units tabs session 24; SaveSlotPicker verified session 26).
 
@@ -277,7 +277,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 
 
-- [ ] **Live-verify `execute_action` responses include `ui=` field across all battle screens** [State] — UI is set for all battle screens in DetectScreen. Code path exists; needs in-game verification across Battle_MyTurn/Battle_Acting/Battle_Moving/Battle_Attacking. Observed stale 2026-04-12.
+- [x] **Live-verify `execute_action` responses include `ui=` field across all battle screens** [State] — dup of §0 entry closed in session 44. See partial `[~]` entry at line 84 for findings (BattleMyTurn/BattleMoving/BattleAbilities populate; BattlePaused/BattleStatus/BattleAttacking are null — three gaps that need cursor-to-label decode).
 
 
 - [ ] **battle_ability first-scan null/null for secondary skillset** [Execution] — Primary detection works (Martial Arts secondaryIdx=9 for Lloyd verified); auto-scan catches misses on retry; all-skillsets fallback works. Remaining: first scan sometimes returns null/null before auto-scan fires — investigate race and eliminate the initial miss.
@@ -304,8 +304,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 - [ ] **Live-test `battle_retry` from GameOver screen** [Execution] — Code path exists, GameOver detection fixed. Needs in-game verification after losing a battle.
 
-
-- [ ] **Re-enable Ctrl fast-forward during enemy turns** [Execution] — Tested both continuous hold and pulse approaches. Neither visibly sped up animations. Low priority.
 
 
 - [ ] **Find IC remaster deathCounter offset** [State] — KO'd units have 3 turns before crystallizing. PSX had this at ~0x58-0x59. Find IC equivalent in battle unit struct.
@@ -872,6 +870,8 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Remove `gameOverFlag==0` requirement from post-battle rules** — treat as sticky, use other signals. Deferred 2026-04-17 because reproducing requires losing a real battle to trigger GameOver — not cheap to set up. Re-prioritize once we're running battles regularly and this misdetection actually blocks a session (Cutscene→LoadGame collision after GameOver is the main documented symptom).
 
 - [ ] **Live-verify JP Next Mettle costs** — Wiki-sourced values (Tailwind 150, Chant 300, Steel 200, Shout 600, Ultima 4000) are populated in [AbilityJpCosts.cs:38-42](ColorMod/GameBridge/AbilityJpCosts.cs#L38-L42). Can't verify on the current save because Ramza (only Mettle user — Gallant Knight is his unique class) has them all maxed: `nextJp=null` on his EqA confirms no unlearned abilities. To verify: either load a fresh-game save, or advance the main story on a new save to a point where Ramza still has unlearned Mettle entries. IC-remaster costs might differ slightly from Wiki values. Deferred until a suitable save exists.
+
+- [ ] **Re-enable Ctrl fast-forward during enemy turns** [Execution] — Tested both continuous hold and pulse approaches. Neither visibly sped up animations. Low priority.
 
 
 

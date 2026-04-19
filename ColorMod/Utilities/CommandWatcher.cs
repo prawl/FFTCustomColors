@@ -5047,12 +5047,16 @@ namespace FFTColorCustomizer.Utilities
                 // to the BattleMenuTracker's selected ability/item.
                 if (screen.Name == "BattleAttacking" || screen.Name == "BattleCasting")
                 {
-                    var targetingLabel = GameBridge.TargetingLabelResolver.Resolve(
+                    // ResolveOrCursor returns the ability/item if known, else
+                    // falls back to "(x,y)" cursor coords — ensures the
+                    // targeting screen always surfaces a ui= label the way
+                    // BattleMoving does, even for menu-driven manual nav.
+                    screen.UI = GameBridge.TargetingLabelResolver.ResolveOrCursor(
                         _lastAbilityName,
                         _battleMenuTracker.SelectedAbility,
-                        _battleMenuTracker.SelectedItem);
-                    if (targetingLabel != null)
-                        screen.UI = targetingLabel;
+                        _battleMenuTracker.SelectedItem,
+                        screen.CursorX,
+                        screen.CursorY);
                 }
 
                 // Battle menu tracker: set UI from tracker if in submenu
