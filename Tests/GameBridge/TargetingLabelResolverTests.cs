@@ -76,5 +76,37 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var result = TargetingLabelResolver.ResolveOrCursor(null, null, "Attack", 5, 7);
             Assert.Equal("Attack", result);
         }
+
+        // cursorX / cursorY == -1 is the game's sentinel for "no tile selected
+        // yet" (BattleAttacking first-frame, targeting mode not fully engaged).
+        // Rendering ui="(-1,-1)" in that window is nonsense — return null
+        // instead so the JSON serializer drops the field.
+
+        [Fact]
+        public void ResolveOrCursor_ReturnsNull_WhenCursorIsNegativeOne()
+        {
+            var result = TargetingLabelResolver.ResolveOrCursor(null, null, null, -1, -1);
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void ResolveOrCursor_ReturnsNull_WhenOnlyCursorXIsNegativeOne()
+        {
+            // Defensive: x=-1 alone means the cursor isn't initialized even
+            // if y was populated (or vice versa). Treat either being -1 as
+            // "no cursor".
+            Assert.Null(TargetingLabelResolver.ResolveOrCursor(null, null, null, -1, 7));
+            Assert.Null(TargetingLabelResolver.ResolveOrCursor(null, null, null, 5, -1));
+        }
+
+        [Fact]
+        public void ResolveOrCursor_AbilityNameStill_Returns_EvenWithNegativeCursor()
+        {
+            // When the tracker has latched an ability, we should still render
+            // the ability name even if cursor is -1 (e.g. the player pressed
+            // Enter on Attack but cursor hasn't landed on a tile yet).
+            var result = TargetingLabelResolver.ResolveOrCursor("Fire", null, null, -1, -1);
+            Assert.Equal("Fire", result);
+        }
     }
 }
