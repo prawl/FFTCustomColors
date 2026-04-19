@@ -216,9 +216,16 @@ namespace FFTColorCustomizer.GameBridge
             // locations) this disambiguates the minimap from WorldMap-at-same-loc.
             // See memory/project_battle_sequence_flag_sticky.md for why the old
             // flag was replaced.
+            //
+            // Session 48 refinement: the flag ALSO reads 2 during enemy turns in
+            // the actual battle launched from the minimap (live-observed at
+            // Orbonne Vaults). The minimap-only variant has no units placed —
+            // slot9 ≠ 0xFFFFFFFF. Mid-battle has slot9 == 0xFFFFFFFF. Gate on
+            // that so the rule doesn't eat BattleEnemiesTurn during combat.
             if (battleSequenceFlag != 0
                 && rawLocation >= 0 && rawLocation <= 42
-                && BattleSequenceLocations.Contains(rawLocation))
+                && BattleSequenceLocations.Contains(rawLocation)
+                && slot9 != 0xFFFFFFFF)
                 return "BattleSequence";
 
             // PartyMenu tab flags: 0x140D3A41E (Units) and 0x140D3A38E (Inventory)
