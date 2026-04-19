@@ -2654,24 +2654,20 @@ namespace FFTColorCustomizer.GameBridge
                     GridX = ally.GridX, GridY = ally.GridY,
                     Team = ally.Team, Hp = ally.Hp, MaxHp = ally.MaxHp
                 };
-                var facingResult = FacingStrategy.ComputeOptimalFacingDetailed(allyPos, livingEnemies);
-                string faceName = (facingResult.Dx, facingResult.Dy) switch
-                {
-                    (1, 0) => "East", (-1, 0) => "West",
-                    (0, 1) => "North", (0, -1) => "South",
-                    _ => $"({facingResult.Dx},{facingResult.Dy})"
-                };
+                // Session 47: delegate through FacingDecider so the
+                // dx/dy→name formatting lives in one place.
+                var decision = FacingDecider.Decide(null, allyPos, livingEnemies);
                 validPaths["RecommendedFacing"] = new PathEntry
                 {
-                    Desc = $"Face {faceName} — {facingResult.Front} front, {facingResult.Side} side, {facingResult.Back} back",
+                    Desc = $"Face {decision.DirectionName} — {decision.Front} front, {decision.Side} side, {decision.Back} back",
                     Facing = new FacingInfo
                     {
-                        Dx = facingResult.Dx,
-                        Dy = facingResult.Dy,
-                        Direction = faceName,
-                        Front = facingResult.Front,
-                        Side = facingResult.Side,
-                        Back = facingResult.Back
+                        Dx = decision.Dx,
+                        Dy = decision.Dy,
+                        Direction = decision.DirectionName,
+                        Front = decision.Front,
+                        Side = decision.Side,
+                        Back = decision.Back
                     }
                 };
             }

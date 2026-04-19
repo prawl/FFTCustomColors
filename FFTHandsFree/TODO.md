@@ -369,13 +369,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ### Tier 5 — Speed optimization
 
-- [ ] **`execute_turn` action** [Execution] — Claude sends full intent in one command: move target, ability, wait. One round-trip instead of 6+.
-
-
-- [ ] **Support partial turns** [Execution] — move only, ability only, move+wait, etc.
-
-
-- [ ] **Return full post-turn state** [Execution] — where everyone ended up, damage dealt, kills.
+- [ ] **`execute_turn` — return full post-turn state** [Execution] — Orchestrator + sub-action dispatch shipped session 47 (TurnPlan + ExecuteTurn). Remaining: capture per-step HP deltas + movement + kills, roll into a bundled `PostAction` summary on the final response. Currently only the last step's PostAction is returned.
 
 
 
@@ -717,7 +711,7 @@ PartyMenu ──Enter on unit──► CharacterStatus ──Enter on sidebar─
 - [ ] **`change_accessory_to <itemName>` helper** — stub.
 - [ ] **`remove_equipment <slotName>` helper** — stub.
 - [ ] **`dual_wield_to <leftWeapon> <rightWeapon>` helper** — requires Dual Wield support ability equipped.
-- [ ] **`swap_unit_to <name>` helper** — from any nested PartyMenu screen, Q/E-cycle to named unit.
+- [ ] **`swap_unit_to <name>` shell wrapper** — `UnitCyclePlanner.Plan(fromIndex, toIndex, rosterCount)` pure planner shipped session 47. Still needed: a shell helper that resolves `name → displayOrder` via roster, reads current viewedUnit, feeds both into UnitCyclePlanner, dispatches the Q/E key sequence. One-liner once the planner is available.
 - [ ] **`clear_abilities` helper** — set Secondary/Reaction/Support/Movement all to (none).
   - [ ] `clear_abilities` — future, sets Secondary/Reaction/Support/Movement all to (none).
 
@@ -829,7 +823,7 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - Camera auto-rotates when entering Move mode or Attack targeting — always re-read rotation
 
 ### Bugs Found 2026-04-12
-- [ ] **Ability list navigation: use counter-delta instead of brute-force scroll** — Currently presses Up×N to reset then Down×index. Could use counter-delta approach. **Session 31 attempt REVERTED live** after it broke Lloyd's Jump targeting: the cursor counter at `0x140C0EB20` reports NEGATIVE deltas on Up-wrap (observed: expected +3, got 0; expected +6, got -6; expected +9, got -24 — retry math exploded). The Down loop counter-delta works fine because it never wraps; the Up-reset can't because its whole purpose is to wrap-past-the-top. Future attempts need either (a) a different counter that's monotonic under wrap, (b) a stable cursor-position memory read, or (c) a retry heuristic that detects the negative-delta case and falls back to blind presses.
+- [ ] **Ability list navigation: wire AbilityCursorDeltaPlanner into scroll loop** — Pure planner with trust rules (sign match + magnitude guard + expected-magnitude check) shipped session 47 (`AbilityCursorDeltaPlanner.Decide`). Still needed: wire into the Up-reset / Down-scroll loop in the battle ability nav path. When planner returns `TrustDelta=false`, fall back to the existing blind Up×N / Down×index approach. Session 31 context: Up-wrap produces negative deltas that exploded retry math — planner formalizes the fallback trigger.
 
 
 - [ ] **Detect rain/weather on battle maps** — Rain boosts Lightning spells by 25%.

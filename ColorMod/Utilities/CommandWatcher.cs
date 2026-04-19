@@ -2558,6 +2558,9 @@ namespace FFTColorCustomizer.Utilities
                     case "path": // legacy alias
                         return ExecuteValidPath(command);
 
+                    case "execute_turn":
+                        return ExecuteTurn(command);
+
                     case "battle_wait":
                         // Auto-scan before wait (battle_wait needs unit data for facing)
                         try
@@ -2836,6 +2839,79 @@ namespace FFTColorCustomizer.Utilities
             }
 
             return response;
+        }
+
+        /// <summary>
+        /// Session 47: `execute_turn` bundled action. Converts a TurnPlan
+        /// (move target, ability + target, wait direction) into the existing
+        /// battle_move / battle_ability / battle_wait primitives and dispatches
+        /// them in order. Aborts at the first non-completed sub-step.
+        /// </summary>
+        private CommandResponse ExecuteTurn(CommandRequest command)
+        {
+            var plan = new GameBridge.TurnPlan
+            {
+                MoveX = command.MoveX,
+                MoveY = command.MoveY,
+                AbilityName = command.AbilityName,
+                TargetX = command.TargetX,
+                TargetY = command.TargetY,
+                Direction = command.Pattern, // reuse existing direction field convention
+                SkipWait = command.SkipWait,
+            };
+
+            CommandResponse? last = null;
+            int stepIndex = 0;
+            foreach (var step in plan.ToSteps())
+            {
+                var sub = new CommandRequest
+                {
+                    Id = command.Id + "#" + stepIndex,
+                    Action = step.Action,
+                };
+                switch (step.Action)
+                {
+                    case "battle_move":
+                        sub.LocationId = step.X;
+                        sub.UnitIndex = step.Y;
+                        break;
+                    case "battle_ability":
+                        sub.Description = step.AbilityName;
+                        if (step.HasTarget)
+                        {
+                            sub.LocationId = step.X;
+                            sub.UnitIndex = step.Y;
+                        }
+                        break;
+                    case "battle_wait":
+                        if (!string.IsNullOrEmpty(step.Direction))
+                            sub.Pattern = step.Direction;
+                        break;
+                }
+
+                // Recurse through the main dispatch so each sub-action runs
+                // through its normal pipeline (scan, validation, retry). This
+                // keeps execute_turn a thin orchestrator, not a parallel code
+                // path that could drift from the primitives.
+                last = ExecuteAction(sub);
+                if (last == null || last.Status != "completed")
+                    break;
+                stepIndex++;
+            }
+
+            if (last == null)
+            {
+                return new CommandResponse
+                {
+                    Id = command.Id,
+                    Status = "failed",
+                    Error = "execute_turn: no steps emitted",
+                    ProcessedAt = System.DateTime.UtcNow.ToString("o"),
+                    GameWindowFound = true,
+                };
+            }
+            last.Id = command.Id;
+            return last;
         }
 
         private CommandResponse ExecuteValidPath(CommandRequest command)

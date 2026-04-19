@@ -56,18 +56,8 @@ namespace FFTColorCustomizer.GameBridge
             if (won) Lifetime.BattlesWon++;
             else Lifetime.BattlesLost++;
 
-            // Determine MVP
-            string? mvp = null;
-            int bestScore = int.MinValue;
-            foreach (var (name, stats) in CurrentBattle.Units)
-            {
-                int score = stats.Kills * 300 + stats.DamageDealt + (int)(stats.HealingDealt * 0.5) - stats.TimesKOd * 200;
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    mvp = name;
-                }
-            }
+            // Determine MVP (session 47: extracted to MvpSelector for dedicated coverage).
+            var mvp = MvpSelector.Select(CurrentBattle.Units);
             CurrentBattle.Mvp = mvp;
 
             // Merge into lifetime

@@ -1025,3 +1025,29 @@ Session focus: every TODO item below was completable with `./RunTests.sh` alone 
 - **Characterization tests pin known limitations.** Several tasks (BattleChoice eventIds, Holy Sword null, UnlearnableAbilitySentinel zodiark-only, MesDecoder completeness) went from "we know this is narrow but haven't written it down" to "any silent change fires a test." Cheap insurance.
 - **Refactor-with-tests over refactor-without.** The `ActionNameAliases` extraction could have been a pure cleanup with zero functional change. Instead shipped with 8 new tests covering every branch — doubles as a pin against future regression and documents the alias semantics for the next contributor.
 - **Totals pins catch bulk-edit drift.** `AbilityJpCostsTotalsTests` pins 14 sums. A single cost change fires exactly one test; a bulk rename fires many. The `WhiteMagicks_Total` test caught my first sum estimate being wrong (4550 vs actual 4900) — had I shipped without verifying, a later dev would have seen a failing test with no clear pathway to update the pinned value. Running `dotnet test` against each pin surfaced the actual number before commit.
+
+---
+
+### Session 47 Part 4 (2026-04-19) — 5 meaningful features, not just coverage
+
+After 29 coverage/refactor tasks, pivoted to real unshipped features. User pushed back: "Do we have any tasks, not just write some tests?" Honest audit surfaced 5 genuine code-only features worth shipping.
+
+Tests: 3629 → 3680 (+51 new).
+
+**Features landed:**
+
+- [x] **`execute_turn` bundled action** — New `TurnPlan` + `TurnStep` pure types convert a bundled turn intent (optional move, optional ability, optional wait with facing override, optional SkipWait) into an ordered list of the existing primitives (battle_move / battle_ability / battle_wait). `CommandWatcher.ExecuteTurn` dispatches each sub-step through the main `ExecuteAction` pipeline so each runs its normal scan + validation + retry. Aborts at first non-completed step. TODO §1 Tier 5. 9 new tests cover every branch: empty plan, move-only, attack-only, move+attack, self-target, skipWait, direction, ability-without-name guard.
+
+- [x] **`swap_unit_to <name>` pure planner** — New `UnitCyclePlanner.Plan(fromIndex, toIndex, rosterCount)` returns the shortest Q/E sequence to cycle the viewed unit on PartyMenu nested screens. Wraps correctly at ring boundaries; halfway ties prefer forward (E). Handles invalid inputs (out-of-range indices, non-positive count) by returning empty sequence so callers can detect-and-error. 12 new tests. Shell wrapper + dispatcher now a one-liner follow-up.
+
+- [x] **`AbilityCursorDeltaPlanner`** — Pure decision function that decides when a counter-delta read after an Up/Down press can be trusted. Session 31 shipped counter-delta but Up-wrap broke Lloyd's Jump targeting (negative deltas exploded retry math). This planner formalizes the trust rules: sign must match expected direction, magnitude must be &lt; listLength (wrap is suspect), nonzero, and not wildly off expected magnitude. Returns `{TrustDelta, RemainingKeys}` so the caller falls back to blind-count on untrusted reads. 10 new tests pin every branch. TODO §12 "Ability list navigation: use counter-delta instead of brute-force scroll".
+
+- [x] **`MvpSelector` extract** — The battle-MVP scoring formula (`kills * 300 + damageDealt + healingDealt/2 - timesKOd*200`) was inline in `BattleStatTracker.EndBattle`. Extracted into a pure static with public `Score(unit)` and `Select(dict)` methods. 10 new tests pin the formula + tie-breaking (first-inserted wins) + empty-input behavior. `BattleStatTracker` now delegates. Zero-net-behavior-change refactor with proper coverage.
+
+- [x] **`FacingDecider` — unify override+auto-pick paths** — Scattered `facingOverride ?? FacingStrategy.ComputeOptimalFacingDetailed(...)` pattern consolidated into `FacingDecider.Decide(override, ally, enemies)` returning a `FacingDecision` with dx, dy, DirectionName, Front/Side/Back arc counts, and a `FromOverride` flag. Cardinal name formatting (`(1,0)→"East"` etc.) exposed as `FacingDecider.NameFor(dx, dy)`. 10 new tests. `NavigationActions.cs:2657` refactored to delegate.
+
+**What made this batch different from earlier session 47 batches:**
+
+- **User pushback surfaces truth.** After 29 mostly-coverage tasks I'd convinced myself the well was dry. User asked "any real tasks?" which forced an honest re-scan. 5 genuine features found — smaller pool than the first two batches (28 tests vs 200+) but each one ships behavior, not just assertions.
+- **Extract-with-tests > inline + indirect tests.** `MvpSelector` was covered indirectly by `BattleStatTrackerTests`. Extracting gave it dedicated tests that name the formula, catch boundary cases, and document the ranking semantics for next editor. Same for `FacingDecider` — the override-precedence rule was never directly asserted before.
+- **Pure planner + thin dispatcher is the shipping pattern.** TurnPlan, UnitCyclePlanner, AbilityCursorDeltaPlanner each separate "figure out what to do" (pure, tested) from "do it" (game-touching, not tested). Makes the decision logic the thing that gets regression coverage; the dispatch layer stays thin enough to read at a glance.

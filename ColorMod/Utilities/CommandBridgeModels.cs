@@ -77,6 +77,32 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? MaxAddr { get; set; }
 
+        // Session 47: `execute_turn` bundled-plan fields. Omitted when null so
+        // existing command shapes are unaffected. See GameBridge.TurnPlan.
+        [JsonPropertyName("moveX")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? MoveX { get; set; }
+
+        [JsonPropertyName("moveY")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? MoveY { get; set; }
+
+        [JsonPropertyName("abilityName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? AbilityName { get; set; }
+
+        [JsonPropertyName("targetX")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? TargetX { get; set; }
+
+        [JsonPropertyName("targetY")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? TargetY { get; set; }
+
+        [JsonPropertyName("skipWait")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool SkipWait { get; set; }
+
         /// <summary>
         /// Parses a hex-or-decimal address string to a long. Accepts
         /// "0x4000000000", "4000000000" (hex without prefix, since raw
