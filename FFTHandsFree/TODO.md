@@ -348,7 +348,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **LoS option C: enter targeting, check if game rejects tile, cancel if blocked** [Abilities] — Brute-force fallback. Slow but reliable. Use only as last resort if A and B both fail.
 
 
-- [ ] **Equipment IDs stale across battles** [State] — Roster equipment at `+0x0E` reads the save-state equipment, not the current in-battle loadout. Need to find the live equipment address.
+- [x] **Equipment IDs stale across battles — REFUTED 2026-04-19 session 48** — Live-read Ramza's roster slot +0x0E..+0x1B at Lv 1 Mandalia and cross-referenced with the game's equipment panel. IDs match exactly in the non-sequential layout: +0x0E=Helm, +0x10=Body, +0x12=Accessory, +0x14=Weapon, +0x16=LeftHand, +0x18=unused, +0x1A=Shield. `god_ramza` writes to these offsets and produces Grand Helm / Maximillian / Bracer / Ragnarok / Kaiser Shield at the expected positions. The old TODO claim (roster reads save-state, not live) was outdated. `NavigationActions.cs` reads 7 sequential u16 into a flat `unit.Equipment` list — downstream consumers iterate the bag so positional misordering doesn't cause wrong-slot misuse. No code change needed.
 
 
 - [ ] **Active unit name/job stale across battles** [State] — After restarting a battle with different equipment/jobs, the name/job display doesn't refresh between battles.
