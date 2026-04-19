@@ -131,6 +131,39 @@ namespace FFTColorCustomizer.GameBridge
             return detectedName;
         }
 
+        /// <summary>
+        /// Session-46 extension: ambiguity-resolver overload that also
+        /// considers whether the SM is "freshly-seeded" (no keys pressed
+        /// since it was last set — i.e. just-booted or just drift-recovered).
+        ///
+        /// Post-load WorldMap vs freshly-opened TravelList are byte-identical
+        /// (live capture 2026-04-19 at Grogh Heights: hover=254, moveMode=255,
+        /// party=0, ui=1 for BOTH). Detect() defaults to TravelList via the
+        /// party=0+ui=1 fallback rule. We can only trust SM's WorldMap
+        /// answer when SM is PROVABLY fresh — if the user opened the list
+        /// via a key that went through the SM path, keysSinceLastSetScreen
+        /// would be > 0. Preserves the existing "trust detection when SM is
+        /// stale" contract for the normal-play path.
+        /// </summary>
+        public static string ResolveAmbiguousScreen(
+            GameScreen smScreen, string detectedName,
+            int keysSinceLastSetScreen, bool lastSetScreenFromKey)
+        {
+            // First pass: the 3-arg overload's rules.
+            var primary = ResolveAmbiguousScreen(smScreen, detectedName);
+            if (primary != detectedName) return primary;
+
+            // Post-load WorldMap override: SM is WorldMap AND it hasn't
+            // received any key events since being set (i.e. this is a
+            // clean post-boot / post-recovery state, not a stale SM that
+            // missed a user keypress).
+            if (smScreen == GameScreen.WorldMap && detectedName == "TravelList"
+                && keysSinceLastSetScreen == 0 && !lastSetScreenFromKey)
+                return "WorldMap";
+
+            return detectedName;
+        }
+
         public static string Detect(
             int party, int ui, int rawLocation,
             long slot0, long slot9,
@@ -204,20 +237,38 @@ namespace FFTColorCustomizer.GameBridge
             // battle_flee the unitsTabFlag stays 1 on WorldMap). Only trust
             // the flags when menuDepth is unknown (-1) or > 0 (inside a panel).
             // When menuDepth==0, prefer the later WorldMap/TravelList rules.
+            //
+            // Session 46 stress-fix: ALSO skip when we have affirmative world-map
+            // signals (hover is a real location ID, moveMode is active). A
+            // post-flee state on WorldMap keeps unitsTabFlag=1 but clearly
+            // shows world-map bytes; don't latch onto the stale tab flag.
+            bool hasWorldMapSignal = (hover >= 0 && hover <= 42)
+                                     || (moveMode != 0 && moveMode != 255);
             if (party == 0 && (unitsTabFlag == 1 || inventoryTabFlag == 1)
-                && menuDepth != 0)
+                && menuDepth != 0 && !hasWorldMapSignal)
                 return "PartyMenuUnits";
 
             // atNamedLocation and onWorldMapByMoveMode both override stale battle sentinels.
             // If we're at a shop/village (hover=255 + rawLocation in range) OR the world-map
             // cursor is active (moveMode=13/20/etc), we're NOT in battle, even if slot0/slot9
             // still carry battle residue from a prior session.
+            //
+            // Session 46 flicker guard: if battleMode is in the active player-turn range
+            // (1..5) AND slot9=0xFFFFFFFF, that's strong evidence a live battle frame is
+            // rendering — stronger than moveMode alone, which can transiently flicker to
+            // a world-map value mid-animation. Only in this tight case do we DISTRUST the
+            // moveMode override. Post-battle (battleMode=0) with real world-map bytes
+            // still correctly exits the battle branch (e.g. Orbonne encounter-at-worldmap).
+            //
             // Exceptions:
             //   - Formation (checked above) legitimately fires at a battle location
             //   - paused=1 means a pause/GameOver/Desertion screen is overlaid on top;
             //     stay in in-battle branch so those rules run.
+            bool battleActiveTurnFrame = slot9 == 0xFFFFFFFF
+                && battleMode >= 1 && battleMode <= 5;
+            bool worldMapSignalTrusted = onWorldMapByMoveMode && !battleActiveTurnFrame;
             bool inBattle = (unitSlotsPopulated || battleModeActive)
-                && (paused == 1 || (!atNamedLocation && !onWorldMapByMoveMode));
+                && (paused == 1 || (!atNamedLocation && !worldMapSignalTrusted));
 
             // === Out-of-battle screens ===
 
@@ -252,6 +303,18 @@ namespace FFTColorCustomizer.GameBridge
                 // Checked before TitleScreen to preempt the strict uninit-fingerprint rule.
                 if (hover >= 0 && hover <= 42 && rawLocation == 255)
                     return "WorldMap";
+
+                // Note (session 46, 2026-04-19): post-load WorldMap and
+                // a freshly-opened TravelList are BYTE-IDENTICAL in current
+                // inputs — both show `hover=254, moveMode=255, party=0,
+                // ui=1, slot0=0xFFFFFFFF` at Grogh Heights live capture.
+                // No memory signal distinguishes them. The split happens
+                // via SM-override in ResolveAmbiguousScreen (below):
+                // whichever screen the SM thinks we're on wins, because
+                // SM tracks the key-press log that moved us between the
+                // two. Leaving the old party=0+ui=1 → TravelList fallback
+                // in place as the detection default; SM overrides it when
+                // appropriate.
 
                 // BattleSequence (multi-stage campaign sub-selector, e.g. Orbonne Vaults)
                 // is handled below via location whitelist after LocationMenu rule.
@@ -447,6 +510,19 @@ namespace FFTColorCustomizer.GameBridge
                 && battleMode == 0 && !actedOrMoved && menuCursor == 2)
                 return "TitleScreen";
 
+            // BattleVictory sentinel: encA=255 AND encB=255 is a unique transient signature
+            // captured at Zeklaus win 2026-04-19 (memory/project_battle_victory_encA255.md).
+            // All other session-45 states saw encA in [0..7]. Must fire BEFORE the
+            // IsMidBattleEvent rule below — without this, the post-victory eventId (41)
+            // misroutes to BattleDialogue. paused==0 guards against paused overlays
+            // (BattleStatus/BattlePaused/Desertion) stealing the label during a
+            // Victory-adjacent pause, which the paused-branch rules already handle.
+            // battleTeam==0 guards against the (unlikely) case of encA=255/encB=255
+            // appearing during an enemy/ally turn — the Zeklaus capture had team=0.
+            if (encA == 255 && encB == 255 && battleMode == 0 && paused == 0
+                && battleTeam == 0)
+                return "BattleVictory";
+
             // Mid-battle dialogue: story event playing during active battle. In-battle uses
             // the stricter < EventIdMidBattleMaxExclusive (200) filter because eventId
             // address (0x14077CA94) aliases as active-unit nameId during combat animations.
@@ -525,9 +601,15 @@ namespace FFTColorCustomizer.GameBridge
             // BattleAttacking. Live-verified 2026-04-19 at Zeklaus event 40: during the
             // enemy turn the bridge reported `BattleMoving` / `BattleAttacking` based on
             // the enemy's own movement mode. Gate the player-only submodes on battleTeam==0.
-            if (battleTeam == 1 && !actedOrMoved)
+            //
+            // Session 46 fix: removed the `!actedOrMoved` guard — once an enemy moves
+            // (moved=1) mid-turn they still OWN the turn and the submode bytes
+            // (battleMode=4 targeting, battleMode=2 facing) are theirs, not the player's.
+            // Stress probe showed a moved=1 enemy turn fell through to BattleAttacking /
+            // BattleWaiting as if the player was acting.
+            if (battleTeam == 1)
                 return "BattleEnemiesTurn";
-            if (battleTeam == 2 && !actedOrMoved)
+            if (battleTeam == 2)
                 return "BattleAlliesTurn";
 
             // Targeting submodes — cast-time and instant collapse into BattleAttacking.

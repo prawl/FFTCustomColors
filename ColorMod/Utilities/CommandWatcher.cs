@@ -26,6 +26,14 @@ namespace FFTColorCustomizer.Utilities
         public GameStateReporter? StateReporter { get; set; }
         public MemoryExplorer? Explorer { get; set; }
         public ScreenStateMachine? ScreenMachine { get; set; }
+
+        /// <summary>
+        /// Background monitor that observes user-typed keys on the game
+        /// window and forwards them to the SM so manual input doesn't
+        /// desync our state tracking. Set during bootstrap. Bridge-sent
+        /// keys call <c>MarkBridgeSent</c> on it to avoid double-counting.
+        /// </summary>
+        public FFTColorCustomizer.GameBridge.UserInputMonitor? UserInputMonitor { get; set; }
         public BattleTracker? BattleTracker { get; set; }
         public EventScriptLookup? ScriptLookup { get; set; }
         public RumorLookup? RumorLookup { get; set; }
@@ -1518,10 +1526,17 @@ namespace FFTColorCustomizer.Utilities
 
                     // Session-log: capture source screen + start time before
                     // the command runs, so we can record the before→after
-                    // transition and round-trip latency. Pulled from SM
-                    // instead of a fresh DetectScreen() read to avoid a
-                    // second memory scan per command.
-                    string? sourceScreenName = ScreenMachine?.CurrentScreen.ToString();
+                    // transition and round-trip latency. Prefer the SM's
+                    // string mirror (LastDetectedScreen) since it tracks
+                    // ALL screen names — including detection-only states
+                    // like BattleMyTurn/Cutscene that the enum-typed
+                    // CurrentScreen doesn't model. Without this, the
+                    // sourceScreen column sticks at the initial enum value
+                    // (TitleScreen, etc.) for entire sessions even as the
+                    // bridge moves through dozens of battle screens.
+                    string? sourceScreenName =
+                        ScreenMachine?.LastDetectedScreen
+                        ?? ScreenMachine?.CurrentScreen.ToString();
                     var commandStartedAt = DateTime.UtcNow;
 
                     var response = ExecuteCommand(command);
@@ -1535,7 +1550,9 @@ namespace FFTColorCustomizer.Utilities
                     if (response.Screen != null && ScreenMachine != null)
                     {
                         var resolved = ScreenDetectionLogic.ResolveAmbiguousScreen(
-                            ScreenMachine.CurrentScreen, response.Screen.Name);
+                            ScreenMachine.CurrentScreen, response.Screen.Name,
+                            ScreenMachine.KeysSinceLastSetScreen,
+                            ScreenMachine.LastSetScreenFromKey);
                         if (resolved != response.Screen.Name)
                         {
                             ModLogger.Log($"[SM-Override] Detection={response.Screen.Name} → {resolved} (SM={ScreenMachine.CurrentScreen}).");
@@ -1543,6 +1560,37 @@ namespace FFTColorCustomizer.Utilities
                             screenQueryOverrode = true;
                         }
                     }
+                    // Mirror the detected screen name into the SM regardless
+                    // of whether the enum models a transition for it. Fixes
+                    // the session-45 desync where sourceScreen stuck at the
+                    // boot-time TitleScreen for every command because the
+                    // enum-sync table below only covers 4 screens.
+                    if (response.Screen != null && ScreenMachine != null)
+                    {
+                        ScreenMachine.ObserveDetectedScreen(response.Screen.Name);
+                        // Session 46: auto-snap the enum-typed CurrentScreen
+                        // when its category disagrees with detection. Silent
+                        // pure-C# realignment — no keypresses fire. Catches
+                        // "SM=CharacterStatus but detection=BattleMyTurn"
+                        // style leaks seen during live stress testing.
+                        var smBefore = ScreenMachine.CurrentScreen;
+                        var snappedTo = ScreenMachine.AutoSnapIfCategoryMismatch(response.Screen.Name);
+                        if (snappedTo.HasValue)
+                            ModLogger.Log($"[SM-AutoSnap] Detection={response.Screen.Name}, SM was {smBefore} — snapped to {snappedTo.Value}.");
+                        // Within-PartyTree auto-snap: detection can't tell
+                        // PartyMenuUnits from CharacterStatus/EqA/etc. (all
+                        // show the same memory pattern), so we use menuDepth
+                        // as the authoritative "are we at the outer grid"
+                        // signal. If SM thinks we're deeper but menuDepth==0,
+                        // realign. Live repro session 46 at Dorter: bridge
+                        // stayed reporting CharacterStatus after a failed
+                        // SelectUnit attempt while game was on PartyMenu grid.
+                        var smBeforePT = ScreenMachine.CurrentScreen;
+                        if (ScreenMachine.SnapPartyTreeOuterIfDrifted(
+                                response.Screen.Name, response.Screen.MenuDepth))
+                            ModLogger.Log($"[SM-AutoSnap/PartyTree] Detection={response.Screen.Name}, menuDepth=0, SM was {smBeforePT} — snapped to PartyMenuUnits.");
+                    }
+
                     // Sync the SM to detection for screens it doesn't model
                     // transitions into (WorldMap ↔ LocationMenu ↔ Tavern, etc.).
                     // Without this, a `screen` query that sees "Tavern" never
@@ -1638,7 +1686,8 @@ namespace FFTColorCustomizer.Utilities
                     SessionLog.Append(
                         commandId: errorResponse.Id ?? "unknown",
                         action: "exception",
-                        sourceScreen: ScreenMachine?.CurrentScreen.ToString(),
+                        sourceScreen: ScreenMachine?.LastDetectedScreen
+                            ?? ScreenMachine?.CurrentScreen.ToString(),
                         targetScreen: errorResponse.Screen?.Name,
                         status: "error",
                         error: ex.Message,
@@ -2660,10 +2709,12 @@ namespace FFTColorCustomizer.Utilities
 
                     case "reset_state_machine":
                     {
-                        // Infra action for `fft_resync`: hard-reset the
-                        // screen state machine to WorldMap + clear every
-                        // auto-resolve latch so the next screen calls re-
-                        // run fresh. Use after an escape-storm has
+                        // Infra action: hard-reset the screen state
+                        // machine to WorldMap + clear every auto-resolve
+                        // latch so the next screen calls re-run fresh.
+                        // Previously used by fft_resync (removed session
+                        // 46); still callable manually as a debug aid.
+                        // Use after an escape-storm has
                         // confirmed the game is ACTUALLY on WorldMap and
                         // only the SM is stale. Does NOT fire any keys —
                         // caller is responsible for escaping to WorldMap
@@ -2989,6 +3040,10 @@ namespace FFTColorCustomizer.Utilities
                 var key = command.Keys[i];
                 long nowMs = keySw.ElapsedMilliseconds;
                 long sinceLast = i == 0 ? 0 : nowMs - lastKeyMs;
+                // Mark this key as bridge-sent BEFORE dispatching, so the
+                // user-input monitor's poller skips it when it sees the
+                // rising edge on the key state (de-dup window ~150ms).
+                UserInputMonitor?.MarkBridgeSent(key.Vk);
                 bool success = _inputSimulator.SendKeyPressToWindow(gameWindow, key.Vk);
                 lastKeyMs = nowMs;
 
@@ -3000,6 +3055,7 @@ namespace FFTColorCustomizer.Utilities
                 if (success)
                 {
                     ScreenMachine?.OnKeyPressed(key.Vk);
+                    ScreenMachine?.OnKeyPressedForDetectedScreen(key.Vk);
                     if (_battleMenuTracker.InSubmenu)
                         _battleMenuTracker.OnKeyPressed(key.Vk);
                     InvalidateJobCursorOnRowCross(key.Vk);
@@ -3130,6 +3186,12 @@ namespace FFTColorCustomizer.Utilities
                 if (response.Screen == null)
                 {
                     response.Screen = DetectScreen();
+                    // Mirror detected name into SM for all screens (see
+                    // query-path note above — the enum-sync table below
+                    // only covers 4).
+                    if (response.Screen != null && ScreenMachine != null)
+                        ScreenMachine.ObserveDetectedScreen(response.Screen.Name);
+
                     // Override detection-ambiguous names where the SM has a
                     // stronger signal. If we override here, also skip the
                     // SM-sync below — syncing SM to the stale detection
@@ -3139,7 +3201,9 @@ namespace FFTColorCustomizer.Utilities
                     if (response.Screen != null && ScreenMachine != null)
                     {
                         var resolved = ScreenDetectionLogic.ResolveAmbiguousScreen(
-                            ScreenMachine.CurrentScreen, response.Screen.Name);
+                            ScreenMachine.CurrentScreen, response.Screen.Name,
+                            ScreenMachine.KeysSinceLastSetScreen,
+                            ScreenMachine.LastSetScreenFromKey);
                         if (resolved != response.Screen.Name)
                         {
                             ModLogger.Log($"[SM-Override] Detection={response.Screen.Name} → {resolved} (SM={ScreenMachine.CurrentScreen}).");
@@ -3315,6 +3379,7 @@ namespace FFTColorCustomizer.Utilities
                 for (int k = 0; k < step.Keys.Count; k++)
                 {
                     var key = step.Keys[k];
+                    UserInputMonitor?.MarkBridgeSent(key.Vk);
                     bool success = _inputSimulator.SendKeyPressToWindow(gameWindow, key.Vk);
                     if (success)
                     {
@@ -3551,6 +3616,13 @@ namespace FFTColorCustomizer.Utilities
         /// settle is pure wasted latency. Saves ~150-200ms on every `screen` call.
         /// The key-sending and action paths still settle (the default) to let UI
         /// animations finish before we report state.
+        ///
+        /// Session 46: tried raising the cap from 1000ms to 3000ms for
+        /// Fight→Formation transitions but it made every menu nav slow
+        /// in the common case (stable reads only need ~150ms, but jitter
+        /// paths consumed the full cap). Reverted to 1000ms. Formation
+        /// transitions still need a specialized wait in the `Fight`
+        /// action handler — TODO follow-up.
         /// </summary>
         private DetectedScreen? DetectScreenSettled(bool requireSettle)
         {
@@ -6642,25 +6714,42 @@ namespace FFTColorCustomizer.Utilities
                     _resolvedBattlePauseCursorAddr = 0L;
                     _battlePauseCursorResolveAttempted = false;
                 }
-                if (isBattlePaused && Explorer != null)
+                if (isBattlePaused)
                 {
-                    if (!_battlePauseCursorResolveAttempted)
+                    // Session 46: prefer SM-tracked cursor over the flaky memory
+                    // resolver. The resolver's byte locks onto the first-Down
+                    // candidate but stops tracking live nav — live stress test
+                    // 2026-04-19 confirmed cursor stayed at Retry through multiple
+                    // Downs/Ups in-game. The SM-side tracker counts Up/Down key
+                    // presses directly so it's always in lockstep with the game.
+                    if (ScreenMachine != null)
                     {
-                        _battlePauseCursorResolveAttempted = true;
-                        int _unused;
-                        var info = ResolveBattlePauseCursor(out _unused);
-                        if (info != null) ModLogger.Log($"[CommandBridge] auto {info}");
+                        int row = ScreenMachine.BattlePausedCursor;
+                        screen.CursorRow = row;
+                        var label = GameBridge.BattlePauseMenuLabels.ForRow(row);
+                        if (label != null) screen.UI = label;
                     }
-
-                    if (_resolvedBattlePauseCursorAddr != 0)
+                    else if (Explorer != null)
                     {
-                        var cur = Explorer.ReadAbsolute((nint)_resolvedBattlePauseCursorAddr, 1);
-                        if (cur.HasValue)
+                        // Fallback: legacy memory resolver if SM isn't available.
+                        if (!_battlePauseCursorResolveAttempted)
                         {
-                            int row = (int)cur.Value.value;
-                            screen.CursorRow = row;
-                            var label = GameBridge.BattlePauseMenuLabels.ForRow(row);
-                            if (label != null) screen.UI = label;
+                            _battlePauseCursorResolveAttempted = true;
+                            int _unused;
+                            var info = ResolveBattlePauseCursor(out _unused);
+                            if (info != null) ModLogger.Log($"[CommandBridge] auto {info}");
+                        }
+
+                        if (_resolvedBattlePauseCursorAddr != 0)
+                        {
+                            var cur = Explorer.ReadAbsolute((nint)_resolvedBattlePauseCursorAddr, 1);
+                            if (cur.HasValue)
+                            {
+                                int row = (int)cur.Value.value;
+                                screen.CursorRow = row;
+                                var label = GameBridge.BattlePauseMenuLabels.ForRow(row);
+                                if (label != null) screen.UI = label;
+                            }
                         }
                     }
                 }

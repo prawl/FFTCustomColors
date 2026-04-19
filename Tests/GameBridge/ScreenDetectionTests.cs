@@ -1719,5 +1719,613 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 eventId: 0);
             Assert.NotEqual("TitleScreen", result);
         }
+
+        // ================================================================
+        // Session-45 stress tests — real live-captured fingerprints from
+        // the 2026-04-19 Zeklaus + Dorter playthrough. Each test pins a
+        // known desync surface so future rule edits can't regress them.
+        // Reference: memory/project_battle_victory_encA255.md,
+        //            memory/project_crystal_states_undetected.md
+        // ================================================================
+
+        [Fact]
+        public void DetectScreen_Zeklaus_VictoryBanner_encA255_ShouldReturnBattleVictory()
+        {
+            // Live-captured at Zeklaus Desert Siedge win 2026-04-19.
+            // Victory banner is on screen but the game hasn't transitioned back
+            // to WorldMap yet — rawLocation is still 255 (not at named location).
+            // Prior bridge reported BattleDialogue because IsMidBattleEvent(41)
+            // wins first. encA=255 + encB=255 is a transient sentinel unique to
+            // the Victory banner; all other session-45 states saw encA ∈ [0..7].
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                eventId: 41, submenuFlag: 1, menuCursor: 1);
+
+            Assert.Equal("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_MidBattleDialogue_encA7_ShouldStillReturnBattleDialogue()
+        {
+            // Regression guard: a normal mid-battle dialogue (encA in the
+            // 0..7 range seen across session 45) must NOT be stolen by the
+            // Victory rule. eventId is a real mid-battle event, encA/encB
+            // are normal noise counters, not the 255 sentinel.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 7, encB: 4, isPartySubScreen: false,
+                eventId: 40, submenuFlag: 1, menuCursor: 1);
+
+            Assert.Equal("BattleDialogue", result);
+        }
+
+        [Fact]
+        public void DetectScreen_OnlyEncA255_EncBDifferent_ShouldNotFireVictory()
+        {
+            // Safety: the Victory rule requires BOTH encA=255 AND encB=255.
+            // A rogue encA=255 alone (noise counter max that happens to land
+            // at 255 without the companion) must not be mislabeled as Victory.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 255, encB: 3, isPartySubScreen: false,
+                eventId: 40, submenuFlag: 1, menuCursor: 1);
+
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_VictoryEncA255_WithPaused1_ShouldNotFire()
+        {
+            // Safety: paused=1 means the game is in some overlay (BattleStatus,
+            // BattlePaused, Desertion). encA=255 during a paused state should
+            // not steal the label from the paused-specific rules. This guards
+            // against a paused Victory-esque screen (should be handled by
+            // the paused branch), AND a BattleDesertion at the same point.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                eventId: 41, submenuFlag: 1, menuCursor: 3);
+
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Theory]
+        [InlineData(3, 3, "BattleMyTurn")]          // normal active-unit turn start
+        [InlineData(2, 2, "BattleMoving")]          // normal moving (moveMode=255)
+        // AbilityLearnedBanner live-captured encA=0/encB=0, verifies banner path.
+        public void DetectScreen_Session45_NonCrystalBaselines_DoNotRegressToCrystal(
+            int encA, int encB, string expected)
+        {
+            // Belt-and-suspenders: prove the rules that fire BEFORE the
+            // crystal-pickup rule aren't accidentally stolen when encA lands
+            // on a value the crystal branch also inspects (0, 2, 4, 7).
+            int battleMode = expected == "BattleMyTurn" ? 3 : 1;
+            int submenuFlag = expected == "BattleMyTurn" ? 0 : 1;
+            int moveMode = expected == "BattleMoving" ? 255 : 0;
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: battleMode, moveMode: moveMode,
+                paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: encA, encB: encB, isPartySubScreen: false,
+                submenuFlag: submenuFlag, menuCursor: 0);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void DetectScreen_Crystal_AcquireConfirmBoundary_encA5_RoutesToAcquireConfirm()
+        {
+            // Boundary characterization: the crystal rule splits
+            // AcquireConfirm (encA>=5) from CrystalReward (encA<5) at 5.
+            // Live-captured values were encA=7 (confirm) and encA=4 (reward),
+            // so encA=5 is the precise boundary. Pin it so any future
+            // tweak of the threshold triggers a review.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 4, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0);
+
+            Assert.Equal("BattleAbilityAcquireConfirm", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Crystal_RewardBoundary_encA4_RoutesToCrystalReward()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 4, encB: 4, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0);
+
+            Assert.Equal("BattleCrystalReward", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Crystal_LearnedBanner_encA0_RoutesToLearnedBanner()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0);
+
+            Assert.Equal("BattleAbilityLearnedBanner", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Chest_ObtainedBanner_encA1_RoutesToRewardObtained()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 1, encB: 1, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0);
+
+            Assert.Equal("BattleRewardObtainedBanner", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Crystal_MoveConfirm_encA2_RoutesToMoveConfirm()
+        {
+            // Live-captured at Zeklaus 2026-04-19: stepping onto a crystal
+            // tile with moveMode=0 (not a regular move-tile pick which is
+            // moveMode=255) and encA=2 opens the Yes/No "Move and obtain?"
+            // popup. This is the state the player actually sees first.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 2, encB: 2, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0);
+
+            Assert.Equal("BattleCrystalMoveConfirm", result);
+        }
+
+        [Fact(Skip = "Known bug — Gariland post-win misdetects as BattleDesertion. " +
+                     "Captured session 44; no discriminator found between paused=1 Victory " +
+                     "and paused=1 Desertion. Re-enable when the byte hunt lands.")]
+        public void DetectScreen_Gariland_PostWin_Paused_KnownMisdetect()
+        {
+            // Characterization placeholder: fingerprint captured session 44
+            // 2026-04-18 at fresh-game Gariland win. Screen shows Victory banner
+            // but paused=1 + submenuFlag=1 at rawLocation=6 hits the Desertion
+            // rule first and the Victory rule requires paused=0. Both post-battle
+            // states are byte-identical with current signals — needs a new
+            // discriminator. See TODO.md "BattleVictory misdetects as BattleDesertion".
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 6,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 1,
+                eventId: 12, locationMenuFlag: 1);
+
+            Assert.Equal("BattleVictory", result);
+        }
+
+        // ================================================================
+        // ADVERSARIAL STRESS BATTERY (2026-04-19)
+        // Each probe asserts what detection SHOULD do with a suspect
+        // fingerprint. Failures reveal real desyncs in the current logic.
+        // Grouped by attack surface.
+        // ================================================================
+
+        // ---------- Group 1: Turn-owner × battleMode collision ----------
+
+        [Fact]
+        public void Stress_EnemyTurn_AfterEnemyActed_ShouldStayEnemiesTurn()
+        {
+            // Probe: enemy just acted (battleActed=1, battleMoved=1) but the
+            // turn hasn't ended yet — still battleTeam=1. Current turn-owner
+            // guard is `battleTeam==1 && !actedOrMoved`, so when the enemy
+            // has acted it FALLS THROUGH to battleMode-based rules. If the
+            // enemy cursor is on a target (battleMode=4), we label it
+            // BattleAttacking — as if the PLAYER is attacking.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 4, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 1, battleActed: 1, battleMoved: 1,
+                encA: 3, encB: 3, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            // Correct behavior: it's still the ENEMY's turn regardless of
+            // acted/moved flags — they may be animating a multi-hit or
+            // preparing to Wait. We should NOT report a player submode.
+            Assert.Equal("BattleEnemiesTurn", result);
+        }
+
+        [Fact]
+        public void Stress_AllyTurn_AfterAllyActed_ShouldStayAlliesTurn()
+        {
+            // Same probe as above for NPC ally turn (team=2).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 4, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 2, battleActed: 1, battleMoved: 0,
+                encA: 3, encB: 3, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            Assert.Equal("BattleAlliesTurn", result);
+        }
+
+        [Fact]
+        public void Stress_EnemyTurn_Moving_ShouldStayEnemiesTurn()
+        {
+            // Enemy pathing (battleMode=2) after they already started this turn
+            // (moved=1). Should NOT label as BattleMoving (the player move mode).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 2, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 1, battleActed: 0, battleMoved: 1,
+                encA: 3, encB: 3, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 2);
+
+            Assert.Equal("BattleEnemiesTurn", result);
+        }
+
+        // ---------- Group 2: Sticky flags leaking across screens ----------
+
+        [Fact]
+        public void Stress_StaleUnitsTabFlag_AfterFlee_ShouldNotReportPartyMenu()
+        {
+            // Per handoff: unitsTabFlag sometimes sticks at 1 on WorldMap after
+            // battle_flee. If menuDepth is unknown (-1 default), the rule at
+            // line ~207 trips and we mis-report WorldMap as PartyMenuUnits.
+            // Simulates: party=0 (not actually on PartyMenu), unitsTabFlag=1
+            // (stale), moveMode=13 (world map active), menuDepth default -1.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                hover: 26, unitsTabFlag: 1);
+
+            Assert.NotEqual("PartyMenuUnits", result);
+        }
+
+        [Fact]
+        public void Stress_StaleGameOverFlag_InBattle_ShouldNotFireGameOver()
+        {
+            // Per session 44: gameOverFlag sticks across save reload. Player
+            // starts a fresh battle with stale flag=1. During a normal
+            // non-paused mid-battle state we must NOT return "GameOver".
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 3, encB: 3, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            Assert.NotEqual("GameOver", result);
+            Assert.Equal("BattleMyTurn", result);
+        }
+
+        [Fact]
+        public void Stress_StaleBattleSequenceFlag_AtNonWhitelistedLocation()
+        {
+            // battleSequenceFlag sticky from prior BattleSequence. Now at
+            // Dorter (rawLoc=9 — NOT in whitelist). Rule is location-gated
+            // so this correctly skips; pin it so a future refactor can't
+            // silently drop the whitelist check and over-fire.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 9,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 5, isPartySubScreen: false,
+                battleSequenceFlag: 1, hover: 255, locationMenuFlag: 0);
+
+            Assert.NotEqual("BattleSequence", result);
+        }
+
+        // ---------- Group 3: Boundary eventId ----------
+
+        [Fact]
+        public void Stress_EventId199_InBattle_ShouldBeMidBattleDialogue()
+        {
+            // 199 is the last eventId that counts as mid-battle under the
+            // strict IsMidBattleEvent upper bound (200). Must fire the
+            // dialogue rule.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 3, encB: 3, isPartySubScreen: false,
+                eventId: 199, submenuFlag: 1, menuCursor: 1);
+
+            Assert.Equal("BattleDialogue", result);
+        }
+
+        [Fact]
+        public void Stress_EventId200_InBattle_ShouldNotFireMidBattleRule()
+        {
+            // 200 is the first nameId-aliased value. Must NOT route via
+            // IsMidBattleEvent — otherwise combat animations produce
+            // spurious BattleDialogue. Should fall through to post-battle /
+            // MyTurn / BattleActing rules.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 3, encB: 3, isPartySubScreen: false,
+                eventId: 200, submenuFlag: 0, menuCursor: 0);
+
+            Assert.NotEqual("BattleDialogue", result);
+            Assert.Equal("BattleMyTurn", result);
+        }
+
+        // ---------- Group 4: new Victory rule — collision guards ----------
+
+        [Fact]
+        public void Stress_Victory_EncA255_DuringAllyTurn_ShouldNotStealFromAlly()
+        {
+            // Pathological: encA=255, encB=255 during NPC ally turn. Victory
+            // rule fires FIRST — steals the ally-turn label. Is that correct?
+            // Ground truth: Victory banner clears the battle HUD, so there
+            // is no "active unit turn" during it. If the game is showing
+            // an ally turn with encA=255 (hypothetical), it's not actually
+            // the Victory banner. Our rule must be precise enough to avoid
+            // firing when a live unit turn is clearly happening.
+            //
+            // Current rule: `encA == 255 && encB == 255 && battleMode == 0
+            // && paused == 0`. battleMode=0 during ally turn is plausible
+            // if the ally hasn't started acting. This WOULD over-fire.
+            //
+            // Expected fix if this fails: add `&& !(battleTeam == 1 ||
+            // battleTeam == 2)` or `&& actedOrMoved` to the rule.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 2, battleActed: 0, battleMoved: 0,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            // Assert what we THINK should happen — an active ally turn
+            // should win over a theoretical sentinel that only exists on
+            // the post-battle banner. If this fails we need the guard.
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Fact]
+        public void Stress_Victory_EncA255_DuringEnemyTurn_ShouldNotStealFromEnemy()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 1, battleActed: 0, battleMoved: 0,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        // ---------- Group 5: moveMode flicker during battle ----------
+
+        [Fact]
+        public void Stress_MoveMode13Flicker_DuringBattle_ShouldStayInBattle()
+        {
+            // Hypothetical flicker: mid-battle, moveMode byte transiently
+            // reads a world-map value (13). inBattle should STILL be true
+            // because slot sentinels are authoritative. If moveMode alone
+            // can force us out of inBattle, every animation frame is a
+            // potential desync.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 3, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 3, encB: 3, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            Assert.StartsWith("Battle", result);
+        }
+
+        // ---------- Group 6: Crystal encA drift ----------
+
+        [Fact]
+        public void Stress_CrystalRule_encA100_RoutesToCrystalMoveConfirm()
+        {
+            // If encA shifts (memory note: widget-stack-depth — may shift
+            // across restarts), what happens at an unexpected value like
+            // 100? Current code: paused=0 + moveMode=0 + encA!=0,1 →
+            // BattleCrystalMoveConfirm. Pin it so we know the fallback.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 100, encB: 100, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0);
+
+            Assert.Equal("BattleCrystalMoveConfirm", result);
+        }
+
+        [Fact]
+        public void Stress_CrystalRule_encA255_WhilePaused_FiresAcquireConfirm()
+        {
+            // What if the new Victory sentinel overlaps with a paused crystal
+            // modal? Victory rule guards on paused==0 so it's safe. Crystal
+            // rule at battleMode==1 paused==1 with encA>=5 fires. Pin it.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 1, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0);
+
+            // Victory rule is paused==0, falls through. Crystal paused
+            // branch fires with encA>=5 → AcquireConfirm.
+            Assert.Equal("BattleAbilityAcquireConfirm", result);
+        }
+
+        // ---------- Group 7: sentinel ambiguity ----------
+
+        [Fact]
+        public void Stress_Slot0_0xFFFFFFFF_WithBattleMode0_InBattleBranch()
+        {
+            // Formation requires battleMode==1. What if battleMode flickers
+            // to 0 during formation load? Formation rule doesn't match —
+            // falls through. slot0=0xFFFFFFFF + slot9=0xFFFFFFFF is
+            // unitSlotsPopulated=false but battleModeActive requires
+            // battleMode in {0..5} so battleMode=0 AND slot9=0xFFFFFFFF →
+            // battleModeActive=true → inBattle=true → goes into in-battle
+            // branch. postBattle requires unitSlotsPopulated=true (slot0=255).
+            // So we fall through. Probably end at the catch-all "Battle".
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+
+            // Whatever we return, it must be battle-adjacent — not
+            // "TravelList" or "WorldMap".
+            Assert.DoesNotContain("Travel", result);
+            Assert.NotEqual("WorldMap", result);
+        }
+
+        // ---------- Group 8: Victory ruling with sticky gameOverFlag ----------
+
+        // Session 46: "post-load WorldMap hover=254 → WorldMap" test removed.
+        // Live capture 2026-04-19 at Grogh Heights confirmed post-load
+        // WorldMap and a freshly-opened TravelList produce byte-identical
+        // detection inputs (hover=254, moveMode=255, party=0, ui=1, all
+        // slot values match). No memory signal distinguishes them —
+        // Detect() returns TravelList by default; the SM overrides via
+        // ResolveAmbiguousScreen when it knows we haven't opened the list.
+
+        [Fact]
+        public void Stress_ResolveAmbiguous_SmWorldMapFresh_DetectionTravelList_ReturnsWorldMap()
+        {
+            // Post-load / post-boot WorldMap: SM freshly set (no keys
+            // flowed through it yet). Trust SM over the ambiguous bytes.
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                GameScreen.WorldMap, "TravelList",
+                keysSinceLastSetScreen: 0,
+                lastSetScreenFromKey: false);
+            Assert.Equal("WorldMap", result);
+        }
+
+        [Fact]
+        public void Stress_ResolveAmbiguous_SmWorldMapStale_DetectionTravelList_TrustsDetection()
+        {
+            // SM stale: keys have flowed through since it was set, but
+            // the user may have opened the TravelList via a key the SM
+            // missed. Trust detection to avoid latching onto stale SM.
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                GameScreen.WorldMap, "TravelList",
+                keysSinceLastSetScreen: 3,
+                lastSetScreenFromKey: true);
+            Assert.Equal("TravelList", result);
+        }
+
+        [Fact]
+        public void Stress_ResolveAmbiguous_SmTravelList_DetectionTravelList_ReturnsTravelList()
+        {
+            // Normal TravelList: SM and Detect() agree. No override.
+            var result = ScreenDetectionLogic.ResolveAmbiguousScreen(
+                GameScreen.TravelList, "TravelList",
+                keysSinceLastSetScreen: 1,
+                lastSetScreenFromKey: true);
+            Assert.Equal("TravelList", result);
+        }
+
+        [Fact]
+        public void Stress_RealTravelList_Hover255_StillTravelList()
+        {
+            // Regression guard: a REAL TravelList with hover=255 (no specific
+            // location cursored) must still be reported as TravelList.
+            // Only the specific hover=254 stale sentinel should override to
+            // WorldMap. This pins the narrow scope of the post-load fix.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 255,
+                slot0: 0xFFFFFFFFL, slot9: 0xFFFFFFFF,
+                battleMode: 255, moveMode: 20, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 5, encB: 5, isPartySubScreen: false,
+                eventId: 0xFFFF, hover: 255,
+                submenuFlag: 0, menuCursor: 0,
+                locationMenuFlag: 0);
+
+            Assert.Equal("TravelList", result);
+        }
+
+        [Fact]
+        public void Stress_OpenTravelList_AtBattleground_StaleHover254_StillTravelList()
+        {
+            // Live-captured 2026-04-19 at Grogh Heights with the TravelList
+            // OPEN (menu showing battlegrounds tab). Fingerprint:
+            //   hover=254 (stale from parent WorldMap), rawLocation=33,
+            //   party=0, ui=1, moveMode=13 (cursor active in list)
+            // The post-load WorldMap rule must NOT fire here. Discriminator:
+            // moveMode=13 (list cursor active) vs moveMode=255 (post-load
+            // with cursor system inactive).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 33,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 11, encB: 11, isPartySubScreen: false,
+                eventId: 0xFFFF, hover: 254,
+                submenuFlag: 0, menuCursor: 0,
+                locationMenuFlag: 0);
+
+            Assert.Equal("TravelList", result);
+        }
+
+        [Fact]
+        public void Stress_Victory_WithGameOverFlagSticky_StillFiresVictory()
+        {
+            // Session 45 Zeklaus capture had gameOverFlag=1 during Victory.
+            // Verify this doesn't accidentally route to GameOver when the
+            // new Victory rule is present. gameOverFlag is sticky in real
+            // saves, so the Victory rule must handle it gracefully.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255,
+                slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                eventId: 41, submenuFlag: 1, menuCursor: 1);
+
+            Assert.Equal("BattleVictory", result);
+        }
     }
 }

@@ -46,6 +46,217 @@ namespace FFTColorCustomizer.GameBridge
         /// recovery block from stomping a legitimate fresh transition.
         /// </summary>
         public bool LastSetScreenFromKey { get; private set; }
+
+        /// <summary>
+        /// String mirror of the most recently observed screen name. Unlike
+        /// <see cref="CurrentScreen"/> — which is bounded to the states the
+        /// SM models key-driven transitions for — this field tracks ANY
+        /// detection result the bridge produces (BattleMyTurn, Cutscene,
+        /// BattleCrystalMoveConfirm, etc.). Populated via
+        /// <see cref="ObserveDetectedScreen"/> on every `screen` query and
+        /// post-key detection sync, so session logging and SM-override
+        /// tiebreakers have fresh context rather than the stale initial
+        /// enum value. Null until the first observation arrives.
+        /// </summary>
+        public string? LastDetectedScreen { get; private set; }
+
+        /// <summary>
+        /// Updates <see cref="LastDetectedScreen"/> without touching the
+        /// enum-typed <see cref="CurrentScreen"/>. Null / empty inputs are
+        /// dropped so a transient detection failure doesn't wipe the
+        /// last-known good name and re-create the "sourceScreen stuck at
+        /// initial value" desync seen in session 45.
+        ///
+        /// Session 46 enhancement: when transitioning INTO a detection-only
+        /// cursor-tracked screen (currently BattlePaused), reset the
+        /// SM-side cursor so we start from a known row (Data = 0).
+        /// </summary>
+        public void ObserveDetectedScreen(string? detectedName)
+        {
+            if (string.IsNullOrEmpty(detectedName)) return;
+            var prev = LastDetectedScreen;
+            LastDetectedScreen = detectedName;
+            // Transition-into-BattlePaused detector. The pause menu cursor
+            // is persistent across opens within a battle (per live testing),
+            // but we reset on first observation after a non-BattlePaused
+            // state because that's the safe default — the user can Down
+            // once to confirm position.
+            if (detectedName == "BattlePaused" && prev != "BattlePaused")
+            {
+                BattlePausedCursor = 0;
+            }
+        }
+
+        /// <summary>
+        /// Classifies a detected screen name into a coarse category so
+        /// <see cref="AutoSnapIfCategoryMismatch"/> can decide whether
+        /// to realign the enum-typed <see cref="CurrentScreen"/>. The
+        /// four categories are InBattle / WorldSide / PartyTree /
+        /// DialogueOrCutscene. Anything we don't recognize is "Unknown"
+        /// which suppresses auto-snap (safe default).
+        /// </summary>
+        public enum ScreenCategory
+        {
+            Unknown,
+            InBattle,
+            WorldSide,
+            PartyTree,
+            DialogueOrCutscene,
+        }
+
+        public static ScreenCategory CategorizeScreenName(string? name)
+        {
+            if (string.IsNullOrEmpty(name)) return ScreenCategory.Unknown;
+            if (name.StartsWith("Battle") && name != "BattleDialogue"
+                && name != "BattleChoice" && name != "BattleDesertion"
+                && name != "BattleVictory")
+                return ScreenCategory.InBattle;
+            if (name == "BattleDialogue" || name == "BattleChoice"
+                || name == "Cutscene" || name == "BattleDesertion"
+                || name == "BattleVictory")
+                return ScreenCategory.DialogueOrCutscene;
+            if (name == "WorldMap" || name == "TravelList"
+                || name == "EncounterDialog" || name == "LocationMenu"
+                || name == "Tavern" || name == "TavernRumors"
+                || name == "TavernErrands" || name == "SaveSlotPicker"
+                || name.StartsWith("Outfitter") || name == "SettlementMenu"
+                || name == "WarriorsGuild" || name == "PoachersDen"
+                || name == "SaveGame" || name == "TitleScreen"
+                || name == "LoadGame")
+                return ScreenCategory.WorldSide;
+            if (name.StartsWith("PartyMenu") || name == "CharacterStatus"
+                || name == "EquipmentAndAbilities" || name.StartsWith("Equippable")
+                || name == "JobSelection" || name.StartsWith("Chronicle")
+                || name == "OptionsSettings" || name == "DismissUnit"
+                || name == "CharacterDialog" || name == "JobActionMenu"
+                || name == "JobChangeConfirmation" || name == "CombatSets"
+                || name == "EquipmentScreen" || name == "EquipmentItemList"
+                || name == "SecondaryAbilities" || name == "ReactionAbilities"
+                || name == "SupportAbilities" || name == "MovementAbilities")
+                return ScreenCategory.PartyTree;
+            return ScreenCategory.Unknown;
+        }
+
+        /// <summary>
+        /// Pure-C# realignment when the detected screen category is
+        /// fundamentally incompatible with the SM's current enum state.
+        /// Examples: SM=CharacterStatus but detection=BattleMyTurn, or
+        /// SM=WorldMap but detection=BattleFormation. Such mismatches
+        /// cannot be explained by normal key transitions — the SM is
+        /// stale — so we snap it to a safe anchor (Unknown for in-battle
+        /// detection, WorldMap for world-side detection). No keypresses
+        /// fire, no game-side changes. Returns the snapped-to screen if
+        /// we snapped, or null if SM was already consistent.
+        ///
+        /// Session 46 fix: addresses the "SM leaks: screen says BattlePaused
+        /// while game shows EqA" class of desyncs observed during live
+        /// stress testing.
+        /// </summary>
+        public GameScreen? AutoSnapIfCategoryMismatch(string? detectedName)
+        {
+            var detected = CategorizeScreenName(detectedName);
+            if (detected == ScreenCategory.Unknown) return null;
+
+            var smName = CurrentScreen.ToString();
+            var smCategory = CategorizeScreenName(smName);
+            if (smCategory == ScreenCategory.Unknown) return null;
+            if (smCategory == detected) return null;
+
+            // DialogueOrCutscene is tolerant: dialogue can layer on top of
+            // any category (battle dialogue, worldmap cutscene, etc.), so
+            // don't treat it as a hard mismatch.
+            if (detected == ScreenCategory.DialogueOrCutscene ||
+                smCategory == ScreenCategory.DialogueOrCutscene)
+                return null;
+
+            // Hard mismatch. Snap to a safe anchor.
+            GameScreen target;
+            if (detected == ScreenCategory.InBattle)
+            {
+                // The SM doesn't model battle screens via the enum —
+                // set to Unknown so key handling stops applying menu
+                // nav logic to battle key presses.
+                target = GameScreen.Unknown;
+            }
+            else if (detected == ScreenCategory.WorldSide)
+            {
+                target = GameScreen.WorldMap;
+            }
+            else // PartyTree
+            {
+                target = GameScreen.PartyMenuUnits;
+            }
+
+            SetScreen(target);
+            // SetScreen resets KeysSinceLastSetScreen and clears
+            // LastSetScreenFromKey paths — consistent with drift-recovery
+            // semantics.
+            LastSetScreenFromKey = false;
+            return target;
+        }
+
+        /// <summary>
+        /// Within-PartyTree realignment. When detection says we're at the
+        /// outer PartyMenuUnits grid (menuDepth == 0, the "I'm at the grid,
+        /// not inside a sub-panel" signal) but SM is on an inner PartyTree
+        /// screen (CharacterStatus / EquipmentScreen / JobScreen / pickers),
+        /// the SM has drifted — likely because a key-driven transition the
+        /// SM modeled didn't take effect in-game (focus loss, modal blocked
+        /// the Enter, etc). Snap back to PartyMenuUnits so subsequent key
+        /// handling matches the actual outer-grid state.
+        ///
+        /// menuDepth comes from memory via CommandWatcher; 0 = outer screen,
+        /// >0 = inside a panel. AutoSnap's cross-category path doesn't fire
+        /// here because CharacterStatus and PartyMenuUnits are both
+        /// PartyTree category — this method is the intra-category variant.
+        /// Returns true if a snap happened.
+        /// </summary>
+        public bool SnapPartyTreeOuterIfDrifted(string? detectedName, int menuDepth)
+        {
+            if (detectedName != "PartyMenuUnits") return false;
+            if (menuDepth != 0) return false;
+            if (CurrentScreen == GameScreen.PartyMenuUnits ||
+                CurrentScreen == GameScreen.WorldMap ||
+                CurrentScreen == GameScreen.Unknown)
+                return false;
+            // SM thinks we're deeper than the outer grid but memory says
+            // we're at menuDepth 0 — realign.
+            if (CategorizeScreenName(CurrentScreen.ToString()) != ScreenCategory.PartyTree)
+                return false;
+            SetScreen(GameScreen.PartyMenuUnits);
+            LastSetScreenFromKey = false;
+            return true;
+        }
+
+        /// <summary>
+        /// SM-tracked cursor row for the BattlePaused menu (0..5, wraps):
+        /// 0=Data, 1=Retry, 2=Load, 3=Settings, 4=ReturnToWorldMap,
+        /// 5=ReturnToTitleScreen. Driven by key-press tracking in
+        /// <see cref="OnKeyPressedForDetectedScreen"/> — independent of the
+        /// flaky memory-resolver path, which picks a byte that tracks the
+        /// FIRST Down press but often stops updating after. Authoritative
+        /// for the ui= label rendered in responses.
+        /// </summary>
+        public int BattlePausedCursor { get; private set; }
+
+        /// <summary>
+        /// Apply a key press against the currently-detected (string-mirrored)
+        /// screen, for screens the enum-typed state machine doesn't model
+        /// transitions for. Currently handles BattlePaused cursor (Up/Down,
+        /// wrapping). Safe to call on any screen — non-matching screens are
+        /// ignored.
+        /// </summary>
+        public void OnKeyPressedForDetectedScreen(int vkCode)
+        {
+            const int VK_UP = 0x26, VK_DOWN = 0x28;
+            if (LastDetectedScreen == "BattlePaused")
+            {
+                if (vkCode == VK_DOWN)
+                    BattlePausedCursor = (BattlePausedCursor + 1) % 6;
+                else if (vkCode == VK_UP)
+                    BattlePausedCursor = (BattlePausedCursor + 5) % 6; // -1 mod 6
+            }
+        }
         public int CursorRow { get; private set; }
         public int CursorCol { get; private set; }
         public PartyTab Tab { get; private set; } = PartyTab.Units;
@@ -195,6 +406,9 @@ namespace FFTColorCustomizer.GameBridge
         public void SetScreen(GameScreen screen)
         {
             CurrentScreen = screen;
+            // Keep the string mirror in lockstep so key-driven transitions
+            // don't leave LastDetectedScreen stale relative to CurrentScreen.
+            LastDetectedScreen = screen.ToString();
             CursorRow = 0;
             CursorCol = 0;
             SidebarIndex = 0;

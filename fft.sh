@@ -592,8 +592,7 @@ _show_helpers() {
     check_unit <name>                     Quick stat dump for one unit
     view_unit <name>                      Read-only unit data (no nav)
     scan_inventory                        Open inventory tab + dump full list
-    return_to_world_map                   Universal escape back to WorldMap
-    fft_resync                            Full state-reset without game restart (~5s vs ~45s)"
+    return_to_world_map                   Universal escape back to WorldMap"
       ;;
     EquipmentAndAbilities)
       helpers="    change_secondary_ability_to <name>   Set secondary skillset
@@ -609,8 +608,7 @@ _show_helpers() {
     unequip_all <unit>                   Strip all equipment from a unit
     swap_unit <name>                     Cycle Q/E to named unit
     open_picker <unit> <slot>            Open equipment picker (weapon/shield/helm/garb/accessory)
-    return_to_world_map                  Universal escape back to WorldMap
-    fft_resync                           Full state-reset without game restart (~5s vs ~45s)"
+    return_to_world_map                  Universal escape back to WorldMap"
       ;;
     CharacterStatus)
       helpers="    open_eqa [unit]                       Jump to Equipment & Abilities
@@ -619,14 +617,12 @@ _show_helpers() {
     swap_unit <name>                      Cycle Q/E to named unit
     check_unit <name>                     Quick stat dump for one unit
     open_picker <unit> <slot>             Open equipment picker (weapon/shield/helm/garb/accessory)
-    return_to_world_map                   Universal escape back to WorldMap
-    fft_resync                            Full state-reset without game restart (~5s vs ~45s)"
+    return_to_world_map                   Universal escape back to WorldMap"
       ;;
     JobSelection)
       helpers="    change_job_to <class>                 Change to named job class
     swap_unit <name>                      Cycle Q/E to named unit
-    return_to_world_map                   Universal escape back to WorldMap
-    fft_resync                            Full state-reset without game restart (~5s vs ~45s)"
+    return_to_world_map                   Universal escape back to WorldMap"
       ;;
     BattleFormation)
       helpers="    auto_place_units                      Accept default placement and start battle
@@ -1681,73 +1677,12 @@ return_to_world_map() {
   return 1
 }
 
-# fft_resync: Full stuck-state recovery WITHOUT restarting the game.
-# Much faster than `restart` (~5s vs ~45s) and preserves mod memory
-# (resolved heap addresses, state flags, caches).
-#
-# Steps:
-#   1. Escape up to WorldMap with 2-consecutive-confirm detection
-#      (defends against false WorldMap reads during escape storm).
-#   2. Hard-reset the C# ScreenStateMachine to WorldMap.
-#   3. Clear every auto-resolve latch (EqA row, picker cursor, job
-#      cursor, party-menu cursor, equip-picker cursor).
-#   4. Final `screen` read to confirm recovery.
-#
-# Use when: the shell reports a state but screenshots show a different
-# game state, or a compound nav helper lands in an unexpected screen,
-# or after any suspected desync. Safe from any non-battle state.
-#
-# REFUSES from forbidden states: any Battle*, EncounterDialog, Cutscene,
-# BattleSequence, BattleFormation, GameOver. The 10 escapes + state
-# reset would otherwise open the pause menu / fight the encounter
-# prompt / skip cutscenes and rearrange state unpredictably. In those
-# cases resolve the encounter/battle/cutscene first (accept, flee,
-# advance, or `restart`).
-fft_resync() {
-  local cur=$(_current_screen)
-  if [ -z "$cur" ]; then
-    echo "[fft_resync] ERROR: could not detect current screen. Try \`screen\` first, or \`restart\` if the bridge is unresponsive."
-    return 1
-  fi
-  # Forbidden-from states: battle, encounter, cutscene, game-over.
-  # Cheaper than listing every safe state — new non-battle screens
-  # are automatically allowed as they get added.
-  case "$cur" in
-    Battle*|EncounterDialog|Cutscene|BattleSequence|BattleFormation|GameOver)
-      echo "[fft_resync] ERROR: cannot run from $cur — the escape storm would open the pause menu / skip a cutscene / mis-handle the encounter. Resolve the $cur first (fight/flee/advance/wait it out), or use \`restart\` if truly stuck."
-      return 1
-      ;;
-  esac
-  local _FFT_ALLOW_CHAIN=1
-  local consecutive=0
-  local max_attempts=10
-  echo "[fft_resync] escaping to WorldMap (max $max_attempts attempts)..."
-  for i in $(seq 1 $max_attempts); do
-    local cur=$(_current_screen)
-    if [ "$cur" = "WorldMap" ]; then
-      consecutive=$((consecutive + 1))
-      if [ $consecutive -ge 2 ]; then
-        echo "[fft_resync] confirmed WorldMap (2 consecutive reads)"
-        break
-      fi
-      sleep 0.2
-      continue
-    fi
-    consecutive=0
-    fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":0}" >/dev/null
-    _fft_reset_guard
-    sleep 0.4
-  done
-  if [ $consecutive -lt 2 ]; then
-    echo "[fft_resync] ERROR: could not confirm WorldMap after $max_attempts attempts — detection may be broken. Try \`restart\`."
-    return 1
-  fi
-  # Reset C# state machine + all auto-resolve latches.
-  fft "{\"id\":\"$(id)\",\"action\":\"reset_state_machine\"}" 2>&1 | tail -2
-  _fft_reset_guard
-  # Confirm via fresh screen read.
-  screen
-}
+# fft_resync was removed session 46 2026-04-19. It was a bandaid that
+# pressed keys to paper over state-detection bugs; the real fix is to
+# make detection correctly report the screen from memory. If you find
+# yourself wanting it, the underlying detection bug is what needs to
+# be fixed instead. Use `restart` for a full clean slate if the bridge
+# is truly unresponsive.
 
 # view_unit <name>: Read-only data dump for a unit. Combines roster
 # stats with EqA-derived ability assignments and JP-next info.

@@ -1229,4 +1229,289 @@ public class ScreenStateMachineTests
         sm.OnKeyPressed(VK_ESCAPE);
         Assert.Equal(GameScreen.LocationMenu, sm.CurrentScreen);
     }
+
+    // ================================================================
+    // LastDetectedScreen — the string mirror of CurrentScreen for
+    // detection-only states (BattleMyTurn, BattleDialogue, Cutscene,
+    // EncounterDialog, the crystal modals, etc.) that the SM enum
+    // doesn't model. Lets downstream code (session logging, override
+    // tiebreakers) see a FRESH screen name every command instead of the
+    // stale initial enum value (which was causing `sourceScreen=TitleScreen`
+    // all session in 2026-04-19's log).
+    // ================================================================
+
+    [Fact]
+    public void LastDetectedScreen_InitiallyNull()
+    {
+        var sm = new ScreenStateMachine();
+        Assert.Null(sm.LastDetectedScreen);
+    }
+
+    [Fact]
+    public void ObserveDetectedScreen_SetsLastDetectedScreen()
+    {
+        // Detection-only screens (no enum entry) can still be mirrored
+        // so callers always have a fresh name to log / reason about.
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattleMyTurn");
+        Assert.Equal("BattleMyTurn", sm.LastDetectedScreen);
+    }
+
+    [Fact]
+    public void ObserveDetectedScreen_MultipleTimes_TracksLatest()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("WorldMap");
+        sm.ObserveDetectedScreen("TravelList");
+        sm.ObserveDetectedScreen("BattleMyTurn");
+        Assert.Equal("BattleMyTurn", sm.LastDetectedScreen);
+    }
+
+    [Fact]
+    public void ObserveDetectedScreen_NullOrEmpty_DoesNotClear()
+    {
+        // A detection failure (memory scan returned null) must NOT
+        // wipe out the last-known good name — that would re-create
+        // the exact "stuck" desync we're trying to fix.
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattleMyTurn");
+        sm.ObserveDetectedScreen(null);
+        Assert.Equal("BattleMyTurn", sm.LastDetectedScreen);
+        sm.ObserveDetectedScreen("");
+        Assert.Equal("BattleMyTurn", sm.LastDetectedScreen);
+    }
+
+    [Fact]
+    public void ObserveDetectedScreen_DoesNotAffectCurrentScreen()
+    {
+        // The enum-typed CurrentScreen stays the domain of key-driven
+        // transitions. ObserveDetectedScreen is a parallel channel for
+        // detection-only states and must not mutate CurrentScreen.
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.PartyMenuUnits);
+        sm.ObserveDetectedScreen("BattleMyTurn");
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
+        Assert.Equal("BattleMyTurn", sm.LastDetectedScreen);
+    }
+
+    [Fact]
+    public void SetScreen_AlsoUpdatesLastDetectedScreen()
+    {
+        // When the enum IS the authority (key-driven transition), the
+        // string mirror should reflect the same state so the two channels
+        // don't drift. Uses the enum's ToString() as the canonical name.
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.CharacterStatus);
+        Assert.Equal("CharacterStatus", sm.LastDetectedScreen);
+    }
+
+    // ================================================================
+    // BattlePaused SM-side cursor tracking (session 46)
+    // ================================================================
+
+    [Fact]
+    public void BattlePausedCursor_InitiallyZero()
+    {
+        var sm = new ScreenStateMachine();
+        Assert.Equal(0, sm.BattlePausedCursor);
+    }
+
+    [Fact]
+    public void BattlePausedCursor_DownIncrementsWithWrap()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattlePaused");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(1, sm.BattlePausedCursor);
+        // Five more Downs → wraps back to 0 (6-item menu)
+        for (int i = 0; i < 5; i++) sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(0, sm.BattlePausedCursor);
+    }
+
+    [Fact]
+    public void BattlePausedCursor_UpDecrementsWithWrap()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattlePaused");
+        const int VK_UP = 0x26;
+        sm.OnKeyPressedForDetectedScreen(VK_UP);
+        // 0 -> wraps to 5 (ReturnToTitleScreen)
+        Assert.Equal(5, sm.BattlePausedCursor);
+    }
+
+    [Fact]
+    public void BattlePausedCursor_ResetsOnTransitionIntoBattlePaused()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattlePaused");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        Assert.Equal(2, sm.BattlePausedCursor);
+        // Leave the pause menu...
+        sm.ObserveDetectedScreen("BattleMyTurn");
+        // ...and re-enter. Cursor should reset to Data (0) since that's
+        // the safe default — the SM doesn't preserve cursor across opens.
+        sm.ObserveDetectedScreen("BattlePaused");
+        Assert.Equal(0, sm.BattlePausedCursor);
+    }
+
+    [Fact]
+    public void BattlePausedCursor_IgnoresKeyPressesOffPauseScreen()
+    {
+        var sm = new ScreenStateMachine();
+        sm.ObserveDetectedScreen("BattleMyTurn");
+        const int VK_DOWN = 0x28;
+        sm.OnKeyPressedForDetectedScreen(VK_DOWN);
+        // We're not on BattlePaused, so the cursor shouldn't move.
+        Assert.Equal(0, sm.BattlePausedCursor);
+    }
+
+    // ================================================================
+    // AutoSnapIfCategoryMismatch — pure-C# realignment (session 46)
+    // ================================================================
+
+    [Fact]
+    public void AutoSnap_MatchingCategories_NoSnap()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.WorldMap);
+        Assert.Null(sm.AutoSnapIfCategoryMismatch("TravelList"));
+        Assert.Equal(GameScreen.WorldMap, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void AutoSnap_InBattleDetected_PartyTreeSm_SnapsToUnknown()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.CharacterStatus);
+        var snapped = sm.AutoSnapIfCategoryMismatch("BattleMyTurn");
+        Assert.Equal(GameScreen.Unknown, snapped);
+        Assert.Equal(GameScreen.Unknown, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void AutoSnap_WorldSideDetected_BattleSm_SnapsToWorldMap()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.CharacterStatus);
+        // Simulate a broken path — SM somehow thinks PartyTree but
+        // detector sees WorldMap (stale SM, user used the game's own
+        // back button to escape out).
+        var snapped = sm.AutoSnapIfCategoryMismatch("WorldMap");
+        Assert.Equal(GameScreen.WorldMap, snapped);
+        Assert.Equal(GameScreen.WorldMap, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void AutoSnap_DialogueTolerates_NoSnap()
+    {
+        // Dialogue/cutscene can overlay any screen category so it
+        // should NOT trigger a snap even when SM is on a world-side
+        // screen like WorldMap (game might be playing a WorldMap-entry
+        // cutscene).
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.WorldMap);
+        Assert.Null(sm.AutoSnapIfCategoryMismatch("Cutscene"));
+        Assert.Equal(GameScreen.WorldMap, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void AutoSnap_UnknownDetected_NoSnap()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.WorldMap);
+        Assert.Null(sm.AutoSnapIfCategoryMismatch("Unknown"));
+        Assert.Null(sm.AutoSnapIfCategoryMismatch(null));
+        Assert.Equal(GameScreen.WorldMap, sm.CurrentScreen);
+    }
+
+    // ================================================================
+    // SnapPartyTreeOuterIfDrifted — intra-PartyTree realignment
+    // ================================================================
+
+    [Fact]
+    public void SnapPartyTree_SmOnCharacterStatus_DetectionPartyMenu_MenuDepth0_SnapsBack()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.CharacterStatus);
+        bool snapped = sm.SnapPartyTreeOuterIfDrifted("PartyMenuUnits", menuDepth: 0);
+        Assert.True(snapped);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void SnapPartyTree_SmOnEquipment_DetectionPartyMenu_MenuDepth0_SnapsBack()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.EquipmentScreen);
+        bool snapped = sm.SnapPartyTreeOuterIfDrifted("PartyMenuUnits", menuDepth: 0);
+        Assert.True(snapped);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void SnapPartyTree_SmOnCharacterStatus_MenuDepthNonZero_DoesNotSnap()
+    {
+        // menuDepth > 0 means we're legitimately inside a sub-panel, so
+        // the SM's CharacterStatus isn't a drift — don't snap.
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.CharacterStatus);
+        bool snapped = sm.SnapPartyTreeOuterIfDrifted("PartyMenuUnits", menuDepth: 2);
+        Assert.False(snapped);
+        Assert.Equal(GameScreen.CharacterStatus, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void SnapPartyTree_DetectionNotPartyMenu_DoesNotSnap()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.CharacterStatus);
+        bool snapped = sm.SnapPartyTreeOuterIfDrifted("WorldMap", menuDepth: 0);
+        Assert.False(snapped);
+    }
+
+    [Fact]
+    public void SnapPartyTree_SmAlreadyOnPartyMenu_NoOp()
+    {
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.PartyMenuUnits);
+        bool snapped = sm.SnapPartyTreeOuterIfDrifted("PartyMenuUnits", menuDepth: 0);
+        Assert.False(snapped);
+        Assert.Equal(GameScreen.PartyMenuUnits, sm.CurrentScreen);
+    }
+
+    [Fact]
+    public void SnapPartyTree_SmOnWorldMap_NoOp()
+    {
+        // If SM is on WorldMap and detection says PartyMenuUnits, that's
+        // a cross-category mismatch handled by AutoSnapIfCategoryMismatch,
+        // not this method. This method is strictly within-PartyTree.
+        var sm = new ScreenStateMachine();
+        sm.SetScreen(GameScreen.WorldMap);
+        bool snapped = sm.SnapPartyTreeOuterIfDrifted("PartyMenuUnits", menuDepth: 0);
+        Assert.False(snapped);
+    }
+
+    [Fact]
+    public void Categorize_Battle_PartyTree_WorldSide()
+    {
+        Assert.Equal(ScreenStateMachine.ScreenCategory.InBattle,
+            ScreenStateMachine.CategorizeScreenName("BattleMyTurn"));
+        Assert.Equal(ScreenStateMachine.ScreenCategory.InBattle,
+            ScreenStateMachine.CategorizeScreenName("BattleFormation"));
+        Assert.Equal(ScreenStateMachine.ScreenCategory.DialogueOrCutscene,
+            ScreenStateMachine.CategorizeScreenName("BattleDialogue"));
+        Assert.Equal(ScreenStateMachine.ScreenCategory.DialogueOrCutscene,
+            ScreenStateMachine.CategorizeScreenName("Cutscene"));
+        Assert.Equal(ScreenStateMachine.ScreenCategory.WorldSide,
+            ScreenStateMachine.CategorizeScreenName("WorldMap"));
+        Assert.Equal(ScreenStateMachine.ScreenCategory.WorldSide,
+            ScreenStateMachine.CategorizeScreenName("TravelList"));
+        Assert.Equal(ScreenStateMachine.ScreenCategory.PartyTree,
+            ScreenStateMachine.CategorizeScreenName("CharacterStatus"));
+        Assert.Equal(ScreenStateMachine.ScreenCategory.PartyTree,
+            ScreenStateMachine.CategorizeScreenName("JobSelection"));
+    }
 }
