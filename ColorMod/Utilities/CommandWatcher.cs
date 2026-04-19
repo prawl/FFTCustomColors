@@ -2512,6 +2512,83 @@ namespace FFTColorCustomizer.Utilities
                         catch (Exception ex) { response.Status = "error"; response.Error = ex.Message; }
                         break;
 
+                    case "cheat_mode_buff":
+                        // Session 47 pt 5: TODO §0 dev tool. Buff Ramza (or a
+                        // named target) to near-invincible for one battle so
+                        // state-collection playthroughs don't get bottlenecked
+                        // by fresh-game stats. Writes HP/MaxHP/PA/affinity.
+                        // Deliberately NOT touching level / exp / brave / faith
+                        // — see BuffPlanner comments.
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        try
+                        {
+                            // Find Ramza's battle slot by scanning the static
+                            // array for an inBattle=1 slot with level 1-99 and
+                            // plausible HP. We pick the first PLAYER-team slot
+                            // (slots go forward from BattleArrayBase+0x200 for
+                            // players, backward for enemies). Ramza's roster
+                            // entry is always slot 0, so HP/MaxHP fingerprints
+                            // could be used for finer matching, but during a
+                            // fresh-game battle he's the canonical slot 0 —
+                            // the first forward slot with inBattle=1.
+                            const long BattleArrayBase = 0x140893C00L;
+                            const int ArrayStride = 0x200;
+                            long? targetSlot = null;
+
+                            // Scan forward slots (player side) first.
+                            for (int s = 0; s < 10 && targetSlot == null; s++)
+                            {
+                                long slotBase = BattleArrayBase + (long)s * ArrayStride;
+                                var inBattleRead = Explorer.ReadAbsolute((nint)(slotBase + 0x12), 2);
+                                if (!inBattleRead.HasValue) continue;
+                                if ((int)inBattleRead.Value.value == 0) continue;
+
+                                var lvlRead = Explorer.ReadAbsolute((nint)(slotBase + 0x0D), 1);
+                                if (!lvlRead.HasValue) continue;
+                                int lvl = (int)lvlRead.Value.value;
+                                if (lvl < 1 || lvl > 99) continue;
+
+                                var hpRead = Explorer.ReadAbsolute((nint)(slotBase + 0x16), 2);
+                                if (!hpRead.HasValue) continue;
+                                int maxHp = (int)hpRead.Value.value;
+                                if (maxHp <= 0 || maxHp >= 2000) continue;
+
+                                targetSlot = slotBase;
+                            }
+
+                            if (targetSlot == null)
+                            {
+                                response.Status = "failed";
+                                response.Error = "cheat_mode_buff: no active player-side battle slot found. Must be in a battle.";
+                                break;
+                            }
+
+                            // Optional HP override via searchValue (default 999).
+                            int hpValue = command.SearchValue > 0 ? command.SearchValue : 999;
+                            var plan = GameBridge.BuffPlanner.PlanInvincibilityWrites(
+                                targetSlot.Value, hpValue);
+
+                            int written = 0;
+                            foreach (var op in plan)
+                            {
+                                for (int i = 0; i < op.Bytes.Length; i++)
+                                {
+                                    Explorer.Scanner.WriteByte((nint)(op.Address + i), op.Bytes[i]);
+                                    written++;
+                                }
+                            }
+
+                            response.Info = $"Buffed slot at 0x{targetSlot.Value:X} ({written} bytes written, HP={hpValue} PA=255 Absorb=All)";
+                            response.Status = "completed";
+                            ModLogger.Log($"[CheatMode] Buffed battle slot 0x{targetSlot.Value:X}: HP={hpValue}, PA=255, Absorb=0xFF");
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Status = "error";
+                            response.Error = ex.Message;
+                        }
+                        break;
+
                     case "write_byte":
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         if (string.IsNullOrEmpty(command.Address)) { response.Status = "failed"; response.Error = "Address required"; break; }

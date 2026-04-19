@@ -2689,6 +2689,23 @@ battle_retry() { fft "{\"id\":\"$(id)\",\"action\":\"battle_retry\"}"; }
 # battle_retry_formation: Retry battle with formation screen from the pause menu.
 battle_retry_formation() { fft "{\"id\":\"$(id)\",\"action\":\"battle_retry_formation\"}"; }
 
+# buff_ramza: DEV TOOL — make Ramza (or the first player-side battle slot)
+# effectively invincible for the current battle. HP/MaxHP=999, PA=255,
+# and all elements absorbed (every damage source heals instead of hurts).
+# Deliberately does NOT touch level/exp/brave/faith so enemy scaling is
+# unaffected. Per-battle only — the static array resets each battle.
+#
+# Call from any Battle* screen AFTER it's fully loaded (post-formation).
+# If you call it before the battle array is populated the helper errors
+# with "no active player-side battle slot found".
+#
+# Usage: buff_ramza           # HP=999
+#        buff_ramza 9999      # custom HP
+buff_ramza() {
+  local hp="${1:-999}"
+  fft "{\"id\":\"$(id)\",\"action\":\"cheat_mode_buff\",\"searchValue\":$hp}"
+}
+
 # buy: Buy an item from a shop.
 # Usage: buy <item_name> <quantity>
 buy() { fft "{\"id\":\"$(id)\",\"action\":\"buy\",\"to\":\"$1\",\"locationId\":${2:-1}}"; }

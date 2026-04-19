@@ -30,6 +30,22 @@ source ./fft.sh
 | `battle_retry` | Retry battle (from pause menu) |
 | `battle_retry_formation` | Retry with formation screen |
 
+### Bundled turn (direct JSON — no shell wrapper yet)
+
+`execute_turn` bundles move + ability + wait into one round-trip. Bridge-level only for now; call via direct JSON:
+
+```bash
+fft '{"id":"t1","action":"execute_turn","moveX":6,"moveY":5,"abilityName":"Attack","targetX":7,"targetY":5}'
+```
+
+Fields: `moveX`/`moveY` (optional move), `abilityName` (optional, `targetX`/`targetY` required for targeted abilities, omit for self-targets like Shout), `pattern` (optional facing N/S/E/W), `skipWait` (true to omit the trailing wait). Aborts at first non-completed sub-step.
+
+### Dev tools
+
+| Command | Description |
+|---------|-------------|
+| `buff_ramza [hp]` | Make Ramza (first player-side battle slot) invincible for one battle. HP/MaxHP=999 (or arg), PA=255, all elements absorbed. Does NOT touch level/exp/brave/faith — enemy scaling unchanged. Call AFTER battle array is populated (post-formation). Per-battle only; static array resets each battle. |
+
 ## Navigation
 
 | Command | Description |
@@ -153,7 +169,15 @@ Every screen has a set of valid actions. Use `execute_action <name>` to run them
 - **CharacterStatus**: sidebar (Equipment & Abilities / Job / Combat Sets), Open dialog, Hold-B to open DismissUnit, Back
 - **EquipmentAndAbilities**: Q/E to cycle units, left column = equipment slots (Enter → EquippableWeapons/Shields/Headware/CombatGarb/Accessories picker), right column = ability slots
 
-When in doubt, call `screen` or `execute_action` with any name — the error will list available actions.
+When in doubt, call `screen` or `execute_action` with any name — the error will list available actions with their descriptions (session 47: `Name — Desc` format, aliases coalesced e.g. `Back/Leave/Exit`).
+
+### Action aliases
+
+Some verbs have alternate spellings to match how users naturally type. All of these reach the same underlying action:
+
+- **Back / Leave / Exit** — exit the current screen. Defined on any screen that has at least one of them.
+- **Yes / Confirm / OK** — affirmative on confirm modals (ShopConfirmDialog, BattleCrystalMoveConfirm, BattleAbilityAcquireConfirm). Yes / OK both commit via the safer cursor-then-Enter sequence; Confirm is plain Enter.
+- **No** — cancel on confirm modals (Escape).
 
 ## Known Gotchas
 

@@ -49,6 +49,8 @@ advance_dialogue      # advances one text box
 
 After each advance, the response includes the current screen state. If it's still `"Cutscene"`, there's more dialogue. If it changed (WorldMap, Battle), the cutscene ended.
 
+**Raw `enter` also advances the box counter** as of session 47. Previously only `advance_dialogue` + `execute_action Advance` bumped `DialogueProgressTracker`; the raw `enter` shell helper pressed Enter in-game without updating the counter, so `boxIndex` drifted behind. Fix landed: raw Enter on Cutscene / BattleDialogue / BattleChoice now bumps the tracker too. Guard is in place to prevent double-bumps from advance_dialogue.
+
 ### Pacing
 
 - Don't mash through the entire scene in one go

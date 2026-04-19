@@ -85,7 +85,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### 🛠 Dev tooling — speed Ramza through battles for state-collection playthroughs
 
-- [ ] **"Claude cheat mode" — write Ramza HP/MaxHP/PA + full-absorb affinity via bridge** — User direction session 44: need to play through the game to collect all state-detection datapoints (BattleChoice eventIds, Cutscene vs BattleDialogue discriminators, new-game BattleVictory/Desertion memory patterns, etc). Plays take too long at fresh-game stats. Plan: new bridge action `cheat_mode_buff` (or similar) that pokes Ramza's battle unit struct: HP=999, MaxHP=999, PA=255, and all 5 affinity bytes at +0x5A..+0x5E set to absorb every element. Per-battle re-write needed (struct reallocates per battle). Also: add a variant that gives all teammates the same buff. **Pair with**: a toggleable "skip intro cinematics" helper if one exists. This is Option 1 from session 44 brainstorm — Option 3 (mod-side cheat config) is cleaner but takes longer; deferring.
+- [ ] **Extend `cheat_mode_buff` to buff all party members** — Session 47 pt 5 shipped the core: `BuffPlanner.PlanInvincibilityWrites` (pure, 12 tests) + `cheat_mode_buff` bridge action + `buff_ramza` shell helper. Writes HP/MaxHP=999/PA=255/Absorb=0xFF to the first player-side battle slot; deliberately NOT touching level/exp/brave/faith (enemy scaling ties to party level). Remaining: a `buff_all` variant that loops over every inBattle=1 slot with team=0, not just the first. Useful when a story battle puts multiple party members at risk.
 
 ### Session 45 — new follow-ups (2026-04-19)
 
