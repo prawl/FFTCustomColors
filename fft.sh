@@ -443,6 +443,9 @@ try{
     vunit,                          // 19 VUNIT
     s.equippedItem||'',             // 20 EQITEM
     s.pickerTab||'',                // 21 PTAB
+    (s.currentDialogueLine&&s.currentDialogueLine.speaker)||'',  // 22 DLG_SPK
+    (s.currentDialogueLine&&s.currentDialogueLine.text)||'',     // 23 DLG_TXT
+    s.currentDialogueLine?(s.currentDialogueLine.boxIndex+'/'+s.currentDialogueLine.boxCount):'', // 24 DLG_POS
   ];
   // Sanitize: strip delimiter/newlines from each field. Use non-whitespace
   // delimiter (\x01) because bash 'IFS=\$\\\\t read' collapses consecutive
@@ -451,8 +454,8 @@ try{
   process.stdout.write(out.map(x=>String(x).replace(/[\x01\n\r]/g,' ')).join('\x01'));
 }catch(e){}" "$RESP" 2>/dev/null)
 
-  local SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB
-  IFS=$'\x01' read -r SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB <<<"$FIELDS"
+  local SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB DLG_SPK DLG_TXT DLG_POS
+  IFS=$'\x01' read -r SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB DLG_SPK DLG_TXT DLG_POS <<<"$FIELDS"
 
   local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
   local OBJSTR=""
@@ -508,6 +511,19 @@ try{
   # Append timing suffix when caller pre-computed it (fft() / screen()).
   [ -n "$_FFT_TIMING_SUFFIX" ] && LINE="$LINE $_FFT_TIMING_SUFFIX"
   printf '%b\n' "$LINE"
+
+  # Current dialogue box — the exact text on screen right now. Rendered
+  # under the header for BattleDialogue / Cutscene / BattleChoice so the
+  # user can pace the scene without a screenshot. Explicitly state-gated
+  # so we never surface text on a non-dialogue screen even if the field
+  # were mistakenly populated.
+  if [ -n "$DLG_TXT" ] && [[ "$SCR" == "BattleDialogue" || "$SCR" == "BattleChoice" || "$SCR" == "Cutscene" ]]; then
+    if [ -n "$DLG_SPK" ]; then
+      printf '  %b\n' "$(_col "$_C_UNIT" "$DLG_SPK")$(_col "$_C_LOC" " [$DLG_POS]"): $DLG_TXT"
+    else
+      printf '  %b\n' "$(_col "$_C_LOC" "[narrator $DLG_POS]"): $DLG_TXT"
+    fi
+  fi
 
   # BFS mismatch warning — surfaced loudly under the main screen line so
   # Claude sees it without a `logs grep` round trip. Only appears when the

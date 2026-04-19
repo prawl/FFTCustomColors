@@ -21,7 +21,7 @@ namespace FFTColorCustomizer.GameBridge
         /// ordinary BattleDialogue/Cutscene when the bridge's memory-only
         /// detection can't tell them apart — session 44 2026-04-18 finding.</para>
         /// </summary>
-        public record EventScript(int EventId, List<MesDecoder.DialogueLine> Lines, bool HasChoice);
+        public record EventScript(int EventId, List<MesDecoder.DialogueLine> Lines, bool HasChoice, List<MesDecoder.DialogueBox> Boxes);
 
         private readonly Dictionary<int, EventScript> _scripts = new();
         private readonly string _mesDirectory;
@@ -44,10 +44,11 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     var bytes = File.ReadAllBytes(file);
                     var lines = MesDecoder.DecodeBytes(bytes, out _);
+                    var boxes = MesDecoder.DecodeBoxes(bytes);
                     // 0xFB is the choice-prompt marker (verified empirically:
                     // event016 has it, events 2/5/6/8/10/11/12 do not).
                     bool hasChoice = System.Array.IndexOf(bytes, (byte)0xFB) >= 0;
-                    _scripts[eventId] = new EventScript(eventId, lines, hasChoice);
+                    _scripts[eventId] = new EventScript(eventId, lines, hasChoice, boxes);
                 }
             }
         }

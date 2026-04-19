@@ -502,6 +502,19 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int EventId { get; set; }
 
+        /// <summary>
+        /// The single in-game dialogue bubble currently on screen during
+        /// BattleDialogue / Cutscene / BattleChoice. Contains the speaker
+        /// (null for narrator) and the exact text from the .mes script
+        /// for the active box. Tracked via a serial counter that
+        /// increments on advance actions and resets on eventId change.
+        /// Null on any non-dialogue screen OR when the counter has run
+        /// past the last box (brief transitional window).
+        /// </summary>
+        [JsonPropertyName("currentDialogueLine")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public DialogueBoxPayload? CurrentDialogueLine { get; set; }
+
         /// <summary>Story objective location ID (yellow diamond on world map). 0 when no objective.</summary>
         [JsonPropertyName("storyObjective")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -716,6 +729,29 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("pickerTab")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? PickerTab { get; set; }
+    }
+
+    /// <summary>
+    /// Single in-game dialogue bubble surfaced on BattleDialogue/Cutscene/
+    /// BattleChoice. Speaker is null for narrator lines; Text preserves
+    /// in-box line breaks as '\n'.
+    /// </summary>
+    public class DialogueBoxPayload
+    {
+        [JsonPropertyName("speaker")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Speaker { get; set; }
+
+        [JsonPropertyName("text")]
+        public string Text { get; set; } = "";
+
+        /// <summary>0-based box index within the current event's script.</summary>
+        [JsonPropertyName("boxIndex")]
+        public int BoxIndex { get; set; }
+
+        /// <summary>Total box count for the current event's script.</summary>
+        [JsonPropertyName("boxCount")]
+        public int BoxCount { get; set; }
     }
 
     public class UiDetail

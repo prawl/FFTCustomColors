@@ -11,6 +11,67 @@ namespace FFTColorCustomizer.GameBridge
     {
         public record DialogueLine(string? Speaker, string Text);
 
+        // One in-game text bubble. Boxes are the unit the user advances through
+        // with Enter — the decoder joins 0xFE line-breaks into the same Text
+        // (preserved as '\n') and only splits on 0xF8 box boundaries.
+        public record DialogueBox(string? Speaker, string Text);
+
+        /// <summary>
+        /// Decode raw .mes bytes into in-game dialogue BOXES (one per Enter-advance).
+        /// 0xF8 is the box boundary; 0xFE is a line-break WITHIN a box.
+        /// </summary>
+        public static List<DialogueBox> DecodeBoxes(byte[] bytes)
+        {
+            var boxes = new List<DialogueBox>();
+            string? currentSpeaker = null;
+            var text = new System.Text.StringBuilder();
+
+            void Flush()
+            {
+                var t = text.ToString().TrimEnd();
+                if (t.Length > 0) boxes.Add(new DialogueBox(currentSpeaker, t));
+                text.Clear();
+            }
+
+            int i = 0;
+            while (i < bytes.Length)
+            {
+                byte b = bytes[i];
+
+                if (b == 0xE3 && i + 1 < bytes.Length && bytes[i + 1] == 0x08)
+                {
+                    // Speaker change is an implicit box boundary — the game
+                    // shows a new bubble when a different character starts
+                    // talking, even without a 0xF8 marker. Flush whatever
+                    // text we've accumulated so far under the OLD speaker.
+                    Flush();
+                    i += 2;
+                    var nameBuilder = new System.Text.StringBuilder();
+                    while (i < bytes.Length && bytes[i] != 0xE3)
+                    {
+                        var c = DecodeByte(bytes[i]);
+                        if (c.HasValue) nameBuilder.Append(c.Value);
+                        i++;
+                    }
+                    if (i < bytes.Length) i++;
+                    if (i < bytes.Length) i++;
+                    currentSpeaker = nameBuilder.ToString();
+                    continue;
+                }
+
+                if (b == 0xF8) { Flush(); i++; continue; }
+                if (b == 0xFE) { text.Append('\n'); i++; continue; }
+                if (b == 0xE2) { i += 2; continue; }
+                if (b == 0xE3) { i += 2; continue; }
+
+                var ch = DecodeByte(b);
+                if (ch.HasValue) text.Append(ch.Value);
+                i++;
+            }
+            Flush();
+            return boxes;
+        }
+
         /// <summary>
         /// Decode a single byte using FFT PSX text encoding.
         /// Returns the character, or null for control/unknown bytes.

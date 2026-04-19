@@ -29,6 +29,7 @@ namespace FFTColorCustomizer.Utilities
         public BattleTracker? BattleTracker { get; set; }
         public EventScriptLookup? ScriptLookup { get; set; }
         public RumorLookup? RumorLookup { get; set; }
+        internal readonly DialogueProgressTracker _dialogueTracker = new();
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
         private RosterReader? _rosterReader;
@@ -2614,7 +2615,6 @@ namespace FFTColorCustomizer.Utilities
                     case "scan_units":
                     case "test_c_hold":
                     case "get_arrows":
-                    case "advance_dialogue":
                     case "save":
                     case "load":
                     case "battle_retry":
@@ -2626,6 +2626,21 @@ namespace FFTColorCustomizer.Utilities
                     case "open_job_selection":
                     case "open_character_status":
                     case "auto_place_units":
+                        return ExecuteNavActionWithAutoScan(command);
+
+                    case "advance_dialogue":
+                        // Bump the dialogue box counter BEFORE dispatching, so
+                        // the post-advance screen response reflects the new
+                        // line. Read eventId directly from memory so the tracker
+                        // can reset on scene change without waiting for the
+                        // next DetectScreen pass.
+                        if (Explorer != null)
+                        {
+                            var evtRead = Explorer.ReadAbsolute((nint)0x14077CA94, 2);
+                            int evt = evtRead.HasValue ? (int)evtRead.Value.value : 0;
+                            if (evt >= 1 && evt < 400)
+                                _dialogueTracker.Advance(evt);
+                        }
                         return ExecuteNavActionWithAutoScan(command);
 
                     case "set_screen":
@@ -2806,6 +2821,16 @@ namespace FFTColorCustomizer.Utilities
                 response.Status = "failed";
                 response.Error = $"No path '{pathName}' on screen '{screen.Name}'. Available: {available}";
                 return response;
+            }
+
+            // Bump dialogue-box counter when the player advances on a dialogue
+            // screen via execute_action Advance. Matches the advance_dialogue
+            // hook so both paths keep the tracker in step.
+            if (pathName == "Advance" &&
+                (screen.Name == "Cutscene" || screen.Name == "BattleDialogue" || screen.Name == "BattleChoice") &&
+                screen.EventId >= 1 && screen.EventId < 400)
+            {
+                _dialogueTracker.Advance(screen.EventId);
             }
 
             // If the path specifies a high-level action, delegate.
@@ -5230,6 +5255,34 @@ namespace FFTColorCustomizer.Utilities
                     // flavor-dialog convention). Surface ui=Advance so the
                     // one-liner always carries a hovered-action label.
                     screen.UI = "Advance";
+                }
+
+                // Populate EventId + CurrentDialogueLine on any dialogue-like
+                // screen so the user can pace through the scene seeing only
+                // the current box. Tracker is a serial counter bumped on
+                // advance_dialogue / raw Enter; reset on eventId change.
+                if (screen.Name == "Cutscene" || screen.Name == "BattleDialogue" || screen.Name == "BattleChoice")
+                {
+                    screen.EventId = eventId;
+                    if (ScriptLookup != null && eventId >= 1 && eventId < 400)
+                    {
+                        var script = ScriptLookup.GetScript(eventId);
+                        if (script != null && script.Boxes.Count > 0)
+                        {
+                            int idx = _dialogueTracker.GetBoxIndex(eventId);
+                            if (idx < script.Boxes.Count)
+                            {
+                                var box = script.Boxes[idx];
+                                screen.CurrentDialogueLine = new DialogueBoxPayload
+                                {
+                                    Speaker = box.Speaker,
+                                    Text = box.Text,
+                                    BoxIndex = idx,
+                                    BoxCount = script.Boxes.Count,
+                                };
+                            }
+                        }
+                    }
                 }
 
                 // CharacterDialog (flavor-text popup, e.g. Kenrick intro).
