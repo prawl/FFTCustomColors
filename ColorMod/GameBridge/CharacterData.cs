@@ -342,6 +342,29 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Ramza (nameId=1) has a class that changes across chapters — generic
+        /// PSX-job-ID lookup collides (e.g. Ch2 Ramza stores job byte 0x01 in
+        /// the roster, which JobNameById maps to "Chemist" even though he's
+        /// shown as "Squire" in-game). Use this overload instead of
+        /// GetStoryJob for Ramza so the display matches the chapter.
+        ///
+        /// Session 48 2026-04-19: confirmed at Ch2 Mandalia — byte=0x01 →
+        /// "Squire". Ch4 was previously noted as byte=0x03 → "Gallant Knight".
+        /// Other variants (0xA0/0xA1) documented in RosterJobNameById.
+        /// </summary>
+        public static string? GetRamzaJob(int jobByte)
+        {
+            return jobByte switch
+            {
+                0x01 => "Squire",          // Ch2 / Ch3
+                0x03 => "Gallant Knight",  // Ch4
+                0xA0 => "Gallant Knight",  // variant
+                0xA1 => "Squire",          // variant
+                _ => null,
+            };
+        }
+
+        /// <summary>
         /// IC remaster roster job IDs (at roster offset +0x02).
         /// These differ from PSX job IDs and overlap with PSX story character IDs.
         /// Verified empirically by reading roster data during battle.

@@ -4130,7 +4130,13 @@ namespace FFTColorCustomizer.GameBridge
                         // their nameId rather than a real job ID (e.g. Marach job=26
                         // which PSX maps to Dragoon). StoryCharacterJob dict provides
                         // the canonical job name for these characters.
-                        var storyJob = CharacterData.GetStoryJob(m.NameId);
+                        // Session 48: Ramza (nameId=1) needs chapter-aware
+                        // job lookup — his job byte collides with generic
+                        // PSX IDs (0x01 = Chemist but Ramza Ch2 Squire).
+                        // Check Ramza first so he bypasses the generic fallback.
+                        var storyJob = m.NameId == 1
+                            ? CharacterData.GetRamzaJob(m.Job)
+                            : CharacterData.GetStoryJob(m.NameId);
                         if (storyJob != null)
                         {
                             unit.JobNameOverride = storyJob;

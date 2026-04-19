@@ -6761,16 +6761,18 @@ namespace FFTColorCustomizer.Utilities
                             // the screen as a PartyMenu path and strip the
                             // battle context (active unit name, etc.).
                             //
-                            // Session 48: also NEVER promote from BattleDialogue
-                            // or BattleChoice — pre-stage / mid-stage story
-                            // events at battle locations coincidentally pass
-                            // the equipment-mirror fingerprint (party unit's
-                            // gear sits in the mirror bytes throughout the
-                            // battle) and were getting clobbered into EqA.
+                            // Session 48: also NEVER promote from any Battle* screen.
+                            // Party-unit equipment sits in the mirror bytes
+                            // throughout the entire battle, so the fingerprint
+                            // matches on every mid-battle frame — promoting
+                            // from BattleMyTurn / BattleEnemiesTurn / BattleAlliesTurn /
+                            // BattleDialogue / BattleChoice / BattleStatus etc.
+                            // all wrongly clobber the true state into EqA.
+                            // BattlePaused is an intentional overlay on top of
+                            // battle so also skip. EqA is only valid from the
+                            // PartyMenu flow (non-Battle* origin).
                             if (screen.Name != "EquipmentAndAbilities"
-                                && screen.Name != "BattleStatus"
-                                && screen.Name != "BattleDialogue"
-                                && screen.Name != "BattleChoice")
+                                && !screen.Name.StartsWith("Battle"))
                             {
                                 ModLogger.Log($"[EqA promote] SM said '{screen.Name}' but mirror matches {matchedSlot.Name} equipment. Promoting to EquipmentAndAbilities.");
                                 screen.Name = "EquipmentAndAbilities";
