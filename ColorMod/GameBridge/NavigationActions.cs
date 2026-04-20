@@ -1098,8 +1098,15 @@ namespace FFTColorCustomizer.GameBridge
             Thread.Sleep(200);
 
             // Navigate to the target ability. The cursor is now at index 0.
-            // Use counter-delta to verify each keypress registered.
-            ModLogger.Log($"[BattleAbility] Nav: Down×{abilityIndex} (listSize={learnedAbilities?.Length ?? -1})");
+            // Session 52: wrap the Down-loop's counter-delta verification in
+            // AbilityCursorDeltaPlanner.Decide so only TRUSTED deltas trigger
+            // retry-math. Session 31 Up-wrap explosion (expected +3, got 0;
+            // expected +6, got -24) is the regression guardrail — the planner
+            // refuses to trust wrong-sign or >3x-expected deltas and falls
+            // back to blind scrolling, which the previous naive delta-check
+            // never did.
+            int listLength = learnedAbilities?.Length ?? 0;
+            ModLogger.Log($"[BattleAbility] Nav: Down×{abilityIndex} (listSize={listLength})");
             var abilityCounterBefore = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
             int abilityBaseline = abilityCounterBefore != null ? (int)abilityCounterBefore.Value.value : -1;
 
@@ -1110,23 +1117,41 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(150);
                 pressesConfirmed++;
 
-                // Verify every 3 presses or on the last press
+                // Verify every 3 presses or on the last press.
                 if (abilityBaseline >= 0 && (pressesConfirmed % 3 == 0 || i == abilityIndex - 1))
                 {
                     var counterCheck = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
                     int counterNow = counterCheck != null ? (int)counterCheck.Value.value : -1;
+                    if (counterNow < 0) continue;
                     int delta = counterNow - abilityBaseline;
-                    if (delta != pressesConfirmed && counterNow >= 0)
+                    var decision = AbilityCursorDeltaPlanner.Decide(
+                        expectedDirection: +1,
+                        observedDelta: delta,
+                        listLength: listLength > 0 ? listLength : 20,
+                        expectedMagnitude: pressesConfirmed);
+                    if (!decision.TrustDelta)
                     {
-                        int missed = pressesConfirmed - delta;
-                        ModLogger.Log($"[BattleAbility] Counter mismatch: expected {pressesConfirmed}, got delta {delta}. Retrying {missed} presses.");
-                        for (int r = 0; r < missed; r++)
+                        // Suspicious delta (wrap, wrong sign, wildly off).
+                        // Stay blind for remaining presses — don't retry on
+                        // bad data or we'll cascade the explosion.
+                        ModLogger.Log($"[BattleAbility] Counter delta {delta} untrusted (expected ~{pressesConfirmed}, list={listLength}). Staying blind.");
+                        continue;
+                    }
+                    // Trusted. If we're short of expected, fire the missing keys.
+                    if (decision.RemainingKeys != pressesConfirmed)
+                    {
+                        int missed = pressesConfirmed - decision.RemainingKeys;
+                        if (missed > 0)
                         {
-                            SendKey(VK_DOWN);
-                            Thread.Sleep(200);
+                            ModLogger.Log($"[BattleAbility] Trusted delta {delta}; retrying {missed} missed presses.");
+                            for (int r = 0; r < missed; r++)
+                            {
+                                SendKey(VK_DOWN);
+                                Thread.Sleep(200);
+                            }
                         }
-                        // Re-read baseline for next verification batch
-                        abilityBaseline = counterNow - delta + pressesConfirmed + missed;
+                        // Re-baseline so next batch's math stays correct.
+                        abilityBaseline = counterNow - decision.RemainingKeys + pressesConfirmed + (missed > 0 ? missed : 0);
                     }
                 }
             }

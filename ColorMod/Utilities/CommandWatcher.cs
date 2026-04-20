@@ -3092,7 +3092,26 @@ namespace FFTColorCustomizer.Utilities
 
                             var events = GameBridge.UnitScanDiff.Compare(before, after);
                             var lines = new List<string>();
-                            foreach (var e in events) lines.Add(GameBridge.UnitScanDiff.RenderEvent(e));
+                            var dtos = new List<ScanChangeEventDto>();
+                            foreach (var e in events)
+                            {
+                                lines.Add(GameBridge.UnitScanDiff.RenderEvent(e));
+                                dtos.Add(new ScanChangeEventDto
+                                {
+                                    Label = e.Label,
+                                    Team = e.Team,
+                                    Kind = e.Kind,
+                                    OldX = e.OldXY.HasValue ? (int?)e.OldXY.Value.x : null,
+                                    OldY = e.OldXY.HasValue ? (int?)e.OldXY.Value.y : null,
+                                    NewX = e.NewXY.HasValue ? (int?)e.NewXY.Value.x : null,
+                                    NewY = e.NewXY.HasValue ? (int?)e.NewXY.Value.y : null,
+                                    OldHp = e.OldHp,
+                                    NewHp = e.NewHp,
+                                    StatusesGained = e.StatusesGained,
+                                    StatusesLost = e.StatusesLost,
+                                });
+                            }
+                            response.ChangeEvents = dtos;
                             response.Status = "completed";
                             response.Info = events.Count == 0
                                 ? $"No changes between '{fromLabel}' and '{toLabel}'."

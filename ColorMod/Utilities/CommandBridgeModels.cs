@@ -275,6 +275,16 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<BatchReadResult>? Reads { get; set; }
 
+        /// <summary>
+        /// Session 52: structured events from scan_diff. Each entry is a
+        /// {label, team, oldXY, newXY, oldHp, newHp, statusesGained,
+        /// statusesLost, kind} record describing one unit's change between
+        /// two named snapshots. See GameBridge.UnitScanDiff.
+        /// </summary>
+        [JsonPropertyName("changeEvents")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<ScanChangeEventDto>? ChangeEvents { get; set; }
+
         [JsonPropertyName("screen")]
         public DetectedScreen? Screen { get; set; }
 
@@ -486,6 +496,55 @@ namespace FFTColorCustomizer.Utilities
 
         [JsonPropertyName("hex")]
         public string Hex { get; set; } = "";
+    }
+
+    /// <summary>
+    /// Session 52: JSON-friendly DTO for one scan_diff change event. Mirrors
+    /// GameBridge.UnitScanDiff.ChangeEvent but uses primitive types + strings
+    /// so the JSON serializer doesn't have to handle records/tuples.
+    /// </summary>
+    public class ScanChangeEventDto
+    {
+        [JsonPropertyName("label")]
+        public string Label { get; set; } = "";
+
+        [JsonPropertyName("team")]
+        public string Team { get; set; } = "";
+
+        [JsonPropertyName("kind")]
+        public string Kind { get; set; } = "";
+
+        [JsonPropertyName("oldX")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? OldX { get; set; }
+
+        [JsonPropertyName("oldY")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? OldY { get; set; }
+
+        [JsonPropertyName("newX")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? NewX { get; set; }
+
+        [JsonPropertyName("newY")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? NewY { get; set; }
+
+        [JsonPropertyName("oldHp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? OldHp { get; set; }
+
+        [JsonPropertyName("newHp")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? NewHp { get; set; }
+
+        [JsonPropertyName("statusesGained")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? StatusesGained { get; set; }
+
+        [JsonPropertyName("statusesLost")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? StatusesLost { get; set; }
     }
 
     public class DetectedScreen
