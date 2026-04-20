@@ -2789,6 +2789,16 @@ buff_all() {
 # to BattleVictory. Testing-only helper so Claude can skip past fights quickly.
 kill_enemies() { fft "{\"id\":\"$(id)\",\"action\":\"cheat_kill_enemies\"}"; }
 
+# kill_enemies_hard: Same as kill_enemies but calls twice with a battle_wait
+# between, to catch undead that Reraise after the first pass. Session 49
+# observed Skeletons surviving a single kill_enemies call due to Reraise —
+# re-firing after the dead-bit settles usually finishes them.
+kill_enemies_hard() {
+  kill_enemies
+  battle_wait
+  kill_enemies
+}
+
 # execute_turn: Bundle move + ability + wait into one round-trip.
 # Usage:
 #   execute_turn 6 5                         # move only

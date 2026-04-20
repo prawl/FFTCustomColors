@@ -73,11 +73,35 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 49 — wins (2026-04-20)
+
+- [x] **`kill_enemies` insta-win cheat SHIPPED** — master HP table at `0x14184xxxx` stride 0x200, per-slot +0x00=HP +0x02=MaxHP +0x31 bit5=DeadFlag. Auto-discovery via anchor-search + walk-out. Commits `8ec732e`, `9ddec07`, `d1f4d09`. `kill_enemies_hard` shell variant (double-tap with battle_wait) handles undead Reraise resist.
+
+- [x] **BattleVictory detection SHIPPED** — encA=255/encB=255 sentinel moved above LoadGame/TitleScreen/GameOver. `actedOrMoved` guard prevents battle-start misfires. battleTeam guard distinguishes Victory-with-Ramza-dying from real GameOver. Commits `d1f4d09`, `d44836d`.
+
+- [x] **Scan ghost-slot fix SHIPPED** — `inBattle==1 || CT>0` replaces strict `inBattle==1` filter. 4-enemy Siedge Weald now scans correctly. Commit `9ddec07`.
+
+- [x] **`buff_all` + `execute_turn` shell wrappers SHIPPED** — Commit `154e4e1`.
+
+### Session 49 — deferred / partial (2026-04-20)
+
+- [ ] **Verify `+0x29` as deathCounter with natural KO** — Session 49 found candidate at master-HP-table +0x29 that ticked 3→2 on a `kill_enemies`-KO'd Goblin. My `+0x31 |= 0x20` write may have initialized the counter; need natural KO to confirm. See `memory/project_deathcounter_offset_0x29.md`.
+
+- [ ] **Verify cast queue at `0x14077D220`** — Session 49 found 3 u32 records with `(u8, 0xB0, 0x00, 0x00)` pattern after queuing Curaja ct=10. Bytes didn't tick across polling — may not be the ct counter, or ct ticks only during enemy/ally turns (not my turn). See `memory/project_charging_ability_queue.md`.
+
+- [ ] **Hunt chapter byte for Ramza job disambiguation** — needs chapter-transition event for snapshot/diff. See `memory/project_chapter_byte_hunt_deferred.md`.
+
+- [ ] **Hunt Zodiac byte via heap-struct scan** — needs 2 known-different-zodiac characters to correlate. See `memory/project_zodiac_heap_hunt_deferred.md`.
+
+- [ ] **Enemy-turn play-by-play reporter** — design notes saved. Prefer `scan_snapshot`+`scan_diff` bridge actions. See `memory/project_enemy_turn_report_design.md`.
+
+- [ ] **Scan learned-ability filter audit (session 44 bug)** — existing filter code at NavigationActions.cs:2367-2417 looks correct but session-44 bug needs live re-verification against CharacterStatus. See `memory/project_scan_learned_ability_filter_audit.md`.
+
 ### Session 47 — follow-ups (2026-04-19)
 
 - [ ] **Live-verify `buff_ramza` on a fresh-game battle** — Session 47 pt 5 shipped `BuffPlanner` + `cheat_mode_buff` bridge action + `buff_ramza` shell helper. Pure planner has 12 tests green; dispatcher writes to the battle static array. NOT yet live-tested. Next session: start a battle, call `buff_ramza`, verify `scan_move` shows Ramza with HP=999/MaxHP=999/PA=255 and that a normally-damaging hit either heals him or does 0. If it misbehaves (writes to wrong slot in a multi-party battle, persists past battle, breaks animations) — see `BuffPlanner.PlanInvincibilityWrites` offset comments + `CommandWatcher.cs` `cheat_mode_buff` case for the slot-picker heuristic.
 
-- [ ] **`execute_turn` shell wrapper** — Session 47 pt 4 shipped `TurnPlan` + `CommandWatcher.ExecuteTurn` pure orchestrator with 9 tests. Bridge-level only today — no shell helper. Callers use direct JSON: `fft '{"id":"t1","action":"execute_turn","moveX":6,"moveY":5,"abilityName":"Attack","targetX":7,"targetY":5}'`. Next session: add `fft.sh` wrapper `execute_turn` with positional args + named flags, then wire into `BattleTurns.md` as the preferred one-shot turn command.
+- [x] **`execute_turn` shell wrapper SHIPPED** — Session 49 commit `154e4e1`. Positional args `execute_turn moveX moveY [ability [tx ty [dir [--nowait]]]]`. Commands.md updated.
 
 - [ ] **`swap_unit_to <name>` shell wrapper** — Session 47 pt 4 shipped `UnitCyclePlanner.Plan(fromIndex, toIndex, rosterCount)` pure planner with 12 tests. Missing: shell helper that resolves `name → displayOrder` via roster, reads current viewedUnit, feeds both into UnitCyclePlanner, dispatches Q/E sequence. One-liner once planner is wired.
 
@@ -91,7 +115,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Attack tiles calculator 12 vs game's 18 — 2026-04-19 session 48** — Ramza Archer at (6,1), bow range 4, correct MAP086 loaded. Our calculator emits 12 tiles, missing 6 that the game shows. Tiles computed don't reach y=4 or y=5 despite Manhattan-distance allowing (7,4), (6,4), (5,4), (7,5). Suspect: `AbilityTargetCalculator.GetValidTargetTiles` requires `IsWalkable(x,y)` but the game allows targeting **occupied** tiles (enemies standing on them) — our walkability check may reject those. Also possible: height-delta (VR=jump=5) filter cutting off elevated tiles where enemies stand. Left debug log `[ATTACK_DEBUG]` in NavigationActions.cs around line 2365 for next-session diagnosis. Pattern to reproduce: travel to Zeklaus (triggers encounter at Dugeura Pass), auto_place, `set_map 86`, move Ramza to (6,1), scan — compare our tile list to in-game attack overlay. Look at `ColorMod/GameBridge/AbilityTargetCalculator.cs:222-234` walkability + zDelta filters.
 
-- [ ] **Extend `cheat_mode_buff` to `buff_all`** — Current impl buffs the first player-side slot only. Loop over every `inBattle=1` + team=0 slot for multi-party story battles. Reuse `BuffPlanner.PlanInvincibilityWrites`; just iterate slots in `cheat_mode_buff` case.
+- [x] **`buff_all` SHIPPED** — Session 49 commit `154e4e1`. `cheat_mode_buff` with `pattern:"all"` iterates every player-team slot. Shell wrapper `buff_all [hp]` in fft.sh.
 
 - [ ] **Enemy-turn play-by-play report** — Currently the bridge goes silent during enemy turns; Claude can't narrate or react until BattleMyTurn returns. Add a per-turn summary that diffs unit state across a turn boundary. MVP: snapshot `(unitId, x, y, hp)` for every `inBattle=1` slot at turn-start, diff at turn-end, emit to `live_log.txt` as e.g. `[EnemyTurn] Archer(8,4)→(6,4)  Ramza HP 389→349 (-40)`. Heuristic attribution (adjacent + HP drop = attacker) — breaks on AoE/counters but good enough for narration. Stretch: stream intermediate events via polling `screen` during the turn. Fully-live damage-event hook is 4-6hr+; skip unless MVP isn't enough. 2026-04-19: requested while playing Zeklaus.
 
