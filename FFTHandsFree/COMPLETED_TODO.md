@@ -1116,3 +1116,79 @@ Tests: 3629 → 3680 (+51 new).
 - **User pushback shortens the path.** When I proposed a complicated scored-candidate map-resolver after finding `FindScenarioMapIdCandidates` returned 100+ hits, user said "why is this so difficult, I thought we were passing in the mapId" and immediately redirected us to find one authoritative byte. Single-byte result shipped in 20 minutes.
 
 - **Extract-with-tests stayed valuable.** `MapResolutionPlanner` got 8 tests for a priority-decision function that's currently disabled but ready if we need to re-enable scenario-struct fallbacks. Easier to turn back on safely than to re-derive the priority order from scratch.
+
+
+### Session 49 (2026-04-20) — master HP table discovery, BattleVictory detection, scan ghost-filter, dev tools
+
+**Commits (8):**
+
+- `8ec732e` — Ship kill_enemies + BattleVictory encA=255 sentinel ordering
+- `9ddec07` — Fix scan undercount: ghost slots had inBattle=0 AND CT=0
+- `154e4e1` — Add buff_all + execute_turn shell wrappers
+- `d1f4d09` — Guard BattleVictory sentinel against battle-start encA=0xFF misfire
+- `d44836d` — Fix Victory-with-Ramza-dying: battleTeam guards GameOver/Victory
+- `8ee178c` — Add kill_enemies_hard shell wrapper + mark session-49 TODO progress
+- `51f61e1` — Extend KillEnemiesPlanner with Reraise-clear + add revive_all
+- `(handoff)` — Session 49 handoff — TODO cleanup + memory notes
+
+**Shipped this session:**
+
+- [x] **`kill_enemies` insta-win cheat — master HP table at `0x14184xxxx`** — Damage-diff hunt at Zeklaus found the master HP store: stride 0x200, per-slot `+0x00 u16 HP`, `+0x02 u16 MaxHp`, `+0x31` bit 5 (0x20) = DeadFlag. Writes persist (no re-derivation — session 48's battle-array `0x140893C00` is a MIRROR). `KillEnemiesPlanner` (pure, 9 tests) + `cheat_kill_enemies` dispatcher with broad-search anchor discovery. Per-battle table base shifts (observed `0x14184D8C0` and `0x14184E4C0`); search any player's `(HP, MaxHp)` 4-byte fingerprint, walk backward at stride 0x200 allowing interior empty slots. Live-verified 3 battles at Siedge Weald. Commit `8ec732e`.
+
+- [x] **Scan undercount fix** — Battle array at `0x140893C00` had 8 valid-looking slots but only 3 had `inBattle=1`. Of the other 5, one was a real Bomb at (0,10) with `inBattle=0` + `CT=100`; four were ghost slots (`inBattle=0` + `CT=0`) left over from prior battles. New filter: accept if `inBattle==1 OR CT>0`. Live-verified 4-enemy Siedge Weald battle matches on-screen reality. Commit `9ddec07`.
+
+- [x] **`buff_all` multi-party invincibility** — `cheat_mode_buff` with `pattern:"all"` iterates every roster-matched player-team slot. Reuses `BuffPlanner.PlanInvincibilityWrites`. Shell helper `buff_all [hp]` in fft.sh. Commit `154e4e1`.
+
+- [x] **`execute_turn` shell wrapper** — Positional helper around the bridge action: `execute_turn moveX moveY [ability [tx ty [dir [--nowait]]]]`. Empty strings omit fields. Commands.md updated with examples. Commit `154e4e1`.
+
+- [x] **BattleVictory `encA=255`/`encB=255` sentinel moved above LoadGame / TitleScreen / GameOver** — Session-45 note captured `encA=255` as unique Victory discriminator, but the rule was positioned below LoadGame which preempted it. Session-49 poll during live Victory caught the 30-tick timeline: `GameOver → TitleScreen → LoadGame` (misdetected) with `encA=255/encB=255` firing at t=6/7 (~1s banner window). Reordering the sentinel to fire first makes the banner detect cleanly. Commit `8ec732e`.
+
+- [x] **`actedOrMoved` guard on Victory sentinel** — Battle-start first frame transiently reads `encA=0xFF` before being set to real values. Without the guard, fresh-battle returned `BattleVictory` on BattleMyTurn t=186ms. `actedOrMoved=true` is a reliable post-action signal that's false pre-first-turn. Regression tests pin both the positive case and the battle-start guard. Commit `d1f4d09`.
+
+- [x] **`battleTeam` guard splits GameOver from Victory-with-Ramza-dying** — When a unit counter-kills the last enemy on the same frame it dies itself, the post-banner state shares paused=1, gameOverFlag=1, battleMode=0 with GameOver. Discriminator: `battleTeam` = the team of the unit that just acted. Player-triggered final action → team=0 (Victory); enemy killed the last party member → team=1 (GameOver). Live-captured GameOver encA=05 (not 255) confirms Victory sentinel stays safe. Commit `d44836d`.
+
+- [x] **`kill_enemies_hard` shell wrapper** — Double-taps `kill_enemies` with a `battle_wait` between to catch undead that Reraise after the first pass. Commit `8ee178c`.
+
+- [x] **KillEnemiesPlanner extended with Reraise-clear** — `KillEnemySlot` gained optional `BattleArraySlotBase` + `CurrentStatusByte2` fields. When set and the Reraise bit (0x20 at battle-array `+0x47`) is on, planner emits an extra clear-write preserving other status bits. Dispatcher builds a `(HP, MaxHp) → battle-array slot` fingerprint map; Reraise-clear is opt-in per slot (0 extra writes for non-undead). 3 new planner tests. Commit `51f61e1`.
+
+- [x] **`revive_all` dev-tool helper** — Reverse of `kill_enemies` for recovering from ally wipes during testing. `KillEnemiesPlanner.PlanReviveAllies` writes `HP = MaxHp` + clears dead-bit for every dead (HP=0) player-team slot. Dispatcher reuses `kill_enemies` anchor-search with MaxHp-only matching (dead fingerprint is `(0, MaxHp)` so a HP-and-MaxHp match would miss dead players). Shell helper `revive_all` in fft.sh. 5 new planner tests. Commit `51f61e1`.
+
+- [x] **Ghost GameOver rule tightened** — Added `battleTeam != 0` to the GameOver rule so it doesn't swallow Victory-with-dying-Ramza edges. Existing rule at `ScreenDetectionLogic.cs:583` kept paused+gameOverFlag+battleMode guards. Regression test updated to team=1 (was team=0 originally — that original test was actually reading a Victory fingerprint, not GameOver). Commit `d44836d`.
+
+**Rejected / didn't work:**
+
+- **Hammering HP=0 writes faster to beat re-derivation (session 48 carryover).** The 50×10ms hammer loop doesn't outrun the game's derivation tick. Answer is to find the MASTER, not to out-write the mirror. Master HP table at `0x14184xxxx` ends this problem for kill_enemies.
+
+- **Walking the full `0x141800000..0x141900000` range at stride 0x200 without an anchor.** The master HP table base offset within that region is NOT a multiple of 0x200 from SearchMin — it starts at `+0xC0` or `+0xD8C0`. Stride-aligned enumeration from the search-region start misses the table entirely. Anchor-search + walk-out is the right pattern.
+
+- **Hypothesis that GameOver also shows `encA=255`.** Thought it might, after observing `encA=05` post-Victory-banner and seeing `GameOver` label fire. Real GameOver captured mid-session (Ramza died) showed `encA=05` directly — so 255 is Victory-banner-window-only and the sentinel IS safe.
+
+**Repeat-this patterns:**
+
+- **Damage-diff for HP-related byte hunts.** Snapshot → deal known damage D → snapshot → diff → filter for u16 that decreased by exactly D, with range guard `100 ≤ oldValue ≤ 2000`. Session 48 found BattleSequence byte + map-id byte this way in 20 min each; session 49 found master HP store (`325 → 193`, D=132) on the first attempt.
+
+- **Anchor-search with `broadSearch=true` for read-only main-module pages.** `SearchBytesInAllMemory` in narrow mode (default) only scans READWRITE private/mapped memory. Main module at `0x14184xxxx` is RX — narrow mode returns zero matches. `broadSearch: true` is mandatory for this region.
+
+- **Live-poll during transitions to capture banner-window fingerprints.** Session-45 tried static snapshots and captured `encA=255`. Session-49 ran a 30-tick poll across the Victory banner transition and captured the full timeline: setup → banner → post-banner-clear. The timeline resolved the question of whether post-banner Victory still shows 255 (no — clears to 05).
+
+- **Characterization tests for known-buggy behavior.** Session 49 wrote `DetectScreen_KnownBug_VictoryWithRamzaDying_MisdetectsAsGameOver` asserting current (wrong) output. The fix was then a one-assertion flip to `BattleVictory`. Plays well with strict TDD.
+
+**Don't-repeat list:**
+
+- **Don't blindly enumerate addresses at stride when the table base isn't stride-aligned from your scan start.** Anchor-search with a known value (e.g. player's HP fingerprint), then walk the stride from the matched address.
+
+- **Don't rely on `GameOver` rule as the sole loss-vs-Victory discriminator post-banner.** Without the `battleTeam` guard, Victory-with-dying-Ramza mislabeled as GameOver for several seconds.
+
+- **Don't set `+0x31` bit 0x20 on a unit and claim `+0x29` is the deathCounter without a control run.** The write may initialize the counter artificially — only a natural KO's post-death decrement confirms the byte is game-driven.
+
+- **Don't trust scan's unit count without cross-referencing the master HP table.** The battle array has ghost slots; the master table is authoritative for who's actually alive.
+
+**What made this session's wins stick:**
+
+- **Master vs mirror is the key mental model.** Once I understood that `0x14184xxxx` is the MASTER and `0x140893C00` is a mirror (gets re-derived each frame), every failing session-48 write made sense. Writing to a mirror is writing to sand. This pattern probably repeats for other stats (status bytes, position, MP) — future hunts should assume "there's a master somewhere else" before giving up.
+
+- **Damage-diff is load-bearing.** Two of this session's three memory finds (master HP store, Reraise bit verification) came from the snapshot/diff technique. Fast, reliable, directly answers the question. Scoring heuristics and AoB scanning can't compete when the target byte has a direct known-delta behavior.
+
+- **Strict TDD clicked for detection fixes.** The Victory-battleTeam guard shipped as: (1) characterization test asserting wrong behavior, (2) impl change, (3) flip the assertion, (4) add positive + negative regression tests. Takes longer per feature than "change code → pray" but the regression coverage is real and the next edit is safer.
+
+- **Live-poll capture over static snapshot.** A 30-tick poll across a Victory transition showed things a single post-event snapshot would miss: the `encA=0xFF` banner window, the battle-start `encA=0xFF` false-positive, the `FF FF FF FF FF FF FF FF` all-FF banner signature. Multi-tick polling is cheap (~15s) and surfaces timing-sensitive state the detection rules have to handle.

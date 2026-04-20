@@ -73,35 +73,33 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
-### Session 49 — wins (2026-04-20)
+### Session 49 — follow-ups (2026-04-20)
 
-- [x] **`kill_enemies` insta-win cheat SHIPPED** — master HP table at `0x14184xxxx` stride 0x200, per-slot +0x00=HP +0x02=MaxHP +0x31 bit5=DeadFlag. Auto-discovery via anchor-search + walk-out. Commits `8ec732e`, `9ddec07`, `d1f4d09`. `kill_enemies_hard` shell variant (double-tap with battle_wait) handles undead Reraise resist.
+- [ ] ⚠ UNVERIFIED: **live-verify `kill_enemies` dispatcher's new Reraise-clear path against a real Skeleton / Bonesnatch** — Commit `51f61e1` added `BattleArraySlotBase` + `CurrentStatusByte2` on `KillEnemySlot` and the dispatcher reads status byte at battle-array `+0x47`. Planner tests cover the plan (17 green) but the end-to-end Reraise-clear writes weren't run in a live undead battle. Next session: enter a Siedge Weald encounter with a Skeleton/Bonesnatch, call `kill_enemies` once (no `_hard`), confirm the undead drops without reviving on turn rollover. If it still revives, check whether `CurrentStatusByte2` is reading the right byte (session 49 confirmed Lloyd Reraise→byte[2]=0x20 at battle-array +0x47, but the dispatcher may read from the wrong slot if the battle-array fingerprint map misses the undead).
 
-- [x] **BattleVictory detection SHIPPED** — encA=255/encB=255 sentinel moved above LoadGame/TitleScreen/GameOver. `actedOrMoved` guard prevents battle-start misfires. battleTeam guard distinguishes Victory-with-Ramza-dying from real GameOver. Commits `d1f4d09`, `d44836d`.
+- [ ] ⚠ UNVERIFIED: **live-verify `revive_all`** — Commit `51f61e1` added `cheat_revive_allies` + shell `revive_all`. Planner tests green (5 added). Dispatcher reuses the `kill_enemies` anchor-search but with MaxHp-only player matching (dead fingerprint is `(0, MaxHp)`). Next session: in a battle where at least one party member has been KO'd, call `revive_all`, verify the downed ally stands up with full HP on next turn. Edge case to watch: if the MaxHp-only match overmatches an enemy slot whose MaxHp happens to equal a player's MaxHp, that enemy gets revived too.
 
-- [x] **Scan ghost-slot fix SHIPPED** — `inBattle==1 || CT>0` replaces strict `inBattle==1` filter. 4-enemy Siedge Weald now scans correctly. Commit `9ddec07`.
+- [ ] **Verify `+0x29` as deathCounter with natural KO** — Session 49 found candidate at master-HP-table +0x29 that ticked 3→2 on a `kill_enemies`-KO'd Goblin. The `+0x31 |= 0x20` dead-bit write may have initialized the counter artificially; need natural KO (normal attack) to confirm it's the true crystallize countdown. See `memory/project_deathcounter_offset_0x29.md`.
 
-- [x] **`buff_all` + `execute_turn` shell wrappers SHIPPED** — Commit `154e4e1`.
+- [ ] **Verify cast queue at `0x14077D220`** — Session 49 found 3 u32 records with `(u8, 0xB0, 0x00, 0x00)` pattern after queuing Curaja ct=10. Bytes didn't tick across polling — may not be the ct counter, or ct only advances during enemy/ally turns (not player's turn). Next-session approach: queue a spell on Kenrick, end Lloyd's turn (so CT advances), immediately read `0x14077D220`, wait another turn, read again; expect monotonic decrement. See `memory/project_charging_ability_queue.md`.
 
-### Session 49 — deferred / partial (2026-04-20)
+- [ ] **Hunt chapter byte for Ramza job disambiguation** — needs chapter-transition event for snapshot/diff. `CharacterData.GetRamzaJob(0x01)` currently picks Squire, but 0x01 can mean Ch2 Squire or something else in Ch3. At next chapter advance: snapshot at end of old chapter, snapshot at start of new chapter, diff for a byte going oldCh → newCh. See `memory/project_chapter_byte_hunt_deferred.md`.
 
-- [ ] **Verify `+0x29` as deathCounter with natural KO** — Session 49 found candidate at master-HP-table +0x29 that ticked 3→2 on a `kill_enemies`-KO'd Goblin. My `+0x31 |= 0x20` write may have initialized the counter; need natural KO to confirm. See `memory/project_deathcounter_offset_0x29.md`.
+- [ ] **Hunt Zodiac byte via heap-struct scan** — needs 2 known-different-zodiac party members loaded. Open CharacterStatus for unit A (read zodiac from UI), snapshot heap, switch to unit B, note zodiac, snapshot heap, diff for bytes that went zodiacA → zodiacB. Cross-validate on a third unit. See `memory/project_zodiac_heap_hunt_deferred.md`.
 
-- [ ] **Verify cast queue at `0x14077D220`** — Session 49 found 3 u32 records with `(u8, 0xB0, 0x00, 0x00)` pattern after queuing Curaja ct=10. Bytes didn't tick across polling — may not be the ct counter, or ct ticks only during enemy/ally turns (not my turn). See `memory/project_charging_ability_queue.md`.
+- [ ] **Scan learned-ability filter audit (session 44 bug)** — existing filter at `NavigationActions.cs:2367-2417` looks correct in code but session 44 reported Ramza with unlearned Mettle abilities (Tailwind/Steel/Shout/Ultima) surfaced as learned. Next session: at fresh-game Ramza, screenshot the CharacterStatus Mettle list, run `scan_move`, compare. If mismatch, log `(byte0, byte1)` of bitfield at `roster slot +0x32 + jobIdx*3` and trace the filter path. See `memory/project_scan_learned_ability_filter_audit.md`.
 
-- [ ] **Hunt chapter byte for Ramza job disambiguation** — needs chapter-transition event for snapshot/diff. See `memory/project_chapter_byte_hunt_deferred.md`.
+- [ ] **Extract scan-snapshot + scan-diff bridge actions for enemy-turn play-by-play** — Design notes saved; no code shipped. New actions `scan_snapshot <label>` caches the current `_lastScannedUnits`; `scan_diff <from> <to>` compares two cached lists and emits `{unit, oldXY, newXY, oldHp, newHp, status deltas}`. Identity-match by (GridX, GridY) on the "from" snapshot with roster-match fallback. Shell: render as `[EnemyTurn] Archer(8,4)→(6,4) Ramza HP 389→349 (-40)`. See `memory/project_enemy_turn_report_design.md`.
 
-- [ ] **Hunt Zodiac byte via heap-struct scan** — needs 2 known-different-zodiac characters to correlate. See `memory/project_zodiac_heap_hunt_deferred.md`.
+- [ ] **Investigate 0xB0 in cast queue** — Every cast queue record `(u8, 0xB0, 0x00, 0x00)` has byte[1]=0xB0 constant. Queue a non-time-magick cast-time ability (Holy, Meteor, Summon) and compare. If 0xB0 stays → it's a queue-slot state tag (charging=0xB0, idle=0x00). If it changes → ability-class ID. See `memory/project_charging_ability_queue.md`.
 
-- [ ] **Enemy-turn play-by-play reporter** — design notes saved. Prefer `scan_snapshot`+`scan_diff` bridge actions. See `memory/project_enemy_turn_report_design.md`.
+- [ ] **Attack-tile calculator 12 vs 18** — carryover from session 48. Debug log `[ATTACK_DEBUG]` live in `NavigationActions.cs:2365`. Reproduce: travel to Zeklaus, trigger Dugeura Pass encounter, `auto_place_units`, `set_map 86`, move Ramza to (6,1), scan. Compare tile list to overlay. Suspect `AbilityTargetCalculator.GetValidTargetTiles:222-234` walkability/zDelta rejection.
 
-- [ ] **Scan learned-ability filter audit (session 44 bug)** — existing filter code at NavigationActions.cs:2367-2417 looks correct but session-44 bug needs live re-verification against CharacterStatus. See `memory/project_scan_learned_ability_filter_audit.md`.
+- [ ] **BattleVictory post-banner false-GameOver edge** — The session-49 battleTeam guard fixes the Victory-with-Ramza-dying case, but if a Victory happens when battleTeam somehow ≠ 0 (e.g. counter-kill by ally NPC team=2), we'd still mislabel. Low priority — no real-world repro yet. Regression test `DetectScreen_VictoryWithRamzaDying_TeamZeroGuard_ReturnsBattleVictory` pins the current fix.
 
 ### Session 47 — follow-ups (2026-04-19)
 
 - [ ] **Live-verify `buff_ramza` on a fresh-game battle** — Session 47 pt 5 shipped `BuffPlanner` + `cheat_mode_buff` bridge action + `buff_ramza` shell helper. Pure planner has 12 tests green; dispatcher writes to the battle static array. NOT yet live-tested. Next session: start a battle, call `buff_ramza`, verify `scan_move` shows Ramza with HP=999/MaxHP=999/PA=255 and that a normally-damaging hit either heals him or does 0. If it misbehaves (writes to wrong slot in a multi-party battle, persists past battle, breaks animations) — see `BuffPlanner.PlanInvincibilityWrites` offset comments + `CommandWatcher.cs` `cheat_mode_buff` case for the slot-picker heuristic.
-
-- [x] **`execute_turn` shell wrapper SHIPPED** — Session 49 commit `154e4e1`. Positional args `execute_turn moveX moveY [ability [tx ty [dir [--nowait]]]]`. Commands.md updated.
 
 - [ ] **`swap_unit_to <name>` shell wrapper** — Session 47 pt 4 shipped `UnitCyclePlanner.Plan(fromIndex, toIndex, rosterCount)` pure planner with 12 tests. Missing: shell helper that resolves `name → displayOrder` via roster, reads current viewedUnit, feeds both into UnitCyclePlanner, dispatches Q/E sequence. One-liner once planner is wired.
 
@@ -109,15 +107,10 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Session 48 — follow-ups (2026-04-19)
 
-- [x] **Insta-win battle cheat (`kill_enemies`) — SHIPPED session 49 (2026-04-20)** — Damage-diff hunt found master HP table at runtime ~0x14184xxxx, stride 0x200. Per-slot +0x00=HP (u16), +0x02=MaxHp (u16), +0x31 bit5=DeadFlag (0x20). Writing HP=0 + dead-bit persists (no re-derivation) and game transitions to BattleVictory on next turn boundary. New `KillEnemiesPlanner` (pure, 9 tests green) + rewritten `cheat_kill_enemies` dispatcher with broad-search anchor discovery. Live-verified 3+ battles: Siedge Weald Goblins/Skeleton, Black Goblin solo. **Known edge cases:** (a) Undead with Reraise may re-animate the dead-flagged unit — Skeleton survived session-49 tests. (b) Ramza may occupy 2 slots in the table (duplicate fingerprint); the IsPlayer filter skips both correctly. (c) BattleVictory screen detection drifts to `TitleScreen` / `LoadGame` in session-49 testing — pre-existing detection bug, not caused by this cheat. See `memory/project_master_hp_store.md`.
-
 - [ ] **Random-encounter map resolution: FIXED via live-map-id byte — regression test only** — Commit `9f87bfc` swapped `screen.location`-keyed lookups for `0x14077D83C` (u8, current battle map id). Three maps live-verified + survives restart. Reopens only if the byte shifts after a game patch. If the locId-based fallback at `NavigationActions.cs:Try 1/2` ever gets reached, log why so we know when it matters.
 
 - [ ] **Attack tiles calculator 12 vs game's 18 — 2026-04-19 session 48** — Ramza Archer at (6,1), bow range 4, correct MAP086 loaded. Our calculator emits 12 tiles, missing 6 that the game shows. Tiles computed don't reach y=4 or y=5 despite Manhattan-distance allowing (7,4), (6,4), (5,4), (7,5). Suspect: `AbilityTargetCalculator.GetValidTargetTiles` requires `IsWalkable(x,y)` but the game allows targeting **occupied** tiles (enemies standing on them) — our walkability check may reject those. Also possible: height-delta (VR=jump=5) filter cutting off elevated tiles where enemies stand. Left debug log `[ATTACK_DEBUG]` in NavigationActions.cs around line 2365 for next-session diagnosis. Pattern to reproduce: travel to Zeklaus (triggers encounter at Dugeura Pass), auto_place, `set_map 86`, move Ramza to (6,1), scan — compare our tile list to in-game attack overlay. Look at `ColorMod/GameBridge/AbilityTargetCalculator.cs:222-234` walkability + zDelta filters.
 
-- [x] **`buff_all` SHIPPED** — Session 49 commit `154e4e1`. `cheat_mode_buff` with `pattern:"all"` iterates every player-team slot. Shell wrapper `buff_all [hp]` in fft.sh.
-
-- [ ] **Enemy-turn play-by-play report** — Currently the bridge goes silent during enemy turns; Claude can't narrate or react until BattleMyTurn returns. Add a per-turn summary that diffs unit state across a turn boundary. MVP: snapshot `(unitId, x, y, hp)` for every `inBattle=1` slot at turn-start, diff at turn-end, emit to `live_log.txt` as e.g. `[EnemyTurn] Archer(8,4)→(6,4)  Ramza HP 389→349 (-40)`. Heuristic attribution (adjacent + HP drop = attacker) — breaks on AoE/counters but good enough for narration. Stretch: stream intermediate events via polling `screen` during the turn. Fully-live damage-event hook is 4-6hr+; skip unless MVP isn't enough. 2026-04-19: requested while playing Zeklaus.
 
 ### Session 46 — follow-ups (2026-04-19)
 
