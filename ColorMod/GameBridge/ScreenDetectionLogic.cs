@@ -512,6 +512,23 @@ namespace FFTColorCustomizer.GameBridge
                 && IsRealEvent(eventId))
                 return "BattleVictory";
 
+            // BattleVictory sentinel: encA=255 AND encB=255 is a unique transient
+            // signature captured at Zeklaus win 2026-04-19 (session 45) and
+            // reproduced Siedge Weald 2026-04-20 (session 49, kill_enemies-triggered).
+            // All other session-45/49 states saw encA in [0..8]. The 255/255 state
+            // lasts ~1 second during the Victory banner then clears.
+            //
+            // Ordering matters: this MUST fire BEFORE LoadGame / post-GameOver
+            // TitleScreen / GameOver — during the banner, gameOverFlag and
+            // submenuFlag are both sticky from pre-victory, so those rules
+            // preempt Victory if evaluated first. Session 49 capture observed
+            // misdetection as `GameOver → TitleScreen → LoadGame (locked)` with
+            // encA=255/encB=255 firing cleanly at t=6/7 of a 30-tick poll.
+            //
+            // See memory/project_battle_victory_encA255.md.
+            if (encA == 255 && encB == 255 && battleMode == 0 && battleTeam == 0)
+                return "BattleVictory";
+
             // LoadGame: reached from GameOver menu. Shares stale battle state with GameOver
             // but paused=0 (GameOver has paused=1). Runs before EnemiesTurn to preempt stale
             // battleTeam=1.
@@ -530,19 +547,6 @@ namespace FFTColorCustomizer.GameBridge
             if (rawLocation == 255 && paused == 0 && gameOverFlag == 1 && submenuFlag == 1
                 && battleMode == 0 && !actedOrMoved && menuCursor == 2)
                 return "TitleScreen";
-
-            // BattleVictory sentinel: encA=255 AND encB=255 is a unique transient signature
-            // captured at Zeklaus win 2026-04-19 (memory/project_battle_victory_encA255.md).
-            // All other session-45 states saw encA in [0..7]. Must fire BEFORE the
-            // IsMidBattleEvent rule below — without this, the post-victory eventId (41)
-            // misroutes to BattleDialogue. paused==0 guards against paused overlays
-            // (BattleStatus/BattlePaused/Desertion) stealing the label during a
-            // Victory-adjacent pause, which the paused-branch rules already handle.
-            // battleTeam==0 guards against the (unlikely) case of encA=255/encB=255
-            // appearing during an enemy/ally turn — the Zeklaus capture had team=0.
-            if (encA == 255 && encB == 255 && battleMode == 0 && paused == 0
-                && battleTeam == 0)
-                return "BattleVictory";
 
             // Session 48: ally-turn dialogue. When battleTeam==2 (neutral/ally
             // phase), combat-animation nameId aliasing doesn't apply because

@@ -3800,6 +3800,52 @@ namespace FFTColorCustomizer.GameBridge
                 ?? _lastScannedUnits?.FirstOrDefault(u => u.Team == 0);
         }
 
+        /// <summary>
+        /// Session 48: returns (x, y) of every roster-matched player unit from the
+        /// most recent scan. Used by `cheat_kill_enemies` to distinguish which
+        /// battle-array slots belong to the player so they don't get KO'd.
+        /// Triggers a fresh scan if none is cached.
+        /// </summary>
+        public List<(int x, int y)> GetPlayerSlotPositions()
+        {
+            if (_lastScannedUnits == null || _lastScannedUnits.Count == 0)
+            {
+                try { CollectUnitPositionsFull(); } catch { }
+            }
+            var result = new List<(int, int)>();
+            if (_lastScannedUnits == null) return result;
+            foreach (var u in _lastScannedUnits)
+            {
+                if (u.Team == 0 && u.GridX >= 0 && u.GridY >= 0)
+                    result.Add((u.GridX, u.GridY));
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Session 49: returns (Hp, MaxHp) pairs for every player unit from the
+        /// most recent scan. Used by `cheat_kill_enemies` (master HP table
+        /// rewrite) to distinguish player slots from enemy slots by matching
+        /// HP fingerprints — the master table has no team byte.
+        /// Triggers a fresh scan if none is cached.
+        /// See memory/project_master_hp_store.md.
+        /// </summary>
+        public List<(int Hp, int MaxHp)> GetPlayerHpFingerprints()
+        {
+            if (_lastScannedUnits == null || _lastScannedUnits.Count == 0)
+            {
+                try { CollectUnitPositionsFull(); } catch { }
+            }
+            var result = new List<(int, int)>();
+            if (_lastScannedUnits == null) return result;
+            foreach (var u in _lastScannedUnits)
+            {
+                if (u.Team == 0 && u.MaxHp > 0)
+                    result.Add((u.Hp, u.MaxHp));
+            }
+            return result;
+        }
+
         // Addresses that control the C-key cursor cycling mode.
         private const long AddrCursorCycleFlag1 = 0x140D3A400;
         private const long AddrCursorCycleFlag2 = 0x14077CA5C;

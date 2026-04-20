@@ -2589,6 +2589,169 @@ namespace FFTColorCustomizer.Utilities
                         }
                         break;
 
+                    case "cheat_kill_enemies":
+                        // Session 49 rewrite: discovers the master HP table at
+                        // runtime (base shifts per-battle, ~0x14184xxxx, stride
+                        // 0x200), walks it to build per-slot (Hp, MaxHp) records
+                        // tagged with player vs enemy, hands to KillEnemiesPlanner
+                        // which emits HP=0 + dead-bit (+0x31 |= 0x20) writes.
+                        //
+                        // Session 48 version hammered the BATTLE ARRAY at
+                        // 0x140893C00 — that's a mirror, the game re-derived HP
+                        // each frame, writes reverted (feedback_hp_is_derived.md).
+                        // This version writes the MASTER directly; no hammering.
+                        //
+                        // Player vs enemy: match slots to scanned-unit HP
+                        // fingerprints (team 0 entries from latest scan). The
+                        // master table has no team byte, so HP+MaxHP pairs are
+                        // the discriminator. See memory/project_master_hp_store.md.
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        try
+                        {
+                            // --- Collect player fingerprints from last scan
+                            var playerFingerprints = _navActions?.GetPlayerHpFingerprints()
+                                ?? new List<(int Hp, int MaxHp)>();
+                            if (playerFingerprints.Count == 0)
+                            {
+                                response.Status = "failed";
+                                response.Error = "cheat_kill_enemies: no scanned player units. Run scan_move first or be in a battle.";
+                                break;
+                            }
+
+                            // --- Find the master HP table via anchor search
+                            // Use broadSearch=true to hit main-module read-only
+                            // pages. For each player fingerprint, search for
+                            // the 4-byte (HP u16, MaxHp u16) pattern. Each hit
+                            // is a candidate slot; walk backward at stride
+                            // 0x200 (allowing interior empty slots) to find
+                            // the table base. Session 49: table stride is
+                            // 0x200 but the base alignment within the
+                            // 0x141800000 region is arbitrary (observed
+                            // +0xC0..+0xD8C0 offsets).
+                            const long SearchMin = 0x141800000L;
+                            const long SearchMax = 0x141900000L;
+                            const int SlotStride = 0x200;
+                            const int MaxBackwardSlots = 40;
+                            const int MaxForwardSlots = 40;
+
+                            long? tableBase = null;
+                            int tableSlotCount = 0;
+
+                            foreach (var (hp, maxHp) in playerFingerprints)
+                            {
+                                byte[] pattern = new byte[]
+                                {
+                                    (byte)(hp & 0xFF),    (byte)((hp >> 8) & 0xFF),
+                                    (byte)(maxHp & 0xFF), (byte)((maxHp >> 8) & 0xFF),
+                                };
+                                var matches = Explorer.SearchBytesInAllMemory(
+                                    pattern, 16, SearchMin, SearchMax, broadSearch: true);
+                                foreach (var (matchAddr, _) in matches)
+                                {
+                                    long anchor = (long)matchAddr;
+                                    // Walk backward 40 slots, never breaking
+                                    // on empty (interior gaps are allowed).
+                                    long lowest = anchor;
+                                    int lowestValidIdx = 0;
+                                    for (int back = 1; back <= MaxBackwardSlots; back++)
+                                    {
+                                        long prev = anchor - back * SlotStride;
+                                        if (prev < SearchMin) break;
+                                        var ph = Explorer.ReadAbsolute((nint)prev, 2);
+                                        var pm = Explorer.ReadAbsolute((nint)(prev + 2), 2);
+                                        if (!ph.HasValue || !pm.HasValue) break;
+                                        int pMax = (int)pm.Value.value;
+                                        int pHp = (int)ph.Value.value;
+                                        // Valid slot: MaxHp ∈ [1, 2000] and HP ≤ MaxHp.
+                                        // Empty slot (MaxHp==0, HP==0) is allowed interior.
+                                        bool validSlot = pMax >= 1 && pMax <= 2000 && pHp <= pMax;
+                                        bool emptySlot = pMax == 0 && pHp == 0;
+                                        if (!validSlot && !emptySlot) break;
+                                        if (validSlot)
+                                        {
+                                            lowest = prev;
+                                            lowestValidIdx = back;
+                                        }
+                                    }
+
+                                    // From lowest valid slot, count forward
+                                    // coverage (valid + empty interior).
+                                    int coverage = 0;
+                                    for (int fwd = 0; fwd <= MaxForwardSlots; fwd++)
+                                    {
+                                        long slotAddr = lowest + fwd * SlotStride;
+                                        if (slotAddr >= SearchMax) break;
+                                        var h = Explorer.ReadAbsolute((nint)slotAddr, 2);
+                                        var m = Explorer.ReadAbsolute((nint)(slotAddr + 2), 2);
+                                        if (!h.HasValue || !m.HasValue) break;
+                                        int mv = (int)m.Value.value;
+                                        int hv = (int)h.Value.value;
+                                        bool valid = mv >= 1 && mv <= 2000 && hv <= mv;
+                                        bool empty = mv == 0 && hv == 0;
+                                        if (!valid && !empty) break;
+                                        coverage = fwd + 1;
+                                    }
+
+                                    if (coverage > tableSlotCount)
+                                    {
+                                        tableBase = lowest;
+                                        tableSlotCount = coverage;
+                                    }
+                                }
+                            }
+
+                            ModLogger.Log($"[CheatKill] anchor search: fpCount={playerFingerprints.Count} tableBase={(tableBase.HasValue ? "0x" + tableBase.Value.ToString("X") : "null")} coverage={tableSlotCount}");
+
+                            if (tableBase == null || tableSlotCount < 2)
+                            {
+                                response.Status = "failed";
+                                response.Error = "cheat_kill_enemies: master HP table not found. Run scan_move on BattleMyTurn first.";
+                                break;
+                            }
+
+                            // --- Walk table, build per-slot records tagged player/enemy
+                            var fpSet = new HashSet<(int, int)>(playerFingerprints);
+                            var slots = new List<GameBridge.KillEnemySlot>();
+                            for (int i = 0; i < tableSlotCount; i++)
+                            {
+                                long slotAddr = tableBase.Value + i * SlotStride;
+                                var h = Explorer.ReadAbsolute((nint)slotAddr, 2);
+                                var m = Explorer.ReadAbsolute((nint)(slotAddr + 2), 2);
+                                if (!h.HasValue || !m.HasValue) continue;
+                                int hv = (int)h.Value.value;
+                                int mv = (int)m.Value.value;
+                                bool isPlayer = fpSet.Contains((hv, mv));
+                                slots.Add(new GameBridge.KillEnemySlot
+                                {
+                                    SlotBase = slotAddr,
+                                    Hp = hv,
+                                    MaxHp = mv,
+                                    IsPlayer = isPlayer,
+                                });
+                            }
+
+                            // --- Plan + dispatch
+                            var plan = GameBridge.KillEnemiesPlanner.Plan(slots);
+                            foreach (var op in plan)
+                            {
+                                for (int i = 0; i < op.Bytes.Length; i++)
+                                    Explorer.Scanner.WriteByte((nint)(op.Address + i), op.Bytes[i]);
+                            }
+
+                            int enemiesKilled = plan.Count / 2;
+                            int playerSkipped = slots.Count(s => s.IsPlayer);
+                            ModLogger.Log($"[CheatKill] masterHP table base=0x{tableBase.Value:X} slots={tableSlotCount} killed={enemiesKilled} players={playerSkipped}");
+
+                            response.Info = $"Killed {enemiesKilled} enemy slot(s) via master HP table at 0x{tableBase.Value:X} (stride 0x200, {tableSlotCount} slots scanned, {playerSkipped} player slot(s) skipped). End your turn to trigger victory.";
+                            response.Status = "completed";
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Status = "error";
+                            response.Error = ex.Message;
+                        }
+                        break;
+
                     case "write_byte":
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         if (string.IsNullOrEmpty(command.Address)) { response.Status = "failed"; response.Error = "Address required"; break; }

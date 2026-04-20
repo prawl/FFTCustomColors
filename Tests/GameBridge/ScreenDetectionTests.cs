@@ -898,6 +898,31 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_Victory_EncA255Sentinel_FiresOverLoadGameAndTitleScreen()
+        {
+            // Session 49 live capture (Siedge Weald, kill_enemies-triggered victory):
+            // During the banner phase the game's encA/encB bytes both hit 255 for
+            // ~1 second, but the existing LoadGame rule preempts the Victory
+            // sentinel. Captured poll output showed state sequence
+            //   GameOver → TitleScreen → LoadGame (locked)
+            // while user confirmed V-screen was visible throughout. The bytes at
+            // 0x140900824 / 0x140900828 read FF during t=6/7 of the poll —
+            // that's our Victory window. The sentinel rule must win over
+            // LoadGame and TitleScreen rules even when gameOverFlag=1 and
+            // submenuFlag=1 are sticky from the prior battle state.
+            // See memory/project_battle_victory_encA255.md.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 2,
+                eventId: 0);
+
+            Assert.Equal("BattleVictory", result);
+        }
+
+        [Fact]
         public void DetectScreen_Victory_Orbonne_Slot0_0x67_ShouldReturnBattleVictory()
         {
             // Same as above but paused=0 (auto-advancing victory result screen).

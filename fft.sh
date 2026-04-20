@@ -2775,6 +2775,11 @@ buff_ramza() {
   fft "{\"id\":\"$(id)\",\"action\":\"cheat_mode_buff\",\"searchValue\":$hp}"
 }
 
+# kill_enemies: Insta-KO every enemy in the current battle. Writes HP=0 to
+# every battle-array slot that isn't a roster-matched player. Game auto-advances
+# to BattleVictory. Testing-only helper so Claude can skip past fights quickly.
+kill_enemies() { fft "{\"id\":\"$(id)\",\"action\":\"cheat_kill_enemies\"}"; }
+
 # buy: Buy an item from a shop.
 # Usage: buy <item_name> <quantity>
 buy() { fft "{\"id\":\"$(id)\",\"action\":\"buy\",\"to\":\"$1\",\"locationId\":${2:-1}}"; }

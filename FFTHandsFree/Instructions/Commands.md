@@ -45,6 +45,7 @@ Fields: `moveX`/`moveY` (optional move), `abilityName` (optional, `targetX`/`tar
 | Command | Description |
 |---------|-------------|
 | `buff_ramza [hp]` | Make Ramza (first player-side battle slot) invincible for one battle. HP/MaxHP=999 (or arg), PA=255, all elements absorbed. Does NOT touch level/exp/brave/faith — enemy scaling unchanged. Call AFTER battle array is populated (post-formation). Per-battle only; static array resets each battle. |
+| `kill_enemies` | Insta-win the current battle. Discovers the master HP table at runtime (~0x14184xxxx, stride 0x200), writes HP=0 + dead-bit to every enemy slot while leaving player slots alone. End your turn to trigger BattleVictory. Call on BattleMyTurn after a `scan_move` (planner needs a recent roster snapshot to tell players from enemies). Undead with Reraise may re-animate — retry if one survives. |
 
 ## Navigation
 
