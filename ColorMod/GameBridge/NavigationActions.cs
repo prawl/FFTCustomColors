@@ -3930,6 +3930,22 @@ namespace FFTColorCustomizer.GameBridge
                         unit.IsActive = true;
                         unit.Team = (int)activeReads[1];
                         unit.NameId = (int)activeReads[2];
+                        // Session 48: the battle-array slot's gridX/gridY bytes
+                        // at +0x33/+0x34 DON'T update when a unit moves during
+                        // its turn — they hold the pre-move position for the
+                        // whole turn. Override the active unit's position with
+                        // the live grid-cursor address (AddrGridX/AddrGridY at
+                        // 0x140C64A54 / 0x140C6496C) which IS live. Without
+                        // this, scan_move reports stale coords after battle_move
+                        // and Attack range / AttackTiles are computed from the
+                        // wrong origin. Non-active units keep the slot bytes
+                        // (only the active unit's position is in AddrGridX/Y).
+                        var livePos = ReadGridPos();
+                        if (livePos.x >= 0 && livePos.y >= 0)
+                        {
+                            unit.GridX = livePos.x;
+                            unit.GridY = livePos.y;
+                        }
                         // Try to read Move/Jump from the per-unit heap struct
                         // (canonical per-unit effective stats). UIBuffer at +0x24/+0x26
                         // holds the cursor-hovered unit's BASE stats — cursor-hovered
