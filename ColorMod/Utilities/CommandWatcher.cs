@@ -2519,24 +2519,30 @@ namespace FFTColorCustomizer.Utilities
                         // by fresh-game stats. Writes HP/MaxHP/PA/affinity.
                         // Deliberately NOT touching level / exp / brave / faith
                         // — see BuffPlanner comments.
+                        //
+                        // Session 49: when command.Pattern == "all", buffs every
+                        // player-side (team=0) battle slot, not just the first.
+                        // Useful for multi-party story battles.
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         try
                         {
-                            // Find Ramza's battle slot by scanning the static
-                            // array for an inBattle=1 slot with level 1-99 and
-                            // plausible HP. We pick the first PLAYER-team slot
-                            // (slots go forward from BattleArrayBase+0x200 for
-                            // players, backward for enemies). Ramza's roster
-                            // entry is always slot 0, so HP/MaxHP fingerprints
-                            // could be used for finer matching, but during a
-                            // fresh-game battle he's the canonical slot 0 —
-                            // the first forward slot with inBattle=1.
                             const long BattleArrayBase = 0x140893C00L;
                             const int ArrayStride = 0x200;
-                            long? targetSlot = null;
+                            bool buffAll = string.Equals(command.Pattern, "all", StringComparison.OrdinalIgnoreCase);
 
-                            // Scan forward slots (player side) first.
-                            for (int s = 0; s < 10 && targetSlot == null; s++)
+                            // Collect player slot positions from latest scan
+                            // to distinguish team=0 (player) from team≠0 slots.
+                            // Without a team byte in the battle array we use
+                            // roster-match position as the player filter.
+                            var playerPositions = new HashSet<(int, int)>(
+                                _navActions?.GetPlayerSlotPositions() ?? new List<(int x, int y)>());
+
+                            var targetSlots = new List<long>();
+
+                            // Scan forward slots (player side). For buff-single
+                            // mode, stop at first valid slot. For buff-all,
+                            // collect every player-team slot.
+                            for (int s = 0; s < 10; s++)
                             {
                                 long slotBase = BattleArrayBase + (long)s * ArrayStride;
                                 var inBattleRead = Explorer.ReadAbsolute((nint)(slotBase + 0x12), 2);
@@ -2553,34 +2559,56 @@ namespace FFTColorCustomizer.Utilities
                                 int maxHp = (int)hpRead.Value.value;
                                 if (maxHp <= 0 || maxHp >= 2000) continue;
 
-                                targetSlot = slotBase;
-                            }
-
-                            if (targetSlot == null)
-                            {
-                                response.Status = "failed";
-                                response.Error = "cheat_mode_buff: no active player-side battle slot found. Must be in a battle.";
-                                break;
-                            }
-
-                            // Optional HP override via searchValue (default 999).
-                            int hpValue = command.SearchValue > 0 ? command.SearchValue : 999;
-                            var plan = GameBridge.BuffPlanner.PlanInvincibilityWrites(
-                                targetSlot.Value, hpValue);
-
-                            int written = 0;
-                            foreach (var op in plan)
-                            {
-                                for (int i = 0; i < op.Bytes.Length; i++)
+                                if (buffAll)
                                 {
-                                    Explorer.Scanner.WriteByte((nint)(op.Address + i), op.Bytes[i]);
-                                    written++;
+                                    // Only buff if this slot matches a scanned
+                                    // player position. Without the match guard
+                                    // we could buff a team-2 guest ally we
+                                    // don't want (e.g. dismissable Agrias).
+                                    var gx = Explorer.ReadAbsolute((nint)(slotBase + 0x33), 1);
+                                    var gy = Explorer.ReadAbsolute((nint)(slotBase + 0x34), 1);
+                                    if (!gx.HasValue || !gy.HasValue) continue;
+                                    var pos = ((int)gx.Value.value, (int)gy.Value.value);
+                                    if (!playerPositions.Contains(pos)) continue;
+                                    targetSlots.Add(slotBase);
+                                }
+                                else
+                                {
+                                    // Single-buff mode: first valid slot wins.
+                                    targetSlots.Add(slotBase);
+                                    break;
                                 }
                             }
 
-                            response.Info = $"Buffed slot at 0x{targetSlot.Value:X} ({written} bytes written, HP={hpValue} PA=255 Absorb=All)";
+                            if (targetSlots.Count == 0)
+                            {
+                                response.Status = "failed";
+                                response.Error = buffAll
+                                    ? "cheat_mode_buff all: no roster-matched player slots. Run scan_move first or be in a battle."
+                                    : "cheat_mode_buff: no active player-side battle slot found. Must be in a battle.";
+                                break;
+                            }
+
+                            int hpValue = command.SearchValue > 0 ? command.SearchValue : 999;
+                            int totalWritten = 0;
+                            foreach (var slot in targetSlots)
+                            {
+                                var plan = GameBridge.BuffPlanner.PlanInvincibilityWrites(slot, hpValue);
+                                foreach (var op in plan)
+                                {
+                                    for (int i = 0; i < op.Bytes.Length; i++)
+                                    {
+                                        Explorer.Scanner.WriteByte((nint)(op.Address + i), op.Bytes[i]);
+                                        totalWritten++;
+                                    }
+                                }
+                                ModLogger.Log($"[CheatMode] Buffed battle slot 0x{slot:X}: HP={hpValue}, PA=255, Absorb=0xFF");
+                            }
+
+                            response.Info = targetSlots.Count == 1
+                                ? $"Buffed slot at 0x{targetSlots[0]:X} ({totalWritten} bytes written, HP={hpValue} PA=255 Absorb=All)"
+                                : $"Buffed {targetSlots.Count} player slots ({totalWritten} bytes written, HP={hpValue} PA=255 Absorb=All)";
                             response.Status = "completed";
-                            ModLogger.Log($"[CheatMode] Buffed battle slot 0x{targetSlot.Value:X}: HP={hpValue}, PA=255, Absorb=0xFF");
                         }
                         catch (Exception ex)
                         {

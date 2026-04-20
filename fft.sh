@@ -2775,10 +2775,48 @@ buff_ramza() {
   fft "{\"id\":\"$(id)\",\"action\":\"cheat_mode_buff\",\"searchValue\":$hp}"
 }
 
+# buff_all: Same as buff_ramza but buffs every player-team slot in the
+# battle array, not just the first. Useful for multi-party story battles.
+# Usage: buff_all           # HP=999 for everyone
+#        buff_all 9999      # custom HP
+buff_all() {
+  local hp="${1:-999}"
+  fft "{\"id\":\"$(id)\",\"action\":\"cheat_mode_buff\",\"pattern\":\"all\",\"searchValue\":$hp}"
+}
+
 # kill_enemies: Insta-KO every enemy in the current battle. Writes HP=0 to
 # every battle-array slot that isn't a roster-matched player. Game auto-advances
 # to BattleVictory. Testing-only helper so Claude can skip past fights quickly.
 kill_enemies() { fft "{\"id\":\"$(id)\",\"action\":\"cheat_kill_enemies\"}"; }
+
+# execute_turn: Bundle move + ability + wait into one round-trip.
+# Usage:
+#   execute_turn 6 5                         # move only
+#   execute_turn 6 5 Attack 7 5              # move + basic attack
+#   execute_turn 6 5 Cure 10 9               # move + heal ally at (10,9)
+#   execute_turn 6 5 Shout                   # move + self-target ability (no coords)
+#   execute_turn '' '' Cure 10 9             # no move, ability only
+#   execute_turn 6 5 Attack 7 5 N            # move + attack + face North
+#   execute_turn 6 5 Attack 7 5 '' --nowait  # skip the trailing battle_wait
+# Empty-string args ('') omit the optional field.
+execute_turn() {
+  local moveX="$1" moveY="$2" ability="$3" tx="$4" ty="$5" dir="$6"
+  local skipWait="false"
+  shift $(( $# < 6 ? $# : 6 ))
+  for arg in "$@"; do
+    case "$arg" in --nowait|--skip-wait|--skipwait) skipWait="true" ;; esac
+  done
+  local json='{"id":"'"$(id)"'","action":"execute_turn"'
+  [ -n "$moveX" ] && json+=",\"moveX\":$moveX"
+  [ -n "$moveY" ] && json+=",\"moveY\":$moveY"
+  [ -n "$ability" ] && json+=",\"abilityName\":\"$ability\""
+  [ -n "$tx" ] && json+=",\"targetX\":$tx"
+  [ -n "$ty" ] && json+=",\"targetY\":$ty"
+  [ -n "$dir" ] && json+=",\"pattern\":\"$dir\""
+  [ "$skipWait" = "true" ] && json+=',"skipWait":true'
+  json+='}'
+  fft "$json"
+}
 
 # buy: Buy an item from a shop.
 # Usage: buy <item_name> <quantity>

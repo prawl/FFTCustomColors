@@ -30,21 +30,26 @@ source ./fft.sh
 | `battle_retry` | Retry battle (from pause menu) |
 | `battle_retry_formation` | Retry with formation screen |
 
-### Bundled turn (direct JSON — no shell wrapper yet)
+### Bundled turn
 
-`execute_turn` bundles move + ability + wait into one round-trip. Bridge-level only for now; call via direct JSON:
+`execute_turn` bundles move + ability + wait into one round-trip. Aborts at first non-completed sub-step.
 
 ```bash
-fft '{"id":"t1","action":"execute_turn","moveX":6,"moveY":5,"abilityName":"Attack","targetX":7,"targetY":5}'
+execute_turn 6 5                     # move only
+execute_turn 6 5 Attack 7 5          # move + attack
+execute_turn 6 5 Cure 10 9           # move + heal ally
+execute_turn 6 5 Shout               # move + self-target
+execute_turn '' '' Cure 10 9         # no move, ability only
+execute_turn 6 5 Attack 7 5 N        # + face North
+execute_turn 6 5 Attack 7 5 '' --nowait   # skip wait
 ```
-
-Fields: `moveX`/`moveY` (optional move), `abilityName` (optional, `targetX`/`targetY` required for targeted abilities, omit for self-targets like Shout), `pattern` (optional facing N/S/E/W), `skipWait` (true to omit the trailing wait). Aborts at first non-completed sub-step.
 
 ### Dev tools
 
 | Command | Description |
 |---------|-------------|
 | `buff_ramza [hp]` | Make Ramza (first player-side battle slot) invincible for one battle. HP/MaxHP=999 (or arg), PA=255, all elements absorbed. Does NOT touch level/exp/brave/faith — enemy scaling unchanged. Call AFTER battle array is populated (post-formation). Per-battle only; static array resets each battle. |
+| `buff_all [hp]` | Same as `buff_ramza` but buffs every roster-matched player-team slot. For multi-party story battles. |
 | `kill_enemies` | Insta-win the current battle. Discovers the master HP table at runtime (~0x14184xxxx, stride 0x200), writes HP=0 + dead-bit to every enemy slot while leaving player slots alone. End your turn to trigger BattleVictory. Call on BattleMyTurn after a `scan_move` (planner needs a recent roster snapshot to tell players from enemies). Undead with Reraise may re-animate — retry if one survives. |
 
 ## Navigation
