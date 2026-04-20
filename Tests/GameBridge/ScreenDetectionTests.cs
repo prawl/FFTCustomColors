@@ -914,12 +914,31 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 1,
-                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
                 encA: 255, encB: 255, isPartySubScreen: false,
                 submenuFlag: 1, menuCursor: 2,
                 eventId: 0);
 
             Assert.Equal("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_Victory_EncA255_GuardedFromBattleStartMisfire()
+        {
+            // Session 49 follow-up: at the first frame of a new battle encA can
+            // briefly read 0xFF before being set to a real value. Without the
+            // actedOrMoved guard, the sentinel would misfire and return
+            // BattleVictory on BattleMyTurn frame 1 of a fresh battle.
+            // acted=0, moved=0 on a never-acted unit → sentinel must stay silent.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 0);
+
+            Assert.NotEqual("BattleVictory", result);
         }
 
         [Fact]

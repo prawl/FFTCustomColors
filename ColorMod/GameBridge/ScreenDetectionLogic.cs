@@ -514,19 +514,24 @@ namespace FFTColorCustomizer.GameBridge
 
             // BattleVictory sentinel: encA=255 AND encB=255 is a unique transient
             // signature captured at Zeklaus win 2026-04-19 (session 45) and
-            // reproduced Siedge Weald 2026-04-20 (session 49, kill_enemies-triggered).
-            // All other session-45/49 states saw encA in [0..8]. The 255/255 state
-            // lasts ~1 second during the Victory banner then clears.
+            // reproduced Siedge Weald 2026-04-20 (session 49).
             //
-            // Ordering matters: this MUST fire BEFORE LoadGame / post-GameOver
-            // TitleScreen / GameOver — during the banner, gameOverFlag and
-            // submenuFlag are both sticky from pre-victory, so those rules
-            // preempt Victory if evaluated first. Session 49 capture observed
-            // misdetection as `GameOver → TitleScreen → LoadGame (locked)` with
-            // encA=255/encB=255 firing cleanly at t=6/7 of a 30-tick poll.
+            // Session 49 follow-up: also require `actedOrMoved` to guard against
+            // battle-start misfires. During the first frame of a new battle, the
+            // encA byte briefly reads 0xFF before being set to a real value
+            // (2026-04-20 live repro: 4-player battle first frame showed
+            // encA=0xFF and `screen` returned BattleVictory when we were
+            // actually on BattleMyTurn frame 1). actedOrMoved is false
+            // pre-first-turn-action; during a real Victory banner it's true
+            // because the final combat action happened before the banner.
+            //
+            // Ordering: MUST fire BEFORE LoadGame / post-GameOver TitleScreen /
+            // GameOver — during the banner, gameOverFlag and submenuFlag are
+            // both sticky from pre-victory.
             //
             // See memory/project_battle_victory_encA255.md.
-            if (encA == 255 && encB == 255 && battleMode == 0 && battleTeam == 0)
+            if (encA == 255 && encB == 255 && battleMode == 0 && battleTeam == 0
+                && actedOrMoved)
                 return "BattleVictory";
 
             // LoadGame: reached from GameOver menu. Shares stale battle state with GameOver
