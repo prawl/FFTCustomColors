@@ -13,6 +13,27 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("Gallant Knight", CharacterData.GetJobName(3));
         }
 
+        /// <summary>
+        /// Session 51 regression guard for the session-44 "scan_move reports entire
+        /// Mettle skillset" bug. Ch1 Ramza has job byte 0x01; GetRamzaJob must
+        /// resolve him to "Squire" (NOT "Gallant Knight" via fingerprint fallback).
+        /// Squire maps to the Fundaments skillset (4 abilities) so the learned-
+        /// ability filter stays scoped correctly. If this flips to Gallant Knight,
+        /// the filter will apply Fundaments' bitfield bytes against Mettle's
+        /// 8-entry layout and surface unlearned abilities (Tailwind/Steel/Shout/
+        /// Ultima) as if equipped — exactly the session-44 misread.
+        /// See memory/project_scan_learned_ability_filter_audit.md.
+        /// </summary>
+        [Theory]
+        [InlineData(0x01, "Squire")]          // Ch1 / Ch2 / Ch3 Ramza
+        [InlineData(0xA1, "Squire")]          // Ch2-3 variant
+        [InlineData(0x03, "Gallant Knight")]  // Ch4
+        [InlineData(0xA0, "Gallant Knight")]  // Ch4 variant
+        public void GetRamzaJob_ResolvesByChapterByte(int jobByte, string expected)
+        {
+            Assert.Equal(expected, CharacterData.GetRamzaJob(jobByte));
+        }
+
         [Theory]
         [InlineData(76, "Knight")]      // verified: Kenrick job=76
         [InlineData(82, "Summoner")]    // verified: Wilham job=82

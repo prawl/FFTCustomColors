@@ -6,6 +6,26 @@ namespace FFTColorCustomizer.Tests.GameBridge
 {
     public class ActionAbilityTests
     {
+        /// <summary>
+        /// Session 51 regression pin: skillsets the scan_move filter relies on
+        /// must exist in AllSkillsets with the expected ability counts. If
+        /// Fundaments (Ch1 Ramza's primary) has a different size than 4, the
+        /// bitfield decoder will misalign and re-open the session-44 misread
+        /// (8-of-9 Mettle abilities surfacing on a Squire Ramza).
+        /// </summary>
+        [Theory]
+        [InlineData("Fundaments", 4)]
+        [InlineData("Mettle", 9)]
+        [InlineData("Martial Arts", 8)]
+        [InlineData("White Magicks", 15)]
+        public void Skillsets_AbilityCount_MatchesExpected(string skillsetName, int expectedCount)
+        {
+            Assert.True(
+                ActionAbilityLookup.AllSkillsets.TryGetValue(skillsetName, out var abilities),
+                $"skillset '{skillsetName}' missing from AllSkillsets");
+            Assert.Equal(expectedCount, abilities.Count);
+        }
+
         [Fact]
         public void FilterLearnedAbilities_ReturnsOnlyLearnedOnes()
         {
