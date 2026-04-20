@@ -180,5 +180,43 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var info = ItemData.BuildAttackAbilityInfo(sword);
             Assert.Equal(0, info.MinRange);
         }
+
+        /// <summary>
+        /// Session 51: fixed in BuildAttackAbilityInfo — ranged weapons
+        /// (bow/gun/crossbow) now get VRange=99 (unlimited vertical reach),
+        /// matching the game's arc-trajectory behavior. Melee weapons keep
+        /// VRange=0 so they fall back to caster Jump in AbilityTargetCalculator
+        /// (which correctly caps melee reach).
+        /// </summary>
+        [Fact]
+        public void BuildAttackAbilityInfo_Bow_VRange99_Unlimited()
+        {
+            var bow = new List<int> { 83 }; // Longbow
+            var info = ItemData.BuildAttackAbilityInfo(bow);
+            Assert.Equal(99, info.VRange);
+        }
+
+        [Fact]
+        public void BuildAttackAbilityInfo_Gun_VRange99_Unlimited()
+        {
+            var gun = new List<int> { 71 }; // Romandan Pistol
+            var info = ItemData.BuildAttackAbilityInfo(gun);
+            Assert.Equal(99, info.VRange);
+        }
+
+        [Fact]
+        public void BuildAttackAbilityInfo_MeleeSword_VRange0_FallsBackToJump()
+        {
+            var sword = new List<int> { 19 }; // Broadsword
+            var info = ItemData.BuildAttackAbilityInfo(sword);
+            Assert.Equal(0, info.VRange);
+        }
+
+        [Fact]
+        public void BuildAttackAbilityInfo_NoEquipment_VRange0()
+        {
+            var info = ItemData.BuildAttackAbilityInfo(null);
+            Assert.Equal(0, info.VRange);
+        }
     }
 }

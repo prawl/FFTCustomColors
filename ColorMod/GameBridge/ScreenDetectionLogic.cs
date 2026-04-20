@@ -476,6 +476,18 @@ namespace FFTColorCustomizer.GameBridge
 
             // === In-battle screens ===
 
+            // Victory sentinel at named battle location during the banner window.
+            // Session 44 post-Gariland Victory had the Desertion fingerprint
+            // (paused=1, submenuFlag=1, slot0=255, acted+moved, battleMode=0,
+            // atNamedLocation=true via locationMenuFlag). Without this rule,
+            // postBattlePausedState below routes it to Desertion. encA==encB==255
+            // fires only during the ~1-second banner window (session-45 Zeklaus
+            // + session-49 Siedge Weald live-captured). See memory
+            // `project_battle_victory_encA255.md`, TODO §0 Session 44.
+            if (atNamedLocation && slot0 == 255 && actedOrMoved && battleMode == 0
+                && battleTeam == 0 && encA == 255 && encB == 255)
+                return "BattleVictory";
+
             // Post-battle at a named location: acted/moved sticky, battleMode=0.
             // This path only reached when atNamedLocation=true AND battle sentinels haven't
             // cleared. Since atNamedLocation makes inBattle=false, these post-battle screens

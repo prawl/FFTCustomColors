@@ -900,6 +900,31 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_Victory_Gariland_EncA255_WinsOverDesertion()
+        {
+            // Session 44 live capture (2026-04-18): post-Gariland Victory banner
+            // showed fingerprint that matched BOTH the BattleDesertion rule
+            // (atNamedLocation + slot0=255 + paused=1 + submenuFlag=1 +
+            // actedOrMoved + battleMode=0) AND the Victory encA=255 sentinel,
+            // but Desertion fires first in the !inBattle branch. Session 50
+            // adds an encA=255 Victory short-circuit at the top of the
+            // atNamedLocation rules so Victory wins when the banner is visible.
+            // Captured fingerprint: rawLocation=6 (Gariland), battleTeam=0,
+            // battleActed=1, battleMoved=1, paused=1, submenuFlag=1,
+            // menuCursor=1, eventId=12. encA/encB=255 added synthetically
+            // matching session-45 Zeklaus banner signature.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 6, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 1, locationMenuFlag: 1,
+                eventId: 12);
+
+            Assert.Equal("BattleVictory", result);
+        }
+
+        [Fact]
         public void DetectScreen_Victory_EncA255Sentinel_FiresOverLoadGameAndTitleScreen()
         {
             // Session 49 live capture (Siedge Weald, kill_enemies-triggered victory):

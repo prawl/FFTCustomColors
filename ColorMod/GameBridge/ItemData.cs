@@ -681,6 +681,8 @@ namespace FFTColorCustomizer.GameBridge
         {
             int range = GetWeaponRangeFromEquipment(equipment);
             int minRange = 0;
+            int vRange = 0;
+            bool isRanged = false;
             // Ranged weapon minimum ranges:
             //   Guns: min 2 (can't hit adjacent)
             //   Bows: min 2 (can't hit adjacent)
@@ -691,15 +693,22 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     if (Items.TryGetValue(id, out var item))
                     {
-                        if (item.Type == "gun") { minRange = 2; break; }
-                        if (item.Type == "bow") { minRange = 2; break; }
-                        if (item.Type == "crossbow") { minRange = 3; break; }
+                        if (item.Type == "gun") { minRange = 2; isRanged = true; break; }
+                        if (item.Type == "bow") { minRange = 2; isRanged = true; break; }
+                        if (item.Type == "crossbow") { minRange = 3; isRanged = true; break; }
                     }
                 }
             }
+            // Ranged weapons have effectively unlimited vertical reach (arc
+            // trajectory). Melee weapons (VR=0) fall back to caster Jump in
+            // AbilityTargetCalculator, which correctly caps melee reach.
+            // Session 50 root-cause: VR=0 on bows was the source of the
+            // session-48 12-vs-18 attack-tile shortfall at Zeklaus — enemies
+            // on elevated tiles were rejected by the jump-based zDelta filter.
+            if (isRanged) vRange = 99;
             return new ActionAbilityInfo(
                 ActionAbilityLookup.ATTACK_ID, "Attack", 0,
-                range.ToString(), 0, 1, 0, "enemy",
+                range.ToString(), vRange, 1, 0, "enemy",
                 "Attacks with the equipped weapon, or bare fists if no weapon is equipped.",
                 MinRange: minRange);
         }
