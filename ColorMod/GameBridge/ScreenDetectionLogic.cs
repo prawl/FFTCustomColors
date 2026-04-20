@@ -581,15 +581,32 @@ namespace FFTColorCustomizer.GameBridge
                 && submenuFlag == 1)
                 return "WorldMap";
 
-            // GameOver: paused + game-over flag is authoritative. Session 44
+            // Post-banner Victory: Ramza-died-but-countered-final-kill edge case.
+            // Shares fingerprint with GameOver (paused=1, gameOverFlag=1,
+            // battleMode=0) but the player-team triggered the final action so
+            // battleTeam=0. Real GameOver is battleTeam=1 (enemy just killed
+            // the last player unit). Session 49 captured this scenario
+            // 2026-04-20: Kenrick countered an attack for the final enemy kill
+            // while dying himself — detection returned GameOver for ~3 seconds
+            // before the proper Victory banner took over.
+            //
+            // See memory/feedback_victory_gameover_both_encA255_risk.md.
+            if (paused == 1 && battleMode == 0 && gameOverFlag == 1
+                && battleTeam == 0)
+                return "BattleVictory";
+
+            // GameOver: paused + game-over flag + enemy-triggered. Session 44
             // 2026-04-19 live-capture at Siedge Weald showed actedOrMoved=true
             // because a unit's action (the one that killed Ramza) completed
             // right before the GameOver banner. The old rule's `!actedOrMoved`
             // requirement blocked correct detection — gameOverFlag is a
             // dedicated signal and doesn't need action-state disambiguation.
+            // Session 49 added `battleTeam != 0` guard — team=0 Victory-with-
+            // Ramza-dying edge case is handled above.
             // Captured fingerprint: paused=1, gameOverFlag=1, battleMode=0,
             // battleTeam=1, battleActed=1, battleMoved=1, menuCursor=4.
-            if (paused == 1 && battleMode == 0 && gameOverFlag == 1)
+            if (paused == 1 && battleMode == 0 && gameOverFlag == 1
+                && battleTeam != 0)
                 return "GameOver";
 
             // Crystal-pickup sequence: 4 modal states fired when a unit steps

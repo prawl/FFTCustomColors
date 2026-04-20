@@ -287,11 +287,13 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void DetectScreen_GameOver_ShouldReturnGameOver()
         {
-            // Game over: submenuFlag=1 (repurposed), paused=1, battleMode=0
+            // Game over: submenuFlag=1, paused=1, battleMode=0, battleTeam=1
+            // (session 49 added battleTeam!=0 guard — team=0 is the
+            // Victory-with-Ramza-dying edge case which routes to BattleVictory).
             var result = ScreenDetectionLogic.Detect(
                 party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 1,
-                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                battleTeam: 1, battleActed: 0, battleMoved: 0,
                 encA: 0, encB: 0, isPartySubScreen: false, submenuFlag: 1);
 
             Assert.Equal("GameOver", result);
@@ -939,6 +941,47 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 eventId: 0);
 
             Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_VictoryWithRamzaDying_TeamZeroGuard_ReturnsBattleVictory()
+        {
+            // Session 49: Victory-with-Ramza-dying-from-counter edge case.
+            // Ramza counter-killed the final enemy on the same frame as
+            // dying himself. Outcome = Victory. Fingerprint:
+            //   - paused=1, gameOverFlag=1, battleMode=0 (shared with GameOver)
+            //   - battleTeam=0 (player triggered the final action) ← discriminator
+            //   - encA=05, encB=05 (past the Victory banner window)
+            //
+            // The battleTeam==0 guard sends this to BattleVictory instead of
+            // GameOver (which now requires battleTeam != 0).
+            //
+            // See memory/feedback_victory_gameover_both_encA255_risk.md.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 0x05, encB: 0x05, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 2,
+                eventId: 0);
+
+            Assert.Equal("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_GameOver_BattleTeam1_StillReturnsGameOver()
+        {
+            // Real GameOver: enemy killed Ramza. battleTeam=1 guards against
+            // the team=0 Victory-with-dying-Ramza edge case.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 1,
+                battleTeam: 1, battleActed: 1, battleMoved: 1,
+                encA: 0x05, encB: 0x05, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 4,
+                eventId: 0);
+
+            Assert.Equal("GameOver", result);
         }
 
         [Fact]
