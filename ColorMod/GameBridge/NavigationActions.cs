@@ -3944,8 +3944,26 @@ namespace FFTColorCustomizer.GameBridge
                     int faith = (int)sv[s * FieldsPerSlot + 9];
                     int inBattle = (int)sv[s * FieldsPerSlot + 10];
 
-                    // +0x12 = 1 for units actively in this battle, 0 for stale/empty slots
-                    if (inBattle == 0) continue;
+                    // Session 49 filter: accept a slot if EITHER inBattle==1
+                    // OR CT > 0. Live capture at Siedge Weald showed 8 slots
+                    // in the battle array with valid level+HP+pos, but only
+                    // 3 had inBattle=1. Of the remaining 5, 1 was a real
+                    // visible Bomb (inBattle=0 but CT=100) and 4 were ghosts
+                    // (inBattle=0 AND CT=0 — likely stale slots retained
+                    // from a prior battle, since the table doesn't fully
+                    // zero across restarts). All 4 real visible enemies had
+                    // CT > 0 confirmed against user-reported stats.
+                    //
+                    // inBattle=1 is still allowed because on battle-start
+                    // frame 1 CT may not yet have ticked up. inBattle=2
+                    // (observed as HP=8257/32 garbage) is filtered.
+                    //
+                    // Enemy slots with CT==0 AND inBattle!=1 are ghosts —
+                    // the scan loop skips them. Ramza's player slot
+                    // (inBattle=1) is always included.
+                    int ctField = (int)sv[s * FieldsPerSlot + 14];
+                    if (inBattle != 1 && ctField == 0) continue;
+                    if (inBattle != 0 && inBattle != 1) continue;
 
                     // Validate: must have reasonable stats and position within map bounds
                     if (lvl < 1 || lvl > 99) continue;
