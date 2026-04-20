@@ -2799,6 +2799,12 @@ kill_enemies_hard() {
   kill_enemies
 }
 
+# revive_all: Restore every dead party member to full HP. Reverse of
+# kill_enemies for recovering from ally wipes during testing. Writes
+# HP=MaxHp + clears dead-bit on every player slot with HP=0 in the
+# master HP table. Call on BattleMyTurn.
+revive_all() { fft "{\"id\":\"$(id)\",\"action\":\"cheat_revive_allies\"}"; }
+
 # execute_turn: Bundle move + ability + wait into one round-trip.
 # Usage:
 #   execute_turn 6 5                         # move only

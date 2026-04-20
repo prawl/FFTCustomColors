@@ -2737,7 +2737,41 @@ namespace FFTColorCustomizer.Utilities
                                 break;
                             }
 
-                            // --- Walk table, build per-slot records tagged player/enemy
+                            // --- Build battle-array (HP, MaxHp) → slot map.
+                            // Session 49: undead with Reraise auto-revive on
+                            // turn rollover, defeating a plain HP=0 + dead-bit.
+                            // To also clear the Reraise status bit (+0x47 bit
+                            // 0x20 in battle-array) we need the battle-array
+                            // slot for each master slot. Match by
+                            // (HP, MaxHp) fingerprint — same mechanism as the
+                            // master-table discovery.
+                            //
+                            // Battle array base is constant 0x140893C00 per
+                            // project_buff_ramza_offsets.md. Scan the same
+                            // slot range the scan-array walker uses.
+                            const long BattleArrayBaseConst = 0x140893C00L;
+                            const int BattleArrayStrideConst = 0x200;
+                            const int BattleSlotsBack = 20;
+                            const int BattleSlotsForward = 10;
+                            var battleArrayByFp = new Dictionary<(int, int), long>();
+                            for (int s = 0; s < BattleSlotsBack + BattleSlotsForward; s++)
+                            {
+                                long baSlot = BattleArrayBaseConst
+                                    + (long)(s - BattleSlotsBack + 1) * BattleArrayStrideConst;
+                                var bhR = Explorer.ReadAbsolute((nint)(baSlot + 0x14), 2);
+                                var bmR = Explorer.ReadAbsolute((nint)(baSlot + 0x16), 2);
+                                if (!bhR.HasValue || !bmR.HasValue) continue;
+                                int bh = (int)bhR.Value.value;
+                                int bm = (int)bmR.Value.value;
+                                if (bm <= 0 || bm > 2000) continue;
+                                if (bh > bm) continue;
+                                // First match wins (session-49 obs: duplicate
+                                // slots in both tables; first is typically live).
+                                if (!battleArrayByFp.ContainsKey((bh, bm)))
+                                    battleArrayByFp[(bh, bm)] = baSlot;
+                            }
+
+                            // --- Walk master table, build per-slot records
                             var fpSet = new HashSet<(int, int)>(playerFingerprints);
                             var slots = new List<GameBridge.KillEnemySlot>();
                             for (int i = 0; i < tableSlotCount; i++)
@@ -2749,12 +2783,28 @@ namespace FFTColorCustomizer.Utilities
                                 int hv = (int)h.Value.value;
                                 int mv = (int)m.Value.value;
                                 bool isPlayer = fpSet.Contains((hv, mv));
+
+                                // Look up matching battle-array slot for
+                                // status-bit access. If found, also read the
+                                // current status byte 2 so the planner knows
+                                // whether Reraise is set.
+                                long baSlotBase = 0;
+                                byte statusByte2 = 0;
+                                if (battleArrayByFp.TryGetValue((hv, mv), out var ba))
+                                {
+                                    baSlotBase = ba;
+                                    var sb = Explorer.ReadAbsolute((nint)(ba + 0x47), 1);
+                                    if (sb.HasValue) statusByte2 = (byte)sb.Value.value;
+                                }
+
                                 slots.Add(new GameBridge.KillEnemySlot
                                 {
                                     SlotBase = slotAddr,
                                     Hp = hv,
                                     MaxHp = mv,
                                     IsPlayer = isPlayer,
+                                    BattleArraySlotBase = baSlotBase,
+                                    CurrentStatusByte2 = statusByte2,
                                 });
                             }
 
@@ -2771,6 +2821,142 @@ namespace FFTColorCustomizer.Utilities
                             ModLogger.Log($"[CheatKill] masterHP table base=0x{tableBase.Value:X} slots={tableSlotCount} killed={enemiesKilled} players={playerSkipped}");
 
                             response.Info = $"Killed {enemiesKilled} enemy slot(s) via master HP table at 0x{tableBase.Value:X} (stride 0x200, {tableSlotCount} slots scanned, {playerSkipped} player slot(s) skipped). End your turn to trigger victory.";
+                            response.Status = "completed";
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Status = "error";
+                            response.Error = ex.Message;
+                        }
+                        break;
+
+                    case "cheat_revive_allies":
+                        // Session 49 dev tool — the reverse of cheat_kill_enemies.
+                        // Finds dead player-team slots in the master HP table
+                        // (HP=0, MaxHp>0, fingerprint-matched to scanned player)
+                        // and writes HP=MaxHp + clears the dead-bit. Used to
+                        // recover from accidental ally wipes during testing.
+                        // Reuses the same table discovery as cheat_kill_enemies.
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        try
+                        {
+                            var playerFps = _navActions?.GetPlayerHpFingerprints()
+                                ?? new List<(int Hp, int MaxHp)>();
+                            if (playerFps.Count == 0)
+                            {
+                                response.Status = "failed";
+                                response.Error = "cheat_revive_allies: no scanned player units. Run scan_move first.";
+                                break;
+                            }
+
+                            // Session 49: table-base discovery. Same algorithm
+                            // as cheat_kill_enemies. Anchor-search for any
+                            // player fingerprint, walk back to find table base.
+                            const long ReviveSearchMin = 0x141800000L;
+                            const long ReviveSearchMax = 0x141900000L;
+                            const int ReviveStride = 0x200;
+                            const int ReviveMaxBack = 40;
+                            const int ReviveMaxFwd = 40;
+
+                            long? revBase = null;
+                            int revCount = 0;
+                            foreach (var (hp, maxHp) in playerFps)
+                            {
+                                // Important: dead-player fingerprint is
+                                // (0, maxHp). Use the MaxHp for anchor search
+                                // — live fingerprint OR dead-fingerprint both
+                                // have MaxHp as a 2-byte match.
+                                byte[] pattern = new byte[]
+                                {
+                                    (byte)(hp & 0xFF),    (byte)((hp >> 8) & 0xFF),
+                                    (byte)(maxHp & 0xFF), (byte)((maxHp >> 8) & 0xFF),
+                                };
+                                var matches = Explorer.SearchBytesInAllMemory(
+                                    pattern, 16, ReviveSearchMin, ReviveSearchMax, broadSearch: true);
+                                foreach (var (matchAddr, _) in matches)
+                                {
+                                    long anchor = (long)matchAddr;
+                                    long low = anchor;
+                                    for (int back = 1; back <= ReviveMaxBack; back++)
+                                    {
+                                        long prev = anchor - back * ReviveStride;
+                                        if (prev < ReviveSearchMin) break;
+                                        var ph = Explorer.ReadAbsolute((nint)prev, 2);
+                                        var pm = Explorer.ReadAbsolute((nint)(prev + 2), 2);
+                                        if (!ph.HasValue || !pm.HasValue) break;
+                                        int pMax = (int)pm.Value.value;
+                                        int pHp = (int)ph.Value.value;
+                                        bool valid = pMax >= 1 && pMax <= 2000 && pHp <= pMax;
+                                        bool empty = pMax == 0 && pHp == 0;
+                                        if (!valid && !empty) break;
+                                        if (valid) low = prev;
+                                    }
+                                    int cover = 0;
+                                    for (int fwd = 0; fwd <= ReviveMaxFwd; fwd++)
+                                    {
+                                        long a = low + fwd * ReviveStride;
+                                        if (a >= ReviveSearchMax) break;
+                                        var h2 = Explorer.ReadAbsolute((nint)a, 2);
+                                        var m2 = Explorer.ReadAbsolute((nint)(a + 2), 2);
+                                        if (!h2.HasValue || !m2.HasValue) break;
+                                        int mv = (int)m2.Value.value;
+                                        int hv = (int)h2.Value.value;
+                                        bool v = mv >= 1 && mv <= 2000 && hv <= mv;
+                                        bool e = mv == 0 && hv == 0;
+                                        if (!v && !e) break;
+                                        cover = fwd + 1;
+                                    }
+                                    if (cover > revCount) { revBase = low; revCount = cover; }
+                                }
+                            }
+
+                            if (revBase == null || revCount < 2)
+                            {
+                                response.Status = "failed";
+                                response.Error = "cheat_revive_allies: master HP table not found.";
+                                break;
+                            }
+
+                            // For revive, player fingerprints from scan include
+                            // LIVE and DEAD players. A dead player's fingerprint
+                            // is (0, MaxHp) — which matches any dead slot with
+                            // the same MaxHp. To detect a slot as "player",
+                            // match by MaxHp only when HP=0. Build a MaxHp-only
+                            // player-match set so dead slots match.
+                            var playerMaxHpSet = new HashSet<int>();
+                            foreach (var (_, mh) in playerFps) playerMaxHpSet.Add(mh);
+
+                            var revSlots = new List<GameBridge.KillEnemySlot>();
+                            for (int i = 0; i < revCount; i++)
+                            {
+                                long sa = revBase.Value + i * ReviveStride;
+                                var h = Explorer.ReadAbsolute((nint)sa, 2);
+                                var m = Explorer.ReadAbsolute((nint)(sa + 2), 2);
+                                if (!h.HasValue || !m.HasValue) continue;
+                                int hv = (int)h.Value.value;
+                                int mv = (int)m.Value.value;
+                                bool isPlayer = playerMaxHpSet.Contains(mv);
+                                revSlots.Add(new GameBridge.KillEnemySlot
+                                {
+                                    SlotBase = sa,
+                                    Hp = hv,
+                                    MaxHp = mv,
+                                    IsPlayer = isPlayer,
+                                });
+                            }
+
+                            var revPlan = GameBridge.KillEnemiesPlanner.PlanReviveAllies(revSlots);
+                            foreach (var op in revPlan)
+                            {
+                                for (int i = 0; i < op.Bytes.Length; i++)
+                                    Explorer.Scanner.WriteByte((nint)(op.Address + i), op.Bytes[i]);
+                            }
+
+                            int revived = revPlan.Count / 2;
+                            ModLogger.Log($"[CheatRevive] masterHP table base=0x{revBase.Value:X} slots={revCount} revived={revived}");
+                            response.Info = revived == 0
+                                ? "No dead player slots to revive."
+                                : $"Revived {revived} player slot(s) via master HP table at 0x{revBase.Value:X}.";
                             response.Status = "completed";
                         }
                         catch (Exception ex)
