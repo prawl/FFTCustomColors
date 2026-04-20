@@ -2360,6 +2360,11 @@ namespace FFTColorCustomizer.GameBridge
                     var unitState = battleState.Units[battleState.Units.Count - 1];
                     unitState.Abilities ??= new List<AbilityEntry>();
                     unitState.Abilities.Insert(0, attackEntry);
+                    if (attackEntry.ValidTargetTiles != null)
+                    {
+                        var tStr = string.Join(" ", attackEntry.ValidTargetTiles.Select(t => $"({t.X},{t.Y}){(t.Occupant!=null?":"+t.Occupant:"")}{(t.LosBlocked==true?"!":"")}"));
+                        ModLogger.Log($"[ATTACK_DEBUG] Ramza@({u.GridX},{u.GridY}) range={attackInfo.HRange} tiles({attackEntry.ValidTargetTiles.Count}): {tStr}");
+                    }
                 }
             }
 
