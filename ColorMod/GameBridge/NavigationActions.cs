@@ -340,6 +340,9 @@ namespace FFTColorCustomizer.GameBridge
                     case "open_character_status":
                         return OpenCharacterStatus(response, command.To ?? "Ramza");
 
+                    case "swap_unit_to":
+                        return SwapUnitTo(response, command.To ?? "");
+
                     default:
                         response.Status = "failed";
                         response.Error = $"Unknown navigation action: {command.Action}";
@@ -3748,6 +3751,50 @@ namespace FFTColorCustomizer.GameBridge
         /// <summary>Last scan results cached for BFS enemy blocking.</summary>
         private List<ScannedUnit>? _lastScannedUnits;
 
+        /// <summary>
+        /// Session 51: named snapshots of scanned-unit lists for enemy-turn
+        /// play-by-play reporting. `scan_snapshot <label>` writes here; `scan_diff
+        /// <from> <to>` reads. Stored as immutable UnitSnap value copies so the
+        /// live _lastScannedUnits evolution doesn't mutate old snapshots.
+        /// </summary>
+        private readonly Dictionary<string, List<UnitScanDiff.UnitSnap>> _namedSnapshots = new();
+
+        public bool SaveNamedSnapshot(string label)
+        {
+            if (string.IsNullOrWhiteSpace(label)) return false;
+            if (_lastScannedUnits == null || _lastScannedUnits.Count == 0)
+            {
+                try { CollectUnitPositionsFull(); } catch { }
+            }
+            if (_lastScannedUnits == null) return false;
+            var snaps = new List<UnitScanDiff.UnitSnap>(_lastScannedUnits.Count);
+            foreach (var u in _lastScannedUnits)
+            {
+                var statuses = u.StatusBytes != null && u.StatusBytes.Length == 5
+                    ? StatusDecoder.Decode(u.StatusBytes)
+                    : null;
+                snaps.Add(new UnitScanDiff.UnitSnap(
+                    Name: u.Name ?? u.JobNameOverride,
+                    RosterNameId: u.RosterNameId,
+                    Team: u.Team,
+                    GridX: u.GridX,
+                    GridY: u.GridY,
+                    Hp: u.Hp,
+                    MaxHp: u.MaxHp,
+                    Statuses: statuses));
+            }
+            _namedSnapshots[label] = snaps;
+            return true;
+        }
+
+        public List<UnitScanDiff.UnitSnap>? GetNamedSnapshot(string label)
+        {
+            if (string.IsNullOrWhiteSpace(label)) return null;
+            return _namedSnapshots.TryGetValue(label, out var s) ? s : null;
+        }
+
+        public int NamedSnapshotCount => _namedSnapshots.Count;
+
         /// <summary>Last computed valid move tiles from scan_move BFS. Used by battle_move to validate targets.</summary>
         private HashSet<(int x, int y)>? _lastValidMoveTiles;
 
@@ -3844,6 +3891,28 @@ namespace FFTColorCustomizer.GameBridge
                     result.Add((u.Hp, u.MaxHp));
             }
             return result;
+        }
+
+        /// <summary>
+        /// Session 51: resolve a named player unit to its (Hp, MaxHp)
+        /// fingerprint for single-unit cheat operations (kill_one). Matches
+        /// JobNameOverride or name case-insensitively. Returns null if no
+        /// scanned player unit matches.
+        /// </summary>
+        public (int Hp, int MaxHp)? GetPlayerFingerprintByName(string name)
+        {
+            if (_lastScannedUnits == null || _lastScannedUnits.Count == 0)
+            {
+                try { CollectUnitPositionsFull(); } catch { }
+            }
+            if (_lastScannedUnits == null) return null;
+            foreach (var u in _lastScannedUnits)
+            {
+                if (u.Team != 0 || u.MaxHp <= 0) continue;
+                if (u.Name != null && u.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    return (u.Hp, u.MaxHp);
+            }
+            return null;
         }
 
         // Addresses that control the C-key cursor cycling mode.
@@ -4887,6 +4956,95 @@ namespace FFTColorCustomizer.GameBridge
                 result.Status = "completed";
             }
             return result;
+        }
+
+        /// <summary>
+        /// Swap the viewed unit on a nested party-tree screen (CharacterStatus,
+        /// EquipmentAndAbilities, JobSelection, or ability/equipment pickers)
+        /// via Q/E cycling. Resolves target name to displayOrder, compares
+        /// against the SM's current ViewedGridIndex, and sends the shortest
+        /// Q/E sequence via UnitCyclePlanner.
+        /// </summary>
+        private CommandResponse SwapUnitTo(CommandResponse response, string unitName)
+        {
+            if (string.IsNullOrWhiteSpace(unitName))
+            {
+                response.Status = "failed";
+                response.Error = "swap_unit_to requires a unit name";
+                return response;
+            }
+
+            var curScreen = _detectScreen();
+            string curName = curScreen?.Name ?? "Unknown";
+            bool validHere =
+                curName == "CharacterStatus" ||
+                curName == "EquipmentAndAbilities" ||
+                curName == "JobSelection" ||
+                curName == "EquippableWeapons" ||
+                curName == "EquippableShields" ||
+                curName == "EquippableHeadware" ||
+                curName == "EquippableCombatGarb" ||
+                curName == "EquippableAccessories" ||
+                curName == "AbilityPicker";
+            if (!validHere)
+            {
+                response.Status = "failed";
+                response.Error = $"swap_unit_to only works from a nested party-tree screen (CharacterStatus/EqA/JobSelection/pickers). Current: {curName}";
+                response.Screen = curScreen;
+                return response;
+            }
+
+            var rosterReader = new RosterReader(_explorer, _nameTable);
+            var allSlots = rosterReader.ReadAll();
+            RosterReader.RosterSlot? targetSlot = null;
+            foreach (var slot in allSlots)
+            {
+                if (slot.Name != null && slot.Name.Equals(unitName, StringComparison.OrdinalIgnoreCase))
+                {
+                    targetSlot = slot;
+                    break;
+                }
+            }
+            if (targetSlot == null)
+            {
+                response.Status = "failed";
+                response.Error = $"Unit '{unitName}' not found in roster";
+                response.Screen = curScreen;
+                return response;
+            }
+
+            int rosterCount = allSlots.Count;
+            int fromIndex = ScreenMachine?.ViewedGridIndex ?? 0;
+            int toIndex = targetSlot.DisplayOrder;
+
+            // ViewedGridIndex is row*5+col over a 5-col grid with gaps; on
+            // a 14-unit roster, indexes 0..13 are occupied and rosterCount
+            // is the ring size. If fromIndex falls outside [0, rosterCount),
+            // clamp — the SM occasionally parks at an unused grid cell.
+            if (fromIndex < 0 || fromIndex >= rosterCount) fromIndex = 0;
+
+            var plan = UnitCyclePlanner.Plan(fromIndex, toIndex, rosterCount);
+            if (plan.Keys.Length == 0 && fromIndex != toIndex)
+            {
+                response.Status = "failed";
+                response.Error = $"UnitCyclePlanner rejected ({fromIndex}→{toIndex}, n={rosterCount})";
+                response.Screen = curScreen;
+                return response;
+            }
+
+            foreach (char k in plan.Keys)
+            {
+                int vk = k == 'Q' ? VK_Q : VK_E;
+                SendKey(vk);
+                Thread.Sleep(250);
+            }
+
+            response.Status = "completed";
+            response.Info = plan.Keys.Length == 0
+                ? $"Already viewing {unitName}"
+                : $"Sent {plan.Keys.Length}×{plan.Keys[0]} to cycle {fromIndex}→{toIndex}";
+            response.Screen = _detectScreen();
+            return response;
         }
 
         /// <summary>

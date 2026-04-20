@@ -1303,7 +1303,8 @@ namespace FFTColorCustomizer.Utilities
             "resolve_party_menu_cursor",
             "resolve_equip_picker_cursor",
             "resolve_eqa_row",
-            "remove_equipment_at_cursor"
+            "remove_equipment_at_cursor",
+            "scan_snapshot", "scan_diff"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -1315,6 +1316,7 @@ namespace FFTColorCustomizer.Utilities
             "battle_retry", "battle_retry_formation",
             "buy", "sell", "change_job",
             "open_eqa", "open_job_selection", "open_character_status",
+            "swap_unit_to",
             "auto_place_units"
         };
 
@@ -2830,6 +2832,82 @@ namespace FFTColorCustomizer.Utilities
                         }
                         break;
 
+                    case "cheat_kill_one":
+                        // Session 51 dev tool: cheat-KO a single named party
+                        // member. Mirrors cheat_kill_enemies but targets ONE
+                        // player slot by name instead of every enemy. Use
+                        // case: test revive_all end-to-end by KO'ing one
+                        // party member, then running revive_all, then
+                        // confirming they stand up.
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        try
+                        {
+                            var targetName = command.To;
+                            if (string.IsNullOrWhiteSpace(targetName))
+                            {
+                                response.Status = "failed";
+                                response.Error = "cheat_kill_one: target name required (pass via 'to' field).";
+                                break;
+                            }
+                            var targetFp = _navActions?.GetPlayerFingerprintByName(targetName);
+                            if (!targetFp.HasValue)
+                            {
+                                response.Status = "failed";
+                                response.Error = $"cheat_kill_one: no scanned player named '{targetName}'. Run scan_move first.";
+                                break;
+                            }
+                            if (targetFp.Value.Hp == 0)
+                            {
+                                response.Status = "failed";
+                                response.Error = $"cheat_kill_one: '{targetName}' is already KO'd (Hp=0).";
+                                break;
+                            }
+
+                            // Anchor search for THIS unit's fingerprint in the
+                            // master HP table, then write HP=0 + dead-bit.
+                            // Single slot, so no table-base walk needed — just
+                            // the first matching address.
+                            const long KillOneSearchMin = 0x141800000L;
+                            const long KillOneSearchMax = 0x141900000L;
+                            byte[] pattern = new byte[]
+                            {
+                                (byte)(targetFp.Value.Hp & 0xFF),    (byte)((targetFp.Value.Hp >> 8) & 0xFF),
+                                (byte)(targetFp.Value.MaxHp & 0xFF), (byte)((targetFp.Value.MaxHp >> 8) & 0xFF),
+                            };
+                            var matches = Explorer.SearchBytesInAllMemory(
+                                pattern, 16, KillOneSearchMin, KillOneSearchMax, broadSearch: true);
+                            if (matches.Count == 0)
+                            {
+                                response.Status = "failed";
+                                response.Error = $"cheat_kill_one: fingerprint {targetFp.Value.Hp}/{targetFp.Value.MaxHp} for '{targetName}' not found in master HP table.";
+                                break;
+                            }
+
+                            // First match = master slot (duplicates exist at
+                            // slot[16]/[20] per project_master_hp_dup_player.md
+                            // but the first hit is typically the live slot).
+                            long slotAddr = (long)matches[0].address;
+                            // Write HP=0 (u16 at +0x00).
+                            Explorer.Scanner.WriteByte((nint)slotAddr, 0x00);
+                            Explorer.Scanner.WriteByte((nint)(slotAddr + 1), 0x00);
+                            // Set dead-bit: +0x31 bit 0x20.
+                            var statusRead = Explorer.ReadAbsolute((nint)(slotAddr + 0x31), 1);
+                            byte statusByte = statusRead.HasValue
+                                ? (byte)((int)statusRead.Value.value | 0x20)
+                                : (byte)0x20;
+                            Explorer.Scanner.WriteByte((nint)(slotAddr + 0x31), statusByte);
+
+                            ModLogger.Log($"[CheatKillOne] KO'd '{targetName}' fp={targetFp.Value.Hp}/{targetFp.Value.MaxHp} at 0x{slotAddr:X}");
+                            response.Info = $"KO'd '{targetName}' (fp {targetFp.Value.Hp}/{targetFp.Value.MaxHp}) via master HP slot at 0x{slotAddr:X}. End the current turn to see the KO fire.";
+                            response.Status = "completed";
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Status = "error";
+                            response.Error = ex.Message;
+                        }
+                        break;
+
                     case "cheat_revive_allies":
                         // Session 49 dev tool — the reverse of cheat_kill_enemies.
                         // Finds dead player-team slots in the master HP table
@@ -2964,6 +3042,63 @@ namespace FFTColorCustomizer.Utilities
                             response.Status = "error";
                             response.Error = ex.Message;
                         }
+                        break;
+
+                    case "scan_snapshot":
+                        // Session 51: cache the latest scan's unit list under
+                        // a named label for enemy-turn play-by-play reporting.
+                        // Pair with scan_diff. See memory/project_enemy_turn_report_design.md.
+                        if (_navActions == null) { response.Status = "failed"; response.Error = "Nav actions not initialized"; break; }
+                        try
+                        {
+                            var label = command.To;
+                            if (string.IsNullOrWhiteSpace(label))
+                            {
+                                response.Status = "failed";
+                                response.Error = "scan_snapshot: label required (pass via 'to' field).";
+                                break;
+                            }
+                            var ok = _navActions.SaveNamedSnapshot(label);
+                            if (!ok)
+                            {
+                                response.Status = "failed";
+                                response.Error = "scan_snapshot: no scan data available. Run scan_move first.";
+                                break;
+                            }
+                            response.Status = "completed";
+                            response.Info = $"Snapshot '{label}' saved ({_navActions.NamedSnapshotCount} total in cache).";
+                        }
+                        catch (Exception ex) { response.Status = "error"; response.Error = ex.Message; }
+                        break;
+
+                    case "scan_diff":
+                        // Session 51: diff two named snapshots, emit change
+                        // events. Uses pattern/to as the two labels.
+                        if (_navActions == null) { response.Status = "failed"; response.Error = "Nav actions not initialized"; break; }
+                        try
+                        {
+                            var fromLabel = command.Pattern ?? "";
+                            var toLabel = command.To ?? "";
+                            if (string.IsNullOrWhiteSpace(fromLabel) || string.IsNullOrWhiteSpace(toLabel))
+                            {
+                                response.Status = "failed";
+                                response.Error = "scan_diff: pass 'pattern' (from label) and 'to' (to label).";
+                                break;
+                            }
+                            var before = _navActions.GetNamedSnapshot(fromLabel);
+                            var after = _navActions.GetNamedSnapshot(toLabel);
+                            if (before == null) { response.Status = "failed"; response.Error = $"scan_diff: no snapshot named '{fromLabel}'."; break; }
+                            if (after == null) { response.Status = "failed"; response.Error = $"scan_diff: no snapshot named '{toLabel}'."; break; }
+
+                            var events = GameBridge.UnitScanDiff.Compare(before, after);
+                            var lines = new List<string>();
+                            foreach (var e in events) lines.Add(GameBridge.UnitScanDiff.RenderEvent(e));
+                            response.Status = "completed";
+                            response.Info = events.Count == 0
+                                ? $"No changes between '{fromLabel}' and '{toLabel}'."
+                                : string.Join("\n", lines);
+                        }
+                        catch (Exception ex) { response.Status = "error"; response.Error = ex.Message; }
                         break;
 
                     case "write_byte":
@@ -3145,6 +3280,7 @@ namespace FFTColorCustomizer.Utilities
                     case "open_eqa":
                     case "open_job_selection":
                     case "open_character_status":
+                    case "swap_unit_to":
                     case "auto_place_units":
                         return ExecuteNavActionWithAutoScan(command);
 

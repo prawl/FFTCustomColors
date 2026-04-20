@@ -1220,6 +1220,21 @@ open_job_selection() {
   fi
 }
 
+# swap_unit_to <name>
+# Cycle the viewed unit on a nested party-tree screen (CharacterStatus,
+# EquipmentAndAbilities, JobSelection, or pickers) via Q/E. Resolves
+# name → displayOrder via roster and sends the shortest Q/E sequence.
+# Fails with a clear error if called from WorldMap / PartyMenuUnits —
+# use open_eqa / open_character_status to get there first.
+swap_unit_to() {
+  local target="${1:-}"
+  if [ -z "$target" ]; then
+    echo "[swap_unit_to] usage: swap_unit_to <name>"
+    return 1
+  fi
+  fft "{\"id\":\"$(id)\",\"action\":\"swap_unit_to\",\"to\":\"$target\"}"
+}
+
 # =============================================================================
 # Quick helpers (aliases + one-liners)
 # =============================================================================
@@ -2804,6 +2819,43 @@ kill_enemies_hard() {
 # HP=MaxHp + clears dead-bit on every player slot with HP=0 in the
 # master HP table. Call on BattleMyTurn.
 revive_all() { fft "{\"id\":\"$(id)\",\"action\":\"cheat_revive_allies\"}"; }
+
+# scan_snapshot <label>: Cache the current scanned-unit list under a
+# named label. Pair with scan_diff to see what changed between snapshots
+# (e.g. during an enemy turn). Works on any battle state with scanned data.
+scan_snapshot() {
+  local label="${1:-}"
+  if [ -z "$label" ]; then
+    echo "[scan_snapshot] usage: scan_snapshot <label>"
+    return 1
+  fi
+  fft "{\"id\":\"$(id)\",\"action\":\"scan_snapshot\",\"to\":\"$label\"}"
+}
+
+# scan_diff <from> <to>: Diff two named snapshots. Emits one line per
+# change event (move, damage, heal, KO, revive, status, added, removed).
+scan_diff() {
+  local from="${1:-}"
+  local to="${2:-}"
+  if [ -z "$from" ] || [ -z "$to" ]; then
+    echo "[scan_diff] usage: scan_diff <from_label> <to_label>"
+    return 1
+  fi
+  fft "{\"id\":\"$(id)\",\"action\":\"scan_diff\",\"pattern\":\"$from\",\"to\":\"$to\"}"
+}
+
+# kill_one <name>: Cheat-KO a single named party member. Anchor-searches
+# that unit's (HP, MaxHp) fingerprint in the master HP table, writes HP=0
+# + dead-bit on the first match. Useful for testing revive_all end-to-end.
+# Call on BattleMyTurn after a recent scan_move.
+kill_one() {
+  local target="${1:-}"
+  if [ -z "$target" ]; then
+    echo "[kill_one] usage: kill_one <name>"
+    return 1
+  fi
+  fft "{\"id\":\"$(id)\",\"action\":\"cheat_kill_one\",\"to\":\"$target\"}"
+}
 
 # execute_turn: Bundle move + ability + wait into one round-trip.
 # Usage:

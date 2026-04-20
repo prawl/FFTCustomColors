@@ -27,6 +27,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "battle_retry", "battle_retry_formation",
             "buy", "sell", "change_job",
             "open_eqa", "open_job_selection", "open_character_status",
+            "swap_unit_to",
             "auto_place_units"
         };
 
@@ -49,7 +50,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "resolve_party_menu_cursor",
             "resolve_equip_picker_cursor",
             "resolve_eqa_row",
-            "remove_equipment_at_cursor"
+            "remove_equipment_at_cursor",
+            "scan_snapshot", "scan_diff"
         };
 
         [Theory]
