@@ -1051,3 +1051,68 @@ Tests: 3629 → 3680 (+51 new).
 - **User pushback surfaces truth.** After 29 mostly-coverage tasks I'd convinced myself the well was dry. User asked "any real tasks?" which forced an honest re-scan. 5 genuine features found — smaller pool than the first two batches (28 tests vs 200+) but each one ships behavior, not just assertions.
 - **Extract-with-tests > inline + indirect tests.** `MvpSelector` was covered indirectly by `BattleStatTrackerTests`. Extracting gave it dedicated tests that name the formula, catch boundary cases, and document the ranking semantics for next editor. Same for `FacingDecider` — the override-precedence rule was never directly asserted before.
 - **Pure planner + thin dispatcher is the shipping pattern.** TurnPlan, UnitCyclePlanner, AbilityCursorDeltaPlanner each separate "figure out what to do" (pure, tested) from "do it" (game-touching, not tested). Makes the decision logic the thing that gets regression coverage; the dispatch layer stays thin enough to read at a glance.
+
+
+### Session 48 (2026-04-19) — screen-detection deep-fixes + authoritative map-id byte
+
+**Commits (17):**
+
+- `164339c` — Map Warriors' Guild + Poachers' Den sub-action screens
+- `e0f1bfe` — world_travel_to accepts location names (substring match)
+- `2a80130` — BattleSequence discriminator + Flee compound action
+- `0cd2a37` — BattleDialogue detection on ally-turn frames + EqA promote exclusion
+- `2e8fa3d` — Gate BattleSequence rule on slot9 so it stops eating enemy turns
+- `8b19fdb` — Ramza Ch2 Squire job name + broaden EqA promote exclusion
+- `9bd362c` — BattleDialogue/BattleChoice detection for Ch2 formation-phase events
+- `c8e1fee` — WorldMap C-snap on arrival + one-line ValidPaths in compact view
+- `730c53f` — Collapse Helpers into one-line + mark session-48 TODOs done
+- `c009a90` — Dedup active-unit isActive when multiple slots share HP
+- `3a64900` — TODO: equipment IDs are live — refute stale-reads claim
+- `4c94e25` — Thread LoS check through the basic Attack ability
+- `2038019` — Override active unit position with live grid cursor after move
+- `4eb3e37` — Add ATTACK_DEBUG log + file attack-range-calculator bug
+- `9f87bfc` — Live map-id byte 0x14077D83C — authoritative battle map
+
+**Shipped this session:**
+
+- [x] **Warriors' Guild: WarriorsGuildRecruit + WarriorsGuildRename sub-states** — Captured `shopSubMenuIndex` at `0x14184276C` by stepping into each option at Bervenia. Recruit=0x2B, Rename=0x1A. Wired in `ResolveShopSubAction` case 2 + `NavigationPaths.Dispatch` + SM WorldSide category. Prior-session note that "only Recruit visible" was stale — Bervenia's WG shows both. Commit `164339c`.
+
+- [x] **Poachers' Den: PoachersDenProcessCarcasses + PoachersDenSellCarcasses sub-states** — Discriminators ProcessCarcasses=0x0F, SellCarcasses=0x12 captured at Dorter. Wired identically to WG. Live-verified post-restart. Commit `164339c`.
+
+- [x] **`world_travel_to` accepts location names** — Shell-side case-insensitive substring match against the 43-entry table. Numeric IDs still work. Exact-name short-circuits; unique substring resolves; multiple matches reject with a candidate list ("Bervenia" → ambiguous between Free City of Bervenia + Mount Bervenia). Live-verified: `"Free City"`→13, `"Dorter"`→9, `"Xyzzy"`→rejected. Table mirrors C# dict at `CommandWatcher.cs:3875`. Commit `e0f1bfe`.
+
+- [x] **BattleSequence runtime discriminator** — Swapped the save-baked `0x14077D1F8` flag for runtime `0x1407774B4` (u32: 2=minimap open, 1=plain WorldMap). Found via full-module snapshot/diff at Orbonne. Fixes the sticky-flag bug where post-restart WorldMap reported as BattleSequence. Commits `2a80130`, `2e8fa3d` (added slot9 guard so the rule stops eating enemy-turn frames mid-battle).
+
+- [x] **BattleSequence Flee compound action** — Hold-B 3500ms → 400ms modal fade-in → auto-tap Enter on preselected Yes → WorldMap. Caller never sees the intermediate Yes/No modal. Required extending `hold_key` with `FollowUpVk` + `FollowUpDelayMs` and routing hold_key paths through `ExecuteAction` (not `NavigationActions`). Commit `2a80130`.
+
+- [x] **BattleDialogue detection on ally-turn frames (team=2)** — New rule using the looser `IsRealEvent` range (<400) instead of the `IsMidBattleEvent` cap (<200) when battleTeam==2. Combat-animation nameId aliasing doesn't apply on team-2 phases. Fixes Orbonne Vaults Loffrey scene (event 302). Commit `0cd2a37`.
+
+- [x] **BattleDialogue detection for Ch2 formation-phase events** — New formation-phase rule: battleMode==1 + real event + rawLocation in range + slot9 != 0xFFFFFFFF. Catches Mandalia Brigade scene (event 16) that fires after auto_place but before the battle sentinels flip. Commit `9bd362c`.
+
+- [x] **BattleChoice modal byte swap** — Old `0x140CBC38D` stopped firing on Ch2 Mandalia. Snapshot/diff surfaced the cluster `0x140D370xx`; picked `0x140D3706D` (cleanest 0→1). Live-verified: detection now hits BattleChoice when the 2-option modal is live. Commit `9bd362c`.
+
+- [x] **EqA promote exclusion broadened** — Promote override (equipment-mirror-matches-Ramza triggers screen rename) now skips ANY Battle* screen, not just BattleStatus. Was incorrectly promoting BattleMyTurn / BattleEnemiesTurn / BattleAlliesTurn / BattleDialogue / BattleChoice to EquipmentAndAbilities because party-unit equipment sits in the mirror bytes throughout combat. Commits `0cd2a37`, `8b19fdb`.
+
+- [x] **Ramza Ch2 Squire job name** — `CharacterData.GetRamzaJob(jobByte)` maps chapter-aware variants: 0x01→Squire (Ch2/3), 0x03→Gallant Knight (Ch4), 0xA0/0xA1 variants. Previously fell through to generic PSX JobNameById[1]=Chemist. `NavigationActions.CollectUnitPositionsFull` checks nameId==1 first. Commit `8b19fdb`.
+
+- [x] **Active-unit isActive dedup** — When multiple battle-array slots share HP (e.g. Lv 1 Ramza + Lv 1 Delita both at 49/49 in Mandalia Ch2), the HP-only isActive check flagged both. After roster match, keep IsActive only on the unit whose RosterNameId matches the condensed struct's active nameId. Live-verified: scan reports `Ramza(Squire) (4,1)` without the ghost. Commit `c009a90`.
+
+- [x] **WorldMap C-snap on arrival** — Auto-tap C after any `WaitForScreen=WorldMap` succeeds. Map cursor recenters on the player's current node. Skipped when the wait times out. Fixes the whole class of "travel targets the wrong place" bugs after battle_flee / Leave / Exit. Commit `c8e1fee`.
+
+- [x] **Compact view: one-line ValidPaths + Helpers** — `execute_action` output now prints `ValidPaths: X, Y, Z` and `Helpers: a, b, c` on single lines. Descriptions moved to `screen -v` verbose mode. Commits `c8e1fee`, `730c53f`.
+
+- [x] **LoS check threaded through basic Attack** — The skillset-ability path already annotated `ValidTargetTile.LosBlocked` via `LineOfSightCalculator` when the ability was a physical projectile (ranged Attack / Ninja Throw). The prepended basic Attack bypassed this annotation. Reused `ProjectileAbilityClassifier` for the ("Attack", "Attack", range>1) signature. Live-trace: 15 computed tiles, 11 flagged LosBlocked across a ridge. Commit `4c94e25`.
+
+- [x] **Active-unit position lives at live grid cursor after move** — Battle-array slot +0x33/+0x34 holds pre-move coords for the whole turn. Active unit's GridX/Y now pulls from AddrGridX/Y (0x140C64A54 / 0x140C6496C). Non-active units still use slot bytes. Live-verified: battle_move (4,0)→(5,0) reports correctly on the next scan. Commit `2038019`.
+
+- [x] **Live battle map-id byte 0x14077D83C** — 🎯 **The session headline.** Found via snapshot/diff across two real battles (Dugeura Pass MAP086 / 0x56 → Beddha Sandwaste MAP082 / 0x52). Eight main-module addresses flipped 86→82 in lockstep; picked the lowest. Wired as Try 0 before the locId-based lookups in NavigationActions. Live-verified across three maps (Dugeura, Beddha, Araguay) + survives restart/save-load. Replaces the `screen.location`-keyed lookups that drifted on random encounters (travel-to-Zeklaus → encounter-at-Dugeura → mod loaded MAP076 Zeklaus — the bug that triggered this whole hunt). Commit `9f87bfc`.
+
+- [x] **Equipment IDs ARE live (TODO refuted)** — Live-read Ramza's roster slot +0x0E..+0x1B at Lv 1 Mandalia and cross-referenced with the in-game equipment panel. Non-sequential layout: +0x0E Helm, +0x10 Body, +0x12 Accessory, +0x14 Weapon, +0x16 LeftHand, +0x18 Unused, +0x1A Shield. `god_ramza` writes to these offsets produce Grand Helm / Maximillian / Bracer / Ragnarok / Kaiser Shield at the expected positions. **Caveat:** PartyMenu continuously syncs from a master store while open, clobbering live writes — memory note `feedback_partymenu_roster_sync.md` covers the gotcha. Commit `3a64900`.
+
+**What made this session's wins stick:**
+
+- **Snapshot+diff is the master key.** Two discoveries this session — BattleSequence runtime byte `0x1407774B4` and the live battle map-id `0x14077D83C` — came from the same technique: snapshot state A, cause a known change, snapshot state B, diff for exact target transitions. Both wins happened in under 20 minutes each after we committed to the technique. Earlier scoring heuristics (candidate pools, dimension-tightness tiebreakers) burned hours for worse results. Going forward: when stuck on a memory hunt with any ability to toggle the target value, snapshot+diff first.
+
+- **User pushback shortens the path.** When I proposed a complicated scored-candidate map-resolver after finding `FindScenarioMapIdCandidates` returned 100+ hits, user said "why is this so difficult, I thought we were passing in the mapId" and immediately redirected us to find one authoritative byte. Single-byte result shipped in 20 minutes.
+
+- **Extract-with-tests stayed valuable.** `MapResolutionPlanner` got 8 tests for a priority-decision function that's currently disabled but ready if we need to re-enable scenario-struct fallbacks. Easier to turn back on safely than to re-derive the priority order from scratch.

@@ -83,19 +83,15 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Wire `AbilityCursorDeltaPlanner.Decide` into the ability-list scroll loop** — Session 47 pt 4 shipped the pure decision function with 10 tests (sign-match + magnitude-guard trust rules). Missing: actual wiring into the Up-reset / Down-scroll loop in the battle ability nav path (currently blind Up×N + Down×index). When planner returns `TrustDelta=false`, keep current behavior; when true, skip to `RemainingKeys` count. Session 31 Up-wrap explosion is the regression guardrail.
 
-- [x] **Active unit position goes stale after a move — FIXED 2026-04-19 session 48** — Commit `2038019`. Battle-array slot gridX/gridY at +0x33/+0x34 holds pre-move coords for the whole turn. Active-unit GridX/Y now pulls from AddrGridX/Y (0x140C64A54 / 0x140C6496C) live-cursor bytes. Live-verified: battle_move (4,0)→(5,0) reports correctly. Non-active units still use slot bytes (live-cursor only tracks active).
+### Session 48 — follow-ups (2026-04-19)
 
-- [ ] **Random-encounter map resolution uses wrong locationId — 2026-04-19 session 48** — Traveled to Zeklaus, encounter fired at Dugeura Pass (per `curLoc=Dugeura Pass`), but `screen.location` stays 28 (Zeklaus, the travel target). MapLoader loads MAP076 (Zeklaus) instead of MAP086 (Dugeura). BFS / Attack-range run on wrong topology. Workaround: `set_map 86` manually. Fix path: find a byte that holds "current battle map" vs "current world-map location," or derive from the battle's actual mapId at `battle.mapId`. Shell helper `set_map` exists.
+- [ ] **Insta-win battle cheat (`kill_enemies`) needs the raw-HP master store** — Uncommitted scaffold on `ColorMod/Utilities/CommandWatcher.cs` case `cheat_kill_enemies` + `NavigationActions.GetPlayerSlotPositions()` + shell `kill_enemies` in `fft.sh`. Current impl hammers HP=0 + Dead bit at slot +0x14/+0x45 for 500ms across all enemy slots; state reverts each turn because the game re-derives battle-array HP from a raw source we haven't located. Heap HP writes persist in the heap but the battle array still re-derives. **Next session fix path:** find raw-HP address via damage-diff — snapshot memory, deal known damage D to one enemy, snapshot, diff for u16 that decreased by exactly D. That byte is the master. Write it to 0 with Dead bit + victory-check poll. See memory note `feedback_hp_is_derived.md`. User-facing goal: skip testing battles quickly.
+
+- [ ] **Random-encounter map resolution: FIXED via live-map-id byte — regression test only** — Commit `9f87bfc` swapped `screen.location`-keyed lookups for `0x14077D83C` (u8, current battle map id). Three maps live-verified + survives restart. Reopens only if the byte shifts after a game patch. If the locId-based fallback at `NavigationActions.cs:Try 1/2` ever gets reached, log why so we know when it matters.
 
 - [ ] **Attack tiles calculator 12 vs game's 18 — 2026-04-19 session 48** — Ramza Archer at (6,1), bow range 4, correct MAP086 loaded. Our calculator emits 12 tiles, missing 6 that the game shows. Tiles computed don't reach y=4 or y=5 despite Manhattan-distance allowing (7,4), (6,4), (5,4), (7,5). Suspect: `AbilityTargetCalculator.GetValidTargetTiles` requires `IsWalkable(x,y)` but the game allows targeting **occupied** tiles (enemies standing on them) — our walkability check may reject those. Also possible: height-delta (VR=jump=5) filter cutting off elevated tiles where enemies stand. Left debug log `[ATTACK_DEBUG]` in NavigationActions.cs around line 2365 for next-session diagnosis. Pattern to reproduce: travel to Zeklaus (triggers encounter at Dugeura Pass), auto_place, `set_map 86`, move Ramza to (6,1), scan — compare our tile list to in-game attack overlay. Look at `ColorMod/GameBridge/AbilityTargetCalculator.cs:222-234` walkability + zDelta filters.
 
 - [ ] **Extend `cheat_mode_buff` to `buff_all`** — Current impl buffs the first player-side slot only. Loop over every `inBattle=1` + team=0 slot for multi-party story battles. Reuse `BuffPlanner.PlanInvincibilityWrites`; just iterate slots in `cheat_mode_buff` case.
-
-- [x] **Compact view: collapse ValidPaths into one line — DONE 2026-04-19** — `execute_action` compact output now prints `ValidPaths: X, Y, Z` on a single line; descriptions moved to `screen -v`. Helpers also collapsed to one line.
-
-- [x] **WorldMap arrival: auto-tap C to snap cursor to current node — DONE 2026-04-19** — Auto-tap C in `CommandWatcher.ExecuteValidPath` after `WaitForScreen=WorldMap` succeeds. Skipped when the wait times out. Live-verified: travel→flee returns cursor to the active node.
-
-- [x] **`world_travel_to` accepts a location name, not just ID — DONE 2026-04-19** — Shell-side case-insensitive substring match against the 43-entry table. Numeric IDs still work. Exact-name short-circuits; substring with one match resolves; multiple matches reject with a candidate list ("Bervenia" → ambiguous between Free City of Bervenia + Mount Bervenia). Live-verified: `"Free City"`→13, `"Dorter"`→9, `"Xyzzy"`→rejected. Location table mirrors the C# dict at CommandWatcher.cs:3875 — keep in sync manually.
 
 - [ ] **Enemy-turn play-by-play report** — Currently the bridge goes silent during enemy turns; Claude can't narrate or react until BattleMyTurn returns. Add a per-turn summary that diffs unit state across a turn boundary. MVP: snapshot `(unitId, x, y, hp)` for every `inBattle=1` slot at turn-start, diff at turn-end, emit to `live_log.txt` as e.g. `[EnemyTurn] Archer(8,4)→(6,4)  Ramza HP 389→349 (-40)`. Heuristic attribution (adjacent + HP drop = attacker) — breaks on AoE/counters but good enough for narration. Stretch: stream intermediate events via polling `screen` during the turn. Fully-live damage-event hook is 4-6hr+; skip unless MVP isn't enough. 2026-04-19: requested while playing Zeklaus.
 
@@ -354,9 +350,6 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **LoS option C: enter targeting, check if game rejects tile, cancel if blocked** [Abilities] — Brute-force fallback. Slow but reliable. Use only as last resort if A and B both fail.
 
 
-- [x] **Equipment IDs stale across battles — REFUTED 2026-04-19 session 48** — Live-read Ramza's roster slot +0x0E..+0x1B at Lv 1 Mandalia and cross-referenced with the game's equipment panel. IDs match exactly in the non-sequential layout: +0x0E=Helm, +0x10=Body, +0x12=Accessory, +0x14=Weapon, +0x16=LeftHand, +0x18=unused, +0x1A=Shield. `god_ramza` writes to these offsets and produces Grand Helm / Maximillian / Bracer / Ragnarok / Kaiser Shield at the expected positions. The old TODO claim (roster reads save-state, not live) was outdated. `NavigationActions.cs` reads 7 sequential u16 into a flat `unit.Equipment` list — downstream consumers iterate the bag so positional misordering doesn't cause wrong-slot misuse. No code change needed.
-
-
 - [ ] **Active unit name/job stale across battles** [State] — After restarting a battle with different equipment/jobs, the name/job display doesn't refresh between battles.
 
 
@@ -558,14 +551,10 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [~] **scan_tavern: surface `cursorRow` on TavernRumors / TavernErrands** — Task 23 shipped (session 44 pt 7): `ResolveTavernCursor` method + auto-resolve wiring. Gate uses `ScreenMachine.CurrentScreen == TavernRumors/Errands` (not screen.Name) because no memory byte distinguishes Tavern substates from LocationMenu — SM-override rewrites the name only at response serialization, after the resolver runs. Live-verified at Bervenia: cursorRow populates on first visit, scan_tavern emits concrete counts (was ">=30" placeholder). **Known limitation**: same 2-step verify + 32-candidate-first-match issue as BattlePaused (Task 21) — the latched byte reports initial row correctly but doesn't reliably track live navigation. At Bervenia scan_tavern reported "2 entries" when menu had 4. **Future work**: strengthen discrimination via triple-diff intersect OR N-range value filter (candidate byte values must stay within [0, expected-entry-count)).
 
 
-- [x] **Warriors' Guild: add `WarriorsGuild` screen state — DONE 2026-04-19 (session 48 at Bervenia)** — Outer state already detected. Sub-action discriminators captured by stepping into each option and reading `shopSubMenuIndex` at `0x14184276C`: Recruit=0x2B, Rename=0x1A. Wired in `ResolveShopSubAction` case 2 + `NavigationPaths.Dispatch` + SM category check. Prior-session note that "only Recruit visible" was stale — Bervenia's WG shows both Recruit and Rename.
-
 - [ ] **Warriors' Guild: `Recruit` screen + flow** — Pick job/class + name new unit. Depends on party menu integration (new hire joins roster) and text input (naming).
 
 - [ ] **Warriors' Guild: `Rename` screen + flow** — Pick existing unit + enter new name. Depends on party menu navigation + text input state.
 
-
-- [x] **Poachers' Den: add `PoachersDen` screen state — DONE 2026-04-19 (session 48 at Dorter)** — Sub-action discriminators: ProcessCarcasses=0x0F, SellCarcasses=0x12. Wired identically to WG. Live-verified post-restart: entering Process Carcasses reports `[PoachersDenProcessCarcasses]`; Sell Carcasses reports `[PoachersDenSellCarcasses]`.
 
 - [ ] **Poachers' Den: `ProcessCarcasses` screen + ValidPaths** — ScrollUp/Down/Select/Cancel. `ui=<carcass name>`; empty state when zero carcasses. Depends on carcass-name widget scraping.
 
