@@ -2318,6 +2318,16 @@ namespace FFTColorCustomizer.GameBridge
                             u.GridX, u.GridY, attackInfo, abilityMap, u.Jump);
                         if (attackTiles.Count > 0)
                         {
+                            // Session 48: thread LoS through basic Attack too. Ranged
+                            // Attack (bow / gun / crossbow) is a physical projectile,
+                            // so the canonical projectile rule applies — classifier
+                            // already knows to check range>1 via attackInfo.HRange.
+                            bool wantsLos = ProjectileAbilityClassifier.IsProjectile(
+                                "Attack", "Attack", attackInfo.HRange);
+                            int attackerElevA = wantsLos
+                                ? (int)System.Math.Round(abilityMap.GetDisplayHeight(u.GridX, u.GridY))
+                                : 0;
+
                             attackEntry.ValidTargetTiles = attackTiles
                                 .OrderBy(t => t.y).ThenBy(t => t.x)
                                 .Select(t =>
@@ -2332,6 +2342,15 @@ namespace FFTColorCustomizer.GameBridge
                                             : !string.IsNullOrEmpty(occ.JobNameOverride) ? occ.JobNameOverride
                                             : occ.Team == 0 ? GameStateReporter.GetJobName(occ.Job) ?? "?"
                                             : "?";
+                                    }
+                                    if (wantsLos)
+                                    {
+                                        int targetElev = (int)System.Math.Round(abilityMap.GetDisplayHeight(t.x, t.y));
+                                        bool clear = LineOfSightCalculator.HasLineOfSight(
+                                            u.GridX, u.GridY, attackerElevA,
+                                            t.x, t.y, targetElev,
+                                            (x, y) => (int)System.Math.Round(abilityMap.GetDisplayHeight(x, y)));
+                                        if (!clear) tile.LosBlocked = true;
                                     }
                                     return tile;
                                 })
