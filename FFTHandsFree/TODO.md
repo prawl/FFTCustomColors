@@ -73,11 +73,27 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+### Session 53 — shop stock bitmap (2026-04-20)
+
+- [ ] 🎯 **Find Gariland's shop record** — Session 53 CRACKED Dorter Ch1 at `0x5C7C2880` (weapon bitmap offset +42, 128-byte stride). Gariland sells daggers (IDs 1-7) which can't fit at offset +42. Hypotheses to test: (a) per-shop bitmap offset stored in record, (b) separate bitmaps for each 64-ID range (daggers-to-axes in bmp0, rods-to-flails in bmp1, guns-to-bags in bmp2), (c) different record structure for dagger shops. Next session: snapshot before/after entering Gariland shop specifically, diff to find its record, inspect structure. See `memory/project_shop_stock_CRACKED.md` + `memory/project_shop_items_session53_narrowed.md`.
+
+- [ ] **Find shop records for shields/helms/body/accessory/consumables** — Dorter Ch1 Outfitter shows 7 categories via A/D tabs. Each must have its own bitmap somewhere. Weapons bmp is at `+0x10` of record, bmp2 at `+0x20`, bmp3 at `+0x28` — but their decoded items with offset+42 don't cleanly map to Dorter's shields (128-134). Try different offsets per category, or check if shields live in an entirely separate record region.
+
+- [ ] **Map record→shop correlation** — Dorter's row has byte `05` at +0x00 but location ID is 9. Need to find what index/tag identifies a row as "this shop" so the bridge can pick the right record when the player enters a shop. Likely path: snapshot diff entering one shop vs another; one u32/u16 should change to reflect the active shop ID.
+
+- [ ] **Ship `screen` on OutfitterBuy surfacing `stockItems[{id, name, price, owned}]`** — Blocked on the three items above. Once record→shop mapping found + all category bitmaps located, decode via `ItemData.GetItem(id)` and surface as JSON. Cursor row at `0x141870704` (u32) indexes into the current-category bitmap.
+
+### Session 52 — scan_diff identity + per-unit ct hunt (2026-04-20)
+
+- [ ] **Fix scan_diff duplicate-name identity collision** — Session 52 live-verified: 2 Black Mages moving triggered `remove+add` events instead of `moved`. `UnitScanDiff.Key(u)` falls back to pre-snapshot XY which breaks when enemies move. Fix: add `ClassFingerprint` (11-byte heap bytes at +0x69) as secondary identity key. See `memory/project_scan_diff_identity_collision.md`.
+
+- [ ] **kill_one player persistence regression** — Session 52 found `kill_one Wilham` wrote HP=0 + dead-bit to master HP slot `0x14184FEC0` but after a turn cycle Wilham showed HP=477 again. Session-49 docs say master is authoritative but for PLAYERS the write reverts. Investigate whether there's a per-frame refresh from roster into master for player slots specifically. See `memory/project_deathcounter_battle_array_scan.md`.
+
+- [ ] **Per-unit casting ct hunt — second attempt** — Session 52 deferred because `search_bytes` doesn't expose `broadSearch`. Fix: add `broadSearch` param to the bridge action, retry HP=MaxHp fingerprint hunt for Kenrick's heap struct. See `memory/project_per_unit_ct_hunt_deferred.md`.
+
 ### Session 49 — follow-ups (2026-04-20)
 
-- [ ] ⚠ UNVERIFIED: **live-verify `kill_enemies` dispatcher's new Reraise-clear path against a real Skeleton / Bonesnatch** — Commit `51f61e1` added `BattleArraySlotBase` + `CurrentStatusByte2` on `KillEnemySlot` and the dispatcher reads status byte at battle-array `+0x47`. Planner tests cover the plan (17 green) but the end-to-end Reraise-clear writes weren't run in a live undead battle. Next session: enter a Siedge Weald encounter with a Skeleton/Bonesnatch, call `kill_enemies` once (no `_hard`), confirm the undead drops without reviving on turn rollover. If it still revives, check whether `CurrentStatusByte2` is reading the right byte (session 49 confirmed Lloyd Reraise→byte[2]=0x20 at battle-array +0x47, but the dispatcher may read from the wrong slot if the battle-array fingerprint map misses the undead).
-
-- [ ] ⚠ UNVERIFIED: **live-verify `revive_all`** — Commit `51f61e1` added `cheat_revive_allies` + shell `revive_all`. Planner tests green (5 added). Dispatcher reuses the `kill_enemies` anchor-search but with MaxHp-only player matching (dead fingerprint is `(0, MaxHp)`). Next session: in a battle where at least one party member has been KO'd, call `revive_all`, verify the downed ally stands up with full HP on next turn. Edge case to watch: if the MaxHp-only match overmatches an enemy slot whose MaxHp happens to equal a player's MaxHp, that enemy gets revived too.
+- [ ] **Live-verify `kill_enemies` Reraise-clear path against a real Skeleton / Bonesnatch** — Session 50 confirmed `kill_enemies` cleared a Bonesnatch at Siedge Weald (Victory triggered, no revive observed). Still need proof the **Reraise-bit-clear writes specifically** fire (they may be no-ops if the Bonesnatch's status byte[2] didn't have the Reraise bit set). Check by reading battle-array +0x47 before and after `kill_enemies` on a unit that provably has the Reraise status.
 
 - [ ] **Verify `+0x29` as deathCounter with natural KO** — Session 49 found candidate at master-HP-table +0x29 that ticked 3→2 on a `kill_enemies`-KO'd Goblin. The `+0x31 |= 0x20` dead-bit write may have initialized the counter artificially; need natural KO (normal attack) to confirm it's the true crystallize countdown. See `memory/project_deathcounter_offset_0x29.md`.
 
@@ -87,29 +103,15 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Hunt Zodiac byte via heap-struct scan** — needs 2 known-different-zodiac party members loaded. Open CharacterStatus for unit A (read zodiac from UI), snapshot heap, switch to unit B, note zodiac, snapshot heap, diff for bytes that went zodiacA → zodiacB. Cross-validate on a third unit. See `memory/project_zodiac_heap_hunt_deferred.md`.
 
-- [x] **Scan learned-ability filter audit (session 44 bug)** — Session 50 audit: filter logic is correct; root cause was upstream job-byte resolution, fixed in commit 8b49cb4 (session 48). Session 51 pinned regression tests: `GetRamzaJob` chapter-byte map + skillset ability counts (Fundaments=4, Mettle=9). See memory/project_scan_learned_ability_filter_audit.md.
-
-- [x] **Extract scan-snapshot + scan-diff bridge actions for enemy-turn play-by-play** — Session 51 shipped `UnitScanDiff` pure planner (15 tests) + `scan_snapshot <label>` / `scan_diff <from> <to>` bridge actions + shell wrappers. Identity-match by name → rosterNameId → pre-snapshot position fallback.
-
-- [x] **Investigate 0xB0 in cast queue** — Session 50/51 confirmed 0xB0 is a slot-state tag (charging). Second-spell test at session 51 (Curaja vs Protect) showed identical `01 B0 | 0A B0 | 09 B0` pattern regardless of ability. Session 51 also observed fire transition: record 1's byte[1] goes 0xB0→0x70 when the cast fires. Records 2-3 are NOT live queue slots (unchanged across casts).
-
-- [x] **Attack-tile calculator 12 vs 18** — Session 50 root-caused: `ItemData.BuildAttackAbilityInfo` hardcoded `VRange=0` for ALL weapons, falling back to caster Jump in `AbilityTargetCalculator` and rejecting elevated targets. Fixed session 51 by setting `VRange=99` for bow/gun/crossbow; melee keeps `VR=0` so jump fallback still bounds them. See memory/project_attack_vr0_bug.md.
-
 - [~] **BattleVictory post-banner false-GameOver edge** — Deferred until a real repro surfaces. Current `battleTeam==0` guard handles the known cases (session 49 Kenrick counter-kill). Regression test `DetectScreen_VictoryWithRamzaDying_TeamZeroGuard_ReturnsBattleVictory` pins current behavior. If a team=2 NPC counter-kill scenario gets captured, swap the guard for a dedicated encA/encB condition.
 
 ### Session 47 — follow-ups (2026-04-19)
-
-- [x] **Live-verify `buff_ramza` on a fresh-game battle** — Session 50 PASSED at Siedge Weald: `scan_move` showed Ramza HP=999/999 post-buff. Writes landed correctly on the first player slot; no multi-slot misfire observed.
-
-- [x] **`swap_unit_to <name>` shell wrapper** — Session 50 shipped bridge action + shell helper. Session 51 live-verified at Ramza → Kenrick → Lloyd EqA cycle.
 
 - [ ] **Wire `AbilityCursorDeltaPlanner.Decide` into the ability-list scroll loop** — Session 47 pt 4 shipped the pure decision function with 10 tests (sign-match + magnitude-guard trust rules). Missing: actual wiring into the Up-reset / Down-scroll loop in the battle ability nav path (currently blind Up×N + Down×index). When planner returns `TrustDelta=false`, keep current behavior; when true, skip to `RemainingKeys` count. Session 31 Up-wrap explosion is the regression guardrail.
 
 ### Session 48 — follow-ups (2026-04-19)
 
 - [ ] **Random-encounter map resolution: FIXED via live-map-id byte — regression test only** — Commit `9f87bfc` swapped `screen.location`-keyed lookups for `0x14077D83C` (u8, current battle map id). Three maps live-verified + survives restart. Reopens only if the byte shifts after a game patch. If the locId-based fallback at `NavigationActions.cs:Try 1/2` ever gets reached, log why so we know when it matters.
-
-- [x] **Attack tiles calculator 12 vs game's 18 — 2026-04-19 session 48** — Session 51 root-caused + fixed. `BuildAttackAbilityInfo` now sets `VRange=99` for bow/gun/crossbow. Live-verification at Zeklaus deferred to session 52+ (see new item).
 
 
 ### Session 46 — follow-ups (2026-04-19)
@@ -123,8 +125,6 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 - [ ] **Fight→Formation transition settle** — The 3s settle cap increase was reverted (made every menu nav slow). Formation loads after `execute_action Fight` can exceed 3s (observed 5+s). Needs per-action custom settle logic: the Fight action handler should poll until detection sees `BattleFormation` OR 10s elapsed, rather than relying on the generic settle loop. Low priority since auto-placement mostly handles the Fight flow anyway.
 
 ### 🛠 Dev tooling — speed Ramza through battles for state-collection playthroughs
-
-- [x] **Extend `cheat_mode_buff` to buff all party members** — Session 49 shipped `pattern:"all"` mode + session 50 shipped shell `buff_all [hp]` wrapper. Iterates every roster-matched team=0 slot.
 
 ### Session 45 — new follow-ups (2026-04-19)
 
@@ -162,11 +162,7 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 
 ### Session 44 — urgent bugs (new)
 
-- [x] **`scan_move` reports entire skillset, not learned-only abilities** — Fixed session 48 (commit 8b49cb4 Ramza-Ch2-Squire-job-name). Session 50 audit confirmed filter logic scopes correctly. Session 51 pinned regression tests. See dup at §0 "Scan learned-ability filter audit" above for details.
-
 - [ ] **`scan_move` misreads team classification on Orbonne opening** — Fresh-game Orbonne battle: scan labeled units at (6,5), (5,5), (6,6), (6,4), (5,4), (4,4), (9,2), (5,1) as `[ENEMY]` but the in-game visual shows several of them are PLAYER-side (knights in Ramza's party, Delita, etc.). User corrected: (6,6) is an ALLY, not an enemy. Also: scan labeled the monster-job "Ahriman" at (4,5) as `[PLAYER]` which is also suspicious. Root cause unknown — possibly story battles use team bytes the bridge doesn't recognize, OR the battle unit struct positions are misaligned on this specific battle (similar to the mod-forced battles at Grogh/Dugeura). Blocks autonomous battle play on story-forced combat — I almost attacked an ally because the scan said they were an enemy. **Fix path**: dump unit structs at Orbonne opening, compare the team byte values to known-good random-encounter battles (e.g. Mount Bervenia from earlier), find the value that represents "player-side story unit" vs generic enemy.
-
-- [x] **BattleVictory misdetects as BattleDesertion on Gariland post-battle** — Session 50 shipped encA=255 Victory sentinel at the top of the `inBattle` branch, firing BEFORE `postBattlePausedState → Desertion`. Test `DetectScreen_Victory_Gariland_EncA255_WinsOverDesertion` pins the fix. See memory/project_gariland_victory_fix.md.
 
 ### Session 43 — next-up follow-ups
 
@@ -183,8 +179,6 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 ### Session 33 — next-up follow-ups (from 6-task batch attempt)
 
 - [ ] **Wire TavernRumors cursorRow to screen response** — Session 33 found `0x13090F968` at Dorter. **Session 44 (2026-04-18)** confirmed the same `+0x28` widget offset holds at Bervenia — byte shifted to `0x13091F968` (widget base `0x13091F940`, +0x10000 from session 33). Triple-diff intersection (row0→1, 1→2, 2→3) + live-read verification is a RELIABLE per-session re-locator technique (yields ~5-7 candidates, narrowed to 1 by reading at current cursor). Widget header structure (self-pointer / count / tag / cursor at +0x28) is stable across both sessions. Still no stable anchor for AUTO-relocation at runtime — direct pointer-search for widget-base bytes returned 0 hits, confirming UE4 Slate vtable walk is needed. Memory note `project_tavern_rumor_cursor.md` updated with the full technique + next approaches.
-
-- [x] **BattleSequence detection over-fires after restart at story location** — FIXED session 48 via swap to runtime u32 `0x1407774B4` (==2 when minimap panel open, ==1 on plain WorldMap). Confirmed non-sticky across restarts. See memory/project_battle_sequence_flag_sticky.md.
 
 ### Session 33 — Tavern Scope B (decoder shipped; per-city mapping partial)
 
@@ -264,8 +258,6 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 - [ ] **LoadGame/SaveGame from title menu misdetect as TravelList** — Session 21: Both file picker screens (load and save) reached from title/pause menu have party=0, ui=1, slot0=0xFFFFFFFF, slot9=0xFFFFFFFF, battleMode=255, gameOverFlag=0. Matches TravelList rule (party=0, ui=1). Existing LoadGame rule only handles GameOver→LoadGame path (requires gameOverFlag=1, battleMode=0). SaveGame only handled as shop-type label (shopTypeIndex=4). Needs a discriminator byte — or accept the ambiguity since Claude uses `save`/`load` helpers which don't rely on screen detection.
 
 - [ ] **BattleSequence detection: find memory discriminator** — Session 21 built full scaffolding (whitelist of 8 locations, NavigationPaths, SM sync, LocationSaveLogic) but detection DISABLED because BattleSequence minimap is byte-identical to WorldMap at those locations across all 29 detection inputs. Whitelist approach false-triggers on fresh boot/save load at sequence locations. Scaffolding ready in ScreenDetectionLogic.cs (commented out rule + `BattleSequenceLocations` HashSet). Next step: heap diff scan while ON the minimap vs WorldMap at same location to find a dedicated flag. Locations: Riovanes(1), Lionel(3), Limberry(4), Zeltennia(5), Ziekden(15), Mullonde(16), Orbonne(18), FortBesselat(21).
-
-- [x] **Cutscene misdetects as LoadGame after GameOver** — Fixed (pre-session-52): LoadGame rule at ScreenDetectionLogic.cs:557 now requires `IsEventIdUnset(eventId)`. Session 52 pinned regression tests `DetectScreen_Cutscene_WithStickyGameOverFlag_DoesNotMisdetectAsLoadGame` + `DetectScreen_LoadGame_RealState_StillReturnsLoadGame`.
 
 
 - [ ] **New state: BattleChoice — mid-battle objective choice screen** — Some battles pause and present 2 options (e.g. "We must press on, to battle" vs "Protect him at all costs"). Selecting an option changes the battle objective (e.g. from "defeat all" to "protect X"). Needs memory investigation to find a discriminator byte. Likely paused=1 with a unique submenu/menuCursor combo.

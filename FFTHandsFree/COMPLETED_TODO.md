@@ -1192,3 +1192,90 @@ Tests: 3629 → 3680 (+51 new).
 - **Strict TDD clicked for detection fixes.** The Victory-battleTeam guard shipped as: (1) characterization test asserting wrong behavior, (2) impl change, (3) flip the assertion, (4) add positive + negative regression tests. Takes longer per feature than "change code → pray" but the regression coverage is real and the next edit is safer.
 
 - **Live-poll capture over static snapshot.** A 30-tick poll across a Victory transition showed things a single post-event snapshot would miss: the `encA=0xFF` banner window, the battle-start `encA=0xFF` false-positive, the `FF FF FF FF FF FF FF FF` all-FF banner signature. Multi-tick polling is cheap (~15s) and surfaces timing-sensitive state the detection rules have to handle.
+
+---
+
+### Session 50 (2026-04-20) — Detection + dev tools: Gariland Victory, attack-tile VR fix, swap_unit_to, kill_one, scan_snapshot/diff
+
+**Commits:**
+- `68b29a8` — Fix attack-tile VR=0 for ranged weapons + Gariland Victory detection
+- `2f4539c` — Ship swap_unit_to, kill_one, scan_snapshot/scan_diff dev tools
+- `cf45864` — Pin regression tests for scan-move learned-ability scoping
+
+**Completed items moved from TODO.md:**
+
+- [x] **BattleVictory misdetects as BattleDesertion on Gariland post-battle** — Shipped encA=255 Victory sentinel at top of `inBattle` branch, firing BEFORE `postBattlePausedState → Desertion`. Regression test `DetectScreen_Victory_Gariland_EncA255_WinsOverDesertion`. See `memory/project_gariland_victory_fix.md`.
+
+- [x] **Attack-tile calculator 12 vs 18** (carryover from session 48) — Root-caused: `ItemData.BuildAttackAbilityInfo` hardcoded `VRange=0` for all weapons, falling back to caster Jump in `AbilityTargetCalculator` and rejecting elevated targets. Fixed by setting `VRange=99` for bow/gun/crossbow. Melee keeps `VR=0` so jump fallback still bounds them. See `memory/project_attack_vr0_bug.md`.
+
+- [x] **`swap_unit_to <name>` shell wrapper** — Shipped bridge action + shell helper that cycles viewed unit on nested party-tree screens (CharacterStatus/EqA/JobSelection/pickers) via Q/E keys. Uses existing `UnitCyclePlanner`.
+
+- [x] **Extract scan-snapshot + scan-diff bridge actions** — Shipped `UnitScanDiff` pure planner (15 tests) + `scan_snapshot <label>` / `scan_diff <from> <to>` bridge actions + shell wrappers. Identity-match by name → rosterNameId → pre-snapshot position fallback.
+
+- [x] **Live-verify `buff_ramza` on a fresh-game battle** — PASSED at Siedge Weald. `scan_move` showed Ramza HP=999/999 post-buff. Writes landed on first player slot correctly.
+
+- [x] **Extend `cheat_mode_buff` to buff all party members** — `pattern:"all"` mode + shell `buff_all [hp]` wrapper shipped. Iterates every roster-matched team=0 slot.
+
+- [x] **Scan learned-ability filter audit (session 44 bug)** — Filter logic verified correct. Root cause was upstream job-byte resolution, fixed in commit `8b49cb4` (session 48). Session 51 pinned regression tests: `GetRamzaJob` chapter-byte map + skillset ability counts (Fundaments=4, Mettle=9).
+
+- [x] **`scan_move` reports entire skillset, not learned-only abilities** — Dupe of above; fixed in commit `8b49cb4`. Regression tests pinned.
+
+- [x] **Investigate 0xB0 in cast queue** — Confirmed 0xB0 is a slot-state tag (charging). Second-spell test (Curaja vs Protect) showed identical `01 B0 | 0A B0 | 09 B0` pattern regardless of ability. Session 51 observed fire transition: record 1's byte[1] goes 0xB0→0x70 when cast fires. Records 2-3 are NOT live queue slots.
+
+---
+
+### Session 51 (2026-04-20) — 10 more tasks: AbilityCursorDeltaPlanner wire + scan_diff JSON
+
+**Commits:**
+- `32d733d` — Wire AbilityCursorDeltaPlanner + add structured scan_diff events
+- `43f6197` — Pin regression tests + close stale TODO items
+
+**Completed items moved from TODO.md:**
+
+- [x] **Wire `AbilityCursorDeltaPlanner.Decide` into ability-list scroll loop** — Wired into the Down-scroll retry path in `NavigationActions.cs`. Naive `delta != expected` check replaced with planner's sign-match + magnitude-guard + 3×-expected-guard rules. Falls back to blind scrolling on untrusted deltas. Session 31 Up-wrap explosion is the regression guardrail.
+
+- [x] **BattleSequence detection over-fires after restart at story location** — FIXED session 48 via swap to runtime u32 `0x1407774B4` (==2 when minimap panel open, ==1 on plain WorldMap). TODO entry was stale.
+
+- [x] **Cutscene misdetects as LoadGame after GameOver** — Fixed pre-session-52: LoadGame rule at `ScreenDetectionLogic.cs:557` now requires `IsEventIdUnset(eventId)`. Session 52 pinned regression tests.
+
+- [x] **AutoEndTurnAbilities.SelfDestruct regression test** — Added allow-list theory pinning `Jump` + `Self-Destruct`. New name additions now force test update. Also added negative theory for lookalike names.
+
+---
+
+### Session 52 (2026-04-20) — Shop stock partial crack + party audit + ranged attack live-verified
+
+**Commits:** (no code commits — investigation session, memory notes only)
+
+**Completed items moved from TODO.md:**
+
+- [x] **Live-verify ranged attack VR=99 fix** — PASSED at Siedge Weald. Wilham with Blaster (gun HR=8) shows `totalTargets: 49` — unconstrained by zDelta, confirming session-51 fix works in-game.
+
+- [x] **Party audit** — Surfaced gear gaps across 15-unit roster. Biggest: Orlandeau (Lv88 Thunder God) with a plain Broadsword. Mustadio/Reis/Cloud/Construct 8 unequipped.
+
+---
+
+### Session 53 (2026-04-20) — 🎯 Shop stock bitmap CRACKED
+
+**Commits:** (no code commits — investigation session, memory notes only)
+
+**Key discovery: Dorter Ch1 Outfitter weapons stock at `0x5C7C2880`:**
+- 8-byte weapon bitmap, bit N of byte B = FFTPatcher item ID `(B*8 + N + 42)`
+- u32 count at `+0x08`
+- 128-byte record stride, multiple shops observed in same region
+- Verified: Dorter's `00 06 76 00 00 00 00 00` bitmap decodes to exactly the 7 visible weapons
+
+See `memory/project_shop_stock_CRACKED.md`.
+
+**Not done (next-session priorities):**
+- Find Gariland's shop record. Gariland sells daggers (IDs 1-7) which can't fit in +42-offset 8-byte bitmap. Either (a) different offset per-shop, (b) different bitmap per ID range (bmp for IDs 0-63, bmp for 64-127), or (c) totally different record structure.
+- Find the mapping from `location_id` → record_address. Dorter row's `+0x00 = 05` didn't match location ID 9 directly.
+- Find shields/helms/body/accessory/consumable bitmaps (likely separate regions or separate bmp fields in same record).
+
+**Technique that worked:** compute the EXPECTED bitmap pattern given the known visible stock (IDs 51, 52, 59, 60, 62, 63, 64 → `00 06 76 00 00 00 00 00` with offset +42) and search for that exact byte string. Single match at `0x5C7C287B` — cracked in one shot after 4+ prior sessions failed by searching flat ID arrays / price sequences.
+
+**Technique that didn't work (don't-repeat, for Gariland):**
+- Same-offset search with dagger IDs: daggers 1-7 don't fit in 8 bytes at offset +42 (negative positions).
+- Various offset brute-force search (-8, -7, -1, 0, +1, +8): 0 matches with row signature context.
+- Contiguous dagger prices (u32 or u16): 0 matches — prices not stored linearly.
+- `{u16 id, u32 price}` AoB: 0 matches.
+
