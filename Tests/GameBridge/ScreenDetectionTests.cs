@@ -924,6 +924,48 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("BattleVictory", result);
         }
 
+        /// <summary>
+        /// Session 52 regression pin: sticky gameOverFlag=1 from a prior
+        /// GameOver must not cause a real story cutscene to misdetect as
+        /// LoadGame. Session 21 flagged this via eventId=2 (Orbonne Monastery
+        /// opening). The LoadGame rule at ScreenDetectionLogic.cs:557 now
+        /// requires `IsEventIdUnset(eventId)` so a live eventId (1-399)
+        /// skips LoadGame and lets the Cutscene rule fire.
+        /// </summary>
+        [Fact]
+        public void DetectScreen_Cutscene_WithStickyGameOverFlag_DoesNotMisdetectAsLoadGame()
+        {
+            // Real cutscene fingerprint with sticky gameOverFlag=1 from a
+            // prior game-over. Without the eventId guard, this flows through
+            // the LoadGame rule.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 18, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 2);
+
+            Assert.NotEqual("LoadGame", result);
+        }
+
+        [Fact]
+        public void DetectScreen_LoadGame_RealState_StillReturnsLoadGame()
+        {
+            // Negative guard: actual post-GameOver LoadGame (eventId unset)
+            // still routes to LoadGame. The eventId guard only narrows scope,
+            // doesn't kill the rule.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 0);
+
+            Assert.Equal("LoadGame", result);
+        }
+
         [Fact]
         public void DetectScreen_Victory_EncA255Sentinel_FiresOverLoadGameAndTitleScreen()
         {

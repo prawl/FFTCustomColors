@@ -102,5 +102,35 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             Assert.False(AutoEndTurnAbilities.IsAutoEndTurn(name));
         }
+
+        /// <summary>
+        /// Session 52 regression guardrail: the auto-end allow-list has exactly
+        /// the ability names we've live-verified or canonically trust. Adding
+        /// a new name (e.g. Wish once live-confirmed) must update this test —
+        /// forces a reviewer to acknowledge what they're changing.
+        ///
+        /// Session-51 findings: Jump live-verified session 29. Self-Destruct
+        /// hardcoded session 33 batch 2 (commit 0917e34) but NOT live-verified
+        /// against a Bomb monster. If a future live test disagrees, pull
+        /// Self-Destruct out of the set AND update this theory.
+        /// </summary>
+        [Theory]
+        [InlineData("Jump")]
+        [InlineData("Self-Destruct")]
+        public void AllowList_ContainsExactlyKnownEntries(string name)
+        {
+            Assert.True(AutoEndTurnAbilities.IsAutoEndTurn(name));
+        }
+
+        [Theory]
+        [InlineData("jumping")]         // substring of Jump — must not match
+        [InlineData("Self Destruct")]   // space instead of hyphen
+        [InlineData("SelfDestruct")]    // no hyphen
+        [InlineData("Mega Flare")]      // summon attack, similar AOE but non-terminal
+        [InlineData("Bio")]             // poison-DoT spell, NOT auto-end
+        public void NamesSimilarToAllowList_DoNotMatch(string name)
+        {
+            Assert.False(AutoEndTurnAbilities.IsAutoEndTurn(name));
+        }
     }
 }
