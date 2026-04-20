@@ -585,6 +585,105 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Session 48: same scan as FindScenarioMapId, but returns every valid map-id
+        /// candidate (deduplicated) in a sensible preference order. The caller
+        /// (NavigationActions) iterates candidates and validates each against live
+        /// unit positions via ValidateMap — the first that passes wins. This fixes
+        /// the bug where FindScenarioMapId picked the wrong scenario (e.g. MAP012
+        /// Lionel Gate) from a pool of 24 candidates because our single-answer
+        /// heuristic had no live-state discriminator.
+        ///
+        /// Order:
+        ///   1. Candidates matching the locationHint (if provided).
+        ///   2. Low-address candidates (&lt; 0x10000000) — live battle data.
+        ///   3. Everything else, lowest address first.
+        /// </summary>
+        public List<int> FindScenarioMapIdCandidates(int locationHint = -1)
+        {
+            var result = new List<int>();
+            try
+            {
+                using var process = Process.GetCurrentProcess();
+                nint address = nint.Zero;
+                int regionsSearched = 0;
+                long totalBytes = 0;
+                var candidates = new List<(int mapId, int locId, int scenarioId, nint addr)>();
+
+                while (regionsSearched < 500 && totalBytes < 300_000_000)
+                {
+                    if (VirtualQueryEx(process.Handle, address, out MEMORY_BASIC_INFORMATION mbi, (uint)Marshal.SizeOf<MEMORY_BASIC_INFORMATION>()) == 0)
+                        break;
+                    nint nextAddr = mbi.BaseAddress + (nint)mbi.RegionSize;
+                    if (nextAddr <= address) break;
+                    address = nextAddr;
+
+                    bool isReadWrite = (mbi.Protect & 0x04) != 0;
+                    bool isCommitted = mbi.State == 0x1000;
+                    bool notGuard = (mbi.Protect & 0x100) == 0;
+                    bool notTooBig = (long)mbi.RegionSize <= 4_000_000;
+                    bool isPrivateOrMapped = mbi.Type == 0x20000 || mbi.Type == 0x40000;
+                    if (!(isCommitted && isReadWrite && notGuard && notTooBig && isPrivateOrMapped))
+                        continue;
+
+                    regionsSearched++;
+                    byte[] regionBytes;
+                    try { regionBytes = _scanner.ReadBytes(mbi.BaseAddress, (int)mbi.RegionSize); }
+                    catch { continue; }
+                    totalBytes += regionBytes.Length;
+
+                    for (int i = 0x24; i <= regionBytes.Length - 0x3C; i += 4)
+                    {
+                        uint locId = BitConverter.ToUInt32(regionBytes, i);
+                        if (locId < 1 || locId > 42) continue;
+                        uint mapId = BitConverter.ToUInt32(regionBytes, i + 0x0C);
+                        if (mapId < 1 || mapId > 127) continue;
+                        uint scenarioId = BitConverter.ToUInt32(regionBytes, i - 0x24);
+                        if (scenarioId < 50 || scenarioId > 600) continue;
+                        uint subType = BitConverter.ToUInt32(regionBytes, i - 0x20);
+                        if (subType > 20) continue;
+                        uint field28 = BitConverter.ToUInt32(regionBytes, i + 0x04);
+                        uint musicId = BitConverter.ToUInt32(regionBytes, i + 0x08);
+                        if (musicId > 200) continue;
+                        if (field28 > 200) continue;
+                        uint surfaceType = BitConverter.ToUInt32(regionBytes, i + 0x10);
+                        if (surfaceType > 50) continue;
+                        if (i + 0x38 >= regionBytes.Length) continue;
+                        uint teams = BitConverter.ToUInt32(regionBytes, i + 0x38);
+                        if (teams < 1 || teams > 4) continue;
+
+                        nint foundAddr = mbi.BaseAddress + i - 0x24;
+                        candidates.Add(((int)mapId, (int)locId, (int)scenarioId, foundAddr));
+                    }
+                }
+
+                // Sort: loc-match first, then low-address, then by address.
+                candidates.Sort((a, b) =>
+                {
+                    bool aMatch = locationHint >= 0 && a.locId == locationHint;
+                    bool bMatch = locationHint >= 0 && b.locId == locationHint;
+                    if (aMatch != bMatch) return aMatch ? -1 : 1;
+                    bool aLow = (long)a.addr < 0x10000000;
+                    bool bLow = (long)b.addr < 0x10000000;
+                    if (aLow != bLow) return aLow ? -1 : 1;
+                    return ((long)a.addr).CompareTo((long)b.addr);
+                });
+
+                foreach (var c in candidates)
+                {
+                    if (!result.Contains(c.mapId))
+                        result.Add(c.mapId);
+                }
+
+                ModLogger.Log($"[Map] FindScenarioMapIdCandidates(hint={locationHint}) → {result.Count} unique mapIds from {candidates.Count} hits: [{string.Join(",", result)}]");
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[Map] FindScenarioMapIdCandidates error: {ex.Message}");
+            }
+            return result;
+        }
+
+        /// <summary>
         /// Reads 1, 2, or 4 bytes at an absolute memory address.
         /// Returns (value, rawBytes) or null if read fails.
         /// </summary>

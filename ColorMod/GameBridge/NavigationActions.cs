@@ -2360,11 +2360,6 @@ namespace FFTColorCustomizer.GameBridge
                     var unitState = battleState.Units[battleState.Units.Count - 1];
                     unitState.Abilities ??= new List<AbilityEntry>();
                     unitState.Abilities.Insert(0, attackEntry);
-                    if (attackEntry.ValidTargetTiles != null)
-                    {
-                        var tStr = string.Join(" ", attackEntry.ValidTargetTiles.Select(t => $"({t.X},{t.Y}){(t.Occupant!=null?":"+t.Occupant:"")}{(t.LosBlocked==true?"!":"")}"));
-                        ModLogger.Log($"[ATTACK_DEBUG] Ramza@({u.GridX},{u.GridY}) range={attackInfo.HRange} tiles({attackEntry.ValidTargetTiles.Count}): {tStr}");
-                    }
                 }
             }
 
@@ -2481,8 +2476,48 @@ namespace FFTColorCustomizer.GameBridge
                     catch { }
                 }
 
-                // Try 1: Random encounter map lookup (highest priority — known correct)
-                if (locId >= 0 && locId <= 42)
+                // Try 0 (session 48): the game's own scenario struct lives on the
+                // heap with the REAL map ID at +0x30. Authoritative for battle
+                // map — doesn't drift when a random-encounter fires at a
+                // different location than the travel target (had us loading
+                // MAP076 Zeklaus while the game was on MAP086 Dugeura Pass
+                // during a mid-travel encounter). The scan returns multiple
+                // candidates in preference order. We further narrow the pool
+                // by dimension-tightness: among candidates that ValidateMap
+                // passes, pick the one with the smallest excess width/height
+                // beyond the max unit position (same scoring as DetectMap).
+                // Session 48 2026-04-19: authoritative live map-id byte at
+                // 0x14077D83C — found via snapshot/diff between Dugeura Pass
+                // (map 86 / 0x56) and Beddha Sandwaste (map 82 / 0x52). Eight
+                // addresses flip in lockstep; picked the lowest. This byte is
+                // the game's own current-battle-map id — doesn't drift from
+                // rawLocation like the locId-based lookups did (random
+                // encounter fired at Dugeura while rawLocation stayed on
+                // Zeklaus travel target). Verified live.
+                {
+                    var mapIdRead = _explorer.ReadAbsolute((nint)0x14077D83C, 1);
+                    if (mapIdRead.HasValue)
+                    {
+                        int liveMapId = (int)mapIdRead.Value.value;
+                        if (liveMapId >= 1 && liveMapId <= 127)
+                        {
+                            var loaded = _mapLoader.LoadMap(liveMapId);
+                            if (loaded != null && ValidateMap(loaded))
+                            {
+                                lines.Add($"MAP{liveMapId:D3} (live map-id byte 0x14077D83C)");
+                            }
+                            else
+                            {
+                                ModLogger.Log($"[Map] Live map-id {liveMapId} failed ValidateMap; falling through");
+                                _mapLoader.ClearMap();
+                            }
+                        }
+                    }
+                }
+
+                // Try 1: Random encounter map lookup — fallback when DetectMap
+                // can't resolve (e.g. before the battle has units in place).
+                if (_mapLoader.CurrentMap == null && locId >= 0 && locId <= 42)
                 {
                     int reMap = _mapLoader.GetRandomEncounterMap(locId);
                     if (reMap >= 0)
