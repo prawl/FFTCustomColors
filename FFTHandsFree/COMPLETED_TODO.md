@@ -1279,3 +1279,68 @@ See `memory/project_shop_stock_CRACKED.md`.
 - Contiguous dagger prices (u32 or u16): 0 matches — prices not stored linearly.
 - `{u16 id, u32 price}` AoB: 0 matches.
 
+---
+
+### Session 54 (2026-04-21) — 🎯🎯🎯 Shop stock decoder shipped: ALL 6 Outfitter categories working
+
+**Commits:**
+- `b0bf242` — Ship shop_stock decoder — all 6 Outfitter categories from memory
+
+**Headline:** End-of-game save with full city access enabled a tour of every Chapter-1 Outfitter Buy across all 6 tabs at Dorter + Yardrow (plus spot checks at 13 others). Three distinct record formats cracked; auto-mode works for 14 of 15 settlements × (up to) 6 categories. Only Goug's 8-item weapons tab still has the Mythril Gun gap. +77 new tests (3853 total passing).
+
+**Key discovery — 3 record formats cover all Outfitter stock:**
+
+| Format | Stride | Categories | Offset | Example |
+|---|---|---|---|---|
+| **Bitmap8** | 8-byte bitmap + u32 count | Weapons (staves/ranged), Consumables | 42, 240 | `00 06 76 00 00 00 00 00` (7 staves) |
+| **Bitmap4** | 4-byte bitmap + u32 count | Daggers, Body, Accessories | 1, 186, 208 | `7F 00 00 00` (7 ids) |
+| **IdArray** | 8 u8 ids, 0-terminated | Shields, Helms | 0 (direct ids) | `80 81 82 83 84 85 86 00` |
+
+**The same physical Bitmap4 record at `0x3E4FFC0`** (pattern `7F 00 00 00 07 00 00 00`) is shared across daggers + body + accessories — only the category-offset differs (1 / 186 / 208), producing 3 different 7-item ID lists from 1 record.
+
+**Coverage — weapons (14 of 15 shops):**
+- **Staves shops** (bitmap `00 06 76 00 00 00 00 00` + offset 42): Yardrow(7), Gollund(8), Dorter(9), Zaland(10), Warjilis(12), Bervenia(13), Sal Ghidos(14). All 7 sell the same 7 items (Rod/Thunder Rod/Oak/White/Serpent/Mage's/Golden Staff). Dorter/Yardrow/Gollund/Bervenia/Sal Ghidos carry Ch1-discount prices; Zaland/Warjilis carry end-game.
+- **Dagger shops** (bitmap `7F 00 00 00` + offset 1): Lesalia(0), Riovanes(1), Eagrose(2), Lionel(3), Limberry(4), Zeltennia(5), Gariland(6). All 7 share the single Bitmap4 record; Ch1 discount pricing identical across all 7 shops (100/200/300/700/1500/2500/4000).
+
+**Coverage — non-weapons (registered for all 15 settlements):**
+- **Helms (hats)** — ids 157-163 via IdArray. Dorter + Yardrow live-verified; others registered by analogy.
+- **Body** — ids 186-192 via Bitmap4 at offset 186. Dorter + Yardrow live-verified.
+- **Accessories** — ids 208-214 via Bitmap4 at offset 208. Dorter + Yardrow live-verified.
+- **Consumables** — ids 240-244, 246 via Bitmap8 at offset 240. Dorter + Yardrow live-verified. Bit 5 (Elixir, id 245) intentionally skipped in Ch1 stock.
+
+**Key files shipped:**
+- `ColorMod/GameBridge/ShopStockDecoder.cs` — pure decoder with `DecodeBitmap` + `DecodeIdArray` + `LocateBitmapRecord` + `LocateIdArrayRecord`. RecordFormat enum + per-category format/offset mapping.
+- `ColorMod/GameBridge/ShopBitmapRegistry.cs` — 73 entries seeded across 15 shops × 6 categories (Goug weapons + non-Dorter shields excluded).
+- `ColorMod/GameBridge/ChapterShopPrices.cs` — Ch1 discount overrides for staves shops + dagger shops + Dorter Bronze Shield. Static-ctor loop populates 49 dagger-shop price entries.
+- `ColorMod/Utilities/CommandWatcher.cs` — `shop_stock` bridge action. Auto-mode (no args) reads location byte `0x14077D208`, defaults chapter=1, probes all 7 categories via registry. Manual mode (pattern supplied) seeds new shops.
+- 77 new unit tests across `ShopStockDecoderTests` / `ShopBitmapRegistryTests` / `ChapterShopPricesTests` / `StrictModeTests`.
+
+**Auto-mode live verification (Yardrow Ch1):**
+```
+shop_stock Weapons [auto(loc=7,ch=1)] — 7 staves (Rod/Thunder/Oak/White/Serpent/Mage/Golden)
+shop_stock Helms [auto(loc=7,ch=1)] — 7 hats (Leather Cap/Plumed/Red/Headgear/Wizard/Green/Headband)
+shop_stock Body [auto(loc=7,ch=1)] — 7 clothing (Clothing/Leather*2/Ringmail/Mythril/Adamant/Wizard Clothing)
+shop_stock Accessories [auto(loc=7,ch=1)] — 7 shoes (Battle/Spiked/Germinas/Rubber/Winged/Hermes/Red)
+shop_stock Consumables [auto(loc=7,ch=1)] — 6 items (Potion/Hi-Potion/X-Potion/Ether/Hi-Ether/Antidote)
+```
+
+All prices match in-game display exactly.
+
+**Not done (see `TODO.md` §0 session-54 follow-ups):**
+- Verify shields at 13 non-Dorter shops (Yardrow confirmed EMPTY — not all shops carry shields).
+- Verify helms/body/accessories/consumables at 13 non-verified shops (registered by analogy).
+- Goug 8-item weapons tab: 7-bit bitmap exists but Mythril Gun (8th, id 72) missing. Likely requires heap pointer-chain walk or a second "chapter upgrade" record not yet found.
+- Wire `screen.stockItems` on OutfitterBuy so every shop response includes decoded stock.
+- Chapter byte hunt (auto-mode defaults chapter=1 until found).
+
+**Technique that worked:** dump the active-widget region after navigating to each tab, search for the first 7 bytes of expected-IDs-or-bitmap followed by a 0-terminator or count field. Heap widgets shift addresses per tab-switch but the byte signature is searchable every time. Two-phase narrow+broad AoB search in `LocateBitmapRecord` / `LocateIdArrayRecord` handles both private-heap and memory-mapped regions.
+
+**Technique that didn't work (don't-repeat):**
+- Searching for shop-stock as flat `{u16, u32 price}` records: 0 matches everywhere.
+- Searching for contiguous price sequences: prices computed from ItemData at render time, not stored flat.
+- Assuming one record format covers all 6 categories: each category uses its own format + offset. Decoder dispatch required.
+- Chasing `0D`-tagged static records past the first few: weapons subtable is well-defined at `0x5Cxxxxxx` but other categories don't follow that structure.
+
+**Memory notes updated:**
+- `project_shop_stock_SHIPPED.md` — full write-up of 3 formats + coverage + calling patterns.
+

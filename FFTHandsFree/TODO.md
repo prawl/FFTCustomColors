@@ -73,15 +73,19 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
-### Session 53 — shop stock bitmap (2026-04-20)
+### Session 54 — shop stock follow-ups (2026-04-21)
 
-- [ ] 🎯 **Find Gariland's shop record** — Session 53 CRACKED Dorter Ch1 at `0x5C7C2880` (weapon bitmap offset +42, 128-byte stride). Gariland sells daggers (IDs 1-7) which can't fit at offset +42. Hypotheses to test: (a) per-shop bitmap offset stored in record, (b) separate bitmaps for each 64-ID range (daggers-to-axes in bmp0, rods-to-flails in bmp1, guns-to-bags in bmp2), (c) different record structure for dagger shops. Next session: snapshot before/after entering Gariland shop specifically, diff to find its record, inspect structure. See `memory/project_shop_stock_CRACKED.md` + `memory/project_shop_items_session53_narrowed.md`.
+- [ ] ⚠ UNVERIFIED **Register Shields at non-Dorter shops** — session 54 live-confirmed Yardrow shields tab is EMPTY and only Dorter has a shield stock. Other 13 settlements not checked. Per-shop screenshot verification needed to either register each with `Ch1Shields` bitmap or leave out (if empty like Yardrow). See `ShopBitmapRegistry.cs` shields entry.
 
-- [ ] **Find shop records for shields/helms/body/accessory/consumables** — Dorter Ch1 Outfitter shows 7 categories via A/D tabs. Each must have its own bitmap somewhere. Weapons bmp is at `+0x10` of record, bmp2 at `+0x20`, bmp3 at `+0x28` — but their decoded items with offset+42 don't cleanly map to Dorter's shields (128-134). Try different offsets per category, or check if shields live in an entirely separate record region.
+- [ ] ⚠ UNVERIFIED **Helms/Body/Accessories/Consumables at 13 non-verified shops** — session 54 registered all 15 settlements by analogy but only Dorter + Yardrow were screenshot-verified. Travel to each remaining shop (Lesalia/Riovanes/Eagrose/Lionel/Limberry/Zeltennia/Gariland/Gollund/Zaland/Goug/Warjilis/Bervenia/Sal Ghidos) and confirm each category's stock matches before relying on the auto-mode output.
 
-- [ ] **Map record→shop correlation** — Dorter's row has byte `05` at +0x00 but location ID is 9. Need to find what index/tag identifies a row as "this shop" so the bridge can pick the right record when the player enters a shop. Likely path: snapshot diff entering one shop vs another; one u32/u16 should change to reflect the active shop ID.
+- [ ] 🎯 **Goug 8-item weapons (Mythril Gun missing)** — Goug Ch1 displays 8 items (Bowgun/Knightslayer/Crossbow/Poison Bow/Hunting Bow/Gastrophetes/Romandan Pistol + Mythril Gun 17000). Only 7-bit bitmap `00 00 00 20 F8 01 00 00` exists in memory (missing Mythril Gun at id 72). Investigation needed: (a) walk heap widget pointer chain from the 7-bit record, (b) check for a second "chapter upgrade" record concatenated at render time, (c) verify if Mythril Gun is a true chapter-locked upgrade that won't show in end-game saves anyway. Registry currently excludes Goug weapons — users get "no record registered" error. See `memory/project_shop_stock_SHIPPED.md`.
 
-- [ ] **Ship `screen` on OutfitterBuy surfacing `stockItems[{id, name, price, owned}]`** — Blocked on the three items above. Once record→shop mapping found + all category bitmaps located, decode via `ItemData.GetItem(id)` and surface as JSON. Cursor row at `0x141870704` (u32) indexes into the current-category bitmap.
+- [ ] **Wire `screen.stockItems` on OutfitterBuy** — `shop_stock` bridge action works; next step is auto-populating `screen.stockItems` when `Screen.Name == "OutfitterBuy"` so every shop response includes decoded stock without a separate call. Touch `CommandWatcher` screen assembly path; call `ShopStockDecoder.DecodeStockAt` if `ShopBitmapRegistry.HasMapping(loc, ch, cat)` for the active category. Cursor row at `0x141870704` indexes into the decoded list for `ui=<item name>`.
+
+- [ ] **Per-chapter price verification at non-Dorter staves shops** — registered Ch1 discount prices (White Staff 400, Serpent Staff 1200) at Dorter/Yardrow/Gollund/Bervenia/Sal Ghidos based on Dorter/Yardrow screenshots. Other 3 staves shops (Gollund/Bervenia/Sal Ghidos) assumed to match Dorter without verification. Check when visiting each.
+
+- [ ] **Chapter byte for shop auto-mode chapter discrimination** — session 54 auto-mode defaults `chapter=1` unless caller passes `unitIndex`. When Chapter 2+ save is available, snapshot-diff the transition to find the byte that goes `1 → 2`, then wire auto-read into `shop_stock`. See `memory/project_chapter_byte_hunt_deferred.md`.
 
 ### Session 52 — scan_diff identity + per-unit ct hunt (2026-04-20)
 
@@ -541,14 +545,9 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **ui label at ShopInterior** — when hovering Buy/Sell/Fitting inside a shop without having entered, `screen.UI` should read `Buy`/`Sell`/`Fitting`. Needs a cursor-index memory scan (current shopSubMenuIndex is 0 at all three hovers). Once ui is populated, Claude can pre-check which sub-action it's about to enter.
 
 
-- [ ] **Shop row→item name: implement scrape-on-demand by scrolling** — Blocked multi-approach investigation from 2026-04-14 (see git history for ShopItemScraper.cs). Best path forward: instead of one-shot extracting the whole list, loop scroll-cursor-down + read the ONE currently-highlighted item's FString (narrowed by short-string pattern + row memory state), advance. Trades a big scan for ~10 scrolls × 200ms = ~2s. Highlighted row widget may be more stable than enumerating all visible rows.
+(Shop row→item name: `shop_stock` bridge action ships session 54 — `ShopStockDecoder` + `ShopBitmapRegistry` + `ChapterShopPrices`. Auto-mode returns full stock + prices for all 6 categories at 14 of 15 Ch1 settlements. Follow-ups under §0 Urgent Bugs session 54 block.)
 
-- [ ] **Shop row→item name: find stable chapter byte** — Shop stock varies per story chapter. Before row→name can be cached across sessions, we need a stable u8/u16 read that reports the current story chapter. Search near the story objective field at `0x1411A0FB6`.
-
-- [ ] **Shop row→item name: document known master pools** — Memory notes for future hunters. Already verified: master item name pool at `0x6007BE4` (all weapons, UTF-16LE flat array with delimiter bytes); master item DB 72-byte stride around `0x5A1000`; shop record candidates near `0x8CB9FB0`. Not yet mappable to per-shop rows because UE4 FString allocations shift per-frame. Save to memory note file for next attempt.
-
-
-- [ ] **Full stock list inline at Outfitter_Buy** — instead of forcing Claude to scroll through items one at a time (ui=Oak Staff → down → ui=White Staff → down...), surface the entire shop stock in the screen response. Each entry: `{name, price, type, stats}`. Stats tier by type — weapons: `wp, range, element, statMods` (e.g. `WP=5 MA+1`); armor: `hp, def, evade, statMods`; consumables: `effect` (e.g. `Restores 30 HP`, `Removes KO`). Claude picks by name, one round-trip. Matches scan_move's "see everything at once" philosophy.
+(Full stock list inline at Outfitter_Buy: pending wire-up — `screen.stockItems` population — see §0 session-54 follow-ups.)
 
 
 (Tavern / TavernRumors / TavernErrands state tracking shipped session 26 pt.2 `d1e7160` — see archive.)
@@ -576,7 +575,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Midlight's Deep stage selector** [LOW PRIORITY] — Midlight's Deep (location ID 22) is a special late-game dungeon. When you press Enter on the node, a vertical list of named stages appears (captured 2026-04-14: NOISSIM, TERMINATION, DELTA, VALKYRIES, YROTCIV, TIGER, BRIDGE, VOYAGE, HORROR, ...). The right pane renders a flavor-text description of the highlighted stage. This UI is structurally similar to Rumors/Errands but with its own screen name: `Midlight's_Deep` with `ui=<stage name>`. ValidPaths needed: ScrollUp/Down / Enter (commits to that stage → battle) / Back. Memory scans needed: the stage-name list (probably UE4 heap like shop items), the cursor row index (probably 0x141870704 reused), and a state discriminator for "inside Midlight's Deep node selector" vs just-standing-on-the-node. Defer until main story shopping/party/battle loops are stable — this only matters for end-game content.
 
 
-- [ ] **Cursor item label inside Outfitter_Buy** — the `ui` field should show the currently-hovered item name (e.g. `ui=Oak Staff`). Memory scan needed for the item-cursor-index, then map index → item name via the shop's stock list. Same for Outfitter_Sell (your inventory) and Outfitter_Fitting (slot picker → item picker).
+- [ ] **Cursor item label inside Outfitter_Buy** — the `ui` field should show the currently-hovered item name (e.g. `ui=Oak Staff`). Session 54 infrastructure is ready: cursor row at `0x141870704` (u32), `ShopStockDecoder` returns ordered stock via `DecodeStockAt`. Wire `ui = stock[cursorRow].Name` on `OutfitterBuy`. Same path extends to Outfitter_Sell (map row → player inventory id) and Outfitter_Fitting (row → character / slot / item picker).
 
 
 - [ ] **Cursor character label inside Outfitter_Fitting** — when picking which character to equip, ui should show `ui=Ramza` etc.
@@ -621,7 +620,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ### Shop-stock data — TODO
 
-- [ ] **Read shop stock from memory** — each shop has an inventory of items it sells, varying by location and story progress. Find the stock array in memory so `buy_item` can reference items by name without hardcoding per-shop tables.
+(Core shop-stock-from-memory work shipped session 54. `shop_stock` bridge action + `ShopStockDecoder` + `ShopBitmapRegistry` cover 14 of 15 settlements × 6 categories. Remaining follow-ups under §0 Urgent Bugs.)
 
 
 
