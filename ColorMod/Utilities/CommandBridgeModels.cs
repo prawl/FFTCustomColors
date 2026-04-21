@@ -316,6 +316,15 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("units")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<ScannedUnitResponse>? Units { get; set; }
+
+        /// <summary>
+        /// Session 54: decoded stock list from `shop_stock` action. Each
+        /// entry has FFTPatcher id + name + type + buy price (nullable
+        /// when ItemPrices lacks an entry). Populated by shop_stock.
+        /// </summary>
+        [JsonPropertyName("shopStock")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<GameBridge.ShopStockItem>? ShopStock { get; set; }
     }
 
     /// <summary>JSON-serializable unit data from scan_units.</summary>

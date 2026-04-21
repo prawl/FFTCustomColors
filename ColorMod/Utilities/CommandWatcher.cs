@@ -1295,6 +1295,7 @@ namespace FFTColorCustomizer.Utilities
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
             "read_dialogue", "get_rumor", "list_rumors", "write_byte", "dump_detection_inputs",
             "scrape_shop_items",
+            "shop_stock",
             "hold_key",
             "get_flag", "set_flag", "list_flags",
             "reset_state_machine",
@@ -2509,6 +2510,172 @@ namespace FFTColorCustomizer.Utilities
                             foreach (var item in items)
                                 sb.AppendLine($"  0x{item.Address:X}  {item.Name}");
                             response.Info = sb.ToString();
+                            response.Status = "completed";
+                        }
+                        catch (Exception ex) { response.Status = "error"; response.Error = ex.Message; }
+                        break;
+
+                    case "shop_stock":
+                        // Session 54: decode the current shop's stock
+                        // from the static game-data bitmap table. Two
+                        // calling modes:
+                        //
+                        //   Auto (no pattern): read location byte
+                        //   (0x14077D208) + use LocationId/UnitIndex
+                        //   override for chapter, look up expected
+                        //   bitmap in ShopBitmapRegistry, decode.
+                        //
+                        //   Manual (pattern supplied): caller provides
+                        //   the 8-byte bitmap hex directly. Used for
+                        //   bootstrapping new shops that aren't in
+                        //   the registry yet.
+                        //
+                        // Category defaults to Weapons; non-weapons
+                        // categories don't use this bitmap encoding in
+                        // the static table (shields/helms/body/etc.
+                        // are TBD — see project_shop_stock_SHIPPED.md).
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        try
+                        {
+                            string catRaw = command.Description ?? "weapons";
+                            if (!Enum.TryParse<GameBridge.ShopStockDecoder.Category>(catRaw, ignoreCase: true, out var cat))
+                                cat = GameBridge.ShopStockDecoder.Category.Weapons;
+
+                            byte[]? bmp = null;
+                            int expectedCount = (int)command.SearchValue;
+                            string source = "manual";
+                            int priceLocation = -1;
+                            int priceChapter = -1;
+
+                            if (!string.IsNullOrEmpty(command.Pattern))
+                            {
+                                var hexClean = command.Pattern.Replace(" ", "").Replace("-", "");
+                                if (hexClean.Length != 16)
+                                {
+                                    response.Status = "failed";
+                                    response.Error = $"shop_stock pattern must be exactly 16 hex chars (8 bytes); got {hexClean.Length}";
+                                    break;
+                                }
+                                bmp = new byte[8];
+                                for (int i = 0; i < 8; i++)
+                                    bmp[i] = Convert.ToByte(hexClean.Substring(i * 2, 2), 16);
+
+                                // Still propagate location/chapter when
+                                // supplied via command args so manual
+                                // mode also benefits from per-chapter
+                                // price overrides.
+                                if (command.LocationId >= 0) priceLocation = command.LocationId;
+                                if (command.UnitIndex > 0) priceChapter = command.UnitIndex;
+                            }
+                            else
+                            {
+                                // Auto mode: read location from memory
+                                // unless caller overrode via LocationId.
+                                // Chapter defaults to 1 (current save
+                                // context); callers can override via
+                                // UnitIndex.
+                                priceLocation = command.LocationId >= 0
+                                    ? command.LocationId
+                                    : Explorer.Scanner.ReadByte((nint)0x14077D208L);
+                                priceChapter = command.UnitIndex > 0 ? command.UnitIndex : 1;
+
+                                // Registry lookup: try the caller-
+                                // specified category first then
+                                // fall through ALL known categories.
+                                // Weapons-vs-Daggers swap is common
+                                // (Gariland etc. sell daggers, not
+                                // staves). For explicit non-weapon
+                                // categories (Helms/Shields/...) we
+                                // still check all so auto-mode
+                                // "just works" when a shop lacks
+                                // that specific category but has
+                                // others registered.
+                                var allCategories = new[] {
+                                    cat,   // Try caller's choice first
+                                    GameBridge.ShopStockDecoder.Category.Weapons,
+                                    GameBridge.ShopStockDecoder.Category.Daggers,
+                                    GameBridge.ShopStockDecoder.Category.Shields,
+                                    GameBridge.ShopStockDecoder.Category.Helms,
+                                    GameBridge.ShopStockDecoder.Category.Body,
+                                    GameBridge.ShopStockDecoder.Category.Accessories,
+                                    GameBridge.ShopStockDecoder.Category.Consumables
+                                };
+                                var seen = new HashSet<GameBridge.ShopStockDecoder.Category>();
+                                var categoriesToTry = new List<GameBridge.ShopStockDecoder.Category>();
+                                foreach (var c in allCategories)
+                                {
+                                    if (seen.Add(c)) categoriesToTry.Add(c);
+                                }
+
+                                foreach (var tryCat in categoriesToTry)
+                                {
+                                    var tryBmp = GameBridge.ShopBitmapRegistry.Lookup(priceLocation, priceChapter, tryCat);
+                                    if (tryBmp != null)
+                                    {
+                                        bmp = tryBmp;
+                                        cat = tryCat;
+                                        break;
+                                    }
+                                }
+                                if (bmp == null)
+                                {
+                                    response.Status = "failed";
+                                    response.Error = $"shop_stock: no record registered for (location={priceLocation}, chapter={priceChapter}) in any category. Supply pattern=<hex> or add to ShopBitmapRegistry.";
+                                    break;
+                                }
+                                source = $"auto(loc={priceLocation},ch={priceChapter})";
+                            }
+
+                            if (expectedCount == 0)
+                            {
+                                // Derive from bitmap/id-array if caller
+                                // didn't specify. For id-array format,
+                                // count non-zero bytes; for bitmap,
+                                // count set bits.
+                                if (GameBridge.ShopStockDecoder.FormatForCategory(cat) == GameBridge.ShopStockDecoder.RecordFormat.IdArray)
+                                {
+                                    foreach (var b in bmp)
+                                        if (b != 0) expectedCount++;
+                                }
+                                else
+                                {
+                                    foreach (var b in bmp)
+                                        for (int bit = 0; bit < 8; bit++)
+                                            if ((b & (1 << bit)) != 0) expectedCount++;
+                                }
+                            }
+
+                            var decoder = new GameBridge.ShopStockDecoder(Explorer);
+                            long recAddr;
+                            if (GameBridge.ShopStockDecoder.FormatForCategory(cat) == GameBridge.ShopStockDecoder.RecordFormat.IdArray)
+                            {
+                                // For id-array, pass the non-zero prefix
+                                // as the "expected ids" pattern.
+                                int nz = 0;
+                                while (nz < bmp.Length && bmp[nz] != 0) nz++;
+                                var expectedIds = new byte[nz];
+                                Array.Copy(bmp, 0, expectedIds, 0, nz);
+                                recAddr = decoder.LocateIdArrayRecord(expectedIds);
+                            }
+                            else
+                            {
+                                recAddr = decoder.LocateBitmapRecord(bmp, expectedCount);
+                            }
+                            if (recAddr == 0)
+                            {
+                                var bmpHex = BitConverter.ToString(bmp).Replace("-", "");
+                                response.Status = "failed";
+                                response.Error = $"Record not found for pattern {bmpHex} count={expectedCount} format={GameBridge.ShopStockDecoder.FormatForCategory(cat)} (source={source})";
+                                break;
+                            }
+                            var stock = decoder.DecodeStockAt(recAddr, cat, priceLocation, priceChapter);
+
+                            var sb = new System.Text.StringBuilder();
+                            sb.AppendLine($"shop_stock {cat} [{source}] — record @ 0x{recAddr:X}, {stock.Count} items:");
+                            foreach (var it in stock)
+                                sb.AppendLine($"  id={it.Id,3} {it.Name,-20} type={it.Type,-12} price={(it.BuyPrice?.ToString() ?? "?")}");
+                            response.Info = sb.ToString();
+                            response.ShopStock = stock;
                             response.Status = "completed";
                         }
                         catch (Exception ex) { response.Status = "error"; response.Error = ex.Message; }
