@@ -2768,14 +2768,19 @@ detection_dump() { fft "{\"id\":\"$(id)\",\"action\":\"dump_detection_inputs\"}"
 # Complements `session_tail slow <ms>` which shows individual rows.
 session_stats() {
   fft "{\"id\":\"$(id)\",\"action\":\"session_stats\"}" >/dev/null
-  local info
-  info=$(grep -o '"info": "[^"]*"' "$B/response.json" 2>/dev/null | head -1 \
-    | sed 's/^"info": "//; s/"$//')
-  if [ -z "$info" ]; then
-    echo "(no session stats available)"
-    return 1
-  fi
-  printf '%b\n' "$info" | sed 's/\\r\\n/\n/g; s/\\n/\n/g; s/\\u0022/"/g'
+  # Parse response.info (a JSON string field) via node so unicode escapes
+  # like ─ (box-drawing) resolve to real chars. sed can't do that.
+  # Convert MSYS bash path to Windows path for node.exe.
+  local win_path
+  win_path=$(cygpath -w "$B/response.json" 2>/dev/null || echo "$B/response.json")
+  node -e "
+const fs=require('fs');
+try {
+  const r=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));
+  if(r.info) process.stdout.write(r.info+'\\n');
+  else console.log('(no session stats available)');
+} catch(e) { console.error('[session_stats] '+e.message); }
+" "$win_path"
 }
 
 # stats: Render the lifetime / current-battle stats summary.
@@ -2785,16 +2790,16 @@ stats() {
   local action="render_lifetime_summary"
   if [ "${1:-}" = "battle" ]; then action="render_battle_summary"; fi
   fft "{\"id\":\"$(id)\",\"action\":\"$action\"}" >/dev/null
-  # The bridge stuffs the rendered summary into response.info (string).
-  local info
-  info=$(grep -o '"info": "[^"]*"' "$B/response.json" 2>/dev/null | head -1 \
-    | sed 's/^"info": "//; s/"$//')
-  if [ -z "$info" ]; then
-    echo "(no stats yet — fight a battle first)"
-    return 1
-  fi
-  # Un-escape \r\n / \n / " for terminal display.
-  printf '%b\n' "$info" | sed 's/\\r\\n/\n/g; s/\\n/\n/g; s/\\u0022/"/g'
+  local win_path
+  win_path=$(cygpath -w "$B/response.json" 2>/dev/null || echo "$B/response.json")
+  node -e "
+const fs=require('fs');
+try {
+  const r=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));
+  if(r.info && r.info.length) process.stdout.write(r.info+'\\n');
+  else console.log('(no stats yet — fight a battle first)');
+} catch(e) { console.error('[stats] '+e.message); }
+" "$win_path"
 }
 
 # log_tail: Show the last N rows of the acted/moved sampler log.
