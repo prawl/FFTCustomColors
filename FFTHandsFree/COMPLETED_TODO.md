@@ -1399,3 +1399,52 @@ All prices match in-game display exactly.
 - `feedback_shop_stock_screen_path_must_not_scan.md` — screen-assembly path crashes the game when it does AoB searches; cache-only is the contract going forward.
 - `feedback_response_json_race.md` — bridge response.json race when chaining multiple bridge calls.
 
+
+### Session 55 — battle automation slice (2026-04-22) — scan_diff identity + AOB cursor experiment + ui correction
+
+**Commits (oldest first, kept):**
+- `d2c60a9` — Split battle-vs-deferred work in TODO; archive completed items
+- `6f70d11` — Disambiguate scan_diff identity via class fingerprint + scan-order rank
+- `9f57894` — Add find_monotonic memory-scan action for high-confidence cursor hunts
+- `ae34ed9` — Add AbilityListCursorNavPlanner pure planner (12 tests)
+- `cb3967c` — Wire EffectiveMenuCursor into screen.UI rendering
+
+**Commits (oldest first, REVERTED):**
+- `7def3c2` — Add ResolveAbilityListCursor + FindDeltaSequenceCandidates → reverted in `35e1e5f`
+- `892f979` — WIP: ResolveAbilitiesSubmenuCursor + nav rewrite using real cursors → reverted in `8e72b76`
+- `b4d7d98` — Ship silent AOB resolver for ability-list cursor → reverted in `a05037d`
+
+**Headline:** Locked in two real wins (scan_diff duplicate-name fix, post-cast `ui=Move` correction) and one infrastructure win (`find_monotonic` + planner). Spent ~2h chasing a silent AOB-based ability-list cursor resolver — found the AOB pattern, shipped it, succeeded once on first cast, then it consistently failed because the cursor's offset within the widget shifts between widget allocations. Reverted all three resolver commits; ability nav back to pre-S55 state. Memory note `project_ability_list_cursor_addr.md` documents the exact failure mode so future sessions don't redo the same dead end.
+
+**What landed by theme (kept):**
+
+- **scan_diff duplicate-name fix** (`6f70d11`): `UnitScanDiff.Key(u)` now combines name (or rosterNameId) with the 11-byte heap fingerprint at +0x69 when present. New `KeyInList` layers a scan-order `#N` suffix when multiple units in the same scan share a base key, so identical-fingerprint duplicates stay distinguishable across before/after snapshots. **Live-verified at Yardrow random encounter:** three Black Goblins on field, end Ramza's turn, two goblins move (2,6)→(4,6) and (1,9)→(3,10). Pre-fix this emitted 4 events (remove+add per goblin); post-fix emits 2 `moved` events as intended. Third goblin separately died on Lloyd's counter and correctly surfaced as `removed` with a new spawned ENEMY `added` at (6,10). 3 new unit tests pin: same-fingerprint anonymous duplicates, same-job-name duplicates with shared fingerprint, and same-name units with DIFFERENT fingerprints.
+
+- **`find_monotonic` bridge action** (`9f57894`): `MemoryExplorer.FindMonotonicByteCandidates(labels[], values[])` finds heap bytes whose values across N snapshots match an expected sequence (e.g. `[0,1,2,3,4]`). 5-snap monotonic has ~256^4 odds against random match vs ~2,000-to-1 for a 3-snap toggle. Bridge action: `pattern`=labels CSV, `to`=expected u8 values CSV. Used live to find the ability-list cursor mirrors at `0x13034F920+` (5 candidates clustered in the same widget allocation).
+
+- **`AbilityListCursorNavPlanner`** (`ae34ed9`): 12 unit tests, pure function. `Plan(currentIdx, targetIdx, listSize)` returns optimal `(direction, count)` — Down or Up, whichever is fewer presses with wrap. Tie-breaker Down. Ready to wire whenever a reliable cursor source exists.
+
+- **`EffectiveMenuCursor` in `screen.UI`** (`cb3967c`): The action-menu cursor byte at `0x1407FC620` has a 1-frame stale-read race after auto-advance — post-move the game UI shows "Abilities" while memory still reads 0; post-cast (no move) the game shows "Move" while memory still reads 1. The corrector that detects this via `moved`/`acted` flags has existed since session 30 but was only applied in the nav code path — the `screen.UI` renderer read `screen.MenuCursor` directly and surfaced the stale value to Claude as `ui=<wrong-item>`. Now the renderer uses `EffectiveMenuCursor` too. Live-verified post-Cure-queued state: memory reads 1 (Abilities) but corrector returns 0 (Move).
+
+**Things that DIDN'T work (don't-repeat list):**
+
+- **AOB-based cursor resolvers** — found the signature `<listSize_u64> + 0x1407FC6D8 vtable` (16 bytes), worked once on a fresh restart (first `battle_ability "Cure"` queued correctly), then failed on subsequent attempts because the cursor's offset within the widget isn't structurally fixed. Sometimes cursor is at +0x10 from the AOB match; sometimes a second-vtable pointer pushes it further; sometimes cursor isn't in the dump window at all. Reverted entirely. **Don't re-attempt without first solving the structural-offset instability** — see `project_ability_list_cursor_addr.md` "What to try NEXT" for the three remaining strategies (pointer chains, brute search + verification, escape-to-known-state).
+
+- **Keypress-oscillation submenu/list resolvers** (the fallback path): `ResolveAbilityListCursor` / `ResolveAbilitiesSubmenuCursor` did Down×4 + Up×4 + 5-snap monotonic + cluster picker + live-verify. Picked noise candidates roughly 50% of the time (`PickClusterRepresentative` favored a tight cluster but a noise byte coincidentally sat in a tighter cluster than the real mirrors). Verify-before-Enter caught the resulting bad picks but the user couldn't actually cast anything. Reverted.
+
+- **Cluster-based candidate picker** (`PickClusterRepresentative`): assumed real cursor mirrors form the largest tight cluster of UE4-heap addresses (within 0x100). True some sessions, false others — noise can form tighter clusters. Discriminator (heap pointer at +8 from match) helped one case but isn't bulletproof.
+
+**Things that DID work (repeat-this list):**
+
+- **Live-verifying the user-visible behavior, not just the bridge response.** AOB resolver returned `Queued Cure` in the response but the ACTUAL game state was Attack-targeting. Always cross-check with screenshot or user confirmation.
+
+- **5-snap monotonic + visual confirmation** as a manual cursor-byte hunting tool. Faster + lower noise than 3-snap toggle for finding cursor-like memory.
+
+- **Class fingerprint as a secondary identity key for scan_diff.** The 11-byte heap bytes at +0x69 disambiguate same-named units cleanly. Generalizable pattern for any "many of the same enemy on field" scenario.
+
+- **Reverting on the same day rather than half-shipping.** When the AOB experiment didn't pan out across two restarts, the right move was three `git revert`s + memory note + commit. Branch is back in a known-good state without the sunk-cost trap.
+
+**Memory notes updated:**
+- `project_ability_list_cursor_addr.md` — full S55 record: addresses cracked, AOB pattern, why AOB failed structurally, three options to try next.
+
+**Tests:** 3893 passing (+15 this slice: 3 scan_diff identity, 12 AbilityListCursorNavPlanner, +1 strict-mode allowlist for `find_monotonic`).

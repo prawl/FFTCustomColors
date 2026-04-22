@@ -81,9 +81,14 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 ## 0. Urgent Bugs
 
 
-### Session 52 — scan_diff identity + per-unit ct hunt (2026-04-20)
+### Session 55 — ability nav resolver (2026-04-22)
 
-- [ ] **Fix scan_diff duplicate-name identity collision** — Session 52 live-verified: 2 Black Mages moving triggered `remove+add` events instead of `moved`. `UnitScanDiff.Key(u)` falls back to pre-snapshot XY which breaks when enemies move. Fix: add `ClassFingerprint` (11-byte heap bytes at +0x69) as secondary identity key. See `memory/project_scan_diff_identity_collision.md`.
+- [ ] **🔴 BLOCKING — `battle_ability` picks the wrong ability** — Pre-S55 blind reset code (`Up×(listSize+1)` followed by `Down×index`) is back in place after S55 reverted the AOB experiment. The Up math is wrong by 1 (Up at idx 0 wraps to last, so listSize+1 lands at last). Symptom: requesting Haste casts Meteor; requesting Cure opens Attack-targeting. **Recommended path (per `memory/project_ability_list_cursor_addr.md` "What to try NEXT"):** option 3 — escape fully out (`Escape Escape`) before each ability nav so submenu+list both reset to known idx 0. Cost ~500ms vs flaky. Code site: `NavigationActions.cs:1093` (`int resetUps = listSize + 1`).
+
+- [ ] **AOB resolver is a research dead-end without pointer chains** — S55 spent ~2h on `<listSize_u64> + 0x1407FC6D8 vtable` AOB; worked once, then failed because the cursor's offset within the widget shifts between widget allocations (sometimes +0x10, sometimes pushed back by a second-vtable insertion). Reverted commits `7def3c2`, `892f979`, `b4d7d98`. **Don't re-attempt without first solving** the structural-offset instability — see memory note for full failure analysis. Pointer-chain (Cheat Engine pointer scan) is the only path that survives widget reallocation.
+
+
+### Session 52 — scan_diff identity + per-unit ct hunt (2026-04-20)
 
 - [ ] **kill_one player persistence regression** — Session 52 found `kill_one Wilham` wrote HP=0 + dead-bit to master HP slot `0x14184FEC0` but after a turn cycle Wilham showed HP=477 again. Session-49 docs say master is authoritative but for PLAYERS the write reverts. Investigate whether there's a per-frame refresh from roster into master for player slots specifically. See `memory/project_deathcounter_battle_array_scan.md`.
 
@@ -106,7 +111,8 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Session 47 — follow-ups (2026-04-19)
 
-- [ ] **Wire `AbilityCursorDeltaPlanner.Decide` into the ability-list scroll loop** — Session 47 pt 4 shipped the pure decision function with 10 tests (sign-match + magnitude-guard trust rules). Missing: actual wiring into the Up-reset / Down-scroll loop in the battle ability nav path (currently blind Up×N + Down×index). When planner returns `TrustDelta=false`, keep current behavior; when true, skip to `RemainingKeys` count. Session 31 Up-wrap explosion is the regression guardrail.
+- [ ] **Wire `AbilityCursorDeltaPlanner.Decide` into the ability-list scroll loop** — Pure planner shipped session 47, **was wired then reverted in session 55** along with the rest of the broken cursor-resolver work. Code currently calls blind Up×N + Down×index (off-by-one bug — see "🔴 BLOCKING" item above). To re-attempt: wire AbilityCursorDeltaPlanner once a reliable real-cursor source exists (today's blind-reset has nothing to feed the planner).
+- [ ] **🆕 Wire `AbilityListCursorNavPlanner.Plan` once real-cursor source exists** — Session 55 shipped this pure planner with 12 tests (`AbilityListCursorNavPlanner.Plan(currentIdx, targetIdx, listSize)` returns shorter Down/Up direction with wrap). Wire once the cursor-byte address is available reliably (option 3 from `memory/project_ability_list_cursor_addr.md` — escape-and-re-enter from known idx 0 — would feed currentIdx=0 trivially).
 
 
 ### Session 48 — follow-ups (2026-04-19)
