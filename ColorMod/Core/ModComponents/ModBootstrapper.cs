@@ -256,6 +256,13 @@ namespace FFTColorCustomizer.Core.ModComponents
                     battleTracker.Start();
                     CommandWatcher.BattleTracker = battleTracker;
 
+                    // Lifetime stat tracker — persists per-battle + career
+                    // totals to lifetime_stats.json in the bridge dir.
+                    var statTracker = new BattleStatTracker();
+                    statTracker.SetSavePath(bridgeDir);
+                    statTracker.Load();
+                    CommandWatcher.StatTracker = statTracker;
+
                     var scriptsDir = System.IO.Path.Combine(bridgeDir, "scripts");
                     var scriptLookup = new EventScriptLookup(scriptsDir);
                     CommandWatcher.ScriptLookup = scriptLookup;

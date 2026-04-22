@@ -35,8 +35,14 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         public FFTColorCustomizer.GameBridge.UserInputMonitor? UserInputMonitor { get; set; }
         public BattleTracker? BattleTracker { get; set; }
+        public BattleStatTracker? StatTracker { get; set; }
         public EventScriptLookup? ScriptLookup { get; set; }
         public RumorLookup? RumorLookup { get; set; }
+
+        // Remembered screen name, used by BattleLifecycleClassifier to
+        // edge-trigger StartBattle / EndBattle on transitions. Updated
+        // once per DetectScreen dispatch in HandleBattleLifecycle.
+        private string? _lastClassifiedScreen;
         internal readonly DialogueProgressTracker _dialogueTracker = new();
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
@@ -1294,6 +1300,7 @@ namespace FFTColorCustomizer.Utilities
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
             "read_dialogue", "get_rumor", "list_rumors", "write_byte", "dump_detection_inputs",
+            "render_lifetime_summary", "render_battle_summary",
             "scrape_shop_items",
             "shop_stock",
             "seed_shop_stock",
@@ -1525,6 +1532,7 @@ namespace FFTColorCustomizer.Utilities
                         };
                         blocked.Screen = DetectScreenSettled();
                         SyncBattleMenuTracker(blocked.Screen);
+                        HandleBattleLifecycle(blocked.Screen);
                         WriteResponse(blocked);
                         _lastProcessedCommandId = command.Id;
                         return;
@@ -1621,6 +1629,7 @@ namespace FFTColorCustomizer.Utilities
                         }
                     }
                     SyncBattleMenuTracker(response.Screen);
+                    HandleBattleLifecycle(response.Screen);
 
                     // Attach rate-limit warning (set above if we auto-delayed).
                     if (chainWarning != null) response.ChainWarning = chainWarning;
@@ -1685,6 +1694,7 @@ namespace FFTColorCustomizer.Utilities
                     };
                     errorResponse.Screen = DetectScreenSettled();
                     SyncBattleMenuTracker(errorResponse.Screen);
+                    HandleBattleLifecycle(errorResponse.Screen);
                     if (errorResponse.Screen != null)
                         errorResponse.ValidPaths = NavigationPaths.GetPaths(errorResponse.Screen);
                     WriteResponse(errorResponse);
@@ -1869,6 +1879,18 @@ namespace FFTColorCustomizer.Utilities
                     case "report_state":
                         if (StateReporter == null) { response.Status = "failed"; response.Error = "State reporter not initialized"; break; }
                         StateReporter.ReportNow();
+                        response.Status = "completed";
+                        break;
+
+                    case "render_lifetime_summary":
+                        if (StatTracker == null) { response.Status = "failed"; response.Error = "Stat tracker not initialized"; break; }
+                        response.Info = StatTracker.RenderLifetimeSummary();
+                        response.Status = "completed";
+                        break;
+
+                    case "render_battle_summary":
+                        if (StatTracker == null) { response.Status = "failed"; response.Error = "Stat tracker not initialized"; break; }
+                        response.Info = StatTracker.RenderBattleSummary();
                         response.Status = "completed";
                         break;
 
@@ -3523,7 +3545,14 @@ namespace FFTColorCustomizer.Utilities
                             var scanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
                             var scanRes = ExecuteNavAction(scanCmd);
                             if (scanRes.Status == "completed")
+                            {
                                 _turnTracker.MarkScanned();
+                                // Credit the turn to the active unit's career.
+                                var actor = scanRes.Battle?.Units?
+                                    .FirstOrDefault(u => u.IsActive)?.Name;
+                                if (actor != null)
+                                    StatTracker?.OnTurnTaken(actor);
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -4881,6 +4910,37 @@ namespace FFTColorCustomizer.Utilities
             _cachedActiveUnitY = -1;
             _cachedActiveUnitHp = 0;
             _cachedActiveUnitMaxHp = 0;
+        }
+
+        /// <summary>
+        /// Drives BattleStatTracker lifecycle events (StartBattle /
+        /// EndBattle) from screen-transition edges. Called after
+        /// DetectScreenSettled so we only act on stable transitions.
+        /// </summary>
+        private void HandleBattleLifecycle(DetectedScreen? screen)
+        {
+            if (StatTracker == null || screen == null) return;
+
+            var ev = GameBridge.BattleLifecycleClassifier.Classify(
+                _lastClassifiedScreen, screen.Name);
+
+            switch (ev)
+            {
+                case GameBridge.BattleLifecycleEvent.StartBattle:
+                    var loc = screen.LocationName ?? "(unknown)";
+                    StatTracker.StartBattle(loc);
+                    break;
+
+                case GameBridge.BattleLifecycleEvent.EndBattleVictory:
+                    StatTracker.EndBattle(won: true);
+                    break;
+
+                case GameBridge.BattleLifecycleEvent.EndBattleDefeat:
+                    StatTracker.EndBattle(won: false);
+                    break;
+            }
+
+            _lastClassifiedScreen = screen.Name;
         }
 
         /// <summary>

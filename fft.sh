@@ -2763,6 +2763,25 @@ load() { fft "{\"id\":\"$(id)\",\"action\":\"load\"}"; }
 # Audit tool for verifying ScreenDetectionLogic.Detect against ground truth.
 detection_dump() { fft "{\"id\":\"$(id)\",\"action\":\"dump_detection_inputs\"}"; }
 
+# stats: Render the lifetime / current-battle stats summary.
+#   stats         → lifetime career totals (persisted across sessions).
+#   stats battle  → last / current battle summary (MVP, per-unit damage, etc).
+stats() {
+  local action="render_lifetime_summary"
+  if [ "${1:-}" = "battle" ]; then action="render_battle_summary"; fi
+  fft "{\"id\":\"$(id)\",\"action\":\"$action\"}" >/dev/null
+  # The bridge stuffs the rendered summary into response.info (string).
+  local info
+  info=$(grep -o '"info": "[^"]*"' "$B/response.json" 2>/dev/null | head -1 \
+    | sed 's/^"info": "//; s/"$//')
+  if [ -z "$info" ]; then
+    echo "(no stats yet — fight a battle first)"
+    return 1
+  fi
+  # Un-escape \r\n / \n / " for terminal display.
+  printf '%b\n' "$info" | sed 's/\\r\\n/\n/g; s/\\n/\n/g; s/\\u0022/"/g'
+}
+
 # log_tail: Show the last N rows of the acted/moved sampler log.
 # Usage: log_tail [N] (default 30)
 log_tail() { tail -n "${1:-30}" "$B/acted_moved_log.csv"; }

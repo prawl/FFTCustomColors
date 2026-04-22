@@ -41,6 +41,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
             "read_dialogue", "get_rumor", "list_rumors", "write_byte", "dump_detection_inputs",
+            "render_lifetime_summary", "render_battle_summary",
             "scrape_shop_items",
             "shop_stock",
             "seed_shop_stock",
