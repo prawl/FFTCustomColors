@@ -674,6 +674,51 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_EncounterDialog_DoesNotDependOn_EncAEncB()
+        {
+            // S58 TODO §12: regression pin. EncounterDialog rule must rely on
+            // encounterFlag, NOT on encA/encB noise counters. Varying encA/encB
+            // across their full range should not flip the classification.
+            for (int ea = 0; ea <= 255; ea += 51)
+            {
+                for (int eb = 0; eb <= 255; eb += 51)
+                {
+                    var result = ScreenDetectionLogic.Detect(
+                        party: 0, ui: 0, rawLocation: 28, slot0: 0, slot9: 0,
+                        battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                        battleTeam: 0, battleActed: 0, battleMoved: 0,
+                        encA: ea, encB: eb, isPartySubScreen: false,
+                        submenuFlag: 0, menuCursor: 0, locationMenuFlag: 1,
+                        encounterFlag: 10);
+
+                    Assert.Equal("EncounterDialog", result);
+                }
+            }
+        }
+
+        [Fact]
+        public void DetectScreen_BattleDesertion_DoesNotDependOn_EncAEncB()
+        {
+            // S58 TODO §12: regression pin. BattleDesertion rule must rely on
+            // paused+submenuFlag+slot0=255+atNamedLocation+actedOrMoved, NOT
+            // on encA/encB. Varying them should not change the result.
+            for (int ea = 0; ea <= 255; ea += 51)
+            {
+                for (int eb = 0; eb <= 255; eb += 51)
+                {
+                    var result = ScreenDetectionLogic.Detect(
+                        party: 0, ui: 0, rawLocation: 28, slot0: 0xFF, slot9: 9,
+                        battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                        battleTeam: 0, battleActed: 1, battleMoved: 1,
+                        encA: ea, encB: eb, isPartySubScreen: false,
+                        submenuFlag: 1, menuCursor: 0, locationMenuFlag: 1);
+
+                    Assert.Equal("BattleDesertion", result);
+                }
+            }
+        }
+
+        [Fact]
         public void DetectScreen_EncounterFlag_WhileTraveling_ReturnsEncounterDialog()
         {
             // encounterFlag=10 while traveling (rawLocation=255, moveMode=13) → EncounterDialog.
@@ -1003,6 +1048,121 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 party: 0, ui: 0, rawLocation: 255, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
                 battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
                 battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 0);
+
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Fact]
+        public void DetectScreen_AbilityTargeting_BattleModeOne_StaysInBattleBranch()
+        {
+            // TODO §12 Bug 2026-04-13: while selecting a target tile for an
+            // ability (e.g. Aurablast) battleMode==1 (BattleCasting), but
+            // certain combos of moveMode / worldMapSignal / atNamedLocation
+            // kick inBattle=false, and the `!inBattle` branch then catches
+            // the frame via the Cutscene rule (real eventId + rawLocation=255).
+            //
+            // Pin: battleMode in the active-battle range (1..5) combined with
+            // slot9=0xFFFFFFFF MUST keep inBattle=true regardless of other
+            // signals. The `battleActiveTurnFrame` override on inBattle does
+            // this. Without the fix, the detection branch can leak into
+            // Cutscene classification. This test pins battleActiveTurnFrame
+            // as a strong positive signal.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 0xFF, slot9: 0xFFFFFFFFL,
+                battleMode: 1, moveMode: 13, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 12);
+
+            // Must be classified as a battle state, not a Cutscene.
+            Assert.NotEqual("Cutscene", result);
+            Assert.StartsWith("Battle", result);
+        }
+
+        [Fact]
+        public void DetectScreen_AbilityTargeting_AtStoryBattleLocation_NotCutscene()
+        {
+            // Extension: even at a named story battle location (atNamedLocation=true),
+            // battleMode in the combat range plus unit-slots-populated keeps us in
+            // the in-battle branch via `paused==1 || (!atNamedLocation ...)` — but
+            // here paused=0 and atNamedLocation=true, so the guard relies on
+            // battleActiveTurnFrame's override in the worldMapSignalTrusted clause.
+            // Aurablast targeting at Orbonne would fit this shape.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 18, slot0: 0xFF, slot9: 0xFFFFFFFFL,
+                battleMode: 4, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 45, locationMenuFlag: 1); // atNamedLocation=true at rawLocation=18
+
+            Assert.NotEqual("Cutscene", result);
+        }
+
+        [Fact]
+        public void DetectScreen_PostBattleRules_NoDependsOn_GameOverFlagZero()
+        {
+            // TODO §12 Screen Detection Rewrite: "Remove gameOverFlag==0
+            // requirement from post-battle rules — treat as sticky, use
+            // other signals." Audit regression pin — no rule currently
+            // uses gameOverFlag==0 as a positive assertion. Post-battle
+            // WorldMap / Victory / Desertion rules all rely on other
+            // signals (paused / submenuFlag / acted / slot0 / eventId).
+            //
+            // Concrete: a post-battle WorldMap frame where gameOverFlag is
+            // STICKY at 1 from a prior GameOver must still classify
+            // correctly (per-rule fingerprint) rather than depend on the
+            // flag clearing.
+            //
+            // This pin: post-battle WorldMap classification works whether
+            // gameOverFlag is 0 OR 1.
+            foreach (int gof in new[] { 0, 1 })
+            {
+                var result = ScreenDetectionLogic.Detect(
+                    party: 0, ui: 0, rawLocation: 255, slot0: 0xFF, slot9: 0xFFFFFFFFL,
+                    battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: gof,
+                    battleTeam: 0, battleActed: 1, battleMoved: 1,
+                    encA: 0, encB: 0, isPartySubScreen: false,
+                    submenuFlag: 1, menuCursor: 0);
+
+                // With stale post-battle fingerprint (actedOrMoved=1, submenuFlag=1,
+                // rawLocation=255), rule at line 600 returns WorldMap. gameOverFlag
+                // value doesn't flip this — rule doesn't depend on it.
+                if (gof == 0)
+                {
+                    // No gameOverFlag==1 rule interferes.
+                    Assert.Equal("WorldMap", result);
+                }
+                // When gof==1, LoadGame / TitleScreen narrow rules could fire
+                // first — but they require !actedOrMoved or specific
+                // menuCursor values we don't satisfy here. Either WorldMap
+                // or a narrow positive-id rule is acceptable; just not
+                // Cutscene or blank.
+                Assert.NotEqual("Cutscene", result);
+            }
+        }
+
+        [Fact]
+        public void DetectScreen_EncA255_MidCast_GuardedBySubmenuFlag_DoesNotFireVictory()
+        {
+            // S58 live-observed: during a Shout cast animation, encA/encB
+            // transiently flickered to 255 while the battle was clearly
+            // ongoing (Ramza still on field, enemies alive). The sentinel
+            // fired BattleVictory → BattleLifecycleClassifier called
+            // EndBattle → stats mid-session got finalized early.
+            //
+            // The distinguishing signal vs a real Victory banner:
+            // submenuFlag=0 during mid-action (the banner overlay isn't up yet).
+            // Requiring submenuFlag=1 on the sentinel catches the flicker
+            // without losing session-49's legitimate post-kill_enemies capture.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 1, rawLocation: 16, slot0: 1, slot9: 9,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
                 encA: 255, encB: 255, isPartySubScreen: false,
                 submenuFlag: 0, menuCursor: 0,
                 eventId: 0);

@@ -542,8 +542,16 @@ namespace FFTColorCustomizer.GameBridge
             // both sticky from pre-victory.
             //
             // See memory/project_battle_victory_encA255.md.
+            //
+            // S58 tightening: additionally require submenuFlag==1. During mid-
+            // cast animations (e.g. Shout), encA/encB can transiently hit 255
+            // while battleMode and battleTeam stay at 0 and actedOrMoved=true
+            // from the just-registered action — matching the sentinel spuriously.
+            // The Victory banner overlay sets submenuFlag=1 (live-verified in
+            // session-49 Siedge Weald capture); a mid-cast animation has
+            // submenuFlag=0.
             if (encA == 255 && encB == 255 && battleMode == 0 && battleTeam == 0
-                && actedOrMoved)
+                && actedOrMoved && submenuFlag == 1)
                 return "BattleVictory";
 
             // LoadGame: reached from GameOver menu. Shares stale battle state with GameOver

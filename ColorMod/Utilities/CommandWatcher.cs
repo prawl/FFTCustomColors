@@ -94,10 +94,12 @@ namespace FFTColorCustomizer.Utilities
         /// actions not in the current screen's validPaths are blocked.
         /// Info actions (scan_move, screen, memory reads) are always allowed.
         /// </summary>
-        // Strict mode disabled by default while battle_move/battle_ability menu
-        // navigation is unreliable (BattleMenuTracker desync). Re-enable once
-        // the tracker is fixed and gameplay commands work reliably.
-        public bool StrictMode { get; set; } = false;
+        // S58: re-enabled by default. S56+S57 stabilized menu navigation
+        // (escape-to-known-state, submenu retry, post-cast settle). Raw
+        // key input should be opt-in via `strict 0` when the caller
+        // genuinely needs it, not the default. See Instructions/Rules.md:
+        // "Always enable strict mode for play sessions."
+        public bool StrictMode { get; set; } = true;
 
         /// <summary>
         /// When true, any command that sends keys or game actions is blocked unless
@@ -2479,10 +2481,9 @@ namespace FFTColorCustomizer.Utilities
                             // ranges unblock heap-targeted searches — the
                             // default 100-match cap previously filled up on
                             // main-module hits before reaching 0x4000000000+.
-                            long minA = CommandRequest.ParseAddrOrDefault(command.MinAddr, 0L);
-                            long maxA = CommandRequest.ParseAddrOrDefault(command.MaxAddr, long.MaxValue);
-                            var matches = (command.MinAddr != null || command.MaxAddr != null)
-                                ? Explorer.SearchBytesInAllMemory(patternBytes, 100, minA, maxA)
+                            var plan = SearchBytesPlan.From(command);
+                            var matches = (command.MinAddr != null || command.MaxAddr != null || command.BroadSearch)
+                                ? Explorer.SearchBytesInAllMemory(patternBytes, 100, plan.MinAddr, plan.MaxAddr, plan.BroadSearch)
                                 : Explorer.SearchBytesInAllMemory(patternBytes, 100);
 
                             // Write results to file
@@ -3642,6 +3643,27 @@ namespace FFTColorCustomizer.Utilities
                                 CacheLearnedAbilities(freshScan.Battle);
                                 _turnTracker.MarkScanned();
                             }
+
+                            // S58: first-scan null/null retry. TODO §1 Tier 3
+                            // "battle_ability first-scan null/null for secondary
+                            // skillset" — the initial scan occasionally returns
+                            // null/null before the roster match settles. Retry
+                            // once so navigation doesn't bail with "unknown
+                            // skillset". Auto-scan catches later misses anyway;
+                            // this closes the first-scan window.
+                            if (_cachedPrimarySkillset == null
+                                && _cachedSecondarySkillset == null
+                                && freshScan?.Battle?.Units?.Any(u => u.IsActive) == true)
+                            {
+                                ModLogger.Log("[CommandBridge] Pre-cast scan returned null/null skillsets — retry once");
+                                var retryCmd = new CommandRequest { Id = command.Id + "#retry", Action = "scan_move" };
+                                var retryScan = ExecuteNavAction(retryCmd);
+                                if (retryScan.Status == "completed")
+                                {
+                                    CacheLearnedAbilities(retryScan.Battle);
+                                    freshScan = retryScan;
+                                }
+                            }
                         }
                         // Validate target is within ability's horizontal range from caster.
                         // After move, use confirmed post-move position instead of stale static array.
@@ -3673,12 +3695,26 @@ namespace FFTColorCustomizer.Utilities
                         _lastAbilityName = command.Action == "battle_attack"
                             ? "Attack" : command.Description;
                         _battleMenuTracker.ReturnToMyTurn();
+                        // S58: snapshot active unit's HP before the action
+                        // so we can classify post-action counter-KO.
+                        var preActionState = _navActions?.ReadPostActionState();
                         var actionResult = ExecuteNavAction(command);
                         if (actionResult.Status != "completed")
                             _lastAbilityName = null; // clear on failure
                         else
                         {
                             actionResult.PostAction = _navActions?.ReadPostActionState();
+                            // S58: detect Counter-KO (active unit died from the
+                            // reaction to their own attack). Surface in the
+                            // Info string so callers don't blindly call
+                            // battle_wait on a dead unit.
+                            if (GameBridge.CounterAttackKoClassifier.IsActiveUnitKod(
+                                    preActionState, actionResult.PostAction))
+                            {
+                                actionResult.Info = (actionResult.Info != null ? actionResult.Info + " | " : "")
+                                    + "[counter-KO] active unit died from reaction — do not battle_wait";
+                                ModLogger.Log($"[CommandBridge] Counter-KO detected: pre HP={preActionState?.Hp} → post HP={actionResult.PostAction?.Hp}");
+                            }
                         }
                         return actionResult;
 
@@ -3921,6 +3957,15 @@ namespace FFTColorCustomizer.Utilities
                 SkipWait = command.SkipWait,
             };
 
+            // S58: seed the accumulator with the pre-bundle snapshot so HP
+            // delta / move delta / killed units can be aggregated across
+            // every sub-step. Pre-bundle scan is cheap if already cached.
+            var accumulator = new GameBridge.ExecuteTurnResultAccumulator();
+            EnsureNavActions();
+            var initialPost = _navActions?.ReadPostActionState();
+            accumulator.Seed(initialPost);
+            var preBundleUnits = SnapshotUnitsForKillDiff();
+
             CommandResponse? last = null;
             int stepIndex = 0;
             foreach (var step in plan.ToSteps())
@@ -3945,7 +3990,7 @@ namespace FFTColorCustomizer.Utilities
                         }
                         break;
                     case "battle_wait":
-                        if (!string.IsNullOrEmpty(step.Direction))
+                        if (!string.IsNullOrEmpty(step.Action))
                             sub.Pattern = step.Direction;
                         break;
                 }
@@ -3955,8 +4000,24 @@ namespace FFTColorCustomizer.Utilities
                 // keeps execute_turn a thin orchestrator, not a parallel code
                 // path that could drift from the primitives.
                 last = ExecuteAction(sub);
-                if (last == null || last.Status != "completed")
+                if (last == null) break;
+                accumulator.RecordStep(step.Action, last.PostAction);
+
+                // S58: if the sub-action's resulting screen indicates the
+                // turn ended or the battle ended, stop with a clear message
+                // rather than burning subsequent sub-steps on a non-battle
+                // state. Dialogue interrupts are NOT abort-worthy — caller
+                // can advance past them, so we leave status "completed" and
+                // continue.
+                var interruption = GameBridge.TurnInterruptionClassifier.Classify(last.Screen?.Name);
+                if (GameBridge.TurnInterruptionClassifier.ShouldAbortTurn(interruption))
+                {
+                    last.Info = (last.Info != null ? last.Info + " | " : "")
+                        + $"[turn-interrupt] step '{step.Action}' landed on {last.Screen?.Name} ({interruption}) — aborting execute_turn bundle";
                     break;
+                }
+
+                if (last.Status != "completed") break;
                 stepIndex++;
             }
 
@@ -3971,8 +4032,52 @@ namespace FFTColorCustomizer.Utilities
                     GameWindowFound = true,
                 };
             }
+
+            // S58: compute post-bundle scan-diff for killed-unit aggregation.
+            // Only attempt when pre-bundle scan succeeded — otherwise we
+            // can't tell new kills apart from unit-set churn.
+            var postBundleUnits = SnapshotUnitsForKillDiff();
+            if (preBundleUnits != null && postBundleUnits != null)
+                accumulator.RecordScanDiff(preBundleUnits, postBundleUnits);
+
             last.Id = command.Id;
+            last.TurnSummary = BuildTurnSummary(accumulator);
             return last;
+        }
+
+        /// <summary>
+        /// S58: snapshot current battle roster for execute_turn kill-diff.
+        /// Reads the last-scanned units through NavigationActions' cache.
+        /// Returns null when no scan data is available — caller treats as
+        /// "cannot diff" and skips kill-attribution.
+        /// </summary>
+        private List<GameBridge.UnitSnapshot>? SnapshotUnitsForKillDiff()
+        {
+            var cached = _navActions?.LastScannedUnitSnapshots();
+            if (cached == null || cached.Count == 0) return null;
+            return cached;
+        }
+
+        private static TurnSummary BuildTurnSummary(GameBridge.ExecuteTurnResultAccumulator acc)
+        {
+            var summary = new TurnSummary
+            {
+                HpDelta = acc.HpDelta,
+                PreMoveX = acc.PreMoveX,
+                PreMoveY = acc.PreMoveY,
+                PostMoveX = acc.PostMoveX,
+                PostMoveY = acc.PostMoveY,
+            };
+            foreach (var killed in acc.KilledUnits)
+            {
+                summary.KilledUnits.Add(new KilledUnitSummary
+                {
+                    Name = killed.Name,
+                    JobName = killed.JobName,
+                    Team = killed.Team,
+                });
+            }
+            return summary;
         }
 
         private CommandResponse ExecuteValidPath(CommandRequest command)
@@ -4123,6 +4228,9 @@ namespace FFTColorCustomizer.Utilities
                 // it in sync as they drive the UI. Reassigned each call —
                 // ScreenMachine is owned by CommandWatcher, safe to repoint.
                 _navActions.ScreenMachine = ScreenMachine;
+                // S58: wire stat tracker so battle_attack / battle_ability /
+                // battle_move can record damage / kills / moves / abilities.
+                _navActions.StatTracker = StatTracker;
             }
         }
 
@@ -4153,7 +4261,15 @@ namespace FFTColorCustomizer.Utilities
 
             var response = ExecuteNavAction(command);
 
-            if (response.Screen != null && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId, response.Screen.BattleUnitHp))
+            // Skip auto-scan for transition-commit actions (e.g.
+            // auto_place_units) where the static battle array may not
+            // yet reflect the new state — S57 surfaced "No ally found
+            // in scan" emitted as [auto-scan] prefix on the response.
+            bool commandAllowsAutoScan = AutoScanCommandClassifier.ShouldAutoScanAfter(command?.Action);
+
+            if (commandAllowsAutoScan
+                && response.Screen != null
+                && _turnTracker.ShouldAutoScan(response.Screen.Name, response.Screen.BattleTeam, response.Screen.BattleUnitId, response.Screen.BattleUnitHp))
             {
                 try
                 {
@@ -5052,6 +5168,22 @@ namespace FFTColorCustomizer.Utilities
                 case GameBridge.BattleLifecycleEvent.StartBattle:
                     var loc = screen.LocationName ?? "(unknown)";
                     StatTracker.StartBattle(loc);
+                    // S58: ReadLiveHp's address cache is battle-scoped — the
+                    // readonly-region pages shift across battles. Clear on
+                    // start so the first attack re-scans and re-memoizes.
+                    _navActions?.LiveHpCache.Clear();
+                    // Move/Jump cache also per-battle: heap struct addresses
+                    // change per battle, and so can unit rosters.
+                    _navActions?.MoveJumpCache.Clear();
+                    // S58: active-unit name/job/pos cache is stale across
+                    // battles — TODO §1 Tier 3 "Active unit name/job stale
+                    // across battles". Reset here so the first screen query
+                    // of the new battle re-populates instead of showing
+                    // prior battle's frozen data.
+                    ClearActiveUnitCache();
+                    _cachedLearnedAbilityNames = null;
+                    _cachedPrimarySkillset = null;
+                    _cachedSecondarySkillset = null;
                     break;
 
                 case GameBridge.BattleLifecycleEvent.EndBattleVictory:

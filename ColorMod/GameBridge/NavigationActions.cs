@@ -19,10 +19,28 @@ namespace FFTColorCustomizer.GameBridge
         private readonly Func<DetectedScreen?> _detectScreen;
         private readonly NameTableLookup _nameTable;
         public BattleTracker? BattleTracker { get; set; }
+        /// <summary>S58: lifetime/battle stat sink. Hooks fire from
+        /// battle_attack / battle_ability post-HP (damage + kill),
+        /// battle_move completion (tiles moved), and successful casts
+        /// (ability usage). Null-safe — skips when tracker isn't wired.</summary>
+        public BattleStatTracker? StatTracker { get; set; }
         public MapLoader? _mapLoader;
         public Func<string[]>? GetAbilitiesSubmenuItems { get; set; }
         public Func<string, string[]>? GetAbilityListForSkillset { get; set; }
         private IntPtr _gameWindow;
+
+        // S58: per-battle live-HP address cache. Populated on the full
+        // SearchBytesInAllMemory path; hit first on subsequent ReadLiveHp
+        // calls, skipping the ~500MB scan when the cached address still
+        // holds a plausible HP for the requested (maxHp, level) pair.
+        // Cleared on battle-boundary transitions by the caller (owner).
+        public LiveHpAddressCache LiveHpCache { get; } = new LiveHpAddressCache();
+
+        // S58: per-battle Move/Jump cache, fallback for when heap search
+        // misses (live-observed: every unit in a battle returned Mv=0
+        // even though we'd read valid values earlier). Populated on each
+        // successful TryReadMoveJumpFromHeap; queried on miss.
+        public UnitMoveJumpCache MoveJumpCache { get; } = new UnitMoveJumpCache();
 
         // --- DirectInput hook for faking held C key ---
         private static volatile bool _injectCKey = false;
@@ -738,6 +756,22 @@ namespace FFTColorCustomizer.GameBridge
             SendKey(VK_ENTER); // Open Abilities submenu
             Thread.Sleep(300);
 
+            // S58: verify Abilities submenu actually opened. If a charging
+            // confirmation modal was pending (game shows "Cancel charging
+            // spell?" when a unit with Charging status comes up), that first
+            // Enter dismisses the modal instead of opening Abilities — and
+            // we're still on BattleMyTurn. Retry the Enter once.
+            var postOpenScreen = _detectScreen();
+            if (postOpenScreen != null
+                && postOpenScreen.Name != "BattleAbilities"
+                && postOpenScreen.Name != "BattleAttacking"
+                && (postOpenScreen.Name == "BattleMyTurn" || postOpenScreen.Name == "BattleActing"))
+            {
+                ModLogger.Log($"[BattleAttack] Abilities submenu didn't open (still {postOpenScreen.Name}); retry Enter");
+                SendKey(VK_ENTER);
+                Thread.Sleep(300);
+            }
+
             // Step 2: Force submenu cursor to Attack (index 0).
             // The Abilities submenu REMEMBERS the previous selection within a turn (e.g.
             // after Escape from Martial Arts, re-entering lands on Martial Arts, not
@@ -771,8 +805,34 @@ namespace FFTColorCustomizer.GameBridge
             // 500ms was conservative; BattleAttacking transition is short.
             Thread.Sleep(300);
 
-            // Verify we're in targeting mode
+            // S58: poll up to 1500ms for the BattleAbilities → BattleAttacking
+            // transition. Live-observed: the initial 300ms sleep sometimes
+            // lands while the game is still rendering the submenu close
+            // animation; a single Enter retry bumps past it. Previously
+            // this bailed with "Failed to enter targeting mode" after one
+            // look, forcing the caller to Escape + retry manually.
             screen = _detectScreen();
+            int transitionRetry = 0;
+            var transitionSw = Stopwatch.StartNew();
+            while (transitionSw.ElapsedMilliseconds < 1500
+                && (screen == null || screen.Name != "BattleAttacking"))
+            {
+                if (screen != null && screen.Name == "BattleAbilities" && transitionRetry == 0)
+                {
+                    // One retry Enter — handles the "submenu still open"
+                    // race where the first Enter didn't register.
+                    ModLogger.Log("[BattleAttack] Still on BattleAbilities — retry Enter");
+                    SendKey(VK_ENTER);
+                    transitionRetry++;
+                    Thread.Sleep(200);
+                }
+                else
+                {
+                    Thread.Sleep(80);
+                }
+                screen = _detectScreen();
+            }
+
             if (screen == null || screen.Name != "BattleAttacking")
             {
                 response.Status = "failed";
@@ -973,7 +1033,74 @@ namespace FFTColorCustomizer.GameBridge
                 response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}){dmgStr}";
             }
             ModLogger.Log($"[BattleAttack] {response.Info}");
+
+            // S58: record damage/kill into stat tracker. Classifier handles
+            // read-failure / overkill / miss edge cases.
+            RecordAttackStats("Attack", startPos, targetX, targetY, preHp, postHp);
+
             return response;
+        }
+
+        /// <summary>S58: snapshot the last-scanned battle roster as plain
+        /// UnitSnapshot records for execute_turn kill-diff. Returns null
+        /// when no scan is cached.</summary>
+        public List<UnitSnapshot>? LastScannedUnitSnapshots()
+        {
+            if (_lastScannedUnits == null || _lastScannedUnits.Count == 0) return null;
+            var result = new List<UnitSnapshot>(_lastScannedUnits.Count);
+            foreach (var u in _lastScannedUnits)
+            {
+                var label = UnitDisplayName.For(u.Name, u.JobNameOverride);
+                result.Add(new UnitSnapshot(label, u.JobNameOverride, u.Team, u.Hp, u.MaxHp));
+            }
+            return result;
+        }
+
+        /// <summary>S58: resolve active unit's name from the last scan
+        /// for stat-tracker calls. Falls back to JobNameOverride for
+        /// enemies (whose Name is null) so stats read "Minotaur" instead
+        /// of literal "(unknown)".</summary>
+        private string GetActiveUnitNameForStats()
+        {
+            var u = _lastScannedUnits?.FirstOrDefault(u => u.IsActive);
+            return UnitDisplayName.For(u?.Name, u?.JobNameOverride);
+        }
+
+        /// <summary>
+        /// S58: convert a post-attack HP delta into BattleStatTracker hook
+        /// calls. No-op if the tracker isn't wired. Looks up attacker and
+        /// target names from the last scan snapshot.
+        /// </summary>
+        private void RecordAttackStats(string ability, (int x, int y) startPos, int targetX, int targetY, int preHp, int postHp)
+        {
+            if (StatTracker == null) return;
+            var ev = HpTransitionClassifier.Classify(preHp, postHp);
+            if (ev == HpTransitionEvent.None) return;
+
+            var attackerUnit = _lastScannedUnits?
+                .FirstOrDefault(u => u.GridX == startPos.x && u.GridY == startPos.y);
+            var targetUnit = _lastScannedUnits?
+                .FirstOrDefault(u => u.GridX == targetX && u.GridY == targetY);
+            string attacker = UnitDisplayName.For(attackerUnit?.Name, attackerUnit?.JobNameOverride);
+            string target = UnitDisplayName.For(targetUnit?.Name, targetUnit?.JobNameOverride);
+
+            int amount = HpTransitionClassifier.Magnitude(preHp, postHp);
+            switch (ev)
+            {
+                case HpTransitionEvent.Damage:
+                    StatTracker.OnDamageDealt(attacker, target, amount, ability);
+                    break;
+                case HpTransitionEvent.Kill:
+                    StatTracker.OnDamageDealt(attacker, target, amount, ability);
+                    StatTracker.OnKill(attacker, target);
+                    break;
+                case HpTransitionEvent.Heal:
+                    StatTracker.OnHeal(attacker, target, amount, ability);
+                    break;
+                case HpTransitionEvent.Raise:
+                    StatTracker.OnRaise(attacker, target);
+                    break;
+            }
         }
 
         /// <summary>
@@ -1314,6 +1441,7 @@ namespace FFTColorCustomizer.GameBridge
                 WaitForActionResolved(timeoutMs: 2000, out _);
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} (self-target){ctSuffix}{autoEndSuffix}";
+                StatTracker?.OnAbilityUsed(GetActiveUnitNameForStats(), abilityName);
                 return response;
             }
 
@@ -1333,6 +1461,7 @@ namespace FFTColorCustomizer.GameBridge
                 WaitForActionResolved(timeoutMs: 2000, out _);
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} (self-radius AoE){ctSuffix}{autoEndSuffix}";
+                StatTracker?.OnAbilityUsed(GetActiveUnitNameForStats(), abilityName);
                 return response;
             }
 
@@ -1371,6 +1500,7 @@ namespace FFTColorCustomizer.GameBridge
                 WaitForActionResolved(timeoutMs: 2000, out _);
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} on ({targetX},{targetY}) — cursor was already on target{ctSuffix}{autoEndSuffix}";
+                StatTracker?.OnAbilityUsed(GetActiveUnitNameForStats(), abilityName);
                 return response;
             }
 
@@ -1485,6 +1615,7 @@ namespace FFTColorCustomizer.GameBridge
 
             response.Status = "completed";
             response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){ctSuffix}{autoEndSuffix}";
+            StatTracker?.OnAbilityUsed(GetActiveUnitNameForStats(), abilityName);
             return response;
         }
 
@@ -2672,16 +2803,16 @@ namespace FFTColorCustomizer.GameBridge
                 // encounter fired at Dugeura while rawLocation stayed on
                 // Zeklaus travel target). Verified live.
                 {
-                    var mapIdRead = _explorer.ReadAbsolute((nint)0x14077D83C, 1);
+                    var mapIdRead = _explorer.ReadAbsolute((nint)LiveBattleMapId.Address, 1);
                     if (mapIdRead.HasValue)
                     {
                         int liveMapId = (int)mapIdRead.Value.value;
-                        if (liveMapId >= 1 && liveMapId <= 127)
+                        if (LiveBattleMapId.IsValid(liveMapId))
                         {
                             var loaded = _mapLoader.LoadMap(liveMapId);
                             if (loaded != null && ValidateMap(loaded))
                             {
-                                lines.Add($"MAP{liveMapId:D3} (live map-id byte 0x14077D83C)");
+                                lines.Add($"MAP{liveMapId:D3} (live map-id byte 0x{LiveBattleMapId.Address:X})");
                             }
                             else
                             {
@@ -3595,6 +3726,14 @@ namespace FFTColorCustomizer.GameBridge
             response.Status = "completed";
             response.Info = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) CONFIRMED";
             _menuCursorStale = true;
+
+            // S58: credit tiles-moved to the active unit. Distance is
+            // Manhattan (grid movement is one step per tile, no diagonal).
+            int tilesMoved = System.Math.Abs(finalPos.x - startPos.x)
+                           + System.Math.Abs(finalPos.y - startPos.y);
+            if (tilesMoved > 0)
+                StatTracker?.OnMove(GetActiveUnitNameForStats(), tilesMoved);
+
             return response;
         }
 
@@ -4919,6 +5058,37 @@ namespace FFTColorCustomizer.GameBridge
             if (unitMaxHp <= 0) return -1;
             try
             {
+                // S58: cache fast path. Cached addresses survive within a
+                // battle; try them before the expensive full-memory scan.
+                var cached = LiveHpCache.GetCachedAddresses(unitMaxHp, targetLevel);
+                if (cached != null)
+                {
+                    foreach (var addr in cached)
+                    {
+                        nint hpAddr = (nint)addr - 2;
+                        var hpBytes = _explorer.Scanner.ReadBytes(hpAddr, 2);
+                        if (hpBytes.Length < 2) continue;
+                        int hp = BitConverter.ToUInt16(hpBytes, 0);
+                        // Plausibility: HP must be within [0, maxHp]. If out of
+                        // range the address is stale (battle changed or the
+                        // page recycled).
+                        if (hp < 0 || hp > unitMaxHp) continue;
+                        // If HP moved off preAttackHp, we have the live address.
+                        // If HP equals preAttackHp, it could be the stale copy OR
+                        // the live one before damage landed — fall through to
+                        // full search to disambiguate.
+                        if (hp != preAttackHp)
+                        {
+                            ModLogger.Log($"[ReadLiveHp] cache hit: HP={hp} at 0x{(long)addr:X}");
+                            return hp;
+                        }
+                    }
+                    // No cached address showed motion — re-scan (the live
+                    // address may have relocated or preAttackHp was simply
+                    // unchanged by this attack).
+                    LiveHpCache.Invalidate(unitMaxHp, targetLevel);
+                }
+
                 // Search all readable memory for structs with this unit's MaxHP.
                 // The struct layout has: ... HP(u16) MaxHP(u16) MP(u16) ...
                 // Search for a longer context pattern to reduce false matches:
@@ -4983,6 +5153,8 @@ namespace FFTColorCustomizer.GameBridge
                         if (ctx[1] == expectedLevel)
                         {
                             ModLogger.Log($"[ReadLiveHp] Live HP={hp} at 0x{addr:X} (lv={ctx[1]})");
+                            // S58: memoize for next attack on this target.
+                            LiveHpCache.Remember(unitMaxHp, targetLevel, addr);
                             return hp;
                         }
                     }
@@ -5470,12 +5642,35 @@ namespace FFTColorCustomizer.GameBridge
 
             // Narrow search first: RW private/mapped heap only, fast.
             var result = TryMoveJumpMatches(maxHpPattern, hp, maxHp, broad: false);
-            if (result.HasValue) return result;
+            if (result.HasValue)
+            {
+                MoveJumpCache.Put(maxHp, result.Value.move, result.Value.jump);
+                return result;
+            }
 
             // Broad fallback: includes IMAGE-mapped and WRITECOPY memory up
             // to 16MB per region, 2GB total budget.
             ModLogger.Log($"[TryReadMoveJumpFromHeap] HP={hp}/{maxHp}: narrow miss, retrying broad");
-            return TryMoveJumpMatches(maxHpPattern, hp, maxHp, broad: true);
+            result = TryMoveJumpMatches(maxHpPattern, hp, maxHp, broad: true);
+            if (result.HasValue)
+            {
+                MoveJumpCache.Put(maxHp, result.Value.move, result.Value.jump);
+                return result;
+            }
+
+            // S58: final fallback — check the per-battle cache. If we
+            // successfully read Move/Jump for this unit earlier this
+            // battle, reuse that instead of collapsing to Mv=0. Prevents
+            // the whole-battle "0 valid tiles" failure mode when the heap
+            // struct relocates to an address outside our search range
+            // mid-battle.
+            var cached = MoveJumpCache.Get(maxHp);
+            if (cached.HasValue)
+            {
+                ModLogger.Log($"[TryReadMoveJumpFromHeap] HP={hp}/{maxHp}: heap miss, using cached Mv={cached.Value.move} Jp={cached.Value.jump}");
+                return cached.Value;
+            }
+            return null;
         }
 
         private (int move, int jump)? TryMoveJumpMatches(

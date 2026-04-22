@@ -60,6 +60,75 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void Catalog_MandaliaEntry_HasExpectedLabels()
+        {
+            // S58 catalog extension: labels surface on BattleChoice ui=
+            // render instead of raw "option 1" / "option 2".
+            Assert.True(BattleChoiceEventIds.Catalog.TryGetValue(16, out var entry));
+            Assert.Equal(16, entry!.EventId);
+            Assert.Equal("Mandalia Plain", entry.Location);
+            Assert.Equal("Defeat the Brigade", entry.OptionOne);
+            Assert.Equal("Rescue the captive", entry.OptionTwo);
+        }
+
+        [Fact]
+        public void OptionLabel_Cursor0_ReturnsOptionOne()
+        {
+            Assert.Equal("Defeat the Brigade", BattleChoiceEventIds.OptionLabel(16, 0));
+        }
+
+        [Fact]
+        public void OptionLabel_Cursor1_ReturnsOptionTwo()
+        {
+            Assert.Equal("Rescue the captive", BattleChoiceEventIds.OptionLabel(16, 1));
+        }
+
+        [Fact]
+        public void OptionLabel_UnknownEvent_ReturnsNull()
+        {
+            Assert.Null(BattleChoiceEventIds.OptionLabel(eventId: 9999, cursorRow: 0));
+        }
+
+        [Fact]
+        public void OptionLabel_InvalidCursor_ReturnsNull()
+        {
+            Assert.Null(BattleChoiceEventIds.OptionLabel(eventId: 16, cursorRow: -1));
+            Assert.Null(BattleChoiceEventIds.OptionLabel(eventId: 16, cursorRow: 2));
+        }
+
+        [Fact]
+        public void OptionLabelOrGeneric_UnknownEvent_FallsBackToGeneric()
+        {
+            // Fallback renderer output — uncatalogued events still surface
+            // SOMETHING for the ui= field rather than blank.
+            Assert.Equal("Option 1", BattleChoiceEventIds.OptionLabelOrGeneric(9999, 0));
+            Assert.Equal("Option 2", BattleChoiceEventIds.OptionLabelOrGeneric(9999, 1));
+        }
+
+        [Fact]
+        public void OptionLabelOrGeneric_CataloguedEvent_UsesRealLabel()
+        {
+            Assert.Equal("Defeat the Brigade", BattleChoiceEventIds.OptionLabelOrGeneric(16, 0));
+            Assert.Equal("Rescue the captive", BattleChoiceEventIds.OptionLabelOrGeneric(16, 1));
+        }
+
+        [Fact]
+        public void OptionLabelOrGeneric_InvalidCursor_ReturnsQuestionMark()
+        {
+            Assert.Equal("?", BattleChoiceEventIds.OptionLabelOrGeneric(16, -1));
+            Assert.Equal("?", BattleChoiceEventIds.OptionLabelOrGeneric(16, 5));
+        }
+
+        [Fact]
+        public void KnownEventIds_StaysInSync_WithCatalog()
+        {
+            // Defensive pin: both exposures should agree.
+            Assert.Equal(BattleChoiceEventIds.Catalog.Count, BattleChoiceEventIds.KnownEventIds.Count);
+            foreach (var id in BattleChoiceEventIds.Catalog.Keys)
+                Assert.Contains(id, BattleChoiceEventIds.KnownEventIds);
+        }
+
+        [Fact]
         public void Detection_ClassifiesKnownEvent_AsBattleChoice()
         {
             // Regression pin: when the runtime signals fire (eventHasChoice

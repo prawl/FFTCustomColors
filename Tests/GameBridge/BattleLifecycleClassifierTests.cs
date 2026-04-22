@@ -61,6 +61,27 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void VictoryToDesertion_DoesNotReEndBattle()
+        {
+            // S58 bug: we killed all enemies (BattleVictory fired, EndBattle
+            // rolled up stats as Win), then a unit crystallized and the game
+            // transitioned to BattleDesertion. The classifier was re-firing
+            // EndBattleDefeat, stomping the previous victory with a loss.
+            // Post-Victory Desertion is just the game's "unit crystallized"
+            // notification — battle already ended.
+            var result = BattleLifecycleClassifier.Classify("BattleVictory", "BattleDesertion");
+            Assert.Equal(BattleLifecycleEvent.None, result);
+        }
+
+        [Fact]
+        public void VictoryToGameOver_DoesNotReEndBattle()
+        {
+            // Same defensive principle: once Victory fires, don't re-end.
+            var result = BattleLifecycleClassifier.Classify("BattleVictory", "GameOver");
+            Assert.Equal(BattleLifecycleEvent.None, result);
+        }
+
+        [Fact]
         public void GameOver_EndsBattleAsDefeat()
         {
             var result = BattleLifecycleClassifier.Classify("BattleMyTurn", "GameOver");

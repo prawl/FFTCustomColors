@@ -29,6 +29,13 @@ namespace FFTColorCustomizer.GameBridge
             if (current == "BattleVictory" && previous != "BattleVictory")
                 return BattleLifecycleEvent.EndBattleVictory;
 
+            // Don't re-end after Victory. FFT's post-victory sequence can
+            // transition through BattleDesertion (unit crystallized) or
+            // even a stale GameOver flicker — in both cases the battle
+            // already finalized as a win.
+            if (previous == "BattleVictory")
+                return BattleLifecycleEvent.None;
+
             if ((current == "BattleDesertion" && previous != "BattleDesertion")
                 || (current == "GameOver" && previous != "GameOver"))
                 return BattleLifecycleEvent.EndBattleDefeat;

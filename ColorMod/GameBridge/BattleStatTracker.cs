@@ -47,14 +47,30 @@ namespace FFTColorCustomizer.GameBridge
             };
         }
 
+        /// <summary>
+        /// S58: milestones crossed in the most recent EndBattle call. Populated
+        /// by EndBattle by diffing lifetime-stats before and after the
+        /// per-unit merge. Consumed by the battle-summary renderer so
+        /// milestone callouts surface alongside the MVP line.
+        /// </summary>
+        public List<string> RecentMilestones { get; private set; } = new();
+
         public void EndBattle(bool won)
         {
-            if (CurrentBattle == null) return;
+            // Idempotent: once a battle's rolled up into Lifetime, keep
+            // CurrentBattle frozen for `stats battle` rendering but ignore
+            // further EndBattle calls. Protects against stray lifecycle
+            // flickers (e.g. Victory → Desertion) double-counting.
+            if (CurrentBattle == null || CurrentBattle.EndedAt != null) return;
             CurrentBattle.Won = won;
             CurrentBattle.EndedAt = DateTime.UtcNow.ToString("o");
             Lifetime.TotalBattles++;
             if (won) Lifetime.BattlesWon++;
             else Lifetime.BattlesLost++;
+
+            // S58: snapshot per-unit lifetime stats BEFORE the merge so
+            // MilestoneDetector can diff before/after and emit callouts.
+            var beforeSnapshot = SnapshotLifetime();
 
             // Determine MVP (session 47: extracted to MvpSelector for dedicated coverage).
             var mvp = MvpSelector.Select(CurrentBattle.Units);
@@ -88,7 +104,35 @@ namespace FFTColorCustomizer.GameBridge
                 }
             }
 
+            // S58: detect milestones crossed by this battle's merge.
+            RecentMilestones = MilestoneDetector.DetectAll(beforeSnapshot, Lifetime);
+
             Save();
+        }
+
+        /// <summary>
+        /// S58: deep-copy per-unit lifetime stats for milestone diffing.
+        /// Only the fields MilestoneDetector reads are copied.
+        /// </summary>
+        private LifetimeStats SnapshotLifetime()
+        {
+            var snap = new LifetimeStats
+            {
+                TotalBattles = Lifetime.TotalBattles,
+                BattlesWon = Lifetime.BattlesWon,
+                BattlesLost = Lifetime.BattlesLost,
+            };
+            foreach (var (name, u) in Lifetime.Units)
+            {
+                snap.Units[name] = new UnitLifetimeStats
+                {
+                    Name = u.Name,
+                    TotalBattles = u.TotalBattles,
+                    TotalDamageDealt = u.TotalDamageDealt,
+                    TotalKills = u.TotalKills,
+                };
+            }
+            return snap;
         }
 
         // =====================================================================
@@ -198,6 +242,14 @@ namespace FFTColorCustomizer.GameBridge
             if (closestCall.Key != null)
             {
                 lines.Add($"  Closest call: {closestCall.Key} at {closestCall.Value.LowestHp}/{closestCall.Value.LowestHpMaxHp} HP");
+            }
+
+            // S58: milestone callouts from the last EndBattle diff.
+            if (RecentMilestones.Count > 0)
+            {
+                lines.Add("");
+                foreach (var m in RecentMilestones)
+                    lines.Add("  " + m);
             }
 
             return string.Join("\n", lines);
