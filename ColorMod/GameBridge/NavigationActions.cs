@@ -34,11 +34,12 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>
         /// Lazy resolver for the BattleWhiteMagicks/BattleBlackMagicks/etc
-        /// ability-list cursor index byte. Same shape as the submenu
-        /// resolver — different widget allocation though, so a different
-        /// address. Re-resolved per game session.
+        /// ability-list cursor index byte. Takes the learned-ability count
+        /// of the current skillset (used as a discriminator in the AOB
+        /// signature). Same shape as the submenu resolver — different
+        /// widget allocation. Re-resolved per game session.
         /// </summary>
-        public Func<long>? ResolveAbilityListCursor { get; set; }
+        public Func<int, long>? ResolveAbilityListCursor { get; set; }
         private IntPtr _gameWindow;
 
         // --- DirectInput hook for faking held C key ---
@@ -1113,7 +1114,7 @@ namespace FFTColorCustomizer.GameBridge
             // Verify-before-Enter: re-read cursor after pressing the
             // planned keys; abort with error if mismatch.
             int listLength = learnedAbilities?.Length ?? 16;
-            long listCursorAddr = ResolveAbilityListCursor?.Invoke() ?? 0L;
+            long listCursorAddr = ResolveAbilityListCursor?.Invoke(listLength) ?? 0L;
             int listCurrent;
             if (listCursorAddr != 0L)
             {
