@@ -2708,26 +2708,23 @@ namespace FFTColorCustomizer.Utilities
 
                     case "seed_shop_stock":
                         // Session 55: one-shot helper to populate the
-                        // resolver cache for ALL registered categories at
-                        // the current shop. Walks every registered
-                        // category for (location, chapter), runs the
-                        // expensive broad-search locate once each, and
-                        // seeds the cache via ShopStockResolver.SeedCache
-                        // so subsequent screen.stockItems calls reuse
-                        // the addresses without their own scans.
+                        // resolver cache for ALL registered categories
+                        // at the current shop. Default mode walks the
+                        // ShopBitmapRegistry. Pass description="auto"
+                        // to use experimental LiveShopScanner instead
+                        // (heuristic active-widget scan; currently too
+                        // noisy for general use, kept opt-in while
+                        // investigation continues).
                         //
                         // Use case: player enters a shop in a new save
-                        // / chapter / location. Run seed_shop_stock once
-                        // up front; from then on screen.stockItems is
-                        // populated and stable.
+                        // / chapter / location. Run seed_shop_stock
+                        // once up front; from then on
+                        // screen.stockItems is populated and stable.
                         //
                         // Why it exists: the screen-assembly path
                         // intentionally does ZERO AoB scans (would
                         // crash the game under repeated polling).
-                        // Seeding has to happen explicitly, and doing
-                        // all categories in one bridge call is much
-                        // cheaper than 5-7 separate shop_stock invocations
-                        // (each command round-trip is its own cost).
+                        // Seeding has to happen explicitly.
                         if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
                         try
                         {
@@ -2735,58 +2732,79 @@ namespace FFTColorCustomizer.Utilities
                                 ? command.LocationId
                                 : Explorer.Scanner.ReadByte((nint)0x14077D208L);
                             int seedChapter = command.UnitIndex > 0 ? command.UnitIndex : 1;
+                            bool useLiveScanner = string.Equals(command.Description, "auto", StringComparison.OrdinalIgnoreCase);
 
                             var decoder = new GameBridge.ShopStockDecoder(Explorer);
                             var sb = new System.Text.StringBuilder();
                             int seeded = 0, failed = 0;
-                            sb.AppendLine($"seed_shop_stock loc={seedLocation} ch={seedChapter}:");
+                            string mode = useLiveScanner ? "live-widget scan" : "registry lookup";
+                            sb.AppendLine($"seed_shop_stock loc={seedLocation} ch={seedChapter} ({mode}):");
 
-                            foreach (var cat in GameBridge.ShopBitmapRegistry.RegisteredCategoriesFor(seedLocation, seedChapter))
+                            if (useLiveScanner)
                             {
-                                var bmp = GameBridge.ShopBitmapRegistry.Lookup(seedLocation, seedChapter, cat);
-                                if (bmp == null) continue;
-
-                                int expCount = GameBridge.ShopStockDecoder.FormatForCategory(cat)
-                                    == GameBridge.ShopStockDecoder.RecordFormat.IdArray
-                                        ? GameBridge.ShopStockResolver.CountIdArrayIds(bmp)
-                                        : GameBridge.ShopStockResolver.CountBits(bmp);
-
-                                long recAddr;
-                                if (GameBridge.ShopStockDecoder.FormatForCategory(cat) == GameBridge.ShopStockDecoder.RecordFormat.IdArray)
+                                var found = GameBridge.LiveShopScanner.ScanAll(Explorer);
+                                foreach (var rec in found)
                                 {
-                                    int nz = GameBridge.ShopStockResolver.CountIdArrayIds(bmp);
-                                    var ids = new byte[nz];
-                                    Array.Copy(bmp, 0, ids, 0, nz);
-                                    recAddr = decoder.LocateIdArrayRecord(ids); // broad search OK here
+                                    var decoded = decoder.DecodeStockAt(
+                                        rec.Address, rec.Category,
+                                        seedLocation, seedChapter, rec.ItemCount);
+                                    if (decoded.Count == rec.ItemCount)
+                                    {
+                                        GameBridge.ShopStockResolver.SeedCache(seedLocation, seedChapter, rec.Category, rec.Address);
+                                        sb.AppendLine($"  {rec.Category}: SEEDED @ 0x{rec.Address:X} ({decoded.Count} items)");
+                                        seeded++;
+                                    }
+                                    else
+                                    {
+                                        sb.AppendLine($"  {rec.Category}: STALE @ 0x{rec.Address:X} (got {decoded.Count} on decode, scanner said {rec.ItemCount})");
+                                        failed++;
+                                    }
                                 }
-                                else
+                            }
+                            else
+                            {
+                                foreach (var cat in GameBridge.ShopBitmapRegistry.RegisteredCategoriesFor(seedLocation, seedChapter))
                                 {
-                                    recAddr = decoder.LocateBitmapRecord(bmp, expCount); // broad search OK here
-                                }
+                                    var bmp = GameBridge.ShopBitmapRegistry.Lookup(seedLocation, seedChapter, cat);
+                                    if (bmp == null) continue;
 
-                                if (recAddr == 0)
-                                {
-                                    sb.AppendLine($"  {cat}: NOT FOUND");
-                                    failed++;
-                                    continue;
-                                }
+                                    int expCount = GameBridge.ShopStockDecoder.FormatForCategory(cat)
+                                        == GameBridge.ShopStockDecoder.RecordFormat.IdArray
+                                            ? GameBridge.ShopStockResolver.CountIdArrayIds(bmp)
+                                            : GameBridge.ShopStockResolver.CountBits(bmp);
 
-                                // Validate the locate by decoding and
-                                // checking the count matches expected.
-                                // Skip seeding false-positive locates
-                                // (they'd be invalidated on first screen
-                                // poll anyway, just wasted work).
-                                var decoded = decoder.DecodeStockAt(recAddr, cat, seedLocation, seedChapter, expCount);
-                                if (decoded.Count == expCount)
-                                {
-                                    GameBridge.ShopStockResolver.SeedCache(seedLocation, seedChapter, cat, recAddr);
-                                    sb.AppendLine($"  {cat}: SEEDED @ 0x{recAddr:X} ({decoded.Count} items)");
-                                    seeded++;
-                                }
-                                else
-                                {
-                                    sb.AppendLine($"  {cat}: VALIDATION FAILED (got {decoded.Count}, expected {expCount})");
-                                    failed++;
+                                    long recAddr;
+                                    if (GameBridge.ShopStockDecoder.FormatForCategory(cat) == GameBridge.ShopStockDecoder.RecordFormat.IdArray)
+                                    {
+                                        int nz = GameBridge.ShopStockResolver.CountIdArrayIds(bmp);
+                                        var ids = new byte[nz];
+                                        Array.Copy(bmp, 0, ids, 0, nz);
+                                        recAddr = decoder.LocateIdArrayRecord(ids);
+                                    }
+                                    else
+                                    {
+                                        recAddr = decoder.LocateBitmapRecord(bmp, expCount);
+                                    }
+
+                                    if (recAddr == 0)
+                                    {
+                                        sb.AppendLine($"  {cat}: NOT FOUND");
+                                        failed++;
+                                        continue;
+                                    }
+
+                                    var decoded = decoder.DecodeStockAt(recAddr, cat, seedLocation, seedChapter, expCount);
+                                    if (decoded.Count == expCount)
+                                    {
+                                        GameBridge.ShopStockResolver.SeedCache(seedLocation, seedChapter, cat, recAddr);
+                                        sb.AppendLine($"  {cat}: SEEDED @ 0x{recAddr:X} ({decoded.Count} items)");
+                                        seeded++;
+                                    }
+                                    else
+                                    {
+                                        sb.AppendLine($"  {cat}: VALIDATION FAILED (got {decoded.Count}, expected {expCount})");
+                                        failed++;
+                                    }
                                 }
                             }
 
