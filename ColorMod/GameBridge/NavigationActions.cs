@@ -1187,10 +1187,10 @@ namespace FFTColorCustomizer.GameBridge
             for (int i = 0; i < downsNeeded; i++)
             {
                 SendKey(VK_DOWN);
-                // 400ms was an outlier — ability-list Down uses 150ms and
-                // menu-cursor Down uses 150ms. 200ms here is a safer floor
-                // that still gives the submenu plenty of settle time.
-                Thread.Sleep(200);
+                // 200ms → 100ms. Matches the tightened ability-list Down (80ms)
+                // closely. Submenu has 3-5 entries typically so savings are
+                // modest per action (100-200ms) but add up over a session.
+                Thread.Sleep(100);
             }
 
             // Verify via counter delta
@@ -1251,7 +1251,13 @@ namespace FFTColorCustomizer.GameBridge
             for (int i = 0; i < listPlan.PressCount; i++)
             {
                 SendKey(listVk);
-                Thread.Sleep(150);
+                // Per-press hold: 150ms → 80ms. SendKey itself already
+                // has a 25ms down-hold (session 8e); 80ms more between
+                // presses gives the game ~105ms per press before the
+                // next fires. For a 14-deep list (Holy) that's ~1ms/press
+                // × 7 = 550ms vs old 1050ms — half a second saved on the
+                // deepest abilities.
+                Thread.Sleep(80);
             }
 
             // Pre-cast verification (best-effort): if the game surfaces a
@@ -5562,10 +5568,14 @@ namespace FFTColorCustomizer.GameBridge
             for (int i = 0; i < Math.Abs(delta); i++)
             {
                 SendKey(vk);
-                Thread.Sleep(150);
+                // 150ms → 80ms per press. SendKey already does a 25ms
+                // key-down hold, so the menu sees ~105ms per press.
+                // 5-item menu × 80ms = 400ms vs old 750ms on worst case.
+                Thread.Sleep(80);
             }
-            // Verify cursor arrived
-            Thread.Sleep(100);
+            // Verify cursor arrived. 100ms → 50ms settle — the cursor
+            // counter updates immediately after the last KEYUP posts.
+            Thread.Sleep(50);
             var check = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
             int actual = check != null ? (int)check.Value.value : -1;
             if (actual != target)
