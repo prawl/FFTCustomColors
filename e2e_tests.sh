@@ -7,7 +7,7 @@ B="/c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Iva
 
 brg() { rm -f "$B/response.json"; echo "$1" > "$B/command.json"; until [ -f "$B/response.json" ]; do sleep 0.05; done; cat "$B/response.json"; }
 resp() { brg "$1" | tr -d ' \n\r'; }
-screenshot() { powershell.exe -ExecutionPolicy Bypass -File ./screenshot.ps1 2>/dev/null; }
+screenshot() { powershell.exe -ExecutionPolicy Bypass -File ./screenshot_crop.ps1 2>/dev/null; }
 
 nextid() { echo "c$(date +%s%N | tail -c 8)$RANDOM"; }
 get_units() { resp "{\"id\":\"$(nextid)\",\"action\":\"report_state\"}" | grep -o '"activeUnitCount":[0-9]*' | cut -d: -f2; }

@@ -157,4 +157,4 @@ When the state machine diverges from game reality (e.g. an Enter that didn't act
 - Boot sequence needs 3s delays between Enter presses
 - Game window doesn't need focus — PostMessage works in background
 - All addresses verified on FFT_enhanced.exe
-- Screenshots: `powershell.exe -ExecutionPolicy Bypass -File ./screenshot.ps1`
+- Screenshots: `powershell.exe -ExecutionPolicy Bypass -File ./screenshot_crop.ps1` (captures just the FFT window; writes `$USERPROFILE\Downloads\fftwin_<timestamp>.png`)
