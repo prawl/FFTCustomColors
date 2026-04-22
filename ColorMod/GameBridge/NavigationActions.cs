@@ -5620,7 +5620,7 @@ namespace FFTColorCustomizer.GameBridge
                     waitedMs = sw.ElapsedMilliseconds;
                     return last;
                 }
-                Thread.Sleep(100);
+                Thread.Sleep(40);
             }
             waitedMs = sw.ElapsedMilliseconds;
             return last;
@@ -5645,7 +5645,7 @@ namespace FFTColorCustomizer.GameBridge
                     waitedMs = sw.ElapsedMilliseconds;
                     return last;
                 }
-                Thread.Sleep(100);
+                Thread.Sleep(40);
             }
             waitedMs = sw.ElapsedMilliseconds;
             return last;
