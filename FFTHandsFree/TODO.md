@@ -81,6 +81,19 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 ## 0. Urgent Bugs
 
 
+### Session 57 — follow-ups (2026-04-22)
+
+- [ ] **Auto-scan fires too early during BattleFormation** [Detection] — Surfaced by `session_stats` during S57 live-testing: `auto_place_units` response had `[auto-scan] No ally found in scan`. The screen-query auto-scan shipped in `3a95585` fires during BattleFormation before allies are registered. Cosmetic (doesn't break auto_place_units) but noisy in the session log. Fix: add `BattleFormation` to the skip-list on the auto-scan guard at `CommandWatcher.cs` around line 4108 — the `if (isScreenQuery && ... && _turnTracker.ShouldAutoScan(...))` block. Verify `session_stats` no longer shows the error afterward.
+
+- [ ] **Aurablast follow-up: learned-ability bitfield audit** [Execution] — S57 fixed the NAV path (`d9f143a`: full skillset list used for cursor index math), but the user-facing `abilities[]` array in scan_move output still goes through `FilterAbilitiesBySkillsets` which filters by learned state. Kenrick's Martial Arts displayed `[Cyclone, Purification, Chakra, Revive]` (4) when the game UI shows 8 entries. Two possibilities: (a) learned bitfield reader at `AddrCondensedBase + 0x28` undercounts for secondary skillsets, or (b) `FilterAbilitiesBySkillsets` is over-filtering. **Next-session repro:** live-dump Kenrick's condensed-struct ability bytes, parse with `ActionAbilityLookup.ParseLearnedIdsFromBytes`, diff against the game's visible list. Fix whichever is wrong. Nav is unblocked today, but scan output lying about what Kenrick can cast is a decision-aid bug.
+
+- [ ] **Detailed in-battle hooks for `BattleStatTracker`** [Stats] — S57 wired the tracker's lifecycle (StartBattle / EndBattle / OnTurnTaken) but per-action hooks (damage / kills / heal / move / ability-usage) are still stubbed. `stats battle` shows battle counts but all damage/healing/kill numbers are 0. Wire hooks at: (a) `battle_attack` / `battle_ability` post-action HP delta → `OnDamageDealt` / `OnHeal` / `OnKill`; (b) `battle_move` post-move position diff → `OnMove`; (c) every successful cast → `OnAbilityUsed`. Verify on a real battle — `stats battle` should show MVP with real numbers.
+
+- [ ] **`ReadLiveHp` runs 500MB memory search per `battle_attack`** [Speed] — `NavigationActions.cs:4917` does `SearchBytesInAllMemory(maxHpBytes, 100, 0x141000000L, 0x15C000000L, broadSearch: true)` on every attack (~100-200ms per call). Could cache the last-found live address per target_MaxHp and re-validate on next hit; re-scan only on cache miss. Architectural refactor — S57 hit diminishing returns and skipped.
+
+- [ ] **⚠ UNVERIFIED: `battle_attack` post-cast adaptive animation wait** [Execution] — S57 shipped `14ff34f` replacing the fixed `Thread.Sleep(2000)` with a poll for post-animation resolved state. Untested live because no enemy was adjacent during S57 test battles. Next battle with an adjacent enemy: confirm `battle_attack` returns as soon as the animation settles (not the full 2500ms ceiling) and HP delta still reads correctly.
+
+
 ### Session 56 — follow-ups (2026-04-22)
 
 - [ ] **Post-Victory WorldMap mis-detects as `LoadGame`** [Detection] — S56 live: after `kill_enemies` → Victory → 5× Advance, the game is visibly on WorldMap at The Siedge Weald ("13 Capricorn" world date shown, character sprite on the map node), but detection persistently reports `[LoadGame]` with `curLoc=Walled City of Yardrow` (stale location). Root cause: `ScreenDetectionLogic.cs:557` LoadGame rule requires `gameOverFlag == 1` — but gameOverFlag is STICKY across the full post-battle sequence. Rule fires whenever gameOverFlag stuck at 1 + `!actedOrMoved` + `!atNamedLocation` + `IsEventIdUnset`, which is exactly the post-Victory WorldMap fingerprint. Fix approach: require an additional positive signal specific to LoadGame (e.g. menuCursor in save-slot range 0-7 + a sub-screen flag). Needs live capture of both LoadGame and post-Victory-WorldMap detection inputs to design the discriminator. Cosmetic today (the game renders WorldMap correctly) but blocks `execute_action` because ValidPaths come from the wrong screen.
@@ -369,16 +382,13 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ## 8. Speed Optimizations (P1)
 
-- [ ] **Auto-scan on Battle_MyTurn** — Include unit scan results in response automatically
+<!-- "Auto-scan on Battle_MyTurn" — SHIPPED S57 (3a95585). Screen-query responses auto-scan when landing on a fresh BattleMyTurn. Gated on _turnTracker.ShouldAutoScan so fires at most once per friendly turn. -->
 
+<!-- "Latency measurement" — SHIPPED S57 (e07b3ab). session_stats bridge action + shell helper. Per-action count/median/p95/max/failed summary. -->
+
+<!-- "Pre-compute actionable data" — intentionally NOT shipped. Drafted BattleSituation (nearestEnemy, hurtAllies) during S57 but reverted per user direction before commit. Existing scan output already surfaces per-unit distance, attack tiles, ability targets. Reopen only if a specific decision-aid gap appears. -->
 
 - [ ] **Background position tracking** — Poll positions during enemy turns so they're fresh when it's our turn
-
-
-- [ ] **Pre-compute actionable data** — Distances, valid adjacent tiles, attack range in responses
-
-
-- [ ] **Latency measurement** — Log round-trip times, flag >2s actions
 
 
 
@@ -514,21 +524,11 @@ Superseded items (removed 2026-04-22 S56 sweep):
 
 ## 13. Battle Statistics & Lifetime Tracking
 
+S57 wired the `BattleStatTracker` (previously orphaned) into bootstrap + added `stats` / `stats battle` shell helpers + `OnTurnTaken` lifecycle hook. Foundation is live. Per-battle detail hooks (damage, kills, heal, move, ability-usage) are the remaining work — tracked in §0 "Detailed in-battle hooks for BattleStatTracker".
 
-### Per-battle stats
-- [ ] Turns to complete, per-unit damage/healing/kills/KOs, MVP selection
+<!-- "Per-unit career totals + MVP + Post-battle summary + stats command" — SHIPPED S57 (b9a6c59). BattleStatTracker instantiated, lifetime_stats.json persisted, OnTurnTaken credited per wait, MvpSelector picks per battle, RenderBattleSummary / RenderLifetimeSummary exposed via render_battle_summary / render_lifetime_summary bridge actions. Shell: `stats` / `stats battle`. Detailed per-action hooks still needed — see §0. -->
 
-
-
-
-### Lifetime stats (persisted to JSON across sessions)
-- [ ] Per-unit career totals, ability usage breakdown, session aggregates
-
-
-
-
-### Display
-- [ ] Post-battle summary, `stats` command, milestone announcements
+- [~] **Session aggregates + milestone announcements** — Career totals persist per unit via `UnitLifetimeStats` but session-scoped aggregates and milestone callouts ("Ramza reached 100 kills!") aren't surfaced yet. Low priority; foundation's there.
 
 
 ---

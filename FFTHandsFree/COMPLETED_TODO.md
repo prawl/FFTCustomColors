@@ -1504,4 +1504,115 @@ All prices match in-game display exactly.
 **Memory notes updated:**
 - `project_ability_list_cursor_addr.md` — full S55 record: addresses cracked, AOB pattern, why AOB failed structurally, three options to try next.
 
+---
+
+### Session 57 (2026-04-22) — speed pass + lifetime stats + Aurablast fix
+
+**16 commits.** Battle-turn cycle is now dramatically faster across every action. Cumulative speedups: Shout 9010 → 4831ms (-46%), scan_move 289 → 167ms (-42%), keys 53 → 28ms (-47%), battle_wait median 4140 → 2855ms (-31%). Lifetime stat tracker wired. `session_stats` tool ships the slow-culprit report. Aurablast data bug fixed.
+
+**Commits (in order):**
+
+- `b9a6c59` — Wire lifetime stats foundation + `stats` shell helper
+- `3a95585` — Auto-scan on `screen` query when landing on fresh BattleMyTurn
+- `e07b3ab` — Add `session_stats` — per-action latency summary
+- `51759bd` — Fix shell unescape for `stats` and `session_stats`
+- `662ccb3` — Speed up battle_ability; guard against double-act / double-move
+- `b5c8a71` — Speed up battle_wait setup: 4140ms median → 3061ms (-26%)
+- `14ff34f` — Speed up battle_attack setup + adaptive animation wait
+- `a54e943` — Speed up battle_move: 3922ms → 2363ms for short moves (-40%)
+- `1d4b94f` — Tighten DetectScreenSettled: 150ms → 60ms minimum
+- `dc13cbe` — Cut key-press hold time: 50ms → 25ms (compounds across every action)
+- `49f6503` — Skip pre-action scan when turn already scanned; add cast-verify guard
+- `433d8c7` — battle_ability: merge Step 1+3 into unified poll-retry
+- `d9f143a` — Fix Aurablast incident: use FULL skillset list for nav, not learned-filtered
+- `c30ca29` — Tighten per-press delays: NavigateMenuCursor, submenu, ability-list
+- `8ffb292` — Tighten post-action poll intervals: 100ms → 40ms
+- `f1e091d` — Tighten bridge polling fallback: 50ms → 20ms
+
+**Features shipped:**
+
+- [x] **Auto-scan on Battle_MyTurn** (`3a95585`) — screen-query responses auto-scan on fresh BattleMyTurn. Saves a round-trip per turn. Gated on `_turnTracker.ShouldAutoScan` (at most once per friendly turn). Fires only after `DetectScreenSettled` returns so the prior "Reset Move" bug doesn't recur.
+
+- [x] **Latency measurement + `session_stats`** (`e07b3ab`, `51759bd`) — new pure `SessionStatsCalculator` (10 TDD tests) reads the session's JSONL log and emits per-action-type stats sorted by max-latency-desc. Bridge action + `session_stats` shell helper. Immediately surfaced real bugs (Shout 9s, auto-scan-during-formation).
+
+- [x] **Lifetime stats foundation + `stats` shell helper** (`b9a6c59`) — `BattleStatTracker` (previously orphan, 160 lines of tests, never instantiated) wired into `ModBootstrapper`. Save path `claude_bridge/lifetime_stats.json`, loaded at startup. New pure `BattleLifecycleClassifier` (27 TDD tests) edge-triggers StartBattle / EndBattleVictory / EndBattleDefeat from screen transitions. `OnTurnTaken` hook on `battle_wait` credits the active unit. New bridge actions: `render_lifetime_summary`, `render_battle_summary`. Shell: `stats` / `stats battle`. Detailed per-action hooks (damage/kills/etc.) are the remaining work — tracked as S57 follow-up.
+
+- [x] **Post-battle summary display** (`b9a6c59`) — the tracker's `RenderBattleSummary` + `RenderLifetimeSummary` (pre-existing code) now reachable via bridge + shell helper. `stats battle` shows MVP + per-unit contributions.
+
+**Speed pass shipped (compound cuts across the whole battle cycle):**
+
+- [x] **battle_ability speed** (`662ccb3`) — 6 fixed-sleep cuts + new `WaitForActionResolved` accepts terminal states (Victory/Defeat/EnemyTurn/AlliesTurn/GameOver). Shout 9010 → 6107ms in Victory-ending case.
+
+- [x] **battle_wait speed** (`b5c8a71`) — 4 setup sleeps trimmed; poll interval 300 → 150ms. Median 4140 → 3061ms (-26%).
+
+- [x] **battle_attack speed + adaptive animation wait** (`14ff34f`) — 5 setup sleeps trimmed + biggest win: post-attack `Thread.Sleep(2000)` replaced by poll for post-animation resolved state. Saves 800-1300ms per attack.
+
+- [x] **battle_move speed** (`a54e943`) — 500ms post-Enter → 300ms, 500ms post-F → 150ms. 3922 → 2363ms on short moves.
+
+- [x] **DetectScreenSettled floor cut** (`1d4b94f`) — 150ms (3× 50ms stable) → 60ms (2× 30ms stable). Compounds on every response. scan_move 289 → 172ms.
+
+- [x] **Key-press hold time** (`dc13cbe`) — `InputSimulator.SendKeyPressToWindow` key-down → key-up interval 50ms → 25ms. keys median 53 → 28ms (-47%). Compounds across every menu nav.
+
+- [x] **Skip pre-action scan when turn already scanned** (`49f6503`) — new `BattleTurnTracker.WasScannedThisTurn` property. When caller already ran `screen` (which auto-scans), battle_move/ability/attack skip their pre-action scan. Saves ~170ms per action = ~340ms per 2-3-action turn.
+
+- [x] **Pre-cast ability verification guard** (`49f6503`) — reads ui= right before Enter in battle_ability. If ui= is recognizable and doesn't match the requested ability, fails with clear error instead of casting wrong thing. Best-effort: ui= isn't always populated on ability-list states, so null proceeds; clear mismatch aborts.
+
+- [x] **Already-acted / already-moved guards** (`662ccb3`, `a54e943`) — battle_ability/attack refuse up-front when `BattleActed==1` with "You've already acted this turn. You cannot perform another action." battle_move refuses when `BattleMoved==1`. Fast-fail instead of stalling in a grayed menu.
+
+- [x] **battle_ability Step 1+3 merge** (`433d8c7`) — unified poll-with-retry replaces old fixed-sleep + one-shot check + expensive retry. Fast case: ~150-300ms (vs 650ms). Retry case: ~900ms (vs 2000ms).
+
+- [x] **Per-press delay cuts** (`c30ca29`) — NavigateMenuCursor 150 → 80ms, submenu Down 200 → 100ms, ability-list nav 150 → 80ms. Compounds across every menu-heavy action.
+
+- [x] **Post-action poll interval cut** (`8ffb292`) — `WaitForTurnState` / `WaitForActionResolved` 100 → 40ms. 2.5× faster state-change detection.
+
+- [x] **Bridge polling fallback cut** (`f1e091d`) — CommandWatcher fallback poll 50 → 20ms. Self-target post-cast `Thread.Sleep(300)` → 150ms.
+
+**Correctness fix:**
+
+- [x] **Aurablast incident** (`d9f143a`) — `battle_ability "Chakra"` on Kenrick was casting **Aurablast** instead. Root cause: `GetAbilityListForSkillset` returned a learned-filtered list but the game's ability submenu shows every ability of the skillset (unlearned ones greyed but still occupying their slot). Kenrick's filtered Martial Arts was 4 entries; the game's full list is 8. Chakra at bridge-index 2 was game-index 6. Down×2 landed on Aurablast. Fix: return the full canonical skillset list; learned-filtering remains correct for the user-facing `abilities[]` array (per-unit decision aid).
+
+  **Live-verified 7/7 across units/skillsets/depths:** Aurablast on Dryad (Lloyd, MA idx 2), Haste on self (Wilham, TM idx 0), Tailwind on Lloyd (Ramza, Mettle idx 3), Protect on Ramza (Kenrick, WM idx 8), Slowja on Dryad (Wilham, TM idx 3), **Doom Fist on enemy** (Lloyd, MA idx 4 — previously entirely absent from filter), **Holy on undead Bonesnatch** (Kenrick, WM idx 14 — deepest index).
+
+**Measured speedups (baseline → after S57):**
+
+| Action | Before | After | Delta |
+|---|---|---|---|
+| `battle_ability` Shout | 9010ms | **4831ms** | **-46%** |
+| `battle_wait` median | 4140ms | **2855ms** | **-31%** |
+| `scan_move` | 289ms | **167ms** | **-42%** |
+| `keys` | 53ms | **28ms** | **-47%** |
+| `session_stats` | 164ms | **44ms** | **-73%** |
+| `battle_move` (short) | 3922ms | **2363ms** | **-40%** |
+
+**Technique discoveries worth propagating:**
+
+- **Key-press hold time 50 → 25ms** was the single highest-compound cut. 60fps is 16.7ms/frame; 25ms is ~1.5 frames, well above the game's key-read threshold.
+- **`WaitForActionResolved` > `WaitForTurnState`** for post-cast settles — accepts terminal states (Victory/Defeat/EnemyTurn/etc.) so we don't pay a 2000ms timeout when the cast ended the battle.
+- **Full-skillset-list nav** is the permanent rule — the game's ability submenu shows every ability of the skillset (unlearned greyed). Filtering corrupts index math.
+- **Stacked-settle pattern:** `SendKey + Thread.Sleep(500) + poll-for-state-change` is redundant. Let the poll be authoritative; keep a minimal (150ms) input-debounce floor.
+- **`session_stats` IS the bug-finder.** Sort-by-max surfaces outliers directly.
+- **`_turnTracker.WasScannedThisTurn` gate** across pre-action scans saves ~340ms per typical turn.
+
+**Things that DID work (repeat-this list):**
+
+- **Measure first, cut second.** `session_stats` pointed the scalpel at specific action types. Every cut was validated live before proceeding.
+- **Poll-with-adaptive-retry > fixed sleep + one-shot check + expensive retry.** The Step 1+3 merge is the template for future settle-retry logic.
+- **Pure-helper TDD before wiring.** `BattleLifecycleClassifier` (27 tests), `SessionStatsCalculator` (10 tests), both TDD'd before wiring.
+- **7/7 live verification sweep** proved the Aurablast fix across varied unit/skillset/depth combinations. Data-correctness fixes need a sweep, not a spot-check.
+- **Honest "fail-fast" on unverifiable state.** Pre-cast verify aborts when ui= shows the wrong ability — better than casting wrong.
+
+**Things that DIDN'T work (don't-repeat list):**
+
+- **Cutting the line-1028 sleep to 150ms alone** caused Step 3 retry to fire often (adding 1500ms). Fix: merge Steps 1+3 into a unified poll-retry — only then the aggressive cut is safe.
+- **Strict "ui= must match" verification** fails on ability-list states because ui= is widget-driven via `_battleMenuTracker` (not memory-resident). Left it as best-effort: fail only on clear mismatch, proceed on null.
+- **Building a `BattleSituation` aggregator** (nearest enemy, hurt allies) — drafted, then reverted per user direction. Existing per-unit distance in scan output is enough.
+- **DLC item spawn side-quest** — confirmed items aren't in memory or on disk; no DLC content to spawn. Skipped per user direction.
+- **Post-Victory LoadGame misdetect investigation** — paused per user direction. Data captured.
+
+**Memory notes added/updated:**
+- `project_s57_speed_pass.md` — new: consolidated speed-pass techniques + measurement patterns.
+- `project_aurablast_learned_filter_bug.md` — new: root cause + fix for the Aurablast incident; permanent rule that nav uses full skillset list.
+- `feedback_session_stats_is_the_bug_finder.md` — new: `session_stats` as the default end-of-session audit, paid for itself within minutes.
+- `MEMORY.md` — index updated with S57 entries.
+
 **Tests:** 3893 passing (+15 this slice: 3 scan_diff identity, 12 AbilityListCursorNavPlanner, +1 strict-mode allowlist for `find_monotonic`).
