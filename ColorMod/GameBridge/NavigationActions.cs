@@ -607,10 +607,15 @@ namespace FFTColorCustomizer.GameBridge
                         continue;
                     }
 
-                    // Friendly unit's turn — we're done
-                    if (current.Name == "BattleMyTurn")
+                    // Friendly unit's turn — we're done. BattleMyTurn is the
+                    // clean action-menu state. Also accept BattleActing (unit
+                    // post-move, action pending) since auto-acted allies (e.g.
+                    // Auto-battle setting, or Haste-driven double turns) can
+                    // reach a player turn that's already mid-action when our
+                    // poll catches it.
+                    if (current.Name == "BattleMyTurn" || current.Name == "BattleActing")
                     {
-                        response.Info = $"Friendly turn after {sw.ElapsedMilliseconds}ms";
+                        response.Info = $"Friendly turn after {sw.ElapsedMilliseconds}ms (screen={current.Name})";
                         break;
                     }
 
