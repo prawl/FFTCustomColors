@@ -5,6 +5,19 @@ Items fully shipped ([x]) across sessions. Kept out of TODO.md to make the activ
 
 ---
 
+### Session 56 (2026-04-22) — TODO sweep: items verified shipped but still in active queue
+
+No new feature code landed this session — housekeeping pass on TODO.md to surface items that were shipped earlier but never archived. Each bullet below names the in-code fix location so a future auditor can re-verify quickly.
+
+- [x] **`battle_ability` response says "Used" for cast-time abilities** — the verb switches via `loc.castSpeed > 0 ? "Queued" : "Used"` at `NavigationActions.cs:1167`; `ctSuffix` appends `(ct=N)` when queued. (Was on the 2026-04-12 S2 bug list; shipped long before S56.)
+- [x] **Abilities submenu remembers cursor position (for `battle_attack`)** — force-to-Attack reset shipped at `NavigationActions.cs:670-697` in the `BattleAttack` path. `FindSkillsetIndex(uiSubmenu, ...)` measures current cursor; Up-wraps to 0 before Enter. The REMAINING battle_ability off-by-one (different path) is tracked as the S55 🔴 BLOCKING item, not this one.
+- [x] **BattleVictory/BattleDesertion misdetect as BattlePaused (Orbonne slot0=0x67)** — Orbonne Victory + Orbonne Desertion variant rules at `ScreenDetectionLogic.cs:500-525` (`orbonneDesertion` pattern). Pinned with regression tests `DetectScreen_Desertion_Orbonne_Slot0_0x67_ShouldReturnBattleDesertion` and `DetectScreen_Victory_Orbonne_Slot0_0x67_ShouldReturnBattleVictory`.
+- [x] **New state: BattleChoice — mid-battle objective choice screen** — state exists; detection wires `eventHasChoice` (from .mes 0xFB parse) + runtime `choiceModalFlag` byte at `ScreenDetectionLogic.cs:344-378`. NavigationPaths for Yes/No/CursorUp/Down populate. `BattleChoiceEventIds.KnownEventIds` pins known choice events. (Per-option text decode + more event-catalog entries remain — tracked as separate items in §12.)
+- [x] **Wire `AbilityCursorDeltaPlanner.Decide` into the ability-list scroll loop** — wired at `NavigationActions.cs:1127`; trust-rules gate retry math (sign match + magnitude guard + expected-magnitude check). S55 reverts did NOT touch this; the Decide call is live. (The un-wired planner is `AbilityListCursorNavPlanner.Plan` — a different helper — tracked separately.)
+- [x] **Split KEY_DELAY into nav vs transition** — `KeyDelayClassifier` shipped (`ColorMod/GameBridge/KeyDelayClassifier.cs`): 200ms nav (arrow keys) / 350ms transition (Enter/Esc/Tab). Called from `NavigationActions.cs:5250` via `KeyDelayClassifier.DelayMsFor(vk)`.
+
+---
+
 ### Session 29 (2026-04-17) — BFS tile cost rules + per-unit heap Move/Jump
 
 Commits: `925de71` (pt.1 TDD ActiveUnitSummaryFormatter), `5091b61` (pt.2 wire activeUnitSummary into BattleMyTurn + shell + heldCount + Battle* branch widening), `320ec7a` (pt.3 TargetingLabelResolver fixes BattleAttacking ui=), `abc2b3c` (pt.4 richer MoveGrid timeout diagnostics), `49fef3b` (pt.5 TDD TileEdgeHeight), `cff6c99` (pt.6 integrate TileEdgeHeight into MovementBfs + stricter JobCursor liveness), `49fd756` (pt.7 TODO updates), `84530b5` (pt.8 unify scan_move BFS to shared MovementBfs function), `ad5acce` (pt.9 log root-cause finding for BFS miscounts), `e4ba516` (pt.10 ally pass-through + depth-based MoveCost + axis-continue), `3a57caa` (pt.11 read per-unit Move/Jump from heap struct), `8afd133` (pt.12 dry-run arg on open_\* helpers), `8354f12` (pt.13 JobCursor bidirectional liveness + EqA re-fire).

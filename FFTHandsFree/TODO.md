@@ -83,7 +83,13 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Session 55 — ability nav resolver (2026-04-22)
 
-- [ ] **🔴 BLOCKING — `battle_ability` picks the wrong ability** — Pre-S55 blind reset code (`Up×(listSize+1)` followed by `Down×index`) is back in place after S55 reverted the AOB experiment. The Up math is wrong by 1 (Up at idx 0 wraps to last, so listSize+1 lands at last). Symptom: requesting Haste casts Meteor; requesting Cure opens Attack-targeting. **Recommended path (per `memory/project_ability_list_cursor_addr.md` "What to try NEXT"):** option 3 — escape fully out (`Escape Escape`) before each ability nav so submenu+list both reset to known idx 0. Cost ~500ms vs flaky. Code site: `NavigationActions.cs:1093` (`int resetUps = listSize + 1`).
+- [ ] **🔴 BLOCKING — `battle_ability` picks the wrong ability (tracker)** — Pre-S55 blind reset (`Up×(listSize+1)` then `Down×index`) at `NavigationActions.cs:1093` is back in place after S55 reverted the AOB experiment. Up at idx 0 wraps to last, so `listSize+1` Ups land at last not 0 (off-by-one). Symptom: Haste → Meteor; Cure → Attack-targeting. **Fix plan: escape-to-known-state** per `memory/project_ability_list_cursor_addr.md` option 3. Broken into atomic subtasks below.
+
+- [ ] **Fix 🔴 step 1: extract a `BattleAbilityEntryReset` pure helper** — Pure class that takes a current screen name + MenuDepth and emits the key sequence needed to return to BattleMyTurn with cursor at action-menu idx 0. TDD cases: already on BattleMyTurn → `[]`; on BattleAbilities submenu → `[Escape]`; on ability-list inside submenu → `[Escape, Escape]`; deeper (targeting) → extra Escape. Ship with 4+ tests; do NOT wire yet.
+
+- [ ] **Fix 🔴 step 2: replace blind Up-reset with escape-to-known-state** — In `NavigationActions.cs` `BattleAbility` (around line 1085-1098), remove the `Up×(listSize+1)` blind reset and call the `BattleAbilityEntryReset` sequence instead. Then re-Enter into Abilities → submenu → list from known idx 0. Cost ~500ms but correct. Live-verify: request Cure → casts Cure, request Haste → queues Haste.
+
+- [ ] **Fix 🔴 step 3: wire `AbilityListCursorNavPlanner.Plan(currentIdx=0, ...)`** — After step 2 lands, the cursor is reliably at idx 0, so `AbilityListCursorNavPlanner.Plan(0, targetIdx, listSize)` can emit the shorter Up-vs-Down path (saves presses for abilities in the bottom half of long lists like Black Mage's 16 spells). Replaces plain `Down×abilityIdx`.
 
 - [ ] **AOB resolver is a research dead-end without pointer chains** — S55 spent ~2h on `<listSize_u64> + 0x1407FC6D8 vtable` AOB; worked once, then failed because the cursor's offset within the widget shifts between widget allocations (sometimes +0x10, sometimes pushed back by a second-vtable insertion). Reverted commits `7def3c2`, `892f979`, `b4d7d98`. **Don't re-attempt without first solving** the structural-offset instability — see memory note for full failure analysis. Pointer-chain (Cheat Engine pointer scan) is the only path that survives widget reallocation.
 
@@ -92,7 +98,9 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **kill_one player persistence regression** — Session 52 found `kill_one Wilham` wrote HP=0 + dead-bit to master HP slot `0x14184FEC0` but after a turn cycle Wilham showed HP=477 again. Session-49 docs say master is authoritative but for PLAYERS the write reverts. Investigate whether there's a per-frame refresh from roster into master for player slots specifically. See `memory/project_deathcounter_battle_array_scan.md`.
 
-- [ ] **Per-unit casting ct hunt — second attempt** — Session 52 deferred because `search_bytes` doesn't expose `broadSearch`. Fix: add `broadSearch` param to the bridge action, retry HP=MaxHp fingerprint hunt for Kenrick's heap struct. See `memory/project_per_unit_ct_hunt_deferred.md`.
+- [ ] **Code-only: add `broadSearch` param to `search_bytes` bridge action** — `Explorer.SearchBytesInAllMemory(pattern, max, min, max, broadSearch)` already supports it (MemoryExplorer.cs:222); the `search_bytes` case in `CommandWatcher.cs:2400` doesn't pass it through. Add a `broadSearch` field to `CommandRequest`, thread it through the two SearchBytesInAllMemory call sites (2420 + 2421), pin with a unit test confirming broadSearch=true gets forwarded. Unblocks the per-unit-ct hunt below.
+
+- [ ] **Per-unit casting ct hunt — second attempt** — Blocked on the previous item. Once `broadSearch` is exposed on `search_bytes`, retry HP=MaxHp fingerprint hunt for Kenrick's heap struct. See `memory/project_per_unit_ct_hunt_deferred.md`.
 
 
 ### Session 49 — follow-ups (2026-04-20)
@@ -104,14 +112,13 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Verify cast queue at `0x14077D220`** — Session 49 found 3 u32 records with `(u8, 0xB0, 0x00, 0x00)` pattern after queuing Curaja ct=10. Bytes didn't tick across polling — may not be the ct counter, or ct only advances during enemy/ally turns (not player's turn). Next-session approach: queue a spell on Kenrick, end Lloyd's turn (so CT advances), immediately read `0x14077D220`, wait another turn, read again; expect monotonic decrement. See `memory/project_charging_ability_queue.md`.
 
-- [ ] **Hunt Zodiac byte via heap-struct scan** — needs 2 known-different-zodiac party members loaded. Open CharacterStatus for unit A (read zodiac from UI), snapshot heap, switch to unit B, note zodiac, snapshot heap, diff for bytes that went zodiacA → zodiacB. Cross-validate on a third unit. See `memory/project_zodiac_heap_hunt_deferred.md`.
+<!-- "Hunt Zodiac byte via heap-struct scan" — broken down into strategies A-E under §1 Tier 4 "Zodiac byte hunt strategy A-E". Duplicate removed. -->
 
 - [~] **BattleVictory post-banner false-GameOver edge** — Deferred until a real repro surfaces. Current `battleTeam==0` guard handles the known cases (session 49 Kenrick counter-kill). Regression test `DetectScreen_VictoryWithRamzaDying_TeamZeroGuard_ReturnsBattleVictory` pins current behavior. If a team=2 NPC counter-kill scenario gets captured, swap the guard for a dedicated encA/encB condition.
 
 
 ### Session 47 — follow-ups (2026-04-19)
 
-- [ ] **Wire `AbilityCursorDeltaPlanner.Decide` into the ability-list scroll loop** — Pure planner shipped session 47, **was wired then reverted in session 55** along with the rest of the broken cursor-resolver work. Code currently calls blind Up×N + Down×index (off-by-one bug — see "🔴 BLOCKING" item above). To re-attempt: wire AbilityCursorDeltaPlanner once a reliable real-cursor source exists (today's blind-reset has nothing to feed the planner).
 - [ ] **🆕 Wire `AbilityListCursorNavPlanner.Plan` once real-cursor source exists** — Session 55 shipped this pure planner with 12 tests (`AbilityListCursorNavPlanner.Plan(currentIdx, targetIdx, listSize)` returns shorter Down/Up direction with wrap). Wire once the cursor-byte address is available reliably (option 3 from `memory/project_ability_list_cursor_addr.md` — escape-and-re-enter from known idx 0 — would feed currentIdx=0 trivially).
 
 
@@ -146,15 +153,13 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 
 - [ ] **BattleChoice event catalog — add more entries as encountered** — Session 47 shipped `BattleChoiceEventIds.KnownEventIds` + regression-pin tests. Mandalia Plain event 16 ("Defeat the Brigade" / "Rescue captive") is the only catalogued entry. Detection uses the signal-based path (eventHasChoice + choiceModalFlag at ScreenDetectionLogic.cs:347) which works for any event with those signals, but the catalog is a documentation + regression pin. As new choice events are encountered in live play, add their IDs to the catalog and confirm detection classifies them correctly.
 
-- [ ] **Detection leaks CharacterStatus / CombatSets during battle_wait animations** — session_tail shows `CharacterStatus → BattleMyTurn` transitions with 15-23s latency during battle_wait. False-positive on facing-confirm animations.
+<!-- Moved to Session 31 follow-ups below (has richer detail). Duplicate removed. -->
 
 - [ ] **Cutscene vs BattleDialogue are byte-identical** — 10+ datapoints session 44: rawLoc, battleTeam, acted/moved, eventId range all overlap. No main-module discriminator found. eventId-whitelist approach (as with BattleChoice) is the likely path here too — catalog which eventIds are "cinematic-style" (no battleboard) vs "mid-battle text."
 
-- [ ] **Replace fixed post-key delay with poll-until-stable** — Currently a fixed 350ms sleep in detection fallback. Should poll-until-stable. Large refactor, deferred pending safer repro harness.
+- [ ] **Replace fixed post-key delay with poll-until-stable** — Currently a fixed 350ms sleep in detection fallback. Should poll-until-stable. Large refactor, deferred pending safer repro harness. S29 `KeyDelayClassifier` nav/transition split (200/350ms) is the shipped partial win.
 
-- [ ] **⚠ UNVERIFIED: `activeUnitSummary` on BattleMoving/BattleCasting/BattleAbilities/BattleActing/BattleWaiting** — Shell compact-render match widened session 29. Confirmed on MyTurn/Attacking. Other states need quick eye-check during battle.
-
-- [ ] **Battle state verification — BattleActing** — Session 45 live-verified BattleAlliesTurn at Zeklaus (Cornell as guest). BattleActing remains unverified — transient state, hard to catch mid-animation.
+<!-- `activeUnitSummary` on BattleMoving/BattleCasting/BattleAbilities/BattleActing/BattleWaiting live-verify: kept in Session 29 follow-ups below; duplicate removed. `Battle state verification — BattleActing` also removed — covered by the BattleActing live-verify item in Session 33 batch 2 below. -->
 
 
 ### Session 44 — urgent bugs (new)
@@ -165,7 +170,13 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 ### Session 33 batch 2 — deferred (needs live battle / environment I can't verify)
 
 
-- [~] **Live-verify `execute_action` responses include `ui=` field across battle screens — MOSTLY DONE (session 44 parts 1+5)** — Live-tested in a Mount Bervenia random encounter. Findings: **ui POPULATES** on `BattleMyTurn` ("Move"/"Abilities"/"Status"), `BattleMoving` (tile "(8,7)"), `BattleAbilities` ("Attack"), `BattleAttacking` ("Attack" via tracker, or "(x,y)" via new cursor fallback). **`BattleStatus` fix shipped + root-cause bug found + fixed**: A hidden "EqA-promote" block at CommandWatcher:6190 was unconditionally renaming `screen.Name` from `BattleStatus` → `EquipmentAndAbilities` whenever the mirror matched the active unit's equipment — stripping the battle context. Fix: exclude `BattleStatus` from promotion. NEW pure-class `BattleStatusUiResolver` + 2 tests; `screen.UI` set from `_cachedActiveUnitName`. Post-fix log confirmed `ui='Kenrick'` set correctly inside CommandWatcher. **Remaining for next session**: BattlePaused ui decode (cursor byte CANDIDATES found — see next line). **BattleActing / BattleCasting / BattleWaiting** not exercised this session — TargetingLabelResolver change covers BattleCasting structurally. **Deprioritized (user 2026-04-18)**: the `_cachedActiveUnitName` cache-revert race between `execute_action Status` and the subsequent `screen` call — compact shell rendering already shows "Kenrick" via ASUM field so user-visible behavior is fine; do not pick up again without a direct user ask.
+- [ ] **Live-verify `ui=` on BattleActing** — TargetingLabelResolver covers BattleCasting structurally; BattleActing + BattleWaiting never exercised live. Needs one call on each state during a battle, eyeball the label.
+
+- [ ] **Live-verify `ui=` on BattleWaiting** — Same as above; pair-up with BattleActing verification in one session.
+
+- [ ] **Live-verify `ui=` BattlePaused cursor decode** — cursor byte candidates found session 33; decode still awaits live capture during a facing-confirm animation (see memory `project_battle_pause_cursor.md`). Absorbs the `BattlePaused ui decode` bit from the old Session 33 compound TODO.
+
+<!-- Session 33 batch 2 compound TODO "Live-verify execute_action ui= across battle screens" split into the three atomic live-verify items above. Shipped parts (BattleMyTurn/BattleMoving/BattleAbilities/BattleAttacking/BattleStatus + BattleStatusUiResolver) archived to COMPLETED_TODO.md. Deprioritized `_cachedActiveUnitName` race removed — user told us not to pick up without direct ask (2026-04-18). -->
 
 - [ ] **IC remaster deathCounter offset hunt** — PSX had it at ~0x58-0x59 in battle unit struct. Needs live battle with a KO'd unit to find the IC equivalent. Blocks KO/crystallize-aware tactics. Absorbs dupes at former lines 311 ("Find IC remaster deathCounter offset") and 318 ("Read death counter for KO'd units") — same task, closed session 44 pt 8 dedup.
 
@@ -205,10 +216,8 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 - [ ] **Find a byte (or compound signal) that encodes the game's valid-tile count** — Session 28 proved `0x142FEA008` is NOT the count. `LogBfsTileCountMismatch` call sites in `CommandWatcher.cs` are commented out waiting for a real signal. Plan: user visual count for 3-5 unit/map combos → module snapshot before/after Move mode entry → scan diff for any byte/u16 whose post-entry value matches the real count on ALL combos. `MoveTileCountValidator` + `DetectedScreen.BfsMismatchWarning` + shell `⚠` rendering are all in place, waiting.
 
 
-### Session 27 — next-up follow-ups
+<!-- Session 27 Zodiac heap-struct hunt broken down into atomic strategies A-E under §1 Tier 4 "Zodiac byte hunt strategy A/B/C/D/E". -->
 
-
-- [ ] **Zodiac: try heap-struct hunt (the 0x258 slot is confirmed empty)** — session 27 ruled out the static roster slot across 9 encodings (`memory/project_zodiac_not_in_slot.md`). Three productive next attempts documented: (a) oscillation diff while cycling PartyMenu sort order (if a "sort by zodiac" option exists), (b) reverse from battle damage math — set up a zodiac-opposite attacker/target pair, read damage modifier to back out both zodiacs, (c) dump HoveredUnitArray struct beyond +0x37 (currently we only decode HP/MP); zodiac may live in the per-hover widget at a higher offset.
 
 
 ### Session 20 — state detection + EqA resolver
@@ -217,13 +226,10 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 - [ ] **BattleSequence detection: find memory discriminator** — Session 21 built full scaffolding (whitelist of 8 locations, NavigationPaths, SM sync, LocationSaveLogic) but detection DISABLED because BattleSequence minimap is byte-identical to WorldMap at those locations across all 29 detection inputs. Whitelist approach false-triggers on fresh boot/save load at sequence locations. Scaffolding ready in ScreenDetectionLogic.cs (commented out rule + `BattleSequenceLocations` HashSet). Next step: heap diff scan while ON the minimap vs WorldMap at same location to find a dedicated flag. Locations: Riovanes(1), Lionel(3), Limberry(4), Zeltennia(5), Ziekden(15), Mullonde(16), Orbonne(18), FortBesselat(21).
 
 
-- [ ] **New state: BattleChoice — mid-battle objective choice screen** — Some battles pause and present 2 options (e.g. "We must press on, to battle" vs "Protect him at all costs"). Selecting an option changes the battle objective (e.g. from "defeat all" to "protect X"). Needs memory investigation to find a discriminator byte. Likely paused=1 with a unique submenu/menuCursor combo.
-
-- [ ] **BattleVictory/BattleDesertion misdetect as BattlePaused** — Session 21 at Orbonne Monastery: slot0=0x67 (not 255) during Victory and Desertion screens. `unitSlotsPopulated` (slot0==255) is false, so `postBattle` and `postBattlePausedState` both fail, and the rules fall through to BattlePaused. Fix: relax the Victory/Desertion rules to not require unitSlotsPopulated — use `battleModeActive && actedOrMoved && battleMode == 0` instead. Inputs captured: party=1, ui=1, slot0=0x67, slot9=0xFFFFFFFF, battleMode=0, paused=1, submenuFlag=1, actedOrMoved=true, eventId=303.
 
 
 
-- [ ] **Replace fixed post-key delay with poll-until-stable** — Currently a fixed 350ms sleep in the detection fallback path. Replace with: read state, wait 50ms, read again, if identical return, else keep polling up to 500ms. **Session 24 note:** attempted but punted — timing refactors are hard to validate without a safe repro harness, and an unrelated crash during chain-nav testing showed how fragile the current timing sandwich is. Needs a way to measure "did a key drop?" without firing more keys. Consider wiring up the `[i=N, +Nms]` timing log into a per-call verify-before-advance pattern before retry. Alternative cheaper win: split `KEY_DELAY` into nav (200ms) vs transition (350ms+) per TODO #82.
+<!-- Moved to consolidated State Detection block above (§0); duplicate removed. Session 29 nav/transition KEY_DELAY split already shipped via `KeyDelayClassifier` (200ms nav / 350ms transition). -->
 
 
 
@@ -302,7 +308,15 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **Unit names — enemies** [Identity] — Enemy display names not found in memory. May need NXD table access or glyph-based lookup.
 
 
-- [ ] **Zodiac byte memory hunt for generics/Ramza** [Identity] — Story-character zodiacs shipped session 19 via hardcoded nameId table (`ZodiacData.cs`, commit 1674bb6). Generics and Ramza return null. Hunt attempted offsets 0x00-0x100 with 4 anchor points (Agrias=Cancer, Mustadio=Libra, Orlandeau=Scorpio, Cloud=Aquarius); no match found. Retry strategies: (a) nibble-packed encoding — search half-bytes instead of bytes, (b) outside the 0x258 slot stride — try a parallel array, (c) non-zero-indexed ordering — try +1, +3, *2 variants.
+- [ ] **Zodiac byte hunt strategy A: nibble-packed encoding** [Identity] — Story-character zodiacs shipped S19 via `ZodiacData.cs` nameId table; generics/Ramza return null. Prior byte-aligned hunt (offsets 0x00-0x100, 4 anchors: Agrias=Cancer / Mustadio=Libra / Orlandeau=Scorpio / Cloud=Aquarius) found nothing. Retry: search half-byte nibbles (2 zodiacs per byte) instead of full bytes.
+
+- [ ] **Zodiac byte hunt strategy B: parallel array outside 0x258 slot stride** [Identity] — Prior hunt assumed zodiac sits inside the 0x258 roster slot; may instead live in a separate parallel array keyed by unit index. Dump heap near roster base for byte sequences matching the 4-anchor zodiac pattern.
+
+- [ ] **Zodiac byte hunt strategy C: non-zero-indexed ordering** [Identity] — Prior hunt assumed Sign enum matches in-game byte values directly. Retry with offset variants (+1, +3, *2) on the anchor pattern before declaring a miss.
+
+- [ ] **Zodiac byte hunt strategy D: heap-struct hunt via per-unit widget** [Identity] — Session 27 approach: dump HoveredUnitArray struct beyond +0x37 (HP/MP decoded range); zodiac may live at a higher offset in the per-hover widget. Requires 2 different-zodiac party members + CharacterStatus open for each to diff. See `memory/project_zodiac_heap_hunt_deferred.md`.
+
+- [ ] **Zodiac byte hunt strategy E: reverse from damage math** [Identity] — Set up a zodiac-opposite attacker/target pair (e.g. Aries attacker + Libra defender), read the damage modifier applied in-game, back out both zodiacs from the multiplier. Cross-validate on a second known-pairing. See `memory/project_zodiac_heap_hunt_deferred.md`.
 
 - [ ] **Zodiac compatibility damage multiplier** [Combat] — Once zodiac is readable for every unit, wire `ZodiacData.GetOpposite` + Good/Bad compatibility tables into damage preview calculations. Multipliers per wiki: Best 1.5x, Good 1.25x, Bad 0.75x, Worst 0.5x. Requires projected-damage preview work (separate task) to ship first.
 
@@ -310,7 +324,13 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ### Tier 5 — Speed optimization
 
-- [ ] **`execute_turn` — return full post-turn state** [Execution] — Orchestrator + sub-action dispatch shipped session 47 (TurnPlan + ExecuteTurn). Remaining: capture per-step HP deltas + movement + kills, roll into a bundled `PostAction` summary on the final response. Currently only the last step's PostAction is returned.
+- [ ] **`execute_turn`: accumulate per-step HP deltas** [Execution] — Today `ExecuteTurn` (CommandWatcher.cs:3818) returns only the final sub-step's `PostAction`. Pure-extract an `ExecuteTurnResultAccumulator` that merges HP deltas across move / ability / wait sub-steps. Pin via unit tests on the accumulator before wiring.
+
+- [ ] **`execute_turn`: accumulate per-step movement (pre/post x,y)** [Execution] — Add `PreMoveX/Y` + `PostMoveX/Y` to the accumulated `PostAction`. Source: `_postMoveX/_postMoveY` already captured at CommandWatcher.cs:3616. Same accumulator as the HP-delta item.
+
+- [ ] **`execute_turn`: accumulate per-step kills** [Execution] — If any sub-step kills a unit, include the killed unit's name/team/job in the accumulated summary. Requires diffing `scan_units` before vs after the final sub-step.
+
+<!-- Old compound "execute_turn return full post-turn state" split into the three atomic items above. Session 47 TurnPlan + ExecuteTurn orchestrator already shipped; the three remaining pieces are pure data aggregation. -->
 
 
 
@@ -319,7 +339,11 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ## 2. Story Progression (P0, BLOCKING)
 
-- [ ] **Orbonne Monastery story encounter** — Loc 18 has a different encounter screen. Need to detect and handle it.
+- [ ] **Orbonne Monastery (loc 18) encounter: capture detection inputs** — Loc 18 has a different encounter screen than regular battlegrounds. Step 1: travel to Orbonne, capture full detection inputs (rawLocation, encA/encB, battleMode, paused, submenuFlag, eventId, battleTeam) at each transition (WorldMap→Encounter→Formation→BattleMyTurn). Save snapshot JSON to memory note.
+
+- [ ] **Orbonne Monastery (loc 18) encounter: add detection rule** — Based on inputs from the capture step, add a discriminator rule to `ScreenDetectionLogic.cs`. Pin with a regression test in `ScreenDetectionTests.cs`.
+
+- [ ] **Orbonne Monastery (loc 18) encounter: wire ValidPaths** — Once detected, add `NavigationPaths` entries so `execute_action` can fire the correct Fight/Flee/Advance actions.
 
 
 
@@ -391,10 +415,13 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 
 
-- [ ] **`Battle_Objective_Choice`** [P0 — gameplay-affecting] — some story battles open with a pre-battle dialogue that forks the win condition. Examples recalled from prior playthroughs: "We must save Agrias, protect her at all cost" vs. "Focusing on defeating all enemies is priority". Picking the first changes the objective to `Protect Agrias — battle ends if she's KO'd`; picking the second leaves the standard `defeat all enemies` objective. New state distinct from `Battle_Dialogue` (which is advance-only): `Battle_Objective_Choice` with two Y/N-style options, `ui=<option A text>` / `ui=<option B text>` based on cursor. ValidPaths: `Confirm` (Enter), `CursorUp/Down` (or Left/Right — verify live). Memory scan needed: (a) discriminator for this modal vs. regular `Battle_Dialogue`, (b) cursor index, (c) option text scrape (same FString problem as shop items). Priority HIGH because picking blindly can permanently fail the battle — Claude needs to SEE the options and decide.
+<!--
+`Battle_Objective_Choice` — superseded by the shipped `BattleChoice` state. Detection wires `eventHasChoice` (from .mes 0xFB parse) + runtime `choiceModalFlag` (ScreenDetectionLogic.cs:344-378). Remaining work is event-catalog entries (see §0 "BattleChoice event catalog") and per-option cursor decode (tracked separately below).
+-->
 
+- [ ] **BattleChoice: per-option cursor decode** — `BattleChoice` state exists and ValidPaths populate Yes/No, but `ui=<option text>` doesn't surface the currently-highlighted option text. Needs the same FString problem as shop items — the option glyph table isn't located yet. Without it, Claude can't see WHICH option the cursor is on until it Enters. Priority HIGH because wrong choice can fail a battle objective.
 
-- [ ] **`Recruit_Offer` modal** — end-of-battle: a defeated/befriended enemy offers to join your party (e.g. "Orlandeau wants to join your party"). Accept adds them to the roster; decline loses them forever (story-character one-shot). Possibly uses the same detection as `Battle_Objective_Choice` if both are driven by the same underlying modal system — check during scanning. New state: `Recruit_Offer` with `ui=Accept` / `ui=Decline`, ValidPaths `Confirm` / `Cancel` / `CursorUp/Down`. Also HIGH priority: wrong choice loses a unit permanently.
+- [ ] **`Recruit_Offer` modal** — end-of-battle: a defeated/befriended enemy offers to join your party (e.g. "Orlandeau wants to join your party"). Accept adds them to the roster; decline loses them forever (story-character one-shot). Likely uses the same BattleChoice modal shape; confirm during the next recruitable enemy encounter (Orlandeau mid-game earliest). New state: `Recruit_Offer` with `ui=Accept` / `ui=Decline`, ValidPaths `Confirm` / `Cancel` / `CursorUp/Down`. HIGH priority — wrong choice loses a unit permanently.
 
 
 
@@ -404,23 +431,19 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - Menu cursor unreliable after animations
 
 
-### Screen Detection Rewrite (P0) — identified 2026-04-14 audit
-Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the detection layer is the root cause of most UI navigation bugs ("Auto-Battle instead of Wait", cursor desync, broken world-side detection). Full data in `detection_audit.md` in repo root. Key findings in `BATTLE_MEMORY_MAP.md` §12.
+### Screen Detection Rewrite (P0) — from 2026-04-14 audit
 
-**Root causes:**
-- `menuCursor` is overloaded (different meaning per context: action menu vs submenu vs targeting vs pause)
-- `battleMode` is overloaded (encodes cursor-tile-class, not screen submode)
-- `encA/encB` are noise counters — every rule using them is a coincidence-detector
-- `gameOverFlag` is sticky process-lifetime — rules requiring `gameOverFlag==0` fail after first GameOver
-- `rawLocation==255 → TitleScreen` rule preempts valid world-side screens (WorldMap/TravelList/PartyMenu all fall through wrongly)
-- Two distinct TitleScreen states exist (fresh process vs post-GameOver) with different memory fingerprints
+Context: 45-sample audit of `ScreenDetectionLogic.Detect` found detection is the root cause of most UI nav bugs. Root causes list: `menuCursor` overloaded per context; `battleMode` encodes cursor-tile-class not screen submode; `encA/encB` are noise counters; `gameOverFlag` sticky process-lifetime; `rawLocation==255 → TitleScreen` preempts world-side screens; two TitleScreen variants (fresh process vs post-GameOver) with different fingerprints. Full data: `detection_audit.md` + `BATTLE_MEMORY_MAP.md` §12. Atomic fix tasks below.
 
-**Fix tasks:**
+- [ ] **Remove `encA/encB` from BattleVictory discriminators** — 3 BattleVictory rules in ScreenDetectionLogic.cs depend on `encA==255 && encB==255` (lines ~487, ~545). Replace with stable signals (`paused`, `submenuFlag`, `acted/moved` + `atNamedLocation` combos). Need live captures showing the three rules' fingerprints WITHOUT the encA/encB columns before rewriting. Guard against regression via existing `DetectScreen_Victory_*` tests.
 
-- [ ] **Remove `encA/encB`-dependent rules** — replace Battle_Victory / Battle_Desertion / EncounterDialog discriminators with stable signals (`paused`, `submenuFlag`, `acted/moved` combos).
+- [ ] **Remove `encA/encB` from BattleDesertion discriminators** — Desertion has no explicit encA/encB dep today (confirmed ScreenDetectionLogic.cs:506, :511), but shares the post-battle-stale fingerprint with Victory so changes to the Victory rules may cascade. Re-audit both after Victory rules rewrite.
 
+- [ ] **Remove `encA/encB` from EncounterDialog discriminator** — Audit `EncounterDialog` rule for noise-counter dependence. If present, swap to stable signals.
 
-- [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation (which location IDs are multi-battle campaign grounds vs villages). Add to `project_location_ids_verified.md`.
+- [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation: which location IDs are multi-battle campaign grounds (Fort Besselat, etc.) vs villages. Add to `project_location_ids_verified.md` memory note + data table in ScreenDetectionLogic.
+
+- [ ] **Fix `rawLocation==255 → TitleScreen` preemption** — rule at ScreenDetectionLogic.cs preempts valid world-side screens post-GameOver or post-battle when stale location byte reads 255. Current post-GameOver TitleScreen rule (lines 561-566) narrows via gameOverFlag+submenuFlag+menuCursor; ensure the preemption is ONLY that narrow rule, not a blanket fallthrough.
 
 
 
@@ -431,8 +454,8 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 
 
 ### Bugs Found 2026-04-12
-- [ ] **Ability list navigation: wire AbilityCursorDeltaPlanner into scroll loop** — Pure planner with trust rules (sign match + magnitude guard + expected-magnitude check) shipped session 47 (`AbilityCursorDeltaPlanner.Decide`). Still needed: wire into the Up-reset / Down-scroll loop in the battle ability nav path. When planner returns `TrustDelta=false`, fall back to the existing blind Up×N / Down×index approach. Session 31 context: Up-wrap produces negative deltas that exploded retry math — planner formalizes the fallback trigger.
 
+<!-- "Ability list navigation: wire AbilityCursorDeltaPlanner into scroll loop" — shipped. Planner wired at NavigationActions.cs:1127, trust-rules gate retry math. Session-55 reverts did not touch this. -->
 
 - [ ] **Detect rain/weather on battle maps** — Rain boosts Lightning spells by 25%.
 
@@ -460,13 +483,13 @@ Comprehensive 45-sample audit of `ScreenDetectionLogic.Detect` revealed the dete
 - [ ] **Failed battle_move reports ui=Abilities instead of ui=Move** [State] — After battle_move fails validation, the response shows ui=Abilities but the in-game cursor is still on Move. The scan that runs before the move might be changing the reported ui state. Observed 2026-04-13.
 
 
-- [ ] **battle_ability selects wrong ability from list** [Execution] — battle_ability "Aurablast" selected Pummel instead. The ability list navigation (Up×N to top, Down×index) is picking the wrong index. The learned ability list may not match the hardcoded index, or the scroll navigation is off-by-one. Observed 2026-04-13.
+<!--
+Superseded items (removed 2026-04-22 S56 sweep):
+- "battle_ability selects wrong ability from list" — this is the SAME BUG as the S55-BLOCKING `battle_ability` off-by-one at the top of §0. Duplicate removed; live fix tracked there.
+- "Abilities submenu remembers cursor position" — shipped as the force-to-Attack reset in `battle_attack` at NavigationActions.cs:670-697. Submenu cursor index is measured via `FindSkillsetIndex(uiSubmenu, submenuItems)` and then Up-wrapped to 0 before Enter.
+- `battle_ability` response says "Used" for cast-time abilities — shipped. Verb switches via `loc.castSpeed > 0 ? "Queued" : "Used"` at NavigationActions.cs:1167; `ctSuffix` surfaces `(ct=N)` in response.Info.
+-->
 
-
-- [ ] **Abilities submenu remembers cursor position** [Execution] — After battle_ability navigates to a skillset (e.g. Martial Arts for Revive), then escapes, the submenu cursor stays on that skillset. Next battle_attack enters Martial Arts instead of Attack. Need to verify/navigate to correct submenu item rather than assuming cursor is at index 0. Observed 2026-04-13.
-
-
-- [ ] **battle_ability response says "Used" for cast-time abilities** [State] — Abilities with ct>0 (Haste ct=50) are queued, not instant. Response says "Used Haste" but spell is only queued in Combat Timeline. Unit still needs to Wait. Response should say "Queued" for ct>0 abilities. Observed 2026-04-13.
 
 
 
