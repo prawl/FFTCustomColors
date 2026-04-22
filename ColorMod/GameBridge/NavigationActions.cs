@@ -473,12 +473,12 @@ namespace FFTColorCustomizer.GameBridge
                 // Skip menu navigation entirely — we're already where we need to be.
                 ModLogger.Log($"[BattleWait] Auto-facing detected (screen={screen.Name}), skipping menu navigation");
                 _menuCursorStale = false;
-                Thread.Sleep(300);
+                Thread.Sleep(150);
             }
             else
             {
                 // Normal path: navigate action menu to Wait
-                Thread.Sleep(300);
+                Thread.Sleep(150);
 
                 var cursorResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
                 int rawCursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
@@ -513,7 +513,9 @@ namespace FFTColorCustomizer.GameBridge
 
                 // Press Enter to select Wait — enters the facing screen.
                 SendKey(VK_ENTER);
-                Thread.Sleep(500);
+                // 500ms was conservative; facing-screen render is consistently
+                // under 300ms in live logs.
+                Thread.Sleep(300);
             }
 
             // Face optimal direction using the rotation detected during the last move.
@@ -578,7 +580,9 @@ namespace FFTColorCustomizer.GameBridge
             // advanced the screen normally, so the facing-confirm accepts
             // either key but F occasionally drops. Enter-fallback closes that.
             SendKey(VK_F);
-            Thread.Sleep(500);
+            // 500ms was pessimistic — the facing confirm animation is short.
+            // 300ms still gives the Enter fallback below time to decide.
+            Thread.Sleep(300);
             var postFace = _detectScreen();
             if (postFace != null && (postFace.Name == "BattleMoving" || postFace.Name == "BattleAttacking"))
             {
@@ -600,7 +604,12 @@ namespace FFTColorCustomizer.GameBridge
             {
                 while (sw.ElapsedMilliseconds < 120000) // 2 minute max
                 {
-                    Thread.Sleep(300);
+                    // 300ms → 150ms: faster friendly-turn detection. At 300ms we
+                    // could be ~300ms late noticing BattleMyTurn after enemy
+                    // animations finish. Halving the poll interval cuts that
+                    // observation lag. The CPU cost is trivial; _detectScreen
+                    // is a cached memory read.
+                    Thread.Sleep(150);
 
                     var current = _detectScreen();
                     if (current == null) continue;
