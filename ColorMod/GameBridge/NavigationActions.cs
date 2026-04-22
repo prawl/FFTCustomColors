@@ -1163,6 +1163,7 @@ namespace FFTColorCustomizer.GameBridge
                 // True self-only abilities (Focus, Shout): apply instantly, single confirm
                 SendKey(VK_ENTER);
                 Thread.Sleep(300);
+                WaitForTurnState(timeoutMs: 2000, out _);
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} (self-target){ctSuffix}{autoEndSuffix}";
                 return response;
@@ -1178,6 +1179,7 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(500);
                 SendKey(VK_ENTER); // confirm cast
                 Thread.Sleep(300);
+                WaitForTurnState(timeoutMs: 2000, out _);
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} (self-radius AoE){ctSuffix}{autoEndSuffix}";
                 return response;
@@ -1215,6 +1217,7 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(500);
                 SendKey(VK_ENTER); // Unit/Tile dialog (selects "Unit" default; harmless if no dialog)
                 Thread.Sleep(300);
+                WaitForTurnState(timeoutMs: 2000, out _);
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} on ({targetX},{targetY}) — cursor was already on target{ctSuffix}{autoEndSuffix}";
                 return response;
@@ -1318,6 +1321,16 @@ namespace FFTColorCustomizer.GameBridge
             Thread.Sleep(500);
             SendKey(VK_ENTER); // Unit/Tile dialog (selects "Unit" default; harmless if no dialog)
             Thread.Sleep(300);
+
+            // Wait for the game to settle back to a control state (BattleMyTurn
+            // or BattleActing) or the post-battle screens (Victory/Desertion).
+            // Without this, response.Screen gets set to BattleAttacking or
+            // BattleCasting from a stale read during the cast animation, and
+            // downstream session logs + subsequent commands see a confused
+            // state. Budget 2s — spell-cast animations can exceed 1s.
+            WaitForTurnState(timeoutMs: 2000, out long settleMs);
+            if (settleMs >= 2000)
+                ModLogger.Log($"[BattleAbility] Post-cast settle timeout ({settleMs}ms); returning anyway.");
 
             response.Status = "completed";
             response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){ctSuffix}{autoEndSuffix}";
