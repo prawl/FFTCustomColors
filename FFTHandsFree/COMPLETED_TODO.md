@@ -5,6 +5,75 @@ Items fully shipped ([x]) across sessions. Kept out of TODO.md to make the activ
 
 ---
 
+### Session 58 (2026-04-22) — 36 tasks, 17 new pure helpers, +207 tests
+
+**2 commits (all TDD'd, zero regressions). Tests: 3967 → 4174.**
+
+Commits:
+- `342e5e4` — S58 — new pure helpers + DTOs (17 classes, 240 tests)
+- `297b4bc` — S58 — wire up helpers across detection / lifecycle / battle actions
+
+**17 new pure helpers (all TDD'd before wiring):**
+
+- [x] **`AutoScanCommandClassifier`** — skip-list for post-action auto-scan. Prevents `[auto-scan] No ally found` on `auto_place_units` where the battle array is still populating post-commit.
+- [x] **`SearchBytesPlan`** — `CommandRequest` → `SearchBytesInAllMemory` args (MinAddr, MaxAddr, BroadSearch). Plus `BroadSearch` bool field on CommandRequest. Unblocks per-unit-ct hunt.
+- [x] **`ExecuteTurnResultAccumulator`** — HP delta / pre-post move / killed-unit diff across an `execute_turn` bundle. Wired via new `TurnSummary` + `KilledUnitSummary` DTOs on CommandResponse.
+- [x] **`LiveHpAddressCache`** — per-battle memo of live-HP addresses keyed by (maxHp, level). Avoids the 500MB scan on every `battle_attack` when the same target is hit repeatedly.
+- [x] **`HpTransitionClassifier`** — pure `(preHp, postHp) → None/Damage/Heal/Kill/Raise` classifier. Drives BattleStatTracker hook dispatch.
+- [x] **`UnitDisplayName`** — `Name ?? JobName ?? "(unknown)"` fallback. Enemy-side KOs attribute to "Minotaur" instead of "(unknown)".
+- [x] **`UnitMoveJumpCache`** — per-battle memo of successful heap Move/Jump reads. Fallback when `TryReadMoveJumpFromHeap` misses — prevents battle-wide Mv=0 collapse.
+- [x] **`CounterAttackKoClassifier`** — detects active-unit-KO-from-reaction. Surfaces `[counter-KO]` in battle_ability response.Info.
+- [x] **`MilestoneDetector`** — per-unit lifetime-stats diff → emoji callouts (first kill, 10/50/100/500 kills, 1k/5k/10k/50k dmg, 10/50/100 battles).
+- [x] **`TurnInterruptionClassifier`** — classify mid-turn screen transitions. Aborts ExecuteTurn bundle on BattleEnded/OutOfBattle with `[turn-interrupt]` context.
+- [x] **`LineAoeCalculator`** — cardinal-line AoE + PickBestDirection. For Shockwave / Ice Saber.
+- [x] **`SelfCenteredAoeCalculator`** — Manhattan-diamond AoE with include/exclude-self. For Chakra / Cyclone / Bard/Dancer.
+- [x] **`MultiHitTargetEnumerator`** — score + rank AoE centers by enemy coverage. For Bio / Ramuh.
+- [x] **`GeomancySurfaceTable`** — 15 surface types → Elemental ability name lookup (PSX-canonical).
+- [x] **`LiveBattleMapId`** — session-48 map-id byte at `0x14077D83C` extracted to constant + `IsValid(mapId)` range check.
+- [x] **`CharacterStatusLeakGuard`** — filter for S31 detection leak (CharacterStatus flickers during battle_wait). Pure, not yet wired.
+- [x] **`BattleMenuAvailability`** — per-slot enabled/grayed classification from (moved, acted). Pure, not yet surfaced in screen response.
+
+**Wire-ups shipped:**
+
+- [x] **Auto-scan BattleFormation guard** (S57 follow-up) — `auto_place_units` opts out of post-action auto-scan. Live-verified in S58: no more `[auto-scan] No ally found` on the response.
+- [x] **BattleStatTracker damage/kill/heal/raise/move/ability hooks** (S57 follow-up) — `RecordAttackStats` in BattleAttack; OnAbilityUsed at 4 BattleAbility return paths; OnMove in MoveGrid. Live-verified at Zeklaus: Lloyd 1 kill + 127 dmg, Wilham 22 dmg, Ramza 588 dmg, milestones persisted to `lifetime_stats.json`.
+- [x] **ReadLiveHp address cache** (S57 follow-up) — cache fast-path + memoization on full-search hit; `StartBattle` lifecycle clears.
+- [x] **`broadSearch` on search_bytes** (S52 follow-up) — plumbed via `SearchBytesPlan.From(command)`. Schema pin tests.
+- [x] **LiveBattleMapId regression pin** (S48 follow-up) — constant + IsValid extracted with 3 tests.
+- [x] **battle_ability first-scan null/null race** (§1 Tier 3) — retry once when scan returns null/null with live active unit.
+- [x] **Active unit name/job stale across battles** (§1 Tier 3) — cache reset on StartBattle lifecycle event.
+- [x] **execute_turn HP-delta / move / kill accumulator** (§1 Tier 5) — all three atomic tasks shipped. Response carries `turnSummary` field.
+- [x] **Detect failed move/attack retry** (§9) — BattleAttack 1500ms poll-retry for Abilities→Attacking + charging-confirm dismiss retry.
+- [x] **Handle unexpected screen transitions during turn** (§9) — TurnInterruptionClassifier + abort-on-BattleEnded/OutOfBattle in ExecuteTurn.
+- [x] **Counter attack KO** (§9) — CounterAttackKoClassifier + Info marker.
+- [x] **Session aggregates + milestone announcements** (§13) — MilestoneDetector + RenderBattleSummary wire.
+- [x] **Re-enable strict mode default** (Low Priority) — `StrictMode` default flipped to true.
+- [x] **gameOverFlag==0 requirement audit** (Low Priority) — regression pin confirms no rule uses `gameOverFlag == 0` as positive assertion.
+
+**Bug fixes shipped (from S58 live verification):**
+
+- [x] **BattleLifecycleClassifier Victory→Desertion double-fire** — `previous == "BattleVictory"` early-returns None. `EndBattle` idempotent via `EndedAt` check.
+- [x] **BattleChoice event catalog label access** (State Detection TOP) — `BattleChoiceEntry` record + `OptionLabel(eventId, row)` + `OptionLabelOrGeneric` fallback. Mandalia eventId=16 entry gets structured label access.
+- [x] **BattleVictory sentinel mid-cast false-positive** (Fix #4) — encA=255 sentinel requires `submenuFlag==1`. Session-49 Siedge Weald capture still passes.
+- [x] **`(unknown)` attacker name fallback** (Fix #6) — UnitDisplayName.For(Name, JobNameOverride).
+- [x] **Mv=0 whole-battle collapse fallback** (Fix #2) — UnitMoveJumpCache serves as fallback when heap search misses.
+- [x] **battle_attack submenu retry + charging-confirm dismiss** (Fix #3, Fix #5) — both now retry instead of fail-fast.
+
+**Regression pins shipped (test-only):**
+
+- [x] `DetectScreen_EncounterDialog_DoesNotDependOn_EncAEncB` — 36-combination sweep.
+- [x] `DetectScreen_BattleDesertion_DoesNotDependOn_EncAEncB` — 36-combination sweep.
+- [x] `DetectScreen_EncA255_MidCast_GuardedBySubmenuFlag_DoesNotFireVictory` — Shout-cast pin.
+- [x] `DetectScreen_AbilityTargeting_BattleModeOne_StaysInBattleBranch` — battleActiveTurnFrame pin.
+- [x] `DetectScreen_AbilityTargeting_AtStoryBattleLocation_NotCutscene` — atNamedLocation pin.
+- [x] `DetectScreen_PostBattleRules_NoDependsOn_GameOverFlagZero` — sticky flag audit.
+- [x] `BattleLifecycleClassifier.VictoryToDesertion_DoesNotReEndBattle` — double-fire guard.
+- [x] `BattleLifecycleClassifier.VictoryToGameOver_DoesNotReEndBattle` — symmetric guard.
+
+**Cumulative S58: 36 items shipped. 17 new pure helpers + wire-ups. +207 tests (3967 → 4174). Zero regressions.**
+
+---
+
 ### Session 56 (2026-04-22) — battle turn cycle fixes + TODO sweep
 
 **14 commits, 11 real bug fixes, all live-verified.** Tests: 3893 → 3930 (+37). End-to-end battle turn cycle (`execute_turn move + ability + wait`) now completes cleanly in ~14s (pre-S56: 142s then timeout).

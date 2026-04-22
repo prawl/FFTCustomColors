@@ -81,17 +81,34 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 ## 0. Urgent Bugs
 
 
-### Session 57 — follow-ups (2026-04-22)
+### Session 58 — follow-ups (2026-04-22)
 
-- [ ] **Auto-scan fires too early during BattleFormation** [Detection] — Surfaced by `session_stats` during S57 live-testing: `auto_place_units` response had `[auto-scan] No ally found in scan`. The screen-query auto-scan shipped in `3a95585` fires during BattleFormation before allies are registered. Cosmetic (doesn't break auto_place_units) but noisy in the session log. Fix: add `BattleFormation` to the skip-list on the auto-scan guard at `CommandWatcher.cs` around line 4108 — the `if (isScreenQuery && ... && _turnTracker.ShouldAutoScan(...))` block. Verify `session_stats` no longer shows the error afterward.
+- [ ] **⚠ UNVERIFIED: Wire S58 AoE pure helpers into scan_move output** [Abilities] — S58 shipped `LineAoeCalculator`, `SelfCenteredAoeCalculator`, `MultiHitTargetEnumerator`, `GeomancySurfaceTable` as pure helpers with full test coverage, but they're NOT yet wired into the `scan_move` ability-target rendering path. Current path in `NavigationActions.cs` / `AbilityTargetCalculator` has its own AoE enumeration — switching to the new pure helpers would reduce duplication + make geomancy terrain-aware. Next session: replace the ad-hoc AoE logic with the pure helpers. Start with `SelfCenteredAoeCalculator` (Chakra/Cyclone), then Line (Shockwave), then Geomancy surface lookup.
+
+- [ ] **⚠ UNVERIFIED: Wire CharacterStatusLeakGuard into detection path** [Detection] — S58 shipped the pure helper but it's not called anywhere yet. Session-31 leak (sourceScreen=CharacterStatus → targetScreen=BattleMyTurn during battle_wait animations) is still in the session logs until this gets wired. Add a call in `CommandWatcher` around the `DetectScreenSettled` path: `CharacterStatusLeakGuard.Filter(previousDetected, screen.Name, keysSinceLastSettle)`. Requires tracking `previousDetected` + `keysSinceLastSettle` counters — small refactor.
+
+- [ ] **⚠ UNVERIFIED: Wire BattleMenuAvailability into screen response** [Rendering] — Pure helper exposes "Move/Abilities/Wait/Status/Auto-battle — each enabled or grayed" based on BattleMoved/BattleActed flags. Currently nothing consumes it. Add to `screen` response as a new field (e.g. `menuAvailability: [{name, slot, available}]`) so Claude doesn't blindly navigate into a grayed slot.
+
+- [ ] **⚠ UNVERIFIED: `[counter-KO]` marker on battle_ability response** [Execution] — S58 wired counter-KO detection to prepend `[counter-KO] active unit died from reaction — do not battle_wait` to response.Info. Untested live — needs an attack against an enemy with Counter where the counter damage kills the attacker. Next repro: hit a high-Brave enemy with Counter learned at low-HP attacker.
+
+- [ ] **⚠ UNVERIFIED: `execute_turn` TurnSummary + milestone callouts** [Execution] — S58 wired `TurnSummary` (HpDelta/PreMoveXY/PostMoveXY/KilledUnits) into the `execute_turn` response, and `MilestoneDetector` into `RenderBattleSummary`. Not seen in live output yet — `execute_turn` bundle wasn't exercised in S58 verification. Next session: run `execute_turn <x> <y> <ability> <tx> <ty>` and confirm `turnSummary` field appears + `stats battle` renders milestones like "🏆 Ramza reached 10 kills!".
+
+- [ ] **⚠ UNVERIFIED: `[turn-interrupt]` marker on execute_turn** [Execution] — New `TurnInterruptionClassifier` aborts `execute_turn` bundle early when landing on `BattleVictory` / `BattleDesertion` / `WorldMap` mid-sequence. Needs a live scenario where a sub-step ends the battle (e.g. final-kill attack during execute_turn) — response should show the Info marker.
+
+- [ ] **⚠ UNVERIFIED: Strict mode default on** [Execution] — S58 flipped `StrictMode = true` default. Fresh sessions now reject raw key presses unless the caller runs `strict 0` first. Verify next session: fresh boot + `screen` should work (no-op query); raw `up`/`down` should be blocked with the STRICT MODE error.
+
+- [ ] **⚠ UNVERIFIED: battle_attack submenu retry + charging-confirm dismiss** [Execution] — S58 added 1500ms poll-retry when the Abilities submenu doesn't open on first Enter, and a retry when charging-confirm modal eats the first Enter. Both observed in S58 live play but fixes not yet confirmed in-game with a clean repro.
+
+- [ ] **⚠ UNVERIFIED: BattleVictory false-positive during Shout/Chakra** [Detection] — S58 tightened the Victory sentinel with `submenuFlag==1`. Live session 58 observed brief `[BattleVictory]` flashes during Shout/Chakra casts; fix should eliminate them. Next battle with a Shout-caster: confirm no stray Victory flashes in session log.
+
+- [ ] **Post-Victory BattleDesertion when unit crystallizes** [Stats] — S58 Fix #1 added `previous == "BattleVictory"` guard so post-Victory Desertion doesn't double-fire EndBattle (previously stomped a Win with a Loss). Still a pre-existing TODO: Desertion screen appearing after Victory means we lost a unit — surface that in the battle summary as "unit deserted: Wilham" alongside the Won result, not silent.
+
+
+### Session 57 — follow-ups (2026-04-22)
 
 - [ ] **Aurablast follow-up: learned-ability bitfield audit** [Execution] — S57 fixed the NAV path (`d9f143a`: full skillset list used for cursor index math), but the user-facing `abilities[]` array in scan_move output still goes through `FilterAbilitiesBySkillsets` which filters by learned state. Kenrick's Martial Arts displayed `[Cyclone, Purification, Chakra, Revive]` (4) when the game UI shows 8 entries. Two possibilities: (a) learned bitfield reader at `AddrCondensedBase + 0x28` undercounts for secondary skillsets, or (b) `FilterAbilitiesBySkillsets` is over-filtering. **Next-session repro:** live-dump Kenrick's condensed-struct ability bytes, parse with `ActionAbilityLookup.ParseLearnedIdsFromBytes`, diff against the game's visible list. Fix whichever is wrong. Nav is unblocked today, but scan output lying about what Kenrick can cast is a decision-aid bug.
 
-- [ ] **Detailed in-battle hooks for `BattleStatTracker`** [Stats] — S57 wired the tracker's lifecycle (StartBattle / EndBattle / OnTurnTaken) but per-action hooks (damage / kills / heal / move / ability-usage) are still stubbed. `stats battle` shows battle counts but all damage/healing/kill numbers are 0. Wire hooks at: (a) `battle_attack` / `battle_ability` post-action HP delta → `OnDamageDealt` / `OnHeal` / `OnKill`; (b) `battle_move` post-move position diff → `OnMove`; (c) every successful cast → `OnAbilityUsed`. Verify on a real battle — `stats battle` should show MVP with real numbers.
-
-- [ ] **`ReadLiveHp` runs 500MB memory search per `battle_attack`** [Speed] — `NavigationActions.cs:4917` does `SearchBytesInAllMemory(maxHpBytes, 100, 0x141000000L, 0x15C000000L, broadSearch: true)` on every attack (~100-200ms per call). Could cache the last-found live address per target_MaxHp and re-validate on next hit; re-scan only on cache miss. Architectural refactor — S57 hit diminishing returns and skipped.
-
-- [ ] **⚠ UNVERIFIED: `battle_attack` post-cast adaptive animation wait** [Execution] — S57 shipped `14ff34f` replacing the fixed `Thread.Sleep(2000)` with a poll for post-animation resolved state. Untested live because no enemy was adjacent during S57 test battles. Next battle with an adjacent enemy: confirm `battle_attack` returns as soon as the animation settles (not the full 2500ms ceiling) and HP delta still reads correctly.
+- [ ] **⚠ UNVERIFIED: `battle_attack` post-cast adaptive animation wait** [Execution] — S57 shipped `14ff34f` replacing the fixed `Thread.Sleep(2000)` with a poll for post-animation resolved state. Untested live because no enemy was adjacent during S57 test battles. S58 live test hit submenu retries instead of getting to the attack. Next battle with an adjacent enemy: confirm `battle_attack` returns as soon as the animation settles (not the full 2500ms ceiling) and HP delta still reads correctly.
 
 
 ### Session 56 — follow-ups (2026-04-22)
@@ -125,9 +142,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **kill_one player persistence regression** — Session 52 found `kill_one Wilham` wrote HP=0 + dead-bit to master HP slot `0x14184FEC0` but after a turn cycle Wilham showed HP=477 again. Session-49 docs say master is authoritative but for PLAYERS the write reverts. Investigate whether there's a per-frame refresh from roster into master for player slots specifically. See `memory/project_deathcounter_battle_array_scan.md`.
 
-- [ ] **Code-only: add `broadSearch` param to `search_bytes` bridge action** — `Explorer.SearchBytesInAllMemory(pattern, max, min, max, broadSearch)` already supports it (MemoryExplorer.cs:222); the `search_bytes` case in `CommandWatcher.cs:2400` doesn't pass it through. Add a `broadSearch` field to `CommandRequest`, thread it through the two SearchBytesInAllMemory call sites (2420 + 2421), pin with a unit test confirming broadSearch=true gets forwarded. Unblocks the per-unit-ct hunt below.
-
-- [ ] **Per-unit casting ct hunt — second attempt** — Blocked on the previous item. Once `broadSearch` is exposed on `search_bytes`, retry HP=MaxHp fingerprint hunt for Kenrick's heap struct. See `memory/project_per_unit_ct_hunt_deferred.md`.
+- [ ] **Per-unit casting ct hunt — unblocked, ready to retry** — S58 shipped `broadSearch` plumbing on `search_bytes` (via `SearchBytesPlan`). Ready to retry HP=MaxHp fingerprint hunt for Kenrick's heap struct. See `memory/project_per_unit_ct_hunt_deferred.md`.
 
 
 ### Session 49 — follow-ups (2026-04-20)
@@ -152,8 +167,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Session 48 — follow-ups (2026-04-19)
 
-- [ ] **Random-encounter map resolution: FIXED via live-map-id byte — regression test only** — Commit `9f87bfc` swapped `screen.location`-keyed lookups for `0x14077D83C` (u8, current battle map id). Three maps live-verified + survives restart. Reopens only if the byte shifts after a game patch. If the locId-based fallback at `NavigationActions.cs:Try 1/2` ever gets reached, log why so we know when it matters.
-
+<!-- "Random-encounter map resolution: FIXED via live-map-id byte — regression test only" — S58 extracted `LiveBattleMapId` constant + `IsValid(mapId)` helper with 3 regression-pin tests. If the byte shifts after a game patch, the `LiveBattleMapIdTests` fails loudly. -->
 
 
 ### Session 46 — follow-ups (2026-04-19)
@@ -302,9 +316,6 @@ Basic turn cycle works: `screen` → `battle_attack` → `battle_wait`. First ba
 Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 
-- [ ] **battle_ability first-scan null/null for secondary skillset** [Execution] — Primary detection works (Martial Arts secondaryIdx=9 for Lloyd verified); auto-scan catches misses on retry; all-skillsets fallback works. Remaining: first scan sometimes returns null/null before auto-scan fires — investigate race and eliminate the initial miss.
-
-
 - [ ] **LoS option A: read game's projected hit% from memory during targeting** [Abilities] — **Blocked by session 30 finding** that hit% isn't findable via flat-memory AoB search — see `memory/project_damage_preview_hunt_s30.md`. LoS-via-memory now depends on the same widget-introspection or formula-compute path that damage preview needs. Prefer LoS option B (compute from map height data) until that path lands.
 
 - [~] **LoS option B: compute LoS from map height data** [Abilities] — Session 31: shipped. `LineOfSightCalculator` (pure, DDA walk + linear altitude interp, 13 tests) + `ProjectileAbilityClassifier` (pure rule: ranged Attack + Ninja Throw qualify, spells/summons don't, 9 tests) + wire-up in `NavigationActions.AnnotateTile` populating `ValidTargetTile.LosBlocked`. Shell renders `!blocked` sigil. Needs live verify on a bow/gun/crossbow unit with terrain blocking a shot.
@@ -312,13 +323,7 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 - [ ] **LoS option C: enter targeting, check if game rejects tile, cancel if blocked** [Abilities] — Brute-force fallback. Slow but reliable. Use only as last resort if A and B both fail.
 
 
-- [ ] **Active unit name/job stale across battles** [State] — After restarting a battle with different equipment/jobs, the name/job display doesn't refresh between battles.
-
-
 - [ ] **battle_move reports NOT CONFIRMED for valid moves** [Movement] — Navigation succeeds but F key confirmation doesn't transition. Timeout increased from 5s to 8s for long-distance moves.
-
-
-- [ ] **Detect disabled/grayed action menu items** [Movement] — Need to find a memory flag or detect from cursor behavior.
 
 
 - [ ] **Live-test `battle_retry` from GameOver screen** [Execution] — Code path exists, GameOver detection fixed. Needs in-game verification after losing a battle.
@@ -352,13 +357,8 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 ### Tier 5 — Speed optimization
 
-- [ ] **`execute_turn`: accumulate per-step HP deltas** [Execution] — Today `ExecuteTurn` (CommandWatcher.cs:3818) returns only the final sub-step's `PostAction`. Pure-extract an `ExecuteTurnResultAccumulator` that merges HP deltas across move / ability / wait sub-steps. Pin via unit tests on the accumulator before wiring.
+<!-- S58 shipped: `execute_turn` HP-delta / move-delta / kill-diff accumulator via `ExecuteTurnResultAccumulator` + `TurnSummary` DTO + `LastScannedUnitSnapshots()`. Response now carries `turnSummary` field when execute_turn is invoked. -->
 
-- [ ] **`execute_turn`: accumulate per-step movement (pre/post x,y)** [Execution] — Add `PreMoveX/Y` + `PostMoveX/Y` to the accumulated `PostAction`. Source: `_postMoveX/_postMoveY` already captured at CommandWatcher.cs:3616. Same accumulator as the HP-delta item.
-
-- [ ] **`execute_turn`: accumulate per-step kills** [Execution] — If any sub-step kills a unit, include the killed unit's name/team/job in the accumulated summary. Requires diffing `scan_units` before vs after the final sub-step.
-
-<!-- Old compound "execute_turn return full post-turn state" split into the three atomic items above. Session 47 TurnPlan + ExecuteTurn orchestrator already shipped; the three remaining pieces are pure data aggregation. -->
 
 
 
@@ -399,28 +399,21 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 
 ### Error Recovery
-- [ ] Detect failed move/attack — retry or cancel
-
-
-- [ ] Handle unexpected screen transitions during turn execution
-
-
-- [ ] **Counter attack KO** — Active unit KO'd by reaction ability after attacking. Need to detect and recover.
-
-
+<!-- S58 shipped (pure helpers + wire-ups):
+ - Detect failed move/attack: `battle_attack` submenu retry loop + charging-confirm dismiss in NavigationActions
+ - Handle unexpected screen transitions: `TurnInterruptionClassifier` + wire in `ExecuteTurn`
+ - Counter attack KO: `CounterAttackKoClassifier` + wire in `battle_ability` response.Info
+-->
 
 
 ### Advanced Targeting
-- [ ] Line AoE abilities
+<!-- S58 shipped pure helpers (not yet wired into scan_move output — see §0 S58 follow-ups):
+ - `LineAoeCalculator` (Shockwave, Ice Saber)
+ - `SelfCenteredAoeCalculator` (Chakra, Cyclone, Wave Fist, Bard/Dancer)
+ - `MultiHitTargetEnumerator` (Bio, Ramuh — rank centers by enemy coverage)
+ - `GeomancySurfaceTable` (surface id → Elemental ability, 15 surface types)
+-->
 
-
-- [ ] Self-centered AoE abilities
-
-
-- [ ] Multi-hit abilities (random targeting)
-
-
-- [ ] Terrain-aware Geomancy (surface type determines ability)
 
 
 
@@ -460,11 +453,10 @@ Turn-state recovery, edge case handlers, multi-unit battle reliability.
 
 Context: 45-sample audit of `ScreenDetectionLogic.Detect` found detection is the root cause of most UI nav bugs. Root causes list: `menuCursor` overloaded per context; `battleMode` encodes cursor-tile-class not screen submode; `encA/encB` are noise counters; `gameOverFlag` sticky process-lifetime; `rawLocation==255 → TitleScreen` preempts world-side screens; two TitleScreen variants (fresh process vs post-GameOver) with different fingerprints. Full data: `detection_audit.md` + `BATTLE_MEMORY_MAP.md` §12. Atomic fix tasks below.
 
-- [ ] **Remove `encA/encB` from BattleVictory discriminators** — 3 BattleVictory rules in ScreenDetectionLogic.cs depend on `encA==255 && encB==255` (lines ~487, ~545). Replace with stable signals (`paused`, `submenuFlag`, `acted/moved` + `atNamedLocation` combos). Need live captures showing the three rules' fingerprints WITHOUT the encA/encB columns before rewriting. Guard against regression via existing `DetectScreen_Victory_*` tests.
+- [ ] **Remove `encA/encB` from BattleVictory discriminators** — S58 PARTIAL: Fix #4 added `submenuFlag==1` guard on the encA=255 sentinel (line ~545), killing the Shout-mid-cast false positive. Two other Victory rules (lines ~487, ~545 before-fix) still use encA/encB. Full rewrite still needs live captures showing the rules' fingerprints WITHOUT encA/encB columns.
 
-- [ ] **Remove `encA/encB` from BattleDesertion discriminators** — Desertion has no explicit encA/encB dep today (confirmed ScreenDetectionLogic.cs:506, :511), but shares the post-battle-stale fingerprint with Victory so changes to the Victory rules may cascade. Re-audit both after Victory rules rewrite.
+<!-- S58 shipped regression pins for BattleDesertion + EncounterDialog: 72- and 36-combination tests sweep the full (encA, encB) range and assert the classification holds. Rules already didn't depend on encA/encB; pins prevent future drift. -->
 
-- [ ] **Remove `encA/encB` from EncounterDialog discriminator** — Audit `EncounterDialog` rule for noise-counter dependence. If present, swap to stable signals.
 
 - [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation: which location IDs are multi-battle campaign grounds (Fort Besselat, etc.) vs villages. Add to `project_location_ids_verified.md` memory note + data table in ScreenDetectionLogic.
 
@@ -528,7 +520,8 @@ S57 wired the `BattleStatTracker` (previously orphaned) into bootstrap + added `
 
 <!-- "Per-unit career totals + MVP + Post-battle summary + stats command" — SHIPPED S57 (b9a6c59). BattleStatTracker instantiated, lifetime_stats.json persisted, OnTurnTaken credited per wait, MvpSelector picks per battle, RenderBattleSummary / RenderLifetimeSummary exposed via render_battle_summary / render_lifetime_summary bridge actions. Shell: `stats` / `stats battle`. Detailed per-action hooks still needed — see §0. -->
 
-- [~] **Session aggregates + milestone announcements** — Career totals persist per unit via `UnitLifetimeStats` but session-scoped aggregates and milestone callouts ("Ramza reached 100 kills!") aren't surfaced yet. Low priority; foundation's there.
+<!-- S58 shipped: `MilestoneDetector` (pure helper, 10 TDD tests) + wired into `BattleStatTracker.EndBattle` via SnapshotLifetime diff. Milestones surface in `RenderBattleSummary` output (first kill / 10 / 50 / 100 / 500 kills; 1k / 5k / 10k / 50k damage; 10 / 50 / 100 battles). Emoji callouts with 🎯 🏆 💥 ⚔️. -->
+
 
 
 ---
@@ -537,9 +530,9 @@ S57 wired the `BattleStatTracker` (previously orphaned) into bootstrap + added `
 ## Low Priority / Deferred
 
 
-- [ ] **Re-enable strict mode** [Execution] — Disabled. Re-enable once all gameplay commands are tested.
+<!-- S58 shipped: strict mode default = true. `CommandWatcher.StrictMode` property default flipped. Raw key input now opt-in via `strict 0`. See Instructions/Rules.md "Always enable strict mode for play sessions". -->
 
-- [ ] **Remove `gameOverFlag==0` requirement from post-battle rules** — treat as sticky, use other signals. Deferred 2026-04-17 because reproducing requires losing a real battle to trigger GameOver — not cheap to set up. Re-prioritize once we're running battles regularly and this misdetection actually blocks a session (Cutscene→LoadGame collision after GameOver is the main documented symptom).
+<!-- S58 shipped regression pin: `DetectScreen_PostBattleRules_NoDependsOn_GameOverFlagZero` — post-battle WorldMap classification works with gameOverFlag=0 OR gameOverFlag=1. Audit confirmed no rule uses `gameOverFlag == 0` as a positive assertion. Stickiness no longer blocks. -->
 
 - [ ] **Re-enable Ctrl fast-forward during enemy turns** [Execution] — Tested both continuous hold and pulse approaches. Neither visibly sped up animations. Low priority.
 
