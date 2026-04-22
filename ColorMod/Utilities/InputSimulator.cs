@@ -139,7 +139,12 @@ namespace FFTColorCustomizer.Utilities
             }
 
             bool downResult = PostMessage(hWnd, WM_KEYDOWN, new IntPtr(vkCode), IntPtr.Zero);
-            Thread.Sleep(50);
+            // Key-press hold duration. 50ms was conservative (one 60fps
+            // frame is 16.7ms). 25ms is ~1.5 frames — still comfortable
+            // above the game's key-read threshold but halves the per-press
+            // floor. Multiplied across ~5-10 key presses per action, this
+            // is 125-250ms saved per action.
+            Thread.Sleep(25);
             bool upResult = PostMessage(hWnd, WM_KEYUP, new IntPtr(vkCode), IntPtr.Zero);
 
             ModLogger.LogDebug($"[InputSimulator] SendKeyPressToWindow results - Down: {downResult}, Up: {upResult}");
