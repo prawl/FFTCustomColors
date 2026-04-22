@@ -48,7 +48,6 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "get_flag", "set_flag", "list_flags",
             "reset_state_machine",
             "resolve_picker_cursor",
-            "resolve_ability_list_cursor",
             "resolve_job_cursor",
             "resolve_party_menu_cursor",
             "resolve_equip_picker_cursor",

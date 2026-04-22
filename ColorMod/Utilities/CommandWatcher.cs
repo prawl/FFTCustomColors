@@ -123,17 +123,6 @@ namespace FFTColorCustomizer.Utilities
         private long _resolvedPickerCursorAddr = 0L;
 
         /// <summary>
-        /// Cached ability-list (Battle&lt;Skillset&gt; e.g. BattleWhiteMagicks)
-        /// cursor index byte address resolved by the
-        /// `resolve_ability_list_cursor` action. Found via 5-snap monotonic
-        /// scan in session 55 — heap address shuffles across game sessions
-        /// (canonical session-55 read was 0x1314DF920) so MUST be re-resolved.
-        /// Cleared whenever the screen leaves Battle&lt;Skillset&gt; — see
-        /// SyncBattleMenuTracker reset path.
-        /// </summary>
-        private long _resolvedAbilityListCursorAddr = 0L;
-
-        /// <summary>
         /// Cached JobSelection grid-cursor address resolved by the
         /// `resolve_job_cursor` action. Same heap-shuffle story as the
         /// picker — re-resolved on every JobSelection open. Byte value is a
@@ -449,148 +438,6 @@ namespace FFTColorCustomizer.Utilities
             return cands.Count > 0
                 ? $"Resolved picker cursor: 0x{_resolvedPickerCursorAddr:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
                 : "No stable picker cursor byte found (0 candidates)";
-        }
-
-        /// <summary>
-        /// Rescan-on-entry for the ability-list cursor index byte (the
-        /// memory location whose value is the highlighted ability's index
-        /// inside e.g. BattleWhiteMagicks). Heap address shuffles per
-        /// session — session 55 cracked the byte at 0x1314DF920 with 3
-        /// mirrors and a +0x750 lag byte; the canonical address moves
-        /// across game restarts so this resolver re-finds it on each list
-        /// open.
-        ///
-        /// Strategy is 5-snap monotonic instead of the picker resolver's
-        /// 3-snap toggle — the toggle returns ~64 noise candidates and
-        /// its 2-step verifier picks the wrong one when bytes coincidentally
-        /// flicker through 0 (the wrap-tolerant fallback admits noise).
-        /// 5-snap monotonic 0,1,2,3,4 has ~256^4 odds against random match
-        /// and resolved to exactly 5 tightly-clustered widget addresses
-        /// in live verification.
-        ///
-        /// Side effects: 4 net-zero key pairs visible on the game window
-        /// (cursor flashes Down/Down/Down/Down/Up/Up/Up/Up over ~2s).
-        /// Caller is expected to be on a live ability-list screen with a
-        /// list size of at least 5 entries — smaller lists fail the
-        /// monotonic match and the resolver returns a no-cache result, in
-        /// which case the caller falls back to blind nav (acceptable for
-        /// 1-4 entry lists where blind is fast enough).
-        ///
-        /// On success, caches the result on
-        /// <see cref="_resolvedAbilityListCursorAddr"/>; the byte stays
-        /// valid for the duration of the current Battle&lt;Skillset&gt;
-        /// open and is cleared by SyncBattleMenuTracker when the screen
-        /// transitions back to the action menu.
-        /// </summary>
-        private string? ResolveAbilityListCursor(out int candidateCount)
-        {
-            candidateCount = 0;
-            if (Explorer == null) return null;
-            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
-            if (win == IntPtr.Zero) return null;
-            const int VK_DOWN = 0x28, VK_UP = 0x26;
-
-            // Settle delay before snapshotting — picker-open animation has
-            // ~400ms fade-in + ~200ms cursor-rest. Keep parity with
-            // ResolvePickerCursor's 700ms baseline.
-            Thread.Sleep(700);
-
-            // Snap 0 (current pos), then Down, snap, Down, snap, Down, snap,
-            // Down, snap. Total 4 Downs → cursor advances 4 indices.
-            string[] labels = { "_abil_list_s0", "_abil_list_s1", "_abil_list_s2", "_abil_list_s3", "_abil_list_s4" };
-            Explorer.TakeHeapSnapshot(labels[0]);
-            for (int step = 1; step < labels.Length; step++)
-            {
-                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
-                Thread.Sleep(250);
-                Explorer.TakeHeapSnapshot(labels[step]);
-            }
-
-            // Find heap bytes whose values rose by exactly 1 across each
-            // adjacent snapshot pair (4 deltas of +1). Tolerates any
-            // starting cursor value (we don't know baseline at resolve
-            // time — the game remembers cursor across re-opens). Wraps
-            // accepted: a byte at list-end (e.g. 14) that goes 14→0→1→2→3
-            // satisfies the +1,+1,+1,+1 sequence via the wrap clauses
-            // inside FindDeltaSequenceCandidates.
-            int[] deltas = { +1, +1, +1, +1 };
-            var cands = Explorer.FindDeltaSequenceCandidates(labels, deltas, maxResults: 32, maxValue: 32);
-            candidateCount = cands.Count;
-
-            // Picker phase. Empirically (manual hunt session 55) the
-            // 5-snap monotonic filter returns ~5 tightly-clustered
-            // addresses on UE4 heap (within ~0x100 of each other — the
-            // 4-way mirror UE4 keeps for slate widget binding) PLUS a
-            // "lag byte" some 0x1D0 BEFORE the cluster that holds the
-            // PREVIOUS cursor value (DO NOT use — reads stale on wrap)
-            // PLUS occasional DLL-space noise.
-            //
-            // Picker rule: among UE4 heap candidates (0x100000000 -
-            // 0x200000000), find the largest tight cluster (adjacent
-            // addresses within 0x100). Return the LOWEST address in
-            // that cluster — that's a known-good cursor mirror.
-            // The lag byte sits ~0x1D0 BEFORE the cluster so it's
-            // separated by the 0x100 threshold and excluded.
-            long resolved = PickClusterRepresentative(cands);
-
-            // Restore cursor: 4 Ups to undo 4 Downs (net zero).
-            for (int i = 0; i < 4; i++)
-            {
-                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
-                Thread.Sleep(220);
-            }
-
-            _resolvedAbilityListCursorAddr = resolved;
-            return cands.Count > 0
-                ? $"Resolved ability-list cursor: 0x{resolved:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
-                : "No stable ability-list cursor byte found (0 candidates — list may be < 5 entries or baseline cursor != 0)";
-        }
-
-        /// <summary>
-        /// Among <paramref name="candidates"/>, find the largest tight
-        /// cluster of UE4-heap addresses (within 0x100 of each other) and
-        /// return the SECOND address from the bottom of that cluster.
-        /// Used to disambiguate the real cursor mirror from a "lag byte"
-        /// that holds the previous index (lag byte sits hundreds of bytes
-        /// before the cluster — separated by the 0x100 threshold).
-        ///
-        /// Returns 0 if no UE4-heap candidates or no cluster of size >= 2.
-        /// Returns the single address if only one UE4 candidate exists.
-        /// </summary>
-        private static long PickClusterRepresentative(List<nint> candidates)
-        {
-            // Filter to UE4 heap range (priority-0 region in CursorAddressPriority).
-            var ue4 = candidates
-                .Where(a => (long)a >= 0x100000000L && (long)a < 0x200000000L)
-                .Select(a => (long)a)
-                .OrderBy(a => a)
-                .ToList();
-            if (ue4.Count == 0) return 0L;
-            if (ue4.Count == 1) return ue4[0];
-
-            // Find clusters: consecutive addresses with diff < 0x100.
-            // Largest wins; ties broken by latest cluster (later in
-            // memory — heap allocators typically grow upward).
-            var clusters = new List<List<long>>();
-            var current = new List<long> { ue4[0] };
-            for (int i = 1; i < ue4.Count; i++)
-            {
-                if (ue4[i] - ue4[i - 1] < 0x100)
-                    current.Add(ue4[i]);
-                else
-                {
-                    clusters.Add(current);
-                    current = new List<long> { ue4[i] };
-                }
-            }
-            clusters.Add(current);
-
-            // Pick largest cluster. Return its lowest member — that's
-            // the canonical cursor mirror per session 55 verification
-            // (4 mirrors at +0x10/+0x40/+0x8C past the canonical;
-            // the lag byte at -0x1D0 is excluded by the 0x100 gap).
-            var winner = clusters.OrderByDescending(c => c.Count).ThenBy(c => c[0]).First();
-            return winner[0];
         }
 
         /// <summary>
@@ -1454,7 +1301,6 @@ namespace FFTColorCustomizer.Utilities
             "get_flag", "set_flag", "list_flags",
             "reset_state_machine",
             "resolve_picker_cursor",
-            "resolve_ability_list_cursor",
             "resolve_job_cursor",
             "resolve_party_menu_cursor",
             "resolve_equip_picker_cursor",
@@ -2378,17 +2224,6 @@ namespace FFTColorCustomizer.Utilities
                     {
                         int cCount;
                         var info = ResolvePickerCursor(out cCount);
-                        response.Status = info != null ? "completed" : "failed";
-                        if (info == null) response.Error = "Memory explorer not initialized or game window not found";
-                        response.Info = info;
-                        ModLogger.Log($"[CommandBridge] {response.Info}");
-                        break;
-                    }
-
-                    case "resolve_ability_list_cursor":
-                    {
-                        int cCount;
-                        var info = ResolveAbilityListCursor(out cCount);
                         response.Status = info != null ? "completed" : "failed";
                         if (info == null) response.Error = "Memory explorer not initialized or game window not found";
                         response.Info = info;
