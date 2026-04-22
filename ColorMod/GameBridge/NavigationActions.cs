@@ -659,11 +659,11 @@ namespace FFTColorCustomizer.GameBridge
             int targetX = command.LocationId;
             int targetY = command.UnitIndex;
 
-            var screen = _detectScreen();
+            var screen = WaitForTurnState(timeoutMs: 1000, out long waitedMs);
             if (screen == null || (screen.Name != "BattleMyTurn" && screen.Name != "BattleActing"))
             {
                 response.Status = "failed";
-                response.Error = $"Not on BattleMyTurn/BattleActing (current: {screen?.Name ?? "null"})";
+                response.Error = $"Not on BattleMyTurn/BattleActing (current: {screen?.Name ?? "null"}) after {waitedMs}ms wait";
                 return response;
             }
 
@@ -914,11 +914,11 @@ namespace FFTColorCustomizer.GameBridge
             if (abilityName == "Attack")
                 return BattleAttack(response, command);
 
-            var screen = _detectScreen();
+            var screen = WaitForTurnState(timeoutMs: 1000, out long waitedMs);
             if (screen == null || (screen.Name != "BattleMyTurn" && screen.Name != "BattleActing"))
             {
                 response.Status = "failed";
-                response.Error = $"Not on BattleMyTurn/BattleActing (current: {screen?.Name ?? "null"})";
+                response.Error = $"Not on BattleMyTurn/BattleActing (current: {screen?.Name ?? "null"}) after {waitedMs}ms wait";
                 return response;
             }
 
@@ -5371,6 +5371,37 @@ namespace FFTColorCustomizer.GameBridge
                     return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Retry-read of detection specifically looking for one of the "player
+        /// is in control" battle states (BattleMyTurn or BattleActing). Returns
+        /// as soon as detection reports one. Returns the last non-null read on
+        /// timeout. Outputs <paramref name="waitedMs"/> so callers can include
+        /// it in failure diagnostics.
+        ///
+        /// Rationale (S56): detection can flicker to BattleEnemiesTurn,
+        /// BattleAttacking, or other transient states for a few hundred ms
+        /// during move-animation tails. In execute_turn bundled flows this
+        /// racetracks the next sub-step's state gate. Single retries make it
+        /// robust without hiding genuine screen transitions.
+        /// </summary>
+        private DetectedScreen? WaitForTurnState(int timeoutMs, out long waitedMs)
+        {
+            var sw = Stopwatch.StartNew();
+            DetectedScreen? last = null;
+            while (sw.ElapsedMilliseconds < timeoutMs)
+            {
+                last = _detectScreen();
+                if (last != null && (last.Name == "BattleMyTurn" || last.Name == "BattleActing"))
+                {
+                    waitedMs = sw.ElapsedMilliseconds;
+                    return last;
+                }
+                Thread.Sleep(100);
+            }
+            waitedMs = sw.ElapsedMilliseconds;
+            return last;
         }
 
         private CommandResponse AdvanceDialogue(CommandResponse response)
