@@ -81,13 +81,31 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 ## 0. Urgent Bugs
 
 
-### Session 56 — battle_ability fix (2026-04-22)
+### Session 56 — follow-ups (2026-04-22)
 
-<!-- "battle_ability targeting cursor stale across abilities" — investigated and found NOT a bug. The "cursor at (8,9) expected (9,9)" failure in S56 live-testing was actually Claude-side: I passed stale (9,9) target coords while Kenrick had moved to (8,9) between scans. The targeting cursor correctly started on the caster's actual position. No code fix needed. -->
+- [ ] **Post-Victory WorldMap mis-detects as `LoadGame`** [Detection] — S56 live: after `kill_enemies` → Victory → 5× Advance, the game is visibly on WorldMap at The Siedge Weald ("13 Capricorn" world date shown, character sprite on the map node), but detection persistently reports `[LoadGame]` with `curLoc=Walled City of Yardrow` (stale location). Root cause: `ScreenDetectionLogic.cs:557` LoadGame rule requires `gameOverFlag == 1` — but gameOverFlag is STICKY across the full post-battle sequence. Rule fires whenever gameOverFlag stuck at 1 + `!actedOrMoved` + `!atNamedLocation` + `IsEventIdUnset`, which is exactly the post-Victory WorldMap fingerprint. Fix approach: require an additional positive signal specific to LoadGame (e.g. menuCursor in save-slot range 0-7 + a sub-screen flag). Needs live capture of both LoadGame and post-Victory-WorldMap detection inputs to design the discriminator. Cosmetic today (the game renders WorldMap correctly) but blocks `execute_action` because ValidPaths come from the wrong screen.
 
-- [ ] **AOB resolver is a research dead-end without pointer chains** — S55 spent ~2h on `<listSize_u64> + 0x1407FC6D8 vtable` AOB; worked once, then failed because the cursor's offset within the widget shifts between widget allocations (sometimes +0x10, sometimes pushed back by a second-vtable insertion). Reverted commits `7def3c2`, `892f979`, `b4d7d98`. **Don't re-attempt without first solving** the structural-offset instability — see memory note for full failure analysis. Pointer-chain (Cheat Engine pointer scan) is the only path that survives widget reallocation. (S56: escape-to-known-state option 3 shipped — this AOB approach not needed for V1.)
+- [ ] **⚠ UNVERIFIED: battle_wait "Auto-facing detected" path triggers on BattleAttacking re-targeting** [Detection] — `BattleWaitLogic.ShouldSkipMenuNavigation(BattleAttacking) == true` is ambiguous: BattleAttacking AFTER a successful Attack means facing-confirm (skip menu, F to confirm), but BattleAttacking AFTER a MISS means re-targeting (needs Escape). S56 fixed the miss case in battle_attack itself (escapes re-targeting before returning), so the ambiguity should no longer surface — but the BattleWaitLogic rule itself is still fragile. Revisit if any new repro lands on BattleAttacking without going through battle_attack.
 
-<!-- S55 🔴 BLOCKING `battle_ability picks the wrong ability` + 3-step breakdown (extract BattleAbilityEntryReset / wire escape-to-known-state / wire AbilityListCursorNavPlanner.Plan) all shipped in S56. Live-verified: Chakra (Martial Arts idx 6, planner chose Up×2) and Haste (Time Magicks idx 0, None×0) cast correctly. Memory note updated. -->
+- [ ] **⚠ UNVERIFIED: Auto-battle submenu unintended activation** [Execution] — During S56 live-play testing, the game's Auto-battle submenu (Manual/Attack Enemy/Protect Ally/Heal Allies/Get to Safety) opened once during menu nav. Cause unclear — may have been a stray Enter from the now-fixed drift bugs. Not repro'd post-fixes. Watch for it next session.
+
+- [ ] **AOB resolver is a research dead-end without pointer chains** — S55 spent ~2h on `<listSize_u64> + 0x1407FC6D8 vtable` AOB; worked once, then failed because the cursor's offset within the widget shifts between widget allocations. Reverted commits `7def3c2`, `892f979`, `b4d7d98`. **Don't re-attempt without first solving** the structural-offset instability — see memory note for full failure analysis. Pointer-chain (Cheat Engine pointer scan) is the only path that survives widget reallocation. (S56: escape-to-known-state option 3 shipped — this AOB approach not needed for V1.)
+
+<!-- S55 🔴 BLOCKING `battle_ability picks the wrong ability` + 3-step breakdown all shipped in S56 (commit 8bb692e). Live-verified: Chakra (Martial Arts idx 6, Up×2) and Haste (Time Magicks idx 0, None×0) cast correctly. `AbilityListCursorNavPlanner.Plan` wired in that same commit. Memory note updated. -->
+
+<!-- S56 ADDITIONAL FIXES SHIPPED (all live-verified):
+- `battle_wait` overshoot to Auto-battle (08e9d99) — stale byte retry amplification
+- Move/Jump UIBuffer fallback → honest Mv=0 (bdcd5bb)
+- State-gate retry for transient reads (b2f035d)
+- Broad-search fallback for heap Move/Jump (402bd92)
+- MoveGrid confirmation tightened to BattleMyTurn/BattleActing (3ba67d5)
+- battle_wait accepts BattleActing (07646ab)
+- battle_ability post-cast settle (85682fb)
+- battle_wait F→Enter fallback + dismiss learned-ability/reward banners (24f0348)
+- Heap search uses MaxHP-twice pattern (damage-invariant) (b3180e3)
+- battle_attack escapes re-targeting after miss (851a927)
+- battle_wait exits poll on Victory/Desertion (6cc2e7d)
+-->
 
 
 ### Session 52 — scan_diff identity + per-unit ct hunt (2026-04-20)
@@ -115,7 +133,8 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Session 47 — follow-ups (2026-04-19)
 
-- [ ] **🆕 Wire `AbilityListCursorNavPlanner.Plan` once real-cursor source exists** — Session 55 shipped this pure planner with 12 tests (`AbilityListCursorNavPlanner.Plan(currentIdx, targetIdx, listSize)` returns shorter Down/Up direction with wrap). Wire once the cursor-byte address is available reliably (option 3 from `memory/project_ability_list_cursor_addr.md` — escape-and-re-enter from known idx 0 — would feed currentIdx=0 trivially).
+<!-- "Wire AbilityListCursorNavPlanner.Plan once real-cursor source exists" — shipped S56 (commit 8bb692e). Escape-to-known-state from BattleAbilityEntryReset gives currentIdx=0 trivially; planner wired at NavigationActions.cs ListNav. Live-verified with Chakra (Up×2) and Haste (None×0). -->
+
 
 
 ### Session 48 — follow-ups (2026-04-19)

@@ -5,16 +5,60 @@ Items fully shipped ([x]) across sessions. Kept out of TODO.md to make the activ
 
 ---
 
-### Session 56 (2026-04-22) — TODO sweep: items verified shipped but still in active queue
+### Session 56 (2026-04-22) — battle turn cycle fixes + TODO sweep
 
-No new feature code landed this session — housekeeping pass on TODO.md to surface items that were shipped earlier but never archived. Each bullet below names the in-code fix location so a future auditor can re-verify quickly.
+**14 commits, 11 real bug fixes, all live-verified.** Tests: 3893 → 3930 (+37). End-to-end battle turn cycle (`execute_turn move + ability + wait`) now completes cleanly in ~14s (pre-S56: 142s then timeout).
 
-- [x] **`battle_ability` response says "Used" for cast-time abilities** — the verb switches via `loc.castSpeed > 0 ? "Queued" : "Used"` at `NavigationActions.cs:1167`; `ctSuffix` appends `(ct=N)` when queued. (Was on the 2026-04-12 S2 bug list; shipped long before S56.)
-- [x] **Abilities submenu remembers cursor position (for `battle_attack`)** — force-to-Attack reset shipped at `NavigationActions.cs:670-697` in the `BattleAttack` path. `FindSkillsetIndex(uiSubmenu, ...)` measures current cursor; Up-wraps to 0 before Enter. The REMAINING battle_ability off-by-one (different path) is tracked as the S55 🔴 BLOCKING item, not this one.
-- [x] **BattleVictory/BattleDesertion misdetect as BattlePaused (Orbonne slot0=0x67)** — Orbonne Victory + Orbonne Desertion variant rules at `ScreenDetectionLogic.cs:500-525` (`orbonneDesertion` pattern). Pinned with regression tests `DetectScreen_Desertion_Orbonne_Slot0_0x67_ShouldReturnBattleDesertion` and `DetectScreen_Victory_Orbonne_Slot0_0x67_ShouldReturnBattleVictory`.
-- [x] **New state: BattleChoice — mid-battle objective choice screen** — state exists; detection wires `eventHasChoice` (from .mes 0xFB parse) + runtime `choiceModalFlag` byte at `ScreenDetectionLogic.cs:344-378`. NavigationPaths for Yes/No/CursorUp/Down populate. `BattleChoiceEventIds.KnownEventIds` pins known choice events. (Per-option text decode + more event-catalog entries remain — tracked as separate items in §12.)
-- [x] **Wire `AbilityCursorDeltaPlanner.Decide` into the ability-list scroll loop** — wired at `NavigationActions.cs:1127`; trust-rules gate retry math (sign match + magnitude guard + expected-magnitude check). S55 reverts did NOT touch this; the Decide call is live. (The un-wired planner is `AbilityListCursorNavPlanner.Plan` — a different helper — tracked separately.)
-- [x] **Split KEY_DELAY into nav vs transition** — `KeyDelayClassifier` shipped (`ColorMod/GameBridge/KeyDelayClassifier.cs`): 200ms nav (arrow keys) / 350ms transition (Enter/Esc/Tab). Called from `NavigationActions.cs:5250` via `KeyDelayClassifier.DelayMsFor(vk)`.
+Commits (in order):
+- `d8d1431` — TODO sweep: archive 6 stale items, split 6 compound tasks, dedupe
+- `a849bed` — Remove screenshot.ps1 (full-desktop); screenshot_crop.ps1 is correct default
+- `08e9d99` — Fix battle_wait overshoot to Auto-battle after battle_move
+- `bdcd5bb` — Drop wrong UIBuffer fallback when active-unit heap Move/Jump read fails
+- `8bb692e` — Fix battle_ability picking wrong ability via escape-to-known-state (S55 🔴 BLOCKING)
+- `b2f035d` — Retry battle_ability/battle_attack state-gate on transient non-turn reads
+- `402bd92` — Add broad-search fallback for TryReadMoveJumpFromHeap
+- `3ba67d5` — Tighten MoveGrid confirmation to BattleMyTurn/BattleActing only
+- `07646ab` — battle_wait accepts BattleActing as friendly-turn-reached
+- `85682fb` — battle_ability settles to turn state before returning completed
+- `24f0348` — battle_wait: Enter fallback on facing-confirm + dismiss banners in poll
+- `b3180e3` — Heap Move/Jump search uses MaxHP twice pattern (damage-invariant)
+- `851a927` — battle_attack escapes re-targeting screen after a miss
+- `6cc2e7d` — battle_wait exits poll on BattleVictory/BattleDesertion
+
+**Fixes shipped — code changes (all live-verified):**
+
+- [x] **🔴 S55 BLOCKING: battle_ability picks the wrong ability** (`8bb692e`) — new `BattleAbilityEntryReset` pure helper (29 TDD tests). Escapes 0-3 times to reach BattleMyTurn before each nav, guaranteeing widget reconstruction (both submenu and ability-list cursors reset to idx 0). Then `AbilityListCursorNavPlanner.Plan(0, targetIdx, listSize)` picks shorter Up/Down direction. Live-verified: Chakra (Martial Arts idx 6, Up×2), Haste (Time Magicks idx 0, None×0).
+
+- [x] **battle_wait overshoots to Auto-battle after battle_move** (`08e9d99`) — new `BattleWaitLogic.ShouldRetryVerifyAfterNav` pure rule (6 TDD tests). Post-nav verify was re-reading the same stale cursor byte we'd already corrected-away-from, amplifying 1 Down into 3 Downs → Wait(2) → Auto-battle(4). Now trust the initial nav when the byte is stuck at its pre-corrected value.
+
+- [x] **Active-unit Move/Jump falls back to UIBuffer noise** (`bdcd5bb`) — UIBuffer holds cursor-hovered unit's BASE stats, not active unit's effective stats. S56 repro: Wilham (Monk base Mv=3) got UIBuffer Mv=4 → BFS false-positive tile (7,9) → `battle_move` stuck. Fix: honest `Mv=0 Jmp=0` on heap miss; BFS returns empty; scan surfaces "Mv=0 Jmp=0 Move tiles: (none)" so Claude sees unknown state. 2 new MovementBfs tests pin Move=0 → empty.
+
+- [x] **Heap search narrow filter misses most unit structs** (`402bd92`) — narrow only covers ~11MB of ~2GB heap. Fix: retry with broad search (IMAGE + WRITECOPY, 2GB budget) when narrow returns 0 matches. Rarely needed after the MaxHP-pattern fix below.
+
+- [x] **Heap Move/Jump search pattern was wrong for damaged units** (`b3180e3`) — old pattern `(currentHp, MaxHp)` literally doesn't exist in memory for damaged units. The heap struct stores HP and MaxHP as *both = MaxHp* (damage-invariant base). S56 repro: Lloyd HP=370/628 → 0 matches anywhere for `72 01 74 02`, but `74 02 74 02` (MaxHP twice) matched cleanly at 0x4167086130. Fix: search for `(MaxHp, MaxHp)` pair. Works for full-HP and damaged units.
+
+- [x] **execute_turn state-gate race on transient reads** (`b2f035d`) — move-animation tails cause detection to flicker to BattleEnemiesTurn transiently; single `_detectScreen` read fails the ability sub-step. Fix: new `WaitForTurnState(timeoutMs, out waitedMs)` helper retries until BattleMyTurn or BattleActing is seen. Applied to both `BattleAbility` and `BattleAttack` state gates.
+
+- [x] **MoveGrid accepted any non-BattleMoving state as confirmed** (`3ba67d5`) — accepted BattleEnemiesTurn transient flickers as "move done," causing execute_turn to race the next sub-step. Fix: only BattleMyTurn or BattleActing count.
+
+- [x] **battle_wait didn't recognize BattleActing as friendly-turn** (`07646ab`) — Haste-driven double turns or auto-acted allies land on BattleActing directly, bypassing the 300ms poll's BattleMyTurn window. Fix: accept both.
+
+- [x] **battle_ability returned with stale BattleAttacking** (`85682fb`) — response.Screen read mid-animation before cast finalized, giving session logs a confused source→target. Fix: `WaitForTurnState(2000ms)` post-cast settle in all 4 battle_ability return paths (true-self, self-radius, cursor-already-on-target, navigated target).
+
+- [x] **battle_wait stalled on facing-confirm F-key drops + mid-battle banners** (`24f0348`) — F key occasionally didn't advance the facing screen; BattleAbilityLearnedBanner/BattleRewardObtainedBanner screens appeared during enemy-turns wait and the poll loop didn't dismiss them. Fixes: Enter-fallback if F didn't advance; Enter-dismiss known banners in the poll loop.
+
+- [x] **battle_attack re-targets after MISS** (`851a927`) — after a miss, the game re-opens the attack-targeting screen. Old code returned "completed" on BattleAttacking, the next battle_wait saw the re-target screen, fired F/Enter confirming a stray target, and polled 120s. Fix: post-animation check; if still on BattleAttacking, send Escape to back out to BattleActing.
+
+- [x] **battle_wait polled 120s after Victory** (`6cc2e7d`) — kill_enemies on final turn → Victory → battle_wait polled for a friendly turn that would never come. Fix: exit poll on BattleVictory or BattleDesertion (post-loop Desertion auto-dismiss still runs).
+
+**Stale items also archived from TODO hygiene pass (d8d1431):**
+
+- [x] **battle_ability response says "Used" for cast-time abilities** — fixed long ago at `NavigationActions.cs:1167`.
+- [x] **Abilities submenu remembers cursor position (for battle_attack)** — force-to-Attack reset at NavigationActions.cs:670-697.
+- [x] **BattleVictory/BattleDesertion misdetect as BattlePaused (Orbonne slot0=0x67)** — `orbonneDesertion` variant rules + regression tests pinned.
+- [x] **New state: BattleChoice** — detection wires `eventHasChoice` + `choiceModalFlag` at ScreenDetectionLogic.cs:344-378.
+- [x] **Wire AbilityCursorDeltaPlanner.Decide** — wired at NavigationActions.cs:1127.
+- [x] **Split KEY_DELAY into nav vs transition** — KeyDelayClassifier shipped.
 
 ---
 
