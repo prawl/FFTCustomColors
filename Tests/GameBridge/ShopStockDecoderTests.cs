@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FFTColorCustomizer.GameBridge;
 using Xunit;
 
@@ -54,6 +55,97 @@ public class ShopStockDecoderTests
         Assert.Equal(64, ids.Count);
         Assert.Equal(0, ids[0]);
         Assert.Equal(63, ids[^1]);
+    }
+
+    [Fact]
+    public void DecodeBitmap_Bitmap4Format_CountBytesLeakIntoOffset208()
+    {
+        // Pins the buggy (no-format-awareness) behavior that
+        // DecodeStockAt now guards against. For a Bitmap4 record
+        // read as 8 raw bytes, bytes 4-7 store the record count
+        // (not bitmap bits). Decoding all 8 bytes at Accessories
+        // offset 208 incorrectly reads the count byte as 3 phantom
+        // items (240, 241, 242 = Potion/Hi-Potion/X-Potion).
+        //
+        // Session 55 live-verified at Gariland Outfitter Buy: the
+        // resolver call returned 10 Accessories instead of 7. Fix
+        // is in DecodeStockAt — zeroes the high 4 bytes on Bitmap4.
+        // This test asserts the *raw* decode still produces the
+        // phantom result so future refactors of the low-level
+        // decoder can't accidentally silently fix the issue in a
+        // different place.
+        var raw = new byte[] { 0x7F, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00 };
+        var ids = ShopStockDecoder.DecodeBitmap(raw, 208);
+        Assert.Contains(240, ids); // phantom from count byte
+        Assert.Contains(241, ids);
+        Assert.Contains(242, ids);
+    }
+
+    [Fact]
+    public void ValidateAgainstExpected_MatchingCount_ReturnsInput()
+    {
+        // Pure helper called at the end of DecodeStockAt. When the
+        // decoded list size matches the registry-expected count, it
+        // passes through unchanged.
+        var stock = new List<ShopStockItem>
+        {
+            new() { Id = 240, Name = "Potion", Type = "chemistitem", BuyPrice = 50 },
+            new() { Id = 241, Name = "Hi-Potion", Type = "chemistitem", BuyPrice = 200 },
+        };
+        var result = ShopStockDecoder.ValidateAgainstExpected(stock, expectedCount: 2);
+        Assert.Equal(2, result.Count);
+        Assert.Same(stock, result);
+    }
+
+    [Fact]
+    public void ValidateAgainstExpected_TooManyItems_ReturnsEmpty()
+    {
+        // Lesalia/Warjilis live-observed false positive: locate
+        // returned a memory region that decoded to 8 items when
+        // the registry expected 6. The 2 extras (Vesper, Sagittarius
+        // Bow) are bogus — count mismatch must reject the whole
+        // list rather than surface partial wrong data.
+        var stock = new List<ShopStockItem>
+        {
+            new() { Id = 240, Name = "Potion", BuyPrice = 50 },
+            new() { Id = 241, Name = "Hi-Potion", BuyPrice = 200 },
+            new() { Id = 242, Name = "X-Potion", BuyPrice = 700 },
+            new() { Id = 243, Name = "Ether", BuyPrice = 200 },
+            new() { Id = 244, Name = "Hi-Ether", BuyPrice = 600 },
+            new() { Id = 246, Name = "Antidote", BuyPrice = 50 },
+            new() { Id = 273, Name = "Vesper", BuyPrice = null },
+            new() { Id = 274, Name = "Sagittarius Bow", BuyPrice = null },
+        };
+        var result = ShopStockDecoder.ValidateAgainstExpected(stock, expectedCount: 6);
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void ValidateAgainstExpected_TooFewItems_ReturnsEmpty()
+    {
+        // Defensive: a partial decode (e.g. some IDs missing from
+        // ItemData lookup) shouldn't leak through either. Symmetric
+        // rejection on either side of the expected count.
+        var stock = new List<ShopStockItem>
+        {
+            new() { Id = 240, Name = "Potion", BuyPrice = 50 },
+        };
+        var result = ShopStockDecoder.ValidateAgainstExpected(stock, expectedCount: 6);
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void ValidateAgainstExpected_NegativeExpected_PassesThrough()
+    {
+        // Backwards-compat: callers that don't have a registry
+        // expected count (e.g. one-off pattern-arg manual mode in
+        // shop_stock) pass -1 and get the un-validated decode.
+        var stock = new List<ShopStockItem>
+        {
+            new() { Id = 240, Name = "Potion", BuyPrice = 50 },
+        };
+        var result = ShopStockDecoder.ValidateAgainstExpected(stock, expectedCount: -1);
+        Assert.Single(result);
     }
 
     [Fact]

@@ -684,6 +684,16 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? ShopListCursorIndex { get; set; }
 
+        /// <summary>Decoded shop stock by category, populated on OutfitterBuy.
+        /// Keys are category names ("Weapons", "Daggers", "Shields", "Helms",
+        /// "Body", "Accessories", "Consumables") — only categories with a
+        /// registered record for the current (location, chapter) appear.
+        /// Values are the ordered item list with buy prices applied.
+        /// Null on screens where shop stock doesn't apply.</summary>
+        [JsonPropertyName("stockItems")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Dictionary<string, List<GameBridge.ShopStockItem>>? StockItems { get; set; }
+
         /// <summary>
         /// Location IDs that are currently unlocked/revealed for travel.
         /// Populated on WorldMap and TravelList screens only — lets Claude

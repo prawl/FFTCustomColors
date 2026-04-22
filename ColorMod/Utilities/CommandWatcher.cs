@@ -2668,7 +2668,19 @@ namespace FFTColorCustomizer.Utilities
                                 response.Error = $"Record not found for pattern {bmpHex} count={expectedCount} format={GameBridge.ShopStockDecoder.FormatForCategory(cat)} (source={source})";
                                 break;
                             }
-                            var stock = decoder.DecodeStockAt(recAddr, cat, priceLocation, priceChapter);
+                            // Pass expectedCount through so the decoder
+                            // rejects false-positive locates that decode
+                            // to wrong item counts (Lesalia/Warjilis
+                            // Consumables phantoms — see DecodeStockAt
+                            // session 55 fix). Mismatches return empty
+                            // rather than partial wrong data.
+                            var stock = decoder.DecodeStockAt(recAddr, cat, priceLocation, priceChapter, expectedCount);
+                            if (stock.Count == 0)
+                            {
+                                response.Status = "failed";
+                                response.Error = $"Record located at 0x{recAddr:X} but decode returned no items matching expected count {expectedCount} (false-positive locate).";
+                                break;
+                            }
 
                             var sb = new System.Text.StringBuilder();
                             sb.AppendLine($"shop_stock {cat} [{source}] — record @ 0x{recAddr:X}, {stock.Count} items:");
@@ -6263,6 +6275,33 @@ namespace FFTColorCustomizer.Utilities
                 // sub-action. -1 elsewhere so JSON omits the field.
                 if (screen.Name == "OutfitterBuy" || screen.Name == "OutfitterSell" || screen.Name == "OutfitterFitting")
                     screen.ShopListCursorIndex = (int)v[26];
+
+                // Session 55: auto-populate screen.stockItems on
+                // OutfitterBuy so Claude gets the full shop catalog
+                // without a separate shop_stock call. Covers every
+                // registered category for this (location, chapter)
+                // in canonical tab order. Chapter defaults to 1
+                // until the chapter byte hunt lands.
+                if (screen.Name == "OutfitterBuy" && Explorer != null)
+                {
+                    try
+                    {
+                        int shopLocation = (int)v[2];
+                        int shopChapter = 1; // TODO: replace with chapter byte read when cracked
+                        var decoder = new GameBridge.ShopStockDecoder(Explorer);
+                        var stock = GameBridge.ShopStockResolver.DecodeAll(decoder, shopLocation, shopChapter);
+                        if (stock.Count > 0)
+                            screen.StockItems = stock;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Silently skip on error — the separate
+                        // shop_stock bridge action is the diagnostic
+                        // path. We don't want a decoder failure to
+                        // break the screen response.
+                        ModLogger.Log($"[StockItems] resolver threw: {ex.Message}");
+                    }
+                }
 
                 if (screen.Name == "Cutscene")
                 {

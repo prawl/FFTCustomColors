@@ -126,5 +126,52 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var json = JsonSerializer.Serialize(screen);
             Assert.Contains("\"shopListCursorIndex\":0", json);
         }
+
+        [Fact]
+        public void DetectedScreen_StockItems_SerializesWithCategoryKeys()
+        {
+            // Session 55: stockItems populates on OutfitterBuy with the
+            // full catalog of registered categories. Shape is a dict
+            // keyed by category name ("Weapons"/"Shields"/...) mapping
+            // to the ordered stock list. JSON shape is stable because
+            // callers (shell, Claude tooling) iterate the dict.
+            var screen = new DetectedScreen
+            {
+                Name = "OutfitterBuy",
+                StockItems = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<ShopStockItem>>
+                {
+                    ["Weapons"] = new()
+                    {
+                        new ShopStockItem { Id = 60, Name = "White Staff", Type = "Staff", BuyPrice = 400 }
+                    }
+                }
+            };
+
+            var json = JsonSerializer.Serialize(screen);
+            Assert.Contains("\"stockItems\"", json);
+            Assert.Contains("\"Weapons\"", json);
+            Assert.Contains("\"White Staff\"", json);
+            // ShopStockItem ships with default PascalCase property names
+            // (matches the existing shopStock field from session 54).
+            // Callers depend on that shape — don't silently change it.
+            Assert.Contains("\"BuyPrice\":400", json);
+        }
+
+        [Fact]
+        public void DetectedScreen_StockItems_OmittedWhenNull()
+        {
+            // Non-shop screens must not carry a stockItems field at
+            // all — keeps the JSON response lean and makes the
+            // "decodable stock available" signal clearer when the
+            // field IS present.
+            var screen = new DetectedScreen
+            {
+                Name = "WorldMap",
+                StockItems = null
+            };
+
+            var json = JsonSerializer.Serialize(screen);
+            Assert.DoesNotContain("stockItems", json);
+        }
     }
 }

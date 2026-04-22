@@ -286,16 +286,31 @@ namespace FFTColorCustomizer.GameBridge
         /// specific overrides take effect; otherwise the end-game
         /// fallback <see cref="ItemPrices.GetBuyPrice"/> is used.
         /// </summary>
-        public List<ShopStockItem> DecodeStockAt(long recordAddr, Category cat, int location = -1, int chapter = -1)
+        public List<ShopStockItem> DecodeStockAt(long recordAddr, Category cat, int location = -1, int chapter = -1, int expectedCount = -1)
         {
             var result = new List<ShopStockItem>();
             var raw = ReadBitmap(recordAddr);
             if (raw == null) return result;
 
             List<int> ids;
-            if (FormatForCategory(cat) == RecordFormat.IdArray)
+            var format = FormatForCategory(cat);
+            if (format == RecordFormat.IdArray)
             {
                 ids = DecodeIdArray(raw);
+            }
+            else if (format == RecordFormat.Bitmap4)
+            {
+                // Bitmap4: only the low 4 bytes are bitmap bits; the
+                // high 4 bytes are the record's count field. Decoding
+                // all 8 bytes as bitmap produces phantom items at
+                // offset-sensitive positions (e.g. Gariland
+                // Accessories picking up Potion/Hi-Potion/X-Potion
+                // from the count=7 field at byte 4). Zero the high 4
+                // before decoding so the count bytes can't masquerade
+                // as set bits.
+                var bitmapOnly = new byte[8];
+                System.Array.Copy(raw, 0, bitmapOnly, 0, 4);
+                ids = DecodeBitmap(bitmapOnly, OffsetForCategory(cat));
             }
             else
             {
@@ -317,7 +332,31 @@ namespace FFTColorCustomizer.GameBridge
                     BuyPrice = price
                 });
             }
-            return result;
+
+            return ValidateAgainstExpected(result, expectedCount);
+        }
+
+        /// <summary>
+        /// Session 55 fix: when caller passes <paramref name="expectedCount"/>
+        /// (>=0), reject decoded stock lists whose item count
+        /// doesn't match. Mismatches indicate the located record
+        /// is a false positive (e.g. transient memory region whose
+        /// bytes 4-7 leak into bitmap bits as phantom IDs at decode
+        /// time). Returning empty rather than partial/wrong data
+        /// lets callers distinguish "no stock" from "wrong stock".
+        /// Verified live at Lesalia/Warjilis Consumables: 8-item
+        /// false positives (real 6 + 2 phantom weapons) get dropped
+        /// to empty rather than surfacing wrong data. When
+        /// <paramref name="expectedCount"/> is negative, the input
+        /// list is returned unchanged (preserves the un-validated
+        /// API for callers that don't have a registry expected
+        /// count to compare against).
+        /// </summary>
+        public static List<ShopStockItem> ValidateAgainstExpected(List<ShopStockItem> stock, int expectedCount)
+        {
+            if (expectedCount < 0) return stock;
+            if (stock.Count != expectedCount) return new List<ShopStockItem>();
+            return stock;
         }
     }
 

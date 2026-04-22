@@ -173,4 +173,82 @@ public class ShopBitmapRegistryTests
     {
         Assert.False(ShopBitmapRegistry.HasMapping(0, 1, ShopStockDecoder.Category.Weapons));
     }
+
+    [Fact]
+    public void RegisteredCategoriesFor_DorterCh1_HasAllSixVerifiedCategories()
+    {
+        // Dorter (9) is the most-verified shop — staves weapons,
+        // shields, helms, body, accessories, consumables are all
+        // registered. No daggers (dagger shops are a different set).
+        var cats = ShopBitmapRegistry.RegisteredCategoriesFor(9, 1);
+        Assert.Contains(ShopStockDecoder.Category.Weapons, cats);
+        Assert.DoesNotContain(ShopStockDecoder.Category.Daggers, cats);
+        Assert.Contains(ShopStockDecoder.Category.Shields, cats);
+        Assert.Contains(ShopStockDecoder.Category.Helms, cats);
+        Assert.Contains(ShopStockDecoder.Category.Body, cats);
+        Assert.Contains(ShopStockDecoder.Category.Accessories, cats);
+        Assert.Contains(ShopStockDecoder.Category.Consumables, cats);
+    }
+
+    [Fact]
+    public void RegisteredCategoriesFor_CanonicalTabOrder()
+    {
+        // Order has to match the in-game Outfitter tab sequence so
+        // screen.stockItems is predictable for callers iterating it.
+        // Weapons → Daggers → Shields → Helms → Body → Accessories →
+        // Consumables. Dorter has all except Daggers.
+        var cats = ShopBitmapRegistry.RegisteredCategoriesFor(9, 1);
+        var expected = new[]
+        {
+            ShopStockDecoder.Category.Weapons,
+            // No Daggers at Dorter
+            ShopStockDecoder.Category.Shields,
+            ShopStockDecoder.Category.Helms,
+            ShopStockDecoder.Category.Body,
+            ShopStockDecoder.Category.Accessories,
+            ShopStockDecoder.Category.Consumables,
+        };
+        Assert.Equal(expected, cats);
+    }
+
+    [Fact]
+    public void RegisteredCategoriesFor_GarilandCh1_HasDaggersNotWeapons()
+    {
+        // Dagger shop — registered as Daggers, not Weapons.
+        var cats = ShopBitmapRegistry.RegisteredCategoriesFor(6, 1);
+        Assert.Contains(ShopStockDecoder.Category.Daggers, cats);
+        Assert.DoesNotContain(ShopStockDecoder.Category.Weapons, cats);
+    }
+
+    [Fact]
+    public void RegisteredCategoriesFor_GougCh1_ExcludesWeaponsUntilMythrilGunCracked()
+    {
+        // Goug's weapons tab is NOT registered (8-item bitmap missing
+        // Mythril Gun). Other categories are registered by analogy;
+        // we need the enumeration to reflect the honest state.
+        var cats = ShopBitmapRegistry.RegisteredCategoriesFor(11, 1);
+        Assert.DoesNotContain(ShopStockDecoder.Category.Weapons, cats);
+        Assert.Contains(ShopStockDecoder.Category.Helms, cats);
+    }
+
+    [Fact]
+    public void RegisteredCategoriesFor_UnknownLocation_ReturnsEmpty()
+    {
+        // Out-of-range location (no registered entries) returns an
+        // empty list, not null. Keeps callers from having to null-
+        // check before iterating.
+        var cats = ShopBitmapRegistry.RegisteredCategoriesFor(99, 1);
+        Assert.Empty(cats);
+    }
+
+    [Fact]
+    public void RegisteredCategoriesFor_Chapter2AtDorter_ReturnsEmpty()
+    {
+        // Ch2+ shop stocks aren't registered yet (chapter byte hunt
+        // is deferred TODO). Enumeration must gracefully return an
+        // empty list so the screen-assembly code doesn't crash on
+        // future chapters — it just won't show stock items.
+        var cats = ShopBitmapRegistry.RegisteredCategoriesFor(9, 2);
+        Assert.Empty(cats);
+    }
 }

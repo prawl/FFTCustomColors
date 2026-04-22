@@ -247,5 +247,37 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public static bool HasMapping(int location, int chapter, ShopStockDecoder.Category category)
             => _map.ContainsKey((location, chapter, category));
+
+        /// <summary>
+        /// Enumerate the registered categories for a given
+        /// (location, chapter) tuple, ordered by the canonical
+        /// Outfitter tab order (Weapons, Daggers, Shields, Helms,
+        /// Body, Accessories, Consumables). Used by screen-assembly
+        /// to populate <c>screen.stockItems</c> with every category
+        /// the shop carries without needing to know which tab is
+        /// currently active.
+        /// </summary>
+        public static List<ShopStockDecoder.Category> RegisteredCategoriesFor(int location, int chapter)
+        {
+            var result = new List<ShopStockDecoder.Category>();
+            // Canonical Outfitter tab order. Matches the in-game tab
+            // sequence so iteration order is predictable.
+            var order = new[]
+            {
+                ShopStockDecoder.Category.Weapons,
+                ShopStockDecoder.Category.Daggers,
+                ShopStockDecoder.Category.Shields,
+                ShopStockDecoder.Category.Helms,
+                ShopStockDecoder.Category.Body,
+                ShopStockDecoder.Category.Accessories,
+                ShopStockDecoder.Category.Consumables,
+            };
+            foreach (var cat in order)
+            {
+                if (_map.ContainsKey((location, chapter, cat)))
+                    result.Add(cat);
+            }
+            return result;
+        }
     }
 }
