@@ -81,17 +81,13 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 ## 0. Urgent Bugs
 
 
-### Session 55 — ability nav resolver (2026-04-22)
+### Session 56 — battle_ability fix (2026-04-22)
 
-- [ ] **🔴 BLOCKING — `battle_ability` picks the wrong ability (tracker)** — Pre-S55 blind reset (`Up×(listSize+1)` then `Down×index`) at `NavigationActions.cs:1093` is back in place after S55 reverted the AOB experiment. Up at idx 0 wraps to last, so `listSize+1` Ups land at last not 0 (off-by-one). Symptom: Haste → Meteor; Cure → Attack-targeting. **Fix plan: escape-to-known-state** per `memory/project_ability_list_cursor_addr.md` option 3. Broken into atomic subtasks below.
+- [ ] **`battle_ability` targeting cursor stale across abilities** — After the S56 ability-nav fix, targeting mode is reached correctly (right ability selected) but the initial targeting-cursor position is sometimes WRONG (e.g. Cure from (9,9) started targeting at (8,9)). The rotation fallback fires and the cursor walker tries to correct but fails, leaving the unit stuck in targeting mode. Separate bug from the ability-nav one fixed in S56. Needs a `battle_ability` pre-targeting reset similar to the entry-reset: ensure cursor starts at the caster's position before firing direction keys. Log signature: `[BattleAbility] Targeting X, cursor at (A,B), target (C,D)` where A,B ≠ caster position.
 
-- [ ] **Fix 🔴 step 1: extract a `BattleAbilityEntryReset` pure helper** — Pure class that takes a current screen name + MenuDepth and emits the key sequence needed to return to BattleMyTurn with cursor at action-menu idx 0. TDD cases: already on BattleMyTurn → `[]`; on BattleAbilities submenu → `[Escape]`; on ability-list inside submenu → `[Escape, Escape]`; deeper (targeting) → extra Escape. Ship with 4+ tests; do NOT wire yet.
+- [ ] **AOB resolver is a research dead-end without pointer chains** — S55 spent ~2h on `<listSize_u64> + 0x1407FC6D8 vtable` AOB; worked once, then failed because the cursor's offset within the widget shifts between widget allocations (sometimes +0x10, sometimes pushed back by a second-vtable insertion). Reverted commits `7def3c2`, `892f979`, `b4d7d98`. **Don't re-attempt without first solving** the structural-offset instability — see memory note for full failure analysis. Pointer-chain (Cheat Engine pointer scan) is the only path that survives widget reallocation. (S56: escape-to-known-state option 3 shipped — this AOB approach not needed for V1.)
 
-- [ ] **Fix 🔴 step 2: replace blind Up-reset with escape-to-known-state** — In `NavigationActions.cs` `BattleAbility` (around line 1085-1098), remove the `Up×(listSize+1)` blind reset and call the `BattleAbilityEntryReset` sequence instead. Then re-Enter into Abilities → submenu → list from known idx 0. Cost ~500ms but correct. Live-verify: request Cure → casts Cure, request Haste → queues Haste.
-
-- [ ] **Fix 🔴 step 3: wire `AbilityListCursorNavPlanner.Plan(currentIdx=0, ...)`** — After step 2 lands, the cursor is reliably at idx 0, so `AbilityListCursorNavPlanner.Plan(0, targetIdx, listSize)` can emit the shorter Up-vs-Down path (saves presses for abilities in the bottom half of long lists like Black Mage's 16 spells). Replaces plain `Down×abilityIdx`.
-
-- [ ] **AOB resolver is a research dead-end without pointer chains** — S55 spent ~2h on `<listSize_u64> + 0x1407FC6D8 vtable` AOB; worked once, then failed because the cursor's offset within the widget shifts between widget allocations (sometimes +0x10, sometimes pushed back by a second-vtable insertion). Reverted commits `7def3c2`, `892f979`, `b4d7d98`. **Don't re-attempt without first solving** the structural-offset instability — see memory note for full failure analysis. Pointer-chain (Cheat Engine pointer scan) is the only path that survives widget reallocation.
+<!-- S55 🔴 BLOCKING `battle_ability picks the wrong ability` + 3-step breakdown (extract BattleAbilityEntryReset / wire escape-to-known-state / wire AbilityListCursorNavPlanner.Plan) all shipped in S56. Live-verified: Chakra (Martial Arts idx 6, planner chose Up×2) and Haste (Time Magicks idx 0, None×0) cast correctly. Memory note updated. -->
 
 
 ### Session 52 — scan_diff identity + per-unit ct hunt (2026-04-20)

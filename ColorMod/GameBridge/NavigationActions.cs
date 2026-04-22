@@ -922,6 +922,36 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // Step 0: Escape-to-known-state pre-reset.
+            // Both the submenu cursor (Attack/White Magicks/...) and ability-list
+            // cursor (Cure/Cura/...) are UE4 widget bytes that REMEMBER the
+            // previously-selected index within a turn. Without a reliable way to
+            // READ those cursor bytes (S55 AOB hunt failed structurally —
+            // project_ability_list_cursor_addr.md), we reset them DETERMINISTICALLY
+            // by escaping fully back to BattleMyTurn first. Widgets get
+            // reconstructed on re-entry, both cursors return to idx 0, and the
+            // downstream Down×submenuIdx / Down×abilityIdx navigation is correct.
+            // Cost: ~0-3 escapes (typically 0 — caller is almost always on
+            // BattleMyTurn already).
+            int escapeCount = BattleAbilityEntryReset.EscapeCountToMyTurn(screen.Name);
+            if (escapeCount > 0)
+            {
+                ModLogger.Log($"[BattleAbility] Entry reset: screen={screen.Name}, Escape×{escapeCount} to reach BattleMyTurn");
+                for (int i = 0; i < escapeCount; i++)
+                {
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                }
+                // Re-detect after escapes — action menu should now be visible.
+                screen = _detectScreen();
+                if (screen == null || (screen.Name != "BattleMyTurn" && screen.Name != "BattleActing"))
+                {
+                    response.Status = "failed";
+                    response.Error = $"Escape-to-known-state failed: expected BattleMyTurn/BattleActing after {escapeCount} Escapes, got {screen?.Name ?? "null"}";
+                    return response;
+                }
+            }
+
             // Step 1: Navigate to Abilities in action menu (always index 1).
             // The menu always has 5 items — Move becomes "Reset Move" after moving,
             // but never disappears. Indices are stable:
@@ -1083,86 +1113,27 @@ namespace FFTColorCustomizer.GameBridge
                 ModLogger.Log($"[BattleAbility] No learned ability data, using hardcoded index {abilityIndex}");
             }
 
-            // Reset ability-list cursor to the top before counting Downs. The ability
-            // list REMEMBERS the previously-selected position within a turn (e.g. after
-            // Escape from Haste at index 4, re-entering Time Magicks still has cursor
-            // at index 4). Pressing Down×abilityIndex from that position lands on the
-            // wrong ability (off-by-prev-selection). Up wraps forward past any start
-            // position: listSize+1 Ups guarantees we end at index 0. Cheap (~0.5s) and
-            // deterministic. See feedback_submenu_sticky_cursor.md.
-            int listSize = learnedAbilities?.Length ?? 16; // Fallback: no skillset >16
-            int resetUps = listSize + 1;
-            ModLogger.Log($"[BattleAbility] Reset: Up×{resetUps} to force cursor to index 0");
-            // Blind fire-and-forget. Historical note: session 31 tried counter-delta
-            // verification here to mirror the Down-loop pattern, but the cursor
-            // counter at 0x140C0EB20 reports NEGATIVE deltas on Up-wrap (observed
-            // live on Lloyd's 12-entry Jump list). Retrying against the wrong-sign
-            // delta produces an explosive retry storm. Wrap-reset is guaranteed
-            // correct after listSize+1 blind Ups — no verification needed.
-            for (int i = 0; i < resetUps; i++)
-            {
-                SendKey(VK_UP);
-                Thread.Sleep(100);
-            }
-            Thread.Sleep(200);
-
-            // Navigate to the target ability. The cursor is now at index 0.
-            // Session 52: wrap the Down-loop's counter-delta verification in
-            // AbilityCursorDeltaPlanner.Decide so only TRUSTED deltas trigger
-            // retry-math. Session 31 Up-wrap explosion (expected +3, got 0;
-            // expected +6, got -24) is the regression guardrail — the planner
-            // refuses to trust wrong-sign or >3x-expected deltas and falls
-            // back to blind scrolling, which the previous naive delta-check
-            // never did.
+            // The escape-to-known-state pre-reset (Step 0) guarantees the
+            // ability-list cursor is at index 0 when we enter a skillset:
+            // escaping all the way back to BattleMyTurn destroys the widget
+            // state, and re-entering the skillset constructs a fresh widget
+            // with cursor at 0. No blind Up-wrap needed (the old
+            // Up×(listSize+1) was off-by-one because Up wraps from 0 to last,
+            // and Up with verification can't work — the cursor counter reports
+            // negative deltas on wrap).
             int listLength = learnedAbilities?.Length ?? 0;
-            ModLogger.Log($"[BattleAbility] Nav: Down×{abilityIndex} (listSize={listLength})");
-            var abilityCounterBefore = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
-            int abilityBaseline = abilityCounterBefore != null ? (int)abilityCounterBefore.Value.value : -1;
+            int listSize = listLength > 0 ? listLength : 16; // Fallback cap
+            var listPlan = AbilityListCursorNavPlanner.Plan(
+                currentIndex: 0, targetIndex: abilityIndex, listSize: listSize);
+            ModLogger.Log($"[BattleAbility] ListNav from 0 to {abilityIndex} (listSize={listSize}): {listPlan.Direction}×{listPlan.PressCount}");
 
-            int pressesConfirmed = 0;
-            for (int i = 0; i < abilityIndex; i++)
+            int listVk = listPlan.Direction == AbilityListCursorNavPlanner.Direction.Up
+                ? VK_UP
+                : VK_DOWN;
+            for (int i = 0; i < listPlan.PressCount; i++)
             {
-                SendKey(VK_DOWN);
+                SendKey(listVk);
                 Thread.Sleep(150);
-                pressesConfirmed++;
-
-                // Verify every 3 presses or on the last press.
-                if (abilityBaseline >= 0 && (pressesConfirmed % 3 == 0 || i == abilityIndex - 1))
-                {
-                    var counterCheck = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
-                    int counterNow = counterCheck != null ? (int)counterCheck.Value.value : -1;
-                    if (counterNow < 0) continue;
-                    int delta = counterNow - abilityBaseline;
-                    var decision = AbilityCursorDeltaPlanner.Decide(
-                        expectedDirection: +1,
-                        observedDelta: delta,
-                        listLength: listLength > 0 ? listLength : 20,
-                        expectedMagnitude: pressesConfirmed);
-                    if (!decision.TrustDelta)
-                    {
-                        // Suspicious delta (wrap, wrong sign, wildly off).
-                        // Stay blind for remaining presses — don't retry on
-                        // bad data or we'll cascade the explosion.
-                        ModLogger.Log($"[BattleAbility] Counter delta {delta} untrusted (expected ~{pressesConfirmed}, list={listLength}). Staying blind.");
-                        continue;
-                    }
-                    // Trusted. If we're short of expected, fire the missing keys.
-                    if (decision.RemainingKeys != pressesConfirmed)
-                    {
-                        int missed = pressesConfirmed - decision.RemainingKeys;
-                        if (missed > 0)
-                        {
-                            ModLogger.Log($"[BattleAbility] Trusted delta {delta}; retrying {missed} missed presses.");
-                            for (int r = 0; r < missed; r++)
-                            {
-                                SendKey(VK_DOWN);
-                                Thread.Sleep(200);
-                            }
-                        }
-                        // Re-baseline so next batch's math stays correct.
-                        abilityBaseline = counterNow - decision.RemainingKeys + pressesConfirmed + (missed > 0 ? missed : 0);
-                    }
-                }
             }
 
             // Step 5: Select the ability
