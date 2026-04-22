@@ -54,6 +54,30 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void BroadSearch_IsCalled_broadSearch_OmittedWhenFalse()
+        {
+            // Session 58 addition for search_bytes. Defaults to false
+            // and must be omitted from serialized JSON so existing
+            // callers (every shell helper) stay byte-identical.
+            var jsonDefault = JsonSerializer.Serialize(new CommandRequest());
+            Assert.DoesNotContain("\"broadSearch\"", jsonDefault);
+
+            var jsonSet = JsonSerializer.Serialize(new CommandRequest { BroadSearch = true });
+            Assert.Contains("\"broadSearch\":true", jsonSet);
+        }
+
+        [Fact]
+        public void BroadSearch_Deserializes_FromIncomingJson()
+        {
+            // Shell helpers emit lowerCamelCase. Pin that {"broadSearch":true}
+            // round-trips into CommandRequest.BroadSearch.
+            var json = """{"id":"1","action":"search_bytes","pattern":"AABB","broadSearch":true}""";
+            var req = JsonSerializer.Deserialize<CommandRequest>(json);
+            Assert.NotNull(req);
+            Assert.True(req!.BroadSearch);
+        }
+
+        [Fact]
         public void MinMaxAddr_AreCalled_minAddr_maxAddr_OmittedWhenNull()
         {
             // Session 47 addition. When both are null, they must be

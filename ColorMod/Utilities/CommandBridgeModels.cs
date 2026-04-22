@@ -77,6 +77,17 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? MaxAddr { get; set; }
 
+        /// <summary>
+        /// When true, search_bytes extends into read-only main-module pages
+        /// (RX regions), not just private heap/stack. Required to hit the
+        /// master-HP table at ~0x14184xxxx. Defaults to false — narrow scans
+        /// are ~4x faster and sufficient for most heap-only lookups.
+        /// Session 58 addition. Unblocks the per-unit-ct hunt.
+        /// </summary>
+        [JsonPropertyName("broadSearch")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool BroadSearch { get; set; }
+
         // Session 47: `execute_turn` bundled-plan fields. Omitted when null so
         // existing command shapes are unaffected. See GameBridge.TurnPlan.
         [JsonPropertyName("moveX")]
@@ -310,6 +321,15 @@ namespace FFTColorCustomizer.Utilities
         public PostActionState? PostAction { get; set; }
 
         /// <summary>
+        /// S58: aggregated execute_turn summary — HP delta / move delta /
+        /// killed units across all sub-steps. Populated only by execute_turn;
+        /// single-action responses stick with the plain postAction.
+        /// </summary>
+        [JsonPropertyName("turnSummary")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public TurnSummary? TurnSummary { get; set; }
+
+        /// <summary>
         /// Structured unit data from scan_units. Each entry has position, stats,
         /// team, class name, status effects, etc. Populated by scan_units and scan_move.
         /// </summary>
@@ -471,6 +491,50 @@ namespace FFTColorCustomizer.Utilities
     /// Lightweight snapshot of the active unit's state after a battle action
     /// completes. Read from the condensed struct — faster than a full scan.
     /// </summary>
+    /// <summary>
+    /// S58: JSON-serialized version of ExecuteTurnResultAccumulator state.
+    /// Aggregated across every sub-step of an execute_turn bundle.
+    /// </summary>
+    public class TurnSummary
+    {
+        [JsonPropertyName("hpDelta")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? HpDelta { get; set; }
+
+        [JsonPropertyName("preMoveX")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? PreMoveX { get; set; }
+
+        [JsonPropertyName("preMoveY")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? PreMoveY { get; set; }
+
+        [JsonPropertyName("postMoveX")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? PostMoveX { get; set; }
+
+        [JsonPropertyName("postMoveY")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? PostMoveY { get; set; }
+
+        [JsonPropertyName("killedUnits")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public List<KilledUnitSummary> KilledUnits { get; set; } = new();
+    }
+
+    public class KilledUnitSummary
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+
+        [JsonPropertyName("jobName")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? JobName { get; set; }
+
+        [JsonPropertyName("team")]
+        public int Team { get; set; }
+    }
+
     public class PostActionState
     {
         [JsonPropertyName("x")]
