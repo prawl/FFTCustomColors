@@ -1307,7 +1307,10 @@ namespace FFTColorCustomizer.GameBridge
             {
                 // True self-only abilities (Focus, Shout): apply instantly, single confirm
                 SendKey(VK_ENTER);
-                Thread.Sleep(300);
+                // 300ms → 150ms animation-start floor. With 40ms-interval
+                // poll in WaitForActionResolved, the shorter floor means
+                // we catch the resolved state sooner.
+                Thread.Sleep(150);
                 WaitForActionResolved(timeoutMs: 2000, out _);
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} (self-target){ctSuffix}{autoEndSuffix}";

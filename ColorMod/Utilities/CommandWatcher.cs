@@ -1401,7 +1401,7 @@ namespace FFTColorCustomizer.Utilities
             // Also start a polling fallback in case FileSystemWatcher misses events
             Task.Run(async () =>
             {
-                ModLogger.Log("[CommandBridge] Starting polling fallback (every 50ms)");
+                ModLogger.Log("[CommandBridge] Starting polling fallback (every 20ms)");
                 while (_watcher != null && !_disposed)
                 {
                     try
@@ -1412,7 +1412,10 @@ namespace FFTColorCustomizer.Utilities
                         }
                     }
                     catch { /* ignore polling errors */ }
-                    await Task.Delay(50);
+                    // 50ms → 20ms. CPU cost trivial (File.Exists on an
+                    // SSD is microseconds). Saves up to 30ms on every
+                    // command where FileSystemWatcher misses/lags.
+                    await Task.Delay(20);
                 }
             });
 
