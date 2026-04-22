@@ -5263,9 +5263,31 @@ namespace FFTColorCustomizer.GameBridge
                 (byte)(hp & 0xFF), (byte)(hp >> 8),
                 (byte)(maxHp & 0xFF), (byte)(maxHp >> 8),
             };
+
+            // Narrow search first: RW private/mapped heap only, fast.
+            // Covers ~11MB on typical session — enough for Lloyd and some
+            // other units, but misses most widget-allocated structs.
+            var result = TryMoveJumpMatches(hpPattern, hp, maxHp, broad: false);
+            if (result.HasValue) return result;
+
+            // Broad fallback: includes IMAGE-mapped and WRITECOPY memory up
+            // to 16MB per region, 2GB total budget. Covers UE4 widget heap
+            // regions that the narrow filter misses. S56 live-observed:
+            // Wilham HP=477/477, Kenrick HP=437/437, Ramza HP=419/719 all
+            // returned 0 narrow matches. Broad fallback should recover them.
+            ModLogger.Log($"[TryReadMoveJumpFromHeap] HP={hp}/{maxHp}: narrow miss, retrying broad");
+            return TryMoveJumpMatches(hpPattern, hp, maxHp, broad: true);
+        }
+
+        private (int move, int jump)? TryMoveJumpMatches(
+            byte[] hpPattern, int hp, int maxHp, bool broad)
+        {
+            if (_explorer == null) return null;
             var matches = _explorer.SearchBytesInAllMemory(
-                hpPattern, maxResults: 8, minAddr: 0x4000000000L, maxAddr: 0x4200000000L);
-            ModLogger.Log($"[TryReadMoveJumpFromHeap] HP={hp}/{maxHp}: {matches.Count} heap matches");
+                hpPattern, maxResults: 8,
+                minAddr: 0x4000000000L, maxAddr: 0x4200000000L,
+                broadSearch: broad);
+            ModLogger.Log($"[TryReadMoveJumpFromHeap] HP={hp}/{maxHp} broad={broad}: {matches.Count} heap matches");
             int accepted = 0;
             (int move, int jump)? first = null;
             foreach (var m in matches)
