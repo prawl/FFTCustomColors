@@ -2682,6 +2682,18 @@ namespace FFTColorCustomizer.Utilities
                                 break;
                             }
 
+                            // Seed the resolver's cache so future
+                            // screen.stockItems calls find this
+                            // category without re-running the
+                            // expensive broad-search. The screen
+                            // path uses narrow-only locates and
+                            // can't reach memory-mapped records on
+                            // its own; the dedicated shop_stock
+                            // action's broad-search is the
+                            // intended seeding mechanism.
+                            if (priceLocation >= 0 && priceChapter >= 0)
+                                GameBridge.ShopStockResolver.SeedCache(priceLocation, priceChapter, cat, recAddr);
+
                             var sb = new System.Text.StringBuilder();
                             sb.AppendLine($"shop_stock {cat} [{source}] — record @ 0x{recAddr:X}, {stock.Count} items:");
                             foreach (var it in stock)

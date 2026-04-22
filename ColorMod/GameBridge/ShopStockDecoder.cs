@@ -172,7 +172,7 @@ namespace FFTColorCustomizer.GameBridge
         /// Whichever format matches first wins; callers supply the
         /// expected bitmap padded to 8 bytes (high 4 zero for daggers).
         /// </summary>
-        public long LocateBitmapRecord(byte[] expectedBitmap, int expectedCount)
+        public long LocateBitmapRecord(byte[] expectedBitmap, int expectedCount, bool narrowOnly = false)
         {
             if (expectedBitmap == null || expectedBitmap.Length != 8) return 0;
 
@@ -202,18 +202,30 @@ namespace FFTColorCustomizer.GameBridge
 
             // Two-phase search. Phase 1 (narrow) covers private/heap
             // up to 4MB regions. Phase 2 (broad) covers readable
-            // memory-mapped + large heap regions. Try 8-byte format
-            // first (canonical), fall back to 4-byte.
+            // memory-mapped + large heap regions including the static
+            // game-data table. Try 8-byte format first (canonical),
+            // fall back to 4-byte.
+            //
+            // Session 55: when called from the screen-assembly path
+            // (narrowOnly=true), skip the broad phase entirely.
+            // Each broad scan covers ~500 MB of memory-mapped
+            // regions and contributes most to game-stability risk.
+            // The dedicated shop_stock action keeps both phases for
+            // first-time bitmap discovery (caller explicitly
+            // accepts the cost). Trade-off for the screen path: a
+            // category whose record only lives in memory-mapped
+            // memory won't resolve until the user runs shop_stock
+            // manually once to seed it (then cache holds).
             List<(nint address, string context)> hits;
 
             hits = _explorer.SearchBytesInAllMemory(pat8, 4, 0L, 0x800000000L, broadSearch: false);
-            if (hits.Count == 0)
+            if (hits.Count == 0 && !narrowOnly)
                 hits = _explorer.SearchBytesInAllMemory(pat8, 4, 0L, 0x800000000L, broadSearch: true);
 
             if (hits.Count == 0 && pat4 != null)
             {
                 hits = _explorer.SearchBytesInAllMemory(pat4, 4, 0L, 0x800000000L, broadSearch: false);
-                if (hits.Count == 0)
+                if (hits.Count == 0 && !narrowOnly)
                     hits = _explorer.SearchBytesInAllMemory(pat4, 4, 0L, 0x800000000L, broadSearch: true);
             }
 
@@ -234,7 +246,7 @@ namespace FFTColorCustomizer.GameBridge
         /// N sorted expected ids; we search for that byte sequence
         /// followed by a 0 terminator.
         /// </summary>
-        public long LocateIdArrayRecord(byte[] expectedIds)
+        public long LocateIdArrayRecord(byte[] expectedIds, bool narrowOnly = false)
         {
             if (expectedIds == null || expectedIds.Length == 0 || expectedIds.Length > 8) return 0;
             // Build search pattern: ids + 0 terminator.
@@ -243,7 +255,7 @@ namespace FFTColorCustomizer.GameBridge
             pattern[expectedIds.Length] = 0;
 
             var hits = _explorer.SearchBytesInAllMemory(pattern, 4, 0L, 0x800000000L, broadSearch: false);
-            if (hits.Count == 0)
+            if (hits.Count == 0 && !narrowOnly)
                 hits = _explorer.SearchBytesInAllMemory(pattern, 4, 0L, 0x800000000L, broadSearch: true);
             if (hits.Count == 0) return 0;
 

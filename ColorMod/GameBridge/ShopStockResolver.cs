@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
@@ -38,6 +39,43 @@ namespace FFTColorCustomizer.GameBridge
         private static readonly ConcurrentDictionary<(int, int, ShopStockDecoder.Category), long> _addressCache = new();
 
         /// <summary>
+        /// Negative cache: when a locate misses or returns wrong-
+        /// sized data, remember the failure timestamp so we don't
+        /// re-attempt the expensive (~150-600 MB) memory scan on
+        /// every subsequent screen call. Without this, a flaky
+        /// category like Consumables would burn 4 broad searches
+        /// per screen poll forever, and after 5+ polls the
+        /// cumulative ~2-4 GB of scans crashes the game (kernel
+        /// OOM or access violation against a region freed mid-
+        /// scan). Verified live: removing this back-off → game
+        /// crashes within ~5 OutfitterBuy polls.
+        /// </summary>
+        private static readonly ConcurrentDictionary<(int, int, ShopStockDecoder.Category), DateTime> _missCache = new();
+
+        /// <summary>
+        /// How long to suppress retries after a failed locate.
+        /// 30 seconds is enough that mass-polling can't crash the
+        /// game but short enough that a tab switch or heap
+        /// reorganization that brings the record into searchable
+        /// memory gets picked up on the next manual screen call.
+        /// Public so tests + future callers can tune it.
+        /// </summary>
+        public static readonly TimeSpan MissBackoff = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Cap on cold (cache-miss) locates per <see cref="DecodeAll"/>
+        /// call. Each cold locate runs ~150-600 MB of AoB search;
+        /// running 6+ in a single screen-assembly call risks
+        /// memory pressure even before the negative cache kicks in.
+        /// 1 means: at most one expensive scan per screen call —
+        /// remaining categories defer to the next screen call,
+        /// progressively warming the cache. Public so tests + the
+        /// dedicated shop_stock action can override (it disables
+        /// the cap by passing -1).
+        /// </summary>
+        public const int DefaultMaxColdLocatesPerCall = 1;
+
+        /// <summary>
         /// Decode every registered category for a (location, chapter)
         /// tuple and return a dict keyed by category name ready to
         /// serialize onto <c>screen.stockItems</c>. Categories that
@@ -45,13 +83,21 @@ namespace FFTColorCustomizer.GameBridge
         /// currently open) are silently skipped rather than surfacing
         /// as empty lists — an empty dict is a clearer "no stock
         /// resolved" signal than a dict full of empty category lists.
+        ///
+        /// Cold-cache categories are resolved at most
+        /// <paramref name="maxColdLocatesPerCall"/> per invocation
+        /// (default 1) to bound per-call memory-scan cost. Pass -1
+        /// to disable the cap (used by the manual shop_stock action
+        /// where the caller explicitly accepts the search cost).
         /// </summary>
         public static Dictionary<string, List<ShopStockItem>> DecodeAll(
             ShopStockDecoder decoder,
             int location,
-            int chapter)
+            int chapter,
+            int maxColdLocatesPerCall = DefaultMaxColdLocatesPerCall)
         {
             var result = new Dictionary<string, List<ShopStockItem>>();
+            int coldLocatesUsed = 0;
             foreach (var cat in ShopBitmapRegistry.RegisteredCategoriesFor(location, chapter))
             {
                 var bmp = ShopBitmapRegistry.Lookup(location, chapter, cat);
@@ -62,7 +108,13 @@ namespace FFTColorCustomizer.GameBridge
                         ? CountIdArrayIds(bmp)
                         : CountBits(bmp);
 
-                var stock = ResolveOneCategory(decoder, location, chapter, cat, bmp, expectedCount);
+                bool budgetExhausted = maxColdLocatesPerCall >= 0
+                                       && coldLocatesUsed >= maxColdLocatesPerCall;
+                var (stock, didColdLocate) = ResolveOneCategory(
+                    decoder, location, chapter, cat, bmp, expectedCount,
+                    allowColdLocate: !budgetExhausted);
+
+                if (didColdLocate) coldLocatesUsed++;
                 if (stock.Count == 0) continue;
 
                 result[cat.ToString()] = stock;
@@ -77,14 +129,23 @@ namespace FFTColorCustomizer.GameBridge
         /// when even the fresh locate fails — caller treats empty
         /// as "skip this category" (fail-safe; never returns wrong
         /// data).
+        ///
+        /// When <paramref name="allowColdLocate"/> is false, only
+        /// the cached path runs; cache misses return empty
+        /// immediately without spending a memory scan. Used by
+        /// <see cref="DecodeAll"/>'s per-call budget enforcement.
+        ///
+        /// Returns the decoded stock + whether a cold locate ran
+        /// (so the caller can charge the budget).
         /// </summary>
-        private static List<ShopStockItem> ResolveOneCategory(
+        private static (List<ShopStockItem> stock, bool didColdLocate) ResolveOneCategory(
             ShopStockDecoder decoder,
             int location,
             int chapter,
             ShopStockDecoder.Category cat,
             byte[] bmp,
-            int expectedCount)
+            int expectedCount,
+            bool allowColdLocate)
         {
             var key = (location, chapter, cat);
 
@@ -94,7 +155,7 @@ namespace FFTColorCustomizer.GameBridge
             if (_addressCache.TryGetValue(key, out var cachedAddr))
             {
                 var cached = decoder.DecodeStockAt(cachedAddr, cat, location, chapter, expectedCount);
-                if (cached.Count == expectedCount) return cached;
+                if (cached.Count == expectedCount) return (cached, didColdLocate: false);
 
                 // Cache hit went bad — invalidate and fall through
                 // to re-locate. Common cause: the heap region got
@@ -103,24 +164,72 @@ namespace FFTColorCustomizer.GameBridge
                 _addressCache.TryRemove(key, out _);
             }
 
-            // Cache miss (or just-invalidated): locate fresh,
-            // decode, validate, and cache only on success.
+            // Negative-cache: was this key recently a miss? Skip
+            // the expensive scan if so — game crashes if we burn
+            // gigabytes of memory scans on repeated cold polls.
+            if (_missCache.TryGetValue(key, out var lastMiss)
+                && DateTime.UtcNow - lastMiss < MissBackoff)
+            {
+                return (new List<ShopStockItem>(), didColdLocate: false);
+            }
+
+            // Per-call budget exhausted: caller is asking us to
+            // defer cold work to the next screen call.
+            if (!allowColdLocate)
+                return (new List<ShopStockItem>(), didColdLocate: false);
+
+            // Cold locate: spend the search budget.
             long recAddr = LocateRecord(decoder, cat, bmp);
-            if (recAddr == 0) return new List<ShopStockItem>();
+            if (recAddr == 0)
+            {
+                _missCache[key] = DateTime.UtcNow;
+                return (new List<ShopStockItem>(), didColdLocate: true);
+            }
 
             var fresh = decoder.DecodeStockAt(recAddr, cat, location, chapter, expectedCount);
             if (fresh.Count == expectedCount)
+            {
                 _addressCache[key] = recAddr;
+                _missCache.TryRemove(key, out _);
+            }
+            else
+            {
+                _missCache[key] = DateTime.UtcNow;
+            }
 
-            return fresh;
+            return (fresh, didColdLocate: true);
         }
 
         /// <summary>
-        /// Clear the cached record-address lookup. Exposed for
-        /// tests and for any future invalidation hook (e.g. when
-        /// chapter advances and prices may have changed).
+        /// Clear both the address cache and the miss-suppression
+        /// cache. Exposed for tests and for any future invalidation
+        /// hook (e.g. when chapter advances and prices may have
+        /// changed). Tests rely on this to start from a clean
+        /// state since both caches are static and survive across
+        /// individual test cases.
         /// </summary>
-        public static void ClearCache() => _addressCache.Clear();
+        public static void ClearCache()
+        {
+            _addressCache.Clear();
+            _missCache.Clear();
+        }
+
+        /// <summary>
+        /// Seed the cache with a known-good record address for a
+        /// (location, chapter, category) tuple. Called by the
+        /// dedicated <c>shop_stock</c> bridge action after a
+        /// successful locate so future <c>screen.stockItems</c>
+        /// resolutions reuse the address (skipping the broad-
+        /// search that the screen-assembly path won't run on its
+        /// own). Also clears any pending miss back-off — a fresh
+        /// locate proves the data is reachable.
+        /// </summary>
+        public static void SeedCache(int location, int chapter, ShopStockDecoder.Category cat, long recordAddr)
+        {
+            var key = (location, chapter, cat);
+            _addressCache[key] = recordAddr;
+            _missCache.TryRemove(key, out _);
+        }
 
         /// <summary>
         /// Tests-only peek: how many entries are currently cached.
@@ -132,7 +241,10 @@ namespace FFTColorCustomizer.GameBridge
         /// <summary>
         /// Format-aware record locator. Bitmap categories search for
         /// the bitmap+count pair; id-array categories (shields/helms)
-        /// search for the non-zero id prefix + terminator.
+        /// search for the non-zero id prefix + terminator. The
+        /// resolver path always passes <c>narrowOnly=true</c> to
+        /// skip the broad memory-mapped scan that contributes most
+        /// to game-stability risk under repeated polling.
         /// </summary>
         private static long LocateRecord(
             ShopStockDecoder decoder,
@@ -144,10 +256,10 @@ namespace FFTColorCustomizer.GameBridge
                 int nz = CountIdArrayIds(bmp);
                 var expectedIds = new byte[nz];
                 System.Array.Copy(bmp, 0, expectedIds, 0, nz);
-                return decoder.LocateIdArrayRecord(expectedIds);
+                return decoder.LocateIdArrayRecord(expectedIds, narrowOnly: true);
             }
 
-            return decoder.LocateBitmapRecord(bmp, CountBits(bmp));
+            return decoder.LocateBitmapRecord(bmp, CountBits(bmp), narrowOnly: true);
         }
 
         /// <summary>
