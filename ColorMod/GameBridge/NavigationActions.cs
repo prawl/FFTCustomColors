@@ -652,6 +652,17 @@ namespace FFTColorCustomizer.GameBridge
                         response.Error = "Game Over";
                         break;
                     }
+
+                    // Battle ended — Victory/Desertion screens are their own
+                    // terminus; the post-loop cleanup below handles Desertion
+                    // auto-dismiss. Exit the poll so we don't timeout waiting
+                    // for a friendly turn that will never come.
+                    if (current.Name == "BattleVictory"
+                        || current.Name == "BattleDesertion")
+                    {
+                        response.Info = $"Battle ended: {current.Name} after {sw.ElapsedMilliseconds}ms";
+                        break;
+                    }
                 }
 
                 if (sw.ElapsedMilliseconds >= 120000)
