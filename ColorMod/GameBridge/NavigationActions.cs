@@ -3366,10 +3366,18 @@ namespace FFTColorCustomizer.GameBridge
                 var check = _detectScreen();
                 polls++;
                 if (check?.Name != null) lastScreenSeen = check.Name;
-                if (check != null && check.Name != "BattleMoving"
-                    && check.Name != "BattleFormation"
-                    && check.Name != "BattleCasting"
-                    && ScreenNamePredicates.IsBattleState(check.Name))
+                // Require the "player in control" states BattleMyTurn or
+                // BattleActing (post-move, action pending) as the confirmation
+                // signal. S56 live-observed: accepting any non-BattleMoving
+                // battle state caused execute_turn bundled flows to advance
+                // to the next sub-step while the move was STILL resolving —
+                // BattleEnemiesTurn appeared transiently for ~1-2s during
+                // the walk animation tail, MoveGrid saw it and returned
+                // "confirmed", the follow-up battle_attack sub-step's state
+                // gate failed because the game wasn't actually back to
+                // BattleMyTurn yet.
+                if (check != null && (check.Name == "BattleMyTurn"
+                    || check.Name == "BattleActing"))
                 {
                     ModLogger.Log($"[MoveGrid] confirmed via screen.Name={check.Name} after {sw.ElapsedMilliseconds}ms ({polls} polls)");
                     confirmed = true; break;
