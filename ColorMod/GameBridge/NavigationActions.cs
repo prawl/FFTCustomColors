@@ -4172,9 +4172,22 @@ namespace FFTColorCustomizer.GameBridge
                         }
                         else
                         {
-                            // Fallback to UIBuffer (may be wrong but better than nothing)
-                            unit.Move = (int)activeReads[12];
-                            unit.Jump = (int)activeReads[13];
+                            // Heap search missed — narrow filter (0x4000000000..0x4200000000,
+                            // RW private/mapped only, 500MB budget) covers ~11MB of UE4
+                            // heap and misses most unit structs. Historical fallback used
+                            // UIBuffer+0x24/+0x26 but that's the CURSOR-HOVERED unit's
+                            // BASE stats — unrelated to the active unit's EFFECTIVE Move.
+                            // S56 repro: Wilham (Monk base Mv=3) got UIBuffer Mv=4, BFS
+                            // produced false-positive tiles including (7,9), game
+                            // refused the move, unit stuck in Move mode.
+                            //
+                            // Honest fix: set Move=Jump=0. MovementBfs.ComputeValidTiles
+                            // returns empty for Move=0 (BFS_MoveZero_ReturnsEmpty). Scan
+                            // output surfaces "Mv=0 Jmp=0" so Claude sees the heap read
+                            // failed and doesn't attempt battle_move with bogus tiles.
+                            unit.Move = 0;
+                            unit.Jump = 0;
+                            ModLogger.Log($"[CollectPositions] Active unit HP={unit.Hp}/{unit.MaxHp}: heap Move/Jump read failed, setting Mv=0 Jp=0 (was UIBuffer fallback — wrong data)");
                         }
 
                         // Read learned abilities from condensed struct ability list

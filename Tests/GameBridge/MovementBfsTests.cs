@@ -174,6 +174,32 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains((0, 1), tiles2.Select(t => (t.X, t.Y)));
         }
 
+        // --- Move=0 degenerate case: used when heap read for the active unit's
+        // Move stat fails. Caller sets moveStat=0 (honest "unknown") instead of
+        // falling back to UIBuffer (the cursor-hovered unit's BASE stats, which
+        // gave Wilham Mv=4 when his actual Mv was 3 — BFS then reported tile
+        // (7,9) as valid, game refused the move, unit stuck in Move mode).
+        // With Mv=0 BFS yields the empty list so Claude sees "no move tiles"
+        // and doesn't attempt battle_move with bogus data.
+        [Fact]
+        public void BFS_MoveZero_ReturnsEmpty()
+        {
+            var map = CreateFlatMap(5, 5, tileHeight: 0);
+            var tiles = MovementBfs.ComputeValidTiles(
+                map, unitX: 2, unitY: 2, moveStat: 0, jumpStat: 4);
+            Assert.Empty(tiles);
+        }
+
+        [Fact]
+        public void BFS_MoveZero_EvenWithJumpHigh_ReturnsEmpty()
+        {
+            // Jump is irrelevant when Move=0 — BFS can't leave the start tile.
+            var map = CreateFlatMap(5, 5, tileHeight: 0);
+            var tiles = MovementBfs.ComputeValidTiles(
+                map, unitX: 0, unitY: 0, moveStat: 0, jumpStat: 99);
+            Assert.Empty(tiles);
+        }
+
         private static MapData CreateFlatMap(int width, int height, int tileHeight)
         {
             var map = new MapData
