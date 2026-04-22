@@ -4814,11 +4814,15 @@ namespace FFTColorCustomizer.Utilities
             var sw = Stopwatch.StartNew();
             string lastName = first.Name;
             DetectedScreen? last = first;
-            int stableCount = 0;
+            int stableCount = 1; // first read is the first stable observation
 
+            // Tightened from 50ms→30ms and count>=3→count>=2.
+            // DetectScreen is a batch of pointer-direct reads — sub-ms.
+            // Two consecutive stable reads at 30ms = 60ms minimum settle
+            // (was 150ms). Per-action win on every completed command.
             while (sw.ElapsedMilliseconds < 1000)
             {
-                Thread.Sleep(50);
+                Thread.Sleep(30);
                 var current = DetectScreen();
                 if (current == null) continue;
 
@@ -4826,14 +4830,14 @@ namespace FFTColorCustomizer.Utilities
                 {
                     stableCount++;
                     last = current;
-                    if (stableCount >= 3) // 3 consecutive matches (~150ms stable)
+                    if (stableCount >= 2)
                         return current;
                 }
                 else
                 {
                     lastName = current.Name;
                     last = current;
-                    stableCount = 0;
+                    stableCount = 1;
                 }
             }
 
