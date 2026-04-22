@@ -35,7 +35,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             "scan_move", "scan_units", "set_map", "report_state",
             "read_address", "read_block", "batch_read",
-            "mark_blocked", "snapshot", "heap_snapshot", "diff", "find_toggle",
+            "mark_blocked", "snapshot", "heap_snapshot", "diff", "find_toggle", "find_monotonic",
             "dump_unit_struct",
             "dry_run_nav", "cursor_walk",
             "search_bytes", "search_all", "search_memory", "search_near",

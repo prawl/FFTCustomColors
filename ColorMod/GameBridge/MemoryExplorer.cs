@@ -947,6 +947,77 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Find heap addresses whose byte values match an expected sequence
+        /// across N snapshots. Each snapshot label corresponds to a known
+        /// cursor index (e.g. snapshots taken after Down, Down, Down, Down
+        /// match expected [0,1,2,3,4]). Bytes that match all N expected
+        /// values across all N snapshots are returned.
+        ///
+        /// More selective than <see cref="FindToggleCandidates"/> because the
+        /// 3-snapshot a→b→a toggle has high noise (any byte that flickers by
+        /// 1 satisfies it). A 5-snapshot monotonic 0..4 sequence has 256^4 ≈
+        /// 4-billion-to-1 odds against random noise, leaving only the real
+        /// cursor index byte.
+        ///
+        /// <paramref name="snapshotLabels"/>.Length and
+        /// <paramref name="expectedValues"/>.Length must match.
+        /// </summary>
+        public List<nint> FindMonotonicByteCandidates(
+            string[] snapshotLabels,
+            byte[] expectedValues,
+            int maxResults = 16)
+        {
+            var result = new List<nint>();
+            if (snapshotLabels.Length != expectedValues.Length || snapshotLabels.Length < 2)
+            {
+                ModLogger.LogError("[FindMonotonicByteCandidates] Snapshot labels and expected values must be same length and >= 2");
+                return result;
+            }
+            foreach (var label in snapshotLabels)
+            {
+                if (!_snapshots.ContainsKey(label))
+                {
+                    ModLogger.LogError($"[FindMonotonicByteCandidates] Missing snapshot '{label}'");
+                    return result;
+                }
+            }
+
+            var snaps = snapshotLabels.Select(l => _snapshots[l]).ToList();
+            var byBase = snaps.Skip(1)
+                              .Select(s => s.ToDictionary(r => r.baseAddr, r => r.data))
+                              .ToList();
+
+            foreach (var (baseAddr, baseData) in snaps[0])
+            {
+                var sibling = new byte[snaps.Count - 1][];
+                bool allPresent = true;
+                int minLen = baseData.Length;
+                for (int s = 0; s < sibling.Length; s++)
+                {
+                    if (!byBase[s].TryGetValue(baseAddr, out var d)) { allPresent = false; break; }
+                    sibling[s] = d;
+                    if (d.Length < minLen) minLen = d.Length;
+                }
+                if (!allPresent) continue;
+
+                for (int i = 0; i < minLen; i++)
+                {
+                    if (baseData[i] != expectedValues[0]) continue;
+                    bool ok = true;
+                    for (int s = 0; s < sibling.Length; s++)
+                    {
+                        if (sibling[s][i] != expectedValues[s + 1]) { ok = false; break; }
+                    }
+                    if (ok) result.Add(baseAddr + i);
+                }
+            }
+
+            result.Sort((a, b) => CursorAddressPriority(a).CompareTo(CursorAddressPriority(b)));
+            if (result.Count > maxResults) result.RemoveRange(maxResults, result.Count - maxResults);
+            return result;
+        }
+
+        /// <summary>
         /// Lower priority wins. Empirically the picker widget cursor lives in
         /// the 0x100000000-0x200000000 UE4 heap range (verified 2026-04-15:
         /// 0x1304DF6B0 session 1, 0x5BA8C268 session 2). DLL-mapped memory

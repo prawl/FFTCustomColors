@@ -1289,7 +1289,7 @@ namespace FFTColorCustomizer.Utilities
         {
             "scan_move", "scan_units", "set_map", "report_state",
             "read_address", "read_block", "batch_read",
-            "mark_blocked", "snapshot", "heap_snapshot", "diff", "find_toggle", "dump_unit_struct",
+            "mark_blocked", "snapshot", "heap_snapshot", "diff", "find_toggle", "find_monotonic", "dump_unit_struct",
             "dry_run_nav", "cursor_walk",
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
@@ -2170,6 +2170,52 @@ namespace FFTColorCustomizer.Utilities
                         foreach (var a in tc) sb.AppendLine($"  0x{(long)a:X}");
                         var outPath = System.IO.Path.Combine(_bridgeDirectory, $"find_toggle_{command.SearchLabel ?? "result"}.txt");
                         System.IO.File.WriteAllText(outPath, $"{response.Info}\n\n{sb}");
+                        response.Status = "completed";
+                        break;
+                    }
+
+                    case "find_monotonic":
+                    {
+                        // Find heap bytes whose values across N snapshots match
+                        // an expected sequence (e.g. [0,1,2,3,4]). Way more
+                        // selective than find_toggle for cursor-byte hunts —
+                        // ~4-billion-to-1 odds against random noise on 5
+                        // snapshots vs ~2,000-to-1 for a 3-snap toggle.
+                        // Inputs:
+                        //   pattern = comma-sep snapshot labels  ("s0,s1,s2,s3,s4")
+                        //   to      = comma-sep expected u8 vals ("0,1,2,3,4")
+                        //   searchLabel = output file label
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        if (string.IsNullOrEmpty(command.Pattern) || string.IsNullOrEmpty(command.To))
+                        {
+                            response.Status = "failed";
+                            response.Error = "find_monotonic: pattern (snapshot labels CSV) and to (expected values CSV) required";
+                            break;
+                        }
+                        var labels = command.Pattern.Split(',').Select(s => s.Trim()).ToArray();
+                        byte[] vals;
+                        try
+                        {
+                            vals = command.To.Split(',').Select(s => byte.Parse(s.Trim())).ToArray();
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Status = "failed";
+                            response.Error = $"find_monotonic: bad expected-values CSV: {ex.Message}";
+                            break;
+                        }
+                        if (labels.Length != vals.Length)
+                        {
+                            response.Status = "failed";
+                            response.Error = $"find_monotonic: label count ({labels.Length}) != value count ({vals.Length})";
+                            break;
+                        }
+                        var mc = Explorer.FindMonotonicByteCandidates(labels, vals, maxResults: 64);
+                        response.Info = $"find_monotonic({string.Join(",", labels)}=[{string.Join(",", vals)}]): {mc.Count} candidates";
+                        var msb = new System.Text.StringBuilder();
+                        foreach (var a in mc) msb.AppendLine($"  0x{(long)a:X}");
+                        var outPath = System.IO.Path.Combine(_bridgeDirectory, $"find_monotonic_{command.SearchLabel ?? "result"}.txt");
+                        System.IO.File.WriteAllText(outPath, $"{response.Info}\n\n{msb}");
                         response.Status = "completed";
                         break;
                     }
