@@ -1018,6 +1018,98 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Like <see cref="FindMonotonicByteCandidates"/> but matches bytes
+        /// by inter-snapshot DELTAS rather than absolute values. For each
+        /// pair of adjacent snapshots, the byte must change by the
+        /// corresponding delta (e.g. deltas=[+1,+1,+1,+1] requires
+        /// snap[i+1] = snap[i] + 1 for all i, regardless of starting value).
+        /// Lets callers find a cursor without knowing its starting value.
+        ///
+        /// Wraps around list-end: a "+1" delta is satisfied if the byte
+        /// goes 14→15, OR if the list wraps from last (e.g. 14) to 0
+        /// (delta = -14, but represents one Down press in a 15-item list).
+        /// We accept either +delta OR a "wrap" delta whose magnitude is
+        /// &lt; 256 and on the opposite sign — the caller is responsible
+        /// for not mixing wrap and non-wrap in noisy cases.
+        ///
+        /// To stay tight against the cursor byte and reject animation
+        /// counters, we ALSO require the byte to STAY non-negative and
+        /// fit in u8 — the cursor index byte never exceeds the list size.
+        /// </summary>
+        public List<nint> FindDeltaSequenceCandidates(
+            string[] snapshotLabels,
+            int[] expectedDeltas,
+            int maxResults = 16,
+            int maxValue = 32)
+        {
+            var result = new List<nint>();
+            if (snapshotLabels.Length != expectedDeltas.Length + 1 || snapshotLabels.Length < 2)
+            {
+                ModLogger.LogError("[FindDeltaSequenceCandidates] labels.Length must equal deltas.Length + 1, and >= 2");
+                return result;
+            }
+            foreach (var label in snapshotLabels)
+            {
+                if (!_snapshots.ContainsKey(label))
+                {
+                    ModLogger.LogError($"[FindDeltaSequenceCandidates] Missing snapshot '{label}'");
+                    return result;
+                }
+            }
+
+            var snaps = snapshotLabels.Select(l => _snapshots[l]).ToList();
+            var byBase = snaps.Skip(1)
+                              .Select(s => s.ToDictionary(r => r.baseAddr, r => r.data))
+                              .ToList();
+
+            foreach (var (baseAddr, baseData) in snaps[0])
+            {
+                var sibling = new byte[snaps.Count - 1][];
+                bool allPresent = true;
+                int minLen = baseData.Length;
+                for (int s = 0; s < sibling.Length; s++)
+                {
+                    if (!byBase[s].TryGetValue(baseAddr, out var d)) { allPresent = false; break; }
+                    sibling[s] = d;
+                    if (d.Length < minLen) minLen = d.Length;
+                }
+                if (!allPresent) continue;
+
+                for (int i = 0; i < minLen; i++)
+                {
+                    byte v0 = baseData[i];
+                    if (v0 > maxValue) continue;
+                    bool ok = true;
+                    byte prev = v0;
+                    for (int s = 0; s < sibling.Length; s++)
+                    {
+                        byte vNext = sibling[s][i];
+                        if (vNext > maxValue) { ok = false; break; }
+                        int actualDelta = vNext - prev;
+                        // Allow wrap: a "+1" delta is satisfied either
+                        // by the byte going up by 1, OR by it wrapping to
+                        // 0 (delta = -prev, where prev was list-end).
+                        // We don't know list-size, so accept any delta
+                        // whose sign matches AND magnitude is small (<32).
+                        // For "-1" deltas, accept either -1 or wrap to
+                        // list-end (some positive value <maxValue).
+                        int wantDelta = expectedDeltas[s];
+                        bool match = actualDelta == wantDelta
+                            || (wantDelta > 0 && actualDelta < 0 && -actualDelta < maxValue && vNext == 0)
+                            || (wantDelta < 0 && actualDelta > 0 && actualDelta < maxValue && prev == 0);
+                        if (!match) { ok = false; break; }
+                        prev = vNext;
+                    }
+                    if (ok) result.Add(baseAddr + i);
+                }
+            }
+
+            result.Sort((a, b) => CursorAddressPriority(a).CompareTo(CursorAddressPriority(b)));
+            if (result.Count > maxResults) result.RemoveRange(maxResults, result.Count - maxResults);
+            return result;
+        }
+
+        /// <summary>
         /// Lower priority wins. Empirically the picker widget cursor lives in
         /// the 0x100000000-0x200000000 UE4 heap range (verified 2026-04-15:
         /// 0x1304DF6B0 session 1, 0x5BA8C268 session 2). DLL-mapped memory
