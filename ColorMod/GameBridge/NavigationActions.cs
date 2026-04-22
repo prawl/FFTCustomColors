@@ -736,7 +736,7 @@ namespace FFTColorCustomizer.GameBridge
             int cursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
             NavigateMenuCursor(cursor, 1);
             SendKey(VK_ENTER); // Open Abilities submenu
-            Thread.Sleep(500);
+            Thread.Sleep(300);
 
             // Step 2: Force submenu cursor to Attack (index 0).
             // The Abilities submenu REMEMBERS the previous selection within a turn (e.g.
@@ -762,12 +762,14 @@ namespace FFTColorCustomizer.GameBridge
             for (int i = 0; i < upsNeeded; i++)
             {
                 SendKey(VK_UP);
-                Thread.Sleep(300);
+                // Matches ability-list Down (150ms) — 300ms was outlier.
+                Thread.Sleep(150);
             }
 
             // Now select Attack (top item in submenu)
             SendKey(VK_ENTER);
-            Thread.Sleep(500);
+            // 500ms was conservative; BattleAttacking transition is short.
+            Thread.Sleep(300);
 
             // Verify we're in targeting mode
             screen = _detectScreen();
@@ -790,7 +792,7 @@ namespace FFTColorCustomizer.GameBridge
             {
                 // Already on target — confirm
                 SendKey(VK_ENTER);
-                Thread.Sleep(500);
+                Thread.Sleep(300);
                 SendKey(VK_ENTER);
                 Thread.Sleep(300);
                 response.Status = "completed";
@@ -910,14 +912,33 @@ namespace FFTColorCustomizer.GameBridge
 
             // Step 8: Confirm attack — Enter (select target) + Enter (confirm "Target this tile?")
             SendKey(VK_ENTER);
-            Thread.Sleep(500);
+            Thread.Sleep(300);
             SendKey(VK_ENTER);
 
             // Step 9: Wait for animation, then read live HP from readonly memory.
             // The static array is stale mid-turn, but SearchBytesAllRegions finds
             // live copies in readonly regions (0x141xxx, 0x15Axxx) that update immediately.
             response.Status = "completed";
-            Thread.Sleep(2000); // wait for attack animation
+            // Previously Thread.Sleep(2000) — pessimistic fixed wait for the
+            // attack animation. Poll for a post-animation resolved state
+            // instead: BattleMoving (facing confirm) / BattleActing / the
+            // re-targeting BattleAttacking / BattleVictory / GameOver. Cap
+            // at 2500ms so extra-long animations still complete.
+            // Minimum 300ms floor lets the animation actually start before
+            // we start polling (otherwise we'd see the pre-animation state).
+            Thread.Sleep(300);
+            var animSw = Stopwatch.StartNew();
+            while (animSw.ElapsedMilliseconds < 2200)
+            {
+                var s = _detectScreen();
+                if (s != null && (s.Name == "BattleMoving"
+                    || s.Name == "BattleActing" || s.Name == "BattleAttacking"
+                    || s.Name == "BattleVictory" || s.Name == "GameOver"))
+                {
+                    break;
+                }
+                Thread.Sleep(100);
+            }
             int postHp = ReadLiveHp(targetMaxHp, preHp, targetLevel);
             ModLogger.Log($"[BattleAttack] Post-attack: live HP={postHp} (was {preHp})");
 
