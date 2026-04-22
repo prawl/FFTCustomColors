@@ -6922,15 +6922,26 @@ namespace FFTColorCustomizer.Utilities
                 // Map the action menu cursor index to a label.
                 // Menu always has 5 items: Move/ResetMove(0) Abilities(1) Wait(2) Status(3) AutoBattle(4).
                 // After moving, index 0 is "Reset Move" instead of "Move".
+                //
+                // The cursor byte at 0x1407FC620 has a 1-frame stale-read race
+                // after auto-advance: post-move the game UI shows "Abilities"
+                // but memory still reads 0; post-cast (no move) the game UI
+                // shows "Move" but memory still reads 1. EffectiveMenuCursor
+                // detects the race via moved/acted flags and corrects.
                 if (screen.Name == "BattleMyTurn" || screen.Name == "BattleActing")
                 {
                     bool hasMoved = screen.BattleMoved == 1 || _movedThisTurn;
+                    bool hasActed = screen.BattleActed == 1;
+                    int effective = GameBridge.BattleAbilityNavigation.EffectiveMenuCursor(
+                        memoryCursor: screen.MenuCursor,
+                        moved: hasMoved,
+                        acted: hasActed);
                     if (screen.MenuCursor != _lastLoggedCursor)
                     {
-                        ModLogger.Log($"[UI] cursor={screen.MenuCursor} screen={screen.Name} moved={hasMoved} acted={screen.BattleActed} movedThisTurn={_movedThisTurn}");
+                        ModLogger.Log($"[UI] cursor={screen.MenuCursor} effective={effective} screen={screen.Name} moved={hasMoved} acted={hasActed} movedThisTurn={_movedThisTurn}");
                         _lastLoggedCursor = screen.MenuCursor;
                     }
-                    screen.UI = screen.MenuCursor switch
+                    screen.UI = effective switch
                     {
                         0 => hasMoved ? "Reset Move" : "Move",
                         1 => "Abilities",
