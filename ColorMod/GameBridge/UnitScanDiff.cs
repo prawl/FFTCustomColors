@@ -22,7 +22,8 @@ namespace FFTColorCustomizer.GameBridge
             int GridY,
             int Hp,
             int MaxHp,
-            List<string>? Statuses
+            List<string>? Statuses,
+            byte[]? ClassFingerprint = null
         );
 
         public record ChangeEvent(
@@ -38,16 +39,58 @@ namespace FFTColorCustomizer.GameBridge
         );
 
         /// <summary>
-        /// Build identity key for matching before/after. Prefers name,
-        /// falls back to rosterNameId, falls back to "anon@x,y" from
-        /// the pre-snapshot position. Enemy units often have Name=null
-        /// so the fallback chain is load-bearing.
+        /// Build base identity key for matching before/after. Combines
+        /// the strongest available identifiers — name (or roster nameId),
+        /// AND the 11-byte class fingerprint when present. The fingerprint
+        /// keeps same-named enemies (e.g. Agrias vs a knight enemy both
+        /// surfacing as "Knight") distinguishable when their jobs differ.
+        /// Falls back to xy only if literally nothing else is available.
+        /// When two units share the same base key (e.g. 2 Black Mages
+        /// with identical fingerprints), <see cref="KeyInList"/> layers
+        /// a scan-order rank on top.
         /// </summary>
         public static string Key(UnitSnap u)
         {
-            if (!string.IsNullOrEmpty(u.Name)) return $"name:{u.Name}";
-            if (u.RosterNameId > 0) return $"roster:{u.RosterNameId}";
-            return $"xy:{u.GridX},{u.GridY}";
+            string head;
+            if (!string.IsNullOrEmpty(u.Name)) head = $"name:{u.Name}";
+            else if (u.RosterNameId > 0) head = $"roster:{u.RosterNameId}";
+            else if (u.ClassFingerprint != null && u.ClassFingerprint.Length > 0)
+                return $"fp:{FpHex(u.ClassFingerprint)}";
+            else return $"xy:{u.GridX},{u.GridY}";
+
+            if (u.ClassFingerprint != null && u.ClassFingerprint.Length > 0)
+                return $"{head}|fp:{FpHex(u.ClassFingerprint)}";
+            return head;
+        }
+
+        private static string FpHex(byte[] fp)
+        {
+            var sb = new System.Text.StringBuilder(fp.Length * 2);
+            foreach (var b in fp) sb.Append(b.ToString("X2"));
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Identity key for a unit in the context of a scan list. If
+        /// the base <see cref="Key(UnitSnap)"/> is unique within the
+        /// list, returns the base key unchanged. If multiple units
+        /// share the same base key (duplicate-name enemies with
+        /// identical fingerprints — e.g. two Black Mages with the same
+        /// class), appends "#N" where N is the 0-based scan-order rank
+        /// so each one gets a stable per-scan identifier. Assumes scan
+        /// order is stable between the before/after snapshots being
+        /// compared (which is true for same-battle repeat scans).
+        /// </summary>
+        public static string KeyInList(UnitSnap u, IReadOnlyList<UnitSnap> all)
+        {
+            string baseK = Key(u);
+            int rank = 0;
+            foreach (var other in all)
+            {
+                if (ReferenceEquals(other, u)) break;
+                if (Key(other) == baseK) rank++;
+            }
+            return rank == 0 ? baseK : $"{baseK}#{rank}";
         }
 
         private static string TeamLabel(int t) => t == 0 ? "PLAYER" : t == 2 ? "ALLY" : "ENEMY";
@@ -74,14 +117,16 @@ namespace FFTColorCustomizer.GameBridge
             var events = new List<ChangeEvent>();
             if (before == null || after == null) return events;
 
-            // Build lookup maps
+            // Build lookup maps keyed by rank-aware identity so
+            // duplicate-name units (e.g. two Black Mages with identical
+            // fingerprints) stay distinguishable.
             var afterByKey = new Dictionary<string, UnitSnap>();
-            foreach (var a in after) afterByKey[Key(a)] = a;
+            foreach (var a in after) afterByKey[KeyInList(a, after)] = a;
             var beforeKeys = new HashSet<string>();
 
             foreach (var b in before)
             {
-                string k = Key(b);
+                string k = KeyInList(b, before);
                 beforeKeys.Add(k);
                 if (!afterByKey.TryGetValue(k, out var a))
                 {
@@ -130,7 +175,7 @@ namespace FFTColorCustomizer.GameBridge
 
             foreach (var a in after)
             {
-                string k = Key(a);
+                string k = KeyInList(a, after);
                 if (beforeKeys.Contains(k)) continue;
                 events.Add(new ChangeEvent(
                     Label: a.Name ?? $"(unit@{a.GridX},{a.GridY})",

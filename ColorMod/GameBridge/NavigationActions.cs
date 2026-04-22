@@ -3806,7 +3806,8 @@ namespace FFTColorCustomizer.GameBridge
                     GridY: u.GridY,
                     Hp: u.Hp,
                     MaxHp: u.MaxHp,
-                    Statuses: statuses));
+                    Statuses: statuses,
+                    ClassFingerprint: u.ClassFingerprint));
             }
             _namedSnapshots[label] = snaps;
             return true;

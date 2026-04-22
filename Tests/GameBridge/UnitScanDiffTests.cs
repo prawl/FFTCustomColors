@@ -14,8 +14,12 @@ namespace FFTColorCustomizer.Tests.GameBridge
     {
         private static UnitScanDiff.UnitSnap Snap(
             string? name, int team, int x, int y, int hp, int maxHp,
-            int rosterNameId = 0, List<string>? statuses = null)
-            => new(name, rosterNameId, team, x, y, hp, maxHp, statuses);
+            int rosterNameId = 0, List<string>? statuses = null,
+            byte[]? classFingerprint = null)
+            => new(name, rosterNameId, team, x, y, hp, maxHp, statuses, classFingerprint);
+
+        private static byte[] Fp(params int[] bytes) =>
+            bytes.Select(b => (byte)b).ToArray();
 
         [Fact]
         public void Compare_EmptySnapshots_ReturnsEmpty()
@@ -243,6 +247,83 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("moved", e.Kind);
             Assert.Equal((1, 5), e.OldXY);
             Assert.Equal((2, 5), e.NewXY);
+        }
+
+        [Fact]
+        public void Compare_TwoSameNameEnemiesBothMove_EmitsTwoMovedEvents_NotAddRemove()
+        {
+            // Session 52 live-reproducible bug: 2 Black Mages both move on
+            // an enemy turn. Old Key(u) falls back to 'xy:X,Y' for
+            // anonymous enemies (Name=null, RosterNameId=0), so the pre-
+            // move XY never matches the post-move XY → each unit emits
+            // a spurious remove+add pair instead of a single moved event.
+            // Fix: disambiguate via ClassFingerprint + scan-order rank.
+            var fp = Fp(0xA0, 0xB1, 0xC2, 0xD3, 0xE4, 0xF5, 0x06, 0x17, 0x28, 0x39, 0x4A);
+            var before = new List<UnitScanDiff.UnitSnap>
+            {
+                Snap(null, team: 1, x: 3, y: 4, hp: 100, maxHp: 100, classFingerprint: fp),
+                Snap(null, team: 1, x: 5, y: 6, hp: 100, maxHp: 100, classFingerprint: fp),
+            };
+            var after = new List<UnitScanDiff.UnitSnap>
+            {
+                Snap(null, team: 1, x: 4, y: 4, hp: 100, maxHp: 100, classFingerprint: fp),
+                Snap(null, team: 1, x: 6, y: 6, hp: 100, maxHp: 100, classFingerprint: fp),
+            };
+            var events = UnitScanDiff.Compare(before, after);
+            Assert.Equal(2, events.Count);
+            Assert.All(events, e => Assert.Equal("moved", e.Kind));
+            Assert.DoesNotContain(events, e => e.Kind == "removed" || e.Kind == "added");
+        }
+
+        [Fact]
+        public void Compare_TwoSameJobNameEnemiesBothMove_EmitsTwoMovedEvents()
+        {
+            // Covers the case where enemies get a job-name surfaced as
+            // UnitSnap.Name (e.g. Name="Black Mage" for both). The bare
+            // name collides in the lookup dictionary: second entry
+            // overwrites first. Disambiguator must rank by scan order.
+            var fp = Fp(0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B);
+            var before = new List<UnitScanDiff.UnitSnap>
+            {
+                Snap("Black Mage", team: 1, x: 3, y: 4, hp: 100, maxHp: 100, classFingerprint: fp),
+                Snap("Black Mage", team: 1, x: 5, y: 6, hp: 100, maxHp: 100, classFingerprint: fp),
+            };
+            var after = new List<UnitScanDiff.UnitSnap>
+            {
+                Snap("Black Mage", team: 1, x: 4, y: 4, hp: 100, maxHp: 100, classFingerprint: fp),
+                Snap("Black Mage", team: 1, x: 6, y: 6, hp: 100, maxHp: 100, classFingerprint: fp),
+            };
+            var events = UnitScanDiff.Compare(before, after);
+            Assert.Equal(2, events.Count);
+            Assert.All(events, e => Assert.Equal("moved", e.Kind));
+        }
+
+        [Fact]
+        public void Compare_SameNameDifferentFingerprints_MatchesByFingerprint()
+        {
+            // Two enemies surface the same job name but actually have
+            // different fingerprints (e.g. a spawned clone vs. an
+            // original of the same job — uncommon but possible).
+            // Fingerprint should keep identity stable when one moves.
+            var fpA = Fp(0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB);
+            var fpB = Fp(0xBB, 0xAA, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11);
+            var before = new List<UnitScanDiff.UnitSnap>
+            {
+                Snap("Mage", 1, 3, 4, 100, 100, classFingerprint: fpA),
+                Snap("Mage", 1, 5, 6, 100, 100, classFingerprint: fpB),
+            };
+            // fpB moves, fpA stays — order swapped in after (shouldn't
+            // matter: fingerprint-based rank must still identify each)
+            var after = new List<UnitScanDiff.UnitSnap>
+            {
+                Snap("Mage", 1, 6, 6, 100, 100, classFingerprint: fpB),
+                Snap("Mage", 1, 3, 4, 100, 100, classFingerprint: fpA),
+            };
+            var events = UnitScanDiff.Compare(before, after);
+            var moved = Assert.Single(events);
+            Assert.Equal("moved", moved.Kind);
+            Assert.Equal((5, 6), moved.OldXY);
+            Assert.Equal((6, 6), moved.NewXY);
         }
 
         [Fact]
