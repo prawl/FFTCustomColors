@@ -495,11 +495,20 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(150);
                 var verifyResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
                 int actual = verifyResult != null ? (int)verifyResult.Value.value : -1;
-                if (actual != target)
+                if (BattleWaitLogic.ShouldRetryVerifyAfterNav(
+                        initialRaw: rawCursor, correctedCursor: cursor,
+                        verifiedRaw: actual, target: target))
                 {
                     ModLogger.Log($"[BattleWait] RETRY: cursor at {actual}, expected {target}. Retrying navigation.");
                     NavigateMenuCursor(actual, target);
                     Thread.Sleep(150);
+                }
+                else if (actual != target)
+                {
+                    // Verify is untrusted (stale byte, failed read). Skip retry and
+                    // trust the initial nav — the Enter press below commits whatever
+                    // cursor position the game actually shows.
+                    ModLogger.Log($"[BattleWait] Verify read {actual} untrusted (initialRaw={rawCursor} corrected={cursor}); skipping retry.");
                 }
 
                 // Press Enter to select Wait — enters the facing screen.

@@ -42,5 +42,35 @@ namespace FFTColorCustomizer.GameBridge
                 || screenName == "BattleAttacking"
                 || screenName == "BattleMoving";
         }
+
+        /// <summary>
+        /// Decide whether to fire a RETRY nav after the post-nav cursor verify read.
+        ///
+        /// Context: BattleWait reads the action-menu cursor byte at 0x1407FC620, applies
+        /// EffectiveMenuCursor to correct for known stale-reads (after move, byte reads 0
+        /// even though the game has advanced to Abilities), fires NavigateMenuCursor to
+        /// the target, then re-reads the byte to verify arrival. If the byte hasn't moved
+        /// to the target, the old code blindly retried — but if the byte is the KNOWN-stale
+        /// value it was before, retrying fires more keys and overshoots (observed S56:
+        /// 1-Down nav → byte still 0 → retry fires 2 more Downs → Auto-battle instead of Wait).
+        ///
+        /// Rule: retry only when the verify read is trustworthy. It's trustworthy iff
+        /// either (a) no correction was applied (raw == corrected) and the verify still
+        /// didn't reach target — safe retry on a genuinely missed nav, OR (b) a correction
+        /// was applied AND the verified byte has MOVED from the initial raw (proving the
+        /// byte is tracking reality again). If the verified byte equals the initial raw
+        /// AND a correction was applied, the byte is still stale and we should trust the
+        /// initial nav. If the verify read failed (-1), don't retry — noise would amplify.
+        /// </summary>
+        public static bool ShouldRetryVerifyAfterNav(
+            int initialRaw, int correctedCursor, int verifiedRaw, int target)
+        {
+            if (verifiedRaw < 0) return false;          // read failed — trust the nav
+            if (verifiedRaw == target) return false;    // arrived — nothing to do
+            bool correctionApplied = initialRaw != correctedCursor;
+            bool byteMoved = verifiedRaw != initialRaw;
+            if (correctionApplied && !byteMoved) return false; // stale byte, same value — trust nav
+            return true;                                 // legit miss — retry
+        }
     }
 }
