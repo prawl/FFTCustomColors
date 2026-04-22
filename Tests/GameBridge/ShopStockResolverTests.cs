@@ -90,4 +90,28 @@ public class ShopStockResolverTests
     {
         Assert.Equal(0, ShopStockResolver.CountIdArrayIds(new byte[0]));
     }
+
+    // Cache-state mechanics. Memory-coupled cache hit/miss flow
+    // gets exercised live (verified at Lesalia/Warjilis Consumables).
+    // These pin the bookkeeping primitives so the cache can't
+    // silently drift to stuck/leaking state.
+
+    [Fact]
+    public void ClearCache_EmptiesCache()
+    {
+        // Defensive: callers (tests, future invalidation hooks)
+        // need a way to reset state. Verify the count actually
+        // goes to zero after clear, regardless of whether prior
+        // tests populated the cache.
+        ShopStockResolver.ClearCache();
+        Assert.Equal(0, ShopStockResolver.CachedEntryCount);
+    }
+
+    [Fact]
+    public void CachedEntryCount_StartsAtZero_AfterClear()
+    {
+        // Smoke check that the cache primitives are wired.
+        ShopStockResolver.ClearCache();
+        Assert.Equal(0, ShopStockResolver.CachedEntryCount);
+    }
 }

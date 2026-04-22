@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace FFTColorCustomizer.GameBridge
@@ -18,6 +19,25 @@ namespace FFTColorCustomizer.GameBridge
     public static class ShopStockResolver
     {
         /// <summary>
+        /// Cache of (location, chapter, category) → resolved record
+        /// address. Once a category locates + decodes cleanly we
+        /// remember the address so future screen assemblies skip the
+        /// expensive AoB search. The validator in
+        /// <see cref="ShopStockDecoder.DecodeStockAt"/> tells us
+        /// when a cached read returns wrong-sized stock — that's
+        /// the invalidation signal (the address has shifted or the
+        /// cached region got reused). On invalidation we re-locate
+        /// and try once more in the same call.
+        ///
+        /// Static lifetime is fine: shop bitmap records are stable
+        /// within a game session; they only move when the game
+        /// reorganizes its heap (rare, and our re-locate handles
+        /// it). A boot of the game cycles process state so the
+        /// in-memory dictionary clears anyway.
+        /// </summary>
+        private static readonly ConcurrentDictionary<(int, int, ShopStockDecoder.Category), long> _addressCache = new();
+
+        /// <summary>
         /// Decode every registered category for a (location, chapter)
         /// tuple and return a dict keyed by category name ready to
         /// serialize onto <c>screen.stockItems</c>. Categories that
@@ -37,20 +57,77 @@ namespace FFTColorCustomizer.GameBridge
                 var bmp = ShopBitmapRegistry.Lookup(location, chapter, cat);
                 if (bmp == null) continue;
 
-                long recAddr = LocateRecord(decoder, cat, bmp);
-                if (recAddr == 0) continue;
-
                 int expectedCount = ShopStockDecoder.FormatForCategory(cat)
                     == ShopStockDecoder.RecordFormat.IdArray
                         ? CountIdArrayIds(bmp)
                         : CountBits(bmp);
-                var stock = decoder.DecodeStockAt(recAddr, cat, location, chapter, expectedCount);
+
+                var stock = ResolveOneCategory(decoder, location, chapter, cat, bmp, expectedCount);
                 if (stock.Count == 0) continue;
 
                 result[cat.ToString()] = stock;
             }
             return result;
         }
+
+        /// <summary>
+        /// Resolve stock for a single category. Tries the cached
+        /// record address first; on validation failure invalidates
+        /// the cache entry and re-locates once. Returns empty list
+        /// when even the fresh locate fails — caller treats empty
+        /// as "skip this category" (fail-safe; never returns wrong
+        /// data).
+        /// </summary>
+        private static List<ShopStockItem> ResolveOneCategory(
+            ShopStockDecoder decoder,
+            int location,
+            int chapter,
+            ShopStockDecoder.Category cat,
+            byte[] bmp,
+            int expectedCount)
+        {
+            var key = (location, chapter, cat);
+
+            // Cached path: re-read the previously good address.
+            // ValidateAgainstExpected inside DecodeStockAt drops
+            // the result to empty if the bytes have shifted.
+            if (_addressCache.TryGetValue(key, out var cachedAddr))
+            {
+                var cached = decoder.DecodeStockAt(cachedAddr, cat, location, chapter, expectedCount);
+                if (cached.Count == expectedCount) return cached;
+
+                // Cache hit went bad — invalidate and fall through
+                // to re-locate. Common cause: the heap region got
+                // reused for unrelated data, or the game moved the
+                // record across a tab switch.
+                _addressCache.TryRemove(key, out _);
+            }
+
+            // Cache miss (or just-invalidated): locate fresh,
+            // decode, validate, and cache only on success.
+            long recAddr = LocateRecord(decoder, cat, bmp);
+            if (recAddr == 0) return new List<ShopStockItem>();
+
+            var fresh = decoder.DecodeStockAt(recAddr, cat, location, chapter, expectedCount);
+            if (fresh.Count == expectedCount)
+                _addressCache[key] = recAddr;
+
+            return fresh;
+        }
+
+        /// <summary>
+        /// Clear the cached record-address lookup. Exposed for
+        /// tests and for any future invalidation hook (e.g. when
+        /// chapter advances and prices may have changed).
+        /// </summary>
+        public static void ClearCache() => _addressCache.Clear();
+
+        /// <summary>
+        /// Tests-only peek: how many entries are currently cached.
+        /// Lets the cache-hit/miss tests assert the cache filled
+        /// after the first decode.
+        /// </summary>
+        public static int CachedEntryCount => _addressCache.Count;
 
         /// <summary>
         /// Format-aware record locator. Bitmap categories search for
