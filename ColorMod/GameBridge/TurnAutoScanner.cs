@@ -96,6 +96,13 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// True if scan_move has completed during this friendly turn.
+        /// Used by pre-action scans (battle_move / battle_ability / battle_attack)
+        /// to skip a redundant re-scan when we already have fresh turn data.
+        /// </summary>
+        public bool WasScannedThisTurn => _scannedThisTurn;
+
+        /// <summary>
         /// Returns true if scanning is allowed on the given screen.
         /// </summary>
         public static bool CanScan(string screenName)

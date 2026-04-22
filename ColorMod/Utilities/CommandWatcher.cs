@@ -3618,13 +3618,27 @@ namespace FFTColorCustomizer.Utilities
                     case "battle_attack":
                         goto case "battle_ability";
                     case "battle_ability":
-                        // Always scan fresh before attack/ability (~15ms)
+                        // Scan before cast only if we haven't already scanned
+                        // this turn. ~170ms saved per turn when the caller
+                        // has already run `screen` (which auto-scans on new
+                        // turns). Post-move re-scan still happens in the
+                        // battle_move case — so _lastScannedUnits is fresh
+                        // after a move+act bundle.
+                        //
+                        // When freshScan is null the range-validation block
+                        // below skips gracefully (the `freshScan?.Battle?`
+                        // null-check short-circuits). The cast proceeds and
+                        // the game itself rejects or misses if out-of-range.
                         CommandResponse? freshScan = null;
+                        if (!_turnTracker.WasScannedThisTurn)
                         {
                             var autoScanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
                             freshScan = ExecuteNavAction(autoScanCmd);
                             if (freshScan.Status == "completed")
+                            {
                                 CacheLearnedAbilities(freshScan.Battle);
+                                _turnTracker.MarkScanned();
+                            }
                         }
                         // Validate target is within ability's horizontal range from caster.
                         // After move, use confirmed post-move position instead of stale static array.
@@ -3667,12 +3681,19 @@ namespace FFTColorCustomizer.Utilities
 
                     case "battle_move":
                     case "move_grid": // legacy alias
-                        // Always scan fresh before move (~15ms)
+                        // Pre-move scan only if we don't already have a fresh
+                        // turn scan. battle_move needs ValidMoveTiles populated
+                        // for the MoveValidator check — but that's already
+                        // populated by the turn's first scan. Skip redundancy.
+                        if (!_turnTracker.WasScannedThisTurn)
                         {
                             var moveScanCmd = new CommandRequest { Id = command.Id, Action = "scan_move" };
                             var moveScanRes = ExecuteNavAction(moveScanCmd);
                             if (moveScanRes.Status == "completed")
+                            {
                                 CacheLearnedAbilities(moveScanRes.Battle);
+                                _turnTracker.MarkScanned();
+                            }
                         }
                         _battleMenuTracker.ReturnToMyTurn();
                         var moveResult = ExecuteNavAction(command);

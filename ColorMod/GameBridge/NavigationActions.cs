@@ -1257,6 +1257,30 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(150);
             }
 
+            // Pre-cast verification (best-effort): if the game surfaces a
+            // recognizable ui= in the ability list AND it doesn't match our
+            // target, fail fast. ui= isn't always populated for ability-list
+            // states (widget-driven, lags the bridge's tracker) so a null
+            // reading can't fail — but a clear mismatch MUST fail rather
+            // than casting the wrong ability. (Aurablast incident:
+            // Kenrick's Martial Arts list in the bridge was missing entries
+            // that the game actually had, so Down×2 landed on a different
+            // ability than intended.)
+            Thread.Sleep(100);
+            string? highlighted = _detectScreen()?.UI;
+            ModLogger.Log($"[BattleAbility] Pre-cast verify: requested='{abilityName}' highlighted='{highlighted ?? "(null)"}'");
+            if (!string.IsNullOrEmpty(highlighted)
+                && !string.Equals(highlighted, abilityName, StringComparison.OrdinalIgnoreCase))
+            {
+                ModLogger.Log($"[BattleAbility] MISMATCH: requested '{abilityName}' but highlighted '{highlighted}'; escaping out");
+                SendKey(VK_ESCAPE); Thread.Sleep(200);
+                SendKey(VK_ESCAPE); Thread.Sleep(200);
+                SendKey(VK_ESCAPE); Thread.Sleep(200);
+                response.Status = "failed";
+                response.Error = $"Ability selection mismatch: requested '{abilityName}' but cursor is on '{highlighted}'. Learned-ability list may be out of sync with the game. Call `screen` to refresh and retry.";
+                return response;
+            }
+
             // Step 5: Select the ability. Post-Enter settle gives the game
             // time to transition out of the ability list into targeting / cast.
             // 500ms was conservative; 300ms covers observed transition.
@@ -1292,9 +1316,12 @@ namespace FFTColorCustomizer.GameBridge
                 // Self-radius abilities (Chakra, Cyclone, Purification): game shows AoE
                 // preview centered on caster. Need to wait for the preview to appear,
                 // then confirm twice (select target + confirm cast).
-                Thread.Sleep(500); // wait for AoE preview to render
+                // Was 500+500+300 fixed sleeps = 1300ms floor. Trimmed to
+                // 250+250+300 = 800ms since the AoE preview render is fast
+                // in practice and WaitForActionResolved below is authoritative.
+                Thread.Sleep(250); // wait for AoE preview to render
                 SendKey(VK_ENTER);
-                Thread.Sleep(500);
+                Thread.Sleep(250);
                 SendKey(VK_ENTER); // confirm cast
                 Thread.Sleep(300);
                 WaitForActionResolved(timeoutMs: 2000, out _);
