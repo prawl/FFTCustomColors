@@ -134,6 +134,16 @@ namespace FFTColorCustomizer.Utilities
         private long _resolvedAbilityListCursorAddr = 0L;
 
         /// <summary>
+        /// Cached Abilities submenu (Attack/&lt;Skillset&gt;/...) cursor
+        /// index byte. Different widget allocation than the per-skillset
+        /// ability list — session 55 found the submenu at 0x131A4E350 vs
+        /// the list at 0x13194F920 in the same session. Re-resolved per
+        /// session via `resolve_abilities_submenu_cursor` (heap addr
+        /// shuffles on game restart).
+        /// </summary>
+        private long _resolvedAbilitiesSubmenuCursorAddr = 0L;
+
+        /// <summary>
         /// Cached JobSelection grid-cursor address resolved by the
         /// `resolve_job_cursor` action. Same heap-shuffle story as the
         /// picker — re-resolved on every JobSelection open. Byte value is a
@@ -517,23 +527,20 @@ namespace FFTColorCustomizer.Utilities
             var cands = Explorer.FindDeltaSequenceCandidates(labels, deltas, maxResults: 32, maxValue: 32);
             candidateCount = cands.Count;
 
-            // Picker phase. Empirically (manual hunt session 55) the
-            // 5-snap monotonic filter returns ~5 tightly-clustered
-            // addresses on UE4 heap (within ~0x100 of each other — the
-            // 4-way mirror UE4 keeps for slate widget binding) PLUS a
-            // "lag byte" some 0x1D0 BEFORE the cluster that holds the
-            // PREVIOUS cursor value (DO NOT use — reads stale on wrap)
-            // PLUS occasional DLL-space noise.
-            //
-            // Picker rule: among UE4 heap candidates (0x100000000 -
-            // 0x200000000), find the largest tight cluster (adjacent
-            // addresses within 0x100). Return the LOWEST address in
-            // that cluster — that's a known-good cursor mirror.
-            // The lag byte sits ~0x1D0 BEFORE the cluster so it's
-            // separated by the 0x100 threshold and excluded.
-            long resolved = PickClusterRepresentative(cands);
+            // Live-verify each candidate by oscillating Up + Down once and
+            // checking it tracks. Cluster-picking alone (session 55 win)
+            // doesn't survive multi-cluster heap layouts where 5-snap
+            // monotonic returns ~32 noise survivors clustered tightly by
+            // chance. Real cursor mirrors satisfy: read=X, then Up read=X-1
+            // (or wrap to listEnd), then Down read=X. Noise satisfies one
+            // step but rarely both.
+            long resolved = PickAndVerifyCandidate(cands, win);
+            DumpResolverCandidates("ability_list", cands, resolved);
 
-            // Restore cursor: 4 Ups to undo 4 Downs (net zero).
+            // Restore cursor: 4 Ups to undo 4 Downs.
+            // PickAndVerifyCandidate adds (Up, Down) net-zero to the count
+            // when it ran live verification, so the original 4 Downs are
+            // still outstanding — undo with 4 Ups.
             for (int i = 0; i < 4; i++)
             {
                 _inputSimulator.SendKeyPressToWindow(win, VK_UP);
@@ -591,6 +598,152 @@ namespace FFTColorCustomizer.Utilities
             // the lag byte at -0x1D0 is excluded by the 0x100 gap).
             var winner = clusters.OrderByDescending(c => c.Count).ThenBy(c => c[0]).First();
             return winner[0];
+        }
+
+        /// <summary>
+        /// Per-session resolver for the **Abilities submenu** cursor index
+        /// byte (the parent menu — Attack/&lt;Skillset&gt;/&lt;Skillset&gt;
+        /// — that sits above the per-skillset ability list). Different
+        /// widget allocation than the ability list, hence a separate
+        /// resolver. Session 55 cracked at 0x131A4E350 (3-way mirror).
+        ///
+        /// Same 5-snap +1 strategy as ResolveAbilityListCursor, but the
+        /// submenu has 3 items so 4 Downs definitely wraps at least once.
+        /// FindDeltaSequenceCandidates handles wrap-to-0 transitions
+        /// without baseline knowledge.
+        ///
+        /// Side effects: 4 net-zero key pairs visible on the game window
+        /// (~2s flash). Caller must be on the BattleAbilities submenu
+        /// screen with at least 2 items (1-item submenus would be
+        /// degenerate and don't need cursor logic anyway).
+        ///
+        /// On success caches on <see cref="_resolvedAbilitiesSubmenuCursorAddr"/>.
+        /// </summary>
+        private string? ResolveAbilitiesSubmenuCursor(out int candidateCount)
+        {
+            candidateCount = 0;
+            if (Explorer == null) return null;
+            IntPtr win = Process.GetCurrentProcess().MainWindowHandle;
+            if (win == IntPtr.Zero) return null;
+            const int VK_DOWN = 0x28, VK_UP = 0x26;
+
+            Thread.Sleep(700);
+
+            string[] labels = { "_abil_sub_s0", "_abil_sub_s1", "_abil_sub_s2", "_abil_sub_s3", "_abil_sub_s4" };
+            Explorer.TakeHeapSnapshot(labels[0]);
+            for (int step = 1; step < labels.Length; step++)
+            {
+                _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+                Thread.Sleep(250);
+                Explorer.TakeHeapSnapshot(labels[step]);
+            }
+
+            int[] deltas = { +1, +1, +1, +1 };
+            var cands = Explorer.FindDeltaSequenceCandidates(labels, deltas, maxResults: 32, maxValue: 32);
+            candidateCount = cands.Count;
+            long resolved = PickAndVerifyCandidate(cands, win);
+            DumpResolverCandidates("submenu", cands, resolved);
+
+            // Restore cursor (4 Ups to undo the original 4 Downs).
+            for (int i = 0; i < 4; i++)
+            {
+                _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+                Thread.Sleep(220);
+            }
+
+            _resolvedAbilitiesSubmenuCursorAddr = resolved;
+            return cands.Count > 0
+                ? $"Resolved abilities submenu cursor: 0x{resolved:X} ({cands.Count} candidate{(cands.Count > 1 ? "s" : "")})"
+                : "No stable abilities submenu cursor byte found (0 candidates)";
+        }
+
+        /// <summary>
+        /// Live-verify cursor candidates by oscillating Up + Down (net
+        /// zero motion) and checking each candidate tracks correctly.
+        /// Real cursor: read=X → Up → read=X-1 (or wrap to listEnd) →
+        /// Down → read=X. Noise bytes that satisfied the static 5-snap
+        /// monotonic filter rarely also satisfy the live-oscillation
+        /// check.
+        ///
+        /// Filters to UE4 heap range (0x100000000 - 0x200000000) before
+        /// verifying — DLL-space and main-module candidates are noise.
+        /// Returns 0 if no candidate verifies.
+        /// </summary>
+        private long PickAndVerifyCandidate(List<nint> cands, IntPtr win)
+        {
+            if (Explorer == null) return 0L;
+            const int VK_DOWN = 0x28, VK_UP = 0x26;
+            var ue4 = cands
+                .Where(a => (long)a >= 0x100000000L && (long)a < 0x200000000L)
+                .Select(a => (long)a)
+                .ToList();
+            if (ue4.Count == 0) return 0L;
+
+            // Phase 1: read each at current position.
+            var preVals = new Dictionary<long, byte>();
+            foreach (var addr in ue4)
+            {
+                var r = Explorer.ReadAbsolute((nint)addr, 1);
+                if (r.HasValue) preVals[addr] = (byte)r.Value.value;
+            }
+
+            // Phase 2: Up + read.
+            _inputSimulator.SendKeyPressToWindow(win, VK_UP);
+            Thread.Sleep(250);
+            var upVals = new Dictionary<long, byte>();
+            foreach (var addr in ue4)
+            {
+                var r = Explorer.ReadAbsolute((nint)addr, 1);
+                if (r.HasValue) upVals[addr] = (byte)r.Value.value;
+            }
+
+            // Phase 3: Down + read (back to pre).
+            _inputSimulator.SendKeyPressToWindow(win, VK_DOWN);
+            Thread.Sleep(250);
+            var postVals = new Dictionary<long, byte>();
+            foreach (var addr in ue4)
+            {
+                var r = Explorer.ReadAbsolute((nint)addr, 1);
+                if (r.HasValue) postVals[addr] = (byte)r.Value.value;
+            }
+
+            // Find addresses where: pre→Up moved by -1 (or wrapped 0→N)
+            // AND Down→post returned to pre. That's the cursor.
+            // Multiple passers expected (the 3-4 widget mirrors). Pick
+            // first match — they're equivalent.
+            foreach (var addr in ue4)
+            {
+                if (!preVals.TryGetValue(addr, out var pre)) continue;
+                if (!upVals.TryGetValue(addr, out var up)) continue;
+                if (!postVals.TryGetValue(addr, out var post)) continue;
+
+                int upDelta = up - pre;
+                bool upOk = upDelta == -1
+                    || (pre == 0 && up > 0 && up < 32);  // wrap 0→listEnd
+                bool downOk = post == pre;
+                if (upOk && downOk) return addr;
+            }
+            return 0L;
+        }
+
+        /// <summary>Diag — write resolver candidate list to disk so we
+        /// can debug bad picks. Marks the chosen address with [PICK].</summary>
+        private void DumpResolverCandidates(string kind, List<nint> cands, long picked)
+        {
+            try
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"resolver={kind} picked=0x{picked:X} count={cands.Count}");
+                foreach (var a in cands)
+                {
+                    string mark = (long)a == picked ? " ← PICK" : "";
+                    sb.AppendLine($"  0x{(long)a:X}{mark}");
+                }
+                System.IO.File.WriteAllText(
+                    System.IO.Path.Combine(_bridgeDirectory, $"resolver_dump_{kind}.txt"),
+                    sb.ToString());
+            }
+            catch { }
         }
 
         /// <summary>
@@ -1455,6 +1608,7 @@ namespace FFTColorCustomizer.Utilities
             "reset_state_machine",
             "resolve_picker_cursor",
             "resolve_ability_list_cursor",
+            "resolve_abilities_submenu_cursor",
             "resolve_job_cursor",
             "resolve_party_menu_cursor",
             "resolve_equip_picker_cursor",
@@ -2389,6 +2543,17 @@ namespace FFTColorCustomizer.Utilities
                     {
                         int cCount;
                         var info = ResolveAbilityListCursor(out cCount);
+                        response.Status = info != null ? "completed" : "failed";
+                        if (info == null) response.Error = "Memory explorer not initialized or game window not found";
+                        response.Info = info;
+                        ModLogger.Log($"[CommandBridge] {response.Info}");
+                        break;
+                    }
+
+                    case "resolve_abilities_submenu_cursor":
+                    {
+                        int cCount;
+                        var info = ResolveAbilitiesSubmenuCursor(out cCount);
                         response.Status = info != null ? "completed" : "failed";
                         if (info == null) response.Error = "Memory explorer not initialized or game window not found";
                         response.Info = info;
@@ -4186,6 +4351,24 @@ namespace FFTColorCustomizer.Utilities
                 _navActions.BattleTracker = BattleTracker;
                 _navActions.GetAbilitiesSubmenuItems = GetAbilitiesSubmenuItems;
                 _navActions.GetAbilityListForSkillset = GetAbilityListForSkillset;
+                // Lazy resolvers for ability-list and submenu cursors. Run
+                // once per game session; cached address is read directly
+                // on subsequent ability uses. Heap addrs shuffle on game
+                // restart so the cache resets when the watcher is recreated.
+                _navActions.ResolveAbilitiesSubmenuCursor = () =>
+                {
+                    if (_resolvedAbilitiesSubmenuCursorAddr != 0L) return _resolvedAbilitiesSubmenuCursorAddr;
+                    int _;
+                    ResolveAbilitiesSubmenuCursor(out _);
+                    return _resolvedAbilitiesSubmenuCursorAddr;
+                };
+                _navActions.ResolveAbilityListCursor = () =>
+                {
+                    if (_resolvedAbilityListCursorAddr != 0L) return _resolvedAbilityListCursorAddr;
+                    int _;
+                    ResolveAbilityListCursor(out _);
+                    return _resolvedAbilityListCursorAddr;
+                };
             }
             EnsureMapLoader();
             if (_navActions != null)
