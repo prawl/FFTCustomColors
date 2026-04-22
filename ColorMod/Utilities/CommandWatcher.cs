@@ -1640,9 +1640,44 @@ namespace FFTColorCustomizer.Utilities
                     if (!isObservational)
                         _lastGameCommandCompletedAt = DateTime.UtcNow;
 
-                    // No auto-scan — Claude must call scan_move explicitly before acting.
-                    // Auto-scan was removed because C+Up keypresses during settling caused
-                    // the Reset Move bug and stale cache issues.
+                    // Auto-scan-on-screen-query (speed optimization):
+                    // when a plain `screen` call lands on a fresh BattleMyTurn,
+                    // piggy-back a scan_move into the response so Claude has
+                    // valid-move/attack tiles without a second round-trip.
+                    // The older unconditional auto-scan caused the "Reset Move"
+                    // bug via C+Up during mid-animation settling — we avoid
+                    // that here by:
+                    //   (a) only firing after DetectScreenSettled has already
+                    //       returned (settle is done),
+                    //   (b) gating on _turnTracker.ShouldAutoScan which fires
+                    //       at most once per friendly turn,
+                    //   (c) wrapping in try/catch — basic screen data is kept
+                    //       even if scan_move fails.
+                    if (isScreenQuery && response.Screen != null
+                        && _turnTracker.ShouldAutoScan(
+                            response.Screen.Name,
+                            response.Screen.BattleTeam,
+                            response.Screen.BattleUnitId,
+                            response.Screen.BattleUnitHp))
+                    {
+                        try
+                        {
+                            var scanCommand = new CommandRequest { Id = command.Id, Action = "scan_move" };
+                            var scanResponse = ExecuteNavAction(scanCommand);
+                            if (scanResponse.Status == "completed")
+                            {
+                                response.Battle = scanResponse.Battle;
+                                response.ValidPaths = scanResponse.ValidPaths;
+                                response.Screen = scanResponse.Screen ?? response.Screen;
+                                response.Info = scanResponse.Info;
+                                _turnTracker.MarkScanned();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogError($"[CommandBridge] Screen-query auto-scan failed: {ex.Message}");
+                        }
+                    }
 
                     response.Battle ??= BattleTracker?.Update();
                     // Cache learned ability IDs from active unit for ability list tracking
