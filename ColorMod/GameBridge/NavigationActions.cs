@@ -1076,11 +1076,39 @@ namespace FFTColorCustomizer.GameBridge
             _menuCursorStale = false; // consumed
             NavigateMenuCursor(cursor, 1);
             SendKey(VK_ENTER);
-            // Previously 1000ms. Step 3 below does a one-shot MyTurn/Acting
-            // check with an expensive retry path (~1500ms) if it reads the
-            // pre-Enter state. 500ms is the smallest value observed safe
-            // against that retry trigger in live testing.
-            Thread.Sleep(500);
+
+            // Unified Step 1+3: poll for BattleAbilities (success). If
+            // we're still on MyTurn/Acting after ~400ms, the Enter didn't
+            // register — retry once. Total time budget 1500ms covers both
+            // fast-submenu (~150-300ms) and retry cases (~900ms).
+            // Replaces: old Thread.Sleep(500) + Step 3 one-shot retry
+            // (Thread.Sleep(500) + Enter + Thread.Sleep(1000)) + extra
+            // poll loop at submenu nav. Saves 350-500ms in the fast case,
+            // 900-1100ms in the retry case.
+            bool submenuReady = false;
+            bool retried = false;
+            var submenuSw = Stopwatch.StartNew();
+            while (submenuSw.ElapsedMilliseconds < 1500)
+            {
+                var s = _detectScreen();
+                if (s?.Name == "BattleAbilities")
+                {
+                    submenuReady = true;
+                    ModLogger.Log($"[BattleAbility] Submenu detected after {submenuSw.ElapsedMilliseconds}ms");
+                    break;
+                }
+                if (!retried && submenuSw.ElapsedMilliseconds > 400
+                    && (s?.Name == "BattleMyTurn" || s?.Name == "BattleActing"))
+                {
+                    ModLogger.Log($"[BattleAbility] Still on {s.Name} after {submenuSw.ElapsedMilliseconds}ms — retrying Enter");
+                    var retryRead = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
+                    int retryCursor = retryRead != null ? (int)retryRead.Value.value : 1;
+                    NavigateMenuCursor(retryCursor, 1);
+                    SendKey(VK_ENTER);
+                    retried = true;
+                }
+                Thread.Sleep(50);
+            }
 
             // Step 2: Get available skillsets from cached scan data
             var submenuItems = GetAbilitiesSubmenuItems?.Invoke() ?? new[] { "Attack" };
@@ -1108,28 +1136,6 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Step 3: Verify we're in the Abilities submenu. Step 1 already pressed Enter
-            // on Abilities — if screen detection is slow, we might still read BattleMyTurn
-            // or BattleActing. Do NOT press Enter again here (that would select Attack
-            // from the submenu, which is the bug that caused Throw Stone → Attack targeting).
-            screen = _detectScreen();
-            if (screen?.Name == "BattleMyTurn" || screen?.Name == "BattleActing")
-            {
-                // Still on action menu — the Enter from Step 1 didn't register.
-                // Wait longer and retry.
-                Thread.Sleep(500);
-                screen = _detectScreen();
-                if (screen?.Name == "BattleMyTurn" || screen?.Name == "BattleActing")
-                {
-                    // Try Enter one more time
-                    var retryRead = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
-                    int retryCursor = retryRead != null ? (int)retryRead.Value.value : 1;
-                    NavigateMenuCursor(retryCursor, 1);
-                    SendKey(VK_ENTER);
-                    Thread.Sleep(1000);
-                }
-            }
-
             // Find the skillset index in the submenu items array
             int skillsetIdx = BattleAbilityNavigation.FindSkillsetIndex(loc.skillsetName, submenuItems);
             if (skillsetIdx < 0)
@@ -1140,21 +1146,12 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Wait for the Abilities submenu to fully appear before navigating.
             ModLogger.Log($"[BattleAbility] Navigating submenu: skillsetIdx={skillsetIdx} for '{loc.skillsetName}' in [{string.Join(", ", submenuItems)}]");
-            for (int wait = 0; wait < 20; wait++)
+            if (!submenuReady)
             {
-                var subScreen = _detectScreen();
-                if (subScreen?.Name == "BattleAbilities")
-                {
-                    ModLogger.Log($"[BattleAbility] Submenu detected after {wait * 150}ms");
-                    break;
-                }
-                Thread.Sleep(150);
+                ModLogger.Log($"[BattleAbility] WARN: submenu not confirmed ready — proceeding anyway");
             }
-            // Previously Thread.Sleep(500) extra settle. The poll loop above
-            // already breaks on BattleAbilities detection; a detected screen
-            // is an interactive screen. 150ms floor absorbs widget-init lag.
+            // 150ms floor absorbs widget-init lag post-detection.
             Thread.Sleep(150);
 
             // Submenu navigation using global cursor counter at 0x140C0EB20.
