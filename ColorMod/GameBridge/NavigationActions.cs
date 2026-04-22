@@ -710,6 +710,16 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // Guard: one Action per turn. Refuse up-front so callers know to Wait
+            // instead of retry-spamming — stops us from navigating into a grayed
+            // Abilities menu and stalling.
+            if (screen.BattleActed == 1)
+            {
+                response.Status = "failed";
+                response.Error = "You've already acted this turn. You cannot perform another action.";
+                return response;
+            }
+
             // Step 1: Navigate menu to Abilities (always index 1).
             // Menu is stable: Move/ResetMove(0) Abilities(1) Wait(2) Status(3) AutoBattle(4)
             // Trust the raw memory cursor — EffectiveMenuCursor corrections cause more bugs.
@@ -979,6 +989,17 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // Guard: a unit only gets one Action per turn. If BattleActed==1
+            // we'd navigate into the menu, open Abilities, then stall on a
+            // grayed-out skillset. Fail fast with a clear message so callers
+            // know to Wait instead of retry-spamming.
+            if (screen.BattleActed == 1)
+            {
+                response.Status = "failed";
+                response.Error = "You've already acted this turn. You cannot perform another action.";
+                return response;
+            }
+
             // Step 0: Escape-to-known-state pre-reset.
             // Both the submenu cursor (Attack/White Magicks/...) and ability-list
             // cursor (Cure/Cura/...) are UE4 widget bytes that REMEMBER the
@@ -1025,7 +1046,11 @@ namespace FFTColorCustomizer.GameBridge
             _menuCursorStale = false; // consumed
             NavigateMenuCursor(cursor, 1);
             SendKey(VK_ENTER);
-            Thread.Sleep(1000); // Wait for submenu to fully load — 500ms was too fast
+            // Previously 1000ms. Step 3 below does a one-shot MyTurn/Acting
+            // check with an expensive retry path (~1500ms) if it reads the
+            // pre-Enter state. 500ms is the smallest value observed safe
+            // against that retry trigger in live testing.
+            Thread.Sleep(500);
 
             // Step 2: Get available skillsets from cached scan data
             var submenuItems = GetAbilitiesSubmenuItems?.Invoke() ?? new[] { "Attack" };
@@ -1097,7 +1122,10 @@ namespace FFTColorCustomizer.GameBridge
                 }
                 Thread.Sleep(150);
             }
-            Thread.Sleep(500); // extra settle time after submenu appears
+            // Previously Thread.Sleep(500) extra settle. The poll loop above
+            // already breaks on BattleAbilities detection; a detected screen
+            // is an interactive screen. 150ms floor absorbs widget-init lag.
+            Thread.Sleep(150);
 
             // Submenu navigation using global cursor counter at 0x140C0EB20.
             // The submenu WRAPS and ui= LAGS by one keypress (reports previous position).
@@ -1132,7 +1160,10 @@ namespace FFTColorCustomizer.GameBridge
             for (int i = 0; i < downsNeeded; i++)
             {
                 SendKey(VK_DOWN);
-                Thread.Sleep(400);
+                // 400ms was an outlier — ability-list Down uses 150ms and
+                // menu-cursor Down uses 150ms. 200ms here is a safer floor
+                // that still gives the submenu plenty of settle time.
+                Thread.Sleep(200);
             }
 
             // Verify via counter delta
@@ -1146,10 +1177,13 @@ namespace FFTColorCustomizer.GameBridge
                     ModLogger.Log($"[BattleAbility] WARN: counter delta mismatch! Some keypresses may have been lost.");
             }
 
-            // Enter the skillset
-            Thread.Sleep(300);
+            // Enter the skillset. Pre-press settle is to let the last submenu
+            // Down register before Enter fires on top of it. 150ms is enough
+            // for input debounce; the post-Enter settle below absorbs the
+            // skillset-list render.
+            Thread.Sleep(150);
             SendKey(VK_ENTER);
-            Thread.Sleep(500);
+            Thread.Sleep(300);
 
             // Step 4: Navigate to the ability within the skillset
             // Use the learned ability list (from scan) to determine the correct index.
@@ -1193,9 +1227,11 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(150);
             }
 
-            // Step 5: Select the ability
+            // Step 5: Select the ability. Post-Enter settle gives the game
+            // time to transition out of the ability list into targeting / cast.
+            // 500ms was conservative; 300ms covers observed transition.
             SendKey(VK_ENTER);
-            Thread.Sleep(500);
+            Thread.Sleep(300);
 
             // Cast-time abilities (CastSpeed > 0) queue in the Combat Timeline and
             // resolve when their CT counter reaches 100 — the unit still needs to
@@ -1215,7 +1251,7 @@ namespace FFTColorCustomizer.GameBridge
                 // True self-only abilities (Focus, Shout): apply instantly, single confirm
                 SendKey(VK_ENTER);
                 Thread.Sleep(300);
-                WaitForTurnState(timeoutMs: 2000, out _);
+                WaitForActionResolved(timeoutMs: 2000, out _);
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} (self-target){ctSuffix}{autoEndSuffix}";
                 return response;
@@ -1231,7 +1267,7 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(500);
                 SendKey(VK_ENTER); // confirm cast
                 Thread.Sleep(300);
-                WaitForTurnState(timeoutMs: 2000, out _);
+                WaitForActionResolved(timeoutMs: 2000, out _);
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} (self-radius AoE){ctSuffix}{autoEndSuffix}";
                 return response;
@@ -1269,7 +1305,7 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(500);
                 SendKey(VK_ENTER); // Unit/Tile dialog (selects "Unit" default; harmless if no dialog)
                 Thread.Sleep(300);
-                WaitForTurnState(timeoutMs: 2000, out _);
+                WaitForActionResolved(timeoutMs: 2000, out _);
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} on ({targetX},{targetY}) — cursor was already on target{ctSuffix}{autoEndSuffix}";
                 return response;
@@ -1380,7 +1416,7 @@ namespace FFTColorCustomizer.GameBridge
             // BattleCasting from a stale read during the cast animation, and
             // downstream session logs + subsequent commands see a confused
             // state. Budget 2s — spell-cast animations can exceed 1s.
-            WaitForTurnState(timeoutMs: 2000, out long settleMs);
+            WaitForActionResolved(timeoutMs: 2000, out long settleMs);
             if (settleMs >= 2000)
                 ModLogger.Log($"[BattleAbility] Post-cast settle timeout ({settleMs}ms); returning anyway.");
 
@@ -3284,6 +3320,17 @@ namespace FFTColorCustomizer.GameBridge
 
             // Enter Move mode if on BattleMyTurn
             var screen = _detectScreen();
+
+            // Guard: one Move per turn. After moving, the menu slot 0 reads as
+            // "Reset Move" — selecting it cancels the move rather than moving
+            // again, which is almost never what the caller wanted. Refuse.
+            if (screen != null && screen.BattleMoved == 1)
+            {
+                response.Status = "failed";
+                response.Error = "You've already moved this turn. You cannot move again (menu slot 0 would Reset Move, not relocate).";
+                return response;
+            }
+
             if (screen != null && screen.Name == "BattleMyTurn")
             {
                 // Menu always has 5 items — Move/ResetMove(0) is always present.
@@ -5508,6 +5555,36 @@ namespace FFTColorCustomizer.GameBridge
             waitedMs = sw.ElapsedMilliseconds;
             return last;
         }
+
+        /// <summary>
+        /// Post-action settle: wait for the state to resolve to ANY "action
+        /// complete" screen — our turn is back, another unit's turn started,
+        /// or the battle ended. Used by battle_ability / battle_attack after
+        /// the cast/swing to avoid paying a 2000ms timeout when the next
+        /// state happens to be Victory/Defeat/EnemyTurn instead of MyTurn.
+        /// </summary>
+        private DetectedScreen? WaitForActionResolved(int timeoutMs, out long waitedMs)
+        {
+            var sw = Stopwatch.StartNew();
+            DetectedScreen? last = null;
+            while (sw.ElapsedMilliseconds < timeoutMs)
+            {
+                last = _detectScreen();
+                if (last != null && IsPostActionResolved(last.Name))
+                {
+                    waitedMs = sw.ElapsedMilliseconds;
+                    return last;
+                }
+                Thread.Sleep(100);
+            }
+            waitedMs = sw.ElapsedMilliseconds;
+            return last;
+        }
+
+        private static bool IsPostActionResolved(string? name) =>
+            name is "BattleMyTurn" or "BattleActing"
+                 or "BattleVictory" or "BattleDesertion" or "GameOver"
+                 or "BattleAlliesTurn" or "BattleEnemiesTurn";
 
         private CommandResponse AdvanceDialogue(CommandResponse response)
         {
