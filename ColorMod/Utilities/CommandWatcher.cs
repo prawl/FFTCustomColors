@@ -1296,6 +1296,7 @@ namespace FFTColorCustomizer.Utilities
             "read_dialogue", "get_rumor", "list_rumors", "write_byte", "dump_detection_inputs",
             "scrape_shop_items",
             "shop_stock",
+            "seed_shop_stock",
             "hold_key",
             "get_flag", "set_flag", "list_flags",
             "reset_state_machine",
@@ -2700,6 +2701,97 @@ namespace FFTColorCustomizer.Utilities
                                 sb.AppendLine($"  id={it.Id,3} {it.Name,-20} type={it.Type,-12} price={(it.BuyPrice?.ToString() ?? "?")}");
                             response.Info = sb.ToString();
                             response.ShopStock = stock;
+                            response.Status = "completed";
+                        }
+                        catch (Exception ex) { response.Status = "error"; response.Error = ex.Message; }
+                        break;
+
+                    case "seed_shop_stock":
+                        // Session 55: one-shot helper to populate the
+                        // resolver cache for ALL registered categories at
+                        // the current shop. Walks every registered
+                        // category for (location, chapter), runs the
+                        // expensive broad-search locate once each, and
+                        // seeds the cache via ShopStockResolver.SeedCache
+                        // so subsequent screen.stockItems calls reuse
+                        // the addresses without their own scans.
+                        //
+                        // Use case: player enters a shop in a new save
+                        // / chapter / location. Run seed_shop_stock once
+                        // up front; from then on screen.stockItems is
+                        // populated and stable.
+                        //
+                        // Why it exists: the screen-assembly path
+                        // intentionally does ZERO AoB scans (would
+                        // crash the game under repeated polling).
+                        // Seeding has to happen explicitly, and doing
+                        // all categories in one bridge call is much
+                        // cheaper than 5-7 separate shop_stock invocations
+                        // (each command round-trip is its own cost).
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        try
+                        {
+                            int seedLocation = command.LocationId >= 0
+                                ? command.LocationId
+                                : Explorer.Scanner.ReadByte((nint)0x14077D208L);
+                            int seedChapter = command.UnitIndex > 0 ? command.UnitIndex : 1;
+
+                            var decoder = new GameBridge.ShopStockDecoder(Explorer);
+                            var sb = new System.Text.StringBuilder();
+                            int seeded = 0, failed = 0;
+                            sb.AppendLine($"seed_shop_stock loc={seedLocation} ch={seedChapter}:");
+
+                            foreach (var cat in GameBridge.ShopBitmapRegistry.RegisteredCategoriesFor(seedLocation, seedChapter))
+                            {
+                                var bmp = GameBridge.ShopBitmapRegistry.Lookup(seedLocation, seedChapter, cat);
+                                if (bmp == null) continue;
+
+                                int expCount = GameBridge.ShopStockDecoder.FormatForCategory(cat)
+                                    == GameBridge.ShopStockDecoder.RecordFormat.IdArray
+                                        ? GameBridge.ShopStockResolver.CountIdArrayIds(bmp)
+                                        : GameBridge.ShopStockResolver.CountBits(bmp);
+
+                                long recAddr;
+                                if (GameBridge.ShopStockDecoder.FormatForCategory(cat) == GameBridge.ShopStockDecoder.RecordFormat.IdArray)
+                                {
+                                    int nz = GameBridge.ShopStockResolver.CountIdArrayIds(bmp);
+                                    var ids = new byte[nz];
+                                    Array.Copy(bmp, 0, ids, 0, nz);
+                                    recAddr = decoder.LocateIdArrayRecord(ids); // broad search OK here
+                                }
+                                else
+                                {
+                                    recAddr = decoder.LocateBitmapRecord(bmp, expCount); // broad search OK here
+                                }
+
+                                if (recAddr == 0)
+                                {
+                                    sb.AppendLine($"  {cat}: NOT FOUND");
+                                    failed++;
+                                    continue;
+                                }
+
+                                // Validate the locate by decoding and
+                                // checking the count matches expected.
+                                // Skip seeding false-positive locates
+                                // (they'd be invalidated on first screen
+                                // poll anyway, just wasted work).
+                                var decoded = decoder.DecodeStockAt(recAddr, cat, seedLocation, seedChapter, expCount);
+                                if (decoded.Count == expCount)
+                                {
+                                    GameBridge.ShopStockResolver.SeedCache(seedLocation, seedChapter, cat, recAddr);
+                                    sb.AppendLine($"  {cat}: SEEDED @ 0x{recAddr:X} ({decoded.Count} items)");
+                                    seeded++;
+                                }
+                                else
+                                {
+                                    sb.AppendLine($"  {cat}: VALIDATION FAILED (got {decoded.Count}, expected {expCount})");
+                                    failed++;
+                                }
+                            }
+
+                            sb.AppendLine($"--- {seeded} seeded, {failed} failed");
+                            response.Info = sb.ToString();
                             response.Status = "completed";
                         }
                         catch (Exception ex) { response.Status = "error"; response.Error = ex.Message; }

@@ -64,16 +64,18 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>
         /// Cap on cold (cache-miss) locates per <see cref="DecodeAll"/>
-        /// call. Each cold locate runs ~150-600 MB of AoB search;
-        /// running 6+ in a single screen-assembly call risks
-        /// memory pressure even before the negative cache kicks in.
-        /// 1 means: at most one expensive scan per screen call —
-        /// remaining categories defer to the next screen call,
-        /// progressively warming the cache. Public so tests + the
-        /// dedicated shop_stock action can override (it disables
-        /// the cap by passing -1).
+        /// call. Set to 0 by default — the screen-assembly path does
+        /// no AoB scans at all. Categories surface only after being
+        /// seeded by the dedicated <c>shop_stock</c> bridge action
+        /// (which writes via <see cref="SeedCache"/>). Rationale:
+        /// even narrow-only scans cost ~150 MB per call, and
+        /// cumulative pressure across screen polls crashes the
+        /// game (live-verified at Ch1 Dorter — auto-locate during
+        /// screen assembly killed the game within ~10 polls of
+        /// changing the save state). Pass -1 to disable the cap
+        /// entirely (used by the dedicated shop_stock action).
         /// </summary>
-        public const int DefaultMaxColdLocatesPerCall = 1;
+        public const int DefaultMaxColdLocatesPerCall = 0;
 
         /// <summary>
         /// Decode every registered category for a (location, chapter)
