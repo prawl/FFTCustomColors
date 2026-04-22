@@ -5183,21 +5183,26 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         private string[] GetAbilityListForSkillset(string skillsetName)
         {
+            // Return the FULL skillset list in its canonical order — the
+            // game's in-battle ability submenu shows every ability of the
+            // skillset (unlearned ones rendered greyed-out but still
+            // occupying their slot). Using a learned-filtered list for
+            // navigation causes off-by-N index errors when some entries
+            // are unlearned.
+            //
+            // Aurablast incident (Kenrick / Martial Arts): learned list
+            // was [Cyclone, Purification, Chakra, Revive] (4 entries),
+            // so "Chakra" resolved to index 2 and Down×2 landed on
+            // Aurablast — which sits at index 2 in the game's actual
+            // 8-entry display.
+            //
+            // The per-unit ability[] array in scan_move output (populated
+            // by NavigationActions.FilterAbilitiesBySkillsets) still shows
+            // only LEARNED abilities — that's the decision-aid for "what
+            // can this unit cast?" and is correct. This method is specifically
+            // the NAV list: what the game's cursor traverses.
             var allAbilities = GameBridge.ActionAbilityLookup.GetSkillsetAbilities(skillsetName);
-            if (allAbilities == null) return System.Array.Empty<string>();
-
-            if (_cachedLearnedAbilityNames != null && _cachedLearnedAbilityNames.Count > 0)
-            {
-                // Filter to only learned abilities, preserving skillset order
-                var filtered = allAbilities
-                    .Where(a => _cachedLearnedAbilityNames.Contains(a.Name))
-                    .Select(a => a.Name)
-                    .ToArray();
-                return filtered.Length > 0 ? filtered : allAbilities.Select(a => a.Name).ToArray();
-            }
-
-            // No cached data — return full skillset
-            return allAbilities.Select(a => a.Name).ToArray();
+            return allAbilities?.Select(a => a.Name).ToArray() ?? System.Array.Empty<string>();
         }
 
         private static string? GetLocationName(int locationId)
