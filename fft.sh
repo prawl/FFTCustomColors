@@ -2763,6 +2763,21 @@ load() { fft "{\"id\":\"$(id)\",\"action\":\"load\"}"; }
 # Audit tool for verifying ScreenDetectionLogic.Detect against ground truth.
 detection_dump() { fft "{\"id\":\"$(id)\",\"action\":\"dump_detection_inputs\"}"; }
 
+# session_stats: Per-action-type latency summary for the current session.
+# Groups rows by action, shows count / median / p95 / max / failed.
+# Complements `session_tail slow <ms>` which shows individual rows.
+session_stats() {
+  fft "{\"id\":\"$(id)\",\"action\":\"session_stats\"}" >/dev/null
+  local info
+  info=$(grep -o '"info": "[^"]*"' "$B/response.json" 2>/dev/null | head -1 \
+    | sed 's/^"info": "//; s/"$//')
+  if [ -z "$info" ]; then
+    echo "(no session stats available)"
+    return 1
+  fi
+  printf '%b\n' "$info" | sed 's/\\r\\n/\n/g; s/\\n/\n/g; s/\\u0022/"/g'
+}
+
 # stats: Render the lifetime / current-battle stats summary.
 #   stats         → lifetime career totals (persisted across sessions).
 #   stats battle  → last / current battle summary (MVP, per-unit damage, etc).

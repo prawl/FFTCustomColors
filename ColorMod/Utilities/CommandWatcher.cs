@@ -1300,7 +1300,7 @@ namespace FFTColorCustomizer.Utilities
             "search_bytes", "search_all", "search_memory", "search_near",
             "dump_unit", "dump_all", "write_address", "set_strict", "set_map",
             "read_dialogue", "get_rumor", "list_rumors", "write_byte", "dump_detection_inputs",
-            "render_lifetime_summary", "render_battle_summary",
+            "render_lifetime_summary", "render_battle_summary", "session_stats",
             "scrape_shop_items",
             "shop_stock",
             "seed_shop_stock",
@@ -1926,6 +1926,11 @@ namespace FFTColorCustomizer.Utilities
                     case "render_battle_summary":
                         if (StatTracker == null) { response.Status = "failed"; response.Error = "Stat tracker not initialized"; break; }
                         response.Info = StatTracker.RenderBattleSummary();
+                        response.Status = "completed";
+                        break;
+
+                    case "session_stats":
+                        response.Info = RenderSessionStats();
                         response.Status = "completed";
                         break;
 
@@ -4946,6 +4951,61 @@ namespace FFTColorCustomizer.Utilities
             _cachedActiveUnitHp = 0;
             _cachedActiveUnitMaxHp = 0;
         }
+
+        /// <summary>
+        /// Render a per-action-type latency summary of the current session.
+        /// Parses the JSONL session log and delegates stats math to the
+        /// pure SessionStatsCalculator. Returns a pre-formatted string
+        /// suitable for display.
+        /// </summary>
+        private string RenderSessionStats()
+        {
+            var logPath = _sessionLog?.LogPath;
+            if (string.IsNullOrEmpty(logPath) || !File.Exists(logPath))
+                return "(no session log yet — run a few commands first)";
+
+            var rows = new List<GameBridge.SessionStatRow>();
+            try
+            {
+                foreach (var line in File.ReadAllLines(logPath))
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(line);
+                        var root = doc.RootElement;
+                        var row = new GameBridge.SessionStatRow();
+                        if (root.TryGetProperty("action", out var a)) row.Action = a.GetString() ?? "";
+                        if (root.TryGetProperty("status", out var s)) row.Status = s.GetString() ?? "";
+                        if (root.TryGetProperty("latencyMs", out var lm) && lm.ValueKind == System.Text.Json.JsonValueKind.Number)
+                            row.LatencyMs = lm.GetInt32();
+                        rows.Add(row);
+                    }
+                    catch { /* skip malformed row */ }
+                }
+            }
+            catch (Exception ex)
+            {
+                return $"(session log read failed: {ex.Message})";
+            }
+
+            var report = GameBridge.SessionStatsCalculator.Compute(rows);
+            var sb = new System.Text.StringBuilder();
+            var fileName = System.IO.Path.GetFileName(logPath);
+            sb.AppendLine($"─ Session: {fileName} ({report.TotalRows} rows) ─");
+            sb.AppendLine(string.Format("{0,-22} {1,6}  {2,8}  {3,8}  {4,8}  {5,6}",
+                "action", "count", "median", "p95", "max", "failed"));
+            foreach (var e in report.Actions)
+            {
+                sb.AppendLine(string.Format("{0,-22} {1,6}  {2,6}ms  {3,6}ms  {4,6}ms  {5,6}",
+                    Truncate(e.Action, 22), e.Count, e.MedianMs, e.P95Ms, e.MaxMs, e.Failed));
+            }
+            sb.AppendLine($"total: {report.TotalRows} rows · {report.FailedRows} failed · {report.SlowRows} slow (>=2000ms)");
+            return sb.ToString().TrimEnd();
+        }
+
+        private static string Truncate(string s, int max)
+            => string.IsNullOrEmpty(s) || s.Length <= max ? s : s.Substring(0, max);
 
         /// <summary>
         /// Drives BattleStatTracker lifecycle events (StartBattle /
