@@ -601,49 +601,6 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
-        /// Silent AOB-based resolver for the ability-list cursor index.
-        /// No keypresses, no visible flash — just a heap byte-scan.
-        ///
-        /// Signature: &lt;listSize_u64&gt; + D8 C6 7F 40 01 00 00 00
-        ///   - listSize_u64: 8 bytes little-endian, the count of learned
-        ///     abilities in the current skillset (e.g. 15 for White
-        ///     Magicks → 0F 00 00 00 00 00 00 00).
-        ///   - D8 C6 7F 40 01 00 00 00: pointer to 0x1407FC6D8 in main
-        ///     module — STABLE across game restarts (FFT_enhanced.exe
-        ///     loads at fixed base 0x140000000).
-        ///
-        /// Cursor lives at match_address + 0x10. Verified cross-session
-        /// (session 55 part 2): pattern at 0x13052F740 in session A,
-        /// 0x12E54F740 in session B (same +0xF740 suffix, different
-        /// upper bytes — heap reallocates per launch). Cursor read at
-        /// +0x10 tracked Cure→Cura→Curaga (0→1→2) in both sessions.
-        ///
-        /// Returns 0 if no unique match (0 results or multiple — caller
-        /// falls back to the keypress-oscillation resolver).
-        /// </summary>
-        private long ResolveAbilityListCursorByAob(int listSize)
-        {
-            if (Explorer == null || listSize <= 0 || listSize > 64) return 0L;
-            // Construct signature: listSize as 8-byte LE u64, then the
-            // stable vtable pointer.
-            var sig = new byte[16];
-            for (int i = 0; i < 8; i++) sig[i] = (byte)((listSize >> (i * 8)) & 0xFF);
-            // 0x1407FC6D8 little-endian:
-            sig[8]  = 0xD8; sig[9]  = 0xC6; sig[10] = 0x7F; sig[11] = 0x40;
-            sig[12] = 0x01; sig[13] = 0x00; sig[14] = 0x00; sig[15] = 0x00;
-
-            var matches = Explorer.SearchBytesInAllMemory(sig, maxResults: 4);
-            if (matches.Count == 1)
-            {
-                long cursorAddr = (long)matches[0].address + 0x10;
-                ModLogger.Log($"[AbilityListAob] listSize={listSize} → 1 match at 0x{(long)matches[0].address:X}, cursor at 0x{cursorAddr:X}");
-                return cursorAddr;
-            }
-            ModLogger.Log($"[AbilityListAob] listSize={listSize} → {matches.Count} matches (need 1) — falling back");
-            return 0L;
-        }
-
-        /// <summary>
         /// Per-session resolver for the **Abilities submenu** cursor index
         /// byte (the parent menu — Attack/&lt;Skillset&gt;/&lt;Skillset&gt;
         /// — that sits above the per-skillset ability list). Different
@@ -4405,15 +4362,8 @@ namespace FFTColorCustomizer.Utilities
                     ResolveAbilitiesSubmenuCursor(out _);
                     return _resolvedAbilitiesSubmenuCursorAddr;
                 };
-                _navActions.ResolveAbilityListCursor = (listSize) =>
+                _navActions.ResolveAbilityListCursor = () =>
                 {
-                    // Try silent AOB scan first (fast, no visible cursor
-                    // movement). Falls back to keypress-oscillation if AOB
-                    // is ambiguous (0 or many matches). AOB is invalidated
-                    // by widget reallocation so re-scan every call rather
-                    // than caching — scan cost is ~300ms.
-                    long aob = ResolveAbilityListCursorByAob(listSize);
-                    if (aob != 0L) return aob;
                     if (_resolvedAbilityListCursorAddr != 0L) return _resolvedAbilityListCursorAddr;
                     int _;
                     ResolveAbilityListCursor(out _);
