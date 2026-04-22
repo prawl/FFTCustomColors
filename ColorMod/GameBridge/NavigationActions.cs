@@ -571,14 +571,26 @@ namespace FFTColorCustomizer.GameBridge
                 ModLogger.Log("[BattleWait] No rotation data — accepting default facing");
             }
 
-            // Confirm facing (game says "press F to confirm")
+            // Confirm facing (game prompts "press F to confirm"). Fall back to
+            // Enter if F doesn't advance — S56 live-observed: battle_wait sent
+            // F while game was on facing-confirm, screen stayed on BattleMoving
+            // for the full 120s poll budget. Manual Enter press after that
+            // advanced the screen normally, so the facing-confirm accepts
+            // either key but F occasionally drops. Enter-fallback closes that.
             SendKey(VK_F);
+            Thread.Sleep(500);
+            var postFace = _detectScreen();
+            if (postFace != null && (postFace.Name == "BattleMoving" || postFace.Name == "BattleAttacking"))
+            {
+                ModLogger.Log($"[BattleWait] F key didn't advance facing (still {postFace.Name}); retrying with Enter.");
+                SendKey(VK_ENTER);
+                Thread.Sleep(300);
+            }
 
             // NOTE: Ctrl fast-forward disabled — holding Ctrl during enemy turns
             // doesn't visibly speed up animations in the IC remaster. Tested both
             // continuous hold and pulse approaches (2026-04-12). May need a different
             // key or game setting. The game still processes turns at normal speed.
-            Thread.Sleep(500);
             ModLogger.Log("[BattleWait] Waiting for enemy turns (Ctrl fast-forward disabled)");
 
             // Poll until it's a friendly unit's turn again (or game over/timeout)
@@ -603,6 +615,21 @@ namespace FFTColorCustomizer.GameBridge
                     if (current.Name == "BattlePaused")
                     {
                         SendKey(VK_ESCAPE);
+                        Thread.Sleep(300);
+                        continue;
+                    }
+
+                    // Mid-battle banners that need a single Enter to dismiss.
+                    // S45 shipped detection for these; S56 live-observed that
+                    // battle_wait's 120s poll never advanced when a unit's
+                    // queued spell triggered BattleAbilityLearnedBanner during
+                    // the enemy-turns wait. Send Enter to dismiss and keep
+                    // polling.
+                    if (current.Name == "BattleAbilityLearnedBanner"
+                        || current.Name == "BattleRewardObtainedBanner")
+                    {
+                        ModLogger.Log($"[BattleWait] Dismissing {current.Name}");
+                        SendKey(VK_ENTER);
                         Thread.Sleep(300);
                         continue;
                     }
