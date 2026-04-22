@@ -5311,25 +5311,30 @@ namespace FFTColorCustomizer.GameBridge
         private (int move, int jump)? TryReadMoveJumpFromHeap(int hp, int maxHp)
         {
             if (hp <= 0 || maxHp <= 0 || _explorer == null) return null;
-            var hpPattern = new byte[]
+
+            // The heap struct stores HP and MaxHP as two u16s, BOTH holding
+            // the MaxHP value (the "base" HP for the unit). Current/live HP
+            // lives in the static battle array, not here. S56 live-observed:
+            // Lloyd at HP=370/628 had NO matches for the old "current HP +
+            // MaxHP" pattern `72 01 74 02` anywhere in memory — because the
+            // heap struct has `74 02 74 02` (628, 628) regardless of damage.
+            //
+            // Search for `MaxHP, MaxHP` pair instead. Stable across damage
+            // taken, works for every unit including damaged ones.
+            var maxHpPattern = new byte[]
             {
-                (byte)(hp & 0xFF), (byte)(hp >> 8),
+                (byte)(maxHp & 0xFF), (byte)(maxHp >> 8),
                 (byte)(maxHp & 0xFF), (byte)(maxHp >> 8),
             };
 
             // Narrow search first: RW private/mapped heap only, fast.
-            // Covers ~11MB on typical session — enough for Lloyd and some
-            // other units, but misses most widget-allocated structs.
-            var result = TryMoveJumpMatches(hpPattern, hp, maxHp, broad: false);
+            var result = TryMoveJumpMatches(maxHpPattern, hp, maxHp, broad: false);
             if (result.HasValue) return result;
 
             // Broad fallback: includes IMAGE-mapped and WRITECOPY memory up
-            // to 16MB per region, 2GB total budget. Covers UE4 widget heap
-            // regions that the narrow filter misses. S56 live-observed:
-            // Wilham HP=477/477, Kenrick HP=437/437, Ramza HP=419/719 all
-            // returned 0 narrow matches. Broad fallback should recover them.
+            // to 16MB per region, 2GB total budget.
             ModLogger.Log($"[TryReadMoveJumpFromHeap] HP={hp}/{maxHp}: narrow miss, retrying broad");
-            return TryMoveJumpMatches(hpPattern, hp, maxHp, broad: true);
+            return TryMoveJumpMatches(maxHpPattern, hp, maxHp, broad: true);
         }
 
         private (int move, int jump)? TryMoveJumpMatches(
