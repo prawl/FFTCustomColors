@@ -49,7 +49,6 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "reset_state_machine",
             "resolve_picker_cursor",
             "resolve_ability_list_cursor",
-            "resolve_abilities_submenu_cursor",
             "resolve_job_cursor",
             "resolve_party_menu_cursor",
             "resolve_equip_picker_cursor",

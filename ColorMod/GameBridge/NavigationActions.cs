@@ -22,23 +22,6 @@ namespace FFTColorCustomizer.GameBridge
         public MapLoader? _mapLoader;
         public Func<string[]>? GetAbilitiesSubmenuItems { get; set; }
         public Func<string, string[]>? GetAbilityListForSkillset { get; set; }
-
-        /// <summary>
-        /// Lazy resolver for the BattleAbilities submenu cursor index byte.
-        /// Returns 0 if resolution fails (caller falls back to blind nav).
-        /// CommandWatcher wires this; NavigationActions calls it the first
-        /// time we enter a new BattleAbilities submenu per game session.
-        /// Heap address shuffles on game restart so re-resolution is needed.
-        /// </summary>
-        public Func<long>? ResolveAbilitiesSubmenuCursor { get; set; }
-
-        /// <summary>
-        /// Lazy resolver for the BattleWhiteMagicks/BattleBlackMagicks/etc
-        /// ability-list cursor index byte. Same shape as the submenu
-        /// resolver — different widget allocation though, so a different
-        /// address. Re-resolved per game session.
-        /// </summary>
-        public Func<long>? ResolveAbilityListCursor { get; set; }
         private IntPtr _gameWindow;
 
         // --- DirectInput hook for faking held C key ---
@@ -1020,62 +1003,51 @@ namespace FFTColorCustomizer.GameBridge
             }
             Thread.Sleep(500); // extra settle time after submenu appears
 
-            // Submenu navigation using the real cursor index byte
-            // (resolved per session via ResolveAbilitiesSubmenuCursor —
-            // session 55 confirmed the byte tracks across all 3 items
-            // and across all 3 mirror addresses). Falls back to the old
-            // ui-lag heuristic if the resolver fails.
+            // Submenu navigation using global cursor counter at 0x140C0EB20.
+            // The submenu WRAPS and ui= LAGS by one keypress (reports previous position).
+            // ui= after entering submenu shows the PREVIOUS cursor position. The actual
+            // cursor is one past that. We use this to determine where we are, then press
+            // Down the right number of times to reach the target.
             //
-            // Verify-before-Enter: after pressing the planned keys, re-
-            // read the cursor byte. If it doesn't match the target index
-            // exactly, abort with an error rather than confirm the wrong
-            // skillset.
-            long submenuCursorAddr = ResolveAbilitiesSubmenuCursor?.Invoke() ?? 0L;
-            int currentIdx;
-            if (submenuCursorAddr != 0L)
+            // Approach: read ui= to determine actual position (ui shows prev, so actual =
+            // index of ui + 1, mod itemCount). Then compute how many Downs to reach target.
+            screen = _detectScreen();
+            string? uiAfterEntry = screen?.UI;
+            int currentIdx = 0; // default to Attack if we can't determine
+            if (uiAfterEntry != null)
             {
-                var live = _explorer.ReadAbsolute((nint)submenuCursorAddr, 1);
-                if (live.HasValue && (int)live.Value.value < submenuItems.Length)
+                int uiIdx = BattleAbilityNavigation.FindSkillsetIndex(uiAfterEntry, submenuItems);
+                if (uiIdx >= 0)
                 {
-                    currentIdx = (int)live.Value.value;
-                    ModLogger.Log($"[BattleAbility] Submenu cursor read live: {currentIdx} ('{submenuItems[currentIdx]}'), target={skillsetIdx} ('{loc.skillsetName}')");
-                }
-                else
-                {
-                    ModLogger.Log($"[BattleAbility] WARN submenu cursor read failed at 0x{submenuCursorAddr:X}; falling back to ui-lag heuristic");
-                    currentIdx = LegacyResolveSubmenuIdxFromUi(submenuItems);
+                    // ui= lags by one: it shows where cursor WAS. Actual = next item.
+                    currentIdx = (uiIdx + 1) % submenuItems.Length;
                 }
             }
-            else
+            ModLogger.Log($"[BattleAbility] ui='{uiAfterEntry}' → actual cursor at index {currentIdx} ('{submenuItems[currentIdx]}'), target={skillsetIdx} ('{loc.skillsetName}')");
+
+            // Compute downs needed (wrapping forward)
+            int downsNeeded = (skillsetIdx - currentIdx + submenuItems.Length) % submenuItems.Length;
+            ModLogger.Log($"[BattleAbility] Pressing Down x{downsNeeded}");
+
+            // Read counter baseline for verification
+            var counterBefore = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
+            int baseline = counterBefore != null ? (int)counterBefore.Value.value : -1;
+
+            for (int i = 0; i < downsNeeded; i++)
             {
-                currentIdx = LegacyResolveSubmenuIdxFromUi(submenuItems);
-                ModLogger.Log($"[BattleAbility] Submenu resolver unavailable; ui-lag fallback → currentIdx={currentIdx} ('{submenuItems[currentIdx]}'), target={skillsetIdx}");
+                SendKey(VK_DOWN);
+                Thread.Sleep(400);
             }
 
-            // Use planner to pick shorter direction (Down or Up).
-            var subPlan = AbilityListCursorNavPlanner.Plan(currentIdx, skillsetIdx, submenuItems.Length);
-            ModLogger.Log($"[BattleAbility] Submenu nav plan: {subPlan.Direction} x{subPlan.PressCount}");
-            int subKey = subPlan.Direction == AbilityListCursorNavPlanner.Direction.Up ? VK_UP : VK_DOWN;
-            for (int i = 0; i < subPlan.PressCount; i++)
+            // Verify via counter delta
+            if (baseline >= 0)
             {
-                SendKey(subKey);
-                Thread.Sleep(150);
-            }
-
-            // Verify: re-read cursor, must match target.
-            if (submenuCursorAddr != 0L && subPlan.Direction != AbilityListCursorNavPlanner.Direction.None)
-            {
-                Thread.Sleep(100);
-                var verify = _explorer.ReadAbsolute((nint)submenuCursorAddr, 1);
-                int finalIdx = verify.HasValue ? (int)verify.Value.value : -1;
-                if (finalIdx != skillsetIdx)
-                {
-                    ModLogger.Log($"[BattleAbility] ABORT submenu cursor at {finalIdx}, expected {skillsetIdx} ('{loc.skillsetName}')");
-                    response.Status = "failed";
-                    response.Error = $"Failed to navigate to skillset {loc.skillsetName} (idx {skillsetIdx}); submenu cursor stuck at {finalIdx}";
-                    EscapeToMyTurn();
-                    return response;
-                }
+                var counterAfter = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
+                int actual = counterAfter != null ? (int)counterAfter.Value.value : -1;
+                int delta = actual - baseline;
+                ModLogger.Log($"[BattleAbility] Counter: {baseline} → {actual} (delta={delta}, expected={downsNeeded})");
+                if (delta != downsNeeded)
+                    ModLogger.Log($"[BattleAbility] WARN: counter delta mismatch! Some keypresses may have been lost.");
             }
 
             // Enter the skillset
@@ -1102,77 +1074,86 @@ namespace FFTColorCustomizer.GameBridge
                 ModLogger.Log($"[BattleAbility] No learned ability data, using hardcoded index {abilityIndex}");
             }
 
-            // Ability-list navigation using the real cursor index byte
-            // (resolved per session via ResolveAbilityListCursor —
-            // session 55 cracked at 0x1314DF920 / 0x13194F920). Replaces
-            // the old "Up×(listSize+1) reset then Down×index" pattern,
-            // which was off-by-one in the wrap math (Up wraps from idx 0
-            // to last entry, so +1 land overshoots past 0). The bug
-            // surfaced as casting Meteor when Haste was requested.
-            //
-            // Verify-before-Enter: re-read cursor after pressing the
-            // planned keys; abort with error if mismatch.
-            int listLength = learnedAbilities?.Length ?? 16;
-            long listCursorAddr = ResolveAbilityListCursor?.Invoke() ?? 0L;
-            int listCurrent;
-            if (listCursorAddr != 0L)
+            // Reset ability-list cursor to the top before counting Downs. The ability
+            // list REMEMBERS the previously-selected position within a turn (e.g. after
+            // Escape from Haste at index 4, re-entering Time Magicks still has cursor
+            // at index 4). Pressing Down×abilityIndex from that position lands on the
+            // wrong ability (off-by-prev-selection). Up wraps forward past any start
+            // position: listSize+1 Ups guarantees we end at index 0. Cheap (~0.5s) and
+            // deterministic. See feedback_submenu_sticky_cursor.md.
+            int listSize = learnedAbilities?.Length ?? 16; // Fallback: no skillset >16
+            int resetUps = listSize + 1;
+            ModLogger.Log($"[BattleAbility] Reset: Up×{resetUps} to force cursor to index 0");
+            // Blind fire-and-forget. Historical note: session 31 tried counter-delta
+            // verification here to mirror the Down-loop pattern, but the cursor
+            // counter at 0x140C0EB20 reports NEGATIVE deltas on Up-wrap (observed
+            // live on Lloyd's 12-entry Jump list). Retrying against the wrong-sign
+            // delta produces an explosive retry storm. Wrap-reset is guaranteed
+            // correct after listSize+1 blind Ups — no verification needed.
+            for (int i = 0; i < resetUps; i++)
             {
-                var liveList = _explorer.ReadAbsolute((nint)listCursorAddr, 1);
-                if (liveList.HasValue && (int)liveList.Value.value < listLength)
-                {
-                    listCurrent = (int)liveList.Value.value;
-                    ModLogger.Log($"[BattleAbility] Ability-list cursor read live: {listCurrent}, target={abilityIndex} ('{abilityName}')");
-                }
-                else
-                {
-                    listCurrent = -1;
-                    ModLogger.Log($"[BattleAbility] WARN ability-list cursor read failed at 0x{listCursorAddr:X} (val={liveList?.value}); falling back to blind reset");
-                }
+                SendKey(VK_UP);
+                Thread.Sleep(100);
             }
-            else
-            {
-                listCurrent = -1;
-                ModLogger.Log($"[BattleAbility] Ability-list resolver unavailable; falling back to blind reset");
-            }
+            Thread.Sleep(200);
 
-            if (listCurrent >= 0)
+            // Navigate to the target ability. The cursor is now at index 0.
+            // Session 52: wrap the Down-loop's counter-delta verification in
+            // AbilityCursorDeltaPlanner.Decide so only TRUSTED deltas trigger
+            // retry-math. Session 31 Up-wrap explosion (expected +3, got 0;
+            // expected +6, got -24) is the regression guardrail — the planner
+            // refuses to trust wrong-sign or >3x-expected deltas and falls
+            // back to blind scrolling, which the previous naive delta-check
+            // never did.
+            int listLength = learnedAbilities?.Length ?? 0;
+            ModLogger.Log($"[BattleAbility] Nav: Down×{abilityIndex} (listSize={listLength})");
+            var abilityCounterBefore = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
+            int abilityBaseline = abilityCounterBefore != null ? (int)abilityCounterBefore.Value.value : -1;
+
+            int pressesConfirmed = 0;
+            for (int i = 0; i < abilityIndex; i++)
             {
-                // Real-cursor path: planner picks shorter direction.
-                var listPlan = AbilityListCursorNavPlanner.Plan(listCurrent, abilityIndex, listLength);
-                ModLogger.Log($"[BattleAbility] Ability-list nav plan: {listPlan.Direction} x{listPlan.PressCount}");
-                int listKey = listPlan.Direction == AbilityListCursorNavPlanner.Direction.Up ? VK_UP : VK_DOWN;
-                for (int i = 0; i < listPlan.PressCount; i++)
+                SendKey(VK_DOWN);
+                Thread.Sleep(150);
+                pressesConfirmed++;
+
+                // Verify every 3 presses or on the last press.
+                if (abilityBaseline >= 0 && (pressesConfirmed % 3 == 0 || i == abilityIndex - 1))
                 {
-                    SendKey(listKey);
-                    Thread.Sleep(150);
-                }
-                if (listPlan.Direction != AbilityListCursorNavPlanner.Direction.None)
-                {
-                    Thread.Sleep(100);
-                    var verifyList = _explorer.ReadAbsolute((nint)listCursorAddr, 1);
-                    int finalListIdx = verifyList.HasValue ? (int)verifyList.Value.value : -1;
-                    if (finalListIdx != abilityIndex)
+                    var counterCheck = _explorer.ReadAbsolute((nint)0x140C0EB20, 2);
+                    int counterNow = counterCheck != null ? (int)counterCheck.Value.value : -1;
+                    if (counterNow < 0) continue;
+                    int delta = counterNow - abilityBaseline;
+                    var decision = AbilityCursorDeltaPlanner.Decide(
+                        expectedDirection: +1,
+                        observedDelta: delta,
+                        listLength: listLength > 0 ? listLength : 20,
+                        expectedMagnitude: pressesConfirmed);
+                    if (!decision.TrustDelta)
                     {
-                        ModLogger.Log($"[BattleAbility] ABORT ability-list cursor at {finalListIdx}, expected {abilityIndex} ('{abilityName}')");
-                        response.Status = "failed";
-                        response.Error = $"Failed to navigate to ability {abilityName} (idx {abilityIndex}); list cursor stuck at {finalListIdx}";
-                        EscapeToMyTurn();
-                        return response;
+                        // Suspicious delta (wrap, wrong sign, wildly off).
+                        // Stay blind for remaining presses — don't retry on
+                        // bad data or we'll cascade the explosion.
+                        ModLogger.Log($"[BattleAbility] Counter delta {delta} untrusted (expected ~{pressesConfirmed}, list={listLength}). Staying blind.");
+                        continue;
+                    }
+                    // Trusted. If we're short of expected, fire the missing keys.
+                    if (decision.RemainingKeys != pressesConfirmed)
+                    {
+                        int missed = pressesConfirmed - decision.RemainingKeys;
+                        if (missed > 0)
+                        {
+                            ModLogger.Log($"[BattleAbility] Trusted delta {delta}; retrying {missed} missed presses.");
+                            for (int r = 0; r < missed; r++)
+                            {
+                                SendKey(VK_DOWN);
+                                Thread.Sleep(200);
+                            }
+                        }
+                        // Re-baseline so next batch's math stays correct.
+                        abilityBaseline = counterNow - decision.RemainingKeys + pressesConfirmed + (missed > 0 ? missed : 0);
                     }
                 }
-            }
-            else
-            {
-                // Fallback: pre-session-55 blind reset. Up×(listSize+1)
-                // followed by Down×index. Has the off-by-one bug (Up
-                // from idx 0 wraps to listSize-1 not stays at 0) but
-                // typically right enough on lists where the previous
-                // remembered position is 0 anyway (i.e. fresh entry).
-                int resetUps = listLength + 1;
-                ModLogger.Log($"[BattleAbility] Blind fallback: Up×{resetUps} reset, then Down×{abilityIndex}");
-                for (int i = 0; i < resetUps; i++) { SendKey(VK_UP); Thread.Sleep(100); }
-                Thread.Sleep(200);
-                for (int i = 0; i < abilityIndex; i++) { SendKey(VK_DOWN); Thread.Sleep(150); }
             }
 
             // Step 5: Select the ability
@@ -4676,22 +4657,6 @@ namespace FFTColorCustomizer.GameBridge
         /// Escape out of targeting/abilities/menus back to BattleMyTurn.
         /// Sends up to 5 Escape presses, checking screen state after each.
         /// </summary>
-        /// <summary>
-        /// Pre-resolver fallback for submenu cursor index: read screen UI
-        /// (ui= lags by one keypress, so actual = ui_idx + 1 mod len).
-        /// Used only when ResolveAbilitiesSubmenuCursor isn't wired or
-        /// returns 0 (resolver setup failure).
-        /// </summary>
-        private int LegacyResolveSubmenuIdxFromUi(string[] submenuItems)
-        {
-            var s = _detectScreen();
-            string? ui = s?.UI;
-            if (ui == null) return 0;
-            int uiIdx = BattleAbilityNavigation.FindSkillsetIndex(ui, submenuItems);
-            if (uiIdx < 0) return 0;
-            return (uiIdx + 1) % submenuItems.Length;
-        }
-
         private void EscapeToMyTurn()
         {
             for (int i = 0; i < 5; i++)
