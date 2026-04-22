@@ -891,6 +891,20 @@ namespace FFTColorCustomizer.GameBridge
             int postHp = ReadLiveHp(targetMaxHp, preHp, targetLevel);
             ModLogger.Log($"[BattleAttack] Post-attack: live HP={postHp} (was {preHp})");
 
+            // S56 live-observed: after an attack MISS, the game re-opens the
+            // attack-targeting screen asking the player to pick another target.
+            // A successful HIT/KO advances directly to the facing-confirm
+            // (BattleMoving). If we're still on BattleAttacking after the
+            // animation settles, send Escape to back out of the re-targeted
+            // screen and land on BattleActing (action consumed).
+            var postAttack = _detectScreen();
+            if (postAttack != null && postAttack.Name == "BattleAttacking")
+            {
+                ModLogger.Log("[BattleAttack] Still on BattleAttacking post-animation (likely miss re-targeting); sending Escape");
+                SendKey(VK_ESCAPE);
+                Thread.Sleep(300);
+            }
+
             string dmgStr = projDamage > 0 ? $" ({projDamage} dmg, {projHitPct}% hit)" : "";
             if (postHp >= 0 && postHp != preHp)
             {
