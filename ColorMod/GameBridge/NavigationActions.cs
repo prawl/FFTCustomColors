@@ -3372,7 +3372,10 @@ namespace FFTColorCustomizer.GameBridge
                     NavigateMenuCursor(cursor, 0);
                 }
                 SendKey(VK_ENTER);
-                Thread.Sleep(500);
+                // 500ms → 300ms. The BattleMoving transition is short in
+                // logs; if we miss it here the null-check below fails and
+                // surfaces a clean "Not in Move mode" error anyway.
+                Thread.Sleep(300);
                 screen = _detectScreen();
             }
 
@@ -3491,7 +3494,10 @@ namespace FFTColorCustomizer.GameBridge
 
             // Confirm move with F
             _input.SendKeyPressToWindow(_gameWindow, VK_F);
-            Thread.Sleep(500);
+            // 500ms was a pre-poll fixed wait; now the poll loop below
+            // handles detection. 150ms lets F register before we start
+            // reading state.
+            Thread.Sleep(150);
 
             // Poll up to 8s for the move to complete. battleMode flickers to 1
             // (BattleCasting) transiently during the walk animation — ignore it entirely
