@@ -1344,3 +1344,58 @@ All prices match in-game display exactly.
 **Memory notes updated:**
 - `project_shop_stock_SHIPPED.md` — full write-up of 3 formats + coverage + calling patterns.
 
+### Session 55 (2026-04-22) — `screen.stockItems` wired + crash-hardened + Ch1 mismatch surfaced
+
+**Commits (oldest first):**
+- `a5e545e` — Wire screen.stockItems on OutfitterBuy + harden decoder
+- `5cd202c` — Cache resolved shop record addresses to stabilize stockItems
+- `d5add59` — Stop screen.stockItems from crashing the game
+- `5485987` — Cache-only screen path + seed_shop_stock helper
+- `746144a` — Add LiveShopScanner experiment (opt-in, --description=auto)
+
+**Headline:** `screen.stockItems` now auto-populates on OutfitterBuy via cache; live verification at Ch1-early Dorter revealed the registry's "Ch1" data is actually for a later chapter state (real Ch1-early has 1-2 items per equipment tab + a different consumables set). Decoder math is correct — the architectural fix (active-widget pointer-chain walk) is the next-session investigation target.
+
+**What landed by theme:**
+
+- **`screen.stockItems` field** (`a5e545e`): new `Dictionary<string, List<ShopStockItem>>` on `DetectedScreen`, auto-populated on OutfitterBuy from a new `ShopStockResolver.DecodeAll`. Catalog ordered Weapons → Daggers → Shields → Helms → Body → Accessories → Consumables. JSON shape stable for shell/Claude callers.
+
+- **Decoder hardening** (`a5e545e`): two bugs surfaced + fixed during 15-shop tour:
+  - Bitmap4 phantom items (Gariland Accessories saw count-byte `0x07` decoded as bits 0-2 → phantom IDs 240/241/242). Fix: `DecodeStockAt` zeroes high 4 bytes on Bitmap4 before decoding.
+  - False-positive locate hits (Lesalia/Warjilis Consumables saw Vesper + Sagittarius Bow appear from a transient memory region). Fix: `DecodeStockAt` accepts `expectedCount` and rejects mismatches via new public `ValidateAgainstExpected` helper. Both `shop_stock` action and resolver pass it.
+
+- **Address cache** (`5cd202c`): `ShopStockResolver` caches resolved record addresses keyed by `(location, chapter, category)`. Cache-hit path re-reads from cached address; validator invalidates and re-locates if bytes shift. Stabilized 9/10 polls returning all 6 categories at Dorter (vs. flapping pre-cache).
+
+- **Crash hardening** (`d5add59`): three defenses against repeated polling crashing the game:
+  - Negative cache + 30s back-off: failed locates suppressed for 30s.
+  - Per-call cold-locate budget: `DecodeAll` defaults to at most 1 cold (cache-miss) AoB scan per invocation.
+  - `narrowOnly` mode on `LocateBitmapRecord` and `LocateIdArrayRecord`: skips ~500 MB broad memory-mapped scan. Resolver path always uses it; dedicated `shop_stock` keeps both phases for first-time discovery and seeds the resolver cache via `ShopStockResolver.SeedCache`.
+
+- **`seed_shop_stock` bridge action + cache-only screen path** (`5485987`): screen-assembly path does ZERO AoB scans. New action sweeps every registered category at the current shop, runs broad-search locate once each, and seeds the cache so subsequent screen reads are pure cache hits. Pre-fix: game crashed within ~5-10 polls. Post-fix: game survived 20+ polls plus seeding.
+
+- **`LiveShopScanner` experiment** (`746144a`): new `ColorMod/GameBridge/LiveShopScanner.cs` scans the active-widget heap region (`0x15A000000..0x15D000000`) for byte sequences matching `[bitmap N bytes][count u32]` to find live shop records WITHOUT pre-baked registry data. Opt-in via `seed_shop_stock description=auto`. Currently too noisy — count-anchor `01 00 00 00`..`08 00 00 00` matches random heap integers. Kept behind opt-in flag for future iteration.
+
+**Live verification summary:**
+- All 15 Outfitter shops visited at end-game state. Decoder returns correct items + Ch1 prices for the registered (late-Ch1) data.
+- Ch1-early Dorter live test: 5 tabs all return WRONG counts via auto-mode (registry has the wrong stock for early-Ch1). Manual `shop_stock pattern=...` returns the right items when given the right bitmap. Verified Ch1-early Dorter Weapons (`00 02 02 00 00 00 00 00` → Rod+Oak Staff) and Consumables (`C1 27 00 00 00 00 00 00` → 7 status cures: Potion, Antidote, Eye Drops, Echo Herbs, Maiden's Kiss, Gold Needle, Phoenix Down).
+
+**Tests:** 3878 passing (+25 this session: 6 registry enumeration, 10 resolver bit-counting, 4 validation-contract, 2 cache-state, 1 Bitmap4 raw-decode regression pin, 2 serialization).
+
+**Things that DID work (repeat-this list):**
+- Manual `shop_stock pattern=<hex>` to verify a known-bitmap signature finds the live record. Direct way to compare in-game stock to memory.
+- Cache-on-success + negative-cache + per-call budget keeps the bridge alive under repeated polling. The screen path doing zero scans isolates stockItems' stability from polling cadence.
+- Validating decoded count against registry expected count rejects false-positive locates fail-safe (returns empty rather than wrong data).
+- Computing the bitmap by hand from the in-game item list is reliable: `id - offset` gives bit position; verify in-memory via `shop_stock pattern=<hex> searchValue=<count>`.
+
+**Things that DIDN'T work (don't-repeat list):**
+- Pre-baking bitmaps in `ShopBitmapRegistry` per chapter — registry data turned out to be for a LATER chapter state than expected, breaking early-game shops on every category.
+- Auto-locating from the screen-assembly path (cumulative ~150 MB scans per poll across cache-miss categories crashed the game). Disabled.
+- Loose count-anchor heuristic (`01 00 00 00`..`08 00 00 00`) for finding shop records in the active-widget heap. Too many random heap integers match; need a proper structural anchor (vtable + offset) instead.
+- `scrape_shop_items` (FString-based item-name reader) at Ch1 Dorter OutfitterBuy: catches dialogue fragments and command echoes, no item names. Vtable discovery requires a known header string ("Weapons") which isn't visible in this UI state.
+- Reading multiple `shop_stock` results in quick succession: each call writes to `response.json`; subsequent reads race with later writes. Wait at least 1-2s between calls or accept the latest.
+
+**Memory notes added:**
+- `project_shop_stock_active_widget_hunt.md` — vtable signatures from session 54 + scanner experiment results + concrete next-session steps.
+- `project_ch1_dorter_actual_stock.md` — verified bitmaps for Ch1-early Dorter all 6 categories.
+- `feedback_shop_stock_screen_path_must_not_scan.md` — screen-assembly path crashes the game when it does AoB searches; cache-only is the contract going forward.
+- `feedback_response_json_race.md` — bridge response.json race when chaining multiple bridge calls.
+
