@@ -3203,8 +3203,11 @@ const verbose=$vflag;
 
 // Header
 const activeU=us.find(u=>u.isActive);
-const aName=au?.name||activeU?.name||s.activeUnitName||'?';
+const aName=au?.name||activeU?.name||s.activeUnitName||'';
 const aJob=au?.jobName||activeU?.jobName||s.activeUnitJob||'';
+// When name is missing (e.g. first-turn stale scan), fall back to just
+// the job name so the header reads Ninja instead of ?(Ninja).
+const aLabel=aName?(aName+(aJob?'('+aJob+')':'')):(aJob||'?');
 const ax=au?.x??activeU?.x??'?';
 const ay=au?.y??activeU?.y??'?';
 const ahp=au?.hp??activeU?.hp??'?';
@@ -3213,7 +3216,7 @@ const amp=au?.mp??activeU?.mp??'?';
 const ammp=au?.maxMp??activeU?.maxMp??'?';
 const uiTag=s.ui?' ui='+s.ui:'';
 const tSuffix=process.env._FFT_TIMING_SUFFIX?' '+process.env._FFT_TIMING_SUFFIX:'';
-console.log('['+s.name+']'+uiTag+' '+aName+(aJob?'('+aJob+')':'')+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp+tSuffix);
+console.log('['+s.name+']'+uiTag+' '+aLabel+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp+tSuffix);
 console.log('');
 
 // Abilities with target tiles (filtering/collapsing done server-side by AbilityCompactor)
@@ -3821,7 +3824,20 @@ scan_units() { echo "[USE screen] scan_units is deprecated. Use: screen"; screen
 state() { echo "[USE screen] state is deprecated. Use: screen"; screen; }
 auto_move() { echo "[DISABLED] Use battle_move, battle_attack, battle_ability, battle_wait individually."; return 1; }
 
-scan_move() { echo "[USE screen] scan_move is deprecated. Use: screen"; screen; }
+scan_move() {
+  # S59: support Mv/Jmp override for when heap-search misses collapse to
+  # Mv=0 Jmp=0. `scan_move <mv> <jmp>` dispatches a direct scan_move action
+  # with the overrides passed via locationId/unitIndex (the bridge already
+  # reads these fields at NavigationActions.cs:2159-2160). `scan_move` with
+  # no args falls through to the unified `screen` helper.
+  if [ $# -ge 2 ]; then
+    local _mv="$1" _jp="$2"
+    fft "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$_mv,\"unitIndex\":$_jp,\"verbose\":false}" 60
+  else
+    echo "[USE screen] scan_move is deprecated. Use: screen"
+    screen
+  fi
+}
 scan_move_full() { echo "[USE screen -v] scan_move_full is deprecated. Use: screen -v"; screen -v; }
 
 # _fmt_action: Shared formatter for battle action responses. Parses JSON, shows compact result.

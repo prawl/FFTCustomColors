@@ -139,6 +139,18 @@ namespace FFTColorCustomizer.GameBridge
         // Event hooks (called during battle)
         // =====================================================================
 
+        /// <summary>
+        /// S59: attach a note to the current battle (or most recently-ended one
+        /// that's still frozen for summary) describing a post-Victory loss such
+        /// as a unit crystallizing. Idempotent — only sets if not already set.
+        /// </summary>
+        public void NotePostVictoryLoss(string note)
+        {
+            if (CurrentBattle == null) return;
+            if (string.IsNullOrEmpty(CurrentBattle.PostVictoryNote))
+                CurrentBattle.PostVictoryNote = note;
+        }
+
         public void OnDamageDealt(string attacker, string target, int damage, string? ability = null)
         {
             if (CurrentBattle == null) return;
@@ -250,6 +262,15 @@ namespace FFTColorCustomizer.GameBridge
                 lines.Add("");
                 foreach (var m in RecentMilestones)
                     lines.Add("  " + m);
+            }
+
+            // S59: post-Victory loss note (e.g. unit crystallized after the
+            // Victory banner). Surfaced alongside the win result so the loss
+            // isn't silently swallowed.
+            if (!string.IsNullOrEmpty(b.PostVictoryNote))
+            {
+                lines.Add("");
+                lines.Add($"  Note: {b.PostVictoryNote}");
             }
 
             return string.Join("\n", lines);
@@ -425,6 +446,16 @@ namespace FFTColorCustomizer.GameBridge
 
         [JsonPropertyName("units")]
         public Dictionary<string, UnitBattleStats> Units { get; set; } = new();
+
+        /// <summary>
+        /// S59: note attached when a BattleDesertion or GameOver screen flickers
+        /// AFTER the Victory event — typically a unit crystallized post-battle.
+        /// The Won=true result stands (battle is finalized), but the summary
+        /// surfaces the loss so it isn't silently swallowed.
+        /// </summary>
+        [JsonPropertyName("postVictoryNote")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? PostVictoryNote { get; set; }
     }
 
     public class UnitBattleStats

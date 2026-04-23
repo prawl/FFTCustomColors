@@ -121,6 +121,12 @@ namespace FFTColorCustomizer.Utilities
         private const int ChainFloorMs = 250;
         private DateTime _lastGameCommandCompletedAt = DateTime.MinValue;
 
+        // CharacterStatusLeakGuard state — S58 §0: holds the screen name
+        // from the PREVIOUS settled DetectScreen so we can filter a
+        // spurious CharacterStatus/CombatSets flicker during battle_wait
+        // animations. See GameBridge/CharacterStatusLeakGuard.cs.
+        private string? _previousSettledScreen;
+
         /// <summary>
         /// Cached picker-cursor address resolved by the `resolve_picker_cursor`
         /// action. Set when state machine enters a picker; used to surface
@@ -1321,7 +1327,7 @@ namespace FFTColorCustomizer.Utilities
         // Named game actions allowed in strict mode (from fft.sh helpers)
         private static readonly HashSet<string> AllowedGameActions = new()
         {
-            "execute_action", "battle_wait", "battle_flee", "battle_attack", "battle_ability",
+            "execute_action", "execute_turn", "battle_wait", "battle_flee", "battle_attack", "battle_ability",
             "battle_move", "world_travel_to", "auto_move", "get_arrows",
             "advance_dialogue", "save", "load",
             "battle_retry", "battle_retry_formation",
@@ -1565,6 +1571,22 @@ namespace FFTColorCustomizer.Utilities
                     // fired), so skip the 150ms+ settle loop. Key-sending and
                     // action commands still settle to let UI animations finish.
                     response.Screen ??= DetectScreenSettled(requireSettle: !isScreenQuery);
+                    // CharacterStatusLeakGuard: during battle_wait animations,
+                    // unit-slot/ui bytes transiently match CharacterStatus —
+                    // hold the previous battle state when no key input could
+                    // have caused a real drill-in. Observational commands
+                    // (screen queries, infra actions) don't press keys.
+                    if (response.Screen != null)
+                    {
+                        var keysCount = isObservational ? 0 : 1;
+                        var filtered = GameBridge.CharacterStatusLeakGuard.Filter(
+                            _previousSettledScreen, response.Screen.Name, keysCount);
+                        if (filtered != response.Screen.Name)
+                        {
+                            ModLogger.Log($"[LeakGuard] Detection={response.Screen.Name} → {filtered} (prev={_previousSettledScreen}, keys={keysCount}).");
+                            response.Screen.Name = filtered;
+                        }
+                    }
                     // Override detection-ambiguous names where the SM has a
                     // stronger signal (e.g. SaveSlotPicker vs TravelList).
                     bool screenQueryOverrode = false;
@@ -1696,6 +1718,10 @@ namespace FFTColorCustomizer.Utilities
                     }
                     if (response.Screen != null)
                         response.ValidPaths ??= NavigationPaths.GetPaths(response.Screen);
+                    // Record the authoritative screen for the next command's
+                    // CharacterStatusLeakGuard filter.
+                    if (response.Screen != null)
+                        _previousSettledScreen = response.Screen.Name;
                     WriteResponse(response);
 
                     // Session observability log — one JSONL row per command.
@@ -5163,6 +5189,19 @@ namespace FFTColorCustomizer.Utilities
             var ev = GameBridge.BattleLifecycleClassifier.Classify(
                 _lastClassifiedScreen, screen.Name);
 
+            // S59: post-Victory loss surfacing. If we're transitioning
+            // from BattleVictory into BattleDesertion (unit crystallized)
+            // or a GameOver flicker, the Won result stands — but the
+            // battle summary should note that a unit was lost after
+            // the banner instead of silently swallowing the event.
+            if (_lastClassifiedScreen == "BattleVictory")
+            {
+                if (screen.Name == "BattleDesertion")
+                    StatTracker.NotePostVictoryLoss("A unit was lost after victory (desertion / crystallization)");
+                else if (screen.Name == "GameOver")
+                    StatTracker.NotePostVictoryLoss("Post-victory GameOver flicker — battle result stands as a win");
+            }
+
             switch (ev)
             {
                 case GameBridge.BattleLifecycleEvent.StartBattle:
@@ -6872,6 +6911,19 @@ namespace FFTColorCustomizer.Utilities
                         4 => "AutoBattle",
                         _ => null
                     };
+
+                    // Surface per-slot menu availability so callers can skip
+                    // grayed entries (Abilities after acting) without a
+                    // wasted Enter. Only populated when the action menu is
+                    // actually user-visible (BattleMyTurn — BattleActing
+                    // shows the same memory state but represents a mid-turn
+                    // animation where navigation shouldn't fire anyway).
+                    if (screen.Name == "BattleMyTurn")
+                    {
+                        screen.MenuAvailability = GameBridge.BattleMenuAvailability
+                            .For(moved: hasMoved ? 1 : 0, acted: hasActed ? 1 : 0)
+                            .ToList();
+                    }
                 }
 
                 // During targeting mode, show the ability being cast/used.

@@ -49,6 +49,12 @@ namespace FFTColorCustomizer.GameBridge
                 case "BattleAbilities":
                     return 1;
 
+                // S59 live-play bug: battle_move from ui=Abilities sometimes
+                // leaks into BattlePaused. One Escape closes the pause modal,
+                // returning to BattleMyTurn.
+                case "BattlePaused":
+                    return 1;
+
                 // Any Battle<Skillset> list
                 case "Battle_Mettle":
                 case "Battle_Items":
@@ -99,6 +105,7 @@ namespace FFTColorCustomizer.GameBridge
                 && (screenName == "BattleMyTurn"
                     || screenName == "BattleActing"
                     || screenName == "BattleAbilities"
+                    || screenName == "BattlePaused"
                     || screenName == "BattleAttacking"
                     || screenName == "BattleCasting"
                     || IsBattleSkillsetList(screenName));

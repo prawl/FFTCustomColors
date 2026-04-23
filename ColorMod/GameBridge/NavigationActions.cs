@@ -475,6 +475,21 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // S59: if we're deeper than BattleMyTurn (submenu, pause leak, skillset
+            // list, targeting), escape back to a known action-menu state first so
+            // the Wait nav below finds the action menu cursor byte.
+            int bwEscape = BattleAbilityEntryReset.EscapeCountToMyTurn(screen?.Name);
+            if (bwEscape > 0)
+            {
+                ModLogger.Log($"[BattleWait] Entry reset: screen={screen?.Name}, Escape×{bwEscape} to reach BattleMyTurn");
+                for (int i = 0; i < bwEscape; i++)
+                {
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                }
+                screen = _detectScreen();
+            }
+
             if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
             {
                 _menuCursorStale = false;
@@ -534,6 +549,34 @@ namespace FFTColorCustomizer.GameBridge
                 // 500ms was conservative; facing-screen render is consistently
                 // under 300ms in live logs.
                 Thread.Sleep(300);
+
+                // S59: stale-cursor recovery. If Enter landed on Abilities
+                // (the most common stale-cursor failure) or AutoBattle, escape
+                // and retry with an additional key press toward Wait. Mirrors
+                // the MoveGrid recovery pattern.
+                var postEnterScreen = _detectScreen();
+                if (postEnterScreen?.Name == "BattleAbilities")
+                {
+                    ModLogger.Log("[BattleWait] Stale-cursor recovery: landed on BattleAbilities, Escape+retry Down to Wait");
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                    SendKey(VK_DOWN);
+                    Thread.Sleep(150);
+                    SendKey(VK_ENTER);
+                    Thread.Sleep(300);
+                }
+                else if (postEnterScreen?.Name == "BattleAutoBattle")
+                {
+                    ModLogger.Log("[BattleWait] Stale-cursor recovery: landed on BattleAutoBattle, Escape+retry Up to Wait");
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                    SendKey(VK_UP);
+                    Thread.Sleep(150);
+                    SendKey(VK_UP);
+                    Thread.Sleep(150);
+                    SendKey(VK_ENTER);
+                    Thread.Sleep(300);
+                }
             }
 
             // Face optimal direction using the rotation detected during the last move.
@@ -1139,7 +1182,16 @@ namespace FFTColorCustomizer.GameBridge
                 return BattleAttack(response, command);
 
             var screen = WaitForTurnState(timeoutMs: 1000, out long waitedMs);
-            if (screen == null || (screen.Name != "BattleMyTurn" && screen.Name != "BattleActing"))
+
+            // S59: if we landed on a deeper battle-menu state (submenu, skillset
+            // list, targeting, or a pause-menu leak from a previous command) the
+            // entry reset below can escape back to BattleMyTurn. Only reject the
+            // state if it's not a recoverable one — preserves the old fail-fast
+            // for out-of-battle screens while fixing the pause-leak cascade.
+            bool isRecoverable = screen != null
+                && BattleAbilityEntryReset.IsResetableBattleScreen(screen.Name);
+            if (screen == null
+                || (screen.Name != "BattleMyTurn" && screen.Name != "BattleActing" && !isRecoverable))
             {
                 response.Status = "failed";
                 response.Error = $"Not on BattleMyTurn/BattleActing (current: {screen?.Name ?? "null"}) after {waitedMs}ms wait";
@@ -1149,8 +1201,10 @@ namespace FFTColorCustomizer.GameBridge
             // Guard: a unit only gets one Action per turn. If BattleActed==1
             // we'd navigate into the menu, open Abilities, then stall on a
             // grayed-out skillset. Fail fast with a clear message so callers
-            // know to Wait instead of retry-spamming.
-            if (screen.BattleActed == 1)
+            // know to Wait instead of retry-spamming. Only checked once we're
+            // on the action menu — deeper states may report stale flag values.
+            if ((screen.Name == "BattleMyTurn" || screen.Name == "BattleActing")
+                && screen.BattleActed == 1)
             {
                 response.Status = "failed";
                 response.Error = "You've already acted this turn. You cannot perform another action.";
@@ -1167,7 +1221,7 @@ namespace FFTColorCustomizer.GameBridge
             // reconstructed on re-entry, both cursors return to idx 0, and the
             // downstream Down×submenuIdx / Down×abilityIdx navigation is correct.
             // Cost: ~0-3 escapes (typically 0 — caller is almost always on
-            // BattleMyTurn already).
+            // BattleMyTurn already). S59: now also handles BattlePaused leaks.
             int escapeCount = BattleAbilityEntryReset.EscapeCountToMyTurn(screen.Name);
             if (escapeCount > 0)
             {
@@ -3515,6 +3569,21 @@ namespace FFTColorCustomizer.GameBridge
             // Enter Move mode if on BattleMyTurn
             var screen = _detectScreen();
 
+            // S59: if we're deeper than BattleMyTurn (submenu, pause-menu leak,
+            // skillset list), escape back to BattleMyTurn first so the Move-mode
+            // entry below finds the action menu. Same pattern as battle_ability.
+            int escapeCount = BattleAbilityEntryReset.EscapeCountToMyTurn(screen?.Name);
+            if (escapeCount > 0)
+            {
+                ModLogger.Log($"[MoveGrid] Entry reset: screen={screen?.Name}, Escape×{escapeCount} to reach BattleMyTurn");
+                for (int i = 0; i < escapeCount; i++)
+                {
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                }
+                screen = _detectScreen();
+            }
+
             // Guard: one Move per turn. After moving, the menu slot 0 reads as
             // "Reset Move" — selecting it cancels the move rather than moving
             // again, which is almost never what the caller wanted. Refuse.
@@ -3541,6 +3610,24 @@ namespace FFTColorCustomizer.GameBridge
                 // surfaces a clean "Not in Move mode" error anyway.
                 Thread.Sleep(300);
                 screen = _detectScreen();
+
+                // S59: stale-cursor recovery. If the menuCursor byte was stale
+                // and Enter landed us in the Abilities submenu instead of Move
+                // mode, the cursor byte was 1 but the target was 0. The game
+                // accepted Up visually; only memory lagged. Escape and retry
+                // with an extra blind Up — this compensates for the stale read
+                // without needing to verify the byte moved.
+                if (screen != null && screen.Name == "BattleAbilities")
+                {
+                    ModLogger.Log("[MoveGrid] Stale-cursor recovery: landed on BattleAbilities, Escape+retry with extra Up");
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                    SendKey(VK_UP);
+                    Thread.Sleep(150);
+                    SendKey(VK_ENTER);
+                    Thread.Sleep(300);
+                    screen = _detectScreen();
+                }
             }
 
             if (screen == null || screen.Name != "BattleMoving")

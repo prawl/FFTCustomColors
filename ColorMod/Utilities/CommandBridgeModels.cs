@@ -671,6 +671,18 @@ namespace FFTColorCustomizer.Utilities
         [JsonPropertyName("battleMoved")]
         public int BattleMoved { get; set; }
 
+        /// <summary>
+        /// Per-slot availability for the battle action menu, derived from
+        /// BattleMoved/BattleActed. Populated only when the screen is
+        /// BattleMyTurn (the only screen where this menu is user-visible).
+        /// Slot 0 becomes "Reset Move" after moving; Abilities grays out
+        /// after acting; Wait/Status/Auto-battle are always available.
+        /// See GameBridge/BattleMenuAvailability.cs.
+        /// </summary>
+        [JsonPropertyName("menuAvailability")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<BattleMenuItem>? MenuAvailability { get; set; }
+
         [JsonPropertyName("battleUnitId")]
         public int BattleUnitId { get; set; }
 

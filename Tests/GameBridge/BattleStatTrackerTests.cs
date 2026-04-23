@@ -156,5 +156,50 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Contains("Lloyd", summary);
             Assert.Contains("1000 dmg", summary);
         }
+
+        // S59: post-Victory unit-lost note. When a unit crystallizes after the
+        // Victory banner, we freeze Won=true but stash a note on the battle so
+        // the summary can surface it instead of silently swallowing the loss.
+        [Fact]
+        public void NotePostVictoryLoss_AttachesNote_BeforeEndBattle()
+        {
+            var tracker = new BattleStatTracker();
+            tracker.StartBattle("Test");
+            tracker.NotePostVictoryLoss("Wilham crystallized");
+            Assert.Equal("Wilham crystallized", tracker.CurrentBattle!.PostVictoryNote);
+        }
+
+        [Fact]
+        public void NotePostVictoryLoss_Idempotent_FirstWriteWins()
+        {
+            var tracker = new BattleStatTracker();
+            tracker.StartBattle("Test");
+            tracker.NotePostVictoryLoss("Wilham crystallized");
+            tracker.NotePostVictoryLoss("Kenrick also crystallized");
+            Assert.Equal("Wilham crystallized", tracker.CurrentBattle!.PostVictoryNote);
+        }
+
+        [Fact]
+        public void NotePostVictoryLoss_NoBattle_IsNoop()
+        {
+            var tracker = new BattleStatTracker();
+            // No StartBattle call — CurrentBattle is null.
+            tracker.NotePostVictoryLoss("should not throw");
+            Assert.Null(tracker.CurrentBattle);
+        }
+
+        [Fact]
+        public void RenderBattleSummary_IncludesPostVictoryNote()
+        {
+            var tracker = new BattleStatTracker();
+            tracker.StartBattle("Zeklaus Desert");
+            tracker.OnDamageDealt("Ramza", "Goblin", 100);
+            tracker.OnKill("Ramza", "Goblin");
+            tracker.NotePostVictoryLoss("Wilham crystallized post-victory");
+            tracker.EndBattle(won: true);
+
+            var summary = tracker.RenderBattleSummary();
+            Assert.Contains("Wilham crystallized post-victory", summary);
+        }
     }
 }

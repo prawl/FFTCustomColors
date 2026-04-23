@@ -55,6 +55,30 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal(0, BattleAbilityEntryReset.EscapeCountToMyTurn("Cutscene"));
         }
 
+        [Fact]
+        public void EscapeCount_FromBattlePaused_IsOne()
+        {
+            // S59 live-play bug: battle_move from ui=Abilities sometimes leaks into
+            // BattlePaused. Subsequent battle_ability then sees a mismatch cursor
+            // (reads pause-menu items like "Data"). One Escape closes pause → MyTurn.
+            Assert.Equal(1, BattleAbilityEntryReset.EscapeCountToMyTurn("BattlePaused"));
+        }
+
+        [Fact]
+        public void IsResetableBattleScreen_BattlePaused_IsTrue()
+        {
+            // Reset should cover pause leaks so callers don't have to special-case.
+            Assert.True(BattleAbilityEntryReset.IsResetableBattleScreen("BattlePaused"));
+        }
+
+        [Fact]
+        public void PlanSequence_BattlePaused_IsOneEscape()
+        {
+            var seq = BattleAbilityEntryReset.PlanSequence("BattlePaused");
+            Assert.Single(seq);
+            Assert.Equal("Escape", seq[0]);
+        }
+
         // --- IsResetableBattleScreen: should the caller run the reset at all?
 
         [Theory]
