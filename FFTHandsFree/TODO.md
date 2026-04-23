@@ -83,11 +83,31 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Session 58 — follow-ups (2026-04-22)
 
-- [ ] **⚠ UNVERIFIED: Wire S58 AoE pure helpers into scan_move output** [Abilities] — S58 shipped `LineAoeCalculator`, `SelfCenteredAoeCalculator`, `MultiHitTargetEnumerator`, `GeomancySurfaceTable` as pure helpers with full test coverage, but they're NOT yet wired into the `scan_move` ability-target rendering path. Current path in `NavigationActions.cs` / `AbilityTargetCalculator` has its own AoE enumeration — switching to the new pure helpers would reduce duplication + make geomancy terrain-aware. Next session: replace the ad-hoc AoE logic with the pure helpers. Start with `SelfCenteredAoeCalculator` (Chakra/Cyclone), then Line (Shockwave), then Geomancy surface lookup.
+- [ ] **⚠ UNVERIFIED: Wire S58 AoE pure helpers into scan_move output** [Abilities] — S58 shipped `LineAoeCalculator`, `SelfCenteredAoeCalculator`, `MultiHitTargetEnumerator`, `GeomancySurfaceTable` as pure helpers with full test coverage, but they're NOT yet wired into the `scan_move` ability-target rendering path. S59 analysis: the existing `AbilityTargetCalculator.GetSelfRadiusTiles` + `GetValidTargetTiles` + `GetSplashTiles` flow is map-aware (walkability, elevation) and more featureful than the pure helpers — swapping in the helpers would regress. `GeomancySurfaceTable` is outdated for IC remaster (PSX names like "Local Quake" vs IC "Sinkhole"). Revisit when live geomancer data is available.
 
-- [ ] **⚠ UNVERIFIED: Wire CharacterStatusLeakGuard into detection path** [Detection] — S58 shipped the pure helper but it's not called anywhere yet. Session-31 leak (sourceScreen=CharacterStatus → targetScreen=BattleMyTurn during battle_wait animations) is still in the session logs until this gets wired. Add a call in `CommandWatcher` around the `DetectScreenSettled` path: `CharacterStatusLeakGuard.Filter(previousDetected, screen.Name, keysSinceLastSettle)`. Requires tracking `previousDetected` + `keysSinceLastSettle` counters — small refactor.
+<!-- S59 SHIPPED: CharacterStatusLeakGuard wired into CommandWatcher settle path with _previousSettledScreen tracking. Filters transient leaks from battle state when no key could have triggered drill-in. -->
 
-- [ ] **⚠ UNVERIFIED: Wire BattleMenuAvailability into screen response** [Rendering] — Pure helper exposes "Move/Abilities/Wait/Status/Auto-battle — each enabled or grayed" based on BattleMoved/BattleActed flags. Currently nothing consumes it. Add to `screen` response as a new field (e.g. `menuAvailability: [{name, slot, available}]`) so Claude doesn't blindly navigate into a grayed slot.
+<!-- S59 SHIPPED: BattleMenuAvailability wired into DetectedScreen.MenuAvailability on BattleMyTurn. CAVEAT: relies on BattleActed memory read which S59 live-play showed doesn't flip after Shout — needs live memory re-verification to be accurate. -->
+
+<!-- S59 SHIPPED: execute_turn added to strict-mode AllowedGameActions. Was blocked by S58 strict default flip. -->
+
+<!-- S59 SHIPPED: BattlePaused added to BattleAbilityEntryReset. battle_ability / battle_move / battle_wait / battle_attack all auto-recover from pause-menu leaks via escape-to-known-state. -->
+
+<!-- S59 SHIPPED: Stale-cursor recovery in MoveGrid + BattleWait. When Enter lands on BattleAbilities/BattleAutoBattle due to stale 0x1407FC620 byte, escape + retry with extra arrow press. Compensates without depending on battleActed. -->
+
+<!-- S59 SHIPPED: battle_ability + battle_attack relaxed recoverable-state gate so entry reset can fire before the BattleMyTurn check. -->
+
+<!-- S59 SHIPPED: Post-Victory Desertion / GameOver flicker attaches PostVictoryNote to battle summary. Session 58 only silenced the double-EndBattle; now the loss is surfaced alongside the win. -->
+
+<!-- S59 SHIPPED: fft.sh header formatter — `?(JobName)` → `JobName` when name missing (first-turn stale scan). -->
+
+<!-- S59 SHIPPED: fft.sh `scan_move <mv> <jmp>` override dispatching via locationId/unitIndex bridge fields. Workaround for Mv=0 Jmp=0 heap-search failures. -->
+
+<!-- S59 SHIPPED: EncounterDialog Fight → BattleFormation settle. Waits up to 10s for Formation (was WaitUntilScreenNot EncounterDialog / 5s) — handles story-battle Formation loads that exceed 5s. -->
+
+- [ ] **🔴 Verify 0x1407FC620 menuCursor byte address on current game build** [Memory] — S59 live-play confirmed via screenshot that pressing Up visibly moves the in-game cursor but the memory byte at `0x1407FC620` doesn't update. Suspected reason: user swapped to Deluxe Edition and back — memory layout may have drifted. S59 stale-cursor recovery mitigates the symptom in MoveGrid/BattleWait but the root cause needs live investigation. Next session: snapshot before/after an Up keypress in the action menu, diff module memory, find the new cursor byte.
+
+- [ ] **🔴 Verify 0x14077CA8C battleActed byte address on current game build** [Memory] — S59 live-play: Shout cast grayed Abilities in-game UI but `battleActed` memory read 0. Affects `menuAvailability` field accuracy (reports all slots available when Abilities should be grayed) AND `EffectiveMenuCursor` corrections (depends on acted flag). Likely same root cause as menuCursor byte drift. Snapshot before+after any successful action.
 
 - [ ] **⚠ UNVERIFIED: `[counter-KO]` marker on battle_ability response** [Execution] — S58 wired counter-KO detection to prepend `[counter-KO] active unit died from reaction — do not battle_wait` to response.Info. Untested live — needs an attack against an enemy with Counter where the counter damage kills the attacker. Next repro: hit a high-Brave enemy with Counter learned at low-HP attacker.
 
