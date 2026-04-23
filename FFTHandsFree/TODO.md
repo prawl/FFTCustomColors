@@ -81,6 +81,23 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 ## 0. Urgent Bugs
 
 
+### Session 59 — follow-ups (2026-04-23)
+
+- [ ] **🔴 Throw Stone / items damage not credited to BattleStatTracker** [Stats] — Live-repro S59 battle: `stats` showed "Lloyd: 2 kills, 1377 dmg" but "Ramza: 0 dmg" despite Ramza casting Throw Stone multiple times. OnDamageDealt only fires for direct battle_attack path, not battle_ability. Fix: hook RecordAttackStats into battle_ability's resolved-damage read (similar to battle_attack pattern). See `NavigationActions.BattleAbility` around the post-cast resolve block.
+
+- [ ] **🔴 Non-Ramza unit ability list shows empty in scan output** [Scan] — Live-repro S59 battle: Rapha (Skyseer), Mustadio (Machinist), Agrias (Holy Knight), Crestian (Samurai) all returned `Abilities:` header with no entries. Only Ramza and units with secondary-bitfield-readable data show abilities. Kenrick (White Mage) DID show abilities last battle — unclear why some work and others don't. Possibly a roster-match issue where non-story characters (or non-Ramza story characters) miss the bitfield lookup path. Fix path: dump `u.LearnedBitfieldByJobIdx` count for each unit in a live battle; identify which units populate it and which don't. See `NavigationActions.FilterAbilitiesBySkillsets`.
+
+- [ ] **🔴 battle_ability reports "Used" before target confirmation** [Execution] — Live-repro S59 battle: `battle_ability "Phoenix Down" 7 12` returned `[BattleAttacking] ui=Phoenix Down Used Phoenix Down on (7,12)` — but the game was still in targeting mode waiting for F to confirm. Screenshot showed "Select a target and press F to confirm" + Phoenix Down dialog visible. The helper is claiming success at ability-selection time, not action-commit time. Fix: wait for BattleActing/return to BattleMyTurn before reporting "Used" (or differentiate "Queued targeting" from "Used").
+
+- [ ] **🔴 False BattleVictory detection when enemies alive** [Detection] — Live-repro S59 battle: after `battle_ability "Phoenix Down"` mid-cast, detection briefly flashed BattleVictory → back to BattleMyTurn with 4 enemies still alive. The existing encA=255 guard should cover the banner frame but not this mid-cast case. Session 49 fix was for Kenrick's counter-kill final blow; this is a different fingerprint. Next session: capture detection inputs DURING the flash via `session_tail slow 500` + post-filter for BattleVictory rows with `slot9 == 0xFFFFFFFF` set (battle sentinels still populated).
+
+- [ ] **🔴 Cursor-miss targeting failures** [Execution] — Live-repro S59 battle: `battle_ability "Cura" 7 13` → `Cursor miss: at (1,10) expected (7,13)` — cursor ended up nowhere near target. Likely the grid-cursor stale-read variant of the menuCursor bug. Same address-drift suspicion. Next session: use `cursor_probe` during targeting mode to confirm if AddrGridX/Y (0x140C64A54 / 0x140C6496C) are also stale.
+
+<!-- S59 SHIPPED (commit 6a52926): Secondary-skillset inference fallback. When scan reads SecondaryAbility=0 but abilities[] list contains non-primary entries, infer the secondary skillset from the first matching ability's skillset. Unblocks `battle_ability "Phoenix Down"` when SecondaryAbility byte reads 0 transiently. -->
+
+<!-- S59 SHIPPED (commit 6a52926): Post-battle WorldMap at battleground node mis-detects as BattleActing. Added postBattleWorldMapAtNode short-circuit to inBattle classification: rawLocation 0..42 + battleMode==0 + moveMode==0 + !paused forces inBattle=false. -->
+
+
 ### Session 58 — follow-ups (2026-04-22)
 
 - [ ] **⚠ UNVERIFIED: Wire S58 AoE pure helpers into scan_move output** [Abilities] — S58 shipped `LineAoeCalculator`, `SelfCenteredAoeCalculator`, `MultiHitTargetEnumerator`, `GeomancySurfaceTable` as pure helpers with full test coverage, but they're NOT yet wired into the `scan_move` ability-target rendering path. S59 analysis: the existing `AbilityTargetCalculator.GetSelfRadiusTiles` + `GetValidTargetTiles` + `GetSplashTiles` flow is map-aware (walkability, elevation) and more featureful than the pure helpers — swapping in the helpers would regress. `GeomancySurfaceTable` is outdated for IC remaster (PSX names like "Local Quake" vs IC "Sinkhole"). Revisit when live geomancer data is available.
@@ -198,19 +215,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 ### Session 46 — follow-ups (2026-04-19)
 
 
-- [ ] **Extend SM cursor tracking — BattleMoving grid cursor** — Session 47 shipped CharacterStatus sidebar + BattleAbilities submenu + TavernRumors/TavernErrands via `OnKeyPressedForDetectedScreen`. Still needed: 2D x,y tracked via arrow keys + current camera rotation on BattleMoving. Cursor-rotation math complicates this one vs. the 1D cases already shipped.
-
-<!-- S59 SHIPPED: EncounterDialog Fight path now uses WaitForScreen=BattleFormation with 10s ceiling (was WaitUntilScreenNot EncounterDialog, 5s). Handles story-battle Formation loads that exceed 5s. See NavigationPaths.cs GetEncounterDialogPaths. -->
-<!-- Fight→Formation transition settle: CLOSED S59 (see commit 5a247dc) -->
-<!-- auto_place_units pre-formation buffer: CLOSED S59 (97be012) — now polls for BattleFormation up to 12s instead of fixed 4s sleep. -->
-<!-- "auto_place_units pre-formation buffer" dupe at line 208 also removed. -->
-<!-- Session 46 follow-up items CLOSED by S59 structural fixes. -->
-<!--
-CLOSED S59 (line-by-line refactor):
-
-- [x] SHIPPED: Extend SM cursor tracking — BattleMoving grid cursor. Partial; core 1D cases shipped. Full 2D tracking still open.
-- [x] SHIPPED: Fight→Formation transition settle (S59 commit 5a247dc).
--->
+<!-- S59 SHIPPED: EncounterDialog Fight path uses WaitForScreen=BattleFormation with 10s ceiling (was 5s) — commit 5a247dc. auto_place_units polls for BattleFormation up to 12s (was fixed 4s sleep) — commit 97be012. -->
 
 - [ ] **Extend SM cursor tracking — 2D BattleMoving grid cursor** — Session 47 shipped 1D cases (CharacterStatus sidebar, BattleAbilities submenu, TavernRumors/TavernErrands) via `OnKeyPressedForDetectedScreen`. 2D cursor tracking on BattleMoving requires arrow-key → grid delta computation using current camera rotation (FacingStrategy). Deferred — the empirical rotation detection in MoveGrid already solves the practical use case.
 

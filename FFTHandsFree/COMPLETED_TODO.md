@@ -1685,3 +1685,93 @@ All prices match in-game display exactly.
 - `MEMORY.md` — index updated with S57 entries.
 
 **Tests:** 3893 passing (+15 this slice: 3 scan_diff identity, 12 AbilityListCursorNavPlanner, +1 strict-mode allowlist for `find_monotonic`).
+
+
+### Session 59 (2026-04-23) — live-play bug fixes + S58 wire-up completion
+
+**9 commits. Tests: 4174 → 4194 (+20).**
+
+Commits:
+- `7d27c09` — play-session bug fixes + S58 wire-up completion (10-item bundle)
+- `5a247dc` — BattleAttack recoverable-state entry reset + Fight→Formation 10s settle
+- `283e074` — TODO — mark S59 fixes shipped + flag memory re-verification priorities
+- `e0c2bc3` — MoveGrid rotation-cache fallback + post-Victory WorldMap pins
+- `bbfb124` — extend BattleAbilityEntryReset to BattleStatus + BattleAutoBattle
+- `97be012` — auto_place_units: poll for BattleFormation entry
+- `379e8cb` — cursor_probe diagnostic helper for S60 memory hunt
+- `2d4bdbe` — TODO — close S59-shipped and audited items
+- `6a52926` — live-play bug fixes: secondary inference + post-battle WorldMap
+
+**Wire-ups (S58 pure helpers):**
+
+- [x] **CharacterStatusLeakGuard → CommandWatcher** — wired into main settle path with `_previousSettledScreen` tracking. Filters transient CharacterStatus/CombatSets detections when prev was a battle state and no key could have triggered real drill-in. 9 TDD tests (+3 S59 edge cases).
+- [x] **BattleMenuAvailability → DetectedScreen.MenuAvailability** — populates on BattleMyTurn with per-slot {Name, Slot, Available} derived from BattleMoved/BattleActed. Verified live — JSON shows all 5 slots. CAVEAT: accuracy blocked by battleActed address drift (see TODO §0).
+
+**Strict mode allowlist:**
+
+- [x] **`execute_turn` added to AllowedGameActions** — was blocked by S58 default-on flip. Live-verified post-fix.
+
+**Entry-reset coverage (escape-to-known-state):**
+
+- [x] **BattlePaused** → 1 Escape to BattleMyTurn. Closes the "cursor is on 'Data'" pause-menu leak bug.
+- [x] **BattleStatus** → 1 Escape. Same pattern.
+- [x] **BattleAutoBattle** → 1 Escape. Same pattern.
+- [x] **`battle_ability` + `battle_attack` relaxed recoverable-state gate** — accept any IsResetableBattleScreen as starting state (not just BattleMyTurn/BattleActing), then run entry reset to reach MyTurn.
+- [x] **`battle_move` + `battle_wait` entry-reset wired** — mirrors the battle_ability pattern.
+
+**Stale-cursor recovery (memory read lags key input):**
+
+- [x] **MoveGrid Escape+retry-Up** — when Enter lands on BattleAbilities due to stale menuCursor byte, Escape + blind Up + Enter to recover.
+- [x] **BattleWait Escape+retry** — same for BattleAbilities (Down to Wait) and BattleAutoBattle (Up×2 to Wait).
+- [x] **MoveGrid rotation-cache fallback** — when all 4 arrow keys report "no grid movement" (probable stale AddrGridX/Y read), reuse `_lastDetectedRightDelta` from a prior successful move instead of aborting.
+
+**Post-Victory loss surfacing:**
+
+- [x] **`BattleStats.PostVictoryNote` + `NotePostVictoryLoss` + render** — post-Victory Desertion/GameOver flicker attaches a note to the battle summary so unit loss isn't silently swallowed. 4 TDD tests.
+
+**fft.sh shell fixes:**
+
+- [x] **Header formatter `?(JobName)` → `JobName`** — when name missing (first-turn stale scan), fall back to job label only. Cleaner output.
+- [x] **`scan_move <mv> <jmp>` override restored** — dispatches via locationId/unitIndex bridge fields. Workaround for Mv=0 Jmp=0 heap-search failures.
+- [x] **`cursor_probe <key>` diagnostic** — samples menuCursor+battleActed+battleMoved before/after a key press, reports "memory did NOT change" when address has drifted. Live-verified the 0x1407FC620 staleness this session.
+
+**Path settles:**
+
+- [x] **EncounterDialog Fight path** — `WaitForScreen=BattleFormation` with 10s ceiling (was WaitUntilScreenNot EncounterDialog / 5s). Handles story-battle Formation loads that exceed 5s.
+- [x] **auto_place_units poll-based entry** — polls for BattleFormation detection up to 12s with 500ms settle (was fixed 4s sleep). Dorter formation crash mitigated.
+
+**Detection logic:**
+
+- [x] **S58 Victory encA=255 sentinel tightened with submenuFlag==1** — Shout-mid-cast false positive killed.
+- [x] **Post-battle WorldMap at battleground node** — added `postBattleWorldMapAtNode` short-circuit to inBattle classification. Fixes mis-detect as BattleActing when standing on a node with stale battle sentinels.
+- [x] **Secondary skillset inference from abilities[]** — when SecondaryAbility byte reads 0 but abilities list contains non-primary entries, infer the secondary skillset via `ActionAbilityLookup.GetSkillsetForAbility(name)`. Live-repro fix for Ramza's disappearing Items submenu mid-battle.
+
+**Regression pins (tests):**
+
+- [x] `DetectScreen_PostVictoryWorldMap_StickyGameOverFlag_DoesNotMisdetectAsLoadGame`
+- [x] `DetectScreen_PostVictoryWorldMap_StaleSentinels_RoutesViaWorldMapSignal`
+- [x] `NotePostVictoryLoss_AttachesNote_BeforeEndBattle`
+- [x] `NotePostVictoryLoss_Idempotent_FirstWriteWins`
+- [x] `NotePostVictoryLoss_NoBattle_IsNoop`
+- [x] `RenderBattleSummary_IncludesPostVictoryNote`
+- [x] `EscapeCount_FromBattlePaused_IsOne` / `_FromBattleStatus_IsOne` / `_FromBattleAutoBattle_IsOne`
+- [x] Plus 3 new CharacterStatusLeakGuard edge cases (empty-string prev, high keys-since, non-battle prev)
+
+**Documentation / audits closed (no code change needed):**
+
+- [x] **rawLocation==255 → TitleScreen preemption** — audited: 3 rules each have multiple positive signals, not blanket fallthroughs.
+- [x] **Fix stale location address (255) after restart** — audited: disk-backed `claude_bridge/last_location.txt` fallback already in place, edge case non-blocking.
+- [x] **AOB resolver dead-end** — superseded by the escape-to-known-state pattern; informational note only now.
+- [x] **Extend SM cursor tracking — 1D cases** — shipped S47. 2D BattleMoving grid tracking is a separate follow-up item.
+
+**Memory notes added/updated:**
+- `project_s59_shipped_fixes.md` — new: summary of all S59 wire-ups, stale-cursor recovery patterns, and blocked-on-live items.
+- `project_s59_live_battle_bugs.md` — new: live-play bug catalog with menuCursor/battleActed address-drift diagnosis.
+- `MEMORY.md` — index updated with S59 entries.
+
+**Blocked on live memory investigation (S60 priority):**
+- `0x1407FC620` menuCursor byte drift (live-confirmed stale via `cursor_probe Down`)
+- `0x14077CA8C` battleActed byte drift (doesn't flip after Shout)
+- Likely caused by game-version swap (Deluxe Edition) earlier in the session
+
+**Tests:** 4194 passing (+20 this session).
