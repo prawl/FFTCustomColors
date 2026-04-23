@@ -1011,6 +1011,61 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("LoadGame", result);
         }
 
+        /// <summary>
+        /// S56 live-play bug: after kill_enemies → Victory → Advance, the game
+        /// shows WorldMap at the battleground node but detection persistently
+        /// reports LoadGame because gameOverFlag sticks from an earlier
+        /// GameOver. Fix: require moveMode to NOT indicate world-map cursor
+        /// system is active (moveMode in {0, 255}). Post-battle WorldMap has
+        /// moveMode==13 (world cursor live); LoadGame has moveMode==0 (menu
+        /// picker). See TODO §0 Session 56.
+        /// </summary>
+        /// <summary>
+        /// S59 regression pin: post-Victory WorldMap at a named settlement
+        /// with sticky gameOverFlag=1 from a prior GameOver should route to
+        /// WorldMap, NOT LoadGame. Detection already handles this correctly
+        /// (rawLocation in 0-42 + sentinels cleared → WorldMap branch). The
+        /// S56 live repro had a more specific condition that this pin
+        /// doesn't yet capture — kept as a smoke test until the exact
+        /// input fingerprint from the live bug is re-captured.
+        /// </summary>
+        [Fact]
+        public void DetectScreen_PostVictoryWorldMap_StickyGameOverFlag_DoesNotMisdetectAsLoadGame()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 7 /* Yardrow */,
+                slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 0);
+
+            Assert.NotEqual("LoadGame", result);
+            Assert.Equal("WorldMap", result);
+        }
+
+        /// <summary>
+        /// S59 regression pin: post-Victory WorldMap with stale battle sentinels
+        /// (slot0=255, slot9=0xFFFFFFFF) still active, plus moveMode=13 (world
+        /// cursor active). Should route through WorldMap via worldMapSignalTrusted
+        /// override, not LoadGame.
+        /// </summary>
+        [Fact]
+        public void DetectScreen_PostVictoryWorldMap_StaleSentinels_RoutesViaWorldMapSignal()
+        {
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 26 /* Siedge Weald */,
+                slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 13, paused: 0, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 0);
+
+            Assert.NotEqual("LoadGame", result);
+        }
+
         [Fact]
         public void DetectScreen_Victory_EncA255Sentinel_FiresOverLoadGameAndTitleScreen()
         {

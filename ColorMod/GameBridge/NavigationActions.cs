@@ -3726,11 +3726,26 @@ namespace FFTColorCustomizer.GameBridge
 
             if (rdx == 0 && rdy == 0)
             {
-                response.Status = "failed";
-                response.Error = $"Could not detect rotation from ({startPos.x},{startPos.y})";
-                SendKey(VK_ESCAPE); // Exit move mode
-                Thread.Sleep(300);
-                return response;
+                // S59: detection failed (probably stale grid-pos memory reads
+                // — same family as the menuCursor stale-byte issue). If we've
+                // cached a rotation from an earlier successful move this
+                // session, reuse it. Camera rotation doesn't change between
+                // units on the same map without an explicit rotate, so the
+                // cached delta is usually still valid. Better to attempt a
+                // possibly-wrong move than abort the whole action.
+                if (_lastDetectedRightDelta.HasValue)
+                {
+                    (rdx, rdy) = _lastDetectedRightDelta.Value;
+                    ModLogger.Log($"[MoveGrid] Rotation detection failed at ({startPos.x},{startPos.y}); reusing cached Right=({rdx},{rdy})");
+                }
+                else
+                {
+                    response.Status = "failed";
+                    response.Error = $"Could not detect rotation from ({startPos.x},{startPos.y})";
+                    SendKey(VK_ESCAPE); // Exit move mode
+                    Thread.Sleep(300);
+                    return response;
+                }
             }
 
             // Compute arrow presses needed
