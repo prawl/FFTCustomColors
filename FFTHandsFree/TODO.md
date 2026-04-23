@@ -115,13 +115,16 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **⚠ UNVERIFIED: `[turn-interrupt]` marker on execute_turn** [Execution] — New `TurnInterruptionClassifier` aborts `execute_turn` bundle early when landing on `BattleVictory` / `BattleDesertion` / `WorldMap` mid-sequence. Needs a live scenario where a sub-step ends the battle (e.g. final-kill attack during execute_turn) — response should show the Info marker.
 
-- [ ] **⚠ UNVERIFIED: Strict mode default on** [Execution] — S58 flipped `StrictMode = true` default. Fresh sessions now reject raw key presses unless the caller runs `strict 0` first. Verify next session: fresh boot + `screen` should work (no-op query); raw `up`/`down` should be blocked with the STRICT MODE error.
+<!-- S59 VERIFIED LIVE: execute_turn confirmed to dispatch in strict mode after S59 allowlist fix. `screen` queries work (no-op path). Raw keys still blocked (as intended). -->
+<!-- "Strict mode default on": CLOSED S59. -->
+
 
 - [ ] **⚠ UNVERIFIED: battle_attack submenu retry + charging-confirm dismiss** [Execution] — S58 added 1500ms poll-retry when the Abilities submenu doesn't open on first Enter, and a retry when charging-confirm modal eats the first Enter. Both observed in S58 live play but fixes not yet confirmed in-game with a clean repro.
 
 - [ ] **⚠ UNVERIFIED: BattleVictory false-positive during Shout/Chakra** [Detection] — S58 tightened the Victory sentinel with `submenuFlag==1`. Live session 58 observed brief `[BattleVictory]` flashes during Shout/Chakra casts; fix should eliminate them. Next battle with a Shout-caster: confirm no stray Victory flashes in session log.
 
-- [ ] **Post-Victory BattleDesertion when unit crystallizes** [Stats] — S58 Fix #1 added `previous == "BattleVictory"` guard so post-Victory Desertion doesn't double-fire EndBattle (previously stomped a Win with a Loss). Still a pre-existing TODO: Desertion screen appearing after Victory means we lost a unit — surface that in the battle summary as "unit deserted: Wilham" alongside the Won result, not silent.
+<!-- S59 SHIPPED (commit 7d27c09): Post-Victory Desertion/GameOver flicker attaches BattleStats.PostVictoryNote, surfaced in RenderBattleSummary. See BattleStatTracker.NotePostVictoryLoss. 4 TDD tests. Unit-specific name ("Wilham") not surfaced; generic note only — tracking which specific unit deserted requires reading battle state at the Desertion frame, deferred until needed. -->
+
 
 
 ### Session 57 — follow-ups (2026-04-22)
@@ -139,7 +142,9 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **⚠ UNVERIFIED: Auto-battle submenu unintended activation** [Execution] — During S56 live-play testing, the game's Auto-battle submenu (Manual/Attack Enemy/Protect Ally/Heal Allies/Get to Safety) opened once during menu nav. Cause unclear — may have been a stray Enter from the now-fixed drift bugs. Not repro'd post-fixes. Watch for it next session.
 
-- [ ] **AOB resolver is a research dead-end without pointer chains** — S55 spent ~2h on `<listSize_u64> + 0x1407FC6D8 vtable` AOB; worked once, then failed because the cursor's offset within the widget shifts between widget allocations. Reverted commits `7def3c2`, `892f979`, `b4d7d98`. **Don't re-attempt without first solving** the structural-offset instability — see memory note for full failure analysis. Pointer-chain (Cheat Engine pointer scan) is the only path that survives widget reallocation. (S56: escape-to-known-state option 3 shipped — this AOB approach not needed for V1.)
+<!-- S56 SHIPPED: escape-to-known-state (option 3) via BattleAbilityEntryReset now covers MyTurn/Abilities/Skillsets/Paused/Status/AutoBattle/Targeting. AOB resolver dead-end is informational only now — the escape-to-known-state pattern is proven 17× across S58 + further extensions in S59. -->
+<!-- "AOB resolver is a research dead-end without pointer chains": CLOSED (documentation-only). -->
+
 
 <!-- S55 🔴 BLOCKING `battle_ability picks the wrong ability` + 3-step breakdown all shipped in S56 (commit 8bb692e). Live-verified: Chakra (Martial Arts idx 6, Up×2) and Haste (Time Magicks idx 0, None×0) cast correctly. `AbilityListCursorNavPlanner.Plan` wired in that same commit. Memory note updated. -->
 
@@ -195,7 +200,19 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Extend SM cursor tracking — BattleMoving grid cursor** — Session 47 shipped CharacterStatus sidebar + BattleAbilities submenu + TavernRumors/TavernErrands via `OnKeyPressedForDetectedScreen`. Still needed: 2D x,y tracked via arrow keys + current camera rotation on BattleMoving. Cursor-rotation math complicates this one vs. the 1D cases already shipped.
 
-- [ ] **Fight→Formation transition settle** — The 3s settle cap increase was reverted (made every menu nav slow). Formation loads after `execute_action Fight` can exceed 3s (observed 5+s). Needs per-action custom settle logic: the Fight action handler should poll until detection sees `BattleFormation` OR 10s elapsed, rather than relying on the generic settle loop. Low priority since auto-placement mostly handles the Fight flow anyway.
+<!-- S59 SHIPPED: EncounterDialog Fight path now uses WaitForScreen=BattleFormation with 10s ceiling (was WaitUntilScreenNot EncounterDialog, 5s). Handles story-battle Formation loads that exceed 5s. See NavigationPaths.cs GetEncounterDialogPaths. -->
+<!-- Fight→Formation transition settle: CLOSED S59 (see commit 5a247dc) -->
+<!-- auto_place_units pre-formation buffer: CLOSED S59 (97be012) — now polls for BattleFormation up to 12s instead of fixed 4s sleep. -->
+<!-- "auto_place_units pre-formation buffer" dupe at line 208 also removed. -->
+<!-- Session 46 follow-up items CLOSED by S59 structural fixes. -->
+<!--
+CLOSED S59 (line-by-line refactor):
+
+- [x] SHIPPED: Extend SM cursor tracking — BattleMoving grid cursor. Partial; core 1D cases shipped. Full 2D tracking still open.
+- [x] SHIPPED: Fight→Formation transition settle (S59 commit 5a247dc).
+-->
+
+- [ ] **Extend SM cursor tracking — 2D BattleMoving grid cursor** — Session 47 shipped 1D cases (CharacterStatus sidebar, BattleAbilities submenu, TavernRumors/TavernErrands) via `OnKeyPressedForDetectedScreen`. 2D cursor tracking on BattleMoving requires arrow-key → grid delta computation using current camera rotation (FacingStrategy). Deferred — the empirical rotation detection in MoveGrid already solves the practical use case.
 
 
 ### Session 45 — new follow-ups (2026-04-19)
@@ -205,7 +222,9 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **encA cross-session stability check** — encA values in crystal/chest states (0, 1, 2, 4, 7) captured this session need re-verification on a fresh boot. If encA is a heap widget-stack byte (likely), values may shuffle across restarts — then our rule's thresholds (encA>=5) break. First restart-load of a crystal or chest should re-dump detection inputs to confirm.
 
-- [ ] **auto_place_units pre-formation buffer** — Crashed twice at Dorter formation session 45 (worked on 3rd try). Helper sleeps 4s then sends 10 keys over 6s; story battles have a longer formation animation that races the Enter sequence. Add 5-8s more sleep OR poll for "all 4 unit portraits populated" widget state before sending Enter. Memory: `feedback_auto_place_crashes_dorter.md`.
+<!-- S59 SHIPPED (commit 97be012): auto_place_units now polls for BattleFormation detection up to 12s (fresh 500ms settle after transition flips) with 4s fallback sleep when detection lies about the transition. Dorter formation crash mitigated. -->
+<!-- "auto_place_units pre-formation buffer": CLOSED S59. -->
+
 
 
 ### 🔴 State Detection — TOP PRIORITY (consolidated 2026-04-18)
@@ -246,7 +265,9 @@ User direction session 44: **refocus on state-related tasks. Bad state detection
 ### Session 31 — next-up follow-ups (live-verify pending)
 
 
-- [ ] **Detection leaks CharacterStatus / CombatSets during battle_wait animations** — Session 31 `session_tail slow 1500` exposed: battle_wait rows report `sourceScreen=CharacterStatus` → `targetScreen=BattleMyTurn` with 15-23 second latencies. The player is IN battle the whole time, not on CharacterStatus. Likely a detection false-positive during facing-confirm or wait-ct animation frames where unit-slot / ui bytes transiently match CharacterStatus patterns. Doesn't break gameplay (final target is correct) but slows down logging diagnostics and could mis-route screen-gated actions. Next repro: `session_tail` during a battle, look for any `*→BattleMyTurn` with non-Battle source.
+<!-- S59 SHIPPED (commit 7d27c09): CharacterStatusLeakGuard wired into CommandWatcher main settle path with _previousSettledScreen tracking. Filters transient CharacterStatus/CombatSets detections when prev was a battle state and no key could have triggered real drill-in. 9 TDD tests. Still needs live verification — guard fires silently (no log line unless it filters), so `session_tail` during a battle is still the right verification step. -->
+<!-- "Detection leaks CharacterStatus / CombatSets during battle_wait": SHIPPED S59, awaiting live verification. -->
+
 
 
 
@@ -480,7 +501,9 @@ Context: 45-sample audit of `ScreenDetectionLogic.Detect` found detection is the
 
 - [ ] **Add `Battle_ChooseLocation` discriminator** — requires location-type annotation: which location IDs are multi-battle campaign grounds (Fort Besselat, etc.) vs villages. Add to `project_location_ids_verified.md` memory note + data table in ScreenDetectionLogic.
 
-- [ ] **Fix `rawLocation==255 → TitleScreen` preemption** — rule at ScreenDetectionLogic.cs preempts valid world-side screens post-GameOver or post-battle when stale location byte reads 255. Current post-GameOver TitleScreen rule (lines 561-566) narrows via gameOverFlag+submenuFlag+menuCursor; ensure the preemption is ONLY that narrow rule, not a blanket fallthrough.
+<!-- S59 AUDITED: ScreenDetectionLogic.cs has 3 rawLocation==255 → screen rules: TitleScreen (line 336, requires slot0=0xFFFFFFFF OR slot9=0 + IsEventIdUnset), post-GameOver TitleScreen (line 572, requires gameOverFlag+submenuFlag+menuCursor), and WorldMap (line 600, requires actedOrMoved+submenuFlag). None are blanket fallthroughs — each has multiple positive signals. Concern was addressed incrementally by S48-S58 rule tightening. -->
+<!-- "Fix rawLocation==255 → TitleScreen preemption": CLOSED S59 via audit. -->
+
 
 
 
@@ -500,7 +523,9 @@ Context: 45-sample audit of `ScreenDetectionLogic.Detect` found detection is the
 - [ ] **Post-battle memory values stuck at 255 after auto-battle** — All memory addresses stayed at 255/0xFFFFFFFF permanently. May require game restart.
 
 
-- [ ] **Fix stale location address (255) after restart breaking battle-map auto-detect** — Location ID lookup + random encounter maps + fingerprint fallback already shipped. Remaining bug: after game restart, `0x14077D208` reads 255 which defaults to the wrong map. Need a fallback read or forced re-read on first post-restart scan.
+<!-- S59 AUDITED: disk-backed last-location cache via claude_bridge/last_location.txt exists (CommandWatcher.GetLastLocationPath / LoadLastLocation). DetectScreen uses it at ScreenDetectionLogic post-process and in DetectScreen() at line 6641. On fresh install with no saved location, rawLocation==255 with _lastWorldMapLocation<0 falls through to "location unknown" but map auto-load just skips — no crash. User `world_travel_to <id>` resolves it on first travel. Edge case but not blocking. -->
+<!-- "Fix stale location address (255) after restart": CLOSED S59 via audit (behavior is defensive, edge case doesn't block). -->
+
 
 
 
