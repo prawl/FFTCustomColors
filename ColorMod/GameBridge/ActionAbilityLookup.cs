@@ -145,6 +145,26 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Returns the skillset name that contains the given ability by name, or
+        /// null if not found. Used by CommandWatcher to infer the secondary
+        /// skillset when SecondaryAbility byte reads 0 but abilities[] list is
+        /// populated (S59 Ramza-turn live repro).
+        /// </summary>
+        public static string? GetSkillsetForAbility(string? abilityName)
+        {
+            if (string.IsNullOrWhiteSpace(abilityName)) return null;
+            foreach (var (skillsetName, abilities) in Skillsets)
+            {
+                foreach (var ability in abilities)
+                {
+                    if (string.Equals(ability.Name, abilityName, System.StringComparison.OrdinalIgnoreCase))
+                        return skillsetName;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Skillsets that share ability pools. The game uses Mettle IDs for all units
         /// regardless of whether they're a Squire (Fundaments) or have Mettle equipped.
         /// </summary>

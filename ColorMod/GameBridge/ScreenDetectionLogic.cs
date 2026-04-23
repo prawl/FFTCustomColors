@@ -274,7 +274,19 @@ namespace FFTColorCustomizer.GameBridge
             bool battleActiveTurnFrame = slot9 == 0xFFFFFFFF
                 && battleMode >= 1 && battleMode <= 5;
             bool worldMapSignalTrusted = onWorldMapByMoveMode && !battleActiveTurnFrame;
+
+            // S59 LIVE REPRO: after battle ends and player returns to a
+            // WorldMap battleground node (rawLocation 0-42), the battle
+            // sentinels (slot0=0xFF, slot9=0xFFFFFFFF) stay stale until the
+            // game reallocates them. locationMenuFlag=0 on a node without
+            // a menu open → atNamedLocation=false → inBattle=true and
+            // detection wrongly reports BattleActing. When battleMode=0
+            // AND moveMode=0 AND we're at a real world-map location,
+            // we're NOT in battle even if sentinels are stale.
+            bool postBattleWorldMapAtNode = rawLocation >= 0 && rawLocation <= 42
+                && battleMode == 0 && moveMode == 0 && paused == 0;
             bool inBattle = (unitSlotsPopulated || battleModeActive)
+                && !postBattleWorldMapAtNode
                 && (paused == 1 || (!atNamedLocation && !worldMapSignalTrusted));
 
             // === Out-of-battle screens ===

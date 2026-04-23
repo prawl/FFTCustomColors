@@ -5266,9 +5266,45 @@ namespace FFTColorCustomizer.Utilities
             // Secondary skillset from the roster-matched scan data
             // Uses the active unit from Units list (correctly matched by RosterMatcher)
             // instead of BattleTracker.ActiveUnit (which may identify the wrong unit)
-            _cachedSecondarySkillset = activeUnit.SecondaryAbility > 0
-                ? GetSkillsetName(activeUnit.SecondaryAbility)
-                : null;
+            //
+            // S59: SecondaryAbility byte can read 0 transiently (live-repro'd on
+            // Ramza's second turn in a battle — scan earlier returned idx=6/Items,
+            // later scan returned idx=0/null). If we have a non-null cached value
+            // AND the abilities list contains entries from a non-primary skillset,
+            // infer the secondary from the abilities list instead of blanking.
+            if (activeUnit.SecondaryAbility > 0)
+            {
+                _cachedSecondarySkillset = GetSkillsetName(activeUnit.SecondaryAbility);
+            }
+            else if (activeUnit.Abilities != null && activeUnit.Abilities.Count > 0
+                     && _cachedPrimarySkillset != null)
+            {
+                // Pick the first ability whose skillset differs from the primary —
+                // that's the secondary. If no such entry exists, fall through to null.
+                string? inferred = null;
+                foreach (var a in activeUnit.Abilities)
+                {
+                    var set = GameBridge.ActionAbilityLookup.GetSkillsetForAbility(a.Name);
+                    if (set != null && set != _cachedPrimarySkillset)
+                    {
+                        inferred = set;
+                        break;
+                    }
+                }
+                if (inferred != null)
+                {
+                    _cachedSecondarySkillset = inferred;
+                    ModLogger.Log($"[CommandBridge] SecondaryAbility byte read 0 — inferred '{inferred}' from abilities[] list");
+                }
+                else
+                {
+                    _cachedSecondarySkillset = null;
+                }
+            }
+            else
+            {
+                _cachedSecondarySkillset = null;
+            }
             ModLogger.Log($"[CommandBridge] Skillsets: primary={_cachedPrimarySkillset ?? "null"}, secondary={_cachedSecondarySkillset ?? "null"} (secondaryIdx={activeUnit.SecondaryAbility})");
 
             // Snapshot active unit identity for the compact battle screen line.
