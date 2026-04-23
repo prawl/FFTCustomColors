@@ -637,8 +637,12 @@ namespace FFTColorCustomizer.GameBridge
                 ["Fight"] = new PathEntry
                 {
                     Keys = new[] { Key(VK_ENTER, "Enter") },
-                    WaitUntilScreenNot = "EncounterDialog",
-                    WaitTimeoutMs = 5000,
+                    // S59: Fight → BattleFormation load can exceed 5s in some
+                    // story battles. Wait for BattleFormation specifically
+                    // with a longer ceiling so execute_action doesn't drop
+                    // callers at a mid-transition screen. Session 46 TODO.
+                    WaitForScreen = "BattleFormation",
+                    WaitTimeoutMs = 10000,
                     Desc = "Accept fight (cursor defaults to Fight)"
                 },
                 ["Flee"] = new PathEntry

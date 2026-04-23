@@ -773,7 +773,14 @@ namespace FFTColorCustomizer.GameBridge
             int targetY = command.UnitIndex;
 
             var screen = WaitForTurnState(timeoutMs: 1000, out long waitedMs);
-            if (screen == null || (screen.Name != "BattleMyTurn" && screen.Name != "BattleActing"))
+
+            // S59: allow recoverable battle-menu states (submenu, pause leak,
+            // skillset list, targeting) — the entry reset below escapes back
+            // to BattleMyTurn. Mirrors the battle_ability relaxation.
+            bool isRecoverable = screen != null
+                && BattleAbilityEntryReset.IsResetableBattleScreen(screen.Name);
+            if (screen == null
+                || (screen.Name != "BattleMyTurn" && screen.Name != "BattleActing" && !isRecoverable))
             {
                 response.Status = "failed";
                 response.Error = $"Not on BattleMyTurn/BattleActing (current: {screen?.Name ?? "null"}) after {waitedMs}ms wait";
@@ -782,12 +789,32 @@ namespace FFTColorCustomizer.GameBridge
 
             // Guard: one Action per turn. Refuse up-front so callers know to Wait
             // instead of retry-spamming — stops us from navigating into a grayed
-            // Abilities menu and stalling.
-            if (screen.BattleActed == 1)
+            // Abilities menu and stalling. Only reliable on the action menu.
+            if ((screen.Name == "BattleMyTurn" || screen.Name == "BattleActing")
+                && screen.BattleActed == 1)
             {
                 response.Status = "failed";
                 response.Error = "You've already acted this turn. You cannot perform another action.";
                 return response;
+            }
+
+            // S59: escape-to-known-state if we're deeper than BattleMyTurn.
+            int baEscape = BattleAbilityEntryReset.EscapeCountToMyTurn(screen.Name);
+            if (baEscape > 0)
+            {
+                ModLogger.Log($"[BattleAttack] Entry reset: screen={screen.Name}, Escape×{baEscape}");
+                for (int i = 0; i < baEscape; i++)
+                {
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                }
+                screen = _detectScreen();
+                if (screen == null || (screen.Name != "BattleMyTurn" && screen.Name != "BattleActing"))
+                {
+                    response.Status = "failed";
+                    response.Error = $"Escape-to-known-state failed: expected BattleMyTurn/BattleActing after {baEscape} Escapes, got {screen?.Name ?? "null"}";
+                    return response;
+                }
             }
 
             // Step 1: Navigate menu to Abilities (always index 1).
