@@ -2763,6 +2763,49 @@ load() { fft "{\"id\":\"$(id)\",\"action\":\"load\"}"; }
 # Audit tool for verifying ScreenDetectionLogic.Detect against ground truth.
 detection_dump() { fft "{\"id\":\"$(id)\",\"action\":\"dump_detection_inputs\"}"; }
 
+# cursor_probe: S59 diagnostic for menuCursor memory-address verification.
+# Samples menuCursor + battleActed + battleMoved BEFORE and AFTER a key
+# press, so a live session can verify whether memory reads track the game's
+# actual cursor state. Expected on a fresh BattleMyTurn:
+#   cursor_probe Down    # cursor 0→1 (Move → Abilities)
+#   cursor_probe Up      # cursor stays at 0 (bounds)
+# If BEFORE and AFTER readings match despite the game visually responding,
+# the address 0x1407FC620 has drifted (S59 live repro).
+# Usage: cursor_probe <key>  (Down/Up/Enter/Escape, case-insensitive)
+cursor_probe() {
+  local key="${1:-Down}"
+  local before after
+  before=$(fft "{\"id\":\"$(id)\",\"action\":\"dump_detection_inputs\"}" 30 >/dev/null; \
+    cat "$B/response.json" | node -e "
+const r=JSON.parse(require('fs').readFileSync(0,'utf8'));
+const info=JSON.parse(r.info||'{}'); const i=info.inputs||{};
+console.log('menuCursor='+i.menuCursor+' battleActed='+i.battleActed+' battleMoved='+i.battleMoved);
+")
+  # Send the key via the raw helper (requires strict 0 or built-in allowlist).
+  case "${key,,}" in
+    down) down >/dev/null ;;
+    up) up >/dev/null ;;
+    left) left >/dev/null ;;
+    right) right >/dev/null ;;
+    enter) enter >/dev/null ;;
+    escape|esc) esc >/dev/null ;;
+    *) echo "[cursor_probe] unknown key '$key' — use Up/Down/Left/Right/Enter/Escape"; return 1 ;;
+  esac
+  after=$(fft "{\"id\":\"$(id)\",\"action\":\"dump_detection_inputs\"}" 30 >/dev/null; \
+    cat "$B/response.json" | node -e "
+const r=JSON.parse(require('fs').readFileSync(0,'utf8'));
+const info=JSON.parse(r.info||'{}'); const i=info.inputs||{};
+console.log('menuCursor='+i.menuCursor+' battleActed='+i.battleActed+' battleMoved='+i.battleMoved);
+")
+  echo "BEFORE $key: $before"
+  echo " AFTER $key: $after"
+  if [ "$before" = "$after" ]; then
+    echo "⚠ memory did NOT change — 0x1407FC620 likely stale / address drifted"
+  else
+    echo "✓ memory updated — address is live"
+  fi
+}
+
 # session_stats: Per-action-type latency summary for the current session.
 # Groups rows by action, shows count / median / p95 / max / failed.
 # Complements `session_tail slow <ms>` which shows individual rows.
