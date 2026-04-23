@@ -79,6 +79,32 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("Escape", seq[0]);
         }
 
+        // S59: extend entry reset to cover BattleStatus + BattleAutoBattle —
+        // also single-Escape returns from in-battle modals.
+
+        [Fact]
+        public void EscapeCount_FromBattleStatus_IsOne()
+        {
+            // BattleStatus is reached via "Status" slot of the action menu;
+            // one Escape returns to BattleMyTurn.
+            Assert.Equal(1, BattleAbilityEntryReset.EscapeCountToMyTurn("BattleStatus"));
+        }
+
+        [Fact]
+        public void EscapeCount_FromBattleAutoBattle_IsOne()
+        {
+            // BattleAutoBattle (the Auto-battle sub-picker) is reached via
+            // "Auto-battle" slot; one Escape returns to BattleMyTurn.
+            Assert.Equal(1, BattleAbilityEntryReset.EscapeCountToMyTurn("BattleAutoBattle"));
+        }
+
+        [Fact]
+        public void IsResetableBattleScreen_BattleStatusAndAutoBattle_AreTrue()
+        {
+            Assert.True(BattleAbilityEntryReset.IsResetableBattleScreen("BattleStatus"));
+            Assert.True(BattleAbilityEntryReset.IsResetableBattleScreen("BattleAutoBattle"));
+        }
+
         // --- IsResetableBattleScreen: should the caller run the reset at all?
 
         [Theory]

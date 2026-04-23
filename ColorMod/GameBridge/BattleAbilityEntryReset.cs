@@ -55,6 +55,12 @@ namespace FFTColorCustomizer.GameBridge
                 case "BattlePaused":
                     return 1;
 
+                // S59: in-battle modals reached via action-menu slots. One
+                // Escape returns to BattleMyTurn from each.
+                case "BattleStatus":        // Status slot opens unit card
+                case "BattleAutoBattle":    // Auto-battle slot opens sub-picker
+                    return 1;
+
                 // Any Battle<Skillset> list
                 case "Battle_Mettle":
                 case "Battle_Items":
@@ -106,6 +112,8 @@ namespace FFTColorCustomizer.GameBridge
                     || screenName == "BattleActing"
                     || screenName == "BattleAbilities"
                     || screenName == "BattlePaused"
+                    || screenName == "BattleStatus"
+                    || screenName == "BattleAutoBattle"
                     || screenName == "BattleAttacking"
                     || screenName == "BattleCasting"
                     || IsBattleSkillsetList(screenName));

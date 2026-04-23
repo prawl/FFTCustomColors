@@ -96,4 +96,42 @@ public class CharacterStatusLeakGuardTests
             keysSincePreviousDetected: 0);
         Assert.Equal("WorldMap", result);
     }
+
+    // S59: additional edge cases exercised by live wire-up in CommandWatcher.
+
+    [Fact]
+    public void EmptyStringPrev_AllowsCharacterStatus()
+    {
+        // Empty string (equivalent to no previous screen recorded) should
+        // not trigger the filter — nothing to hold.
+        var result = CharacterStatusLeakGuard.Filter(
+            previousDetected: "",
+            currentDetected: "CharacterStatus",
+            keysSincePreviousDetected: 0);
+        Assert.Equal("CharacterStatus", result);
+    }
+
+    [Fact]
+    public void BattlePrev_HighKeyCount_AllowsCharacterStatus()
+    {
+        // Large key counts (post-scan_move with many C+Up cycles) still
+        // count as "keys pressed" — guard does NOT fire.
+        var result = CharacterStatusLeakGuard.Filter(
+            previousDetected: "BattleMyTurn",
+            currentDetected: "CharacterStatus",
+            keysSincePreviousDetected: 100);
+        Assert.Equal("CharacterStatus", result);
+    }
+
+    [Fact]
+    public void NonBattleNonCharacterStatusPrev_AllowsAnyCurrent()
+    {
+        // Guard only matters when prev was a battle state — everything
+        // else passes through regardless of keys-since.
+        var result = CharacterStatusLeakGuard.Filter(
+            previousDetected: "WorldMap",
+            currentDetected: "CharacterStatus",
+            keysSincePreviousDetected: 0);
+        Assert.Equal("CharacterStatus", result);
+    }
 }
