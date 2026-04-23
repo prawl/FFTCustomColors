@@ -5681,9 +5681,36 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         private CommandResponse AutoPlaceUnits(CommandResponse response)
         {
-            // Wait for formation screen to fully load (detection is unreliable
-            // for 3-6 seconds after Fight)
-            Thread.Sleep(4000);
+            // S59: poll for BattleFormation entry instead of a fixed 4s sleep.
+            // Story battles (Dorter) have longer formation animations that
+            // raced the old Enter sequence and caused crashes on 1st/2nd try
+            // (session 45). Poll up to 12s — settled formations take 3-6s
+            // typically, story battles up to 10s. Fall through after the
+            // timeout so short-path random encounters still work if detection
+            // transiently reports TravelList (documented transition lie).
+            var formationSw = Stopwatch.StartNew();
+            bool formationReady = false;
+            while (formationSw.ElapsedMilliseconds < 12000)
+            {
+                var s = _detectScreen();
+                if (s != null && s.Name == "BattleFormation")
+                {
+                    formationReady = true;
+                    // Extra 500ms breathing room after detection flips so the
+                    // Enter presses don't race the last animation frame.
+                    Thread.Sleep(500);
+                    break;
+                }
+                Thread.Sleep(500);
+            }
+            if (!formationReady)
+            {
+                ModLogger.Log($"[AutoPlaceUnits] BattleFormation not detected after 12s (screen={_detectScreen()?.Name ?? "null"}); proceeding with key sequence as fallback");
+                // Safety-net sleep: the old 4s was observed to work on the
+                // 3rd try for Dorter. Keep it as the fallback budget when
+                // detection is lying about the transition.
+                Thread.Sleep(4000);
+            }
 
             // Place 4 units: each unit is Enter (select tile) + Enter (confirm)
             for (int unit = 0; unit < 4; unit++)
