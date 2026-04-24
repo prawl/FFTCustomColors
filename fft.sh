@@ -3441,8 +3441,9 @@ const amhp=au?.maxHp??activeU?.maxHp??'?';
 const amp=au?.mp??activeU?.mp??'?';
 const ammp=au?.maxMp??activeU?.maxMp??'?';
 const uiTag=s.ui?' ui='+s.ui:'';
+const locTag=s.locationName?' curLoc='+s.locationName:'';
 const tSuffix=process.env._FFT_TIMING_SUFFIX?' '+process.env._FFT_TIMING_SUFFIX:'';
-console.log('['+s.name+']'+uiTag+' '+aLabel+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp+tSuffix);
+console.log('['+s.name+']'+uiTag+' '+aLabel+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp+locTag+tSuffix);
 console.log('');
 
 // Abilities with target tiles (filtering/collapsing done server-side by AbilityCompactor)
