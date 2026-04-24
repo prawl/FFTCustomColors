@@ -5,6 +5,47 @@ Items fully shipped ([x]) across sessions. Kept out of TODO.md to make the activ
 
 ---
 
+### 2026-04-25 — Detection rule tightening + Victory→Desertion fix (11 commits, +26 tests 4469→4495)
+
+Session theme: tight TDD cycle on detection rule ordering, plus a live-captured signal-byte fix for the long-standing Victory→Desertion misdetect (deferred twice across prior sessions). Four new pure helpers, eight shipped fixes, one bonus fix from live-repro capture.
+
+**Commits:**
+- `e909097` — BattleDialogue save-load rule: new detection branch for rawLocation 0..42 + battleMode==0 + IsRealEvent(eventId)
+- `b2e7c0e` — ExecuteTurnPreflightValidator pure helper (10 tests) wired at ExecuteTurn entry
+- `4eec7c9` — Pin FacingStrategy recommendation for Lenalian scenario (audit verified algorithm correct)
+- `8ed1b4a` — 5 regression pins for save-load BattleDialogue rule ordering
+- `25b3484` — 4-cardinal arc characterization pins + `CountArcsAtFacing` test helper
+- `2a1ce72` — Suppress EqA-mirror ViewedUnit-force on Battle* screens (fixes polluted response field)
+- `6f00304` — Reset `_movedThisTurn` / `_actedThisTurn` on `BattleLifecycleEvent.StartBattle`
+- `47d1bfc` — CounterAttackInferrer MaxHp sanity check (4 tests) — defense-in-depth with `d9b2fd1` KO gate
+- `cca3463` — battle_ability one-shot auto-retry on "Failed to enter targeting mode"
+- `63a3e4c` — TODO entry updated with live-captured Victory→Desertion signal bytes
+- `5243011` — Fix Victory misdetected as BattleDesertion (battleTeam==0 guard, new pin test)
+
+**Shipped + LIVE-VERIFIED:**
+
+- [x] **BattleDialogue save-load misdetect** — rawLocation=28 + battleMode==0 + IsRealEvent(eventId) now routes to BattleDialogue before the TravelList rule (`party==0 && ui==1`) can steal the frame. 5 regression pins guard against over-firing on legitimate world-map states.
+- [x] **execute_turn pre-flight** — `Move already used this turn — only Act or Wait remain.` live-verified in 169ms, replacing the old misleading "Not in Move mode" error. Mirrors `8cf9197` entry-reset pattern.
+- [x] **EqA ViewedUnit-force Battle\* exclusion** — no more `[EqA promote] Setting viewedUnit='Ramza'` logs during BattleMyTurn; response.screen.ViewedUnit stays clean on battle polls.
+- [x] **Victory→Desertion fix via battleTeam==0 guard** — live-captured at Zeklaus Desert: solo-Ramza killed last enemy, battle_wait returned `[BattleDesertion]` before settling to `[WorldMap]`. Smoking-gun log `team=1 act=1 mov=1` showed stale battle-array slot-0 pollution at detection time. Real Desertion = player unit left field → battleTeam==0. New pin test captures the live byte signature.
+
+**Shipped + not-yet-live-verified:**
+
+- [x] **FacingStrategy 4-cardinal arc pins** — hand-traced the Lenalian scenario and pinned front/side/back counts for all 4 cardinals. Audit verified the algorithm is correct; earlier "0/4/2 expected" claim was hand-counting a different facing.
+- [x] **Turn-flag reset on StartBattle** — `_movedThisTurn` / `_actedThisTurn` now clear on battle-lifecycle start so mid-turn battle exits (flee / GameOver) don't leak stale flags into the next battle.
+- [x] **CounterAttackInferrer MaxHp sanity check** — rejects damage deltas > target MaxHp as animation-transient reads. Pairs with the `d9b2fd1` UnitScanDiff KO-stable MaxHp gate for two independent defenses against the same false-KO class.
+- [x] **battle_ability one-shot auto-retry** — when nav fails with "Failed to enter targeting mode", it already calls EscapeToMyTurn internally; one retry from the clean state usually succeeds. Avoids the user-intervention cycle.
+
+**Techniques worth propagating:**
+
+- **Capture-then-fix for speculation-blocked bugs.** The Victory→Desertion bug had been deferred twice because regression pins blocked the obvious encA fix path. This session's live playthrough surfaced the byte signature (`team=1 act=1 mov=1`) that narrowed the fix to a single discriminator (battleTeam==0) all existing tests already satisfied. The `/prime`-initiated play sessions are how these speculation-blocked bugs get unblocked.
+
+- **Audit before fixing.** The "Recommend Wait arc counts off" TODO triggered a hand-trace instead of a speculative code change. Audit found the algorithm was correct and the bug was my own incomplete hand-count. Shipped as a characterization pin that encodes the correct expected behavior instead of a broken fix.
+
+- **Defense-in-depth for narrator false-KO.** Two independent guards now reject the same Knight-died-for-521 false positive: (a) `UnitScanDiff` refuses to classify HP→0 as `ko` when MaxHp shifted (commit `d9b2fd1`); (b) `CounterAttackInferrer` rejects deltas > target MaxHp (commit `47d1bfc`). Either guard alone closes the common case; both together close edge cases where one scan's MaxHp was stable but the delta was still implausible.
+
+- **Regression pins positive AND negative.** The BattleDialogue fix shipped with 5 pins — 3 negative (TravelList/WorldMap still fire without eventId) and 2 positive (new rule fires when expected). Prevents future edits from breaking either side.
+
 ### 2026-04-24 — Detection + narrator + scan-polish pass (24 commits, +200 tests 4269→4469)
 
 Scan fallbacks + detection-rule tightening. Seven new pure helpers, fifteen shipped+live-verified fixes. Test count 4269→4469.
