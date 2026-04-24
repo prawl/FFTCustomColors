@@ -131,6 +131,13 @@ namespace FFTColorCustomizer.Utilities
         // animations. See GameBridge/CharacterStatusLeakGuard.cs.
         private string? _previousSettledScreen;
 
+        // WorldMapBattleResidueClassifier state — tracks the tick and name
+        // of the most recent Detect() call that returned a Battle* state.
+        // Used to suppress WorldMap false positives that flicker during
+        // enemy-turn animations. -1 = no battle state seen yet.
+        private long _lastBattleStateTickMs = -1;
+        private string? _lastBattleStateName;
+
         /// <summary>
         /// Cached picker-cursor address resolved by the `resolve_picker_cursor`
         /// action. Set when state machine enters a picker; used to surface
@@ -6828,6 +6835,36 @@ namespace FFTColorCustomizer.Utilities
                 {
                     ModLogger.Log($"[StateOverride] BattleMoving→BattleWaiting: {sinceWaitEnter}ms since Wait Enter.");
                     screen.Name = "BattleWaiting";
+                }
+
+                // WorldMap-as-battle-residue: during certain enemy-turn
+                // animations battleMode flickers to 0 while slot9 stays at
+                // the battle sentinel, and the post-battle-stale rule in
+                // ScreenDetectionLogic converts the frame to WorldMap.
+                // Live-repro 2026-04-24: battle_wait returned [WorldMap]
+                // mid-battle at t=10370ms during Lenalian Plateau random
+                // encounter; next poll 2s later returned [BattleEnemiesTurn]
+                // correctly, confirming a transient flicker rather than a
+                // real transition. Suppress by reverting to the cached
+                // last-battle-state name when it was recent enough.
+                long sinceLastBattleState = _lastBattleStateTickMs >= 0
+                    ? Environment.TickCount64 - _lastBattleStateTickMs
+                    : -1;
+                if (GameBridge.WorldMapBattleResidueClassifier.ShouldSuppress(
+                        screen.Name, sinceLastBattleState))
+                {
+                    var restored = _lastBattleStateName ?? "Battle";
+                    ModLogger.Log($"[StateOverride] WorldMap→{restored} (battle residue): {sinceLastBattleState}ms since last battle state.");
+                    screen.Name = restored;
+                }
+
+                // Update battle-state tracker whenever the final label is a
+                // Battle* state. Done AFTER override so the cached name
+                // never captures a post-battle WorldMap frame.
+                if (screen.Name != null && screen.Name.StartsWith("Battle"))
+                {
+                    _lastBattleStateTickMs = Environment.TickCount64;
+                    _lastBattleStateName = screen.Name;
                 }
 
                 // TravelList→WorldMap override: when the SM just left
