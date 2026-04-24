@@ -1202,6 +1202,28 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_EncA255_BattleAbilityResponse_WithSubmenuFlag1_DoesNotFireVictory()
+        {
+            // Live-observed 2026-04-24: [BattleVictory] spurious flash during
+            // battle_ability response headers. The submenuFlag==1 guard (S58)
+            // catches one mid-cast variant but NOT this one — the game is in
+            // the ability picker / targeting overlay (submenuFlag=1) while
+            // encA/encB transiently hit 255 during a cast animation. No
+            // battle has ended — gameOverFlag=0 is the tell, since real
+            // Victory banner captures (Siedge Weald + Zeklaus) both have
+            // gameOverFlag=1 set by the banner overlay.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 1, battleMoved: 1,
+                encA: 255, encB: 255, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 1,
+                eventId: 0);
+
+            Assert.NotEqual("BattleVictory", result);
+        }
+
+        [Fact]
         public void DetectScreen_EncA255_MidCast_GuardedBySubmenuFlag_DoesNotFireVictory()
         {
             // S58 live-observed: during a Shout cast animation, encA/encB

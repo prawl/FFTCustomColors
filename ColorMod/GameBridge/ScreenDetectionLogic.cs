@@ -562,8 +562,17 @@ namespace FFTColorCustomizer.GameBridge
             // The Victory banner overlay sets submenuFlag=1 (live-verified in
             // session-49 Siedge Weald capture); a mid-cast animation has
             // submenuFlag=0.
+            //
+            // 2026-04-24 further tightening: battle_ability response flashes
+            // land with submenuFlag==1 too (ability picker / targeting overlay
+            // is still up), bypassing the S58 guard. gameOverFlag==1 is set
+            // by the Victory banner overlay itself (live-captured at both
+            // Siedge Weald and Zeklaus banners); a mid-cast flicker has
+            // gameOverFlag==0 because the battle hasn't ended. Adding this
+            // discriminator closes the flash without regressing legitimate
+            // sentinel captures.
             if (encA == 255 && encB == 255 && battleMode == 0 && battleTeam == 0
-                && actedOrMoved && submenuFlag == 1)
+                && actedOrMoved && submenuFlag == 1 && gameOverFlag == 1)
                 return "BattleVictory";
 
             // LoadGame: reached from GameOver menu. Shares stale battle state with GameOver
