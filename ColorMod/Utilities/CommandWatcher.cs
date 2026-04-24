@@ -4007,11 +4007,39 @@ namespace FFTColorCustomizer.Utilities
                 SkipWait = command.SkipWait,
             };
 
+            // Pre-flight: reject plans that attempt a move after move is
+            // consumed or an ability after act is consumed. Without this
+            // the bundle dispatches the first sub-step which then fails
+            // with a misleading "Not in Move mode" (live-repro 2026-04-24).
+            // Mirror the canonical message from battle_attack/battle_ability
+            // entry-reset check (commit 8cf9197).
+            EnsureNavActions();
+            var preflightScreen = DetectScreen();
+            if (preflightScreen != null
+                && (preflightScreen.Name == "BattleMyTurn" || preflightScreen.Name == "BattleActing"))
+            {
+                bool preHasMoved = preflightScreen.BattleMoved == 1 || _movedThisTurn;
+                bool preHasActed = preflightScreen.BattleActed == 1 || _actedThisTurn;
+                string? preflightError = GameBridge.ExecuteTurnPreflightValidator.Validate(
+                    plan, preHasMoved, preHasActed);
+                if (preflightError != null)
+                {
+                    return new CommandResponse
+                    {
+                        Id = command.Id,
+                        Status = "failed",
+                        Error = preflightError,
+                        ProcessedAt = System.DateTime.UtcNow.ToString("o"),
+                        GameWindowFound = true,
+                        Screen = preflightScreen,
+                    };
+                }
+            }
+
             // S58: seed the accumulator with the pre-bundle snapshot so HP
             // delta / move delta / killed units can be aggregated across
             // every sub-step. Pre-bundle scan is cheap if already cached.
             var accumulator = new GameBridge.ExecuteTurnResultAccumulator();
-            EnsureNavActions();
             var initialPost = _navActions?.ReadPostActionState();
             accumulator.Seed(initialPost);
             var preBundleUnits = SnapshotUnitsForKillDiff();
