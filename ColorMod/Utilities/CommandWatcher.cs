@@ -8262,8 +8262,18 @@ namespace FFTColorCustomizer.Utilities
                                 // operates on the right state.
                                 ScreenMachine.SetScreen(GameScreen.EquipmentScreen);
                             }
-                            // Force ViewedUnit in case SM drifted to wrong unit
-                            if (screen.ViewedUnit != matchedSlot.Name)
+                            // Force ViewedUnit in case SM drifted to wrong
+                            // unit — but ONLY on EqA-family screens. Setting
+                            // ViewedUnit on a Battle* response pollutes the
+                            // field (caller expects an active-unit identity
+                            // there, not a mirror-matched roster member).
+                            // Live-observed 2026-04-25 at Siedge Weald:
+                            // `[EqA promote] Setting viewedUnit='Ramza'`
+                            // logs during BattleMyTurn correlated with a
+                            // battle_ability "Failed to enter targeting
+                            // mode" recovery loop that never progressed.
+                            if (!screen.Name.StartsWith("Battle")
+                                && screen.ViewedUnit != matchedSlot.Name)
                             {
                                 ModLogger.Log($"[EqA promote] Setting viewedUnit='{matchedSlot.Name}' (was '{screen.ViewedUnit ?? "null"}').");
                                 screen.ViewedUnit = matchedSlot.Name;
