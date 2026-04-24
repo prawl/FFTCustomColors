@@ -3517,7 +3517,7 @@ if(occupiedAtk.length){
 }
 // Recommended facing
 const rf=vp.RecommendedFacing;
-if(rf?.desc)console.log('Facing: '+rf.desc);
+if(rf?.desc)console.log('Recommend Wait: '+rf.desc);
 console.log('');
 
 // Units — first unit inline with the "Units:" header, subsequent lines
