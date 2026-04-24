@@ -136,6 +136,85 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_TravelList_WithoutEventId_IsNotMisfiredAsBattleDialogue()
+        {
+            // Regression pin for the 2026-04-25 fix (commit e909097): the
+            // new "eventId active at battle location with battleMode==0"
+            // rule must NOT fire when eventId is unset (0 or 0xFFFF).
+            // TravelList still wins in the normal world-map case.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 255, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 0);  // no event
+
+            Assert.Equal("TravelList", result);
+        }
+
+        [Fact]
+        public void DetectScreen_TravelList_AtBattleLocation_WithoutEventId_StillTravelList()
+        {
+            // Guard the save-load fix from over-firing: rawLocation in
+            // battle-range (0..42) with no active event should still
+            // resolve to TravelList (not BattleDialogue). The new rule
+            // requires IsRealEvent(eventId); eventId=0 fails that check.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 28, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 0);
+
+            Assert.Equal("TravelList", result);
+        }
+
+        [Fact]
+        public void DetectScreen_WorldMap_AtBattleLocation_WithoutEventId_StillWorldMap()
+        {
+            // Same guard, ui=0 path.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 28, slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 0);
+
+            Assert.Equal("WorldMap", result);
+        }
+
+        [Fact]
+        public void DetectScreen_BattleDialogue_AtBattleLocation_BattleMode0_WithEventId_Fires()
+        {
+            // Positive pin of the new save-load rule (commit e909097).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 28, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 12);
+
+            Assert.Equal("BattleDialogue", result);
+        }
+
+        [Fact]
+        public void DetectScreen_BattleChoice_AtBattleLocation_BattleMode0_WithChoiceModal_Fires()
+        {
+            // BattleChoice variant of the save-load rule: eventHasChoice +
+            // choiceModalFlag routes to BattleChoice instead of plain
+            // BattleDialogue.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 28, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 12,
+                eventHasChoice: true, choiceModalFlag: 1);
+
+            Assert.Equal("BattleChoice", result);
+        }
+
+        [Fact]
         public void DetectScreen_TravelList_NotInBattle_ShouldReturnTravelList()
         {
             // TravelList: rawLocation=255, ui=1 (menu overlay on the world map).
