@@ -216,6 +216,18 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         [JsonPropertyName("maxPollMs")]
         public long? MaxPollMs { get; set; }
+
+        /// <summary>
+        /// S60 narrator: when true, battle_wait discards the persistent
+        /// last-snap before capturing a fresh one — preventing phantom
+        /// "recovered N HP" / "lost Status" events when a new battle
+        /// starts and the old battle's snapshot is still in memory.
+        /// Shell helpers set this on the FIRST chunk of a battle_wait_live
+        /// sequence; subsequent chunks leave it unset to carry names
+        /// forward across the same battle.
+        /// </summary>
+        [JsonPropertyName("resetNarrator")]
+        public bool ResetNarrator { get; set; }
     }
 
     public class BatchReadEntry

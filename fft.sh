@@ -946,7 +946,7 @@ battle_wait() {
   # battle_wait_live skip this step by calling _battle_wait_chunk directly.
   : > "$EVTS" 2>/dev/null
   _NARR_LOG_POS=0
-  _battle_wait_chunk "$dir" "$max_poll_ms"
+  _battle_wait_chunk "$dir" "$max_poll_ms" "1"
 }
 
 # Internal helper: runs one battle_wait bridge call without truncating the
@@ -962,11 +962,13 @@ _NARR_LOG_POS=0
 _battle_wait_chunk() {
   local dir="$1"
   local max_poll_ms="$2"
+  local reset_narrator="$3"   # "1" on the first chunk of a wait sequence
   local EVTS="$B/live_events.log"
 
   local cmd="{\"id\":\"$(id)\",\"action\":\"battle_wait\""
   [ -n "$dir" ] && cmd="$cmd,\"pattern\":\"$dir\""
   [ -n "$max_poll_ms" ] && cmd="$cmd,\"maxPollMs\":$max_poll_ms"
+  [ "$reset_narrator" = "1" ] && cmd="$cmd,\"resetNarrator\":true"
   cmd="$cmd}"
 
   local fft_timeout=60
@@ -1019,7 +1021,11 @@ battle_wait_live() {
   local _final_rc=0
   while [ "$iter" -lt "$max_iters" ]; do
     iter=$((iter + 1))
-    _battle_wait_chunk "$dir" "$chunk_ms"
+    # First chunk of a sequence resets narrator state so the prior battle's
+    # persistent snap doesn't pollute this battle's first diff.
+    local _reset="0"
+    [ "$iter" -eq 1 ] && _reset="1"
+    _battle_wait_chunk "$dir" "$chunk_ms" "$_reset"
     local _rc=$?
     if [ "$_rc" -ne 0 ]; then _final_rc=$_rc; break; fi
 
@@ -3496,8 +3502,11 @@ const rf=vp.RecommendedFacing;
 if(rf?.desc)console.log('Facing: '+rf.desc);
 console.log('');
 
-// Units
-console.log('Units:');
+// Units — first unit inline with the "Units:" header, subsequent lines
+// indented to align under the first. Saves a line of vertical space and
+// keeps the block visually cohesive.
+let _unitIdx=0;
+if(us.length===0) console.log('Units:');
 us.forEach(u=>{
   const team=u.team===0?'PLAYER':u.team===2?'ALLY':'ENEMY';
   const nm=u.name?' '+u.name:'';
@@ -3533,7 +3542,8 @@ us.forEach(u=>{
     if(u.elementWeak?.length)extra+=' !weak:'+u.elementWeak.join(',');
     if(u.elementStrengthen?.length)extra+=' ^str:'+u.elementStrengthen.join(',');
   }
-  console.log('  ['+team+']'+nm+clSep+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+extra+st+life+act);
+  const _prefix=(_unitIdx++===0)?'Units:  ':'        ';
+  console.log(_prefix+'['+team+']'+nm+clSep+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+extra+st+life+act);
 });
 " 2>/dev/null
     unset _FFT_TIMING_SUFFIX

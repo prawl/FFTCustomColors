@@ -475,7 +475,14 @@ namespace FFTColorCustomizer.GameBridge
             // forward across calls so names backfilled in a prior chunk
             // survive into the next one (the scan sometimes drops enemy
             // names mid-battle). Fresh non-chunked call = reset + recapture.
+            // ResetNarrator flag forces a fresh capture (shell sets it on
+            // the first chunk of a new battle_wait_live sequence to avoid
+            // phantom "recovered HP" events carried over from a prior battle).
             List<UnitScanDiff.UnitSnap>? narratorLastSnap;
+            if (command?.ResetNarrator == true)
+            {
+                _narratorPersistentLastSnap = null;
+            }
             bool isChunkedContinuation = command?.MaxPollMs != null
                 && _narratorPersistentLastSnap != null;
             if (isChunkedContinuation)
@@ -808,6 +815,11 @@ namespace FFTColorCustomizer.GameBridge
                         || current.Name == "BattleDesertion")
                     {
                         response.Info = $"Battle ended: {current.Name} after {sw.ElapsedMilliseconds}ms";
+                        // S60: narrator persistent snap belongs to THIS battle;
+                        // clear it so the next battle starts fresh and we don't
+                        // emit phantom "recovered HP" / "lost status" events
+                        // from a stale prior-battle snapshot.
+                        _narratorPersistentLastSnap = null;
                         break;
                     }
                 }
