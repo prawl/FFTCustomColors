@@ -1775,3 +1775,94 @@ Commits:
 - Likely caused by game-version swap (Deluxe Edition) earlier in the session
 
 **Tests:** 4194 passing (+20 this session).
+
+---
+
+### Session 60 (2026-04-23/24) — 12 commits, Enemy-Turn Narrator + DLC catalog + scan polish + Items secondary fix, +79 tests
+
+**Tests: 4190 → 4269 (+79).** Clean branch. Feature-complete Phase 1+2 of a live-streaming enemy-turn narrator, plus a suite of scan-render + helper fixes, all TDD'd and most live-verified.
+
+**Commits (chronological):**
+- `3998868` — S60 — DLC item catalog: Akademy set + Materia Blade+ + IC unused probe
+- `05c647f` — god_ramza — upgrade loadout to Chaos Blade + Escutcheon strong + Sortilege
+- `567d898` — S60 — TODO reset: wipe stale cruft, seed with 15 live battle gaps
+- `da1335d` — auto_place_units — place only Ramza, leave other 3 slots unplaced
+- `cabb99d` — S60 — Enemy-Turn Narrator Phase 1: before/after diff in battle_wait
+- `33648d0` — S60 — Enemy-Turn Narrator Phase 1.5: live streaming + chunked wait
+- `95d356d` — S60 — Enemy-Turn Narrator Phase 2: counter + self-destruct inferrers
+- `978b8b2` — S60 — Phase 2.5 + scan polish: dedupe, petrified, attack-always-visible
+- `a7be866` — S60 — narrator fixes live-verified: counter attribution, statuses, names
+- `b080b72` — S60 — narrator: reset persistent snap + inline Units header
+- `396d116` — S60 — battle_ability: HP delta suffix in response.Info
+- `1c3125f` — S60 — Items secondary persists across transient SecondaryAbility=0 scans
+
+**DLC item catalog (commit 3998868):**
+
+- [x] **TIC Deluxe bonus items live-verified at FFTPatcher IDs 257-260** — Akademy Blade (257, sword), Akademy Beret (258, hat), Akademy Tunic (259, clothing), Ring of Aptitude (260, ring w/ JP Boost). Read off Ramza's roster slot after claiming the Deluxe entitlement.
+- [x] **Materia Blade+ discovered at ID 256** — IC Remaster renamed/replaced the PSP Chaosbringer slot.
+- [x] **PSP IDs 261-277 probed and tagged `[IC:unused]`** — all PSP-exclusive weapons (Moonblade, Onion Sword, Ras Algethi, Fomalhaut, Francisca, Golden Axe, Orochi, Moonsilk Blade, Nirvana, Dreamwaker, Stardust Rod, Crown Scepter, Vesper, Sagittarius Bow, Durandal, Gae Bolg, Gungnir) render as empty placeholders. ID 262 Onion Sword fully CRASHES the game on PartyMenu render — tagged `[IC:CRASHES]`.
+- [x] **`dlc_items [count]` shell helper** — writes inventory counts to `0x1411A18C1..C4` so Claude can spawn the Deluxe set on demand.
+- [x] **Memory note `project_dlc_item_ids.md`** + `feedback_invalid_item_id_crashes.md` (⛔ equipping an unused ID is a PartyMenu-render crash; probe via inventory writes only).
+
+**Ramza loadout (commit 05c647f):**
+
+- [x] **`god_ramza` upgraded** — Weapon: Ragnarok (36) → Chaos Blade (37, WP 40, on-hit Petrify); Shield: Kaiser (141) → Escutcheon strong (143, PhysEv 75 / MagEv 50); Accessory: Bracer (218) → Sortilege (239, perfume). Helm (Grand Helm 156), Body (Maximillian 185), Brave/Faith 95 unchanged.
+
+**`auto_place_units` (commit da1335d):**
+
+- [x] **Place only Ramza on formation** — was placing all 4 slots (Enter×2 each). Now a single Enter×2 for Ramza + Space+Enter to commence. Other 3 slots stay unplaced so solo-Ramza playtests work.
+
+**Enemy-Turn Narrator feature (commits cabb99d / 33648d0 / 95d356d / 978b8b2 / a7be866 / b080b72):**
+
+- [x] **Phase 1 — before/after diff MVP** — `BattleNarratorRenderer` pure helper (14 tests). Pre-wait snapshot at `BattleWait` entry, post-wait snapshot on poll exit, `UnitScanDiff.Compare` → render `> ...` lines into `response.Info`. +7 pipeline tests. `CaptureCurrentUnitSnapshot` helper wraps ScannedUnit → UnitScanDiff.UnitSnap conversion.
+- [x] **Phase 1.5 — live streaming + chunked mode** — new `NarrationEventLog` append-only log at `claude_bridge/live_events.log`. Mid-poll narration every ~450ms (every 3rd 150ms tick). New `maxPollMs` field on battle_wait bridge command → chunked mode returns "partial" status for Claude to loop. `battle_wait_live [dir] [chunk_ms]` shell helper loops chunks until friendly turn. File-position-delta read replaces tail-subshell (Git Bash wasn't cleanly killing the orphan pipeline between chunks).
+- [x] **Phase 2 — inferrers** — `CounterAttackInferrer` (10 tests) + `SelfDestructInferrer` (9 tests). `EmitNarrationBatch` helper consolidates the three narration emit sites (mid-poll / friendly-turn catch-up / chunked-timeout catch-up).
+- [x] **Phase 2.5 — dedupe** — `BattleNarratorRenderer.Render` takes optional `HashSet<string> suppressedKoLabels`; `EmitNarrationBatch` builds the set by string-matching counter/self-destruct output so raw `> X died` doesn't duplicate inferred attribution lines. +3 renderer tests.
+- [x] **Identity-fix batch — 3 live-surfaced bugs** (commit a7be866):
+    - CounterAttackInferrer derives the counter-attacker from events (PLAYER-team damaged unit) instead of trusting `narratorActivePlayerName` which shifts to the acting ENEMY mid-chunked-turn. +2 tests.
+    - BattleNarratorRenderer emits gained/lost status lines alongside damaged/healed/ko/revived events (UnitScanDiff collapses Kind="damaged" when HP+status both change; status deltas were silently dropped). +3 tests.
+    - Class-level `_narratorPersistentLastSnap` carries forward across chunked BattleWait calls so a fresh scan that lost enemy names can backfill from the prior chunk's snap instead of emitting "(unit@x,y)" fallbacks.
+- [x] **Reset-narrator flag** (commit b080b72) — new `resetNarrator` bool on the battle_wait bridge command. Shell sets it on the first chunk of each `battle_wait_live` / `battle_wait` sequence so the prior battle's persistent snap doesn't emit phantom "recovered N HP" / "lost Status" events on the first diff of a new battle. Also auto-cleared on BattleVictory / BattleDesertion.
+
+**Scan polish (commit 978b8b2):**
+
+- [x] **Petrified units tagged as effectively-dead** — `StatusDecoder.GetLifeState` returns "petrified" when the Petrify byte-1 mask 0x80 is set. fft.sh renders ` STONE` / ` CRYSTAL` suffixes alongside ` DEAD`. Priority: crystal > treasure > dead > petrified > alive. +4 tests.
+- [x] **Attack tiles respect life state** — `NavigationActions` attack-tile builder marks any non-"alive" occupant as "empty". Dead / crystal / treasure / petrified no longer appear as valid Attack targets.
+- [x] **Attack entry always visible** — `AbilityCompactor.IsHidden` exempts the basic "Attack" entry so Claude sees the weapon's range + element + on-hit effect even when no enemy is adjacent. +2 tests.
+- [x] **Weapon tag helpers** — `ItemData.GetEquippedWeapon` + `ItemData.ComposeWeaponTag` produce "{Name}" or "{Name} onHit:{effect}" with "On hit: " prefix stripped. `ActiveUnitSummaryFormatter.Format` takes optional weaponTag. +4 ItemData tests + 4 formatter tests. **Wire-up to `_cachedActiveUnitWeaponTag` still pending** — blocked on BattleUnitState not exposing Equipment.
+
+**Inline Units header** (commit b080b72):
+
+- [x] **Scan output Units: inline with first entry** — was `Units:\n  [ENEMY] X...`, now `Units:  [ENEMY] X...\n        [ENEMY] Y...`. Saves a vertical line; per user request.
+
+**battle_ability HP delta** (commit 396d116):
+
+- [x] **`battle_ability` returns HP delta** — targeted non-cast abilities now report `(preHp→postHp/maxHp)` / ` — KO'd! (preHp→0/maxHp)` / ` — revived (0→postHp/maxHp)` in response.Info, matching BattleAttack's shape. Cast-time abilities (CastSpeed>0) skip the delta (they queue in Combat Timeline; HP won't change until the cast triggers). New `AbilityHpDeltaFormatter` pure helper (+8 tests).
+
+**Items-secondary-not-in-submenu fix** (commit 1c3125f):
+
+- [x] **`SecondarySkillsetResolver` persists across transient SecondaryAbility=0 reads** — the byte reads 0 transiently mid-turn on IC Remaster. Old code blanked `_cachedSecondarySkillset` to null on that miss, so `GetAbilitiesSubmenuItems` returned `[Attack, Mettle]` with no "Items" and every `battle_ability "Phoenix Down"` / Potion / etc. failed with `Skillset 'Items' not in submenu`. Pure resolver now preserves the last-known-good cache when the current scan can't confirm a secondary. +9 resolver tests. **Live-verified this session** — Phoenix Down on dead undead navigated correctly through Items submenu.
+
+**Narrator live verifications (committed + live-verified):**
+
+- [x] **Counter attribution correct** — "> Ramza countered Black Chocobo for 336 dmg" (no self-countering).
+- [x] **Petrify proc captured** — "> Black Chocobo gained Petrify, Critical" alongside the damage event.
+- [x] **Names stick across chunked calls** — no "(unit@x,y)" fallback after fix.
+- [x] **Petrified / Crystal suffixes render** — `[Petrify,Float,Critical] STONE` / `[Crystal,Undead] CRYSTAL`.
+- [x] **Inline `Units:` header** — renders as designed.
+- [x] **`Attack → (no targets in range)` always visible** — weapon profile shown even alone.
+- [x] **No phantom "recovered HP" cross-battle** — resetNarrator flag cleared persistent snap.
+
+**Still UNVERIFIED (awaiting live repro):**
+
+- Counter-KO ko-suppression in one window — attack + KO split across chunks on live runs; logic-tested only.
+- Self-destruct inferrer — no live Bomb self-destruct caught yet.
+- `battle_ability` HP delta suffix — tests-only, no live Throw Stone / Cura / Phoenix Down HP-delta capture yet.
+
+**Memory notes added/updated this session:**
+- `project_dlc_item_ids.md` — new: FFTPatcher IDs 257-260 live-verified.
+- `feedback_invalid_item_id_crashes.md` — new: IC Remaster drops PSP-exclusive items; equipping an unused ID crashes on PartyMenu render.
+- `MEMORY.md` — index updated with S60 entries.
+
+**TODO reset:**
+- `567d898` wiped all stale S56-S59 items from TODO.md per user direction and seeded fresh S60 bugs surfaced during live play.

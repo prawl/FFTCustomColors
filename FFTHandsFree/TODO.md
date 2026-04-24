@@ -78,109 +78,45 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
-### Session 60 — Enemy-Turn Narrator feature (2026-04-23)
+### Enemy-Turn Narrator follow-ups (S60)
 
-> Replaces the two "enemy-turn damage / counter-KO not surfaced" bugs below with a concrete feature plan. See [plan file](../../../../Users/ptyRa/.claude/plans/cached-dazzling-panda.md) for design + rationale.
+- [ ] **⚠ UNVERIFIED: CounterAttackInferrer KO-suppression in one window** [Narrator] — S60 wired + live-verified counter attribution ("Ramza countered Black Chocobo for 336 dmg"). Still need a live repro where enemy attack + counter + KO all land in the SAME 450ms mid-poll window so the ko-suppression path runs (raw "> Bonesnatch died" dropped in favor of "Ramza countered Bonesnatch for N dmg — Bonesnatch died"). S60 observed KO but attack+death split across chunks by a TitleScreen flicker; no suppression exercised.
 
-**Phase 1 — MVP (before/after diff, no attribution)**
+- [ ] **⚠ UNVERIFIED: SelfDestructInferrer on a live Bomb** [Narrator] — Wired + tests green; no Bomb self-destruct caught during S60 verification. Repro: maneuver a Bomb adjacent to Ramza + another player/ally so when it self-destructs at least 2 units take damage. Expected: `> Bomb self-destructed (dealt N to Ramza, M to Agrias)` appears.
 
-- [ ] **Pure helper: `BattleNarratorRenderer`** [Narrator] — Takes `List<ScanChangeEventDto>` + active player name → returns `> ...` lines appended to `response.Info`. TDD fixtures: damage/heal/move/ko/revived/empty/truncation-to-~8-lines. Filter: suppress healed events on the active player when delta ≤ expected Regen tick. File: `ColorMod/GameBridge/BattleNarratorRenderer.cs`. 6-8 tests.
+- [ ] **⚠ UNVERIFIED: `battle_ability` HP delta suffix** [Stats/Execution] — Shipped but not live-verified. Best test: Throw Stone from Ramza on an enemy. Expected shape: `Used Throw Stone on (8,5) (90→61/650)`. Phoenix Down on dead ally: ` — revived (0→50/477)`. Cast-time abilities (Cura, Fire, Haste) should omit the delta.
 
-- [ ] **Wire pre-wait snapshot into `BattleWait()`** [Narrator] — At method entry in `NavigationActions.cs:458`, before the poll loop, call `CollectUnitPositionsFull()` and stash into a local `List<UnitSnap> preWait`. No behavior change yet — plumbing only.
+### Phase 3 — Memory hunts (blocks per-action attribution)
 
-- [ ] **Wire post-wait snapshot + diff + render** [Narrator] — At poll-exit block (line ~715), call `CollectUnitPositionsFull()` again, pass `(preWait, postWait)` to `UnitScanDiff.Compare()`, feed result into `BattleNarratorRenderer`, append lines to `response.Info`. Behavior: narrated events now appear in `battle_wait` output.
+- [ ] **Memory hunt: active-unit-index byte during BattleEnemiesTurn / BattleAlliesTurn** [Memory] — Diagnostic `fft.sh` helper takes snapshots at the start of each per-unit enemy-turn window and diffs. Expected: a u8 cycling through roster/battle-array indices. Writes finding to `memory/project_active_unit_index.md`. Unblocks Phase 4 per-action narrator ("> Grenade attacked Ramza for 100 dmg").
 
-- [ ] **Integration test: BattleWait snapshot/diff wiring** [Narrator] — One test using fake pre/post UnitSnap lists + assertion that response.Info contains expected `> ...` lines. Verifies end-to-end without live game.
+- [ ] **Memory hunt: currently-executing-ability-id byte during BattleActing** [Memory] — Diagnostic snapshots during an enemy spell cast. Expected: a u16 with the ability ID for ~N frames of animation. Writes to `memory/project_enemy_ability_id.md`. Unblocks ability-name attribution ("Ice Animna") in narration.
 
-<!-- S60 SHIPPED (Phase 2): CounterAttackInferrer + SelfDestructInferrer + wire-in
-     via EmitNarrationBatch() in NavigationActions. +19 tests. Not yet live-verified.
-     Awaits a counter-KO scenario (undead adjacent to Chaos Blade-wielding Ramza)
-     and a bomb self-destruct scenario (2+ units in the bomb's AoE when it dies)
-     to confirm the inferred lines fire correctly in real battle data. -->
-
-- [ ] **⚠ UNVERIFIED: CounterAttackInferrer + SelfDestructInferrer wired but not live-tested** [Narrator] — S60 shipped both pure helpers with full TDD coverage and the wire-up via `EmitNarrationBatch()`. Needs: (a) live counter-KO repro — undead enemy walks adjacent to Ramza with Chaos Blade, gets counter-killed, confirm `> Ramza countered Skeleton for N dmg — Skeleton died` appears. (b) live self-destruct repro — Bomb dies while 2+ units in range take damage, confirm `> Bomb self-destructed (dealt N to Ramza, M to Agrias)` appears.
-
-<!-- S60 SHIPPED (Phase 2.5): BattleNarratorRenderer now takes an optional
-     HashSet<string> suppressedKoLabels. EmitNarrationBatch builds the set by
-     matching counter-line "— X died" and self-destruct-line "> X self-destructed"
-     suffixes, so the raw "> X died" event is dropped when an inferred line
-     already attributes the death. +3 renderer tests. -->
-
-
-**Phase 3 — Memory hunts (prereqs for per-action attribution)**
-
-- [ ] **Memory hunt: active-unit-index byte during BattleEnemiesTurn / BattleAlliesTurn** [Memory] — Diagnostic `fft.sh` helper takes snapshots at the start of each per-unit enemy-turn window and diffs. Expected: a u8 cycling through roster/battle-array indices. Writes finding to `memory/project_active_unit_index.md`.
-
-- [ ] **Memory hunt: currently-executing-ability-id byte during BattleActing** [Memory] — Diagnostic snapshots during an enemy spell cast. Expected: a u16 with the ability ID for ~N frames of animation. Writes to `memory/project_enemy_ability_id.md`.
-
-**Phase 4 — bonus, only if hunts succeed**
+### Phase 4 — per-action narrator (blocks on Phase 3 hunts)
 
 - [ ] **Per-action narrator: mid-turn polling + ability names** [Narrator] — Once the two memory hunts land, restructure `BattleWait` poll loop to sample active-unit-index + ability-id per iteration. Emit `> Grenade cast Ignite on Ramza for 100 dmg` instead of generic `Ramza took 100 damage`. Empirically verify direct battle-array reads are safe during BattleEnemiesTurn (no C+Up) before wiring.
 
-### Session 60 — other battle-play gaps (2026-04-23)
+### Execution / detection
 
 - [ ] **🔴 `execute_turn` leaves game stuck mid-sequence** [Execution] — Live-repro S60: `execute_turn 4 6 "Phoenix Down" 4 7` timed out after 5s. Game ended up in BattleMoving with cursor on (4,6), F-confirm not fired. Recovery required manual `battle_wait` which took 30+ seconds. Two bugs in one: (a) the 5s bridge timeout is too aggressive for execute_turn bundles, (b) the move-confirm step didn't fire. Probably same family as the S59 menuCursor drift.
 
 - [ ] **🔴 Screen detection reports BattleMoving while game is in BattleWaiting** [Detection] — Live-repro S60: after the stuck `execute_turn`, `screen` persistently returned `[BattleMoving] ui=(4,6)` but user confirmed the actual game state was BattleWaiting (facing-direction select). Stale `battleMode` byte or stale-cursor-cache issue. Add a signal discriminator: if we arrived at BattleMoving via a recent move-commit key press, re-check after 500ms and accept BattleWaiting if it appears.
 
-<!-- S60 SHIPPED (partial): Attack entry always visible even with no enemy in range
-     (AbilityCompactor.IsHidden exempts "Attack"). ItemData.ComposeWeaponTag helper
-     composes "<Name> onHit:<effect>" strings. ActiveUnitSummaryFormatter accepts
-     optional weaponTag. Wire-up from the scan pipeline to CommandWatcher's cached
-     active-unit state is BLOCKED — BattleUnitState doesn't expose Equipment, so
-     `_cachedActiveUnitWeaponTag` is always null. Needs: either add Equipment to
-     BattleUnitState OR attach a weapon-tag string to `battleState` directly in
-     NavigationActions.CollectUnitPositionsFull. Small but touches the DTO layer. -->
-
-- [ ] **🟡 Wire weapon tag into active-unit banner** [Scan] — `ItemData.ComposeWeaponTag` + `ActiveUnitSummaryFormatter.Format(weaponTag)` are ready and tested (S60 Phase 3). Still need to thread the active unit's equipment list from NavigationActions into CommandWatcher's `_cachedActiveUnitWeaponTag` so `[BattleMyTurn] Ramza(Gallant Knight) [Chaos Blade onHit:chance to add Stone] (2,1) HP=...` actually appears live. Fix: add `Equipment` field to BattleUnitState, OR attach a `ActiveUnitWeaponTag` field to `battleState` and read it directly at the formatter call site.
-
-- [ ] **🟡 `scan_move` deprecation message is terse** [Shell] — `scan_move` now prints `[USE screen] scan_move is deprecated. Use: screen` and exits. Should either run `screen` directly (forward compat) OR print a single clear line explaining the migration path + cite Commands.md section.
-
-<!-- S60 SHIPPED: SecondarySkillsetResolver — the SecondaryAbility byte reads 0
-     transiently (S59 Ramza second-turn repro); upstream FilterAbilitiesBySkillsets
-     then strips secondary abilities from activeUnit.Abilities, starving the
-     inference loop. Old code blanked _cachedSecondarySkillset to null on that
-     transient miss, so GetAbilitiesSubmenuItems returned [Attack, Mettle] with
-     no "Items" and every battle_ability "Phoenix Down" / "Potion" / etc. failed.
-     Fix: pure resolver keeps the last-known-good cache when current scan can't
-     confirm a secondary. +9 resolver tests. -->
-
-- [ ] **⚠ UNVERIFIED: `battle_ability "Phoenix Down"` after resolver fix** [Execution] — Needs live repro to confirm the submenu lookup now finds "Items" on Ramza's second+ turn when SecondaryAbility byte transiently reads 0.
-
-<!-- S60 SHIPPED: StatusDecoder.GetLifeState returns "petrified" when the Petrify
-     bit is set. fft.sh renders a " STONE" / " CRYSTAL" suffix in the unit listing
-     alongside " DEAD". NavigationActions' attack-tile builder treats any non-
-     "alive" occupant as "empty" so stoned enemies don't show up as Attack targets.
-     +4 StatusDecoder tests. -->
-
-<!-- S60 SHIPPED (partial): weapon on-hit effect surfacing is unblocked at the
-     helper layer (ItemData.ComposeWeaponTag + ActiveUnitSummaryFormatter), but
-     needs the wire-up from scan → cached banner (see "Wire weapon tag into
-     active-unit banner" above). -->
-
-- [ ] **🟡 `ui=` reports Abilities when cursor is actually on Move** [Detection] — Live-repro S60: after a battle_attack returned, screen showed `[BattleMyTurn] ui=Abilities` but user confirmed cursor was on Move. Same family as the BattleMoving/BattleWaiting stale-byte bug — menuCursor byte reading stale after an action. Candidate fix: refresh menuCursor on fresh BattleMyTurn entry, reset to 0 by default on state transition.
-
-<!-- S60 SHIPPED: battle_ability now captures pre-HP at target via ReadStaticArrayHpAt
-     before the cast, then ReadLiveHp post-settle, and appends an HP delta suffix
-     via AbilityHpDeltaFormatter. Output shapes:
-       "Used Throw Stone on (8,5) (90→61/650)"
-       "Used Cure on (10,9) (300→500/719)"
-       "Used Phoenix Down on (4,7) — revived (0→50/477)"
-       "Used Fire on (7,5) — KO'd! (50→0/620)"
-     Cast-time abilities (CastSpeed>0) skip the delta — they queue in the
-     Combat Timeline and HP won't change until the cast triggers later.
-     Self-target / self-radius still emit their legacy no-delta lines.
-     +8 AbilityHpDeltaFormatter tests. -->
-
-- [ ] **⚠ UNVERIFIED: `battle_ability` HP delta surfacing (S60)** [Stats/Execution] — Shipped but needs a live repro on a targeted non-cast ability to confirm the `(pre→post/max)` suffix renders correctly. Best test: Throw Stone from Ramza on an enemy, or Phoenix Down on a dead ally. Cast-time abilities (Cura, Fire, Haste) should omit the delta — they queue, post-HP won't have changed yet.
-
-- [ ] **🔴 No validation that Act is already consumed this turn** [Execution] — Live-repro S60: after a successful basic Attack (which consumed Act), retrying `battle_attack` failed silently with `Failed to enter targeting mode (current: BattleMoving)` instead of the correct error `Act already used this turn — only Move or Wait remain`. Helpers should pre-check `battleActed` byte (or equivalent) and return a clean "already acted" message so Claude knows to pivot to move-then-wait. Blocks autonomous play — Claude currently wastes cycles banging on an action the game won't allow.
-
-- [ ] **🟡 ui field should reflect action-consumed state** [Scan] — If Act is consumed, the `[BattleMyTurn]` header could surface `acted` tag (e.g. `[BattleMyTurn] ui=Move acted Ramza ...`) so Claude knows without probing. Related to menuAvailability work in S58/S59.
+- [ ] **🔴 No validation that Act is already consumed this turn** [Execution] — Live-repro S60: after a successful basic Attack (which consumed Act), retrying `battle_attack` failed silently with `Failed to enter targeting mode (current: BattleMoving)` instead of a clean "already acted" message. Helpers should pre-check `battleActed` byte (or equivalent) and return `Act already used this turn — only Move or Wait remain` so Claude pivots instead of banging on a grayed action.
 
 - [ ] **🔴 Victory misdetected as BattleDesertion** [Detection] — Live-repro S60 solo Ramza at Siedge Weald: after killing the last Skeleton, the final `battle_wait` returned `[BattleDesertion]` even though a screenshot immediately confirmed the game was on WorldMap (Victory flow completed cleanly). Petrified Bomb was still on the field — possibly the trigger: game auto-scored Victory on player alive + no undead-animate enemies, mod detection read stale sentinels and classified as Desertion. Sister bug to the S59 post-Victory misdetects. Capture: run `session_tail failed` at the end of each battle; any Desertion followed by WorldMap within 5s is this bug.
 
-- [ ] **🟡 Attack tiles include dead units** [Scan] — Live-repro S60: `Attack tiles: Up→(4,4) enemy (Skeleton)` when the Skeleton at (4,4) had HP=0 `[Dead]`. Dead tile shouldn't be attack-suggestable. Filter attack-tile occupants by lifeState.
+- [ ] **🟡 `ui=` reports Abilities when cursor is actually on Move** [Detection] — Live-repro S60: after a battle_attack returned, screen showed `[BattleMyTurn] ui=Abilities` but user confirmed cursor was on Move. Same family as the BattleMoving/BattleWaiting stale-byte bug — menuCursor byte reading stale after an action. Candidate fix: refresh menuCursor on fresh BattleMyTurn entry, reset to 0 by default on state transition.
+
+### Scan output polish
+
+- [ ] **🟡 Wire weapon tag into active-unit banner** [Scan] — S60 shipped `ItemData.ComposeWeaponTag` + `ActiveUnitSummaryFormatter.Format(weaponTag)` with tests. Wire-up from scan → CommandWatcher's `_cachedActiveUnitWeaponTag` is BLOCKED on BattleUnitState not exposing Equipment. Fix: add `Equipment` (List&lt;int&gt;?) field to BattleUnitState OR attach a `ActiveUnitWeaponTag` string directly to `battleState` in NavigationActions.CollectUnitPositionsFull.
+
+- [ ] **🟡 ui field should reflect action-consumed state** [Scan] — If Act is consumed, the `[BattleMyTurn]` header could surface `acted` tag (e.g. `[BattleMyTurn] ui=Move acted Ramza ...`) so Claude knows without probing. Related to menuAvailability work in S58/S59.
+
+- [ ] **🟡 `scan_move` deprecation message is terse** [Shell] — `scan_move` prints `[USE screen] scan_move is deprecated. Use: screen` and exits. Should either forward to `screen` (forward compat) OR print a single clear line with the migration path + cite Commands.md.
+
+### Speed
 
 - [ ] **🟡 `battle_wait` slow — 17-33s per end-of-turn** [Speed] — Live-repro S60: `battle_wait` took 17s, 20s, 21s, 33s across consecutive turns. Even with Ctrl fast-forward, enemy turn animations dominate. Investigate: is the bridge polling at a slower rate than needed? Is the Ctrl fast-forward actually applying? Target: sub-10s for a 2-enemy end-of-turn.
 
