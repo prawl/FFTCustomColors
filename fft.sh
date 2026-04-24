@@ -3536,6 +3536,10 @@ us.forEach(u=>{
   // Facing is decision-relevant for backstab — keep on enemies only. Ally
   // facing rarely drives the current turn (ally auto-faces on Wait).
   const face=(u.facing&&u.team===1)?' f='+u.facing[0]:'';
+  // Weapon tag (player units only) — server-side ItemData.ComposeWeaponTag.
+  // Lets Claude see Agrias's Escutcheon (strong) / Ramza's Chaos Blade / etc.
+  // at a glance in the Units listing. Skipped when unarmed / unknown.
+  const wep=(u.team===0&&u.weaponTag)?' ['+u.weaponTag+']':'';
   let extra='';
   if(verbose){
     // Skip undefined fields — the battle scan backend doesn't always populate
@@ -3544,6 +3548,8 @@ us.forEach(u=>{
     if(u.pa!=null)parts.push('PA='+u.pa);
     if(u.ma!=null)parts.push('MA='+u.ma);
     if(u.speed!=null)parts.push('Spd='+u.speed);
+    if(u.move)parts.push('Mv='+u.move);
+    if(u.jump)parts.push('Jmp='+u.jump);
     if(u.ct!=null)parts.push('CT='+u.ct);
     if(u.brave!=null)parts.push('Br='+u.brave);
     if(u.faith!=null)parts.push('Fa='+u.faith);
@@ -3558,7 +3564,7 @@ us.forEach(u=>{
     if(u.elementStrengthen?.length)extra+=' ^str:'+u.elementStrengthen.join(',');
   }
   const _prefix=(_unitIdx++===0)?'Units:  ':'        ';
-  console.log(_prefix+'['+team+']'+nm+clSep+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+extra+st+life+act);
+  console.log(_prefix+'['+team+']'+nm+clSep+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+wep+extra+st+life+act);
 });
 " 2>/dev/null
     unset _FFT_TIMING_SUFFIX

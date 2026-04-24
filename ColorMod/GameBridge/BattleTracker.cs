@@ -840,6 +840,17 @@ namespace FFTColorCustomizer.GameBridge
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public int Speed { get; set; }
 
+        /// <summary>Movement range (tiles per turn). Surface on enemies so Claude
+        /// can judge closing threat without drilling into per-unit stats.</summary>
+        [JsonPropertyName("move")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Move { get; set; }
+
+        /// <summary>Jump range (elevation delta that movement can clear).</summary>
+        [JsonPropertyName("jump")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int Jump { get; set; }
+
         [JsonPropertyName("startX")]
         public int StartX { get; set; }
 

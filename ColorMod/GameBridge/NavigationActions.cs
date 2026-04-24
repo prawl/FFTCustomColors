@@ -2845,6 +2845,8 @@ namespace FFTColorCustomizer.GameBridge
                     Reaction = u.ReactionAbility,
                     Support = u.SupportAbility,
                     Movement = u.MovementAbility,
+                    Move = u.Move,
+                    Jump = u.Jump,
                     // Pre-compute weapon banner tag for the active-unit header.
                     // Null when unarmed or no known weapon in equipment.
                     WeaponTag = (u.Team == 0 && u.Equipment != null)
