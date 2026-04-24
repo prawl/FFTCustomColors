@@ -2394,9 +2394,17 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // 2. Get move/jump - use overrides if provided, otherwise from scan
-            int moveStat = command.LocationId > 0 ? command.LocationId : ally.Move;
-            int jumpStat = command.UnitIndex > 0 ? command.UnitIndex : ally.Jump;
+            // 2. Get move/jump - use overrides if provided, otherwise from scan.
+            // When the per-unit heap Move/Jump read fails (live-observed: a
+            // broken-armor MaxHp change invalidated the struct anchor
+            // mid-battle, collapsing Mv/Jp to 0), fall back to the static
+            // JobBaseStatsTable — approximate BFS input beats an empty Move
+            // tile set every time.
+            string? allyJobName = ally.JobNameOverride
+                ?? (ally.Team == 0 ? GameStateReporter.GetJobName(ally.Job) : null);
+            var (fbMove, fbJump) = MoveJumpFallbackResolver.Resolve(ally.Move, ally.Jump, allyJobName);
+            int moveStat = command.LocationId > 0 ? command.LocationId : fbMove;
+            int jumpStat = command.UnitIndex > 0 ? command.UnitIndex : fbJump;
 
             // 3. Get all occupied positions (enemies, allies, dead units — everything except active unit)
             var occupiedPositions = BattleFieldHelper.GetOccupiedPositions(
@@ -2879,12 +2887,13 @@ namespace FFTColorCustomizer.GameBridge
                     Movement = u.MovementAbility,
                     // Live heap Move/Jump is only populated for the active unit
                     // (CollectUnitPositionsFull runs TryReadMoveJumpFromHeap once).
-                    // For non-active units, fall back to JobBaseStatsTable —
-                    // approximate class base values, enough for threat assessment
-                    // (Claude reads "enemy 4 tiles out with Mv=4" as reachable
-                    // next turn without needing live effective stats).
-                    Move = u.Move > 0 ? u.Move : (JobBaseStatsTable.TryGet(jobName)?.move ?? 0),
-                    Jump = u.Jump > 0 ? u.Jump : (JobBaseStatsTable.TryGet(jobName)?.jump ?? 0),
+                    // For non-active units, fall back to JobBaseStatsTable via
+                    // MoveJumpFallbackResolver — approximate class base values,
+                    // enough for threat assessment (Claude reads "enemy 4 tiles
+                    // out with Mv=4" as reachable next turn without needing live
+                    // effective stats).
+                    Move = MoveJumpFallbackResolver.Resolve(u.Move, u.Jump, jobName).move,
+                    Jump = MoveJumpFallbackResolver.Resolve(u.Move, u.Jump, jobName).jump,
                     // Pre-compute weapon banner tag for the active-unit header.
                     // Null when unarmed or no known weapon in equipment.
                     WeaponTag = (u.Team == 0 && u.Equipment != null)
