@@ -3467,7 +3467,10 @@ if(activeU&&activeU.abilities){
     const emptyCount=allTiles.length-occupiedTiles.length;
     const tiles=occupiedTiles.map(t=>{
       let s='('+t.x+','+t.y+')';
-      const tag=(t.occupant==='ally'||t.occupant==='self')?' ALLY':'';
+      // Tag disambiguates the tile's occupant relative to the caster:
+      // SELF = caster tile (Focus/Shout), ALLY = other friendly (Cure target),
+      // enemy tiles get no tag (the point of the ability is obvious).
+      const tag=(t.occupant==='self')?' SELF':(t.occupant==='ally'?' ALLY':'');
       const aff=t.affinity&&affSig[t.affinity]?' '+affSig[t.affinity]:'';
       const arc=t.arc&&arcSig[t.arc]?' '+arcSig[t.arc]:'';
       const los=losSig(t);
@@ -4075,7 +4078,13 @@ scan_move() {
   # no args falls through to the unified `screen` helper.
   if [ $# -ge 2 ]; then
     local _mv="$1" _jp="$2"
-    fft "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$_mv,\"unitIndex\":$_jp,\"verbose\":false}" 60
+    # Dispatch the scan_move bridge action with Mv/Jmp override. The fft call
+    # writes response.json; follow up with screen() so the Move tiles / Attack
+    # tiles / Units / Abilities render via the unified compact formatter
+    # instead of just the one-line `fft` header (which is all `fft` knows to
+    # print for a raw scan_move action).
+    fft "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$_mv,\"unitIndex\":$_jp,\"verbose\":false}" 60 >/dev/null
+    screen
   else
     echo "[USE screen] scan_move is deprecated. Use: screen"
     screen

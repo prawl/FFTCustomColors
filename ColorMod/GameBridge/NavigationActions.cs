@@ -4564,6 +4564,7 @@ namespace FFTColorCustomizer.GameBridge
             {
                 var counterLines = CounterAttackInferrer.Infer(events, activePlayerName ?? "");
                 var selfDestructLines = SelfDestructInferrer.Infer(events);
+                var criticalHpLines = CriticalHpInferrer.Infer(events, current);
 
                 // S60 Phase 2.5: suppress raw "> X died" when a counter-KO or
                 // self-destruct line already mentions the death — avoids the
@@ -4589,6 +4590,7 @@ namespace FFTColorCustomizer.GameBridge
                     events, activePlayerName ?? "", suppressedKoLabels));
                 allLines.AddRange(counterLines);
                 allLines.AddRange(selfDestructLines);
+                allLines.AddRange(criticalHpLines);
                 if (allLines.Count > 0)
                     NarrationEventLog.AppendLines(allLines);
             }
