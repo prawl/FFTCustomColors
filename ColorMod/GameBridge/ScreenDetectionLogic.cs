@@ -529,12 +529,19 @@ namespace FFTColorCustomizer.GameBridge
 
             // Desertion: post-battle pause + submenu (warning dialog overlay).
             // Does NOT require encA==encB (noise counter).
-            if (postBattlePausedState && submenuFlag == 1)
+            //
+            // battleTeam==0 requirement: real Desertion fires when a PLAYER
+            // unit walked off the field, so their team byte reads 0. Live-
+            // repro 2026-04-25 Zeklaus Desert showed a post-Victory misdetect
+            // where stale slot-0 pollution made battleTeam read 1 while
+            // the post-battle sentinel pattern matched; without this guard
+            // the Desertion rule fired on what was actually a clean Victory.
+            if (postBattlePausedState && submenuFlag == 1 && battleTeam == 0)
                 return "BattleDesertion";
 
             // Desertion variant from Orbonne (session 21): slot0=0x67 at rawLocation=255
             // with active battle eventId. submenuFlag=1 indicates the warning dialog.
-            if (orbonneDesertion && submenuFlag == 1)
+            if (orbonneDesertion && submenuFlag == 1 && battleTeam == 0)
                 return "BattleDesertion";
 
             // Victory: post-battle at named location, no pause (auto-advancing result screen).

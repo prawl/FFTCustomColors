@@ -1036,6 +1036,33 @@ namespace FFTColorCustomizer.Tests.GameBridge
         // even when slot0 is a non-sentinel value like 0x67, as long as the other battle
         // signals (battleMode=0, actedOrMoved=true, paused=1/0) hold.
         [Fact]
+        public void DetectScreen_PostVictory_WithStaleBattleTeam1_IsNotMisdetectedAsDesertion()
+        {
+            // Live-repro 2026-04-25 Zeklaus Desert: solo-Ramza killed last
+            // enemy and the final battle_wait returned [BattleDesertion]
+            // instead of routing to Victory/WorldMap. Smoking gun log:
+            //   [BattleWait] Screen: BattleDesertion team=1 act=1 mov=1
+            // The raw battleTeam byte reads 1 (stale slot-0 pollution from
+            // the enemy's last turn), triggering the postBattlePausedState
+            // Desertion rule even though the player-team unit is the one
+            // still on field.
+            //
+            // Fix: real Desertion = a PLAYER unit left the field, so
+            // battleTeam should be 0. Require battleTeam==0 on the
+            // Desertion rule to reject stale-team=1 post-Victory frames.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 28, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 1,  // stale — the bug signature
+                battleActed: 1, battleMoved: 1,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 1, menuCursor: 0,
+                locationMenuFlag: 0);
+
+            Assert.NotEqual("BattleDesertion", result);
+        }
+
+        [Fact]
         public void DetectScreen_Desertion_Orbonne_Slot0_0x67_ShouldReturnBattleDesertion()
         {
             var result = ScreenDetectionLogic.Detect(
