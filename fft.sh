@@ -1527,9 +1527,9 @@ scan_tavern() {
 # Writes (roster slot 0 at 0x1411A18D0):
 #   +0x0E Helm      = 156 (Grand Helm, +150 HP)
 #   +0x10 Body      = 185 (Maximillian, +200 HP)
-#   +0x12 Accessory = 218 (Bracer)
-#   +0x14 Weapon    = 36  (Ragnarok, WP 24, range 1, evade 20)
-#   +0x1A Shield    = 141 (Kaiser Shield, PhysEv 46, MagEv 20)
+#   +0x12 Accessory = 239 (Sortilege, perfume)
+#   +0x14 Weapon    = 37  (Chaos Blade, WP 40, range 1, evade 20)
+#   +0x1A Shield    = 143 (Escutcheon (strong), PhysEv 75, MagEv 50)
 #   +0x16 LeftHand  = 0xFF (empty — clear any prior dual-wield)
 #   +0x18 Reserved  = 0xFF (clear)
 #   +0x1E Brave     = 95
@@ -1561,11 +1561,11 @@ god_ramza() {
   # Equipment (u16 each)
   _write_pair 0x0E 156   # Grand Helm
   _write_pair 0x10 185   # Maximillian
-  _write_pair 0x12 218   # Bracer
-  _write_pair 0x14 36    # Ragnarok
+  _write_pair 0x12 239   # Sortilege (perfume)
+  _write_pair 0x14 37    # Chaos Blade
   _write_pair 0x16 255   # Clear left-hand
   _write_pair 0x18 255   # Clear reserved
-  _write_pair 0x1A 141   # Kaiser Shield
+  _write_pair 0x1A 143   # Escutcheon (strong)
   # Stats (u8 each) — Level/EXP intentionally left alone
   _write_byte 0x1E 95    # Brave
   _write_byte 0x1F 95    # Faith
