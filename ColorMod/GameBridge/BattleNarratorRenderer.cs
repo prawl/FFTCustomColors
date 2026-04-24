@@ -39,9 +39,8 @@ namespace FFTColorCustomizer.GameBridge
                 }
 
                 var formatted = FormatEvent(e);
-                if (formatted == null) continue;
 
-                // status kind can produce TWO lines (gained + lost); handle first
+                // status kind produces ONLY gained/lost lines (no main line).
                 if (e.Kind == "status")
                 {
                     bool hasGained = e.StatusesGained != null && e.StatusesGained.Count > 0;
@@ -53,7 +52,24 @@ namespace FFTColorCustomizer.GameBridge
                     continue;
                 }
 
+                if (formatted == null) continue;
                 lines.Add(formatted);
+
+                // S60 fix: status changes that accompany damaged/healed/ko/revived
+                // events must also be surfaced — UnitScanDiff.Compare collapses them
+                // into the main Kind, so "Skeletal Fiend took 336 damage" otherwise
+                // silently hides the accompanying "gained Petrify" from a Chaos
+                // Blade on-hit proc. Render as a trailing status line.
+                if (e.StatusesGained != null && e.StatusesGained.Count > 0
+                    && lines.Count < MaxLines)
+                {
+                    lines.Add($"> {e.Label} gained {string.Join(", ", e.StatusesGained)}");
+                }
+                if (e.StatusesLost != null && e.StatusesLost.Count > 0
+                    && lines.Count < MaxLines)
+                {
+                    lines.Add($"> {e.Label} lost {string.Join(", ", e.StatusesLost)}");
+                }
             }
 
             if (skipped > 0)

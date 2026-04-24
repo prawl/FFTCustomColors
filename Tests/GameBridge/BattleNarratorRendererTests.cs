@@ -243,5 +243,50 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Single(lines);
             Assert.Equal("> Skeleton died", lines[0]);
         }
+
+        [Fact]
+        public void DamagedWithStatusGained_EmitsBothLines()
+        {
+            // S60 fix: Chaos Blade's on-hit Petrify hits in the same window
+            // as the damage. UnitScanDiff collapses Kind to "damaged" but
+            // still fills StatusesGained. Render both lines so the status
+            // isn't silently dropped.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Skeletal Fiend", "damaged", oldHp: 629, newHp: 293,
+                    gained: new List<string> { "Petrify" }),
+            };
+            var lines = BattleNarratorRenderer.Render(events, "Ramza");
+            Assert.Equal(2, lines.Count);
+            Assert.Equal("> Skeletal Fiend took 336 damage (HP 629→293)", lines[0]);
+            Assert.Equal("> Skeletal Fiend gained Petrify", lines[1]);
+        }
+
+        [Fact]
+        public void KoWithStatusGained_EmitsBothLines()
+        {
+            // A unit dying while gaining Crystal (post-crystallize animation).
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Goblin", "ko", oldHp: 50, newHp: 0,
+                    gained: new List<string> { "Crystal" }),
+            };
+            var lines = BattleNarratorRenderer.Render(events, "Ramza");
+            Assert.Equal(2, lines.Count);
+            Assert.Equal("> Goblin died", lines[0]);
+            Assert.Equal("> Goblin gained Crystal", lines[1]);
+        }
+
+        [Fact]
+        public void HealedWithStatusLost_EmitsBothLines()
+        {
+            // Remedy heals AND removes status in the same event window.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Ramza", "healed", oldHp: 400, newHp: 500,
+                    lost: new List<string> { "Poison", "Slow" }, team: "PLAYER"),
+            };
+            var lines = BattleNarratorRenderer.Render(events, "Ramza");
+            Assert.Equal(2, lines.Count);
+            Assert.Equal("> Ramza recovered 100 HP (HP 400→500)", lines[0]);
+            Assert.Equal("> Ramza lost Poison, Slow", lines[1]);
+        }
     }
 }

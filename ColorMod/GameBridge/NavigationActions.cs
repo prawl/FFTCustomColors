@@ -465,13 +465,28 @@ namespace FFTColorCustomizer.GameBridge
 
             // S60 enemy-turn narrator: capture a unit-state snapshot NOW (before
             // we leave BattleMyTurn via the Wait nav). During the poll loop
-            // we'll diff against this `narratorLastSnap`, advance it, and
-            // append each batch of events to claude_bridge/live_events.log.
-            // The shell helper is responsible for truncating the log at the
-            // START of a battle_wait sequence (legacy blocking or chunked
-            // loop) — the mod always appends so chunked calls don't erase
-            // each other's history.
-            var narratorLastSnap = CaptureCurrentUnitSnapshot();
+            // we'll diff against this snap, advance it, and append each
+            // batch of events to claude_bridge/live_events.log. The shell
+            // helper truncates the log at the START of a battle_wait
+            // sequence; the mod always appends so chunked calls don't
+            // erase each other's history.
+            //
+            // Chunked mode: carry the class-level `_narratorPersistentLastSnap`
+            // forward across calls so names backfilled in a prior chunk
+            // survive into the next one (the scan sometimes drops enemy
+            // names mid-battle). Fresh non-chunked call = reset + recapture.
+            List<UnitScanDiff.UnitSnap>? narratorLastSnap;
+            bool isChunkedContinuation = command?.MaxPollMs != null
+                && _narratorPersistentLastSnap != null;
+            if (isChunkedContinuation)
+            {
+                narratorLastSnap = _narratorPersistentLastSnap;
+            }
+            else
+            {
+                narratorLastSnap = CaptureCurrentUnitSnapshot();
+                _narratorPersistentLastSnap = narratorLastSnap;
+            }
             string? narratorActivePlayerName = null;
             if (_lastScannedUnits != null)
             {
@@ -4506,7 +4521,19 @@ namespace FFTColorCustomizer.GameBridge
                     NarrationEventLog.AppendLines(allLines);
             }
             lastSnap = current;
+            // Keep the class-level persistent snap in sync with the ref advance.
+            // Chunked continuations reload from this field at BattleWait entry.
+            _narratorPersistentLastSnap = current;
         }
+
+        /// <summary>
+        /// S60 narrator: persistent last-snap carried across chunked BattleWait
+        /// calls. The scan sometimes drops enemy names between turns; by keeping
+        /// the name-backfilled snap around, we ensure subsequent chunks have a
+        /// stable source of names for identity matching and event labels.
+        /// Reset at the start of a non-chunked BattleWait call (see BattleWait).
+        /// </summary>
+        private List<UnitScanDiff.UnitSnap>? _narratorPersistentLastSnap;
 
         /// <summary>Last computed valid move tiles from scan_move BFS. Used by battle_move to validate targets.</summary>
         private HashSet<(int x, int y)>? _lastValidMoveTiles;

@@ -103,27 +103,51 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void ActivePlayerNotInEventList_ReturnsEmpty()
+        public void ActivePlayerNotInEventList_StillAttributesToDamagedPlayer()
         {
-            // The "active player" Claude passes doesn't appear in the diff —
-            // maybe an ally was doing the countering. Don't claim Ramza did it.
+            // The "active player" hint doesn't match any damaged player in
+            // the diff — but Agrias DID take damage, so she's the real
+            // counter-attacker. Better to attribute correctly than to drop
+            // the attribution entirely (S60 fix: chunked-mode inferrer
+            // needs to derive the actor from events, not trust the hint
+            // which shifts to the acting enemy mid-turn).
             var events = new List<UnitScanDiff.ChangeEvent> {
                 Evt("Agrias", "damaged", team: "PLAYER", oldHp: 400, newHp: 300),
                 Evt("Skeleton", "ko", oldHp: 100, newHp: 0),
             };
             var lines = CounterAttackInferrer.Infer(events, "Ramza");
-            Assert.Empty(lines);
+            Assert.Single(lines);
+            Assert.Equal("> Agrias countered Skeleton for 100 dmg — Skeleton died", lines[0]);
         }
 
         [Fact]
-        public void EmptyPlayerName_ReturnsEmpty()
+        public void HintNameIsCurrentlyActingEnemy_StillAttributesToDamagedPlayer()
         {
+            // Chunked-mode repro: when BattleWait captures narratorActivePlayerName
+            // during an enemy's turn, it picks up the enemy's name. The inferrer
+            // must NOT emit "> Skeletal Fiend countered Skeletal Fiend for N dmg" —
+            // it must derive the actual counter-attacker from the event list.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Ramza", "damaged", team: "PLAYER", oldHp: 719, newHp: 604),
+                Evt("Skeletal Fiend", "damaged", oldHp: 629, newHp: 293),
+            };
+            var lines = CounterAttackInferrer.Infer(events, "Skeletal Fiend");
+            Assert.Single(lines);
+            Assert.Equal("> Ramza countered Skeletal Fiend for 336 dmg", lines[0]);
+        }
+
+        [Fact]
+        public void EmptyPlayerName_StillInfersIfPlayerDamaged()
+        {
+            // Null/empty hint is fine — the inferrer derives the actor from
+            // the events. Only return empty when NO player was damaged.
             var events = new List<UnitScanDiff.ChangeEvent> {
                 Evt("Ramza", "damaged", team: "PLAYER", oldHp: 719, newHp: 623),
                 Evt("Skeleton", "ko", oldHp: 50, newHp: 0),
             };
             var lines = CounterAttackInferrer.Infer(events, "");
-            Assert.Empty(lines);
+            Assert.Single(lines);
+            Assert.Equal("> Ramza countered Skeleton for 50 dmg — Skeleton died", lines[0]);
         }
 
         [Fact]

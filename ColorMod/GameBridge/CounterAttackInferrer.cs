@@ -23,27 +23,33 @@ namespace FFTColorCustomizer.GameBridge
         {
             var lines = new List<string>();
             if (events == null || events.Count == 0) return lines;
-            if (string.IsNullOrEmpty(activePlayerName)) return lines;
 
-            // Look for the active player's damaged event.
-            bool playerDamaged = false;
+            // The counter-attacker is whichever PLAYER took damage this window
+            // (they trigger the counter via a reaction ability). Prefer the
+            // caller's activePlayerName hint when that player is present in
+            // the damaged list; otherwise pick the first damaged player.
+            // The hint alone is NOT trusted — in chunked mode it can end up
+            // reflecting the currently-acting ENEMY unit (the scan's
+            // IsActive flag shifts as the turn passes to enemies).
+            string? counterActor = null;
             foreach (var e in events)
             {
-                if (e.Label == activePlayerName
-                    && e.Kind == "damaged"
-                    && e.OldHp.HasValue
-                    && e.NewHp.HasValue
-                    && e.NewHp.Value < e.OldHp.Value)
+                if (e.Team != "PLAYER") continue;
+                if (e.Kind != "damaged") continue;
+                if (!e.OldHp.HasValue || !e.NewHp.HasValue) continue;
+                if (e.NewHp.Value >= e.OldHp.Value) continue;
+                if (!string.IsNullOrEmpty(activePlayerName) && e.Label == activePlayerName)
                 {
-                    playerDamaged = true;
+                    counterActor = e.Label;
                     break;
                 }
+                counterActor ??= e.Label;
             }
-            if (!playerDamaged) return lines;
+            if (counterActor == null) return lines;
 
             // Emit a counter line for each enemy that took HP damage or was KO'd
-            // in this window. We pair every enemy-HP-drop with the player's
-            // single damaged event since there's no attribution mechanism yet.
+            // in this window. We pair every enemy-HP-drop with the counter
+            // actor since there's no finer-grained attribution mechanism yet.
             foreach (var e in events)
             {
                 if (e.Team != "ENEMY") continue;
@@ -53,9 +59,9 @@ namespace FFTColorCustomizer.GameBridge
                 if (delta <= 0) continue;
 
                 if (e.Kind == "ko")
-                    lines.Add($"> {activePlayerName} countered {e.Label} for {delta} dmg — {e.Label} died");
+                    lines.Add($"> {counterActor} countered {e.Label} for {delta} dmg — {e.Label} died");
                 else
-                    lines.Add($"> {activePlayerName} countered {e.Label} for {delta} dmg");
+                    lines.Add($"> {counterActor} countered {e.Label} for {delta} dmg");
             }
             return lines;
         }
