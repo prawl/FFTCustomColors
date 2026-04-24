@@ -128,6 +128,99 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void HpLandsExactlyOnThreshold_EmitsLine()
+        {
+            // MaxHp=720 → threshold=240 (integer div). Dropping to exactly
+            // 240 should count as critical (<=threshold is the rule).
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Damaged("Ramza", oldHp: 500, newHp: 240),
+            };
+            var post = new List<UnitScanDiff.UnitSnap> {
+                Snap("Ramza", team: 0, hp: 240, maxHp: 720),
+            };
+            var lines = CriticalHpInferrer.Infer(events, post);
+            Assert.Single(lines);
+        }
+
+        [Fact]
+        public void PreHpExactlyAtThreshold_NoLine()
+        {
+            // Pre-HP at exactly threshold means we were already critical
+            // coming in — the rule requires strict above-threshold start.
+            // MaxHp=720 → threshold=240. 240→100 shouldn't re-fire.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Damaged("Ramza", oldHp: 240, newHp: 100),
+            };
+            var post = new List<UnitScanDiff.UnitSnap> {
+                Snap("Ramza", team: 0, hp: 100, maxHp: 720),
+            };
+            Assert.Empty(CriticalHpInferrer.Infer(events, post));
+        }
+
+        [Fact]
+        public void TinyMaxHp_StillFiresOnCrossing()
+        {
+            // MaxHp=6, threshold=2. From 3 (above) → 1 (critical). Rule
+            // should still fire even with integer-math on tiny HP pools.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Damaged("Ramza", oldHp: 3, newHp: 1),
+            };
+            var post = new List<UnitScanDiff.UnitSnap> {
+                Snap("Ramza", team: 0, hp: 1, maxHp: 6),
+            };
+            Assert.Single(CriticalHpInferrer.Infer(events, post));
+        }
+
+        [Fact]
+        public void MaxHpOne_ThresholdZero_NeverCritical()
+        {
+            // MaxHp=1 edge case: threshold = 1/3 = 0. Rule requires
+            // newHp<=threshold (<=0), which the nowCritical > 0 guard
+            // rejects. KO is reported via Kind=ko, not critical.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Damaged("Ramza", oldHp: 1, newHp: 1),
+            };
+            var post = new List<UnitScanDiff.UnitSnap> {
+                Snap("Ramza", team: 0, hp: 1, maxHp: 1),
+            };
+            Assert.Empty(CriticalHpInferrer.Infer(events, post));
+        }
+
+        [Fact]
+        public void MultipleDamageEventsOnSameUnit_FiresOnceWhenCrossing()
+        {
+            // If a mid-chunk chunked scan emits two damaged events for
+            // the same unit (e.g. multiple attacks landed in the poll
+            // window), the FIRST crossing fires. The second event with
+            // already-critical pre-HP is silently skipped by the
+            // "wasAboveCritical" guard.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Damaged("Ramza", oldHp: 400, newHp: 200),  // crosses 239 threshold
+                Damaged("Ramza", oldHp: 200, newHp: 50),   // already critical — skip
+            };
+            var post = new List<UnitScanDiff.UnitSnap> {
+                Snap("Ramza", team: 0, hp: 50, maxHp: 719),
+            };
+            Assert.Single(CriticalHpInferrer.Infer(events, post));
+        }
+
+        [Fact]
+        public void NegativeNewHp_NotReportedAsCritical()
+        {
+            // Defensive: if a diff emits a negative newHp (shouldn't
+            // happen but guard against transient reads), the nowCritical
+            // `newHp > 0` check keeps us silent rather than reporting a
+            // bogus critical line.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Damaged("Ramza", oldHp: 400, newHp: -1),
+            };
+            var post = new List<UnitScanDiff.UnitSnap> {
+                Snap("Ramza", team: 0, hp: -1, maxHp: 719),
+            };
+            Assert.Empty(CriticalHpInferrer.Infer(events, post));
+        }
+
+        [Fact]
         public void HealedEventNotConsidered_NoLine()
         {
             // Kind="healed" — not a damage event. Never fires critical line.
