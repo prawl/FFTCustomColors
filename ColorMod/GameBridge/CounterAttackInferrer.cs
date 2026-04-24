@@ -19,7 +19,8 @@ namespace FFTColorCustomizer.GameBridge
     {
         public static List<string> Infer(
             IReadOnlyList<UnitScanDiff.ChangeEvent> events,
-            string activePlayerName)
+            string activePlayerName,
+            IReadOnlyList<UnitScanDiff.UnitSnap>? postSnaps = null)
         {
             var lines = new List<string>();
             if (events == null || events.Count == 0) return lines;
@@ -57,6 +58,23 @@ namespace FFTColorCustomizer.GameBridge
                 if (!e.OldHp.HasValue || !e.NewHp.HasValue) continue;
                 int delta = e.OldHp.Value - e.NewHp.Value;
                 if (delta <= 0) continue;
+
+                // Sanity check — a counter delta physically can't exceed
+                // the target's MaxHp (one hit maxes at MaxHp damage). If
+                // postSnaps is provided and the target's MaxHp is known,
+                // reject implausible deltas as animation-transient reads
+                // rather than emit a wildly-wrong counter line. Live-
+                // observed Knight-died-for-521 false KO when Defending
+                // buff dropped mid-window.
+                if (postSnaps != null)
+                {
+                    int? maxHp = null;
+                    foreach (var s in postSnaps)
+                    {
+                        if (s.Name == e.Label) { maxHp = s.MaxHp; break; }
+                    }
+                    if (maxHp.HasValue && delta > maxHp.Value) continue;
+                }
 
                 if (e.Kind == "ko")
                     lines.Add($"> {counterActor} countered {e.Label} for {delta} dmg — {e.Label} died");

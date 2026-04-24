@@ -4625,7 +4625,7 @@ namespace FFTColorCustomizer.GameBridge
             var events = UnitScanDiff.Compare(preForDiff, postForDiff);
             if (events.Count > 0)
             {
-                var counterLines = CounterAttackInferrer.Infer(events, activePlayerName ?? "");
+                var counterLines = CounterAttackInferrer.Infer(events, activePlayerName ?? "", current);
                 var selfDestructLines = SelfDestructInferrer.Infer(events);
                 var criticalHpLines = CriticalHpInferrer.Infer(events, current);
 

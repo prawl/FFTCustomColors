@@ -33,6 +33,85 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 Kind: kind);
         }
 
+        private static UnitScanDiff.UnitSnap Snap(
+            string name, int team, int hp, int maxHp)
+            => new(Name: name, RosterNameId: 0, Team: team,
+                   GridX: 0, GridY: 0, Hp: hp, MaxHp: maxHp, Statuses: null);
+
+        [Fact]
+        public void SanityCheck_DeltaExceedsMaxHp_SkipsCounterLine()
+        {
+            // Live-repro TODO 2026-04-24: Knight's Defending buff drop
+            // shifted snapshot MaxHp 521→524 during an enemy-turn window,
+            // making the diff look like a 521-dmg counter-KO on a unit
+            // with MaxHp ~521. With postSnaps provided, the inferrer
+            // should reject any delta that exceeds the target's MaxHp as
+            // physically impossible (maximum possible damage in one hit
+            // is capped at MaxHp — overflow indicates an animation-
+            // transient read, not a real counter).
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Ramza", "damaged", team: "PLAYER", oldHp: 500, newHp: 400),
+                Evt("Knight", "damaged", oldHp: 521, newHp: 0), // delta=521
+            };
+            var postSnaps = new List<UnitScanDiff.UnitSnap> {
+                Snap("Knight", team: 1, hp: 521, maxHp: 521),
+            };
+
+            // Without postSnaps (legacy signature): emits the counter line.
+            var noGuard = CounterAttackInferrer.Infer(events, "Ramza");
+            Assert.Single(noGuard);  // legacy behavior preserved
+
+            // With postSnaps: rejects as delta (521) > MaxHp (521) is
+            // still at the boundary — exactly at MaxHp is ok (full
+            // one-shot). Strictly GREATER would reject.
+            var withGuard = CounterAttackInferrer.Infer(events, "Ramza", postSnaps);
+            Assert.Single(withGuard);  // delta == MaxHp is allowed
+        }
+
+        [Fact]
+        public void SanityCheck_DeltaStrictlyExceedsMaxHp_Rejected()
+        {
+            // Delta 600 vs MaxHp 521 — physically impossible. Reject.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Ramza", "damaged", team: "PLAYER", oldHp: 500, newHp: 400),
+                Evt("Knight", "damaged", oldHp: 600, newHp: 0),
+            };
+            var postSnaps = new List<UnitScanDiff.UnitSnap> {
+                Snap("Knight", team: 1, hp: 0, maxHp: 521),
+            };
+            var lines = CounterAttackInferrer.Infer(events, "Ramza", postSnaps);
+            Assert.Empty(lines);
+        }
+
+        [Fact]
+        public void SanityCheck_MissingPostSnap_FallsBackToNoGuard()
+        {
+            // If a unit isn't in postSnaps (name mismatch), treat as
+            // unknown-MaxHp and fall through to legacy behavior. Don't
+            // silently drop the counter line just because the snap lookup
+            // missed.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Ramza", "damaged", team: "PLAYER", oldHp: 500, newHp: 400),
+                Evt("Knight", "damaged", oldHp: 600, newHp: 0),
+            };
+            var postSnaps = new List<UnitScanDiff.UnitSnap>(); // empty
+            var lines = CounterAttackInferrer.Infer(events, "Ramza", postSnaps);
+            Assert.Single(lines);
+        }
+
+        [Fact]
+        public void SanityCheck_NullPostSnaps_LegacyBehavior()
+        {
+            // Overload accepting null postSnaps matches the original
+            // 2-arg signature exactly.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Ramza", "damaged", team: "PLAYER", oldHp: 500, newHp: 400),
+                Evt("Knight", "damaged", oldHp: 600, newHp: 0),
+            };
+            var lines = CounterAttackInferrer.Infer(events, "Ramza", null);
+            Assert.Single(lines);
+        }
+
         [Fact]
         public void Empty_ReturnsEmpty()
         {
