@@ -2864,8 +2864,14 @@ namespace FFTColorCustomizer.GameBridge
                     Reaction = u.ReactionAbility,
                     Support = u.SupportAbility,
                     Movement = u.MovementAbility,
-                    Move = u.Move,
-                    Jump = u.Jump,
+                    // Live heap Move/Jump is only populated for the active unit
+                    // (CollectUnitPositionsFull runs TryReadMoveJumpFromHeap once).
+                    // For non-active units, fall back to JobBaseStatsTable —
+                    // approximate class base values, enough for threat assessment
+                    // (Claude reads "enemy 4 tiles out with Mv=4" as reachable
+                    // next turn without needing live effective stats).
+                    Move = u.Move > 0 ? u.Move : (JobBaseStatsTable.TryGet(jobName)?.move ?? 0),
+                    Jump = u.Jump > 0 ? u.Jump : (JobBaseStatsTable.TryGet(jobName)?.jump ?? 0),
                     // Pre-compute weapon banner tag for the active-unit header.
                     // Null when unarmed or no known weapon in equipment.
                     WeaponTag = (u.Team == 0 && u.Equipment != null)
