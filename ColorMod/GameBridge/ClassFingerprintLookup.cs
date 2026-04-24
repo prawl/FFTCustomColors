@@ -49,6 +49,10 @@ namespace FFTColorCustomizer.GameBridge
             // Bomb family:
             ["07-57-1E-1E-5A-73-27-55-07-5E"] = "Grenade",
             ["8C-64-88-43-88-43-84-22-84-22"] = "Grenade",
+            // Grenade variant captured 2026-04-24 Lenalian Plateau random encounter.
+            // Fingerprint shifted (byte 0 = 0x16 instead of usual 0x07) — confirmed
+            // as Grenade by user. HP=409, lv=96, passives Dragonheart / Equip Crossbows.
+            ["D4-12-07-57-1E-1E-5A-73-27-55"] = "Grenade",
             // Tree family (tier 1 Dryad, tier 2 Treant):
             ["07-96-1E-A0-5A-63-27-66-07-64"] = "Dryad",
             ["07-82-1E-B4-5A-60-27-59-07-5F"] = "Treant",
