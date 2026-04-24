@@ -6702,13 +6702,41 @@ namespace FFTColorCustomizer.Utilities
                 int rawLocation = screen.Location;
                 int hover = screen.Hover;
 
-                // During battle (location=255), use last known world map location
+                // During battle (location=255) the raw byte doesn't tell us
+                // WHICH battleground we're at. Try the live battle map-id
+                // byte first — it's authoritative for random encounters and
+                // updates when the current map changes (unlike
+                // _lastWorldMapLocation which sticks on whatever world-map
+                // location was last visited). Live-repro 2026-04-24: user
+                // traveled through Lenalian Plateau (locId=29) to Siedge
+                // Weald (locId=26), hit a random encounter there, but
+                // curLoc= kept rendering "Lenalian Plateau" because the
+                // world-map latch stuck.
                 if (screen.Location == 255)
                 {
-                    if (_lastWorldMapLocation < 0)
-                        _lastWorldMapLocation = LoadLastLocation();
-                    if (_lastWorldMapLocation >= 0)
-                        screen.Location = _lastWorldMapLocation;
+                    int resolvedLocId = -1;
+                    if (Explorer != null)
+                    {
+                        var mapRead = Explorer.ReadAbsolute(
+                            (nint)GameBridge.LiveBattleMapId.Address, 1);
+                        if (mapRead.HasValue
+                            && GameBridge.LiveBattleMapId.IsValid((int)mapRead.Value.value))
+                        {
+                            resolvedLocId = GameBridge.BattleMapIdToLocation.TryResolve(
+                                (int)mapRead.Value.value);
+                        }
+                    }
+                    if (resolvedLocId >= 0)
+                    {
+                        screen.Location = resolvedLocId;
+                    }
+                    else
+                    {
+                        if (_lastWorldMapLocation < 0)
+                            _lastWorldMapLocation = LoadLastLocation();
+                        if (_lastWorldMapLocation >= 0)
+                            screen.Location = _lastWorldMapLocation;
+                    }
                 }
                 screen.LocationName = GetLocationName(screen.Location);
 
