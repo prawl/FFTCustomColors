@@ -3749,6 +3749,20 @@ namespace FFTColorCustomizer.Utilities
                         _lastAbilityName = command.Action == "battle_attack"
                             ? "Attack" : command.Description;
                         _battleMenuTracker.ReturnToMyTurn();
+                        // Mark that we're committing to act BEFORE dispatching
+                        // the nav action. Range validation above has passed,
+                        // pre-flight checks have passed — intent to act is
+                        // confirmed. Setting _actedThisTurn here (not only
+                        // on successful completion) covers the case where
+                        // the bridge return path times out or aborts after
+                        // the action keys were sent but before confirmation.
+                        // The game tracks "act consumed" via its own internal
+                        // state regardless of how our bridge reports back.
+                        // Live-observed 2026-04-25: scan showed ui=Abilities
+                        // after an attack that clearly landed (enemy died)
+                        // because both battleActed byte AND _actedThisTurn
+                        // flag were 0 at scan time.
+                        _actedThisTurn = true;
                         // S58: snapshot active unit's HP before the action
                         // so we can classify post-action counter-KO.
                         var preActionState = _navActions?.ReadPostActionState();
