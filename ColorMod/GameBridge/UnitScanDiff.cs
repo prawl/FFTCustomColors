@@ -146,8 +146,18 @@ namespace FFTColorCustomizer.GameBridge
 
                 bool moved = b.GridX != a.GridX || b.GridY != a.GridY;
                 bool hpChanged = b.Hp != a.Hp;
-                bool ko = b.Hp > 0 && a.Hp == 0;
-                bool revived = b.Hp == 0 && a.Hp > 0;
+                // MaxHp shifting between snaps indicates a buff-drop or
+                // buff-apply animation transient (Defending buff expiring
+                // is the live-observed case). HP readings during that
+                // animation window are unreliable — they can transiently
+                // report 0 even when the unit is alive. Gating "ko" on
+                // stable MaxHp suppresses that false-positive without
+                // losing legitimate KOs (real KOs don't coincide with
+                // MaxHp changes; Defending-drop + death in the same
+                // frame is pathological enough to accept the edge case).
+                bool maxHpStable = b.MaxHp == a.MaxHp;
+                bool ko = b.Hp > 0 && a.Hp == 0 && maxHpStable;
+                bool revived = b.Hp == 0 && a.Hp > 0 && maxHpStable;
                 var gained = ListDiff(b.Statuses, a.Statuses);
                 var lost = ListDiff(a.Statuses, b.Statuses);
                 bool statusChanged = gained.Count > 0 || lost.Count > 0;

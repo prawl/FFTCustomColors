@@ -119,6 +119,37 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void Compare_HpDropToZero_WhenMaxHpAlsoShifts_IsNotClassifiedAsKo()
+        {
+            // Live-repro 2026-04-24 Lenalian Plateau: Knight
+            // [Defending] snapshot pre-turn showed HP=521/521. Mid-enemy-turn
+            // chunk snap transiently read HP=0/524 (during the Defending
+            // buff-drop animation; MaxHp shifted 521→524 as the buff
+            // expired). Post-turn Knight was 521/524 alive. Narrator's
+            // CounterAttackInferrer treated the transient as a real KO and
+            // emitted "Ramza countered Knight for 521 dmg — Knight died".
+            // Fix: when HP drops to 0 AND MaxHp changed in the same window,
+            // downgrade to damaged-event (or drop entirely) — MaxHp shifts
+            // are a reliable tell that the HP=0 reading is an animation
+            // transient, not a real KO.
+            var before = new List<UnitScanDiff.UnitSnap>
+            {
+                Snap("Knight", team: 1, x: 7, y: 5, hp: 521, maxHp: 521),
+            };
+            var after = new List<UnitScanDiff.UnitSnap>
+            {
+                Snap("Knight", team: 1, x: 7, y: 5, hp: 0, maxHp: 524),
+            };
+            var events = UnitScanDiff.Compare(before, after);
+            // Must NOT be "ko". Allowed outcomes: "damaged" (HP shifted) or
+            // "noop" (the entire transition treated as unreliable). The
+            // narrator gates its "died" line on Kind=="ko", so suppressing
+            // the ko classification is sufficient.
+            foreach (var ev in events)
+                Assert.NotEqual("ko", ev.Kind);
+        }
+
+        [Fact]
         public void Compare_Revive_EmitsRevivedEvent()
         {
             var before = new List<UnitScanDiff.UnitSnap>
