@@ -447,8 +447,17 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>
         /// Parse a user-supplied cardinal direction into FacingStrategy's (dx, dy)
-        /// convention. Accepts N/S/E/W (case-insensitive) and full names. Returns
-        /// null when input is null/empty/unrecognized (caller falls back to auto-pick).
+        /// convention — FFT grid where +y is south. Accepts N/S/E/W (case-insensitive)
+        /// and full names. Returns null when input is null/empty/unrecognized
+        /// (caller falls back to auto-pick).
+        ///
+        /// Live-repro 2026-04-25 Siedge Weald: user requested `battle_wait N`
+        /// and Ramza ended up facing East. Root cause — this helper was using
+        /// the pre-flip +y=north convention (shipped in `c36ec53` for
+        /// FacingDecider.NameFor but not here), so "N" mapped to (0,+1) which
+        /// in grid coords is south, and the downstream facing-arrow table
+        /// rotated that into another direction via camera rotation. Now
+        /// (0,-1)=North matches FacingByteDecoder (byte 2 → North = (0,-1)).
         /// </summary>
         public static (int dx, int dy)? ParseFacingDirection(string? input)
         {
@@ -456,8 +465,8 @@ namespace FFTColorCustomizer.GameBridge
             var s = input.Trim().ToUpperInvariant();
             return s switch
             {
-                "N" or "NORTH" => (0, 1),
-                "S" or "SOUTH" => (0, -1),
+                "N" or "NORTH" => (0, -1),  // -y = north in FFT grid
+                "S" or "SOUTH" => (0, 1),   // +y = south in FFT grid
                 "E" or "EAST"  => (1, 0),
                 "W" or "WEST"  => (-1, 0),
                 _ => null,

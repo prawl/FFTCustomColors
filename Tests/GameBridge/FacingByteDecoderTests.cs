@@ -134,18 +134,19 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
     public class ParseFacingDirectionTests
     {
-        // Tests the battle_wait <direction> arg parser. FacingStrategy convention:
-        //   (1,0)=East, (-1,0)=West, (0,1)=North, (0,-1)=South.
+        // Tests the battle_wait <direction> arg parser. FFT grid convention
+        // (matches FacingByteDecoder + FacingDecider.NameFor):
+        //   (1,0)=East, (-1,0)=West, (0,-1)=North, (0,+1)=South.
 
         [Theory]
-        [InlineData("N", 0, 1)]
-        [InlineData("n", 0, 1)]
-        [InlineData("North", 0, 1)]
-        [InlineData("north", 0, 1)]
-        [InlineData("NORTH", 0, 1)]
-        [InlineData(" north ", 0, 1)]
-        [InlineData("S", 0, -1)]
-        [InlineData("South", 0, -1)]
+        [InlineData("N", 0, -1)]
+        [InlineData("n", 0, -1)]
+        [InlineData("North", 0, -1)]
+        [InlineData("north", 0, -1)]
+        [InlineData("NORTH", 0, -1)]
+        [InlineData(" north ", 0, -1)]
+        [InlineData("S", 0, 1)]
+        [InlineData("South", 0, 1)]
         [InlineData("E", 1, 0)]
         [InlineData("East", 1, 0)]
         [InlineData("W", -1, 0)]
