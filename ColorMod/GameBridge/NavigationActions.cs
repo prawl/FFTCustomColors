@@ -507,9 +507,15 @@ namespace FFTColorCustomizer.GameBridge
                 // attribute the action's effect as a counter-attack (live-seen:
                 // "Ramza countered X for 275 dmg" when Ramza's Phoenix Down
                 // actually landed the 275-dmg kill on the player turn).
-                // 200ms is empirically enough for static-array + live-HP
-                // writes to flush. Cost: 200ms per fresh battle_wait entry.
-                Thread.Sleep(200);
+                //
+                // 2026-04-24 bump 200→400ms: basic Attack animations with
+                // Chaos Blade on-hit effects (Stone proc + damage number
+                // rolls) stretch the static-array settle time beyond 200ms
+                // for some action types. Narrator false-positives persisted
+                // intermittently at 200ms. 400ms is a conservative bump
+                // (still well under a visible-lag threshold for callers)
+                // that covers the slowest action animations observed.
+                Thread.Sleep(400);
                 narratorLastSnap = CaptureCurrentUnitSnapshot();
                 _narratorPersistentLastSnap = narratorLastSnap;
             }
