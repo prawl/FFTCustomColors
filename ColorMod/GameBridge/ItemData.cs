@@ -691,6 +691,50 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Returns the first weapon ItemInfo found in the equipment list, or
+        /// null if unarmed / no known weapon. Used by the scan pipeline to
+        /// surface the active unit's weapon name, element, and on-hit effect
+        /// in the compact banner. S60.
+        /// </summary>
+        public static ItemInfo? GetEquippedWeapon(List<int>? equipment)
+        {
+            if (equipment == null || equipment.Count == 0) return null;
+            foreach (var id in equipment)
+            {
+                if (!Items.TryGetValue(id, out var item)) continue;
+                if (IsWeapon(item.Type)) return item;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Compose the short "weapon tag" shown in the active-unit banner:
+        /// weapon name + optional on-hit effect. Returns empty string when
+        /// no weapon is equipped or the equipment list is unknown.
+        /// Examples:
+        ///   "Chaos Blade onHit:chance to add Stone"
+        ///   "Iron Flail"
+        ///   "" (unarmed)
+        /// </summary>
+        public static string ComposeWeaponTag(List<int>? equipment)
+        {
+            var weapon = GetEquippedWeapon(equipment);
+            if (weapon == null) return string.Empty;
+            var effect = weapon.AttackEffects;
+            if (!string.IsNullOrEmpty(effect))
+            {
+                // Strip a leading "On hit: " prefix if present — the tag format
+                // already uses "onHit:" so the prefix would read as
+                // "onHit:On hit: ..." (redundant).
+                const string prefix = "On hit: ";
+                if (effect!.StartsWith(prefix, System.StringComparison.OrdinalIgnoreCase))
+                    effect = effect.Substring(prefix.Length);
+                return $"{weapon.Name} onHit:{effect}";
+            }
+            return weapon.Name;
+        }
+
+        /// <summary>
         /// Builds an ActionAbilityInfo for the basic Attack command using the
         /// equipped weapon's range. Falls back to range 1 for melee/unknown.
         /// </summary>

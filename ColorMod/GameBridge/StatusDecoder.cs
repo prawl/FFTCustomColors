@@ -58,7 +58,11 @@ namespace FFTColorCustomizer.GameBridge
         };
 
         /// <summary>
-        /// Returns the unit's life state: "alive", "dead" (can be raised), "crystal", or "treasure" (permanently gone).
+        /// Returns the unit's life state: "alive", "dead" (can be raised),
+        /// "crystal" / "treasure" (permanently gone), or "petrified"
+        /// (effectively KO'd — can't act, can't be attacked, counted as
+        /// defeated for battle-end purposes until Gold Needle removes it).
+        /// Priority order: crystal &gt; treasure &gt; dead &gt; petrified &gt; alive.
         /// </summary>
         public static string GetLifeState(byte[] statusBytes)
         {
@@ -67,6 +71,7 @@ namespace FFTColorCustomizer.GameBridge
             if ((statusBytes[0] & 0x40) != 0) return "crystal";
             if ((statusBytes[1] & 0x01) != 0) return "treasure";
             if ((statusBytes[0] & 0x20) != 0) return "dead";
+            if ((statusBytes[1] & 0x80) != 0) return "petrified";
             return "alive";
         }
 

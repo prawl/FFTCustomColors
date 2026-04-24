@@ -13,15 +13,20 @@ namespace FFTColorCustomizer.Tests.GameBridge
         {
             var abilities = new List<AbilityEntry>
             {
+                // S60: Attack is always preserved so Claude can see the weapon's
+                // range / element / on-hit effect even when no enemy is adjacent.
                 MakeAbility("Attack", "enemy", new[] { ("ally", "Ramza"), ("ally", "Archer") }),
+                MakeAbility("Fire", "enemy", new[] { ("ally", "Ramza"), ("ally", "Archer") }),
                 MakeAbility("Tailwind", "ally", new[] { ("ally", "Ramza"), ("self", "Ramza") }),
                 MakeAbility("Focus", "self", null),
             };
 
             var result = AbilityCompactor.Compact(abilities);
 
-            // Attack should be removed (enemy-target, no enemies in tiles)
-            Assert.DoesNotContain(result, a => a.Name == "Attack");
+            // Attack stays (S60 policy: always visible)
+            Assert.Contains(result, a => a.Name == "Attack");
+            // Fire is enemy-target and stays hidden when no enemies in tiles
+            Assert.DoesNotContain(result, a => a.Name == "Fire");
             // Tailwind and Focus should remain
             Assert.Contains(result, a => a.Name == "Tailwind");
             Assert.Contains(result, a => a.Name == "Focus");

@@ -100,7 +100,12 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **⚠ UNVERIFIED: CounterAttackInferrer + SelfDestructInferrer wired but not live-tested** [Narrator] — S60 shipped both pure helpers with full TDD coverage and the wire-up via `EmitNarrationBatch()`. Needs: (a) live counter-KO repro — undead enemy walks adjacent to Ramza with Chaos Blade, gets counter-killed, confirm `> Ramza countered Skeleton for N dmg — Skeleton died` appears. (b) live self-destruct repro — Bomb dies while 2+ units in range take damage, confirm `> Bomb self-destructed (dealt N to Ramza, M to Agrias)` appears.
 
-- [ ] **🟡 Phase 2 polish: suppress duplicate `> X died` when an inferred line already mentions the death** [Narrator] — Right now a counter-KO produces both `> Skeleton died` (raw) and `> Ramza countered Skeleton for N dmg — Skeleton died` (inferred). Redundant but harmless for v1. Fix: renderer takes a `HashSet<string> suppressedKoLabels` computed from the inferrer outputs and skips raw ko events for those labels.
+<!-- S60 SHIPPED (Phase 2.5): BattleNarratorRenderer now takes an optional
+     HashSet<string> suppressedKoLabels. EmitNarrationBatch builds the set by
+     matching counter-line "— X died" and self-destruct-line "> X self-destructed"
+     suffixes, so the raw "> X died" event is dropped when an inferred line
+     already attributes the death. +3 renderer tests. -->
+
 
 **Phase 3 — Memory hunts (prereqs for per-action attribution)**
 
@@ -118,15 +123,31 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **🔴 Screen detection reports BattleMoving while game is in BattleWaiting** [Detection] — Live-repro S60: after the stuck `execute_turn`, `screen` persistently returned `[BattleMoving] ui=(4,6)` but user confirmed the actual game state was BattleWaiting (facing-direction select). Stale `battleMode` byte or stale-cursor-cache issue. Add a signal discriminator: if we arrived at BattleMoving via a recent move-commit key press, re-check after 500ms and accept BattleWaiting if it appears.
 
-- [ ] **🟡 scan_move output missing basic Attack entry + weapon name** [Scan] — Live-repro S60: active-unit Abilities list shows Mettle + Items but no line for basic `Attack` (the `battle_attack`/`battle_ability "Attack"` action). Claude has to guess the weapon's range/element. Add a synthetic top entry: `Attack R:N [weapon-element] → <targets>` with the equipped weapon's WP/range/element from ItemData. Also surface the weapon name in the compact header (`[BattleMyTurn] Ramza(Gallant Knight) [Iron Flail] (2,1) HP=...`).
+<!-- S60 SHIPPED (partial): Attack entry always visible even with no enemy in range
+     (AbilityCompactor.IsHidden exempts "Attack"). ItemData.ComposeWeaponTag helper
+     composes "<Name> onHit:<effect>" strings. ActiveUnitSummaryFormatter accepts
+     optional weaponTag. Wire-up from the scan pipeline to CommandWatcher's cached
+     active-unit state is BLOCKED — BattleUnitState doesn't expose Equipment, so
+     `_cachedActiveUnitWeaponTag` is always null. Needs: either add Equipment to
+     BattleUnitState OR attach a weapon-tag string to `battleState` directly in
+     NavigationActions.CollectUnitPositionsFull. Small but touches the DTO layer. -->
+
+- [ ] **🟡 Wire weapon tag into active-unit banner** [Scan] — `ItemData.ComposeWeaponTag` + `ActiveUnitSummaryFormatter.Format(weaponTag)` are ready and tested (S60 Phase 3). Still need to thread the active unit's equipment list from NavigationActions into CommandWatcher's `_cachedActiveUnitWeaponTag` so `[BattleMyTurn] Ramza(Gallant Knight) [Chaos Blade onHit:chance to add Stone] (2,1) HP=...` actually appears live. Fix: add `Equipment` field to BattleUnitState, OR attach a `ActiveUnitWeaponTag` field to `battleState` and read it directly at the formatter call site.
 
 - [ ] **🟡 `scan_move` deprecation message is terse** [Shell] — `scan_move` now prints `[USE screen] scan_move is deprecated. Use: screen` and exits. Should either run `screen` directly (forward compat) OR print a single clear line explaining the migration path + cite Commands.md section.
 
 - [ ] **🔴 `battle_ability` submenu detection misses "Items"** [Execution] — Live-repro S60 at The Siedge Weald: `battle_ability "Phoenix Down" 6 4` failed with `Skillset 'Items' not in submenu: Attack, Mettle`, but Items WAS visible in the in-game submenu. Helper parses only Attack/Mettle and doesn't see Items. Blocks every item use via the helper (Phoenix Down, X-Potion, Ether, Remedy). Likely a submenu-scraping bug: either the memory read stops after 2 entries or the label lookup filters out "Items". Repro: fresh BattleMyTurn with Items secondary → `battle_ability "Phoenix Down" ...` → check what `battle_ability` logs for the submenu list.
 
-- [ ] **🟡 Scan doesn't tag petrified/stoned units as effectively-dead** [Scan] — Live-repro S60: Bomb at (5,5) had `[Petrify,Float,Critical]` but scan still listed it as a valid target for Attack/abilities. User feedback: stoned units are untargetable (can't be attacked, can't act, counted for battle-end like KO). Needs: `Petrify` status treated same as `Dead` for target filtering + append `DEAD` (or `STONE`) suffix in unit listing. Avoids wasted turns trying to hit statue enemies.
+<!-- S60 SHIPPED: StatusDecoder.GetLifeState returns "petrified" when the Petrify
+     bit is set. fft.sh renders a " STONE" / " CRYSTAL" suffix in the unit listing
+     alongside " DEAD". NavigationActions' attack-tile builder treats any non-
+     "alive" occupant as "empty" so stoned enemies don't show up as Attack targets.
+     +4 StatusDecoder tests. -->
 
-- [ ] **🟡 Weapon on-hit status effect not surfaced on scan_move** [Scan] — Live-repro S60: Ramza's equipped weapon had a Petrify proc chance that stoned a Bomb on a basic Attack. User informed Claude in-the-loop; the mod didn't surface it. Needs: active-unit summary includes `weapon=<Name> [onHit:Petrify%]` style when `AttackEffects` is set on the weapon (ItemData.cs already has an `AttackEffects` field — just needs wire-up to scan render).
+<!-- S60 SHIPPED (partial): weapon on-hit effect surfacing is unblocked at the
+     helper layer (ItemData.ComposeWeaponTag + ActiveUnitSummaryFormatter), but
+     needs the wire-up from scan → cached banner (see "Wire weapon tag into
+     active-unit banner" above). -->
 
 - [ ] **🟡 `ui=` reports Abilities when cursor is actually on Move** [Detection] — Live-repro S60: after a battle_attack returned, screen showed `[BattleMyTurn] ui=Abilities` but user confirmed cursor was on Move. Same family as the BattleMoving/BattleWaiting stale-byte bug — menuCursor byte reading stale after an action. Candidate fix: refresh menuCursor on fresh BattleMyTurn entry, reset to 0 by default on state transition.
 

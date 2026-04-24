@@ -3506,7 +3506,7 @@ us.forEach(u=>{
   const cl=u.jobName?(u.name?'('+u.jobName+')':u.jobName):'';
   const clSep=u.jobName?(u.name?'':' '):'';
   const st=u.statuses?.length?' ['+u.statuses.join(',')+']':'';
-  const life=u.lifeState==='dead'?' DEAD':'';
+  const life=u.lifeState==='dead'?' DEAD':(u.lifeState==='petrified'?' STONE':(u.lifeState==='crystal'?' CRYSTAL':''));
   const act=u.isActive?' *':'';
   const dist=u.distance!==undefined&&!u.isActive?' d='+u.distance:'';
   // Facing is decision-relevant for backstab — keep on enemies only. Ally

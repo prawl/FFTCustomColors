@@ -318,6 +318,26 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void IsHidden_BasicAttackNoTargets_AlwaysVisible()
+        {
+            // S60: the basic Attack entry should ALWAYS appear in the
+            // active unit's ability list — Claude needs to see the
+            // weapon's range / element / on-hit effect even when no
+            // enemy is adjacent, so positioning + ability-pick decisions
+            // can be made with that info in hand.
+            var a = MakeAbility("Attack", "enemy");
+            Assert.False(AbilityCompactor.IsHidden(a));
+        }
+
+        [Fact]
+        public void IsHidden_BasicAttackWithNonEnemyOccupants_StillVisible()
+        {
+            // Even if only allies/empty tiles are in range, Attack stays.
+            var a = MakeAbility("Attack", "enemy", (5, 5, "ally"), (5, 6, null));
+            Assert.False(AbilityCompactor.IsHidden(a));
+        }
+
+        [Fact]
         public void IsHidden_AllyTarget_AlwaysFalse_EvenWithNoTiles()
         {
             // Ally-target abilities aren't hidden even with no targets —

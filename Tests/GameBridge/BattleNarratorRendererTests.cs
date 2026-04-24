@@ -199,5 +199,49 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var lines = BattleNarratorRenderer.Render(events, "Ramza");
             Assert.Empty(lines);
         }
+
+        [Fact]
+        public void SuppressedKoLabel_OmitsDiedLine()
+        {
+            // When the caller already emitted a counter/self-destruct line
+            // mentioning the kill, the raw "> X died" line is redundant.
+            // Passing the label in suppressedKoLabels drops it from output.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Ramza", "damaged", oldHp: 719, newHp: 623, team: "PLAYER"),
+                Evt("Skeleton", "ko", oldHp: 432, newHp: 0),
+            };
+            var suppress = new HashSet<string> { "Skeleton" };
+            var lines = BattleNarratorRenderer.Render(events, "Ramza", suppress);
+            // Only the damage line remains — no "> Skeleton died"
+            Assert.Single(lines);
+            Assert.Equal("> Ramza took 96 damage (HP 719→623)", lines[0]);
+        }
+
+        [Fact]
+        public void SuppressedKoLabel_OtherKosStillRender()
+        {
+            // Only the suppressed-label's ko is dropped; sibling kos still render.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Skeleton", "ko", oldHp: 50, newHp: 0),
+                Evt("Bomb", "ko", oldHp: 40, newHp: 0),
+            };
+            var suppress = new HashSet<string> { "Skeleton" };
+            var lines = BattleNarratorRenderer.Render(events, "Ramza", suppress);
+            Assert.Single(lines);
+            Assert.Equal("> Bomb died", lines[0]);
+        }
+
+        [Fact]
+        public void NullSuppressSet_EquivalentToEmpty()
+        {
+            // Defensive: passing null for suppressedKoLabels should behave the
+            // same as passing an empty set (i.e. nothing is suppressed).
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Skeleton", "ko", oldHp: 50, newHp: 0),
+            };
+            var lines = BattleNarratorRenderer.Render(events, "Ramza", null);
+            Assert.Single(lines);
+            Assert.Equal("> Skeleton died", lines[0]);
+        }
     }
 }

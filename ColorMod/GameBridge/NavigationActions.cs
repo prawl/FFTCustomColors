@@ -3144,10 +3144,18 @@ namespace FFTColorCustomizer.GameBridge
                     int dir = FindDirForDelta(rotation, delta[0], delta[1]);
                     string arrowName = dirNames[dir];
                     var occupantUnit = units.FirstOrDefault(u => u.GridX == tx && u.GridY == ty && u != ally);
-                    string occupant = occupantUnit == null ? "empty"
-                        : occupantUnit.Team == 0 ? "ally" : "enemy";
+                    // S60: dead / crystal / treasure / petrified occupants are
+                    // not attackable — render the tile as "empty" so scan_move
+                    // output doesn't suggest wasted actions against corpses or
+                    // stone statues. TODO §0 live-repro S60 at Siedge Weald:
+                    // scan said `Up→(4,4) enemy (Skeleton)` when (4,4) held a
+                    // HP=0 [Dead] corpse.
+                    bool occupantAttackable = occupantUnit != null
+                        && StatusDecoder.GetLifeState(occupantUnit.StatusBytes) == "alive";
+                    string occupant = !occupantAttackable ? "empty"
+                        : occupantUnit!.Team == 0 ? "ally" : "enemy";
                     var tile = new AttackTileInfo { X = tx, Y = ty, Arrow = arrowName, Occupant = occupant };
-                    if (occupantUnit != null)
+                    if (occupantAttackable)
                     {
                         tile.Hp = occupantUnit.Hp;
                         tile.MaxHp = occupantUnit.MaxHp;
@@ -4467,12 +4475,33 @@ namespace FFTColorCustomizer.GameBridge
             var events = UnitScanDiff.Compare(preForDiff, postForDiff);
             if (events.Count > 0)
             {
+                var counterLines = CounterAttackInferrer.Infer(events, activePlayerName ?? "");
+                var selfDestructLines = SelfDestructInferrer.Infer(events);
+
+                // S60 Phase 2.5: suppress raw "> X died" when a counter-KO or
+                // self-destruct line already mentions the death — avoids the
+                // duplicate-info noise in the narration.
+                var suppressedKoLabels = new HashSet<string>();
+                foreach (var e in events)
+                {
+                    if (e.Kind != "ko" || e.Team != "ENEMY") continue;
+                    foreach (var cl in counterLines)
+                    {
+                        if (cl.Contains($"countered {e.Label} for") && cl.Contains($" {e.Label} died"))
+                            suppressedKoLabels.Add(e.Label);
+                    }
+                    foreach (var sdl in selfDestructLines)
+                    {
+                        if (sdl.StartsWith($"> {e.Label} self-destructed"))
+                            suppressedKoLabels.Add(e.Label);
+                    }
+                }
+
                 var allLines = new List<string>();
                 allLines.AddRange(BattleNarratorRenderer.Render(
-                    events, activePlayerName ?? ""));
-                allLines.AddRange(CounterAttackInferrer.Infer(
-                    events, activePlayerName ?? ""));
-                allLines.AddRange(SelfDestructInferrer.Infer(events));
+                    events, activePlayerName ?? "", suppressedKoLabels));
+                allLines.AddRange(counterLines);
+                allLines.AddRange(selfDestructLines);
                 if (allLines.Count > 0)
                     NarrationEventLog.AppendLines(allLines);
             }

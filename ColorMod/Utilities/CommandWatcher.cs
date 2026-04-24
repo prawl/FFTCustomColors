@@ -88,6 +88,10 @@ namespace FFTColorCustomizer.Utilities
         private int _cachedActiveUnitY = -1;
         private int _cachedActiveUnitHp;
         private int _cachedActiveUnitMaxHp;
+        // S60: weapon banner tag (e.g. "Chaos Blade onHit:chance to add Stone").
+        // Populated from the active unit's equipment list via ItemData.ComposeWeaponTag.
+        // Empty string when unarmed or equipment unknown.
+        private string? _cachedActiveUnitWeaponTag;
 
         /// <summary>
         /// When true, game actions must go through validPaths. Raw key presses and
@@ -5120,6 +5124,7 @@ namespace FFTColorCustomizer.Utilities
             _cachedActiveUnitY = -1;
             _cachedActiveUnitHp = 0;
             _cachedActiveUnitMaxHp = 0;
+            _cachedActiveUnitWeaponTag = null;
         }
 
         /// <summary>
@@ -5314,6 +5319,13 @@ namespace FFTColorCustomizer.Utilities
             _cachedActiveUnitY = activeUnit.Y;
             _cachedActiveUnitHp = activeUnit.Hp;
             _cachedActiveUnitMaxHp = activeUnit.MaxHp;
+            // S60 weapon banner tag: BattleUnitState doesn't carry the
+            // equipment list directly, so the tag stays null here. The
+            // ItemData.ComposeWeaponTag helper + formatter support are
+            // ready — wire-up is blocked on BattleUnitState exposing
+            // Equipment or on the scan pipeline attaching the tag directly
+            // to battleState. Tracked in TODO §0.
+            _cachedActiveUnitWeaponTag = null;
         }
 
         /// <summary>
@@ -8829,7 +8841,8 @@ namespace FFTColorCustomizer.Utilities
                     screen.ActiveUnitSummary = GameBridge.ActiveUnitSummaryFormatter.Format(
                         _cachedActiveUnitName, _cachedActiveUnitJob,
                         _cachedActiveUnitX, _cachedActiveUnitY,
-                        _cachedActiveUnitHp, _cachedActiveUnitMaxHp);
+                        _cachedActiveUnitHp, _cachedActiveUnitMaxHp,
+                        _cachedActiveUnitWeaponTag);
                 }
 
                 // Sync state machine with memory-detected top-level screens.

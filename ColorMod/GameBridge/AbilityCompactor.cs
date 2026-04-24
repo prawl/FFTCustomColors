@@ -85,9 +85,15 @@ namespace FFTColorCustomizer.GameBridge
         /// An enemy-target ability with no enemy occupants in its valid-tile
         /// list contributes no useful information to the ability list — the
         /// player can't use it to hit anything. Hide it.
+        ///
+        /// EXCEPTION: the basic "Attack" entry is always visible so Claude
+        /// can see the equipped weapon's range / element / on-hit effect
+        /// even when no enemy is adjacent. Positioning decisions depend
+        /// on knowing the attack profile in advance. See TODO §0 S60.
         /// </summary>
         public static bool IsHidden(AbilityEntry a)
         {
+            if (a.Name == "Attack") return false;
             return a.Target == "enemy" && !HasEnemyOccupant(a);
         }
 

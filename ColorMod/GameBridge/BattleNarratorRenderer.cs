@@ -17,7 +17,8 @@ namespace FFTColorCustomizer.GameBridge
 
         public static List<string> Render(
             IReadOnlyList<UnitScanDiff.ChangeEvent> events,
-            string activePlayerName)
+            string activePlayerName,
+            HashSet<string>? suppressedKoLabels = null)
         {
             var lines = new List<string>();
             if (events == null || events.Count == 0) return lines;
@@ -26,6 +27,16 @@ namespace FFTColorCustomizer.GameBridge
             foreach (var e in events)
             {
                 if (lines.Count >= MaxLines) { skipped++; continue; }
+
+                // S60 Phase 2.5: when a higher-level inferrer (counter/self-
+                // destruct) already emits a line that mentions the death, skip
+                // the raw "> X died" so the narration doesn't duplicate itself.
+                if (e.Kind == "ko"
+                    && suppressedKoLabels != null
+                    && suppressedKoLabels.Contains(e.Label))
+                {
+                    continue;
+                }
 
                 var formatted = FormatEvent(e);
                 if (formatted == null) continue;

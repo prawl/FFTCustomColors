@@ -44,5 +44,44 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 name: null, jobName: null, x: 0, y: 0, hp: 0, maxHp: 0);
             Assert.Equal("", result);
         }
+
+        [Fact]
+        public void Format_WithWeaponTag_AppendsBracketedTag()
+        {
+            // S60: surface the weapon in the active-unit banner so Claude
+            // knows what they're swinging (range, on-hit effect).
+            var result = ActiveUnitSummaryFormatter.Format(
+                name: "Ramza", jobName: "Gallant Knight", x: 2, y: 1, hp: 719, maxHp: 719,
+                weaponTag: "Chaos Blade onHit:Petrify");
+            Assert.Equal("Ramza(Gallant Knight) (2,1) HP=719/719 [Chaos Blade onHit:Petrify]", result);
+        }
+
+        [Fact]
+        public void Format_WithWeaponTagButNoHp_StillAppendsTag()
+        {
+            var result = ActiveUnitSummaryFormatter.Format(
+                name: "Ramza", jobName: "Squire", x: 0, y: 0, hp: 0, maxHp: 0,
+                weaponTag: "Iron Flail");
+            Assert.Equal("Ramza(Squire) (0,0) [Iron Flail]", result);
+        }
+
+        [Fact]
+        public void Format_WithEmptyWeaponTag_OmitsBrackets()
+        {
+            var result = ActiveUnitSummaryFormatter.Format(
+                name: "Ramza", jobName: "Squire", x: 0, y: 0, hp: 100, maxHp: 100,
+                weaponTag: "");
+            Assert.Equal("Ramza(Squire) (0,0) HP=100/100", result);
+        }
+
+        [Fact]
+        public void Format_WithNullWeaponTag_OmitsBrackets()
+        {
+            // Backward-compat — null tag behaves same as legacy no-arg call.
+            var result = ActiveUnitSummaryFormatter.Format(
+                name: "Ramza", jobName: "Squire", x: 0, y: 0, hp: 100, maxHp: 100,
+                weaponTag: null);
+            Assert.Equal("Ramza(Squire) (0,0) HP=100/100", result);
+        }
     }
 }

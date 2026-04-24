@@ -218,5 +218,58 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var info = ItemData.BuildAttackAbilityInfo(null);
             Assert.Equal(0, info.VRange);
         }
+
+        // --- GetEquippedWeapon / ComposeWeaponTag (S60) ---
+
+        [Fact]
+        public void GetEquippedWeapon_FindsFirstWeapon()
+        {
+            // Dagger (1) is the first weapon — returned regardless of other slots.
+            var equipment = new List<int> { 130, 1, 156 }; // Shield, Dagger, Grand Helm
+            var weapon = ItemData.GetEquippedWeapon(equipment);
+            Assert.NotNull(weapon);
+            Assert.Equal("Dagger", weapon!.Name);
+        }
+
+        [Fact]
+        public void GetEquippedWeapon_NullOrEmpty_ReturnsNull()
+        {
+            Assert.Null(ItemData.GetEquippedWeapon(null));
+            Assert.Null(ItemData.GetEquippedWeapon(new List<int>()));
+        }
+
+        [Fact]
+        public void GetEquippedWeapon_UnarmedWithArmorOnly_ReturnsNull()
+        {
+            // Only non-weapon items — returns null (unarmed).
+            var equipment = new List<int> { 130, 156, 185 };
+            Assert.Null(ItemData.GetEquippedWeapon(equipment));
+        }
+
+        [Fact]
+        public void ComposeWeaponTag_UnarmedOrUnknown_ReturnsEmpty()
+        {
+            Assert.Equal("", ItemData.ComposeWeaponTag(null));
+            Assert.Equal("", ItemData.ComposeWeaponTag(new List<int>()));
+            Assert.Equal("", ItemData.ComposeWeaponTag(new List<int> { 9999 })); // unknown id
+        }
+
+        [Fact]
+        public void ComposeWeaponTag_WeaponWithoutOnHitEffect_ReturnsNameOnly()
+        {
+            // Broadsword (19) has no AttackEffects set.
+            Assert.Equal("Broadsword", ItemData.ComposeWeaponTag(new List<int> { 19 }));
+        }
+
+        [Fact]
+        public void ComposeWeaponTag_ChaosBlade_AppendsOnHitEffect()
+        {
+            // Chaos Blade (37) has AttackEffects = "On hit: chance to add Stone".
+            // The tag should surface the on-hit text (stripping the redundant
+            // "On hit: " prefix) so Claude knows a basic attack has a petrify
+            // proc chance.
+            var tag = ItemData.ComposeWeaponTag(new List<int> { 37 });
+            Assert.Equal("Chaos Blade onHit:chance to add Stone", tag);
+        }
     }
 }

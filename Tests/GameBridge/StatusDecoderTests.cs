@@ -123,6 +123,32 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal("alive", StatusDecoder.GetLifeState(null!));
         }
 
+        [Fact]
+        public void GetLifeState_Petrify_ReturnsPetrified()
+        {
+            // Petrify = byte 1, mask 0x80. Per S60 live-verified behavior:
+            // a petrified unit can't act and can't be attacked — effectively
+            // KO'd until the status is removed (Gold Needle). Treated the
+            // same as "dead" for targeting + battle-end filtering.
+            Assert.Equal("petrified", StatusDecoder.GetLifeState(new byte[] { 0, 0x80, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void GetLifeState_PetrifyWithOtherStatuses_ReturnsPetrified()
+        {
+            // Petrify + Float (Bomb that got stoned) — still petrified
+            Assert.Equal("petrified", StatusDecoder.GetLifeState(new byte[] { 0, 0x80, 0x40, 0, 0 }));
+        }
+
+        [Fact]
+        public void GetLifeState_DeadAndPetrify_DeadWinsByPriority()
+        {
+            // Guard: if both bits are set (shouldn't happen in practice),
+            // "dead" takes precedence over "petrified" — dead = already KO'd
+            // so the raise-able variant is the most accurate state.
+            Assert.Equal("dead", StatusDecoder.GetLifeState(new byte[] { 0x20, 0x80, 0, 0, 0 }));
+        }
+
         // Additional coverage (session 33 batch 6).
 
         [Fact]
