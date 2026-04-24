@@ -122,7 +122,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Speed
 
-- [ ] **🟡 `battle_wait` slow — 17-33s per end-of-turn** [Speed] — Live-repro: `battle_wait` took 17s, 20s, 21s, 33s across consecutive turns. Even with Ctrl fast-forward, enemy turn animations dominate. Investigate: is the bridge polling at a slower rate than needed? Is the Ctrl fast-forward actually applying? Target: sub-10s for a 2-enemy end-of-turn.
+- [~] **🟡 `battle_wait` slow — 17-33s per end-of-turn** [Speed] — Live-repro pre-restart: 17s / 20s / 21s / 33s across consecutive turns. 2026-04-24 measured ~10s/turn after the 300→150ms poll interval drop. AUDITED 2026-04-24: poll overhead is already tight (150ms sleep + cached `_detectScreen` + every-3rd-tick narrator batch). Remaining cost is pure animation playback. Next step is a LIVE EXPLORATION: `NavigationActions.cs:740` notes Ctrl fast-forward doesn't work in IC remaster; find the actual fast-forward hotkey by trying Space / L-Shift / Tab / R / hold combinations during an enemy turn and timing with `session_stats`. Once found, wire via `DirectInput` hook same pattern as the old Ctrl injection.
 
 
 ## 1. Battle Execution (P0, BLOCKING)
