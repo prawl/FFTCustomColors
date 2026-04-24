@@ -25,5 +25,32 @@ namespace FFTColorCustomizer.GameBridge
                 return false;
             return true;
         }
+
+        /// <summary>
+        /// Classify the occupant label for the Attack-tiles render:
+        ///   - "empty" when no unit occupies the tile
+        ///   - "ally" / "enemy" when the occupant is attackable
+        ///   - "dead" / "crystal" / "treasure" / "petrified" otherwise
+        ///
+        /// Returning a specific corpse label (instead of collapsing to
+        /// "empty") lets Claude see that an adjacent corpse tile isn't a
+        /// valid attack target while still making the tile's real state
+        /// visible for planning (e.g. move-through pathing, crystal
+        /// pickup). Live-flagged 2026-04-24.
+        /// </summary>
+        public static string ClassifyOccupant(
+            bool hasOccupant, int hp, byte[]? statusBytes, int team)
+        {
+            if (!hasOccupant) return "empty";
+            if (IsAttackable(hp, statusBytes))
+                return team == 0 ? "ally" : "enemy";
+            // Unattackable occupant — surface life state. When HP<=0 but
+            // the dead status bit hasn't propagated yet, GetLifeState
+            // returns "alive"; fall back to "dead" for clarity.
+            var lifeState = statusBytes != null
+                ? StatusDecoder.GetLifeState(statusBytes)
+                : "alive";
+            return lifeState == "alive" ? "dead" : lifeState;
+        }
     }
 }

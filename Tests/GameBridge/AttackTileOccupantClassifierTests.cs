@@ -96,5 +96,72 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.True(AttackTileOccupantClassifier.IsAttackable(
                 hp: 50, statusBytes: new byte[] { 0 }));
         }
+
+        // -------- ClassifyOccupant --------
+
+        [Fact]
+        public void Classify_NoOccupant_Empty()
+        {
+            Assert.Equal("empty", AttackTileOccupantClassifier.ClassifyOccupant(
+                hasOccupant: false, hp: 0, statusBytes: null, team: 0));
+        }
+
+        [Fact]
+        public void Classify_AliveEnemy_ReturnsEnemy()
+        {
+            Assert.Equal("enemy", AttackTileOccupantClassifier.ClassifyOccupant(
+                hasOccupant: true, hp: 100, statusBytes: Status(), team: 1));
+        }
+
+        [Fact]
+        public void Classify_AlivePlayer_ReturnsAlly()
+        {
+            Assert.Equal("ally", AttackTileOccupantClassifier.ClassifyOccupant(
+                hasOccupant: true, hp: 100, statusBytes: Status(), team: 0));
+        }
+
+        [Fact]
+        public void Classify_DeadFlagSet_ReturnsDead()
+        {
+            Assert.Equal("dead", AttackTileOccupantClassifier.ClassifyOccupant(
+                hasOccupant: true, hp: 0, statusBytes: Status(b0: 0x20), team: 1));
+        }
+
+        [Fact]
+        public void Classify_CrystalFlagSet_ReturnsCrystal()
+        {
+            Assert.Equal("crystal", AttackTileOccupantClassifier.ClassifyOccupant(
+                hasOccupant: true, hp: 0, statusBytes: Status(b0: 0x40), team: 1));
+        }
+
+        [Fact]
+        public void Classify_TreasureFlagSet_ReturnsTreasure()
+        {
+            Assert.Equal("treasure", AttackTileOccupantClassifier.ClassifyOccupant(
+                hasOccupant: true, hp: 0, statusBytes: Status(b1: 0x01), team: 1));
+        }
+
+        [Fact]
+        public void Classify_PetrifiedFlagSet_ReturnsPetrified()
+        {
+            Assert.Equal("petrified", AttackTileOccupantClassifier.ClassifyOccupant(
+                hasOccupant: true, hp: 100, statusBytes: Status(b1: 0x80), team: 1));
+        }
+
+        [Fact]
+        public void Classify_HpZero_NoStatusFlag_ReturnsDeadFallback()
+        {
+            // HP dropped to 0 but the status byte hasn't propagated —
+            // fall back to "dead" rather than collapse to "empty".
+            Assert.Equal("dead", AttackTileOccupantClassifier.ClassifyOccupant(
+                hasOccupant: true, hp: 0, statusBytes: Status(), team: 1));
+        }
+
+        [Fact]
+        public void Classify_HpZero_NullStatusBytes_ReturnsDeadFallback()
+        {
+            Assert.Equal("dead", AttackTileOccupantClassifier.ClassifyOccupant(
+                hasOccupant: true, hp: 0, statusBytes: null, team: 1));
+        }
     }
 }

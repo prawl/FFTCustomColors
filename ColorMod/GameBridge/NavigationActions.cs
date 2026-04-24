@@ -3290,18 +3290,27 @@ namespace FFTColorCustomizer.GameBridge
                     // scan_move output doesn't suggest wasted actions
                     // against corpses. Extracted to AttackTileOccupantClassifier
                     // 2026-04-24 to add the HP>0 guard behind live-repro.
-                    bool occupantAttackable = occupantUnit != null
-                        && AttackTileOccupantClassifier.IsAttackable(
-                            occupantUnit.Hp, occupantUnit.StatusBytes);
-                    string occupant = !occupantAttackable ? "empty"
-                        : occupantUnit!.Team == 0 ? "ally" : "enemy";
+                    string occupant = AttackTileOccupantClassifier.ClassifyOccupant(
+                        hasOccupant: occupantUnit != null,
+                        hp: occupantUnit?.Hp ?? 0,
+                        statusBytes: occupantUnit?.StatusBytes,
+                        team: occupantUnit?.Team ?? 0);
+                    bool occupantAttackable = occupant == "ally" || occupant == "enemy";
                     var tile = new AttackTileInfo { X = tx, Y = ty, Arrow = arrowName, Occupant = occupant };
-                    if (occupantAttackable)
+                    // Surface the job name for any known occupant (attackable
+                    // or not) so the render can show "dead (Bomb)" rather
+                    // than a bare "dead". Only compute HP/Arc for attackable
+                    // ones (Arc requires a live facing direction and HP
+                    // display is meaningless on corpses).
+                    if (occupantUnit != null)
                     {
-                        tile.Hp = occupantUnit.Hp;
-                        tile.MaxHp = occupantUnit.MaxHp;
                         tile.JobName = occupantUnit.JobNameOverride
                             ?? (occupantUnit.Team == 0 ? GameStateReporter.GetJobName(occupantUnit.Job) : null);
+                    }
+                    if (occupantAttackable)
+                    {
+                        tile.Hp = occupantUnit!.Hp;
+                        tile.MaxHp = occupantUnit.MaxHp;
                         if (occupant == "enemy" && !string.IsNullOrEmpty(occupantUnit.Facing))
                         {
                             tile.Arc = BackstabArcCalculator.ComputeArc(
