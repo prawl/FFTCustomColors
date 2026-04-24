@@ -146,6 +146,14 @@ namespace FFTColorCustomizer.Utilities
         private long _lastBattleStateTickMs = -1;
         private string? _lastBattleStateName;
 
+        // FreshBattleMyTurnEntryClassifier state — tracks the screen name
+        // from the PREVIOUS Detect() call so we can identify fresh-entry
+        // transitions into BattleMyTurn (turn-boundary states where the
+        // game resets the action-menu cursor). On fresh entry we write
+        // 0 to 0x1407FC620 so the byte reflects the game's reset state.
+        // See PROPOSAL_menucursor_drift.md for the full design.
+        private string? _prevDetectedScreenName;
+
         /// <summary>
         /// Cached picker-cursor address resolved by the `resolve_picker_cursor`
         /// action. Set when state machine enters a picker; used to surface
@@ -6977,6 +6985,39 @@ namespace FFTColorCustomizer.Utilities
                     ModLogger.Log($"[StateOverride] TravelList→WorldMap: SM just left PartyMenuUnits via key, ui byte is stale.");
                     screen.Name = "WorldMap";
                 }
+
+                // Fresh-entry menuCursor reset. On detected transitions
+                // INTO BattleMyTurn from a turn-boundary state (enemy turn,
+                // pause, formation, dialogue), write 0 to 0x1407FC620 so
+                // the cursor byte reflects the game's own turn-start
+                // reset. Without this, stale values from the prior battle
+                // state persist and produce wrong ui= labels. See
+                // PROPOSAL_menucursor_drift.md for the full design.
+                //
+                // Submenu escapes (BattleMoving, BattleAbilities, etc.)
+                // are NOT fresh — the game preserves cursor when returning
+                // from a submenu, and we respect that.
+                if (GameBridge.FreshBattleMyTurnEntryClassifier.IsFresh(
+                        _prevDetectedScreenName, screen.Name)
+                    && Explorer != null)
+                {
+                    Explorer.Scanner.WriteByte((nint)0x1407FC620, 0);
+                    // Also correct the current response's cursor — the
+                    // MenuCursor byte was read before this write, so the
+                    // stale value is in screen.MenuCursor. Force it to 0
+                    // so the ui= mapping below renders "Move" correctly.
+                    screen.MenuCursor = 0;
+                    // Turn-consumed flags also reset on turn boundary —
+                    // defensive clear on top of the battle_wait reset.
+                    _movedThisTurn = false;
+                    _actedThisTurn = false;
+                    ModLogger.Log($"[MenuCursorReset] fresh entry {_prevDetectedScreenName ?? "null"} → BattleMyTurn: wrote 0x1407FC620=0");
+                }
+                // Track detected-screen name for the next Detect() call's
+                // fresh-entry classifier. Updated even when screen.Name
+                // is non-BattleMyTurn so the next transition INTO
+                // BattleMyTurn has a correct prev.
+                _prevDetectedScreenName = screen.Name;
 
                 // LocationMenu UI label: shopTypeIndex at 0x140D435F0 names
                 // which shop the cursor is hovering in the settlement's
