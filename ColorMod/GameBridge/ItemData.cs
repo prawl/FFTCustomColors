@@ -499,34 +499,51 @@ namespace FFTColorCustomizer.GameBridge
             [253] = new(253, "Phoenix Down", "chemistitem"),
 
             // ============================================================
-            // PSP/WotL EXCLUSIVE - FELL SWORDS (IDs 256-260)
+            // IC REMASTER (Deluxe Edition) — IDs 256-260 live-verified 2026-04-23
+            // by equipping each ID on Ramza's weapon slot and reading the game's
+            // rendered name. IC renamed/replaced the PSP fell-sword block here.
+            // 256: Materia Blade+ (was Chaosbringer in PSP)
+            // 257-260: Deluxe bonus set (read off Ramza after claiming the
+            //          Deluxe entitlement in the title menu).
+            // Stats (WP, HP bonus, evade) not yet captured from the in-game
+            // info panel — add when a stat-gathering pass is done on EqA.
             // ============================================================
-            [256] = new(256, "Chaosbringer", "fellsword", WeaponPower: 16, Range: 1),
-            [257] = new(257, "Deathbringer", "fellsword", WeaponPower: 20, Range: 1),
-            [258] = new(258, "Arondight", "fellsword", WeaponPower: 24, Range: 1),
-            [259] = new(259, "Balmung", "fellsword", WeaponPower: 32, Range: 1),
-            [260] = new(260, "Valhalla", "fellsword", WeaponPower: 40, Range: 1),
+            [256] = new(256, "Materia Blade+", "sword"),
+            [257] = new(257, "Akademy Blade", "sword"),
+            [258] = new(258, "Akademy Beret", "hat"),
+            [259] = new(259, "Akademy Tunic", "clothing"),
+            [260] = new(260, "Ring of Aptitude", "ring",
+                EquipmentEffects: "JP Boost"),
 
             // ============================================================
-            // PSP/WotL EXCLUSIVE - ADDITIONAL WEAPONS (IDs 261-277)
+            // PSP/WotL IDs 261-277 — REMOVED in IC Remaster (Deluxe Edition)
+            // Each ID was probed 2026-04-23 by writing the u16 to a weapon
+            // slot and opening PartyMenu. Result: all except 262 rendered as
+            // "nothing equipped" (empty placeholder in the item table). ID
+            // 262 crashes the game when PartyMenu attempts to render it —
+            // it's been fully removed from the item table, not just emptied.
+            // Keeping the PSP names below so tooling doesn't break on legacy
+            // saves/references, but DO NOT write these IDs to equipment on
+            // IC Deluxe — inventory writes silently drop, equipment writes
+            // either render empty or crash. See feedback_invalid_item_id_crashes.
             // ============================================================
-            [261] = new(261, "Moonblade", "sword", WeaponPower: 20, Range: 1, WeaponEvade: 15),
-            [262] = new(262, "Onion Sword", "sword", WeaponPower: 50, Range: 1, WeaponEvade: 15),
-            [263] = new(263, "Ras Algethi", "gun", WeaponPower: 12, Range: 8, WeaponEvade: 5),
-            [264] = new(264, "Fomalhaut", "gun", WeaponPower: 18, Range: 8, WeaponEvade: 5),
-            [265] = new(265, "Francisca", "axe", WeaponPower: 24, Range: 1),
-            [266] = new(266, "Golden Axe", "axe", WeaponPower: 30, Range: 1),
-            [267] = new(267, "Orochi", "ninjablade", WeaponPower: 20, Range: 1, WeaponEvade: 5),
-            [268] = new(268, "Moonsilk Blade", "ninjablade", WeaponPower: 26, Range: 1, WeaponEvade: 5),
-            [269] = new(269, "Nirvana", "staff", WeaponPower: 5, Range: 1, WeaponEvade: 15),
-            [270] = new(270, "Dreamwaker", "staff", WeaponPower: 5, Range: 1, WeaponEvade: 15),
-            [271] = new(271, "Stardust Rod", "rod", WeaponPower: 5, Range: 3, WeaponEvade: 20),
-            [272] = new(272, "Crown Scepter", "rod", WeaponPower: 5, Range: 1, WeaponEvade: 20),
-            [273] = new(273, "Vesper", "flail", WeaponPower: 36, Range: 1),
-            [274] = new(274, "Sagittarius Bow", "bow", WeaponPower: 24, Range: 5),
-            [275] = new(275, "Durandal", "knightsword", WeaponPower: 26, Range: 1, WeaponEvade: 40),
-            [276] = new(276, "Gae Bolg", "polearm", WeaponPower: 24, Range: 2, WeaponEvade: 15),
-            [277] = new(277, "Gungnir", "polearm", WeaponPower: 29, Range: 2, WeaponEvade: 15),
+            [261] = new(261, "Moonblade [IC:unused]", "sword", WeaponPower: 20, Range: 1, WeaponEvade: 15),
+            [262] = new(262, "Onion Sword [IC:CRASHES]", "sword", WeaponPower: 50, Range: 1, WeaponEvade: 15),
+            [263] = new(263, "Ras Algethi [IC:unused]", "gun", WeaponPower: 12, Range: 8, WeaponEvade: 5),
+            [264] = new(264, "Fomalhaut [IC:unused]", "gun", WeaponPower: 18, Range: 8, WeaponEvade: 5),
+            [265] = new(265, "Francisca [IC:unused]", "axe", WeaponPower: 24, Range: 1),
+            [266] = new(266, "Golden Axe [IC:unused]", "axe", WeaponPower: 30, Range: 1),
+            [267] = new(267, "Orochi [IC:unused]", "ninjablade", WeaponPower: 20, Range: 1, WeaponEvade: 5),
+            [268] = new(268, "Moonsilk Blade [IC:unused]", "ninjablade", WeaponPower: 26, Range: 1, WeaponEvade: 5),
+            [269] = new(269, "Nirvana [IC:unused]", "staff", WeaponPower: 5, Range: 1, WeaponEvade: 15),
+            [270] = new(270, "Dreamwaker [IC:unused]", "staff", WeaponPower: 5, Range: 1, WeaponEvade: 15),
+            [271] = new(271, "Stardust Rod [IC:unused]", "rod", WeaponPower: 5, Range: 3, WeaponEvade: 20),
+            [272] = new(272, "Crown Scepter [IC:unused]", "rod", WeaponPower: 5, Range: 1, WeaponEvade: 20),
+            [273] = new(273, "Vesper [IC:unused]", "flail", WeaponPower: 36, Range: 1),
+            [274] = new(274, "Sagittarius Bow [IC:unused]", "bow", WeaponPower: 24, Range: 5),
+            [275] = new(275, "Durandal [IC:unused]", "knightsword", WeaponPower: 26, Range: 1, WeaponEvade: 40),
+            [276] = new(276, "Gae Bolg [IC:unused]", "polearm", WeaponPower: 24, Range: 2, WeaponEvade: 15),
+            [277] = new(277, "Gungnir [IC:unused]", "polearm", WeaponPower: 29, Range: 2, WeaponEvade: 15),
 
             // ============================================================
             // PSP/WotL EXCLUSIVE - SHIELDS (IDs 288-289)

@@ -1573,6 +1573,40 @@ god_ramza() {
   echo "[god_ramza] done. In-battle HP/PA recompute on next battle entry."
 }
 
+# dlc_items: Spawn the four TIC Deluxe Edition bonus items into inventory.
+# Inventory is a flat u8 array at 0x1411A17C0 indexed by FFTPatcher item ID;
+# these DLC items use standard IDs 257-260, so writing count>=1 to the
+# matching byte makes them available in PartyMenu Inventory / EqA pickers.
+#
+# Verified 2026-04-23 by reading them live off Ramza's roster slot after
+# claiming the Deluxe bonus in the title menu.
+#
+# IDs and inventory addresses:
+#   257 Akademy Blade    (weapon)    @ 0x1411A18C1
+#   258 Akademy Beret    (helmet)    @ 0x1411A18C2
+#   259 Akademy Tunic    (body)      @ 0x1411A18C3
+#   260 Ring of Aptitude (accessory) @ 0x1411A18C4
+#
+# Safe from WorldMap / TravelList / battle. Avoid running while PartyMenu
+# is open (roster-adjacent writes get clobbered per memory note
+# feedback_partymenu_roster_sync.md).
+#
+# Usage: dlc_items        # 1 of each
+#        dlc_items 5      # 5 of each
+dlc_items() {
+  local count=${1:-1}
+  local IB=0x1411A17C0
+  echo "[dlc_items] writing $count of each Deluxe bonus item to inventory..."
+  for pair in "257:Akademy Blade" "258:Akademy Beret" "259:Akademy Tunic" "260:Ring of Aptitude"; do
+    local iid=${pair%:*}
+    local name=${pair#*:}
+    local addr=$(printf "0x%X" $((IB + iid)))
+    fft "{\"id\":\"$(id)\",\"action\":\"write_address\",\"address\":\"$addr\",\"readSize\":$count}" > /dev/null 2>&1
+    echo "  id=$iid $name @ $addr = $count"
+  done
+  echo "[dlc_items] done. Open PartyMenu → Inventory or EqA picker to confirm."
+}
+
 # swap_unit <name>: Cycle Q/E to the named unit on any unit-scoped screen
 # (CharacterStatus, EquipmentAndAbilities, JobSelection). Reads the roster
 # to compute how many E presses are needed.
