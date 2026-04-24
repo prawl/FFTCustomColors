@@ -389,6 +389,20 @@ namespace FFTColorCustomizer.GameBridge
                     && slot9 != 0xFFFFFFFF)
                     return (eventHasChoice && choiceModalFlag != 0) ? "BattleChoice" : "BattleDialogue";
 
+                // 2026-04-24 save-load variant: save resumed at a battle
+                // location (rawLocation 0..42) with an active pre-battle
+                // BattleDialogue, but battleMode had settled to 0 and
+                // locationMenuFlag wasn't set — leaving the TravelList rule
+                // at line 471-472 (party==0 && ui==1) to steal the frame
+                // before reaching this path. A real eventId is the tell:
+                // world-map idle has eventId==0 / unset; BattleDialogue
+                // states have a live eventId. Gate this before the
+                // world-side party/ui rules.
+                if (IsRealEvent(eventId)
+                    && rawLocation >= 0 && rawLocation <= 42
+                    && battleMode == 0)
+                    return (eventHasChoice && choiceModalFlag != 0) ? "BattleChoice" : "BattleDialogue";
+
                 // Post-battle Desertion: at named battle location, game PAUSED with warning
                 // dialog (Brave/Faith threshold triggered desertion risk). Both audit samples
                 // of Desertion (#44, #45) had paused=1 and submenuFlag=1.

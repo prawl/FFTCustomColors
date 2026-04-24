@@ -110,6 +110,32 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_SaveLoadedAtBattleLocation_WithActiveEvent_IsBattleDialogueNotTravelList()
+        {
+            // Live-repro 2026-04-24: user loaded a save at Zeklaus Desert
+            // (rawLocation=28) with an active pre-battle BattleDialogue, but
+            // `screen` returned [TravelList] consistently. Stale party/ui=1
+            // flags from the load match the TravelList rule at line 471-472
+            // before the atNamedLocation BattleDialogue rule gets to fire.
+            //
+            // The distinguishing signal: a real eventId is active. World-map
+            // idle has eventId=0 or unset. A BattleDialogue / pre-battle
+            // cutscene has a live eventId in the 1..399 range.
+            //
+            // Fix: TravelList/WorldMap rules must check eventId first and
+            // route to BattleDialogue when an event is active. Requires no
+            // battleMode signal (save-load may have battleMode=0).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 1, rawLocation: 28, slot0: 0xFFFFFFFF, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                eventId: 12);  // real pre-battle event
+
+            Assert.NotEqual("TravelList", result);
+        }
+
+        [Fact]
         public void DetectScreen_TravelList_NotInBattle_ShouldReturnTravelList()
         {
             // TravelList: rawLocation=255, ui=1 (menu overlay on the world map).
