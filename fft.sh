@@ -1700,8 +1700,9 @@ start_encounter() {
   fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":13,\"name\":\"Enter\"}],\"waitUntilScreenNot\":\"EncounterDialog\",\"waitTimeoutMs\":10000}"
 }
 
-# Single bridge action — C# places 4 units (Enter×2 each), commences (Space+Enter),
-# then polls until a battle state appears.
+# Single bridge action — C# places ONLY Ramza (Enter×2), commences (Space+Enter),
+# then polls until a battle state appears. Other slots stay unplaced so
+# solo-Ramza playtests work without pre-emptying the party.
 auto_place_units() {
   _require_state auto_place_units "BattleFormation" || return 1
   fft "{\"id\":\"$(id)\",\"action\":\"auto_place_units\"}" 60

@@ -5676,8 +5676,10 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>
         /// auto_place_units: Accept default unit placement on BattleFormation
-        /// and start battle. Places 4 units (Enter×2 each) then commences
-        /// (Space + Enter). Polls until a battle state appears.
+        /// and start battle. Places only Ramza (Enter×2 — select tile + confirm)
+        /// then commences (Space + Enter). Leaves the other 3 slots unplaced
+        /// so solo-Ramza playtests work without having to pre-empty the party.
+        /// Polls until a battle state appears.
         /// </summary>
         private CommandResponse AutoPlaceUnits(CommandResponse response)
         {
@@ -5712,14 +5714,12 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(4000);
             }
 
-            // Place 4 units: each unit is Enter (select tile) + Enter (confirm)
-            for (int unit = 0; unit < 4; unit++)
-            {
-                SendKey(VK_ENTER);
-                Thread.Sleep(200);
-                SendKey(VK_ENTER);
-                Thread.Sleep(400);
-            }
+            // Place only Ramza: Enter (select tile) + Enter (confirm).
+            // The remaining 3 slots stay unplaced so solo-Ramza playtests work.
+            SendKey(VK_ENTER);
+            Thread.Sleep(200);
+            SendKey(VK_ENTER);
+            Thread.Sleep(400);
 
             // Commence battle: Space (open dialog) + Enter (confirm Yes)
             SendKey(0x20); // VK_SPACE
