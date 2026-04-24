@@ -6815,6 +6815,21 @@ namespace FFTColorCustomizer.Utilities
                     eventHasChoice: eventHasChoice,
                     choiceModalFlag: choiceModalFlag);
 
+                // BattleMoving → BattleWaiting: after battle_wait sends Enter on
+                // the Wait menu item, both battleMode and menuCursor can lag for
+                // hundreds of ms before reflecting the facing screen. A screen
+                // poll landing in that window mislabels the facing state as a
+                // tile-select (both use battleMode=2 in their fresh reads).
+                long sinceWaitEnter = GameBridge.NavigationActions.LastWaitEnterTickMs >= 0
+                    ? Environment.TickCount64 - GameBridge.NavigationActions.LastWaitEnterTickMs
+                    : -1;
+                if (GameBridge.StaleBattleMovingClassifier.ShouldOverrideToBattleWaiting(
+                        screen.Name, battleMode, sinceWaitEnter))
+                {
+                    ModLogger.Log($"[StateOverride] BattleMoving→BattleWaiting: {sinceWaitEnter}ms since Wait Enter.");
+                    screen.Name = "BattleWaiting";
+                }
+
                 // TravelList→WorldMap override: when the SM just left
                 // PartyMenu via a key press (Escape) and detection says
                 // TravelList, the `ui` byte is stale at 1 (takes >500ms to

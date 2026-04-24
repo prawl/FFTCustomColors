@@ -51,6 +51,15 @@ namespace FFTColorCustomizer.GameBridge
         // This flag triggers cursor correction in battle_wait and battle_ability.
         private bool _menuCursorStale = false;
 
+        // Tick count (Environment.TickCount64) at the moment battle_wait sent the
+        // Enter that commits the Wait action. The game enters BattleWaiting
+        // (facing select) but both battleMode and menuCursor can lag for
+        // hundreds of ms — detection during that window mislabels as
+        // BattleMoving. CommandWatcher consults this via
+        // StaleBattleMovingClassifier to flip the label back.
+        // -1 means "never fired this session."
+        public static long LastWaitEnterTickMs { get; private set; } = -1;
+
         // Original GetDeviceState function pointer
         private static IntPtr _originalGetDeviceState;
 
@@ -616,6 +625,10 @@ namespace FFTColorCustomizer.GameBridge
                 }
 
                 // Press Enter to select Wait — enters the facing screen.
+                // Stamp the tick BEFORE the send so a concurrent screen poll
+                // that lands between the Enter and the battleMode byte
+                // catching up still sees the override window open.
+                LastWaitEnterTickMs = Environment.TickCount64;
                 SendKey(VK_ENTER);
                 // 500ms was conservative; facing-screen render is consistently
                 // under 300ms in live logs.
