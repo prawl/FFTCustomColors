@@ -491,6 +491,16 @@ namespace FFTColorCustomizer.GameBridge
             }
             else
             {
+                // Settle delay — the game's memory regions lag slightly after a
+                // player action (Phoenix Down, Cure, etc). Without this, the
+                // fresh pre-snap can read stale HP values from before the just-
+                // completed action, causing the first mid-poll diff to mis-
+                // attribute the action's effect as a counter-attack (live-seen:
+                // "Ramza countered X for 275 dmg" when Ramza's Phoenix Down
+                // actually landed the 275-dmg kill on the player turn).
+                // 200ms is empirically enough for static-array + live-HP
+                // writes to flush. Cost: 200ms per fresh battle_wait entry.
+                Thread.Sleep(200);
                 narratorLastSnap = CaptureCurrentUnitSnapshot();
                 _narratorPersistentLastSnap = narratorLastSnap;
             }
@@ -2412,6 +2422,15 @@ namespace FFTColorCustomizer.GameBridge
             var deadByPos = new Dictionary<(int x, int y), ScannedUnit>();
             foreach (var posUnit in units)
             {
+                // Petrified units are ALIVE by HP but untargetable in battle
+                // (the game refuses Attack / cast on them; only Gold Needle /
+                // Remedy clears the status). Exclude them from aliveByPos so
+                // ability validTargetTiles don't suggest wasted actions.
+                // They also don't belong in deadByPos (Phoenix Down / Raise
+                // don't work on statues). They just drop out of both indexes.
+                var lifeState = StatusDecoder.GetLifeState(posUnit.StatusBytes);
+                if (lifeState == "petrified")
+                    continue;
                 if (posUnit.Hp <= 0 && posUnit.MaxHp > 0)
                     deadByPos[(posUnit.GridX, posUnit.GridY)] = posUnit;
                 else
