@@ -463,11 +463,15 @@ namespace FFTColorCustomizer.GameBridge
             // FacingStrategy's convention: (1,0)=E, (-1,0)=W, (0,1)=N, (0,-1)=S.
             (int dx, int dy)? facingOverride = ParseFacingDirection(command?.Pattern);
 
-            // S60 enemy-turn narrator: capture a unit-state snapshot NOW (before we
-            // leave BattleMyTurn via the Wait nav) so we can diff against a post-wait
-            // snapshot to report what happened during the enemy turns.
-            // Nullable — scan failures just mean no narration, not a BattleWait failure.
-            var narratorPreSnaps = CaptureCurrentUnitSnapshot();
+            // S60 enemy-turn narrator: capture a unit-state snapshot NOW (before
+            // we leave BattleMyTurn via the Wait nav). During the poll loop
+            // we'll diff against this `narratorLastSnap`, advance it, and
+            // append each batch of events to claude_bridge/live_events.log.
+            // The shell helper is responsible for truncating the log at the
+            // START of a battle_wait sequence (legacy blocking or chunked
+            // loop) — the mod always appends so chunked calls don't erase
+            // each other's history.
+            var narratorLastSnap = CaptureCurrentUnitSnapshot();
             string? narratorActivePlayerName = null;
             if (_lastScannedUnits != null)
             {
@@ -481,38 +485,59 @@ namespace FFTColorCustomizer.GameBridge
 
             // Turn-ending abilities (Jump) end the turn immediately — no Wait needed.
             // If we're already on another unit's turn, return success.
-            if (screen != null && (screen.Name == "BattleEnemiesTurn"
-                || screen.Name == "BattleAlliesTurn"))
+            //
+            // Skip this early-return in chunked mode (MaxPollMs set): chunked
+            // callers deliberately loop through enemy turns and expect the
+            // poll to run. Early-returning "completed" would stop the loop
+            // before the enemy turn actually finishes.
+            if (screen != null
+                && command?.MaxPollMs == null
+                && (screen.Name == "BattleEnemiesTurn"
+                    || screen.Name == "BattleAlliesTurn"))
             {
                 response.Status = "completed";
                 response.Info = "Turn already ended (ability ended turn automatically)";
                 return response;
             }
 
-            // S59: if we're deeper than BattleMyTurn (submenu, pause leak, skillset
-            // list, targeting), escape back to a known action-menu state first so
-            // the Wait nav below finds the action menu cursor byte.
-            int bwEscape = BattleAbilityEntryReset.EscapeCountToMyTurn(screen?.Name);
-            if (bwEscape > 0)
+            // Chunked continuation: when the bridge was called with maxPollMs
+            // and the screen is NOT BattleMyTurn, the player's Wait has
+            // already been committed on a prior chunked call. Skip the menu
+            // nav + facing + Enter entirely and go straight to the poll
+            // loop, which handles any terminal screen (Victory/Desertion/
+            // GameOver) AND any transient mid-battle screen (banners, casts,
+            // TitleScreen flickers) that the normal gate would reject.
+            bool chunkedContinuation = command?.MaxPollMs != null
+                && screen != null
+                && screen.Name != "BattleMyTurn";
+
+            if (!chunkedContinuation)
             {
-                ModLogger.Log($"[BattleWait] Entry reset: screen={screen?.Name}, Escape×{bwEscape} to reach BattleMyTurn");
-                for (int i = 0; i < bwEscape; i++)
+                // S59: if we're deeper than BattleMyTurn (submenu, pause leak, skillset
+                // list, targeting), escape back to a known action-menu state first so
+                // the Wait nav below finds the action menu cursor byte.
+                int bwEscape = BattleAbilityEntryReset.EscapeCountToMyTurn(screen?.Name);
+                if (bwEscape > 0)
                 {
-                    SendKey(VK_ESCAPE);
-                    Thread.Sleep(300);
+                    ModLogger.Log($"[BattleWait] Entry reset: screen={screen?.Name}, Escape×{bwEscape} to reach BattleMyTurn");
+                    for (int i = 0; i < bwEscape; i++)
+                    {
+                        SendKey(VK_ESCAPE);
+                        Thread.Sleep(300);
+                    }
+                    screen = _detectScreen();
                 }
-                screen = _detectScreen();
+
+                if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
+                {
+                    _menuCursorStale = false;
+                    response.Status = "failed";
+                    response.Error = $"Cannot battle_wait from screen (current: {screen?.Name ?? "null"})";
+                    return response;
+                }
             }
 
-            if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
-            {
-                _menuCursorStale = false;
-                response.Status = "failed";
-                response.Error = $"Cannot battle_wait from screen (current: {screen?.Name ?? "null"})";
-                return response;
-            }
-
-            bool skipMenu = BattleWaitLogic.ShouldSkipMenuNavigation(screen.Name);
+            bool skipMenu = chunkedContinuation || (screen != null && BattleWaitLogic.ShouldSkipMenuNavigation(screen.Name));
 
             if (skipMenu)
             {
@@ -672,12 +697,19 @@ namespace FFTColorCustomizer.GameBridge
             // key or game setting. The game still processes turns at normal speed.
             ModLogger.Log("[BattleWait] Waiting for enemy turns (Ctrl fast-forward disabled)");
 
-            // Poll until it's a friendly unit's turn again (or game over/timeout)
+            // S60 chunked mode: if the caller set command.MaxPollMs, the poll
+            // returns "partial" after that window if friendly turn hasn't
+            // arrived yet. Default: 120000ms (blocking until friendly turn).
+            long maxPollMs = command?.MaxPollMs ?? 120000L;
+            bool partialTimeout = false;
+
+            // Poll until it's a friendly unit's turn again (or chunked timeout)
             var sw = Stopwatch.StartNew();
             string lastScreen = "";
+            int narratorPollIter = 0;
             try
             {
-                while (sw.ElapsedMilliseconds < 120000) // 2 minute max
+                while (sw.ElapsedMilliseconds < maxPollMs)
                 {
                     // 300ms → 150ms: faster friendly-turn detection. At 300ms we
                     // could be ~300ms late noticing BattleMyTurn after enemy
@@ -685,6 +717,33 @@ namespace FFTColorCustomizer.GameBridge
                     // observation lag. The CPU cost is trivial; _detectScreen
                     // is a cached memory read.
                     Thread.Sleep(150);
+                    narratorPollIter++;
+
+                    // S60 narrator: every ~450ms (every 3rd 150ms tick) capture a
+                    // fresh unit snapshot, diff against the last, and append any
+                    // change events to live_events.log. Advance last→current so
+                    // the next batch is a pure delta. Each iteration is at most
+                    // one memory read + one short write, so poll cadence stays
+                    // close to 150ms per iteration in the common "no change" case.
+                    if (narratorLastSnap != null && narratorPollIter % 3 == 0)
+                    {
+                        var current2 = CaptureCurrentUnitSnapshot();
+                        if (current2 != null)
+                        {
+                            current2 = BackfillNamesFromSnap(narratorLastSnap, current2);
+                            var preForDiff2 = StripFingerprints(narratorLastSnap);
+                            var postForDiff2 = StripFingerprints(current2);
+                            var events2 = UnitScanDiff.Compare(preForDiff2, postForDiff2);
+                            if (events2.Count > 0)
+                            {
+                                var lines2 = BattleNarratorRenderer.Render(
+                                    events2, narratorActivePlayerName ?? "");
+                                if (lines2.Count > 0)
+                                    NarrationEventLog.AppendLines(lines2);
+                            }
+                            narratorLastSnap = current2;
+                        }
+                    }
 
                     var current = _detectScreen();
                     if (current == null) continue;
@@ -728,21 +787,25 @@ namespace FFTColorCustomizer.GameBridge
                     {
                         response.Info = $"Friendly turn after {sw.ElapsedMilliseconds}ms (screen={current.Name})";
 
-                        // S60 enemy-turn narrator: diff pre-wait vs post-wait snapshot
-                        // and append "> ..." narration lines to response.Info so
-                        // Claude can see movements / damage / deaths / revives that
-                        // happened during the enemy turn(s) without a separate scan.
-                        if (narratorPreSnaps != null)
+                        // S60 narrator: final catch-up — diff the LATEST mid-poll snap
+                        // against a fresh post-exit snap to capture any events that
+                        // landed after the last 450ms poll tick (e.g. the move that
+                        // happened at t=15.2s when the last tick was t=14.85s).
+                        if (narratorLastSnap != null)
                         {
-                            var postSnaps = CaptureCurrentUnitSnapshot();
-                            if (postSnaps != null)
+                            var finalSnap = CaptureCurrentUnitSnapshot();
+                            if (finalSnap != null)
                             {
-                                var diffEvents = UnitScanDiff.Compare(narratorPreSnaps, postSnaps);
-                                var narrationLines = BattleNarratorRenderer.Render(
-                                    diffEvents, narratorActivePlayerName ?? "");
-                                if (narrationLines.Count > 0)
+                                finalSnap = BackfillNamesFromSnap(narratorLastSnap, finalSnap);
+                                var preForDiff = StripFingerprints(narratorLastSnap);
+                                var postForDiff = StripFingerprints(finalSnap);
+                                var finalEvents = UnitScanDiff.Compare(preForDiff, postForDiff);
+                                if (finalEvents.Count > 0)
                                 {
-                                    response.Info += "\n" + string.Join("\n", narrationLines);
+                                    var finalLines = BattleNarratorRenderer.Render(
+                                        finalEvents, narratorActivePlayerName ?? "");
+                                    if (finalLines.Count > 0)
+                                        NarrationEventLog.AppendLines(finalLines);
                                 }
                             }
                         }
@@ -768,8 +831,44 @@ namespace FFTColorCustomizer.GameBridge
                     }
                 }
 
-                if (sw.ElapsedMilliseconds >= 120000)
-                    response.Error = "Timeout waiting for friendly turn (120s)";
+                if (sw.ElapsedMilliseconds >= maxPollMs)
+                {
+                    if (maxPollMs < 120000L)
+                    {
+                        // Chunked mode: poll window elapsed without seeing a
+                        // friendly turn. Return "partial" so the caller knows
+                        // to call battle_wait again. Any narration accumulated
+                        // in this window is already in live_events.log.
+                        partialTimeout = true;
+                        response.Info = $"Still waiting ({sw.ElapsedMilliseconds}ms elapsed, no friendly turn yet)";
+
+                        // S60: final catch-up for chunked timeout — capture any
+                        // events that landed after the last ~450ms narrator tick
+                        // so the current chunk's log is complete before returning.
+                        if (narratorLastSnap != null)
+                        {
+                            var finalChunkSnap = CaptureCurrentUnitSnapshot();
+                            if (finalChunkSnap != null)
+                            {
+                                finalChunkSnap = BackfillNamesFromSnap(narratorLastSnap, finalChunkSnap);
+                                var preChunk = StripFingerprints(narratorLastSnap);
+                                var postChunk = StripFingerprints(finalChunkSnap);
+                                var chunkEvents = UnitScanDiff.Compare(preChunk, postChunk);
+                                if (chunkEvents.Count > 0)
+                                {
+                                    var chunkLines = BattleNarratorRenderer.Render(
+                                        chunkEvents, narratorActivePlayerName ?? "");
+                                    if (chunkLines.Count > 0)
+                                        NarrationEventLog.AppendLines(chunkLines);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        response.Error = "Timeout waiting for friendly turn (120s)";
+                    }
+                }
             }
             finally
             {
@@ -791,7 +890,7 @@ namespace FFTColorCustomizer.GameBridge
                 }
             }
 
-            response.Status = "completed";
+            response.Status = partialTimeout ? "partial" : "completed";
             return response;
         }
 
@@ -4325,6 +4424,77 @@ namespace FFTColorCustomizer.GameBridge
                     ClassFingerprint: u.ClassFingerprint));
             }
             return snaps;
+        }
+
+        /// <summary>
+        /// S60 narrator: when the scan drops enemy names between pre and post
+        /// snapshots (a known upstream bug), UnitScanDiff can't pair units
+        /// keyed by name|fingerprint. This helper backfills post-snap names
+        /// from pre-snap using (Team, MaxHP) as the identity key — MaxHP is
+        /// the most stable per-unit signature we have short of finding the
+        /// game's actual unit-id byte.
+        ///
+        /// Only backfills when the post-snap unit's Name is null/empty AND
+        /// exactly one pre-snap unit has that (Team, MaxHP) pair AND the
+        /// pre-snap unit has a name. Never overrides an already-present name.
+        /// </summary>
+        private static List<UnitScanDiff.UnitSnap> BackfillNamesFromSnap(
+            List<UnitScanDiff.UnitSnap> preSnap,
+            List<UnitScanDiff.UnitSnap> postSnap)
+        {
+            // (Team, MaxHP) → name. Duplicates are removed from the map so we
+            // never silently attribute to the wrong unit.
+            var keyToName = new Dictionary<(int team, int maxHp), string>();
+            var duplicates = new HashSet<(int team, int maxHp)>();
+            foreach (var u in preSnap)
+            {
+                if (string.IsNullOrEmpty(u.Name)) continue;
+                var k = (u.Team, u.MaxHp);
+                if (duplicates.Contains(k)) continue;
+                if (keyToName.ContainsKey(k))
+                {
+                    keyToName.Remove(k);
+                    duplicates.Add(k);
+                    continue;
+                }
+                keyToName[k] = u.Name!;
+            }
+
+            if (keyToName.Count == 0) return postSnap;
+
+            var result = new List<UnitScanDiff.UnitSnap>(postSnap.Count);
+            foreach (var u in postSnap)
+            {
+                if (!string.IsNullOrEmpty(u.Name))
+                {
+                    result.Add(u);
+                    continue;
+                }
+                var k = (u.Team, u.MaxHp);
+                if (keyToName.TryGetValue(k, out var backfilledName))
+                {
+                    result.Add(u with { Name = backfilledName });
+                }
+                else
+                {
+                    result.Add(u);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// S60 narrator: return copies of the snaps with ClassFingerprint nulled
+        /// out. Fingerprints aren't stable between scans (a post-HP-change heap
+        /// match can land on a different address, returning different signature
+        /// bytes for the "same" unit). After name backfill, falling back to
+        /// name-only identity is both stable and sufficient for the diff engine.
+        /// </summary>
+        private static List<UnitScanDiff.UnitSnap> StripFingerprints(List<UnitScanDiff.UnitSnap> snaps)
+        {
+            var result = new List<UnitScanDiff.UnitSnap>(snaps.Count);
+            foreach (var u in snaps) result.Add(u with { ClassFingerprint = null });
+            return result;
         }
 
         /// <summary>Last computed valid move tiles from scan_move BFS. Used by battle_move to validate targets.</summary>

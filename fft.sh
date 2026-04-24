@@ -238,6 +238,20 @@ fft() {
   _fmt_screen_compact "$B/response.json"
   unset _FFT_TIMING_SUFFIX
 
+  # S60 narrator: surface any "> ..." lines in response.info. BattleWait's
+  # enemy-turn narrator appends them to info as a multi-line block; without
+  # this, the compact renderer prints only the screen header and the
+  # narration (moved/damaged/ko events) stays hidden in the JSON.
+  local NARRATION
+  NARRATION=$(node -e "
+try{
+  const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+  const info=j.info||'';
+  const lines=info.split(/\r?\n/).filter(l=>l.startsWith('> '));
+  if(lines.length)process.stdout.write(lines.join('\n'));
+}catch(e){}" "$B/response.json" 2>/dev/null)
+  [ -n "$NARRATION" ] && printf '%s\n' "$NARRATION"
+
   # Parse the status + chain-warning out of the response ourselves so we can
   # still surface the bridge's auto-delay notice to the terminal.
   local R=$(cat "$B/response.json" | tr -d '\r\n ')
@@ -906,13 +920,126 @@ if(keys.length)console.log('  ValidPaths: '+keys.join(', '));
 # battle_wait [direction]: End turn, choose facing, wait for next friendly turn.
 # direction (optional): N/S/E/W or North/South/East/West (case-insensitive).
 # With no arg, the code auto-picks the optimal facing via arc scoring.
+watch_narration() {
+  # Watch enemy-turn narration live. Intended for a second terminal —
+  # Claude's Bash tool captures stdout and returns it at command exit,
+  # so Claude's terminal can't show progressive lines. Run this in a
+  # separate shell to see battle events scroll as they happen.
+  echo "[watch_narration] Tailing $B/live_events.log (Ctrl-C to stop)"
+  tail -n 0 -F "$B/live_events.log" 2>/dev/null | sed -u 's/^\[NARRATE\] //'
+}
+
 battle_wait() {
+  # Usage:
+  #   battle_wait                    — blocking wait for next friendly turn (up to 120s)
+  #   battle_wait N                  — face direction N/S/E/W, then wait blocking
+  #   battle_wait '' 3000            — chunked: return after 3000ms with "partial"
+  #                                    status if no friendly turn yet; loop caller
+  #                                    decides whether to call again. See battle_wait_live
+  #                                    for a helper that handles the loop.
+  #   battle_wait N 3000             — direction + chunked.
   local dir="${1:-}"
-  if [ -n "$dir" ]; then
-    fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\",\"pattern\":\"$dir\"}" 60
-  else
-    fft "{\"id\":\"$(id)\",\"action\":\"battle_wait\"}" 60
+  local max_poll_ms="${2:-}"
+  local EVTS="$B/live_events.log"
+
+  # Truncate log at the START of a wait sequence. Chunked calls inside
+  # battle_wait_live skip this step by calling _battle_wait_chunk directly.
+  : > "$EVTS" 2>/dev/null
+  _NARR_LOG_POS=0
+  _battle_wait_chunk "$dir" "$max_poll_ms"
+}
+
+# Internal helper: runs one battle_wait bridge call without truncating the
+# events log. Used both by blocking battle_wait (after it truncates) and by
+# battle_wait_live (which truncates once, then loops).
+#
+# Reads the log file AT CHUNK END and prints any new "> ..." lines since
+# the last time this helper was called (tracked via _NARR_LOG_POS).
+# Avoids the subshell-tail orphaning problem on Git Bash that caused
+# duplicate narration on every chunk.
+_NARR_LOG_POS=0
+
+_battle_wait_chunk() {
+  local dir="$1"
+  local max_poll_ms="$2"
+  local EVTS="$B/live_events.log"
+
+  local cmd="{\"id\":\"$(id)\",\"action\":\"battle_wait\""
+  [ -n "$dir" ] && cmd="$cmd,\"pattern\":\"$dir\""
+  [ -n "$max_poll_ms" ] && cmd="$cmd,\"maxPollMs\":$max_poll_ms"
+  cmd="$cmd}"
+
+  local fft_timeout=60
+  [ -n "$max_poll_ms" ] && fft_timeout=$(( (max_poll_ms + 3000) / 1000 ))
+
+  fft "$cmd" "$fft_timeout"
+  local _rc=$?
+
+  # Read any new narration lines since the last chunk, print them, and
+  # advance the position marker. Single file read per chunk — no leaking
+  # tail processes, no duplicate output.
+  if [ -f "$EVTS" ]; then
+    local total
+    total=$(wc -c < "$EVTS" 2>/dev/null || echo 0)
+    if [ "$total" -gt "$_NARR_LOG_POS" ]; then
+      local skip_chars=$((_NARR_LOG_POS))
+      tail -c +$((skip_chars + 1)) "$EVTS" 2>/dev/null \
+        | grep '^\[NARRATE\] ' \
+        | sed 's/^\[NARRATE\] //'
+      _NARR_LOG_POS=$total
+    fi
   fi
+
+  return $_rc
+}
+
+# battle_wait_live: chunked battle_wait loop. Each chunk runs ~3s and emits
+# whatever narration fired in that window. The loop exits when the bridge
+# reports `status=completed` (friendly turn arrived) or a terminal battle
+# state (Victory / Desertion / GameOver). Gives Claude a progressive view
+# of the enemy turn — each chunk's narration lands in Claude's bash output
+# as soon as that chunk returns, so reactions between chunks are possible.
+battle_wait_live() {
+  local dir="${1:-}"
+  local chunk_ms="${2:-3000}"
+  local EVTS="$B/live_events.log"
+  : > "$EVTS" 2>/dev/null
+  _NARR_LOG_POS=0
+
+  # Enemy turns can easily exceed the default 30s total-script ceiling —
+  # bump it for the duration of this loop so _check_total doesn't abort
+  # a legitimate long wait.
+  local _saved_max="$FFT_MAX"
+  local _saved_start="$FFT_START"
+  FFT_MAX=180
+  FFT_START=$SECONDS
+
+  local iter=0
+  local max_iters=40   # 40 × 3s = 120s hard ceiling (matches blocking battle_wait)
+  local _final_rc=0
+  while [ "$iter" -lt "$max_iters" ]; do
+    iter=$((iter + 1))
+    _battle_wait_chunk "$dir" "$chunk_ms"
+    local _rc=$?
+    if [ "$_rc" -ne 0 ]; then _final_rc=$_rc; break; fi
+
+    # Inspect response.json — if status==completed (friendly turn reached
+    # or battle ended), stop looping.
+    local ST=$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).status||'')}catch(e){}" "$B/response.json" 2>/dev/null)
+    if [ "$ST" = "completed" ]; then break; fi
+    if [ "$ST" = "failed" ] || [ "$ST" = "rejected" ]; then _final_rc=1; break; fi
+    # status=partial → loop again.
+    # After the first chunk, don't re-face (already committed).
+    dir=""
+  done
+  if [ "$iter" -ge "$max_iters" ]; then
+    echo "[battle_wait_live] Hard ceiling ($((max_iters * chunk_ms / 1000))s) reached"
+    _final_rc=1
+  fi
+
+  FFT_MAX="$_saved_max"
+  FFT_START="$_saved_start"
+  return $_final_rc
 }
 
 # battle_flee: Quit battle and return to world map (Tab → Down x4 → Enter → Enter).

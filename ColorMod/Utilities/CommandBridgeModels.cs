@@ -204,6 +204,18 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         [JsonPropertyName("waitTimeoutMs")]
         public int WaitTimeoutMs { get; set; } = 2000;
+
+        /// <summary>
+        /// S60 chunked battle_wait: optional ceiling on how long the BattleWait
+        /// poll loop runs before returning a "partial" status with whatever
+        /// narration has accumulated so far. When not set (null), BattleWait
+        /// blocks up to its internal 120s limit waiting for a friendly turn.
+        /// When set (e.g. 3000ms), BattleWait returns early if the poll hasn't
+        /// seen BattleMyTurn/BattleActing within the window — letting Claude
+        /// loop calls to see narration progressively instead of all at once.
+        /// </summary>
+        [JsonPropertyName("maxPollMs")]
+        public long? MaxPollMs { get; set; }
     }
 
     public class BatchReadEntry
