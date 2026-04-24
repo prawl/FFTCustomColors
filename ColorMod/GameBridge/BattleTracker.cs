@@ -920,6 +920,17 @@ namespace FFTColorCustomizer.GameBridge
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Movement { get; set; }
 
+        /// <summary>
+        /// Pre-computed weapon tag for the active-unit banner: "{WeaponName}"
+        /// or "{WeaponName} onHit:{AttackEffects}" from ItemData.ComposeWeaponTag.
+        /// Null/empty when unarmed or unknown. Populated server-side so the shell
+        /// can render `[BattleMyTurn] Ramza(Gallant Knight) [Chaos Blade onHit:...] (2,1)`
+        /// without needing to plumb the full equipment list through the wire.
+        /// </summary>
+        [JsonPropertyName("weaponTag")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? WeaponTag { get; set; }
+
         // === Elemental properties ===
         // Per-unit elemental resistances from equipment and innate traits.
         // Claude can see "Black Goblin [weak:Fire]" and prioritize Fire spells.

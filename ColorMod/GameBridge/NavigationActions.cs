@@ -923,6 +923,20 @@ namespace FFTColorCustomizer.GameBridge
                     response.Error = $"Escape-to-known-state failed: expected BattleMyTurn/BattleActing after {baEscape} Escapes, got {screen?.Name ?? "null"}";
                     return response;
                 }
+                // Re-check the Act-consumed guard after escape. Without this,
+                // retrying battle_attack from a post-action recoverable state
+                // (BattleMoving / BattleAttacking) would escape back to
+                // BattleMyTurn, pass through the guard above (which only fired
+                // on initial BattleMyTurn/BattleActing entry), and then fail
+                // silently deep in the targeting flow with "Failed to enter
+                // targeting mode" once the menu Abilities slot turned out
+                // to be grayed. Live-surfaced battle-play gap.
+                if (screen.BattleActed == 1)
+                {
+                    response.Status = "failed";
+                    response.Error = "Act already used this turn — only Move or Wait remain.";
+                    return response;
+                }
             }
 
             // Step 1: Navigate menu to Abilities (always index 1).
@@ -1372,6 +1386,16 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     response.Status = "failed";
                     response.Error = $"Escape-to-known-state failed: expected BattleMyTurn/BattleActing after {escapeCount} Escapes, got {screen?.Name ?? "null"}";
+                    return response;
+                }
+                // Re-check Act-consumed after escape (sister to BattleAttack).
+                // Retrying battle_ability from a post-action recoverable state
+                // lands here; without this check the flow runs the Abilities
+                // menu nav and silently fails later on a grayed submenu slot.
+                if (screen.BattleActed == 1)
+                {
+                    response.Status = "failed";
+                    response.Error = "Act already used this turn — only Move or Wait remain.";
                     return response;
                 }
             }
@@ -2821,6 +2845,11 @@ namespace FFTColorCustomizer.GameBridge
                     Reaction = u.ReactionAbility,
                     Support = u.SupportAbility,
                     Movement = u.MovementAbility,
+                    // Pre-compute weapon banner tag for the active-unit header.
+                    // Null when unarmed or no known weapon in equipment.
+                    WeaponTag = (u.Team == 0 && u.Equipment != null)
+                        ? (ItemData.ComposeWeaponTag(u.Equipment) is var _wt && !string.IsNullOrEmpty(_wt) ? _wt : null)
+                        : null,
                 });
 
                 // Prepend basic Attack to the active player unit's ability list.

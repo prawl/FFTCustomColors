@@ -98,23 +98,40 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Execution / detection
 
-- [ ] **🔴 `execute_turn` leaves game stuck mid-sequence** [Execution] — Live-repro S60: `execute_turn 4 6 "Phoenix Down" 4 7` timed out after 5s. Game ended up in BattleMoving with cursor on (4,6), F-confirm not fired. Recovery required manual `battle_wait` which took 30+ seconds. Two bugs in one: (a) the 5s bridge timeout is too aggressive for execute_turn bundles, (b) the move-confirm step didn't fire. Probably same family as the S59 menuCursor drift.
+<!-- SHIPPED: execute_turn default fft timeout bumped from 5s to 120s to match
+     battle_wait. The live-repro "timed out at 5s mid-move-confirm" was the
+     shell-side fft wrapper giving up, not the bridge; the game-side move
+     was still pending. Shell-only fix. -->
 
-- [ ] **🔴 Screen detection reports BattleMoving while game is in BattleWaiting** [Detection] — Live-repro S60: after the stuck `execute_turn`, `screen` persistently returned `[BattleMoving] ui=(4,6)` but user confirmed the actual game state was BattleWaiting (facing-direction select). Stale `battleMode` byte or stale-cursor-cache issue. Add a signal discriminator: if we arrived at BattleMoving via a recent move-commit key press, re-check after 500ms and accept BattleWaiting if it appears.
+- [ ] **🔴 Screen detection reports BattleMoving while game is in BattleWaiting** [Detection] — Live-repro: after a move-confirm, `screen` persistently returned `[BattleMoving] ui=(4,6)` but the actual game state was BattleWaiting (facing-direction select). Stale `battleMode` byte or stale-cursor-cache issue. Add a signal discriminator: if we arrived at BattleMoving via a recent move-commit key press, re-check after 500ms and accept BattleWaiting if it appears.
 
-- [ ] **🔴 No validation that Act is already consumed this turn** [Execution] — Live-repro S60: after a successful basic Attack (which consumed Act), retrying `battle_attack` failed silently with `Failed to enter targeting mode (current: BattleMoving)` instead of a clean "already acted" message. Helpers should pre-check `battleActed` byte (or equivalent) and return `Act already used this turn — only Move or Wait remain` so Claude pivots instead of banging on a grayed action.
+<!-- SHIPPED: BattleAttack + BattleAbility now re-check screen.BattleActed after
+     escape-to-known-state. Retrying battle_attack from a post-action state
+     (BattleMoving / BattleAttacking) previously passed the initial guard
+     (which only fires on BattleMyTurn/BattleActing entry), escaped back to
+     BattleMyTurn, then silently failed deep in the targeting flow. Both
+     helpers now fail cleanly with "Act already used this turn — only Move
+     or Wait remain." -->
 
-- [ ] **🔴 Victory misdetected as BattleDesertion** [Detection] — Live-repro S60 solo Ramza at Siedge Weald: after killing the last Skeleton, the final `battle_wait` returned `[BattleDesertion]` even though a screenshot immediately confirmed the game was on WorldMap (Victory flow completed cleanly). Petrified Bomb was still on the field — possibly the trigger: game auto-scored Victory on player alive + no undead-animate enemies, mod detection read stale sentinels and classified as Desertion. Sister bug to the S59 post-Victory misdetects. Capture: run `session_tail failed` at the end of each battle; any Desertion followed by WorldMap within 5s is this bug.
+- [ ] **🔴 Victory misdetected as BattleDesertion** [Detection] — Live-repro solo Ramza at Siedge Weald: after killing the last Skeleton, the final `battle_wait` returned `[BattleDesertion]` even though a screenshot immediately confirmed the game was on WorldMap (Victory flow completed cleanly). Petrified Bomb was still on the field — possibly the trigger: game auto-scored Victory on player alive + no undead-animate enemies, mod detection read stale sentinels and classified as Desertion. Sister bug to the post-Victory misdetects. Capture: run `session_tail failed` at the end of each battle; any Desertion followed by WorldMap within 5s is this bug.
 
-- [ ] **🟡 `ui=` reports Abilities when cursor is actually on Move** [Detection] — Live-repro S60: after a battle_attack returned, screen showed `[BattleMyTurn] ui=Abilities` but user confirmed cursor was on Move. Same family as the BattleMoving/BattleWaiting stale-byte bug — menuCursor byte reading stale after an action. Candidate fix: refresh menuCursor on fresh BattleMyTurn entry, reset to 0 by default on state transition.
+- [ ] **🟡 `ui=` reports Abilities when cursor is actually on Move** [Detection] — Live-repro: after a battle_attack returned, screen showed `[BattleMyTurn] ui=Abilities` but user confirmed cursor was on Move. Same family as the BattleMoving/BattleWaiting stale-byte bug — menuCursor byte reading stale after an action. Candidate fix: refresh menuCursor on fresh BattleMyTurn entry, reset to 0 by default on state transition.
 
 ### Scan output polish
 
-- [ ] **🟡 Wire weapon tag into active-unit banner** [Scan] — S60 shipped `ItemData.ComposeWeaponTag` + `ActiveUnitSummaryFormatter.Format(weaponTag)` with tests. Wire-up from scan → CommandWatcher's `_cachedActiveUnitWeaponTag` is BLOCKED on BattleUnitState not exposing Equipment. Fix: add `Equipment` (List&lt;int&gt;?) field to BattleUnitState OR attach a `ActiveUnitWeaponTag` string directly to `battleState` in NavigationActions.CollectUnitPositionsFull.
+<!-- SHIPPED: BattleUnitState.WeaponTag populated server-side in
+     NavigationActions.CollectUnitPositionsFull via ItemData.ComposeWeaponTag.
+     CommandWatcher reads activeUnit.WeaponTag into _cachedActiveUnitWeaponTag
+     which feeds ActiveUnitSummaryFormatter.Format — the active-unit banner
+     now renders "[BattleMyTurn] Ramza(Gallant Knight) [Chaos Blade onHit:chance to add Stone] (2,1) HP=..." -->
 
-- [ ] **🟡 ui field should reflect action-consumed state** [Scan] — If Act is consumed, the `[BattleMyTurn]` header could surface `acted` tag (e.g. `[BattleMyTurn] ui=Move acted Ramza ...`) so Claude knows without probing. Related to menuAvailability work in S58/S59.
+<!-- SHIPPED: `acted` / `moved` tags render in the compact header when
+     battleActed/battleMoved bytes are 1 (only on BattleMyTurn / BattleActing).
+     _fmt_screen_compact pulls the bytes into BACTED/BMOVED and appends
+     colored warn-tagged chips. -->
 
-- [ ] **🟡 `scan_move` deprecation message is terse** [Shell] — `scan_move` prints `[USE screen] scan_move is deprecated. Use: screen` and exits. Should either forward to `screen` (forward compat) OR print a single clear line with the migration path + cite Commands.md.
+<!-- SHIPPED: scan_move wrapper documented as deprecated-but-forwards. The
+     no-args path already calls screen(); added clarifying comment. -->
 
 ### Speed
 

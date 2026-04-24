@@ -5318,13 +5318,10 @@ namespace FFTColorCustomizer.Utilities
             _cachedActiveUnitY = activeUnit.Y;
             _cachedActiveUnitHp = activeUnit.Hp;
             _cachedActiveUnitMaxHp = activeUnit.MaxHp;
-            // S60 weapon banner tag: BattleUnitState doesn't carry the
-            // equipment list directly, so the tag stays null here. The
-            // ItemData.ComposeWeaponTag helper + formatter support are
-            // ready — wire-up is blocked on BattleUnitState exposing
-            // Equipment or on the scan pipeline attaching the tag directly
-            // to battleState. Tracked in TODO §0.
-            _cachedActiveUnitWeaponTag = null;
+            // Weapon banner tag — computed server-side in
+            // NavigationActions.CollectUnitPositionsFull via ItemData.ComposeWeaponTag.
+            // Null when unarmed / unknown weapon / non-player team.
+            _cachedActiveUnitWeaponTag = activeUnit.WeaponTag;
         }
 
         /// <summary>

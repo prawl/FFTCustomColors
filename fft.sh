@@ -460,6 +460,8 @@ try{
     (s.currentDialogueLine&&s.currentDialogueLine.speaker)||'',  // 22 DLG_SPK
     (s.currentDialogueLine&&s.currentDialogueLine.text)||'',     // 23 DLG_TXT
     s.currentDialogueLine?(s.currentDialogueLine.boxIndex+'/'+s.currentDialogueLine.boxCount):'', // 24 DLG_POS
+    s.battleActed??'',              // 25 BACTED  (1 = Act consumed this turn)
+    s.battleMoved??'',              // 26 BMOVED  (1 = Move consumed this turn)
   ];
   // Sanitize: strip delimiter/newlines from each field. Use non-whitespace
   // delimiter (\x01) because bash 'IFS=\$\\\\t read' collapses consecutive
@@ -468,8 +470,8 @@ try{
   process.stdout.write(out.map(x=>String(x).replace(/[\x01\n\r]/g,' ')).join('\x01'));
 }catch(e){}" "$RESP" 2>/dev/null)
 
-  local SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB DLG_SPK DLG_TXT DLG_POS
-  IFS=$'\x01' read -r SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB DLG_SPK DLG_TXT DLG_POS <<<"$FIELDS"
+  local SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB DLG_SPK DLG_TXT DLG_POS BACTED BMOVED
+  IFS=$'\x01' read -r SCR LOC LOCNAME HOV ST OBJ OBJNAME ANAME AJOB ASUM GIL SLCI CROW CCOL JCSTATE EVID JUNLOCK UI BFSMISMATCH VUNIT EQITEM PTAB DLG_SPK DLG_TXT DLG_POS BACTED BMOVED <<<"$FIELDS"
 
   local LOCSTR="$LOC"; [ -n "$LOCNAME" ] && LOCSTR="$LOC($LOCNAME)"
   local OBJSTR=""
@@ -495,6 +497,14 @@ try{
       LINE="$LINE ($AJOB)"
     fi
     [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
+    # Turn-state tags: surface `acted` when Act is consumed and `moved` when
+    # Move is consumed so Claude doesn't have to probe battleActed/battleMoved
+    # separately to know which menu slots are grayed. Only show on action-
+    # menu states where the distinction actually matters.
+    if [[ "$SCR" == "BattleMyTurn" || "$SCR" == "BattleActing" ]]; then
+      [ "$BACTED" = "1" ] && LINE="$LINE $(_col "$_C_WARN" "acted")"
+      [ "$BMOVED" = "1" ] && LINE="$LINE $(_col "$_C_WARN" "moved")"
+    fi
   else
     # Non-battle: ui= first (most decision-relevant), then viewedUnit, equippedItem, pickerTab.
     [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
@@ -3133,7 +3143,12 @@ execute_turn() {
   [ -n "$dir" ] && json+=",\"pattern\":\"$dir\""
   [ "$skipWait" = "true" ] && json+=',"skipWait":true'
   json+='}'
-  fft "$json"
+  # Bundled turn can take 60+s (move anim + ability cast + facing + battle_wait
+  # through enemy/ally turns). The default 5s fft timeout is too aggressive;
+  # use 120s to match the blocking battle_wait ceiling. S60 live-repro caught
+  # this: execute_turn with Phoenix Down timed out at 5s mid-move-confirm,
+  # leaving the game stuck in BattleMoving and requiring manual recovery.
+  fft "$json" 120
 }
 
 # buy: Buy an item from a shop.
@@ -4040,6 +4055,13 @@ state() { echo "[USE screen] state is deprecated. Use: screen"; screen; }
 auto_move() { echo "[DISABLED] Use battle_move, battle_attack, battle_ability, battle_wait individually."; return 1; }
 
 scan_move() {
+  # S60: scan_move is deprecated in favor of the unified `screen` helper.
+  # Kept as a thin wrapper so muscle memory still works. No-arg form forwards
+  # to screen(); the 2-arg override form dispatches the bridge action with
+  # explicit Mv/Jmp values, then renders via screen() so the compact output
+  # (Move tiles / Attack tiles / Units / Abilities) matches what `screen`
+  # produces. See FFTHandsFree/Instructions/BattleTurns.md.
+  #
   # S59: support Mv/Jmp override for when heap-search misses collapse to
   # Mv=0 Jmp=0. `scan_move <mv> <jmp>` dispatches a direct scan_move action
   # with the overrides passed via locationId/unitIndex (the bridge already
