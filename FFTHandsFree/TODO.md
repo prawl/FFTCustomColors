@@ -92,13 +92,15 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Integration test: BattleWait snapshot/diff wiring** [Narrator] — One test using fake pre/post UnitSnap lists + assertion that response.Info contains expected `> ...` lines. Verifies end-to-end without live game.
 
-**Phase 2 — Inference helpers**
+<!-- S60 SHIPPED (Phase 2): CounterAttackInferrer + SelfDestructInferrer + wire-in
+     via EmitNarrationBatch() in NavigationActions. +19 tests. Not yet live-verified.
+     Awaits a counter-KO scenario (undead adjacent to Chaos Blade-wielding Ramza)
+     and a bomb self-destruct scenario (2+ units in the bomb's AoE when it dies)
+     to confirm the inferred lines fire correctly in real battle data. -->
 
-- [ ] **Pure helper: `CounterAttackInferrer`** [Narrator] — Event list + active player name → synthesized `Ramza countered X for N dmg` when a player took damage AND an enemy died in the same wait-window AND no player `moved`/`ko` event preceded the enemy death. TDD fixtures: counter-KO, counter-no-KO, multiple counters, false positives. File: `ColorMod/GameBridge/CounterAttackInferrer.cs`. 5-7 tests.
+- [ ] **⚠ UNVERIFIED: CounterAttackInferrer + SelfDestructInferrer wired but not live-tested** [Narrator] — S60 shipped both pure helpers with full TDD coverage and the wire-up via `EmitNarrationBatch()`. Needs: (a) live counter-KO repro — undead enemy walks adjacent to Ramza with Chaos Blade, gets counter-killed, confirm `> Ramza countered Skeleton for N dmg — Skeleton died` appears. (b) live self-destruct repro — Bomb dies while 2+ units in range take damage, confirm `> Bomb self-destructed (dealt N to Ramza, M to Agrias)` appears.
 
-- [ ] **Pure helper: `SelfDestructInferrer`** [Narrator] — Event list → detect one enemy dying AND multiple units taking damage in the same wait-window → emit `Bomb self-destructed (dealt N to Ramza, N to Skeleton)`. TDD fixtures. File: `ColorMod/GameBridge/SelfDestructInferrer.cs`. 4-6 tests.
-
-- [ ] **Wire inferrers into narrator pipeline** [Narrator] — After `UnitScanDiff.Compare`, feed event list through `CounterAttackInferrer` and `SelfDestructInferrer` before rendering. Inferrers append synthesized events (or replace raw damaged/ko pair with a richer synthesized one). Integration test.
+- [ ] **🟡 Phase 2 polish: suppress duplicate `> X died` when an inferred line already mentions the death** [Narrator] — Right now a counter-KO produces both `> Skeleton died` (raw) and `> Ramza countered Skeleton for N dmg — Skeleton died` (inferred). Redundant but harmless for v1. Fix: renderer takes a `HashSet<string> suppressedKoLabels` computed from the inferrer outputs and skips raw ko events for those labels.
 
 **Phase 3 — Memory hunts (prereqs for per-action attribution)**
 

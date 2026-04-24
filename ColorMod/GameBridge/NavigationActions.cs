@@ -721,28 +721,13 @@ namespace FFTColorCustomizer.GameBridge
 
                     // S60 narrator: every ~450ms (every 3rd 150ms tick) capture a
                     // fresh unit snapshot, diff against the last, and append any
-                    // change events to live_events.log. Advance last→current so
-                    // the next batch is a pure delta. Each iteration is at most
-                    // one memory read + one short write, so poll cadence stays
-                    // close to 150ms per iteration in the common "no change" case.
-                    if (narratorLastSnap != null && narratorPollIter % 3 == 0)
+                    // change events (plus counter/self-destruct inferences) to
+                    // live_events.log. Each iteration is at most one memory read
+                    // + one short write, so poll cadence stays close to 150ms
+                    // per iteration in the common "no change" case.
+                    if (narratorPollIter % 3 == 0)
                     {
-                        var current2 = CaptureCurrentUnitSnapshot();
-                        if (current2 != null)
-                        {
-                            current2 = BackfillNamesFromSnap(narratorLastSnap, current2);
-                            var preForDiff2 = StripFingerprints(narratorLastSnap);
-                            var postForDiff2 = StripFingerprints(current2);
-                            var events2 = UnitScanDiff.Compare(preForDiff2, postForDiff2);
-                            if (events2.Count > 0)
-                            {
-                                var lines2 = BattleNarratorRenderer.Render(
-                                    events2, narratorActivePlayerName ?? "");
-                                if (lines2.Count > 0)
-                                    NarrationEventLog.AppendLines(lines2);
-                            }
-                            narratorLastSnap = current2;
-                        }
+                        EmitNarrationBatch(ref narratorLastSnap, narratorActivePlayerName);
                     }
 
                     var current = _detectScreen();
@@ -787,28 +772,9 @@ namespace FFTColorCustomizer.GameBridge
                     {
                         response.Info = $"Friendly turn after {sw.ElapsedMilliseconds}ms (screen={current.Name})";
 
-                        // S60 narrator: final catch-up — diff the LATEST mid-poll snap
-                        // against a fresh post-exit snap to capture any events that
-                        // landed after the last 450ms poll tick (e.g. the move that
-                        // happened at t=15.2s when the last tick was t=14.85s).
-                        if (narratorLastSnap != null)
-                        {
-                            var finalSnap = CaptureCurrentUnitSnapshot();
-                            if (finalSnap != null)
-                            {
-                                finalSnap = BackfillNamesFromSnap(narratorLastSnap, finalSnap);
-                                var preForDiff = StripFingerprints(narratorLastSnap);
-                                var postForDiff = StripFingerprints(finalSnap);
-                                var finalEvents = UnitScanDiff.Compare(preForDiff, postForDiff);
-                                if (finalEvents.Count > 0)
-                                {
-                                    var finalLines = BattleNarratorRenderer.Render(
-                                        finalEvents, narratorActivePlayerName ?? "");
-                                    if (finalLines.Count > 0)
-                                        NarrationEventLog.AppendLines(finalLines);
-                                }
-                            }
-                        }
+                        // S60 narrator: final catch-up — captures events that
+                        // landed after the last 450ms poll tick before we exit.
+                        EmitNarrationBatch(ref narratorLastSnap, narratorActivePlayerName);
                         break;
                     }
 
@@ -842,27 +808,10 @@ namespace FFTColorCustomizer.GameBridge
                         partialTimeout = true;
                         response.Info = $"Still waiting ({sw.ElapsedMilliseconds}ms elapsed, no friendly turn yet)";
 
-                        // S60: final catch-up for chunked timeout — capture any
-                        // events that landed after the last ~450ms narrator tick
-                        // so the current chunk's log is complete before returning.
-                        if (narratorLastSnap != null)
-                        {
-                            var finalChunkSnap = CaptureCurrentUnitSnapshot();
-                            if (finalChunkSnap != null)
-                            {
-                                finalChunkSnap = BackfillNamesFromSnap(narratorLastSnap, finalChunkSnap);
-                                var preChunk = StripFingerprints(narratorLastSnap);
-                                var postChunk = StripFingerprints(finalChunkSnap);
-                                var chunkEvents = UnitScanDiff.Compare(preChunk, postChunk);
-                                if (chunkEvents.Count > 0)
-                                {
-                                    var chunkLines = BattleNarratorRenderer.Render(
-                                        chunkEvents, narratorActivePlayerName ?? "");
-                                    if (chunkLines.Count > 0)
-                                        NarrationEventLog.AppendLines(chunkLines);
-                                }
-                            }
-                        }
+                        // S60 narrator: final catch-up for chunked timeout —
+                        // capture any events after the last 450ms narrator tick
+                        // so the chunk's log is complete before returning.
+                        EmitNarrationBatch(ref narratorLastSnap, narratorActivePlayerName);
                     }
                     else
                     {
@@ -4495,6 +4444,39 @@ namespace FFTColorCustomizer.GameBridge
             var result = new List<UnitScanDiff.UnitSnap>(snaps.Count);
             foreach (var u in snaps) result.Add(u with { ClassFingerprint = null });
             return result;
+        }
+
+        /// <summary>
+        /// S60 narrator: capture a fresh unit snapshot, diff it against the
+        /// supplied previous snapshot, run the raw renderer + the counter-attack
+        /// and self-destruct inferrers, append every resulting "&gt; ..." line
+        /// to claude_bridge/live_events.log, and advance `lastSnap` to the
+        /// fresh capture. All three emit sites in BattleWait go through this
+        /// helper so every narration window gets the same enrichments.
+        /// </summary>
+        private void EmitNarrationBatch(
+            ref List<UnitScanDiff.UnitSnap>? lastSnap,
+            string? activePlayerName)
+        {
+            if (lastSnap == null) return;
+            var current = CaptureCurrentUnitSnapshot();
+            if (current == null) return;
+            current = BackfillNamesFromSnap(lastSnap, current);
+            var preForDiff = StripFingerprints(lastSnap);
+            var postForDiff = StripFingerprints(current);
+            var events = UnitScanDiff.Compare(preForDiff, postForDiff);
+            if (events.Count > 0)
+            {
+                var allLines = new List<string>();
+                allLines.AddRange(BattleNarratorRenderer.Render(
+                    events, activePlayerName ?? ""));
+                allLines.AddRange(CounterAttackInferrer.Infer(
+                    events, activePlayerName ?? ""));
+                allLines.AddRange(SelfDestructInferrer.Infer(events));
+                if (allLines.Count > 0)
+                    NarrationEventLog.AppendLines(allLines);
+            }
+            lastSnap = current;
         }
 
         /// <summary>Last computed valid move tiles from scan_move BFS. Used by battle_move to validate targets.</summary>
