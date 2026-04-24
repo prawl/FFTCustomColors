@@ -86,7 +86,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Narrator — polish follow-ups surfaced during live verify
 
-- [ ] **🟡 Enemy name misattribution across chunks** [Scan] — Same enemy can render as "Black Chocobo" in one scan and "Skeletal Fiend" in the next mid-battle. Narrator's (Team, MaxHp) backfill helps when pre-snap had the right name but doesn't fix fresh scans that grab the wrong fingerprint on first read. Root cause is in the scan fingerprint lookup; narrator-layer fix may not be possible without improving the underlying ID.
+- [~] **🟡 Enemy name misattribution across chunks** [Scan] — Same enemy can render as "Black Chocobo" in one scan and "Skeletal Fiend" in the next mid-battle. SHIPPED `2f52a79` 2026-04-24: `HeapUnitMatchClassifier` scores candidates by level-byte agreement at struct+0x09, `CollectUnitPositionsFull` picks highest-scoring match instead of first-match. Needs live-verify that common HP patterns (HP=4 / HP=100 etc.) no longer produce chunk-level relabeling. If relabeling persists, the root cause is deeper in the search (team byte, other discriminators).
 
 - [ ] **🟡 Narrator pre-snap may still lag after some player actions** [Narrator] — Earlier commit (`24a0746`) added a 200ms settle before the fresh pre-snap in `BattleWait`. Not yet live-verified that 200ms is enough for every action type — basic Attack animations run longer than abilities. If a false-positive counter line appears post-player-action, bump the settle to 400-500ms or thread a post-action explicit refresh hook.
 
@@ -106,7 +106,9 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Execution / detection
 
-- [ ] **🔴 Screen detection reports BattleMoving while game is in BattleWaiting** [Detection] — Live-repro: after a move-confirm, `screen` persistently returned `[BattleMoving] ui=(4,6)` but the actual game state was BattleWaiting (facing-direction select). Stale `battleMode` byte or stale-cursor-cache issue. Add a signal discriminator: if we arrived at BattleMoving via a recent move-commit key press, re-check after 500ms and accept BattleWaiting if it appears.
+- [~] **🔴 WorldMap false positive mid-battle during enemy-turn animations** [Detection] — Live-repro 2026-04-24 Lenalian Plateau: `battle_wait` returned `[WorldMap]` at t=10370ms during an enemy turn (next poll 2s later returned `[BattleEnemiesTurn]` correctly). battleMode transiently flickers to 0 during certain enemy animations while slot9 stays at 0xFFFFFFFF, tripping the post-battle-stale rule at `ScreenDetectionLogic.cs:612`. SHIPPED `7ca8b1d` 2026-04-24: `WorldMapBattleResidueClassifier` suppresses WorldMap when a Battle* state was detected <3s ago; CommandWatcher reverts to cached last-battle-state name. Needs live-verify that real battle→WorldMap transitions aren't blocked by the 3s window (edge case: instant-win Victory banners).
+
+- [~] **🔴 Screen detection reports BattleMoving while game is in BattleWaiting** [Detection] — Live-repro: after a move-confirm, `screen` persistently returned `[BattleMoving] ui=(4,6)` but the actual game state was BattleWaiting (facing-direction select). SHIPPED `52fe7ea` 2026-04-24: `StaleBattleMovingClassifier` + CommandWatcher override flips BattleMoving → BattleWaiting when a Wait Enter was sent <500ms ago. `NavigationActions.LastWaitEnterTickMs` stamps the tick before the Enter send. Needs live-verify — watch logs for `[StateOverride] BattleMoving→BattleWaiting`. If the post-move-confirm variant (not Wait-Enter) still occurs, extend to a separate LastMoveConfirmTickMs stamp.
 
 - [ ] **🔴 Victory misdetected as BattleDesertion** [Detection] — Live-repro solo Ramza at Siedge Weald: after killing the last Skeleton, the final `battle_wait` returned `[BattleDesertion]` even though a screenshot immediately confirmed the game was on WorldMap (Victory flow completed cleanly). Petrified Bomb was still on the field — possibly the trigger: game auto-scored Victory on player alive + no undead-animate enemies, mod detection read stale sentinels and classified as Desertion. Capture: run `session_tail failed` at the end of each battle; any Desertion followed by WorldMap within 5s is this bug.
 
@@ -114,7 +116,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ### Scan output polish
 
-- [ ] **🟡 Populate enemy Move / Jump for verbose unit rows** [Scan] — Shipped the render path already (`screen -v` emits `Mv=N Jmp=M`) but values are zero for enemies because `CollectUnitPositionsFull` only runs `TryReadMoveJumpFromHeap` on the active unit. Options: (a) add per-enemy heap search (slow — N × heap walks per scan), (b) add static job-base-stats table keyed by JobName (fast, approximate — doesn't reflect equipment bonuses), (c) read from per-enemy heap struct once per battle + cache (probably best; `UnitMoveJumpCache` already exists). Approximate data is a decision aid — precise enough for threat assessment.
+- [x] **🟡 Populate enemy Move / Jump for verbose unit rows** [Scan] — Shipped `3b868ae` + `26aa860` 2026-04-24: new `JobBaseStatsTable` (103 tests) covers generic jobs + monsters + story-unique classes with canonical WotL Mv/Jp. New `MoveJumpFallbackResolver` (7 tests) composes (live heap read) + (table base); both scan_move BFS input AND BattleUnitState now route through it. LIVE-VERIFIED 2026-04-24: Goblin Mv=4 Jp=3, Knight Mv=3 Jp=3, Archer Mv=3 Jp=3, Exploder Mv=4 Jp=3 all match the table. Active-unit Mv=0 collapse (live-observed after armor break) also patched via same resolver. Approximate values (no equipment bonuses) but sufficient for threat assessment.
 
 ### Speed
 

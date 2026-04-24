@@ -57,6 +57,14 @@ namespace FFTColorCustomizer.Utilities
         private PickerListReader? _pickerListReader;
         private readonly BattleTurnTracker _turnTracker = new();
         private bool _movedThisTurn;
+        // Symmetric "we just acted this turn" flag used to override the
+        // battleActed byte when it transiently reads 0 after a confirmed
+        // action (known byte-drift issue — see TODO §0 Phase 3 memory
+        // hunts). Without this, EffectiveMenuCursor can't correct the
+        // post-action stale cursor read and ui= shows "Abilities" when
+        // the game already moved the cursor back to "Move". Reset at the
+        // same turn-boundary sites as _movedThisTurn.
+        private bool _actedThisTurn;
         private int _postMoveX = -1, _postMoveY = -1; // confirmed position after battle_move
         private int _lastLoggedCursor = -1; // for UI cursor change logging
 
@@ -3642,6 +3650,7 @@ namespace FFTColorCustomizer.Utilities
                         _turnTracker.ResetForNewTurn();
                         _battleMenuTracker.OnNewTurn();
                         _movedThisTurn = false;
+                        _actedThisTurn = false;
                         _postMoveX = -1;
                         _postMoveY = -1;
                         _waitConfirmPending = false;
@@ -3740,6 +3749,10 @@ namespace FFTColorCustomizer.Utilities
                             _lastAbilityName = null; // clear on failure
                         else
                         {
+                            // Mark that we acted this turn so EffectiveMenuCursor
+                            // can correct post-action stale reads even when the
+                            // battleActed byte transiently reads 0.
+                            _actedThisTurn = true;
                             actionResult.PostAction = _navActions?.ReadPostActionState();
                             // S58: detect Counter-KO (active unit died from the
                             // reaction to their own attack). Surface in the
@@ -4213,6 +4226,7 @@ namespace FFTColorCustomizer.Utilities
                     _turnTracker.ResetForNewTurn();
                     _battleMenuTracker.OnNewTurn();
                     _movedThisTurn = false;
+                    _actedThisTurn = false;
                     _waitConfirmPending = false;
                     _lastAbilityName = null;
                     _cachedPrimarySkillset = null;
@@ -6988,7 +7002,7 @@ namespace FFTColorCustomizer.Utilities
                 if (screen.Name == "BattleMyTurn" || screen.Name == "BattleActing")
                 {
                     bool hasMoved = screen.BattleMoved == 1 || _movedThisTurn;
-                    bool hasActed = screen.BattleActed == 1;
+                    bool hasActed = screen.BattleActed == 1 || _actedThisTurn;
                     int effective = GameBridge.BattleAbilityNavigation.EffectiveMenuCursor(
                         memoryCursor: screen.MenuCursor,
                         moved: hasMoved,
