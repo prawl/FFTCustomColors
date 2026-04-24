@@ -3745,6 +3745,26 @@ namespace FFTColorCustomizer.Utilities
                         // so we can classify post-action counter-KO.
                         var preActionState = _navActions?.ReadPostActionState();
                         var actionResult = ExecuteNavAction(command);
+
+                        // Auto-recover from "Failed to enter targeting mode"
+                        // via a single retry. Root cause: BattleMoving stale
+                        // read when the previous Move-mode state hasn't fully
+                        // cleared. The nav already called EscapeToMyTurn on
+                        // the first failure, so we're back in action-menu
+                        // state — one fresh attempt usually succeeds.
+                        // Live-observed 2026-04-25 Siedge Weald: repeated
+                        // manually-issued battle_ability calls both failed
+                        // with "current: BattleMoving". Auto-retry avoids
+                        // the ask-user-to-try-again cycle.
+                        if (actionResult.Status != "completed"
+                            && actionResult.Error != null
+                            && actionResult.Error.Contains("Failed to enter targeting mode"))
+                        {
+                            ModLogger.Log($"[CommandBridge] battle_ability targeting failed once — auto-retry: {actionResult.Error}");
+                            _battleMenuTracker.ReturnToMyTurn();
+                            actionResult = ExecuteNavAction(command);
+                        }
+
                         if (actionResult.Status != "completed")
                             _lastAbilityName = null; // clear on failure
                         else
