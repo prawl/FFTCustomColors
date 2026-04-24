@@ -5311,10 +5311,20 @@ namespace FFTColorCustomizer.GameBridge
                         continue;
                     }
 
-                    // Try each heap match until we find one with a non-zero fingerprint.
-                    // Some matches land on stale/dead unit slots where +0x69 is all zeros,
-                    // which isn't a valid class signature — fall through to the next match.
+                    // Score each non-zero-fingerprint candidate by how well its
+                    // level byte (at struct+0x09) agrees with the scanned level.
+                    // When multiple heap slots match a common (HP, MaxHP) pattern
+                    // (live-observed: Archer at HP=4/MaxHP=452 relabeled
+                    // across scans as Black Goblin then Knight via false-
+                    // positive heap hits), the level filter steers selection
+                    // to the real struct. HeapUnitMatchClassifier treats
+                    // expectedLevel==0 as unknown so no candidate is penalised,
+                    // preserving first-match behavior when pre-scan level reads
+                    // haven't settled.
                     byte[]? fpBytes = null;
+                    int bestScore = int.MinValue;
+                    long bestBaseForLog = 0;
+                    int bestCandLevelForLog = -1;
                     foreach (var match in heapMatches)
                     {
                         var candidateBase = (long)match.address - 0x10;
@@ -5326,9 +5336,21 @@ namespace FFTColorCustomizer.GameBridge
                         for (int bi = 0; bi < 11; bi++)
                             if (candidateBytes[bi] != 0) { allZero = false; break; }
                         if (allZero) continue;
-                        fpBytes = candidateBytes;
-                        break;
+
+                        int candLevel = -1;
+                        var levelRead = _explorer.Scanner.ReadBytes((nint)(candidateBase + 0x09), 1);
+                        if (levelRead.Length == 1) candLevel = levelRead[0];
+                        int score = HeapUnitMatchClassifier.Score(candLevel, unit.Level);
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            fpBytes = candidateBytes;
+                            bestBaseForLog = candidateBase;
+                            bestCandLevelForLog = candLevel;
+                        }
                     }
+                    if (fpBytes != null && heapMatches.Count > 1)
+                        ModLogger.Log($"[CollectPositions] Heap match ({unit.GridX},{unit.GridY}) hp={unit.Hp}/{unit.MaxHp} lv={unit.Level}: picked base=0x{bestBaseForLog:X} candLevel={bestCandLevelForLog} score={bestScore} from {heapMatches.Count} candidates");
                     if (fpBytes == null)
                     {
                         var cached2 = _unitNameCache.Get(unit.GridX, unit.GridY);
