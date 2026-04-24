@@ -1654,6 +1654,20 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // S60: for non-cast targeted abilities, capture the target's pre-action
+            // HP so we can render a (pre→post/max) delta after the cast resolves —
+            // same shape as BattleAttack's HIT/KO line. Skipped for cast-time
+            // abilities (they queue; HP won't change until the cast triggers later).
+            int abilityPreHp = -1, abilityTargetMaxHp = -1, abilityTargetLevel = 0;
+            bool canMeasureAbilityDelta = loc.castSpeed == 0;
+            if (canMeasureAbilityDelta)
+            {
+                abilityPreHp = ReadStaticArrayHpAt(targetX, targetY);
+                abilityTargetMaxHp = ReadStaticArrayMaxHpAt(targetX, targetY);
+                abilityTargetLevel = ReadStaticArrayFieldAt(targetX, targetY, 0x0D) & 0xFF;
+                ModLogger.Log($"[BattleAbility] Pre-cast target HP={abilityPreHp}/{abilityTargetMaxHp} lv={abilityTargetLevel} at ({targetX},{targetY})");
+            }
+
             // Targeted ability: we should now be in targeting mode.
             // BattleAttacking = basic Attack command (battleMode=4)
             // BattleCasting   = skillset ability target selection (battleMode=1)
@@ -1687,8 +1701,15 @@ namespace FFTColorCustomizer.GameBridge
                 SendKey(VK_ENTER); // Unit/Tile dialog (selects "Unit" default; harmless if no dialog)
                 Thread.Sleep(300);
                 WaitForActionResolved(timeoutMs: 2000, out _);
+                string hpDelta = "";
+                if (canMeasureAbilityDelta && abilityPreHp >= 0)
+                {
+                    int postHp = ReadLiveHp(abilityTargetMaxHp, abilityPreHp, abilityTargetLevel);
+                    hpDelta = AbilityHpDeltaFormatter.Format(abilityPreHp, postHp, abilityTargetMaxHp);
+                    ModLogger.Log($"[BattleAbility] Post-cast: live HP={postHp} (was {abilityPreHp}) at ({targetX},{targetY})");
+                }
                 response.Status = "completed";
-                response.Info = $"{verb} {abilityName} on ({targetX},{targetY}) — cursor was already on target{ctSuffix}{autoEndSuffix}";
+                response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){hpDelta} — cursor was already on target{ctSuffix}{autoEndSuffix}";
                 StatTracker?.OnAbilityUsed(GetActiveUnitNameForStats(), abilityName);
                 return response;
             }
@@ -1802,8 +1823,16 @@ namespace FFTColorCustomizer.GameBridge
             if (settleMs >= 2000)
                 ModLogger.Log($"[BattleAbility] Post-cast settle timeout ({settleMs}ms); returning anyway.");
 
+            string finalHpDelta = "";
+            if (canMeasureAbilityDelta && abilityPreHp >= 0)
+            {
+                int postHp = ReadLiveHp(abilityTargetMaxHp, abilityPreHp, abilityTargetLevel);
+                finalHpDelta = AbilityHpDeltaFormatter.Format(abilityPreHp, postHp, abilityTargetMaxHp);
+                ModLogger.Log($"[BattleAbility] Post-cast: live HP={postHp} (was {abilityPreHp}) at ({targetX},{targetY})");
+            }
+
             response.Status = "completed";
-            response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){ctSuffix}{autoEndSuffix}";
+            response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){finalHpDelta}{ctSuffix}{autoEndSuffix}";
             StatTracker?.OnAbilityUsed(GetActiveUnitNameForStats(), abilityName);
             return response;
         }

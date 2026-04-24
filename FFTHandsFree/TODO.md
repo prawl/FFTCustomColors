@@ -151,7 +151,19 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **🟡 `ui=` reports Abilities when cursor is actually on Move** [Detection] — Live-repro S60: after a battle_attack returned, screen showed `[BattleMyTurn] ui=Abilities` but user confirmed cursor was on Move. Same family as the BattleMoving/BattleWaiting stale-byte bug — menuCursor byte reading stale after an action. Candidate fix: refresh menuCursor on fresh BattleMyTurn entry, reset to 0 by default on state transition.
 
-- [ ] **🟡 `battle_ability`/`battle_attack` returns no damage/kill info** [Stats/Execution] — Live-repro S60: `Used Throw Stone on (8,5)` printed without any HP delta or kill marker, even though it dealt damage. Scan after-the-fact showed target still alive at 61 HP. Needs: post-action scan to compute target HP delta and surface `→ Skeleton HP 90 → 61 (−29)` in the response line. Matches the pattern `battle_attack` already does for basic attacks (`HIT (650→90/650)`).
+<!-- S60 SHIPPED: battle_ability now captures pre-HP at target via ReadStaticArrayHpAt
+     before the cast, then ReadLiveHp post-settle, and appends an HP delta suffix
+     via AbilityHpDeltaFormatter. Output shapes:
+       "Used Throw Stone on (8,5) (90→61/650)"
+       "Used Cure on (10,9) (300→500/719)"
+       "Used Phoenix Down on (4,7) — revived (0→50/477)"
+       "Used Fire on (7,5) — KO'd! (50→0/620)"
+     Cast-time abilities (CastSpeed>0) skip the delta — they queue in the
+     Combat Timeline and HP won't change until the cast triggers later.
+     Self-target / self-radius still emit their legacy no-delta lines.
+     +8 AbilityHpDeltaFormatter tests. -->
+
+- [ ] **⚠ UNVERIFIED: `battle_ability` HP delta surfacing (S60)** [Stats/Execution] — Shipped but needs a live repro on a targeted non-cast ability to confirm the `(pre→post/max)` suffix renders correctly. Best test: Throw Stone from Ramza on an enemy, or Phoenix Down on a dead ally. Cast-time abilities (Cura, Fire, Haste) should omit the delta — they queue, post-HP won't have changed yet.
 
 - [ ] **🔴 No validation that Act is already consumed this turn** [Execution] — Live-repro S60: after a successful basic Attack (which consumed Act), retrying `battle_attack` failed silently with `Failed to enter targeting mode (current: BattleMoving)` instead of the correct error `Act already used this turn — only Move or Wait remain`. Helpers should pre-check `battleActed` byte (or equivalent) and return a clean "already acted" message so Claude knows to pivot to move-then-wait. Blocks autonomous play — Claude currently wastes cycles banging on an action the game won't allow.
 
