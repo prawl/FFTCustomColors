@@ -3774,7 +3774,34 @@ namespace FFTColorCustomizer.Utilities
                         }
 
                         if (actionResult.Status != "completed")
+                        {
                             _lastAbilityName = null; // clear on failure
+
+                            // Mid-flight failure heuristic: if the failure
+                            // happened AFTER the action keys were sent but
+                            // before the bridge could confirm completion,
+                            // the game may still have registered the action.
+                            // Set _actedThisTurn so downstream EffectiveMenuCursor
+                            // doesn't show "ui=Abilities" when the cursor
+                            // is visually on Move.
+                            //
+                            // Pre-action rejections (range validation, Act
+                            // already used, wrong screen) don't match these
+                            // strings and correctly leave the flag false.
+                            //
+                            // Live-observed 2026-04-25 Siedge Weald: user
+                            // saw `ui=Abilities` after an execute_turn that
+                            // appeared to land the attack but returned
+                            // non-completed status due to mid-flight timing.
+                            var err = actionResult.Error ?? "";
+                            if (err.Contains("Failed to enter targeting mode")
+                                || err.Contains("Navigation miss")
+                                || err.Contains("timeout"))
+                            {
+                                _actedThisTurn = true;
+                                ModLogger.Log($"[CommandBridge] battle_ability mid-flight failure — setting _actedThisTurn=true: {err}");
+                            }
+                        }
                         else
                         {
                             // Mark that we acted this turn so EffectiveMenuCursor
