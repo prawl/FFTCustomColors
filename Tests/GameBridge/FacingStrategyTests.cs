@@ -179,6 +179,40 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal(0, result.Back);
         }
 
+        /// <summary>
+        /// Live-repro 2026-04-24 Lenalian Plateau: Ramza at (8,2) with 6
+        /// enemies in varied positions. Pins the recommended facing AND
+        /// arc counts so future refactors can't silently drift. Earlier
+        /// filed TODO suggested the arc math was off ("0/4/2 expected");
+        /// hand-trace showed the algorithm is CORRECT — it picks the
+        /// facing that minimizes back-arc exposure, and 2/4/0 is the
+        /// right distribution for the chosen facing (0, +1).
+        /// </summary>
+        [Fact]
+        public void ArcCount_LenalianPlateauLiveScenario_PinsRecommendation()
+        {
+            var ally = MakeUnit(8, 2, team: 0, hp: 595, maxHp: 719);
+            var enemies = new System.Collections.Generic.List<FacingStrategy.UnitPosition>
+            {
+                MakeUnit(1, 6, team: 1, hp: 518, maxHp: 518),   // Gobbledygook SW
+                MakeUnit(0, 6, team: 1, hp: 438, maxHp: 438),   // Black Goblin SW
+                MakeUnit(8, 11, team: 1, hp: 522, maxHp: 522),  // Goblin S
+                MakeUnit(7, 2, team: 1, hp: 87, maxHp: 541),    // Exploder W (adjacent)
+                MakeUnit(9, 5, team: 1, hp: 73, maxHp: 521),    // Knight SE
+                MakeUnit(10, 1, team: 1, hp: 452, maxHp: 452),  // Archer NE
+            };
+
+            var result = FacingStrategy.ComputeOptimalFacingDetailed(ally, enemies);
+
+            // Algorithm picks (0, +1) — "South" post-flip — because 0 back
+            // minimizes backstab-arc exposure. No enemy is north of Ramza.
+            Assert.Equal(0, result.Dx);
+            Assert.Equal(1, result.Dy);
+            Assert.Equal(2, result.Front);   // Goblin S, Knight SE
+            Assert.Equal(4, result.Side);    // Gob SW, BG SW, Exploder W, Archer NE
+            Assert.Equal(0, result.Back);    // nothing north
+        }
+
         [Theory]
         // Confirmed empirically in-game on the facing screen (2026-04-07).
         // rot=0: Right=E  Left=W  Up=N  Down=S
