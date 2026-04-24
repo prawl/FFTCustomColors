@@ -463,6 +463,20 @@ namespace FFTColorCustomizer.GameBridge
             // FacingStrategy's convention: (1,0)=E, (-1,0)=W, (0,1)=N, (0,-1)=S.
             (int dx, int dy)? facingOverride = ParseFacingDirection(command?.Pattern);
 
+            // S60 enemy-turn narrator: capture a unit-state snapshot NOW (before we
+            // leave BattleMyTurn via the Wait nav) so we can diff against a post-wait
+            // snapshot to report what happened during the enemy turns.
+            // Nullable — scan failures just mean no narration, not a BattleWait failure.
+            var narratorPreSnaps = CaptureCurrentUnitSnapshot();
+            string? narratorActivePlayerName = null;
+            if (_lastScannedUnits != null)
+            {
+                foreach (var u in _lastScannedUnits)
+                {
+                    if (u.IsActive) { narratorActivePlayerName = u.Name ?? u.JobNameOverride; break; }
+                }
+            }
+
             var screen = _detectScreen();
 
             // Turn-ending abilities (Jump) end the turn immediately — no Wait needed.
@@ -713,6 +727,25 @@ namespace FFTColorCustomizer.GameBridge
                     if (current.Name == "BattleMyTurn" || current.Name == "BattleActing")
                     {
                         response.Info = $"Friendly turn after {sw.ElapsedMilliseconds}ms (screen={current.Name})";
+
+                        // S60 enemy-turn narrator: diff pre-wait vs post-wait snapshot
+                        // and append "> ..." narration lines to response.Info so
+                        // Claude can see movements / damage / deaths / revives that
+                        // happened during the enemy turn(s) without a separate scan.
+                        if (narratorPreSnaps != null)
+                        {
+                            var postSnaps = CaptureCurrentUnitSnapshot();
+                            if (postSnaps != null)
+                            {
+                                var diffEvents = UnitScanDiff.Compare(narratorPreSnaps, postSnaps);
+                                var narrationLines = BattleNarratorRenderer.Render(
+                                    diffEvents, narratorActivePlayerName ?? "");
+                                if (narrationLines.Count > 0)
+                                {
+                                    response.Info += "\n" + string.Join("\n", narrationLines);
+                                }
+                            }
+                        }
                         break;
                     }
 
@@ -4262,6 +4295,37 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         public int NamedSnapshotCount => _namedSnapshots.Count;
+
+        /// <summary>
+        /// S60: Capture current unit positions as an immutable <see cref="UnitScanDiff.UnitSnap"/>
+        /// list, suitable for `battle_wait`'s pre/post narration diff. Reuses the conversion
+        /// logic from <see cref="SaveNamedSnapshot(string)"/> but returns the list directly
+        /// instead of storing it under a label. Returns null if the scan failed or there
+        /// are no units (e.g. pre-battle state, or memory-read failure).
+        /// </summary>
+        private List<UnitScanDiff.UnitSnap>? CaptureCurrentUnitSnapshot()
+        {
+            try { CollectUnitPositionsFull(); } catch { return null; }
+            if (_lastScannedUnits == null || _lastScannedUnits.Count == 0) return null;
+            var snaps = new List<UnitScanDiff.UnitSnap>(_lastScannedUnits.Count);
+            foreach (var u in _lastScannedUnits)
+            {
+                var statuses = u.StatusBytes != null && u.StatusBytes.Length == 5
+                    ? StatusDecoder.Decode(u.StatusBytes)
+                    : null;
+                snaps.Add(new UnitScanDiff.UnitSnap(
+                    Name: u.Name ?? u.JobNameOverride,
+                    RosterNameId: u.RosterNameId,
+                    Team: u.Team,
+                    GridX: u.GridX,
+                    GridY: u.GridY,
+                    Hp: u.Hp,
+                    MaxHp: u.MaxHp,
+                    Statuses: statuses,
+                    ClassFingerprint: u.ClassFingerprint));
+            }
+            return snaps;
+        }
 
         /// <summary>Last computed valid move tiles from scan_move BFS. Used by battle_move to validate targets.</summary>
         private HashSet<(int x, int y)>? _lastValidMoveTiles;

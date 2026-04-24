@@ -78,11 +78,39 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
-### Session 60 — battle-play gaps (2026-04-23)
+### Session 60 — Enemy-Turn Narrator feature (2026-04-23)
 
-- [ ] **🔴 Enemy-turn damage to active unit not surfaced** [Stats/Execution] — During `battle_wait`'s poll through enemy/ally turns, if Ramza (or any player unit) takes damage, the return line doesn't mention it. Live-repro S60 at The Siedge Weald solo Ramza battle: enemies hit him, HP dropped, response was silent. Need a per-unit HP-delta summary at the end of `battle_wait` (`Ramza: 719 → 587 (−132 from Grenade)` style) so Claude can decide whether to heal next turn without a separate scan.
+> Replaces the two "enemy-turn damage / counter-KO not surfaced" bugs below with a concrete feature plan. See [plan file](../../../../Users/ptyRa/.claude/plans/cached-dazzling-panda.md) for design + rationale.
 
-- [ ] **🔴 Counter-attack KOs by player unit not surfaced** [Stats/Execution] — Live-repro S60: Ramza counter-attacked during enemy turn and killed an enemy outright. `battle_wait` returned without noting the KO. Need to hook kill-diff detection into `battle_wait`'s return summary (similar to the kill-diff already wired into `execute_turn`'s `turnSummary.killedUnits`).
+**Phase 1 — MVP (before/after diff, no attribution)**
+
+- [ ] **Pure helper: `BattleNarratorRenderer`** [Narrator] — Takes `List<ScanChangeEventDto>` + active player name → returns `> ...` lines appended to `response.Info`. TDD fixtures: damage/heal/move/ko/revived/empty/truncation-to-~8-lines. Filter: suppress healed events on the active player when delta ≤ expected Regen tick. File: `ColorMod/GameBridge/BattleNarratorRenderer.cs`. 6-8 tests.
+
+- [ ] **Wire pre-wait snapshot into `BattleWait()`** [Narrator] — At method entry in `NavigationActions.cs:458`, before the poll loop, call `CollectUnitPositionsFull()` and stash into a local `List<UnitSnap> preWait`. No behavior change yet — plumbing only.
+
+- [ ] **Wire post-wait snapshot + diff + render** [Narrator] — At poll-exit block (line ~715), call `CollectUnitPositionsFull()` again, pass `(preWait, postWait)` to `UnitScanDiff.Compare()`, feed result into `BattleNarratorRenderer`, append lines to `response.Info`. Behavior: narrated events now appear in `battle_wait` output.
+
+- [ ] **Integration test: BattleWait snapshot/diff wiring** [Narrator] — One test using fake pre/post UnitSnap lists + assertion that response.Info contains expected `> ...` lines. Verifies end-to-end without live game.
+
+**Phase 2 — Inference helpers**
+
+- [ ] **Pure helper: `CounterAttackInferrer`** [Narrator] — Event list + active player name → synthesized `Ramza countered X for N dmg` when a player took damage AND an enemy died in the same wait-window AND no player `moved`/`ko` event preceded the enemy death. TDD fixtures: counter-KO, counter-no-KO, multiple counters, false positives. File: `ColorMod/GameBridge/CounterAttackInferrer.cs`. 5-7 tests.
+
+- [ ] **Pure helper: `SelfDestructInferrer`** [Narrator] — Event list → detect one enemy dying AND multiple units taking damage in the same wait-window → emit `Bomb self-destructed (dealt N to Ramza, N to Skeleton)`. TDD fixtures. File: `ColorMod/GameBridge/SelfDestructInferrer.cs`. 4-6 tests.
+
+- [ ] **Wire inferrers into narrator pipeline** [Narrator] — After `UnitScanDiff.Compare`, feed event list through `CounterAttackInferrer` and `SelfDestructInferrer` before rendering. Inferrers append synthesized events (or replace raw damaged/ko pair with a richer synthesized one). Integration test.
+
+**Phase 3 — Memory hunts (prereqs for per-action attribution)**
+
+- [ ] **Memory hunt: active-unit-index byte during BattleEnemiesTurn / BattleAlliesTurn** [Memory] — Diagnostic `fft.sh` helper takes snapshots at the start of each per-unit enemy-turn window and diffs. Expected: a u8 cycling through roster/battle-array indices. Writes finding to `memory/project_active_unit_index.md`.
+
+- [ ] **Memory hunt: currently-executing-ability-id byte during BattleActing** [Memory] — Diagnostic snapshots during an enemy spell cast. Expected: a u16 with the ability ID for ~N frames of animation. Writes to `memory/project_enemy_ability_id.md`.
+
+**Phase 4 — bonus, only if hunts succeed**
+
+- [ ] **Per-action narrator: mid-turn polling + ability names** [Narrator] — Once the two memory hunts land, restructure `BattleWait` poll loop to sample active-unit-index + ability-id per iteration. Emit `> Grenade cast Ignite on Ramza for 100 dmg` instead of generic `Ramza took 100 damage`. Empirically verify direct battle-array reads are safe during BattleEnemiesTurn (no C+Up) before wiring.
+
+### Session 60 — other battle-play gaps (2026-04-23)
 
 - [ ] **🔴 `execute_turn` leaves game stuck mid-sequence** [Execution] — Live-repro S60: `execute_turn 4 6 "Phoenix Down" 4 7` timed out after 5s. Game ended up in BattleMoving with cursor on (4,6), F-confirm not fired. Recovery required manual `battle_wait` which took 30+ seconds. Two bugs in one: (a) the 5s bridge timeout is too aggressive for execute_turn bundles, (b) the move-confirm step didn't fire. Probably same family as the S59 menuCursor drift.
 
