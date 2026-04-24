@@ -78,13 +78,19 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
-### Enemy-Turn Narrator follow-ups (S60)
+### Narrator — remaining UNVERIFIED features
 
-- [ ] **⚠ UNVERIFIED: CounterAttackInferrer KO-suppression in one window** [Narrator] — S60 wired + live-verified counter attribution ("Ramza countered Black Chocobo for 336 dmg"). Still need a live repro where enemy attack + counter + KO all land in the SAME 450ms mid-poll window so the ko-suppression path runs (raw "> Bonesnatch died" dropped in favor of "Ramza countered Bonesnatch for N dmg — Bonesnatch died"). S60 observed KO but attack+death split across chunks by a TitleScreen flicker; no suppression exercised.
+- [ ] **⚠ UNVERIFIED: SelfDestructInferrer on a live Bomb** [Narrator] — Wired + tests green; no live Bomb self-destruct caught yet. Repro: maneuver a Bomb adjacent to Ramza + another player/ally so when it dies, 2+ units take damage in the same ~450ms mid-poll window. Expected: `> Bomb self-destructed (dealt N to Ramza, M to Agrias)` appears.
 
-- [ ] **⚠ UNVERIFIED: SelfDestructInferrer on a live Bomb** [Narrator] — Wired + tests green; no Bomb self-destruct caught during S60 verification. Repro: maneuver a Bomb adjacent to Ramza + another player/ally so when it self-destructs at least 2 units take damage. Expected: `> Bomb self-destructed (dealt N to Ramza, M to Agrias)` appears.
+- [ ] **⚠ UNVERIFIED: CriticalHpInferrer threshold-crossing line** [Narrator] — Wired + 9 tests covering crossing/stay-above/already-critical/ko/enemy/healed. Regen tends to keep Ramza above the 1/3 threshold during solo battles, so the crossing rarely triggers live. Repro: take a hard hit that drops a player below `MaxHp / 3` mid-wait. Expected: `> Ramza reached critical HP (400→180/719)`.
 
-- [ ] **⚠ UNVERIFIED: `battle_ability` HP delta suffix** [Stats/Execution] — Shipped but not live-verified. Best test: Throw Stone from Ramza on an enemy. Expected shape: `Used Throw Stone on (8,5) (90→61/650)`. Phoenix Down on dead ally: ` — revived (0→50/477)`. Cast-time abilities (Cura, Fire, Haste) should omit the delta.
+### Narrator — polish follow-ups surfaced during live verify
+
+- [ ] **🟡 Enemy name misattribution across chunks** [Scan] — Same enemy can render as "Black Chocobo" in one scan and "Skeletal Fiend" in the next mid-battle. Narrator's (Team, MaxHp) backfill helps when pre-snap had the right name but doesn't fix fresh scans that grab the wrong fingerprint on first read. Root cause is in the scan fingerprint lookup; narrator-layer fix may not be possible without improving the underlying ID.
+
+- [ ] **🟡 Narrator pre-snap may still lag after some player actions** [Narrator] — Earlier commit (`24a0746`) added a 200ms settle before the fresh pre-snap in `BattleWait`. Not yet live-verified that 200ms is enough for every action type — basic Attack animations run longer than abilities. If a false-positive counter line appears post-player-action, bump the settle to 400-500ms or thread a post-action explicit refresh hook.
+
+- [ ] **🟡 `[BattleVictory]` spurious detection flash during non-Victory actions** [Detection] — Observed multiple times this session during `battle_ability` response headers. The flash doesn't break anything (immediate follow-up screen query returns real state), but it's noisy in `session_tail` + any log review. Likely a short-circuit rule in `ScreenDetectionLogic` firing on transient sentinel values during cast animations. Audit the BattleVictory rules for tighter guards.
 
 ### Phase 3 — Memory hunts (blocks per-action attribution)
 
@@ -92,50 +98,27 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **Memory hunt: currently-executing-ability-id byte during BattleActing** [Memory] — Diagnostic snapshots during an enemy spell cast. Expected: a u16 with the ability ID for ~N frames of animation. Writes to `memory/project_enemy_ability_id.md`. Unblocks ability-name attribution ("Ice Animna") in narration.
 
+- [ ] **Memory hunt: `battleActed` / `battleMoved` byte drift** [Memory] — Bytes read 0 transiently right after a confirmed player action (Phoenix Down, Throw Stone both live-observed with `battleActed: 0` in the response JSON despite the action clearly resolving). The `acted`/`moved` tag feature is correct given the bytes; the bytes themselves are unreliable. Fix path: find an alternative authoritative memory cell (possibly in the per-unit struct rather than the global BattleActed) OR add a software-side "I just sent an action-confirm Enter" flag that overrides the byte read for ~500ms.
+
 ### Phase 4 — per-action narrator (blocks on Phase 3 hunts)
 
 - [ ] **Per-action narrator: mid-turn polling + ability names** [Narrator] — Once the two memory hunts land, restructure `BattleWait` poll loop to sample active-unit-index + ability-id per iteration. Emit `> Grenade cast Ignite on Ramza for 100 dmg` instead of generic `Ramza took 100 damage`. Empirically verify direct battle-array reads are safe during BattleEnemiesTurn (no C+Up) before wiring.
 
 ### Execution / detection
 
-<!-- SHIPPED: execute_turn default fft timeout bumped from 5s to 120s to match
-     battle_wait. The live-repro "timed out at 5s mid-move-confirm" was the
-     shell-side fft wrapper giving up, not the bridge; the game-side move
-     was still pending. Shell-only fix. -->
-
 - [ ] **🔴 Screen detection reports BattleMoving while game is in BattleWaiting** [Detection] — Live-repro: after a move-confirm, `screen` persistently returned `[BattleMoving] ui=(4,6)` but the actual game state was BattleWaiting (facing-direction select). Stale `battleMode` byte or stale-cursor-cache issue. Add a signal discriminator: if we arrived at BattleMoving via a recent move-commit key press, re-check after 500ms and accept BattleWaiting if it appears.
 
-<!-- SHIPPED: BattleAttack + BattleAbility now re-check screen.BattleActed after
-     escape-to-known-state. Retrying battle_attack from a post-action state
-     (BattleMoving / BattleAttacking) previously passed the initial guard
-     (which only fires on BattleMyTurn/BattleActing entry), escaped back to
-     BattleMyTurn, then silently failed deep in the targeting flow. Both
-     helpers now fail cleanly with "Act already used this turn — only Move
-     or Wait remain." -->
+- [ ] **🔴 Victory misdetected as BattleDesertion** [Detection] — Live-repro solo Ramza at Siedge Weald: after killing the last Skeleton, the final `battle_wait` returned `[BattleDesertion]` even though a screenshot immediately confirmed the game was on WorldMap (Victory flow completed cleanly). Petrified Bomb was still on the field — possibly the trigger: game auto-scored Victory on player alive + no undead-animate enemies, mod detection read stale sentinels and classified as Desertion. Capture: run `session_tail failed` at the end of each battle; any Desertion followed by WorldMap within 5s is this bug.
 
-- [ ] **🔴 Victory misdetected as BattleDesertion** [Detection] — Live-repro solo Ramza at Siedge Weald: after killing the last Skeleton, the final `battle_wait` returned `[BattleDesertion]` even though a screenshot immediately confirmed the game was on WorldMap (Victory flow completed cleanly). Petrified Bomb was still on the field — possibly the trigger: game auto-scored Victory on player alive + no undead-animate enemies, mod detection read stale sentinels and classified as Desertion. Sister bug to the post-Victory misdetects. Capture: run `session_tail failed` at the end of each battle; any Desertion followed by WorldMap within 5s is this bug.
-
-- [ ] **🟡 `ui=` reports Abilities when cursor is actually on Move** [Detection] — Live-repro: after a battle_attack returned, screen showed `[BattleMyTurn] ui=Abilities` but user confirmed cursor was on Move. Same family as the BattleMoving/BattleWaiting stale-byte bug — menuCursor byte reading stale after an action. Candidate fix: refresh menuCursor on fresh BattleMyTurn entry, reset to 0 by default on state transition.
+- [ ] **🟡 `ui=` reports Abilities when cursor is actually on Move** [Detection] — Live-repro: after a `battle_attack` returned, screen showed `[BattleMyTurn] ui=Abilities` but user confirmed cursor was on Move. Same family as the BattleMoving/BattleWaiting stale-byte bug — menuCursor byte reading stale after an action. Candidate fix: refresh menuCursor on fresh BattleMyTurn entry, reset to 0 by default on state transition.
 
 ### Scan output polish
 
-<!-- SHIPPED: BattleUnitState.WeaponTag populated server-side in
-     NavigationActions.CollectUnitPositionsFull via ItemData.ComposeWeaponTag.
-     CommandWatcher reads activeUnit.WeaponTag into _cachedActiveUnitWeaponTag
-     which feeds ActiveUnitSummaryFormatter.Format — the active-unit banner
-     now renders "[BattleMyTurn] Ramza(Gallant Knight) [Chaos Blade onHit:chance to add Stone] (2,1) HP=..." -->
-
-<!-- SHIPPED: `acted` / `moved` tags render in the compact header when
-     battleActed/battleMoved bytes are 1 (only on BattleMyTurn / BattleActing).
-     _fmt_screen_compact pulls the bytes into BACTED/BMOVED and appends
-     colored warn-tagged chips. -->
-
-<!-- SHIPPED: scan_move wrapper documented as deprecated-but-forwards. The
-     no-args path already calls screen(); added clarifying comment. -->
+- [ ] **🟡 Populate enemy Move / Jump for verbose unit rows** [Scan] — Shipped the render path already (`screen -v` emits `Mv=N Jmp=M`) but values are zero for enemies because `CollectUnitPositionsFull` only runs `TryReadMoveJumpFromHeap` on the active unit. Options: (a) add per-enemy heap search (slow — N × heap walks per scan), (b) add static job-base-stats table keyed by JobName (fast, approximate — doesn't reflect equipment bonuses), (c) read from per-enemy heap struct once per battle + cache (probably best; `UnitMoveJumpCache` already exists). Approximate data is a decision aid — precise enough for threat assessment.
 
 ### Speed
 
-- [ ] **🟡 `battle_wait` slow — 17-33s per end-of-turn** [Speed] — Live-repro S60: `battle_wait` took 17s, 20s, 21s, 33s across consecutive turns. Even with Ctrl fast-forward, enemy turn animations dominate. Investigate: is the bridge polling at a slower rate than needed? Is the Ctrl fast-forward actually applying? Target: sub-10s for a 2-enemy end-of-turn.
+- [ ] **🟡 `battle_wait` slow — 17-33s per end-of-turn** [Speed] — Live-repro: `battle_wait` took 17s, 20s, 21s, 33s across consecutive turns. Even with Ctrl fast-forward, enemy turn animations dominate. Investigate: is the bridge polling at a slower rate than needed? Is the Ctrl fast-forward actually applying? Target: sub-10s for a 2-enemy end-of-turn.
 
 
 ## 1. Battle Execution (P0, BLOCKING)

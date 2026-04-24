@@ -1866,3 +1866,69 @@ Commits:
 
 **TODO reset:**
 - `567d898` wiped all stale S56-S59 items from TODO.md per user direction and seeded fresh S60 bugs surfaced during live play.
+
+---
+
+### 2026-04-24 — Scan polish batch + narrator fine-tuning + live-verify sweep
+
+**Tests: 4269 → 4288 (+19).** Four commits. Multiple live-verifications of previously-UNVERIFIED features; three new polish fixes for gaps surfaced during testing.
+
+**Commits:**
+- `8cf9197` — Five TODO items: weapon tag, acted/moved tags, Act-validation, execute_turn timeout, scan_move doc
+- `5261ae4` — Units list polish — weapon tag per player, Mv/Jmp in verbose rows
+- `11660b8` — Narrator critical-HP line + self-target tag + scan_move override render
+- `24a0746` — Petrified-filter extends to ability target tiles + narrator settle delay
+
+**Shipped:**
+
+- [x] **Weapon tag wired end-to-end into active-unit banner** (8cf9197) — new `WeaponTag` string field on `BattleUnitState`, populated server-side via `ItemData.ComposeWeaponTag(u.Equipment)` in `CollectUnitPositionsFull`. CommandWatcher reads `activeUnit.WeaponTag` into `_cachedActiveUnitWeaponTag`; compact banner now renders `[BattleMyTurn] Ramza(Gallant Knight) [Chaos Blade onHit:chance to add Stone] (2,1) HP=719/719`. Live-verified.
+
+- [x] **`acted` / `moved` tags in compact header** (8cf9197) — `_fmt_screen_compact` pulls `screen.battleActed` / `battleMoved` and appends colored chips on `BattleMyTurn`/`BattleActing` when the bytes are 1. Works correctly given the byte; byte drift is a separate memory issue.
+
+- [x] **Act-consumed re-check after escape-to-known-state** (8cf9197) — `BattleAttack` + `BattleAbility` both now re-check `screen.BattleActed == 1` on the FRESH BattleMyTurn after the escape path. Previously retrying `battle_attack` from a recoverable post-action state passed the initial guard, escaped back, and silently failed deep in the targeting flow. Now returns clean `Act already used this turn — only Move or Wait remain.`
+
+- [x] **`execute_turn` fft timeout bumped 5s → 120s** (8cf9197) — live-repro fixed: `execute_turn 4 6 "Phoenix Down" 4 7` previously timed out at 5s mid-move-confirm. Shell-side `fft "$json"` now uses 120 to match blocking battle_wait. Live-verified this session with `execute_turn 2 4 Attack 2 5` completing cleanly in 10s.
+
+- [x] **scan_move deprecation — documented forwarding path** (8cf9197) — clarifying comment block; no-args path already forwards to `screen()`.
+
+- [x] **Weapon tag per player in Units listing** (5261ae4) — `[PLAYER] Ramza(Gallant Knight) (2,1) HP=719/719 [Chaos Blade onHit:chance to add Stone] *`. Lets Claude see every party member's weapon at a glance.
+
+- [x] **Mv / Jmp in verbose unit rows** (5261ae4) — `screen -v` renders `Mv=7 Jmp=3` alongside PA/MA/Spd. BattleUnitState gains Move/Jump fields from ScannedUnit. Populated for player units; enemy Move/Jump needs a bigger change (static job base-stats table or per-enemy heap search) — tracked as open.
+
+- [x] **`BattleUnitStateWeaponTagTests`** (5261ae4) — +6 characterization tests pinning `ComposeWeaponTag` shape (name-only, onHit format, unarmed, armor-only, no-leading/trailing-space).
+
+- [x] **`CriticalHpInferrer`** (11660b8) — new pure helper. Emits `> Ramza reached critical HP (400→180/719)` when a PLAYER unit crosses below 1/3 MaxHp during an enemy turn. Fires only on threshold crossing (not repeatedly while already critical). Excludes KO (already has its own event), enemies, healed events. Wired into `EmitNarrationBatch`. +9 tests.
+
+- [x] **Self-target `SELF` vs `ALLY` tag** (11660b8) — `Focus → (2,1)<Ramza SELF>` instead of misleading `<Ramza ALLY>`. Caster tile now gets `SELF`, other friendly tiles keep `ALLY`, enemy tiles stay untagged. Live-verified.
+
+- [x] **`scan_move <mv> <jmp>` override renders full output** (11660b8) — was printing only the one-line bridge header; now dispatches the action and calls `screen()` so Move tiles / Attack tiles / Units / Abilities all render.
+
+- [x] **Petrified filter extends to ability `validTargetTiles`** (24a0746) — `aliveByPos` / `deadByPos` indexes now exclude `lifeState=="petrified"` units so ability target lists no longer suggest wasted actions on statues. Live-surfaced during testing: `Attack → (3,1)<?>` on a STONE'd Skeletal Fiend. Fix mirrors the earlier AttackTiles fix pattern.
+
+- [x] **200ms settle before fresh narrator pre-snap** (24a0746) — live-surfaced false positive: `> Ramza countered Skeletal Fiend for 275 dmg` when Ramza's own Phoenix Down actually landed the 275-dmg kill on the player turn. Stale static-array HP read lagged behind the memory write. 200ms Thread.Sleep in `BattleWait` before `CaptureCurrentUnitSnapshot` (non-chunked path only — chunked continuations reuse cached snap) lets the game's memory regions flush first.
+
+**Live-verified this session (was UNVERIFIED):**
+
+- [x] **Counter attribution correct** — `> Ramza countered Black Chocobo for 336 dmg`
+- [x] **Chaos Blade on-hit Petrify** — `> Black Chocobo gained Petrify, Critical` alongside damage event
+- [x] **Counter-KO ko-suppression** — `> Ramza countered (unit@3,1) for 275 dmg — (unit@3,1) died` (single line, no duplicate raw `> X died`)
+- [x] **`battle_ability` HP delta** — `Used Throw Stone on (2,4) (629→611/629)`
+- [x] **`battle_ability` `— KO'd!` suffix** — `Used Phoenix Down on (3,1) — KO'd! (275→0/629)`
+- [x] **Items submenu lookup after SecondarySkillsetResolver** — Phoenix Down routed through Items correctly
+- [x] **`execute_turn` timeout bump** — 10s end-to-end, no 5s failure
+- [x] **Weapon tag banner + Units list** — all renders correct
+- [x] **Inline `Units:` header** — layout correct
+- [x] **`SELF` vs `ALLY` tag** — all self-target abilities show SELF
+- [x] **`Attack → (no targets in range)` always visible** — correct
+- [x] **Petrify/Crystal/Dead/Treasure life states render** — all suffixes firing
+
+**Still UNVERIFIED (awaiting live repro):**
+
+- SelfDestructInferrer — no live Bomb self-destruct caught yet
+- CriticalHpInferrer — Regen kept Ramza above threshold; need a harder hit
+
+**Known limitations that are memory-level (not our code):**
+
+- `battleActed` / `battleMoved` bytes read 0 transiently after actions — the `acted`/`moved` tag feature is correct, the bytes themselves are unreliable. Memory hunt still pending.
+- Enemy name misattribution across chunks (e.g. Chocobo re-labeled as Skeletal Fiend) — scan's fingerprint lookup is unstable for some enemy classes. Narrator's backfill helps but doesn't fully fix it.
+- `[BattleVictory]` spurious detection flash during non-Victory actions — detection rule; needs audit.
