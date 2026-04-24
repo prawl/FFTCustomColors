@@ -3537,9 +3537,12 @@ us.forEach(u=>{
   const life=u.lifeState==='dead'?' DEAD':(u.lifeState==='petrified'?' STONE':(u.lifeState==='crystal'?' CRYSTAL':''));
   const act=u.isActive?' *':'';
   const dist=u.distance!==undefined&&!u.isActive?' d='+u.distance:'';
-  // Facing is decision-relevant for backstab — keep on enemies only. Ally
-  // facing rarely drives the current turn (ally auto-faces on Wait).
-  const face=(u.facing&&u.team===1)?' f='+u.facing[0]:'';
+  // Facing letter shows for all teams. For enemies it drives backstab arc
+  // decisions; for player/ally it's a verification aid (live-observed
+  // 2026-04-24: player facing byte read East while visually facing West —
+  // surfacing f= for PLAYER makes the mismatch visible without needing
+  // a separate memory dump).
+  const face=u.facing?' f='+u.facing[0]:'';
   // Weapon tag (player units only) — server-side ItemData.ComposeWeaponTag.
   // Lets Claude see Agrias's Escutcheon (strong) / Ramza's Chaos Blade / etc.
   // at a glance in the Units listing. Skipped when unarmed / unknown.
