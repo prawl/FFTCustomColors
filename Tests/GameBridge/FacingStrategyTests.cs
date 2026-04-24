@@ -191,6 +191,21 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void ArcCount_LenalianPlateauLiveScenario_PinsRecommendation()
         {
+            var (ally, enemies) = LenalianScenario();
+            var result = FacingStrategy.ComputeOptimalFacingDetailed(ally, enemies);
+
+            // Algorithm picks (0, +1) — "South" post-flip — because 0 back
+            // minimizes backstab-arc exposure. No enemy is north of Ramza.
+            Assert.Equal(0, result.Dx);
+            Assert.Equal(1, result.Dy);
+            Assert.Equal(2, result.Front);   // Goblin S, Knight SE
+            Assert.Equal(4, result.Side);    // Gob SW, BG SW, Exploder W, Archer NE
+            Assert.Equal(0, result.Back);    // nothing north
+        }
+
+        private static (FacingStrategy.UnitPosition ally, System.Collections.Generic.List<FacingStrategy.UnitPosition> enemies)
+            LenalianScenario()
+        {
             var ally = MakeUnit(8, 2, team: 0, hp: 595, maxHp: 719);
             var enemies = new System.Collections.Generic.List<FacingStrategy.UnitPosition>
             {
@@ -201,16 +216,88 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 MakeUnit(9, 5, team: 1, hp: 73, maxHp: 521),    // Knight SE
                 MakeUnit(10, 1, team: 1, hp: 452, maxHp: 452),  // Archer NE
             };
+            return (ally, enemies);
+        }
 
-            var result = FacingStrategy.ComputeOptimalFacingDetailed(ally, enemies);
+        /// <summary>
+        /// Hand-trace pin: for each of the 4 cardinals, count which enemies
+        /// land in front / side / back given the Lenalian scenario.
+        /// These numbers are derived directly from the dot-product arc
+        /// rule (cross &lt;= |dot| && dot &gt; 0 → front, cross &lt;= |dot| &&
+        /// dot &lt; 0 → back, else side) and do NOT depend on the
+        /// recommendation scoring.
+        /// </summary>
+        [Theory]
+        // Facing East (+1, 0):
+        //   Gob   (-7,+4): dot=-7, cross=4 → |dot|>cross, dot<0 → BACK
+        //   BG    (-8,+4): dot=-8, cross=4 → BACK
+        //   Goblin( 0,+9): dot=0,  cross=9 → SIDE
+        //   Expl  (-1, 0): dot=-1, cross=0 → BACK
+        //   Knight(+1,+3): dot=1,  cross=3 → cross>|dot| → SIDE
+        //   Archer(+2,-1): dot=2,  cross=1 → cross<|dot|, dot>0 → FRONT
+        // → 1 front, 2 side, 3 back
+        [InlineData(1, 0, 1, 2, 3)]
+        // Facing West (-1, 0): mirror of east
+        //   Gob→FRONT, BG→FRONT, Goblin→SIDE, Expl→FRONT, Knight→SIDE, Archer→BACK
+        // → 3 front, 2 side, 1 back
+        [InlineData(-1, 0, 3, 2, 1)]
+        // Facing (0, +1) "South" post-flip:
+        //   Gob   (-7,+4): dot=4, cross=7 → SIDE
+        //   BG    (-8,+4): dot=4, cross=8 → SIDE
+        //   Goblin( 0,+9): dot=9, cross=0 → FRONT
+        //   Expl  (-1, 0): dot=0, cross=1 → SIDE
+        //   Knight(+1,+3): dot=3, cross=1 → FRONT
+        //   Archer(+2,-1): dot=-1, cross=2 → SIDE
+        // → 2 front, 4 side, 0 back (matches shipped recommendation test)
+        [InlineData(0, 1, 2, 4, 0)]
+        // Facing (0, -1) "North" post-flip: mirror of south
+        //   Goblin→BACK, Knight→BACK, others all SIDE
+        // → 0 front, 4 side, 2 back
+        [InlineData(0, -1, 0, 4, 2)]
+        public void ArcCount_LenalianScenario_ForEachCardinal_MatchesHandTrace(
+            int facingDx, int facingDy, int expectedFront, int expectedSide, int expectedBack)
+        {
+            var (ally, enemies) = LenalianScenario();
 
-            // Algorithm picks (0, +1) — "South" post-flip — because 0 back
-            // minimizes backstab-arc exposure. No enemy is north of Ramza.
-            Assert.Equal(0, result.Dx);
-            Assert.Equal(1, result.Dy);
-            Assert.Equal(2, result.Front);   // Goblin S, Knight SE
-            Assert.Equal(4, result.Side);    // Gob SW, BG SW, Exploder W, Archer NE
-            Assert.Equal(0, result.Back);    // nothing north
+            // Probe each cardinal directly via a single-enemy-at-a-time
+            // synthetic inputs isn't helpful here — we want the arc counts
+            // for the actual algorithm when FORCED to a specific facing.
+            // Reach that via the facingOverride path: FacingDecider exposes
+            // the forced-arc counts through ComputeOptimalFacingDetailed
+            // when only one facing vector is considered. Simulate by
+            // picking the matching cardinal manually and asking the
+            // helper directly for the arc counts at that facing.
+            var arcs = CountArcsAtFacing(ally, enemies, facingDx, facingDy);
+            Assert.Equal(expectedFront, arcs.front);
+            Assert.Equal(expectedSide, arcs.side);
+            Assert.Equal(expectedBack, arcs.back);
+        }
+
+        /// <summary>
+        /// Duplicates the arc-classification branch of
+        /// <see cref="FacingStrategy.ComputeOptimalFacingDetailed"/> so
+        /// tests can ask "what would the arcs be for a specific facing?"
+        /// Separate from the scoring path — pins the classification
+        /// independently of the recommendation algorithm.
+        /// </summary>
+        private static (int front, int side, int back) CountArcsAtFacing(
+            FacingStrategy.UnitPosition ally,
+            System.Collections.Generic.List<FacingStrategy.UnitPosition> enemies,
+            int dx, int dy)
+        {
+            int front = 0, side = 0, back = 0;
+            foreach (var e in enemies)
+            {
+                int relX = e.GridX - ally.GridX;
+                int relY = e.GridY - ally.GridY;
+                float dot = relX * dx + relY * dy;
+                float cross = System.MathF.Abs(relX * dy - relY * dx);
+                float mag = System.MathF.Abs(dot);
+                if (cross <= mag && dot > 0) front++;
+                else if (cross <= mag && dot < 0) back++;
+                else side++;
+            }
+            return (front, side, back);
         }
 
         [Theory]
