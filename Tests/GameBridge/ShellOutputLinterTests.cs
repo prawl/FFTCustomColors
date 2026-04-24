@@ -93,23 +93,26 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void BattleRender_PrintsFacingOnlyForEnemies()
+        public void BattleRender_PrintsFacingForAllTeams()
         {
-            // Session 31 audit rule: ally facing (f=X) is decision-irrelevant
-            // on the caster's own turn (ally auto-faces on Wait). Show only
-            // for enemies (backstab signal). Pattern:
-            //   const face=(u.facing&&u.team===1)?' f='+u.facing[0]:'';
-            // Guard against regression to the old unconditional form:
+            // 2026-04-24 policy reversal (commit 9d0a515): player/ally facing
+            // (f=X) is useful as a verification aid after the live-observed
+            // player-facing-byte memory bug (Ramza reads facing=East while
+            // visually facing West). The prior enemies-only rule assumed
+            // player facing was always accurate + auto-managed; that's not
+            // true. Show f=X for all teams.
+            //
+            // Current correct pattern:
             //   const face=u.facing?' f='+u.facing[0]:'';
+            // Regression to guard against:
+            //   const face=(u.facing&&u.team===1)?' f='+u.facing[0]:'';
             var fftPath = FindFftSh();
             var content = File.ReadAllText(fftPath);
 
-            // The CURRENT correct pattern includes team===1 in the ternary.
-            // Any line that has `u.facing?' f=` without `team===1` nearby is
-            // a regression.
-            Assert.DoesNotContain("const face=u.facing?' f='+u.facing[0]:''", content);
-            // Positive check: the current correct pattern exists.
-            Assert.Contains("u.team===1", content);
+            // Positive check: the unconditional pattern is present.
+            Assert.Contains("const face=u.facing?' f='+u.facing[0]:''", content);
+            // Negative check: the old team===1 ternary for facing is gone.
+            Assert.DoesNotContain("(u.facing&&u.team===1)", content);
         }
 
         [Fact]

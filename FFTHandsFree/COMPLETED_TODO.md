@@ -5,6 +5,67 @@ Items fully shipped ([x]) across sessions. Kept out of TODO.md to make the activ
 
 ---
 
+### 2026-04-24 — Detection + narrator + scan-polish pass (24 commits, +200 tests 4269→4469)
+
+Scan fallbacks + detection-rule tightening. Seven new pure helpers, fifteen shipped+live-verified fixes. Test count 4269→4469.
+
+**Commits:**
+- `3b868ae` — JobBaseStatsTable: static WotL Move/Jump by job name (generic + monsters + story-unique), 103 tests
+- `52fe7ea` — StaleBattleMovingClassifier: BattleMoving→BattleWaiting override window from last Wait Enter, 9 tests
+- `26aa860` — MoveJumpFallbackResolver: active-unit BFS input path now shares the fallback resolver, 7 tests
+- `7ca8b1d` — WorldMapBattleResidueClassifier: suppress WorldMap false positives within 3s of last Battle state, 9 tests
+- `2f52a79` — HeapUnitMatchClassifier: score candidates by level-byte agreement at struct+0x09, 5 tests
+- `481e64d` — TODO hygiene + _actedThisTurn flag for post-action cursor correction
+- `34a2dbd` — TODO entry: CounterAttackInferrer false-KO when MaxHp changes
+- `d9b2fd1` — UnitScanDiff: gate KO classification on stable MaxHp (suppresses animation transients)
+- `3f93c21` — BattleVictory encA=255 sentinel tightened with gameOverFlag==1 guard
+- `82635b6` — TODO: battle_wait speed audit (poll already tight; needs fast-forward hotkey hunt)
+- `799833a` — Grenade fingerprint variant `D4-12-07-57-1E-1E-5A-73-27-55` added
+- `f82007c` — TODO: two new scan-output bugs from live play (facing drift, dead-target marker)
+- `e8d1cca` — BattleMapIdToLocation: curLoc= uses live map-id byte first with world-map latch fallback, 21 tests
+- `8b57cec` — AttackTileOccupantClassifier: HP=0 guard filters animation-transient "alive" reads, 10 tests
+- `55c5275` — Shell: rename `Facing:` → `Recommend Wait:` + file two facing TODOs
+- `360cf8f` — screen() BattleMyTurn header now renders curLoc
+- `c36ec53` — FacingDecider: flip N/S labels; +y = south in FFT grid (matches FacingByteDecoder)
+- `5adeda1` — Narrator pre-snap settle 200ms → 400ms for slower action animations
+- `679f382` — Attack tiles now render dead/crystal/petrified labels + jobName on non-attackable occupants, 9 tests
+- `442ef5d` — CriticalHpInferrer: 6 edge-case boundary tests (exact threshold, tiny MaxHp, multi-events)
+- `9d0a515` — Shell: player/ally facing letter (`f=X`) now renders alongside enemies
+- `bbefc4d` — TODO entry: PLANNING-HEAVY menuCursor byte drift beyond action-state overrides
+- `68d8060` — TODO entry: execute_turn lacks Act-consumed pre-flight validation
+- `3bedba5` — TODO entry: BattleDialogue misdetected as TravelList after save-load
+
+**Shipped + LIVE-VERIFIED:**
+
+- [x] **Enemy Move/Jump fallback** — `JobBaseStatsTable` covers all generic jobs + 50+ monsters + story-unique classes with canonical WotL Mv/Jp. `MoveJumpFallbackResolver` composes (live heap read) with (table base). Wired at BattleUnitState render AND scan_move BFS-input paths. Live-verified: Goblin Mv=4 Jp=3, Knight Mv=3 Jp=3, Archer Mv=3 Jp=3, Exploder Mv=4 Jp=3 all match. Active-unit Mv=0 collapse after armor break also patched via same resolver.
+- [x] **HeapUnitMatchClassifier** — scores heap candidates by struct+0x09 level match. Fixed the Archer-at-HP=4/452 relabeling as "Black Goblin" / "Knight" across chunks. Log line confirms selection: `picked base=0x... candLevel=89 score=100 from 3 candidates`.
+- [x] **Grenade fingerprint** — `D4-12-07-57-1E-1E-5A-73-27-55` now resolves directly (was previously via cache fallback).
+- [x] **WorldMapBattleResidueClassifier** — suppresses transient WorldMap flickers during enemy-turn animations. 20+ fires logged in a single battle_wait with delays 47ms / 141ms / 250ms / 313ms / 687ms / 1891ms.
+- [x] **`_actedThisTurn` flag** — symmetric to `_movedThisTurn`; fixes post-action `ui=Abilities` stale when `battleActed` byte drifts to 0. Live logs confirm: `cursor=1 effective=0 acted=True` fires reliably.
+- [x] **BattleVictory sentinel tightening** — `gameOverFlag==1` discriminator added to rule 4 (encA=255 sentinel). No `[BattleVictory]` flashes in logs during `battle_ability` responses.
+- [x] **`curLoc=` via live map-id byte** — reads `0x14077D83C`, reverses through `BattleMapIdToLocation`. Live-verified: `curLoc=The Siedge Weald` (was stuck at "Lenalian Plateau" via `_lastWorldMapLocation` latch).
+- [x] **Attack tiles dead/crystal/petrified labels** — `Right→(1,6) dead` / `Down→(5,4) petrified (Gobbledygook)` live-seen. HP=0 animation-transient guard also catches units that visually dead but haven't propagated the status bit.
+- [x] **FacingDecider N/S label flip** — +y is south in FFT grid (matches `FacingByteDecoder`). Live-verified: `Recommend Wait: Face South` correctly renders after the flip.
+- [x] **`curLoc=` in screen() BattleMyTurn header** — screen() had a bespoke renderer at fft.sh:3445 that bypassed the shared `_fmt_screen_compact`. Now consistent.
+- [x] **`Recommend Wait:` rename** — was confusingly labeled `Facing:` (implies current facing); now clearly a recommendation.
+- [x] **Player facing letter `f=X`** — shell now renders facing on player/ally rows too. Directly surfaced the separate player-facing-byte memory bug (Ramza reads East while visually West).
+- [x] **SelfDestructInferrer** — previously UNVERIFIED, live-caught this session: narrator emitted `> Goblin self-destructed (dealt 336 to Black Goblin, 15 to Ramza)`.
+
+**Shipped + not-yet-live-verified (code + tests green, waiting for organic repro):**
+
+- [x] **StaleBattleMovingClassifier** — BattleMoving→BattleWaiting override when Wait Enter <500ms ago. Needs a specific timing (external `screen` poll inside the override window) to trigger.
+- [x] **UnitScanDiff MaxHp-stable KO gate** — prevents Counter-narrator emitting false "Knight died for 521 dmg" when Defending buff drop shifts MaxHp 521→524 with HP transient-reading 0.
+- [x] **CriticalHpInferrer edge-case tests** — 6 boundary tests (exact threshold, tiny MaxHp, multi-events in one window, negative HP defense).
+- [x] **Narrator pre-snap 200→400ms bump** — covers slower action animations (Chaos Blade on-hit rolls). No false-positive counter lines observed post-bump this session.
+- [x] **CounterAttackInferrer MaxHp-stable guard** — shipped via the UnitScanDiff KO gate; secondary effect same commit.
+
+**Techniques worth propagating:**
+
+- **Stale-byte override pattern** (template — shipped 3× this session: BattleMoving→BattleWaiting, WorldMap→cached-Battle, _actedThisTurn cursor correction). Pattern: pure classifier + `Environment.TickCount64` stamp at trigger site + CommandWatcher consult after Detect() + update cache-after-override so transients don't poison the cache. See `memory/feedback_stale_byte_override_pattern.md`.
+- **`ClassifyOccupant` as enum-string return type** — preserving life-state information through the Attack-tiles render (instead of collapsing non-attackable to "empty") adds real value with no downstream cost. Apply elsewhere where we throw information away in a render.
+- **Level-byte heap scoring** — when multiple heap slots match a common (HP, MaxHP) pattern, secondary bytes (level, team) discriminate the real struct from false positives. First-match selection is a scan-quality bug when HP is a common number.
+- **Reverse-lookup helpers hand-coded in-memory** — `BattleMapIdToLocation` inverts `random_encounter_maps.json` in a static Dict<int,int>. Faster than file-read per scan and test-able without I/O mocking.
+
 ### Session 58 (2026-04-22) — 36 tasks, 17 new pure helpers, +207 tests
 
 **2 commits (all TDD'd, zero regressions). Tests: 3967 → 4174.**
