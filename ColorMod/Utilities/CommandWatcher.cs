@@ -5277,6 +5277,14 @@ namespace FFTColorCustomizer.Utilities
                     _cachedLearnedAbilityNames = null;
                     _cachedPrimarySkillset = null;
                     _cachedSecondarySkillset = null;
+                    // Clear turn-consumed flags on battle start. A prior
+                    // battle ending mid-turn (flee / GameOver / unexpected
+                    // transition) leaves these flags set; without this
+                    // reset the first turn of the new battle would pre-flight-
+                    // fail execute_turn / mis-correct the cursor via
+                    // EffectiveMenuCursor with stale post-action assumptions.
+                    _movedThisTurn = false;
+                    _actedThisTurn = false;
                     break;
 
                 case GameBridge.BattleLifecycleEvent.EndBattleVictory:
