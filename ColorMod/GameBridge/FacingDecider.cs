@@ -76,13 +76,19 @@ namespace FFTColorCustomizer.GameBridge
         /// <summary>
         /// Cardinal name for a (dx,dy) pair. Non-cardinal pairs fall back
         /// to "(dx,dy)" formatting.
+        ///
+        /// Grid convention: +y increases going SOUTH (matches FFT's in-memory
+        /// coordinate system and <see cref="FacingByteDecoder"/>). Previous
+        /// versions of this helper used the reverse labeling, producing
+        /// "Face North" recommendations that pointed the unit south in-game
+        /// — live-observed 2026-04-24 Lenalian Plateau.
         /// </summary>
         public static string NameFor(int dx, int dy) => (dx, dy) switch
         {
             (1, 0) => "East",
             (-1, 0) => "West",
-            (0, 1) => "North",
-            (0, -1) => "South",
+            (0, 1) => "South",  // +y = south in FFT grid
+            (0, -1) => "North", // -y = north in FFT grid
             _ => $"({dx},{dy})",
         };
     }

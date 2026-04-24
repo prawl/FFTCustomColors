@@ -91,7 +91,7 @@ namespace FFTColorCustomizer.GameBridge
             if (Math.Abs(dx) > Math.Abs(dy))
                 return dx > 0 ? "East" : "West";
             else
-                return dy > 0 ? "North" : "South";
+                return dy > 0 ? "South" : "North";  // +y = south in FFT grid
         }
 
         /// <summary>

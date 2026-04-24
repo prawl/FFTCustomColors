@@ -50,24 +50,26 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void Override_North_UsesExactly()
+        public void Override_SouthDelta_UsesExactly()
         {
+            // (0, +1) = south in FFT grid coords.
             var decision = FacingDecider.Decide(
                 facingOverride: (0, 1),
                 ally: Ally(5, 5),
                 enemies: new List<FacingStrategy.UnitPosition>());
             Assert.True(decision.FromOverride);
-            Assert.Equal("North", decision.DirectionName);
+            Assert.Equal("South", decision.DirectionName);
         }
 
         [Fact]
-        public void Override_South_UsesExactly()
+        public void Override_NorthDelta_UsesExactly()
         {
+            // (0, -1) = north in FFT grid coords.
             var decision = FacingDecider.Decide(
                 facingOverride: (0, -1),
                 ally: Ally(5, 5),
                 enemies: new List<FacingStrategy.UnitPosition>());
-            Assert.Equal("South", decision.DirectionName);
+            Assert.Equal("North", decision.DirectionName);
         }
 
         [Fact]
@@ -95,14 +97,15 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void AutoPick_EnemyToNorth_FacesNorth()
+        public void AutoPick_EnemyToSouth_FacesSouth()
         {
+            // Enemy at y=8 is south of ally at y=5 in FFT grid (+y = south).
             var decision = FacingDecider.Decide(
                 facingOverride: null,
                 ally: Ally(5, 5),
                 enemies: new List<FacingStrategy.UnitPosition> { Enemy(5, 8) });
             Assert.False(decision.FromOverride);
-            Assert.Equal("North", decision.DirectionName);
+            Assert.Equal("South", decision.DirectionName);
         }
 
         [Fact]

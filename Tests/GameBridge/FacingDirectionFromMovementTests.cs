@@ -6,11 +6,11 @@ namespace FFTColorCustomizer.Tests.GameBridge
     public class FacingDirectionFromMovementTests
     {
         [Theory]
-        [InlineData(3, 4, 3, 5, "North")]   // moved +Y
-        [InlineData(3, 4, 3, 3, "South")]   // moved -Y
+        [InlineData(3, 4, 3, 5, "South")]   // moved +Y (grid south)
+        [InlineData(3, 4, 3, 3, "North")]   // moved -Y (grid north)
         [InlineData(3, 4, 4, 4, "East")]    // moved +X
         [InlineData(3, 4, 2, 4, "West")]    // moved -X
-        [InlineData(3, 4, 4, 5, "North")]   // diagonal: +X +Y, dominant Y
+        [InlineData(3, 4, 4, 5, "South")]   // diagonal: +X +Y, dominant Y
         [InlineData(3, 4, 5, 5, "East")]    // diagonal: +2X +1Y, dominant X
         public void DeriveFacingFromMovement_ReturnsCorrectDirection(
             int prevX, int prevY, int curX, int curY, string expectedFacing)
