@@ -3278,14 +3278,15 @@ namespace FFTColorCustomizer.GameBridge
                     int dir = FindDirForDelta(rotation, delta[0], delta[1]);
                     string arrowName = dirNames[dir];
                     var occupantUnit = units.FirstOrDefault(u => u.GridX == tx && u.GridY == ty && u != ally);
-                    // S60: dead / crystal / treasure / petrified occupants are
-                    // not attackable — render the tile as "empty" so scan_move
-                    // output doesn't suggest wasted actions against corpses or
-                    // stone statues. TODO §0 live-repro S60 at Siedge Weald:
-                    // scan said `Up→(4,4) enemy (Skeleton)` when (4,4) held a
-                    // HP=0 [Dead] corpse.
+                    // Dead / crystal / treasure / petrified occupants, and
+                    // HP<=0 units with not-yet-propagated status bits, are
+                    // not attackable — render the tile as "empty" so
+                    // scan_move output doesn't suggest wasted actions
+                    // against corpses. Extracted to AttackTileOccupantClassifier
+                    // 2026-04-24 to add the HP>0 guard behind live-repro.
                     bool occupantAttackable = occupantUnit != null
-                        && StatusDecoder.GetLifeState(occupantUnit.StatusBytes) == "alive";
+                        && AttackTileOccupantClassifier.IsAttackable(
+                            occupantUnit.Hp, occupantUnit.StatusBytes);
                     string occupant = !occupantAttackable ? "empty"
                         : occupantUnit!.Team == 0 ? "ally" : "enemy";
                     var tile = new AttackTileInfo { X = tx, Y = ty, Arrow = arrowName, Occupant = occupant };
