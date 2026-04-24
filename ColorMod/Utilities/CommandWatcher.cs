@@ -5277,38 +5277,37 @@ namespace FFTColorCustomizer.Utilities
             // later scan returned idx=0/null). If we have a non-null cached value
             // AND the abilities list contains entries from a non-primary skillset,
             // infer the secondary from the abilities list instead of blanking.
-            if (activeUnit.SecondaryAbility > 0)
+            // S60 fix: persist _cachedSecondarySkillset across scans via
+            // SecondarySkillsetResolver. The SecondaryAbility byte reads 0
+            // transiently (live-confirmed S59 on Ramza's second turn); when
+            // it does, FilterAbilitiesBySkillsets upstream also strips the
+            // secondary's abilities from the abilities[] list, so inference
+            // has nothing to work with. Blanking to null on that transient
+            // miss broke the `battle_ability "Phoenix Down"` submenu lookup
+            // for the rest of the turn. The resolver now preserves the last
+            // known good value instead. Cache cleared on turn reset.
+            string? byteResolved = activeUnit.SecondaryAbility > 0
+                ? GetSkillsetName(activeUnit.SecondaryAbility)
+                : null;
+            var abilityNames = activeUnit.Abilities?.ConvertAll(a => a.Name);
+            string? previousCache = _cachedSecondarySkillset;
+            _cachedSecondarySkillset = GameBridge.SecondarySkillsetResolver.Resolve(
+                byteResolvedSecondary: byteResolved,
+                abilityNames: abilityNames,
+                primarySkillset: _cachedPrimarySkillset,
+                previousCache: previousCache,
+                getSkillsetForAbility: GameBridge.ActionAbilityLookup.GetSkillsetForAbility);
+
+            if (_cachedSecondarySkillset != null
+                && _cachedSecondarySkillset != byteResolved
+                && _cachedSecondarySkillset != previousCache)
             {
-                _cachedSecondarySkillset = GetSkillsetName(activeUnit.SecondaryAbility);
+                ModLogger.Log($"[CommandBridge] SecondaryAbility byte read 0 — inferred '{_cachedSecondarySkillset}' from abilities[] list");
             }
-            else if (activeUnit.Abilities != null && activeUnit.Abilities.Count > 0
-                     && _cachedPrimarySkillset != null)
+            else if (byteResolved == null && _cachedSecondarySkillset != null
+                     && _cachedSecondarySkillset == previousCache)
             {
-                // Pick the first ability whose skillset differs from the primary —
-                // that's the secondary. If no such entry exists, fall through to null.
-                string? inferred = null;
-                foreach (var a in activeUnit.Abilities)
-                {
-                    var set = GameBridge.ActionAbilityLookup.GetSkillsetForAbility(a.Name);
-                    if (set != null && set != _cachedPrimarySkillset)
-                    {
-                        inferred = set;
-                        break;
-                    }
-                }
-                if (inferred != null)
-                {
-                    _cachedSecondarySkillset = inferred;
-                    ModLogger.Log($"[CommandBridge] SecondaryAbility byte read 0 — inferred '{inferred}' from abilities[] list");
-                }
-                else
-                {
-                    _cachedSecondarySkillset = null;
-                }
-            }
-            else
-            {
-                _cachedSecondarySkillset = null;
+                ModLogger.Log($"[CommandBridge] SecondaryAbility byte read 0 — preserved cached '{_cachedSecondarySkillset}'");
             }
             ModLogger.Log($"[CommandBridge] Skillsets: primary={_cachedPrimarySkillset ?? "null"}, secondary={_cachedSecondarySkillset ?? "null"} (secondaryIdx={activeUnit.SecondaryAbility})");
 

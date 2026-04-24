@@ -136,7 +136,16 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 - [ ] **🟡 `scan_move` deprecation message is terse** [Shell] — `scan_move` now prints `[USE screen] scan_move is deprecated. Use: screen` and exits. Should either run `screen` directly (forward compat) OR print a single clear line explaining the migration path + cite Commands.md section.
 
-- [ ] **🔴 `battle_ability` submenu detection misses "Items"** [Execution] — Live-repro S60 at The Siedge Weald: `battle_ability "Phoenix Down" 6 4` failed with `Skillset 'Items' not in submenu: Attack, Mettle`, but Items WAS visible in the in-game submenu. Helper parses only Attack/Mettle and doesn't see Items. Blocks every item use via the helper (Phoenix Down, X-Potion, Ether, Remedy). Likely a submenu-scraping bug: either the memory read stops after 2 entries or the label lookup filters out "Items". Repro: fresh BattleMyTurn with Items secondary → `battle_ability "Phoenix Down" ...` → check what `battle_ability` logs for the submenu list.
+<!-- S60 SHIPPED: SecondarySkillsetResolver — the SecondaryAbility byte reads 0
+     transiently (S59 Ramza second-turn repro); upstream FilterAbilitiesBySkillsets
+     then strips secondary abilities from activeUnit.Abilities, starving the
+     inference loop. Old code blanked _cachedSecondarySkillset to null on that
+     transient miss, so GetAbilitiesSubmenuItems returned [Attack, Mettle] with
+     no "Items" and every battle_ability "Phoenix Down" / "Potion" / etc. failed.
+     Fix: pure resolver keeps the last-known-good cache when current scan can't
+     confirm a secondary. +9 resolver tests. -->
+
+- [ ] **⚠ UNVERIFIED: `battle_ability "Phoenix Down"` after resolver fix** [Execution] — Needs live repro to confirm the submenu lookup now finds "Items" on Ramza's second+ turn when SecondaryAbility byte transiently reads 0.
 
 <!-- S60 SHIPPED: StatusDecoder.GetLifeState returns "petrified" when the Petrify
      bit is set. fft.sh renders a " STONE" / " CRYSTAL" suffix in the unit listing
