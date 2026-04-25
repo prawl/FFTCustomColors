@@ -5520,11 +5520,12 @@ namespace FFTColorCustomizer.GameBridge
                         hpPattern, maxResults: 16, minAddr: 0x4000000000L, maxAddr: 0x4200000000L);
                     if (heapMatches.Count == 0)
                     {
-                        var cached = _unitNameCache.Get(unit.GridX, unit.GridY);
+                        var cached = _unitNameCache.Get(unit.GridX, unit.GridY)
+                            ?? _unitNameCache.GetByStats(unit.MaxHp, unit.Level, unit.Team);
                         if (cached != null)
                         {
                             unit.JobNameOverride = cached;
-                            ModLogger.Log($"[CollectPositions] Cache hit ({unit.GridX},{unit.GridY}) → {cached} (no heap match)");
+                            ModLogger.Log($"[CollectPositions] Cache hit ({unit.GridX},{unit.GridY}) → {cached} (no heap match; pos+stats fallback)");
                         }
                         else
                         {
@@ -5575,11 +5576,12 @@ namespace FFTColorCustomizer.GameBridge
                         ModLogger.Log($"[CollectPositions] Heap match ({unit.GridX},{unit.GridY}) hp={unit.Hp}/{unit.MaxHp} lv={unit.Level}: picked base=0x{bestBaseForLog:X} candLevel={bestCandLevelForLog} score={bestScore} from {heapMatches.Count} candidates");
                     if (fpBytes == null)
                     {
-                        var cached2 = _unitNameCache.Get(unit.GridX, unit.GridY);
+                        var cached2 = _unitNameCache.Get(unit.GridX, unit.GridY)
+                            ?? _unitNameCache.GetByStats(unit.MaxHp, unit.Level, unit.Team);
                         if (cached2 != null)
                         {
                             unit.JobNameOverride = cached2;
-                            ModLogger.Log($"[CollectPositions] Cache hit ({unit.GridX},{unit.GridY}) → {cached2} (zero fingerprint)");
+                            ModLogger.Log($"[CollectPositions] Cache hit ({unit.GridX},{unit.GridY}) → {cached2} (zero fingerprint; pos+stats fallback)");
                         }
                         else
                         {
@@ -5593,7 +5595,11 @@ namespace FFTColorCustomizer.GameBridge
                     if (jobName != null)
                     {
                         unit.JobNameOverride = jobName;
-                        _unitNameCache.Set(unit.GridX, unit.GridY, jobName);
+                        // Cache by both position and stats. Stats key (maxHp,
+                        // level, team) survives moves and deaths so subsequent
+                        // scans recover the name even when the unit relocates
+                        // or the heap fingerprint zeroes out post-KO.
+                        _unitNameCache.Set(unit.GridX, unit.GridY, unit.MaxHp, unit.Level, unit.Team, jobName);
                         ModLogger.Log($"[CollectPositions] Fingerprint match ({unit.GridX},{unit.GridY}) → {jobName}");
                     }
                     else
