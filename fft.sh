@@ -865,7 +865,7 @@ rv() {
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 250 ]; then echo "TIMEOUT"; return 1; fi
+    if [ $tries -ge 250 ]; then echo "[TIMEOUT] No response after 5s"; running; return 1; fi
   done
   tr -d '\r\n ' < "$B/response.json" | grep -o '"value":[0-9]*' | head -1 | cut -d: -f2
 }
@@ -883,7 +883,7 @@ block() {
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 250 ]; then echo "TIMEOUT"; return 1; fi
+    if [ $tries -ge 250 ]; then echo "[TIMEOUT] No response after 5s"; running; return 1; fi
   done
   tr -d '\r\n ' < "$B/response.json" | grep -o '"blockData":"[^"]*"' | head -1 | cut -d'"' -f4
 }
@@ -900,7 +900,7 @@ memory_diff() {
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 250 ]; then echo "TIMEOUT"; return 1; fi
+    if [ $tries -ge 250 ]; then echo "[TIMEOUT] No response after 5s"; running; return 1; fi
   done
   local R=$(cat "$B/response.json")
   local STATUS=$(echo "$R" | tr -d '\r\n ' | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
@@ -961,7 +961,7 @@ execute_action() {
   until [ -f "$B/response.json" ]; do
     sleep 0.02
     tries=$((tries + 1))
-    if [ $tries -ge 3000 ]; then echo "[TIMEOUT]"; return 1; fi
+    if [ $tries -ge 3000 ]; then echo "[TIMEOUT] No response after 60s"; running; return 1; fi
   done
   local R=$(cat "$B/response.json" | tr -d '\r\n ')
   local SCR=$(echo "$R" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)
@@ -3467,7 +3467,7 @@ screen() {
   local tries=0
   until [ -f "$B/response.json" ]; do
     sleep 0.02; tries=$((tries+1))
-    if [ $tries -ge 250 ]; then echo "[TIMEOUT]"; return 1; fi
+    if [ $tries -ge 250 ]; then echo "[TIMEOUT] No response after 5s"; running; return 1; fi
   done
   local _t1=$EPOCHREALTIME
   local R=$(cat "$B/response.json" | tr -d '\r\n ')
