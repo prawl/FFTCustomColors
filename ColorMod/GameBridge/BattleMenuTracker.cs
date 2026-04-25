@@ -56,6 +56,22 @@ namespace FFTColorCustomizer.GameBridge
             // Don't reset CursorIndex — game remembers position within a turn
         }
 
+        /// <summary>
+        /// Update the submenu items list without resetting cursor or
+        /// submenu-state flags. Used when the items list grows mid-
+        /// session because a Support ability that adds a battle command
+        /// (Reequip, Evasive Stance) only became known on a later scan.
+        /// Cursor index is clamped if it would now exceed the new list
+        /// length (defensive — items only grow in practice).
+        /// </summary>
+        public void RefreshSubmenuItems(string[] items)
+        {
+            if (!InSubmenu) return;
+            _items = items;
+            if (items.Length > 0 && CursorIndex >= items.Length)
+                CursorIndex = items.Length - 1;
+        }
+
         public void EnterAbilityList(string[] abilities)
         {
             _abilities = abilities;

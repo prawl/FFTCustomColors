@@ -86,6 +86,12 @@ namespace FFTColorCustomizer.Utilities
         private HashSet<int>? _cachedLearnedAbilityIds;
         private string? _cachedPrimarySkillset;
         private string? _cachedSecondarySkillset;
+        // Active unit's Support ability name. Used to detect Reequip /
+        // Evasive Stance which add a Reequip / Defend command row to
+        // the in-battle Abilities submenu (per
+        // SupportAbilityBattleCommand). Cleared on turn boundaries
+        // alongside the other cached unit fields.
+        private string? _cachedSupportAbility;
 
         // Active unit snapshot captured at turn start (first scan_move of each
         // friendly turn). Shell renders these on the compact battle line so
@@ -3722,6 +3728,7 @@ namespace FFTColorCustomizer.Utilities
                         _lastAbilityName = null;
                         _cachedPrimarySkillset = null;
                         _cachedSecondarySkillset = null;
+                        _cachedSupportAbility = null;
                         _cachedLearnedAbilityNames = null;
                         ClearActiveUnitCache();
                         return ExecuteNavActionWithAutoScan(command);
@@ -4383,6 +4390,7 @@ namespace FFTColorCustomizer.Utilities
                     _lastAbilityName = null;
                     _cachedPrimarySkillset = null;
                     _cachedSecondarySkillset = null;
+                    _cachedSupportAbility = null;
                     _cachedLearnedAbilityNames = null;
                     return ExecuteNavActionWithAutoScan(command);
                 }
@@ -5250,6 +5258,13 @@ namespace FFTColorCustomizer.Utilities
             }
             else if (screen.Name == "BattleAbilities" && _battleMenuTracker.InSubmenu)
             {
+                // Refresh items list — covers the case where the
+                // Support-ability cache became known on a later scan
+                // and grew the submenu (e.g. Reequip / Evasive Stance
+                // adding a 4th row). Without this the tracker keeps
+                // the stale row count from when the submenu was first
+                // entered.
+                _battleMenuTracker.RefreshSubmenuItems(GetAbilitiesSubmenuItems());
                 if (_battleMenuTracker.InAbilityList)
                 {
                     // Level 3: inside an ability list (e.g. Mettle → Focus/Rush/Shout)
@@ -5401,6 +5416,7 @@ namespace FFTColorCustomizer.Utilities
                     _cachedLearnedAbilityNames = null;
                     _cachedPrimarySkillset = null;
                     _cachedSecondarySkillset = null;
+                    _cachedSupportAbility = null;
                     // Clear turn-consumed flags on battle start. A prior
                     // battle ending mid-turn (flee / GameOver / unexpected
                     // transition) leaves these flags set; without this
@@ -5491,6 +5507,19 @@ namespace FFTColorCustomizer.Utilities
                 ModLogger.Log($"[CommandBridge] SecondaryAbility byte read 0 — preserved cached '{_cachedSecondarySkillset}'");
             }
             ModLogger.Log($"[CommandBridge] Skillsets: primary={_cachedPrimarySkillset ?? "null"}, secondary={_cachedSecondarySkillset ?? "null"} (secondaryIdx={activeUnit.SecondaryAbility})");
+
+            // Cache active unit's Support ability for the Abilities-
+            // submenu row count. Reequip / Evasive Stance add a battle
+            // command row that the bridge needs to know about so cursor
+            // labeling and ScrollDown wrap-around match the in-game menu.
+            // Preserve prior cache when scan returned no name (transient
+            // empty-active-unit reads happen after key presses) — same
+            // pattern as SecondarySkillsetResolver. Reset is handled by
+            // turn-boundary sites (battle_wait, StartBattle).
+            if (activeUnit.Support != null)
+            {
+                _cachedSupportAbility = activeUnit.Support;
+            }
 
             // Snapshot active unit identity for the compact battle screen line.
             _cachedActiveUnitName = activeUnit.Name;
@@ -5643,6 +5672,15 @@ namespace FFTColorCustomizer.Utilities
                 items.Add(_cachedPrimarySkillset);
             if (_cachedSecondarySkillset != null)
                 items.Add(_cachedSecondarySkillset);
+
+            // Reequip / Evasive Stance add a Reequip / Defend command
+            // row at the bottom of the submenu. Without this the
+            // bridge's cursor labeling wraps Items → Attack instead of
+            // Items → Reequip → Attack, and ScrollDown can't reach the
+            // command. Live-verified 2026-04-25 with Ramza S:Reequip.
+            var supportCmd = GameBridge.SupportAbilityBattleCommand.Resolve(_cachedSupportAbility);
+            if (supportCmd != null)
+                items.Add(supportCmd);
 
             return items.ToArray();
         }
