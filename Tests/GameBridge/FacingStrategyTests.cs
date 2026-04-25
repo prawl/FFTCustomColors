@@ -302,26 +302,30 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
         [Theory]
         // Confirmed empirically in-game on the facing screen (2026-04-07).
+        // FFT grid convention: -y = north, +y = south (see
+        // FacingCoordConventionConsistencyTests). The empirical mapping is
+        // rotation-only — pressing Up at rot=0 still faces game-North on screen,
+        // which in grid coords is (0,-1).
         // rot=0: Right=E  Left=W  Up=N  Down=S
         [InlineData(0,  1,  0, "Right")]  // East at rot=0
         [InlineData(0, -1,  0, "Left")]   // West at rot=0
-        [InlineData(0,  0,  1, "Up")]     // North at rot=0
-        [InlineData(0,  0, -1, "Down")]   // South at rot=0
+        [InlineData(0,  0, -1, "Up")]     // North at rot=0  (-y in grid)
+        [InlineData(0,  0,  1, "Down")]   // South at rot=0  (+y in grid)
         // rot=1: Left=E  Right=W  Down=N  Up=S
         [InlineData(1,  1,  0, "Left")]   // East at rot=1
         [InlineData(1, -1,  0, "Right")]  // West at rot=1
-        [InlineData(1,  0,  1, "Down")]   // North at rot=1
-        [InlineData(1,  0, -1, "Up")]     // South at rot=1
+        [InlineData(1,  0, -1, "Down")]   // North at rot=1
+        [InlineData(1,  0,  1, "Up")]     // South at rot=1
         // rot=2: Up=E  Down=W  Left=N  Right=S
         [InlineData(2,  1,  0, "Up")]     // East at rot=2
         [InlineData(2, -1,  0, "Down")]   // West at rot=2
-        [InlineData(2,  0,  1, "Left")]   // North at rot=2
-        [InlineData(2,  0, -1, "Right")]  // South at rot=2
+        [InlineData(2,  0, -1, "Left")]   // North at rot=2
+        [InlineData(2,  0,  1, "Right")]  // South at rot=2
         // rot=3: Down=E  Up=W  Right=N  Left=S
         [InlineData(3,  1,  0, "Down")]   // East at rot=3
         [InlineData(3, -1,  0, "Up")]     // West at rot=3
-        [InlineData(3,  0,  1, "Right")]  // North at rot=3
-        [InlineData(3,  0, -1, "Left")]   // South at rot=3
+        [InlineData(3,  0, -1, "Right")]  // North at rot=3
+        [InlineData(3,  0,  1, "Left")]   // South at rot=3
         public void GetFacingArrowKey_CorrectForAllRotations(int rotation, int faceDx, int faceDy, string expectedKey)
         {
             var result = FacingStrategy.GetFacingArrowKey(rotation, faceDx, faceDy);
@@ -330,13 +334,14 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
         [Theory]
         // If Right maps to East(+1,0), that's rotation 0
+        // FFT grid convention: -y = north, +y = south
         [InlineData(0,  1,  0, 0)]  // Right=East → rot=0
         [InlineData(0, -1,  0, 1)]  // Right=West → rot=1
-        [InlineData(0,  0, -1, 2)]  // Right=South → rot=2
-        [InlineData(0,  0,  1, 3)]  // Right=North → rot=3
-        // If Down maps to South(0,-1), that's rotation 0
-        [InlineData(3,  0, -1, 0)]  // Down=South → rot=0
-        [InlineData(3,  0,  1, 1)]  // Down=North → rot=1
+        [InlineData(0,  0,  1, 2)]  // Right=South(+y) → rot=2
+        [InlineData(0,  0, -1, 3)]  // Right=North(-y) → rot=3
+        // If Down maps to South(+y), that's rotation 0
+        [InlineData(3,  0,  1, 0)]  // Down=South(+y) → rot=0
+        [InlineData(3,  0, -1, 1)]  // Down=North(-y) → rot=1
         [InlineData(3, -1,  0, 2)]  // Down=West → rot=2
         [InlineData(3,  1,  0, 3)]  // Down=East → rot=3
         public void DeriveRotation_CorrectFromKeyAndDirection(int keyIndex, int dirDx, int dirDy, int expectedRot)

@@ -68,5 +68,32 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 Assert.Equal(delta1.Value.dy, delta2.Value.dy);
             }
         }
+
+        [Theory]
+        [InlineData("North", 0, -1)]
+        [InlineData("South", 0,  1)]
+        [InlineData("East",  1,  0)]
+        [InlineData("West", -1,  0)]
+        public void FacingStrategy_GetFacingArrowKey_AcceptsParsedDeltas(
+            string name, int expectedDx, int expectedDy)
+        {
+            // Pin the boundary that drifted (and silently caused
+            // battle_wait N/S to face wrong) — FacingStrategy.GetFacingArrowKey
+            // must accept the SAME (dx,dy) convention that ParseFacingDirection
+            // produces. If the table internally uses +y=N while parsing
+            // produces -y=N, GetFacingArrowKey returns null (no match) and
+            // battle_wait falls back to game-default-facing — silent failure.
+            // Test: for each cardinal name, parse to delta, then verify
+            // GetFacingArrowKey returns a non-null arrow at every rotation.
+            var parsed = NavigationActions.ParseFacingDirection(name);
+            Assert.NotNull(parsed);
+            Assert.Equal(expectedDx, parsed.Value.dx);
+            Assert.Equal(expectedDy, parsed.Value.dy);
+            for (int rot = 0; rot < 4; rot++)
+            {
+                var arrow = FacingStrategy.GetFacingArrowKey(rot, parsed.Value.dx, parsed.Value.dy);
+                Assert.NotNull(arrow);
+            }
+        }
     }
 }

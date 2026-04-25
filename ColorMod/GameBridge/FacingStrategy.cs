@@ -32,15 +32,22 @@ namespace FFTColorCustomizer.GameBridge
         /// DIFFERENT from the movement cursor table (ArrowGridDelta in NavigationActions).
         /// Index: [rotation % 4, direction] where 0=Right, 1=Left, 2=Up, 3=Down.
         /// </summary>
+        // FFT grid convention: +y is south, -y is north. This table was originally
+        // written with the inverse convention (+y=N) — when ParseFacingDirection,
+        // FacingByteDecoder, and FacingDecider.NameFor all flipped to +y=south
+        // (commits c36ec53, 219e60a), this table didn't, leaving battle_wait N/S
+        // silently facing the unit the wrong way at every rotation. Live-captured
+        // 2026-04-25 Siedge Weald rot=3: requested North, got West. The table is
+        // now corrected to match the rest of the pipeline (-y=N, +y=S).
         private static readonly (int dx, int dy)[,] FacingArrowDelta = {
-            // rot=0: Right=E(+1,0)  Left=W(-1,0)  Up=N(0,+1)  Down=S(0,-1)
-            { (1,0), (-1,0), (0,1), (0,-1) },
-            // rot=1: Right=W(-1,0)  Left=E(+1,0)  Up=S(0,-1)  Down=N(0,+1)
-            { (-1,0), (1,0), (0,-1), (0,1) },
-            // rot=2: Right=S(0,-1)  Left=N(0,+1)  Up=E(+1,0)  Down=W(-1,0)
-            { (0,-1), (0,1), (1,0), (-1,0) },
-            // rot=3: Right=N(0,+1)  Left=S(0,-1)  Up=W(-1,0)  Down=E(+1,0)
-            { (0,1), (0,-1), (-1,0), (1,0) },
+            // rot=0: Right=E(+1,0)  Left=W(-1,0)  Up=N(0,-1)  Down=S(0,+1)
+            { (1,0), (-1,0), (0,-1), (0,1) },
+            // rot=1: Right=W(-1,0)  Left=E(+1,0)  Up=S(0,+1)  Down=N(0,-1)
+            { (-1,0), (1,0), (0,1), (0,-1) },
+            // rot=2: Right=S(0,+1)  Left=N(0,-1)  Up=E(+1,0)  Down=W(-1,0)
+            { (0,1), (0,-1), (1,0), (-1,0) },
+            // rot=3: Right=N(0,-1)  Left=S(0,+1)  Up=W(-1,0)  Down=E(+1,0)
+            { (0,-1), (0,1), (-1,0), (1,0) },
         };
 
         private static readonly string[] ArrowNames = { "Right", "Left", "Up", "Down" };
