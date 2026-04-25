@@ -185,3 +185,4 @@ battle_wait
 - **battle_ability validates range.** If target is out of range, it returns an error instead of wasting the action.
 - **Enemy names are not readable.** Enemy units show job names only (e.g. "Goblin", "Knight"), not their individual names. For "defeat X" objectives, you'll need to identify targets by other means.
 - **Mod-forced battles break class detection.** Grogh Heights, Dugeura Pass, Tchigolith Fenlands, Mandalia Plain — all enemies show as `(?)`. Flee these.
+- **`scan_move` shows attack range from your CURRENT position, not post-move.** If the scan reports `Attack → (no targets in range)` and an enemy is several tiles away, try `battle_move` first to close the distance, then re-scan: targets that were out of bow/spell range from `(8,10)` may be in range from `(4,10)`. The bridge doesn't pre-compute "best post-move attack tile" — that's the agent's call to make. Same applies to AoE centers, ability range, and the `Attack tiles:` cardinal panel.

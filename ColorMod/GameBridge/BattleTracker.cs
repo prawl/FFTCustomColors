@@ -863,6 +863,16 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("y")]
         public int Y { get; set; }
 
+        /// <summary>
+        /// Display height of the unit's tile (Height + SlopeHeight/2). Lets
+        /// the shell renderer summarize "you're on h=5, enemies on h≤2" so
+        /// Claude can reason about high-ground positioning without having
+        /// to cross-reference Move tiles.
+        /// </summary>
+        [JsonPropertyName("h")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public double H { get; set; }
+
         [JsonPropertyName("hp")]
         public int Hp { get; set; }
 
@@ -941,6 +951,17 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("weaponTag")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? WeaponTag { get; set; }
+
+        /// <summary>
+        /// Comma-separated list of non-weapon equipment names (shield, helm,
+        /// body, accessory) from ItemData.ComposeEquipmentTag. Lets the
+        /// active-unit line surface defensive loadout next to the weapon
+        /// tag so Claude can see "Crystal Mail + Genji Shield" at a glance.
+        /// Null/empty when unarmored.
+        /// </summary>
+        [JsonPropertyName("equipmentTag")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? EquipmentTag { get; set; }
 
         // === Elemental properties ===
         // Per-unit elemental resistances from equipment and innate traits.

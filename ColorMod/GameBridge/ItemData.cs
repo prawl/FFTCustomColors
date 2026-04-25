@@ -735,6 +735,27 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
+        /// Compose a summary of NON-weapon equipment (shield/helm/body/accessory)
+        /// for the active-unit banner. Returns a comma-separated list of item
+        /// names in slot order, or empty when nothing equipped beyond weapon.
+        /// Example: "Genji Shield, Genji Helm, Crystal Mail, Cursed Ring"
+        /// </summary>
+        public static string ComposeEquipmentTag(List<int>? equipment)
+        {
+            if (equipment == null || equipment.Count == 0) return string.Empty;
+            var names = new List<string>();
+            foreach (var id in equipment)
+            {
+                if (!Items.TryGetValue(id, out var item)) continue;
+                // Skip weapons — they're surfaced in ComposeWeaponTag.
+                if (IsWeapon(item.Type)) continue;
+                if (string.IsNullOrEmpty(item.Name)) continue;
+                names.Add(item.Name);
+            }
+            return string.Join(", ", names);
+        }
+
+        /// <summary>
         /// Builds an ActionAbilityInfo for the basic Attack command using the
         /// equipped weapon's range. Falls back to range 1 for melee/unknown.
         /// </summary>

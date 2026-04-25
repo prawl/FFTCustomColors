@@ -234,3 +234,5 @@ Some verbs have alternate spellings to match how users naturally type. All of th
 **Use `restart` (fft.sh helper), not manual taskkill.** The helper handles the full rebuild+deploy+launch+boot cycle. Manual sequences often skip steps and leave the mod out of sync with the game.
 
 **Only one command at a time per bash call.** The bridge is single-threaded and chaining multiple commands with `&&` can race. Send one, wait for response, send the next.
+
+**Screen state can flicker across consecutive calls during transitions.** Battle endings briefly surface `BattleVictory` / `GameOver` / `BattleDefeat` overrides for ~1-3 seconds after the underlying screen has moved on (live-observed: `screen` returns `GameOver` then `screen` 2s later returns `WorldMap`). This isn't a `screen` vs `screen -v` discrepancy — both call the same detector. If you see a state that doesn't match the next call, the override window expired. Trust the LATER read and the screen tag will stabilize.

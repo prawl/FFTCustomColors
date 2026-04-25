@@ -3611,6 +3611,17 @@ if(tor.length){
   });
   console.log('Timeline: '+top.join(' \\u2192 '));
 }
+// Height context: caster's tile h vs enemy h range. Lets the renderer
+// surface high-ground vs low-ground at a glance instead of asking the
+// agent to cross-reference per-tile h on Move tiles.
+const _activeForH=us.find(u=>u.isActive);
+const _enemiesForH=us.filter(u=>u.team===1&&typeof u.h==='number');
+if(_activeForH&&typeof _activeForH.h==='number'&&_enemiesForH.length){
+  const ehs=_enemiesForH.map(u=>Math.round(u.h));
+  const eMin=Math.min(...ehs), eMax=Math.max(...ehs);
+  const eRange=eMin===eMax?'h='+eMin:'h='+eMin+'-'+eMax;
+  console.log('Heights: caster h='+Math.round(_activeForH.h)+' vs enemies '+eRange);
+}
 console.log('');
 
 // Units — first unit inline with the "Units:" header, subsequent lines
@@ -3639,6 +3650,10 @@ us.forEach(u=>{
   // Lets Claude see Agrias's Escutcheon (strong) / Ramza's Chaos Blade / etc.
   // at a glance in the Units listing. Skipped when unarmed / unknown.
   const wep=(u.team===0&&u.weaponTag)?' ['+u.weaponTag+']':'';
+  // Non-weapon equipment (shield/helm/body/accessory) for player units —
+  // surfaces defensive loadout next to the weapon. Inline only for the
+  // ACTIVE player unit to keep non-active player rows compact.
+  const gear=(u.team===0&&u.isActive&&u.equipmentTag)?' ['+u.equipmentTag+']':'';
   let extra='';
   // Reaction/Support/Movement are tactically critical (Counter, Auto-Potion,
   // Hamedo) — surface in compact mode too, not just verbose. 2026-04-25
@@ -3667,7 +3682,7 @@ us.forEach(u=>{
     if(u.elementStrengthen?.length)extra+=' ^str:'+u.elementStrengthen.join(',');
   }
   const _prefix=(_unitIdx++===0)?'Units:  ':'        ';
-  console.log(_prefix+'['+team+']'+nm+clSep+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+wep+extra+st+life+act);
+  console.log(_prefix+'['+team+']'+nm+clSep+cl+' ('+u.x+','+u.y+')'+face+' HP='+u.hp+'/'+u.maxHp+dist+wep+gear+extra+st+life+act);
 });
 " 2>/dev/null
     unset _FFT_TIMING_SUFFIX

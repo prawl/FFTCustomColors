@@ -2951,6 +2951,16 @@ namespace FFTColorCustomizer.GameBridge
                     }
                 }
 
+                // Display height: matches Move tiles' h= rendering (Height + SlopeHeight/2)
+                // so the shell can compare caster vs enemy elevation directly.
+                double tileH = 0;
+                if (_mapLoader?.CurrentMap is var mapForH && mapForH != null
+                    && mapForH.InBounds(u.GridX, u.GridY))
+                {
+                    var t = mapForH.Tiles[u.GridX, u.GridY];
+                    tileH = t.Height + t.SlopeHeight / 2.0;
+                }
+
                 battleState.Units.Add(new BattleUnitState
                 {
                     Name = u.Name,
@@ -2963,6 +2973,7 @@ namespace FFTColorCustomizer.GameBridge
                     Level = u.Level,
                     X = u.GridX,
                     Y = u.GridY,
+                    H = tileH,
                     Hp = u.Hp,
                     MaxHp = u.MaxHp,
                     Mp = u.Mp,
@@ -3003,6 +3014,12 @@ namespace FFTColorCustomizer.GameBridge
                     // Null when unarmed or no known weapon in equipment.
                     WeaponTag = (u.Team == 0 && u.Equipment != null)
                         ? (ItemData.ComposeWeaponTag(u.Equipment) is var _wt && !string.IsNullOrEmpty(_wt) ? _wt : null)
+                        : null,
+                    // Pre-compute non-weapon equipment summary (shield/helm/body/
+                    // accessory) so the active-unit line can surface defensive
+                    // loadout. Null when only weapon equipped or no roster data.
+                    EquipmentTag = (u.Team == 0 && u.Equipment != null)
+                        ? (ItemData.ComposeEquipmentTag(u.Equipment) is var _et && !string.IsNullOrEmpty(_et) ? _et : null)
                         : null,
                 });
 
