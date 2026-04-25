@@ -4104,6 +4104,25 @@ namespace FFTColorCustomizer.GameBridge
                     ModLogger.Log($"[MoveGrid] confirmed via screen.Name={check.Name} after {sw.ElapsedMilliseconds}ms ({polls} polls)");
                     confirmed = true; break;
                 }
+
+                // Auto-dismiss chest/crystal dialogs that fire when the
+                // target tile holds a treasure or crystallized unit. The
+                // "Yes" option is pre-selected on both the move-confirm
+                // popup ("Move to this tile and open the chest?" / "Use
+                // the crystal...?") and the reward banner ("Obtained X!").
+                // Enter accepts both. 500ms after-sleep gives the modal
+                // animation time to advance so the next poll sees the
+                // following state, not a re-entry of the same modal.
+                if (check != null && (check.Name == "BattleCrystalMoveConfirm"
+                    || check.Name == "BattleRewardObtainedBanner"
+                    || check.Name == "BattleAbilityLearnedBanner"))
+                {
+                    ModLogger.Log($"[MoveGrid] Auto-dismissing {check.Name} (Enter on default-Yes)");
+                    SendKey(VK_ENTER);
+                    Thread.Sleep(500);
+                    continue;
+                }
+
                 Thread.Sleep(100);
             }
 
