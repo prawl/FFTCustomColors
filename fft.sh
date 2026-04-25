@@ -3602,10 +3602,10 @@ if(occupiedAtk.length&&!_acted){
     const job=a.jobName?' ('+a.jobName+')':'';
     const hp=a.hp!=null?' HP='+a.hp:'';
     const arc=a.arc&&arcSig2[a.arc]?arcSig2[a.arc]:'';
-    // Tag tiles NOT in basic-Attack range (ranged weapons can't hit d=1
+    // Tag tiles NOT in basic-Attack range (ranged weapons cant hit d=1
     // cardinals because of MinRange=2). Live-flagged playtest #4: agent
-    // saw an enemy in the cardinal panel and got a baffling "not in range"
-    // error because their bow couldn't reach the adjacent tile.
+    // saw an enemy in the cardinal panel and got a baffling not-in-range
+    // error because their bow couldnt reach the adjacent tile.
     const oor=(a.inRange===false)?' [TOO CLOSE]':'';
     return a.arrow+'\\u2192('+a.x+','+a.y+')'+occ+job+hp+arc+oor;
   });
