@@ -1824,6 +1824,16 @@ namespace FFTColorCustomizer.Utilities
                 catch (Exception ex)
                 {
                     ModLogger.LogError($"[CommandBridge] Failed to read command file: {ex.Message}");
+                    try
+                    {
+                        var quarantined = GameBridge.CommandFileQuarantine.Quarantine(_commandFilePath, DateTime.UtcNow);
+                        if (quarantined != null)
+                            ModLogger.Log($"[CommandBridge] Quarantined malformed command.json → {Path.GetFileName(quarantined)}");
+                    }
+                    catch (Exception qex)
+                    {
+                        ModLogger.LogError($"[CommandBridge] Quarantine failed: {qex.Message}");
+                    }
                     return null;
                 }
             }

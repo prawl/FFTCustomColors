@@ -215,6 +215,18 @@ fft() {
   # 800), yellow up to 2×, red beyond. FFT_TIME=0 silences. Pairs with the mod's
   # server-side latencyMs in session_*.jsonl. Cheap — EPOCHREALTIME is a bash
   # builtin (no subprocess).
+  # Shape check: $1 must be a JSON object (start with `{`). Catches the
+  # `fft screen` foot-gun where the bare command name gets written as a
+  # raw string and jams the bridge with a parse-error loop. Use the
+  # `screen` helper for state queries.
+  case "$1" in
+    "{"*) ;;
+    *)
+      echo "[fft] ERROR: argument must be a JSON object (got: $1)"
+      echo "[fft] hint: for a state query use 'screen' instead of 'fft screen'"
+      return 1
+      ;;
+  esac
   local _t0=$EPOCHREALTIME
   rm -f "$B/response.json"
   echo "$1" > "$B/command.json"
