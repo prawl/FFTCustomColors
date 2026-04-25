@@ -1614,6 +1614,18 @@ namespace FFTColorCustomizer.Utilities
                             ModLogger.Log($"[LeakGuard] Detection={response.Screen.Name} → {filtered} (prev={_previousSettledScreen}, keys={keysCount}).");
                             response.Screen.Name = filtered;
                         }
+                        // EqA leak guard: GameOver/Battle*/Victory/Desertion
+                        // can never legitimately transition to EqA in one
+                        // detection cycle. Live-captured 2026-04-25: bridge
+                        // sent Enter on GameOver, first post-key detection
+                        // returned EquipmentAndAbilities. Filter back.
+                        var eqaFiltered = GameBridge.EqaLeakGuard.Filter(
+                            _previousSettledScreen, response.Screen.Name);
+                        if (eqaFiltered != response.Screen.Name)
+                        {
+                            ModLogger.Log($"[EqaLeakGuard] Detection={response.Screen.Name} → {eqaFiltered} (prev={_previousSettledScreen}).");
+                            response.Screen.Name = eqaFiltered;
+                        }
                     }
                     // Override detection-ambiguous names where the SM has a
                     // stronger signal (e.g. SaveSlotPicker vs TravelList).

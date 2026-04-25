@@ -78,7 +78,7 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
-- [ ] **🟡 Detection drift to `[EquipmentAndAbilities]` between battle-end and GameOver** [Detection] — Live-captured 2026-04-25 Siedge Weald. battle_wait was polling enemy turns; Ramza died; bridge's first post-loop screen call returned `[EquipmentAndAbilities]` (with abilities list rendered) instead of GameOver. Subsequent `screen` calls correctly returned `[GameOver]`. Fingerprint of the bad frame wasn't captured (only stable fingerprint after settle was). Hypothesis: when Ramza dies during enemy turn, transient memory state shares signal bytes with EqA screen for ~1 frame. Next step: add capture-on-misdetect logic that snapshots detection inputs whenever `[EquipmentAndAbilities]` fires while a battle was active, then add the right discriminator. Low-priority — the next screen call self-corrects.
+- [x] **🟡 Detection drift to `[EquipmentAndAbilities]` between battle-end and GameOver** [Detection] — SHIPPED 2026-04-25. `EqaLeakGuard` pure helper (5 tests) filters EqA detections when the prior settled state was GameOver / Battle* / Victory / Desertion — those states have no legitimate single-cycle transition into EqA, so any EqA detection is the transient post-key bad frame captured in live repro. Wired into ProcessCommandFile alongside the existing CharacterStatusLeakGuard. Conservative — only filters when prior is in the explicit not-allowed-to-EqA set, so legitimate flows (PartyMenuUnits → EqA, etc.) still work.
 
 
 
