@@ -108,6 +108,43 @@ public class CrystalStateDetectionTests
     }
 
     [Fact]
+    public void BattleCrystalMoveConfirm_DetectedWhenTeamIsNotZero()
+    {
+        // Live-captured 2026-04-25 Siedge Weald: Ramza moved onto a
+        // crystallized unit's tile, "Use the crystal to fully restore
+        // HP and MP?" Yes/No dialog appeared, detection returned
+        // BattleMoving. Same root cause as the chest-banner case: the
+        // team-guarded crystal-pickup block required battleTeam==0,
+        // but the move auto-ended Ramza's turn so battleTeam had cycled
+        // (here =3, an unusual neutral/staging value).
+        var result = ScreenDetectionLogic.Detect(
+            party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+            battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 1,
+            battleTeam: 3, battleActed: 1, battleMoved: 1,
+            encA: 3, encB: 3, isPartySubScreen: false,
+            submenuFlag: 1, menuCursor: 0);
+        Assert.Equal("BattleCrystalMoveConfirm", result);
+    }
+
+    [Fact]
+    public void BattleCrystalMoveConfirm_DetectedAfterSaveRestoreClearsSubmenuFlag()
+    {
+        // Live-captured 2026-04-25 Siedge Weald: same crystal dialog as
+        // above, but captured after save+restore. submenuFlag cleared
+        // from 1 to 0 on resume; gameOverFlag also cleared from 1 to 0.
+        // Both transient flags drop on save-restore but the dialog
+        // persists. Detection must survive that — the load-bearing
+        // fingerprint is battleMode/moveMode/encA/paused/menuCursor.
+        var result = ScreenDetectionLogic.Detect(
+            party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+            battleMode: 1, moveMode: 0, paused: 0, gameOverFlag: 0,
+            battleTeam: 3, battleActed: 255, battleMoved: 255,
+            encA: 3, encB: 3, isPartySubScreen: false,
+            submenuFlag: 0, menuCursor: 0);
+        Assert.Equal("BattleCrystalMoveConfirm", result);
+    }
+
+    [Fact]
     public void BattleAbilityLearnedBanner_DetectedWhenEncAIsZeroAndMoveMode0()
     {
         // S4 fingerprint: paused=0 moveMode=0 encA=0

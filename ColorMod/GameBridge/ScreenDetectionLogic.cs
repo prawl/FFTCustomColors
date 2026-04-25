@@ -686,6 +686,22 @@ namespace FFTColorCustomizer.GameBridge
                 && menuCursor == 0 && encA == 1 && encB == 1 && paused == 0)
                 return "BattleRewardObtainedBanner";
 
+            // Crystal/chest move-confirm Yes/No popup ("Use the crystal..."
+            // / "Move to this tile and open the chest?"): same team-cycling
+            // issue as the reward banner — when the move ends Ramza's turn,
+            // battleTeam is no longer 0 so the original team-guarded block
+            // misses it. Live-captured 2026-04-25 Siedge Weald: pre-save
+            // had submenuFlag=1, gameOverFlag=1; post-save+restore both
+            // cleared but dialog persisted, so they're not load-bearing.
+            // Robust fingerprint:
+            //   battleMode=1, moveMode=0, menuCursor=0, encA>=2, paused=0
+            // (encA==0/1 are the banner cases handled above; battleMode==1
+            // and moveMode==0 distinguish from normal BattleMoving which
+            // uses moveMode==255.)
+            if (battleMode == 1 && moveMode == 0 && menuCursor == 0
+                && encA >= 2 && paused == 0)
+                return "BattleCrystalMoveConfirm";
+
             // Crystal-pickup sequence: 4 modal states fired when a unit steps
             // onto a crystallized unit's tile. Live-captured at Zeklaus event 40
             // (2026-04-19). All share battleMode=1, submenuFlag=1, menuCursor=0,
