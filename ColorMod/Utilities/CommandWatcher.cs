@@ -1348,7 +1348,8 @@ namespace FFTColorCustomizer.Utilities
             "resolve_equip_picker_cursor",
             "resolve_eqa_row",
             "remove_equipment_at_cursor",
-            "scan_snapshot", "scan_diff"
+            "scan_snapshot", "scan_diff",
+            "memory_diff"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -2502,6 +2503,40 @@ namespace FFTColorCustomizer.Utilities
                         if (blockHex == null) { response.Status = "failed"; response.Error = $"Failed to read {blockSize} bytes at 0x{blockAddr:X}"; break; }
                         response.BlockData = blockHex;
                         response.Status = "completed";
+                        break;
+
+                    case "memory_diff":
+                        // Memory hunt helper: caller passes a previous snapshot
+                        // hex string in `pattern`. We read current memory at
+                        // address/blockSize, diff against the snapshot, return
+                        // formatted "0xNN: XX -> YY" lines in BlockData. Pure
+                        // diff via MemoryDiffCalculator.
+                        if (Explorer == null) { response.Status = "failed"; response.Error = "Memory explorer not initialized"; break; }
+                        if (string.IsNullOrEmpty(command.Address)) { response.Status = "failed"; response.Error = "Address required"; break; }
+                        try
+                        {
+                            var diffAddr = Convert.ToInt64(command.Address.Replace("0x", ""), 16);
+                            var diffSize = Math.Clamp(command.BlockSize, 1, 4096);
+                            var beforeBytes = GameBridge.MemoryDiffCalculator.ParseHex(command.Pattern);
+                            if (beforeBytes.Length != diffSize)
+                            {
+                                response.Status = "failed";
+                                response.Error = $"memory_diff: pattern length ({beforeBytes.Length} bytes) != blockSize ({diffSize}). Pass the prior snapshot in 'pattern' as space-separated hex.";
+                                break;
+                            }
+                            var afterBytes = Explorer.Scanner.ReadBytes((nint)diffAddr, diffSize);
+                            if (afterBytes == null || afterBytes.Length != diffSize)
+                            {
+                                response.Status = "failed";
+                                response.Error = $"memory_diff: failed to read {diffSize} bytes at 0x{diffAddr:X}";
+                                break;
+                            }
+                            var diffs = GameBridge.MemoryDiffCalculator.Diff(beforeBytes, afterBytes);
+                            response.BlockData = GameBridge.MemoryDiffCalculator.FormatDiffs(diffs);
+                            response.Status = "completed";
+                            response.Info = $"memory_diff: {diffs.Count} byte(s) changed of {diffSize}.";
+                        }
+                        catch (Exception ex) { response.Status = "failed"; response.Error = $"memory_diff: {ex.Message}"; }
                         break;
 
                     case "read_bytes":
