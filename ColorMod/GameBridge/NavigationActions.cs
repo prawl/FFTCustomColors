@@ -1341,6 +1341,14 @@ namespace FFTColorCustomizer.GameBridge
             // read-failure / overkill / miss edge cases.
             RecordAttackStats("Attack", startPos, targetX, targetY, preHp, postHp);
 
+            // Populate PostAction with the CASTER's position (didn't move
+            // during the attack) so the formatter doesn't mix the target
+            // tile with caster HP. Without this, ReadGridPos() returns the
+            // target tile (cursor sat there at confirm) and the response
+            // line reads "→ (targetX,targetY) HP=casterHP" which misleads
+            // any caller tracking enemy HP from the response payload.
+            response.PostAction = ReadPostActionState(startPos.x, startPos.y);
+
             return response;
         }
 
@@ -1846,6 +1854,10 @@ namespace FFTColorCustomizer.GameBridge
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){hpDelta} — cursor was already on target{ctSuffix}{autoEndSuffix}";
                 StatTracker?.OnAbilityUsed(GetActiveUnitNameForStats(), abilityName);
+                // PostAction with the caster's position — caster doesn't
+                // move during a self-cast, and we don't want the trailing
+                // suffix to mix target-tile coords with caster HP.
+                response.PostAction = ReadPostActionState(startPos.x, startPos.y);
                 return response;
             }
 
@@ -1969,6 +1981,11 @@ namespace FFTColorCustomizer.GameBridge
             response.Status = "completed";
             response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){finalHpDelta}{ctSuffix}{autoEndSuffix}";
             StatTracker?.OnAbilityUsed(GetActiveUnitNameForStats(), abilityName);
+            // Caster didn't move; pin PostAction to the caster's start
+            // position so the formatter doesn't mix target-tile coords
+            // with caster HP (would mislead any caller tracking enemy HP
+            // from the response payload).
+            response.PostAction = ReadPostActionState(startPos.x, startPos.y);
             return response;
         }
 
@@ -6429,8 +6446,28 @@ namespace FFTColorCustomizer.GameBridge
         /// Read a lightweight post-action snapshot from the condensed struct.
         /// Much faster than a full scan — just reads position + HP/MP from
         /// known static addresses. Returns null if any read fails.
+        ///
+        /// Position comes from the live grid-cursor address. For battle_move
+        /// this is correct (cursor returns to the active unit at its new
+        /// tile). For battle_attack / battle_ability this is the TARGET
+        /// tile, NOT the caster — those callers should use the explicit-pos
+        /// overload below to avoid mixing target coords with caster HP in
+        /// the response payload.
         /// </summary>
         public PostActionState? ReadPostActionState()
+        {
+            var pos = ReadGridPos();
+            if (pos.x < 0 || pos.y < 0) return null;
+            return ReadPostActionState(pos.x, pos.y);
+        }
+
+        /// <summary>
+        /// Variant that takes explicit X/Y. Use this for battle_attack /
+        /// battle_ability where the cursor sits on the target tile after
+        /// the action — the active unit (caster) didn't move, so pass the
+        /// caster's start position.
+        /// </summary>
+        public PostActionState? ReadPostActionState(int posX, int posY)
         {
             try
             {
@@ -6441,12 +6478,11 @@ namespace FFTColorCustomizer.GameBridge
                     ((nint)(AddrCondensedBase + 0x12), 2), // MP
                     ((nint)(AddrCondensedBase + 0x16), 2), // MaxMP
                 });
-                var pos = ReadGridPos();
-                if (pos.x < 0 || pos.y < 0) return null;
+                if (posX < 0 || posY < 0) return null;
                 return new PostActionState
                 {
-                    X = pos.x,
-                    Y = pos.y,
+                    X = posX,
+                    Y = posY,
                     Hp = (int)reads[0],
                     MaxHp = (int)reads[1],
                     Mp = (int)reads[2],

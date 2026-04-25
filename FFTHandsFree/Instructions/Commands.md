@@ -35,7 +35,7 @@ source ./fft.sh
 `execute_turn` bundles move + ability + wait into one round-trip. Aborts at first non-completed sub-step.
 
 ```bash
-execute_turn 6 5                     # move only
+execute_turn 6 5                     # move only — DOES NOT END THE TURN
 execute_turn 6 5 Attack 7 5          # move + attack
 execute_turn 6 5 Cure 10 9           # move + heal ally
 execute_turn 6 5 Shout               # move + self-target
@@ -43,6 +43,8 @@ execute_turn '' '' Cure 10 9         # no move, ability only
 execute_turn 6 5 Attack 7 5 N        # + face North
 execute_turn 6 5 Attack 7 5 '' --nowait   # skip wait
 ```
+
+**Move-only does NOT end your turn.** `execute_turn 6 5` (just two args) returns to `BattleMyTurn` with your Act and Wait still available — and enemies whose CT comes up between your Move and your next command CAN act and hit you in that gap. To actually end the turn after a move, follow with `battle_wait`, or bundle the wait via `execute_turn 6 5 '' '' '' ''` style — easiest is just to call `battle_wait` next. Same gotcha applies to a bare `battle_move`.
 
 ### Dev tools
 

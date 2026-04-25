@@ -3884,7 +3884,11 @@ namespace FFTColorCustomizer.Utilities
                             // can correct post-action stale reads even when the
                             // battleActed byte transiently reads 0.
                             _actedThisTurn = true;
-                            actionResult.PostAction = _navActions?.ReadPostActionState();
+                            // ??= so an explicit PostAction set by NavigationActions
+                            // (battle_attack / battle_ability use the caster's
+                            // start position to avoid the cursor-on-target
+                            // mixing target-coords with caster-HP) wins.
+                            actionResult.PostAction ??= _navActions?.ReadPostActionState();
                             // S58: detect Counter-KO (active unit died from the
                             // reaction to their own attack). Surface in the
                             // Info string so callers don't blindly call
