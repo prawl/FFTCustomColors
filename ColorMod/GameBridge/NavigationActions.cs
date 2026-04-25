@@ -4204,6 +4204,13 @@ namespace FFTColorCustomizer.GameBridge
             response.Status = "completed";
             response.Info = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) CONFIRMED";
             _menuCursorStale = true;
+            // Invalidate the basic-Attack tile cache: the active unit just
+            // moved, so the cached range from the pre-move scan is stale.
+            // battle_attack will skip its up-front guard until the next
+            // scan_move repopulates the cache, falling through to nav-loop
+            // error handling for that single call. Better than rejecting
+            // a now-valid target with a stale "out of range" error.
+            _lastValidAttackTiles = null;
 
             // S58: credit tiles-moved to the active unit. Distance is
             // Manhattan (grid movement is one step per tile, no diagonal).
