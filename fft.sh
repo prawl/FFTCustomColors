@@ -292,6 +292,30 @@ try{
     return 1
   fi
 
+  # Catchall for any non-success status the bridge may emit. Without this,
+  # statuses like "blocked" (strict-mode reject), "partial" (some keys
+  # failed), "timeout", "error", "assertion_failed" render only the screen
+  # header — making them indistinguishable from success. The chest-confirm
+  # case (2026-04-25) hit this exactly: raw `keys:[{vk:13}]` was blocked by
+  # strict mode, the shell rendered "[BattleEnemiesTurn] ..." with no error
+  # indication, and the failure was invisible until we read response.json
+  # by hand. Anything not "completed" / "encounter" is a real signal the
+  # caller needs to see.
+  if [ -n "$ST" ] && [ "$ST" != "completed" ] && [ "$ST" != "encounter" ] && [ "$ST" != "partial" ]; then
+    local ERR=$(grep -o '"error": *"[^"]*"' "$B/response.json" | head -1 | sed -E 's/^"error": *"//; s/"$//; s/\\u0027/'"'"'/g')
+    local TAG=$(echo "$ST" | tr '[:lower:]' '[:upper:]')
+    echo "[$TAG] ${ERR:-(no error message)}"
+    return 1
+  fi
+  # "partial" deserves its own surface — some keys went through. Caller
+  # may be able to recover by retrying just the failed keys.
+  if [ "$ST" = "partial" ]; then
+    local ERR=$(grep -o '"error": *"[^"]*"' "$B/response.json" | head -1 | sed -E 's/^"error": *"//; s/"$//; s/\\u0027/'"'"'/g')
+    local KP=$(echo "$R" | grep -o '"keysProcessed":[0-9]*' | head -1 | cut -d: -f2)
+    echo "[PARTIAL] keysProcessed=${KP:-?} ${ERR:+— $ERR}"
+    return 1
+  fi
+
   local CW=$(grep -o '"chainWarning": *"[^"]*"' "$B/response.json" | head -1 | sed -E 's/^"chainWarning": *"//; s/"$//; s/\\u0026/\&/g')
   [ -n "$CW" ] && echo "[CHAIN WARNING] $CW" >&2
   return 0
@@ -857,6 +881,30 @@ block() {
     if [ $tries -ge 250 ]; then echo "TIMEOUT"; return 1; fi
   done
   tr -d '\r\n ' < "$B/response.json" | grep -o '"blockData":"[^"]*"' | head -1 | cut -d'"' -f4
+}
+
+# memory_diff <addr> <size> <prev-hex>: Diff current memory at addr/size
+# against the prior hex snapshot (whitespace-tolerant). Returns
+# "0xNN: XX -> YY" lines (one per changed byte) or "(no diffs)".
+# Usage: BEFORE=$(block "0x1407FC620" 16); <do thing>; memory_diff "0x1407FC620" 16 "$BEFORE"
+memory_diff() {
+  _check_total || return 1
+  rm -f "$B/response.json"
+  echo "{\"id\":\"$(id)\",\"action\":\"memory_diff\",\"address\":\"$1\",\"blockSize\":$2,\"pattern\":\"$3\"}" > "$B/command.json"
+  local tries=0
+  until [ -f "$B/response.json" ]; do
+    sleep 0.02
+    tries=$((tries + 1))
+    if [ $tries -ge 250 ]; then echo "TIMEOUT"; return 1; fi
+  done
+  local R=$(cat "$B/response.json")
+  local STATUS=$(echo "$R" | tr -d '\r\n ' | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
+  if [ "$STATUS" != "completed" ]; then
+    local ERR=$(echo "$R" | tr -d '\r\n ' | grep -o '"error":"[^"]*"' | head -1 | cut -d'"' -f4)
+    echo "[FAILED] $ERR"
+    return 1
+  fi
+  echo "$R" | tr -d '\r\n ' | grep -o '"blockData":"[^"]*"' | head -1 | cut -d'"' -f4 | sed 's/\\n/\n/g'
 }
 
 # batch: Read multiple addresses in one round-trip (faster than multiple rv calls).
