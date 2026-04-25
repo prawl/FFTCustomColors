@@ -1293,32 +1293,47 @@ namespace FFTColorCustomizer.GameBridge
             // S56 live-observed: after an attack MISS, the game re-opens the
             // attack-targeting screen asking the player to pick another target.
             // A successful HIT/KO advances directly to the facing-confirm
-            // (BattleMoving). If we're still on BattleAttacking after the
-            // animation settles, send Escape to back out of the re-targeted
-            // screen and land on BattleActing (action consumed).
+            // (BattleMoving). The post-animation screen state is the
+            // authoritative hit/miss signal — ReadLiveHp's heap fingerprint
+            // search can fall back to preHp on a hit, which previously caused
+            // false MISSED reports.
             var postAttack = _detectScreen();
-            if (postAttack != null && postAttack.Name == "BattleAttacking")
+            string? postName = postAttack?.Name;
+            var outcome = AttackOutcomeClassifier.Classify(postName, preHp, postHp);
+
+            // Still send Escape to back out of miss re-targeting; the action
+            // is consumed but the menu is open.
+            if (postName == "BattleAttacking")
             {
-                ModLogger.Log("[BattleAttack] Still on BattleAttacking post-animation (likely miss re-targeting); sending Escape");
+                ModLogger.Log("[BattleAttack] Still on BattleAttacking post-animation (miss re-targeting); sending Escape");
                 SendKey(VK_ESCAPE);
                 Thread.Sleep(300);
             }
 
             string dmgStr = projDamage > 0 ? $" ({projDamage} dmg, {projHitPct}% hit)" : "";
-            if (postHp >= 0 && postHp != preHp)
+            string from = $"from ({startPos.x},{startPos.y})";
+            string at = $"({targetX},{targetY})";
+            bool hpKnown = postHp >= 0 && postHp != preHp;
+            switch (outcome)
             {
-                if (postHp <= 0)
-                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — KO'd!{dmgStr} ({preHp}→0/{targetMaxHp})";
-                else
-                    response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — HIT{dmgStr} ({preHp}→{postHp}/{targetMaxHp})";
-            }
-            else if (postHp == preHp)
-            {
-                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}) — MISSED!{dmgStr}";
-            }
-            else
-            {
-                response.Info = $"Attacked ({targetX},{targetY}) from ({startPos.x},{startPos.y}){dmgStr}";
+                case AttackOutcome.Ko:
+                    response.Info = hpKnown
+                        ? $"Attacked {at} {from} — KO'd!{dmgStr} ({preHp}→0/{targetMaxHp})"
+                        : $"Attacked {at} {from} — KO'd!{dmgStr}";
+                    break;
+                case AttackOutcome.Hit:
+                    response.Info = hpKnown
+                        ? $"Attacked {at} {from} — HIT{dmgStr} ({preHp}→{postHp}/{targetMaxHp})"
+                        : $"Attacked {at} {from} — HIT{dmgStr} (damage unread)";
+                    break;
+                case AttackOutcome.Miss:
+                    response.Info = $"Attacked {at} {from} — MISSED!{dmgStr}";
+                    break;
+                default:
+                    response.Info = hpKnown
+                        ? $"Attacked {at} {from}{dmgStr} ({preHp}→{postHp}/{targetMaxHp})"
+                        : $"Attacked {at} {from}{dmgStr} (outcome unread)";
+                    break;
             }
             ModLogger.Log($"[BattleAttack] {response.Info}");
 
