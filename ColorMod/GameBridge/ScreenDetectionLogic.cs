@@ -757,9 +757,16 @@ namespace FFTColorCustomizer.GameBridge
             // (battleMode=4 targeting, battleMode=2 facing) are theirs, not the player's.
             // Stress probe showed a moved=1 enemy turn fell through to BattleAttacking /
             // BattleWaiting as if the player was acting.
-            if (battleTeam == 1)
+            //
+            // 2026-04-25 fix: added `battleMode != 0` guard. Live-captured post-Siedge-
+            // Weald: battle ended, game returned to world map, but battleTeam=1 stale-
+            // persisted from the prior enemy turn. With no battleMode guard, the rule
+            // fired BattleEnemiesTurn while the screenshot showed the world map.
+            // battleMode==0 is the out-of-battle sentinel; turn-owner state only exists
+            // when actually in battle (modes 1/2/3/4/5).
+            if (battleMode != 0 && battleTeam == 1)
                 return "BattleEnemiesTurn";
-            if (battleTeam == 2)
+            if (battleMode != 0 && battleTeam == 2)
                 return "BattleAlliesTurn";
 
             // Targeting submodes — cast-time and instant collapse into BattleAttacking.

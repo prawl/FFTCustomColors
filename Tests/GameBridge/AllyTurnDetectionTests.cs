@@ -92,5 +92,30 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
             Assert.Equal("BattleAlliesTurn", result);
         }
+
+        [Fact]
+        public void DetectScreen_PostBattleStaleTeam1_DoesNotFalseTriggerBattleEnemiesTurn()
+        {
+            // Live-captured 2026-04-25 after Siedge Weald battle ended:
+            // game returned to world map (screenshot confirmed) but
+            // battleTeam=1 stale-persisted from the prior enemy turn.
+            // The turn-owner rule fired BattleEnemiesTurn because it
+            // had no battleMode guard. battleMode=0 means out-of-battle;
+            // turn-owner rules should require battleMode != 0 (during
+            // enemy turns battleMode is 1/2/3/4/5 — the comment at the
+            // rule site already documents these as the in-battle range).
+            // Captured fingerprint:
+            //   battleMode=0, paused=0, gameOverFlag=0, battleTeam=1,
+            //   battleActed=255, battleMoved=255, encA=8, encB=8,
+            //   eventId=65535, submenuFlag=0, rawLocation=255
+            // Detection should fall through to a non-battle classifier.
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 0,
+                battleTeam: 1, battleActed: 255, battleMoved: 255,
+                encA: 8, encB: 8, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0);
+            Assert.NotEqual("BattleEnemiesTurn", result);
+        }
     }
 }
