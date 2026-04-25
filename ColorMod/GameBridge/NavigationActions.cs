@@ -751,11 +751,19 @@ namespace FFTColorCustomizer.GameBridge
                 Thread.Sleep(300);
             }
 
-            // NOTE: Ctrl fast-forward disabled — holding Ctrl during enemy turns
-            // doesn't visibly speed up animations in the IC remaster. Tested both
-            // continuous hold and pulse approaches (2026-04-12). May need a different
-            // key or game setting. The game still processes turns at normal speed.
-            ModLogger.Log("[BattleWait] Waiting for enemy turns (Ctrl fast-forward disabled)");
+            // Hold Ctrl for fast-forward — focus-aware (Travel pattern).
+            // Global SendInput is what FFT's DirectInput reader requires, but
+            // a globally-held Ctrl turns terminal keystrokes into shortcuts
+            // when the user tabs away. Release on focus-loss, re-assert on
+            // regain. PostMessage path keeps the game-side signal alive.
+            bool ctrlHeldGlobally = false;
+            if (IsGameForeground())
+            {
+                SendInputKeyDown(VK_CONTROL);
+                ctrlHeldGlobally = true;
+            }
+            _input.SendKeyDownToWindow(_gameWindow, VK_CONTROL);
+            ModLogger.Log($"[BattleWait] Holding Ctrl for fast-forward (globalHeld={ctrlHeldGlobally})");
 
             // S60 chunked mode: if the caller set command.MaxPollMs, the poll
             // returns "partial" after that window if friendly turn hasn't
@@ -778,6 +786,23 @@ namespace FFTColorCustomizer.GameBridge
                     // is a cached memory read.
                     Thread.Sleep(150);
                     narratorPollIter++;
+
+                    // Focus-aware Ctrl maintenance: release globally when the
+                    // user tabs away so terminal typing isn't hijacked into
+                    // shortcuts; re-assert when the game regains focus.
+                    bool gameFg = IsGameForeground();
+                    if (gameFg && !ctrlHeldGlobally)
+                    {
+                        SendInputKeyDown(VK_CONTROL);
+                        ctrlHeldGlobally = true;
+                        ModLogger.Log("[BattleWait] Re-asserted Ctrl (game regained focus)");
+                    }
+                    else if (!gameFg && ctrlHeldGlobally)
+                    {
+                        SendInputKeyUp(VK_CONTROL);
+                        ctrlHeldGlobally = false;
+                        ModLogger.Log("[BattleWait] Released global Ctrl (user tabbed away)");
+                    }
 
                     // S60 narrator: every ~450ms (every 3rd 150ms tick) capture a
                     // fresh unit snapshot, diff against the last, and append any
@@ -886,7 +911,10 @@ namespace FFTColorCustomizer.GameBridge
             }
             finally
             {
-                ModLogger.Log("[BattleWait] Turn wait complete");
+                // Always release Ctrl on every exit path (break, throw, timeout).
+                if (ctrlHeldGlobally) SendInputKeyUp(VK_CONTROL);
+                _input.SendKeyUpToWindow(_gameWindow, VK_CONTROL);
+                ModLogger.Log("[BattleWait] Turn wait complete (Ctrl released)");
             }
 
             // Auto-dismiss post-battle screens (Victory auto-advances, Desertion needs Enter)
