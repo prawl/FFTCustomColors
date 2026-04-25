@@ -16,8 +16,12 @@
 #
 # Any helper defined in fft.sh works. If you need raw key input (when strict
 # mode is off), helpers like `up`, `down`, `enter` work too.
-
-set -e
+#
+# NOTE: deliberately NO `set -e`. Helpers in fft.sh tolerate non-zero exits
+# from internal sub-commands (grep with no match, node process exits, etc)
+# as part of their normal flow. With `set -e` the wrapper would abort
+# mid-helper and truncate the output (live-observed 2026-04-25: screen()
+# stopped rendering after Move tiles when the wrapper used set -e).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
