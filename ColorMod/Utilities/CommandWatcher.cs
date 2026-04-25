@@ -7212,6 +7212,23 @@ namespace FFTColorCustomizer.Utilities
                 // detects the race via moved/acted flags and corrects.
                 if (screen.Name == "BattleMyTurn" || screen.Name == "BattleActing")
                 {
+                    // Override raw battleActed/battleMoved bytes with the
+                    // bridge's commit-time flags so callers see a consistent
+                    // acted/moved signal across both the response fields and
+                    // the UI tag computed below. The raw bytes stale-read 0
+                    // transiently after a confirmed action; flags don't.
+                    var (overrideActed, overrideMoved) = GameBridge.BattleActedMovedOverride.Apply(
+                        rawActed: screen.BattleActed,
+                        rawMoved: screen.BattleMoved,
+                        actedFlag: _actedThisTurn,
+                        movedFlag: _movedThisTurn);
+                    if (overrideActed != screen.BattleActed || overrideMoved != screen.BattleMoved)
+                    {
+                        ModLogger.LogDebug($"[ActedMovedOverride] raw=({screen.BattleActed},{screen.BattleMoved}) flags=({_actedThisTurn},{_movedThisTurn}) → ({overrideActed},{overrideMoved})");
+                        screen.BattleActed = overrideActed;
+                        screen.BattleMoved = overrideMoved;
+                    }
+
                     bool hasMoved = screen.BattleMoved == 1 || _movedThisTurn;
                     bool hasActed = screen.BattleActed == 1 || _actedThisTurn;
                     int effective = GameBridge.BattleAbilityNavigation.EffectiveMenuCursor(
