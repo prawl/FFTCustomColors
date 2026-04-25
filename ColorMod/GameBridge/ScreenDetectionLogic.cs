@@ -671,6 +671,21 @@ namespace FFTColorCustomizer.GameBridge
                 && battleTeam != 0)
                 return "GameOver";
 
+            // Chest reward banner ("Obtained X!"): can fire mid-Ramza-turn
+            // (battleTeam=0, original Zeklaus 2026-04-19 capture) OR after a
+            // chest-move auto-ends Ramza's turn (battleTeam=1, gameOverFlag=1
+            // transient — Siedge Weald 2026-04-25 capture). Both cases share
+            // the chest-banner fingerprint exactly:
+            //   battleMode=1, moveMode=0, submenuFlag=1, menuCursor=0,
+            //   encA=1, encB=1, paused=0
+            // The fingerprint is distinctive enough to fire ahead of the
+            // team-guarded crystal-pickup block below — that block's
+            // `battleTeam==0` requirement was missing the chest-at-turn-end
+            // case, leaving the banner classified as BattleEnemiesTurn.
+            if (battleMode == 1 && moveMode == 0 && submenuFlag == 1
+                && menuCursor == 0 && encA == 1 && encB == 1 && paused == 0)
+                return "BattleRewardObtainedBanner";
+
             // Crystal-pickup sequence: 4 modal states fired when a unit steps
             // onto a crystallized unit's tile. Live-captured at Zeklaus event 40
             // (2026-04-19). All share battleMode=1, submenuFlag=1, menuCursor=0,
