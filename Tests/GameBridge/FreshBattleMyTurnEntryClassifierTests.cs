@@ -93,5 +93,22 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // edge case. Treat as fresh.
             Assert.True(FreshBattleMyTurnEntryClassifier.IsFresh("WorldMap", "BattleMyTurn"));
         }
+
+        [Theory]
+        [InlineData("BattleVictory")]
+        [InlineData("BattleDefeat")]
+        [InlineData("GameOver")]
+        public void FreshEntry_FromTerminalBattleState_ReturnsFalse(string prev)
+        {
+            // BattleVictory / BattleDefeat / GameOver are terminal states —
+            // a real one ends the battle and we never see BattleMyTurn after.
+            // If we DO see the transition, the prior detection was a screen-
+            // detector flicker (live-observed at Siedge Weald 2026-04-25:
+            // BattleVictory false-positive after attacks while battle was
+            // still ongoing). Treat as a flicker, not a fresh entry —
+            // otherwise the bridge resets _actedThisTurn / _movedThisTurn
+            // and forgets the player has used their action this turn.
+            Assert.False(FreshBattleMyTurnEntryClassifier.IsFresh(prev, "BattleMyTurn"));
+        }
     }
 }

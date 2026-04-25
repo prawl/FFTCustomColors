@@ -58,7 +58,18 @@ namespace FFTColorCustomizer.GameBridge
                 or "BattleDialogue"
                 or "BattleChoice"
                 or "BattleStatus"
-                or "BattleAutoBattle";
+                or "BattleAutoBattle"
+                // Terminal states only appear during a battle; once they
+                // resolve, the next state is WorldMap / Cutscene / etc, not
+                // BattleMyTurn. A terminal-state → BattleMyTurn transition
+                // is a screen-detector flicker (live-observed Siedge Weald
+                // 2026-04-25). Treating them as inside-battle prevents a
+                // spurious StartBattle event that would clobber the
+                // bridge's per-turn _actedThisTurn / _movedThisTurn flags.
+                or "BattleVictory"
+                or "BattleDefeat"
+                or "BattleDesertion"
+                or "GameOver";
         }
     }
 }

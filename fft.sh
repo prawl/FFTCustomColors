@@ -3508,11 +3508,21 @@ const ammp=au?.maxMp??activeU?.maxMp??'?';
 const uiTag=s.ui?' ui='+s.ui:'';
 const locTag=s.locationName?' curLoc='+s.locationName:'';
 const tSuffix=process.env._FFT_TIMING_SUFFIX?' '+process.env._FFT_TIMING_SUFFIX:'';
-console.log('['+s.name+']'+uiTag+' '+aLabel+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp+locTag+tSuffix);
+// Surface turn-action consumption in the header. acted=Attack/Ability used,
+// moved=Move used. Both block re-issue this turn — only Wait/Status remain.
+const _acted=(s.battleActed===1);
+const _moved=(s.battleMoved===1);
+const _stateTag=(_acted||_moved)
+  ? ' ['+[_acted?'ACTED':null,_moved?'MOVED':null].filter(Boolean).join(' ')+']'
+  : '';
+console.log('['+s.name+']'+uiTag+_stateTag+' '+aLabel+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp+locTag+tSuffix);
 console.log('');
 
 // Abilities with target tiles (filtering/collapsing done server-side by AbilityCompactor)
-if(activeU&&activeU.abilities){
+if(_acted){
+  console.log('Abilities: (already used this turn — Wait/Status/AutoBattle remain)');
+  console.log('');
+} else if(activeU&&activeU.abilities){
   console.log('Abilities:');
   activeU.abilities.forEach(a=>{
     // Element-affinity marker sigils: + absorb (healed), = null (no damage),
@@ -3557,10 +3567,12 @@ if(activeU&&activeU.abilities){
   console.log('');
 }
 
-// Move tiles
+// Move tiles — suppressed when Move has already been used this turn.
 const vp=j.validPaths||{};
 const vmt=vp.ValidMoveTiles;
-if(vmt){
+if(_moved){
+  console.log('Move tiles: (already moved this turn)');
+} else if(vmt){
   // Round height to integer — half-steps (h=4.5) are slope midpoints that
   // don't change high-ground decisions. Shaves ~30% off the line length.
   const tlist=(vmt.tiles||[]).map(t=>'('+t.x+','+t.y+(t.h!=null?' h='+Math.round(t.h):'')+')');
@@ -3568,9 +3580,10 @@ if(vmt){
 }
 // Attack tiles (adjacent cardinals). Only render when at least one
 // cardinal has an occupant — the empty-4-cardinals case is pure noise.
+// Suppressed when the action has already been used.
 const atk=vp.AttackTiles?.attackTiles||[];
 const occupiedAtk=atk.filter(a=>a.occupant&&a.occupant!=='empty');
-if(occupiedAtk.length){
+if(occupiedAtk.length&&!_acted){
   const arcSig2={back:' >BACK',side:' >side'};
   const lines=occupiedAtk.map(a=>{
     const occ=' '+a.occupant;

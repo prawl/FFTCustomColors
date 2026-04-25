@@ -28,6 +28,16 @@ namespace FFTColorCustomizer.GameBridge
             "BattleCasting",
             "BattleAbilities",
             "BattleActing",
+            // Terminal battle states — a real BattleVictory/BattleDefeat/
+            // GameOver ends the battle and we never see BattleMyTurn after.
+            // If we DO see the transition, the prior detection was a flicker
+            // (live-observed at Siedge Weald 2026-04-25 with BattleVictory
+            // false-positives after attacks). Treating the transition as
+            // fresh would clear _actedThisTurn/_movedThisTurn and let the
+            // player re-issue an action they've already used.
+            "BattleVictory",
+            "BattleDefeat",
+            "GameOver",
         };
 
         public static bool IsFresh(string? prev, string? detected)

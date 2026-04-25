@@ -135,7 +135,10 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var fftPath = FindFftSh();
             var content = File.ReadAllText(fftPath);
             Assert.Contains("occupiedAtk", content);
-            Assert.Contains("if(occupiedAtk.length)", content);
+            // Length check may carry additional guards (e.g. acted-this-turn
+            // suppression). Match the prefix `if(occupiedAtk.length` so an
+            // added `&&!_acted` clause doesn't break the test.
+            Assert.Contains("if(occupiedAtk.length", content);
         }
     }
 }

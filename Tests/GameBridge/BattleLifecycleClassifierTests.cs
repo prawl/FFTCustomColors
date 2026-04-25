@@ -46,6 +46,25 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal(BattleLifecycleEvent.None, result);
         }
 
+        [Theory]
+        [InlineData("BattleVictory")]
+        [InlineData("BattleDefeat")]
+        [InlineData("GameOver")]
+        public void TerminalState_ToBattleMyTurn_DoesNotRestart(string prev)
+        {
+            // Live-observed at Siedge Weald 2026-04-25: the screen detector
+            // flicker-touched BattleVictory mid-attack while the battle was
+            // ongoing. Without this guard the lifecycle classifier saw it as
+            // a brand-new StartBattle on the rebound, which calls into the
+            // CommandWatcher StartBattle handler — that resets the per-turn
+            // _actedThisTurn / _movedThisTurn flags, making the bridge forget
+            // the player has already used their action. A real victory ends
+            // the battle for good and we never see BattleMyTurn again, so
+            // this transition can only ever be a flicker.
+            var result = BattleLifecycleClassifier.Classify(prev, "BattleMyTurn");
+            Assert.Equal(BattleLifecycleEvent.None, result);
+        }
+
         [Fact]
         public void BattleVictory_EndsBattleAsWin()
         {
