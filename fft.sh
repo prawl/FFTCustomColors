@@ -3550,8 +3550,12 @@ if(_acted){
       const aff=t.affinity&&affSig[t.affinity]?' '+affSig[t.affinity]:'';
       const arc=t.arc&&arcSig[t.arc]?' '+arcSig[t.arc]:'';
       const los=losSig(t);
-      if(t.unitName)s+='<'+t.unitName+tag+aff+arc+los+'>';
-      else s+='<'+t.occupant+aff+arc+los+'>';
+      // Revive-intent tag (Phoenix Down on undead = kill, on dead enemy =
+      // resurrect them, etc). Server-side classifier sets t.intent on
+      // tiles that have a revive-ability outcome.
+      const intent=t.intent?' ['+t.intent+']':'';
+      if(t.unitName)s+='<'+t.unitName+tag+aff+arc+los+intent+'>';
+      else s+='<'+t.occupant+aff+arc+los+intent+'>';
       return s;
     });
     if(emptyCount>0)tiles.push('('+emptyCount+' empty)');

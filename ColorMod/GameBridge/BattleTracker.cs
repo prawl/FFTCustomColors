@@ -1193,6 +1193,22 @@ namespace FFTColorCustomizer.GameBridge
         [JsonPropertyName("losBlocked")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public bool? LosBlocked { get; set; }
+
+        /// <summary>
+        /// Tactical intent tag for revive abilities (Phoenix Down, Raise,
+        /// Arise, Revive). One of:
+        ///   "REVIVE"        — dead ally; canonical revive
+        ///   "REVIVE-ENEMY!" — dead enemy; resurrects them as alive (bad)
+        ///   "KO"            — undead-status enemy; reverse-revive kill
+        ///   "KO-ALLY!"      — undead-status ally; kills your own unit (bad)
+        /// Null on non-revive abilities or when the tile has no relevant
+        /// occupant. Lets the shell renderer disambiguate Phoenix Down on a
+        /// Skeleton (kill move) from Phoenix Down on a dead Goblin (would
+        /// resurrect the enemy). See ReviveTargetClassifier.
+        /// </summary>
+        [JsonPropertyName("intent")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Intent { get; set; }
     }
 
     /// <summary>

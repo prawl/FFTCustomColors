@@ -2546,6 +2546,12 @@ namespace FFTColorCustomizer.GameBridge
             // not show dead units as targets (only revival abilities like Phoenix Down).
             var aliveByPos = new Dictionary<(int x, int y), ScannedUnit>();
             var deadByPos = new Dictionary<(int x, int y), ScannedUnit>();
+            // Revive index: dead units PLUS alive-undead-status units. Phoenix
+            // Down / Raise reverse life state, so on Undead enemies they're an
+            // instant KO move — those tiles need to appear in the target list
+            // even though the unit isn't dead. See ReviveTargetClassifier.
+            var reviveByPos = new Dictionary<(int x, int y), ScannedUnit>();
+            const byte UndeadStatusBit = 0x10; // matches StatusDecoder
             foreach (var posUnit in units)
             {
                 // Petrified units are ALIVE by HP but untargetable in battle
@@ -2557,10 +2563,21 @@ namespace FFTColorCustomizer.GameBridge
                 var lifeState = StatusDecoder.GetLifeState(posUnit.StatusBytes);
                 if (lifeState == "petrified")
                     continue;
-                if (posUnit.Hp <= 0 && posUnit.MaxHp > 0)
+                bool isDead = posUnit.Hp <= 0 && posUnit.MaxHp > 0;
+                if (isDead)
+                {
                     deadByPos[(posUnit.GridX, posUnit.GridY)] = posUnit;
+                    reviveByPos[(posUnit.GridX, posUnit.GridY)] = posUnit;
+                }
                 else
+                {
                     aliveByPos[(posUnit.GridX, posUnit.GridY)] = posUnit;
+                    bool isUndead = posUnit.StatusBytes != null
+                        && posUnit.StatusBytes.Length > 0
+                        && (posUnit.StatusBytes[0] & UndeadStatusBit) != 0;
+                    if (isUndead)
+                        reviveByPos[(posUnit.GridX, posUnit.GridY)] = posUnit;
+                }
             }
 
             // Read the player inventory bytes ONCE per scan. Used to populate
@@ -2654,9 +2671,11 @@ namespace FFTColorCustomizer.GameBridge
                         }
 
                         // Shared helper: annotate a raw (x,y) with occupant info.
-                        // Uses aliveByPos for normal abilities, deadByPos for revival.
-                        var tileIndex = AbilityTargetCalculator.IsRevivalAbility(a)
-                            ? deadByPos : aliveByPos;
+                        // Uses aliveByPos for normal abilities, reviveByPos for
+                        // revival (dead + alive-undead — PD on Undead enemies
+                        // is a kill move via reverse-revive).
+                        bool isReviveAbility = AbilityTargetCalculator.IsRevivalAbility(a);
+                        var tileIndex = isReviveAbility ? reviveByPos : aliveByPos;
 
                         // LoS rule: only physical projectiles (ranged Attack, Ninja
                         // Throw) are blocked by terrain. Magic/summons fly over walls.
@@ -2693,6 +2712,26 @@ namespace FFTColorCustomizer.GameBridge
                                 {
                                     tile.Arc = BackstabArcCalculator.ComputeArc(
                                         u.GridX, u.GridY, occ.GridX, occ.GridY, occ.Facing);
+                                }
+                                // Revive-ability intent tag (Phoenix Down, Raise, etc).
+                                // PD on undead enemy = kill move; PD on dead enemy =
+                                // resurrects them; etc. Surface so the agent picks
+                                // the right tile for the right reason.
+                                if (isReviveAbility)
+                                {
+                                    var intent = ReviveTargetClassifier.Classify(
+                                        targetTeam: occ.Team,
+                                        casterTeam: u.Team,
+                                        targetHp: occ.Hp,
+                                        targetStatusBytes: occ.StatusBytes);
+                                    tile.Intent = intent switch
+                                    {
+                                        ReviveIntent.Revive => "REVIVE",
+                                        ReviveIntent.ReviveEnemy => "REVIVE-ENEMY!",
+                                        ReviveIntent.Ko => "KO",
+                                        ReviveIntent.KoAlly => "KO-ALLY!",
+                                        _ => null,
+                                    };
                                 }
                             }
                             if (wantsLosCheck && abilityMap != null)
