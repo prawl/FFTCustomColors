@@ -958,6 +958,24 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // Up-front range validation against the cached attack tile set
+            // from the most recent scan_move. Without this, an out-of-range
+            // battle_attack opens the targeting mode, the cursor navigates
+            // wherever the requested coords are (including off-grid), and
+            // the result is "MISSED" or a confusing nav error instead of a
+            // clear "out of range" rejection. battle_move has the same up-
+            // front guard via _lastValidMoveTiles. Skip when no scan has
+            // populated the cache yet — the nav loop will surface its own
+            // error in that path.
+            if (_lastValidAttackTiles != null
+                && _lastValidAttackTiles.Count > 0
+                && !_lastValidAttackTiles.Contains((targetX, targetY)))
+            {
+                response.Status = "failed";
+                response.Error = $"Tile ({targetX},{targetY}) is not in basic-Attack range. Run scan_move first and pick from the active unit's Attack ValidTargetTiles ({_lastValidAttackTiles.Count} valid tiles).";
+                return response;
+            }
+
             var screen = WaitForTurnState(timeoutMs: 1000, out long waitedMs);
 
             // S59: allow recoverable battle-menu states (submenu, pause leak,
@@ -2987,6 +3005,17 @@ namespace FFTColorCustomizer.GameBridge
                                 ? (int)System.Math.Round(abilityMap.GetDisplayHeight(u.GridX, u.GridY))
                                 : 0;
 
+                            // Cache the basic-Attack range for battle_attack
+                            // up-front validation. Without this, an out-of-
+                            // range battle_attack call enters the targeting
+                            // mode, navigates the cursor anywhere (including
+                            // off-grid like (0,0)), and surfaces "MISSED" or
+                            // a confusing nav error instead of a clear range
+                            // rejection. Mirrors _lastValidMoveTiles cached
+                            // from the move BFS above.
+                            _lastValidAttackTiles = new HashSet<(int, int)>(
+                                attackTiles.Select(t => (t.x, t.y)));
+
                             attackEntry.ValidTargetTiles = attackTiles
                                 .OrderBy(t => t.y).ThenBy(t => t.x)
                                 .Select(t =>
@@ -4755,6 +4784,7 @@ namespace FFTColorCustomizer.GameBridge
 
         /// <summary>Last computed valid move tiles from scan_move BFS. Used by battle_move to validate targets.</summary>
         private HashSet<(int x, int y)>? _lastValidMoveTiles;
+        private HashSet<(int x, int y)>? _lastValidAttackTiles;
 
 
         /// <summary>Get enemy grid positions from last scan for BFS blocking.
