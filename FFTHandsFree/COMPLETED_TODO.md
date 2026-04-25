@@ -2034,3 +2034,105 @@ Commits:
 - `battleActed` / `battleMoved` bytes read 0 transiently after actions — the `acted`/`moved` tag feature is correct, the bytes themselves are unreliable. Memory hunt still pending.
 - Enemy name misattribution across chunks (e.g. Chocobo re-labeled as Skeletal Fiend) — scan's fingerprint lookup is unstable for some enemy classes. Narrator's backfill helps but doesn't fully fix it.
 - `[BattleVictory]` spurious detection flash during non-Victory actions — detection rule; needs audit.
+
+---
+
+### 2026-04-25 — Bridge robustness + chest/crystal flow + Reequip submenu (30 commits, +30 tests 4530→4560)
+
+Big-pile session: bridge crash recovery, chest/crystal modal handling end-to-end, Reequip / Evasive Stance submenu support, the long-standing menuCursor byte drift fix, the player-facing convention drift, and a stack of detection-leak guards captured from live play. Eight new pure helpers shipped, eleven `[x]` items closed.
+
+**Commits (chronological, oldest → newest):**
+
+Convention + detection groundwork:
+- `219e60a` — Fix ParseFacingDirection coord convention — +y is south in FFT grid
+- `9d67fb9` — Pin coord-convention agreement across 3 facing helpers
+- `70195da` — TODO updates from live-verify session
+
+PLANNING-HEAVY menuCursor drift fix (Phases 1-4):
+- `9518a81` — Proposal: fix menuCursor byte drift via fresh-entry write + ui=? fallback
+- `7401a2c` — Phase 1: FreshBattleMyTurnEntryClassifier pure helper (8 tests)
+- `d471e1d` — Phase 3: wire fresh-entry menuCursor reset into DetectScreen
+- `729987d` — Set _actedThisTurn on mid-flight battle_ability failure
+- `5f71fa4` — Set _actedThisTurn at commit-to-act time, not just on completion (later reverted)
+
+Memory-hunt infrastructure:
+- `4836932` — MemoryDiffCalculator pure helper for future memory hunts
+- `0455332` — Wire memory_diff bridge action for memory hunts
+
+Bridge robustness:
+- `e1d6937` — Quarantine malformed command.json so a single bad write doesn't jam the bridge
+- `8cfe9ef` — Re-enable Ctrl-hold fast-forward in battle_wait
+- `35717c6` — Surface non-success bridge statuses in fft() shell render
+- `298307e` — Route enter() helper through advance_dialogue to bypass strict-mode block
+- `6710ab7` — Auto-print game-running status on every shell command timeout
+
+Chest / crystal modal flow (detection + auto-dismiss):
+- `68dcb4f` — Detect BattleRewardObtainedBanner regardless of battleTeam
+- `f03772b` — Detect BattleCrystalMoveConfirm regardless of battleTeam / save-restore
+- `f3b5a80` — battle_move auto-dismisses chest/crystal/ability-learned modals
+- `07fddc7` — TODO: mark chest-dialog and strict-mode raw-Enter items shipped
+- `ad5e70f` — Gate turn-owner rules on battleMode != 0
+
+acted/moved + facing fixes:
+- `21c0ace` — Override raw battleActed/battleMoved bytes with bridge commit-time flags (6 tests)
+- `7bcf660` — Fix FacingArrowDelta to use -y=North (matches rest of facing pipeline)
+- `28cbce1` — TODO: close out remaining items — code-only work complete
+
+Validation + leak guards:
+- `2a61e54` — Pre-validate battle_attack/battle_move tile coords with helpful error (5 tests)
+- `4d94180` — EqaLeakGuard: filter spurious EqA detections after key on Battle*/GameOver (5 tests)
+- `7444b0d` — Revert _actedThisTurn pre-flight set: interacts badly with override
+- `b1bbcaf` — battle_attack: up-front range validation against scan_move tile cache
+- `6654d18` — Invalidate attack tile cache on successful move
+
+Reequip / Evasive Stance submenu support:
+- `7af89b7` — Detect Reequip-mid-battle EqA panel as BattleStatus (1 test)
+- `e808110` — Add Reequip / Evasive Stance as 4th row in BattleAbilities submenu (5 tests)
+
+**Shipped + LIVE-VERIFIED:**
+
+- [x] **PLANNING-HEAVY menuCursor byte drift** (Phases 1-4) — Picked Option (a): write `0x1407FC620=0` on fresh-BattleMyTurn detection via FreshBattleMyTurnEntryClassifier. Submenu-escape paths preserve cursor; turn-boundary paths reset to Move. Phase 5 (ui=? fallback) deferred — fresh-entry write proved sufficient.
+- [x] **Ctrl-hold fast-forward in battle_wait** — Stale 2026-04-12 "doesn't work" note was wrong; Ctrl IS recognized. Focus-aware (release on tab-away, re-assert on tab-back) so terminal typing isn't hijacked. Live samples Siedge Weald: 5.4s / 9.3s / 9.0s, down from ~10s/turn baseline.
+- [x] **Quarantine malformed command.json** — bare-string write (`screen` instead of JSON) used to spam parse errors and jam the bridge until manual cleanup. Now renames to `command.json.bad-{timestamp}` and continues. Plus shell-side JSON-shape check rejects bare-string args.
+- [x] **Shell surfaces all non-success statuses** — `fft()` only handled `failed` / `rejected`; `blocked` / `partial` / `timeout` / `error` rendered as success. Added catchall: any non-completed/encounter status now prints `[STATUS] error` line.
+- [x] **enter() routes through advance_dialogue** — strict mode blocks raw key arrays except Escape; `enter()` was effectively dead. Routed through the `advance_dialogue` named action (in AllowedGameActions, identical SendKey internally).
+- [x] **TIMEOUT prints `running` status** — every TIMEOUT in shell helpers (block, rv, memory_diff, execute_action, screen) now calls `running` so the cause (game closed vs bridge hung) is one line.
+- [x] **Chest/crystal modal detection + auto-dismiss** — three commits cover the end-to-end flow: BattleRewardObtainedBanner ("Obtained X!") and BattleCrystalMoveConfirm ("Use the crystal..." / "Move to this tile?") both fire regardless of battleTeam (the chest move auto-ends Ramza's turn and team cycles before the modal renders); MoveGrid poll loop auto-Enters on those + BattleAbilityLearnedBanner. Live-verified at Siedge Weald with both chests and a crystal.
+- [x] **Turn-owner rules gated on battleMode != 0** — post-battle world-map state had stale `battleTeam=1` from prior enemy turn; turn-owner rule fired BattleEnemiesTurn forever until SM resync. Adding the battleMode guard fixes it.
+- [x] **EqaLeakGuard for transient EqA misdetect** — bridge sent Enter on GameOver, first post-key detection returned `EquipmentAndAbilities` (transient frame); BattleRetry's internal _detectScreen got the bad frame and bailed. Now filtered when prior settled state was GameOver/Battle*/Victory/Desertion (no legitimate single-cycle transition into EqA).
+- [x] **battleActed/battleMoved override** — raw bytes stale-read 0 right after actions; UI tag computed from `_actedThisTurn` flag was correct but response.screen.battleActed lagged. Override forces 1 when flag is true, restoring consistency between the tag and the raw response field.
+- [x] **CriticalHpInferrer threshold-crossing** — UNVERIFIED for 2 sessions, finally LIVE-VERIFIED at Siedge Weald: Ramza took 300-dmg hit (HP 432→132, threshold 239.67), narrator emitted `> Ramza reached critical HP (432→132/719)` immediately following `> Ramza gained Critical`.
+- [x] **FacingArrowDelta -y=North fix** — boundary drift between ParseFacingDirection (uses -y=N post-`219e60a`) and FacingStrategy.GetFacingArrowKey's table (still used +y=N). Caused battle_wait N/S/E/W to silently send the wrong arrow on the facing screen, with the actual visual offset depending on camera rotation. Captured at Siedge Weald rot=3 (requested N, got W). Extended consistency test to pin the GetFacingArrowKey boundary.
+- [x] **TileTargetValidator** — `battle_attack` / `battle_move` with wrong JSON keys (`{"x":8,"y":11}` instead of `{"locationId":8,"unitIndex":11}`) used to surface as `Cursor miss: at (0,0) expected (-1,0)` — confusing delta values. Now rejected up-front naming the action, the tile, and the correct JSON shape.
+- [x] **battle_attack range validation** — `battle_attack` to an out-of-range tile used to enter targeting mode and "MISSED!"; now uses cached attack tiles from scan_move (handles weapon range correctly: melee=1, bow=5, gun=8). Cache invalidated on successful move.
+- [x] **Reequip mid-battle detection** — clicking Reequip from Abilities submenu opens the same EqA panel as Status from action menu; bytes differ (party=1, battleMode=0, menuCursor=1, submenuFlag=0 vs party=0, battleMode=3, menuCursor=3, submenuFlag=1) but both share `paused=1, encA=9, encB=9`. New rule keys off the encA=9 marker.
+- [x] **Reequip / Evasive Stance as 4th submenu row** — bridge cycled cursor only Attack/Mettle/Items, mis-labeling 4th position as Attack (wrap). Now appends the support ability NAME (Reequip / Evasive Stance — IC remaster shows ability name as the row label, not "Defend"). SupportAbilityBattleCommand pure helper. BattleMenuTracker.RefreshSubmenuItems updates without resetting cursor. Cache preserves prior value when scan returns null active unit (transient post-key reads). Live-verified: Attack → Mettle → Items → Evasive Stance → Attack (wrap).
+- [x] **Player facing byte (root-caused via the FacingArrowDelta fix)** — Lenalian repro (visual W → byte E, 180°) and Siedge Weald repro (visual N → byte W, 90°) both consistent with the +y/-y flip; offset depends on camera rotation. battle_wait now sends the correct arrow.
+
+**Shipped + accepted-without-live-verify (passive observation):**
+
+- [x] **Pre-snap 400ms settle adequate** — multiple battles played without organic false-positive counter line; closing because passive monitoring without an observed failure isn't an actionable TODO. Re-open if one surfaces.
+- [x] **`battleActed` / `battleMoved` byte drift** — software-side override path taken (the alternative listed in the original TODO); memory hunt for an alternative authoritative byte deferred since the override resolves the user-visible inconsistency.
+
+**Techniques worth propagating:**
+
+- **Pre-flight flag set + override = self-rejection trap.** `5f71fa4` set `_actedThisTurn=true` BEFORE ExecuteNavAction "for safety on mid-flight aborts." Same session shipped `21c0ace` exposing that flag through `screen.BattleActed`. Result: BattleAttack's own internal screen-read saw acted=1 before any action ran and self-rejected with "You've already acted this turn." Lesson: when adding an override that exposes private state into a response field, audit every guard that consumes the field to make sure they don't fire during the same in-flight call. Reverted in `7444b0d`; mid-flight failure handler at lines 3866-3874 already covered the original concern.
+
+- **Cache preservation pattern for transient empty-active-unit scans.** Post-key scans sometimes return activeUnit with empty Name and null fields for ~1 frame before settling. Naive cache-update overwrites the known-good value with null. Pattern: `if (newValue != null) cache = newValue;` — preserves prior value across the transient. SecondarySkillsetResolver had this; SupportAbility cache now does too. Reset is handled by turn-boundary sites (battle_wait, StartBattle), not by null reads.
+
+- **Detection-rule fingerprint capture rule.** When you add a detection rule from a live capture, snap the SAME state TWICE — once in the natural triggering context, once after save+resume. Bytes that differ between captures (gameOverFlag, submenuFlag, etc.) are NOT load-bearing in the fingerprint and shouldn't be in the rule. Stable bytes across both captures are the real discriminator. Caught by the BattleCrystalMoveConfirm save-resume case where submenuFlag flipped 1→0 across save.
+
+- **Leak guards for "X never reachable from Y in one cycle".** When a state transition is structurally impossible (GameOver → EqA, Battle* → EqA), wrap detection with a guard that holds the prior name. CharacterStatusLeakGuard + EqaLeakGuard now follow the same shape. Conservative: only filter when the prior settled state is in the explicit "can't transition to current" list — legitimate flows still work.
+
+- **Drift-then-pin for cross-helper conventions.** FacingArrowDelta carried +y=North while ParseFacingDirection / FacingDecider / FacingByteDecoder had all flipped to -y=North across `c36ec53` and `219e60a`. The drift went unnoticed because each helper's tests were green in isolation. Extended FacingCoordConventionConsistencyTests to walk every cardinal name through ParseFacingDirection → GetFacingArrowKey at each rotation; if the table ever drifts again, that test catches it.
+
+- **`memory_diff` bridge action unblocks future memory hunts.** Snap region (4096-byte block via `block`), do thing, snap again (`memory_diff` returns `0xNN: XX -> YY` lines for changed bytes). No more handcrafted snapshot+diff scripts. Pairs with the chunked-`battle_wait` (`maxPollMs:1500`) for capturing inside specific game states.
+
+- **Up-front range/coord validation > deep nav-loop errors.** Two foot-guns this session (battle_attack with wrong JSON keys, battle_attack out-of-range) both surfaced as confusing nav-loop errors deep in the targeting flow. Both fixed by adding pre-flight rejection that names the action, the offending input, and the correct shape. battle_move had this already; aligning battle_attack to the same pattern was a small change with big readability win.
+
+**Don't-repeat:**
+
+- **Don't set commit-to-act flags before guard checks.** See "Pre-flight flag set + override" above.
+- **Don't use rotation-aware helpers without checking the convention.** `FacingArrowDelta` table inverse to ParseFacingDirection silently broke battle_wait facing.
+- **Don't trust SM-derived screen names when raw detection clearly says GameOver/Victory/Battle*.** EqA leak in BattleRetry was downstream of this — detection knew GameOver but SM said EqA, and BattleRetry consulted the SM-aware path.
+- **Don't snap a detection fingerprint in only one context.** Save-resume cleared submenuFlag; capturing only the pre-save state would have produced a fragile rule.

@@ -78,33 +78,13 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
-- [x] **🟡 Detection drift to `[EquipmentAndAbilities]` between battle-end and GameOver** [Detection] — SHIPPED 2026-04-25. `EqaLeakGuard` pure helper (5 tests) filters EqA detections when the prior settled state was GameOver / Battle* / Victory / Desertion — those states have no legitimate single-cycle transition into EqA, so any EqA detection is the transient post-key bad frame captured in live repro. Wired into ProcessCommandFile alongside the existing CharacterStatusLeakGuard. Conservative — only filters when prior is in the explicit not-allowed-to-EqA set, so legitimate flows (PartyMenuUnits → EqA, etc.) still work.
-
-
-
-### Narrator — remaining UNVERIFIED features
-
-- [x] **CriticalHpInferrer threshold-crossing line** [Narrator] — LIVE-VERIFIED 2026-04-25 Siedge Weald random encounter. Ramza took a 300-dmg hit (HP 432→132, MaxHP 719, threshold=239.67). Live narrator emitted `> Ramza reached critical HP (432→132/719)` immediately following `> Ramza gained Critical`. Both the status-add and the threshold-crossing lines fired correctly. 15 unit tests + live verification — closing.
-
-### Narrator — polish follow-ups
-
-- [x] **⚠ UNVERIFIED: Narrator pre-snap 400ms settle is enough for every action** [Narrator] — RESOLVED 2026-04-25. Multiple battles played across recent sessions (Siedge Weald, plus Lenalian Plateau, plus today's random encounter) without a false-positive counter line at 400ms. Treating as adequate. If a false-positive surfaces in future play, the fix is a 1-line bump in BattleWait — re-open this item then. Closing because passive monitoring without an observed failure isn't an actionable TODO.
-
-- [x] **🔴 PLANNING-HEAVY: menuCursor byte keeps drifting from visible cursor state** [Detection] — SHIPPED 2026-04-25 Phases 1-4 (`9518a81` proposal, `7401a2c` helper, `d471e1d` wiring, `5f71fa4` commit-to-act fix). Picked Option (a) from the proposal: write 0x1407FC620=0 on fresh-BattleMyTurn detection via `FreshBattleMyTurnEntryClassifier`. Submenu-escape paths (BattleAbilities/BattleMoving/etc.) preserve cursor; turn-boundary paths (BattleEnemiesTurn/Paused/Formation/etc.) reset to Move. Phase 5 (ui=? fallback for remaining uncertainty) deferred — fresh-entry write proved sufficient in live verify.
-
-- [x] **🟡 battle_move onto a treasure tile triggers a Yes/No confirm dialog the helper doesn't handle** [Battle] — SHIPPED 2026-04-25 (`68dcb4f` chest banner detection, `f03772b` crystal move-confirm detection, `f3b5a80` MoveGrid auto-dismiss). Detection rules: dropped the `battleTeam==0` guard from BattleRewardObtainedBanner and BattleCrystalMoveConfirm — both fire whenever the modal fingerprint matches, regardless of which team's turn the modal interrupts. MoveGrid poll loop auto-Enters on those modals + BattleAbilityLearnedBanner (Yes is default-selected on confirms; Enter dismisses banners). Live-verified end-to-end at Siedge Weald.
-
-- [x] **🟡 Strict mode silently blocks raw Enter key sends** [Bridge] — SHIPPED 2026-04-25 (`298307e`) — narrowest fix taken: route `enter()` shell helper through the `advance_dialogue` named action (which is already in AllowedGameActions and does exactly the same thing — SendKey(VK_ENTER)). Other raw key helpers (up/down/left/right/space/tab) remain blocked under strict mode but those are normally used via per-context named actions; only `enter` was a hot-path gap.
-
-- [x] **🟡 Player facing byte reads wrong value — off from visible direction** [Scan] — ROOT CAUSED + SHIPPED 2026-04-25. Live-investigated at Siedge Weald rot=3: requested `battle_wait N`, expected Ramza to face game-North; he faced West instead. Slot 1 + slot 5 (player dual-table) bytes both stuck at pre-call values, neither matching the visual. The bug was at the boundary between `ParseFacingDirection` (post-219e60a uses -y=N convention) and `FacingStrategy.GetFacingArrowKey`'s `FacingArrowDelta` table (still used +y=N). Two helpers disagreeing about which sign means North silently sent the wrong arrow key on the facing screen. Fix: flipped FacingArrowDelta to -y=N, updated empirical tests to match, extended `FacingCoordConventionConsistencyTests` to pin the GetFacingArrowKey boundary so this drift can't recur. The player slot facing bytes themselves (+0x35) are now expected to update correctly when battle_wait sends the right arrow key. Note: the original Lenalian repro (visual W → byte E) was a 180° offset — at rotations 0/2 the +y=N vs -y=N flip produces a 180° error; at rotations 1/3 it produces 90°, matching today's Siedge Weald observation.
+(All shipped items archived to [COMPLETED_TODO.md](COMPLETED_TODO.md) under the 2026-04-25 entries.)
 
 ### Phase 3 — Memory hunts (blocks per-action attribution)
 
 - [~] **Memory hunt: active-unit-index byte during BattleEnemiesTurn / BattleAlliesTurn** [Memory] — Infrastructure SHIPPED 2026-04-25 (`0455332` `memory_diff` bridge action + `memory_diff` shell helper). Hunt itself deferred — needs a battle survival window long enough to capture: snap during BattleMyTurn (Ramza active), chunked battle_wait into BattleEnemiesTurn (use `maxPollMs:1500`), snap, diff via `memory_diff`. Today's attempt at Siedge Weald lost the battle before the cycle completed (Ramza died to enemy advance at HP 431 → 0). Re-attempt in a battle where Ramza can sustain multiple enemy-turn cycles without dying. The diff should reveal a u8 cycling through roster indices.
 
 - [~] **Memory hunt: currently-executing-ability-id byte during BattleActing** [Memory] — Infrastructure SHIPPED 2026-04-25 (same `memory_diff` action). Hunt itself deferred — needs Ramza casting a high-CT spell (e.g. Ultima ct=20). Snap pre-cast (BattleMyTurn) and during cast (BattleActing window ~2s). Ramza's current jobset (Gallant Knight) doesn't have suitable cast-time abilities; needs a job change to Wizard / Time Mage first.
-
-- [x] **Memory hunt: `battleActed` / `battleMoved` byte drift** [Memory] — SHIPPED 2026-04-25 via the software-side override path (the alternative listed in the original TODO). `BattleActedMovedOverride` pure helper applies the existing `_actedThisTurn` / `_movedThisTurn` commit-time flags to the response.screen.battleActed/battleMoved fields when the raw bytes lag. Wired in CommandWatcher's BattleMyTurn/BattleActing block alongside the UI rendering that already used those flags. +6 tests pinning the override semantics. Memory hunt for an alternative authoritative byte deferred — the override resolves the user-visible inconsistency and the flags reset cleanly on turn boundaries.
 
 ### Phase 4 — per-action narrator (blocks on Phase 3 hunts)
 
