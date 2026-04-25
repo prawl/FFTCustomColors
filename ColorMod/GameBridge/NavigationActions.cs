@@ -946,6 +946,18 @@ namespace FFTColorCustomizer.GameBridge
             int targetX = command.LocationId;
             int targetY = command.UnitIndex;
 
+            // Catch the foot-gun: caller sent {"x":8,"y":11} instead of
+            // {"locationId":8,"unitIndex":11} — defaults are -1, 0 which
+            // would fall through to the nav loop and surface a confusing
+            // "Cursor miss: at (0,0) expected (-1,0)" error.
+            var argError = TileTargetValidator.Validate(targetX, targetY, "battle_attack");
+            if (argError != null)
+            {
+                response.Status = "failed";
+                response.Error = argError;
+                return response;
+            }
+
             var screen = WaitForTurnState(timeoutMs: 1000, out long waitedMs);
 
             // S59: allow recoverable battle-menu states (submenu, pause leak,
@@ -3859,6 +3871,19 @@ namespace FFTColorCustomizer.GameBridge
         {
             int targetX = command.LocationId;
             int targetY = command.UnitIndex;
+
+            // Catch the foot-gun: caller sent {"x":8,"y":11} instead of
+            // {"locationId":8,"unitIndex":11} — defaults are -1, 0 which
+            // would fall through to "Tile (-1,0) is not in the valid move
+            // range" — technically true but unhelpful, the real problem is
+            // the JSON shape.
+            var argError = TileTargetValidator.Validate(targetX, targetY, "battle_move");
+            if (argError != null)
+            {
+                response.Status = "failed";
+                response.Error = argError;
+                return response;
+            }
 
             // Validate target tile against last scan_move results
             ModLogger.Log($"[MoveGrid] Validating ({targetX},{targetY}): validTiles={_lastValidMoveTiles?.Count ?? -1}");

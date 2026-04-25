@@ -78,9 +78,13 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 0. Urgent Bugs
 
+- [ ] **🟡 Detection drift to `[EquipmentAndAbilities]` between battle-end and GameOver** [Detection] — Live-captured 2026-04-25 Siedge Weald. battle_wait was polling enemy turns; Ramza died; bridge's first post-loop screen call returned `[EquipmentAndAbilities]` (with abilities list rendered) instead of GameOver. Subsequent `screen` calls correctly returned `[GameOver]`. Fingerprint of the bad frame wasn't captured (only stable fingerprint after settle was). Hypothesis: when Ramza dies during enemy turn, transient memory state shares signal bytes with EqA screen for ~1 frame. Next step: add capture-on-misdetect logic that snapshots detection inputs whenever `[EquipmentAndAbilities]` fires while a battle was active, then add the right discriminator. Low-priority — the next screen call self-corrects.
+
+
+
 ### Narrator — remaining UNVERIFIED features
 
-- [x] **⚠ UNVERIFIED: CriticalHpInferrer threshold-crossing line** [Narrator] — RESOLVED 2026-04-25 via option (c) — accept the 15-test unit coverage (9 original + 6 edge-case boundary tests in `442ef5d`) as sufficient. The wired live-emit is correct given the tests; the live trigger is gated on a heavy-damage scenario that doesn't reliably arise in solo Ramza battles (regen keeps HP above threshold; Skeletons hit for ~8/swing). Future story battles (Goug, Fort Besselat) will exercise it organically — at which point any false-render is a 1-line fix. No further code action needed.
+- [x] **CriticalHpInferrer threshold-crossing line** [Narrator] — LIVE-VERIFIED 2026-04-25 Siedge Weald random encounter. Ramza took a 300-dmg hit (HP 432→132, MaxHP 719, threshold=239.67). Live narrator emitted `> Ramza reached critical HP (432→132/719)` immediately following `> Ramza gained Critical`. Both the status-add and the threshold-crossing lines fired correctly. 15 unit tests + live verification — closing.
 
 ### Narrator — polish follow-ups
 
