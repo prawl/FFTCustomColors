@@ -1717,6 +1717,19 @@ namespace FFTColorCustomizer.GameBridge
         [System.Text.Json.Serialization.JsonPropertyName("arc")]
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
         public string? Arc { get; set; }
+
+        /// <summary>
+        /// True when this cardinal tile is in the active unit's basic-Attack
+        /// range (matches `_lastValidAttackTiles` set). Cardinal tiles are
+        /// always 1 step from the caster, but ranged weapons (bow/gun/crossbow)
+        /// have a minimum range of 2-3, so adjacent tiles are NOT attackable.
+        /// Live-flagged playtest #4 2026-04-25: agent saw `Right→(5,9) enemy`
+        /// in the cardinal panel, tried `battle_attack 5 9`, got rejected
+        /// "not in basic-Attack range" because their bow can't hit at d=1.
+        /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("inRange")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        public bool InRange { get; set; }
     }
 
     public class FacingInfo

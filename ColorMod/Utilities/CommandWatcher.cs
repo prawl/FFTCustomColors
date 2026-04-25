@@ -4253,9 +4253,29 @@ namespace FFTColorCustomizer.Utilities
                 var interruption = GameBridge.TurnInterruptionClassifier.Classify(last.Screen?.Name);
                 if (GameBridge.TurnInterruptionClassifier.ShouldAbortTurn(interruption))
                 {
-                    last.Info = (last.Info != null ? last.Info + " | " : "")
-                        + $"[turn-interrupt] step '{step.Action}' landed on {last.Screen?.Name} ({interruption}) — aborting execute_turn bundle";
-                    break;
+                    // BattleVictory / GameOver / WorldMap can flicker transiently
+                    // mid-turn (the screen detector has known-overrides that
+                    // briefly surface terminal states). Don't bail on the first
+                    // sighting — re-check after a settle to see if it sticks.
+                    // Live-flagged playtest #4 2026-04-25: a 1-2s spurious
+                    // BattleVictory state aborted execute_turn's wait step
+                    // mid-X-Potion. The flicker is acknowledged in Commands.md
+                    // as a known gotcha; the helper should retry through it.
+                    Thread.Sleep(800);
+                    var recheck = DetectScreen();
+                    var recheckInterruption = GameBridge.TurnInterruptionClassifier.Classify(recheck?.Name);
+                    if (!GameBridge.TurnInterruptionClassifier.ShouldAbortTurn(recheckInterruption))
+                    {
+                        ModLogger.Log($"[ExecuteTurn] Transient interruption resolved: {last.Screen?.Name} → {recheck?.Name}; continuing");
+                        last.Screen = recheck;
+                        // fall through to continue the loop
+                    }
+                    else
+                    {
+                        last.Info = (last.Info != null ? last.Info + " | " : "")
+                            + $"[turn-interrupt] step '{step.Action}' landed on {last.Screen?.Name} ({interruption}) — aborting execute_turn bundle";
+                        break;
+                    }
                 }
 
                 if (last.Status != "completed") break;
@@ -9242,6 +9262,22 @@ namespace FFTColorCustomizer.Utilities
                         _cachedActiveUnitX, _cachedActiveUnitY,
                         _cachedActiveUnitHp, _cachedActiveUnitMaxHp,
                         _cachedActiveUnitWeaponTag);
+                }
+                // Clear cached active-unit fields when transitioning to a
+                // terminal battle state — the cache is stale once Ramza dies
+                // / battle ends and would otherwise leak into the response.
+                // Live-flagged playtest #4 2026-04-25: agent saw "Tietra"
+                // (a story character not present in this battle) in the
+                // header right before GameOver. The cache held a leaked
+                // name from a stale scan during the death transition.
+                if (screen.Name == "BattleVictory" || screen.Name == "BattleDesertion"
+                    || screen.Name == "GameOver")
+                {
+                    _cachedActiveUnitName = null;
+                    _cachedActiveUnitJob = null;
+                    screen.ActiveUnitName = null;
+                    screen.ActiveUnitJob = null;
+                    screen.ActiveUnitSummary = null;
                 }
 
                 // Sync state machine with memory-detected top-level screens.

@@ -1611,18 +1611,38 @@ namespace FFTColorCustomizer.GameBridge
             int targetX = command.LocationId;
             int targetY = command.UnitIndex;
 
-            // Self-target auto-fill: abilities flagged isSelfTarget OR
-            // abilities whose only valid tile in scan is the caster's own
-            // tile (Mettle Steel/Focus/etc on a buff cast at self) work
-            // without coords. Resolve to the caster's grid pos. Live-flagged
-            // playtest #3 2026-04-25: Steel reported as `(4,10)<Ramza SELF>`
-            // but `battle_ability "Steel"` (no coords) failed; coords were
-            // only filled for explicit isSelfTarget abilities.
-            bool autoSelfTarget = (targetX < 0 || targetY < 0)
-                && (loc.isSelfTarget
-                    || (_lastValidAbilityTiles != null
-                        && _lastValidAbilityTiles.TryGetValue(abilityName, out var selfTiles)
-                        && selfTiles.Count == 1));
+            // Self-target auto-fill: when no coords given, default to the
+            // caster's tile if it's in the ability's valid set (or the
+            // ability is flagged isSelfTarget). Covers:
+            //  - Self-only abilities (Shout, Focus): isSelfTarget=true
+            //  - Self-targetable allies (Tailwind, Steel, Salve, X-Potion):
+            //    HRange numeric but caster's tile IS one of the valid target
+            //    tiles. Live-flagged playtests: agent saw `<Ramza SELF>` in
+            //    scan, called `battle_ability "Tailwind"` without coords,
+            //    expected self-cast — got "requires a target tile" error.
+            // Risk: a different ally might have wanted the buff. We treat
+            // the user's explicit "no coords" as "I meant self" since the
+            // scan marker promises self is a valid target.
+            bool autoSelfTarget = false;
+            if ((targetX < 0 || targetY < 0))
+            {
+                if (loc.isSelfTarget)
+                {
+                    autoSelfTarget = true;
+                }
+                else if (_lastValidAbilityTiles != null
+                    && _lastValidAbilityTiles.TryGetValue(abilityName, out var validTilesSelfCheck))
+                {
+                    // Resolve caster pos and check if it's in the ability's
+                    // valid-target set. If so, default to it.
+                    var casterPosCheck = ReadGridPos();
+                    if (casterPosCheck.x >= 0 && casterPosCheck.y >= 0
+                        && validTilesSelfCheck.Contains((casterPosCheck.x, casterPosCheck.y)))
+                    {
+                        autoSelfTarget = true;
+                    }
+                }
+            }
             if (autoSelfTarget)
             {
                 var castorPos = ReadGridPos();
@@ -1914,9 +1934,19 @@ namespace FFTColorCustomizer.GameBridge
                 string hpDelta = "";
                 if (canMeasureAbilityDelta && abilityPreHp >= 0)
                 {
-                    int postHp = ReadLiveHp(abilityTargetMaxHp, abilityPreHp, abilityTargetLevel);
+                    // Dual-read static + live; prefer static on big disagreement.
+                    // See the matching block below for rationale (X-Potion bug).
+                    int liveHp = ReadLiveHp(abilityTargetMaxHp, abilityPreHp, abilityTargetLevel);
+                    int staticHp = ReadStaticArrayHpAt(targetX, targetY);
+                    int postHp = liveHp;
+                    if (staticHp >= 0 && staticHp <= abilityTargetMaxHp
+                        && System.Math.Abs(liveHp - staticHp) > abilityTargetMaxHp / 2)
+                    {
+                        ModLogger.Log($"[BattleAbility] Self-cast HP mismatch: live={liveHp} static={staticHp} — preferring static");
+                        postHp = staticHp;
+                    }
                     hpDelta = AbilityHpDeltaFormatter.Format(abilityPreHp, postHp, abilityTargetMaxHp);
-                    ModLogger.Log($"[BattleAbility] Post-cast: live HP={postHp} (was {abilityPreHp}) at ({targetX},{targetY})");
+                    ModLogger.Log($"[BattleAbility] Self-cast post: live={liveHp} static={staticHp} chose={postHp} (was {abilityPreHp}) at ({targetX},{targetY})");
                 }
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} on ({targetX},{targetY}){hpDelta} — cursor was already on target{ctSuffix}{autoEndSuffix}";
@@ -2040,9 +2070,29 @@ namespace FFTColorCustomizer.GameBridge
             string finalHpDelta = "";
             if (canMeasureAbilityDelta && abilityPreHp >= 0)
             {
-                int postHp = ReadLiveHp(abilityTargetMaxHp, abilityPreHp, abilityTargetLevel);
+                // Dual-read: static array AND live heap. The agent's playtest #4
+                // saw an X-Potion phantom heal `(275→719/719)` where ReadLiveHp
+                // returned a wrong-struct match (Ramza-MaxHp=719 collided with
+                // some saved-game-state heap region). The static array at
+                // +0x14 of the unit's slot is authoritative AFTER settle —
+                // it's what the game itself wrote. Prefer static when the
+                // two disagree by more than a reasonable damage/heal range.
+                int liveHp = ReadLiveHp(abilityTargetMaxHp, abilityPreHp, abilityTargetLevel);
+                int staticHp = ReadStaticArrayHpAt(targetX, targetY);
+                int postHp = liveHp;
+                if (staticHp >= 0 && staticHp <= abilityTargetMaxHp)
+                {
+                    // If live disagrees with static by more than the maxHp's
+                    // worth (one delta range), trust static — likely a heap
+                    // collision in ReadLiveHp.
+                    if (System.Math.Abs(liveHp - staticHp) > abilityTargetMaxHp / 2)
+                    {
+                        ModLogger.Log($"[BattleAbility] Post-cast HP mismatch: live={liveHp} static={staticHp} maxHp={abilityTargetMaxHp} — preferring static (likely heap-search false-positive)");
+                        postHp = staticHp;
+                    }
+                }
                 finalHpDelta = AbilityHpDeltaFormatter.Format(abilityPreHp, postHp, abilityTargetMaxHp);
-                ModLogger.Log($"[BattleAbility] Post-cast: live HP={postHp} (was {abilityPreHp}) at ({targetX},{targetY})");
+                ModLogger.Log($"[BattleAbility] Post-cast: live={liveHp} static={staticHp} chose={postHp} (pre={abilityPreHp}) at ({targetX},{targetY})");
             }
 
             response.Status = "completed";
@@ -3569,6 +3619,12 @@ namespace FFTColorCustomizer.GameBridge
                                 ally.GridX, ally.GridY, occupantUnit.GridX, occupantUnit.GridY, occupantUnit.Facing);
                         }
                     }
+                    // Mark whether the basic Attack can actually reach this
+                    // cardinal tile. Ranged weapons have MinRange ≥ 2, so
+                    // d=1 cardinals are out of range. Match against the
+                    // ability's valid-tile set we just populated.
+                    tile.InRange = _lastValidAttackTiles != null
+                        && _lastValidAttackTiles.Contains((tx, ty));
                     attackTileList.Add(tile);
                 }
                 validPaths["AttackTiles"] = new PathEntry

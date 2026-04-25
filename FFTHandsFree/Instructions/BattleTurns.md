@@ -126,6 +126,11 @@ battle_ability "Phoenix Down" 3 4    # raise dead ally
 - **Self-radius** (R:Self AoE>1): Hits tiles around caster. No coordinates needed.
 - **Full-field** (AoE:99): Hits all allies/enemies. Bard/Dancer songs. No targeting.
 
+**About the `<Caster SELF>` marker:** When you see `Tailwind → (8,10)<Ramza SELF>`, the `SELF` tag means "your tile is one of the valid targets" — NOT "this is a self-only ability." Self-targetable buffs like Tailwind / Steel / Salve / Cure / X-Potion can land on you OR on an ally. You can call them either way:
+- `battle_ability "Tailwind"` (no coords) → bridge auto-fills your tile (default-self), since the marker promises it's a valid target.
+- `battle_ability "Tailwind" 5 4` → cast on the ally at (5,4).
+True self-only abilities (Shout, Focus, Chakra) have `R:Self` in the rendered ability line — those NEVER take coords.
+
 **Choosing a target:** Pick from the ability's valid targets in scan_move. For AoE, use the `best:` line to find the placement that hits the most enemies with fewest allies caught. For point-target, pick tiles marked with `*`.
 
 ### 4. End turn

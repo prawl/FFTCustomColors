@@ -139,14 +139,21 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void AddedAndRemovedEvents_AreSkipped()
+        public void RemovedEvents_AreSkipped_AddedSurfaces()
         {
+            // 2026-04-25 update: 'added' now surfaces as "X (TEAM) joined at
+            // (x,y)" so guest characters arriving mid-battle don't appear
+            // unannounced (live-flagged playtest #4: Tietra showed up with
+            // no kill-feed entry). 'removed' is still suppressed.
             var events = new List<UnitScanDiff.ChangeEvent> {
                 Evt("Ghost", "added", newXY: (3, 3), newHp: 400),
                 Evt("Vanisher", "removed", oldXY: (5, 5), oldHp: 100),
             };
             var lines = BattleNarratorRenderer.Render(events, "Ramza");
-            Assert.Empty(lines);
+            Assert.Single(lines);
+            Assert.Contains("Ghost", lines[0]);
+            Assert.Contains("joined", lines[0]);
+            Assert.Contains("(3,3)", lines[0]);
         }
 
         [Fact]

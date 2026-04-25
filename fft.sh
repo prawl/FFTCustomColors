@@ -3602,7 +3602,12 @@ if(occupiedAtk.length&&!_acted){
     const job=a.jobName?' ('+a.jobName+')':'';
     const hp=a.hp!=null?' HP='+a.hp:'';
     const arc=a.arc&&arcSig2[a.arc]?arcSig2[a.arc]:'';
-    return a.arrow+'\\u2192('+a.x+','+a.y+')'+occ+job+hp+arc;
+    // Tag tiles NOT in basic-Attack range (ranged weapons can't hit d=1
+    // cardinals because of MinRange=2). Live-flagged playtest #4: agent
+    // saw an enemy in the cardinal panel and got a baffling "not in range"
+    // error because their bow couldn't reach the adjacent tile.
+    const oor=(a.inRange===false)?' [TOO CLOSE]':'';
+    return a.arrow+'\\u2192('+a.x+','+a.y+')'+occ+job+hp+arc+oor;
   });
   console.log('Attack tiles: '+lines.join('  '));
 }
@@ -3621,6 +3626,29 @@ if(tor.length){
     return me+nm+'('+tag+',ct='+t.ct+')';
   });
   console.log('Timeline: '+top.join(' \\u2192 '));
+  // Threat warning: count how many ENEMY units act before the active
+  // PLAYER unit cycles back. Caster is the unit currently in BattleMyTurn
+  // (always the first PLAYER entry in turnOrder for the current pass).
+  // After this turn ends, units act in CT-readiness order before caster
+  // gets another turn. If 3+ enemies will act first, the caster is in
+  // serious danger — surface it. Live-flagged playtest #4: agent went
+  // 548\\u219236 HP in one battle_wait cycle because 3 enemies converged.
+  const _casterIdx=tor.findIndex(t=>t.isActive&&t.team==='PLAYER');
+  if(_casterIdx>=0){
+    // Enemies that act BEFORE the caster's next turn = those with lower
+    // CT cost-to-act, which in turnOrder are listed AFTER the caster
+    // (turnOrder is ordered by next-act). Count them up to the next time
+    // the caster appears (or end of list).
+    let _enemiesBeforeMe=0;
+    for(let i=_casterIdx+1;i<tor.length;i++){
+      const t=tor[i];
+      if(t.team==='PLAYER'&&t.isActive)break;
+      if(t.team==='ENEMY')_enemiesBeforeMe++;
+    }
+    if(_enemiesBeforeMe>=3){
+      console.log('!! THREAT: '+_enemiesBeforeMe+' enemies act before your next turn — high incoming damage risk');
+    }
+  }
 }
 // Height context: caster's tile h vs enemy h range. Lets the renderer
 // surface high-ground vs low-ground at a glance instead of asking the

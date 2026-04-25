@@ -61,6 +61,8 @@ execute_turn 6 5 Attack 7 5 '' --nowait   # skip wait
 
 **Move-only does NOT end your turn.** `execute_turn 6 5` (just two args) returns to `BattleMyTurn` with your Act and Wait still available — and enemies whose CT comes up between your Move and your next command CAN act and hit you in that gap. To actually end the turn after a move, follow with `battle_wait`, or bundle the wait via `execute_turn 6 5 '' '' '' ''` style — easiest is just to call `battle_wait` next. Same gotcha applies to a bare `battle_move`.
 
+**`execute_turn` is NOT atomic.** Sub-steps run sequentially: Move → Ability → Wait. If the Ability step fails (out of range, wrong target, mid-turn flicker), your unit is **already at the new tile** — the move committed first and there's no rollback. Plan accordingly: confirm the ability is reachable from the destination tile *before* bundling. The bundled response's `info` field aggregates each sub-step's outcome (`Moved (8,10)→(5,10) | Failed: ability ...`), so check the message for which sub-step failed.
+
 ### Dev tools
 
 | Command | Description |

@@ -121,6 +121,16 @@ namespace FFTColorCustomizer.GameBridge
                     return "";
 
                 case "added":
+                    // A unit appeared on the field that wasn't here pre-wait —
+                    // most commonly a story-scripted guest joining mid-battle
+                    // (Boco, Tietra, Agrias, Mustadio, etc), or a summon/clone
+                    // spawned by an enemy. Surface so the player isn't blind-
+                    // sided. Live-flagged playtest #4 2026-04-25: Tietra
+                    // appeared without ceremony at the climax of Siedge Weald.
+                    if (e.NewXY.HasValue)
+                        return $"> {e.Label} ({e.Team}) joined at ({e.NewXY.Value.x},{e.NewXY.Value.y})";
+                    return $"> {e.Label} ({e.Team}) joined the battle";
+
                 case "removed":
                 case "noop":
                 default:
