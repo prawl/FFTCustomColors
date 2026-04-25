@@ -736,6 +736,20 @@ namespace FFTColorCustomizer.GameBridge
                 // moveMode==255 falls through to the normal BattleMoving rule below.
             }
 
+            // Reequip Support ability (Ramza Chemist Reequip slot etc.):
+            // when triggered from the Abilities submenu mid-battle, opens
+            // the same EqA panel as Status from the action menu. Bytes
+            // differ from action-menu Status (party=1 vs 0, battleMode=0
+            // vs 3, menuCursor=1 vs 3, submenuFlag=0 vs 1) because the
+            // entry path is different. Common load-bearing fingerprint:
+            // party=1 + paused=1 + battleMode=0 + encA=9 + encB=9.
+            // encA=9 isn't used by any other detection rule and combined
+            // with the other constraints is distinctive enough. Live-
+            // captured 2026-04-25 Siedge Weald.
+            if (paused == 1 && battleMode == 0 && party == 1
+                && encA == 9 && encB == 9)
+                return "BattleStatus";
+
             // Status screen: clicked INTO Status from pause menu. Needs submenuFlag=1
             // (subscreen open) in addition to paused=1 + menuCursor=3. Without submenuFlag,
             // cursor=3 on the pause menu just means hovering the Status item, which is still

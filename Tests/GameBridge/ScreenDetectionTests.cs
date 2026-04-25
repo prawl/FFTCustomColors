@@ -1742,6 +1742,28 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
+        public void DetectScreen_Reequip_MidBattle_ShouldReturnBattleStatus()
+        {
+            // Reequip Support ability opens the same EqA panel as
+            // BattleStatus does from the action menu — visually identical
+            // "Units > Status" page with Equipment & Abilities tabs. But
+            // the bytes differ because the entry path is different:
+            //   Reequip:        party=1, battleMode=0, menuCursor=1, submenuFlag=0
+            //   Status (action) party=0, battleMode=3, menuCursor=3, submenuFlag=1
+            // Both share paused=1, encA=9, encB=9, eventId=401 (battle event).
+            // Live-captured 2026-04-25 Siedge Weald — Ramza S:Reequip clicked
+            // from Abilities submenu position 4. Without this rule detection
+            // returned BattlePaused.
+            var result = ScreenDetectionLogic.Detect(
+                party: 1, ui: 0, rawLocation: 255, slot0: 255, slot9: 0xFFFFFFFF,
+                battleMode: 0, moveMode: 0, paused: 1, gameOverFlag: 0,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 9, encB: 9, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 1, eventId: 401);
+            Assert.Equal("BattleStatus", result);
+        }
+
+        [Fact]
         public void DetectScreen_Status_Paused_MenuCursor3_ShouldReturnBattleStatus()
         {
             // Status screen: paused=1 + menuCursor=3. Previously misdetected as Battle_Paused.
