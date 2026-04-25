@@ -4180,6 +4180,14 @@ namespace FFTColorCustomizer.Utilities
             var preBundleUnits = SnapshotUnitsForKillDiff();
 
             CommandResponse? last = null;
+            // Aggregate each sub-step's Info so the bundled response carries
+            // hit/miss/damage/KO outcomes — without this, the final `last`
+            // response is whatever battle_wait set (typically empty), and
+            // the caller sees "[BattleMyTurn] ... t=20247ms[execute_turn]!!"
+            // with no clue what their attack did. Live-flagged 2026-04-25
+            // playtest: Ramza died on an attack and the agent had to grep
+            // mod logs to figure out why.
+            var stepInfos = new List<string>();
             int stepIndex = 0;
             foreach (var step in plan.ToSteps())
             {
@@ -4214,6 +4222,8 @@ namespace FFTColorCustomizer.Utilities
                 // path that could drift from the primitives.
                 last = ExecuteAction(sub);
                 if (last == null) break;
+                if (!string.IsNullOrWhiteSpace(last.Info))
+                    stepInfos.Add(last.Info);
                 accumulator.RecordStep(step.Action, last.PostAction);
 
                 // S58: if the sub-action's resulting screen indicates the
@@ -4255,6 +4265,12 @@ namespace FFTColorCustomizer.Utilities
 
             last.Id = command.Id;
             last.TurnSummary = BuildTurnSummary(accumulator);
+            // Concatenate sub-step Info so the bundled response surfaces
+            // every outcome — the original last.Info is the FINAL step's
+            // Info (often empty after battle_wait). Joined with " | " so
+            // grep-friendly and fits one line in the compact formatter.
+            if (stepInfos.Count > 0)
+                last.Info = string.Join(" | ", stepInfos);
             return last;
         }
 

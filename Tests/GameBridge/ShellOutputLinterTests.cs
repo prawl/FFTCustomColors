@@ -130,15 +130,14 @@ namespace FFTColorCustomizer.Tests.GameBridge
         public void BattleRender_AttackTilesHideWhenAllEmpty()
         {
             // Session 31 audit: Attack tiles line pure noise when all 4
-            // cardinals are empty. Guard: we now filter to occupiedAtk
-            // before rendering. Pattern: `occupiedAtk` filter + length check.
+            // cardinals are empty. Guard: we filter the cardinals before
+            // rendering. The filter variable was renamed `occupiedAtk` →
+            // `liveAtk` 2026-04-25 when corpse-filtering was added. Match
+            // the gate pattern `if(liveAtk.length` so future tweaks
+            // (acted-this-turn suppression, etc.) don't break the test.
             var fftPath = FindFftSh();
             var content = File.ReadAllText(fftPath);
-            Assert.Contains("occupiedAtk", content);
-            // Length check may carry additional guards (e.g. acted-this-turn
-            // suppression). Match the prefix `if(occupiedAtk.length` so an
-            // added `&&!_acted` clause doesn't break the test.
-            Assert.Contains("if(occupiedAtk.length", content);
+            Assert.Contains("if(liveAtk.length", content);
         }
     }
 }

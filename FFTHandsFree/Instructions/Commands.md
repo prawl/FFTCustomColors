@@ -1,11 +1,26 @@
 <!-- This file should not be longer than 200 lines, if so prune me. -->
 # Command Reference
 
-All commands are bash functions from `fft.sh`. Source it once per session:
+All commands are bash functions from `fft.sh`. Two ways to use them:
 
 ```bash
+# Interactive shell — source once, helpers stay loaded for the rest of the shell:
 source ./fft.sh
+screen
+battle_move 6 5
+
+# Per-call invocation — each command is its own process (LLM agents using a
+# Bash-tool-per-call pattern want this; otherwise you'd have to prefix every
+# call with `source ./fft.sh && ...`):
+./fft screen
+./fft battle_move 6 5
+./fft battle_ability "Attack" 7 5
 ```
+
+The `./fft` wrapper sources `fft.sh` and dispatches to the named helper. It
+exists because each Bash tool call from an agent driver is a fresh shell —
+function definitions don't persist across calls. The wrapper handles the
+re-source for you so the agent only types one command per call.
 
 ## State & Info (always available)
 
@@ -118,11 +133,24 @@ Every response includes:
 - **Screen state** — which screen you're on
 - **ValidPaths** — available actions for the current screen
 - **Battle data** (when in battle):
-  - `battle.activeUnit` — your unit: jobName, move, jump, pa, ma, hp, brave, faith
-  - `battle.units[]` — all units: name, team, jobName, level, position, hp, distance, statuses, abilities (with validTargetTiles, bestCenters, bestDirections per ability)
+  - `battle.activeUnit` — your unit: jobName, move, jump, pa, ma, hp, brave, faith, plus equipped reaction/support/movement
+  - `battle.units[]` — all units: name, team, jobName, level, position, hp, distance, statuses, **reaction/support** (when fingerprinted from heap struct), abilities (with validTargetTiles, bestCenters, bestDirections per ability)
   - `ValidMoveTiles.tiles[]` — reachable tiles with height (`h`) for high ground
-  - `AttackTiles.attackTiles[]` — adjacent tiles with arrow key, occupant info (hp, jobName if enemy)
+  - `AttackTiles.attackTiles[]` — adjacent tiles with arrow key, occupant info (hp, jobName if enemy). The `arrow` field (`Up/Down/Left/Right`) is the **post-rotation** key to press, NOT an absolute compass direction. Camera rotation may make "Up" point south on the map.
   - `RecommendedFacing.facing` — optimal facing direction with arc breakdown (front/side/back counts)
+
+## Reading the screen-line header
+
+The compact one-line header at the top of every response looks like:
+
+`[BattleMyTurn] ui=Move Ramza(Gallant Knight) (8,10) HP=719/719 MP=138/138 curLoc=The Siedge Weald t=358ms[scan_move]`
+
+Field-by-field:
+- `[ScreenName]` — current detected screen (BattleMyTurn, BattleMoving, WorldMap, ...)
+- `[ACTED]` / `[MOVED]` — appears when you've consumed your Action / Move this turn (only Wait/Status remain). Action menu in-game greys out the consumed slot.
+- `ui=Move` (or `ui=Abilities`, `ui=Wait`) — which action-menu slot the cursor is on. On battle screens, this reflects the highlighted entry; outside battle it's unrelated. `ui=Move` on a fresh BattleMyTurn is the default starting position; nothing to act on.
+- Active unit `Name(Job) (X,Y)` — the unit whose turn it is, and where they stand.
+- `t=Nms[action]` — bridge round-trip time and the action that produced it. Colored green/yellow/red by `FFT_SLOW_MS` (default 800ms warn, 2× red). A `!` suffix marks over-warn, `!!` marks over-red — speed regression, not an error. Use `session_tail slow 1500` for the bug-finder filter on the JSONL log.
 
 ## Strict Mode
 

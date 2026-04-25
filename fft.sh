@@ -3579,13 +3579,15 @@ if(_moved){
   console.log('Move tiles: '+(tlist.length?tlist.join(' '):'(none)')+(vmt.desc?'  — '+vmt.desc:''));
 }
 // Attack tiles (adjacent cardinals). Only render when at least one
-// cardinal has an occupant — the empty-4-cardinals case is pure noise.
+// cardinal has a LIVE occupant — corpses (HP=0) stay on tiles but
+// can't be attacked, so listing them as "Attack tiles" was misleading.
 // Suppressed when the action has already been used.
 const atk=vp.AttackTiles?.attackTiles||[];
-const occupiedAtk=atk.filter(a=>a.occupant&&a.occupant!=='empty');
-if(occupiedAtk.length&&!_acted){
+const isCorpse=a=>(a.lifeState==='dead'||a.lifeState==='crystal'||a.lifeState==='treasure'||(a.hp!=null&&a.hp<=0));
+const liveAtk=atk.filter(a=>a.occupant&&a.occupant!=='empty'&&!isCorpse(a));
+if(liveAtk.length&&!_acted){
   const arcSig2={back:' >BACK',side:' >side'};
-  const lines=occupiedAtk.map(a=>{
+  const lines=liveAtk.map(a=>{
     const occ=' '+a.occupant;
     const job=a.jobName?' ('+a.jobName+')':'';
     const hp=a.hp!=null?' HP='+a.hp:'';
@@ -3597,6 +3599,19 @@ if(occupiedAtk.length&&!_acted){
 // Recommended facing
 const rf=vp.RecommendedFacing;
 if(rf?.desc)console.log('Recommend Wait: '+rf.desc);
+// Combat Timeline (turnOrder) — who acts next. Surfaces tactical
+// pressure: "Wisenkin acts before me" vs. "I have 2 turns to set up".
+// Up to ~5 entries to keep the line short; full list in verbose JSON.
+const tor=b.turnOrder||[];
+if(tor.length){
+  const top=tor.slice(0,5).map(t=>{
+    const tag=t.team==='PLAYER'?'P':(t.team==='ALLY'?'A':'E');
+    const nm=t.name?(t.name.length>10?t.name.slice(0,10):t.name):tag;
+    const me=t.isActive?'*':'';
+    return me+nm+'('+tag+',ct='+t.ct+')';
+  });
+  console.log('Timeline: '+top.join(' → '));
+}
 console.log('');
 
 // Units — first unit inline with the "Units:" header, subsequent lines
@@ -3626,6 +3641,15 @@ us.forEach(u=>{
   // at a glance in the Units listing. Skipped when unarmed / unknown.
   const wep=(u.team===0&&u.weaponTag)?' ['+u.weaponTag+']':'';
   let extra='';
+  // Reaction/Support/Movement are tactically critical (Counter prevents
+  // melee, Auto-Potion auto-heals, Hamedo pre-empts adjacent attacks) so
+  // they're surfaced in compact mode too — not just verbose.
+  // 2026-04-25: prior playtest had Ramza killed by an undisclosed Wisenkin
+  // Counter; the data was in the heap fingerprint but only rendered when
+  // the agent ran `screen -v`. Promoting to default visibility.
+  if(u.reaction)extra+=' R:'+u.reaction;
+  if(u.support)extra+=' S:'+u.support;
+  if(u.movement)extra+=' M:'+u.movement;
   if(verbose){
     // Skip undefined fields — the battle scan backend doesn't always populate
     // every stat. Avoid printing literal "undefined".
@@ -3638,10 +3662,7 @@ us.forEach(u=>{
     if(u.ct!=null)parts.push('CT='+u.ct);
     if(u.brave!=null)parts.push('Br='+u.brave);
     if(u.faith!=null)parts.push('Fa='+u.faith);
-    if(parts.length)extra=' '+parts.join(' ');
-    if(u.reaction)extra+=' R:'+u.reaction;
-    if(u.support)extra+=' S:'+u.support;
-    if(u.movement)extra+=' M:'+u.movement;
+    if(parts.length)extra+=' '+parts.join(' ');
     if(u.elementAbsorb?.length)extra+=' +abs:'+u.elementAbsorb.join(',');
     if(u.elementNull?.length)extra+=' =null:'+u.elementNull.join(',');
     if(u.elementHalf?.length)extra+=' ~half:'+u.elementHalf.join(',');

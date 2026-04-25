@@ -1,0 +1,63 @@
+#!/bin/bash
+# fft — wrapper that sources fft.sh and dispatches to a named helper function.
+#
+# Why this exists: each Bash tool call from an LLM agent driver is a fresh
+# shell, so `source ./fft.sh` doesn't persist across calls. Without this
+# wrapper, every helper invocation has to be prefixed with `source ./fft.sh
+# && ...` — burns tokens and is easy to forget. With this wrapper the agent
+# can just say `./fft screen` or `./fft battle_move 6 5`.
+#
+# Usage:
+#   ./fft screen
+#   ./fft battle_move 6 5
+#   ./fft battle_ability "Attack" 7 5
+#   ./fft execute_turn 6 5 Attack 7 5
+#   ./fft session_tail slow 1500
+#
+# Any helper defined in fft.sh works. If you need raw key input (when strict
+# mode is off), helpers like `up`, `down`, `enter` work too.
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ ! -f "$SCRIPT_DIR/fft.sh" ]; then
+  echo "fft: cannot locate fft.sh next to this wrapper at $SCRIPT_DIR/fft.sh" >&2
+  exit 1
+fi
+
+# shellcheck source=fft.sh
+source "$SCRIPT_DIR/fft.sh"
+
+if [ $# -eq 0 ]; then
+  cat <<EOF
+Usage: ./fft <helper> [args...]
+
+Common helpers (see FFTHandsFree/Instructions/Commands.md for full list):
+  screen                        # current state + scan_move on BattleMyTurn
+  scan_move                     # alias for screen
+  battle_move X Y               # move active unit to grid tile
+  battle_attack X Y             # basic attack at tile
+  battle_ability "Name" [X Y]   # use ability (skip X/Y for self-target)
+  battle_wait                   # end turn, face optimal direction
+  execute_turn X Y [Name X Y]   # bundled move + ability + wait
+  battle_flee                   # quit current battle
+  logs / logs grep <pat>        # tail / grep mod log
+  session_tail [N|slow N|failed]  # JSONL command log
+
+Examples:
+  ./fft screen
+  ./fft battle_move 6 5
+  ./fft execute_turn 6 5 Attack 7 5
+EOF
+  exit 1
+fi
+
+# Dispatch.
+HELPER="$1"; shift
+if ! declare -F "$HELPER" >/dev/null 2>&1; then
+  echo "fft: '$HELPER' is not a helper function in fft.sh" >&2
+  echo "Run \`./fft\` with no args for the common-helpers list." >&2
+  exit 2
+fi
+"$HELPER" "$@"
