@@ -808,7 +808,12 @@ id() { echo "c${EPOCHREALTIME//.}${RANDOM}"; }
 #           Space=32, Tab=9, T=84, E=69, Q=81, F=70
 
 key()  { fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":$1,\"name\":\"$2\"}],\"delayBetweenMs\":150}"; }
-enter() { key 13 Enter; }
+# enter: Send Enter via the `advance_dialogue` named action so strict
+# mode allows it. Raw `keys:[{vk:13}]` is blocked by strict mode (only
+# Escape is allow-listed for raw arrays). The named action does
+# exactly the same thing — SendKey(VK_ENTER) — and is in
+# AllowedGameActions, so it routes cleanly.
+enter() { fft "{\"id\":\"$(id)\",\"action\":\"advance_dialogue\"}"; }
 esc()   { key 27 Escape; }
 up()    { key 38 Up; }
 down()  { key 40 Down; }
