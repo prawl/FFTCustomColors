@@ -46,6 +46,9 @@ You can do Move and Act in any order, or skip either. But you MUST Wait to end t
 | `BattleAlliesTurn` | NPC ally is acting | Wait — poll `screen` until `BattleMyTurn` |
 | `BattleEnemiesTurn` | Enemy is acting | Wait — poll `screen` until `BattleMyTurn` |
 | `BattlePaused` | Pause menu open | Resume, retry, or flee |
+| `BattleVictory` | All enemies defeated | Battle ends — no further actions |
+| `BattleDesertion` | Your party wiped OR the protagonist crystallized; battle abandoned | Battle ended in a non-Victory non-GameOver way; the game returns you to WorldMap. Common trigger: Ramza KO'd long enough to crystallize (3-turn deathCounter expires). |
+| `GameOver` | All player units KO'd | Battle ends — game over screen |
 
 The `ui=` field shows the current cursor position at each level:
 - `BattleMyTurn ui=Abilities` — cursor on Abilities in action menu

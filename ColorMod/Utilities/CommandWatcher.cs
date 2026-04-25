@@ -4171,6 +4171,24 @@ namespace FFTColorCustomizer.Utilities
                 }
             }
 
+            // Defensive menu-cursor reset before the first sub-step. The
+            // standalone battle_move helper handles ui=Abilities / ui=Wait
+            // start states by navigating the menu cursor to Move (slot 0)
+            // before pressing Enter. Live-flagged playtest #3 2026-04-25:
+            // execute_turn's first move sub-step reportedly failed "Not in
+            // Move mode" from ui=Abilities while a standalone battle_move
+            // succeeded from the same state. Force the cursor byte to 0
+            // here so the sub-dispatch starts from a known menu position.
+            if (preflightScreen != null
+                && preflightScreen.Name == "BattleMyTurn"
+                && preflightScreen.MenuCursor != 0
+                && Explorer != null)
+            {
+                Explorer.Scanner.WriteByte((nint)0x1407FC620, 0);
+                _battleMenuTracker.ReturnToMyTurn();
+                ModLogger.Log($"[ExecuteTurn] Pre-flight cursor reset: was {preflightScreen.MenuCursor} → 0 (Move)");
+            }
+
             // S58: seed the accumulator with the pre-bundle snapshot so HP
             // delta / move delta / killed units can be aggregated across
             // every sub-step. Pre-bundle scan is cheap if already cached.
@@ -4271,6 +4289,19 @@ namespace FFTColorCustomizer.Utilities
             // grep-friendly and fits one line in the compact formatter.
             if (stepInfos.Count > 0)
                 last.Info = string.Join(" | ", stepInfos);
+            // Backfill PostAction from the accumulator if the final sub-step
+            // didn't populate one (battle_wait typically doesn't). Without
+            // this, the formatter's `→ (X,Y) HP=H/MH` trailer is missing
+            // entirely and the caller has to follow up with `screen` to
+            // see their unit's HP. Live-flagged playtest #3 2026-04-25.
+            if (last.PostAction == null && accumulator.FinalPostAction != null)
+                last.PostAction = accumulator.FinalPostAction;
+            // Last-resort fallback: read fresh post-state if neither the
+            // sub-step nor accumulator captured one (e.g. all sub-steps
+            // failed early and accumulator stayed empty). Keeps the
+            // trailer present even on degenerate paths.
+            if (last.PostAction == null)
+                last.PostAction = _navActions?.ReadPostActionState();
             return last;
         }
 

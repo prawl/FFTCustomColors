@@ -404,6 +404,13 @@ _slow_threshold_for_tag() {
     scan_move|scan_units|scan_tavern)   printf '700' ;;
     save|load|world_travel_to|world_travel|enter_tavern)
                                         printf '8000' ;;
+    # Bundled-turn helpers: realistically ~10-18s per call because the
+    # bridge fast-forwards through enemy turns + animations. Calibrate the
+    # warn threshold up so 11-15s reads as green/yellow rather than `!!` red.
+    # Live-flagged playtest #3 2026-04-25: agent saw `!!` and assumed the
+    # bridge was wedged when it was just animating.
+    execute_turn|battle_wait|battle_attack|battle_ability|auto_place_units)
+                                        printf '12000' ;;
     snap*|search_bytes|heap_diff)       printf '2000' ;;
     *)                                  printf '%s' "${FFT_SLOW_MS:-800}" ;;
   esac
@@ -4183,33 +4190,26 @@ state() { echo "[USE screen] state is deprecated. Use: screen"; screen; }
 auto_move() { echo "[DISABLED] Use battle_move, battle_attack, battle_ability, battle_wait individually."; return 1; }
 
 scan_move() {
-  # S60: scan_move is deprecated in favor of the unified `screen` helper.
-  # Kept as a thin wrapper so muscle memory still works. No-arg form forwards
-  # to screen(); the 2-arg override form dispatches the bridge action with
-  # explicit Mv/Jmp values, then renders via screen() so the compact output
-  # (Move tiles / Attack tiles / Units / Abilities) matches what `screen`
-  # produces. See FFTHandsFree/Instructions/BattleTurns.md.
+  # `scan_move` is the canonical name — every doc and Commands.md
+  # example uses it. Implemented as a thin wrapper around `screen`
+  # since the unified helper does the same scan dump. Both names
+  # work; pick whichever reads better in your flow. (The earlier
+  # deprecation banner conflicted with the docs that recommend
+  # scan_move; removed 2026-04-25 after playtest #3.)
   #
-  # S59: support Mv/Jmp override for when heap-search misses collapse to
-  # Mv=0 Jmp=0. `scan_move <mv> <jmp>` dispatches a direct scan_move action
-  # with the overrides passed via locationId/unitIndex (the bridge already
-  # reads these fields at NavigationActions.cs:2159-2160). `scan_move` with
-  # no args falls through to the unified `screen` helper.
+  # 2-arg form: `scan_move <mv> <jp>` dispatches the bridge action
+  # with explicit Mv/Jmp overrides for when heap-search misses
+  # collapse to Mv=0 Jmp=0. Then renders via screen().
   if [ $# -ge 2 ]; then
     local _mv="$1" _jp="$2"
-    # Dispatch the scan_move bridge action with Mv/Jmp override. The fft call
-    # writes response.json; follow up with screen() so the Move tiles / Attack
-    # tiles / Units / Abilities render via the unified compact formatter
-    # instead of just the one-line `fft` header (which is all `fft` knows to
-    # print for a raw scan_move action).
     fft "{\"id\":\"$(id)\",\"action\":\"scan_move\",\"locationId\":$_mv,\"unitIndex\":$_jp,\"verbose\":false}" 60 >/dev/null
     screen
   else
-    echo "[USE screen] scan_move is deprecated. Use: screen"
     screen
   fi
 }
-scan_move_full() { echo "[USE screen -v] scan_move_full is deprecated. Use: screen -v"; screen -v; }
+# Verbose alias mirrors the `screen -v` formatter.
+scan_move_full() { screen -v; }
 
 # _fmt_action: Shared formatter for battle action responses. Parses JSON, shows compact result.
 _fmt_action() {

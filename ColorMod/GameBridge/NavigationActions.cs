@@ -958,6 +958,18 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // Pre-flight: refuse during another team's turn (Escape pauses
+            // the game). See SendKey guard for the same defense-in-depth.
+            var preflightAtk = _detectScreen();
+            if (preflightAtk != null
+                && (preflightAtk.Name == "BattleEnemiesTurn" || preflightAtk.Name == "BattleAlliesTurn"))
+            {
+                response.Status = "failed";
+                response.Error = $"Not your turn (current: {preflightAtk.Name}). Wait for BattleMyTurn before attacking.";
+                response.Screen = preflightAtk;
+                return response;
+            }
+
             // Up-front range validation against the cached attack tile set
             // from the most recent scan_move. Without this, an out-of-range
             // battle_attack opens the targeting mode, the cursor navigates
@@ -1449,6 +1461,18 @@ namespace FFTColorCustomizer.GameBridge
             if (abilityName == "Attack")
                 return BattleAttack(response, command);
 
+            // Pre-flight: refuse during another team's turn (Escape pauses
+            // the game). See SendKey guard for the same defense-in-depth.
+            var preflightAbi = _detectScreen();
+            if (preflightAbi != null
+                && (preflightAbi.Name == "BattleEnemiesTurn" || preflightAbi.Name == "BattleAlliesTurn"))
+            {
+                response.Status = "failed";
+                response.Error = $"Not your turn (current: {preflightAbi.Name}). Wait for BattleMyTurn before using {abilityName}.";
+                response.Screen = preflightAbi;
+                return response;
+            }
+
             var screen = WaitForTurnState(timeoutMs: 1000, out long waitedMs);
 
             // S59: if we landed on a deeper battle-menu state (submenu, skillset
@@ -1587,11 +1611,54 @@ namespace FFTColorCustomizer.GameBridge
             int targetX = command.LocationId;
             int targetY = command.UnitIndex;
 
+            // Self-target auto-fill: abilities flagged isSelfTarget OR
+            // abilities whose only valid tile in scan is the caster's own
+            // tile (Mettle Steel/Focus/etc on a buff cast at self) work
+            // without coords. Resolve to the caster's grid pos. Live-flagged
+            // playtest #3 2026-04-25: Steel reported as `(4,10)<Ramza SELF>`
+            // but `battle_ability "Steel"` (no coords) failed; coords were
+            // only filled for explicit isSelfTarget abilities.
+            bool autoSelfTarget = (targetX < 0 || targetY < 0)
+                && (loc.isSelfTarget
+                    || (_lastValidAbilityTiles != null
+                        && _lastValidAbilityTiles.TryGetValue(abilityName, out var selfTiles)
+                        && selfTiles.Count == 1));
+            if (autoSelfTarget)
+            {
+                var castorPos = ReadGridPos();
+                if (castorPos.x >= 0 && castorPos.y >= 0)
+                {
+                    targetX = castorPos.x;
+                    targetY = castorPos.y;
+                    ModLogger.Log($"[BattleAbility] Auto-targeting caster at ({targetX},{targetY}) for self-target ability '{abilityName}'");
+                }
+            }
+
             if (!loc.isSelfTarget && (targetX < 0 || targetY < 0))
             {
                 response.Status = "failed";
-                response.Error = $"Ability '{abilityName}' requires a target (locationId=x, unitIndex=y)";
+                response.Error = $"Ability '{abilityName}' requires a target tile. Usage: battle_ability \"{abilityName}\" <x> <y>";
                 SendKey(VK_ESCAPE);
+                return response;
+            }
+
+            // Up-front range validation: reject when the target tile isn't
+            // in this ability's valid set (cached from the last scan_move).
+            // Without this, an out-of-range cast enters targeting mode,
+            // navigates the cursor wherever, and silently returns a phantom-
+            // success "Used X on (Y)" message. Live-flagged playtest #3
+            // 2026-04-25: Phoenix Down out of range said "Used Phoenix Down
+            // on (4,6)" with no actual cast.
+            // Skip when no cache exists (caller didn't run scan_move first)
+            // or the ability isn't in the cache (unscanned ability — let
+            // the nav loop surface its own error).
+            if (_lastValidAbilityTiles != null
+                && _lastValidAbilityTiles.TryGetValue(abilityName, out var validTiles)
+                && validTiles.Count > 0
+                && !validTiles.Contains((targetX, targetY)))
+            {
+                response.Status = "failed";
+                response.Error = $"Tile ({targetX},{targetY}) is not in {abilityName}'s valid target range. Run scan_move first and pick from this ability's validTargetTiles ({validTiles.Count} valid tiles cached).";
                 return response;
             }
 
@@ -2956,6 +3023,25 @@ namespace FFTColorCustomizer.GameBridge
 
                         return entry;
                     }).ToList();
+
+                    // Cache valid-target tiles per ability for up-front
+                    // range validation in battle_ability. Only populated for
+                    // the active player unit (validTargetTiles isn't computed
+                    // for non-active units). Lookup is case-insensitive.
+                    if (isActive && abilities != null)
+                    {
+                        var abilityCache = new Dictionary<string, HashSet<(int x, int y)>>(
+                            System.StringComparer.OrdinalIgnoreCase);
+                        foreach (var ae in abilities)
+                        {
+                            if (string.IsNullOrEmpty(ae.Name)) continue;
+                            if (ae.ValidTargetTiles == null) continue;
+                            var tiles = new HashSet<(int x, int y)>(
+                                ae.ValidTargetTiles.Select(t => (t.X, t.Y)));
+                            abilityCache[ae.Name] = tiles;
+                        }
+                        _lastValidAbilityTiles = abilityCache;
+                    }
                 }
                 else if (u.Team != 0 && jobName != null)
                 {
@@ -4002,6 +4088,20 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
+            // Pre-flight: refuse to act during another team's turn. Any
+            // keypress in BattleEnemiesTurn / BattleAlliesTurn pauses the
+            // game (Escape opens pause). Caller should poll `screen` until
+            // BattleMyTurn returns.
+            var preflight = _detectScreen();
+            if (preflight != null
+                && (preflight.Name == "BattleEnemiesTurn" || preflight.Name == "BattleAlliesTurn"))
+            {
+                response.Status = "failed";
+                response.Error = $"Not your turn (current: {preflight.Name}). Wait for BattleMyTurn before moving.";
+                response.Screen = preflight;
+                return response;
+            }
+
             // Validate target tile against last scan_move results
             ModLogger.Log($"[MoveGrid] Validating ({targetX},{targetY}): validTiles={_lastValidMoveTiles?.Count ?? -1}");
             if (!MoveValidator.IsValidTile(targetX, targetY, _lastValidMoveTiles))
@@ -4299,6 +4399,13 @@ namespace FFTColorCustomizer.GameBridge
             // error handling for that single call. Better than rejecting
             // a now-valid target with a stale "out of range" error.
             _lastValidAttackTiles = null;
+            // Same for the per-ability tile cache: pre-move ranges are
+            // stale (every ability's reachable set changes when the caster
+            // moves). Live-flagged playtest #3 2026-04-25: agent moved,
+            // then battle_ability rejected with "not in valid range" using
+            // the OLD range. Invalidate so battle_ability falls through to
+            // its nav loop until the next scan_move repopulates.
+            _lastValidAbilityTiles = null;
 
             // S58: credit tiles-moved to the active unit. Distance is
             // Manhattan (grid movement is one step per tile, no diagonal).
@@ -4880,6 +4987,18 @@ namespace FFTColorCustomizer.GameBridge
         /// <summary>Last computed valid move tiles from scan_move BFS. Used by battle_move to validate targets.</summary>
         private HashSet<(int x, int y)>? _lastValidMoveTiles;
         private HashSet<(int x, int y)>? _lastValidAttackTiles;
+
+        /// <summary>
+        /// Per-ability valid target tile cache, keyed by ability name (case-
+        /// insensitive). Populated during scan_move from each ability's
+        /// validTargetTiles list. battle_ability uses this to reject out-of-
+        /// range calls up-front rather than entering targeting mode and
+        /// silently returning a phantom-success message. Self-target abilities
+        /// (HRange=Self) are stored with the caster's tile as the only valid
+        /// entry. Live-flagged 2026-04-25 playtest #3: Phoenix Down out of
+        /// range said "Used Phoenix Down on (4,6)" with no actual cast.
+        /// </summary>
+        private Dictionary<string, HashSet<(int x, int y)>>? _lastValidAbilityTiles;
 
 
         /// <summary>Get enemy grid positions from last scan for BFS blocking.
@@ -6395,6 +6514,22 @@ namespace FFTColorCustomizer.GameBridge
 
         private void SendKey(int vk)
         {
+            // Guard: refuse to send keys during BattleEnemiesTurn /
+            // BattleAlliesTurn. Any key during enemy turn opens the pause
+            // menu (live-observed playtest #3 2026-04-25: a stray Escape
+            // mid-enemy-turn paused the game and the next battle_move
+            // failed "Not in Move mode" because the state was BattlePaused).
+            // Higher-level helpers should pre-flight-fail on these states
+            // rather than reach here, but this is defense-in-depth for the
+            // post-attack/post-cast cleanup paths that may race a state
+            // transition.
+            var pre = _detectScreen();
+            if (pre != null
+                && (pre.Name == "BattleEnemiesTurn" || pre.Name == "BattleAlliesTurn"))
+            {
+                ModLogger.Log($"[SendKey] BLOCKED vk=0x{vk:X2} — screen={pre.Name} (would open pause menu). Caller should wait for BattleMyTurn.");
+                return;
+            }
             _input.SendKeyPressToWindow(_gameWindow, vk);
             // Keep the state machine in sync so compound nav helpers don't
             // leave it stuck at PartyMenu while the game advances deep into
