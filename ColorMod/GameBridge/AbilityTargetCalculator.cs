@@ -205,9 +205,18 @@ namespace FFTColorCustomizer.GameBridge
                 ? map.Tiles[casterX, casterY].Height
                 : 0;
 
-            // VR=0 in the table means "melee, use caster Jump as vertical reach".
-            // Real vertical-range abilities (Throw Stone, Black Magicks) have VR=99.
-            int vr = ability.VRange > 0 ? ability.VRange : casterJump;
+            // VR=0 in the table normally means "melee, use caster Jump as
+            // vertical reach" — appropriate for basic weapon Attack. Strict
+            // abilities (most Martial Arts melee, e.g. Pummel, Doom Fist,
+            // Cyclone) don't inherit caster Jump and require same-height
+            // targets; signaled via IsHeightStrict on the data row.
+            // Real vertical-range abilities (Throw Stone, Black Magicks)
+            // have VR=99.
+            int vr;
+            if (ability.IsHeightStrict)
+                vr = ability.VRange;
+            else
+                vr = ability.VRange > 0 ? ability.VRange : casterJump;
 
             // Enemy-target abilities can't be aimed at the caster's own tile for
             // point-target casts. Radius casts CAN land their center on the caster

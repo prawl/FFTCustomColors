@@ -54,7 +54,12 @@ namespace FFTColorCustomizer.GameBridge
         bool Reflectable = false,     // Can be reflected by Reflect status
         bool Arithmetickable = false, // Can be cast via Arithmeticks
         AbilityShape Shape = AbilityShape.Auto,  // Splash shape; default infers from (HRange, AoE)
-        int MinRange = 0                        // Minimum range (guns=2, bows=2, crossbows=3)
+        int MinRange = 0,                        // Minimum range (guns=2, bows=2, crossbows=3)
+        // Strict vertical-range abilities (most Martial Arts melee, e.g. Pummel,
+        // Doom Fist, Cyclone) require the target at the SAME height as the
+        // caster. They don't inherit caster Jump like a basic weapon Attack
+        // does. Default false: VR=0 falls back to caster Jump as before.
+        bool IsHeightStrict = false
     );
 
     /// <summary>
@@ -449,24 +454,32 @@ namespace FFTColorCustomizer.GameBridge
                 new(0x68, "Death",          24, "4",    99, 1, 0, "enemy",      "Magick that offers up the target's soul to the spirits of the dead for an instant KO.",           CastSpeed: 10,                       AddedEffect: "Inflicts KO",                   Reflectable: true,  Arithmetickable: true),
                 new(0x69, "Flare",          60, "5",    99, 1, 0, "enemy",      "Magick that converts energy into heat, scorching the battlefield with searing temperatures.",     CastSpeed: 15,                                                                     Reflectable: true,  Arithmetickable: true),
             },
+            // Martial Arts melee abilities (Pummel, Doom Fist, Cyclone, Chakra,
+            // Purification, Revive) require the target at the SAME height as
+            // the caster — they don't inherit caster Jump like a basic weapon
+            // Attack does. Live-confirmed at Siedge Weald 2026-04-25 (Pummel
+            // failed at zDelta=2 with caster Jump=3). Aurablast (HRange=3) is
+            // a ranged martial-arts strike with full VR=99. Shockwave is a
+            // line attack governed by HoE on its own code path.
             ["Martial Arts"] = new()
             {
                 new(0x00, "Cyclone",         0, "1",  0, 2, 0, "enemy/AoE", "Turn in a circle, attacking with backhand blows.",
-                    CastSpeed: 0),
+                    CastSpeed: 0, IsHeightStrict: true),
                 new(0x78, "Pummel",          0, "1",  0, 1, 0, "enemy", "Strike many times in quick succession.",
-                    CastSpeed: 0),
+                    CastSpeed: 0, IsHeightStrict: true),
                 new(0x79, "Aurablast",       0, "3",  99, 1, 0, "enemy", "Employ one's martial spirit to strike a distant foe.",
                     CastSpeed: 0),
                 new(0x7A, "Shockwave",       0, "8",  0, 1, 2, "enemy", "Release spiritual energy mighty enough to rend the earth.",
                     CastSpeed: 0, Element: "Earth", Shape: AbilityShape.Line),
                 new(0x7B, "Doom Fist",       0, "1",  0, 1, 0, "enemy", "Invite slow, certain death with blows to pressure points.",
-                    CastSpeed: 0, AddedEffect: "Applies Doom"),
+                    CastSpeed: 0, AddedEffect: "Applies Doom", IsHeightStrict: true),
                 new(0x7C, "Purification",    0, "Self", 0, 2, 0, "ally/AoE", "Release positive energy to remove status ailments.",
-                    CastSpeed: 0, AddedEffect: "Removes Stone, Blindness, Confusion, Silence, Berserk, Toad, Poison, Sleep, Immobilize, Disable"),
+                    CastSpeed: 0, AddedEffect: "Removes Stone, Blindness, Confusion, Silence, Berserk, Toad, Poison, Sleep, Immobilize, Disable",
+                    IsHeightStrict: true),
                 new(0x7D, "Chakra",          0, "Self", 0, 2, 0, "ally/AoE", "Draw out the energy within the body's chakra points to restore HP and MP.",
-                    CastSpeed: 0),
+                    CastSpeed: 0, IsHeightStrict: true),
                 new(0x7E, "Revive",          0, "1",  0, 1, 0, "ally", "Calls back dead units with a loud cry.",
-                    CastSpeed: 0, AddedEffect: "Removes KO"),
+                    CastSpeed: 0, AddedEffect: "Removes KO", IsHeightStrict: true),
             },
             // Time Magicks: Haste verified in-game by user 2026-04-11. Rest sourced from
             // FFT wiki (MP, Range, Effect/AoE, Speed, descriptions). HoE values mirror the

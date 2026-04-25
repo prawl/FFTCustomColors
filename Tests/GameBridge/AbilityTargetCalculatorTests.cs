@@ -141,13 +141,14 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void GetValidTargetTiles_VRange0_FallsBackToCasterJump()
         {
-            // Pummel is a melee ability with VR=0 in our table — it should inherit
-            // the caster's Jump stat as its effective vertical reach. A Monk with
-            // Jump=4 should be able to Pummel an adjacent tile raised by 3h.
+            // Basic weapon Attack uses VR=0 with the caster Jump fallback —
+            // a Knight with Jump=4 can swing at an adjacent tile raised by
+            // 3h. (Used to be named after Pummel; Pummel is now IsHeightStrict
+            // and lives in the IsHeightStrict tests below.)
             var map = FlatMap(10, height: 5);
             map.Tiles[6, 5] = new MapTile { Height = 8 }; // +3h from caster
-            var pummel = new ActionAbilityInfo(0, "Pummel", 0, "1", 0, 1, 0, "enemy", "");
-            var tilesWithJump = AbilityTargetCalculator.GetValidTargetTiles(5, 5, pummel, map, casterJump: 4);
+            var meleeAttack = new ActionAbilityInfo(0, "Attack", 0, "1", 0, 1, 0, "enemy", "");
+            var tilesWithJump = AbilityTargetCalculator.GetValidTargetTiles(5, 5, meleeAttack, map, casterJump: 4);
             Assert.Contains((6, 5), tilesWithJump);
         }
 
@@ -160,8 +161,8 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // that don't know the unit's Jump stat.
             var map = FlatMap(10, height: 5);
             map.Tiles[6, 5] = new MapTile { Height = 6 }; // +1h from caster
-            var pummel = new ActionAbilityInfo(0, "Pummel", 0, "1", 0, 1, 0, "enemy", "");
-            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, pummel, map);
+            var meleeAttack = new ActionAbilityInfo(0, "Attack", 0, "1", 0, 1, 0, "enemy", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, meleeAttack, map);
             Assert.DoesNotContain((6, 5), tiles);
         }
 
@@ -169,12 +170,65 @@ namespace FFTColorCustomizer.Tests.GameBridge
         public void GetValidTargetTiles_VRange0_HighJumpAllowsTallTarget()
         {
             // Jump=8 should allow reaching an adjacent +7h tile. Realistic for a
-            // late-game Dragoon or a Monk with Jump+N passives.
+            // late-game Dragoon swinging a melee weapon.
             var map = FlatMap(10, height: 5);
             map.Tiles[6, 5] = new MapTile { Height = 12 }; // +7h
-            var pummel = new ActionAbilityInfo(0, "Pummel", 0, "1", 0, 1, 0, "enemy", "");
-            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, pummel, map, casterJump: 8);
+            var meleeAttack = new ActionAbilityInfo(0, "Attack", 0, "1", 0, 1, 0, "enemy", "");
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(5, 5, meleeAttack, map, casterJump: 8);
             Assert.Contains((6, 5), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_IsHeightStrict_RejectsElevatedTileEvenWithJump()
+        {
+            // Pummel and most Martial Arts melee abilities require the target
+            // at the SAME height as the caster — they don't inherit caster Jump
+            // like a basic weapon Attack does. Live-confirmed at Siedge Weald
+            // 2026-04-25: Kenrick (Jump=3) at h=5 cannot Pummel Gobbledygook at
+            // h=3 even though zDelta=2 < jump=3.
+            var map = FlatMap(10, height: 5);
+            map.Tiles[6, 5] = new MapTile { Height = 6 }; // +1h from caster
+            var pummel = new ActionAbilityInfo(
+                0, "Pummel", 0, "1", 0, 1, 0, "enemy", "",
+                IsHeightStrict: true);
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(
+                5, 5, pummel, map, casterJump: 4);
+            Assert.DoesNotContain((6, 5), tiles);
+            // Same-height adjacent tiles still reachable
+            Assert.Contains((4, 5), tiles);
+            Assert.Contains((5, 4), tiles);
+            Assert.Contains((5, 6), tiles);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_IsHeightStrict_AllowsSameHeight()
+        {
+            // Strict abilities still hit any same-height tile within HR.
+            var map = FlatMap(10, height: 5);
+            var pummel = new ActionAbilityInfo(
+                0, "Pummel", 0, "1", 0, 1, 0, "enemy", "",
+                IsHeightStrict: true);
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(
+                5, 5, pummel, map, casterJump: 4);
+            Assert.Equal(4, tiles.Count);
+        }
+
+        [Fact]
+        public void GetValidTargetTiles_IsHeightStrict_RespectsExplicitVR()
+        {
+            // IsHeightStrict with VR>0 should still use the VR literally (no
+            // override). E.g. a hypothetical strict-Range-2-VR ability blocks
+            // tiles past zDelta=2 but allows up to and including 2.
+            var map = FlatMap(10, height: 5);
+            map.Tiles[6, 5] = new MapTile { Height = 7 }; // +2h
+            map.Tiles[5, 6] = new MapTile { Height = 8 }; // +3h
+            var ability = new ActionAbilityInfo(
+                0, "TestAbility", 0, "1", 2, 1, 0, "enemy", "",
+                IsHeightStrict: true);
+            var tiles = AbilityTargetCalculator.GetValidTargetTiles(
+                5, 5, ability, map, casterJump: 99);
+            Assert.Contains((6, 5), tiles);     // +2h within VR=2
+            Assert.DoesNotContain((5, 6), tiles); // +3h exceeds VR=2
         }
 
         [Fact]
