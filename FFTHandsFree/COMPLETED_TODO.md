@@ -2136,3 +2136,68 @@ Reequip / Evasive Stance submenu support:
 - **Don't use rotation-aware helpers without checking the convention.** `FacingArrowDelta` table inverse to ParseFacingDirection silently broke battle_wait facing.
 - **Don't trust SM-derived screen names when raw detection clearly says GameOver/Victory/Battle*.** EqA leak in BattleRetry was downstream of this — detection knew GameOver but SM said EqA, and BattleRetry consulted the SM-aware path.
 - **Don't snap a detection fingerprint in only one context.** Save-resume cleared submenuFlag; capturing only the pre-save state would have produced a fragile rule.
+
+
+### 2026-04-25 — Playtest-driven friction fixes (12 commits / 5 playtest runs / +13 tests 4587→4600)
+
+Five sub-agent playtests spawned via the new `feedback_playtest_friction_pattern.md` shape produced ~30 concrete friction items. ~22 shipped this session as bridge / UX / doc fixes; the rest tracked in `project_multi_unit_turn_handoff_bug.md` and the open narrator-damage-gap.
+
+**Commits (chronological):**
+- `c315efa` — `AttackOutcomeClassifier` keyed off post-animation screen state. Fixes basic Attack false-MISSED bug where ReadLiveHp couldn't fingerprint the target. (+12 tests)
+- `7b4bedf` — `IsHeightStrict` flag on Martial Arts melee abilities. Pummel / Doom Fist / Cyclone / Chakra / Purification / Revive enforce strict zDelta=0 instead of caster-jump fallback. (+3 tests)
+- `77aa799` — `[ACTED]` / `[MOVED]` header tags + "Abilities: (already used this turn)" replacement. Root caused via `BattleLifecycleClassifier.IsInsideBattle` missing terminal states + `FreshBattleMyTurnEntryClassifier` resetting on terminal-prior transitions. (+8 tests)
+- `094b1fe` — PostAction trailer pins to caster pos for attack/ability (was target tile post-attack, mixing target coords with caster HP).
+- `548a580` — Playtest #1 batch: `./fft` wrapper for per-Bash-call agents, R:/S:/M: passives in compact mode, dead-body filter on Attack tiles, Timeline turnOrder line, `execute_turn` Info aggregation, Commands.md doc adds.
+- `748605e` — `./fft` wrapper drops `set -e` (helpers tolerate non-zero exits). Renderer cleanup after bisect.
+- `61df79f` — Playtest #2 batch: Heights line, equipment tag (shield/helm/body/accessory), screen-override transient note, move-and-attack range note in BattleTurns.md.
+- `12605a3` — `ReviveTargetClassifier` (REVIVE / KO / REVIVE-ENEMY! / KO-ALLY!). Phoenix Down / Raise / Arise targeting now distinguishes dead allies from undead enemies (kill-via-reverse-revive). (+8 tests)
+- `9de952c` — Stats-keyed cache fallback in `UnitNameCache`. Dead unit's name preserved even when fingerprint search fails post-KO. Survives moves and deaths. (+5 tests)
+- `85229f1` — Playtest #3 batch: SendKey + per-helper guards refusing keys during BattleEnemiesTurn / BattleAlliesTurn. Per-ability range validation in battle_ability. Self-target auto-fill, error message rewrite, `execute_turn` cursor reset, PostAction backfill, scan_move deprecation removed, BattleDesertion documented, slow-helper threshold calibration.
+- `bcb7fea` — Playtest #4 batch: X-Potion phantom heal (dual-read static + live HP). Self-target auto-fill expanded. `execute_turn` flicker tolerance. AttackTiles `inRange` flag. Stale active-unit cache cleared on terminal screens. Guest-joined narrator event. Multi-enemy CT THREAT warning.
+- `83bd033` — Bash heredoc unescaped-quote silent renderer failure fix.
+
+**Shipped + LIVE-VERIFIED:**
+
+- [x] **`battle_attack` MISSED-on-hit bug** — `ReadLiveHp` heap-search can fail to fingerprint the target struct, falls back to `preHp == postHp`, formatter declared MISSED. Replaced with `AttackOutcomeClassifier` keyed off post-animation screen state. BattleMoving = HIT (HP=0 → KO), BattleAttacking = MISS, BattleVictory + HP=0 = KO, BattleVictory + HP>0 = Hit (flicker false-positive guard).
+- [x] **Martial Arts melee abilities require same height** — Pummel / Doom Fist / Cyclone / Chakra / Purification / Revive enforce strict zDelta=0. Aurablast (HRange=3 ranged) and Shockwave (line attack governed by HoE) keep their existing behavior.
+- [x] **Acted/Moved consumption surfaced clearly** — `screen` tags header with `[ACTED]`/`[MOVED]` and replaces consumed section with "(already used this turn)". Fixed two underlying bugs: `BattleLifecycleClassifier.IsInsideBattle` was missing terminal states (mid-attack flicker fired spurious StartBattle event clobbering `_actedThisTurn`); `FreshBattleMyTurnEntryClassifier.NotFreshPriors` didn't include those terminal states.
+- [x] **PostAction trailer caster-pos fix** — was reading cursor pos (target tile) + condensedBase HP (caster HP). Conflated target coords with caster HP. Added position-explicit overload.
+- [x] **`./fft` wrapper** — kills the `source ./fft.sh && <helper>` tax for agent drivers. Each Bash tool call is a fresh shell.
+- [x] **Passives R:/S:/M: in compact mode** — Counter / Auto-Potion / Hamedo are tactically critical. Live-observed: undisclosed Wisenkin Counter killed Ramza in playtest #1.
+- [x] **`execute_turn` Info aggregation** — bundled response now carries `Moved | Attacked ... HIT/MISS/KO'd | Waited` instead of just empty wait Info.
+- [x] **Dead bodies filtered from Attack tiles** — corpses excluded from cardinal Attack panel.
+- [x] **Timeline / turnOrder rendered** — `Timeline: E(E,ct=30) → *Ramza(P,ct=10)` line. Was in JSON but not rendered.
+- [x] **Heights context summary** — `H` field on BattleUnitState. Renderer shows `Heights: caster h=5 vs enemies h=3`.
+- [x] **Equipment tag (non-weapon)** — `ItemData.ComposeEquipmentTag` for shield/helm/body/accessory. Active-unit row reads `[Chaos Blade onHit:...] [Grand Helm, Maximillian, Sortilege, Escutcheon (strong)]`.
+- [x] **Phoenix Down intent tagging** — `ReviveTargetClassifier` maps target/caster/hp/status → REVIVE / REVIVE-ENEMY! / KO / KO-ALLY!. PD on undead enemy = kill move (reverse-revive); previously the playtest agent missed this use case.
+- [x] **Dead unit name preservation** — secondary stats-keyed cache `(maxHp, level, team) → name` survives moves and deaths.
+- [x] **SendKey enemy-turn guard** — refuses to send keys during BattleEnemiesTurn / BattleAlliesTurn (any key during enemy turn opens the pause menu).
+- [x] **`battle_ability` range validation** — fixes Phoenix Down phantom-success. Per-ability tile cache populated during scan; out-of-range calls fail with clear error.
+- [x] **Self-target auto-fill** — `battle_ability "Tailwind"` (no coords) defaults to caster's tile when caster IS in valid set.
+- [x] **`battle_ability` error vocabulary rewrite** — was "requires a target (locationId=x, unitIndex=y)" leaking JSON field names; now "Usage: battle_ability \"Steel\" <x> <y>".
+- [x] **`execute_turn` pre-flight cursor reset** — forces menu cursor to Move slot before first sub-step dispatch.
+- [x] **`execute_turn` PostAction backfill** — backfill from accumulator's FinalPostAction or fresh ReadPostActionState when battle_wait doesn't populate one.
+- [x] **scan_move deprecation banner removed** — docs reference scan_move as canonical; the "USE screen" reminder contradicted that.
+- [x] **BattleDesertion / BattleVictory / GameOver** added to BattleTurns.md screen-states table.
+- [x] **Slow-helper red threshold** — `execute_turn` / `battle_wait` / `auto_place_units` calibrated to 12s warn (was 800ms global).
+- [x] **X-Potion phantom heal** — `ReadLiveHp`'s heap search can collide with a wrong-struct's saved-MaxHp value. Cross-check against ReadStaticArrayHpAt; if disagree by more than half MaxHp, prefer static.
+- [x] **`<SELF>` marker semantics doc note** — clarified in BattleTurns.md that SELF means "your tile is one valid target," not "this is a self-only ability."
+- [x] **`execute_turn` flicker tolerance** — re-check after 800ms before aborting on transient terminal states.
+- [x] **AttackTiles `inRange` flag** — `[TOO CLOSE]` tag for d=1 cardinals when bow/gun MinRange=2.
+- [x] **Stale active-unit cache cleared on terminal screens** — agent saw "Tietra" (a story character not present in this battle) in the header right before GameOver. Clear on BattleVictory / BattleDesertion / GameOver.
+- [x] **Guest-joined narrator event** — `case "added"` in BattleNarratorRenderer surfaces `> X (TEAM) joined at (x,y)`.
+- [x] **Multi-enemy CT THREAT warning** — `!! THREAT: N enemies act before your next turn` line when 3+ enemies precede caster in turnOrder. Live-flagged: agent went 548→36 HP in one battle_wait because three enemies converged.
+- [x] **Bash heredoc unescaped-quote silent failure** — adding `"..."` in JS comment inside `node -e "..."` heredoc closes the bash double-quote, swallowed by `2>/dev/null`.
+
+**Open from this session (next-session priorities):**
+
+- [~] **Multi-unit party turn-handoff confusion** — proposal drafted (`project_multi_unit_turn_handoff_bug.md`); three-fix plan ready to ship. Banner + cache invalidation on turn-boundary + auto-scan post-wait. Highest priority.
+- [~] **Narrator damage/KO gap** — playtest #3 agent saw a Skeleton mysteriously die with no narrator entry. `BattleNarratorRenderer` supports `damaged`/`ko` events but `UnitScanDiff` may not be capturing all of them.
+
+**Techniques worth propagating** (now in memory):
+
+- See `feedback_playtest_friction_pattern.md` — fresh-eyes sub-agent playtests surface friction the dev can't see; pattern + driver-prompt rules + post-run triage.
+- See `feedback_phantom_success_pattern.md` — generalized fix shape for any helper that uses a resource and reports outcome.
+- See `feedback_bash_heredoc_quote_breakage.md` — diagnostic for silent renderer failures.
+- See `project_2026_04_25_playtest_fixes.md` — full commit roster for this session.
+- See `project_multi_unit_turn_handoff_bug.md` — detailed proposal for the open multi-unit bug.

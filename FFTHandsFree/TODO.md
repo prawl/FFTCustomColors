@@ -80,6 +80,18 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 (All shipped items archived to [COMPLETED_TODO.md](COMPLETED_TODO.md) under the 2026-04-25 entries.)
 
+### Multi-unit turn-handoff (top priority — proposal drafted)
+
+- [ ] **Loud `=== TURN HANDOFF: A → B ===` banner in `execute_turn` / `battle_wait` response** [Bridge] — when the bundled-turn helper returns and the active-unit identity has changed (diff `accumulator.InitialPostAction` vs final read), prepend the banner to `response.Info`. Multi-unit party agents lose track of which unit is now active and issue commands meant for the prior unit. See `project_multi_unit_turn_handoff_bug.md`.
+
+- [ ] **Cache invalidation on turn-cycle boundary** [Bridge] — when BattleMyTurn returns from a non-MyTurn state (BattleEnemiesTurn / BattleAlliesTurn ended), clear `_lastValidMoveTiles`, `_lastValidAttackTiles`, `_lastValidAbilityTiles`, `_cachedActiveUnitName` / Job / X / Y / HP / WeaponTag. Different unit = different stats, abilities, start position; the prior unit's caches are stale.
+
+- [ ] **Auto-scan post-turn-cycle** [Bridge] — when `execute_turn` or `battle_wait` returns to BattleMyTurn, automatically run `scan_move` and include results in the response. Mirror the existing post-`battle_move` re-scan at `CommandWatcher.cs:3937`. Caller's `response.battle.activeUnit` and `response.validPaths` are populated for the NEW unit immediately.
+
+### Narrator gap (deferred from playtest #3)
+
+- [ ] **Narrator damage/KO not always captured** [Narrator] — playtest agent saw a Skeleton go from 344/680 → DEAD with no `> X took N damage` / `> X died` line in the `battle_wait` event log. `BattleNarratorRenderer` supports `damaged`/`ko` events, so the gap is upstream in `UnitScanDiff.Compare` (HP transitions not surfaced for some damage paths, possibly enemy-on-enemy or multi-target hits). Repro: get into a battle where multiple enemies attack each other / ally each other; diff scans pre/post `battle_wait`; verify `damaged` events fire for all HP changes.
+
 ### Phase 3 — Memory hunts (blocks per-action attribution)
 
 - [~] **Memory hunt: active-unit-index byte during BattleEnemiesTurn / BattleAlliesTurn** [Memory] — Infrastructure SHIPPED 2026-04-25 (`0455332` `memory_diff` bridge action + `memory_diff` shell helper). Hunt itself deferred — needs a battle survival window long enough to capture: snap during BattleMyTurn (Ramza active), chunked battle_wait into BattleEnemiesTurn (use `maxPollMs:1500`), snap, diff via `memory_diff`. Today's attempt at Siedge Weald lost the battle before the cycle completed (Ramza died to enemy advance at HP 431 → 0). Re-attempt in a battle where Ramza can sustain multiple enemy-turn cycles without dying. The diff should reveal a u8 cycling through roster indices.
