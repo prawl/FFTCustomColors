@@ -5681,7 +5681,37 @@ namespace FFTColorCustomizer.Utilities
         {
             var first = DetectScreen();
             if (first == null) return null;
-            if (!requireSettle) return first;
+            if (!requireSettle)
+            {
+                // Quick multi-sample debounce: when the freshly-classified
+                // screen DIFFERS from the last-committed screen, do up to
+                // two more reads and take the majority. Catches transient
+                // races where one byte advances mid-classification (the
+                // root of the Victory↔LoadGame, Cutscene↔WorldMap,
+                // AlliesTurn↔CrystalMoveConfirm misfires that the
+                // transition validator's blacklist may not always cover).
+                // Stable screens (first.Name == _lastClassifiedScreen)
+                // skip the debounce entirely — no latency for the common
+                // case.
+                if (string.IsNullOrEmpty(_lastClassifiedScreen)
+                    || first.Name == _lastClassifiedScreen)
+                {
+                    return first;
+                }
+                Thread.Sleep(30);
+                var second = DetectScreen();
+                if (second != null && second.Name == first.Name)
+                {
+                    return first;
+                }
+                Thread.Sleep(30);
+                var third = DetectScreen();
+                var pick = GameBridge.MajorityVote.Pick(first.Name, second?.Name, third?.Name);
+                if (pick == first.Name) return first;
+                if (pick == second?.Name) return second;
+                if (pick == third?.Name) return third;
+                return first;  // unreachable defensively
+            }
 
             var sw = Stopwatch.StartNew();
             string lastName = first.Name;
