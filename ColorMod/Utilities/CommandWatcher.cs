@@ -1906,6 +1906,37 @@ namespace FFTColorCustomizer.Utilities
         {
             if (StrictMode)
             {
+                // BattleAutoBattle quarantine: when the AI-takeover menu is up,
+                // the only safe input is Escape (back out). Any commit (Enter)
+                // hands control to the AI; any directional nav just moves the
+                // confirm cursor within the same destructive menu. Block all
+                // game actions + any non-Escape key presses; leave infra
+                // queries (screen / scan_*) open so the agent can still see
+                // the state. Live-flagged 2026-04-26 playtest #9: agent
+                // looped back into AutoBattle when stuck on a Disabled unit.
+                {
+                    bool isInfraEarly = !string.IsNullOrEmpty(command.Action) && InfrastructureActions.Contains(command.Action);
+                    bool isNoOpEarly = string.IsNullOrEmpty(command.Action) && (command.Keys == null || command.Keys.Count == 0);
+                    bool isEscapeEarly = string.IsNullOrEmpty(command.Action) && command.Keys?.Count == 1 && command.Keys[0].Vk == 0x1B;
+                    if (!isInfraEarly && !isNoOpEarly && !isEscapeEarly)
+                    {
+                        var quarScreen = DetectScreen();
+                        if (quarScreen?.Name == "BattleAutoBattle")
+                        {
+                            return new CommandResponse
+                            {
+                                Id = command.Id,
+                                Status = "blocked",
+                                Error = "⚠ You're in Auto-Battle. Please back out — press Escape (or call `path Cancel`). All other inputs are blocked here because pressing Enter hands the turn to the AI; arrow keys would just move the confirm cursor inside the same destructive menu.",
+                                ProcessedAt = DateTime.UtcNow.ToString("o"),
+                                GameWindowFound = true,
+                                Screen = quarScreen,
+                                ValidPaths = NavigationPaths.GetPaths(quarScreen)
+                            };
+                        }
+                    }
+                }
+
                 // In strict mode, only allow:
                 //   1. Infrastructure actions (scan_units, read_address, etc.)
                 //   2. Named game actions from fft.sh helpers (path, battle_wait, etc.)

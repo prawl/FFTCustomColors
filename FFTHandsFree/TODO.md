@@ -118,6 +118,8 @@ Organized by "what blocks Claude from playing a full session end-to-end" — mos
 
 ## 9. Battle — Advanced (P2)
 
+- [ ] **Geomancy renders one terrain-resolved spell, not a 13-row catalog dump** [Bridge/Render] — Geomancer's "Elemental" ability casts a SINGLE spell determined by the terrain the unit is standing on (Grass→Tanglevine, Lava→Magma Surge, Sand→Sandstorm, etc.). Today the scan output dumps all 13 variants as separate rows under Abilities, which is a wall of nearly-identical lines that buries everything else (playtest #7 / #8 friction — the agent had to scroll past the catalog to find the Units block). User-requested format: render as a single line — `Geomancy: <ResolvedSpellName> R:5 AoE:2 [Element] {Status}` — like other primary skillset entries. Requires: (a) read the terrain-type byte at the active Geomancer's tile, (b) map terrain ID → spell name (canonical FFT mapping; per-spell description text references the terrain types it covers), (c) filter the scan's ability list to only the resolved spell when the skillset is Geomancy. **Deferred 2026-04-26** because it needs a terrain-byte memory hunt; the [fft-map-json](https://github.com/rainbowbismuth/fft-map-json) reference at the bottom of this file may have the static terrain table. Live battle reads still needed for confirmation. Surface to fix is `screen` rendering and possibly `ActionAbilityLookup.cs`'s Geomancy entry list.
+
 
 ## 12. Known Issues / Blockers
 

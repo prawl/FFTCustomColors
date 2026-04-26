@@ -568,7 +568,11 @@ try{
   local LINE="$(_col "$_C_SCR" "[$SCR]")"
 
   if [[ "$SCR" == Battle* ]]; then
-    # Battle screens: active unit banner (with position + HP when available), then ui=.
+    # Battle screens: ui= first (decision surface — Move/Act/Wait), then the
+    # active unit banner. Used to render unit-then-ui; flipped so ui= sits
+    # at a fixed first position regardless of screen type (matches non-battle
+    # branch + the screen() helper's render).
+    [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
     if [ -n "$ASUM" ]; then
       LINE="$LINE $(_col "$_C_UNIT" "$ASUM")"
     elif [ -n "$ANAME" ] && [ -n "$AJOB" ]; then
@@ -576,7 +580,6 @@ try{
     elif [ -n "$AJOB" ]; then
       LINE="$LINE ($AJOB)"
     fi
-    [ -n "$UI" ] && LINE="$LINE ui=$(_col "$_C_UI" "$UI")"
     # Turn-state tags: surface `acted` when Act is consumed and `moved` when
     # Move is consumed so Claude doesn't have to probe battleActed/battleMoved
     # separately to know which menu slots are grayed. Only show on action-
@@ -3403,6 +3406,197 @@ running() {
   fi
 }
 
+# info: Print the environment discovery block — exe paths, mod path, bridge
+# dir, repo root, current screen, log size. Replaces the ad-hoc grepping a
+# fresh Claude session does on first wake to figure out where everything is.
+# Idempotent — safe to call any time. No bridge round-trip.
+info() {
+  local repoRoot
+  repoRoot=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+  echo "=== FFT bridge environment ==="
+  echo "  repo root      : $repoRoot"
+  echo "  cwd            : $(pwd)"
+  echo "  game exe       : C:\\Program Files (x86)\\Steam\\steamapps\\common\\FINAL FANTASY TACTICS - The Ivalice Chronicles\\FFT_enhanced.exe"
+  echo "  reloaded-ii    : /c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/Reloaded/reloaded-ii.exe"
+  echo "  mod install dir: /c/program files (x86)/steam/steamapps/common/FINAL FANTASY TACTICS - The Ivalice Chronicles/Reloaded/Mods/FFTColorCustomizer"
+  echo "  bridge dir (\$B): $B"
+  echo
+  echo "=== Game state ==="
+  if tasklist //NH //FI "IMAGENAME eq FFT_enhanced.exe" 2>/dev/null | grep -qi "FFT_enhanced.exe"; then
+    echo "  process        : RUNNING"
+    if [ -f "$B/response.json" ]; then
+      local scr
+      scr=$(grep -o '"name":"[^"]*"' "$B/response.json" 2>/dev/null | head -1 | cut -d'"' -f4)
+      echo "  last screen    : ${scr:-(unknown — no response.json yet)}"
+    else
+      echo "  last screen    : (no response.json yet — call screen)"
+    fi
+  else
+    echo "  process        : NOT RUNNING (use restart to launch)"
+  fi
+  echo
+  echo "=== Logs ==="
+  if [ -f "$B/live_log.txt" ]; then
+    local b l
+    b=$(wc -c <"$B/live_log.txt" 2>/dev/null | tr -d ' ')
+    l=$(wc -l <"$B/live_log.txt" 2>/dev/null | tr -d ' ')
+    echo "  live_log.txt   : ${b} bytes / ${l} lines"
+    echo "                   tail with: logs 40   (or: logs grep <pat>)"
+  fi
+  if [ -f "$B/live_events.log" ]; then
+    local eb
+    eb=$(wc -c <"$B/live_events.log" 2>/dev/null | tr -d ' ')
+    echo "  live_events.log: ${eb} bytes (narration stream — watch via watch_narration)"
+  fi
+  echo "  session JSONL  : ls $B/session_*.jsonl | tail -1     (use session_tail to read)"
+  echo
+  echo "=== Quick orientation ==="
+  echo "  screen         : current state + (in battle) full unit scan + valid moves"
+  echo "  cheatsheet     : 30-line top-of-mind reference"
+  echo "  commands       : list every fft.sh helper (or: commands <grep-pattern>)"
+  echo "  instructions   : print full battle docs (or: instructions all)"
+  echo "  path           : list valid actions for the current screen"
+}
+
+# cheatsheet: Curated TLDR for fresh sessions. The absolute minimum a fresh
+# Claude agent needs to be productive in battle. Full docs are one helper
+# away (instructions). Keep this under ~40 lines — if it gets longer, split
+# into instructions.
+cheatsheet() {
+  cat <<'EOF'
+=== FFT bridge cheatsheet (battle scope) ===
+
+State queries (free, no bridge mutation):
+  screen              # current state. In battle: full scan + abilities + tiles + units
+  screen -v           # verbose — adds raw stats per unit
+  path                # validPaths for the current screen (named actions you can call)
+  info                # env paths, game running?, last screen, log offsets
+  commands [pattern]  # list every fft.sh helper. e.g. `commands battle_` for battle helpers
+  instructions        # full battle docs (Rules + Commands + BattleTurns + AbilitiesAndJobs)
+
+Battle actions (one round-trip each):
+  battle_move X Y                    # walk to grid tile (X,Y)
+  battle_ability "Name" X Y          # cast on tile  (e.g. battle_ability "Cure" 6 5)
+  battle_ability "Shout"             # self-target — no coords
+  battle_attack X Y                  # shorthand for ability "Attack" X Y
+  battle_wait [N|S|E|W]              # end turn, face direction (auto-picks if omitted)
+  execute_turn moveX moveY "Name" tx ty   # bundle move+act+wait in one call
+  execute_turn '' '' "Cure" 6 5      # ability-only (skip move)
+
+Reads in unit rows (`screen` Units block):
+  HP=N/M             current/max HP                  d=N         distance from active unit
+  *                  this is the active unit         f=N|S|E|W   facing direction
+  [Status,...]       alive-only effects             ` DEAD/CRYSTAL/TREASURE/STONE`  lifeState (separate)
+  R: / S: / M:       Reaction / Support / Movement abilities
+
+Per-tile annotations on ability rows:
+  <Name JOB>  <Name SELF>  <Name ALLY>     who's on the tile
+  >rear  >side                              flank from where the unit is facing
+  ^strengthen                               element booster on that tile
+  [TOO CLOSE]                               adj enemy + min-range weapon (Blaze Gun etc.)
+  !blocked                                  bridge thinks LoS is blocked — try anyway
+
+Gotchas:
+  • Battle is BattleMyTurn → BattleMoving → BattleAttacking/Casting → BattleWaiting → enemy turns. screen knows.
+  • You MUST battle_wait to end a turn — Move + Act alone leaves you exposed.
+  • [TOO CLOSE] means the weapon's MIN range is too close, not too far.
+  • If a battle ends mid-bundle, execute_turn surfaces a `> [turn-interrupt]` line. Do not retry on GameOver.
+  • Strict mode is ON — use the named helpers above, never raw key presses.
+EOF
+}
+
+# commands: List every public fft.sh helper with its one-line description.
+# Auto-discovered by scanning the file for `^name() {` definitions and the
+# `# name:` style leading comments. Internal helpers (underscore-prefixed)
+# are skipped. Run with no args for the full list, or `commands <pattern>`
+# to grep.
+commands() {
+  local repoRoot script
+  repoRoot=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+  script="$repoRoot/fft.sh"
+  if [ ! -f "$script" ]; then
+    echo "[commands] ERROR: $script not found"
+    return 1
+  fi
+  local pattern="${1:-}"
+  awk '
+    # Track the most recent comment block — first `# foo: ...` line is the desc.
+    /^# [a-z][a-zA-Z0-9_]*: / && !desc {
+      sub(/^# /, "")
+      desc = $0
+      next
+    }
+    /^[a-z][a-zA-Z0-9_]*\(\) \{/ {
+      name = $1
+      sub(/\(\).*/, "", name)
+      if (desc != "") {
+        # If desc starts with "<name>:" strip that prefix for tighter render.
+        sub("^" name ": ", "", desc)
+        printf "  %-22s  %s\n", name, desc
+      } else {
+        printf "  %-22s  (no description)\n", name
+      }
+      desc = ""
+      next
+    }
+    # Reset desc on blank line — keeps the comment+function pair tight.
+    /^$/ { desc = "" }
+    # Section headers — emit them so output is grouped.
+    /^# =+$/ { in_hdr = 1; next }
+    in_hdr && /^# [A-Z]/ {
+      printf "\n--- %s ---\n", substr($0, 3)
+      in_hdr = 0
+      next
+    }
+    in_hdr && /^# =+$/ { in_hdr = 0; next }
+  ' "$script" | { [ -n "$pattern" ] && grep -i "$pattern" || cat; }
+}
+
+# instructions: Print full instruction docs.
+#   instructions             # the 4 battle-relevant files in order
+#   instructions all         # every .md in Instructions/
+#   instructions <name>      # single file, e.g. `instructions BattleTurns`
+# Reads the .md files directly so the source-of-truth stays in markdown
+# (easier to edit, version-controls cleanly) — this helper is just a
+# discoverable surface for fresh sessions that don't want to track paths.
+instructions() {
+  local repoRoot
+  repoRoot=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+  local instDir="$repoRoot/FFTHandsFree/Instructions"
+  if [ ! -d "$instDir" ]; then
+    echo "[instructions] ERROR: $instDir not found"
+    return 1
+  fi
+  local mode="${1:-battle}"
+  local files=()
+  case "$mode" in
+    battle|"")
+      files=(Rules.md Commands.md BattleTurns.md AbilitiesAndJobs.md)
+      ;;
+    all)
+      mapfile -t files < <(cd "$instDir" && ls *.md 2>/dev/null)
+      ;;
+    *)
+      # Single-file lookup — accept "BattleTurns", "BattleTurns.md", or "battle_turns"
+      local name="$mode"
+      [[ "$name" != *.md ]] && name="${name}.md"
+      if [ -f "$instDir/$name" ]; then
+        files=("$name")
+      else
+        echo "[instructions] ERROR: '$mode' not found. Available: $(cd "$instDir" && ls *.md | tr '\n' ' ')"
+        return 1
+      fi
+      ;;
+  esac
+  for f in "${files[@]}"; do
+    echo "════════════════════════════════════════════════════════════════"
+    echo "  $f"
+    echo "════════════════════════════════════════════════════════════════"
+    cat "$instDir/$f"
+    echo
+  done
+}
+
 # _launch_game: Internal helper — starts Reloaded-II + FFT in the background.
 # Does NOT wait for the bridge; caller is responsible for that.
 _launch_game() {
@@ -3865,6 +4059,28 @@ us.forEach(u=>{
     _FFT_TIMING_SUFFIX=$(_fmt_timing "$_t0" "$_t1" "$_cmd")
     _fmt_screen_compact "$B/response.json"
     unset _FFT_TIMING_SUFFIX
+
+    # Surface validPaths + any info/error so the agent doesn't have to
+    # follow up with `path` on screens like GameOver / BattleVictory /
+    # BattlePaused / EncounterDialog (where the only useful next action
+    # IS a validPath). Skipped on battle states because the BattleMyTurn
+    # branch above already renders the full tactical view; other Battle*
+    # screens (Moving / Attacking / Casting / Acting) are mid-action and
+    # don't need ValidPaths surfaced from the compact view.
+    if [[ "$SCR" != Battle* ]] || [[ "$SCR" == "BattleVictory" ]] \
+       || [[ "$SCR" == "BattleDesertion" ]] || [[ "$SCR" == "BattlePaused" ]] \
+       || [[ "$SCR" == "BattleAutoBattle" ]] || [[ "$SCR" == "BattleStatus" ]] \
+       || [[ "$SCR" == "GameOver" ]]; then
+      node -e "
+try{
+  const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
+  if(r.info)console.log('  INFO:',r.info);
+  if(r.error&&r.status!=='completed')console.log('  ERROR:',r.error);
+  const vp=r.validPaths||{};
+  const keys=Object.keys(vp);
+  if(keys.length)console.log('  ValidPaths: '+keys.join(', '));
+}catch(e){}" "$B/response.json" 2>/dev/null
+    fi
 
     # Inventory summary (verbose only) — items=N types, M total.
     if $verbose && [ -f "$B/response.json" ]; then

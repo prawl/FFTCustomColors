@@ -27,8 +27,12 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void WorldMap_WithLocation_RendersLocString()
+        public void WorldMap_WithLocation_RendersUiBeforeLoc()
         {
+            // ui= must always be the first key=value field after the screen
+            // bracket so the agent can read the decision surface (current
+            // submenu / mode) at a glance regardless of screen type. Battle
+            // screens already had this; world screens used to put loc= first.
             var screen = new DetectedScreen
             {
                 Name = "WorldMap",
@@ -37,7 +41,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 UI = "Move",
             };
             var line = ScreenCompactFormatter.FormatHeader(screen, status: "completed");
-            Assert.Equal("[WorldMap] loc=9(Dorter) ui=Move status=completed", line);
+            Assert.Equal("[WorldMap] ui=Move loc=9(Dorter) status=completed", line);
         }
 
         [Fact]
@@ -70,8 +74,12 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void BattleMyTurn_WithActiveUnitSummary_RendersSummary()
+        public void BattleMyTurn_WithActiveUnitSummary_RendersUiBeforeUnit()
         {
+            // ui= must always be the first key=value field after the screen
+            // bracket — same rule as the world-side renderer. Battle used to
+            // put the unit summary first; flipped so the decision surface
+            // is at a fixed predictable position regardless of screen type.
             var screen = new DetectedScreen
             {
                 Name = "BattleMyTurn",
@@ -79,7 +87,7 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 UI = "Wait",
             };
             var line = ScreenCompactFormatter.FormatHeader(screen);
-            Assert.Equal("[BattleMyTurn] Kenrick(White Mage) (9,9) HP=437/437 ui=Wait", line);
+            Assert.Equal("[BattleMyTurn] ui=Wait Kenrick(White Mage) (9,9) HP=437/437", line);
         }
 
         [Fact]

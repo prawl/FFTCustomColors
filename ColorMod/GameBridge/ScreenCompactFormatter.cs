@@ -44,7 +44,13 @@ namespace FFTColorCustomizer.GameBridge
 
         private static void AppendBattleLine(StringBuilder sb, DetectedScreen screen, string? status)
         {
-            // Battle screens: active unit banner, then ui=.
+            // Battle screens: ui= first (decision surface — Move/Act/Wait/etc),
+            // then the active unit banner. Used to render unit-then-ui; flipped
+            // so the field that says "what menu am I in" is at a fixed first
+            // position regardless of screen type. Matches the world-side rule.
+            if (!string.IsNullOrEmpty(screen.UI))
+                sb.Append(" ui=").Append(screen.UI);
+
             if (!string.IsNullOrEmpty(screen.ActiveUnitSummary))
             {
                 sb.Append(' ').Append(screen.ActiveUnitSummary);
@@ -56,25 +62,25 @@ namespace FFTColorCustomizer.GameBridge
                     sb.Append('(').Append(screen.ActiveUnitJob).Append(')');
             }
 
-            if (!string.IsNullOrEmpty(screen.UI))
-                sb.Append(" ui=").Append(screen.UI);
-
             if (!string.IsNullOrEmpty(status))
                 sb.Append(" status=").Append(status);
         }
 
         private static void AppendWorldSideLine(StringBuilder sb, DetectedScreen screen, string? status)
         {
-            // World-side screens: location + hover + ui + status + optional objective.
+            // World-side screens: ui first (decision surface — what menu /
+            // mode am I in), then location, status, objective. ui= used to
+            // come after loc= here; flipped so the field that *changes the
+            // current decision* is read first regardless of screen type.
+            if (!string.IsNullOrEmpty(screen.UI))
+                sb.Append(" ui=").Append(screen.UI);
+
             if (screen.Location != 0 || !string.IsNullOrEmpty(screen.LocationName))
             {
                 sb.Append(" loc=").Append(screen.Location);
                 if (!string.IsNullOrEmpty(screen.LocationName))
                     sb.Append('(').Append(screen.LocationName).Append(')');
             }
-
-            if (!string.IsNullOrEmpty(screen.UI))
-                sb.Append(" ui=").Append(screen.UI);
 
             if (!string.IsNullOrEmpty(status))
                 sb.Append(" status=").Append(status);
