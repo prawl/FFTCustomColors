@@ -9834,6 +9834,20 @@ namespace FFTColorCustomizer.Utilities
                         ScreenMachine.SetScreen(expected.Value);
                 }
 
+                // Transition-state validator: if the freshly-classified screen
+                // name represents an impossible jump from the last-committed
+                // screen, revert to the last screen instead of committing the
+                // bad detection. Backstop for the known transient races
+                // (Victory→LoadGame, Victory→Desertion, Cutscene→WorldMap,
+                // BattleAttacking→CrystalMoveConfirm). Default-permit, so
+                // unrestricted transitions still flow through unchanged.
+                if (!string.IsNullOrEmpty(screen.Name)
+                    && !GameBridge.ScreenTransitionValidator.IsValidTransition(_lastClassifiedScreen, screen.Name))
+                {
+                    ModLogger.Log($"[ScreenTransitionValidator] Rejected {_lastClassifiedScreen} → {screen.Name} (impossible transition); reverting to {_lastClassifiedScreen}");
+                    screen.Name = _lastClassifiedScreen;
+                }
+
                 return screen;
             }
             catch (Exception ex)
