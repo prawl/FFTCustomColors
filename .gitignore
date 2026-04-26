@@ -103,3 +103,4 @@ ss*.png
 screenshot_crop.ps1
 fftwin_*.png
 
+.fft_snaps/

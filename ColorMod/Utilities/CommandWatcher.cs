@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,6 +45,118 @@ namespace FFTColorCustomizer.Utilities
         // once per DetectScreen dispatch in HandleBattleLifecycle.
         private string? _lastClassifiedScreen;
         internal readonly DialogueProgressTracker _dialogueTracker = new();
+
+        // Live dialog speaker pointer — discovered dynamically per session.
+        // The active dialog widget holds a u64 in heap that points to the
+        // current speaker's name string. Both the widget address AND the
+        // string-table address vary per session (UE4 module data load
+        // randomizes), so we must discover the pointer by anchoring on a
+        // known speaker name from the .mes file.
+        //
+        // CRITICAL SAFETY: ALL reads MUST go through IsAddressReadable to
+        // VirtualQueryEx-validate the page is committed. Reading an
+        // unmapped page via Marshal.Copy raises an AV that crashes the
+        // game in-process.
+        private const int DialogueSpeakerMaxStringBytes = 64;
+
+        // Discovery state — currently unused (ReadLiveSpeakerName returns
+        // null pending a working widget locator). Kept here as a placeholder
+        // so a future memory-hunt session can re-enable the live-pointer
+        // path without rebuilding the surrounding plumbing.
+        private long? _cachedSpeakerPointerAddr = null;
+
+        [DllImport("kernel32.dll")]
+        private static extern int VirtualQueryEx(nint hProcess, nint lpAddress,
+            out MemBasicInfo lpBuffer, uint dwLength);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MemBasicInfo
+        {
+            public nint BaseAddress;
+            public nint AllocationBase;
+            public uint AllocationProtect;
+            public nuint RegionSize;
+            public uint State;
+            public uint Protect;
+            public uint Type;
+        }
+
+        private static bool IsAddressReadable(nint addr, int size)
+        {
+            try
+            {
+                var process = System.Diagnostics.Process.GetCurrentProcess();
+                if (VirtualQueryEx(process.Handle, addr, out var mbi,
+                    (uint)Marshal.SizeOf<MemBasicInfo>()) == 0) return false;
+                bool committed = mbi.State == 0x1000;             // MEM_COMMIT
+                bool readable = (mbi.Protect & 0xEE) != 0;         // any read flag
+                bool notGuard = (mbi.Protect & 0x100) == 0;        // PAGE_GUARD off
+                if (!(committed && readable && notGuard)) return false;
+                long endAddr = (long)addr + size;
+                long regionEnd = (long)mbi.BaseAddress + (long)(ulong)mbi.RegionSize;
+                return endAddr <= regionEnd;
+            }
+            catch { return false; }
+        }
+
+        private GameBridge.DialogueSpeakerReader MakeSpeakerReader()
+        {
+            return new GameBridge.DialogueSpeakerReader(addr =>
+            {
+                var na = (nint)addr;
+                if (!IsAddressReadable(na, DialogueSpeakerMaxStringBytes)) return null;
+                try { return Explorer!.Scanner.ReadBytes(na, DialogueSpeakerMaxStringBytes); }
+                catch { return null; }
+            });
+        }
+
+        /// <summary>
+        /// Returns the on-screen speaker name from the active dialog widget,
+        /// or null if discovery hasn't succeeded yet. Pass the .mes-decoded
+        /// speaker as <paramref name="mesAnchorSpeaker"/> to seed bootstrap
+        /// discovery on the first call (we anchor on a string the engine
+        /// table is known to contain).
+        /// </summary>
+        private string? ReadLiveSpeakerName(string? mesAnchorSpeaker, int eventId)
+        {
+            // Live-pointer discovery is parked: in this game version, the
+            // dialog widget appears to use FText/FName indirection rather
+            // than a direct string pointer (session 2026-04-26 found the
+            // engine table in FString format, not the simple null-separated
+            // table session 1 had). The pointer-search approach finds the
+            // static table references but not the dynamic widget.
+            // Per-event hardcoded overrides (DialogueSpeakerOverrides.cs)
+            // are used in place of live reads for now. Re-enable this path
+            // once we have a reliable widget locator.
+            return null;
+        }
+
+        private static System.Collections.Generic.List<string> BuildAnchorCandidates(string mesSpeaker)
+        {
+            var list = new System.Collections.Generic.List<string>();
+            var trimmed = mesSpeaker.Trim();
+            if (trimmed.Length >= 6) list.Add(trimmed);
+            // Drop a leading title word like "Lord ", "Duke ", "Sir " so we
+            // can match e.g. "Lord Dycedarg Beoulve" → "Dycedarg Beoulve".
+            string[] titles = { "Lord ", "Duke ", "Sir ", "Lady ", "King ", "Queen ", "Prince ", "Princess " };
+            foreach (var t in titles)
+            {
+                if (trimmed.StartsWith(t, StringComparison.OrdinalIgnoreCase))
+                {
+                    var rest = trimmed.Substring(t.Length);
+                    if (rest.Length >= 6) list.Add(rest);
+                }
+            }
+            // Each individual word ≥6 chars. The engine's name table often
+            // stores just the bare character name ("Dycedarg") rather than
+            // the .mes verbose form ("Lord Dycedarg Beoulve").
+            foreach (var word in trimmed.Split(' '))
+            {
+                var w = word.Trim();
+                if (w.Length >= 6 && !list.Contains(w)) list.Add(w);
+            }
+            return list;
+        }
         private NavigationActions? _navActions;
         private MapLoader? _mapLoader;
         private RosterReader? _rosterReader;
@@ -7679,9 +7792,20 @@ namespace FFTColorCustomizer.Utilities
                             if (idx < script.Boxes.Count)
                             {
                                 var box = script.Boxes[idx];
+                                // Speaker resolution order:
+                                //   1. Hand-curated per-event override (most accurate
+                                //      for events we've already played through and
+                                //      verified — fills the [narrator] gaps the .mes
+                                //      file leaves behind).
+                                //   2. Live engine-pointer read (currently parked).
+                                //   3. .mes-decoded speaker (scene-opener tag only).
+                                string? curated = DialogueSpeakerOverrides.Get(eventId, idx);
+                                string? liveSpeaker = curated == null
+                                    ? ReadLiveSpeakerName(box.Speaker, eventId)
+                                    : null;
                                 screen.CurrentDialogueLine = new DialogueBoxPayload
                                 {
-                                    Speaker = box.Speaker,
+                                    Speaker = curated ?? liveSpeaker ?? box.Speaker,
                                     Text = box.Text,
                                     BoxIndex = idx,
                                     BoxCount = script.Boxes.Count,
