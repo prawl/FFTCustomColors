@@ -1488,6 +1488,42 @@ namespace FFTColorCustomizer.GameBridge
                     }
                 }
             }
+            // BattleAttacking-flicker tolerance: on a HIT or KO, the
+            // engine sometimes briefly leaves the targeting screen up
+            // before advancing to BattleMoving (facing-confirm). The
+            // existing wait loop breaks as soon as it sees ANY of the
+            // accepted post-states, so it can latch onto the transient
+            // BattleAttacking and the classifier reports MISSED for an
+            // attack that landed. Live-flagged 2026-04-26 (twice):
+            // Goblin and Skeleton both KO'd but reported MISSED.
+            // Resolve by re-settling once more — if the screen advances
+            // to BattleMoving / BattleActing, that's the real outcome.
+            // Real misses stay at BattleAttacking and fall through to
+            // the existing Miss classification.
+            if (postName == "BattleAttacking")
+            {
+                Thread.Sleep(500);
+                var s = _detectScreen();
+                if (s?.Name == "BattleMoving" || s?.Name == "BattleActing"
+                    || s?.Name == "BattleVictory")
+                {
+                    ModLogger.Log($"[BattleAttack] BattleAttacking-flicker resolved: {postName} → {s.Name}");
+                    postAttack = s;
+                    postName = s.Name;
+                    // Re-read postHp now that the engine has settled —
+                    // the post-KO struct teardown often completes during
+                    // this 500ms window, so a stale or unreadable HP
+                    // becomes a real 0 / static-array-cleared signal.
+                    int reLiveHp = ReadLiveHp(targetMaxHp, preHp, targetLevel);
+                    int reStaticHp = ReadStaticArrayHpAt(targetX, targetY);
+                    if (reLiveHp >= 0 || reStaticHp >= 0)
+                    {
+                        liveHp = reLiveHp;
+                        staticHpAtk = reStaticHp;
+                        postHp = reLiveHp >= 0 ? reLiveHp : reStaticHp;
+                    }
+                }
+            }
             // Pin the resolved screen on the response so the outer
             // ProcessCommand wrapper's `response.Screen ??= DetectScreenSettled(...)`
             // doesn't re-read the screen (and potentially re-catch the
