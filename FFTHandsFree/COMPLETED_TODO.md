@@ -2228,3 +2228,28 @@ Live walk-through of event 045 (Eagrose Castle, 29 paginated bubbles) reset the 
 
 - See `project_dialogue_decoder_2026_04_26.md` — full byte semantics writeup (FE/F8/E0/DA68/E3 08), sentence-balanced pagination algo, and the open speaker-accuracy paths.
 - See `feedback_tdd_default.md` — user explicitly asked for test-first discipline after this session went impl-first; default to TDD on future bug fixes.
+
+
+### 2026-04-26 — Per-box dialogue speakers via curated overrides (event 045)
+
+Bridge previously rendered most cutscene boxes as `[narrator]` because the .mes file only marks scene-opener speakers via `0xE3 0x08` and inherits null for mid-scene rotations. This session shipped a `(eventId, boxIdx) → speaker` overlay that fills the gaps using user-confirmed anchors and .mes content inference. Every one of event 045's 29 boxes now shows a real speaker name in the bridge response. Memory-hunt infrastructure was prototyped and parked behind a stub when the engine's FText/FName indirection layer turned out to be non-trivial to walk dynamically.
+
+**Commit:** `cb465b7` — Per-box dialogue speakers via curated overrides for event 045 (+9 tests, 4727 → 4736).
+
+**Shipped:**
+
+- [x] **`DialogueSpeakerOverrides.Get(eventId, boxIdx)` — hand-curated speaker map for event 045** — 29-entry array covering Dycedarg / Ramza / Delita / Man's Voice / Well-dressed Man / Duke Larg rotations, anchored on user-confirmed boxes 0/3/4/7/8/9/14/16 from the live walkthrough and inferred for the rest from .mes content (who's addressed, who's responding). Wired into `CommandWatcher.cs` ahead of the .mes-decoded `box.Speaker` so curated names override the `[narrator]` fallback.
+- [x] **`DialogueSpeakerReader` pure helper** — pointer-to-string resolver with strict ASCII validation, configurable read callback (testable without live memory), and a sane address window (256MB - 47-bit canonical max). Tests cover round-trip, null pointer, out-of-range, no-null-terminator, non-ASCII rejection, and empty-string-at-pointer cases.
+- [x] **`IsAddressReadable` VirtualQueryEx safety guard** — wraps any heap read with a page-committed/page-readable/non-guard check to prevent the in-process Marshal.Copy AV that crashes the game (verified: first restart-and-read at the stale session-1 pointer crashed `FFT_enhanced.exe`). Stays in `CommandWatcher.cs` for the parked live-pointer path.
+- [x] **Bulk-advance-during-cutscene anti-pattern memo** — saved `feedback_never_bulk_advance_cutscenes.md` after I burst-advanced 21 boxes in a `for` loop to "verify" the override and ruined the user's view of the scene. The Rules.md "every text box gets one `advance_dialogue`" rule applies to engineering verification too.
+
+**Not yet done (carried into DEFERRED_TODO.md):**
+
+- [ ] Curated speakers for events beyond 045 — process documented in the new DEFERRED_TODO entry; add as cutscenes are played through.
+- [ ] ⚠ UNVERIFIED — Boxes 27 + 28 of event 045 (the closing Larg/Dycedarg conspiracy exchange) are inferred-not-confirmed; flip on next live playthrough if the on-screen portrait disagrees.
+- [ ] Live-pointer dialog speaker hunt — re-attempt with proper widget locator (FText/FName decode or UE4 widget walk).
+
+**Memory notes saved:**
+
+- See `project_dialogue_speaker_pointer.md` — the 2026-04-26 memory hunt: addresses found (`0x133D1FA70` heap pointer + `0x4E17629000` string-table region session 1; FString-with-length-prefix layout session 2), confirmed verifications, why the current discovery doesn't generalize across sessions, and the three RE paths to a working live reader.
+- See `feedback_never_bulk_advance_cutscenes.md` — never auto-loop `advance_dialogue`, even for engineering verification; the cutscene is a shared resource and burst-advancing wrecks it for the player.
