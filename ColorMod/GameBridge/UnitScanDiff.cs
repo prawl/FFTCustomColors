@@ -23,7 +23,10 @@ namespace FFTColorCustomizer.GameBridge
             int Hp,
             int MaxHp,
             List<string>? Statuses,
-            byte[]? ClassFingerprint = null
+            byte[]? ClassFingerprint = null,
+            int Speed = 0,
+            int PA = 0,
+            int MA = 0
         );
 
         public record ChangeEvent(
@@ -35,7 +38,8 @@ namespace FFTColorCustomizer.GameBridge
             int? NewHp,
             List<string>? StatusesGained,
             List<string>? StatusesLost,
-            string Kind         // "moved", "damaged", "healed", "ko", "revived", "status", "removed", "added", "noop"
+            string Kind,        // "moved", "damaged", "healed", "ko", "revived", "status", "stat", "removed", "added", "noop"
+            List<string>? StatDeltas = null  // ["Speed +1", "PA +2"] — Speed Surge, Tailwind etc
         );
 
         /// <summary>
@@ -162,14 +166,34 @@ namespace FFTColorCustomizer.GameBridge
                 var lost = ListDiff(a.Statuses, b.Statuses);
                 bool statusChanged = gained.Count > 0 || lost.Count > 0;
 
-                if (!moved && !hpChanged && !statusChanged) continue;
+                // Stat-change detection (Speed Surge, Tailwind, Slow, etc).
+                // Only fires when the field is non-zero on both sides and
+                // values differ — a 0→N transition usually means the
+                // pre-snap missed the unit's stats, not a real change.
+                List<string>? statDeltas = null;
+                void AddDelta(string name, int oldV, int newV)
+                {
+                    if (oldV == 0 || newV == 0) return;
+                    if (oldV == newV) return;
+                    int d = newV - oldV;
+                    string sign = d >= 0 ? "+" : "";
+                    statDeltas ??= new List<string>();
+                    statDeltas.Add($"{name} {sign}{d}");
+                }
+                AddDelta("Speed", b.Speed, a.Speed);
+                AddDelta("PA", b.PA, a.PA);
+                AddDelta("MA", b.MA, a.MA);
+                bool statChanged = statDeltas != null;
+
+                if (!moved && !hpChanged && !statusChanged && !statChanged) continue;
 
                 string kind = ko ? "ko"
                     : revived ? "revived"
                     : (hpChanged && a.Hp < b.Hp) ? "damaged"
                     : (hpChanged && a.Hp > b.Hp) ? "healed"
                     : moved ? "moved"
-                    : "status";
+                    : statusChanged ? "status"
+                    : "stat";
 
                 events.Add(new ChangeEvent(
                     Label: a.Name ?? $"(unit@{a.GridX},{a.GridY})",
@@ -180,7 +204,8 @@ namespace FFTColorCustomizer.GameBridge
                     NewHp: hpChanged ? (int?)a.Hp : null,
                     StatusesGained: gained.Count > 0 ? gained : null,
                     StatusesLost: lost.Count > 0 ? lost : null,
-                    Kind: kind));
+                    Kind: kind,
+                    StatDeltas: statDeltas));
             }
 
             foreach (var a in after)
@@ -227,6 +252,8 @@ namespace FFTColorCustomizer.GameBridge
                 parts.Add($"[+{string.Join(",", e.StatusesGained)}]");
             if (e.StatusesLost != null && e.StatusesLost.Count > 0)
                 parts.Add($"[-{string.Join(",", e.StatusesLost)}]");
+            if (e.StatDeltas != null && e.StatDeltas.Count > 0)
+                parts.Add($"[{string.Join(",", e.StatDeltas)}]");
             if (e.Kind == "ko") parts.Add("[KO]");
             else if (e.Kind == "revived") parts.Add("[REVIVED]");
 

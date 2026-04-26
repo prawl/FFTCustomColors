@@ -3718,6 +3718,19 @@ namespace FFTColorCustomizer.Utilities
                         {
                             ModLogger.LogError($"[CommandBridge] Pre-wait scan failed: {ex.Message}");
                         }
+                        // Snapshot the OUTGOING active unit BEFORE the cache
+                        // clear so the post-wait auto-scan can be diff'd
+                        // against it for the multi-unit hand-off banner.
+                        var preWaitIdentity = SnapshotActiveUnitIdentity();
+                        // Pre-wait UnitScanDiff snapshot for the "while
+                        // you waited" recap. Diffs against post-wait scan
+                        // to surface enemy-turn casualties (KOs, big
+                        // damage, status changes) the agent missed by
+                        // not watching the streaming narrator. Live-
+                        // flagged 2026-04-25 playtest: 3 of 4 allies
+                        // KO'd between agent's turns and they had to
+                        // notice DEAD tags by reading the unit list.
+                        var preWaitScanSnap = _navActions?.CaptureCurrentUnitSnapshotPublic();
                         _turnTracker.ResetForNewTurn();
                         _battleMenuTracker.OnNewTurn();
                         _movedThisTurn = false;
@@ -3731,7 +3744,82 @@ namespace FFTColorCustomizer.Utilities
                         _cachedSupportAbility = null;
                         _cachedLearnedAbilityNames = null;
                         ClearActiveUnitCache();
-                        return ExecuteNavActionWithAutoScan(command);
+                        var waitResp = ExecuteNavActionWithAutoScan(command);
+                        // Wait nav action returns with Screen often unpopulated
+                        // (the outer ProcessCommand wrapper at line 1607 fills
+                        // it via DetectScreenSettled AFTER we return). Detect
+                        // here so the settle conditional can fire on a
+                        // genuine BattleMyTurn return.
+                        if (waitResp.Status == "completed" && waitResp.Screen == null)
+                            waitResp.Screen = DetectScreen();
+                        // Auto-scan inside ExecuteNavActionWithAutoScan races
+                        // the active-unit transition: the wait nav returns
+                        // when Ctrl is released and BattleMyTurn is detected,
+                        // but the static battle array's [ACTIVE] flag can
+                        // lag by ~200ms — the scan still reports the prior
+                        // unit as active. Settle and re-scan so the
+                        // hand-off banner + screen header reflect the
+                        // truly-current active unit.
+                        // Skip the 250ms settle when the auto-scan already
+                        // resolved a different active unit — the static
+                        // [ACTIVE] byte clearly transitioned, no race to
+                        // defeat. Saves ~265ms (settle + extra scan) per
+                        // wait when the hand-off is already detected.
+                        bool needsSettle = waitResp.Status == "completed"
+                            && waitResp.Screen?.Name == "BattleMyTurn"
+                            && (_cachedActiveUnitName == null
+                                || (preWaitIdentity?.Name != null && _cachedActiveUnitName == preWaitIdentity.Name));
+                        if (needsSettle)
+                        {
+                            Thread.Sleep(250);
+                            try
+                            {
+                                var settleScan = new CommandRequest { Id = command.Id, Action = "scan_move" };
+                                var settleResp = ExecuteNavAction(settleScan);
+                                if (settleResp.Status == "completed")
+                                {
+                                    CacheLearnedAbilities(settleResp.Battle);
+                                    waitResp.Battle = settleResp.Battle;
+                                    waitResp.ValidPaths = settleResp.ValidPaths;
+                                    waitResp.Screen = settleResp.Screen ?? waitResp.Screen;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                ModLogger.LogError($"[CommandBridge] Post-wait settle scan failed: {ex.Message}");
+                            }
+                        }
+                        // While-you-waited recap: diff pre vs post units
+                        // and surface action effects (HP delta, status,
+                        // KO) at the head of the response. Mirrors the
+                        // execute_turn outcome recap for callers using
+                        // standalone battle_wait. Prepended BEFORE
+                        // TURN HANDOFF so the read order is "what
+                        // happened during the enemy turns" → "who's up
+                        // next."
+                        try
+                        {
+                            var postWaitScanSnap = _navActions?.CaptureCurrentUnitSnapshotPublic();
+                            if (preWaitScanSnap != null && postWaitScanSnap != null)
+                            {
+                                var diffEvents = GameBridge.UnitScanDiff.Compare(preWaitScanSnap, postWaitScanSnap);
+                                var recap = GameBridge.OutcomeRecapRenderer.Render(diffEvents);
+                                if (!string.IsNullOrEmpty(recap))
+                                {
+                                    waitResp.Info = string.IsNullOrEmpty(waitResp.Info)
+                                        ? recap
+                                        : recap + " | " + waitResp.Info;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogError($"[BattleWait] While-you-waited recap render failed: {ex.Message}");
+                        }
+                        PrependHandoffBanner(waitResp,
+                            GameBridge.TurnHandoffBannerClassifier.BuildBanner(
+                                preWaitIdentity, SnapshotActiveUnitIdentity()));
+                        return waitResp;
 
                     case "battle_flee":
                         _battleMenuTracker.ReturnToMyTurn();
@@ -4131,10 +4219,22 @@ namespace FFTColorCustomizer.Utilities
         /// </summary>
         private CommandResponse ExecuteTurn(CommandRequest command)
         {
+            // Stand-still normalization: if the move target is the caster's
+            // current tile, drop the move so the bundle dispatches just
+            // the ability + wait. The BFS-emitted move list excludes the
+            // origin by design, so without this the call would otherwise
+            // fail with "Tile (X,Y) is not in the valid move range."
+            // Live-flagged 2026-04-25 playtest.
+            EnsureNavActions();
+            var standStillReadout = _navActions?.ReadPostActionState();
+            var (normMoveX, normMoveY) = GameBridge.StandStillNormalizer.NormalizeSameTile(
+                command.MoveX, command.MoveY,
+                standStillReadout?.X, standStillReadout?.Y);
+
             var plan = new GameBridge.TurnPlan
             {
-                MoveX = command.MoveX,
-                MoveY = command.MoveY,
+                MoveX = normMoveX,
+                MoveY = normMoveY,
                 AbilityName = command.AbilityName,
                 TargetX = command.TargetX,
                 TargetY = command.TargetY,
@@ -4148,7 +4248,7 @@ namespace FFTColorCustomizer.Utilities
             // with a misleading "Not in Move mode" (live-repro 2026-04-24).
             // Mirror the canonical message from battle_attack/battle_ability
             // entry-reset check (commit 8cf9197).
-            EnsureNavActions();
+            // EnsureNavActions already called above for stand-still readout.
             var preflightScreen = DetectScreen();
             if (preflightScreen != null
                 && (preflightScreen.Name == "BattleMyTurn" || preflightScreen.Name == "BattleActing"))
@@ -4196,6 +4296,19 @@ namespace FFTColorCustomizer.Utilities
             var initialPost = _navActions?.ReadPostActionState();
             accumulator.Seed(initialPost);
             var preBundleUnits = SnapshotUnitsForKillDiff();
+            // Pre-bundle UnitScanDiff snapshot for the OUTCOME recap.
+            // Mirrors what battle_wait's narrator does — diff pre vs
+            // post for HP/status/KO events, then render via
+            // OutcomeRecapRenderer to surface what the agent's action
+            // actually did (Hasteja → +Haste on Wilham, etc).
+            var preBundleScanSnap = _navActions?.CaptureCurrentUnitSnapshotPublic();
+            // Capture the OUTGOING active-unit identity. The bundle's
+            // battle_wait sub-step clears the cache and the post-wait
+            // auto-scan repopulates it for the NEW unit (multi-unit
+            // party play). Diff at the end to emit a hand-off banner so
+            // the caller doesn't keep issuing commands meant for the
+            // prior unit (live-flagged 2026-04-25 playtest).
+            var preBundleIdentity = SnapshotActiveUnitIdentity();
 
             CommandResponse? last = null;
             // Aggregate each sub-step's Info so the bundled response carries
@@ -4322,6 +4435,43 @@ namespace FFTColorCustomizer.Utilities
             // trailer present even on degenerate paths.
             if (last.PostAction == null)
                 last.PostAction = _navActions?.ReadPostActionState();
+            // Outcome recap: diff pre vs post unit scans and surface
+            // action effects (HP delta, status, KO) at the head of the
+            // response. Without this, agent has to mentally HP-diff
+            // prior `screen` output to verify their action landed —
+            // live-flagged 2026-04-25 playtest. Prepended BEFORE the
+            // hand-off banner so the recap reads top-down: "what just
+            // happened" → "who's up next".
+            try
+            {
+                var postBundleScanSnap = _navActions?.CaptureCurrentUnitSnapshotPublic();
+                if (preBundleScanSnap != null && postBundleScanSnap != null)
+                {
+                    var diffEvents = GameBridge.UnitScanDiff.Compare(preBundleScanSnap, postBundleScanSnap);
+                    var recap = GameBridge.OutcomeRecapRenderer.Render(diffEvents);
+                    if (!string.IsNullOrEmpty(recap))
+                    {
+                        last.Info = string.IsNullOrEmpty(last.Info)
+                            ? recap
+                            : recap + " | " + last.Info;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[ExecuteTurn] Outcome recap render failed: {ex.Message}");
+            }
+
+            // Multi-unit party hand-off: the wait sub-step's auto-scan
+            // already repopulated the active-unit cache for the new
+            // unit. Compare against the pre-bundle snapshot and prepend
+            // a loud `=== TURN HANDOFF: A → B ===` banner when they
+            // differ. Pure helper short-circuits when either side is
+            // null, so partial bundles (no wait, transient empty scan)
+            // emit nothing instead of misleading "→ null" text.
+            PrependHandoffBanner(last,
+                GameBridge.TurnHandoffBannerClassifier.BuildBanner(
+                    preBundleIdentity, SnapshotActiveUnitIdentity()));
             return last;
         }
 
@@ -4453,6 +4603,11 @@ namespace FFTColorCustomizer.Utilities
                         ExecuteNavAction(scanCmd);
                     }
                     catch { }
+                    // Snapshot OUTGOING identity before the cache clear so
+                    // the post-wait auto-scan can be diff'd for the
+                    // multi-unit hand-off banner. Mirrors the direct
+                    // `case "battle_wait"` site.
+                    var preWaitIdentity = SnapshotActiveUnitIdentity();
                     _turnTracker.ResetForNewTurn();
                     _battleMenuTracker.OnNewTurn();
                     _movedThisTurn = false;
@@ -4463,7 +4618,53 @@ namespace FFTColorCustomizer.Utilities
                     _cachedSecondarySkillset = null;
                     _cachedSupportAbility = null;
                     _cachedLearnedAbilityNames = null;
-                    return ExecuteNavActionWithAutoScan(command);
+                    // Parity with the direct `case "battle_wait"` site —
+                    // the prior unit's identity must clear so the
+                    // post-wait scan_move repopulates with the NEW
+                    // unit's name/job/pos/HP. Without this clear the
+                    // hand-off banner can't fire (cache compares as
+                    // unchanged) AND the screen-line trailer keeps
+                    // showing the prior unit during the brief window
+                    // before the auto-scan completes.
+                    ClearActiveUnitCache();
+                    var waitResp = ExecuteNavActionWithAutoScan(command);
+                    // Wait nav often returns with Screen=null; outer wrapper
+                    // populates later. Detect here so the settle conditional
+                    // can fire — see direct `case "battle_wait":` for full
+                    // context.
+                    if (waitResp.Status == "completed" && waitResp.Screen == null)
+                        waitResp.Screen = DetectScreen();
+                    // Same settle race as `case "battle_wait":` above —
+                    // skip when auto-scan already resolved a different
+                    // active unit (no race to defeat).
+                    bool needsSettle = waitResp.Status == "completed"
+                        && waitResp.Screen?.Name == "BattleMyTurn"
+                        && (_cachedActiveUnitName == null
+                            || (preWaitIdentity?.Name != null && _cachedActiveUnitName == preWaitIdentity.Name));
+                    if (needsSettle)
+                    {
+                        Thread.Sleep(250);
+                        try
+                        {
+                            var settleScan = new CommandRequest { Id = command.Id, Action = "scan_move" };
+                            var settleResp = ExecuteNavAction(settleScan);
+                            if (settleResp.Status == "completed")
+                            {
+                                CacheLearnedAbilities(settleResp.Battle);
+                                waitResp.Battle = settleResp.Battle;
+                                waitResp.ValidPaths = settleResp.ValidPaths;
+                                waitResp.Screen = settleResp.Screen ?? waitResp.Screen;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogError($"[CommandBridge] Post-wait settle scan failed: {ex.Message}");
+                        }
+                    }
+                    PrependHandoffBanner(waitResp,
+                        GameBridge.TurnHandoffBannerClassifier.BuildBanner(
+                            preWaitIdentity, SnapshotActiveUnitIdentity()));
+                    return waitResp;
                 }
 
                 return ExecuteNavAction(command);
@@ -4563,6 +4764,15 @@ namespace FFTColorCustomizer.Utilities
                     response.Info = scanResponse.Info;
                     if (scanResponse.Error != null)
                         response.Error = (response.Error != null ? response.Error + " | " : "") + "[auto-scan] " + scanResponse.Error;
+                    // Populate the active-unit identity cache so the multi-
+                    // unit hand-off banner can detect a unit change after
+                    // battle_wait / execute_turn. The explicit `case "scan_move"`
+                    // path does this, but ExecuteNavAction here bypasses
+                    // that branch and only the Battle payload comes back —
+                    // without this call, _cachedActiveUnitName stays null
+                    // and TurnHandoffBannerClassifier.BuildBanner returns null.
+                    if (scanResponse.Status == "completed")
+                        CacheLearnedAbilities(scanResponse.Battle);
                 }
                 catch (Exception ex)
                 {
@@ -5387,6 +5597,31 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
+        /// Snapshot the current active-unit identity for hand-off detection.
+        /// Returns null when the cache is empty so the banner classifier
+        /// can short-circuit comparisons.
+        /// </summary>
+        private GameBridge.TurnHandoffBannerClassifier.UnitIdentity? SnapshotActiveUnitIdentity()
+            => _cachedActiveUnitName == null
+                ? null
+                : new GameBridge.TurnHandoffBannerClassifier.UnitIdentity(
+                    _cachedActiveUnitName, _cachedActiveUnitJob,
+                    _cachedActiveUnitX, _cachedActiveUnitY,
+                    _cachedActiveUnitHp, _cachedActiveUnitMaxHp);
+
+        /// <summary>
+        /// Prepend the loud hand-off banner to a response's Info field so
+        /// the compact one-line trailer surfaces it. Idempotent: skips when
+        /// the same banner is already in Info (sub-step like battle_wait
+        /// may have already prepended it). Delegates to the pure helper
+        /// `HandoffBannerJoiner.PrependIfAbsent`.
+        /// </summary>
+        private static void PrependHandoffBanner(CommandResponse response, string? banner)
+        {
+            response.Info = GameBridge.HandoffBannerJoiner.PrependIfAbsent(response.Info, banner);
+        }
+
+        /// <summary>
         /// Render a per-action-type latency summary of the current session.
         /// Parses the JSONL session log and delegates stats math to the
         /// pure SessionStatsCalculator. Returns a pre-formatted string
@@ -5593,16 +5828,27 @@ namespace FFTColorCustomizer.Utilities
             }
 
             // Snapshot active unit identity for the compact battle screen line.
-            _cachedActiveUnitName = activeUnit.Name;
-            _cachedActiveUnitJob = activeUnit.JobName;
-            _cachedActiveUnitX = activeUnit.X;
-            _cachedActiveUnitY = activeUnit.Y;
-            _cachedActiveUnitHp = activeUnit.Hp;
-            _cachedActiveUnitMaxHp = activeUnit.MaxHp;
-            // Weapon banner tag — computed server-side in
-            // NavigationActions.CollectUnitPositionsFull via ItemData.ComposeWeaponTag.
-            // Null when unarmed / unknown weapon / non-player team.
-            _cachedActiveUnitWeaponTag = activeUnit.WeaponTag;
+            // Preserve-on-null: rapid back-to-back scans (e.g. the post-wait
+            // settle re-scan) sometimes get degraded roster-name resolution
+            // and surface activeUnit.Name as null — overwriting would nuke
+            // the prior good cache and break the multi-unit hand-off banner.
+            // Same pattern as `_cachedSupportAbility` above and per
+            // `feedback_cache_preserve_on_null_active_unit.md`.
+            // Reset is handled at turn-boundary sites (battle_wait,
+            // StartBattle, terminal-screen lifecycle).
+            if (!string.IsNullOrEmpty(activeUnit.Name))
+            {
+                _cachedActiveUnitName = activeUnit.Name;
+                _cachedActiveUnitJob = activeUnit.JobName;
+                _cachedActiveUnitX = activeUnit.X;
+                _cachedActiveUnitY = activeUnit.Y;
+                _cachedActiveUnitHp = activeUnit.Hp;
+                _cachedActiveUnitMaxHp = activeUnit.MaxHp;
+                // Weapon banner tag — computed server-side in
+                // NavigationActions.CollectUnitPositionsFull via ItemData.ComposeWeaponTag.
+                // Null when unarmed / unknown weapon / non-player team.
+                _cachedActiveUnitWeaponTag = activeUnit.WeaponTag;
+            }
         }
 
         /// <summary>

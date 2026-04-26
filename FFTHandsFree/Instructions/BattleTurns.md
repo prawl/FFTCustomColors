@@ -149,6 +149,18 @@ The `RecommendedFacing` in scan_move shows you the recommended direction before 
 
 `battle_wait` auto-waits through enemy/ally turns. When you see `BattleAlliesTurn` or `BattleEnemiesTurn`, poll `screen` until `BattleMyTurn` returns.
 
+## Multi-unit party turn-cycling
+
+With multiple player units, each takes their own turn in CT order. After `battle_wait` or `execute_turn`, the next `BattleMyTurn` may be a **different** unit with different stats, abilities, and starting position — not the one you just moved.
+
+When the active unit changes, the response prepends a loud banner to `Info`:
+
+```
+=== TURN HANDOFF: Kenrick(Thief) → Lloyd(Orator) (10,9) HP=432/432 ===
+```
+
+Treat this as a hard reset: the prior unit's `validPaths`, ability list, position, and reachable tiles are stale. Rescan / re-plan for the new active unit before issuing further commands. Same-unit returns (rare, e.g. only one player unit on the field) emit no banner.
+
 ## Quick Reference
 
 ```bash

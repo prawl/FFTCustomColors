@@ -586,10 +586,29 @@ namespace FFTColorCustomizer.GameBridge
 
                 if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
                 {
-                    _menuCursorStale = false;
-                    response.Status = "failed";
-                    response.Error = $"Cannot battle_wait from screen (current: {screen?.Name ?? "null"})";
-                    return response;
+                    // Terminal-flicker recovery: BattleVictory / GameOver /
+                    // BattleDesertion can transiently surface for ~1-3s
+                    // before resolving back to BattleMyTurn (or genuinely
+                    // terminal). Settle + recheck before failing — the
+                    // ExecuteTurn outer loop has the same pattern at the
+                    // sub-step boundary, but errors that fire INSIDE the
+                    // wait nav action bypass it. Live-flagged 2026-04-25
+                    // playtest: agent saw 3 consecutive ranged attacks
+                    // abort with this exact error, each adding 8-15s of
+                    // manual recovery dance.
+                    if (BattleWaitFlickerRecovery.IsRecoverableFlicker(screen?.Name))
+                    {
+                        ModLogger.Log($"[BattleWait] Flicker detected at start ({screen?.Name}); settle 800ms + recheck");
+                        Thread.Sleep(800);
+                        screen = _detectScreen();
+                    }
+                    if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
+                    {
+                        _menuCursorStale = false;
+                        response.Status = "failed";
+                        response.Error = $"Cannot battle_wait from screen (current: {screen?.Name ?? "null"})";
+                        return response;
+                    }
                 }
             }
 
@@ -1634,10 +1653,16 @@ namespace FFTColorCustomizer.GameBridge
                     && _lastValidAbilityTiles.TryGetValue(abilityName, out var validTilesSelfCheck))
                 {
                     // Resolve caster pos and check if it's in the ability's
-                    // valid-target set. If so, default to it.
-                    var casterPosCheck = ReadGridPos();
-                    if (casterPosCheck.x >= 0 && casterPosCheck.y >= 0
-                        && validTilesSelfCheck.Contains((casterPosCheck.x, casterPosCheck.y)))
+                    // valid-target set. If so, default to it. Use the
+                    // scan-canonical position over the live cursor read
+                    // — cursor may sit elsewhere from C+Up cycling.
+                    var activeAllyCheck = GetActiveAlly();
+                    var cursorCheck = ReadGridPos();
+                    var (casterX, casterY) = CasterPositionResolver.Resolve(
+                        activeAllyCheck?.GridX, activeAllyCheck?.GridY,
+                        cursorCheck.x, cursorCheck.y);
+                    if (casterX >= 0 && casterY >= 0
+                        && validTilesSelfCheck.Contains((casterX, casterY)))
                     {
                         autoSelfTarget = true;
                     }
@@ -1645,12 +1670,21 @@ namespace FFTColorCustomizer.GameBridge
             }
             if (autoSelfTarget)
             {
-                var castorPos = ReadGridPos();
-                if (castorPos.x >= 0 && castorPos.y >= 0)
+                // Prefer the active unit's actual position from the last
+                // scan over the live cursor read — cursor may sit on
+                // another unit (e.g. Wilham at (10,10)) from a prior
+                // C+Up cycle, causing the auto-fill to target the wrong
+                // tile. Live-flagged 2026-04-25 playtest.
+                var activeAlly = GetActiveAlly();
+                var cursorPos = ReadGridPos();
+                var (resolvedX, resolvedY) = CasterPositionResolver.Resolve(
+                    activeAlly?.GridX, activeAlly?.GridY,
+                    cursorPos.x, cursorPos.y);
+                if (resolvedX >= 0 && resolvedY >= 0)
                 {
-                    targetX = castorPos.x;
-                    targetY = castorPos.y;
-                    ModLogger.Log($"[BattleAbility] Auto-targeting caster at ({targetX},{targetY}) for self-target ability '{abilityName}'");
+                    targetX = resolvedX;
+                    targetY = resolvedY;
+                    ModLogger.Log($"[BattleAbility] Auto-targeting caster at ({targetX},{targetY}) for self-target ability '{abilityName}' (active={activeAlly?.Name ?? "?"} via {(activeAlly != null ? "scan" : "cursor")})");
                 }
             }
 
@@ -1915,12 +1949,23 @@ namespace FFTColorCustomizer.GameBridge
                 }
             }
 
-            // Navigate cursor to target tile (reuse BattleAttack's targeting logic)
-            var startPos = ReadGridPos();
-            ModLogger.Log($"[BattleAbility] Targeting {abilityName}, cursor at ({startPos.x},{startPos.y}), target ({targetX},{targetY})");
+            // Navigate cursor to target tile (reuse BattleAttack's targeting logic).
+            // Resolve start position via the active unit's scan-canonical
+            // tile when available — cursor read alone can lie if it's
+            // sitting on another unit from prior C+Up cycling. The cursor
+            // tile is still used for delta calc since the GAME cursor is
+            // wherever it actually is on the screen, but we trust the scan
+            // for the caster's identity coords (used by PostAction pin).
+            var cursorAtStart = ReadGridPos();
+            var activeAtStart = GetActiveAlly();
+            var (startCasterX, startCasterY) = CasterPositionResolver.Resolve(
+                activeAtStart?.GridX, activeAtStart?.GridY,
+                cursorAtStart.x, cursorAtStart.y);
+            var startPos = (x: startCasterX, y: startCasterY);
+            ModLogger.Log($"[BattleAbility] Targeting {abilityName}, cursor at ({cursorAtStart.x},{cursorAtStart.y}), caster at ({startPos.x},{startPos.y}), target ({targetX},{targetY})");
 
-            int deltaX = targetX - startPos.x;
-            int deltaY = targetY - startPos.y;
+            int deltaX = targetX - cursorAtStart.x;
+            int deltaY = targetY - cursorAtStart.y;
 
             if (deltaX == 0 && deltaY == 0)
             {
@@ -3556,6 +3601,14 @@ namespace FFTColorCustomizer.GameBridge
                     })
                     .ToList();
 
+                // Sort tiles by min Manhattan distance to nearest enemy so
+                // the most-actionable repositions appear first in the
+                // rendered list. BFS-visit order is unhelpful — LLM agent
+                // had to mentally cross-ref against the unit list to find
+                // tiles near enemies (live-flagged 2026-04-25 playtest).
+                var enemyList = enemySet.Select(e => (e.Item1, e.Item2)).ToList();
+                tileList = MoveTileSorter.SortByNearestEnemy(tileList, enemyList);
+
                 // Cache for battle_move validation
                 _lastValidMoveTiles = new HashSet<(int, int)>(tileList.Select(t => (t.X, t.Y)));
 
@@ -4856,7 +4909,10 @@ namespace FFTColorCustomizer.GameBridge
                     Hp: u.Hp,
                     MaxHp: u.MaxHp,
                     Statuses: statuses,
-                    ClassFingerprint: u.ClassFingerprint));
+                    ClassFingerprint: u.ClassFingerprint,
+                    Speed: u.Speed,
+                    PA: u.PA,
+                    MA: u.MA));
             }
             _namedSnapshots[label] = snaps;
             return true;
@@ -4877,6 +4933,8 @@ namespace FFTColorCustomizer.GameBridge
         /// instead of storing it under a label. Returns null if the scan failed or there
         /// are no units (e.g. pre-battle state, or memory-read failure).
         /// </summary>
+        public List<UnitScanDiff.UnitSnap>? CaptureCurrentUnitSnapshotPublic() => CaptureCurrentUnitSnapshot();
+
         private List<UnitScanDiff.UnitSnap>? CaptureCurrentUnitSnapshot()
         {
             try { CollectUnitPositionsFull(); } catch { return null; }
@@ -4896,7 +4954,10 @@ namespace FFTColorCustomizer.GameBridge
                     Hp: u.Hp,
                     MaxHp: u.MaxHp,
                     Statuses: statuses,
-                    ClassFingerprint: u.ClassFingerprint));
+                    ClassFingerprint: u.ClassFingerprint,
+                    Speed: u.Speed,
+                    PA: u.PA,
+                    MA: u.MA));
             }
             return snaps;
         }
@@ -6724,6 +6785,7 @@ namespace FFTColorCustomizer.GameBridge
         {
             try
             {
+                if (posX < 0 || posY < 0) return null;
                 var reads = _explorer.ReadMultiple(new[]
                 {
                     ((nint)(AddrCondensedBase + 0x0C), 2), // HP
@@ -6731,13 +6793,37 @@ namespace FFTColorCustomizer.GameBridge
                     ((nint)(AddrCondensedBase + 0x12), 2), // MP
                     ((nint)(AddrCondensedBase + 0x16), 2), // MaxMP
                 });
-                if (posX < 0 || posY < 0) return null;
+                int condHp = (int)reads[0], condMaxHp = (int)reads[1];
+                // CondensedBase reflects the CURSOR-hovered unit, not the
+                // caster. For battle_ability/attack callers passing explicit
+                // caster X/Y, the cursor often sits on the TARGET tile —
+                // returning condensed HP would surface the target's HP
+                // labelled with the caster's tile (e.g. Wilham's HP=528 for
+                // Ramza's Shout). Cross-check with the static array slot
+                // at the caster's position; prefer static when it
+                // disagrees beyond half-MaxHp (same dual-read pattern as
+                // ReadLiveHp X-Potion fix). Live-flagged 2026-04-25.
+                int staticHp = ReadStaticArrayHpAt(posX, posY);
+                int staticMaxHp = ReadStaticArrayMaxHpAt(posX, posY);
+                int hp = condHp;
+                int maxHp = condMaxHp;
+                if (staticHp >= 0 && staticMaxHp > 0)
+                {
+                    bool maxHpDiffers = staticMaxHp != condMaxHp;
+                    bool hpDiffersBeyondHalf = condMaxHp > 0
+                        && System.Math.Abs(condHp - staticHp) > condMaxHp / 2;
+                    if (maxHpDiffers || hpDiffersBeyondHalf)
+                    {
+                        hp = staticHp;
+                        maxHp = staticMaxHp;
+                    }
+                }
                 return new PostActionState
                 {
                     X = posX,
                     Y = posY,
-                    Hp = (int)reads[0],
-                    MaxHp = (int)reads[1],
+                    Hp = hp,
+                    MaxHp = maxHp,
                     Mp = (int)reads[2],
                     MaxMp = (int)reads[3],
                 };

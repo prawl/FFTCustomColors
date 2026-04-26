@@ -228,12 +228,32 @@ fft() {
       ;;
   esac
   local _t0=$EPOCHREALTIME
-  rm -f "$B/response.json"
+  # Extract the call's unique id from the JSON payload — used below to
+  # poll for THIS call's response (vs a leftover from a prior call).
+  # Without id-matching the helper would see a stale response.json from
+  # the previous fft invocation and "succeed" instantly, missing the
+  # new call's actual outcome. 2026-04-25 playtest: response.json was
+  # observed missing entirely after a long execute_turn because a
+  # parallel/subsequent shell call had cleared the file.
+  local _call_id
+  _call_id=$(printf '%s' "$1" | node -e "
+try{const j=JSON.parse(require('fs').readFileSync(0,'utf8'));process.stdout.write(j.id||'');}catch(e){}" 2>/dev/null)
   echo "$1" > "$B/command.json"
   local tries=0
   # $2 = per-command timeout in seconds (default 5). Poll at 20ms intervals.
   local max_tries=$(( ${2:-5} * 50 ))
-  until [ -f "$B/response.json" ]; do
+  while :; do
+    if [ -f "$B/response.json" ] && [ -n "$_call_id" ]; then
+      # Match the response's id to ours so a stale leftover doesn't
+      # short-circuit. Use grep to avoid spawning node every poll.
+      if grep -q "\"$_call_id\"" "$B/response.json" 2>/dev/null; then
+        break
+      fi
+    elif [ -f "$B/response.json" ] && [ -z "$_call_id" ]; then
+      # Legacy fallback — caller didn't put an id in the payload. Take
+      # whatever exists. Should not happen for any helper that uses id().
+      break
+    fi
     sleep 0.02
     tries=$((tries + 1))
     if [ $tries -ge $max_tries ]; then
@@ -254,12 +274,14 @@ fft() {
   # enemy-turn narrator appends them to info as a multi-line block; without
   # this, the compact renderer prints only the screen header and the
   # narration (moved/damaged/ko events) stays hidden in the JSON.
+  # Also surface "=== ..." banner lines (e.g. TURN HANDOFF) — they're
+  # joined with " | " into info, so split on that too before filtering.
   local NARRATION
   NARRATION=$(node -e "
 try{
   const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
   const info=j.info||'';
-  const lines=info.split(/\r?\n/).filter(l=>l.startsWith('> '));
+  const lines=info.split(/\r?\n|\s\|\s/).filter(l=>l.startsWith('> ')||l.startsWith('===')||l.startsWith('[OUTCOME]'));
   if(lines.length)process.stdout.write(lines.join('\n'));
 }catch(e){}" "$B/response.json" 2>/dev/null)
   [ -n "$NARRATION" ] && printf '%s\n' "$NARRATION"
@@ -784,12 +806,24 @@ fft_full() {
   _check_total || return 1
   _fft_guard
   _track_key_call "$1"
-  rm -f "$B/response.json"
+  # Same id-matched poll as fft() — see comments there. Don't rm
+  # response.json so a parallel/follow-up shell command can still
+  # inspect the prior call's output.
+  local _call_id
+  _call_id=$(printf '%s' "$1" | node -e "
+try{const j=JSON.parse(require('fs').readFileSync(0,'utf8'));process.stdout.write(j.id||'');}catch(e){}" 2>/dev/null)
   echo "$1" > "$B/command.json"
   local tries=0
   # $2 = per-command timeout in seconds (default 5). Poll at 20ms intervals.
   local max_tries=$(( ${2:-5} * 50 ))
-  until [ -f "$B/response.json" ]; do
+  while :; do
+    if [ -f "$B/response.json" ] && [ -n "$_call_id" ]; then
+      if grep -q "\"$_call_id\"" "$B/response.json" 2>/dev/null; then
+        break
+      fi
+    elif [ -f "$B/response.json" ] && [ -z "$_call_id" ]; then
+      break
+    fi
     sleep 0.02
     tries=$((tries + 1))
     if [ $tries -ge $max_tries ]; then
@@ -3536,8 +3570,10 @@ if(_acted){
     // ~ half (resisted), ! weak (double damage), ^ strengthen (boosts own damage).
     // Only surfaces when ability has an element AND occupant has matching affinity.
     const affSig={absorb:'+absorb',null:'=null',half:'~half',weak:'!weak',strengthen:'^strengthen'};
-    // Attack-arc sigils: back=best (backstab bonus), side=modest, front=omitted (default).
-    const arcSig={back:'>BACK',side:'>side'};
+    // Attack-arc sigils: rear=best (backstab bonus), side=modest, front=omitted (default).
+    // 2026-04-25 playtest: rear was originally rendered uppercase BACK and got
+    // misread as a defensive cue; lowercase rear matches the side pattern.
+    const arcSig={back:'>rear',side:'>side'};
     // LoS sigil — projectile ability (ranged Attack / Ninja Throw) terrain-blocked.
     // Claude should skip the tile or reposition. Null/absent = not a projectile
     // OR path is clear.
@@ -3596,7 +3632,7 @@ const atk=vp.AttackTiles?.attackTiles||[];
 const isCorpse=a=>(a.lifeState==='dead'||a.lifeState==='crystal'||a.lifeState==='treasure'||(a.hp!=null&&a.hp<=0));
 const occupiedAtk=atk.filter(a=>a.occupant&&a.occupant!=='empty'&&!isCorpse(a));
 if(occupiedAtk.length&&!_acted){
-  const arcSig2={back:' >BACK',side:' >side'};
+  const arcSig2={back:' >rear',side:' >side'};
   const lines=occupiedAtk.map(a=>{
     const occ=' '+a.occupant;
     const job=a.jobName?' ('+a.jobName+')':'';

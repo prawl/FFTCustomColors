@@ -27,15 +27,34 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void MoveOnly_EmitsMoveThenWait()
+        public void MoveOnly_EmitsMoveWithoutWait()
         {
+            // Per Commands.md "DOES NOT END THE TURN" + BattleTurns.md
+            // Move-only-as-reposition: caller wants to relocate without
+            // committing the turn so they can rescan / decide their action
+            // from the new position. battle_wait is appended only when
+            // there's an actual action (ability) or genuinely-empty plan
+            // (skip the turn). Live-flagged 2026-04-25 playtest: agent
+            // expected `execute_turn 6 9` to leave Lloyd at (6,9) with
+            // Act/Wait still available; instead his turn ended.
             var plan = new TurnPlan { MoveX = 6, MoveY = 5 };
             var steps = plan.ToSteps().ToList();
-            Assert.Equal(2, steps.Count);
+            Assert.Single(steps);
             Assert.Equal("battle_move", steps[0].Action);
             Assert.Equal(6, steps[0].X);
             Assert.Equal(5, steps[0].Y);
-            Assert.Equal("battle_wait", steps[1].Action);
+        }
+
+        [Fact]
+        public void MoveOnly_DirectionIgnored_NoWait()
+        {
+            // Direction is for the wait sub-step; with no wait, it has
+            // nothing to attach to. Plan still emits move-only; the
+            // direction is silently ignored (could log later if useful).
+            var plan = new TurnPlan { MoveX = 6, MoveY = 5, Direction = "N" };
+            var steps = plan.ToSteps().ToList();
+            Assert.Single(steps);
+            Assert.Equal("battle_move", steps[0].Action);
         }
 
         [Fact]

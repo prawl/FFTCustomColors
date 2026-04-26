@@ -37,17 +37,20 @@ namespace FFTColorCustomizer.GameBridge
         /// </summary>
         public IEnumerable<TurnStep> ToSteps()
         {
-            if (MoveX.HasValue && MoveY.HasValue)
+            bool hasMove = MoveX.HasValue && MoveY.HasValue;
+            bool hasAbility = !string.IsNullOrEmpty(AbilityName);
+
+            if (hasMove)
             {
                 yield return new TurnStep
                 {
                     Action = "battle_move",
-                    X = MoveX.Value,
-                    Y = MoveY.Value,
+                    X = MoveX!.Value,
+                    Y = MoveY!.Value,
                 };
             }
 
-            if (!string.IsNullOrEmpty(AbilityName))
+            if (hasAbility)
             {
                 var step = new TurnStep
                 {
@@ -63,14 +66,23 @@ namespace FFTColorCustomizer.GameBridge
                 yield return step;
             }
 
-            if (!SkipWait)
+            // Move-only-as-reposition: per Commands.md "DOES NOT END THE
+            // TURN" + BattleTurns.md, `execute_turn 6 5` (just two args)
+            // should leave the unit at (6,5) with Act/Wait still
+            // available — caller will rescan and decide their action
+            // from the new position. battle_wait is appended only when
+            // there's an actual action (ability) OR the plan is
+            // genuinely empty (intentional skip-the-turn). SkipWait
+            // overrides everything.
+            if (SkipWait) yield break;
+            bool moveOnly = hasMove && !hasAbility;
+            if (moveOnly) yield break;
+
+            yield return new TurnStep
             {
-                yield return new TurnStep
-                {
-                    Action = "battle_wait",
-                    Direction = Direction,
-                };
-            }
+                Action = "battle_wait",
+                Direction = Direction,
+            };
         }
     }
 
