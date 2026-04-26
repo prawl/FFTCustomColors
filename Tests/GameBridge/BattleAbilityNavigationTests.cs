@@ -114,6 +114,62 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.Equal(2, result);
         }
 
+        // DontAct (and other action-blocking statuses) gray the Abilities slot
+        // in the visible action menu. The visible cursor auto-skips it when
+        // navigating up/down. Memory cursor lags this — it reports the slot
+        // index it WOULD be on without the skip. Without correcting for this,
+        // battle_wait nav presses Down once "to reach Wait" but actually moves
+        // to Status (overshooting because the visible cursor was already on
+        // Wait). Live-flagged 2026-04-26 playtest #9.
+
+        [Fact]
+        public void EffectiveMenuCursor_Disabled_MemoryReads1_Returns2()
+        {
+            // DontAct + memory reads Abilities (1) — visible cursor auto-skipped
+            // to Wait (2). Trust the visible position.
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(
+                memoryCursor: 1, moved: false, acted: false, disabled: true);
+            Assert.Equal(2, result);
+        }
+
+        [Fact]
+        public void EffectiveMenuCursor_Disabled_MemoryReads0_Returns0()
+        {
+            // DontAct + memory reads Move (0) — Move is still valid (DontMove
+            // is a separate status), no skip needed.
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(
+                memoryCursor: 0, moved: false, acted: false, disabled: true);
+            Assert.Equal(0, result);
+        }
+
+        [Fact]
+        public void EffectiveMenuCursor_Disabled_MemoryReads2_TrustsMemory()
+        {
+            // Already on Wait, no correction needed.
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(
+                memoryCursor: 2, moved: false, acted: false, disabled: true);
+            Assert.Equal(2, result);
+        }
+
+        [Fact]
+        public void EffectiveMenuCursor_DisabledAndMoved_MemoryReads1_Returns2()
+        {
+            // Both moved and disabled: cursor at 1 (Abilities) is greyed,
+            // visible cursor on Wait (2). Disabled rule wins.
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(
+                memoryCursor: 1, moved: true, acted: false, disabled: true);
+            Assert.Equal(2, result);
+        }
+
+        [Fact]
+        public void EffectiveMenuCursor_DisabledOmitted_DefaultsToFalse()
+        {
+            // Backward-compatible default — existing callers don't pass disabled.
+            int result = BattleAbilityNavigation.EffectiveMenuCursor(
+                memoryCursor: 1, moved: false, acted: false);
+            Assert.Equal(1, result);
+        }
+
         [Fact]
         public void EffectiveMenuCursor_AfterAbility_MemoryReads0_TrustsMemory()
         {

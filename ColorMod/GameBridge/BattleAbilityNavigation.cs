@@ -199,9 +199,20 @@ namespace FFTColorCustomizer.GameBridge
         /// Returns the effective menu cursor position, correcting for stale memory reads.
         /// After battle_move: game shows Abilities (1) but memory reads 0.
         /// After battle_ability (no move): game shows Move (0) but memory reads 1.
+        /// When disabled (DontAct etc): Abilities slot is greyed and skipped — if memory
+        /// reads 1, the visible cursor is actually on Wait (2).
         /// </summary>
-        public static int EffectiveMenuCursor(int memoryCursor, bool moved, bool acted)
+        public static int EffectiveMenuCursor(int memoryCursor, bool moved, bool acted, bool disabled = false)
         {
+            // DontAct (and other action-blocking statuses) gray out the
+            // Abilities slot. The visible action-menu cursor auto-skips
+            // greyed slots, so when memory says "Abilities (1)" the visible
+            // cursor is actually on Wait (2). Without this correction,
+            // battle_wait's Down press overshoots into Status — live-flagged
+            // 2026-04-26 playtest #9. Takes priority over moved/acted
+            // corrections (disable trumps stale-byte rules).
+            if (disabled && memoryCursor == 1)
+                return 2;
             if (moved && !acted && memoryCursor == 0)
                 return 1; // after move, game is at Abilities, memory is stale
             if (acted && !moved && memoryCursor == 1)

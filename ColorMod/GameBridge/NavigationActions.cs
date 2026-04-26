@@ -651,18 +651,89 @@ namespace FFTColorCustomizer.GameBridge
                 int rawCursor = cursorResult != null ? (int)cursorResult.Value.value : screen.MenuCursor;
                 bool hasMoved = screen.BattleMoved == 1 || _menuCursorStale;
                 bool hasActed = screen.BattleActed == 1;
-                int cursor = BattleAbilityNavigation.EffectiveMenuCursor(rawCursor, moved: hasMoved, acted: hasActed);
+                // Detect DontAct (or other action-blocking statuses) on the active
+                // unit — the visible Abilities slot is greyed and the cursor
+                // auto-skips it. Without this, our nav overshoots into Status.
+                bool isDisabled = false;
+                if (_lastScannedUnits != null)
+                {
+                    foreach (var u in _lastScannedUnits)
+                    {
+                        if (!u.IsActive) continue;
+                        if (u.StatusBytes == null || u.StatusBytes.Length < 5) break;
+                        // DontAct=byte4 0x04, Sleep=byte4 0x10, Stop=byte3 0x02,
+                        // Frog=byte2 0x02, Chicken=byte2 0x04, Petrify=byte1 0x80,
+                        // Charm=byte4 0x20, Confusion=byte1 0x10, Berserk=byte2 0x08.
+                        // Any of these renders Abilities unselectable.
+                        if ((u.StatusBytes[4] & 0x04) != 0 // DontAct
+                            || (u.StatusBytes[4] & 0x10) != 0 // Sleep
+                            || (u.StatusBytes[3] & 0x02) != 0 // Stop
+                            || (u.StatusBytes[2] & 0x02) != 0 // Frog
+                            || (u.StatusBytes[2] & 0x04) != 0 // Chicken
+                            || (u.StatusBytes[1] & 0x80) != 0 // Petrify
+                            || (u.StatusBytes[4] & 0x20) != 0 // Charm
+                            || (u.StatusBytes[1] & 0x10) != 0 // Confusion
+                            || (u.StatusBytes[1] & 0x08) != 0) // Berserk
+                            isDisabled = true;
+                        break;
+                    }
+                }
+                int cursor = BattleAbilityNavigation.EffectiveMenuCursor(rawCursor, moved: hasMoved, acted: hasActed, disabled: isDisabled);
                 if (cursor != rawCursor)
-                    ModLogger.Log($"[BattleWait] Cursor correction: raw={rawCursor} → effective={cursor} (moved={hasMoved}, acted={hasActed})");
+                    ModLogger.Log($"[BattleWait] Cursor correction: raw={rawCursor} → effective={cursor} (moved={hasMoved}, acted={hasActed}, disabled={isDisabled})");
                 _menuCursorStale = false; // consumed
                 int target = 2; // Wait
-                ModLogger.Log($"[BattleWait] Cursor at {cursor}, navigating to {target}");
-                NavigateMenuCursor(cursor, target);
+
+                // DontAct path: the action menu auto-skips greyed Abilities, so
+                // navigation press counts AND memory-cursor reads diverge from
+                // the non-disabled case. Empirically the menu_cursor byte stays
+                // stuck at the pre-disable value while the visible cursor moves
+                // 2 slots per Down press (skipping Abilities). Trying to use
+                // NavigateMenuCursor's verify-retry compounds the problem —
+                // each retry presses Down again, walking the visible cursor
+                // past Wait into Status / AutoBattle. Live-flagged 2026-04-26
+                // playtest #9: 2 retries pushed the visible cursor 4 slots
+                // total, landing on AutoBattle.
+                //
+                // Workaround: bypass NavigateMenuCursor. Press Escape to force
+                // cursor to slot 0 (Move), press Down ONCE (visible jumps
+                // 0→2 skipping Abilities), commit Enter via the existing
+                // wait-confirm flow below. Skip the verify check.
+                if (isDisabled)
+                {
+                    ModLogger.Log("[BattleWait] Disabled-unit path: Up×4 → Down×1 → Enter (bypassing memory-verified nav)");
+                    // Up×4 saturates at slot 0 (Move) regardless of starting
+                    // position in the 5-slot menu — Up doesn't wrap. We avoid
+                    // Escape because it closes the action menu rather than
+                    // resetting the cursor (live-flagged 2026-04-26 #2: the
+                    // Escape→Down approach left us in map mode + Enter never
+                    // committed Wait, the turn didn't advance).
+                    for (int i = 0; i < 4; i++)
+                    {
+                        SendKey(VK_UP);
+                        Thread.Sleep(80);
+                    }
+                    Thread.Sleep(100);
+                    // Down once — game auto-skips greyed Abilities (slot 1),
+                    // visible cursor jumps Move (0) → Wait (2).
+                    SendKey(VK_DOWN);
+                    Thread.Sleep(150);
+                    // fall through to the Enter / facing flow below — the
+                    // visible cursor is now on Wait per the auto-skip rule.
+                }
+                else
+                {
+                    ModLogger.Log($"[BattleWait] Cursor at {cursor}, navigating to {target}");
+                    NavigateMenuCursor(cursor, target);
+                }
 
                 Thread.Sleep(150);
                 var verifyResult = _explorer.ReadAbsolute((nint)0x1407FC620, 1);
                 int actual = verifyResult != null ? (int)verifyResult.Value.value : -1;
-                if (BattleWaitLogic.ShouldRetryVerifyAfterNav(
+                // Skip the verify-retry on the disabled path — memory cursor
+                // is unreliable when greyed slots are auto-skipped, and a
+                // retry just walks the visible cursor further past Wait.
+                if (!isDisabled && BattleWaitLogic.ShouldRetryVerifyAfterNav(
                         initialRaw: rawCursor, correctedCursor: cursor,
                         verifiedRaw: actual, target: target))
                 {
