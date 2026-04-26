@@ -1448,7 +1448,17 @@ namespace FFTColorCustomizer.GameBridge
             // applied to basic Attack here. Live-flagged 2026-04-25 P2:
             // `battle_attack 2 6` reported HIT (318→274/318) but the
             // Summoner was unchanged at 318/318 in the next scan.
-            if (staticHpAtk >= 0 && staticHpAtk <= targetMaxHp
+            //
+            // 2026-04-26: skip the override when live==0 and preHp>0.
+            // That's the KO signal — live correctly read the dead
+            // unit's struct at HP=0 while the static array hasn't
+            // refreshed yet (still showing pre-attack HP). Trust live=0
+            // over the stale static here. Live-flagged at Siedge Weald:
+            // Skeleton KO'd but reported MISSED because static=85
+            // overrode live=0.
+            bool koSignal = liveHp == 0 && preHp > 0;
+            if (!koSignal
+                && staticHpAtk >= 0 && staticHpAtk <= targetMaxHp
                 && System.Math.Abs(liveHp - staticHpAtk) > targetMaxHp / 2)
             {
                 ModLogger.Log($"[BattleAttack] HP mismatch: live={liveHp} static={staticHpAtk} — preferring static");
