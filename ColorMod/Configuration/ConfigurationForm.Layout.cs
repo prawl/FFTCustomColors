@@ -10,8 +10,20 @@ namespace FFTColorCustomizer.Configuration
         private void InitializeFormProperties()
         {
             Text = "FFT Color Customizer - Configuration";
-            Size = new Size(UIConfiguration.FormWidth, UIConfiguration.FormHeight);
-            MinimumSize = new Size(400, 300);
+
+            var saved = WindowStateService.Load(_configPath);
+            var workingArea = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
+            var (w, h) = WindowStateService.ResolveSize(
+                saved,
+                defaultWidth: UIConfiguration.FormWidth,
+                defaultHeight: UIConfiguration.FormHeight,
+                minWidth: UIConfiguration.FormMinWidth,
+                minHeight: UIConfiguration.FormMinHeight,
+                maxWidth: workingArea.Width,
+                maxHeight: workingArea.Height);
+
+            Size = new Size(w, h);
+            MinimumSize = new Size(UIConfiguration.FormMinWidth, UIConfiguration.FormMinHeight);
             StartPosition = FormStartPosition.CenterScreen;
             AutoScroll = false;
             TopMost = true;

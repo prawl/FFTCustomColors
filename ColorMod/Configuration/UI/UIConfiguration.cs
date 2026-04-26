@@ -8,15 +8,17 @@ namespace FFTColorCustomizer.Configuration.UI
     public static class UIConfiguration
     {
         // Form dimensions
-        public const int FormWidth = 700;
-        public const int FormHeight = 730;
+        public const int FormWidth = 1000;
+        public const int FormHeight = 900;
+        public const int FormMinWidth = 600;
+        public const int FormMinHeight = 400;
         public const int ButtonPanelHeight = 40;
         public const int ButtonWidth = 80;
         public const int ButtonHeight = 30;
         public const int ButtonPadding = 10;
 
         // Preview dimensions
-        public const int PreviewSize = 72;  // Medium preview size - good balance of visibility and space
+        public const int PreviewSize = 128;  // Larger preview for better visibility on high-res displays
 
         // Layout settings
         public const int MainPanelPadding = 10;

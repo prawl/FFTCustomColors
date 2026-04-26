@@ -347,6 +347,11 @@ namespace FFTColorCustomizer.Configuration
                     e.Cancel = true;
                 }
             }
+
+            if (!e.Cancel)
+            {
+                WindowStateService.Save(_configPath, Width, Height);
+            }
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
