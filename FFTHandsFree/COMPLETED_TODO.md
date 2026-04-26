@@ -2201,3 +2201,30 @@ Five sub-agent playtests spawned via the new `feedback_playtest_friction_pattern
 - See `feedback_bash_heredoc_quote_breakage.md` — diagnostic for silent renderer failures.
 - See `project_2026_04_25_playtest_fixes.md` — full commit roster for this session.
 - See `project_multi_unit_turn_handoff_bug.md` — detailed proposal for the open multi-unit bug.
+
+
+### 2026-04-26 — Dialogue decoder rewrite (event 045 walk-through)
+
+Live walk-through of event 045 (Eagrose Castle, 29 paginated bubbles) reset the load-bearing rules in `MesDecoder.DecodeBoxes`. User drove Enter through the cutscene and flagged speaker / placeholder / pagination mismatches; each correction tightened the byte semantics. See `project_dialogue_decoder_2026_04_26.md`.
+
+**Commit:** `bcd6cc4` — Dialogue decoder: FE-N pagination, 0xE0 / 0xDA-0x68 placeholders, segment-only speakers (+16 tests, 4709 → 4722 passing).
+
+**Shipped:**
+
+- [x] **Trailing 0xFE-run length = bubble count for the segment** — was previously collapsed to "one boundary plus a beat". With the new rule, a segment with FE×N at the end is split into N visible bubbles by sentence balance. Verified at event 045 FE×3 (127/114/90 char split) and FE×4 (110/108/104/76 char split).
+- [x] **Sentence-char-balanced pagination** — target = total_chars / N per bubble, soft cap 1.3×, reserve at least one sentence per remaining bubble. Reproduces the in-game 2-2-1 distribution for 5 sentences across 3 bubbles and 2-1-2-1 for 6 across 4.
+- [x] **0xF8 (single OR run) is intra-bubble whitespace** — corrects the earlier "F8×2 = bubble break" reading. Verified at event 045 byte 0x021e where F8×2 sits inside the "Might I pose a question, Ramza? What purpose…heed?" bubble.
+- [x] **0xE0 = "Ramza" placeholder** — fixes "Might I pose a question, ?" → "Might I pose a question, Ramza?" and "'Tis 's noble disposition" → "'Tis Ramza's noble disposition".
+- [x] **0xDA 0x68 = em-dash, NOT player name** — earlier reading produced "forgetRamzathey did save"; user verified the game shows "And let us not forget—they did save the marquis's life." Same fix corrects "your nameor" → "your name—or".
+- [x] **Speaker null when the segment lacks its own 0xE3 0x08 marker** — inherited speakers across FE boundaries produced false confidence (event 045 boxes 4–11 read "Delita" but the game shows Dycedarg/Ramza). fft.sh now falls back to neutral `[narrator]` for those boxes instead of lying. The .mes file does not encode mid-scene speaker changes; mid-scene accuracy stays open in `DEFERRED_TODO.md`.
+- [x] **Old "F8×N = bubble boundary" tests updated** — `MesDecoderBoxGroupingTests.DecodeBoxes_ConsecutiveF8_*` rewritten to assert the corrected intra-bubble-whitespace contract.
+
+**Not yet done (carried into DEFERRED_TODO.md):**
+
+- [ ] ⚠ UNVERIFIED — Dorter event 38 (the original 45-bubble repro) hasn't been re-tested with the new pagination model; needs a live re-count next time the cutscene plays.
+- [ ] Mid-scene speaker accuracy — three options described in DEFERRED_TODO.md (hand-curate, memory hunt, .evt parse).
+
+**Memory notes saved:**
+
+- See `project_dialogue_decoder_2026_04_26.md` — full byte semantics writeup (FE/F8/E0/DA68/E3 08), sentence-balanced pagination algo, and the open speaker-accuracy paths.
+- See `feedback_tdd_default.md` — user explicitly asked for test-first discipline after this session went impl-first; default to TDD on future bug fixes.
