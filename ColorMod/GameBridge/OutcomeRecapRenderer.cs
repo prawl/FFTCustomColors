@@ -18,14 +18,31 @@ namespace FFTColorCustomizer.GameBridge
         public static string? Render(IReadOnlyList<UnitScanDiff.ChangeEvent>? events)
         {
             if (events == null || events.Count == 0) return null;
-            var parts = new List<string>();
+            // Split by team so the agent can tell their own action effects
+            // (player units) apart from ambient changes (enemy self-buffs
+            // during animation, enemies acting on enemies, etc). Live-
+            // flagged 2026-04-26 P3: agent saw `[OUTCOME] Archer +163 HP
+            // +Defending -Charging,Haste PA +15,MA -9` after attacking
+            // Knight and didn't realize that was the enemy's Steel buff,
+            // not their attack.
+            var allyParts = new List<string>();
+            var enemyParts = new List<string>();
             foreach (var e in events)
             {
                 var part = RenderOne(e);
-                if (part != null) parts.Add(part);
+                if (part == null) continue;
+                if (e.Team == "PLAYER" || e.Team == "ALLY")
+                    allyParts.Add(part);
+                else
+                    enemyParts.Add(part);
             }
-            if (parts.Count == 0) return null;
-            return "[OUTCOME] " + string.Join(" / ", parts);
+            if (allyParts.Count == 0 && enemyParts.Count == 0) return null;
+            var sections = new List<string>();
+            if (allyParts.Count > 0)
+                sections.Add("[OUTCOME yours] " + string.Join(" / ", allyParts));
+            if (enemyParts.Count > 0)
+                sections.Add("[OUTCOME enemies] " + string.Join(" / ", enemyParts));
+            return string.Join(" | ", sections);
         }
 
         private static string? RenderOne(UnitScanDiff.ChangeEvent e)

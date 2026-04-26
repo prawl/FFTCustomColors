@@ -72,5 +72,35 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // Defensive: guard against divide-by-zero-style bad data.
             Assert.Equal("", AbilityHpDeltaFormatter.Format(preHp: 500, postHp: 400, maxHp: 0));
         }
+
+        [Fact]
+        public void RevivePhantom_DeadStaysDead_FlagsFailure()
+        {
+            // Phoenix Down on a dead unit that DIDN'T revive (cast missed,
+            // hit empty tile, or item didn't actually fire). Without this
+            // explicit flag the helper returns "" and the caller can't tell
+            // success from no-op. Live-flagged 2026-04-26 P3 playtest:
+            // `battle_ability "Phoenix Down" 7 9` claimed success but
+            // Wilham stayed HP=0/528 [Dead].
+            Assert.Equal(" — REVIVE FAILED (target still 0/528)",
+                AbilityHpDeltaFormatter.Format(preHp: 0, postHp: 0, maxHp: 528, isRevive: true));
+        }
+
+        [Fact]
+        public void RevivePhantom_NotARevive_BackwardsCompatible()
+        {
+            // Same 0→0 case but the ability isn't a revive — empty (no change).
+            Assert.Equal("", AbilityHpDeltaFormatter.Format(preHp: 0, postHp: 0, maxHp: 528, isRevive: false));
+        }
+
+        [Fact]
+        public void Revive_Successful_StillEmitsRevivedMarker()
+        {
+            // Successful revive (pre=0, post>0) emits the revived marker
+            // regardless of isRevive flag — flag only matters for the
+            // failure case.
+            Assert.Equal(" — revived (0→50/477)",
+                AbilityHpDeltaFormatter.Format(preHp: 0, postHp: 50, maxHp: 477, isRevive: true));
+        }
     }
 }

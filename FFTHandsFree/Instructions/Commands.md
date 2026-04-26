@@ -28,8 +28,7 @@ re-source for you so the agent only types one command per call.
 |---------|-------------|
 | `screen` | Current screen name, location, status. On PartyMenuUnits it renders the 5-column grid the game shows with a `cursor->` marker on the highlighted row, and `ui=<name>` tells you exactly which unit is hovered. |
 | `screen -v` | Verbose mode. On PartyMenuUnits, dumps the raw roster JSON (every unit with slot, displayOrder, name, level, job, brave/faith, JP, equipment) plus grid metadata (gridCols, gridRows, cursorRow, cursorCol, hoveredName). Use when you need to scan for gear gaps, compare stats across the party, or pick by an attribute rather than by grid position. On EquipmentAndAbilities it expands the detail panel. |
-| `scan_units` | All unit positions, HP, teams, stats |
-| `scan_move` | Units + valid movement tiles + attack tiles |
+| `scan_move` | Units + valid movement tiles + attack tiles. From a battle state, `screen` calls this under the hood — you'll typically just use `screen`. |
 | `scan_move <mv> <jmp>` | Override Move/Jump stats for tile calculation |
 
 ## Battle Actions
@@ -44,6 +43,7 @@ re-source for you so the agent only types one command per call.
 | `battle_flee` | Quit battle, return to world map |
 | `battle_retry` | Retry battle (from pause menu) |
 | `battle_retry_formation` | Retry with formation screen |
+| `return_to_my_turn` | Universal escape from any in-battle sub-menu (BattleAbilities, BattleAttacking, BattleCasting, BattlePaused, sub-skillset lists) back to the BattleMyTurn action-menu root. Sends up to 5 Escapes, polling for BattleMyTurn after each. No risk of a phantom Move/Wait — only Escape is dispatched. |
 
 ### Bundled turn
 

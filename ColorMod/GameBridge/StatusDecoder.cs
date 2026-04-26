@@ -94,6 +94,33 @@ namespace FFTColorCustomizer.GameBridge
             return result;
         }
 
+        /// <summary>Names of statuses that represent a unit's life-state (not
+        /// alive-only effects). Filtered out by <see cref="DecodeAliveStatuses"/>
+        /// so the rendered `[...]` block doesn't double-up with the
+        /// lifeState suffix (DEAD / CRYSTAL / TREASURE / STONE).</summary>
+        private static readonly System.Collections.Generic.HashSet<string> LifeStateNames =
+            new() { "Crystal", "Dead", "Treasure", "Petrify" };
+
+        /// <summary>
+        /// Same as <see cref="Decode"/>, but excludes the four life-state
+        /// entries (Crystal / Dead / Treasure / Petrify). Use this when
+        /// rendering the alive-statuses block of a unit row — the
+        /// life-state is surfaced separately so we don't want it to
+        /// appear in both places. Buffs that persist on a corpse
+        /// (Regen / Protect / Shell on Dead) DO surface — they're
+        /// useful diagnostic info ("what did they have when KO'd").
+        /// </summary>
+        public static List<string> DecodeAliveStatuses(byte[] statusBytes)
+        {
+            var all = Decode(statusBytes);
+            var result = new List<string>(all.Count);
+            foreach (var name in all)
+            {
+                if (!LifeStateNames.Contains(name)) result.Add(name);
+            }
+            return result;
+        }
+
         /// <summary>
         /// FFT element byte: each bit represents an element.
         /// Used for elemental absorb/cancel/half/weak/strengthen fields.

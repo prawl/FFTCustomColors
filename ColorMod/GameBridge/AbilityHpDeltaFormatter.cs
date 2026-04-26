@@ -11,9 +11,16 @@ namespace FFTColorCustomizer.GameBridge
     /// </summary>
     public static class AbilityHpDeltaFormatter
     {
-        public static string Format(int preHp, int postHp, int maxHp)
+        public static string Format(int preHp, int postHp, int maxHp, bool isRevive = false)
         {
             if (preHp < 0 || postHp < 0 || maxHp <= 0) return "";
+            // Phantom-revive defense: if this is a revive ability AND the
+            // target was dead (preHp=0) AND is still dead (postHp=0), the
+            // revive didn't land. Without this flag the helper returns ""
+            // and the caller sees `Used Phoenix Down on (X,Y)` with no
+            // way to tell it was a no-op. Live-flagged 2026-04-26 P3.
+            if (preHp == 0 && postHp == 0 && isRevive)
+                return $" — REVIVE FAILED (target still 0/{maxHp})";
             if (preHp == postHp) return "";
             if (preHp > 0 && postHp == 0)
                 return $" — KO'd! ({preHp}→0/{maxHp})";

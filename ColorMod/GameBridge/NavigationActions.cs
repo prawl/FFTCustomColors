@@ -582,6 +582,26 @@ namespace FFTColorCustomizer.GameBridge
                         Thread.Sleep(300);
                     }
                     screen = _detectScreen();
+                    // Force action-menu cursor to slot 0 (Move) after the
+                    // submenu Escape so the wait nav's key-presses count
+                    // from a known base. Live-flagged 2026-04-26 P4: a
+                    // battle_wait from BattleAbilities triggered a phantom
+                    // unintended Move because the cursor's actual menu
+                    // position differed from what the nav code assumed.
+                    // Mirrors the ExecuteTurn pre-flight cursor reset
+                    // (CommandWatcher.cs:4188).
+                    if (screen?.Name == "BattleMyTurn")
+                    {
+                        try
+                        {
+                            _explorer.Scanner.WriteByte((nint)0x1407FC620, 0);
+                            ModLogger.Log("[BattleWait] Forced action-menu cursor to slot 0 (Move) after submenu Escape");
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogError($"[BattleWait] Cursor reset write failed: {ex.Message}");
+                        }
+                    }
                 }
 
                 if (screen == null || !BattleWaitLogic.CanStartBattleWait(screen.Name))
@@ -874,6 +894,33 @@ namespace FFTColorCustomizer.GameBridge
                     // poll catches it.
                     if (current.Name == "BattleMyTurn" || current.Name == "BattleActing")
                     {
+                        // Confirm-modal escape: if BattleActing pops a
+                        // Yes/No/Confirm/Cancel modal (e.g. "Reset position?"
+                        // or a left-over crystal-move confirm), the wait
+                        // would otherwise return with the modal stuck on
+                        // screen and follow-up commands all see [BattleActing]
+                        // 30s+ until manual rescue. Send Escape to dismiss
+                        // the modal then re-detect once. Live-flagged
+                        // 2026-04-25 P2 playtest, hit twice.
+                        if (current.Name == "BattleActing")
+                        {
+                            // Check whether a modal is open by sending Escape
+                            // and seeing if the screen advances. If it does
+                            // (BattleActing → BattleMyTurn), the modal was
+                            // present and is now gone.
+                            SendKey(VK_ESCAPE);
+                            Thread.Sleep(300);
+                            var postEsc = _detectScreen();
+                            if (postEsc?.Name == "BattleMyTurn")
+                            {
+                                ModLogger.Log("[BattleWait] BattleActing modal dismissed via Escape; landed on BattleMyTurn");
+                                current = postEsc;
+                            }
+                            // If still BattleActing after Escape, it's the
+                            // legitimate "post-move action pending" case;
+                            // proceed to exit normally.
+                        }
+
                         response.Info = $"Friendly turn after {sw.ElapsedMilliseconds}ms (screen={current.Name})";
 
                         // S60 narrator: final catch-up — captures events that
@@ -1318,8 +1365,25 @@ namespace FFTColorCustomizer.GameBridge
                 }
                 Thread.Sleep(100);
             }
-            int postHp = ReadLiveHp(targetMaxHp, preHp, targetLevel);
-            ModLogger.Log($"[BattleAttack] Post-attack: live HP={postHp} (was {preHp})");
+            int liveHp = ReadLiveHp(targetMaxHp, preHp, targetLevel);
+            int staticHpAtk = ReadStaticArrayHpAt(targetX, targetY);
+            int postHp = liveHp;
+            // Dual-read defense: ReadLiveHp's heap fingerprint search can
+            // collide with another unit's struct and report fabricated
+            // damage when the actual attack missed. Cross-check against
+            // the static array slot at the target tile; prefer static
+            // when live disagrees by more than half MaxHp. Same pattern
+            // as the X-Potion phantom-heal fix in BattleAbility (S60),
+            // applied to basic Attack here. Live-flagged 2026-04-25 P2:
+            // `battle_attack 2 6` reported HIT (318→274/318) but the
+            // Summoner was unchanged at 318/318 in the next scan.
+            if (staticHpAtk >= 0 && staticHpAtk <= targetMaxHp
+                && System.Math.Abs(liveHp - staticHpAtk) > targetMaxHp / 2)
+            {
+                ModLogger.Log($"[BattleAttack] HP mismatch: live={liveHp} static={staticHpAtk} — preferring static");
+                postHp = staticHpAtk;
+            }
+            ModLogger.Log($"[BattleAttack] Post-attack: live HP={liveHp} static={staticHpAtk} chose={postHp} (was {preHp})");
 
             // S56 live-observed: after an attack MISS, the game re-opens the
             // attack-targeting screen asking the player to pick another target.
@@ -1330,6 +1394,36 @@ namespace FFTColorCustomizer.GameBridge
             // false MISSED reports.
             var postAttack = _detectScreen();
             string? postName = postAttack?.Name;
+            // Terminal-flicker tolerance: BattleVictory / GameOver /
+            // BattleDesertion can transiently flash mid-attack even when
+            // enemies remain alive (live-flagged 2026-04-26 P4: Lloyd's
+            // Blaze Gun shot reported BattleVictory while 2 enemies still
+            // standing). Settle and recheck up to 3×500ms before
+            // trusting a terminal classification.
+            if (postName == "BattleVictory" || postName == "GameOver"
+                || postName == "BattleDesertion")
+            {
+                for (int recheck = 0; recheck < 3; recheck++)
+                {
+                    Thread.Sleep(500);
+                    var s = _detectScreen();
+                    if (s?.Name != null && s.Name != "BattleVictory"
+                        && s.Name != "GameOver" && s.Name != "BattleDesertion")
+                    {
+                        ModLogger.Log($"[BattleAttack] Terminal-state flicker resolved: {postName} → {s.Name}");
+                        postAttack = s;
+                        postName = s.Name;
+                        break;
+                    }
+                }
+            }
+            // Pin the resolved screen on the response so the outer
+            // ProcessCommand wrapper's `response.Screen ??= DetectScreenSettled(...)`
+            // doesn't re-read the screen (and potentially re-catch the
+            // flicker we just settled away). 2026-04-26 P5: agent saw
+            // [BattleVictory] mid-battle even after this recheck because
+            // the wrapper read again. Pinning closes the gap.
+            response.Screen = postAttack;
             var outcome = AttackOutcomeClassifier.Classify(postName, preHp, postHp);
 
             // Still send Escape to back out of miss re-targeting; the action
@@ -1675,8 +1769,26 @@ namespace FFTColorCustomizer.GameBridge
                 // another unit (e.g. Wilham at (10,10)) from a prior
                 // C+Up cycle, causing the auto-fill to target the wrong
                 // tile. Live-flagged 2026-04-25 playtest.
+                //
+                // Stale-scan defense: if cursor disagrees with scan's
+                // active-unit position, the scan is stale (e.g. the
+                // unit moved via `execute_action ConfirmMove` which
+                // doesn't trigger our post-move re-scan, or after a
+                // partial execute_turn recovery). Force a fresh scan
+                // so the resolver gets accurate data — second occurrence
+                // of "Used Shout → (10,10) HP=528/528" wrong-tile bug
+                // 2026-04-25 P2.
                 var activeAlly = GetActiveAlly();
                 var cursorPos = ReadGridPos();
+                bool scanLooksStale = activeAlly != null
+                    && cursorPos.x >= 0 && cursorPos.y >= 0
+                    && (activeAlly.GridX != cursorPos.x || activeAlly.GridY != cursorPos.y);
+                if (scanLooksStale)
+                {
+                    ModLogger.Log($"[BattleAbility] Scan-stale detected (scan active at ({activeAlly!.GridX},{activeAlly.GridY}), cursor at ({cursorPos.x},{cursorPos.y})) — forcing fresh CollectUnitPositionsFull");
+                    try { CollectUnitPositionsFull(); } catch { /* fall back to cursor below */ }
+                    activeAlly = GetActiveAlly();
+                }
                 var (resolvedX, resolvedY) = CasterPositionResolver.Resolve(
                     activeAlly?.GridX, activeAlly?.GridY,
                     cursorPos.x, cursorPos.y);
@@ -1895,6 +2007,7 @@ namespace FFTColorCustomizer.GameBridge
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} (self-target){ctSuffix}{autoEndSuffix}";
                 StatTracker?.OnAbilityUsed(GetActiveUnitNameForStats(), abilityName);
+                response.Screen = ResolveTerminalFlicker(_detectScreen());
                 return response;
             }
 
@@ -1915,6 +2028,7 @@ namespace FFTColorCustomizer.GameBridge
                 response.Status = "completed";
                 response.Info = $"{verb} {abilityName} (self-radius AoE){ctSuffix}{autoEndSuffix}";
                 StatTracker?.OnAbilityUsed(GetActiveUnitNameForStats(), abilityName);
+                response.Screen = ResolveTerminalFlicker(_detectScreen());
                 return response;
             }
 
@@ -1956,8 +2070,18 @@ namespace FFTColorCustomizer.GameBridge
             // tile is still used for delta calc since the GAME cursor is
             // wherever it actually is on the screen, but we trust the scan
             // for the caster's identity coords (used by PostAction pin).
+            // Same stale-scan defense as the auto-fill path above.
             var cursorAtStart = ReadGridPos();
             var activeAtStart = GetActiveAlly();
+            bool startScanStale = activeAtStart != null
+                && cursorAtStart.x >= 0 && cursorAtStart.y >= 0
+                && (activeAtStart.GridX != cursorAtStart.x || activeAtStart.GridY != cursorAtStart.y);
+            if (startScanStale)
+            {
+                ModLogger.Log($"[BattleAbility] startPos: scan-stale (scan ({activeAtStart!.GridX},{activeAtStart.GridY}) vs cursor ({cursorAtStart.x},{cursorAtStart.y})); refreshing");
+                try { CollectUnitPositionsFull(); } catch { /* fall back to cursor */ }
+                activeAtStart = GetActiveAlly();
+            }
             var (startCasterX, startCasterY) = CasterPositionResolver.Resolve(
                 activeAtStart?.GridX, activeAtStart?.GridY,
                 cursorAtStart.x, cursorAtStart.y);
@@ -1990,7 +2114,8 @@ namespace FFTColorCustomizer.GameBridge
                         ModLogger.Log($"[BattleAbility] Self-cast HP mismatch: live={liveHp} static={staticHp} — preferring static");
                         postHp = staticHp;
                     }
-                    hpDelta = AbilityHpDeltaFormatter.Format(abilityPreHp, postHp, abilityTargetMaxHp);
+                    hpDelta = AbilityHpDeltaFormatter.Format(abilityPreHp, postHp, abilityTargetMaxHp,
+                        isRevive: IsReviveAbilityName(abilityName));
                     ModLogger.Log($"[BattleAbility] Self-cast post: live={liveHp} static={staticHp} chose={postHp} (was {abilityPreHp}) at ({targetX},{targetY})");
                 }
                 response.Status = "completed";
@@ -2000,6 +2125,13 @@ namespace FFTColorCustomizer.GameBridge
                 // move during a self-cast, and we don't want the trailing
                 // suffix to mix target-tile coords with caster HP.
                 response.PostAction = ReadPostActionState(startPos.x, startPos.y);
+                // Pin a flicker-resolved screen so the outer wrapper's
+                // ??= fallback doesn't catch a transient terminal state.
+                // 2026-04-26 P6: agent saw [BattleVictory] after Magma
+                // Surge while 2 enemies still alive. The "no-nav" branch
+                // (cursor already on target) was missing the same screen
+                // pin the main BattleAbility return path now has.
+                response.Screen = ResolveTerminalFlicker(_detectScreen());
                 return response;
             }
 
@@ -2087,10 +2219,30 @@ namespace FFTColorCustomizer.GameBridge
             if (finalPos.x != targetX || finalPos.y != targetY)
             {
                 ModLogger.Log($"[BattleAbility] WARN: cursor at ({finalPos.x},{finalPos.y}), expected ({targetX},{targetY})");
-                response.Error = $"Cursor miss: at ({finalPos.x},{finalPos.y}) expected ({targetX},{targetY})";
-                SendKey(VK_ESCAPE);
-                Thread.Sleep(300);
+                // Aggressive cancel: send up to 3 Escapes spaced 300ms,
+                // poll for return to BattleMyTurn after each. The single
+                // Escape used to leave callers stranded if the targeting
+                // mode didn't accept it cleanly — the caller's next call
+                // would land on an unexpected screen and the action
+                // could even commit at the wrong tile (live-flagged
+                // 2026-04-26 P4: Tanglevine cursor miss landed Lloyd in
+                // BattleEnemiesTurn with action consumed).
+                bool aborted = false;
+                for (int esc = 0; esc < 3; esc++)
+                {
+                    SendKey(VK_ESCAPE);
+                    Thread.Sleep(300);
+                    var s = _detectScreen();
+                    if (s?.Name == "BattleMyTurn" || s?.Name == "BattleActing")
+                    {
+                        aborted = true;
+                        break;
+                    }
+                }
                 response.Status = "failed";
+                response.Error = aborted
+                    ? $"Cursor miss: at ({finalPos.x},{finalPos.y}) expected ({targetX},{targetY}) — aborted cleanly"
+                    : $"Cursor miss: at ({finalPos.x},{finalPos.y}) expected ({targetX},{targetY}) — could NOT abort, action may have committed at wrong tile";
                 return response;
             }
 
@@ -2136,7 +2288,8 @@ namespace FFTColorCustomizer.GameBridge
                         postHp = staticHp;
                     }
                 }
-                finalHpDelta = AbilityHpDeltaFormatter.Format(abilityPreHp, postHp, abilityTargetMaxHp);
+                finalHpDelta = AbilityHpDeltaFormatter.Format(abilityPreHp, postHp, abilityTargetMaxHp,
+                    isRevive: IsReviveAbilityName(abilityName));
                 ModLogger.Log($"[BattleAbility] Post-cast: live={liveHp} static={staticHp} chose={postHp} (pre={abilityPreHp}) at ({targetX},{targetY})");
             }
 
@@ -2148,7 +2301,40 @@ namespace FFTColorCustomizer.GameBridge
             // with caster HP (would mislead any caller tracking enemy HP
             // from the response payload).
             response.PostAction = ReadPostActionState(startPos.x, startPos.y);
+            // Pin a flicker-resolved screen so the outer ProcessCommand
+            // wrapper doesn't re-read and catch a transient terminal
+            // state. Same fix as BattleAttack — 2026-04-26 P5: agent
+            // saw `[BattleVictory]` after Tanglevine while 2 enemies
+            // were still alive.
+            response.Screen = ResolveTerminalFlicker(_detectScreen());
             return response;
+        }
+
+        /// <summary>
+        /// Settle terminal-state flickers (BattleVictory / GameOver /
+        /// BattleDesertion) by polling up to 3×500ms before trusting them.
+        /// Used by BattleAttack and BattleAbility to pin response.Screen
+        /// so the outer ProcessCommand wrapper's `??=` fallback doesn't
+        /// re-read and surface a flicker we already settled. 2026-04-26 P5.
+        /// </summary>
+        private DetectedScreen? ResolveTerminalFlicker(DetectedScreen? initial)
+        {
+            if (initial?.Name == null) return initial;
+            if (initial.Name != "BattleVictory" && initial.Name != "GameOver"
+                && initial.Name != "BattleDesertion")
+                return initial;
+            for (int recheck = 0; recheck < 3; recheck++)
+            {
+                Thread.Sleep(500);
+                var s = _detectScreen();
+                if (s?.Name != null && s.Name != "BattleVictory"
+                    && s.Name != "GameOver" && s.Name != "BattleDesertion")
+                {
+                    ModLogger.Log($"[FlickerResolve] {initial.Name} → {s.Name}");
+                    return s;
+                }
+            }
+            return initial;
         }
 
         /// <summary>
@@ -3216,7 +3402,14 @@ namespace FFTColorCustomizer.GameBridge
                     SecondaryAbility = u.SecondaryAbility,
                     LifeState = StatusDecoder.GetLifeState(u.StatusBytes) is var ls && ls != "alive" ? ls
                         : (u.Hp <= 0 && u.MaxHp > 0 ? "dead" : null),
-                    Statuses = StatusDecoder.Decode(u.StatusBytes) is var s && s.Count > 0 ? s : null,
+                    // Filter Crystal/Dead/Treasure/Petrify out of the alive-statuses
+                    // list — they're surfaced separately as lifeState. Without
+                    // the filter the rendered row carried both `[Treasure]`
+                    // (status bit) and ` TREASURE` (lifeState), and worse
+                    // collapsed alive `[Defending,Charging]` together with
+                    // life-state `[Treasure,Dead]` into one bracketed blob —
+                    // playtest #7 friction.
+                    Statuses = StatusDecoder.DecodeAliveStatuses(u.StatusBytes) is var s && s.Count > 0 ? s : null,
                     Abilities = abilities,
                     Reaction = u.ReactionAbility,
                     Support = u.SupportAbility,
@@ -4310,11 +4503,15 @@ namespace FFTColorCustomizer.GameBridge
 
             if (deltaX == 0 && deltaY == 0)
             {
-                // Already at target — confirm
+                // Cursor already at target tile — fire confirm. Note:
+                // cursor position is NOT the unit position. Make the
+                // message say so explicitly. Live-flagged 2026-04-26 P3:
+                // agent read "Already at (5,7)" as "unit is at (5,7)"
+                // and got confused when the unit was actually elsewhere.
                 _input.SendKeyPressToWindow(_gameWindow, VK_F);
                 Thread.Sleep(500);
                 response.Status = "completed";
-                response.Error = $"Already at ({targetX},{targetY})";
+                response.Info = $"Cursor already on ({targetX},{targetY}) — sent confirm; unit moves from its current tile to here";
                 return response;
             }
 
@@ -4433,12 +4630,49 @@ namespace FFTColorCustomizer.GameBridge
             bool confirmed = false;
             string lastScreenSeen = "null";
             int polls = 0;
+            int stalePokes = 0;
+            const int MaxStalePokes = 3;
             var sw = Stopwatch.StartNew();
-            while (sw.ElapsedMilliseconds < 8000)
+            long lastPokeMs = 0;
+            // 8s → 12s: Ramza's Gallant Knight move animation can run long
+            // when there are intervening BattleVictory flicker rechecks
+            // (#2 of 2026-04-25 P2 playtest). Longer ceiling reduces
+            // false-negative NOT CONFIRMED on slow turns. Cost is bounded
+            // — only the genuinely-stuck cases pay the extra 4s.
+            while (sw.ElapsedMilliseconds < 12000)
             {
                 var check = _detectScreen();
                 polls++;
                 if (check?.Name != null) lastScreenSeen = check.Name;
+                // Skip BattleVictory flicker — same root cause as the
+                // execute_turn outer loop. If we exit the move-confirm
+                // wait on a flicker, the caller sees confused state.
+                if (check?.Name == "BattleVictory" || check?.Name == "GameOver"
+                    || check?.Name == "BattleDesertion")
+                {
+                    ModLogger.Log($"[MoveGrid] Skipping terminal-flicker {check.Name} (likely transient)");
+                    Thread.Sleep(200);
+                    continue;
+                }
+                // Stale-state poke: if we've been on BattleMoving for >3s
+                // post-confirm-F, the game may be showing a modal we
+                // don't classify as a distinct screen (e.g. an IC
+                // remaster "Move here?" Yes/No prompt). Send Enter to
+                // try to dismiss/accept. Up to 3 pokes spaced 2s apart.
+                // Live-flagged 2026-04-26 P3: 3 of 5 moves NOT CONFIRMED
+                // with lastScreen=BattleMoving for full timeout window.
+                if (check?.Name == "BattleMoving"
+                    && sw.ElapsedMilliseconds > 3000
+                    && stalePokes < MaxStalePokes
+                    && (sw.ElapsedMilliseconds - lastPokeMs) > 2000)
+                {
+                    ModLogger.Log($"[MoveGrid] Stale BattleMoving at {sw.ElapsedMilliseconds}ms — sending Enter poke #{stalePokes + 1}");
+                    SendKey(VK_ENTER);
+                    Thread.Sleep(300);
+                    stalePokes++;
+                    lastPokeMs = sw.ElapsedMilliseconds;
+                    continue;
+                }
                 // Require the "player in control" states BattleMyTurn or
                 // BattleActing (post-move, action pending) as the confirmation
                 // signal. S56 live-observed: accepting any non-BattleMoving
@@ -4485,16 +4719,24 @@ namespace FFTColorCustomizer.GameBridge
                 return response;
             }
 
-            // Verify the unit actually moved by reading postAction position.
-            // If the game rejected the move (invalid tile), it returns to BattleMyTurn
-            // without changing position — the "confirmed" check above can't distinguish
-            // this from a successful move.
-            var postCheck = ReadPostActionState();
-            if (postCheck != null && postCheck.X == startPos.x && postCheck.Y == startPos.y
-                && (startPos.x != targetX || startPos.y != targetY))
+            // Verify the unit actually moved by reading the active unit's
+            // authoritative position from the static battle array slot
+            // (NOT the cursor — cursor sits on the move-confirm tile
+            // even when the unit didn't actually move). 2026-04-26 P5:
+            // `execute_turn 8 8` reported success but Lloyd stayed at
+            // (9,8). The old check used ReadPostActionState which reads
+            // CondensedBase (cursor-hovered unit) — it returned the
+            // cursor's tile, not the unit's, so the rejection check
+            // trivially passed.
+            try { CollectUnitPositionsFull(); } catch { /* fallback below */ }
+            var activeAfterMove = GetActiveAlly();
+            if (activeAfterMove != null
+                && (startPos.x != targetX || startPos.y != targetY)
+                && activeAfterMove.GridX == startPos.x && activeAfterMove.GridY == startPos.y)
             {
+                ModLogger.Log($"[MoveGrid] REJECTED — active unit still at ({startPos.x},{startPos.y}) per scan, but cursor reached ({finalPos.x},{finalPos.y})");
                 response.Status = "failed";
-                response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) REJECTED — unit still at start position";
+                response.Error = $"({startPos.x},{startPos.y})->({finalPos.x},{finalPos.y}) REJECTED — unit still at start position (cursor reached target but unit did not commit)";
                 return response;
             }
 
@@ -4839,7 +5081,12 @@ namespace FFTColorCustomizer.GameBridge
             {
                 string teamName = u.Team == 0 ? "PLAYER" : u.Team == 2 ? "ALLY" : "ENEMY";
                 string? className = u.JobNameOverride ?? (u.Job > 0 ? GameStateReporter.GetJobName(u.Job) : null);
-                var statuses = StatusDecoder.Decode(u.StatusBytes);
+                // DecodeAliveStatuses filters Crystal/Dead/Treasure/Petrify out of
+                // the rendered alive-statuses block — those surface separately
+                // via LifeState. Mixing them in `[Foo,Bar,Baz]` confuses the
+                // visual scan (playtest #7: `[Treasure]` for a crystallized
+                // unit looked indistinguishable from `[Defending]`).
+                var statuses = StatusDecoder.DecodeAliveStatuses(u.StatusBytes);
                 bool isActive = u.IsActive;
 
                 var resp = new Utilities.ScannedUnitResponse
@@ -4859,7 +5106,15 @@ namespace FFTColorCustomizer.GameBridge
                     Reaction = u.ReactionAbility,
                     Support = u.SupportAbility,
                     Movement = u.MovementAbility,
-                    LifeState = u.Hp <= 0 && u.MaxHp > 0 ? "dead" : null,
+                    // Read full lifeState (alive/dead/crystal/treasure/petrified)
+                    // from the status bits — the prior `Hp<=0 ? "dead" : null`
+                    // missed crystallized/treasure units (Hp=0 with the
+                    // Crystal/Treasure bit set). Falls back to HP-only when
+                    // GetLifeState returns "alive" (e.g. status bytes empty
+                    // for a freshly KO'd unit before the Dead bit lands).
+                    LifeState = StatusDecoder.GetLifeState(u.StatusBytes) is var ls5077 && ls5077 != "alive"
+                        ? ls5077
+                        : (u.Hp <= 0 && u.MaxHp > 0 ? "dead" : null),
                 };
                 if (statuses.Count > 0) resp.Statuses = statuses;
                 result.Add(resp);
@@ -5051,7 +5306,12 @@ namespace FFTColorCustomizer.GameBridge
             current = BackfillNamesFromSnap(lastSnap, current);
             var preForDiff = StripFingerprints(lastSnap);
             var postForDiff = StripFingerprints(current);
-            var events = UnitScanDiff.Compare(preForDiff, postForDiff);
+            var rawEvents = UnitScanDiff.Compare(preForDiff, postForDiff);
+            // Suppress phantom A→B→A move pairs from mid-animation scan
+            // races (live-flagged 2026-04-25 P2). 3s window covers an
+            // enemy turn cycle without crossing into another genuine
+            // turn.
+            var events = _moveArtifactCoalescer.Filter(rawEvents, DateTime.UtcNow);
             if (events.Count > 0)
             {
                 var counterLines = CounterAttackInferrer.Infer(events, activePlayerName ?? "", current);
@@ -5100,6 +5360,29 @@ namespace FFTColorCustomizer.GameBridge
         /// Reset at the start of a non-chunked BattleWait call (see BattleWait).
         /// </summary>
         private List<UnitScanDiff.UnitSnap>? _narratorPersistentLastSnap;
+
+        /// <summary>
+        /// Hardcoded revive-ability names so BattleAbility can flag a
+        /// no-op revive (`Used Phoenix Down on (X,Y)` with target still
+        /// 0 HP). Live-flagged 2026-04-26 P3 playtest. Add new revive
+        /// abilities here when discovered.
+        /// </summary>
+        private static bool IsReviveAbilityName(string? name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            return name == "Phoenix Down"
+                || name == "Raise"
+                || name == "Arise"
+                || name == "Revive"
+                || name == "Life Song";
+        }
+
+        /// <summary>
+        /// Cross-batch tracker that suppresses phantom A→B→A move pairs
+        /// in the streaming narrator. See <see cref="MoveArtifactCoalescer"/>.
+        /// </summary>
+        private readonly MoveArtifactCoalescer _moveArtifactCoalescer
+            = new(System.TimeSpan.FromSeconds(3));
 
         /// <summary>Last computed valid move tiles from scan_move BFS. Used by battle_move to validate targets.</summary>
         private HashSet<(int x, int y)>? _lastValidMoveTiles;

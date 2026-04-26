@@ -1599,12 +1599,55 @@ namespace FFTColorCustomizer.Utilities
                         ScreenMachine?.LastDetectedScreen
                         ?? ScreenMachine?.CurrentScreen.ToString();
                     var commandStartedAt = DateTime.UtcNow;
+                    // Snapshot the active-unit identity that was true at
+                    // the START of this command. Compared post-execute
+                    // against the new cached identity so a turn handoff
+                    // mid-command (battle_move that straddles a turn
+                    // boundary, etc.) emits the TURN HANDOFF banner —
+                    // 2026-04-26 P3 playtest: agent thought Wilham was
+                    // active for 3 turns when it was actually Lloyd.
+                    var preCommandActiveIdentity = SnapshotActiveUnitIdentity();
 
                     var response = ExecuteCommand(command);
                     // Screen-query commands can't be mid-transition (no keys just
                     // fired), so skip the 150ms+ settle loop. Key-sending and
                     // action commands still settle to let UI animations finish.
                     response.Screen ??= DetectScreenSettled(requireSettle: !isScreenQuery);
+                    // Wrapper-level terminal-flicker resolve: even if the
+                    // inner handler pinned response.Screen, the fallback
+                    // DetectScreenSettled above can re-catch a flicker
+                    // that's still active. Recheck up to 3×500ms before
+                    // surfacing terminal state to the caller. 2026-04-26
+                    // P5: agent saw `[BattleVictory]` mid-battle on
+                    // simple commands repeatedly even after handler-level
+                    // rechecks. Skip on observational/screen-query
+                    // commands (pure reads — no flicker to settle).
+                    if (!isScreenQuery && response.Screen?.Name is "BattleVictory"
+                        or "GameOver" or "BattleDesertion")
+                    {
+                        for (int wrapRe = 0; wrapRe < 3; wrapRe++)
+                        {
+                            Thread.Sleep(500);
+                            var wrapS = DetectScreen();
+                            if (wrapS?.Name != null && wrapS.Name != "BattleVictory"
+                                && wrapS.Name != "GameOver"
+                                && wrapS.Name != "BattleDesertion")
+                            {
+                                ModLogger.Log($"[ProcessCommand] Wrapper-level flicker resolved: {response.Screen.Name} → {wrapS.Name}");
+                                response.Screen = wrapS;
+                                break;
+                            }
+                        }
+                    }
+                    // Universal TURN HANDOFF banner: if the active unit
+                    // identity changed during ANY command (not just
+                    // battle_wait/execute_turn — also battle_move,
+                    // execute_action, etc.), surface it. Idempotent via
+                    // HandoffBannerJoiner (skips when sub-step already
+                    // prepended the same banner).
+                    PrependHandoffBanner(response,
+                        GameBridge.TurnHandoffBannerClassifier.BuildBanner(
+                            preCommandActiveIdentity, SnapshotActiveUnitIdentity()));
                     // CharacterStatusLeakGuard: during battle_wait animations,
                     // unit-slot/ui bytes transiently match CharacterStatus —
                     // hold the previous battle state when no key input could
@@ -1886,7 +1929,7 @@ namespace FFTColorCustomizer.Utilities
                     {
                         Id = command.Id,
                         Status = "blocked",
-                        Error = $"[STRICT MODE] {reason}. Use the fft.sh helper commands: path, battle_wait, battle_attack, move_grid, scan_units, etc. Current screen: {screen?.Name}. ValidPaths: {available}",
+                        Error = $"[STRICT MODE] {reason}. Use the fft.sh helper commands: path, battle_wait, battle_attack, move_grid, scan_move, etc. Current screen: {screen?.Name}. ValidPaths: {available}",
                         ProcessedAt = DateTime.UtcNow.ToString("o"),
                         GameWindowFound = true,
                         Screen = screen,
@@ -3803,6 +3846,15 @@ namespace FFTColorCustomizer.Utilities
                             if (preWaitScanSnap != null && postWaitScanSnap != null)
                             {
                                 var diffEvents = GameBridge.UnitScanDiff.Compare(preWaitScanSnap, postWaitScanSnap);
+                                // Crystallization banner — surfaces the
+                                // permanent unit loss before the recap.
+                                var unitLost = GameBridge.UnitLostBannerClassifier.BuildBanner(diffEvents);
+                                if (!string.IsNullOrEmpty(unitLost))
+                                {
+                                    waitResp.Info = string.IsNullOrEmpty(waitResp.Info)
+                                        ? unitLost
+                                        : unitLost + " | " + waitResp.Info;
+                                }
                                 var recap = GameBridge.OutcomeRecapRenderer.Render(diffEvents);
                                 if (!string.IsNullOrEmpty(recap))
                                 {
@@ -4318,7 +4370,16 @@ namespace FFTColorCustomizer.Utilities
             // with no clue what their attack did. Live-flagged 2026-04-25
             // playtest: Ramza died on an attack and the agent had to grep
             // mod logs to figure out why.
-            var stepInfos = new List<string>();
+            // Pair (action, Info) tuples so ExecuteTurnInfoAggregator can
+            // prefix each step's Info with "> [action]" — the shell-side
+            // narrator only surfaces lines beginning with "> ", "===", or
+            // "[OUTCOME". Without per-line prefixing the joined Info was
+            // stored on response.Info but never reached the user.
+            var stepInfos = new List<(string Action, string? Info)>();
+            // Captured separately from last.Info so the join below can't
+            // overwrite it (the existing bug: setting last.Info on terminal
+            // interrupt got clobbered by the join, losing the abort reason).
+            string? turnInterruptMessage = null;
             int stepIndex = 0;
             foreach (var step in plan.ToSteps())
             {
@@ -4354,7 +4415,7 @@ namespace FFTColorCustomizer.Utilities
                 last = ExecuteAction(sub);
                 if (last == null) break;
                 if (!string.IsNullOrWhiteSpace(last.Info))
-                    stepInfos.Add(last.Info);
+                    stepInfos.Add((step.Action, last.Info));
                 accumulator.RecordStep(step.Action, last.PostAction);
 
                 // S58: if the sub-action's resulting screen indicates the
@@ -4369,14 +4430,26 @@ namespace FFTColorCustomizer.Utilities
                     // BattleVictory / GameOver / WorldMap can flicker transiently
                     // mid-turn (the screen detector has known-overrides that
                     // briefly surface terminal states). Don't bail on the first
-                    // sighting — re-check after a settle to see if it sticks.
-                    // Live-flagged playtest #4 2026-04-25: a 1-2s spurious
-                    // BattleVictory state aborted execute_turn's wait step
-                    // mid-X-Potion. The flicker is acknowledged in Commands.md
-                    // as a known gotcha; the helper should retry through it.
-                    Thread.Sleep(800);
-                    var recheck = DetectScreen();
-                    var recheckInterruption = GameBridge.TurnInterruptionClassifier.Classify(recheck?.Name);
+                    // sighting — poll-recheck up to 2.4s in 800ms increments to
+                    // see if it resolves. 2026-04-25 P2 playtest: 800ms single-
+                    // shot recheck wasn't enough — false-positive BattleVictory
+                    // hit 3+ times across the session, each cascading into
+                    // panic-recovery code paths.
+                    // 3 → 5 attempts (4s total). 2026-04-26 P3: false-
+                    // positive BattleVictory still hit during execute_turn
+                    // even with 3×800ms (2.4s) recheck. Some flickers
+                    // last 3-4s before the underlying screen restabilizes.
+                    DetectedScreen? recheck = null;
+                    GameBridge.TurnInterruption recheckInterruption =
+                        GameBridge.TurnInterruption.BattleEnded;
+                    for (int attempt = 0; attempt < 5; attempt++)
+                    {
+                        Thread.Sleep(800);
+                        recheck = DetectScreen();
+                        recheckInterruption = GameBridge.TurnInterruptionClassifier.Classify(recheck?.Name);
+                        if (!GameBridge.TurnInterruptionClassifier.ShouldAbortTurn(recheckInterruption))
+                            break;
+                    }
                     if (!GameBridge.TurnInterruptionClassifier.ShouldAbortTurn(recheckInterruption))
                     {
                         ModLogger.Log($"[ExecuteTurn] Transient interruption resolved: {last.Screen?.Name} → {recheck?.Name}; continuing");
@@ -4385,8 +4458,13 @@ namespace FFTColorCustomizer.Utilities
                     }
                     else
                     {
-                        last.Info = (last.Info != null ? last.Info + " | " : "")
-                            + $"[turn-interrupt] step '{step.Action}' landed on {last.Screen?.Name} ({interruption}) — aborting execute_turn bundle";
+                        // Capture in a separate slot so the aggregator-driven
+                        // join below can't overwrite it. Previously this
+                        // mutated last.Info, which was then clobbered by
+                        // `last.Info = string.Join(...)` — losing every
+                        // GameOver / BattleVictory / Desertion abort reason.
+                        turnInterruptMessage =
+                            $"[turn-interrupt] step '{step.Action}' landed on {last.Screen?.Name} ({interruption}) — aborting execute_turn bundle";
                         break;
                     }
                 }
@@ -4416,12 +4494,16 @@ namespace FFTColorCustomizer.Utilities
 
             last.Id = command.Id;
             last.TurnSummary = BuildTurnSummary(accumulator);
-            // Concatenate sub-step Info so the bundled response surfaces
-            // every outcome — the original last.Info is the FINAL step's
-            // Info (often empty after battle_wait). Joined with " | " so
-            // grep-friendly and fits one line in the compact formatter.
-            if (stepInfos.Count > 0)
-                last.Info = string.Join(" | ", stepInfos);
+            // Aggregate sub-step Info + any turn-interrupt reason via the
+            // pure helper. Each step's Info gets prefixed with "> [action]"
+            // so fft.sh's narrator surfaces it as a visible line; lines
+            // already pre-formatted ("> ...", "===", "[OUTCOME ...]") pass
+            // through unchanged. The interrupt message is appended last and
+            // can no longer be lost to a subsequent overwrite.
+            var aggregated = GameBridge.ExecuteTurnInfoAggregator.Aggregate(
+                stepInfos, turnInterruptMessage);
+            if (!string.IsNullOrEmpty(aggregated))
+                last.Info = aggregated;
             // Backfill PostAction from the accumulator if the final sub-step
             // didn't populate one (battle_wait typically doesn't). Without
             // this, the formatter's `→ (X,Y) HP=H/MH` trailer is missing
@@ -4448,6 +4530,13 @@ namespace FFTColorCustomizer.Utilities
                 if (preBundleScanSnap != null && postBundleScanSnap != null)
                 {
                     var diffEvents = GameBridge.UnitScanDiff.Compare(preBundleScanSnap, postBundleScanSnap);
+                    var unitLost = GameBridge.UnitLostBannerClassifier.BuildBanner(diffEvents);
+                    if (!string.IsNullOrEmpty(unitLost))
+                    {
+                        last.Info = string.IsNullOrEmpty(last.Info)
+                            ? unitLost
+                            : unitLost + " | " + last.Info;
+                    }
                     var recap = GameBridge.OutcomeRecapRenderer.Render(diffEvents);
                     if (!string.IsNullOrEmpty(recap))
                     {
@@ -5840,8 +5929,26 @@ namespace FFTColorCustomizer.Utilities
             {
                 _cachedActiveUnitName = activeUnit.Name;
                 _cachedActiveUnitJob = activeUnit.JobName;
-                _cachedActiveUnitX = activeUnit.X;
-                _cachedActiveUnitY = activeUnit.Y;
+                // Position-preserve guard: during BattleMoving /
+                // BattleAttacking / BattleCasting, the game's static
+                // array can report the active unit's slot at the CURSOR
+                // position (move-preview), not the unit's actual tile.
+                // Use a FRESH screen detection at this moment — `_lastClassifiedScreen`
+                // can lag the actual current state (especially during
+                // a multi-step bundled command), causing the post-wait
+                // auto-scan to be incorrectly skipped and leaving the
+                // cache stale. 2026-04-26 P5: agent saw `[BattleMyTurn]
+                // ui=Move` with NO active-unit name in the header
+                // because this guard tripped on stale lastClassifiedScreen.
+                var freshScreen = DetectScreen();
+                bool isMoveModeState = freshScreen?.Name == "BattleMoving"
+                    || freshScreen?.Name == "BattleAttacking"
+                    || freshScreen?.Name == "BattleCasting";
+                if (!isMoveModeState)
+                {
+                    _cachedActiveUnitX = activeUnit.X;
+                    _cachedActiveUnitY = activeUnit.Y;
+                }
                 _cachedActiveUnitHp = activeUnit.Hp;
                 _cachedActiveUnitMaxHp = activeUnit.MaxHp;
                 // Weapon banner tag — computed server-side in
@@ -9508,6 +9615,8 @@ namespace FFTColorCustomizer.Utilities
                         _cachedActiveUnitX, _cachedActiveUnitY,
                         _cachedActiveUnitHp, _cachedActiveUnitMaxHp,
                         _cachedActiveUnitWeaponTag);
+                    screen.ActiveUnitPrimarySkillset = _cachedPrimarySkillset;
+                    screen.ActiveUnitSecondarySkillset = _cachedSecondarySkillset;
                 }
                 // Clear cached active-unit fields when transitioning to a
                 // terminal battle state — the cache is stale once Ramza dies

@@ -61,6 +61,14 @@ namespace FFTColorCustomizer.GameBridge
                 };
             }
 
+            // Numbered-family normalization: AbilityCompactor renders
+            // `Aim +1`...`Aim +20` as a single `Aim (+1 to +20)` line and
+            // the agent then types just `Aim`. Resolve to the lowest
+            // available level (`Aim +1`). Live-flagged 2026-04-26 P3:
+            // agent saw `Aim` in skillset list, called battle_ability
+            // "Aim" → "not found" (Aim IS listed in error). 2026-04-26.
+            string resolvedName = ResolveNumberedFamilyName(abilityName, availableSkillsets);
+
             // Search available skillsets first (unit's primary + secondary)
             if (availableSkillsets != null)
             {
@@ -70,7 +78,7 @@ namespace FFTColorCustomizer.GameBridge
                     if (abilities == null) continue;
                     for (int i = 0; i < abilities.Count; i++)
                     {
-                        if (abilities[i].Name == abilityName)
+                        if (abilities[i].Name == resolvedName)
                         {
                             bool isSelf = abilities[i].HRange == "Self";
                             return new AbilityLocation
@@ -94,7 +102,7 @@ namespace FFTColorCustomizer.GameBridge
                 if (searched.Contains(skillsetName)) continue;
                 for (int i = 0; i < abilities.Count; i++)
                 {
-                    if (abilities[i].Name == abilityName)
+                    if (abilities[i].Name == resolvedName)
                     {
                         bool isSelf = abilities[i].HRange == "Self";
                         return new AbilityLocation
@@ -110,6 +118,67 @@ namespace FFTColorCustomizer.GameBridge
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Resolve a numbered-family alias like `Aim` or `Aim (+1 to +20)`
+        /// to the lowest-level concrete ability name (`Aim +1`) that
+        /// exists in any available skillset. Returns the input unchanged
+        /// if no family match. Live-flagged 2026-04-26 P3 playtest.
+        /// </summary>
+        public static string ResolveNumberedFamilyName(
+            string requestedName, string[]? availableSkillsets)
+        {
+            if (string.IsNullOrEmpty(requestedName)) return requestedName;
+            // Strip the "(+1 to +20)" suffix if present.
+            string baseName = requestedName;
+            int parenIdx = requestedName.IndexOf(" (+");
+            if (parenIdx > 0) baseName = requestedName.Substring(0, parenIdx);
+            // If the literal name already matches an ability, don't rewrite.
+            if (NameExistsInSkillsets(requestedName, availableSkillsets))
+                return requestedName;
+            // Look for a concrete `<base> +N` family in available skillsets.
+            string? bestMatch = null;
+            int bestNum = int.MaxValue;
+            void TryMatch(IReadOnlyList<ActionAbilityInfo> abilities)
+            {
+                foreach (var a in abilities)
+                {
+                    if (!a.Name.StartsWith(baseName + " +")) continue;
+                    var suffix = a.Name.Substring(baseName.Length + 2).Trim();
+                    if (int.TryParse(suffix, out int n) && n < bestNum)
+                    {
+                        bestMatch = a.Name;
+                        bestNum = n;
+                    }
+                }
+            }
+            if (availableSkillsets != null)
+            {
+                foreach (var ss in availableSkillsets)
+                {
+                    var abilities = ActionAbilityLookup.GetSkillsetAbilities(ss);
+                    if (abilities != null) TryMatch(abilities);
+                }
+            }
+            if (bestMatch != null) return bestMatch;
+            // Fall back: search ALL skillsets.
+            foreach (var (_, abilities) in ActionAbilityLookup.AllSkillsets)
+                TryMatch(abilities);
+            return bestMatch ?? requestedName;
+        }
+
+        private static bool NameExistsInSkillsets(string name, string[]? skillsets)
+        {
+            if (skillsets == null) return false;
+            foreach (var ss in skillsets)
+            {
+                var abilities = ActionAbilityLookup.GetSkillsetAbilities(ss);
+                if (abilities == null) continue;
+                foreach (var a in abilities)
+                    if (a.Name == name) return true;
+            }
+            return false;
         }
 
         /// <summary>

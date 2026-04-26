@@ -242,6 +242,13 @@ try{const j=JSON.parse(require('fs').readFileSync(0,'utf8'));process.stdout.writ
   local tries=0
   # $2 = per-command timeout in seconds (default 5). Poll at 20ms intervals.
   local max_tries=$(( ${2:-5} * 50 ))
+  # Heartbeat: emit a dot to stderr every 5s of polling so the caller
+  # can see the bridge is still working on a long execute_turn (17-37s
+  # cycles aren't uncommon during enemy-turn animations). Live-flagged
+  # 2026-04-25 P2: agent unsure whether 17s call had hung. FFT_TIME=0
+  # silences (same env as timing suffix).
+  local _heartbeat_every=$(( 5 * 50 ))   # 5s in 20ms ticks
+  local _heartbeat_threshold=$(( 3 * 50 )) # only after 3s — short calls stay quiet
   while :; do
     if [ -f "$B/response.json" ] && [ -n "$_call_id" ]; then
       # Match the response's id to ours so a stale leftover doesn't
@@ -256,12 +263,20 @@ try{const j=JSON.parse(require('fs').readFileSync(0,'utf8'));process.stdout.writ
     fi
     sleep 0.02
     tries=$((tries + 1))
+    if [ "${FFT_TIME:-1}" != "0" ] && [ "$tries" -gt "$_heartbeat_threshold" ] \
+       && [ $(( tries % _heartbeat_every )) -eq 0 ]; then
+      printf '.' >&2
+    fi
     if [ $tries -ge $max_tries ]; then
       echo "[TIMEOUT] No response after $(( max_tries / 50 ))s"
       running
       return 1
     fi
   done
+  # Newline after any heartbeat dots so the renderer's first line starts cleanly.
+  if [ "${FFT_TIME:-1}" != "0" ] && [ "$tries" -gt "$_heartbeat_every" ]; then
+    printf '\n' >&2
+  fi
   local _t1=$EPOCHREALTIME
   # Render compact summary via the shared helper — see _fmt_screen_compact above.
   # Single source of truth; screen() uses the same function. Pass timing so the
@@ -281,7 +296,7 @@ try{const j=JSON.parse(require('fs').readFileSync(0,'utf8'));process.stdout.writ
 try{
   const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));
   const info=j.info||'';
-  const lines=info.split(/\r?\n|\s\|\s/).filter(l=>l.startsWith('> ')||l.startsWith('===')||l.startsWith('[OUTCOME]'));
+  const lines=info.split(/\r?\n|\s\|\s/).filter(l=>l.startsWith('> ')||l.startsWith('===')||l.startsWith('[OUTCOME'));
   if(lines.length)process.stdout.write(lines.join('\n'));
 }catch(e){}" "$B/response.json" 2>/dev/null)
   [ -n "$NARRATION" ] && printf '%s\n' "$NARRATION"
@@ -2045,6 +2060,32 @@ return_to_world_map() {
   return 1
 }
 
+# return_to_my_turn: Universal escape hatch for in-battle sub-menus.
+# When stuck in BattleAbilities / BattleAttacking / BattleCasting / a
+# sub-skillset list / BattlePaused, sends up to 5 Escapes spaced 300ms
+# apart, polling for BattleMyTurn or BattleActing after each. Recovers
+# the action-menu root state without firing any keystrokes that could
+# trigger a phantom Move or Wait. Live-flagged 2026-04-26 P4: agent
+# was stuck in BattleAbilities post-pause and had no clean way back.
+return_to_my_turn() {
+  local _FFT_ALLOW_CHAIN=1
+  local cur
+  for i in $(seq 1 5); do
+    cur=$(_current_screen)
+    case "$cur" in
+      BattleMyTurn|BattleActing)
+        screen
+        return 0
+        ;;
+    esac
+    fft "{\"id\":\"$(id)\",\"keys\":[{\"vk\":27,\"name\":\"Escape\"}],\"delayBetweenMs\":0}" >/dev/null
+    _fft_reset_guard
+    sleep 0.3
+  done
+  echo "[return_to_my_turn] ERROR: stuck at $(_current_screen) after 5 escapes"
+  return 1
+}
+
 # fft_resync was removed session 46 2026-04-19. It was a bandaid that
 # pressed keys to paper over state-detection bugs; the real fix is to
 # make detection correctly report the screen from memory. If you find
@@ -3557,6 +3598,18 @@ const _stateTag=(_acted||_moved)
   ? ' ['+[_acted?'ACTED':null,_moved?'MOVED':null].filter(Boolean).join(' ')+']'
   : '';
 console.log('['+s.name+']'+uiTag+_stateTag+' '+aLabel+' ('+ax+','+ay+') HP='+ahp+'/'+amhp+' MP='+amp+'/'+ammp+locTag+tSuffix);
+// Skillset disambiguation: class label (Orator) is distinct from primary
+// skillset (Mediation) — agent confused them when seeing Lloyd(Orator)
+// with Geomancy abilities. Surface prim/sec on a sub-line so the
+// abilities below are interpretable. 2026-04-25 P2 friction.
+const _prim=s.activeUnitPrimarySkillset||'';
+const _sec=s.activeUnitSecondarySkillset||'';
+if(_prim||_sec){
+  const _bits=[];
+  if(_prim) _bits.push('primary='+_prim);
+  if(_sec) _bits.push('secondary='+_sec);
+  console.log('  '+_bits.join(' '));
+}
 console.log('');
 
 // Abilities with target tiles (filtering/collapsing done server-side by AbilityCompactor)
@@ -3583,7 +3636,14 @@ if(_acted){
     // Trailing N-empty count preserves the range size for planning.
     const allTiles=a.validTargetTiles||[];
     const occupiedTiles=allTiles.filter(t=>t.occupant&&t.occupant!=='empty');
-    const emptyCount=allTiles.length-occupiedTiles.length;
+    // Server-side CompactAbilities (CommandWatcher.cs:5860) strips empty
+    // tiles before they reach us, so allTiles == occupiedTiles in practice.
+    // Use a.totalTargets (set BEFORE the strip) to surface the total
+    // cached count — without this, an offensive AoE that can splash any
+    // of 30+ empty centers shows only the 4 ally tiles in radius and the
+    // agent assumes only allies are valid. Live-flagged 2026-04-25 P2.
+    const totalCached=(a.totalTargets!=null)?a.totalTargets:allTiles.length;
+    const hiddenCount=Math.max(0,totalCached-occupiedTiles.length);
     const tiles=occupiedTiles.map(t=>{
       let s='('+t.x+','+t.y+')';
       // Tag disambiguates the tile's occupant relative to the caster:
@@ -3601,15 +3661,46 @@ if(_acted){
       else s+='<'+t.occupant+aff+arc+los+intent+'>';
       return s;
     });
-    if(emptyCount>0)tiles.push('('+emptyCount+' empty)');
+    if(hiddenCount>0)tiles.push('(+'+hiddenCount+' empty tiles)');
     const mp=a.mpCost?' mp='+a.mpCost:'';
     const ct=a.castSpeed?' ct='+a.castSpeed:'';
     const el=a.element?' ['+a.element+']':'';
     const eff=a.addedEffect?' {'+a.addedEffect+'}':'';
+    // Range / AoE tags — agent could not tell from the rendered output
+    // whether Meteor / Ultima / Slowja covered just the 4 visible ally
+    // tiles or a wider radius. R: shows max horizontal range from caster
+    // (Self|N), AoE: shows splash radius (omitted when 1=point-target,
+    // since point is the implicit default). 2026-04-25 P2 friction.
+    const rh=a.horizontalRange?(' R:'+a.horizontalRange):'';
+    const aoe=(a.areaOfEffect&&a.areaOfEffect>1)?(' AoE:'+a.areaOfEffect):'';
     // heldCount is only set for inventory-gated skillsets (Items/Iaido/Throw).
     // Render [xN] when stocked, [OUT] when zero so Claude can pick from valid options at a glance.
     const held=(a.heldCount!=null)?(a.heldCount>0?' [x'+a.heldCount+']':' [OUT]'):'';
-    console.log('  '+a.name+mp+ct+el+eff+held+' \\u2192 '+(tiles.length?tiles.join(' '):'(no targets in range)'));
+    console.log('  '+a.name+rh+aoe+mp+ct+el+eff+held+' \\u2192 '+(tiles.length?tiles.join(' '):'(no targets in range)'));
+    // BestCenters: top-ranked aim tiles for radius-AoE abilities (Geomancy
+    // Sinkhole/Tanglevine/etc, summons, Meteor, Ultima). Without this
+    // line the agent has no way to know which center hits the most
+    // enemies — they have to mentally compute Chebyshev radii. The bridge
+    // already computes and ranks; we just need to render. Live-flagged
+    // 2026-04-26 P4: agent saw 13 Geomancy entries with no best: line
+    // and had to guess centers. BattleTurns.md docs promise this output.
+    if(a.bestCenters && a.bestCenters.length){
+      const top=a.bestCenters.slice(0,3).map(c=>{
+        const e=(c.enemies&&c.enemies.length)?' e:'+c.enemies.join(','):'';
+        const al=(c.allies&&c.allies.length)?' a:'+c.allies.join(','):'';
+        return '('+c.x+','+c.y+')'+e+al;
+      });
+      console.log('    best: '+top.join('  '));
+    }
+    if(a.bestDirections && a.bestDirections.length){
+      const top=a.bestDirections.slice(0,3).map(d=>{
+        const e=(d.enemies&&d.enemies.length)?' e:'+d.enemies.join(','):'';
+        const al=(d.allies&&d.allies.length)?' a:'+d.allies.join(','):'';
+        const sd=(d.seed&&d.seed.length>=2)?'('+d.seed[0]+','+d.seed[1]+')':'';
+        return d.direction+'\\u2192'+sd+e+al;
+      });
+      console.log('    best: '+top.join('  '));
+    }
   });
   console.log('');
 }
@@ -3712,7 +3803,15 @@ us.forEach(u=>{
   const cl=u.jobName?(u.name?'('+u.jobName+')':u.jobName):'';
   const clSep=u.jobName?(u.name?'':' '):'';
   const st=u.statuses?.length?' ['+u.statuses.join(',')+']':'';
-  const life=u.lifeState==='dead'?' DEAD':(u.lifeState==='petrified'?' STONE':(u.lifeState==='crystal'?' CRYSTAL':''));
+  // lifeState surfaced as a separate suffix (DEAD recoverable / TREASURE
+  // permanent loot-chest / CRYSTAL permanent crystal / STONE petrified)
+  // so it is visually distinct from the bracketed Status block, which
+  // now carries alive-only effects (server-side DecodeAliveStatuses
+  // filters Crystal/Dead/Treasure/Petrify out of the rendered list).
+  // (Playtest 7 friction: same Treasure bracket on alive vs unrecoverable.)
+  // No backticks in this comment block — fft.sh wraps the node script in
+  // bash double-quotes, which evaluates backticks as command substitution.
+  const life=u.lifeState==='dead'?' DEAD':(u.lifeState==='petrified'?' STONE':(u.lifeState==='crystal'?' CRYSTAL':(u.lifeState==='treasure'?' TREASURE':'')));
   const act=u.isActive?' *':'';
   const dist=u.distance!==undefined&&!u.isActive?' d='+u.distance:'';
   // Facing letter shows for all teams. For enemies it drives backstab arc

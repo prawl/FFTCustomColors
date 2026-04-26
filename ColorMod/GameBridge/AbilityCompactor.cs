@@ -82,25 +82,18 @@ namespace FFTColorCustomizer.GameBridge
         }
 
         /// <summary>
-        /// An enemy-target ability with no enemy occupants in its valid-tile
-        /// list contributes no useful information to the ability list — the
-        /// player can't use it to hit anything. Hide it.
-        ///
-        /// EXCEPTION: the basic "Attack" entry is always visible so Claude
-        /// can see the equipped weapon's range / element / on-hit effect
-        /// even when no enemy is adjacent. Positioning decisions depend
-        /// on knowing the attack profile in advance. See TODO §0 S60.
+        /// Always-visible: never hide learned abilities. Originally we
+        /// hid enemy-target abilities when no enemy occupants were in
+        /// their valid-tile list ("no useful info"), but live-flagged
+        /// 2026-04-26 P6: hiding made entire skillsets vanish (agent saw
+        /// `primary=Speechcraft` in the header but ZERO Speechcraft
+        /// abilities in the dump because no enemies were in range).
+        /// First-time agents had no way to know what their primary kit
+        /// could even DO. Letting all abilities through with a
+        /// `(no targets in range)` rendering surfaces the kit without
+        /// requiring the agent to bring an enemy into range first.
         /// </summary>
-        public static bool IsHidden(AbilityEntry a)
-        {
-            if (a.Name == "Attack") return false;
-            return a.Target == "enemy" && !HasEnemyOccupant(a);
-        }
-
-        private static bool HasEnemyOccupant(AbilityEntry a)
-        {
-            return a.ValidTargetTiles?.Any(t => t.Occupant == "enemy") == true;
-        }
+        public static bool IsHidden(AbilityEntry a) => false;
 
         private static string TileKey(AbilityEntry a)
         {

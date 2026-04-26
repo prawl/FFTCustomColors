@@ -7,9 +7,8 @@ How to fight battles using the bridge commands.
 
 ```bash
 source ./fft.sh          # Load helpers (required once per session)
-screen                   # Check current screen state
-scan_units               # Scan all unit positions, HP, teams
-scan_move                # Scan units + compute valid movement tiles
+screen                   # Check current screen state + (during battle) full unit scan + valid moves + AoE rankings
+scan_move                # Same as `screen` from a battle state — alias kept for muscle memory
 battle_move <x> <y>      # Move active unit to grid tile (x,y)
 battle_attack <x> <y>    # Attack target at tile (x,y)
 battle_wait              # End turn (menu nav + facing + wait for next friendly turn)
@@ -68,8 +67,8 @@ Returns structured JSON:
 - **battle.units[]** — all units with:
   - **name** — story characters ("Ramza", "Agrias", etc.) AND generic player recruits ("Kenrick", "Lloyd", "Wilham"). Enemy names and monster names are null (not readable from memory yet).
   - jobName, team, level, x, y, hp/maxHp, ct, speed, distance
-  - **statuses** (e.g. `["Protect","Shell","Poison"]`)
-  - **lifeState** — "dead", "crystal", or null (alive)
+  - **statuses** (e.g. `["Protect","Shell","Poison"]`) — alive-only effects. **Crystal/Dead/Treasure/Petrify never appear here** — they're surfaced separately as `lifeState`. So `[Dead,Regen,Protect,Shell]` (PSX-shaped) is now `lifeState=dead` + `statuses=[Regen,Protect,Shell]` — buffs that persisted on the corpse.
+  - **lifeState** — `null` (alive), `"dead"` (KO'd, recoverable with Phoenix Down or Raise within ~3 turns), `"crystal"` (crystallized, **permanently gone**), `"treasure"` (turned into a loot chest, **permanently gone**), `"petrified"` (Stone, can't act/be attacked until Gold Needle). The render surfaces this as a distinct ` DEAD` / ` CRYSTAL` / ` TREASURE` / ` STONE` suffix on the unit row — visually separate from the bracketed `[Status]` block so you can't confuse a recoverable KO with a permanent loss.
   - **abilities** (per-unit) — each ability entry: `{name, mp, horizontalRange, verticalRange, areaOfEffect, heightOfEffect, target, effect, castSpeed, element, addedEffect}`. Populated for active player (learned + equipped skillsets), AND for monster enemies (fixed per class from `MonsterAbilities.cs`). Enemy human abilities are per-encounter randomized and NOT yet readable.
 - **battle.turnOrder[]** — Combat Timeline order. Each entry has name, team, level, hp/maxHp, x, y, ct, isActive.
 - **ValidMoveTiles.tiles[]** — reachable tiles with `{x, y, h}` (h = height for high ground)
@@ -126,6 +125,13 @@ battle_ability "Phoenix Down" 3 4    # raise dead ally
 - **Self-radius** (R:Self AoE>1): Hits tiles around caster. No coordinates needed.
 - **Full-field** (AoE:99): Hits all allies/enemies. Bard/Dancer songs. No targeting.
 
+**Per-tile annotation tags** (suffix on the `<…>` block):
+- `>rear` / `>side` — backstab-arc relative to the target's facing. Rear = backstab bonus, side = modest. Front is implicit (no tag).
+- `+absorb` / `=null` / `~half` / `!weak` / `^strengthen` — element-affinity. Surfaces only when the ability has an element AND the target has that affinity. Sigil meaning: `+` heals, `=` no damage, `~` half damage, `!` double damage, `^` strengthens own outgoing element.
+- `!blocked` — the bridge's line-of-sight check thinks terrain blocks the projectile / ranged attack from the caster's CURRENT tile to this target. **Treat as a hint, not a verdict** — the LoS calculator can be conservative (especially at edge cases like tile-edge heights); the game itself is authoritative. If you really want to attack, try anyway — the bridge will let the game decide. The tag is most reliable on clear longish-range shots; flag false-negatives in `playtest_logs/`.
+- `[REVIVE]` / `[REVIVE-ENEMY!]` / `[KO]` / `[KO-ALLY!]` — revive-ability intent (Phoenix Down etc.) on the target's lifeState. `REVIVE` = canonical (dead ally), `REVIVE-ENEMY!` = resurrects an enemy (usually bad), `KO` = undead-status enemy (kill move), `KO-ALLY!` = undead-status ally (kills your own).
+- `[TOO CLOSE]` — basic-Attack cardinal tile that's NOT in range because your weapon's MinRange > 1 (bow / gun / crossbow can't hit d=1 cardinals).
+
 **About the `<Caster SELF>` marker:** When you see `Tailwind → (8,10)<Ramza SELF>`, the `SELF` tag means "your tile is one of the valid targets" — NOT "this is a self-only ability." Self-targetable buffs like Tailwind / Steel / Salve / Cure / X-Potion can land on you OR on an ally. You can call them either way:
 - `battle_ability "Tailwind"` (no coords) → bridge auto-fills your tile (default-self), since the marker promises it's a valid target.
 - `battle_ability "Tailwind" 5 4` → cast on the ally at (5,4).
@@ -148,6 +154,10 @@ The `RecommendedFacing` in scan_move shows you the recommended direction before 
 ## Waiting for Other Turns
 
 `battle_wait` auto-waits through enemy/ally turns. When you see `BattleAlliesTurn` or `BattleEnemiesTurn`, poll `screen` until `BattleMyTurn` returns.
+
+## Why might a skillset show no abilities?
+
+The `primary=X secondary=Y` sub-line on the screen header lists the active unit's two equipped skillsets. The ability dump below lists every ability LEARNED in those skillsets. If you see `primary=Speechcraft` but no Speechcraft abilities, the unit hasn't spent JP on any of them yet — the skillset is equipped but empty. Generic recruits often start with zero learned abilities in their primary; the secondary may have more if they've used it before. Spend JP via `open_eqa <unit>` between battles to learn abilities.
 
 ## Multi-unit party turn-cycling
 

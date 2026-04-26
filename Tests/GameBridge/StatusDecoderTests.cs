@@ -250,5 +250,74 @@ namespace FFTColorCustomizer.Tests.GameBridge
             var result = StatusDecoder.Decode(new byte[] { 0x40, 0, 0, 0, 0 });
             Assert.Contains("Crystal", result);
         }
+
+        // DecodeAliveStatuses: returns Decode() but EXCLUDES the four
+        // entries that are surfaced separately as `lifeState` (Crystal /
+        // Dead / Treasure / Petrify). Without this filter the rendered
+        // unit row carried both `[Treasure]` and ` TREASURE` (or worse:
+        // the same word inside `[...]` collided visually with alive
+        // statuses like Defending and Charging — playtest #7 friction).
+
+        [Fact]
+        public void DecodeAliveStatuses_NoStatuses_ReturnsEmpty()
+        {
+            Assert.Empty(StatusDecoder.DecodeAliveStatuses(new byte[] { 0, 0, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void DecodeAliveStatuses_OnlyDead_ReturnsEmpty()
+        {
+            // Dead is a lifeState, not an alive status — filtered out.
+            Assert.Empty(StatusDecoder.DecodeAliveStatuses(new byte[] { 0x20, 0, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void DecodeAliveStatuses_OnlyCrystal_ReturnsEmpty()
+        {
+            Assert.Empty(StatusDecoder.DecodeAliveStatuses(new byte[] { 0x40, 0, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void DecodeAliveStatuses_OnlyTreasure_ReturnsEmpty()
+        {
+            Assert.Empty(StatusDecoder.DecodeAliveStatuses(new byte[] { 0, 0x01, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void DecodeAliveStatuses_OnlyPetrify_ReturnsEmpty()
+        {
+            Assert.Empty(StatusDecoder.DecodeAliveStatuses(new byte[] { 0, 0x80, 0, 0, 0 }));
+        }
+
+        [Fact]
+        public void DecodeAliveStatuses_DeadPlusBuffs_KeepsBuffs()
+        {
+            // Dead + Regen + Protect + Shell — playtest #7 saw these on Ramza's
+            // corpse. Surfacing the buffs is useful (tells you what he had
+            // when KO'd); the lifeState gets the DEAD suffix separately.
+            var result = StatusDecoder.DecodeAliveStatuses(new byte[] { 0x20, 0, 0, 0x70, 0 });
+            Assert.Equal(3, result.Count);
+            Assert.Contains("Regen", result);
+            Assert.Contains("Protect", result);
+            Assert.Contains("Shell", result);
+            Assert.DoesNotContain("Dead", result);
+        }
+
+        [Fact]
+        public void DecodeAliveStatuses_NoLifeState_ReturnsAllStatuses()
+        {
+            // No life-state bits — behavior matches Decode() exactly.
+            var result = StatusDecoder.DecodeAliveStatuses(new byte[] { 0, 0, 0, 0xA8, 0 });
+            Assert.Equal(3, result.Count);
+            Assert.Contains("Poison", result);
+            Assert.Contains("Haste", result);
+            Assert.Contains("Protect", result);
+        }
+
+        [Fact]
+        public void DecodeAliveStatuses_NullInput_ReturnsEmpty()
+        {
+            Assert.Empty(StatusDecoder.DecodeAliveStatuses(null!));
+        }
     }
 }

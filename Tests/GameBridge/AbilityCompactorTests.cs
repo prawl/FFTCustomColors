@@ -48,14 +48,19 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void Compact_EnemyAbilityWithNoEnemyInRange_Hidden()
+        public void Compact_EnemyAbilityWithNoEnemyInRange_StillVisible()
         {
+            // Behavior changed 2026-04-26 P6: agents need to see learned
+            // skillsets even when no enemy is in range so they can plan
+            // moves that bring targets into range. The ability shows
+            // with `(no targets in range)` rather than vanishing.
             var input = new List<AbilityEntry>
             {
                 MakeAbility("Fire", "enemy", (5, 5, "ally"), (5, 6, null)),
             };
             var result = AbilityCompactor.Compact(input);
-            Assert.Empty(result);
+            Assert.Single(result);
+            Assert.Equal("Fire", result[0].Name);
         }
 
         [Fact]
@@ -126,18 +131,20 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void Compact_MixedUsable_AndHidden_PreservesOrder()
+        public void Compact_MixedAbilities_AllPreserved()
         {
+            // 2026-04-26 P6: with hiding removed, all three pass through.
             var input = new List<AbilityEntry>
             {
-                MakeAbility("Fire", "enemy", (5, 5, "enemy")),                // kept
-                MakeAbility("Blizzard", "enemy", (5, 6, "ally")),              // hidden
-                MakeAbility("Cure", "ally", (5, 7, "ally")),                   // kept
+                MakeAbility("Fire", "enemy", (5, 5, "enemy")),
+                MakeAbility("Blizzard", "enemy", (5, 6, "ally")),
+                MakeAbility("Cure", "ally", (5, 7, "ally")),
             };
             var result = AbilityCompactor.Compact(input);
-            Assert.Equal(2, result.Count);
+            Assert.Equal(3, result.Count);
             Assert.Equal("Fire", result[0].Name);
-            Assert.Equal("Cure", result[1].Name);
+            Assert.Equal("Blizzard", result[1].Name);
+            Assert.Equal("Cure", result[2].Name);
         }
 
         [Fact]
@@ -154,15 +161,17 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void Compact_EnemyAbilityWithEmptyTileList_Hidden()
+        public void Compact_EnemyAbilityWithEmptyTileList_StillVisible()
         {
-            // No valid target tiles → treated as no enemies in range.
+            // 2026-04-26 P6: even with zero valid target tiles, the
+            // entry stays visible so agents can see what's in their
+            // skillset. Renders as `(no targets in range)`.
             var input = new List<AbilityEntry>
             {
                 MakeAbility("Fire", "enemy"),
             };
             var result = AbilityCompactor.Compact(input);
-            Assert.Empty(result);
+            Assert.Single(result);
         }
 
         [Fact]
@@ -304,17 +313,20 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void IsHidden_EnemyAbilityWithoutEnemyOccupant_True()
+        public void IsHidden_EnemyAbilityWithoutEnemyOccupant_StillFalse()
         {
+            // 2026-04-26 P6: hiding rule removed entirely. Even with no
+            // enemies in range, the ability stays visible so agents see
+            // what skillsets they have.
             var a = MakeAbility("Fire", "enemy", (5, 5, "ally"), (5, 6, null));
-            Assert.True(AbilityCompactor.IsHidden(a));
+            Assert.False(AbilityCompactor.IsHidden(a));
         }
 
         [Fact]
-        public void IsHidden_EnemyAbilityEmptyTileList_True()
+        public void IsHidden_EnemyAbilityEmptyTileList_StillFalse()
         {
             var a = MakeAbility("Fire", "enemy");
-            Assert.True(AbilityCompactor.IsHidden(a));
+            Assert.False(AbilityCompactor.IsHidden(a));
         }
 
         [Fact]

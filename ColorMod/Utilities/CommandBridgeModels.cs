@@ -836,6 +836,23 @@ namespace FFTColorCustomizer.Utilities
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ActiveUnitSummary { get; set; }
 
+        /// <summary>Active unit's PRIMARY skillset (locked to current job —
+        /// Mediation for Orator, Time Magicks for Time Mage, Stealing for
+        /// Thief, etc). Distinct from the JOB CLASS label (e.g. Lloyd's
+        /// class is Orator but his primary skillset is Mediation). Live-
+        /// flagged 2026-04-25 P2: agent saw `(Orator)` class while
+        /// Geomancy abilities listed and got confused which is which.</summary>
+        [JsonPropertyName("activeUnitPrimarySkillset")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ActiveUnitPrimarySkillset { get; set; }
+
+        /// <summary>Active unit's SECONDARY skillset (cross-class equipped
+        /// skillset). Same disambiguation purpose as
+        /// <see cref="ActiveUnitPrimarySkillset"/>.</summary>
+        [JsonPropertyName("activeUnitSecondarySkillset")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ActiveUnitSecondarySkillset { get; set; }
+
         /// <summary>CharacterStatus view toggle: `1` key expands the full stat grid
         /// (Move/Jump/PA/MA/PE/ME/weapon-parry/shield-parry/cloak-evade). When true,
         /// the game's hint reads "[1] Less" and the header shows all numeric stats.

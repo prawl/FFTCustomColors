@@ -1728,7 +1728,13 @@ namespace FFTColorCustomizer.GameBridge
         /// "not in basic-Attack range" because their bow can't hit at d=1.
         /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("inRange")]
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+        // No JsonIgnore — we explicitly want both `true` and `false` on
+        // the wire so the shell renderer can render `[TOO CLOSE]` when
+        // false. Default-strip would omit the false case entirely,
+        // making the tag unreachable. 2026-04-26 P6: agent saw
+        // `Attack tiles: Left→(9,9) enemy (Time Mage)` for a Blaze Gun
+        // user where (9,9) was actually MinRange-blocked, no [TOO CLOSE]
+        // appeared, then `battle_attack 9 9` was rejected.
         public bool InRange { get; set; }
     }
 

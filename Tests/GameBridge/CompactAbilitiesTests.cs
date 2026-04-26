@@ -9,12 +9,13 @@ namespace FFTColorCustomizer.Tests.GameBridge
     public class CompactAbilitiesTests
     {
         [Fact]
-        public void HideEnemyTargetAbilities_WithNoEnemyOccupants()
+        public void EnemyTargetAbilities_WithNoEnemyOccupants_StillVisible()
         {
+            // 2026-04-26 P6: hiding rule removed. Agents need to see
+            // their full skillset even when no enemy is in range so they
+            // can plan a move that brings a target into range.
             var abilities = new List<AbilityEntry>
             {
-                // S60: Attack is always preserved so Claude can see the weapon's
-                // range / element / on-hit effect even when no enemy is adjacent.
                 MakeAbility("Attack", "enemy", new[] { ("ally", "Ramza"), ("ally", "Archer") }),
                 MakeAbility("Fire", "enemy", new[] { ("ally", "Ramza"), ("ally", "Archer") }),
                 MakeAbility("Tailwind", "ally", new[] { ("ally", "Ramza"), ("self", "Ramza") }),
@@ -23,11 +24,10 @@ namespace FFTColorCustomizer.Tests.GameBridge
 
             var result = AbilityCompactor.Compact(abilities);
 
-            // Attack stays (S60 policy: always visible)
+            // All four pass through.
+            Assert.Equal(4, result.Count);
             Assert.Contains(result, a => a.Name == "Attack");
-            // Fire is enemy-target and stays hidden when no enemies in tiles
-            Assert.DoesNotContain(result, a => a.Name == "Fire");
-            // Tailwind and Focus should remain
+            Assert.Contains(result, a => a.Name == "Fire");
             Assert.Contains(result, a => a.Name == "Tailwind");
             Assert.Contains(result, a => a.Name == "Focus");
         }
@@ -102,24 +102,32 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void CollapseSkipsHiddenAbilities_InMiddle()
+        public void CollapseHonorsTileDifferences_NoFamilyMerge()
         {
-            // Aim +3 has no enemies — gets hidden. But Aim +1, +2, +5 should still collapse.
-            var withEnemy = new[] { ("enemy", "Skeleton") };
-            var allyOnly = new[] { ("ally", "Ramza") };
+            // 2026-04-26 P6: with hiding removed, family-collapse must
+            // still respect tile-key differences. Aim +3 here has a
+            // distinct tile coordinate, breaking the run of identical
+            // keys, so collapse splits into ("Aim (+1 to +2)", "Aim +3",
+            // "Aim +5"). The MakeAbility helper indexes tiles by array
+            // position, so we use distinct array LENGTHS (which produce
+            // different X/Y coordinates) to make the tile keys differ.
+            var oneEnemy = new[] { ("enemy", "Skeleton") };
+            var twoEnemies = new[] { ("enemy", "Skeleton"), ("enemy", "Goblin") };
             var abilities = new List<AbilityEntry>
             {
-                MakeAbility("Aim +1", "enemy", withEnemy),
-                MakeAbility("Aim +2", "enemy", withEnemy),
-                MakeAbility("Aim +3", "enemy", allyOnly), // will be hidden
-                MakeAbility("Aim +5", "enemy", withEnemy),
+                MakeAbility("Aim +1", "enemy", oneEnemy),
+                MakeAbility("Aim +2", "enemy", oneEnemy),
+                MakeAbility("Aim +3", "enemy", twoEnemies),  // different tile-key
+                MakeAbility("Aim +5", "enemy", oneEnemy),
             };
 
             var result = AbilityCompactor.Compact(abilities);
 
-            // Aim +3 hidden, remaining collapse: Aim (+1 to +5)
-            Assert.Single(result);
-            Assert.Equal("Aim (+1 to +5)", result[0].Name);
+            // Family-collapse breaks on tile mismatch.
+            Assert.Equal(3, result.Count);
+            Assert.Equal("Aim (+1 to +2)", result[0].Name);
+            Assert.Equal("Aim +3", result[1].Name);
+            Assert.Equal("Aim +5", result[2].Name);
         }
 
         private static AbilityEntry MakeAbility(string name, string target, (string occupant, string unitName)[]? tiles)
