@@ -15,30 +15,68 @@ namespace FFTColorCustomizer.GameBridge
         // with Enter.
         public record DialogueBox(string? Speaker, string Text);
 
+        // Player-name placeholder. The .mes file encodes the player's chosen
+        // name as a single byte 0xE0. Verified at event 045 (Eagrose Castle):
+        // "Might I pose a question, [E0]?" → "Might I pose a question, Ramza?".
+        // TODO: wire up runtime read of the player's actual chosen name and
+        // pass it through as an argument when callers care.
+        public const string PlayerNamePlaceholder = "Ramza";
+
+        // Em-dash placeholder. 0xDA 0x68 is a typographic em-dash inserted
+        // by the renderer, not a name. Verified at event 045: Larg's line
+        // "And let us not forget—they did save the marquis's life." and
+        // Dycedarg's "Is your intent to live up to your name—or…". An
+        // earlier reading treated this as a second player-name placeholder
+        // and produced "forgetRamzathey" — corrected 2026-04-26.
+        public const string EmDashPlaceholder = "—";
+
         /// <summary>
         /// Decode raw .mes bytes into in-game dialogue BOXES (one per Enter-advance).
-        /// <para>Byte roles (verified by live walk-through of Dorter event 38 on
-        /// 2026-04-19: 45 real bubbles, 45 0xFE boundaries in the file):</para>
+        /// <para>Byte roles, refined 2026-04-26 after a live walk-through of
+        /// event 045 (Eagrose Castle):</para>
         /// <list type="bullet">
-        /// <item><c>0xFE</c> = bubble boundary (one Enter-advance per run).</item>
-        /// <item><c>0xF8</c> = intra-bubble line wrap (visual newline).</item>
-        /// <item>Consecutive <c>0xFE</c> bytes collapse into ONE boundary
-        /// (the game uses runs of 2-5 FE bytes for pause/animation beats).</item>
-        /// <item>Speaker change (<c>0xE3 0x08 ... 0xE3 0x00</c>) is an implicit
-        /// bubble boundary even without a preceding <c>0xFE</c>.</item>
+        /// <item><c>0xFE</c> = end-of-segment marker. The game shows the
+        /// segment text as exactly <c>N</c> bubbles, where <c>N</c> is the
+        /// length of the trailing 0xFE run. Single FE → 1 bubble; FE×3 →
+        /// 3 bubbles. The renderer fills bubbles in order, splitting the
+        /// text at sentence boundaries until the bubble count matches.</item>
+        /// <item><c>0xF8</c> = whitespace inside a bubble (paragraph break,
+        /// not a bubble break). Both single and run-of-2+ map to "\n" in
+        /// the decoded text — the renderer reflows them visually.</item>
+        /// <item><c>0xE3 0x08 ... 0xE3 0x00</c> = speaker change at a scene
+        /// transition. NOT a per-bubble portrait code; the .mes file does
+        /// not encode mid-scene speaker changes (those come from the .evt
+        /// event script, which the bridge currently doesn't parse).</item>
+        /// <item><c>0xE0</c> and <c>0xDA 0x68</c> = player-name
+        /// placeholders. See <see cref="PlayerNamePlaceholder"/>.</item>
         /// </list>
         /// </summary>
         public static List<DialogueBox> DecodeBoxes(byte[] bytes)
         {
-            var boxes = new List<DialogueBox>();
-            string? currentSpeaker = null;
+            // First pass: collect FE-bound segments along with their FE-run
+            // length, which determines how many bubbles to paginate the
+            // segment text into.
+            // Speaker tracking note: a segment's speaker is ONLY taken from
+            // a 0xE3 0x08 marker that appears inside that segment. Inherited
+            // speakers across FE boundaries produce false confidence — the
+            // .mes encoding doesn't actually mean "same speaker continues",
+            // mid-scene speaker changes come from the .evt event script we
+            // don't currently parse. Emitting null lets fft.sh fall back to
+            // the neutral "narrator" tag instead of lying.
+            var segments = new List<(string? Speaker, string Text, int FeRun)>();
+            string? currentSegmentSpeaker = null;
             var text = new System.Text.StringBuilder();
 
-            void Flush()
+            void Flush(int feRun)
             {
                 var t = text.ToString().TrimEnd();
-                if (t.Length > 0) boxes.Add(new DialogueBox(currentSpeaker, t));
+                if (t.Length > 0)
+                    segments.Add((currentSegmentSpeaker, t, feRun));
                 text.Clear();
+                // Reset segment-level speaker so the next segment doesn't
+                // inherit it. The next 0xE3 0x08 marker (if any) will
+                // re-set it for the new segment.
+                currentSegmentSpeaker = null;
             }
 
             int i = 0;
@@ -48,8 +86,10 @@ namespace FFTColorCustomizer.GameBridge
 
                 if (b == 0xE3 && i + 1 < bytes.Length && bytes[i + 1] == 0x08)
                 {
-                    // Speaker change is an implicit bubble boundary.
-                    Flush();
+                    // Speaker change is an implicit segment boundary
+                    // (treat as FE×1 since it doesn't carry a multi-bubble
+                    // hint).
+                    Flush(1);
                     i += 2;
                     var nameBuilder = new System.Text.StringBuilder();
                     while (i < bytes.Length && bytes[i] != 0xE3)
@@ -60,29 +100,38 @@ namespace FFTColorCustomizer.GameBridge
                     }
                     if (i < bytes.Length) i++;
                     if (i < bytes.Length) i++;
-                    currentSpeaker = nameBuilder.ToString();
+                    currentSegmentSpeaker = nameBuilder.ToString();
                     continue;
                 }
 
                 if (b == 0xFE)
                 {
-                    // Any run of 0xFE bytes = one bubble boundary.
-                    while (i < bytes.Length && bytes[i] == 0xFE) i++;
-                    Flush();
+                    int feRun = 0;
+                    while (i < bytes.Length && bytes[i] == 0xFE) { feRun++; i++; }
+                    Flush(feRun);
                     continue;
                 }
 
                 if (b == 0xF8)
                 {
-                    // Single 0xF8 = intra-bubble line wrap.
-                    // 2+ consecutive 0xF8 = bubble boundary (same speaker
-                    // continues into a new bubble). Verified at Zeklaus
-                    // event 40 R5/R6 "Aye, that much is plain. F8 F8 Gods
-                    // be good..." — two bubbles under the same 0xE3 speaker.
-                    int f8Run = 0;
-                    while (i < bytes.Length && bytes[i] == 0xF8) { f8Run++; i++; }
-                    if (f8Run >= 2) Flush();
-                    else text.Append('\n');
+                    // Both single and runs of 0xF8 are intra-bubble
+                    // whitespace — the game's renderer reflows them visually.
+                    while (i < bytes.Length && bytes[i] == 0xF8) i++;
+                    text.Append('\n');
+                    continue;
+                }
+
+                // Inline placeholders. 0xE0 = player name, 0xDA 0x68 = em-dash.
+                if (b == 0xDA && i + 1 < bytes.Length && bytes[i + 1] == 0x68)
+                {
+                    text.Append(EmDashPlaceholder);
+                    i += 2;
+                    continue;
+                }
+                if (b == 0xE0)
+                {
+                    text.Append(PlayerNamePlaceholder);
+                    i++;
                     continue;
                 }
 
@@ -93,8 +142,122 @@ namespace FFTColorCustomizer.GameBridge
                 if (ch.HasValue) text.Append(ch.Value);
                 i++;
             }
-            Flush();
-            return boxes;
+            Flush(1);
+
+            // Second pass: paginate each segment into FeRun bubbles.
+            var result = new List<DialogueBox>();
+            foreach (var seg in segments)
+            {
+                if (seg.FeRun <= 1)
+                {
+                    result.Add(new DialogueBox(seg.Speaker, seg.Text));
+                    continue;
+                }
+                foreach (var bubble in PaginateSegment(seg.Text, seg.FeRun))
+                    result.Add(new DialogueBox(seg.Speaker, bubble));
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Split a multi-bubble FE-segment into <paramref name="bubbleCount"/>
+        /// bubbles by sentence boundaries. The TIC renderer balances
+        /// character count across bubbles (target ≈ total/N per bubble),
+        /// not sentence count. Verified at event 045 segments:
+        ///   - "Might I pose…mire?" (5 sentences, FE×3) →
+        ///     2+2+1 sentences with bubble char counts 127/114/90 ≈ 110.
+        ///   - "It was not of your doing…position." (6 sentences, FE×4) →
+        ///     2+1+2+1 sentences with bubble char counts 110/108/104/76 ≈ 99.
+        /// We greedily pack sentences up to ~1.3× the average bubble budget
+        /// while reserving at least one sentence for every remaining bubble.
+        /// </summary>
+        private static List<string> PaginateSegment(string text, int bubbleCount)
+        {
+            var sentences = SplitSentences(text);
+            var bubbles = new List<string>(bubbleCount);
+            if (sentences.Count == 0) return bubbles;
+            // FE run longer than the sentence count: the trailing FEs
+            // encode a pause beat, not extra empty bubbles (Dorter event 38).
+            if (sentences.Count <= bubbleCount)
+            {
+                bubbles.AddRange(sentences);
+                return bubbles;
+            }
+
+            int totalChars = 0;
+            foreach (var s in sentences) totalChars += s.Length;
+            double budget = (double)totalChars / bubbleCount;
+            double softCap = budget * 1.3;
+
+            int sentIdx = 0;
+            for (int b = 0; b < bubbleCount; b++)
+            {
+                int bubblesLeft = bubbleCount - b - 1;
+                int sentencesLeft = sentences.Count - sentIdx;
+                // Reserve at least one sentence per remaining bubble.
+                int maxTake = sentencesLeft - bubblesLeft;
+
+                int take = 0;
+                int chars = 0;
+                while (take < maxTake)
+                {
+                    int next = chars + sentences[sentIdx + take].Length;
+                    // Always take the first sentence of a bubble; only
+                    // subsequent sentences are gated by the soft cap.
+                    if (take == 0 || next <= softCap)
+                    {
+                        chars = next;
+                        take++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Last bubble absorbs any leftover sentences regardless
+                // of cap so we never drop content.
+                if (b == bubbleCount - 1)
+                    take = sentencesLeft;
+
+                var bubble = string.Join(" ", sentences.GetRange(sentIdx, take)).Trim();
+                bubbles.Add(bubble);
+                sentIdx += take;
+            }
+            return bubbles;
+        }
+
+        /// <summary>
+        /// Split a passage into sentences. Sentences end at '.', '?' or '!'
+        /// followed by whitespace or end of input. The terminal punctuation
+        /// stays with the sentence. Internal whitespace (including newlines
+        /// from 0xF8 reflow) is normalized to single spaces.
+        /// </summary>
+        internal static List<string> SplitSentences(string text)
+        {
+            var sentences = new List<string>();
+            var current = new System.Text.StringBuilder();
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (c == '\n' || c == '\r') c = ' ';
+                current.Append(c);
+                bool isTerminal = c == '.' || c == '?' || c == '!';
+                bool atEnd = i == text.Length - 1;
+                bool followedByWs = !atEnd && (text[i + 1] == ' ' || text[i + 1] == '\n' || text[i + 1] == '\r');
+                if (isTerminal && (atEnd || followedByWs))
+                {
+                    var s = System.Text.RegularExpressions.Regex.Replace(current.ToString(), @"\s+", " ").Trim();
+                    if (s.Length > 0) sentences.Add(s);
+                    current.Clear();
+                }
+            }
+            if (current.Length > 0)
+            {
+                var s = System.Text.RegularExpressions.Regex.Replace(current.ToString(), @"\s+", " ").Trim();
+                if (s.Length > 0) sentences.Add(s);
+            }
+            return sentences;
         }
 
         /// <summary>
@@ -208,6 +371,22 @@ namespace FFTColorCustomizer.GameBridge
                 if (b == 0xE3)
                 {
                     i += 2;
+                    continue;
+                }
+
+                // Inline placeholders. 0xE0 = player name, 0xDA 0x68 = em-dash.
+                if (b == 0xDA && i + 1 < bytes.Length && bytes[i + 1] == 0x68)
+                {
+                    currentText.Append(EmDashPlaceholder);
+                    sb.Append(EmDashPlaceholder);
+                    i += 2;
+                    continue;
+                }
+                if (b == 0xE0)
+                {
+                    currentText.Append(PlayerNamePlaceholder);
+                    sb.Append(PlayerNamePlaceholder);
+                    i++;
                     continue;
                 }
 

@@ -119,24 +119,24 @@ public class MesDecoderBoxGroupingTests
     }
 
     [Fact]
-    public void DecodeBoxes_ConsecutiveF8_IsBubbleBoundary()
+    public void DecodeBoxes_ConsecutiveF8_IsIntraBubbleWhitespace()
     {
-        // Verified at Zeklaus event 40 bubble R5/R6: "Aye, that much is plain. «F8»«F8» Gods be good, Gustav's ransom..."
-        // Two consecutive 0xF8 bytes end one bubble and start the next (within
-        // the same speaker). Single 0xF8 is still just a line wrap.
+        // Updated 2026-04-26: the older Zeklaus-event-40 reading that
+        // F8×2 = bubble break was wrong. Live walk-through of event 045
+        // (Eagrose Castle, segment 0x0203) showed F8×2 sitting INSIDE
+        // a single bubble — so all 0xF8 runs decode as intra-bubble
+        // whitespace and the bubble count comes from the trailing FE run.
         var bytes = new byte[] { 0x0A, 0xF8, 0xF8, 0x0B };
         var boxes = MesDecoder.DecodeBoxes(bytes);
-        Assert.Equal(2, boxes.Count);
-        Assert.Equal("A", boxes[0].Text);
-        Assert.Equal("B", boxes[1].Text);
+        Assert.Single(boxes);
     }
 
     [Fact]
-    public void DecodeBoxes_ThreeConsecutiveF8_CollapseToOneBoundary()
+    public void DecodeBoxes_ThreeConsecutiveF8_AlsoIntraBubbleWhitespace()
     {
         var bytes = new byte[] { 0x0A, 0xF8, 0xF8, 0xF8, 0x0B };
         var boxes = MesDecoder.DecodeBoxes(bytes);
-        Assert.Equal(2, boxes.Count);
+        Assert.Single(boxes);
     }
 
     [Fact]
