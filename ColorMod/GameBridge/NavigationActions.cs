@@ -5382,7 +5382,13 @@ namespace FFTColorCustomizer.GameBridge
             // races (live-flagged 2026-04-25 P2). 3s window covers an
             // enemy turn cycle without crossing into another genuine
             // turn.
-            var events = _moveArtifactCoalescer.Filter(rawEvents, DateTime.UtcNow);
+            var moveFiltered = _moveArtifactCoalescer.Filter(rawEvents, DateTime.UtcNow);
+            // Suppress phantom-KO clusters (damaged-to-zero + joined for
+            // the same unit name in one batch — transient bad scan made
+            // the unit appear to die and re-spawn). Live-flagged
+            // 2026-04-26: Time Mage emitted KO + Dead-status + joined
+            // despite being alive throughout.
+            var events = PhantomKoCoalescer.Filter(moveFiltered);
             if (events.Count > 0)
             {
                 var counterLines = CounterAttackInferrer.Infer(events, activePlayerName ?? "", current);

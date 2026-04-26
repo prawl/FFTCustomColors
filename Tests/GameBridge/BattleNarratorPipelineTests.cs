@@ -133,17 +133,29 @@ namespace FFTColorCustomizer.Tests.GameBridge
         [Fact]
         public void NullSnapshot_ShortCircuitsPipeline()
         {
-            // Pre-snap capture failure path: when CaptureCurrentUnitSnapshot returns null,
-            // BattleWait skips the whole narrator block. Simulate here with an empty
-            // post list — no events, no lines.
+            // Pre-snap capture failure path: when CaptureCurrentUnitSnapshot
+            // returns null, BattleWait skips the whole narrator block.
+            //
+            // 2026-04-26: with the post-snap empty (1 pre unit → 0 post),
+            // every pre unit's removal looks like a death. The renderer
+            // now surfaces "removed with OldHp>0" as a death line (fixes
+            // the playtest-#3 bug where a real Skeleton KO produced no
+            // narrator entry). For THIS hypothetical test scenario that's
+            // working as designed: if the post-snap really was empty we'd
+            // want to know something went wrong. In production this code
+            // path is guarded upstream (CaptureCurrentUnitSnapshot returns
+            // null → BattleWait short-circuits before Compare runs), so
+            // this test now pins the renderer's surface contract rather
+            // than the silent-fallback behavior.
             var pre = new List<UnitScanDiff.UnitSnap> {
                 Unit("Ramza", 0, 2, 1, 719, 719),
             };
             var post = new List<UnitScanDiff.UnitSnap>(); // empty, no post-wait data
             var events = UnitScanDiff.Compare(pre, post);
             var lines = BattleNarratorRenderer.Render(events, "Ramza");
-            // Ramza disappears → "removed" kind → narrator skips it → no lines.
-            Assert.Empty(lines);
+            Assert.Single(lines);
+            Assert.Contains("Ramza", lines[0]);
+            Assert.Contains("died", lines[0]);
         }
     }
 }

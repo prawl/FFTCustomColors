@@ -132,6 +132,17 @@ namespace FFTColorCustomizer.GameBridge
                     return $"> {e.Label} ({e.Team}) joined the battle";
 
                 case "removed":
+                    // 2026-04-26: a unit going from alive (OldHp > 0) to
+                    // missing from the post-snap is a death-equivalent the
+                    // narrator should surface. Live-flagged playtest #3:
+                    // Skeleton 344/680 → DEAD with no kill-feed entry,
+                    // agent couldn't tell what happened. PhantomKoCoalescer
+                    // suppresses the false-positive "removed + added"
+                    // pairs from transient bad scans, so what remains here
+                    // is real.
+                    if (e.OldHp.HasValue && e.OldHp.Value > 0)
+                        return $"> {e.Label} died";
+                    return null;
                 case "noop":
                 default:
                     return null;

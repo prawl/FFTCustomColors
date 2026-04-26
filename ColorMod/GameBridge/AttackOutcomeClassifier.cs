@@ -25,11 +25,20 @@ namespace FFTColorCustomizer.GameBridge
             int preHp,
             int postHp)
         {
-            // Authoritative screen-state signals first.
-            if (postScreenName == "BattleAttacking") return AttackOutcome.Miss;
-
             bool postHpReadable = postHp >= 0;
             bool isKoFromHp = postHpReadable && postHp <= 0;
+
+            // Authoritative screen-state signals first — but cross-check
+            // against affirmative HP=0 evidence. Live-flagged 2026-04-26:
+            // Kenrick KO'd a Summoner but the screen detector briefly
+            // caught BattleAttacking post-animation, producing a false
+            // MISSED report. A real miss leaves the target at full HP;
+            // postHp=0 with BattleAttacking is contradictory and the HP
+            // read wins.
+            if (postScreenName == "BattleAttacking")
+            {
+                return isKoFromHp ? AttackOutcome.Ko : AttackOutcome.Miss;
+            }
 
             // BattleVictory needs HP=0 corroboration. The screen detector
             // can flicker-touch BattleVictory mid-attack (live-observed at

@@ -1198,6 +1198,32 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.NotEqual("LoadGame", result);
         }
 
+        /// <summary>
+        /// Live-flagged 2026-04-26: after Siedge Weald BattleVictory →
+        /// `execute_action Advance`, bridge surfaced `LoadGame` (validPaths
+        /// ScrollUp/ScrollDown/Select/Cancel) while the game was visually on
+        /// the WorldMap. Real LoadGame requires rawLocation==255 (you're at
+        /// the title menu, no location); a battleground rawLocation (24-42)
+        /// post-victory is WorldMap, not the save-picker.
+        /// </summary>
+        [Fact]
+        public void DetectScreen_PostVictoryWorldMap_BattlegroundRawLocation_DoesNotMisdetectAsLoadGame()
+        {
+            // Stale gameOverFlag from the just-ended battle; rawLocation set
+            // to the battleground node we just fought at; moveMode=0 (no
+            // worldMapSignalTrusted override).
+            var result = ScreenDetectionLogic.Detect(
+                party: 0, ui: 0, rawLocation: 26 /* Siedge Weald — battleground */,
+                slot0: 0, slot9: 0,
+                battleMode: 0, moveMode: 0, paused: 0, gameOverFlag: 1,
+                battleTeam: 0, battleActed: 0, battleMoved: 0,
+                encA: 0, encB: 0, isPartySubScreen: false,
+                submenuFlag: 0, menuCursor: 0,
+                eventId: 0);
+
+            Assert.NotEqual("LoadGame", result);
+        }
+
         [Fact]
         public void DetectScreen_Victory_EncA255Sentinel_FiresOverLoadGameAndTitleScreen()
         {

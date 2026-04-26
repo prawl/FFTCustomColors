@@ -139,21 +139,37 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void RemovedEvents_AreSkipped_AddedSurfaces()
+        public void RemovedAlive_SurfacesDeath_AddedSurfacesJoin()
         {
-            // 2026-04-25 update: 'added' now surfaces as "X (TEAM) joined at
-            // (x,y)" so guest characters arriving mid-battle don't appear
-            // unannounced (live-flagged playtest #4: Tietra showed up with
-            // no kill-feed entry). 'removed' is still suppressed.
+            // 2026-04-25: 'added' surfaces as "X (TEAM) joined at (x,y)" so
+            // guest characters arriving mid-battle don't appear unannounced
+            // (Tietra at Siedge Weald playtest #4).
+            // 2026-04-26: 'removed' with OldHp>0 now ALSO surfaces as a
+            // death line. The previous "skip removed" left a Skeleton
+            // 344/680 → DEAD with no kill-feed entry; the agent then
+            // couldn't tell what happened.
             var events = new List<UnitScanDiff.ChangeEvent> {
                 Evt("Ghost", "added", newXY: (3, 3), newHp: 400),
                 Evt("Vanisher", "removed", oldXY: (5, 5), oldHp: 100),
             };
             var lines = BattleNarratorRenderer.Render(events, "Ramza");
-            Assert.Single(lines);
-            Assert.Contains("Ghost", lines[0]);
-            Assert.Contains("joined", lines[0]);
-            Assert.Contains("(3,3)", lines[0]);
+            Assert.Equal(2, lines.Count);
+            Assert.Contains(lines, l => l.Contains("Ghost") && l.Contains("joined") && l.Contains("(3,3)"));
+            Assert.Contains(lines, l => l.Contains("Vanisher") && l.Contains("died"));
+        }
+
+        [Fact]
+        public void RemovedWithoutAliveHp_StillSilent()
+        {
+            // OldHp=0 (was already KO'd) or null: removal is from a
+            // graceful state transition (crystallized, treasure, manual
+            // dismiss) — surface no narrator line. The death already had
+            // its own ko event when the unit hit 0 HP.
+            var events = new List<UnitScanDiff.ChangeEvent> {
+                Evt("Crystal", "removed", oldXY: (5, 5), oldHp: 0),
+            };
+            var lines = BattleNarratorRenderer.Render(events, "Ramza");
+            Assert.Empty(lines);
         }
 
         [Fact]

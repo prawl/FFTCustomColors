@@ -187,5 +187,49 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 postHp: 480);
             Assert.Equal(AttackOutcome.Hit, outcome);
         }
+
+        [Fact]
+        public void BattleAttacking_WithTargetHpZero_IsKo()
+        {
+            // Live-flagged 2026-04-26: Kenrick attacked Summoner at (6,4); the
+            // attack KO'd visually, but the bridge reported MISSED because the
+            // screen detector briefly caught BattleAttacking post-animation.
+            // BattleAttacking + postHp == 0 is contradictory (a real miss
+            // leaves the target at full HP). Trust the HP=0 over the
+            // (transient) screen state and report KO.
+            var outcome = AttackOutcomeClassifier.Classify(
+                postScreenName: "BattleAttacking",
+                preHp: 318,
+                postHp: 0);
+            Assert.Equal(AttackOutcome.Ko, outcome);
+        }
+
+        [Fact]
+        public void BattleAttacking_WithReadableHpUnchanged_StillMiss()
+        {
+            // The opposite of the bug above: postHp readable AND equal to
+            // preHp means the target survived. BattleAttacking is the
+            // legitimate "re-target after miss" state; classify as Miss.
+            var outcome = AttackOutcomeClassifier.Classify(
+                postScreenName: "BattleAttacking",
+                preHp: 318,
+                postHp: 318);
+            Assert.Equal(AttackOutcome.Miss, outcome);
+        }
+
+        [Fact]
+        public void BattleAttacking_WithReadFailed_IsMiss()
+        {
+            // postHp == -1 (heap-search failed) at BattleAttacking — without
+            // affirmative HP=0 evidence we can't override the screen-state
+            // signal. Stay Miss; the alternative (auto-promote to Ko on
+            // read-failure) would mis-report real misses where the target's
+            // struct just isn't fingerprintable.
+            var outcome = AttackOutcomeClassifier.Classify(
+                postScreenName: "BattleAttacking",
+                preHp: 318,
+                postHp: -1);
+            Assert.Equal(AttackOutcome.Miss, outcome);
+        }
     }
 }

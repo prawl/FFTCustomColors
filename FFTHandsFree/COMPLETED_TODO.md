@@ -2253,3 +2253,35 @@ Bridge previously rendered most cutscene boxes as `[narrator]` because the .mes 
 
 - See `project_dialogue_speaker_pointer.md` — the 2026-04-26 memory hunt: addresses found (`0x133D1FA70` heap pointer + `0x4E17629000` string-table region session 1; FString-with-length-prefix layout session 2), confirmed verifications, why the current discovery doesn't generalize across sessions, and the three RE paths to a working live reader.
 - See `feedback_never_bulk_advance_cutscenes.md` — never auto-loop `advance_dialogue`, even for engineering verification; the cutscene is a shared resource and burst-advancing wrecks it for the player.
+
+
+### 2026-04-26 — TODO §0 hygiene + §9 narrator/classifier/header batch
+
+Cleanup of stale `[ ]` items in TODO §0 (multi-unit handoff) that were already shipped on 2026-04-25, plus four concrete fixes from the §9 playtest backlog.
+
+**§0 stale-marked items moved to completed (was already shipped 2026-04-25, see commit history + `project_multi_unit_turn_handoff_bug.md`):**
+
+- [x] **Loud `=== TURN HANDOFF: A → B (x,y) HP=h/mh ===` banner in `execute_turn` / `battle_wait` response** — `TurnHandoffBannerClassifier.BuildBanner` + `HandoffBannerJoiner.PrependIfAbsent` wired across all four sub-step paths in `CommandWatcher.cs`. Banner fires when active player unit changes between InitialPostAction and the final read.
+- [x] **Cache invalidation on turn-cycle boundary** — `ClearActiveUnitCache()` resets all `_cachedActiveUnit*` fields on terminal-screen lifecycle (BattleVictory / BattleDesertion / GameOver) and at relevant turn-boundary sites in BattleWait / execute_turn paths.
+- [x] **Auto-scan post-turn-cycle** — settle-scan after `battle_wait` returns to BattleMyTurn (CommandWatcher.cs:3955-3978) re-runs scan_move and merges into the response so the new active unit's ValidMoveTiles / Abilities / position are populated.
+
+**§9 fixes shipped this batch:**
+
+- [x] **AttackOutcomeClassifier reports MISS on hit that KO'd the target** — `BattleAttacking` post-screen now cross-checks against `postHp == 0`. A real miss leaves the target at full HP; HP=0 with BattleAttacking is a screen-detection flicker on the KO and the HP reading wins. Live-flagged 2026-04-26 (Kenrick → Summoner). +3 tests.
+- [x] **False phantom-KO from transient empty-scan during diff** — new `PhantomKoCoalescer.Filter` suppresses event clusters where the same unit name has BOTH a death-equivalent (ko / damaged-to-zero / removed-with-HP>0) AND an "added"/"joined" in the same narrator batch. Wired into `EmitNarrationBatch` after `MoveArtifactCoalescer.Filter`. Live-flagged 2026-04-26 (Time Mage 345→0 + joined). +9 tests.
+- [x] **Surface "can't act this turn" disable-state on the active-unit header** — new `ActionBlockingStatusClassifier.GetBlockingTag` returns the highest-severity tag (Petrify > Sleep > Frog > Charm > Confusion > Berserk > DontAct > DontMove > Performing > Charging > Jump). Cached in `_cachedActiveUnitDisabledTag` and appended to `ActiveUnitSummary` so the agent sees `DontAct(no act)` etc. on the screen header. Live-flagged 2026-04-26 playtest #9 (Wilham missed DontAct, accidentally landed on AutoBattle). +15 tests.
+- [x] **Narrator damage/KO not always captured (removed-with-HP gap)** — `BattleNarratorRenderer` now emits `> X died` for `removed` events with `OldHp > 0`. Previously these were silent, leaving the agent confused when a unit went `344/680 → DEAD` with no narrator entry. The `PhantomKoCoalescer` was extended in lockstep so genuine bad-scan removed-then-added phantoms still get suppressed. Live-flagged playtest #3 2026-04-25.
+
+**§9 fix attempted but did not surface:**
+
+- [x] **Post-victory WorldMap mis-tag — regression-pin only** — added `DetectScreen_PostVictoryWorldMap_BattlegroundRawLocation_DoesNotMisdetectAsLoadGame` for the obvious fingerprint (rawLocation=26, gameOverFlag=1, moveMode=0). Test PASSED against existing detection rules. The live bug had a different fingerprint we couldn't reconstruct from the report — likely the `Advance` validPath was overshooting (multi-confirm chain), not a detection problem. Open follow-up in TODO §9.
+
+**Tests:** 4736 → 4768 (+32 across the new helpers).
+
+**Carried into TODO.md (still open):**
+
+- [ ] Jump whiff annotation on tile-vacated targets (needs ability-render rework).
+- [ ] X-Potion phantom success (needs ability-metadata to know which abilities expect HP delta; design-heavy).
+- [ ] Stale post-heal HP in `screen` Units block (needs `screen` to settle the static array post-heal; affects render of hot HP reads).
+- [ ] Geomancy single-spell render (deferred — needs terrain-byte memory hunt).
+- [ ] Post-victory WorldMap mis-tag — actual fix (needs live re-capture of the misfire fingerprint).

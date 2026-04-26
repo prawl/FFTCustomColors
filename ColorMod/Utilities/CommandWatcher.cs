@@ -219,6 +219,13 @@ namespace FFTColorCustomizer.Utilities
         // Populated from the active unit's equipment list via ItemData.ComposeWeaponTag.
         // Empty string when unarmed or equipment unknown.
         private string? _cachedActiveUnitWeaponTag;
+        // Action-blocking status header tag (e.g. "DontAct(no act)").
+        // Populated alongside the rest of the active-unit cache and surfaced
+        // on the screen header so the agent can't miss a status that
+        // prevents the standard turn flow. Live-flagged playtest #9
+        // 2026-04-26: agent missed Wilham's DontAct and kept retrying menu
+        // nav, accidentally landing on AutoBattle.
+        private string? _cachedActiveUnitDisabledTag;
 
         /// <summary>
         /// When true, game actions must go through validPaths. Raw key presses and
@@ -5827,6 +5834,7 @@ namespace FFTColorCustomizer.Utilities
             _cachedActiveUnitHp = 0;
             _cachedActiveUnitMaxHp = 0;
             _cachedActiveUnitWeaponTag = null;
+            _cachedActiveUnitDisabledTag = null;
         }
 
         /// <summary>
@@ -6099,6 +6107,10 @@ namespace FFTColorCustomizer.Utilities
                 // NavigationActions.CollectUnitPositionsFull via ItemData.ComposeWeaponTag.
                 // Null when unarmed / unknown weapon / non-player team.
                 _cachedActiveUnitWeaponTag = activeUnit.WeaponTag;
+                // Action-blocking status tag (DontAct, Sleep, Petrify, …).
+                // Pure helper so the priority order is testable.
+                _cachedActiveUnitDisabledTag =
+                    GameBridge.ActionBlockingStatusClassifier.GetBlockingTag(activeUnit.Statuses);
             }
         }
 
@@ -9769,7 +9781,8 @@ namespace FFTColorCustomizer.Utilities
                         _cachedActiveUnitName, _cachedActiveUnitJob,
                         _cachedActiveUnitX, _cachedActiveUnitY,
                         _cachedActiveUnitHp, _cachedActiveUnitMaxHp,
-                        _cachedActiveUnitWeaponTag);
+                        _cachedActiveUnitWeaponTag,
+                        _cachedActiveUnitDisabledTag);
                     screen.ActiveUnitPrimarySkillset = _cachedPrimarySkillset;
                     screen.ActiveUnitSecondarySkillset = _cachedSecondarySkillset;
                 }
