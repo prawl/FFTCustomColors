@@ -3038,8 +3038,32 @@ namespace FFTColorCustomizer.GameBridge
                     // the current turn.
                     var abilityMap = isActive ? _mapLoader?.CurrentMap : null;
 
-                    abilities = FilterAbilitiesBySkillsets(u).Select(a =>
+                    // For Items-as-secondary range nerf below, we need the
+                    // unit's primary skillset name and current support
+                    // ability — Items at R=4 only applies when (primary ==
+                    // Items) OR (support == "Throw Items").
+                    var unitJobName = u.JobNameOverride ?? GameStateReporter.GetJobName(u.Job);
+                    var unitPrimary = unitJobName != null
+                        ? Utilities.CommandWatcher.GetPrimarySkillsetByJobName(unitJobName)
+                        : null;
+                    var unitSupport = u.SupportAbility;
+
+                    abilities = FilterAbilitiesBySkillsets(u).Select(rawA =>
                     {
+                        // Items abilities are stored at R=4 (Chemist primary).
+                        // When run as secondary by a non-Chemist without
+                        // Throw Items, the engine actually treats them as
+                        // R=1. Rebind `a` to a copy with the adjusted
+                        // range so EVERY downstream calc (target-tile
+                        // expansion, projectile classifier, splash centers)
+                        // sees the right value.
+                        var skillsetForAbility = ActionAbilityLookup.GetSkillsetForAbilityId(rawA.Id);
+                        var adjustedHRange = skillsetForAbility != null
+                            ? ItemRangeAdjuster.Adjust(skillsetForAbility, rawA.HRange, unitPrimary, unitSupport)
+                            : rawA.HRange;
+                        var a = adjustedHRange == rawA.HRange
+                            ? rawA
+                            : rawA with { HRange = adjustedHRange };
                         var entry = new AbilityEntry
                         {
                             Name = a.Name,
@@ -5383,12 +5407,19 @@ namespace FFTColorCustomizer.GameBridge
             // enemy turn cycle without crossing into another genuine
             // turn.
             var moveFiltered = _moveArtifactCoalescer.Filter(rawEvents, DateTime.UtcNow);
+            // Drop "moved" events whose destination is held by a
+            // different-named unit in the post-snap — rank-based identity
+            // matching for duplicate-name enemies can attribute one
+            // Skeleton's move to another's path. Live-flagged 2026-04-26:
+            // narrator said "Skeleton moved (3,7) → (3,3)" while Ramza
+            // was at (3,3).
+            var collisionFiltered = CollidingMoveFilter.Filter(moveFiltered, current);
             // Suppress phantom-KO clusters (damaged-to-zero + joined for
             // the same unit name in one batch — transient bad scan made
             // the unit appear to die and re-spawn). Live-flagged
             // 2026-04-26: Time Mage emitted KO + Dead-status + joined
             // despite being alive throughout.
-            var events = PhantomKoCoalescer.Filter(moveFiltered);
+            var events = PhantomKoCoalescer.Filter(collisionFiltered);
             if (events.Count > 0)
             {
                 var counterLines = CounterAttackInferrer.Infer(events, activePlayerName ?? "", current);
