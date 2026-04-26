@@ -231,5 +231,62 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 postHp: -1);
             Assert.Equal(AttackOutcome.Miss, outcome);
         }
+
+        [Fact]
+        public void BattleAttacking_WithDamageButAlive_IsHit()
+        {
+            // Affirmative HP-decreased evidence wins over the (transient)
+            // BattleAttacking screen. A real miss leaves the target at full
+            // HP; HP < preHp means the attack landed.
+            var outcome = AttackOutcomeClassifier.Classify(
+                postScreenName: "BattleAttacking",
+                preHp: 85,
+                postHp: 60);
+            Assert.Equal(AttackOutcome.Hit, outcome);
+        }
+
+        [Fact]
+        public void BattleAttacking_TargetGone_PreHpAlive_IsKo()
+        {
+            // Live-flagged 2026-04-26 playtest: Ramza KO'd a Skeleton at
+            // (4,5) HP=85; bridge reported MISSED. Both ReadLiveHp and the
+            // static-array-at-tile read failed (struct recycled after KO),
+            // so postHp came back -1. Without the new parameter, the
+            // classifier returns Miss on BattleAttacking-with-unreadable-HP.
+            // When the caller can confirm the target's tile is no longer
+            // occupied (i.e. they died and were removed), pass
+            // targetMissingFromPostScan=true so we override Miss to Ko.
+            var outcome = AttackOutcomeClassifier.Classify(
+                postScreenName: "BattleAttacking",
+                preHp: 85,
+                postHp: -1,
+                targetMissingFromPostScan: true);
+            Assert.Equal(AttackOutcome.Ko, outcome);
+        }
+
+        [Fact]
+        public void BattleAttacking_TargetGone_PreHpZero_StaysMiss()
+        {
+            // Defensive: if the target was already dead pre-attack, their
+            // disappearance from the post-snap doesn't mean we KO'd them.
+            // Don't promote to Ko.
+            var outcome = AttackOutcomeClassifier.Classify(
+                postScreenName: "BattleAttacking",
+                preHp: 0,
+                postHp: -1,
+                targetMissingFromPostScan: true);
+            Assert.Equal(AttackOutcome.Miss, outcome);
+        }
+
+        [Fact]
+        public void BattleAttacking_TargetMissingFlag_DefaultsFalse()
+        {
+            // The new parameter is optional; existing call sites unchanged.
+            var outcome = AttackOutcomeClassifier.Classify(
+                postScreenName: "BattleAttacking",
+                preHp: 85,
+                postHp: -1);
+            Assert.Equal(AttackOutcome.Miss, outcome);
+        }
     }
 }

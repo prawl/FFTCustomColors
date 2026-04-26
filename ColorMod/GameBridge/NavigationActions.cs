@@ -1495,7 +1495,13 @@ namespace FFTColorCustomizer.GameBridge
             // [BattleVictory] mid-battle even after this recheck because
             // the wrapper read again. Pinning closes the gap.
             response.Screen = postAttack;
-            var outcome = AttackOutcomeClassifier.Classify(postName, preHp, postHp);
+            // When BOTH ReadLiveHp and the static-array-tile read fail,
+            // the target's struct has likely been recycled (post-KO
+            // teardown) — feed that signal into the classifier so a
+            // BattleAttacking-flicker-with-unreadable-HP gets correctly
+            // promoted to Ko instead of falling through to Miss.
+            bool targetGone = (liveHp < 0 && staticHpAtk < 0);
+            var outcome = AttackOutcomeClassifier.Classify(postName, preHp, postHp, targetGone);
 
             // Still send Escape to back out of miss re-targeting; the action
             // is consumed but the menu is open.

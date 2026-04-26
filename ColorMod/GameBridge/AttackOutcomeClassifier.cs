@@ -23,21 +23,31 @@ namespace FFTColorCustomizer.GameBridge
         public static AttackOutcome Classify(
             string? postScreenName,
             int preHp,
-            int postHp)
+            int postHp,
+            bool targetMissingFromPostScan = false)
         {
             bool postHpReadable = postHp >= 0;
             bool isKoFromHp = postHpReadable && postHp <= 0;
 
             // Authoritative screen-state signals first — but cross-check
-            // against affirmative HP=0 evidence. Live-flagged 2026-04-26:
-            // Kenrick KO'd a Summoner but the screen detector briefly
-            // caught BattleAttacking post-animation, producing a false
-            // MISSED report. A real miss leaves the target at full HP;
-            // postHp=0 with BattleAttacking is contradictory and the HP
-            // read wins.
+            // against HP evidence. Live-flagged 2026-04-26 (TWICE):
+            // Ramza KO'd a Goblin and damaged a Skeleton but the screen
+            // detector briefly caught BattleAttacking post-animation in
+            // both cases, producing false MISSED reports. A real miss
+            // leaves the target at full HP; ANY HP decrease (damage or
+            // KO) means the attack landed and the screen flicker was
+            // mid-transition.
             if (postScreenName == "BattleAttacking")
             {
-                return isKoFromHp ? AttackOutcome.Ko : AttackOutcome.Miss;
+                if (isKoFromHp) return AttackOutcome.Ko;
+                if (postHpReadable && postHp < preHp) return AttackOutcome.Hit;
+                // Target's HP isn't readable (heap-search failed AND static
+                // array tile cleared) AND they had HP before — most likely
+                // they died and the engine recycled their struct between
+                // the attack and our read. Caller passes
+                // targetMissingFromPostScan when both reads come up empty.
+                if (targetMissingFromPostScan && preHp > 0) return AttackOutcome.Ko;
+                return AttackOutcome.Miss;
             }
 
             // BattleVictory needs HP=0 corroboration. The screen detector
