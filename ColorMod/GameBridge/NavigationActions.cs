@@ -6205,8 +6205,26 @@ namespace FFTColorCustomizer.GameBridge
                         if (trueActive != null)
                         {
                             foreach (var u in activeCandidates)
-                                if (u != trueActive) u.IsActive = false;
-                            ModLogger.Log($"[CollectPositions] De-duped active: kept ({trueActive.GridX},{trueActive.GridY}) nameId={activeNameId}, demoted {activeCandidates.Count - 1} HP-match duplicate(s)");
+                            {
+                                if (u != trueActive)
+                                {
+                                    u.IsActive = false;
+                                    // 2026-04-26 PM iter3 ROOT FIX: HP-match
+                                    // false-positives borrowed Team=0 from the
+                                    // active-unit read at line 5883. Demoting
+                                    // IsActive alone left Team=0, so the
+                                    // phantom got counted as an "ally" in
+                                    // ScanMove output (allies=3 when only
+                                    // Ramza on field). That phantom ally count
+                                    // cascaded into BattleDesertion misclass
+                                    // and the Ramza-identity-attribution
+                                    // narrator burst. Reset Team back to 1
+                                    // (enemy default) so downstream consumers
+                                    // don't treat it as a player unit.
+                                    u.Team = 1;
+                                }
+                            }
+                            ModLogger.Log($"[CollectPositions] De-duped active: kept ({trueActive.GridX},{trueActive.GridY}) nameId={activeNameId}, demoted {activeCandidates.Count - 1} HP-match duplicate(s) (also reset Team=1)");
                         }
                     }
                 }
