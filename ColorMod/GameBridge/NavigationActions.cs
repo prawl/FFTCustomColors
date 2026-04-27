@@ -42,6 +42,15 @@ namespace FFTColorCustomizer.GameBridge
         // successful TryReadMoveJumpFromHeap; queried on miss.
         public UnitMoveJumpCache MoveJumpCache { get; } = new UnitMoveJumpCache();
 
+        // 2026-04-26: per-battle roster-match cache, keyed by NameId. When
+        // a unit levels up mid-battle, the scanned Level shifts but the
+        // roster slot's Level can lag a frame, so RosterMatcher returns
+        // NameId=0 → unit.Job collapses to default 0 (Squire/Mettle) and
+        // the bridge offers wrong abilities + desyncs menu navigation.
+        // Populated on each successful match; queried as a fallback when
+        // a fresh match misses for an active unit with a known NameId.
+        public RosterMatchCache RosterMatchCache { get; } = new RosterMatchCache();
+
         // --- DirectInput hook for faking held C key ---
         private static volatile bool _injectCKey = false;
         private static bool _diHookInstalled = false;
@@ -5454,11 +5463,19 @@ namespace FFTColorCustomizer.GameBridge
             var preForDiff = StripFingerprints(lastSnap);
             var postForDiff = StripFingerprints(current);
             var rawEvents = UnitScanDiff.Compare(preForDiff, postForDiff);
+            // 2026-04-26 Mandalia: when units lack stable identity (no
+            // name, no roster nameId, no class fingerprint — all 4
+            // generic enemies labelled `[ENEMY]`), UnitScanDiff falls
+            // back to position-derived keys, so a single move emits a
+            // remove+add pair that downstream filters can't dedupe by
+            // label. Recombine matching-HP same-team pairs into single
+            // moved events first.
+            var pairFusedEvents = MovedEventReconstructor.Reconstruct(rawEvents);
             // Suppress phantom A→B→A move pairs from mid-animation scan
             // races (live-flagged 2026-04-25 P2). 3s window covers an
             // enemy turn cycle without crossing into another genuine
             // turn.
-            var moveFiltered = _moveArtifactCoalescer.Filter(rawEvents, DateTime.UtcNow);
+            var moveFiltered = _moveArtifactCoalescer.Filter(pairFusedEvents, DateTime.UtcNow);
             // Drop "moved" events whose destination is held by a
             // different-named unit in the post-snap — rank-based identity
             // matching for duplicate-name enemies can attribute one
@@ -6007,9 +6024,31 @@ namespace FFTColorCustomizer.GameBridge
                     for (int i = 0; i < playerUnits.Count && i < matches.Length; i++)
                     {
                         var m = matches[i];
-                        if (m.NameId <= 0) continue;
-
                         var unit = playerUnits[i];
+                        // 2026-04-26 Mandalia post-level-up: scanned Level
+                        // shifts faster than the roster slot's Level byte,
+                        // so RosterMatcher returns NameId=0 for the active
+                        // unit. The active-unit memory read carries a
+                        // stable NameId (unit.NameId) that we can use as
+                        // a fallback key into the per-battle cache.
+                        if (m.NameId <= 0)
+                        {
+                            if (unit.IsActive && unit.NameId > 0)
+                            {
+                                var cachedMatch = RosterMatchCache.Get(unit.NameId);
+                                if (cachedMatch.HasValue)
+                                {
+                                    m = cachedMatch.Value;
+                                    ModLogger.Log($"[CollectPositions] Roster miss for active unit ({unit.GridX},{unit.GridY}) NameId={unit.NameId} — using cached match (Job={m.Job}, Secondary={m.Secondary})");
+                                }
+                            }
+                            if (m.NameId <= 0) continue;
+                        }
+                        else
+                        {
+                            // Cache fresh successful match for future fallback.
+                            RosterMatchCache.Put(m.NameId, m);
+                        }
                         if (unit.Team != 0)
                         {
                             ModLogger.Log($"[CollectPositions] Correcting team for ({unit.GridX},{unit.GridY}): was {unit.Team}, roster match → 0");
@@ -7163,6 +7202,19 @@ namespace FFTColorCustomizer.GameBridge
             {
                 ModLogger.Log($"[TryReadMoveJumpFromHeap] HP={hp}/{maxHp}: heap miss, using cached Mv={cached.Value.move} Jp={cached.Value.jump}");
                 return cached.Value;
+            }
+            // 2026-04-26 Mandalia: Ramza levelled up mid-battle, MaxHp
+            // shifted 391→393. Heap search misses for the new MaxHp
+            // (struct may have relocated, or pattern no longer matches),
+            // and the keyed cache holds 391 — unreachable. Most-recent
+            // entry is Ramza's pre-level-up Mv/Jp, which is correct
+            // (Mv/Jp don't change at level-up). Soft-locks the player
+            // otherwise.
+            var recent = MoveJumpCache.GetMostRecent();
+            if (recent.HasValue)
+            {
+                ModLogger.Log($"[TryReadMoveJumpFromHeap] HP={hp}/{maxHp}: keyed cache miss (level-up shift?), using most-recent Mv={recent.Value.move} Jp={recent.Value.jump}");
+                return recent.Value;
             }
             return null;
         }

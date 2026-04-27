@@ -5984,6 +5984,11 @@ namespace FFTColorCustomizer.Utilities
                     // Move/Jump cache also per-battle: heap struct addresses
                     // change per battle, and so can unit rosters.
                     _navActions?.MoveJumpCache.Clear();
+                    // Roster-match cache same lifecycle: keyed by NameId,
+                    // but roster slot order can shuffle across battles
+                    // (e.g. recruits joining/dying), so we don't trust
+                    // entries from a prior battle.
+                    _navActions?.RosterMatchCache.Clear();
                     // S58: active-unit name/job/pos cache is stale across
                     // battles — TODO §1 Tier 3 "Active unit name/job stale
                     // across battles". Reset here so the first screen query

@@ -82,4 +82,58 @@ public class UnitMoveJumpCacheTests
 
         Assert.Null(cache.Get(628));
     }
+
+    // 2026-04-26 playtest at Mandalia Plain: Ramza levelled up mid-battle,
+    // MaxHp shifted 391→393, heap struct search missed for the new MaxHp,
+    // cache keyed by 391 was unreachable → Mv=0 Jp=0 → soft-locked turn.
+    // The most-recent successful Put IS the active unit (Put is only called
+    // from the heap-read path, which only runs for the active unit). When
+    // the keyed lookup misses, fall back to the most-recent entry so
+    // post-level-up MaxHp shifts don't collapse navigation.
+    [Fact]
+    public void GetMostRecent_AfterPut_ReturnsLatestEntry()
+    {
+        var cache = new UnitMoveJumpCache();
+        cache.Put(391, 3, 3);
+        Assert.Equal((3, 3), cache.GetMostRecent()!.Value);
+    }
+
+    [Fact]
+    public void GetMostRecent_ReturnsLastPut_NotFirst()
+    {
+        // Active-unit changed across turns: Ramza at MaxHp=391, then
+        // Kenrick at MaxHp=437. Most-recent is Kenrick.
+        var cache = new UnitMoveJumpCache();
+        cache.Put(391, 3, 3);
+        cache.Put(437, 4, 3);
+        Assert.Equal((4, 3), cache.GetMostRecent()!.Value);
+    }
+
+    [Fact]
+    public void GetMostRecent_Empty_ReturnsNull()
+    {
+        var cache = new UnitMoveJumpCache();
+        Assert.Null(cache.GetMostRecent());
+    }
+
+    [Fact]
+    public void GetMostRecent_AfterClear_ReturnsNull()
+    {
+        // Battle boundary clears everything including the most-recent ptr.
+        var cache = new UnitMoveJumpCache();
+        cache.Put(391, 3, 3);
+        cache.Clear();
+        Assert.Null(cache.GetMostRecent());
+    }
+
+    [Fact]
+    public void GetMostRecent_Ignores_InvalidPuts()
+    {
+        // Invalid puts don't change the cache; most-recent stays at last
+        // valid entry.
+        var cache = new UnitMoveJumpCache();
+        cache.Put(391, 3, 3);
+        cache.Put(393, 0, 0); // bogus, ignored
+        Assert.Equal((3, 3), cache.GetMostRecent()!.Value);
+    }
 }

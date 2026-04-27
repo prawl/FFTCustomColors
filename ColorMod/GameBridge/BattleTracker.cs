@@ -377,6 +377,24 @@ namespace FFTColorCustomizer.GameBridge
                 state.Units.Add(unitState);
             }
 
+            // 2026-04-26 Mandalia: scan responses leaked stale units
+            // from prior battles (Lv25 phantoms on a Ch1 map) because
+            // _units is keyed by team*lvl*MaxHp and only cleared on
+            // battle exit detection — which can misfire. Build the
+            // active MaxHp set from the static-array poll (which DOES
+            // correctly filter inBattle) and drop _units entries whose
+            // MaxHp doesn't appear there. Active unit always kept.
+            var activeMaxHps = new HashSet<int>();
+            for (int s = 0; s < _trackedSlots.Length; s++)
+            {
+                ref var slot = ref _trackedSlots[s];
+                if (slot.Active && slot.MaxHp > 0) activeMaxHps.Add(slot.MaxHp);
+            }
+            if (activeMaxHps.Count > 0)
+            {
+                state.Units = StaleBattleUnitFilter.Filter(state.Units, activeMaxHps);
+            }
+
             state.BattleWon = BattleFieldHelper.AllEnemiesDefeated(state.Units);
 
             return state;
