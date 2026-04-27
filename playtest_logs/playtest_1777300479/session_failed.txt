@@ -1,0 +1,11 @@
+14:35:42 keys EncounterDialog→TravelList completed_timeout 10047ms
+14:40:39 battle_attack BattleMyTurn→BattleMyTurn failed 50ms err=Tile (2,3) is not in basic-Attack range. Run scan_move first and pick from the active unit's Attack ValidTargetTiles (2 valid tiles).
+14:43:47 battle_wait BattleAbilities→BattleAbilities failed 1496ms err=Cannot battle_wait from screen (current: BattleAbilities)
+14:43:56 battle_retry BattleAbilities→BattleAbilities failed 911ms err=Failed to open pause menu (current: BattleAbilities)
+14:48:20 keys BattleMoving→BattleMoving blocked 1ms err=[STRICT MODE] Raw key presses are not allowed. Use the fft.sh helper commands: path, battle_wait, battle_attack, move_grid, scan_move, etc. Current screen: BattleMoving. ValidPaths: ConfirmMove, Cancel, CursorUp, CursorDown, CursorLeft, CursorRight, RotateCamera
+14:48:50 battle_confirm_move BattleMoving→BattleMoving blocked 1ms err=[STRICT MODE] Action 'battle_confirm_move' is not allowed. Use the fft.sh helper commands: path, battle_wait, battle_attack, move_grid, scan_move, etc. Current screen: BattleMoving. ValidPaths: ConfirmMove, Cancel, CursorUp, CursorDown, CursorLeft, CursorRight, RotateCamera
+14:49:00 battle_move BattleMoving→BattleMoving failed 33ms err=Tile (5,4) is not in the valid move range. Run scan_move first and pick from ValidMoveTiles (16 valid tiles available).
+14:49:09 path BattleMoving→BattleMoving blocked 1ms err=[STRICT MODE] Action 'path' is not allowed. Use the fft.sh helper commands: path, battle_wait, battle_attack, move_grid, scan_move, etc. Current screen: BattleMoving. ValidPaths: ConfirmMove, Cancel, CursorUp, CursorDown, CursorLeft, CursorRight, RotateCamera
+14:50:36 battle_attack BattleAttacking→BattleEnemiesTurn failed 3318ms err=Escape-to-known-state failed: expected BattleMyTurn/BattleActing after 3 Escapes, got BattleEnemiesTurn
+14:54:16 detection_dump WorldMap→WorldMap blocked 14ms err=[STRICT MODE] Action 'detection_dump' is not allowed. Use the fft.sh helper commands: path, battle_wait, battle_attack, move_grid, scan_move, etc. Current screen: WorldMap. ValidPaths: PartyMenuUnits, TravelList, EnterLocation
+— 10/137 rows from session_20260427_143320_576.jsonl
