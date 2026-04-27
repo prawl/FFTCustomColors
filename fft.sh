@@ -4642,6 +4642,31 @@ get_arrows() { fft_full "{\"id\":\"$(id)\",\"action\":\"get_arrows\",\"to\":\"${
 # Usage: strict 1   (enable)    strict 0   (disable)
 strict() { fft "{\"id\":\"$(id)\",\"action\":\"set_strict\",\"locationId\":${1:-1}}"; }
 
+# direct_cursor_set <name> <index>: Write a cursor byte directly,
+# bypassing key-press simulation. Returns timing + before/after values.
+# Known cursors: battle_menu (0..4 = Move/Abilities/Wait/Status/AutoBattle).
+# Use during BattleMyTurn to test if writing the byte moves the on-screen
+# cursor. If 'holds=YES' and the cursor visibly jumps, the proto works
+# and we can expand to other cursors for ~75ms+ per multi-step nav.
+direct_cursor_set() {
+  local name="${1:-battle_menu}"
+  local idx="${2:-0}"
+  local confirm="${3:-false}"
+  fft "{\"id\":\"$(id)\",\"action\":\"direct_cursor_set\",\"cursorName\":\"$name\",\"locationId\":$idx,\"confirm\":$confirm}"
+}
+
+# walk_cursor_diff <steps> <key> <label>: RE helper. Tap <key> N times
+# from the current state, snapshot main module between each tap, run
+# find_monotonic for bytes matching [0,1,...,N]. Strict-allowed (uses
+# internal SendKey, not raw keys). Usage: walk_cursor_diff 4 Down menu
+walk_cursor_diff() {
+  local steps="${1:-4}"
+  local key="${2:-Down}"
+  local label="${3:-walk}"
+  local region="${4:-module}"   # "module" or "heap"
+  fft "{\"id\":\"$(id)\",\"action\":\"walk_cursor_diff\",\"locationId\":$steps,\"direction\":\"$key\",\"searchLabel\":\"$label\",\"pattern\":\"$region\"}"
+}
+
 # set_map: Load a MAP JSON file for exact BFS terrain data.
 # Usage: set_map 74   (loads MAP074.json)
 # Call before or during battle. Maps must be in claude_bridge/maps/MAP###.json

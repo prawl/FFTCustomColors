@@ -1475,7 +1475,9 @@ namespace FFTColorCustomizer.Utilities
             "resolve_eqa_row",
             "remove_equipment_at_cursor",
             "scan_snapshot", "scan_diff",
-            "memory_diff"
+            "memory_diff",
+            "direct_cursor_set",
+            "walk_cursor_diff"
         };
 
         // Named game actions allowed in strict mode (from fft.sh helpers)
@@ -2343,6 +2345,196 @@ namespace FFTColorCustomizer.Utilities
                         response.Status = "completed";
                         response.Error = $"Strict mode: {(StrictMode ? "ON — game actions must use validPaths" : "OFF — all actions allowed")}";
                         break;
+
+                    case "direct_cursor_set":
+                    {
+                        // 2026-04-26 PROTO: write a cursor byte directly
+                        // instead of simulating N key presses. Round-trips
+                        // the read-before / write / read-after so the
+                        // caller can see if the byte holds and time the
+                        // operation. See DirectCursorRegistry.cs.
+                        if (Explorer == null)
+                        {
+                            response.Status = "failed";
+                            response.Error = "Memory explorer not initialized";
+                            break;
+                        }
+                        var cursorName = command.CursorName ?? "";
+                        if (string.IsNullOrEmpty(cursorName))
+                        {
+                            response.Status = "failed";
+                            response.Error = "cursorName required (e.g. 'battle_menu'). Known: ["
+                                + string.Join(", ", GameBridge.DirectCursorRegistry.Names) + "]";
+                            break;
+                        }
+                        var entry = GameBridge.DirectCursorRegistry.Get(cursorName);
+                        if (entry == null)
+                        {
+                            response.Status = "failed";
+                            response.Error = $"Unknown cursor '{cursorName}'. Known: ["
+                                + string.Join(", ", GameBridge.DirectCursorRegistry.Names) + "]";
+                            break;
+                        }
+                        var dcsScreen = DetectScreen();
+                        var sw = System.Diagnostics.Stopwatch.StartNew();
+                        byte before = Explorer.Scanner.ReadByte((nint)entry.Address);
+                        long readBeforeUs = (sw.ElapsedTicks * 1_000_000) / System.Diagnostics.Stopwatch.Frequency;
+                        var plan = GameBridge.DirectCursorPlanner.PlanWrite(
+                            cursorName, command.LocationId, before, dcsScreen?.Name);
+                        if (plan.Kind == GameBridge.DirectCursorPlanner.PlanKind.Reject)
+                        {
+                            response.Status = "failed";
+                            response.Error = plan.Reason;
+                            response.Screen = dcsScreen;
+                            break;
+                        }
+                        long writeUs = 0;
+                        if (plan.Kind == GameBridge.DirectCursorPlanner.PlanKind.Write)
+                        {
+                            var sw2 = System.Diagnostics.Stopwatch.StartNew();
+                            Explorer.Scanner.WriteByte((nint)plan.Address, plan.Value);
+                            writeUs = (sw2.ElapsedTicks * 1_000_000) / System.Diagnostics.Stopwatch.Frequency;
+                        }
+                        var sw3 = System.Diagnostics.Stopwatch.StartNew();
+                        byte after = Explorer.Scanner.ReadByte((nint)entry.Address);
+                        long readAfterUs = (sw3.ElapsedTicks * 1_000_000) / System.Diagnostics.Stopwatch.Frequency;
+
+                        // 2026-04-26 proto path 1: race the game's input-
+                        // loop overwrite by sending VK_RETURN immediately
+                        // after the write. If the game commits the action
+                        // by reading the byte at confirm-key handling
+                        // time, the action lands.
+                        long confirmUs = 0;
+                        bool sentConfirm = false;
+                        if (command.Confirm
+                            && plan.Kind == GameBridge.DirectCursorPlanner.PlanKind.Write)
+                        {
+                            try
+                            {
+                                IntPtr win = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+                                if (win != IntPtr.Zero)
+                                {
+                                    var sw4 = System.Diagnostics.Stopwatch.StartNew();
+                                    _inputSimulator.SendKeyPressToWindow(win, 0x0D); // VK_RETURN
+                                    confirmUs = (sw4.ElapsedTicks * 1_000_000) / System.Diagnostics.Stopwatch.Frequency;
+                                    sentConfirm = true;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                ModLogger.LogError($"[DirectCursorSet] Confirm send failed: {ex.Message}");
+                            }
+                        }
+                        long totalUs = (sw.ElapsedTicks * 1_000_000) / System.Diagnostics.Stopwatch.Frequency;
+
+                        response.Status = "completed";
+                        response.Screen = dcsScreen;
+                        response.Info = $"cursor='{cursorName}' addr=0x{entry.Address:X} kind={plan.Kind} "
+                            + $"before={before} target={plan.Value} after={after} "
+                            + $"holds={(after == plan.Value ? "YES" : "NO")} "
+                            + $"confirm={(sentConfirm ? "SENT" : "no")} "
+                            + $"timing(us): read={readBeforeUs} write={writeUs} verify={readAfterUs} confirm={confirmUs} total={totalUs}";
+                        ModLogger.Log($"[DirectCursorSet] {response.Info}");
+                        break;
+                    }
+
+                    case "walk_cursor_diff":
+                    {
+                        // 2026-04-26 RE helper: walk a cursor by tapping a key
+                        // N times, snapshot main module between each tap, then
+                        // run find_monotonic to surface bytes that match the
+                        // expected sequence. Strict-allowed bundle of:
+                        //   snapshot s0
+                        //   for i in 1..N: SendKey + sleep + snapshot s{i}
+                        //   FindMonotonicByteCandidates([s0..sN], [0..N])
+                        // Output written to find_monotonic_<label>.txt and
+                        // returned in response.info.
+                        if (Explorer == null)
+                        {
+                            response.Status = "failed";
+                            response.Error = "Memory explorer not initialized";
+                            break;
+                        }
+                        int steps = command.LocationId > 0 ? command.LocationId : 4;
+                        if (steps > 32)
+                        {
+                            response.Status = "failed";
+                            response.Error = "walk_cursor_diff: max 32 steps";
+                            break;
+                        }
+                        string keyName = string.IsNullOrEmpty(command.Direction) ? "Down" : command.Direction!;
+                        int vk = keyName.ToLowerInvariant() switch
+                        {
+                            "down" => 0x28,
+                            "up" => 0x26,
+                            "left" => 0x25,
+                            "right" => 0x27,
+                            _ => 0,
+                        };
+                        if (vk == 0)
+                        {
+                            response.Status = "failed";
+                            response.Error = $"walk_cursor_diff: unknown key '{keyName}'";
+                            break;
+                        }
+                        string label = command.SearchLabel ?? "walk";
+                        IntPtr win = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+                        if (win == IntPtr.Zero)
+                        {
+                            response.Status = "failed";
+                            response.Error = "walk_cursor_diff: no game window";
+                            break;
+                        }
+                        var labels = new System.Collections.Generic.List<string>();
+                        var values = new System.Collections.Generic.List<byte>();
+                        var sb = new System.Text.StringBuilder();
+                        sb.AppendLine($"[walk_cursor_diff] steps={steps} key={keyName} label={label}");
+
+                        // Region selector: pattern="heap" → use heap snap
+                        // (UE4 widget state lives there); else main module.
+                        bool useHeap = string.Equals(command.Pattern, "heap", System.StringComparison.OrdinalIgnoreCase);
+                        sb.AppendLine($"  region={(useHeap ? "heap" : "module")}");
+                        System.Action<string> snap = useHeap
+                            ? (s) => Explorer.TakeHeapSnapshot(s)
+                            : (s) => Explorer.TakeSnapshot(s);
+
+                        // Initial snapshot.
+                        string s0 = $"{label}_s0";
+                        snap(s0);
+                        labels.Add(s0);
+                        values.Add(0);
+                        sb.AppendLine($"  s0 captured");
+
+                        // Walk N steps.
+                        for (int i = 1; i <= steps; i++)
+                        {
+                            _inputSimulator.SendKeyPressToWindow(win, vk);
+                            Thread.Sleep(150); // give the game a frame to update
+                            string sN = $"{label}_s{i}";
+                            snap(sN);
+                            labels.Add(sN);
+                            values.Add((byte)i);
+                            sb.AppendLine($"  s{i} captured (after {keyName} #{i})");
+                        }
+
+                        var candidates = Explorer.FindMonotonicByteCandidates(
+                            labels.ToArray(), values.ToArray(), maxResults: 64);
+                        sb.AppendLine($"find_monotonic({string.Join(",", values)}): {candidates.Count} candidates");
+                        foreach (var a in candidates) sb.AppendLine($"  0x{(long)a:X}");
+
+                        var outPath = System.IO.Path.Combine(_bridgeDirectory, $"walk_cursor_diff_{label}.txt");
+                        System.IO.File.WriteAllText(outPath, sb.ToString());
+                        response.Info = $"walk_cursor_diff label={label} steps={steps} key={keyName}: {candidates.Count} candidates (full list in walk_cursor_diff_{label}.txt)";
+                        if (candidates.Count > 0)
+                        {
+                            response.Info += "\nTop: " + string.Join(", ",
+                                candidates.GetRange(0, System.Math.Min(8, candidates.Count))
+                                    .ConvertAll(a => $"0x{(long)a:X}"));
+                        }
+                        ModLogger.Log($"[walk_cursor_diff] {response.Info}");
+                        response.Status = "completed";
+                        break;
+                    }
 
                     case "scan_move":
                     case "auto_move":

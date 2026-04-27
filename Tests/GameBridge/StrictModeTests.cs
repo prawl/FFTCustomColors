@@ -55,7 +55,9 @@ namespace FFTColorCustomizer.Tests.GameBridge
             "resolve_eqa_row",
             "remove_equipment_at_cursor",
             "scan_snapshot", "scan_diff",
-            "memory_diff"
+            "memory_diff",
+            "direct_cursor_set",
+            "walk_cursor_diff"
         };
 
         [Theory]

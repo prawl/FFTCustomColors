@@ -179,6 +179,23 @@ namespace FFTColorCustomizer.Utilities
         public string? Direction { get; set; }
 
         /// <summary>
+        /// 2026-04-26 proto: cursor name for "direct_cursor_set" action.
+        /// Maps to a registered (address, range) entry in
+        /// <c>DirectCursorRegistry</c>.
+        /// </summary>
+        [JsonPropertyName("cursorName")]
+        public string? CursorName { get; set; }
+
+        /// <summary>
+        /// 2026-04-26 proto: when true, "direct_cursor_set" sends VK_RETURN
+        /// immediately after the byte write to race the game's input-loop
+        /// overwrite. Tests whether write+confirm commits the action even
+        /// when the cursor byte itself is read-mostly.
+        /// </summary>
+        [JsonPropertyName("confirm")]
+        public bool Confirm { get; set; }
+
+        /// <summary>
         /// After sending keys, poll DetectScreen until screen.Name matches this value (or timeout).
         /// Response is only sent once the screen matches, so the client gets guaranteed settled state.
         /// </summary>
