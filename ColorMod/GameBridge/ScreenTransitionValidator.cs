@@ -33,7 +33,12 @@ namespace FFTColorCustomizer.GameBridge
             },
             // Battle terminals only fire from in-battle states. WorldMap →
             // BattleVictory / BattleDesertion / GameOver is the sticky-flag
-            // false-positive shape.
+            // false-positive shape. Terminal-to-terminal transitions ARE
+            // allowed — flicker between Victory/Desertion/GameOver is a
+            // known classification race (e.g. 2026-04-26 PM Mandalia: real
+            // Victory was preceded by transient Desertion when the bridge
+            // miscounted phantom allies; the correct answer is whichever
+            // the game settles on, so allow the swap).
             ["BattleVictory"] = new()
             {
                 "BattleMyTurn", "BattleAttacking", "BattleMoving",
@@ -41,6 +46,7 @@ namespace FFTColorCustomizer.GameBridge
                 "BattleEnemiesTurn", "BattleAlliesTurn",
                 "BattlePaused", "BattleDialogue", "BattleChoice",
                 "BattleVictory",
+                "BattleDesertion", "GameOver",
                 "BattleFormation",
             },
             ["BattleDesertion"] = new()
@@ -50,6 +56,7 @@ namespace FFTColorCustomizer.GameBridge
                 "BattleEnemiesTurn", "BattleAlliesTurn",
                 "BattlePaused", "BattleDialogue", "BattleChoice",
                 "BattleDesertion",
+                "BattleVictory", "GameOver",
                 "BattleFormation",
             },
             ["GameOver"] = new()
@@ -59,6 +66,7 @@ namespace FFTColorCustomizer.GameBridge
                 "BattleEnemiesTurn", "BattleAlliesTurn",
                 "BattlePaused", "BattleDialogue", "BattleChoice",
                 "GameOver",
+                "BattleVictory", "BattleDesertion",
                 "BattleFormation",
             },
             // WorldMap from a pre-battle dialogue is the cutscene-during-

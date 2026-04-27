@@ -5,6 +5,58 @@ namespace FFTColorCustomizer.Tests.GameBridge
 {
     public class RosterMatchingTests
     {
+        // 2026-04-26 PM iter2: phantom enemies sometimes read brave=0/
+        // faith=0 due to bad memory regions, then RosterMatcher Pass 2
+        // (level-only fuzzy match for team=0 candidates) matches them
+        // to a player roster slot. Result: enemy at (8,10) labeled
+        // "Ramza" → narrator emits "Ramza moved (8,10)→(9,11)" while
+        // real Ramza is at (1,6) untouched. Stricter rule: Pass 2 only
+        // fires when there's exactly ONE team=0+brave=0+faith=0
+        // candidate. Multiple candidates means we can't safely fuzzy-
+        // match; better to leave them all unmatched and let the diff
+        // identify them by fingerprint or position.
+        [Fact]
+        public void Pass2_MultipleZeroBraveFaithCandidates_NoneMatched()
+        {
+            // Two team=0 brave=0 faith=0 candidates at the same level.
+            // Pass 2 must NOT mis-attribute either to the player slot.
+            var rosterSlots = new[]
+            {
+                new RosterSlot { NameId = 1, Level = 8, Brave = 70, Faith = 50, Job = 2, Secondary = 0 },
+            };
+            var scannedUnits = new[]
+            {
+                new ScannedUnitIdentity { Level = 8, Brave = 0, Faith = 0, Hp = 393, Team = 0 }, // real Ramza
+                new ScannedUnitIdentity { Level = 8, Brave = 0, Faith = 0, Hp = 50,  Team = 0 }, // phantom enemy that read team=0
+            };
+
+            var matches = RosterMatcher.Match(scannedUnits, rosterSlots);
+
+            // Both should be unmatched — we can't tell which is real.
+            Assert.Equal(0, matches[0].NameId);
+            Assert.Equal(0, matches[1].NameId);
+        }
+
+        [Fact]
+        public void Pass2_SingleZeroBraveFaithCandidate_StillMatches()
+        {
+            // The legitimate active-unit case: exactly one team=0 unit
+            // with brave=0/faith=0. Should match — this is the original
+            // intent of Pass 2.
+            var rosterSlots = new[]
+            {
+                new RosterSlot { NameId = 1, Level = 8, Brave = 70, Faith = 50, Job = 2, Secondary = 0 },
+            };
+            var scannedUnits = new[]
+            {
+                new ScannedUnitIdentity { Level = 8, Brave = 0, Faith = 0, Hp = 393, Team = 0 },
+            };
+
+            var matches = RosterMatcher.Match(scannedUnits, rosterSlots);
+
+            Assert.Equal(1, matches[0].NameId);
+        }
+
         [Fact]
         public void ActiveUnit_WithZeroBraveFaith_ShouldNotMatchFirstSlot()
         {

@@ -160,5 +160,45 @@ namespace FFTColorCustomizer.Tests.GameBridge
             // Defensive: empty string treated like null (no last screen).
             Assert.True(ScreenTransitionValidator.IsValidTransition("", "BattleMyTurn"));
         }
+
+        // 2026-04-26 PM iter2: at Mandalia (Brigands' Den) end-of-battle,
+        // the bridge's allies counter went 0→2→1 due to phantom (0,0)
+        // unit + heap residue. The drop tripped a Desertion classification
+        // for ~one frame, then the real Victory transition came. Validator
+        // rejected Desertion→Victory because it wasn't in the allowed-
+        // predecessor set, and the bridge stayed locked on Desertion.
+        // Player saw "Dismiss" UI for what was actually a Victory.
+        //
+        // The right call here: terminal-to-terminal flicker (Desertion ↔
+        // Victory) is a transient mis-classification that we should LET
+        // recover. The other direction (Victory→Desertion) is also fine —
+        // both are battle-end states, the right answer is whichever the
+        // game settles on. Allow Desertion→Victory and Victory→Desertion.
+        [Fact]
+        public void BattleDesertionToBattleVictory_Valid()
+        {
+            // The Mandalia regression: real Victory was rejected because
+            // a transient Desertion was committed first. Allow recovery.
+            Assert.True(ScreenTransitionValidator.IsValidTransition(
+                "BattleDesertion", "BattleVictory"));
+        }
+
+        [Fact]
+        public void BattleVictoryToBattleDesertion_Valid()
+        {
+            // Symmetric flicker recovery. If a transient Victory commits
+            // first and Desertion is the real result, allow the swap.
+            Assert.True(ScreenTransitionValidator.IsValidTransition(
+                "BattleVictory", "BattleDesertion"));
+        }
+
+        [Fact]
+        public void GameOverToBattleVictory_Valid()
+        {
+            // Same recovery for GameOver↔Victory flickers — terminal
+            // states can re-classify within the end-of-battle window.
+            Assert.True(ScreenTransitionValidator.IsValidTransition(
+                "GameOver", "BattleVictory"));
+        }
     }
 }

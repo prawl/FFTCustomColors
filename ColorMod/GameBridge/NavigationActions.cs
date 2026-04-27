@@ -5951,6 +5951,17 @@ namespace FFTColorCustomizer.GameBridge
                             ModLogger.Log($"[CollectPositions] Unit ({gx},{gy}) statuses: [{string.Join(",", decoded)}]");
                     }
 
+                    // 2026-04-26 PM iter2: HP>MaxHP guard. Phantom unit at
+                    // (0,0) HP=8192/288 Lv32 leaked through StaleBattleUnitFilter
+                    // (which is only wired into BattleTracker.GetState — this
+                    // pipeline emits to the scan response separately). Reject
+                    // physically-impossible entries at the source so they
+                    // never enter playerUnits / the diff / the narrator.
+                    if (unit.Hp > unit.MaxHp)
+                    {
+                        ModLogger.Log($"[CollectPositions] Rejecting hp>maxHp phantom: ({gx},{gy}) t{team} lv{lvl} hp={hp}/{maxHp}");
+                        continue;
+                    }
                     units.Add(unit);
                     usedSlots.Add(s);
                     ModLogger.Log($"[CollectPositions] Unit {units.Count}: ({gx},{gy}) t{team} lv{lvl} hp={hp}/{maxHp} br={brave} fa={faith}{(isActive ? " [ACTIVE]" : "")}");

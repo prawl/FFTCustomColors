@@ -79,6 +79,27 @@ namespace FFTColorCustomizer.GameBridge
             // Pass 2: match units with unknown Brave/Faith (active unit)
             // to the remaining unclaimed slot at the same level.
             // Only apply fuzzy level-only matching to units scanned as team=0 (trusted active unit).
+            //
+            // 2026-04-26 PM iter2 tightening: multiple team=0+brave=0+
+            // faith=0 candidates is an ambiguous signal — could be the
+            // real active player + a phantom enemy that read team=0/
+            // brave=0/faith=0 from bad memory. Mis-attributing to the
+            // player slot caused narrator to emit events like
+            // "Ramza moved (8,10)→(9,11)" while real Ramza was at (1,6).
+            // Only fuzzy-match when there's exactly ONE candidate.
+            int pass2Candidates = 0;
+            for (int u = 0; u < scannedUnits.Length; u++)
+            {
+                if (scannedUnits[u].Brave == 0
+                    && scannedUnits[u].Faith == 0
+                    && scannedUnits[u].Team == 0
+                    && results[u].NameId == 0)
+                {
+                    pass2Candidates++;
+                }
+            }
+            if (pass2Candidates > 1) return results;
+
             for (int u = 0; u < scannedUnits.Length; u++)
             {
                 if (scannedUnits[u].Brave != 0 || scannedUnits[u].Faith != 0)
