@@ -1542,6 +1542,54 @@ namespace FFTColorCustomizer.GameBridge
                         postHp = reLiveHp >= 0 ? reLiveHp : reStaticHp;
                     }
                 }
+                else if (postName == "BattleAttacking" && liveHp == 0 && staticHpAtk == preHp)
+                {
+                    // 2026-04-27 iter4 follow-up: same-screen KO-vs-MISS
+                    // disambiguation. Iter4 agent reproduced 3/3:
+                    // bridge says "KO'd! (53→0/77)" but next screen
+                    // shows victim alive at 77/77 until the next
+                    // battle_wait commits. Pattern: liveHp=0 (stale
+                    // read) + staticHpAtk=preHp (unchanged → no
+                    // damage). When BOTH say "no damage" via static
+                    // AND live=0 is the only KO signal, distrust live
+                    // and re-poll until convergence (or fall through
+                    // to MISS).
+                    for (int retry = 0; retry < 4; retry++)
+                    {
+                        Thread.Sleep(250);
+                        int reLiveHp2 = ReadLiveHp(targetMaxHp, preHp, targetLevel);
+                        int reStaticHp2 = ReadStaticArrayHpAt(targetX, targetY);
+                        // Convergence: static moved off preHp → trust
+                        // the new reading (real damage / KO landed).
+                        if (reStaticHp2 >= 0 && reStaticHp2 != preHp)
+                        {
+                            liveHp = reLiveHp2;
+                            staticHpAtk = reStaticHp2;
+                            postHp = reStaticHp2; // prefer static now that it's moved
+                            ModLogger.Log($"[BattleAttack] Static convergence after {(retry + 1) * 250}ms: live={reLiveHp2} static={reStaticHp2} (was both preHp={preHp})");
+                            break;
+                        }
+                        // Live also stabilized non-zero → not a KO,
+                        // live=0 was stale.
+                        if (reLiveHp2 > 0)
+                        {
+                            liveHp = reLiveHp2;
+                            staticHpAtk = reStaticHp2;
+                            postHp = reLiveHp2;
+                            ModLogger.Log($"[BattleAttack] Live stabilized non-zero after {(retry + 1) * 250}ms: live={reLiveHp2} (initial 0 was stale)");
+                            break;
+                        }
+                    }
+                    // If neither converged after 1s, both still showing
+                    // "no damage from static + 0 from live" → trust
+                    // static (target alive). Classifier sees postHp=preHp
+                    // unchanged → Miss.
+                    if (liveHp == 0 && staticHpAtk == preHp)
+                    {
+                        postHp = preHp;
+                        ModLogger.Log($"[BattleAttack] No convergence after 1s; trusting static ({preHp}) → Miss");
+                    }
+                }
             }
             // Pin the resolved screen on the response so the outer
             // ProcessCommand wrapper's `response.Screen ??= DetectScreenSettled(...)`
@@ -6210,21 +6258,43 @@ namespace FFTColorCustomizer.GameBridge
                                 {
                                     u.IsActive = false;
                                     // 2026-04-26 PM iter3 ROOT FIX: HP-match
-                                    // false-positives borrowed Team=0 from the
-                                    // active-unit read at line 5883. Demoting
-                                    // IsActive alone left Team=0, so the
-                                    // phantom got counted as an "ally" in
-                                    // ScanMove output (allies=3 when only
-                                    // Ramza on field). That phantom ally count
-                                    // cascaded into BattleDesertion misclass
-                                    // and the Ramza-identity-attribution
-                                    // narrator burst. Reset Team back to 1
-                                    // (enemy default) so downstream consumers
-                                    // don't treat it as a player unit.
-                                    u.Team = 1;
+                                    // false-positives borrowed Team=0 + NameId
+                                    // from the active-unit read at line 5883.
+                                    // Iter3 reset Team=1 only — but phantoms
+                                    // kept NameId pointing to the active
+                                    // unit, so the narrator diff still
+                                    // matched their identity to the active
+                                    // player and emitted cross-attribution
+                                    // events ("Ramza moved (8,10)→(9,11)").
+                                    //
+                                    // 2026-04-27 iter4 follow-up: full reset
+                                    // for phantoms (no RosterMatcher hit).
+                                    // Legit non-active units that happened
+                                    // to share the active's HP (e.g. Lloyd
+                                    // 475/475 alongside Ramza 475/475) DO
+                                    // have RosterNameId set by the matcher —
+                                    // keep their roster-assigned identity,
+                                    // only sync NameId back to RosterNameId
+                                    // (not the active's borrowed value).
+                                    if (u.RosterNameId > 0)
+                                    {
+                                        // Legit collision: roster-matched unit
+                                        // sharing the active's HP. Keep
+                                        // identity, but undo the active read's
+                                        // NameId override.
+                                        u.NameId = u.RosterNameId;
+                                    }
+                                    else
+                                    {
+                                        // Phantom: clear all borrowed identity.
+                                        u.Team = 1;
+                                        u.NameId = 0;
+                                        u.Name = null;
+                                        u.JobNameOverride = null;
+                                    }
                                 }
                             }
-                            ModLogger.Log($"[CollectPositions] De-duped active: kept ({trueActive.GridX},{trueActive.GridY}) nameId={activeNameId}, demoted {activeCandidates.Count - 1} HP-match duplicate(s) (also reset Team=1)");
+                            ModLogger.Log($"[CollectPositions] De-duped active: kept ({trueActive.GridX},{trueActive.GridY}) nameId={activeNameId}, demoted {activeCandidates.Count - 1} HP-match duplicate(s) (full identity reset for phantoms)");
                         }
                     }
                 }
