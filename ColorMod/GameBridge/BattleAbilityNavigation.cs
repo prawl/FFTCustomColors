@@ -94,8 +94,18 @@ namespace FFTColorCustomizer.GameBridge
                 }
             }
 
-            // Fall back to searching all skillsets (ability might be in an undetected secondary).
-            // Skip skillsets already searched above to avoid false matches (e.g. synthetic "Jump").
+            // 2026-04-26 PM playtest: when availableSkillsets is a
+            // non-empty restrictive list (caller told us what's equipped),
+            // do NOT fall through to all-skillsets. Returning a skillset
+            // the caller didn't ask for produces the cryptic "Skillset
+            // 'Mettle' not in submenu" error downstream — caller would
+            // rather see "ability not found in available skillsets" so it
+            // can emit a clean error. Fall-through stays for the no-info
+            // case (null/empty available list) where we genuinely don't
+            // know what's equipped.
+            if (availableSkillsets != null && availableSkillsets.Length > 0)
+                return null;
+
             var searched = new HashSet<string>(availableSkillsets ?? System.Array.Empty<string>());
             foreach (var (skillsetName, abilities) in ActionAbilityLookup.AllSkillsets)
             {

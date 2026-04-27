@@ -158,4 +158,65 @@ public class StaleBattleUnitFilterTests
 
         Assert.Equal(2, result.Count);
     }
+
+    // 2026-04-26 PM playtest: phantom unit at (0,0) with HP=8192/288
+    // Lv32 persisted across every scan. hp > maxHp is physically
+    // impossible — a unit can't have current HP higher than max.
+    // 8192/288 = 28× over-cap; clearly garbage data from somewhere
+    // (uninitialized slot, byte-misalignment, prior-battle residue).
+    // Reject regardless of MaxHp membership.
+    [Fact]
+    public void HpExceedsMaxHp_Dropped_EvenIfMaxHpInActiveSet()
+    {
+        var phantom = Unit(team: 1, level: 32, maxHp: 288, x: 0, y: 0);
+        phantom.Hp = 8192; // physically impossible
+        var units = new List<BattleUnitState> { phantom };
+        var active = new HashSet<int> { 288 }; // MaxHp matches active set
+
+        var result = StaleBattleUnitFilter.Filter(units, active);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void HpExceedsMaxHp_DroppedEvenForActiveUnit()
+    {
+        // Even the active unit doesn't get a pass on this — if the
+        // scan returned hp > maxHp for the player, the data is
+        // corrupt and we'd rather drop it than render garbage.
+        var ramza = Unit(team: 0, level: 8, maxHp: 393, x: 4, y: 4);
+        ramza.Hp = 65535;
+        ramza.IsActive = true;
+        var units = new List<BattleUnitState> { ramza };
+
+        var result = StaleBattleUnitFilter.Filter(units, new HashSet<int>());
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void HpEqualsMaxHp_Kept()
+    {
+        // Full HP is fine. Boundary case: hp == maxHp is not over-cap.
+        var unit = Unit(team: 1, level: 7, maxHp: 75, x: 4, y: 4);
+        unit.Hp = 75;
+        var units = new List<BattleUnitState> { unit };
+
+        var result = StaleBattleUnitFilter.Filter(units, new HashSet<int> { 75 });
+
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public void HpZero_Kept()
+    {
+        // Dead units are fine — hp=0 ≤ maxHp.
+        var unit = Unit(team: 1, level: 7, maxHp: 75, x: 4, y: 4);
+        unit.Hp = 0;
+        var units = new List<BattleUnitState> { unit };
+
+        var result = StaleBattleUnitFilter.Filter(units, new HashSet<int> { 75 });
+
+        Assert.Single(result);
+    }
 }

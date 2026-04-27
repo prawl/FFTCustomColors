@@ -83,6 +83,77 @@ namespace FFTColorCustomizer.Tests.GameBridge
             Assert.False(result.Value.isSelfTarget);
         }
 
+        // 2026-04-26 PM: Knight Ramza had primary=Arts of War, secondary=null.
+        // Bridge offered Focus (a Mettle ability Ramza learned as Squire),
+        // and `battle_ability "Focus"` failed with "Skillset 'Mettle' not in
+        // submenu: Attack, Arts of War" — because FindAbility's all-skillsets
+        // fallback returned skillsetName="Mettle" even though Mettle wasn't
+        // in available. Caller then tried to navigate to a Mettle submenu
+        // that doesn't exist on Knight's screen.
+        //
+        // Fix: when availableSkillsets is non-null AND non-empty, restrict
+        // the search to those skillsets. The caller has told us what's
+        // equipped; respect that. The all-skillsets fallback is reserved
+        // for the "no info from caller" case (null/empty available list).
+        [Fact]
+        public void FindAbility_NotInAvailableSkillsets_ReturnsNull()
+        {
+            // Focus is in Mettle. Knight Ramza's available list is just
+            // ["Arts of War"]. Should NOT find Focus by falling through
+            // to Mettle.
+            var result = BattleAbilityNavigation.FindAbility(
+                "Focus", availableSkillsets: new[] { "Arts of War" });
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void FindAbility_AvailableSkillsets_StillResolvesAttack()
+        {
+            // The synthetic "Attack" skillset must always resolve, even
+            // when availableSkillsets is restrictive — Attack is the
+            // basic action available regardless of equipped skillsets.
+            var result = BattleAbilityNavigation.FindAbility(
+                "Attack", availableSkillsets: new[] { "Arts of War" });
+
+            Assert.NotNull(result);
+            Assert.Equal("Attack", result.Value.skillsetName);
+        }
+
+        [Fact]
+        public void FindAbility_NullAvailableSkillsets_FallsThroughToAll()
+        {
+            // No info from caller — fall through to all-skillsets.
+            // Backwards-compat with callers that don't pass available.
+            var result = BattleAbilityNavigation.FindAbility("Focus", availableSkillsets: null);
+
+            Assert.NotNull(result);
+            Assert.Equal("Mettle", result.Value.skillsetName);
+        }
+
+        [Fact]
+        public void FindAbility_EmptyAvailableSkillsets_FallsThroughToAll()
+        {
+            // Empty array == "no equipped skillsets info" — fall through.
+            // Different from a populated array which is restrictive.
+            var result = BattleAbilityNavigation.FindAbility(
+                "Focus", availableSkillsets: System.Array.Empty<string>());
+
+            Assert.NotNull(result);
+            Assert.Equal("Mettle", result.Value.skillsetName);
+        }
+
+        [Fact]
+        public void FindAbility_InAvailableSkillsets_Resolves()
+        {
+            // If Mettle IS equipped (as secondary), Focus resolves cleanly.
+            var result = BattleAbilityNavigation.FindAbility(
+                "Focus", availableSkillsets: new[] { "Arts of War", "Mettle" });
+
+            Assert.NotNull(result);
+            Assert.Equal("Mettle", result.Value.skillsetName);
+        }
+
         [Fact]
         public void EffectiveMenuCursor_AfterMove_MemoryReads0_Returns1()
         {
@@ -216,15 +287,23 @@ namespace FFTColorCustomizer.Tests.GameBridge
         }
 
         [Fact]
-        public void FindAbility_FallsBackToAllSkillsets_WhenNotInAvailable()
+        public void FindAbility_NotInRestrictiveAvailable_ReturnsNull()
         {
-            // Aurablast is in Martial Arts. If the available skillsets don't include
-            // Martial Arts (e.g. secondary wasn't detected), the fallback search
-            // should still find it.
+            // 2026-04-26 PM: behavior changed. When availableSkillsets is
+            // a NON-EMPTY restrictive list, we trust it — don't fall
+            // through to all-skillsets. The OLD behavior returned the
+            // cross-skillset hit (Aurablast → Martial Arts even when
+            // available = ["Jump"]); but downstream nav then tried to
+            // open a Martial Arts submenu that doesn't exist on a Dragoon
+            // screen, producing cryptic "Skillset 'Martial Arts' not in
+            // submenu" errors. Returning null lets the caller emit a
+            // clean "ability not in equipped skillsets" error instead.
+            //
+            // Fall-through still applies when availableSkillsets is null
+            // or empty (caller didn't tell us what's equipped — see
+            // FindAbility_NullAvailableSkillsets_FallsThroughToAll).
             var result = BattleAbilityNavigation.FindAbility("Aurablast", new[] { "Jump" });
-
-            Assert.NotNull(result);
-            Assert.Equal("Martial Arts", result.Value.skillsetName);
+            Assert.Null(result);
         }
 
         [Theory]

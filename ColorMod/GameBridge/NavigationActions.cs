@@ -6215,6 +6215,20 @@ namespace FFTColorCustomizer.GameBridge
                 {
                     if (unit.JobNameOverride != null) continue;  // Already resolved (e.g. via roster)
                     if (unit.MaxHp <= 0) continue;
+                    // 2026-04-26 PM playtest: player units (team=0) have
+                    // a stable identity from RosterMatcher (unit.Job is
+                    // set, unit.Name is set). The fingerprint+cache
+                    // fallback below is meant for ENEMIES who have no
+                    // roster slot. Running it for player units risks
+                    // poisoning their job: when Ramza's heap struct
+                    // search misses (HP-pattern outside the search
+                    // range), the cache fallback grabbed a stale
+                    // "Chocobo" entry from a prior battle and overrode
+                    // his job. _unitNameCache.GetByStats matched on
+                    // (maxHp=393, level=8, team=0) which collided with
+                    // a cached Chocobo. Skip the heap path entirely
+                    // when we already know the job from roster.
+                    if (unit.Team == 0 && unit.Job > 0) continue;
 
                     // Search for the 4-byte HP+MaxHP pattern. HP is at struct +0x10, MaxHP at +0x12.
                     // Unique enough per unit since real FFT battles rarely have two units with

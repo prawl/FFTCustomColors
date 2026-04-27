@@ -31,11 +31,19 @@ namespace FFTColorCustomizer.GameBridge
             var result = new List<BattleUnitState>(units.Count);
             if (activeMaxHps == null)
             {
-                result.AddRange(units);
+                // 2026-04-26 PM: even on the no-active-set passthrough,
+                // reject hp>maxHp garbage. Phantom (0,0) HP=8192/288 was
+                // observed all-battle in this case.
+                foreach (var u in units)
+                    if (u.Hp <= u.MaxHp) result.Add(u);
                 return result;
             }
             foreach (var u in units)
             {
+                // Reject physically-impossible hp>maxHp entries first —
+                // applies even to the active unit (corrupt data is worse
+                // than missing data).
+                if (u.Hp > u.MaxHp) continue;
                 if (u.IsActive || activeMaxHps.Contains(u.MaxHp))
                     result.Add(u);
             }
