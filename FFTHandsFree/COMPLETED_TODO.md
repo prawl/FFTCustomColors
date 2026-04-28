@@ -2285,3 +2285,70 @@ Cleanup of stale `[ ]` items in TODO §0 (multi-unit handoff) that were already 
 - [ ] Stale post-heal HP in `screen` Units block (needs `screen` to settle the static array post-heal; affects render of hot HP reads).
 - [ ] Geomancy single-spell render (deferred — needs terrain-byte memory hunt).
 - [ ] Post-victory WorldMap mis-tag — actual fix (needs live re-capture of the misfire fingerprint).
+
+
+### 2026-04-28 — Mandalia P1 cascade fix-loop + hand-play P2 batch
+
+17 commits over a stretch that started with playtest-driven P1 fixes, ran an autonomous fix-loop until P0/P1 = 0, then hand-played a battle with screenshot verification to find and fix four more bugs (one P1, three P2). The autonomous loop converged when the playtest agent identified that multiple downstream symptoms (phantom narrator burst + BattleDesertion misclassification + `allies=3` with one player) were all rooted in one place: HP-match active-dedup left phantoms with `Team=0` borrowed from the active read.
+
+**Theme — Screen detection hardening:**
+
+- [x] **Screen transition validator** — `ScreenTransitionValidator.IsValidTransition(from, to)` rejects physically-impossible jumps (e.g. `BattleAttacking → BattleCrystalMoveConfirm` skipping `BattleVictory`). Default-permit on unrestricted targets; explicit allow-set per restricted target. Kills the family of "X mid-battle mis-detected as Y" bugs without per-rule patches. Wired in `ScreenDetectionLogic`. Commit `4b4b65c`.
+- [x] **Multi-sample debounce in `DetectScreenSettled(requireSettle: false)`** — when first read disagrees with `_lastClassifiedScreen`, re-sample twice (30ms apart) and `MajorityVote.Pick(first, second, third)` picks 2-of-3 agreement (or freshest non-null on no-majority). Costs ~60ms only on disagreement; common stable case has zero added latency. Pure helper testable without live memory. Commit `b90cae0`.
+- [x] **Terminal flicker recovery rules** — `ScreenTransitionValidator` now allows `Victory ↔ Desertion ↔ GameOver` transitions. End-of-battle classification race (allies counter dropping triggers Desertion for one frame, real Victory follows) no longer locks the bridge into the wrong terminal. Commit `ae2968c`.
+
+**Theme — Phantom cascade ROOT FIX (the autonomous loop's payoff):**
+
+- [x] **Reset `Team = 1` on HP-match active-dedup demotion** — root-cause one-liner. When multiple battle-array slots share the active unit's HP/MaxHP, all flag `IsActive=true` and inherit `Team=0` from the active-unit read. Demoting `IsActive=false` left `Team=0` in place, so phantoms got counted as allies (`MapBFS allies=3` with one Ramza), tripped Desertion misclass at end-of-battle, and the narrator diff cross-attributed enemy-position events to the player ("Ramza moved (8,10)→(9,11)" while real Ramza was at (1,6)). One-line fix at `NavigationActions.cs:6207`. Iter4 verify confirmed `allies=1` matches reality + Victory not Desertion + no cross-attribution. Commit `67085f1`.
+- [x] **Full identity reset for demoted phantoms** — extended the dedup. For unmatched (RosterNameId=0) demotion candidates, also clear `NameId`, `Name`, `JobNameOverride`. Legit collisions (Lloyd 475/475 sharing Ramza's HP, with own roster match) keep their identity, just sync `NameId` to `RosterNameId`. Commit `af8cf6f`.
+- [x] **Drop demoted phantoms from `units` list entirely** — iter5 follow-up. Cleaning fields in-place wasn't enough — entries still polluted `MapBFS` allies count and narrator diff. Now removed via `units.Remove(u)` for `RosterNameId == 0` candidates; legit collisions stay. Commit `0f9f7aa`.
+- [x] **Restore `origSlotPos` for demoted units** — hand-play P1. During enemy turns, transient HP fingerprint matches caused multiple slots to flag `IsActive=true`, all got the cursor's animation-focus position written. Dedup demoted them but their `GridX/GridY` stayed at the wrong cursor pos → narrator emitted phantom "Ramza moved" events. Capture pre-override `(gx, gy)` into `origSlotPos` dict; restore for demoted units alongside identity reset. Commit `9e2ab96`.
+
+**Theme — `AttackOutcomeClassifier` robustness:**
+
+- [x] **KO via `targetMissingFromPostScan` signal** — when `ReadLiveHp` and `ReadStaticArrayHpAt` BOTH return `< 0` (target's struct recycled post-KO), the classifier now treats `BattleAttacking` post-screen with `preHp > 0` + `targetMissing` as Ko instead of falling through to Miss. Commit `94562b8`.
+- [x] **`BattleAttacking` post-animation flicker tolerance** — engine sometimes briefly leaves the targeting screen up before advancing to `BattleMoving` (facing-confirm). Added a 500ms re-settle on `BattleAttacking`; if the screen advances post-settle, re-read live + static and reclassify. Commit `00bb07b`.
+- [x] **Dual-read defense — trust `live=0` KO signal over stale static** — when `liveHp == 0 && preHp > 0`, bypass the dual-read static-prefer override. The static array lags hundreds of ms post-action; live=0 is the reliable KO signal at that moment. Commit `a3a09cc`.
+- [x] **`preHp > 0` gate on KO classification** — hand-play P1. Bridge was claiming KO when attacking a corpse (`preHp=0, postHp=0` → `isKoFromHp` returned KO unconditionally). Gate KO on pre-attack alive — can't kill what was already dead. +5 tests. Commit `9e2ab96`.
+
+**Theme — Post-level-up state recovery:**
+
+- [x] **`Mv=0/Jp=0` softlock fix via `UnitMoveJumpCache.GetMostRecent()`** — heap struct relocates / pattern fails after a level-up shifts MaxHp; cache key by MaxHp misses the prior entry. Added a most-recent fallback that returns the active unit's last-known Mv/Jp regardless of MaxHp key. Mid-battle level-up no longer collapses Move stat to 0. Commit `88d41ad`.
+- [x] **`RosterMatchCache` keyed by stable `NameId`** — when scanned Level shifts faster than the roster slot's Level byte (post-level-up race), `RosterMatcher` returns NameId=0 for the active unit, `unit.Job` collapses to default 0 (Squire/Mettle), bridge offers wrong abilities + desyncs menu nav. Per-NameId cache of last-successful match restores identity until roster catches up. Commit `88d41ad`.
+- [x] **`MovedEventReconstructor` recombines remove+add pairs** — when all enemies are unnamed `[ENEMY]`, `UnitScanDiff` falls back to position-keys; one move emits a remove+add pair that label-based filters cannot dedupe. New helper rejoins same-team `(unit@x,y)` remove+add pairs with matching HP into single moved events. +10 tests. Commit `88d41ad`.
+- [x] **`StaleBattleUnitFilter` drops residue from prior battles** — `BattleTracker._units` is keyed by `team*lvl*MaxHp` and only cleared on battle-exit detection (which can misfire). Filter at emit time against the static-array poll active MaxHp set; active unit always kept. Plus a `Hp > MaxHp` guard added in `9ddc643` and wired into `NavigationActions.CollectUnitPositionsFull` (different pipeline) in `ae2968c`. Phantom (0,0) HP=8192/288 unit no longer leaks into scan output. +12 tests across `StaleBattleUnitFilter` + `BattleTracker`. Commits `88d41ad` / `9ddc643` / `ae2968c`.
+- [x] **`RosterMatcher` Pass 2 stricter** — only fuzzy-match (level-only, for active unit with brave=0/faith=0) when there is exactly ONE candidate. Multiple candidates means phantoms are reading team=0/brave=0/faith=0 from bad memory; mis-attributing player identity to them produced cross-attribution events. Commit `ae2968c`.
+
+**Theme — Items / abilities / classifier polish:**
+
+- [x] **Items secondary R=1 nerf** — `ItemRangeAdjuster.Adjust` returns `R="1"` when the unit primary skillset is NOT `Items` AND no `Throw Items` support equipped. Mirrors the engine secondary-skillset range nerf (Phoenix Down R=4 only when Chemist primary or Throw Items equipped; otherwise R=1). Live-verified at Siedge Weald. Commit `179d8dd`.
+- [x] **`CollidingMoveFilter` — duplicate-name move-collision filter** — drops `moved` events whose destination tile is held by a different-named unit in the post-snap. Defends against rank-based identity collision for duplicate-name enemies (3 Skeletons all sharing the same fingerprint). Commit `179d8dd`.
+- [x] **`ActionBlockingStatusClassifier` disable-tag** — surfaces highest-severity tag (Petrify > Stop > Sleep > Frog > Chicken > Confusion > Charm > Berserk > DontAct > DontMove > Performing > Charging > Jump) on the active-unit header. Cached in `_cachedActiveUnitDisabledTag`. Agent now sees `DontAct(no act)` etc. and avoids accidentally landing on AutoBattle. +15 tests. Commit `5cab14f`.
+- [x] **`PhantomKoCoalescer`** — suppresses event clusters where the same unit name has BOTH a death-equivalent AND `added`/`joined` in the same narrator batch. Live-flagged Time Mage 345→0 + joined despite alive throughout. +9 tests. Commit `5cab14f`.
+- [x] **Narrator emits "X died" for `removed` events with `OldHp > 0`** — previously silent, leaving the agent confused when a unit went `344/680 → DEAD` with no narrator entry. Commit `5cab14f`.
+- [x] **`FindAbility` strict-scope when `availableSkillsets` is non-empty** — old behavior fell through to all-skillsets, returning skillset names not actually equipped (`Focus → Mettle` for Knight Ramza without Mettle secondary). Caller then tried to navigate a Mettle submenu that did not exist, producing the cryptic `"Skillset 'Mettle' not in submenu: Attack, Arts of War"` error. Now: when the caller passes a non-empty list, restrict the search to it; return null otherwise. Caller emits clean "ability not in equipped skillsets" error. Fall-through preserved for null/empty input. Commit `9ddc643`.
+- [x] **`_unitNameCache` heap-fallback gated for player units** — when heap fingerprint search missed for Ramza, the position+stats cache fallback grabbed a stale "Chocobo" entry from a prior battle and overrode his job. Skip the heap fingerprint loop entirely when a player unit already has Job set from RosterMatcher (`team=0 && job>0`). Commit `9ddc643`.
+
+**Theme — Map-data / range:**
+
+- [x] **`AbilityTargetCalculator` uses `GetDisplayHeight` for slope tiles** — at Mandalia (MAP085), tiles `(2,3)`, `(3,2)`, `(4,5)` have base `Height=1, SlopeHeight=1` — sloped tiles where the unit effective standing height is the slope TOP, not the base. Calculator used raw `Height` for zDelta, gave `|1-2|=1`, with sword `vr=0` → tiles rejected with `[TOO CLOSE]` even though units there are at effectively the same height as the caster. Switched to `GetDisplayHeight (height + slope_height/2.0)` and floor()'d the delta. Hand-play verified: KO'd Red Panther on (4,5) Incline S slope. Commit `9e2ab96`.
+- [x] **Attack-tile renderer prefers alive over corpse on shared tiles** — when an alive enemy moves onto a tile with a crystallized corpse, `units.FirstOrDefault` picked whichever appeared first in the list (often the corpse), hiding the alive enemy in the attack-tile output AND letting the bridge attack the corpse stale `HP=0` (false-KO false positive — see `preHp > 0` classifier gate above). Now: prefer `Hp > 0` occupant. Commit `9e2ab96`. ⚠ UNVERIFIED — no shared-tile scenario arose during the post-deploy verify run.
+
+**Theme — Misc tooling:**
+
+- [x] **`screenshot_crop.ps1` restored** — was on `main` from commit `c7f57e5` but never made it onto `auto-play-with-claude` branch. Pulled over via `git checkout main -- screenshot_crop.ps1`. Captures the FFT window via PID lookup of `FFT_enhanced` and writes to `~/Downloads/fftwin_<timestamp>.png`. Used during hand-play verification — distinguishes real game state from stale scan output. Commit `9e2ab96`.
+- [x] **`direct_cursor_set` proto + `walk_cursor_diff` RE infra** — explored "skip key-press nav by writing the cursor byte directly" as a speed optimization. Built `DirectCursorRegistry` (cursor name → address + valid range) and `DirectCursorPlanner` (validates, emits Skip/Write/Reject plans). Live-tested on `0x1407FC620` (BattleMyTurn root menu cursor): write succeeded at byte level (8µs `holds=YES` immediate verify), but the game per-frame input loop overwrote within ~16ms — that byte is a HUD output mirror, not the cursor control. Direct-write nav is a dead end for THIS menu; the real control lives in a heap UE4 widget that was not located. `walk_cursor_diff` infra is reusable for future cursor hunts. Memory note saved: `project_battle_menu_cursor_read_mostly.md`. +8 tests for the planner. Commit `1336e4d`.
+
+**Tests:** 4768 → 4870 (+102 across the new helpers).
+
+**Memory notes saved:**
+
+- `project_phantom_cascade_root_2026_04_26.md` — root-cause writeup of the HP-match dedup `Team=0` leak. Captures the cascade pattern (phantom narrator + Desertion + ally count all from one byte) and the meta-lesson: when multiple downstream bugs share a feature, hunt UPSTREAM before patching each.
+- `project_battle_menu_cursor_read_mostly.md` — `0x1407FC620` is a HUD output mirror; game writes from internal state every frame, our writes get overwritten in ≤16ms. Direct-write nav dead for this cursor. `walk_cursor_diff` infra in place for future hunts.
+- `feedback_screenshot_is_ground_truth.md` — post-action scans lag real game state by hundreds of ms. KO claims show as "still alive" in re-scan because static array has not caught up. Use `./screenshot_crop.ps1` for ground-truth verification; do not trust scan alone.
+
+**Carried into TODO.md (still open):**
+
+- [ ] Residual phantom narrator burst (~5-14 events/turn after iter5 + verify-iter). Stashed: a partial fix gating `ReadGridPos()` cursor override on screen state (helped but did not finish). Hypothesis: RosterMatcher Pass 1 may match transient enemy units to Ramza roster slot via brave/faith coincidence — needs Team-consistency check.
+- [ ] ⚠ UNVERIFIED — Alive-prefer attack-tile render (shipped in `9e2ab96` but no shared-tile scenario arose during the verify run).
+- [ ] Multi-battle progression flow — bridge auto-progressed into a second battle after a Victory + crystal-restore prompt during the verify run; capture sequence and confirm clean handling.
