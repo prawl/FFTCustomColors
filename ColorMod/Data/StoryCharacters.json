@@ -232,6 +232,17 @@
         "plague_knight",
         "dragon_general"
       ]
+    },
+    {
+      "name": "Construct8",
+      "spriteNames": [
+        "tetsu"
+      ],
+      "texFiles": [],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
     }
   ]
 }

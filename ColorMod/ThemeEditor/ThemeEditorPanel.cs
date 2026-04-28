@@ -445,7 +445,7 @@ namespace FFTColorCustomizer.ThemeEditor
                     if (File.Exists(spritePath))
                     {
                         PaletteModifier = new PaletteModifier();
-                        PaletteModifier.LoadTemplate(spritePath);
+                        PaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job);
                         UpdateSpritePreview();
                     }
                 }
@@ -571,7 +571,7 @@ namespace FFTColorCustomizer.ThemeEditor
 
             // Load the original sprite file to get the original palette colors
             var originalPalette = new PaletteModifier();
-            originalPalette.LoadTemplate(spritePath);
+            originalPalette.LoadTemplate(spritePath, CurrentMapping?.Job);
 
             // Restore each index in this section from the original palette
             // Use raw byte copy to avoid precision loss from BGR555/RGB conversion
@@ -662,7 +662,7 @@ namespace FFTColorCustomizer.ThemeEditor
             if (spritePath != null && File.Exists(spritePath))
             {
                 PaletteModifier = new PaletteModifier();
-                PaletteModifier.LoadTemplate(spritePath);
+                PaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job);
                 UpdateSpritePreview();
             }
         }

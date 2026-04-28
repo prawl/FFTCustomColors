@@ -127,6 +127,7 @@ namespace FFTColorCustomizer.Configuration
             _storyCharacterThemes["Marach"] = "original";
             _storyCharacterThemes["Beowulf"] = "original";
             _storyCharacterThemes["Meliadoul"] = "original";
+            _storyCharacterThemes["Construct8"] = "original";
         }
 
         // Generic job theme accessors
@@ -530,6 +531,13 @@ namespace FFTColorCustomizer.Configuration
         {
             get => GetStoryCharacterTheme("Meliadoul");
             set => SetStoryCharacterTheme("Meliadoul", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Construct8")]
+        public string Construct8
+        {
+            get => GetStoryCharacterTheme("Construct8");
+            set => SetStoryCharacterTheme("Construct8", value);
         }
 
         // Helper methods

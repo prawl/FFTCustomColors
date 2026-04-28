@@ -1,0 +1,32 @@
+{
+  "job": "Construct8",
+  "sprite": "battle_tetsu_spr.bin",
+  "sections": [
+    {
+      "name": "EyeColor",
+      "displayName": "Eye Color",
+      "indices": [9],
+      "roles": ["base"]
+    },
+    {
+      "name": "Primary",
+      "displayName": "Primary Color",
+      "indices": [7, 6, 5, 4, 3],
+      "roles": ["outline", "shadow", "base", "accent", "highlight"],
+      "primaryIndex": 5
+    },
+    {
+      "name": "ShadedColor",
+      "displayName": "Shaded Color",
+      "indices": [8],
+      "roles": ["base"]
+    },
+    {
+      "name": "Accent",
+      "displayName": "Accent Color",
+      "indices": [12, 11, 10],
+      "roles": ["shadow", "base", "highlight"],
+      "primaryIndex": 11
+    }
+  ]
+}

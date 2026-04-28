@@ -509,6 +509,7 @@ namespace FFTColorCustomizer.Services
                 "Beowulf" => new[] { "battle_beio_spr.bin" },
                 "Meliadoul" => new[] { "battle_h80_spr.bin" },
                 "Rapha" => new[] { "battle_h79_spr.bin" },
+                "Construct8" => new[] { "battle_tetsu_spr.bin" },
                 _ => Array.Empty<string>()
             };
         }

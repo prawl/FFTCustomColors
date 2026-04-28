@@ -10,18 +10,20 @@ namespace FFTColorCustomizer.ThemeEditor
     {
         private byte[] _originalData;
         private byte[] _workingData;
+        private string _jobName;
         private readonly BinSpriteExtractor _extractor = new BinSpriteExtractor();
         private readonly Dictionary<string, RelativeShadeGenerator> _shadeGenerators = new Dictionary<string, RelativeShadeGenerator>();
 
         public bool IsLoaded { get; private set; }
 
-        public void LoadTemplate(string binPath)
+        public void LoadTemplate(string binPath, string jobName = null)
         {
             if (!File.Exists(binPath))
                 throw new FileNotFoundException($"Template file not found: {binPath}");
 
             _originalData = File.ReadAllBytes(binPath);
             _workingData = (byte[])_originalData.Clone();
+            _jobName = jobName;
             IsLoaded = true;
         }
 
@@ -92,6 +94,13 @@ namespace FFTColorCustomizer.ThemeEditor
         /// <returns>The sprite bitmap for the specified direction</returns>
         public Bitmap GetPreview(int directionIndex = 5) // Default to SW
         {
+            // Construct 8 / tetsu has a non-standard sprite layout — use the custom rect
+            // and ignore directionIndex (rotate is a no-op for this character).
+            if (string.Equals(_jobName, "Construct8", StringComparison.OrdinalIgnoreCase))
+            {
+                return _extractor.ExtractCustomRect(_workingData, xOffset: 48, yOffset: 0, srcWidth: 48, srcHeight: 48, paletteIndex: 0);
+            }
+
             // ExtractAllDirections returns sprites indexed by compass direction:
             // 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
             var sprites = _extractor.ExtractAllDirections(_workingData, characterIndex: 0, paletteIndex: 0);

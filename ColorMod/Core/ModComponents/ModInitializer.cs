@@ -119,6 +119,7 @@ namespace FFTColorCustomizer.Core.ModComponents
                     storyManager.SetCurrentTheme("Marach", config.Marach);
                     storyManager.SetCurrentTheme("Beowulf", config.Beowulf);
                     storyManager.SetCurrentTheme("Meliadoul", config.Meliadoul);
+                    storyManager.SetCurrentTheme("Construct8", config.Construct8);
 
                     // Log all themes for debugging
                     ModLogger.Log($"Applying initial Cloud theme: {config.Cloud}");
@@ -130,6 +131,7 @@ namespace FFTColorCustomizer.Core.ModComponents
                     ModLogger.Log($"Applying initial Marach theme: {config.Marach}");
                     ModLogger.Log($"Applying initial Beowulf theme: {config.Beowulf}");
                     ModLogger.Log($"Applying initial Meliadoul theme: {config.Meliadoul}");
+                    ModLogger.Log($"Applying initial Construct8 theme: {config.Construct8}");
                 }
             }
         }

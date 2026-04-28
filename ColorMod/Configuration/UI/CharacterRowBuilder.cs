@@ -694,6 +694,17 @@ namespace FFTColorCustomizer.Configuration.UI
                 // Themed sprites should use palette 0 (they have their own color data)
                 // Only use different palettes for generic job sprites with palette swaps
                 int paletteIndex = 0; // Story character themed sprites have their colors baked in
+
+                // Construct 8 / tetsu sprite has a non-standard layout — its standing-south
+                // pose lives at (x=48, y=0, w=48, h=48), wider and taller than the standard
+                // 32x40 humanoid frame. Show the standing pose only and let the rotate
+                // carousel cycle through the same image (no-op rotation).
+                if (TryGetSingleFrameRect(characterName, out var rect))
+                {
+                    var standing = _binExtractor.ExtractCustomRect(binData, rect.X, rect.Y, rect.Width, rect.Height, paletteIndex);
+                    return new Image[] { standing, standing, standing, standing };
+                }
+
                 var sprites = _binExtractor.ExtractCornerDirections(binData, 0, paletteIndex);
                 ModLogger.LogDebug($"Extracted {sprites.Length} corner sprites from bin file using palette {paletteIndex} for theme '{theme}'");
 
@@ -765,6 +776,13 @@ namespace FFTColorCustomizer.Configuration.UI
             {
                 ModLogger.LogWarning($"Invalid user palette size: {userPalette.Length} (expected 512)");
                 return null;
+            }
+
+            // Construct 8 single-frame preview (custom rect; see TryGetSingleFrameRect)
+            if (TryGetSingleFrameRect(characterName, out var rect))
+            {
+                var standing = _binExtractor.ExtractCustomRectWithExternalPalette(originalSprite, rect.X, rect.Y, rect.Width, rect.Height, userPalette);
+                return new Image[] { standing, standing, standing, standing };
             }
 
             // Extract sprites using the external user palette
@@ -1063,6 +1081,23 @@ namespace FFTColorCustomizer.Configuration.UI
             }
         }
 
+        /// <summary>
+        /// Returns the source-sheet rectangle for characters whose sprite layout is non-standard
+        /// (e.g. Construct 8 / tetsu, whose standing-south pose lives at x=48,y=0,48x48 instead
+        /// of the humanoid 32x40 grid). When this returns true, the preview uses only the
+        /// returned rectangle and carousel rotation is a no-op.
+        /// </summary>
+        private static bool TryGetSingleFrameRect(string characterName, out Rectangle rect)
+        {
+            if (string.Equals(characterName, "Construct8", StringComparison.OrdinalIgnoreCase))
+            {
+                rect = new Rectangle(48, 0, 48, 48);
+                return true;
+            }
+            rect = Rectangle.Empty;
+            return false;
+        }
+
         private string GetInternalSpriteName(string characterName)
         {
             // Map display names to internal FFT sprite file names
@@ -1098,6 +1133,8 @@ namespace FFTColorCustomizer.Configuration.UI
                     return "aruma";
                 case "delita":
                     return "dily";
+                case "construct8":
+                    return "tetsu";
                 default:
                     // Fallback to the character name itself
                     return characterName.ToLower();

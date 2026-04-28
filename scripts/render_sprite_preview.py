@@ -146,6 +146,74 @@ def render_single_sprite(data, sprite_index=2, palette_index=0):
     return sprite.resize((scaled_width, scaled_height), Image.NEAREST)
 
 
+def render_indexed_frames(data, palette_index=0, num_frames=8, scale=3):
+    """Render the first N sprite frames side-by-side with index labels.
+
+    Useful for figuring out the layout of non-standard sprites: the user
+    can visually identify which sprite_index corresponds to each pose.
+    """
+    from PIL import ImageDraw
+
+    palette = read_palette(data, palette_index)
+    frame_w = SPRITE_WIDTH * scale
+    frame_h = SPRITE_HEIGHT * scale
+    label_h = 16
+    cell_h = frame_h + label_h
+
+    grid = Image.new('RGBA', (frame_w * num_frames, cell_h), (32, 32, 32, 255))
+    draw = ImageDraw.Draw(grid)
+
+    for i in range(num_frames):
+        frame = extract_sprite(data, i, palette)
+        frame_scaled = frame.resize((frame_w, frame_h), Image.NEAREST)
+        grid.paste(frame_scaled, (i * frame_w, label_h))
+        # Label "0", "1", "2", ... centered above each frame
+        draw.text((i * frame_w + frame_w // 2 - 4, 2), str(i), fill=(255, 255, 255, 255))
+
+    return grid
+
+
+def render_full_sheet(data, palette_index=0, scale=2):
+    """Render the entire sprite sheet at SHEET_WIDTH pixels wide.
+
+    Useful for inspecting non-standard layouts (e.g. Construct 8 / tetsu)
+    where the standard 32x40 frame assumption doesn't apply.
+    """
+    palette = read_palette(data, palette_index)
+
+    sprite_data_start = 512
+    pixel_bytes = len(data) - sprite_data_start
+    if pixel_bytes <= 0:
+        raise ValueError("File too small — no pixel data after palette block.")
+
+    total_pixels = pixel_bytes * 2  # 4 bits per pixel
+    height = total_pixels // SHEET_WIDTH
+
+    img = Image.new('RGBA', (SHEET_WIDTH, height), (64, 64, 64, 255))
+    pixels = img.load()
+
+    for y in range(height):
+        for x in range(SHEET_WIDTH):
+            pixel_index = (y * SHEET_WIDTH) + x
+            byte_index = sprite_data_start + (pixel_index // 2)
+
+            if byte_index >= len(data):
+                break
+
+            pixel_data = data[byte_index]
+            if pixel_index % 2 == 0:
+                color_index = pixel_data & 0x0F
+            else:
+                color_index = (pixel_data >> 4) & 0x0F
+
+            pixels[x, y] = palette[color_index]
+
+    if scale != 1:
+        img = img.resize((SHEET_WIDTH * scale, height * scale), Image.NEAREST)
+
+    return img
+
+
 def main():
     if len(sys.argv) < 2:
         print("Sprite Preview Renderer for FFT BIN files")
@@ -155,22 +223,33 @@ def main():
         print("\nOptions:")
         print("  --all     Render all 8 directions in a grid (default)")
         print("  --south   Render only the south-facing sprite")
+        print("  --full    Render the entire 256px-wide sheet (for non-standard layouts)")
         print("\nExamples:")
         print("  python render_sprite_preview.py squire_m_diagnostic.bin")
         print("  python render_sprite_preview.py squire_m_diagnostic.bin preview.png")
+        print("  python render_sprite_preview.py battle_tetsu_spr.bin --full")
         sys.exit(1)
 
     input_path = sys.argv[1]
 
     # Parse options
-    render_all = '--south' not in sys.argv
+    render_full = '--full' in sys.argv
+    render_frames = '--frames' in sys.argv
+    render_all = not render_full and not render_frames and '--south' not in sys.argv
 
     # Determine output path
     if len(sys.argv) >= 3 and not sys.argv[2].startswith('--'):
         output_path = sys.argv[2]
     else:
         base, _ = os.path.splitext(input_path)
-        suffix = '_all' if render_all else '_south'
+        if render_full:
+            suffix = '_full'
+        elif render_frames:
+            suffix = '_frames'
+        elif render_all:
+            suffix = '_all'
+        else:
+            suffix = '_south'
         output_path = f"{base}{suffix}.png"
 
     if not os.path.exists(input_path):
@@ -183,7 +262,13 @@ def main():
     with open(input_path, 'rb') as f:
         data = f.read()
 
-    if render_all:
+    if render_full:
+        print(f"Rendering full sheet ({SHEET_WIDTH}px wide, height auto-calculated from data size)...")
+        result = render_full_sheet(data)
+    elif render_frames:
+        print("Rendering sprite frames 0-7 side-by-side with index labels...")
+        result = render_indexed_frames(data)
+    elif render_all:
         print("Rendering all 8 directions...")
         result = render_all_directions(data)
     else:
@@ -191,7 +276,7 @@ def main():
         result = render_single_sprite(data, sprite_index=2)
 
     result.save(output_path)
-    print(f"Saved: {output_path}")
+    print(f"Saved: {output_path} ({result.size[0]}x{result.size[1]})")
 
 
 if __name__ == "__main__":

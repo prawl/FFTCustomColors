@@ -149,7 +149,7 @@ if ($LASTEXITCODE -eq 0) {
             # Copy story character themed folders (e.g., sprites_cloud_sephiroth_black)
             Write-Host "Copying story character themed sprites..." -ForegroundColor Cyan
             $storyCharacterFolders = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/" -Directory |
-                Where-Object { $_.Name -match "sprites_(cloud|agrias|orlandeau|rapha|marach|reis|mustadio|meliadoul|beowulf)_" }
+                Where-Object { $_.Name -match "sprites_(cloud|agrias|orlandeau|rapha|marach|reis|mustadio|meliadoul|beowulf|construct8)_" }
 
             foreach ($folder in $storyCharacterFolders) {
                 $destFolder = "$spritePath/$($folder.Name)"

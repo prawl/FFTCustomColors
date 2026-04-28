@@ -251,7 +251,7 @@ namespace FFTColorCustomizer.Configuration
             }
 
             // Also reset story character properties to original
-            var storyCharacters = new[] { "Agrias", "Orlandeau", "Cloud", "Mustadio", "Reis", "Rapha", "Marach", "Beowulf", "Meliadoul" };
+            var storyCharacters = new[] { "Agrias", "Orlandeau", "Cloud", "Mustadio", "Reis", "Rapha", "Marach", "Beowulf", "Meliadoul", "Construct8" };
             foreach (var characterName in storyCharacters)
             {
                 var prop = typeof(Config).GetProperty(characterName);

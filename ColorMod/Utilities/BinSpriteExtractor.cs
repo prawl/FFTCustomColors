@@ -129,6 +129,78 @@ namespace FFTColorCustomizer.Utilities
         }
 
         /// <summary>
+        /// Extracts a sprite from an arbitrary rectangle in the sheet (for non-standard layouts
+        /// like Construct 8 / tetsu, whose standing pose is at (x=48, y=0, 48x48)).
+        /// </summary>
+        public Bitmap ExtractCustomRect(byte[] data, int xOffset, int yOffset, int srcWidth, int srcHeight, int paletteIndex)
+        {
+            var palette = ReadPalette(data, paletteIndex);
+            return ExtractCustomRectWithPalette(data, xOffset, yOffset, srcWidth, srcHeight, palette);
+        }
+
+        /// <summary>
+        /// Extracts a sprite from an arbitrary rectangle using an external palette.
+        /// </summary>
+        public Bitmap ExtractCustomRectWithExternalPalette(byte[] data, int xOffset, int yOffset, int srcWidth, int srcHeight, byte[] externalPalette)
+        {
+            var palette = ReadPaletteFromBytes(externalPalette, 0);
+            return ExtractCustomRectWithPalette(data, xOffset, yOffset, srcWidth, srcHeight, palette);
+        }
+
+        private Bitmap ExtractCustomRectWithPalette(byte[] data, int xOffset, int yOffset, int srcWidth, int srcHeight, Color[] palette)
+        {
+            var bitmap = new Bitmap(srcWidth, srcHeight);
+            int spriteDataStart = 512;
+
+            for (int y = 0; y < srcHeight; y++)
+            {
+                for (int x = 0; x < srcWidth; x++)
+                {
+                    int sheetX = xOffset + x;
+                    int sheetY = yOffset + y;
+
+                    if (sheetX >= SheetWidth) continue;
+
+                    int pixelIndex = (sheetY * SheetWidth) + sheetX;
+                    int byteIndex = spriteDataStart + (pixelIndex / 2);
+
+                    if (byteIndex >= data.Length)
+                        break;
+
+                    byte pixelData = data[byteIndex];
+
+                    int colorIndex;
+                    if (pixelIndex % 2 == 0)
+                        colorIndex = pixelData & 0x0F;
+                    else
+                        colorIndex = (pixelData >> 4) & 0x0F;
+
+                    bitmap.SetPixel(x, y, palette[colorIndex]);
+                }
+            }
+
+            // Scale uniformly so the source aspect ratio is preserved while fitting in the
+            // standard 96×120 display cell (with padding for non-tall sprites).
+            var displayBitmap = new Bitmap(DisplayWidth, DisplayHeight);
+            using (var g = Graphics.FromImage(displayBitmap))
+            {
+                g.InterpolationMode = InterpolationMode.NearestNeighbor;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+
+                double scale = Math.Min((double)DisplayWidth / srcWidth, (double)DisplayHeight / srcHeight);
+                int drawW = (int)(srcWidth * scale);
+                int drawH = (int)(srcHeight * scale);
+                int drawX = (DisplayWidth - drawW) / 2;
+                int drawY = DisplayHeight - drawH; // anchor to bottom so feet sit at the cell baseline
+
+                g.DrawImage(bitmap, drawX, drawY, drawW, drawH);
+            }
+
+            bitmap.Dispose();
+            return displayBitmap;
+        }
+
+        /// <summary>
         /// Reads a 16-color palette from raw palette bytes
         /// </summary>
         /// <param name="paletteData">Raw palette data (512 bytes for 16 palettes)</param>

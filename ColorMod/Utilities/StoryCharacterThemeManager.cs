@@ -146,6 +146,8 @@ namespace FFTColorCustomizer.Utilities
                     return "Ramza (Chapter 2 & 3)";
                 case "RamzaChapter4":
                     return "Ramza (Chapter 4)";
+                case "Construct8":
+                    return "Construct 8";
                 default:
                     return characterName;
             }
