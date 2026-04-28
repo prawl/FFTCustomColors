@@ -288,5 +288,45 @@ namespace FFTColorCustomizer.Tests.GameBridge
                 postHp: -1);
             Assert.Equal(AttackOutcome.Miss, outcome);
         }
+
+        // 2026-04-28 hand-play: when an alive chocobo and a crystallized
+        // corpse share a tile (e.g. (3,4) = TREASURE + ALIVE chocobo
+        // post-enemy-move), the bridge's pre-attack ReadStaticArrayHpAt
+        // returns the corpse's HP=0. After the attack, post-reads also
+        // show 0 (corpse unchanged). Classifier saw `postHp <= 0` and
+        // returned Ko unconditionally — false KO claim ("Attacked (3,4)
+        // — KO'd!") while the alive chocobo at the same tile was
+        // entirely unaffected at HP=82/82.
+        //
+        // Fix: a target that was already at HP=0 cannot be "killed"
+        // again. If preHp <= 0 going in, no KO is possible — fall
+        // through to other outcomes (Miss / Unknown).
+        [Theory]
+        [InlineData("BattleAttacking")]
+        [InlineData("BattleMoving")]
+        [InlineData("BattleActing")]
+        [InlineData("BattleVictory")]
+        public void TargetAlreadyDead_NotKo(string postScreen)
+        {
+            // Corpse at the target tile: preHp=0, postHp=0. We attacked
+            // a corpse (no-op in the engine). Don't claim KO.
+            var outcome = AttackOutcomeClassifier.Classify(
+                postScreenName: postScreen,
+                preHp: 0,
+                postHp: 0);
+            Assert.NotEqual(AttackOutcome.Ko, outcome);
+        }
+
+        [Fact]
+        public void TargetAlreadyDead_FallbackPath_NotKo()
+        {
+            // Same guard for the no-screen-signal fallback at the bottom
+            // of Classify (`if (isKoFromHp) return AttackOutcome.Ko`).
+            var outcome = AttackOutcomeClassifier.Classify(
+                postScreenName: "WorldMap",
+                preHp: 0,
+                postHp: 0);
+            Assert.NotEqual(AttackOutcome.Ko, outcome);
+        }
     }
 }

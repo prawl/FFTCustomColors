@@ -201,8 +201,16 @@ namespace FFTColorCustomizer.GameBridge
             if (!IsPointTarget(ability) && !IsRadiusTarget(ability)) return result;
             if (!int.TryParse(ability.HRange, out int hr)) return result;
 
-            int casterZ = map.InBounds(casterX, casterY)
-                ? map.Tiles[casterX, casterY].Height
+            // 2026-04-28 hand-play: at Mandalia (MAP085), tiles (2,3) and
+            // (3,2) have base Height=1 + SlopeHeight=1 — sloped tiles where
+            // the unit's effective standing height is the SLOPE TOP, not
+            // the base. Using raw Height for zDelta gave |1-2|=1, vr=0
+            // (sword) → tiles rejected with "[TOO CLOSE]" even though the
+            // unit standing there is at the same effective height as the
+            // caster. GetDisplayHeight (height + slope_height/2.0) better
+            // matches what the engine considers reachable.
+            double casterZD = map.InBounds(casterX, casterY)
+                ? map.GetDisplayHeight(casterX, casterY)
                 : 0;
 
             // VR=0 in the table normally means "melee, use caster Jump as
@@ -237,7 +245,13 @@ namespace FFTColorCustomizer.GameBridge
                     int taxi = System.Math.Abs(x - casterX) + System.Math.Abs(y - casterY);
                     if (taxi > hr) continue;
                     if (taxi < ability.MinRange) continue;
-                    int zDelta = System.Math.Abs(map.Tiles[x, y].Height - casterZ);
+                    double targetZD = map.GetDisplayHeight(x, y);
+                    double zDeltaD = System.Math.Abs(targetZD - casterZD);
+                    // Round down to integer height-units — a 0.5 slope
+                    // half-step shouldn't push the tile out of vr=0
+                    // sword reach when both endpoints are effectively
+                    // at the same standing-top height.
+                    int zDelta = (int)System.Math.Floor(zDeltaD);
                     if (zDelta > vr) continue;
                     result.Add((x, y));
                 }

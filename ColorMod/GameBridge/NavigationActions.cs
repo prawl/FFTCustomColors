@@ -4038,7 +4038,15 @@ namespace FFTColorCustomizer.GameBridge
                     int ty = ally.GridY + delta[1];
                     int dir = FindDirForDelta(rotation, delta[0], delta[1]);
                     string arrowName = dirNames[dir];
-                    var occupantUnit = units.FirstOrDefault(u => u.GridX == tx && u.GridY == ty && u != ally);
+                    // 2026-04-28 hand-play: when an alive unit moves onto a
+                    // tile holding a crystallized corpse / treasure, multiple
+                    // entries share (tx,ty). FirstOrDefault would pick whichever
+                    // appeared first in `units` — often the corpse, hiding the
+                    // alive enemy in attack-tile output AND letting the bridge
+                    // attack the corpse's stale HP=0 (false-KO false positive).
+                    // Prefer alive (Hp > 0) over corpse / treasure.
+                    var occupantUnit = units.FirstOrDefault(u => u.GridX == tx && u.GridY == ty && u != ally && u.Hp > 0)
+                        ?? units.FirstOrDefault(u => u.GridX == tx && u.GridY == ty && u != ally);
                     // Dead / crystal / treasure / petrified occupants, and
                     // HP<=0 units with not-yet-propagated status bits, are
                     // not attackable — render the tile as "empty" so
@@ -5760,6 +5768,18 @@ namespace FFTColorCustomizer.GameBridge
         private List<ScannedUnit> CollectUnitPositionsFull()
         {
             var units = new List<ScannedUnit>();
+            // 2026-04-28 hand-play: track each unit's ORIGINAL slot position
+            // (from battle-array slot bytes at +0x33/+0x34) before the
+            // active-unit ReadGridPos() override stomps it. During enemy
+            // turns, multiple slots can transiently match the active
+            // unit's HP fingerprint (animation HP shifts). All matching
+            // slots get the cursor's CURRENT position written. The
+            // dedup at line 6201 then demotes false-actives — but their
+            // GridX/GridY stays at the cursor's animation-focus position.
+            // Result: Ramza appears at random tiles in narrator snaps,
+            // diff emits phantom "Ramza moved (10,4)→(7,4)" events. Use
+            // this dict to restore original slot pos for demoted units.
+            var origSlotPos = new System.Collections.Generic.Dictionary<ScannedUnit, (int x, int y)>();
 
             // === Phase 1: Read active unit data from condensed struct (slot 0) ===
             // The condensed struct has reliable stats for the active unit and its ability list.
@@ -6013,6 +6033,11 @@ namespace FFTColorCustomizer.GameBridge
                         ModLogger.Log($"[CollectPositions] Rejecting hp>maxHp phantom: ({gx},{gy}) t{team} lv{lvl} hp={hp}/{maxHp}");
                         continue;
                     }
+                    // Snapshot the original slot position BEFORE any cursor
+                    // override could have stomped it (see origSlotPos comment
+                    // at the top of this function). Demoted units in the
+                    // active-dedup loop restore from this dict.
+                    origSlotPos[unit] = (gx, gy);
                     units.Add(unit);
                     usedSlots.Add(s);
                     ModLogger.Log($"[CollectPositions] Unit {units.Count}: ({gx},{gy}) t{team} lv{lvl} hp={hp}/{maxHp} br={brave} fa={faith}{(isActive ? " [ACTIVE]" : "")}");
@@ -6275,6 +6300,19 @@ namespace FFTColorCustomizer.GameBridge
                             {
                                 if (u == trueActive) continue;
                                 u.IsActive = false;
+                                // Restore original slot position — the
+                                // cursor override that ran during the
+                                // initial loop wrote whatever the
+                                // animation-focus tile happened to be.
+                                // Without this, the demoted unit's snap
+                                // position is wrong (e.g. Ramza at
+                                // (10,4) when actually at (1,6)),
+                                // producing phantom "moved" events.
+                                if (origSlotPos.TryGetValue(u, out var orig))
+                                {
+                                    u.GridX = orig.x;
+                                    u.GridY = orig.y;
+                                }
                                 if (u.RosterNameId > 0)
                                 {
                                     u.NameId = u.RosterNameId;

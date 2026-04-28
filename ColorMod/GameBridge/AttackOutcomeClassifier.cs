@@ -27,7 +27,13 @@ namespace FFTColorCustomizer.GameBridge
             bool targetMissingFromPostScan = false)
         {
             bool postHpReadable = postHp >= 0;
-            bool isKoFromHp = postHpReadable && postHp <= 0;
+            // 2026-04-28: a target that was already dead (preHp <= 0) can't
+            // be "killed" by an attack — bridge was claiming KO when
+            // attacking a corpse (e.g. when an alive enemy and a corpse
+            // share a tile, ReadStaticArrayHpAt returns the corpse's HP=0
+            // for both pre- and post-reads). Gate KO classification on
+            // pre-attack alive.
+            bool isKoFromHp = postHpReadable && postHp <= 0 && preHp > 0;
 
             // Authoritative screen-state signals first — but cross-check
             // against HP evidence. Live-flagged 2026-04-26 (TWICE):
