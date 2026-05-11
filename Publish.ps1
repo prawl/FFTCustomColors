@@ -325,7 +325,13 @@ function Create-Package {
 
     Write-Status "Creating ZIP package..." "Green"
 
-    $packageName = "FFTColorCustomizer_v$ModVersion.zip"
+    # Nexus archive naming convention: <ModName>-<NexusModId>-<version-with-dashes>-<unix-timestamp>.zip
+    # Vortex parses version + mod ID from this filename pattern to populate its UI
+    # (without it the mod shows a "!" with no version when manually installed).
+    $NexusModId = 56  # FFT Color Customizer on Nexus
+    $versionDashed = $ModVersion -replace '\.', '-'
+    $unixTimestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $packageName = "FFTColorCustomizer-$NexusModId-$versionDashed-$unixTimestamp.zip"
     $packagePath = Join-Path $OutputPath $packageName
 
     # Remove existing package if it exists
