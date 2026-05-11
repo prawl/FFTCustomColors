@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 
@@ -153,6 +154,47 @@ namespace FFTColorCustomizer.Utilities
             }
 
             // Save the modified file
+            if (wasCompressed)
+            {
+                SaveCompressedTex(inputPath, modifiedData, outputPath, dataLength);
+            }
+            else
+            {
+                File.WriteAllBytes(outputPath, modifiedData);
+            }
+
+            return changesCount;
+        }
+
+        /// <summary>
+        /// Recolors a tex file by direct RGB555 lookup. Each 2-byte pixel pair is checked against
+        /// the supplied map; matching entries are replaced with the mapped value. Returns the
+        /// number of pixels that were remapped.
+        /// </summary>
+        public int ModifyTexColorsWithMap(string inputPath, string outputPath, IReadOnlyDictionary<ushort, ushort> rgb555Map)
+        {
+            if (rgb555Map == null) throw new ArgumentNullException(nameof(rgb555Map));
+
+            byte[] data = DecompressTex(inputPath);
+            bool wasCompressed = IsYoxCompressed(inputPath);
+            int changesCount = 0;
+
+            byte[] modifiedData = new byte[StandardTexSize];
+            Array.Copy(data, modifiedData, Math.Min(data.Length, StandardTexSize));
+
+            int dataLength = wasCompressed ? Math.Min(10000, data.Length) : data.Length;
+
+            for (int offset = 0; offset < dataLength - 1; offset += 2)
+            {
+                ushort value = (ushort)(data[offset] | (data[offset + 1] << 8));
+                if (rgb555Map.TryGetValue(value, out ushort replacement) && replacement != value)
+                {
+                    modifiedData[offset] = (byte)(replacement & 0xFF);
+                    modifiedData[offset + 1] = (byte)((replacement >> 8) & 0xFF);
+                    changesCount++;
+                }
+            }
+
             if (wasCompressed)
             {
                 SaveCompressedTex(inputPath, modifiedData, outputPath, dataLength);

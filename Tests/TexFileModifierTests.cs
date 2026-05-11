@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Drawing;
 using Xunit;
@@ -192,6 +193,31 @@ namespace FFTColorCustomizer.Tests
             Assert.True(changesCount > 0); // Should have made some changes
 
             // Cleanup
+            File.Delete(inputFile);
+            File.Delete(outputFile);
+        }
+
+        [Fact]
+        public void ModifyTexColorsWithMap_RemapsMatchingPixelsAndLeavesOthersUnchanged()
+        {
+            var modifier = new TexFileModifier();
+            var inputFile = CreateTestTexWithBrownColors();
+            var outputFile = Path.GetTempFileName();
+
+            ushort brownRgb555 = modifier.RgbToRgb555(72, 64, 16);
+            ushort redRgb555 = modifier.RgbToRgb555(192, 32, 32);
+            var map = new Dictionary<ushort, ushort> { [brownRgb555] = redRgb555 };
+
+            int changes = modifier.ModifyTexColorsWithMap(inputFile, outputFile, map);
+
+            Assert.Equal(2, changes);
+            byte[] output = File.ReadAllBytes(outputFile);
+            Assert.Equal(131072, output.Length);
+            ushort pixel0 = (ushort)(output[0x0E50] | (output[0x0E51] << 8));
+            ushort pixel1 = (ushort)(output[0x0E52] | (output[0x0E53] << 8));
+            Assert.Equal(redRgb555, pixel0);
+            Assert.Equal(redRgb555, pixel1);
+
             File.Delete(inputFile);
             File.Delete(outputFile);
         }

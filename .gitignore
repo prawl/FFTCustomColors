@@ -38,6 +38,11 @@ Desktop.ini
 # macOS
 .DS_Store
 
+# Investigation scratch (decoded sprite PNGs, toolkit log dumps)
+scripts/_tex_decoded/
+logs.txt
+*.stackdump
+
 # Reloaded-II specific
 *.log
 Reloaded.Mod.Loader.Bootstrapper.dll
