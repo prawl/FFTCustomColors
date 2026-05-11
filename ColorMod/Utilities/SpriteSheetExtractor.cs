@@ -11,17 +11,59 @@ namespace FFTColorCustomizer.Utilities
         SE
     }
 
+    /// <summary>
+    /// Per-character HD-sheet frame layout. Standard humanoids use 64x80 cells with SW at
+    /// cell (1, 0) and NW at cell (3, 0). Non-standard characters (e.g. Construct 8 / tetsu,
+    /// whose native frames are 48x48 instead of 32x40) need a different cell size.
+    /// </summary>
+    public readonly struct FrameLayout
+    {
+        public int FrameWidth { get; }
+        public int FrameHeight { get; }
+        public int SwCol { get; }   // SW source column (frame index, not pixel)
+        public int NwCol { get; }   // NW source column
+        public int Row { get; }     // Row index
+
+        public FrameLayout(int frameWidth, int frameHeight, int swCol, int nwCol, int row)
+        {
+            FrameWidth = frameWidth;
+            FrameHeight = frameHeight;
+            SwCol = swCol;
+            NwCol = nwCol;
+            Row = row;
+        }
+
+        public static readonly FrameLayout Standard = new FrameLayout(64, 80, 1, 3, 0);
+
+        public static FrameLayout For(string characterName)
+        {
+            return characterName switch
+            {
+                "Construct8" => new FrameLayout(96, 96, 1, 3, 0),
+                _ => Standard
+            };
+        }
+    }
+
     public class SpriteSheetExtractor
     {
         public Dictionary<Direction, Bitmap> ExtractAllDirections(Bitmap spriteSheet)
         {
+            return ExtractAllDirections(spriteSheet, FrameLayout.Standard);
+        }
+
+        public Dictionary<Direction, Bitmap> ExtractAllDirections(Bitmap spriteSheet, string characterName)
+        {
+            return ExtractAllDirections(spriteSheet, FrameLayout.For(characterName));
+        }
+
+        public Dictionary<Direction, Bitmap> ExtractAllDirections(Bitmap spriteSheet, FrameLayout layout)
+        {
             var result = new Dictionary<Direction, Bitmap>();
-
-            result[Direction.SW] = ExtractSprite(spriteSheet, Direction.SW);
-            result[Direction.NW] = ExtractSprite(spriteSheet, Direction.NW);
-            result[Direction.NE] = ExtractSprite(spriteSheet, Direction.NE);
-            result[Direction.SE] = ExtractSprite(spriteSheet, Direction.SE);
-
+            result[Direction.SW] = ExtractSprite(spriteSheet, Direction.SW, layout);
+            result[Direction.NW] = ExtractSprite(spriteSheet, Direction.NW, layout);
+            result[Direction.NE] = ExtractSprite(spriteSheet, Direction.NE, layout);
+            result[Direction.SE] = ExtractSprite(spriteSheet, Direction.SE, layout);
             return result;
         }
 
@@ -35,8 +77,13 @@ namespace FFTColorCustomizer.Utilities
 
         public Bitmap ExtractSprite(Bitmap spriteSheet, Direction direction)
         {
-            int spriteWidth = 64;
-            int spriteHeight = 80;
+            return ExtractSprite(spriteSheet, direction, FrameLayout.Standard);
+        }
+
+        public Bitmap ExtractSprite(Bitmap spriteSheet, Direction direction, FrameLayout layout)
+        {
+            int spriteWidth = layout.FrameWidth;
+            int spriteHeight = layout.FrameHeight;
 
             // For NE and SE, we extract the base sprite and then mirror it
             Direction sourceDirection = direction;
@@ -54,21 +101,21 @@ namespace FFTColorCustomizer.Utilities
                     break;
             }
 
-            // Determine position based on source direction
+            // Determine position based on source direction + layout
             int x, y;
             switch (sourceDirection)
             {
                 case Direction.SW:
-                    x = 64;  // Position 1 = 64 pixels from left
-                    y = 0;   // Row 0
+                    x = layout.SwCol * spriteWidth;
+                    y = layout.Row * spriteHeight;
                     break;
                 case Direction.NW:
-                    x = 192; // Position 3 = 192 pixels from left
-                    y = 0;   // Row 0
+                    x = layout.NwCol * spriteWidth;
+                    y = layout.Row * spriteHeight;
                     break;
                 default:
-                    x = 64;
-                    y = 0;
+                    x = layout.SwCol * spriteWidth;
+                    y = layout.Row * spriteHeight;
                     break;
             }
 

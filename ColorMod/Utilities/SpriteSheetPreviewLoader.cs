@@ -39,14 +39,17 @@ namespace FFTColorCustomizer.Utilities
                 var themedBmpPath = ResolveSpriteSheetPath(characterName, themedImagesPath);
                 if (themedBmpPath != null)
                 {
-                    var themedSprites = _extractor.ExtractAllDirectionsFromFile(themedBmpPath);
-                    return new List<Bitmap>
+                    using (var bmp = new Bitmap(themedBmpPath))
                     {
-                        themedSprites[Direction.SW],
-                        themedSprites[Direction.NW],
-                        themedSprites[Direction.NE],
-                        themedSprites[Direction.SE]
-                    };
+                        var themedSprites = _extractor.ExtractAllDirections(bmp, characterName);
+                        return new List<Bitmap>
+                        {
+                            themedSprites[Direction.SW],
+                            themedSprites[Direction.NW],
+                            themedSprites[Direction.NE],
+                            themedSprites[Direction.SE]
+                        };
+                    }
                 }
             }
 
@@ -62,7 +65,7 @@ namespace FFTColorCustomizer.Utilities
 
             using (var themedBmp = LoadThemedBmp(originalBmpPath, characterName, themeName))
             {
-                var sprites = _extractor.ExtractAllDirections(themedBmp);
+                var sprites = _extractor.ExtractAllDirections(themedBmp, characterName);
                 return new List<Bitmap>
                 {
                     sprites[Direction.SW],
@@ -116,7 +119,7 @@ namespace FFTColorCustomizer.Utilities
 
             using (var themedBmp = BmpPaletteSwapper.LoadWithExternalPalette(originalBmpPath, userPalette))
             {
-                var sprites = _extractor.ExtractAllDirections(themedBmp);
+                var sprites = _extractor.ExtractAllDirections(themedBmp, characterName);
                 return new List<Bitmap>
                 {
                     sprites[Direction.SW],

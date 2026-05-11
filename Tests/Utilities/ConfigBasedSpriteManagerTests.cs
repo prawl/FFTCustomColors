@@ -615,5 +615,55 @@ namespace Tests.Utilities
             // Sprite data should be preserved
             Assert.Equal(0xAA, resultSprite[512]);
         }
+
+        [Fact]
+        public void ApplyConfiguration_RestoreOriginal_FindsCharacterSpecificFolder_WhenSpriteMissingFromGeneric()
+        {
+            // Construct 8 / tetsu only ships its vanilla in sprites_construct8_original/ —
+            // there is no sprites_original/battle_tetsu_spr.bin. Without the fallback this
+            // path silently fails to restore (the bug logged 2026-05-11 as "C8 doesn't
+            // update live"). Verify the restore-original path checks the character-specific
+            // folder before the generic one.
+            var service = new CharacterDefinitionService();
+            service.AddCharacter(new CharacterDefinition
+            {
+                Name = "Construct8",
+                SpriteNames = new[] { "tetsu" },
+                DefaultTheme = "original",
+                AvailableThemes = new[] { "original" },
+                EnumType = "StoryCharacter"
+            });
+
+            var config = new Config { Construct8 = "original" };
+            _configManager.SaveConfig(config);
+
+            // Drop the vanilla bin ONLY in the character-specific folder. Generic sprites_original
+            // exists but does NOT contain tetsu — matches the real layout in the deployed mod.
+            var deployedPath = Path.Combine(_testModPath, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            var charOriginalDir = Path.Combine(deployedPath, "sprites_construct8_original");
+            Directory.CreateDirectory(charOriginalDir);
+            var marker = new byte[16];
+            for (int i = 0; i < marker.Length; i++) marker[i] = 0xC8;
+            File.WriteAllBytes(Path.Combine(charOriginalDir, "battle_tetsu_spr.bin"), marker);
+
+            // Generic dir exists but no tetsu entry
+            Directory.CreateDirectory(Path.Combine(deployedPath, "sprites_original"));
+
+            // Pre-place a stale themed file in the unit folder so we can verify the restore
+            // actually overwrote it (rather than just silently leaving the stale bytes).
+            var stale = new byte[16];
+            for (int i = 0; i < stale.Length; i++) stale[i] = 0x99;
+            File.WriteAllBytes(Path.Combine(deployedPath, "battle_tetsu_spr.bin"), stale);
+
+            var sourceBasePath = Path.Combine(_testModPath, "ColorMod");
+            var spriteManager = new ConfigBasedSpriteManager(_testModPath, _configManager, service, sourceBasePath);
+
+            spriteManager.ApplyConfiguration();
+
+            var destFile = Path.Combine(deployedPath, "battle_tetsu_spr.bin");
+            Assert.True(File.Exists(destFile), "tetsu bin should exist after restore");
+            var actual = File.ReadAllBytes(destFile);
+            Assert.Equal(0xC8, actual[0]); // came from character-specific original, not stale
+        }
     }
 }

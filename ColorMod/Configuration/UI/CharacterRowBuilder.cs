@@ -824,16 +824,9 @@ namespace FFTColorCustomizer.Configuration.UI
                 return null;
             }
 
-            // Construct 8 single-frame preview (custom rect; see TryGetSingleFrameRect)
-            if (TryGetSingleFrameRect(characterName, out var rect))
-            {
-                var standing = _binExtractor.ExtractCustomRectWithExternalPalette(originalSprite, rect.X, rect.Y, rect.Width, rect.Height, userPalette);
-                return new Image[] { standing, standing, standing, standing };
-            }
-
-            // Try the HD BMP path with the user's palette — gives a crisp preview if the
-            // character has an HD sprite-sheet (Cloud, Agrias, etc.). Falls back to the
-            // legacy bin-extraction path below if no BMP is available for this character.
+            // Try the HD BMP path with the user's palette FIRST — gives a crisp preview AND
+            // 4-direction rotation. Tried before the single-frame fallback so Construct 8 (and
+            // any future non-standard chars) get full rotation when an HD BMP ships.
             try
             {
                 var loader = new SpriteSheetPreviewLoader(modPath);
@@ -844,6 +837,13 @@ namespace FFTColorCustomizer.Configuration.UI
             catch (Exception ex)
             {
                 ModLogger.LogDebug($"HD user-theme preview unavailable for {characterName} - {themeName}: {ex.Message}");
+            }
+
+            // Single-frame fallback for non-standard characters (Construct 8) when no HD BMP exists.
+            if (TryGetSingleFrameRect(characterName, out var rect))
+            {
+                var standing = _binExtractor.ExtractCustomRectWithExternalPalette(originalSprite, rect.X, rect.Y, rect.Width, rect.Height, userPalette);
+                return new Image[] { standing, standing, standing, standing };
             }
 
             // Extract sprites using the external user palette

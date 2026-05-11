@@ -164,5 +164,39 @@ namespace FFTColorCustomizer.Tests
                     System.IO.File.Delete(tempPath);
             }
         }
+
+        [Fact]
+        public void ExtractAllDirections_ForConstruct8_Uses96x96Frames_AtCell1And3()
+        {
+            // Construct 8 / tetsu has a non-standard 48x48 native frame, which is 96x96 in the
+            // toolkit's 2x HD BMP. SW lives at cell (1, 0) = (96, 0), NW at cell (3, 0) = (288, 0).
+            // Standard humanoids use 64x80 frames at (64, 0) and (192, 0); we override for tetsu.
+            var extractor = new SpriteSheetExtractor();
+            var sheet = new Bitmap(512, 512);
+            sheet.SetPixel(96, 0, Color.Red);    // SW marker
+            sheet.SetPixel(288, 0, Color.Lime);  // NW marker
+
+            var result = extractor.ExtractAllDirections(sheet, "Construct8");
+
+            result[Direction.SW].Width.Should().Be(96);
+            result[Direction.SW].Height.Should().Be(96);
+            result[Direction.SW].GetPixel(0, 0).R.Should().Be(255);   // red marker landed at SW (0,0)
+            result[Direction.NW].Width.Should().Be(96);
+            result[Direction.NW].Height.Should().Be(96);
+            result[Direction.NW].GetPixel(0, 0).G.Should().Be(255);   // lime marker landed at NW (0,0)
+        }
+
+        [Fact]
+        public void ExtractAllDirections_ForStandardCharacter_UsesDefault64x80()
+        {
+            // Backward compat: characters not in the override list keep 64x80 frames.
+            var extractor = new SpriteSheetExtractor();
+            var sheet = new Bitmap(512, 512);
+
+            var result = extractor.ExtractAllDirections(sheet, "Agrias");
+
+            result[Direction.SW].Width.Should().Be(64);
+            result[Direction.SW].Height.Should().Be(80);
+        }
     }
 }

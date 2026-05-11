@@ -97,18 +97,20 @@ namespace FFTColorCustomizer.ThemeEditor
         /// <returns>The sprite bitmap for the specified direction</returns>
         public Bitmap GetPreview(int directionIndex = 5) // Default to SW
         {
-            // Construct 8 / tetsu has a non-standard sprite layout — use the custom rect
-            // and ignore directionIndex (rotate is a no-op for this character).
+            // Try the HD BMP path with the live-edited palette. Returns null if no BMP
+            // is available for this character/job (falls back to chunky bin extraction).
+            // Construct 8 also goes through HD now that 1108_Automaton_hd.bmp ships and
+            // SpriteSheetExtractor knows its 96x96 frame layout.
+            var hdPreview = TryGetHdPreview(directionIndex);
+            if (hdPreview != null)
+                return hdPreview;
+
+            // Construct 8 / tetsu has a non-standard sprite layout in the bin — use the
+            // custom rect (48x48 at x=48) when the HD BMP path isn't available.
             if (string.Equals(_jobName, "Construct8", StringComparison.OrdinalIgnoreCase))
             {
                 return _extractor.ExtractCustomRect(_workingData, xOffset: 48, yOffset: 0, srcWidth: 48, srcHeight: 48, paletteIndex: 0);
             }
-
-            // Try the HD BMP path with the live-edited palette. Returns null if no BMP
-            // is available for this character/job (falls back to chunky bin extraction).
-            var hdPreview = TryGetHdPreview(directionIndex);
-            if (hdPreview != null)
-                return hdPreview;
 
             // ExtractAllDirections returns sprites indexed by compass direction:
             // 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
@@ -170,7 +172,9 @@ namespace FFTColorCustomizer.ThemeEditor
                     7 => Direction.NW, // NW
                     _ => Direction.SW
                 };
-                return _sheetExtractor.ExtractSprite(themedBmp, cornerDir);
+                // Pass the per-character frame layout so non-standard sprites (Construct 8 = 96x96)
+                // extract from the right cells rather than the default 64x80 positions.
+                return _sheetExtractor.ExtractSprite(themedBmp, cornerDir, FrameLayout.For(imagesFolderName));
             }
         }
 

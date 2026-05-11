@@ -261,16 +261,32 @@ namespace FFTColorCustomizer.Utilities
         {
             ModLogger.Log($"Applying theme for character: {characterName}, sprite: {spriteName}, theme: {themeName}");
 
-            // For "original" theme, restore the original sprite by copying from sprites_original directory
+            // For "original" theme, restore the original sprite by copying from sprites_original directory.
+            // Some story characters (Construct 8 = tetsu) only ship their vanilla in a character-specific
+            // folder (sprites_construct8_original/) rather than the generic sprites_original/, so check
+            // both before giving up — same fallback the user-theme path already uses.
             if (themeName.ToLower() == "original")
             {
                 ModLogger.Log($"Restoring original sprite for {characterName}/{spriteName}");
 
-                var originalDir = Path.Combine(_sourceUnitPath, "sprites_original");
-                var originalFile = Path.Combine(originalDir, $"battle_{spriteName}_spr.bin");
-                var storyDestFile = Path.Combine(_unitPath, $"battle_{spriteName}_spr.bin");
+                var spriteFileName = $"battle_{spriteName}_spr.bin";
+                var characterOriginalFile = Path.Combine(_sourceUnitPath, $"sprites_{characterName}_original", spriteFileName);
+                var genericOriginalFile = Path.Combine(_sourceUnitPath, "sprites_original", spriteFileName);
+                var storyDestFile = Path.Combine(_unitPath, spriteFileName);
 
-                if (File.Exists(originalFile))
+                string originalFile = null;
+                if (File.Exists(characterOriginalFile))
+                {
+                    originalFile = characterOriginalFile;
+                    ModLogger.Log($"Using character-specific original: {originalFile}");
+                }
+                else if (File.Exists(genericOriginalFile))
+                {
+                    originalFile = genericOriginalFile;
+                    ModLogger.Log($"Using generic original: {originalFile}");
+                }
+
+                if (originalFile != null)
                 {
                     try
                     {
