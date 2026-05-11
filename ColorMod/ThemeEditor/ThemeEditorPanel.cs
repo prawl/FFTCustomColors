@@ -445,7 +445,7 @@ namespace FFTColorCustomizer.ThemeEditor
                     if (File.Exists(spritePath))
                     {
                         PaletteModifier = new PaletteModifier();
-                        PaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job);
+                        PaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
                         UpdateSpritePreview();
                     }
                 }
@@ -571,7 +571,7 @@ namespace FFTColorCustomizer.ThemeEditor
 
             // Load the original sprite file to get the original palette colors
             var originalPalette = new PaletteModifier();
-            originalPalette.LoadTemplate(spritePath, CurrentMapping?.Job);
+            originalPalette.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
 
             // Restore each index in this section from the original palette
             // Use raw byte copy to avoid precision loss from BGR555/RGB conversion
@@ -662,9 +662,25 @@ namespace FFTColorCustomizer.ThemeEditor
             if (spritePath != null && File.Exists(spritePath))
             {
                 PaletteModifier = new PaletteModifier();
-                PaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job);
+                PaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
                 UpdateSpritePreview();
             }
+        }
+
+        /// <summary>
+        /// Derives the mod root directory from <c>_spritesDirectory</c>. The sprites dir is
+        /// always <c>{modPath}/FFTIVC/data/enhanced/fftpack/unit</c> (or <c>unit_psp</c>) so
+        /// walking up 5 levels gives the mod root.
+        /// </summary>
+        private string? GetModPath()
+        {
+            if (string.IsNullOrEmpty(_spritesDirectory))
+                return null;
+
+            var dir = new System.IO.DirectoryInfo(_spritesDirectory);
+            for (int i = 0; i < 5 && dir != null; i++)
+                dir = dir.Parent;
+            return dir?.FullName;
         }
 
         private string GetCurrentJobName()

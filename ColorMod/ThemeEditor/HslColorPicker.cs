@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Threading;
 using System.Windows.Forms;
 using FFTColorCustomizer.Configuration.UI;
 
@@ -438,7 +439,7 @@ namespace FFTColorCustomizer.ThemeEditor
         /// </summary>
         public void CopyToClipboard()
         {
-            Clipboard.SetText(GetHexColor());
+            SetClipboardTextSta(GetHexColor());
         }
 
         /// <summary>
@@ -446,14 +447,45 @@ namespace FFTColorCustomizer.ThemeEditor
         /// </summary>
         public void PasteFromClipboard()
         {
-            if (Clipboard.ContainsText())
+            var text = GetClipboardTextSta();
+            if (!string.IsNullOrEmpty(text) && TryParseHexColor(text, out var color))
             {
-                var text = Clipboard.GetText();
-                if (TryParseHexColor(text, out var color))
-                {
-                    SetColor(color);
-                }
+                SetColor(color);
             }
+        }
+
+        // Clipboard OLE calls require an STA thread; the Reloaded-II mod thread is MTA by
+        // default, so we marshal the calls onto a short-lived STA worker. Join() ensures
+        // we don't proceed until the clipboard op finishes, but it's a few ms at most.
+        private static void SetClipboardTextSta(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            var t = new Thread(() =>
+            {
+                try { Clipboard.SetText(text); }
+                catch { /* clipboard contention; user can retry */ }
+            });
+            t.SetApartmentState(ApartmentState.STA);
+            t.Start();
+            t.Join();
+        }
+
+        private static string GetClipboardTextSta()
+        {
+            string captured = null;
+            var t = new Thread(() =>
+            {
+                try
+                {
+                    if (Clipboard.ContainsText())
+                        captured = Clipboard.GetText();
+                }
+                catch { /* clipboard contention */ }
+            });
+            t.SetApartmentState(ApartmentState.STA);
+            t.Start();
+            t.Join();
+            return captured;
         }
 
         private void OnCopyClick(object? sender, EventArgs e)

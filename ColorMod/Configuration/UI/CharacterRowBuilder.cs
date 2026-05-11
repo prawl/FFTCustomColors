@@ -333,7 +333,16 @@ namespace FFTColorCustomizer.Configuration.UI
                 return;
             }
 
-            // First try to load from .bin file if it exists (for generic jobs too)
+            // Try HD BMP path first — crisp preview if we have a sprite-sheet for this job
+            var bmpImages = TryLoadGenericFromBmp(jobName, theme);
+            if (bmpImages != null && bmpImages.Length > 0)
+            {
+                carousel.SetImages(bmpImages);
+                ModLogger.LogSuccess($"Loaded {bmpImages.Length} HD sprites for {jobName} - {theme}");
+                return;
+            }
+
+            // Fall back to .bin extraction (legacy pixelated path)
             var binImages = TryLoadGenericFromBinFile(jobName, theme);
             if (binImages != null && binImages.Length > 0)
             {
@@ -505,6 +514,23 @@ namespace FFTColorCustomizer.Configuration.UI
                     // For Ramza, if no sprite sheet found for this theme, show empty preview
                     ModLogger.LogDebug($"No sprite sheet found for {characterName} - {theme}, showing empty preview");
                     carousel.SetImages(new Image[0]);
+                    return;
+                }
+            }
+
+            // For non-Ramza story characters, try the HD sprite-sheet BMP first (if we have one).
+            // Falls back to .bin extraction if no BMP is present for this character/theme.
+            if (!string.IsNullOrEmpty(modPath))
+            {
+                var loader = new SpriteSheetPreviewLoader(modPath);
+                var hdImages = loader.LoadPreviewsWithExtractor(characterName, theme);
+                if (hdImages != null && hdImages.Count > 0)
+                {
+                    var hdArray = hdImages.Cast<Image>().ToArray();
+                    carousel.SetImages(hdArray);
+                    carousel.Invalidate();
+                    carousel.Refresh();
+                    ModLogger.LogSuccess($"Loaded {hdArray.Length} HD sprites for {characterName} - {theme}");
                     return;
                 }
             }
@@ -785,6 +811,21 @@ namespace FFTColorCustomizer.Configuration.UI
                 return new Image[] { standing, standing, standing, standing };
             }
 
+            // Try the HD BMP path with the user's palette — gives a crisp preview if the
+            // character has an HD sprite-sheet (Cloud, Agrias, etc.). Falls back to the
+            // legacy bin-extraction path below if no BMP is available for this character.
+            try
+            {
+                var loader = new SpriteSheetPreviewLoader(modPath);
+                var hdImages = loader.LoadPreviewsWithUserPalette(characterName, userPalette);
+                if (hdImages != null && hdImages.Count > 0)
+                    return hdImages.Cast<Image>().ToArray();
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogDebug($"HD user-theme preview unavailable for {characterName} - {themeName}: {ex.Message}");
+            }
+
             // Extract sprites using the external user palette
             var cornerSprites = _binExtractor.ExtractCornerDirectionsWithExternalPalette(originalSprite, 0, userPalette);
 
@@ -850,6 +891,117 @@ namespace FFTColorCustomizer.Configuration.UI
 
             // Return the expected path even if it doesn't exist
             return directPath;
+        }
+
+        /// <summary>
+        /// Try to load a crisp HD preview for a generic job (Knight, Squire, etc.) by reading
+        /// the per-job sprite-sheet BMP and applying the themed .bin's palette at runtime.
+        /// Returns null if no BMP is available — caller should fall back to bin extraction.
+        /// </summary>
+        private Image[] TryLoadGenericFromBmp(string jobName, string theme)
+        {
+            try
+            {
+                var modPathField = _previewManager.GetType().GetField("_modPath",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (modPathField == null) return null;
+
+                string modPath = modPathField.GetValue(_previewManager) as string;
+                if (string.IsNullOrEmpty(modPath)) return null;
+
+                // e.g. "Knight (Male)" -> "Knight_Male" (folder under Images/)
+                var jobProperty = ConvertJobNameToPropertyFormat(jobName);
+                var bmpDir = Path.Combine(modPath, "Images", jobProperty, "original");
+                if (!Directory.Exists(bmpDir)) return null;
+
+                var bmpFiles = Directory.GetFiles(bmpDir, "*_hd.bmp")
+                    .OrderBy(p => Path.GetFileName(p))
+                    .ToArray();
+                if (bmpFiles.Length == 0) return null;
+
+                string bmpPath = bmpFiles[0];
+
+                // For user themes, load BMP with the external user palette
+                if (_userThemeService.IsUserTheme(jobProperty, theme))
+                {
+                    var palettePath = _userThemeService.GetUserThemePalettePath(jobProperty, theme);
+                    if (!string.IsNullOrEmpty(palettePath) && File.Exists(palettePath))
+                    {
+                        var userPalette = File.ReadAllBytes(palettePath);
+                        if (userPalette.Length == 512)
+                        {
+                            using (var themedBmp = BmpPaletteSwapper.LoadWithExternalPalette(bmpPath, userPalette))
+                            {
+                                return ExtractCornersAsImages(themedBmp);
+                            }
+                        }
+                    }
+                }
+
+                // Built-in theme: locate the themed .bin file (job-specific theme → generic theme → original)
+                string unitPath = IsWotLJob(jobName) ? FindActualUnitPspPath(modPath) : FindActualUnitPath(modPath);
+                if (string.IsNullOrEmpty(unitPath)) return null;
+
+                string spriteFileName = ConvertJobNameToSpriteFile(jobName);
+                string themedBinPath = ResolveThemedBinPath(unitPath, jobName, theme, spriteFileName);
+
+                if (string.IsNullOrEmpty(themedBinPath))
+                {
+                    // No themed bin found — just load the original BMP (theme matches original or
+                    // theme file is missing). Returning the un-swapped BMP is the right fallback.
+                    using (var rawBmp = new Bitmap(bmpPath))
+                    {
+                        return ExtractCornersAsImages(rawBmp);
+                    }
+                }
+
+                using (var swappedBmp = BmpPaletteSwapper.LoadWithBinPalette(bmpPath, themedBinPath))
+                {
+                    return ExtractCornersAsImages(swappedBmp);
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogDebug($"[TryLoadGenericFromBmp] {jobName} - {theme}: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Resolves a themed .bin path for a generic job, following the same precedence as
+        /// TryLoadGenericFromBinFile: job-specific folder → generic-theme folder → fall back
+        /// to original sprite.
+        /// </summary>
+        private static string ResolveThemedBinPath(string unitPath, string jobName, string theme, string spriteFileName)
+        {
+            string jobType = jobName.Replace(" (Male)", "").Replace(" (Female)", "").Replace(" ", "").ToLower();
+            string themeKey = theme.ToLower().Replace(" ", "_");
+
+            var candidates = new[]
+            {
+                Path.Combine(unitPath, $"sprites_{jobType}_{themeKey}", spriteFileName),
+                Path.Combine(unitPath, $"sprites_{themeKey}", spriteFileName),
+                Path.Combine(unitPath, "sprites_original", spriteFileName),
+            };
+
+            foreach (var p in candidates)
+            {
+                if (File.Exists(p)) return p;
+            }
+            return null;
+        }
+
+        private static Image[] ExtractCornersAsImages(Bitmap bmp)
+        {
+            var extractor = new SpriteSheetExtractor();
+            var sprites = extractor.ExtractAllDirections(bmp);
+            return new Image[]
+            {
+                sprites[Direction.SW], // default preview angle
+                sprites[Direction.NW],
+                sprites[Direction.NE],
+                sprites[Direction.SE]
+            };
         }
 
         private Image[] TryLoadGenericFromBinFile(string jobName, string theme)

@@ -378,10 +378,11 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "  Creating Images directory structure..." -ForegroundColor Gray
         New-Item -ItemType Directory -Force -Path $imagesDest | Out-Null
 
-        # Copy all Ramza chapter folders with their theme subfolders and sprite sheets
-        $ramzaFolders = Get-ChildItem "$imagesSource" -Directory | Where-Object { $_.Name -match "^Ramza" }
+        # Copy all character folders with their theme subfolders and sprite sheets
+        # (Ramza chapters + any other characters with HD BMP previews like Cloud)
+        $characterFolders = Get-ChildItem "$imagesSource" -Directory
 
-        foreach ($folder in $ramzaFolders) {
+        foreach ($folder in $characterFolders) {
             $destFolder = "$imagesDest/$($folder.Name)"
             Write-Host "  Copying $($folder.Name)..." -ForegroundColor Gray
 

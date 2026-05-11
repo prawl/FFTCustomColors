@@ -11,12 +11,14 @@ namespace FFTColorCustomizer.ThemeEditor
         private byte[] _originalData;
         private byte[] _workingData;
         private string _jobName;
+        private string _modPath;
         private readonly BinSpriteExtractor _extractor = new BinSpriteExtractor();
+        private readonly SpriteSheetExtractor _sheetExtractor = new SpriteSheetExtractor();
         private readonly Dictionary<string, RelativeShadeGenerator> _shadeGenerators = new Dictionary<string, RelativeShadeGenerator>();
 
         public bool IsLoaded { get; private set; }
 
-        public void LoadTemplate(string binPath, string jobName = null)
+        public void LoadTemplate(string binPath, string jobName = null, string modPath = null)
         {
             if (!File.Exists(binPath))
                 throw new FileNotFoundException($"Template file not found: {binPath}");
@@ -24,6 +26,7 @@ namespace FFTColorCustomizer.ThemeEditor
             _originalData = File.ReadAllBytes(binPath);
             _workingData = (byte[])_originalData.Clone();
             _jobName = jobName;
+            _modPath = modPath;
             IsLoaded = true;
         }
 
@@ -101,10 +104,74 @@ namespace FFTColorCustomizer.ThemeEditor
                 return _extractor.ExtractCustomRect(_workingData, xOffset: 48, yOffset: 0, srcWidth: 48, srcHeight: 48, paletteIndex: 0);
             }
 
+            // Try the HD BMP path with the live-edited palette. Returns null if no BMP
+            // is available for this character/job (falls back to chunky bin extraction).
+            var hdPreview = TryGetHdPreview(directionIndex);
+            if (hdPreview != null)
+                return hdPreview;
+
             // ExtractAllDirections returns sprites indexed by compass direction:
             // 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
             var sprites = _extractor.ExtractAllDirections(_workingData, characterIndex: 0, paletteIndex: 0);
             return sprites[directionIndex];
+        }
+
+        /// <summary>
+        /// Builds a high-resolution preview by applying the live-edited palette (the first
+        /// 32 bytes of _workingData) to the character's HD sprite-sheet BMP. Returns null
+        /// if no HD BMP is found — caller falls back to bin extraction.
+        /// </summary>
+        private Bitmap TryGetHdPreview(int directionIndex)
+        {
+            if (string.IsNullOrEmpty(_modPath) || string.IsNullOrEmpty(_jobName))
+                return null;
+
+            // Section-mapping job names don't always match Images/ folder names.
+            // Ramza's section mappings use "RamzaCh1/RamzaCh23/RamzaCh4" but the HD
+            // BMP folders are named "RamzaChapter1/RamzaChapter23/RamzaChapter4".
+            var imagesFolderName = _jobName switch
+            {
+                "RamzaCh1" => "RamzaChapter1",
+                "RamzaCh23" => "RamzaChapter23",
+                "RamzaCh4" => "RamzaChapter4",
+                _ => _jobName
+            };
+
+            var bmpDir = Path.Combine(_modPath, "Images", imagesFolderName, "original");
+            if (!Directory.Exists(bmpDir))
+                return null;
+
+            // Most characters use the Sprite Toolkit's "<id>_<Name>_hd.bmp" naming, but
+            // Ramza ships pre-rendered "<id>_Ramuza_ChN.bmp" (no _hd suffix). Accept both.
+            string bmpPath = null;
+            foreach (var f in Directory.GetFiles(bmpDir, "*.bmp"))
+            {
+                if (bmpPath == null || string.CompareOrdinal(Path.GetFileName(f), Path.GetFileName(bmpPath)) < 0)
+                    bmpPath = f;
+            }
+            if (bmpPath == null)
+                return null;
+
+            // Apply the live palette (first 32 bytes of working data = 16 BGR555 colors)
+            using (var themedBmp = BmpPaletteSwapper.LoadWithExternalPalette(bmpPath, _workingData))
+            {
+                // HD BMPs only carry 4 corner poses (NW/NE/SW/SE). Map cardinals to the
+                // nearest corner so the existing 8-direction rotation cycle still works,
+                // just snapping to corners every other step.
+                var cornerDir = directionIndex switch
+                {
+                    0 => Direction.NW, // N
+                    1 => Direction.NE, // NE
+                    2 => Direction.NE, // E
+                    3 => Direction.SE, // SE
+                    4 => Direction.SW, // S
+                    5 => Direction.SW, // SW
+                    6 => Direction.NW, // W
+                    7 => Direction.NW, // NW
+                    _ => Direction.SW
+                };
+                return _sheetExtractor.ExtractSprite(themedBmp, cornerDir);
+            }
         }
 
         public void ApplySectionColor(JobSection section, Color baseColor)
