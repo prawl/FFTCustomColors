@@ -501,5 +501,49 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         }
 
         #endregion
+
+        [Fact]
+        public void JobSection_DefaultsShadeModeToPreserve_WhenNotSpecified()
+        {
+            var section = new JobSection(
+                name: "Cape",
+                displayName: "Cape",
+                indices: new[] { 3, 4 },
+                roles: new[] { "base", "shadow" }
+            );
+            Assert.Equal(ShadeMode.Preserve, section.ShadeMode);
+        }
+
+        [Fact]
+        public void SectionMappingLoader_ParsesShadeMode_FromJson()
+        {
+            // Construct 8's Primary section will set shadeMode=uniformHue. Other sections
+            // and other characters leave it absent to keep the legacy Preserve default.
+            var json = @"{
+                ""job"": ""Construct8"",
+                ""sprite"": ""battle_tetsu_spr.bin"",
+                ""sections"": [
+                    {
+                        ""name"": ""Primary"",
+                        ""displayName"": ""Primary Color"",
+                        ""indices"": [7, 6, 5, 4, 3],
+                        ""roles"": [""outline"", ""shadow"", ""base"", ""accent"", ""highlight""],
+                        ""primaryIndex"": 5,
+                        ""shadeMode"": ""uniformHue""
+                    },
+                    {
+                        ""name"": ""EyeColor"",
+                        ""displayName"": ""Eye Color"",
+                        ""indices"": [9],
+                        ""roles"": [""base""]
+                    }
+                ]
+            }";
+
+            var mapping = SectionMappingLoader.ParseJson(json);
+
+            Assert.Equal(ShadeMode.UniformHue, mapping.Sections[0].ShadeMode);
+            Assert.Equal(ShadeMode.Preserve, mapping.Sections[1].ShadeMode);
+        }
     }
 }

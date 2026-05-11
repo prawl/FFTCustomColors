@@ -204,5 +204,82 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             Assert.True(newHighlightHsl.L <= 1.0, $"Lightness {newHighlightHsl.L} should be <= 1.0");
             Assert.True(newHighlightHsl.L >= 0.0, $"Lightness {newHighlightHsl.L} should be >= 0.0");
         }
+
+        [Fact]
+        public void UniformHue_AllShadesMatchNewBaseHue_EvenWhenOriginalsHadHueOffsets()
+        {
+            // Construct 8 case: originals are 5 indices with slightly different hues
+            // (artist used warm-brown accents next to neutral-gray base). In Preserve mode
+            // those hue deltas carry through and the result isn't cohesive. In UniformHue
+            // mode all shades inherit the user's chosen hue exactly.
+            var originals = new Dictionary<int, Color>
+            {
+                { 7, Color.FromArgb(40, 40, 50) },     // outline — slightly blue-tinted gray
+                { 6, Color.FromArgb(80, 70, 60) },     // shadow — warm gray
+                { 5, Color.FromArgb(140, 130, 120) },  // base — neutral
+                { 4, Color.FromArgb(200, 170, 140) },  // accent — warm tan
+                { 3, Color.FromArgb(230, 220, 200) }   // highlight — cream
+            };
+
+            var generator = new RelativeShadeGenerator(originals, primaryIndex: 5, ShadeMode.UniformHue);
+            var newBase = Color.FromArgb(80, 120, 200); // pure blue
+            var newBaseHsl = HslColor.FromRgb(newBase);
+
+            foreach (var idx in originals.Keys)
+            {
+                var shade = generator.GenerateShade(idx, newBase);
+                var shadeHsl = HslColor.FromRgb(shade);
+                // Allow tiny rounding tolerance (HSL roundtrip can drift a fraction of a degree)
+                Assert.True(Math.Abs(shadeHsl.H - newBaseHsl.H) < 2,
+                    $"Index {idx}: expected hue ~{newBaseHsl.H}, got {shadeHsl.H}");
+            }
+        }
+
+        [Fact]
+        public void UniformHue_PreservesLightnessDeltas_Additively_NotMultiplicatively()
+        {
+            // Original: base L=0.5, highlight L=0.75 (delta = +0.25 additive, ratio = 1.5x)
+            // Pick a near-white new base (L=0.9). Multiplicative would want 0.9*1.5=1.35 → clamp to 1.0.
+            // Additive wants 0.9 + 0.25 = 1.15 → clamps to 1.0 too BUT the shadow side stays well-separated:
+            // shadow had delta -0.2 (L=0.3 vs 0.5). New shadow = 0.9 - 0.2 = 0.7 vs new base 0.9 → contrast preserved.
+            // Multiplicative shadow = 0.9 * 0.6 = 0.54 → much darker than expected, loses cohesion.
+            var originals = new Dictionary<int, Color>
+            {
+                { 10, Color.FromArgb(77, 77, 77) },    // shadow L~0.3
+                { 12, Color.FromArgb(128, 128, 128) }, // base L~0.5
+                { 13, Color.FromArgb(192, 192, 192) }  // highlight L~0.75
+            };
+            var generator = new RelativeShadeGenerator(originals, primaryIndex: 12, ShadeMode.UniformHue);
+
+            var nearWhite = Color.FromArgb(229, 229, 229); // L~0.9
+            var newShadow = generator.GenerateShade(10, nearWhite);
+            var newShadowHsl = HslColor.FromRgb(newShadow);
+
+            // Additive: 0.9 + (0.3 - 0.5) = 0.7. Within tolerance.
+            Assert.True(Math.Abs(newShadowHsl.L - 0.7) < 0.05,
+                $"Additive shadow L should be ~0.7 (base 0.9 + delta -0.2), got {newShadowHsl.L}");
+        }
+
+        [Fact]
+        public void UniformHue_KeepsShadowDarkerThanBase_AndHighlightLighter()
+        {
+            var originals = new Dictionary<int, Color>
+            {
+                { 10, Color.FromArgb(77, 77, 77) },
+                { 12, Color.FromArgb(128, 128, 128) },
+                { 13, Color.FromArgb(192, 192, 192) }
+            };
+            var generator = new RelativeShadeGenerator(originals, primaryIndex: 12, ShadeMode.UniformHue);
+
+            var newBase = Color.FromArgb(100, 50, 50); // dark red
+            var newShadow = generator.GenerateShade(10, newBase);
+            var newHighlight = generator.GenerateShade(13, newBase);
+            var baseHsl = HslColor.FromRgb(newBase);
+            var shadowHsl = HslColor.FromRgb(newShadow);
+            var highlightHsl = HslColor.FromRgb(newHighlight);
+
+            Assert.True(shadowHsl.L < baseHsl.L, $"Shadow L ({shadowHsl.L}) should be < base L ({baseHsl.L})");
+            Assert.True(highlightHsl.L > baseHsl.L, $"Highlight L ({highlightHsl.L}) should be > base L ({baseHsl.L})");
+        }
     }
 }

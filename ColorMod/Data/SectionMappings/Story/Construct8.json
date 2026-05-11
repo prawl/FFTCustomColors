@@ -13,7 +13,8 @@
       "displayName": "Primary Color",
       "indices": [7, 6, 5, 4, 3],
       "roles": ["outline", "shadow", "base", "accent", "highlight"],
-      "primaryIndex": 5
+      "primaryIndex": 5,
+      "shadeMode": "uniformHue"
     },
     {
       "name": "ShadedColor",
@@ -26,7 +27,8 @@
       "displayName": "Accent Color",
       "indices": [12, 11, 10],
       "roles": ["shadow", "base", "highlight"],
-      "primaryIndex": 11
+      "primaryIndex": 11,
+      "shadeMode": "uniformHue"
     }
   ]
 }

@@ -12,7 +12,8 @@
       "name": "Dress",
       "displayName": "Dress and Collar",
       "indices": [9, 10, 8, 7, 11],
-      "roles": ["base", "highlight", "shadow", "outline", "accent"]
+      "roles": ["base", "highlight", "shadow", "outline", "accent"],
+      "shadeMode": "uniformHue"
     },
     {
       "name": "Hair",

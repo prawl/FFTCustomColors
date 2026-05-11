@@ -13,8 +13,10 @@ namespace FFTColorCustomizer.ThemeEditor
         public string[] Roles { get; }
         public string? LinkedTo { get; }
         public int? PrimaryIndex { get; }
+        public ShadeMode ShadeMode { get; }
 
-        public JobSection(string name, string displayName, int[] indices, string[] roles, string? linkedTo = null, int? primaryIndex = null)
+        public JobSection(string name, string displayName, int[] indices, string[] roles,
+            string? linkedTo = null, int? primaryIndex = null, ShadeMode shadeMode = ShadeMode.Preserve)
         {
             Name = name;
             DisplayName = displayName;
@@ -22,6 +24,7 @@ namespace FFTColorCustomizer.ThemeEditor
             Roles = roles;
             LinkedTo = linkedTo;
             PrimaryIndex = primaryIndex;
+            ShadeMode = shadeMode;
         }
     }
 
@@ -90,10 +93,20 @@ namespace FFTColorCustomizer.ThemeEditor
                 s.GetProperty("indices").EnumerateArray().Select(i => i.GetInt32()).ToArray(),
                 s.GetProperty("roles").EnumerateArray().Select(r => r.GetString()).ToArray(),
                 s.TryGetProperty("linkedTo", out var linkedTo) ? linkedTo.GetString() : null,
-                s.TryGetProperty("primaryIndex", out var primaryIndex) ? primaryIndex.GetInt32() : (int?)null
+                s.TryGetProperty("primaryIndex", out var primaryIndex) ? primaryIndex.GetInt32() : (int?)null,
+                ParseShadeMode(s)
             )).ToArray();
 
             return new SectionMapping(job, sprites, sections);
+        }
+
+        private static ShadeMode ParseShadeMode(System.Text.Json.JsonElement section)
+        {
+            if (!section.TryGetProperty("shadeMode", out var modeElement)) return ShadeMode.Preserve;
+            var value = modeElement.GetString();
+            return value?.Equals("uniformHue", StringComparison.OrdinalIgnoreCase) == true
+                ? ShadeMode.UniformHue
+                : ShadeMode.Preserve;
         }
 
         // Canonical job class order (matching FFT job unlock progression)

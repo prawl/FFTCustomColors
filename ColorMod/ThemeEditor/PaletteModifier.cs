@@ -206,7 +206,7 @@ namespace FFTColorCustomizer.ThemeEditor
             // Determine the primary index
             int primaryIndex = GetPrimaryIndex(section);
 
-            var generator = new RelativeShadeGenerator(originalColors, primaryIndex);
+            var generator = new RelativeShadeGenerator(originalColors, primaryIndex, section.ShadeMode);
             _shadeGenerators[section.Name] = generator;
             return generator;
         }
