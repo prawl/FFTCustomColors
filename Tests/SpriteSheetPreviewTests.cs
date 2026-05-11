@@ -73,6 +73,95 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
+        public void FindNearestPaletteIndex_PicksClosestColorByRgbDistance()
+        {
+            // 4-color palette: pure R, G, B, and dark gray
+            var palette = new[]
+            {
+                Color.FromArgb(255, 0, 0),    // 0: red
+                Color.FromArgb(0, 255, 0),    // 1: green
+                Color.FromArgb(0, 0, 255),    // 2: blue
+                Color.FromArgb(40, 40, 40)    // 3: dark gray
+            };
+
+            BmpPaletteSwapper.FindNearestPaletteIndex(Color.FromArgb(250, 10, 10), palette).Should().Be(0);   // ~red
+            BmpPaletteSwapper.FindNearestPaletteIndex(Color.FromArgb(10, 240, 20), palette).Should().Be(1);  // ~green
+            BmpPaletteSwapper.FindNearestPaletteIndex(Color.FromArgb(20, 30, 200), palette).Should().Be(2);  // ~blue
+            BmpPaletteSwapper.FindNearestPaletteIndex(Color.FromArgb(35, 45, 38), palette).Should().Be(3);   // ~dark gray
+        }
+
+        [Fact]
+        public void MergeBgr555Palettes_PreservesNamedIndices_FromVanilla()
+        {
+            // Themed palette: all 0xAA bytes (32 bytes = 16 BGR555 colors)
+            // Vanilla palette: all 0x11 bytes
+            // Preserve indices [14, 15]: those entries should come from vanilla, the rest from themed.
+            var themed = new byte[32];
+            var vanilla = new byte[32];
+            for (int i = 0; i < 32; i++) { themed[i] = 0xAA; vanilla[i] = 0x11; }
+
+            var merged = BmpPaletteSwapper.MergeBgr555Palettes(themed, vanilla, new[] { 14, 15 });
+
+            // Indices 0..13 come from themed
+            merged[0].Should().Be(0xAA);
+            merged[13 * 2].Should().Be(0xAA);
+            // Indices 14, 15 come from vanilla
+            merged[14 * 2].Should().Be(0x11);
+            merged[14 * 2 + 1].Should().Be(0x11);
+            merged[15 * 2].Should().Be(0x11);
+            merged[15 * 2 + 1].Should().Be(0x11);
+        }
+
+        [Fact]
+        public void ResolvePortraitSheetPath_PicksSecondHdBmp_ForMultiFormCharacter()
+        {
+            // Multi-form characters like Agrias have multiple HD BMPs (880, 881, 914, 915).
+            // The "portrait" sheet is the second-lowest one (881 for Agrias).
+            var tempDir = Path.Combine(Path.GetTempPath(), $"PortraitPathTest_{Guid.NewGuid()}");
+            var imagesDir = Path.Combine(tempDir, "Images", "Agrias", "original");
+            Directory.CreateDirectory(imagesDir);
+            foreach (var id in new[] { "880", "881", "914", "915" })
+            {
+                using var bmp = new Bitmap(8, 8);
+                bmp.Save(Path.Combine(imagesDir, $"{id}_Agrias_hd.bmp"));
+            }
+
+            try
+            {
+                var loader = new SpriteSheetPreviewLoader(tempDir);
+                var portrait = loader.ResolvePortraitSheetPath("Agrias");
+
+                portrait.Should().EndWith("881_Agrias_hd.bmp");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void ResolvePortraitSheetPath_FallsBackToOnlyBmp_WhenCharacterHasSingleForm()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), $"PortraitFallback_{Guid.NewGuid()}");
+            var imagesDir = Path.Combine(tempDir, "Images", "Mustadio", "original");
+            Directory.CreateDirectory(imagesDir);
+            using var bmp = new Bitmap(8, 8);
+            bmp.Save(Path.Combine(imagesDir, "888_Mustadio_hd.bmp"));
+
+            try
+            {
+                var loader = new SpriteSheetPreviewLoader(tempDir);
+                var portrait = loader.ResolvePortraitSheetPath("Mustadio");
+
+                portrait.Should().EndWith("888_Mustadio_hd.bmp");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
         public void SpriteSheetPreviewLoader_Should_Return_Sprites_With_Correct_Dimensions()
         {
             // Arrange

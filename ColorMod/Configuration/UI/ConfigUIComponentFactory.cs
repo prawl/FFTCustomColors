@@ -152,10 +152,12 @@ namespace FFTColorCustomizer.Configuration.UI
                 ForeColor = UIConfiguration.TextColor
             };
 
-            // Add column styles
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            // Add column styles. Column 2 (preview) is widened to 32% so multi-form characters
+            // like Agrias can host both a sprite carousel and a portrait side-by-side without
+            // either becoming too small to recognize.
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F));
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F));
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32F));
 
             return panel;
         }

@@ -220,6 +220,21 @@ namespace FFTColorCustomizer.Configuration.UI
             ConfigUIComponentFactory.ApplyThemeComboBoxStyling(comboBox);
             var carousel = ConfigUIComponentFactory.CreatePreviewPictureBox();
 
+            // Portrait preview (pilot feature, Agrias only for now). When a multi-form character
+            // has an HD portrait sheet (881_Agrias_hd.bmp etc.), show it alongside the sprite
+            // carousel and update both on theme change. Other characters get carousel-only.
+            PictureBox portraitBox = null;
+            if (characterConfig.Name == "Agrias")
+            {
+                portraitBox = new PictureBox
+                {
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    BorderStyle = BorderStyle.FixedSingle,
+                    Dock = DockStyle.Fill,
+                    BackColor = UIConfiguration.PreviewBackground
+                };
+            }
+
             // Set up for lazy loading
             _allCarousels.Add(carousel);
 
@@ -265,6 +280,12 @@ namespace FFTColorCustomizer.Configuration.UI
                     {
                         UpdateStoryCharacterPreview(carousel, characterConfig.PreviewName, newTheme);
                     }
+
+                    // Update Agrias portrait alongside the sprite carousel
+                    if (portraitBox != null)
+                    {
+                        UpdatePortraitPreview(portraitBox, characterConfig.PreviewName, newTheme);
+                    }
                 }
             };
 
@@ -283,12 +304,43 @@ namespace FFTColorCustomizer.Configuration.UI
                 {
                     ModLogger.Log($"[LAZY] Loading story character images for {tag.CharacterName}");
                     UpdateStoryCharacterPreview(c as PreviewCarousel, tag.CharacterName.ToString(), tag.Theme.ToString());
+                    if (portraitBox != null)
+                    {
+                        UpdatePortraitPreview(portraitBox, tag.CharacterName.ToString(), tag.Theme.ToString());
+                    }
                 }
             };
 
-            // Add to panel
+            // Add to panel. When we have a portrait, wrap [carousel|portrait] in a horizontal
+            // panel so they share the column-2 cell.
             _mainPanel.Controls.Add(comboBox, 1, row);
-            _mainPanel.Controls.Add(carousel, 2, row);
+            if (portraitBox != null)
+            {
+                var dualPanel = new TableLayoutPanel
+                {
+                    ColumnCount = 2,
+                    RowCount = 1,
+                    Dock = DockStyle.Fill,
+                    Margin = new Padding(0),
+                    Padding = new Padding(0),
+                    BackColor = Color.Transparent,
+                    // Match the height other rows get from the carousel's preferred size
+                    // (UIConfiguration.PreviewSize). Without this the row collapses to whatever
+                    // the inner PictureBoxes request, which is 0.
+                    MinimumSize = new Size(0, UIConfiguration.PreviewSize)
+                };
+                dualPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+                dualPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+                dualPanel.Controls.Add(carousel, 0, 0);
+                dualPanel.Controls.Add(portraitBox, 1, 0);
+                _mainPanel.Controls.Add(dualPanel, 2, row);
+                _storyCharacterControls.Add(dualPanel);
+                _storyCharacterControls.Add(portraitBox);
+            }
+            else
+            {
+                _mainPanel.Controls.Add(carousel, 2, row);
+            }
 
             // Force Handle creation
             var handle = comboBox.Handle;
@@ -299,6 +351,32 @@ namespace FFTColorCustomizer.Configuration.UI
             // Track controls
             _storyCharacterControls.Add(comboBox);
             _storyCharacterControls.Add(carousel);
+        }
+
+        private void UpdatePortraitPreview(PictureBox portraitBox, string characterName, string theme)
+        {
+            if (portraitBox == null || !_previewManager.HasValidModPath()) return;
+
+            var modPathField = _previewManager.GetType().GetField("_modPath",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var modPath = modPathField?.GetValue(_previewManager) as string;
+            if (string.IsNullOrEmpty(modPath)) return;
+
+            try
+            {
+                var loader = new SpriteSheetPreviewLoader(modPath);
+                var bmp = loader.LoadPortraitWithBinPalette(characterName, theme);
+                if (bmp != null)
+                {
+                    portraitBox.Image?.Dispose();
+                    portraitBox.Image = bmp;
+                    ModLogger.LogSuccess($"Loaded portrait for {characterName} - {theme}");
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogWarning($"Portrait preview failed for {characterName} - {theme}: {ex.Message}");
+            }
         }
 
         private List<string> GetAvailableGenericThemes()

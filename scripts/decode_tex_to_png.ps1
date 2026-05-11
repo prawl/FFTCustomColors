@@ -42,9 +42,10 @@ foreach ($f in $files) {
             $si = $rowSrc + $x * 2
             if ($si + 1 -ge $bytes.Length) { break }
             $v = $bytes[$si] -bor ($bytes[$si+1] -shl 8)
-            $r = (($v -band 0x1F) -shl 3)
+            # FFT IC TEX uses BGR555 (B in low bits, R in high bits)
+            $b = (($v -band 0x1F) -shl 3)
             $g = ((($v -shr 5) -band 0x1F) -shl 3)
-            $b = ((($v -shr 10) -band 0x1F) -shl 3)
+            $r = ((($v -shr 10) -band 0x1F) -shl 3)
             $a = if ($v -eq 0) { 0 } else { 255 }
             $di = $rowDst + $x * 4
             $pixelBytes[$di]   = [byte]$b
