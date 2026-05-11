@@ -27,8 +27,8 @@ namespace FFTColorCustomizer.Tests.Integration
             // These palettes should not be all black (except transparency at index 0)
 
             // Create a mock job-specific theme sprite
-            var knightHolyGuardPath = Path.Combine(_spritesDirectory, "knight_holy_guard", "battle_knight_m_spr.bin");
-            Directory.CreateDirectory(Path.GetDirectoryName(knightHolyGuardPath));
+            var knightDarkKnightPath = Path.Combine(_spritesDirectory, "knight_dark_knight", "battle_knight_m_spr.bin");
+            Directory.CreateDirectory(Path.GetDirectoryName(knightDarkKnightPath));
 
             // Create sprite data with proper enemy palettes
             var spriteData = new byte[512]; // 16 palettes x 16 colors x 2 bytes per color
@@ -42,10 +42,10 @@ namespace FFTColorCustomizer.Tests.Integration
             SetPalette(spriteData, 3, GetEnemyPalette3Colors()); // Green variant
             SetPalette(spriteData, 4, GetEnemyPalette4Colors()); // Purple variant
 
-            File.WriteAllBytes(knightHolyGuardPath, spriteData);
+            File.WriteAllBytes(knightDarkKnightPath, spriteData);
 
             // Act - Read and verify
-            var readData = File.ReadAllBytes(knightHolyGuardPath);
+            var readData = File.ReadAllBytes(knightDarkKnightPath);
 
             // Assert - Enemy palettes should not be black
             AssertPaletteNotBlack(readData, 1, "Enemy Palette 1");
@@ -86,7 +86,7 @@ namespace FFTColorCustomizer.Tests.Integration
         }
 
         [Theory]
-        [InlineData("knight_holy_guard", "battle_knight_m_spr.bin")]
+        [InlineData("knight_dark_knight", "battle_knight_m_spr.bin")]
         [InlineData("monk_shadow_assassin", "battle_monk_m_spr.bin")]
         [InlineData("archer_desert_nomad", "battle_yumi_w_spr.bin")]
         public void JobSpecificThemes_Should_Not_Have_Black_Enemy_Palettes(string theme, string spriteName)

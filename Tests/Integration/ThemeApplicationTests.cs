@@ -39,7 +39,7 @@ namespace FFTColorCustomizer.Tests.Integration
                 Agrias = "divine_knight",
 
                 // Generic job classes
-                Knight_Male = "holy_guard",
+                Knight_Male = "dark_knight",
                 Monk_Male = "shadow_assassin",
                 Archer_Female = "desert_nomad",
                 WhiteMage_Female = "oracle",
@@ -65,7 +65,7 @@ namespace FFTColorCustomizer.Tests.Integration
 
             // Generic job sprites
             CreateMockSprite(spritesDir, "original", "knight_male");
-            CreateMockSprite(spritesDir, "holy_guard", "knight_male");
+            CreateMockSprite(spritesDir, "dark_knight", "knight_male");
             CreateMockSprite(spritesDir, "original", "monk_male");
             CreateMockSprite(spritesDir, "shadow_assassin", "monk_male");
             CreateMockSprite(spritesDir, "original", "archer_female");
@@ -135,7 +135,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // For now, we verify through the Config that themes are set
             Assert.Equal("divine_knight", config.Agrias);
             Assert.NotNull(config);
-            Assert.Equal("holy_guard", config.Knight_Male);
+            Assert.Equal("dark_knight", config.Knight_Male);
             Assert.Equal("shadow_assassin", config.Monk_Male);
             Assert.Equal("desert_nomad", config.Archer_Female);
             Assert.Equal("oracle", config.WhiteMage_Female);
@@ -250,7 +250,7 @@ namespace FFTColorCustomizer.Tests.Integration
             var config = mod.GetConfiguration();
 
             // These should match what we set in _testConfig
-            Assert.Equal("holy_guard", config.Knight_Male);
+            Assert.Equal("dark_knight", config.Knight_Male);
             Assert.Equal("shadow_assassin", config.Monk_Male);
             Assert.Equal("desert_nomad", config.Archer_Female);
 
@@ -273,7 +273,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Assert - No delay needed in test environment, themes should be applied immediately
             var config = mod.GetConfiguration();
             Assert.NotNull(config);
-            Assert.Equal("holy_guard", config.Knight_Male);
+            Assert.Equal("dark_knight", config.Knight_Male);
 
             var themeManager = mod.GetThemeManager();
             Assert.NotNull(themeManager);
@@ -302,7 +302,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Assert - After delay, themes should be applied
             var config = mod.GetConfiguration();
             Assert.NotNull(config);
-            Assert.Equal("holy_guard", config.Knight_Male);
+            Assert.Equal("dark_knight", config.Knight_Male);
 
             var themeManager = mod.GetThemeManager();
             Assert.NotNull(themeManager);

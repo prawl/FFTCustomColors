@@ -119,6 +119,21 @@ namespace FFTColorCustomizer.Services
                             }
                         }
 
+                        // Load excluded shared themes if present (themes the user has decided
+                        // look bad on this specific job — filtered out of the dropdown).
+                        jobClass.ExcludedThemes = new List<string>();
+                        if (jobElement.TryGetProperty("excludedThemes", out var excludedArray))
+                        {
+                            foreach (var theme in excludedArray.EnumerateArray())
+                            {
+                                var themeName = theme.GetString();
+                                if (!string.IsNullOrEmpty(themeName))
+                                {
+                                    jobClass.ExcludedThemes.Add(themeName);
+                                }
+                            }
+                        }
+
                         // Set available themes based on whether this is a WotL job or regular job
                         var themeSource = isWotL ? _wotlThemes : _availableThemes;
                         jobClass.AvailableThemes = new List<string>(themeSource);
@@ -184,13 +199,17 @@ namespace FFTColorCustomizer.Services
             var isWotLJob = _wotlJobNames.Contains(jobName);
             var sharedThemes = isWotLJob ? _wotlThemes : _availableThemes;
 
-            // Then add other shared themes (excluding "original" since it's already first)
+            // Then add other shared themes (excluding "original" since it's already first,
+            // and skipping any themes the user has marked as bad-on-this-job)
+            var excluded = (_jobClasses.TryGetValue(jobName, out var jc) && jc.ExcludedThemes != null)
+                ? jc.ExcludedThemes
+                : null;
+
             foreach (var theme in sharedThemes)
             {
-                if (theme != "original")
-                {
-                    themes.Add(theme);
-                }
+                if (theme == "original") continue;
+                if (excluded != null && excluded.Contains(theme)) continue;
+                themes.Add(theme);
             }
 
             return themes;

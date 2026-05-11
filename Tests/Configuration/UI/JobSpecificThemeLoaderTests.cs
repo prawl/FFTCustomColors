@@ -28,13 +28,13 @@ namespace Tests.Configuration.UI
         {
             // Arrange
             var jobName = "Knight (Male)";
-            var theme = "holy_guard";
+            var theme = "dark_knight";
 
             // Act
             var folderPath = GetThemeFolderPath(jobName, theme);
 
             // Assert
-            folderPath.Should().Be("sprites_knight_holy_guard",
+            folderPath.Should().Be("sprites_knight_dark_knight",
                 "job-specific themes should use pattern sprites_{jobtype}_{theme}");
         }
 
@@ -57,7 +57,7 @@ namespace Tests.Configuration.UI
         public void IsJobSpecificTheme_ShouldIdentifyJobSpecificThemes()
         {
             // Arrange
-            var jobSpecificThemes = new[] { "holy_guard", "divine_blade", "dark_knight", "thunder_general", "summoner_sage" };
+            var jobSpecificThemes = new[] { "dark_knight", "thunder_general", "dark_knight", "thunder_general", "summoner_sage" };
             var genericThemes = new[] { "crimson_red", "lucavi", "northern_sky" };
 
             // Act & Assert - job-specific themes

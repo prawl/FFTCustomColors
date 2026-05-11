@@ -93,17 +93,17 @@ namespace Tests.Registry
         [Fact]
         public void CloudThemeCycling_ShouldWork_WithNewSystem()
         {
-            // Act - Cycle through Cloud themes (Cloud now has 'original', 'holy_soldier', 'young_soldier', etc. in JSON)
+            // Act - Cycle through Cloud themes (Cloud has 'original', 'sky_pirate', 'academy_scholar' in JSON)
             var theme1 = _themeManager.GetCurrentTheme("Cloud");
             var theme2 = _themeManager.CycleTheme("Cloud");
             var theme3 = _themeManager.CycleTheme("Cloud");
             var theme4 = _themeManager.CycleTheme("Cloud");
 
-            // Assert - Cloud has 7 themes available in JSON
-            Assert.Equal("original", theme1); // Default
-            Assert.Equal("holy_soldier", theme2); // Second theme
-            Assert.Equal("young_soldier", theme3); // Third theme
-            Assert.Equal("sky_pirate", theme4); // Fourth theme
+            // Assert - cycle order matches availableThemes order, then wraps back to original
+            Assert.Equal("original", theme1);
+            Assert.Equal("sky_pirate", theme2);
+            Assert.Equal("academy_scholar", theme3);
+            Assert.Equal("original", theme4);
         }
 
         [Fact]

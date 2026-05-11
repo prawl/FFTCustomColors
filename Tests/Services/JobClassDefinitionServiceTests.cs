@@ -139,8 +139,8 @@ namespace FFTColorCustomizer.Tests.Services
                         ""gender"": ""Male"",
                         ""jobType"": ""Knight"",
                         ""jobSpecificThemes"": [
-                            ""holy_guard"",
-                            ""divine_blade""
+                            ""dark_knight"",
+                            ""thunder_general""
                         ]
                     }
                 ]
@@ -159,8 +159,8 @@ namespace FFTColorCustomizer.Tests.Services
             themes[0].Should().Be("original", "Original theme should always be first");
 
             // Job-specific themes should come second
-            themes[1].Should().Be("holy_guard", "Job-specific themes should come after original");
-            themes[2].Should().Be("divine_blade", "Job-specific themes should come after original");
+            themes[1].Should().Be("dark_knight", "Job-specific themes should come after original");
+            themes[2].Should().Be("thunder_general", "Job-specific themes should come after original");
 
             // Other shared themes should come last
             themes[3].Should().Be("corpse_brigade", "Other shared themes should come after job-specific");

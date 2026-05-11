@@ -27,8 +27,8 @@ namespace Tests.Configuration.UI
             Directory.CreateDirectory(unitPath);
 
             // Create job-specific theme directories with creative names
-            CreateJobSpecificThemeDirectory("sprites_knight_holy_guard", "battle_knight_m_spr.bin", "battle_knight_w_spr.bin");
-            CreateJobSpecificThemeDirectory("sprites_knight_divine_blade", "battle_knight_m_spr.bin", "battle_knight_w_spr.bin");
+            CreateJobSpecificThemeDirectory("sprites_knight_dark_knight", "battle_knight_m_spr.bin", "battle_knight_w_spr.bin");
+            CreateJobSpecificThemeDirectory("sprites_knight_thunder_general", "battle_knight_m_spr.bin", "battle_knight_w_spr.bin");
             CreateJobSpecificThemeDirectory("sprites_knight_dark_knight", "battle_knight_m_spr.bin", "battle_knight_w_spr.bin");
             CreateJobSpecificThemeDirectory("sprites_knight_thunder_general", "battle_knight_m_spr.bin", "battle_knight_w_spr.bin");
             CreateJobSpecificThemeDirectory("sprites_knight_summoner_sage", "battle_knight_m_spr.bin", "battle_knight_w_spr.bin");
@@ -73,8 +73,8 @@ namespace Tests.Configuration.UI
 
             // Assert
             themes.Should().NotBeNull();
-            themes.Should().Contain("holy_guard", "job-specific theme holy_guard should be in JobClasses.json");
-            themes.Should().Contain("divine_blade", "job-specific theme divine_blade should be in JobClasses.json");
+            themes.Should().Contain("dark_knight", "job-specific theme dark_knight should be in JobClasses.json");
+            themes.Should().Contain("thunder_general", "job-specific theme thunder_general should be in JobClasses.json");
             themes.Should().Contain("dark_knight", "job-specific theme dark_knight should be in JobClasses.json");
             themes.Should().Contain("thunder_general", "job-specific theme thunder_general should be in JobClasses.json");
             themes.Should().Contain("summoner_sage", "job-specific theme summoner_sage should be in JobClasses.json");
@@ -86,8 +86,8 @@ namespace Tests.Configuration.UI
             // Arrange
             var expectedDirs = new[]
             {
-                "sprites_knight_holy_guard",
-                "sprites_knight_divine_blade",
+                "sprites_knight_dark_knight",
+                "sprites_knight_thunder_general",
                 "sprites_knight_dark_knight",
                 "sprites_knight_thunder_general",
                 "sprites_knight_summoner_sage"
@@ -114,7 +114,7 @@ namespace Tests.Configuration.UI
             // The actual implementation would need to handle the sprites_knight_h78 pattern
 
             // Arrange
-            var knightThemes = new[] { "holy_guard", "divine_blade", "dark_knight", "thunder_general", "summoner_sage" };
+            var knightThemes = new[] { "dark_knight", "thunder_general", "dark_knight", "thunder_general", "summoner_sage" };
 
             // Act & Assert
             foreach (var theme in knightThemes)

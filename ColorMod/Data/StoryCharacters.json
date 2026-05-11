@@ -5,7 +5,10 @@
       "spriteNames": [
         "ramuza"
       ],
-      "texFiles": [830, 831],
+      "texFiles": [
+        830,
+        831
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
@@ -19,7 +22,10 @@
       "spriteNames": [
         "ramuza2"
       ],
-      "texFiles": [832, 833],
+      "texFiles": [
+        832,
+        833
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
@@ -33,7 +39,10 @@
       "spriteNames": [
         "ramuza3"
       ],
-      "texFiles": [834, 835],
+      "texFiles": [
+        834,
+        835
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
@@ -48,7 +57,12 @@
         "aguri",
         "kanba"
       ],
-      "texFiles": [880, 881, 914, 915],
+      "texFiles": [
+        880,
+        881,
+        914,
+        915
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
@@ -70,16 +84,15 @@
       "spriteNames": [
         "cloud"
       ],
-      "texFiles": [910, 911],
+      "texFiles": [
+        910,
+        911
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
-        "holy_soldier",
-        "young_soldier",
         "sky_pirate",
-        "academy_scholar",
-        "merchant_blade",
-        "valkyrie_soldier"
+        "academy_scholar"
       ]
     },
     {
@@ -88,15 +101,16 @@
         "musu",
         "garu"
       ],
-      "texFiles": [888, 889],
+      "texFiles": [
+        888,
+        889
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
         "noble_engineer",
         "crimson_engineer",
         "shadow_machinist",
-        "royal_gunner",
-        "divine_artificer",
         "mourning_gun",
         "white_rose"
       ]
@@ -106,7 +120,10 @@
       "spriteNames": [
         "oru"
       ],
-      "texFiles": [854, 855],
+      "texFiles": [
+        854,
+        855
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
@@ -121,7 +138,10 @@
         "reze",
         "reze_d"
       ],
-      "texFiles": [858, 859],
+      "texFiles": [
+        858,
+        859
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
@@ -158,7 +178,10 @@
       "spriteNames": [
         "h79"
       ],
-      "texFiles": [870, 871],
+      "texFiles": [
+        870,
+        871
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
@@ -174,7 +197,10 @@
       "spriteNames": [
         "mara"
       ],
-      "texFiles": [872, 873],
+      "texFiles": [
+        872,
+        873
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
@@ -195,20 +221,17 @@
       "spriteNames": [
         "beio"
       ],
-      "texFiles": [882, 883],
+      "texFiles": [
+        882,
+        883
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
-        "holy_templar",
-        "machinist_knight",
         "twilight_templar",
         "shadow_knight",
         "noble_guardian",
-        "divine_blade",
-        "forge_templar",
-        "demon_slayer",
-        "vampire_lord",
-        "ancient_guardian"
+        "vampire_lord"
       ]
     },
     {
@@ -216,21 +239,22 @@
       "spriteNames": [
         "h80"
       ],
-      "texFiles": [905, 906],
+      "texFiles": [
+        905,
+        906
+      ],
       "defaultTheme": "original",
       "availableThemes": [
         "original",
         "holy_divine",
         "night_blade",
         "shadow_strike",
-        "royal_crusader",
         "engineer_knight",
         "temple_divine",
         "elder_wisdom",
         "siege_engineer",
         "funeral_knight",
-        "plague_knight",
-        "dragon_general"
+        "plague_knight"
       ]
     },
     {

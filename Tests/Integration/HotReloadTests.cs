@@ -53,7 +53,7 @@ namespace FFTColorCustomizer.Tests.Integration
         private void CreateMockJobClassesJson(string dataPath)
         {
             var jobClassesJson = @"{
-                ""sharedThemes"": [""original"", ""holy_guard"", ""shadow_assassin"", ""desert_nomad""],
+                ""sharedThemes"": [""original"", ""dark_knight"", ""shadow_assassin"", ""desert_nomad""],
                 ""jobClasses"": [
                     {
                         ""name"": ""Knight_Male"",
@@ -62,7 +62,7 @@ namespace FFTColorCustomizer.Tests.Integration
                         ""defaultTheme"": ""original"",
                         ""gender"": ""Male"",
                         ""jobType"": ""Knight"",
-                        ""jobSpecificThemes"": [""holy_guard""]
+                        ""jobSpecificThemes"": [""dark_knight""]
                     },
                     {
                         ""name"": ""Monk_Male"",
@@ -91,7 +91,7 @@ namespace FFTColorCustomizer.Tests.Integration
         private void CreateThemedSpriteDirectories()
         {
             // Create themed sprite directories with mock sprite files
-            var themes = new[] { "original", "holy_guard", "shadow_assassin", "desert_nomad" };
+            var themes = new[] { "original", "dark_knight", "shadow_assassin", "desert_nomad" };
             var sprites = new[] { "battle_knight_m_spr.bin", "battle_monk_m_spr.bin", "battle_yumi_w_spr.bin" };
 
             foreach (var theme in themes)
@@ -130,7 +130,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Act - Update configuration to use different themes per job
             var updatedConfig = new Config
             {
-                Knight_Male = "holy_guard",
+                Knight_Male = "dark_knight",
                 Monk_Male = "shadow_assassin",
                 Archer_Female = "desert_nomad"
             };
@@ -142,7 +142,7 @@ namespace FFTColorCustomizer.Tests.Integration
             var archerTheme = mod.GetJobColor("Archer_Female");
 
             // Assert - Each job should have its configured theme
-            Assert.Equal("Holy Guard", knightTheme);
+            Assert.Equal("Dark Knight", knightTheme);
             Assert.Equal("Shadow Assassin", monkTheme);
             Assert.Equal("Desert Nomad", archerTheme);
         }
@@ -195,7 +195,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Act - Simulate F1 configuration change
             var updatedConfig = new Config
             {
-                Knight_Male = "holy_guard",
+                Knight_Male = "dark_knight",
                 Monk_Male = "shadow_assassin"
             };
             mod.ConfigurationUpdated(updatedConfig);
@@ -205,7 +205,7 @@ namespace FFTColorCustomizer.Tests.Integration
             var monkTheme = mod.GetJobColor("Monk_Male");
 
             // Assert - GetJobColor should immediately return new configuration
-            Assert.Equal("Holy Guard", knightTheme);
+            Assert.Equal("Dark Knight", knightTheme);
             Assert.Equal("Shadow Assassin", monkTheme);
         }
 
@@ -218,7 +218,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange
             var config = new Config
             {
-                Knight_Male = "holy_guard"
+                Knight_Male = "dark_knight"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 
@@ -296,9 +296,9 @@ namespace FFTColorCustomizer.Tests.Integration
 
             // Act & Assert - Multiple configuration changes
             // First change
-            mod.ConfigurationUpdated(new Config { Knight_Male = "holy_guard" });
+            mod.ConfigurationUpdated(new Config { Knight_Male = "dark_knight" });
             var theme1 = mod.GetJobColor("Knight_Male");
-            Assert.Equal("Holy Guard", theme1);
+            Assert.Equal("Dark Knight", theme1);
 
             // Second change
             mod.ConfigurationUpdated(new Config { Knight_Male = "shadow_assassin" });
@@ -350,7 +350,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange
             var config = new Config
             {
-                Knight_Male = "holy_guard"
+                Knight_Male = "dark_knight"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 
@@ -364,7 +364,7 @@ namespace FFTColorCustomizer.Tests.Integration
             File.WriteAllText(testSpritePath, testSpriteContent);
 
             // Create the themed sprite that should be redirected to
-            var themedPath = Path.Combine(_unitPath, "sprites_holy_guard", "battle_knight_m_spr.bin");
+            var themedPath = Path.Combine(_unitPath, "sprites_dark_knight", "battle_knight_m_spr.bin");
             var themedContent = "THEMED_SPRITE_CONTENT";
             File.WriteAllText(themedPath, themedContent);
 
@@ -437,7 +437,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange
             var config = new Config
             {
-                Knight_Male = "holy_guard",
+                Knight_Male = "dark_knight",
                 Monk_Male = "shadow_assassin",
                 Archer_Female = "desert_nomad"
             };
@@ -510,7 +510,7 @@ namespace FFTColorCustomizer.Tests.Integration
             // Arrange
             var config = new Config
             {
-                Knight_Male = "holy_guard"
+                Knight_Male = "dark_knight"
             };
             File.WriteAllText(_configPath, System.Text.Json.JsonSerializer.Serialize(config));
 
@@ -518,9 +518,9 @@ namespace FFTColorCustomizer.Tests.Integration
             mod.InitializeConfiguration(_configPath);
 
             // Create source themed sprite
-            var sourceThemePath = Path.Combine(_unitPath, "sprites_holy_guard", "battle_knight_m_spr.bin");
+            var sourceThemePath = Path.Combine(_unitPath, "sprites_dark_knight", "battle_knight_m_spr.bin");
             Directory.CreateDirectory(Path.GetDirectoryName(sourceThemePath));
-            File.WriteAllText(sourceThemePath, "HOLY_GUARD_THEME_CONTENT");
+            File.WriteAllText(sourceThemePath, "dark_knight_THEME_CONTENT");
 
             // Track when files are created/modified
             var targetPath = Path.Combine(_unitPath, "battle_knight_m_spr.bin");

@@ -49,6 +49,12 @@ namespace FFTColorCustomizer.Services
         public List<string> JobSpecificThemes { get; set; } = new List<string>();
 
         /// <summary>
+        /// Shared themes that should be hidden for this specific job
+        /// (e.g., a generic palette that happens to look bad on this sprite).
+        /// </summary>
+        public List<string> ExcludedThemes { get; set; } = new List<string>();
+
+        /// <summary>
         /// Gets all themes available for this job (shared + job-specific)
         /// </summary>
         public List<string> GetAllAvailableThemes(List<string> sharedThemes)
