@@ -27,7 +27,11 @@ param (
 
 ## => Configuration <= ##
 $ProjectPath = "ColorMod/FFTColorCustomizer.csproj"
-$BuildOutputPath = "Publish/Release"
+# The build folder's NAME becomes the wrapper folder INSIDE the zip — Vortex's
+# FFT IC extension treats a zip with files-at-root as malformed and falls back
+# to creating a fake wrapper, which causes the double-nested install path. Naming
+# this folder after our ModId means the zip extracts to the expected layout.
+$BuildOutputPath = "Publish/paxtrick.fft.colorcustomizer"
 $TempBuildPath = "Publish/TempBuild"
 $ModConfigPath = "$BuildOutputPath/ModConfig.json"
 
@@ -372,11 +376,14 @@ function Create-Package {
         Write-Host "  -> Source: $absoluteBuildPath"
         Write-Host "  -> Target: $absolutePackagePath"
 
+        # includeBaseDirectory: $true wraps zip contents in a folder named after the
+        # build folder (paxtrick.fft.colorcustomizer). Vortex's FFT IC extension installer
+        # treats this as the proper structure and avoids creating a fake wrapper folder.
         [System.IO.Compression.ZipFile]::CreateFromDirectory(
             $absoluteBuildPath,
             $absolutePackagePath,
             [System.IO.Compression.CompressionLevel]::Optimal,
-            $false
+            $true
         )
 
         if (Test-Path $absolutePackagePath) {

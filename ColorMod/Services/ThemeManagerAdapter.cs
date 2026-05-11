@@ -532,9 +532,9 @@ namespace FFTColorCustomizer.Services
 
             public string GetConfigPath()
             {
-                // First try User/Mods/paxtrick.fft.colorcustomizer directory (where user's config is saved)
+                // First try User/Mods/<ModNamespace> directory (where user's config is saved)
                 var reloadedDir = Path.GetDirectoryName(Path.GetDirectoryName(_modPath)); // Go up to Reloaded directory
-                var userConfigPath = Path.Combine(reloadedDir, "User", "Mods", "paxtrick.fft.colorcustomizer", "Config.json");
+                var userConfigPath = Path.Combine(reloadedDir, "User", "Mods", ColorModConstants.ModNamespace, "Config.json");
 
                 if (File.Exists(userConfigPath))
                 {

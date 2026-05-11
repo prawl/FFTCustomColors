@@ -4,6 +4,7 @@ using System.Text.Json;
 using Xunit;
 using FFTColorCustomizer.Configuration;
 
+using FFTColorCustomizer.Core;
 namespace FFTColorCustomizer.Tests
 {
     public class UserConfigDirectorySaveTests : IDisposable
@@ -23,7 +24,7 @@ namespace FFTColorCustomizer.Tests
             _modConfigPath = Path.Combine(_testModDir, "Config.json");
 
             // User configuration directory (where Reloaded-II actually stores user configs)
-            _testUserDir = Path.Combine(testRoot, "User", "Mods", "paxtrick.fft.colorcustomizer");
+            _testUserDir = Path.Combine(testRoot, "User", "Mods", ColorModConstants.ModNamespace);
             _userConfigPath = Path.Combine(_testUserDir, "Config.json");
 
             Directory.CreateDirectory(_testModDir);
@@ -93,14 +94,14 @@ namespace FFTColorCustomizer.Tests
             var modInstallPath = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFTColorCustomizer";
 
             // Act
-            // The User config should be at: .../Reloaded/User/Mods/paxtrick.fft.colorcustomizer/Config.json
+            // The User config should be at: .../Reloaded/User/Mods/prawl.fft.colorcustomizer/Config.json
             var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modInstallPath));
-            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "paxtrick.fft.colorcustomizer");
+            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", ColorModConstants.ModNamespace);
             var userConfigPath = Path.Combine(userConfigDir, "Config.json");
 
             // Assert
-            Assert.Equal(@"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\paxtrick.fft.colorcustomizer", userConfigDir);
-            Assert.Equal(@"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\paxtrick.fft.colorcustomizer\Config.json", userConfigPath);
+            Assert.Equal($@"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\{ColorModConstants.ModNamespace}", userConfigDir);
+            Assert.Equal($@"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\{ColorModConstants.ModNamespace}\Config.json", userConfigPath);
         }
     }
 }

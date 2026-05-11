@@ -5,6 +5,7 @@ using System.Reflection;
 using Xunit;
 using FFTColorCustomizer.Configuration;
 
+using FFTColorCustomizer.Core;
 namespace FFTColorCustomizer.Tests
 {
     public class StartupConfigLoadTests : IDisposable
@@ -29,7 +30,7 @@ namespace FFTColorCustomizer.Tests
             _modConfigPath = Path.Combine(_testModDir, "Config.json");
 
             // User configuration directory
-            _testUserDir = Path.Combine(_testRoot, "User", "Mods", "paxtrick.fft.colorcustomizer");
+            _testUserDir = Path.Combine(_testRoot, "User", "Mods", ColorModConstants.ModNamespace);
             _userConfigPath = Path.Combine(_testUserDir, "Config.json");
 
             Directory.CreateDirectory(_testModDir);
@@ -65,7 +66,7 @@ namespace FFTColorCustomizer.Tests
 
             // Calculate the User config directory (like Startup.cs does now)
             var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modDirectory));
-            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "paxtrick.fft.colorcustomizer");
+            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", ColorModConstants.ModNamespace);
 
             var configurator = new Configurator(userConfigDir);  // Now using User directory!
             var config = configurator.GetConfiguration<Config>(0);
@@ -85,11 +86,11 @@ namespace FFTColorCustomizer.Tests
             var modDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\Mods\FFTColorCustomizer";
 
             // The user config should be at
-            var expectedUserDir = @"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\paxtrick.fft.colorcustomizer";
+            var expectedUserDir = $@"C:\Program Files (x86)\Steam\steamapps\common\FINAL FANTASY TACTICS - The Ivalice Chronicles\Reloaded\User\Mods\{ColorModConstants.ModNamespace}";
 
             // Calculate it the way we do in code
             var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modDir));
-            var actualUserDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "paxtrick.fft.colorcustomizer");
+            var actualUserDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", ColorModConstants.ModNamespace);
 
             Assert.Equal(expectedUserDir, actualUserDir);
         }

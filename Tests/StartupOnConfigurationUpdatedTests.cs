@@ -3,6 +3,7 @@ using System.Text.Json;
 using FFTColorCustomizer.Configuration;
 using Xunit;
 
+using FFTColorCustomizer.Core;
 namespace FFTColorCustomizer.Tests
 {
     public class StartupOnConfigurationUpdatedTests
@@ -15,7 +16,7 @@ namespace FFTColorCustomizer.Tests
 
             // Simulate the Reloaded directory structure
             var modDir = Path.Combine(tempDir, "Mods", "FFTColorCustomizer");
-            var userDir = Path.Combine(tempDir, "User", "Mods", "paxtrick.fft.colorcustomizer");
+            var userDir = Path.Combine(tempDir, "User", "Mods", ColorModConstants.ModNamespace);
             Directory.CreateDirectory(modDir);
             Directory.CreateDirectory(userDir);
 
@@ -77,7 +78,7 @@ namespace FFTColorCustomizer.Tests
         {
             var modPath = _modDirectory;
             var reloadedRoot = Path.GetDirectoryName(Path.GetDirectoryName(modPath));
-            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", "paxtrick.fft.colorcustomizer");
+            var userConfigDir = Path.Combine(reloadedRoot ?? "", "User", "Mods", ColorModConstants.ModNamespace);
             var userConfigPath = Path.Combine(userConfigDir, "Config.json");
 
             // Use ConfigurationUpdater to handle merge logic

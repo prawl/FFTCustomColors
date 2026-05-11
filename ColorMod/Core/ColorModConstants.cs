@@ -45,7 +45,7 @@ namespace FFTColorCustomizer.Core
         // Mod metadata
         public const string ModId = "FFTColorCustomizer";
         public const string ModName = "FFT Color Customizer";
-        public const string ModAuthor = "Paxtrick";
+        public const string ModAuthor = "prawl";
         public const string ModNamespace = "paxtrick.fft.colorcustomizer";
 
         // Development paths (should not be used in production - use mod directory instead)

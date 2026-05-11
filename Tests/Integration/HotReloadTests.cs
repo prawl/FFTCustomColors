@@ -34,7 +34,7 @@ namespace FFTColorCustomizer.Tests.Integration
             Directory.CreateDirectory(_unitPath);
 
             // Create a User config path for the configuration coordinator
-            var userDir = Path.Combine(_testDirectory, "User", "Mods", "paxtrick.fft.colorcustomizer");
+            var userDir = Path.Combine(_testDirectory, "User", "Mods", ColorModConstants.ModNamespace);
             Directory.CreateDirectory(userDir);
             _configPath = Path.Combine(userDir, "Config.json");
 

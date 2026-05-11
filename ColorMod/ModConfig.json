@@ -16,7 +16,14 @@
   "ReleaseMetadataFileName": "FFTColorCustomizer.ReleaseMetadata.json",
   "IgnoreRegexes": [],
   "IncludeRegexes": [],
-  "PluginData": {},
+  "PluginData": {
+    "GitHubRelease": {
+      "UserName": "prawl",
+      "RepositoryName": "FFTCustomColors",
+      "UseReleaseTag": true,
+      "AssetFileName": "Mod.zip"
+    }
+  },
   "IsUniversalMod": false,
   "ModDependencies": [
     "fftivc.utility.modloader",
@@ -25,5 +32,5 @@
   ],
   "OptionalDependencies": [],
   "SupportedAppId": ["fft_enhanced.exe", "fft_classic.exe"],
-  "ProjectUrl": ""
+  "ProjectUrl": "https://github.com/prawl/FFTCustomColors"
 }

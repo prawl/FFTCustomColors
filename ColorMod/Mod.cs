@@ -323,7 +323,7 @@ public class Mod : IMod, IConfigurable
             if (grandParent != null)
             {
                 var reloadedRoot = grandParent.FullName;
-                var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", "paxtrick.fft.colorcustomizer", ConfigFileName);
+                var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", ModNamespace, ConfigFileName);
 
                 ModLogger.LogDebug($"Looking for user config at: {userConfigPath}");
 

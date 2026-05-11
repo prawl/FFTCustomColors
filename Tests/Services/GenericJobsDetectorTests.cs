@@ -4,6 +4,7 @@ using FFTColorCustomizer.Services;
 using System;
 using System.IO;
 
+using FFTColorCustomizer.Core;
 namespace FFTColorCustomizer.Tests.Services
 {
     public class GenericJobsDetectorTests : IDisposable
@@ -81,12 +82,12 @@ namespace FFTColorCustomizer.Tests.Services
             // Create FFT app config without GenericJobs enabled
             var fftAppDir = Path.Combine(_testAppsPath, "fft_enhanced.exe");
             Directory.CreateDirectory(fftAppDir);
-            var appConfig = @"{
+            var appConfig = $@"{{
                 ""EnabledMods"": [
                     ""fftivc.utility.modloader"",
-                    ""paxtrick.fft.colorcustomizer""
+                    ""{ColorModConstants.ModNamespace}""
                 ]
-            }";
+            }}";
             File.WriteAllText(Path.Combine(fftAppDir, "AppConfig.json"), appConfig);
 
             var detector = new GenericJobsDetector(_testModsPath);
@@ -108,13 +109,13 @@ namespace FFTColorCustomizer.Tests.Services
             // Create FFT app config with GenericJobs enabled
             var fftAppDir = Path.Combine(_testAppsPath, "fft_enhanced.exe");
             Directory.CreateDirectory(fftAppDir);
-            var appConfig = @"{
+            var appConfig = $@"{{
                 ""EnabledMods"": [
                     ""fftivc.utility.modloader"",
                     ""ffttic.jobs.genericjobs"",
-                    ""paxtrick.fft.colorcustomizer""
+                    ""{ColorModConstants.ModNamespace}""
                 ]
-            }";
+            }}";
             File.WriteAllText(Path.Combine(fftAppDir, "AppConfig.json"), appConfig);
 
             var detector = new GenericJobsDetector(_testModsPath);
