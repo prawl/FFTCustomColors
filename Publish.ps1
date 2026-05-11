@@ -233,13 +233,14 @@ function Copy-ModAssets {
     # Copy Images folder with Ramza sprite sheet previews
     $imagesSource = "ColorMod/Images"
     if (Test-Path $imagesSource) {
-        Write-Host "  -> Copying Images folder with Ramza sprite previews..."
+        Write-Host "  -> Copying Images folder with HD sprite previews..."
         $imagesDest = "$BuildOutputPath/Images"
         New-Item -ItemType Directory -Force -Path $imagesDest | Out-Null
 
-        # Copy Ramza chapter folders with sprite sheets
-        $ramzaFolders = Get-ChildItem "$imagesSource" -Directory | Where-Object { $_.Name -match "^Ramza" }
-        foreach ($folder in $ramzaFolders) {
+        # Copy all character folders (Ramza chapters + story chars + generic jobs)
+        # with their original/theme subfolders and HD BMP sprite sheets
+        $characterFolders = Get-ChildItem "$imagesSource" -Directory
+        foreach ($folder in $characterFolders) {
             $destFolder = "$imagesDest/$($folder.Name)"
             Copy-Item $folder.FullName $destFolder -Recurse -Force
         }
