@@ -127,6 +127,28 @@ namespace FFTColorCustomizer.Utilities
             }
         }
 
+        /// <summary>
+        /// Returns true if the mod folder layout contains a sprites_&lt;char&gt;_&lt;theme&gt;/ directory
+        /// with at least one .bin file — i.e. a built-in themed sprite ready for palette swap.
+        /// Returns false for "original" (no themed bin needed), for user themes (their data is
+        /// in a user-palette file, not a sprites_*/ folder), and for unknown themes.
+        ///
+        /// Callers use this to decide whether the HD-BMP palette-swap path will yield a real
+        /// themed preview, or whether to fall back to a user-theme / vanilla path.
+        /// </summary>
+        public bool HasThemedSpriteBin(string characterName, string themeName)
+        {
+            if (string.IsNullOrEmpty(characterName) || string.IsNullOrEmpty(themeName)) return false;
+            if (string.Equals(themeName, "original", System.StringComparison.OrdinalIgnoreCase)) return false;
+
+            var unitPath = FindUnitPath(_basePath);
+            if (unitPath == null) return false;
+
+            var themeFolder = $"sprites_{characterName.ToLowerInvariant()}_{themeName.ToLowerInvariant().Replace(' ', '_')}";
+            var themedDir = Path.Combine(unitPath, themeFolder);
+            return Directory.Exists(themedDir) && Directory.GetFiles(themedDir, "*.bin").Length > 0;
+        }
+
         private static string FindUnitPath(string basePath)
         {
             // Mod folder layout: <basePath>/FFTIVC/data/enhanced/fftpack/unit/

@@ -108,6 +108,47 @@ namespace FFTColorCustomizer.Tests
             }
         }
         [Fact]
+        public void HasThemedSpriteBin_TrueWhenCharacterThemeFolderHasBinFile()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), $"HasThemedTest_{Guid.NewGuid()}");
+            var themedDir = Path.Combine(tempDir, "FFTIVC", "data", "enhanced", "fftpack", "unit", "sprites_agrias_crimson_assassin");
+            Directory.CreateDirectory(themedDir);
+            File.WriteAllBytes(Path.Combine(themedDir, "battle_aguri_spr.bin"), new byte[32]);
+
+            try
+            {
+                var loader = new SpriteSheetPreviewLoader(tempDir);
+                loader.HasThemedSpriteBin("Agrias", "Crimson Assassin").Should().BeTrue();
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void HasThemedSpriteBin_FalseWhenNoThemedFolderExists()
+        {
+            // This is the user-theme case: a theme exists in the dropdown but has no
+            // sprites_<char>_<theme>/ folder because user themes ship as a palette file,
+            // not as pre-generated bin files. The caller needs this signal to route to
+            // the user-theme palette path instead of silently falling back to vanilla.
+            var tempDir = Path.Combine(Path.GetTempPath(), $"HasThemedNeg_{Guid.NewGuid()}");
+            var unitDir = Path.Combine(tempDir, "FFTIVC", "data", "enhanced", "fftpack", "unit");
+            Directory.CreateDirectory(unitDir);
+
+            try
+            {
+                var loader = new SpriteSheetPreviewLoader(tempDir);
+                loader.HasThemedSpriteBin("Agrias", "MyCustomUserTheme").Should().BeFalse();
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
         public void SpriteSheetPreviewLoader_Should_Load_NonRamza_Character_With_Generic_Name()
         {
             // Arrange

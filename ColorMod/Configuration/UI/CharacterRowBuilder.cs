@@ -518,8 +518,28 @@ namespace FFTColorCustomizer.Configuration.UI
                 }
             }
 
-            // For non-Ramza story characters, try the HD sprite-sheet BMP first (if we have one).
-            // Falls back to .bin extraction if no BMP is present for this character/theme.
+            // For non-Ramza story characters: check user theme FIRST. The HD-BMP path silently
+            // falls back to the vanilla BMP when no sprites_<char>_<theme>/ folder exists (always
+            // the case for user themes, since user themes ship as a palette file), so calling it
+            // first masks the user theme and shows vanilla — the bug the user reported.
+            if (!string.IsNullOrEmpty(modPath) && _userThemeService.IsUserTheme(characterName, theme))
+            {
+                string unitPath = FindActualUnitPath(modPath);
+                string internalName = GetInternalSpriteName(characterName);
+                string spriteFileName = $"battle_{internalName}_spr.bin";
+                var userThemeImages = TryLoadStoryCharacterUserThemeFromBinFile(modPath, unitPath, spriteFileName, characterName, theme);
+                if (userThemeImages != null && userThemeImages.Length > 0)
+                {
+                    carousel.SetImages(userThemeImages);
+                    carousel.Invalidate();
+                    carousel.Refresh();
+                    ModLogger.LogSuccess($"Loaded user theme preview for {characterName} - {theme}");
+                    return;
+                }
+            }
+
+            // Built-in themes (and "original"): try the HD sprite-sheet BMP first. Falls back
+            // to .bin extraction below if no BMP is present.
             if (!string.IsNullOrEmpty(modPath))
             {
                 var loader = new SpriteSheetPreviewLoader(modPath);
@@ -1202,7 +1222,21 @@ namespace FFTColorCustomizer.Configuration.UI
                 return null;
             }
 
-            // Extract sprites using the external user palette
+            // Try HD BMP path first — gives a crisp preview if an HD sprite-sheet ships for this
+            // Ramza chapter. Matches what the non-Ramza user theme path already does.
+            try
+            {
+                var loader = new SpriteSheetPreviewLoader(modPath);
+                var hdImages = loader.LoadPreviewsWithUserPalette(characterName, userPalette);
+                if (hdImages != null && hdImages.Count > 0)
+                    return hdImages.Cast<Image>().ToArray();
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogDebug($"HD user-theme preview unavailable for {characterName} - {themeName}: {ex.Message}");
+            }
+
+            // Fallback: legacy pixelated bin extraction
             var cornerSprites = _binExtractor.ExtractCornerDirectionsWithExternalPalette(originalSprite, 0, userPalette);
 
             // Return 4 corner sprites for carousel
@@ -1214,7 +1248,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 cornerSprites[1]  // SE
             };
 
-            ModLogger.Log($"[RAMZA USER THEME] Character: '{characterName}', Theme: '{themeName}', Using external palette");
+            ModLogger.Log($"[RAMZA USER THEME] Character: '{characterName}', Theme: '{themeName}', Using external palette (legacy bin path)");
             return carouselSprites;
         }
 
