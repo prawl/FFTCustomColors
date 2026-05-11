@@ -1,9 +1,9 @@
 {
   "ModId": "paxtrick.fft.colorcustomizer",
   "ModName": "FFT Color Customizer",
-  "ModAuthor": "Paxtrick",
+  "ModAuthor": "prawl",
   "ModVersion": "3.0.6",
-  "ModDescription": "Customize your FFT experience with over 210+ unique color themes. Features in-game config menu (F1). NOTE: Ramza theme changes require game restart to take effect.",
+  "ModDescription": "Endless new color themes for classes and story characters with an in-game theme editor.",
   "ModDll": "FFTColorCustomizer.dll",
   "ModIcon": "Preview.png",
   "ModR2RManagedDll32": "x86/FFTColorCustomizer.dll",
