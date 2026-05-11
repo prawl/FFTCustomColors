@@ -6,7 +6,12 @@ using Reloaded.Mod.Interfaces;
 using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Configuration
 {
-    public class Configurator : IConfiguratorV3
+    // NOTE: This class intentionally does NOT implement IConfiguratorV3 (or any
+    // IConfigurator* interface) — that's how we keep Reloaded-II's "Configure Mod"
+    // button disabled for this mod. The in-game F1 hotkey is the configuration entry
+    // point. The class itself stays around because tests instantiate it directly to
+    // exercise config save/load behavior.
+    public class Configurator
     {
         private static ConfiguratorMixin _configuratorMixin = new ConfiguratorMixin();
 
@@ -90,7 +95,7 @@ namespace FFTColorCustomizer.Configuration
         /// Sets the directory where the mod files are stored.
         /// </summary>
         /// <param name="modDirectory">Full directory path to the mod folder.</param>
-        public IConfiguratorV3 SetModDirectory(string modDirectory)
+        public Configurator SetModDirectory(string modDirectory)
         {
             ModFolder = modDirectory;
             return this;
@@ -100,7 +105,7 @@ namespace FFTColorCustomizer.Configuration
         /// Sets the directory where configs are stored.
         /// </summary>
         /// <param name="configDirectory">Full directory path to the config folder.</param>
-        public IConfiguratorV3 SetConfigDirectory(string configDirectory)
+        public Configurator SetConfigDirectory(string configDirectory)
         {
             ConfigFolder = configDirectory;
             return this;
@@ -111,7 +116,7 @@ namespace FFTColorCustomizer.Configuration
         /// </summary>
         /// <param name="configDirectory">Full directory path to the config folder.</param>
         /// <param name="oldDirectory">Old directory to migrate from.</param>
-        public IConfiguratorV3 SetConfigDirectory(string configDirectory, string oldDirectory)
+        public Configurator SetConfigDirectory(string configDirectory, string oldDirectory)
         {
             SetConfigDirectory(configDirectory);
             Migrate(oldDirectory, configDirectory);
@@ -122,7 +127,7 @@ namespace FFTColorCustomizer.Configuration
         /// Sets a context to be used by the configurator.
         /// </summary>
         /// <param name="context">Context to be used.</param>
-        void IConfiguratorV3.SetContext(in ConfiguratorContext context)
+        public void SetContext(in ConfiguratorContext context)
         {
             Context = context;
         }
@@ -144,25 +149,10 @@ namespace FFTColorCustomizer.Configuration
             }
         }
 
-        /* Configurator V2 */
-
-        /// <summary>
-        /// Sets the directory where configs are stored.
-        /// </summary>
-        /// <param name="configDirectory">Full directory path to the config folder.</param>
-        void IConfiguratorV2.SetConfigDirectory(string configDirectory) => ConfigFolder = configDirectory;
-
-        /* IConfiguratorV1 */
-
         /// <summary>
         /// Gets all configurations.
         /// </summary>
         public IConfigurable[] GetConfigurations() => Configurations;
-
-        /// <summary>
-        /// Sets the mod directory for the Configurator.
-        /// </summary>
-        void IConfiguratorV1.SetModDirectory(string modDirectory) => ModFolder = modDirectory;
 
         /// <summary>
         /// Tries to run a custom configuration menu.
