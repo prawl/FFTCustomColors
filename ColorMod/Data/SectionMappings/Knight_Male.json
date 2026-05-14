@@ -23,14 +23,14 @@
     {
       "name": "BootsGlovesHair",
       "displayName": "Boots, Gloves, and Hair",
-      "indices": [12, 11, 13],
-      "roles": ["base", "shadow", "outline"]
+      "indices": [12, 11, 13, 14],
+      "roles": ["base", "shadow", "outline", "highlight"]
     },
     {
       "name": "SkinColor",
       "displayName": "Skin Color",
-      "indices": [15, 14],
-      "roles": ["base", "shadow"]
+      "indices": [15],
+      "roles": ["base"]
     }
   ]
 }
