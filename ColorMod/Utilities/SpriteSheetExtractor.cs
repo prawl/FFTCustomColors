@@ -122,9 +122,6 @@ namespace FFTColorCustomizer.Utilities
             // Extract the sprite from the sheet
             var sprite = new Bitmap(spriteWidth, spriteHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
-            // Define black color (RGB 0,0,0) as the transparent color
-            var transparentColor = Color.FromArgb(0, 0, 0);
-
             for (int sx = 0; sx < spriteWidth; sx++)
             {
                 for (int sy = 0; sy < spriteHeight; sy++)
@@ -133,8 +130,12 @@ namespace FFTColorCustomizer.Utilities
                     {
                         var pixel = spriteSheet.GetPixel(x + sx, y + sy);
 
-                        // If the pixel is pure black, make it transparent
-                        if (pixel.R == 0 && pixel.G == 0 && pixel.B == 0)
+                        // Transparency is keyed off the alpha channel, NOT off "the color is
+                        // black". FFT sprites reserve palette index 0 as the transparent
+                        // background, and the palette loaders (BmpPaletteSwapper) encode that
+                        // as alpha 0 — so only genuine background pixels are dropped. Keying
+                        // on RGB would erase any section the user painted pure black (#000000).
+                        if (pixel.A == 0)
                         {
                             pixel = Color.Transparent;
                         }

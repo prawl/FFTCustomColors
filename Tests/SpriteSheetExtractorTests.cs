@@ -198,5 +198,39 @@ namespace FFTColorCustomizer.Tests
             result[Direction.SW].Width.Should().Be(64);
             result[Direction.SW].Height.Should().Be(80);
         }
+
+        [Fact]
+        public void ExtractSprite_OpaqueBlackPixel_StaysOpaqueBlack()
+        {
+            // Regression: painting a sprite section pure black (#000000) in the Theme Editor
+            // must NOT make it transparent. The palette loaders encode the *real* transparent
+            // background (palette index 0) as alpha 0, so extraction keys on alpha — a pixel
+            // that is opaque black is a color the user chose and must survive intact.
+            var extractor = new SpriteSheetExtractor();
+            var sheet = new Bitmap(512, 512, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            sheet.SetPixel(64, 0, Color.FromArgb(255, 0, 0, 0)); // opaque black at SW origin
+
+            var swSprite = extractor.ExtractSprite(sheet, Direction.SW);
+
+            var pixel = swSprite.GetPixel(0, 0);
+            pixel.A.Should().Be(255, "an opaque black pixel must stay opaque, not be keyed out");
+            pixel.R.Should().Be(0);
+            pixel.G.Should().Be(0);
+            pixel.B.Should().Be(0);
+        }
+
+        [Fact]
+        public void ExtractSprite_FullyTransparentPixel_StaysTransparent()
+        {
+            // The flip side: a pixel that is already transparent (alpha 0 — how the palette
+            // loaders mark sprite-background / palette index 0) must extract as transparent.
+            var extractor = new SpriteSheetExtractor();
+            var sheet = new Bitmap(512, 512, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            sheet.SetPixel(64, 0, Color.FromArgb(0, 0, 0, 0)); // fully transparent at SW origin
+
+            var swSprite = extractor.ExtractSprite(sheet, Direction.SW);
+
+            swSprite.GetPixel(0, 0).A.Should().Be(0, "alpha-0 background pixels must stay transparent");
+        }
     }
 }

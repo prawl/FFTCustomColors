@@ -969,7 +969,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 {
                     // No themed bin found — just load the original BMP (theme matches original or
                     // theme file is missing). Returning the un-swapped BMP is the right fallback.
-                    using (var rawBmp = new Bitmap(bmpPath))
+                    using (var rawBmp = BmpPaletteSwapper.LoadWithOriginalPalette(bmpPath))
                     {
                         return ExtractCornersAsImages(rawBmp);
                     }

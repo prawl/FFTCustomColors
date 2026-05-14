@@ -39,7 +39,7 @@ namespace FFTColorCustomizer.Utilities
                 var themedBmpPath = ResolveSpriteSheetPath(characterName, themedImagesPath);
                 if (themedBmpPath != null)
                 {
-                    using (var bmp = new Bitmap(themedBmpPath))
+                    using (var bmp = BmpPaletteSwapper.LoadWithOriginalPalette(themedBmpPath))
                     {
                         var themedSprites = _extractor.ExtractAllDirections(bmp, characterName);
                         return new List<Bitmap>
@@ -79,26 +79,26 @@ namespace FFTColorCustomizer.Utilities
         private Bitmap LoadThemedBmp(string bmpPath, string characterName, string themeName)
         {
             if (string.Equals(themeName, "original", System.StringComparison.OrdinalIgnoreCase))
-                return new Bitmap(bmpPath);
+                return BmpPaletteSwapper.LoadWithOriginalPalette(bmpPath);
 
             // Resolve the themed .bin file. Sprite folders use lower-case character names:
             //   sprites_cloud_holy_soldier/battle_cloud_spr.bin
             var unitPath = FindUnitPath(_basePath);
             if (unitPath == null)
-                return new Bitmap(bmpPath);
+                return BmpPaletteSwapper.LoadWithOriginalPalette(bmpPath);
 
             var themeFolder = $"sprites_{characterName.ToLowerInvariant()}_{themeName.ToLowerInvariant().Replace(' ', '_')}";
             var themedDir = Path.Combine(unitPath, themeFolder);
 
             if (!Directory.Exists(themedDir))
-                return new Bitmap(bmpPath);
+                return BmpPaletteSwapper.LoadWithOriginalPalette(bmpPath);
 
             // Use the first .bin in the themed folder (e.g. battle_cloud_spr.bin for Cloud,
             // battle_aguri_spr.bin for Agrias). Multi-sprite characters all share the same
             // palette so any of their .bin files works for the swap.
             var binFiles = Directory.GetFiles(themedDir, "*.bin");
             if (binFiles.Length == 0)
-                return new Bitmap(bmpPath);
+                return BmpPaletteSwapper.LoadWithOriginalPalette(bmpPath);
 
             return BmpPaletteSwapper.LoadWithBinPalette(bmpPath, binFiles[0]);
         }
