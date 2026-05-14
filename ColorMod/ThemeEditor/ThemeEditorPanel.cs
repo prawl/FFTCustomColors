@@ -17,7 +17,7 @@ namespace FFTColorCustomizer.ThemeEditor
         private ComboBox _templateDropdown;
         private Label _spritePreviewLabel;
         private Label _colorSelectionLabel;
-        private PictureBox _spritePreview;
+        private StoneTilePictureBox _spritePreview;
         private Label _themeNameLabel;
         private TextBox _themeNameInput;
         private Button _saveButton;
@@ -255,7 +255,7 @@ namespace FFTColorCustomizer.ThemeEditor
             };
 
             // === ROW 4: Sprite preview (left) + Color pickers panel (right) ===
-            _spritePreview = new PictureBox
+            _spritePreview = new StoneTilePictureBox
             {
                 Name = "SpritePreview",
                 Width = previewWidth,
@@ -595,22 +595,23 @@ namespace FFTColorCustomizer.ThemeEditor
         // All 8 directions cycle (clockwise): SW(5) → S(4) → SE(3) → E(2) → NE(1) → N(0) → NW(7) → W(6) → SW(5)
         private static readonly int[] DirectionsCycle = { 5, 4, 3, 2, 1, 0, 7, 6 };
 
+        // Left/right step opposite ways through DirectionsCycle so the Sprite Preview's
+        // rotation matches the config-screen class preview arrows (PreviewCarousel:
+        // left = next, right = previous).
         private void OnRotateLeft(object? sender, System.EventArgs e)
         {
-            // Left arrow now rotates clockwise
             var currentIndex = Array.IndexOf(DirectionsCycle, CurrentSpriteDirection);
             if (currentIndex == -1) currentIndex = 0; // Default to first if not found
-            currentIndex = (currentIndex + 1) % DirectionsCycle.Length;
+            currentIndex = (currentIndex - 1 + DirectionsCycle.Length) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
             UpdateSpritePreview();
         }
 
         private void OnRotateRight(object? sender, System.EventArgs e)
         {
-            // Right arrow now rotates counter-clockwise
             var currentIndex = Array.IndexOf(DirectionsCycle, CurrentSpriteDirection);
             if (currentIndex == -1) currentIndex = 0; // Default to first if not found
-            currentIndex = (currentIndex + DirectionsCycle.Length - 1) % DirectionsCycle.Length;
+            currentIndex = (currentIndex + 1) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
             UpdateSpritePreview();
         }

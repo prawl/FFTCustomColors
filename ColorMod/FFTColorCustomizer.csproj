@@ -47,6 +47,7 @@
     <EmbeddedResource Include="Images\RamzaChapter1\original\*.bmp" />
     <EmbeddedResource Include="Images\RamzaChapter23\original\*.bmp" />
     <EmbeddedResource Include="Images\RamzaChapter4\original\*.bmp" />
+    <EmbeddedResource Include="Images\Backgrounds\*.png" />
   </ItemGroup>
 
   <ItemGroup>

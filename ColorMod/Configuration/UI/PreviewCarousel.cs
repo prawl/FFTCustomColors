@@ -6,9 +6,10 @@ using System.Windows.Forms;
 namespace FFTColorCustomizer.Configuration.UI
 {
     /// <summary>
-    /// A picture box control with carousel functionality to cycle through multiple preview images
+    /// A picture box control with carousel functionality to cycle through multiple preview images.
+    /// Inherits the stone-tile background from <see cref="StoneTilePictureBox"/>.
     /// </summary>
-    public class PreviewCarousel : PictureBox
+    public class PreviewCarousel : StoneTilePictureBox
     {
         private Image[] _images = new Image[0];
         private readonly Color _arrowColor = Color.FromArgb(200, 255, 255, 255);

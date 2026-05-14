@@ -51,6 +51,48 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
+        public void ThemeEditorPanel_SpritePreview_IsStoneTileBacked()
+        {
+            // Arrange & Act
+            using var panel = new ThemeEditorPanel();
+
+            // Assert - the Sprite Preview box must use the stone-tile-backed control
+            // so it shares the same background as the config preview panes
+            var spritePreview = panel.Controls.OfType<PictureBox>()
+                .FirstOrDefault(c => c.Name == "SpritePreview");
+
+            Assert.NotNull(spritePreview);
+            Assert.IsType<FFTColorCustomizer.Configuration.UI.StoneTilePictureBox>(spritePreview);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_RotateButtons_MatchClassPreviewDirection()
+        {
+            // Arrange
+            using var panel = new ThemeEditorPanel();
+            var rotateLeft = panel.Controls.OfType<Button>()
+                .FirstOrDefault(b => b.Name == "RotateLeftButton");
+            var rotateRight = panel.Controls.OfType<Button>()
+                .FirstOrDefault(b => b.Name == "RotateRightButton");
+            Assert.NotNull(rotateLeft);
+            Assert.NotNull(rotateRight);
+
+            // The class preview's left arrow rotates SW -> NW -> NE -> SE. The Sprite
+            // Preview's left button must rotate the same visual direction: through the
+            // finer 8-direction cycle that means SW(5) -> W(6), not the opposite SW -> S(4).
+            Assert.Equal(5, panel.CurrentSpriteDirection);
+            rotateLeft.PerformClick();
+            Assert.Equal(6, panel.CurrentSpriteDirection);
+
+            // Right button rotates the opposite way: SW(5) -> S(4).
+            rotateRight.PerformClick(); // 6 -> 5
+            rotateRight.PerformClick(); // 5 -> 4
+            Assert.Equal(4, panel.CurrentSpriteDirection);
+        }
+
+        [Fact]
+        [STAThread]
         public void ThemeEditorPanel_TemplateDropdown_PopulatedFromMappingsDirectory()
         {
             // Arrange - create temp directory with test mapping files
@@ -214,42 +256,6 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
-        public void ThemeEditorPanel_RotateRight_CyclesClockwise()
-        {
-            // Arrange
-            using var panel = new ThemeEditorPanel();
-            var rightArrow = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "RotateRightButton");
-
-            // Act - click right arrow (starting from SW = 5)
-            Assert.Equal(5, panel.CurrentSpriteDirection); // SW
-            rightArrow.PerformClick();
-
-            // Assert - right arrow now goes counter-clockwise to W = 6
-            Assert.Equal(6, panel.CurrentSpriteDirection);
-        }
-
-        [Fact]
-        [STAThread]
-        public void ThemeEditorPanel_RotateLeft_CyclesCounterClockwise()
-        {
-            // Arrange
-            using var panel = new ThemeEditorPanel();
-            var leftArrow = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "RotateLeftButton");
-
-            // Starting at SW(5)
-            Assert.Equal(5, panel.CurrentSpriteDirection); // SW
-
-            // Act - click left arrow
-            leftArrow.PerformClick();
-
-            // Assert - left arrow now goes clockwise to S = 4
-            Assert.Equal(4, panel.CurrentSpriteDirection);
-        }
-
-        [Fact]
-        [STAThread]
         public void ThemeEditorPanel_RotateRight_CyclesThroughAll8Directions()
         {
             // Arrange
@@ -257,29 +263,30 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var rightArrow = panel.Controls.OfType<Button>()
                 .First(c => c.Name == "RotateRightButton");
 
-            // Direction cycle (counter-clockwise): SW(5) → W(6) → NW(7) → N(0) → NE(1) → E(2) → SE(3) → S(4) → SW(5)
+            // Right button steps forward through DirectionsCycle:
+            // SW(5) → S(4) → SE(3) → E(2) → NE(1) → N(0) → NW(7) → W(6) → SW(5)
             Assert.Equal(5, panel.CurrentSpriteDirection); // SW
 
             rightArrow.PerformClick();
-            Assert.Equal(6, panel.CurrentSpriteDirection); // W
-
-            rightArrow.PerformClick();
-            Assert.Equal(7, panel.CurrentSpriteDirection); // NW
-
-            rightArrow.PerformClick();
-            Assert.Equal(0, panel.CurrentSpriteDirection); // N
-
-            rightArrow.PerformClick();
-            Assert.Equal(1, panel.CurrentSpriteDirection); // NE
-
-            rightArrow.PerformClick();
-            Assert.Equal(2, panel.CurrentSpriteDirection); // E
+            Assert.Equal(4, panel.CurrentSpriteDirection); // S
 
             rightArrow.PerformClick();
             Assert.Equal(3, panel.CurrentSpriteDirection); // SE
 
             rightArrow.PerformClick();
-            Assert.Equal(4, panel.CurrentSpriteDirection); // S
+            Assert.Equal(2, panel.CurrentSpriteDirection); // E
+
+            rightArrow.PerformClick();
+            Assert.Equal(1, panel.CurrentSpriteDirection); // NE
+
+            rightArrow.PerformClick();
+            Assert.Equal(0, panel.CurrentSpriteDirection); // N
+
+            rightArrow.PerformClick();
+            Assert.Equal(7, panel.CurrentSpriteDirection); // NW
+
+            rightArrow.PerformClick();
+            Assert.Equal(6, panel.CurrentSpriteDirection); // W
 
             rightArrow.PerformClick();
             Assert.Equal(5, panel.CurrentSpriteDirection); // Back to SW

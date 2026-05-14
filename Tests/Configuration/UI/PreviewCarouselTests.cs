@@ -322,6 +322,18 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
         }
 
         [Fact]
+        public void GetBackgroundTile_Should_Load_Embedded_Stone_Tile()
+        {
+            // Act - the stone tile background plate is embedded in the assembly
+            var tile = PreviewCarousel.GetBackgroundTile();
+
+            // Assert
+            tile.Should().NotBeNull("the empty_tile.png background plate must be embedded and loadable");
+            tile.Width.Should().Be(491, "embedded empty_tile.png is 491px wide");
+            tile.Height.Should().Be(370, "embedded empty_tile.png is 370px tall");
+        }
+
+        [Fact]
         public void PreviewCarousel_Should_Be_Ready_For_Integration()
         {
             // This test verifies the carousel has all necessary features for integration
