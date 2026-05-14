@@ -247,9 +247,44 @@ every job's tex + bmp, are there any fully-hair-enclosed index-15 islands?"
 
 ## Status
 
-| Job | State | Commit |
-|---|---|---|
-| Squire Male | ✅ done | `a7a1ee94` (Type B) |
-| Squire Female | ✅ done | `d003f2a4` (Type A, JSON) |
-| White Mage Male | ✅ done | this commit (Type B) |
-| Knight Male, Archer Male, Summoner Male, Geomancer Male, Calculator Male, Bard, + female jobs | ⬜ TODO | — |
+**▶ NEXT: Squire Male** — finish his full sheet (see the ⚠ note below).
+
+### Done
+- ✅ **Squire Female** — `d003f2a4` — Type A (SectionMapping JSON edit)
+- ✅ **White Mage Male** — `3d10acb9` — Type B, full sheet (tex_1012/1013 + HD BMP)
+
+### Partial — needs redo
+- ⚠ **Squire Male** — `a7a1ee94` fixed the **standing poses only**, with the
+  old pure connected-component classifier (made before the 80-row-slot and
+  special-pose work). His special poses are **not** done. Redo his whole sheet
+  (tex_992/993 + HD BMP) with the current pipeline.
+
+### Remaining — 39 generic jobs
+
+Each needs the Type B process (or Type A if its highlight has a dedicated
+index). Tex numbers for ~18 of these are in the Job → file reference table
+above; the rest need their tex numbers looked up.
+
+- ⬜ Archer — Male, Female
+- ⬜ Bard — Male *(male-only job)*
+- ⬜ Black Mage — Male, Female
+- ⬜ Calculator — Male, Female
+- ⬜ Chemist — Male, Female
+- ⬜ Dancer — Female *(female-only job)*
+- ⬜ Dragoon — Male, Female
+- ⬜ Geomancer — Male, Female
+- ⬜ Knight — Male, Female
+- ⬜ Mediator — Male, Female
+- ⬜ Mime — Male, Female
+- ⬜ Monk — Male, Female
+- ⬜ Mystic — Male, Female
+- ⬜ Ninja — Male, Female
+- ⬜ Samurai — Male, Female
+- ⬜ Summoner — Male, Female
+- ⬜ Thief — Male, Female
+- ⬜ Time Mage — Male, Female
+- ⬜ White Mage — Female
+- ⬜ Dark Knight — Male, Female *(WotL — uses `unit_psp/`, needs the GenericJobs mod)*
+- ⬜ Onion Knight — Male, Female *(WotL — uses `unit_psp/`, needs the GenericJobs mod)*
+
+Story characters (Ramza, etc.) are a separate problem — not covered here.
