@@ -714,3 +714,66 @@ To fully fix hair highlight for any job:
 ### Files Created
 
 - `scripts/fix_hair_highlight_spr.py` - SPR file patching script (supports single file or all themes)
+
+---
+
+## Phase 8: It Was Never a Pixel Problem — SectionMapping Data Fix (2026-05-14)
+
+### Breakthrough: the bug is in the SectionMapping JSON, not the sprites
+
+Phases 1–7 (and this session's v1–v6 classifier rewrites) all chased the wrong
+layer. The hair "highlight" pixels are **not wrong** — the *classification* of
+their palette index is. The mod's colour customiser groups palette indices into
+named sections (`SkinColor`, `Hair`, `Armor`, …) via
+`ColorMod/Data/SectionMappings/<Job>.json`. If a hair index is listed under
+`SkinColor`, the hair follows the Skin slider. That's the entire bug.
+
+**Fix = move the mis-classified index from `SkinColor` to the `Hair` section.**
+No sprite editing, no TEX/BMP/SPR patching, no classifier.
+
+### Squire Female — fixed (commit `bdd806de`)
+
+`Squire_Female.json` had `SkinColor: [14, 15]` and `Hair: [12, 13, 11, 10]`.
+Index 14 is actually used for the hair. Fix:
+
+```json
+"Hair":      { "indices": [12, 13, 11, 10, 14], "roles": [..., "highlight"] }
+"SkinColor": { "indices": [15],                 "roles": ["base"] }
+```
+
+Confirmed in-game: hair-near-black no longer leaves skin-coloured speckles, and
+the face/hands (still index 15 = skin) are untouched. `tex_994/995` + the HD BMP
+were reverted to vanilla — the mapping fix supersedes any pixel edit.
+
+### Why every pixel-edit approach failed (don't retry)
+
+Squire Female's palette indices double up:
+- **10–13** = hair **AND** boots **AND** gloves
+- **14–15** = face **AND** hands **AND** the hair highlight
+
+So "a skin pixel inside the hair" is mechanically indistinguishable from "a skin
+pixel next to a glove" or "a face-edge pixel touching the hair" — no
+neighbour/component/region classifier can separate them reliably. Attempts this
+session: v1 component-border-share, v2 connected-component seed+spread, v3 v2 +
+face-component protection — all either over-caught the body/face or under-caught
+the hair. The v6 "JSON-driven" hairtool (`e208dc2c`, `working/hairtool/`) reads
+the SectionMappings but still pixel-remaps — wrong layer. **Retire the hairtool.**
+
+### Next: the other 16 generic jobs
+
+`e208dc2c` carries bad v6 pixel edits for 16 jobs. For each:
+1. Open `ColorMod/Data/SectionMappings/<Job>.json`.
+2. Find the `SkinColor` index that actually paints hair (render an index map and
+   look for a skin index sitting in the hair mass; or deploy vanilla, set hair
+   near-black, see which index speckles).
+3. Move it to the `Hair` section; trim `SkinColor`.
+4. Revert that job's v6 `tex_*.bin` + HD BMP to vanilla.
+5. Verify in-game (see the deploy-pipeline caveat in `handoff.md` — deploys were
+   unreliable this session and must be sorted first).
+
+### Status of prior phases
+
+Phases 1–7's conclusion ("not possible via FFTPack / needs TEX modding / needs
+themed TEX generation") is **superseded**. None of that is needed — the mod
+already supports per-section colour control; the sprites just needed correct
+section data.
