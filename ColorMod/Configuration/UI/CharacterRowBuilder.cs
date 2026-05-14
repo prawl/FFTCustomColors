@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using FFTColorCustomizer.Utilities;
 using FFTColorCustomizer.Services;
@@ -160,10 +161,13 @@ namespace FFTColorCustomizer.Configuration.UI
                     // Update tag for lazy loading
                     carousel.Tag = new { JobName = jobName, Theme = newTheme, Setter = setter };
 
-                    // Only update images if already loaded
+                    // Only update images if already loaded — load off the UI thread so the
+                    // config window stays responsive while sprites decode + palette-swap.
                     if (carousel.HasImagesLoaded)
                     {
-                        UpdateGenericPreviewImages(carousel, jobName, newTheme);
+                        var capturedTheme = newTheme;
+                        ApplyPreviewAsync(carousel, capturedTheme,
+                            () => LoadGenericPreviewImages(jobName, capturedTheme));
                     }
                 }
             };
@@ -260,10 +264,14 @@ namespace FFTColorCustomizer.Configuration.UI
                         Config = characterConfig
                     };
 
-                    // Only update images if already loaded
+                    // Only update images if already loaded — load off the UI thread so the
+                    // config window stays responsive while sprites decode + palette-swap.
                     if (carousel.HasImagesLoaded)
                     {
-                        UpdateStoryCharacterPreview(carousel, characterConfig.PreviewName, newTheme);
+                        var capturedTheme = newTheme;
+                        var previewName = characterConfig.PreviewName;
+                        ApplyPreviewAsync(carousel, capturedTheme,
+                            () => LoadStoryCharacterPreview(previewName, capturedTheme));
                     }
                 }
             };
@@ -323,32 +331,114 @@ namespace FFTColorCustomizer.Configuration.UI
             return themes;
         }
 
+        /// <summary>
+        /// Loads preview images on a background thread, then marshals them onto the carousel
+        /// on the UI thread. Keeps the config window responsive during theme changes — image
+        /// decode + palette swaps are slow enough to visibly freeze the UI if run inline.
+        /// If the user changed the theme again while we were loading, the now-stale result is
+        /// discarded; only the carousel's current theme is ever applied.
+        /// </summary>
+        private static void ApplyPreviewAsync(PreviewCarousel carousel, string capturedTheme, Func<Image[]> loader)
+        {
+            Task.Run(() =>
+            {
+                Image[] images;
+                try
+                {
+                    images = loader() ?? new Image[0];
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogError($"[ApplyPreviewAsync] Failed to load preview for theme '{capturedTheme}': {ex.Message}");
+                    return;
+                }
+
+                if (!carousel.IsHandleCreated || carousel.IsDisposed)
+                {
+                    DisposeImages(images);
+                    return;
+                }
+
+                try
+                {
+                    carousel.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            // The user may have picked a different theme while we were
+                            // loading. Only apply if the carousel still wants this theme.
+                            string currentTheme = (carousel.Tag as dynamic)?.Theme as string;
+                            if (currentTheme == capturedTheme)
+                            {
+                                carousel.SetImages(images);
+                                carousel.Invalidate();
+                            }
+                            else
+                            {
+                                DisposeImages(images);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ModLogger.LogError($"[ApplyPreviewAsync] Failed to apply preview for theme '{capturedTheme}': {ex.Message}");
+                            DisposeImages(images);
+                        }
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    ModLogger.LogError($"[ApplyPreviewAsync] Failed to marshal preview for theme '{capturedTheme}': {ex.Message}");
+                    DisposeImages(images);
+                }
+            });
+        }
+
+        private static void DisposeImages(Image[] images)
+        {
+            if (images == null) return;
+            foreach (var img in images)
+            {
+                try { img?.Dispose(); } catch { }
+            }
+        }
+
+        /// <summary>
+        /// Thin UI-thread wrapper kept for the lazy-load callback and characterization tests:
+        /// loads synchronously and applies to the carousel. The theme-change path uses
+        /// <see cref="LoadGenericPreviewImages"/> via <see cref="ApplyPreviewAsync"/> instead.
+        /// </summary>
         private void UpdateGenericPreviewImages(PreviewCarousel carousel, string jobName, string theme)
+        {
+            carousel.SetImages(LoadGenericPreviewImages(jobName, theme));
+        }
+
+        /// <summary>
+        /// Pure loader for a generic job's preview images — safe to run off the UI thread:
+        /// it touches no Control, only the filesystem, embedded resources and GDI+ bitmaps.
+        /// </summary>
+        private Image[] LoadGenericPreviewImages(string jobName, string theme)
         {
             // If we don't have a valid mod path, don't load embedded resources
             // This ensures tests can verify that without a proper mod installation, no images load
             if (!_previewManager.HasValidModPath())
             {
-                carousel.SetImages(new Image[0]);
-                return;
+                return new Image[0];
             }
 
             // Try HD BMP path first — crisp preview if we have a sprite-sheet for this job
             var bmpImages = TryLoadGenericFromBmp(jobName, theme);
             if (bmpImages != null && bmpImages.Length > 0)
             {
-                carousel.SetImages(bmpImages);
                 ModLogger.LogSuccess($"Loaded {bmpImages.Length} HD sprites for {jobName} - {theme}");
-                return;
+                return bmpImages;
             }
 
             // Fall back to .bin extraction (legacy pixelated path)
             var binImages = TryLoadGenericFromBinFile(jobName, theme);
             if (binImages != null && binImages.Length > 0)
             {
-                carousel.SetImages(binImages);
                 ModLogger.LogSuccess($"Loaded {binImages.Length} sprites from .bin file for {jobName} - {theme}");
-                return;
+                return binImages;
             }
 
             string fileName = jobName.ToLower()
@@ -391,9 +481,8 @@ namespace FFTColorCustomizer.Configuration.UI
             // If we loaded any directional sprites, use them
             if (images.Count > 0)
             {
-                carousel.SetImages(images.ToArray());
                 ModLogger.LogSuccess($"Loaded {images.Count} directional views for {jobName} - {theme}");
-                return;
+                return images.ToArray();
             }
 
             // Fall back to original single-image loading
@@ -448,29 +537,42 @@ namespace FFTColorCustomizer.Configuration.UI
                 }
             }
 
-            // Set the images in the carousel
+            // Return whatever directional views we managed to load (possibly none)
             if (images.Count > 0)
             {
-                carousel.SetImages(images.ToArray());
                 ModLogger.LogSuccess($"Loaded {images.Count} directional views for {jobName} - {theme}");
+                return images.ToArray();
             }
-            else
-            {
-                carousel.SetImages(new Image[0]);
-                ModLogger.Log($"No preview images found for {jobName} - {theme}");
-            }
+
+            ModLogger.Log($"No preview images found for {jobName} - {theme}");
+            return new Image[0];
         }
 
+        /// <summary>
+        /// Thin UI-thread wrapper kept for the lazy-load callback and characterization tests:
+        /// loads synchronously and applies to the carousel. The theme-change path uses
+        /// <see cref="LoadStoryCharacterPreview"/> via <see cref="ApplyPreviewAsync"/> instead.
+        /// </summary>
         private void UpdateStoryCharacterPreview(PreviewCarousel carousel, string characterName, string theme)
         {
-            ModLogger.Log($"[UpdateStoryCharacterPreview] Called with characterName='{characterName}', theme='{theme}'");
+            carousel.SetImages(LoadStoryCharacterPreview(characterName, theme));
+            carousel.Invalidate();
+            carousel.Refresh();
+        }
+
+        /// <summary>
+        /// Pure loader for a story character's preview images — safe to run off the UI thread:
+        /// it touches no Control, only the filesystem, embedded resources and GDI+ bitmaps.
+        /// </summary>
+        private Image[] LoadStoryCharacterPreview(string characterName, string theme)
+        {
+            ModLogger.Log($"[LoadStoryCharacterPreview] Called with characterName='{characterName}', theme='{theme}'");
 
             // If we don't have a valid mod path, don't load embedded resources
             // This ensures tests can verify that without a proper mod installation, no images load
             if (!_previewManager.HasValidModPath())
             {
-                carousel.SetImages(new Image[0]);
-                return;
+                return new Image[0];
             }
 
             // Get the mod path from PreviewImageManager
@@ -487,11 +589,8 @@ namespace FFTColorCustomizer.Configuration.UI
                     var userThemeImages = TryLoadRamzaUserThemePreview(modPath, characterName, theme);
                     if (userThemeImages != null && userThemeImages.Length > 0)
                     {
-                        carousel.SetImages(userThemeImages);
-                        carousel.Invalidate();
-                        carousel.Refresh();
                         ModLogger.LogSuccess($"Loaded {userThemeImages.Length} sprites from user theme for {characterName} - {theme}");
-                        return;
+                        return userThemeImages;
                     }
                 }
 
@@ -503,18 +602,14 @@ namespace FFTColorCustomizer.Configuration.UI
                 {
                     // Convert Bitmap list to Image array for carousel
                     var spriteImageArray = spriteImages.Cast<Image>().ToArray();
-                    carousel.SetImages(spriteImageArray);
-                    carousel.Invalidate();
-                    carousel.Refresh();
                     ModLogger.LogSuccess($"Loaded {spriteImageArray.Length} sprites from sprite sheet for {characterName} - {theme}");
-                    return;
+                    return spriteImageArray;
                 }
                 else
                 {
                     // For Ramza, if no sprite sheet found for this theme, show empty preview
                     ModLogger.LogDebug($"No sprite sheet found for {characterName} - {theme}, showing empty preview");
-                    carousel.SetImages(new Image[0]);
-                    return;
+                    return new Image[0];
                 }
             }
 
@@ -530,11 +625,8 @@ namespace FFTColorCustomizer.Configuration.UI
                 var userThemeImages = TryLoadStoryCharacterUserThemeFromBinFile(modPath, unitPath, spriteFileName, characterName, theme);
                 if (userThemeImages != null && userThemeImages.Length > 0)
                 {
-                    carousel.SetImages(userThemeImages);
-                    carousel.Invalidate();
-                    carousel.Refresh();
                     ModLogger.LogSuccess($"Loaded user theme preview for {characterName} - {theme}");
-                    return;
+                    return userThemeImages;
                 }
             }
 
@@ -547,11 +639,8 @@ namespace FFTColorCustomizer.Configuration.UI
                 if (hdImages != null && hdImages.Count > 0)
                 {
                     var hdArray = hdImages.Cast<Image>().ToArray();
-                    carousel.SetImages(hdArray);
-                    carousel.Invalidate();
-                    carousel.Refresh();
                     ModLogger.LogSuccess($"Loaded {hdArray.Length} HD sprites for {characterName} - {theme}");
-                    return;
+                    return hdArray;
                 }
             }
 
@@ -560,11 +649,8 @@ namespace FFTColorCustomizer.Configuration.UI
             var binImages = TryLoadFromBinFileWithTheme(characterName, theme);
             if (binImages != null && binImages.Length > 0)
             {
-                carousel.SetImages(binImages);
-                carousel.Invalidate();
-                carousel.Refresh();
                 ModLogger.LogSuccess($"Loaded {binImages.Length} sprites from .bin file for {characterName} - {theme}");
-                return;
+                return binImages;
             }
             else
             {
@@ -604,9 +690,8 @@ namespace FFTColorCustomizer.Configuration.UI
             // If we loaded any directional sprites, use them
             if (images.Count > 0)
             {
-                carousel.SetImages(images.ToArray());
                 ModLogger.LogSuccess($"Loaded {images.Count} directional views for story character {characterName} - {theme}");
-                return;
+                return images.ToArray();
             }
 
             // Fall back to single image loading using PreviewImageManager
@@ -617,16 +702,16 @@ namespace FFTColorCustomizer.Configuration.UI
                     _previewManager.UpdateStoryCharacterPreview(tempPictureBox, characterName, theme);
                     if (tempPictureBox.Image != null)
                     {
-                        carousel.SetImages(new Image[] { tempPictureBox.Image });
                         ModLogger.LogDebug($"Loaded single view for story character {characterName} - {theme}");
+                        // PictureBox.Dispose() does not dispose its Image, so this ref stays valid.
+                        return new Image[] { tempPictureBox.Image };
                     }
-                    else
-                    {
-                        carousel.SetImages(new Image[0]);
-                        ModLogger.LogDebug($"No preview images found for story character {characterName} - {theme}");
-                    }
+
+                    ModLogger.LogDebug($"No preview images found for story character {characterName} - {theme}");
                 }
             }
+
+            return new Image[0];
         }
 
         private Image[] TryLoadFromBinFileWithTheme(string characterName, string theme)

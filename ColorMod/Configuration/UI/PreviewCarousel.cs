@@ -72,9 +72,10 @@ namespace FFTColorCustomizer.Configuration.UI
                     _images = null;
                 }
 
-                // Force immediate cleanup
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
+                // Old images were disposed above; let the GC reclaim them on its own
+                // schedule. A forced GC.Collect() + WaitForPendingFinalizers() here ran a
+                // full blocking collection on the UI thread on every image swap — a
+                // guaranteed stutter during theme changes.
 
                 // Store the current orientation before changing images
                 var previousIndex = CurrentViewIndex;
