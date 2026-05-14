@@ -259,32 +259,27 @@ every job's tex + bmp, are there any fully-hair-enclosed index-15 islands?"
   special-pose work). His special poses are **not** done. Redo his whole sheet
   (tex_992/993 + HD BMP) with the current pipeline.
 
-### Remaining — 39 generic jobs
+### Remaining
 
-Each needs the Type B process (or Type A if its highlight has a dedicated
-index). Tex numbers for ~18 of these are in the Job → file reference table
-above; the rest need their tex numbers looked up.
+Only jobs whose sprites actually **show hair** need the fix — armored,
+helmeted, hooded, or big-hat jobs don't have the bug. The roster that needs
+it (per in-game inspection):
 
-- ⬜ Archer — Male, Female
-- ⬜ Bard — Male *(male-only job)*
-- ⬜ Black Mage — Male, Female
-- ⬜ Calculator — Male, Female
-- ⬜ Chemist — Male, Female
-- ⬜ Dancer — Female *(female-only job)*
-- ⬜ Dragoon — Male, Female
-- ⬜ Geomancer — Male, Female
+- ⬜ Chemist — Female
 - ⬜ Knight — Male, Female
-- ⬜ Mediator — Male, Female
-- ⬜ Mime — Male, Female
-- ⬜ Monk — Male, Female
-- ⬜ Mystic — Male, Female
-- ⬜ Ninja — Male, Female
-- ⬜ Samurai — Male, Female
+- ⬜ Archer — Male, Female
+- ⬜ Monk — Female
+- ⬜ Time Mage — Female
 - ⬜ Summoner — Male, Female
-- ⬜ Thief — Male, Female
-- ⬜ Time Mage — Male, Female
-- ⬜ White Mage — Female
-- ⬜ Dark Knight — Male, Female *(WotL — uses `unit_psp/`, needs the GenericJobs mod)*
-- ⬜ Onion Knight — Male, Female *(WotL — uses `unit_psp/`, needs the GenericJobs mod)*
+- ⬜ Mediator — Female
+- ⬜ Mystic — Female
+- ⬜ Geomancer — Male, Female
+- ⬜ Samurai — Female
+- ⬜ Ninja — Female
+- ⬜ Calculator — Male, Female
+- ⬜ Bard *(male-only job)*
+- ⬜ Dancer *(female-only job)*
 
-Story characters (Ramza, etc.) are a separate problem — not covered here.
+(Squire Male also remains — see **Partial** above.) Tex numbers for some are
+in the Job → file reference table above; the rest need looking up. Story
+characters (Ramza, etc.) are a separate problem — not covered here.
