@@ -82,6 +82,7 @@ extraction.log
 # Working directories (not for deployment)
 extracted_sprites/
 processed_sprites/
+working/
 
 # Individual test sprites in root (not the FFTIVC ones)
 /battle_*.bin
