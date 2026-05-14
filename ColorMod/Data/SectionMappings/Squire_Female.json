@@ -17,14 +17,14 @@
     {
       "name": "Hair",
       "displayName": "Hair",
-      "indices": [12, 13, 11, 10],
-      "roles": ["base", "shadow", "shadow", "outline"]
+      "indices": [12, 13, 11, 10, 14],
+      "roles": ["base", "shadow", "shadow", "outline", "highlight"]
     },
     {
       "name": "SkinColor",
       "displayName": "Skin Color",
-      "indices": [14, 15],
-      "roles": ["base", "shadow"]
+      "indices": [15],
+      "roles": ["base"]
     }
   ]
 }
