@@ -281,5 +281,20 @@ it (per in-game inspection):
 - ⬜ Dancer *(female-only job)*
 
 (Squire Male also remains — see **Partial** above.) Tex numbers for some are
-in the Job → file reference table above; the rest need looking up. Story
-characters (Ramza, etc.) are a separate problem — not covered here.
+in the Job → file reference table above; the rest need looking up.
+
+### Story characters
+
+These story characters also show hair and need the fix — but they are **not**
+covered by the generic-job process above. Story sprites have their own file
+layout, and Ramza has a separate TEX system entirely (`RamzaThemeCoordinator`
+et al.). Treat as a separate effort; investigate each character's file layout
+first.
+
+- ⬜ Agrias
+- ⬜ Beowulf
+- ⬜ Cloud
+- ⬜ Mustadio
+- ⬜ Ramza — all chapters (Ch1, Ch2/3, Ch4)
+- ⬜ Rapha
+- ⬜ Reis
