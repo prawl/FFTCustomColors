@@ -110,10 +110,15 @@ carries a number that may *not* match the TEX number (see Squire Male).
 All tooling is in `scripts/hair_fix/`. Use `python` (not `python3`); stdlib
 only, no PIL. Put intermediates in `working/` (gitignored).
 
+> ⚠ **The example commands below hardcode `--hair 10,11,12`** — that's *White
+> Mage Male's* hair indices, shown as a concrete example. **Substitute the
+> job's own hair indices** (from step 0). For **Squire Male** (next up) it's
+> `--hair 11,12,13`.
+
 ### 0. Gather
 
 - The job's TEX pair (`tex_N`, `tex_N+1`) and HD BMP — see the **Job → file
-  reference** table below. It's a guide, not gospel — verify per job (e.g.
+  reference** table above. It's a guide, not gospel — verify per job (e.g.
   Squire Male's HD BMP is numbered `924` but its tex pair is `992/993`).
 - The job's **hair indices** from `ColorMod/Data/SectionMappings/<Job>.json` —
   the `indices` of the Hair / BootsAndHair / HairBootsGloves section.
@@ -132,9 +137,10 @@ python scripts/hair_fix/hairclassify.py <vanilla_tex_N+1> working/t_N1.bin --hai
 ```
 
 `--maxy 12` is the cutoff: the top 12 rows of each slot = the hair region.
-12 worked for WMM and Squire Male. If unsure, add `--debugline 9` to paint a
-bright cutoff line, render with `tex2png.py`, eyeball, and adjust `--maxy`
-until the line sits just below the hair.
+12 worked for White Mage Male — a reasonable starting point, but verify per
+job: add `--debugline 9` to paint a bright cutoff line, render with
+`tex2png.py`, eyeball it, and adjust `--maxy` until the line sits just below
+the hair.
 
 ### 2. TEX — flood-fill the special poses
 
@@ -155,10 +161,12 @@ python scripts/hair_fix/persprite.py working/t_N1.bin working/t_N1.bin --floodfi
 python scripts/hair_fix/gridnumber.py working/t_N.bin working/grid.png 3
 ```
 
-Open `grid.png`. Skin is forced **red**, so a remaining stray shows as **red
-inside the gold hair**. Note the cell numbers that still have strays.
-Body/limb-only cells have no hair — ignore. Red in the *face* is correct —
-leave it.
+Open `grid.png` — this numbered grid (skin forced **red**, magenta
+background) is the key review artifact. A remaining stray shows as **red
+inside the gold hair**; note those cell numbers. Body/limb-only cells have no
+hair — ignore. Red in the *face* is correct — leave it. Worth showing to a
+human: a fresh pair of eyes catches strays fast, and they know which poses
+show hair.
 
 ### 4. Targeted flood-fill for stragglers
 
