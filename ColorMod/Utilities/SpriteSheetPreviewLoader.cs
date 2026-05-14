@@ -39,7 +39,17 @@ namespace FFTColorCustomizer.Utilities
                 var themedBmpPath = ResolveSpriteSheetPath(characterName, themedImagesPath);
                 if (themedBmpPath != null)
                 {
-                    using (var bmp = BmpPaletteSwapper.LoadWithOriginalPalette(themedBmpPath))
+                    // Themed Ramza sheets are exported as non-indexed 24bpp with their
+                    // transparent background baked to solid black. Recover transparency from
+                    // the matching indexed "original" sheet, which still carries the index-0
+                    // background mask. (Indexed themed BMPs ignore the mask — see
+                    // BmpPaletteSwapper.LoadWithTransparencyMask.)
+                    var maskImagesDir = Path.Combine(_basePath, "Images", characterName, "original");
+                    var maskBmpPath = Directory.Exists(maskImagesDir)
+                        ? ResolveSpriteSheetPath(characterName, maskImagesDir)
+                        : null;
+
+                    using (var bmp = BmpPaletteSwapper.LoadWithTransparencyMask(themedBmpPath, maskBmpPath))
                     {
                         var themedSprites = _extractor.ExtractAllDirections(bmp, characterName);
                         return new List<Bitmap>

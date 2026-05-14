@@ -1,6 +1,8 @@
+using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace FFTColorCustomizer.Utilities
 {
@@ -64,6 +66,134 @@ namespace FFTColorCustomizer.Utilities
             var bmp = new Bitmap(bmpPath);
             NormalizeIndex0Transparency(bmp);
             return bmp;
+        }
+
+        /// <summary>
+        /// Loads a themed sprite-sheet BMP whose transparency may have been lost. The export
+        /// pipeline flattens some themed sheets (notably Ramza's per-theme BMPs) to a
+        /// non-indexed 24bpp format with the transparent background baked to solid black —
+        /// which renders as a black box behind the sprite.
+        ///
+        /// When <paramref name="bmpPath"/> is non-indexed, transparency is recovered from
+        /// <paramref name="maskBmpPath"/> — the matching <em>indexed</em> "original" sheet —
+        /// by treating every pixel that is palette index 0 in the mask as transparent. The
+        /// two sheets share an identical layout, so this restores the alpha channel without
+        /// guessing: a pixel the export rendered pure black is dropped only if the indexed
+        /// original says it is background, never because of its colour.
+        ///
+        /// When <paramref name="bmpPath"/> is itself indexed it carries its own index-0
+        /// transparency, so this behaves exactly like <see cref="LoadWithOriginalPalette"/>
+        /// and the mask is ignored. If the mask is missing or a different size, the themed
+        /// BMP is returned as-is — the preview degrades to the black box rather than crashing.
+        /// </summary>
+        public static Bitmap LoadWithTransparencyMask(string bmpPath, string maskBmpPath)
+        {
+            var bmp = new Bitmap(bmpPath);
+
+            // Indexed themed sheet: self-describing, same as the plain original-palette load.
+            if ((bmp.PixelFormat & PixelFormat.Indexed) != 0)
+            {
+                NormalizeIndex0Transparency(bmp);
+                return bmp;
+            }
+
+            // Non-indexed themed sheet: recover transparency from the indexed original.
+            bool[,] isBackground = TryReadIndex0Mask(maskBmpPath, bmp.Width, bmp.Height);
+            if (isBackground == null)
+                return bmp; // no usable mask — degrade gracefully
+
+            var result = new Bitmap(bmp.Width, bmp.Height, PixelFormat.Format32bppArgb);
+            try
+            {
+                for (int y = 0; y < bmp.Height; y++)
+                {
+                    for (int x = 0; x < bmp.Width; x++)
+                    {
+                        if (isBackground[x, y])
+                        {
+                            result.SetPixel(x, y, Color.Transparent);
+                        }
+                        else
+                        {
+                            var c = bmp.GetPixel(x, y);
+                            result.SetPixel(x, y, Color.FromArgb(255, c.R, c.G, c.B));
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                bmp.Dispose();
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Reads <paramref name="maskBmpPath"/> (an indexed bitmap) into a [width, height]
+        /// grid that is true wherever the mask pixel is palette index 0. Returns null —
+        /// meaning "no usable mask" — if the file is missing, not indexed, a different size
+        /// than <paramref name="width"/> x <paramref name="height"/>, or fails to decode.
+        /// </summary>
+        private static bool[,] TryReadIndex0Mask(string maskBmpPath, int width, int height)
+        {
+            if (string.IsNullOrEmpty(maskBmpPath) || !File.Exists(maskBmpPath))
+                return null;
+
+            try
+            {
+                using (var mask = new Bitmap(maskBmpPath))
+                {
+                    if (mask.Width != width || mask.Height != height)
+                        return null;
+                    if ((mask.PixelFormat & PixelFormat.Indexed) == 0)
+                        return null;
+
+                    int bpp = Image.GetPixelFormatSize(mask.PixelFormat);
+                    var rect = new Rectangle(0, 0, width, height);
+                    var data = mask.LockBits(rect, ImageLockMode.ReadOnly, mask.PixelFormat);
+                    try
+                    {
+                        var buffer = new byte[Math.Abs(data.Stride) * height];
+                        Marshal.Copy(data.Scan0, buffer, 0, buffer.Length);
+
+                        var result = new bool[width, height];
+                        for (int y = 0; y < height; y++)
+                        {
+                            int row = y * data.Stride;
+                            for (int x = 0; x < width; x++)
+                            {
+                                int index;
+                                switch (bpp)
+                                {
+                                    case 4:
+                                        byte packed = buffer[row + (x >> 1)];
+                                        index = (x & 1) == 0 ? (packed >> 4) : (packed & 0x0F);
+                                        break;
+                                    case 8:
+                                        index = buffer[row + x];
+                                        break;
+                                    case 1:
+                                        byte bits = buffer[row + (x >> 3)];
+                                        index = (bits >> (7 - (x & 7))) & 1;
+                                        break;
+                                    default:
+                                        return null; // unexpected indexed depth
+                                }
+                                result[x, y] = index == 0;
+                            }
+                        }
+                        return result;
+                    }
+                    finally
+                    {
+                        mask.UnlockBits(data);
+                    }
+                }
+            }
+            catch
+            {
+                return null; // any decode/lock failure — degrade gracefully
+            }
         }
 
         /// <summary>
