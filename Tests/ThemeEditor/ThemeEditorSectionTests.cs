@@ -2490,5 +2490,202 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             Assert.Equal("100%", satLabel.Text);
             Assert.Equal("50%", litLabel.Text);
         }
+
+        // -----------------------------------------------------------------
+        // Theme editor: "Compare" checkbox — toggles a second sprite preview
+        // showing the ORIGINAL palette next to the modified one. Lets the user
+        // see at a glance what's changed. Originally on the abandoned
+        // 'improvements' branch (commit 305d7228); ported clean here without
+        // the Randomize feature it shipped alongside.
+        // -----------------------------------------------------------------
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasShowOriginalCheckbox()
+        {
+            using var panel = new ThemeEditorPanel();
+
+            var checkbox = panel.Controls.OfType<CheckBox>()
+                .FirstOrDefault(c => c.Name == "ShowOriginalCheckbox");
+
+            Assert.NotNull(checkbox);
+            Assert.Equal("Compare", checkbox!.Text);
+            Assert.False(checkbox.Checked); // Off by default
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_HasOriginalSpritePreview_HiddenByDefault()
+        {
+            using var panel = new ThemeEditorPanel();
+
+            var originalPreview = panel.Controls.OfType<PictureBox>()
+                .FirstOrDefault(c => c.Name == "OriginalSpritePreview");
+            var originalLabel = panel.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Name == "OriginalSpritePreviewLabel");
+
+            Assert.NotNull(originalPreview);
+            Assert.NotNull(originalLabel);
+            Assert.False(originalPreview!.Visible, "Original preview should be hidden until Compare is checked");
+            Assert.False(originalLabel!.Visible, "Original label should be hidden until Compare is checked");
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_OriginalSpritePreview_IsRotatable()
+        {
+            // Both previews share a rotation cycle, so the original side must
+            // also be a RotatableSpritePictureBox (gets the stone-tile bg + the
+            // overlay arrows for free, and clicks on it rotate both previews
+            // together).
+            using var panel = new ThemeEditorPanel();
+
+            var originalPreview = panel.Controls.OfType<PictureBox>()
+                .FirstOrDefault(c => c.Name == "OriginalSpritePreview");
+
+            Assert.NotNull(originalPreview);
+            Assert.IsAssignableFrom<FFTColorCustomizer.Configuration.UI.RotatableSpritePictureBox>(originalPreview);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_WhenCompareChecked_OriginalSpritePreviewBecomesVisible()
+        {
+            using var panel = new ThemeEditorPanel();
+            var checkbox = panel.Controls.OfType<CheckBox>()
+                .First(c => c.Name == "ShowOriginalCheckbox");
+            var originalPreview = panel.Controls.OfType<PictureBox>()
+                .First(c => c.Name == "OriginalSpritePreview");
+            var originalLabel = panel.Controls.OfType<Label>()
+                .First(l => l.Name == "OriginalSpritePreviewLabel");
+
+            checkbox.Checked = true;
+
+            Assert.True(originalPreview.Visible);
+            Assert.True(originalLabel.Visible);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_WhenCompareChecked_BothPreviewsKeepFullSize_ModifiedOnTop()
+        {
+            // Both previews stay full-size — no shrinking — and the MODIFIED
+            // preview stays in the top slot (where the user has been looking
+            // the whole time), with the Original tucked underneath. Stacking
+            // keeps detail visible on the small sprites; side-by-side at
+            // half-scale loses too much.
+            using var panel = new ThemeEditorPanel();
+            var checkbox = panel.Controls.OfType<CheckBox>()
+                .First(c => c.Name == "ShowOriginalCheckbox");
+            var modified = panel.Controls.OfType<PictureBox>()
+                .First(c => c.Name == "SpritePreview");
+            var originalPreview = panel.Controls.OfType<PictureBox>()
+                .First(c => c.Name == "OriginalSpritePreview");
+            var fullWidth = modified.Width;
+            var fullHeight = modified.Height;
+            var modifiedTopBefore = modified.Top;
+
+            checkbox.Checked = true;
+
+            // Sizes unchanged.
+            Assert.Equal(fullWidth, modified.Width);
+            Assert.Equal(fullHeight, modified.Height);
+            Assert.Equal(fullWidth, originalPreview.Width);
+            Assert.Equal(fullHeight, originalPreview.Height);
+
+            // Modified stays put in the top slot; Original drops in below.
+            Assert.Equal(modifiedTopBefore, modified.Top);
+            Assert.True(originalPreview.Top > modified.Top,
+                $"Original should be below Modified. Original.Top={originalPreview.Top}, Modified.Top={modified.Top}");
+            Assert.True(originalPreview.Top >= modified.Bottom,
+                $"Original should not overlap Modified. Original.Top={originalPreview.Top}, Modified.Bottom={modified.Bottom}");
+            Assert.Equal(modified.Left, originalPreview.Left);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_WhenCompareUnchecked_OriginalHides_ModifiedStaysPut()
+        {
+            // Modified never moves — it's always in the top slot. Original just
+            // appears below it on Compare ON, hides on Compare OFF.
+            using var panel = new ThemeEditorPanel();
+            var checkbox = panel.Controls.OfType<CheckBox>()
+                .First(c => c.Name == "ShowOriginalCheckbox");
+            var modified = panel.Controls.OfType<PictureBox>()
+                .First(c => c.Name == "SpritePreview");
+            var originalPreview = panel.Controls.OfType<PictureBox>()
+                .First(c => c.Name == "OriginalSpritePreview");
+            var fullWidth = modified.Width;
+            var fullHeight = modified.Height;
+            var modifiedTop = modified.Top;
+
+            checkbox.Checked = true;
+            checkbox.Checked = false;
+
+            Assert.Equal(fullWidth, modified.Width);
+            Assert.Equal(fullHeight, modified.Height);
+            Assert.Equal(modifiedTop, modified.Top);
+            Assert.False(originalPreview.Visible);
+        }
+
+        [Fact]
+        [STAThread]
+        public void ThemeEditorPanel_OriginalSpritePreview_PaintsUnmodifiedColors_EvenAfterEdits()
+        {
+            // Integration test: load a real sprite, scribble on the modified
+            // palette, and verify the ORIGINAL preview still reflects the
+            // untouched palette. This is the whole point of Compare.
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ThemeEditorCompareTest_" + Guid.NewGuid().ToString("N"));
+            var mappingsDir = System.IO.Path.Combine(tempDir, "mappings");
+            var spritesDir = System.IO.Path.Combine(tempDir, "sprites");
+            var spritesOriginalDir = System.IO.Path.Combine(spritesDir, "sprites_original");
+            System.IO.Directory.CreateDirectory(mappingsDir);
+            System.IO.Directory.CreateDirectory(spritesOriginalDir);
+
+            try
+            {
+                var mappingJson = @"{
+                    ""job"": ""Knight_Male"",
+                    ""sprite"": ""battle_knight_m_spr.bin"",
+                    ""sections"": [
+                        {
+                            ""name"": ""Armor"",
+                            ""displayName"": ""Armor"",
+                            ""indices"": [3],
+                            ""roles"": [""base""]
+                        }
+                    ]
+                }";
+                System.IO.File.WriteAllText(System.IO.Path.Combine(mappingsDir, "Knight_Male.json"), mappingJson);
+
+                var spriteData = new byte[2048];
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(spritesOriginalDir, "battle_knight_m_spr.bin"), spriteData);
+
+                using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
+                var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
+                var checkbox = panel.Controls.OfType<CheckBox>().First(c => c.Name == "ShowOriginalCheckbox");
+
+                templateDropdown.SelectedItem = "Knight (Male)";
+                Assert.NotNull(panel.PaletteModifier);
+
+                // Capture the original-side palette BEFORE turning on Compare
+                // (it should be loaded eagerly so Compare flips on instantly).
+                var originalColorBefore = panel.OriginalPaletteModifier?.GetPaletteColor(3);
+                Assert.NotNull(originalColorBefore);
+
+                // Mutate the working palette through the modifier
+                panel.PaletteModifier!.SetPaletteColor(3, System.Drawing.Color.HotPink);
+
+                checkbox.Checked = true;
+
+                var originalColorAfter = panel.OriginalPaletteModifier?.GetPaletteColor(3);
+                Assert.Equal(originalColorBefore, originalColorAfter); // original stays put
+                Assert.NotEqual(originalColorAfter, panel.PaletteModifier.GetPaletteColor(3)); // modified diverged
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
     }
 }

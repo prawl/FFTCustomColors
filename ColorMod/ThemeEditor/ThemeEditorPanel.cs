@@ -18,6 +18,11 @@ namespace FFTColorCustomizer.ThemeEditor
         private Label _spritePreviewLabel;
         private Label _colorSelectionLabel;
         private RotatableSpritePictureBox _spritePreview;
+        // Compare feature — shows the unmodified sprite next to the live one
+        // so the user can see at a glance what their edits have changed.
+        private Label _originalSpritePreviewLabel;
+        private RotatableSpritePictureBox _originalSpritePreview;
+        private CheckBox _showOriginalCheckbox;
         private Label _themeNameLabel;
         private TextBox _themeNameInput;
         private Button _saveButton;
@@ -35,6 +40,18 @@ namespace FFTColorCustomizer.ThemeEditor
         public SectionMapping? CurrentMapping { get; private set; }
         public int CurrentSpriteDirection { get; private set; } = 5; // Default to SW (Southwest)
         public PaletteModifier? PaletteModifier { get; private set; }
+        // Pristine snapshot of the same template, never mutated. Loaded
+        // alongside PaletteModifier so the Compare overlay can show the
+        // untouched palette regardless of what the user has edited.
+        public PaletteModifier? OriginalPaletteModifier { get; private set; }
+
+        // Sprite preview sizes. Both previews stay full-size at all times —
+        // when Compare is on they stack vertically (Original above Modified)
+        // so neither loses pixel detail. Class-level so InitializeComponents
+        // and OnShowOriginalCheckedChanged share the same numbers.
+        private const int FullPreviewWidth = 192;   // 6x scale (32 * 6)
+        private const int FullPreviewHeight = 240;  // 6x scale (40 * 6)
+        private const int ComparePreviewVerticalGap = 30; // room for the "Modified" label between the two previews
         public bool HasUnsavedChanges { get; private set; }
 
         public event EventHandler? ThemeSaved;
@@ -269,6 +286,49 @@ namespace FFTColorCustomizer.ThemeEditor
             _spritePreview.RotateLeftRequested += OnRotateLeft;
             _spritePreview.RotateRightRequested += OnRotateRight;
 
+            // Compare feature: a parallel "Original" preview (hidden by default)
+            // and a checkbox that toggles it on. When on, both previews shrink
+            // so they fit side-by-side in the same column. Both share the same
+            // rotation cycle — clicking either one rotates both.
+            _originalSpritePreviewLabel = new Label
+            {
+                Name = "OriginalSpritePreviewLabel",
+                Text = "Original",
+                Left = padding,
+                Top = row3Top,
+                AutoSize = true,
+                Visible = false
+            };
+
+            _originalSpritePreview = new RotatableSpritePictureBox
+            {
+                Name = "OriginalSpritePreview",
+                Width = FullPreviewWidth,
+                Height = FullPreviewHeight,
+                Left = padding,
+                Top = contentTop,
+                BorderStyle = BorderStyle.None,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Visible = false
+            };
+            _originalSpritePreview.RotateLeftRequested += OnRotateLeft;
+            _originalSpritePreview.RotateRightRequested += OnRotateRight;
+
+            _showOriginalCheckbox = new CheckBox
+            {
+                Name = "ShowOriginalCheckbox",
+                Text = "Compare",
+                Left = padding,
+                Top = contentTop + previewHeight + 35,
+                Width = 90,
+                Height = 20,
+                ForeColor = Color.LightGray,
+                Cursor = Cursors.Hand
+            };
+            _showOriginalCheckbox.CheckedChanged += OnShowOriginalCheckedChanged;
+            var compareTip = new ToolTip();
+            compareTip.SetToolTip(_showOriginalCheckbox, "Show the original sprite next to your modified version for comparison");
+
             // Color pickers panel - extends to bottom
             _sectionColorPickersPanel = new Panel
             {
@@ -290,6 +350,9 @@ namespace FFTColorCustomizer.ThemeEditor
             Controls.Add(_spritePreviewLabel);
             Controls.Add(_colorSelectionLabel);
             Controls.Add(_spritePreview);
+            Controls.Add(_originalSpritePreview);
+            Controls.Add(_originalSpritePreviewLabel);
+            Controls.Add(_showOriginalCheckbox);
             Controls.Add(_sectionColorPickersPanel);
 
             // Set initial sizes for dynamic panels
@@ -421,7 +484,15 @@ namespace FFTColorCustomizer.ThemeEditor
                     {
                         PaletteModifier = new PaletteModifier();
                         PaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
+
+                        // Compare baseline — second loader on the same template,
+                        // never mutated. Painting the Original side just calls
+                        // OriginalPaletteModifier.GetPreview(direction).
+                        OriginalPaletteModifier = new PaletteModifier();
+                        OriginalPaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
+
                         UpdateSpritePreview();
+                        UpdateOriginalSpritePreview();
                     }
                 }
 
@@ -567,6 +638,14 @@ namespace FFTColorCustomizer.ThemeEditor
             _spritePreview.Image = PaletteModifier.GetPreview(CurrentSpriteDirection);
         }
 
+        private void UpdateOriginalSpritePreview()
+        {
+            if (OriginalPaletteModifier == null || !OriginalPaletteModifier.IsLoaded)
+                return;
+
+            _originalSpritePreview.Image = OriginalPaletteModifier.GetPreview(CurrentSpriteDirection);
+        }
+
         // All 8 directions cycle (clockwise): SW(5) → S(4) → SE(3) → E(2) → NE(1) → N(0) → NW(7) → W(6) → SW(5)
         private static readonly int[] DirectionsCycle = { 5, 4, 3, 2, 1, 0, 7, 6 };
 
@@ -580,6 +659,8 @@ namespace FFTColorCustomizer.ThemeEditor
             currentIndex = (currentIndex - 1 + DirectionsCycle.Length) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
             UpdateSpritePreview();
+            if (_showOriginalCheckbox != null && _showOriginalCheckbox.Checked)
+                UpdateOriginalSpritePreview();
         }
 
         private void OnRotateRight(object? sender, System.EventArgs e)
@@ -589,6 +670,68 @@ namespace FFTColorCustomizer.ThemeEditor
             currentIndex = (currentIndex + 1) % DirectionsCycle.Length;
             CurrentSpriteDirection = DirectionsCycle[currentIndex];
             UpdateSpritePreview();
+            if (_showOriginalCheckbox != null && _showOriginalCheckbox.Checked)
+                UpdateOriginalSpritePreview();
+        }
+
+        // Layout swap when Compare is toggled. Both previews stay full-size.
+        // The Modified preview NEVER MOVES — it stays in the top slot the user
+        // has been looking at the whole time. When Compare is ON, the label
+        // changes from "Sprite Preview" to "Modified", and the Original drops
+        // in beneath it (with its own "Original" label between them). The
+        // Compare checkbox slides down to clear the bottom preview, and we
+        // grow the panel so the bottom of the Original (and the checkbox)
+        // don't get clipped. When Compare is OFF, the label reverts and the
+        // Original hides; panel snaps back to its single-preview min height.
+        private void OnShowOriginalCheckedChanged(object? sender, EventArgs e)
+        {
+            const int padding = 10;
+            const int row3Top = 65;
+            const int labelHeight = 20;
+            const int contentTop = row3Top + labelHeight + 5;
+            const int checkboxBottomMargin = 15;
+
+            if (_showOriginalCheckbox.Checked)
+            {
+                // Modified stays put in the top slot; just relabel it.
+                _spritePreviewLabel.Text = "Modified";
+
+                // Original drops in below.
+                var originalLabelTop = contentTop + FullPreviewHeight + ComparePreviewVerticalGap - labelHeight - 5;
+                var originalTop = contentTop + FullPreviewHeight + ComparePreviewVerticalGap;
+                _originalSpritePreviewLabel.Left = padding;
+                _originalSpritePreviewLabel.Top = originalLabelTop;
+                _originalSpritePreview.Left = padding;
+                _originalSpritePreview.Top = originalTop;
+
+                // Checkbox beneath the new bottom preview.
+                _showOriginalCheckbox.Top = originalTop + FullPreviewHeight + 5;
+
+                // Grow the panel so the checkbox + bottom preview aren't clipped.
+                var requiredHeight = _showOriginalCheckbox.Top + _showOriginalCheckbox.Height + checkboxBottomMargin;
+                if (Height < requiredHeight) Height = requiredHeight;
+                if (MinimumSize.Height < requiredHeight)
+                    MinimumSize = new System.Drawing.Size(MinimumSize.Width, requiredHeight);
+
+                _originalSpritePreviewLabel.Visible = true;
+                _originalSpritePreview.Visible = true;
+                UpdateOriginalSpritePreview();
+            }
+            else
+            {
+                // Label reverts; Modified is still where it always was.
+                _spritePreviewLabel.Text = "Sprite Preview";
+
+                _showOriginalCheckbox.Top = contentTop + FullPreviewHeight + 35;
+
+                _originalSpritePreviewLabel.Visible = false;
+                _originalSpritePreview.Visible = false;
+
+                // Snap MinimumSize back to single-preview baseline so the panel
+                // can shrink again. Don't shrink Height — the user may have
+                // resized it deliberately.
+                MinimumSize = new System.Drawing.Size(MinimumSize.Width, 550);
+            }
         }
 
         private void OnSaveClick(object? sender, EventArgs e)
@@ -639,7 +782,13 @@ namespace FFTColorCustomizer.ThemeEditor
             {
                 PaletteModifier = new PaletteModifier();
                 PaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
+
+                // Compare baseline — keep this in sync with the load site above.
+                OriginalPaletteModifier = new PaletteModifier();
+                OriginalPaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
+
                 UpdateSpritePreview();
+                UpdateOriginalSpritePreview();
             }
         }
 
