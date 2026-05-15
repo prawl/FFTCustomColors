@@ -3,7 +3,7 @@
   "ModName": "FFT Color Customizer",
   "ModAuthor": "prawl",
   "ModVersion": "3.0.7",
-  "ModDescription": "Endless new color themes for classes and story characters with an in-game theme editor. While the game is running, press F1 on your keyboard to open the configuration window.",
+  "ModDescription": "Endless new color themes for classes and story characters with an in-game theme editor. While the game is running, press F1 in-game or click the 'Configure Mod' button here to open the configuration window.",
   "ModDll": "FFTColorCustomizer.dll",
   "ModIcon": "Preview.png",
   "ModR2RManagedDll32": "x86/FFTColorCustomizer.dll",
@@ -32,5 +32,6 @@
   ],
   "OptionalDependencies": [],
   "SupportedAppId": ["fft_enhanced.exe", "fft_classic.exe"],
-  "ProjectUrl": "https://github.com/prawl/FFTCustomColors"
+  "ProjectUrl": "https://github.com/prawl/FFTCustomColors",
+  "ModConfig": "FFTColorCustomizer.Configuration.Configurator"
 }

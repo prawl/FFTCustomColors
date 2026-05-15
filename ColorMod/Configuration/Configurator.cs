@@ -6,12 +6,13 @@ using Reloaded.Mod.Interfaces;
 using FFTColorCustomizer.Utilities;
 namespace FFTColorCustomizer.Configuration
 {
-    // NOTE: This class intentionally does NOT implement IConfiguratorV3 (or any
-    // IConfigurator* interface) — that's how we keep Reloaded-II's "Configure Mod"
-    // button disabled for this mod. The in-game F1 hotkey is the configuration entry
-    // point. The class itself stays around because tests instantiate it directly to
-    // exercise config save/load behavior.
-    public class Configurator
+    // NOTE: This class implements IConfiguratorV3 so Reloaded-II shows its
+    // "Configure Mod" button for our mod. The button and the in-game F1 hotkey
+    // both route through TryRunCustomConfiguration. If the user clicks the button
+    // before launching the game, TryRunCustomConfiguration short-circuits with a
+    // friendly hint instead of opening the editor against a non-running game,
+    // because applying themes without a live game just produces a stale config.
+    public class Configurator : IConfiguratorV3
     {
         private static ConfiguratorMixin _configuratorMixin = new ConfiguratorMixin();
 
@@ -95,7 +96,7 @@ namespace FFTColorCustomizer.Configuration
         /// Sets the directory where the mod files are stored.
         /// </summary>
         /// <param name="modDirectory">Full directory path to the mod folder.</param>
-        public Configurator SetModDirectory(string modDirectory)
+        public IConfiguratorV3 SetModDirectory(string modDirectory)
         {
             ModFolder = modDirectory;
             return this;
@@ -105,7 +106,7 @@ namespace FFTColorCustomizer.Configuration
         /// Sets the directory where configs are stored.
         /// </summary>
         /// <param name="configDirectory">Full directory path to the config folder.</param>
-        public Configurator SetConfigDirectory(string configDirectory)
+        public IConfiguratorV3 SetConfigDirectory(string configDirectory)
         {
             ConfigFolder = configDirectory;
             return this;
@@ -116,7 +117,7 @@ namespace FFTColorCustomizer.Configuration
         /// </summary>
         /// <param name="configDirectory">Full directory path to the config folder.</param>
         /// <param name="oldDirectory">Old directory to migrate from.</param>
-        public Configurator SetConfigDirectory(string configDirectory, string oldDirectory)
+        public IConfiguratorV3 SetConfigDirectory(string configDirectory, string oldDirectory)
         {
             SetConfigDirectory(configDirectory);
             Migrate(oldDirectory, configDirectory);
@@ -127,7 +128,7 @@ namespace FFTColorCustomizer.Configuration
         /// Sets a context to be used by the configurator.
         /// </summary>
         /// <param name="context">Context to be used.</param>
-        public void SetContext(in ConfiguratorContext context)
+        void IConfiguratorV3.SetContext(in ConfiguratorContext context)
         {
             Context = context;
         }
@@ -149,10 +150,25 @@ namespace FFTColorCustomizer.Configuration
             }
         }
 
+        /* Configurator V2 */
+
+        /// <summary>
+        /// Sets the directory where configs are stored.
+        /// </summary>
+        /// <param name="configDirectory">Full directory path to the config folder.</param>
+        void IConfiguratorV2.SetConfigDirectory(string configDirectory) => ConfigFolder = configDirectory;
+
+        /* IConfiguratorV1 */
+
         /// <summary>
         /// Gets all configurations.
         /// </summary>
         public IConfigurable[] GetConfigurations() => Configurations;
+
+        /// <summary>
+        /// Sets the mod directory for the Configurator.
+        /// </summary>
+        void IConfiguratorV1.SetModDirectory(string modDirectory) => ModFolder = modDirectory;
 
         /// <summary>
         /// Tries to run a custom configuration menu.
@@ -160,6 +176,25 @@ namespace FFTColorCustomizer.Configuration
         public bool TryRunCustomConfiguration()
         {
             ModLogger.Log("TryRunCustomConfiguration called!");
+
+            // Gate the editor on the game being live. Reloaded-II's "Configure Mod"
+            // button can be clicked from the launcher even when FFT isn't running;
+            // letting the user tweak colors against a non-running game produces a
+            // saved config that won't be visible until next launch and surprises
+            // them. F1 in-game and alt-tab-then-click both still work.
+            if (!GameRunningDetector.IsGameRunning())
+            {
+                ModLogger.Log("Configure clicked but game isn't running — showing hint modal.");
+                System.Windows.Forms.MessageBox.Show(
+                    "Start Final Fantasy Tactics first, then either:\n\n" +
+                    "  • Press F1 in-game, or\n" +
+                    "  • Alt-Tab back to Reloaded-II and click Configure Mod\n\n" +
+                    "The color editor needs the game running so your changes take effect immediately.",
+                    "FFT Color Customizer",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Information);
+                return true;
+            }
 
             // Use Windows Forms for better compatibility
             try
