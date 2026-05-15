@@ -563,9 +563,11 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             // Arrange & Act
             using var picker = new HslColorPicker();
 
-            // Assert - should have labels for Hue, Saturation, and Lightness (plus section header = 4 total)
+            // Assert - should have labels for Hue, Saturation, and Lightness, plus
+            // the section header AND a numeric value label per slider = 7 total.
+            // (Value labels are name-checked separately by HslColorPicker_HasValueLabelsForEachSlider.)
             var labels = picker.Controls.OfType<Label>().ToList();
-            Assert.Equal(4, labels.Count);
+            Assert.Equal(7, labels.Count);
             Assert.Contains(labels, l => l.Text == "Hue");
             Assert.Contains(labels, l => l.Text == "Saturation");
             Assert.Contains(labels, l => l.Text == "Lightness");
@@ -1300,8 +1302,9 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             var satSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "SaturationSlider");
             var lightSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "LightnessSlider");
 
-            // Sliders should extend close to the right edge (within 20px padding)
-            var expectedMinRight = picker.Width - 20;
+            // Sliders should extend close to the right edge, leaving room for
+            // the per-slider numeric value label (35px) plus a small padding.
+            var expectedMinRight = picker.Width - 55;
             Assert.True(hueSlider.Right >= expectedMinRight,
                 $"Hue slider should extend to right edge. Picker width: {picker.Width}, Slider.Right: {hueSlider.Right}");
             Assert.True(satSlider.Right >= expectedMinRight,
@@ -2399,6 +2402,89 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             {
                 Directory.Delete(tempDir, true);
             }
+        }
+
+        // -----------------------------------------------------------------
+        // HSL slider numeric value labels (QoL — port of bae13a06)
+        // Each H/S/L slider gets a small label to its right showing the
+        // current value. Hue is in degrees ("180°"), Saturation/Lightness
+        // are in percent ("75%"). Labels track the slider in real time and
+        // also update when the color is set programmatically (e.g. SetColor).
+        // -----------------------------------------------------------------
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HasValueLabelsForEachSlider()
+        {
+            using var picker = new HslColorPicker();
+
+            var hueLabel = picker.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Name == "HueValueLabel");
+            var satLabel = picker.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Name == "SaturationValueLabel");
+            var litLabel = picker.Controls.OfType<Label>()
+                .FirstOrDefault(l => l.Name == "LightnessValueLabel");
+
+            Assert.NotNull(hueLabel);
+            Assert.NotNull(satLabel);
+            Assert.NotNull(litLabel);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_HueValueLabel_ShowsDegreeSuffix()
+        {
+            using var picker = new HslColorPicker();
+            var hueSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "HueSlider");
+            var hueLabel = picker.Controls.OfType<Label>().First(l => l.Name == "HueValueLabel");
+
+            hueSlider.Value = 215;
+
+            Assert.Equal("215°", hueLabel.Text);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_SaturationValueLabel_ShowsPercentSuffix()
+        {
+            using var picker = new HslColorPicker();
+            var satSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "SaturationSlider");
+            var satLabel = picker.Controls.OfType<Label>().First(l => l.Name == "SaturationValueLabel");
+
+            satSlider.Value = 73;
+
+            Assert.Equal("73%", satLabel.Text);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_LightnessValueLabel_ShowsPercentSuffix()
+        {
+            using var picker = new HslColorPicker();
+            var litSlider = picker.Controls.OfType<TrackBar>().First(c => c.Name == "LightnessSlider");
+            var litLabel = picker.Controls.OfType<Label>().First(l => l.Name == "LightnessValueLabel");
+
+            litSlider.Value = 42;
+
+            Assert.Equal("42%", litLabel.Text);
+        }
+
+        [Fact]
+        [STAThread]
+        public void HslColorPicker_SetColor_UpdatesAllValueLabels()
+        {
+            // SetColor goes through a different code path than slider drags;
+            // make sure the labels still refresh.
+            using var picker = new HslColorPicker();
+            var hueLabel = picker.Controls.OfType<Label>().First(l => l.Name == "HueValueLabel");
+            var satLabel = picker.Controls.OfType<Label>().First(l => l.Name == "SaturationValueLabel");
+            var litLabel = picker.Controls.OfType<Label>().First(l => l.Name == "LightnessValueLabel");
+
+            picker.SetColor(System.Drawing.Color.FromArgb(255, 0, 0)); // pure red → H=0, S=100, L=50
+
+            Assert.Equal("0°", hueLabel.Text);
+            Assert.Equal("100%", satLabel.Text);
+            Assert.Equal("50%", litLabel.Text);
         }
     }
 }
