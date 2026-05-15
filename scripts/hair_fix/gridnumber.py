@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Render a TEX sprite sheet with a numbered grid.
 Detects each sprite (80-row slots x horizontal content runs), draws a cyan
-box + yellow number on each. Skin (idx 14/15) is rendered RED, so any
-unfixed hair-highlight shows up as red specks inside the gold hair.
-Usage: python gridnumber.py <tex.bin> <out.png> [scale=3] [frameh=80]"""
+box + yellow number on each. Skin indices are rendered RED, so any unfixed
+hair-highlight shows up as red specks inside the gold hair. Default skin is
+idx 14,15; pass --skin 15 for jobs where idx 14 is a hair index (else the
+hair-accent paints red and swamps the signal).
+Usage: python gridnumber.py <tex.bin> <out.png> [scale=3] [frameh=80] [--skin 14,15]"""
 import sys
 import struct
 import zlib
@@ -99,13 +101,22 @@ def write_png(path, flat, w, h):
 
 
 def main():
-    inp, outp = sys.argv[1], sys.argv[2]
-    scale = int(sys.argv[3]) if len(sys.argv) > 3 else 3
-    frameh = int(sys.argv[4]) if len(sys.argv) > 4 else 80
+    args = sys.argv[1:]
+    # --skin N[,N...]: indices to force red. default 14,15; use 15 alone for
+    # jobs where idx 14 is a hair index, else the hair-accent paints red.
+    skin = {14, 15}
+    if '--skin' in args:
+        si = args.index('--skin')
+        skin = set(int(x) for x in args[si + 1].split(','))
+        del args[si:si + 2]
+    inp, outp = args[0], args[1]
+    scale = int(args[2]) if len(args) > 2 else 3
+    frameh = int(args[3]) if len(args) > 3 else 80
 
     g, h = decode(inp)
     pal = list(PAL)
-    pal[14] = pal[15] = SKIN
+    for idx in skin:
+        pal[idx] = SKIN
     sprites = detect_sprites(g, h, frameh)
 
     W, H = WIDTH * scale, h * scale

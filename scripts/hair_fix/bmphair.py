@@ -3,12 +3,17 @@
 
 Same remap logic as hairclassify.py, but for the indexed-BMP container:
 14-byte file header + 40-byte DIB header + 16*4-byte BGRA palette, then
-4bpp pixel data stored BOTTOM-UP (high nibble = leftmost pixel).
+4bpp pixel data stored BOTTOM-UP. NOTE: these BMPs are LOW-nibble-first
+(low nibble = leftmost pixel) -- the OPPOSITE of the TEX files. Decoded
+low-first, the HD BMP is byte-identical to its tex_NNNN (at an 8-row offset).
 
 Modes:
   python bmphair.py <in.bmp> --analyze
-  python bmphair.py <in.bmp> --render <out.png> [--blackskin] [--scale N]
+  python bmphair.py <in.bmp> --render <out.png> [--blackskin] [--skin 14,15] [--scale N]
   python bmphair.py <in.bmp> --remap <out.bmp> --maxy N --frameh H [--src 15] [--dst 12]
+
+--blackskin blacks out the skin indices (default 14,15); pass --skin 15 for
+jobs where idx 14 is a hair index.
 """
 import sys
 import struct
@@ -36,9 +41,9 @@ def decode_bmp(path):
         base = pixoff + fy * rowbytes
         for bx in range((w + 1) // 2):
             byte = d[base + bx]
-            grid[iy][bx * 2] = (byte >> 4) & 0xF
+            grid[iy][bx * 2] = byte & 0xF                   # low nibble = left pixel
             if bx * 2 + 1 < w:
-                grid[iy][bx * 2 + 1] = byte & 0xF
+                grid[iy][bx * 2 + 1] = (byte >> 4) & 0xF     # high nibble = right pixel
     return d, grid, w, h, pal, pixoff, rowbytes
 
 
@@ -48,8 +53,8 @@ def encode_bmp(d, grid, w, h, pixoff, rowbytes):
         iy = h - 1 - fy
         base = pixoff + fy * rowbytes
         for bx in range((w + 1) // 2):
-            hi = grid[iy][bx * 2] & 0xF
-            lo = grid[iy][bx * 2 + 1] & 0xF if bx * 2 + 1 < w else 0
+            lo = grid[iy][bx * 2] & 0xF                               # left pixel = low nibble
+            hi = grid[iy][bx * 2 + 1] & 0xF if bx * 2 + 1 < w else 0   # right pixel = high nibble
             d[base + bx] = (hi << 4) | lo
     return d
 
@@ -122,7 +127,8 @@ def main():
         scale = int(opt('--scale', '2'))
         rpal = list(pal)
         if '--blackskin' in a:
-            rpal[14] = rpal[15] = (0, 0, 0)
+            for i in (int(x) for x in opt('--skin', '14,15').split(',')):
+                rpal[i] = (0, 0, 0)
         W, H = w * scale, h * scale
         flat = [BG] * (W * H)
         for y in range(h):

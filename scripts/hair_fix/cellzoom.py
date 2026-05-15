@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Crop given cells from a TEX, scale them up, arrange in a labeled grid for
-close inspection. Skin (14/15) -> red, so unfixed hair-highlight shows as
-red specks in the gold hair.
-Usage: python cellzoom.py <tex.bin> <out.png> --cells 7,8,... [--scale 6] [--cols 5]"""
+close inspection. Skin indices -> red, so unfixed hair-highlight shows as red
+specks in the gold hair. Default skin idx 14,15; pass --skin 15 for jobs where
+idx 14 is a hair index (else the hair-accent paints red).
+Usage: python cellzoom.py <tex.bin> <out.png> --cells 7,8,... [--scale 6]
+       [--cols 5] [--skin 14,15]"""
 import sys
 import struct
 import zlib
@@ -93,11 +95,13 @@ def main():
     cells = [int(c) for c in opt('--cells', '').split(',') if c.strip()]
     scale = int(opt('--scale', '6'))
     cols = int(opt('--cols', '5'))
+    skin = set(int(x) for x in opt('--skin', '14,15').split(','))
 
     g, h = decode(inp)
     sprites = detect_sprites(g, h)
     pal = list(PAL)
-    pal[14] = pal[15] = SKIN
+    for si in skin:
+        pal[si] = SKIN
 
     crops = []
     cellw = cellh = 0

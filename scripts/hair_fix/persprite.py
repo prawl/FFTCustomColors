@@ -56,9 +56,9 @@ def decode_bmp(path):
         base = pixoff + fy * rowbytes
         for bx in range((w + 1) // 2):
             byte = d[base + bx]
-            grid[iy][bx * 2] = (byte >> 4) & 0xF
+            grid[iy][bx * 2] = byte & 0xF                   # low nibble = left pixel
             if bx * 2 + 1 < w:
-                grid[iy][bx * 2 + 1] = byte & 0xF
+                grid[iy][bx * 2 + 1] = (byte >> 4) & 0xF     # high nibble = right pixel
     return d, grid, h, pixoff, rowbytes
 
 
@@ -69,8 +69,8 @@ def encode_bmp(d, grid, h, pixoff, rowbytes):
         iy = h - 1 - fy
         base = pixoff + fy * rowbytes
         for bx in range((w + 1) // 2):
-            hi = grid[iy][bx * 2] & 0xF
-            lo = grid[iy][bx * 2 + 1] & 0xF if bx * 2 + 1 < w else 0
+            lo = grid[iy][bx * 2] & 0xF                               # left pixel = low nibble
+            hi = grid[iy][bx * 2 + 1] & 0xF if bx * 2 + 1 < w else 0   # right pixel = high nibble
             d[base + bx] = (hi << 4) | lo
     return d
 

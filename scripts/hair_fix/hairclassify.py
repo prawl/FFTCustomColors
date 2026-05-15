@@ -19,10 +19,14 @@ Frame height is `--frameh` (FFT IVC TEX sheets are 80-row slots).
 TEX format: 0x800 header, 4-bit indexed, high nibble = first pixel of a byte,
 low nibble = second; sheet width 512px.
 
+`--blanket` skips the border test and remaps EVERY src pixel above the maxy
+wall. Use it for the standing-pose pass: there the highlight is fused to the
+face, so the maxy wall -- not the border test -- is what protects the face.
+
 Usage:
   python hairclassify.py <in.bin> <out.bin> --hair 11,12,13 [--src 15] [--dst 12]
          [--threshold 0.6] [--conn 4|8] [--ignore-bg] [--maxy N] [--frameh 80]
-         [--debugline IDX] [--dry-run]
+         [--blanket] [--debugline IDX] [--dry-run]
 """
 import sys
 from collections import deque
@@ -151,9 +155,10 @@ def main():
     maxy = int(opt('--maxy', '0')) or None
     frameh = int(opt('--frameh', '80'))
     dry = '--dry-run' in a
+    blanket = '--blanket' in a
 
     data, grid, height = decode(inp)
-    remapped, bh, bf, hist = classify(grid, height, hair_set, src, dst, threshold, conn, ignore_bg, maxy, frameh)
+    remapped, bh, bf, hist = classify(grid, height, hair_set, src, dst, threshold, conn, ignore_bg, maxy, frameh, blanket)
 
     # optional bright debug line painted along the maxy cutoff row of every frame,
     # so the cutoff can be eyeballed and tuned. paints over non-transparent px only.
@@ -171,7 +176,7 @@ def main():
 
     print(f"  {inp}  ({height} rows)")
     print(f"  hair_set={sorted(hair_set)} src={src} dst={dst} thr={threshold} conn={conn} "
-          f"ignore_bg={ignore_bg} maxy={maxy} frameh={frameh}")
+          f"ignore_bg={ignore_bg} maxy={maxy} frameh={frameh} blanket={blanket}")
     print(f"  blobs: {bh} classified hair (remapped), {bf} classified face (kept)")
     print(f"  pixels remapped {src}->{dst}: {remapped}")
     if hist:

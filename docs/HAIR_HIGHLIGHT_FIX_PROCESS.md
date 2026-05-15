@@ -112,7 +112,7 @@ only, no PIL. Put intermediates in `working/` (gitignored).
 
 > ⚠ **The example commands below hardcode `--hair 10,11,12`** — that's *White
 > Mage Male's* hair indices, shown as a concrete example. **Substitute the
-> job's own hair indices** (from step 0). For **Squire Male** (next up) it's
+> job's own hair indices** (from step 0). For **Knight Male** (next up) it's
 > `--hair 11,12,13`.
 
 ### 0. Gather
@@ -120,20 +120,26 @@ only, no PIL. Put intermediates in `working/` (gitignored).
 - The job's TEX pair (`tex_N`, `tex_N+1`) and HD BMP — see the **Job → file
   reference** table above. It's a guide, not gospel — verify per job (e.g.
   Squire Male's HD BMP is numbered `924` but its tex pair is `992/993`).
-- The job's **hair indices** from `ColorMod/Data/SectionMappings/<Job>.json` —
-  the `indices` of the Hair / BootsAndHair / HairBootsGloves section.
-  (White Mage Male: `10,11,12`. Squire/Knight/Summoner Male: `11,12,13`.)
+- The job's **hair-mass indices** — from the Hair / BootsAndHair /
+  HairBootsGloves section of `ColorMod/Data/SectionMappings/<Job>.json`, take
+  the `base` / `shadow` / `outline` roles but **NOT** the `highlight` role.
+  That set is the flood-fill's `--hair` argument: it's what *encloses* a
+  trapped highlight. The highlight-role index is sparse and is often painted
+  right against the face — feed it to the border test and the face gets eaten
+  (see Gotchas). White Mage Male: `10,11,12` (no highlight role). Knight Male:
+  section `12,11,13,14`, 14 = `highlight` → flood-fill `--hair 11,12,13`.
 - Confirm the frame layout with `framedetect.py` — expect 80-row slots.
 
 ### 1. TEX — standing-pose pass
 
 Standing/walking poses have the head at the top of each 80-row slot, and their
 highlight is *connected to the face* — a flood-fill can't separate them. So
-bound a remap to the top of each slot:
+`--blanket` a remap to the top of each slot (remaps every index-15 pixel above
+the cutoff; the `--maxy` wall is what protects the face):
 
 ```
-python scripts/hair_fix/hairclassify.py <vanilla_tex_N>   working/t_N.bin  --hair 10,11,12 --maxy 12 --frameh 80
-python scripts/hair_fix/hairclassify.py <vanilla_tex_N+1> working/t_N1.bin --hair 10,11,12 --maxy 12 --frameh 80
+python scripts/hair_fix/hairclassify.py <vanilla_tex_N>   working/t_N.bin  --hair 10,11,12 --maxy 12 --frameh 80 --blanket
+python scripts/hair_fix/hairclassify.py <vanilla_tex_N+1> working/t_N1.bin --hair 10,11,12 --maxy 12 --frameh 80 --blanket
 ```
 
 `--maxy 12` is the cutoff: the top 12 rows of each slot = the hair region.
@@ -154,6 +160,12 @@ skin-shadow and background — it stays put.)
 python scripts/hair_fix/persprite.py working/t_N.bin  working/t_N.bin  --floodfill --all --hair 10,11,12 --threshold 0.6
 python scripts/hair_fix/persprite.py working/t_N1.bin working/t_N1.bin --floodfill --all --hair 10,11,12 --threshold 0.6
 ```
+
+`0.6` is the *starting* threshold. If a render later shows a **face**
+recolored, the flood-fill is over-catching — raise it. A genuine trapped
+highlight scores ~0.85–1.0 hair-border; a face sits ~0.65–0.7, so there's
+usually a clean gap to land in (Knight Male needed `0.75`). Step 4 covers the
+opposite case — *under*-catch.
 
 ### 3. Render & eyeball
 
@@ -216,11 +228,12 @@ One commit per job — the TEX pair + the HD BMP. Message: `Hair-highlight fix: 
 
 | Script | Purpose |
 |---|---|
-| `hairclassify.py` | TEX standing-pose remap (`--maxy` cutoff, `--debugline` to tune) |
+| `hairclassify.py` | TEX standing-pose remap; `--blanket` for the flat top-of-slot pass, `--maxy` cutoff, `--debugline` to tune |
 | `persprite.py` | per-sprite + **flood-fill** remap; `--floodfill --all` is the workhorse; auto-detects TEX *and* BMP |
 | `bmphair.py` | BMP standing-pose remap (`--remap`), render (`--render`), frame analysis (`--analyze`) |
-| `gridnumber.py` | render a sheet with numbered sprite boxes; skin forced red, for stray-spotting |
-| `cellzoom.py` | crop & zoom specific cells for close inspection |
+| `straycheck.py` | read-only: lists which cells still have hair-enclosed index-15 islands; auto-detects TEX *and* BMP — the "which cells need work" tool |
+| `gridnumber.py` | render a sheet with numbered sprite boxes; skin forced red, for stray-spotting; `--skin` picks which indices count as skin |
+| `cellzoom.py` | crop & zoom specific cells for close inspection; `--skin` like gridnumber |
 | `tex2png.py` | plain TEX → PNG render |
 | `framedetect.py` | detect the frame-slot layout of a sheet |
 
@@ -229,9 +242,10 @@ Notes:
 - The **fix** tools (`hairclassify`, `persprite`) are palette-agnostic — they
   work on any job unchanged.
 - The **render** tools (`gridnumber`, `cellzoom`, `tex2png`) have WMM's palette
-  hardcoded, but they force skin → red, so they're fine for stray-spotting on
-  any job (the other colours are just approximate). `bmphair --render` reads
-  the real palette from the BMP.
+  hardcoded — the other colours are just approximate, but skin is forced red
+  for stray-spotting. `gridnumber`/`cellzoom` take `--skin` to pick which
+  indices are "skin": needed when idx 14 is a hair index on the job (see
+  Gotchas). `bmphair --render` reads the real palette from the BMP.
 - The old `scripts/fix_hair_highlight_*.py` are the **superseded** crude
   Y-threshold approach — don't use them.
 
@@ -246,26 +260,53 @@ Notes:
 - **Frame height is 80**, not 40 — the atlas is 80-row slots.
 - **BMP offset is +8** — the BMP has an 8-row top margin; the TEX has none.
 - **The game caches the TEX** — restart the game to see TEX changes.
+- **idx 14 isn't always skin.** `gridnumber`/`cellzoom` default to forcing idx
+  14+15 red — but on some jobs idx 14 is a *hair* index (Squire Male's
+  `BootsAndHair` = `11,12,13,14`; Knight Male's `BootsGlovesHair` =
+  `12,11,13,14`). There, pass `--skin 15` or the hair-accent paints red and
+  swamps the stray signal. Check the job's SectionMapping: if 14 sits in a hair
+  section it's hair, if it's in `SkinColor` it's skin.
+- **The flood-fill `--hair` set ≠ the JSON hair section.** Use the hair-MASS
+  roles (base/shadow/outline); EXCLUDE the `highlight`-role index. The
+  highlight index is sparse and often sits right next to the face, so feeding
+  it to the border test makes the face read as "hair-enclosed" and the
+  flood-fill eats it. Knight Male's first Type B pass used the full section
+  `11,12,13,14` and recolored ~411 face pixels; the fix is `--hair 11,12,13`.
 
-## Testing (TODO)
+## Testing
 
-The flood-fill detector, run as an assertion, *is* the regression test: "for
-every job's tex + bmp, are there any fully-hair-enclosed index-15 islands?"
-→ 0 = clean. Not yet wired into `RunTests.sh`.
+`straycheck.py` is the flood-fill detector as a read-only report — "for a job's
+tex or bmp, which cells still have hair-enclosed index-15 islands?" Run it
+before and after a fix; no flagged cells = clean. Still TODO: wire it into
+`RunTests.sh` as an automated assertion across every job's tex + bmp.
 
 ## Status
 
-**▶ NEXT: Squire Male** — finish his full sheet (see the ⚠ note below).
+**▶ IN PROGRESS: Knight Male — Type B (awaiting visual review).**
+
+- **Type A — done, committed `d7f3c523`.** idx 14 (a hair-highlight shade) was
+  wrongly under `SkinColor`; moved into `BootsGlovesHair`. JSON is now hair
+  `12,11,13,14`, skin `15`. For the render tools pass `--skin 15` — 14 is hair
+  now, so the default `--skin 14,15` would paint hair red.
+- **Type B — in `working/`, not yet committed.** Two over-catch traps hit and
+  fixed: (1) the first flood-fill used `--hair 11,12,13,14` (the whole JSON
+  hair section) and ate ~411 face pixels — idx 14 frames the face; fixed by
+  dropping to `--hair 11,12,13`. (2) even then, at the default `--threshold
+  0.6` the flood-fill ate a 50px front-facing face (its hair-border fraction
+  is 0.68); the genuine highlights all score ≥0.81, so `--threshold 0.75`
+  separates them cleanly. **Current build: `--hair 11,12,13 --threshold 0.75`**
+  — straycheck clean, BMP==TEX gold-check passes, all 12 face-like regions
+  verified untouched. **Awaiting visual review** — `working/kn_changemap.png`
+  (RED = remapped to hair, GREEN = face rescued from the over-catch).
 
 ### Done
 - ✅ **Squire Female** — `d003f2a4` — Type A (SectionMapping JSON edit)
 - ✅ **White Mage Male** — `3d10acb9` — Type B, full sheet (tex_1012/1013 + HD BMP)
-
-### Partial — needs redo
-- ⚠ **Squire Male** — `a7a1ee94` fixed the **standing poses only**, with the
-  old pure connected-component classifier (made before the 80-row-slot and
-  special-pose work). His special poses are **not** done. Redo his whole sheet
-  (tex_992/993 + HD BMP) with the current pipeline.
+- ✅ **Squire Male** — `a7a1ee94` — Type B. Standing-pose highlight strands
+  remapped (tex_992 + HD BMP). Remaining strays are 2–8px specks on
+  special/action frames; reviewed against the numbered grid and judged not
+  worth chasing (step-4 stop rule). tex_993 reviewed and classified as
+  animation frames — skipped.
 
 ### Remaining
 
