@@ -17,13 +17,11 @@ namespace FFTColorCustomizer.ThemeEditor
         private ComboBox _templateDropdown;
         private Label _spritePreviewLabel;
         private Label _colorSelectionLabel;
-        private StoneTilePictureBox _spritePreview;
+        private RotatableSpritePictureBox _spritePreview;
         private Label _themeNameLabel;
         private TextBox _themeNameInput;
         private Button _saveButton;
         private Button _resetButton;
-        private Button _rotateLeftButton;
-        private Button _rotateRightButton;
         private Panel _sectionColorPickersPanel;
         private Label _warningLabel;
         private string? _mappingsDirectory;
@@ -255,7 +253,10 @@ namespace FFTColorCustomizer.ThemeEditor
             };
 
             // === ROW 4: Sprite preview (left) + Color pickers panel (right) ===
-            _spritePreview = new StoneTilePictureBox
+            // Rotation arrows are painted on the preview itself (overlay) and
+            // dispatched by left-third / right-third clicks — same pattern as
+            // the class-preview carousel.
+            _spritePreview = new RotatableSpritePictureBox
             {
                 Name = "SpritePreview",
                 Width = previewWidth,
@@ -265,32 +266,8 @@ namespace FFTColorCustomizer.ThemeEditor
                 BorderStyle = BorderStyle.None,
                 SizeMode = PictureBoxSizeMode.Zoom
             };
-
-            // Center rotation buttons under the preview
-            const int buttonWidth = 30;
-            const int buttonGap = 5;
-            var previewCenter = padding + (previewWidth / 2);
-            var rotateButtonsLeftStart = previewCenter - buttonWidth - (buttonGap / 2);
-
-            _rotateLeftButton = new Button
-            {
-                Name = "RotateLeftButton",
-                Text = "◄",
-                Width = buttonWidth,
-                Left = rotateButtonsLeftStart,
-                Top = contentTop + previewHeight + 5
-            };
-            _rotateLeftButton.Click += OnRotateLeft;
-
-            _rotateRightButton = new Button
-            {
-                Name = "RotateRightButton",
-                Text = "►",
-                Width = buttonWidth,
-                Left = rotateButtonsLeftStart + buttonWidth + buttonGap,
-                Top = contentTop + previewHeight + 5
-            };
-            _rotateRightButton.Click += OnRotateRight;
+            _spritePreview.RotateLeftRequested += OnRotateLeft;
+            _spritePreview.RotateRightRequested += OnRotateRight;
 
             // Color pickers panel - extends to bottom
             _sectionColorPickersPanel = new Panel
@@ -313,8 +290,6 @@ namespace FFTColorCustomizer.ThemeEditor
             Controls.Add(_spritePreviewLabel);
             Controls.Add(_colorSelectionLabel);
             Controls.Add(_spritePreview);
-            Controls.Add(_rotateLeftButton);
-            Controls.Add(_rotateRightButton);
             Controls.Add(_sectionColorPickersPanel);
 
             // Set initial sizes for dynamic panels

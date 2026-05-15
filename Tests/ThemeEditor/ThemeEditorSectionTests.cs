@@ -56,38 +56,39 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
             // Arrange & Act
             using var panel = new ThemeEditorPanel();
 
-            // Assert - the Sprite Preview box must use the stone-tile-backed control
-            // so it shares the same background as the config preview panes
+            // Assert - the Sprite Preview box must inherit the stone-tile-backed
+            // control so it shares the same background as the config preview panes.
+            // (It's now the RotatableSpritePictureBox subclass that adds overlay
+            // arrow navigation, but it must still be a StoneTilePictureBox.)
             var spritePreview = panel.Controls.OfType<PictureBox>()
                 .FirstOrDefault(c => c.Name == "SpritePreview");
 
             Assert.NotNull(spritePreview);
-            Assert.IsType<FFTColorCustomizer.Configuration.UI.StoneTilePictureBox>(spritePreview);
+            Assert.IsAssignableFrom<FFTColorCustomizer.Configuration.UI.StoneTilePictureBox>(spritePreview);
         }
 
         [Fact]
         [STAThread]
-        public void ThemeEditorPanel_RotateButtons_MatchClassPreviewDirection()
+        public void ThemeEditorPanel_RotateOverlay_MatchesClassPreviewDirection()
         {
-            // Arrange
+            // The arrows live ON the sprite preview now (overlay, mirroring the
+            // class-preview carousel). Click the left third to rotate left,
+            // right third to rotate right.
             using var panel = new ThemeEditorPanel();
-            var rotateLeft = panel.Controls.OfType<Button>()
-                .FirstOrDefault(b => b.Name == "RotateLeftButton");
-            var rotateRight = panel.Controls.OfType<Button>()
-                .FirstOrDefault(b => b.Name == "RotateRightButton");
-            Assert.NotNull(rotateLeft);
-            Assert.NotNull(rotateRight);
+            var preview = panel.Controls.OfType<FFTColorCustomizer.Configuration.UI.RotatableSpritePictureBox>()
+                .FirstOrDefault(c => c.Name == "SpritePreview");
+            Assert.NotNull(preview);
 
             // The class preview's left arrow rotates SW -> NW -> NE -> SE. The Sprite
-            // Preview's left button must rotate the same visual direction: through the
+            // Preview's left third must rotate the same visual direction: through the
             // finer 8-direction cycle that means SW(5) -> W(6), not the opposite SW -> S(4).
             Assert.Equal(5, panel.CurrentSpriteDirection);
-            rotateLeft.PerformClick();
+            preview!.SimulateClickAt(10, preview.Height / 2); // far left
             Assert.Equal(6, panel.CurrentSpriteDirection);
 
-            // Right button rotates the opposite way: SW(5) -> S(4).
-            rotateRight.PerformClick(); // 6 -> 5
-            rotateRight.PerformClick(); // 5 -> 4
+            // Right third rotates the opposite way: SW(5) -> S(4).
+            preview.SimulateClickAt(preview.Width - 10, preview.Height / 2); // 6 -> 5
+            preview.SimulateClickAt(preview.Width - 10, preview.Height / 2); // 5 -> 4
             Assert.Equal(4, panel.CurrentSpriteDirection);
         }
 
@@ -237,21 +238,25 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
-        public void ThemeEditorPanel_HasRotationArrowButtons()
+        public void ThemeEditorPanel_SpritePreviewIsRotatable()
         {
-            // Arrange & Act
+            // Rotation arrows are now an overlay on the sprite preview itself
+            // (matching the class-preview carousel pattern), not separate
+            // Button controls beneath it.
             using var panel = new ThemeEditorPanel();
 
-            // Assert - Should have left and right rotation buttons
-            var leftArrow = panel.Controls.OfType<Button>()
-                .FirstOrDefault(c => c.Name == "RotateLeftButton");
-            var rightArrow = panel.Controls.OfType<Button>()
-                .FirstOrDefault(c => c.Name == "RotateRightButton");
+            var preview = panel.Controls.OfType<FFTColorCustomizer.Configuration.UI.RotatableSpritePictureBox>()
+                .FirstOrDefault(c => c.Name == "SpritePreview");
 
-            Assert.NotNull(leftArrow);
-            Assert.NotNull(rightArrow);
-            Assert.Equal("◄", leftArrow.Text);
-            Assert.Equal("►", rightArrow.Text);
+            Assert.NotNull(preview);
+
+            // And no orphaned Button-based rotate arrows lingering.
+            var oldLeftButton = panel.Controls.OfType<Button>()
+                .FirstOrDefault(c => c.Name == "RotateLeftButton");
+            var oldRightButton = panel.Controls.OfType<Button>()
+                .FirstOrDefault(c => c.Name == "RotateRightButton");
+            Assert.Null(oldLeftButton);
+            Assert.Null(oldRightButton);
         }
 
         [Fact]
@@ -260,35 +265,36 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
         {
             // Arrange
             using var panel = new ThemeEditorPanel();
-            var rightArrow = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "RotateRightButton");
+            var preview = panel.Controls.OfType<FFTColorCustomizer.Configuration.UI.RotatableSpritePictureBox>()
+                .First(c => c.Name == "SpritePreview");
+            void RotateRight() => preview.SimulateClickAt(preview.Width - 10, preview.Height / 2);
 
-            // Right button steps forward through DirectionsCycle:
+            // Right third steps forward through DirectionsCycle:
             // SW(5) → S(4) → SE(3) → E(2) → NE(1) → N(0) → NW(7) → W(6) → SW(5)
             Assert.Equal(5, panel.CurrentSpriteDirection); // SW
 
-            rightArrow.PerformClick();
+            RotateRight();
             Assert.Equal(4, panel.CurrentSpriteDirection); // S
 
-            rightArrow.PerformClick();
+            RotateRight();
             Assert.Equal(3, panel.CurrentSpriteDirection); // SE
 
-            rightArrow.PerformClick();
+            RotateRight();
             Assert.Equal(2, panel.CurrentSpriteDirection); // E
 
-            rightArrow.PerformClick();
+            RotateRight();
             Assert.Equal(1, panel.CurrentSpriteDirection); // NE
 
-            rightArrow.PerformClick();
+            RotateRight();
             Assert.Equal(0, panel.CurrentSpriteDirection); // N
 
-            rightArrow.PerformClick();
+            RotateRight();
             Assert.Equal(7, panel.CurrentSpriteDirection); // NW
 
-            rightArrow.PerformClick();
+            RotateRight();
             Assert.Equal(6, panel.CurrentSpriteDirection); // W
 
-            rightArrow.PerformClick();
+            RotateRight();
             Assert.Equal(5, panel.CurrentSpriteDirection); // Back to SW
         }
 
@@ -720,16 +726,16 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
                 using var panel = new ThemeEditorPanel(mappingsDir, spritesDir);
                 var templateDropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
-                var spritePreview = panel.Controls.OfType<PictureBox>().First(c => c.Name == "SpritePreview");
-                var rotateRightButton = panel.Controls.OfType<Button>().First(c => c.Name == "RotateRightButton");
+                var spritePreview = panel.Controls.OfType<FFTColorCustomizer.Configuration.UI.RotatableSpritePictureBox>()
+                    .First(c => c.Name == "SpritePreview");
 
                 // Select template to load sprite
                 templateDropdown.SelectedItem = "Knight (Male)";
                 var initialImage = spritePreview.Image;
                 Assert.NotNull(initialImage);
 
-                // Act - rotate right
-                rotateRightButton.PerformClick();
+                // Act - rotate right via overlay click on the right third
+                spritePreview.SimulateClickAt(spritePreview.Width - 10, spritePreview.Height / 2);
 
                 // Assert - image instance should be different (new bitmap for new direction)
                 Assert.NotNull(spritePreview.Image);
@@ -1194,27 +1200,25 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
-        public void ThemeEditorPanel_RotationButtonsAreCenteredBelowPreview()
+        public void ThemeEditorPanel_RotationArrowsAreOverlaidOnPreview_NotBeneathIt()
         {
-            // Arrange & Act
+            // Old layout: separate ◄ ► Button controls beneath the preview.
+            // New layout (matches class-preview carousel): arrows are painted as
+            // an overlay on the sprite preview itself; click left third to rotate
+            // left, right third to rotate right. Verify the old beneath-the-preview
+            // buttons are gone and the preview is the rotatable type.
             using var panel = new ThemeEditorPanel();
 
-            var preview = panel.Controls.OfType<PictureBox>()
-                .First(c => c.Name == "SpritePreview");
+            var preview = panel.Controls.OfType<FFTColorCustomizer.Configuration.UI.RotatableSpritePictureBox>()
+                .FirstOrDefault(c => c.Name == "SpritePreview");
+            Assert.NotNull(preview);
+
             var leftButton = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "RotateLeftButton");
+                .FirstOrDefault(c => c.Name == "RotateLeftButton");
             var rightButton = panel.Controls.OfType<Button>()
-                .First(c => c.Name == "RotateRightButton");
-
-            // Assert - Buttons should be below the preview
-            Assert.True(leftButton.Top > preview.Bottom, "Rotate buttons should be below sprite preview");
-
-            // Buttons should be roughly centered under the preview
-            var previewCenter = preview.Left + (preview.Width / 2);
-            var buttonsCenter = leftButton.Left + ((rightButton.Right - leftButton.Left) / 2);
-            var tolerance = 20;
-            Assert.True(Math.Abs(previewCenter - buttonsCenter) <= tolerance,
-                $"Rotate buttons should be centered under preview. Preview center: {previewCenter}, Buttons center: {buttonsCenter}");
+                .FirstOrDefault(c => c.Name == "RotateRightButton");
+            Assert.Null(leftButton);
+            Assert.Null(rightButton);
         }
 
         [Fact]
