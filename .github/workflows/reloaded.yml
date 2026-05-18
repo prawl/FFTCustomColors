@@ -82,7 +82,7 @@ jobs:
       with:
         name: FFTColorCustomizer-${{ github.sha }}
         path: |
-          FFTColorCustomizer_*.zip
+          FFTColorCustomizer*.zip
         retention-days: 30
 
     - name: Upload Changelog
@@ -99,7 +99,7 @@ jobs:
         name: FFT Color Customizer ${{ env.RELEASE_TAG }}
         body_path: ${{ env.PUBLISH_CHANGELOG_PATH }}
         files: |
-          FFTColorCustomizer_*.zip
+          FFTColorCustomizer*.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
 
