@@ -410,22 +410,47 @@ function Create-Package {
 function Verify-Package {
     param([string]$PackagePath)
 
+    # Returns $true if the package contains every required file and directory,
+    # $false otherwise. Caller MUST honor the return value — this is the gate
+    # that catches missing-DLL bugs like the v3.0.7 release where the workflow
+    # silently shipped a source archive instead of the built mod.
     Write-Status "Verifying package contents..." "Cyan"
 
     if (-not $PackagePath -or -not (Test-Path $PackagePath)) {
         Write-Host "  -> Package not found for verification" -ForegroundColor Red
-        return
+        return $false
     }
 
     Add-Type -Assembly System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
 
+    $missingCount = 0
+
     try {
         $zip = [System.IO.Compression.ZipFile]::OpenRead($PackagePath)
+
+        # Normalize all entry paths to forward-slash and strip the wrapper
+        # folder added by includeBaseDirectory=true so the required-file list
+        # below stays clean. Without this, every check below would false-fail
+        # the day we flipped includeBaseDirectory (dccdf380) — which we then
+        # learned to ignore, which is exactly how v3.0.7 shipped broken.
+        $entryPaths = @($zip.Entries | ForEach-Object { $_.FullName -replace '\\', '/' })
+        $firstSegments = @($entryPaths | ForEach-Object { ($_ -split '/')[0] } | Sort-Object -Unique)
+        $wrapper = ""
+        if ($firstSegments.Count -eq 1 -and $firstSegments[0]) {
+            $wrapper = $firstSegments[0]
+            $entryPaths = @($entryPaths | ForEach-Object {
+                if ($_.StartsWith("$wrapper/")) { $_.Substring($wrapper.Length + 1) } else { $_ }
+            })
+            Write-Host "  -> Wrapper folder: $wrapper" -ForegroundColor Gray
+        }
 
         $requiredFiles = @(
             "ModConfig.json",
             "FFTColorCustomizer.dll",
             "Preview.png",
+            "Newtonsoft.Json.dll",
+            "Reloaded.Memory.dll",
+            "Reloaded.Mod.Interfaces.dll",
             "Data/StoryCharacters.json",
             "Data/JobClasses.json",
             "Data/WotLClasses.json",
@@ -442,21 +467,22 @@ function Verify-Package {
         )
 
         foreach ($file in $requiredFiles) {
-            $entry = $zip.Entries | Where-Object { $_.FullName -eq $file }
-            if ($entry) {
-                Write-Host "  ✓ Found: $file" -ForegroundColor Green
+            if ($entryPaths -contains $file) {
+                Write-Host "  [OK] $file" -ForegroundColor Green
             } else {
-                Write-Host "  ✗ Missing: $file" -ForegroundColor Red
+                Write-Host "  [MISSING] $file" -ForegroundColor Red
+                $missingCount++
             }
         }
 
         foreach ($path in $requiredPaths) {
-            $entries = $zip.Entries | Where-Object { $_.FullName -like "$path/*" }
-            if ($entries) {
-                $binFiles = $entries | Where-Object { $_.Name -like "*.bin" }
-                Write-Host "  ✓ Found: $path (with $($binFiles.Count) .bin files)" -ForegroundColor Green
+            $hasEntries = $entryPaths | Where-Object { $_.StartsWith("$path/") } | Select-Object -First 1
+            if ($hasEntries) {
+                $binCount = ($entryPaths | Where-Object { $_.StartsWith("$path/") -and $_.EndsWith('.bin') } | Measure-Object).Count
+                Write-Host "  [OK] $path (with $binCount .bin files)" -ForegroundColor Green
             } else {
-                Write-Host "  ✗ Missing: $path" -ForegroundColor Red
+                Write-Host "  [MISSING] $path" -ForegroundColor Red
+                $missingCount++
             }
         }
 
@@ -464,7 +490,16 @@ function Verify-Package {
     }
     catch {
         Write-Host "`n[ERROR] Failed to verify package: $_" -ForegroundColor Red
+        return $false
     }
+
+    if ($missingCount -gt 0) {
+        Write-Host "`n[FAIL] Verification failed: $missingCount required entries missing." -ForegroundColor Red
+        return $false
+    }
+
+    Write-Host "`n[PASS] All required entries present." -ForegroundColor Green
+    return $true
 }
 
 ## => Main Script <= ##
@@ -499,15 +534,32 @@ try {
     $packagePath = Create-Package -ModVersion $finalVersion
 
     if ($packagePath) {
-        # Step 7: Verify
-        Verify-Package -PackagePath $packagePath
+        # Step 7: Verify — fail loudly if anything's missing. This is the gate
+        # that catches "the zip exists but is empty / wrong" bugs before they
+        # ship to users (see v3.0.7 incident: source-archive shipped as the
+        # release because nothing checked the artifact contents).
+        $verifyOk = Verify-Package -PackagePath $packagePath
+        if (-not $verifyOk) {
+            Write-Status "Publishing failed - package verification failed" "Red"
+            $exitCode = 1
+        }
+        else {
+            # Emit the produced zip filename as a GitHub Actions output so the
+            # workflow can reference it explicitly (no glob, no drift risk).
+            # The workflow consumes `steps.publish.outputs.zip`.
+            if ($env:GITHUB_OUTPUT) {
+                $zipFilename = Split-Path $packagePath -Leaf
+                Add-Content -Path $env:GITHUB_OUTPUT -Value "zip=$zipFilename"
+                Write-Host "  -> Set GHA output: zip=$zipFilename" -ForegroundColor Cyan
+            }
 
-        Write-Status "Publishing completed successfully!" "Green"
-        Write-Host "`n=====================================" -ForegroundColor Magenta
-        Write-Host "Package ready at: $packagePath" -ForegroundColor Yellow
-        Write-Host "Version: $finalVersion" -ForegroundColor Yellow
-        Write-Host "=====================================" -ForegroundColor Magenta
-        $exitCode = 0
+            Write-Status "Publishing completed successfully!" "Green"
+            Write-Host "`n=====================================" -ForegroundColor Magenta
+            Write-Host "Package ready at: $packagePath" -ForegroundColor Yellow
+            Write-Host "Version: $finalVersion" -ForegroundColor Yellow
+            Write-Host "=====================================" -ForegroundColor Magenta
+            $exitCode = 0
+        }
     }
     else {
         Write-Status "Publishing failed - package creation unsuccessful" "Red"

@@ -75,14 +75,32 @@ jobs:
       # continue-on-error: true  # Commented out - workflow will now fail if tests fail
 
     - name: Build and Package
+      id: publish
       run: ./Publish.ps1
+
+    # Independent assertion — even if Publish.ps1's own Verify-Package missed
+    # something, this won't. Fails loud (workflow goes red) if the zip is
+    # missing, empty, or doesn't contain the main DLL. Prevents shipping a
+    # broken release like v3.0.7 ever again.
+    - name: Verify Release Artifact
+      run: |
+        $zipName = '${{ steps.publish.outputs.zip }}'
+        if (-not $zipName) { throw "Publish.ps1 did not emit a 'zip' output." }
+        if (-not (Test-Path $zipName)) { throw "Expected zip not found: $zipName" }
+        $sizeMB = [math]::Round((Get-Item $zipName).Length / 1MB, 2)
+        if ($sizeMB -lt 5) { throw "Zip suspiciously small ($sizeMB MB) — built mod should be 25+ MB" }
+        Add-Type -Assembly System.IO.Compression.FileSystem
+        $z = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $zipName))
+        $hasMainDll = $z.Entries | Where-Object { $_.Name -eq 'FFTColorCustomizer.dll' } | Select-Object -First 1
+        $z.Dispose()
+        if (-not $hasMainDll) { throw "FFTColorCustomizer.dll missing from $zipName" }
+        Write-Host "OK: $zipName ($sizeMB MB) contains FFTColorCustomizer.dll"
 
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
         name: FFTColorCustomizer-${{ github.sha }}
-        path: |
-          FFTColorCustomizer*.zip
+        path: ${{ steps.publish.outputs.zip }}
         retention-days: 30
 
     - name: Upload Changelog
@@ -98,8 +116,7 @@ jobs:
       with:
         name: FFT Color Customizer ${{ env.RELEASE_TAG }}
         body_path: ${{ env.PUBLISH_CHANGELOG_PATH }}
-        files: |
-          FFTColorCustomizer*.zip
+        files: ${{ steps.publish.outputs.zip }}
         draft: false
         prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
 
