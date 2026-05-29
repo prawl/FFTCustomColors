@@ -1,0 +1,15 @@
+{
+  "_comment": "Chocobo (monster) recolor sections. Tiers live in one bin (battle_cyoko_spr.bin) as palettes 0/1/2 (Yellow/Black/Red); the pixel->index assignment is shared across tiers, so this maps all three. Only the Primary Color (body, indices 3-8) is mapped — Feet (9-11) and Eye (15) were dropped since the editor preview crop can't show them to verify. Indices 1,2,12,13,14 are unused/inert. shadeMode is uniformHue for clean single-hue shading.",
+  "job": "Chocobo",
+  "sprite": "battle_cyoko_spr.bin",
+  "sections": [
+    {
+      "name": "Primary",
+      "displayName": "Primary Color",
+      "indices": [3, 4, 5, 6, 7, 8],
+      "roles": ["outline", "shadow", "shadow", "base", "accent", "highlight"],
+      "primaryIndex": 6,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

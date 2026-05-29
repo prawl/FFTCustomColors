@@ -143,6 +143,17 @@ namespace FFTColorCustomizer.Utilities
 
             // Apply story character themes using CharacterDefinitionService
             ApplyStoryCharacterThemes(config);
+
+            // Apply Monster themes (Chocobo Family: recolor palettes 0/1/2 of battle_cyoko_spr.bin)
+            try
+            {
+                new ChocoboThemeCoordinator(_modPath, _unitPath).Apply(config);
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogError($"[CHOCOBO] Apply failed: {ex.Message}");
+            }
+
             ModLogger.Log("ApplyConfiguration completed");
         }
 

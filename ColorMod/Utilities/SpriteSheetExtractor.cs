@@ -23,14 +23,18 @@ namespace FFTColorCustomizer.Utilities
         public int SwCol { get; }   // SW source column (frame index, not pixel)
         public int NwCol { get; }   // NW source column
         public int Row { get; }     // Row index
+        public int OffsetX { get; } // pixel offset of the grid origin (for sheets whose frames aren't grid-aligned)
+        public int OffsetY { get; }
 
-        public FrameLayout(int frameWidth, int frameHeight, int swCol, int nwCol, int row)
+        public FrameLayout(int frameWidth, int frameHeight, int swCol, int nwCol, int row, int offsetX = 0, int offsetY = 0)
         {
             FrameWidth = frameWidth;
             FrameHeight = frameHeight;
             SwCol = swCol;
             NwCol = nwCol;
             Row = row;
+            OffsetX = offsetX;
+            OffsetY = offsetY;
         }
 
         public static readonly FrameLayout Standard = new FrameLayout(64, 80, 1, 3, 0);
@@ -40,6 +44,10 @@ namespace FFTColorCustomizer.Utilities
             return characterName switch
             {
                 "Construct8" => new FrameLayout(96, 96, 1, 3, 0),
+                // Chocobo's HD sheet is irregular (poses aren't grid-aligned). The two clean
+                // front-facing standing poses (grid cells 6,5 and 7,5) sit at pixel (368,400),
+                // 64x64 each — SW = col 0, NW = col 1 from that origin.
+                "Chocobo" => new FrameLayout(64, 64, 0, 1, 0, 368, 400),
                 _ => Standard
             };
         }
@@ -106,16 +114,16 @@ namespace FFTColorCustomizer.Utilities
             switch (sourceDirection)
             {
                 case Direction.SW:
-                    x = layout.SwCol * spriteWidth;
-                    y = layout.Row * spriteHeight;
+                    x = layout.OffsetX + layout.SwCol * spriteWidth;
+                    y = layout.OffsetY + layout.Row * spriteHeight;
                     break;
                 case Direction.NW:
-                    x = layout.NwCol * spriteWidth;
-                    y = layout.Row * spriteHeight;
+                    x = layout.OffsetX + layout.NwCol * spriteWidth;
+                    y = layout.OffsetY + layout.Row * spriteHeight;
                     break;
                 default:
-                    x = layout.SwCol * spriteWidth;
-                    y = layout.Row * spriteHeight;
+                    x = layout.OffsetX + layout.SwCol * spriteWidth;
+                    y = layout.OffsetY + layout.Row * spriteHeight;
                     break;
             }
 

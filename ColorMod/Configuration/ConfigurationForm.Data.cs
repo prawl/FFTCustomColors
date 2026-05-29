@@ -55,6 +55,19 @@ namespace FFTColorCustomizer.Configuration
             // Load story characters using the registry
             LoadStoryCharacters(ref row);
 
+            // Add header for Monsters (positioned before WotL Jobs)
+            var monstersHeader = CreateCollapsibleHeader("Monsters", _monstersCollapsed, row++);
+            monstersHeader.Click += (sender, e) => ToggleMonstersVisibility(monstersHeader);
+
+            // Load monsters
+            LoadMonsters(ref row);
+
+            // Apply initial collapsed state for monsters
+            if (_monstersCollapsed)
+            {
+                SetControlsVisibility(_monstersControls, false);
+            }
+
             // Add header for WotL Jobs
             var wotlHeader = CreateCollapsibleHeader("WotL Jobs", _wotlJobsCollapsed, row++);
             wotlHeader.Click += (sender, e) => ToggleWotLJobsVisibility(wotlHeader);
@@ -248,7 +261,11 @@ namespace FFTColorCustomizer.Configuration
                         {
                             var comboJobName = CharacterRowBuilder.ConvertJobNameToPropertyFormat(tag.JobName.ToString());
                             Utilities.ModLogger.Log($"[REFRESH] Checking comboBox: tag.JobName={tag.JobName}, converted={comboJobName}, target={jobName}");
-                            if (comboJobName == jobName)
+                            // Chocobo tier rows ("Yellow Chocobo (Rank I)" ...) share the tier-agnostic
+                            // "Chocobo" user-theme key, so refresh all of them when that key changes.
+                            var isChocoboMatch = jobName == FFTColorCustomizer.Services.ChocoboThemePresets.EditorKey
+                                && tag.JobName.ToString().Contains("Chocobo");
+                            if (comboJobName == jobName || isChocoboMatch)
                             {
                                 matchCount++;
                                 Utilities.ModLogger.Log($"[REFRESH] MATCH! Refreshing comboBox for {jobName}");
@@ -454,6 +471,26 @@ namespace FFTColorCustomizer.Configuration
                 () => _isFullyLoaded, _wotlJobsControls);
         }
 
+        private void LoadMonsters(ref int row)
+        {
+            // Chocobo Family subsection label (spans all 3 columns)
+            var familyLabel = ConfigUIComponentFactory.CreateCharacterLabel("— Chocobo Family —");
+            _mainPanel.Controls.Add(familyLabel, 0, row);
+            _mainPanel.SetColumnSpan(familyLabel, 3);
+            _monstersControls.Add(familyLabel);
+            row++;
+
+            AddMonsterRow(row++, "Yellow Chocobo (Rank I)", "Chocobo_RankI", _config.Chocobo_RankI, v => _config.Chocobo_RankI = v);
+            AddMonsterRow(row++, "Black Chocobo (Rank II)", "Chocobo_RankII", _config.Chocobo_RankII, v => _config.Chocobo_RankII = v);
+            AddMonsterRow(row++, "Red Chocobo (Rank III)", "Chocobo_RankIII", _config.Chocobo_RankIII, v => _config.Chocobo_RankIII = v);
+        }
+
+        private void AddMonsterRow(int row, string displayName, string tierKey, string currentTheme, Action<string> setter)
+        {
+            _rowBuilder.AddMonsterRow(row, displayName, tierKey, currentTheme, setter,
+                () => _isFullyLoaded, _monstersControls);
+        }
+
         private void AddJobRow(int row, string jobName, string currentTheme, Action<string> setter)
         {
             _rowBuilder.AddGenericCharacterRow(row, jobName, currentTheme, setter,
@@ -507,6 +544,11 @@ namespace FFTColorCustomizer.Configuration
             _config.DarkKnight_Female = "original";
             _config.OnionKnight_Male = "original";
             _config.OnionKnight_Female = "original";
+
+            // Reset Monsters (Chocobo Family)
+            _config.Chocobo_RankI = "original";
+            _config.Chocobo_RankII = "original";
+            _config.Chocobo_RankIII = "original";
 
             // Reset all story characters using the registry
             StoryCharacterRegistry.ResetAllStoryCharacters(_config);

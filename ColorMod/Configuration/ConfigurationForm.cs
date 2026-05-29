@@ -55,6 +55,8 @@ namespace FFTColorCustomizer.Configuration
         private List<Control> _myThemesControls = new List<Control>();
         private bool _wotlJobsCollapsed = false;
         private List<Control> _wotlJobsControls = new List<Control>();
+        private bool _monstersCollapsed = false;
+        private List<Control> _monstersControls = new List<Control>();
 
         /// <summary>
         /// Gets the current configuration
@@ -297,6 +299,22 @@ namespace FFTColorCustomizer.Configuration
                 _lazyLoadingManager?.CheckAllCarouselsVisibility();
             };
             delayTimer.Start();
+        }
+
+        private void ToggleMonstersVisibility(Label header)
+        {
+            _mainPanel.SuspendLayout();
+            this.SuspendLayout();
+
+            _monstersCollapsed = !_monstersCollapsed;
+            header.Text = _monstersCollapsed ? "▶ Monsters" : "▼ Monsters";
+
+            SetControlsVisibility(_monstersControls, !_monstersCollapsed);
+
+            _mainPanel.ResumeLayout(true);
+            this.ResumeLayout(true);
+
+            _lazyLoadingManager?.CheckAllCarouselsVisibility();
         }
 
         private void SetControlsVisibility(List<Control> controls, bool visible)

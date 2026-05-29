@@ -164,5 +164,16 @@ namespace FFTColorCustomizer.ThemeEditor
                 .Select(f => Path.GetFileNameWithoutExtension(f))
                 .ToArray();
         }
+
+        public static string[] GetAvailableMonsters(string basePath)
+        {
+            var monsterPath = Path.Combine(basePath, "Monster");
+            if (!Directory.Exists(monsterPath))
+                return new string[0];
+
+            return Directory.GetFiles(monsterPath, "*.json")
+                .Select(f => Path.GetFileNameWithoutExtension(f))
+                .ToArray();
+        }
     }
 }

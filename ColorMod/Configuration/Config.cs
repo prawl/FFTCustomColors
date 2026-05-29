@@ -107,6 +107,12 @@ namespace FFTColorCustomizer.Configuration
             // WotL Jobs - Onion Knight
             ["OnionKnight_Male"] = new JobMetadata("WotL Jobs", "Male Onion Knight", "Color scheme for all male onion knights", "OnionKnightMale"),
             ["OnionKnight_Female"] = new JobMetadata("WotL Jobs", "Female Onion Knight", "Color scheme for all female onion knights", "OnionKnightFemale"),
+
+            // Monsters - Chocobo Family (all three tiers share battle_cyoko_spr.bin palettes 0/1/2;
+            // applied by ChocoboThemeCoordinator, not the generic _Male/_Female sprite-swap path)
+            ["Chocobo_RankI"] = new JobMetadata("Monsters", "Yellow Chocobo (Rank I)", "Color scheme for Rank I (Yellow) chocobos", "ChocoboRankI"),
+            ["Chocobo_RankII"] = new JobMetadata("Monsters", "Black Chocobo (Rank II)", "Color scheme for Rank II (Black) chocobos", "ChocoboRankII"),
+            ["Chocobo_RankIII"] = new JobMetadata("Monsters", "Red Chocobo (Rank III)", "Color scheme for Rank III (Red) chocobos", "ChocoboRankIII"),
         };
 
         public Config()
@@ -446,6 +452,28 @@ namespace FFTColorCustomizer.Configuration
         {
             get => GetJobTheme("OnionKnight_Female");
             set => SetJobTheme("OnionKnight_Female", value);
+        }
+
+        // Monsters - Chocobo Family (recolored by ChocoboThemeCoordinator via palette 0/1/2)
+        [Newtonsoft.Json.JsonIgnore]
+        public string Chocobo_RankI
+        {
+            get => GetJobTheme("Chocobo_RankI");
+            set => SetJobTheme("Chocobo_RankI", value);
+        }
+
+        [Newtonsoft.Json.JsonIgnore]
+        public string Chocobo_RankII
+        {
+            get => GetJobTheme("Chocobo_RankII");
+            set => SetJobTheme("Chocobo_RankII", value);
+        }
+
+        [Newtonsoft.Json.JsonIgnore]
+        public string Chocobo_RankIII
+        {
+            get => GetJobTheme("Chocobo_RankIII");
+            set => SetJobTheme("Chocobo_RankIII", value);
         }
 
         // Story Character Properties (string-based themes)

@@ -25,8 +25,20 @@ Get-ChildItem "$modsDir" -Filter "FFTColorCustomizer_v*" -Directory | ForEach-Ob
     Remove-Item $_.FullName -Force -Recurse -ErrorAction SilentlyContinue
 }
 
+# Deploy to the ACTIVE ModId folder (must match ModConfig.json "ModId") so the copy the game
+# actually loads gets updated. A folder literally named "FFTColorCustomizer" shares this same
+# ModId and would silently shadow this one, so we target the live folder and remove that legacy
+# shadow folder below. Change $modFolderName if your active mod folder is named differently.
+$modFolderName = "paxtrick.fft.colorcustomizer"
+$modPath = "$modsDir/$modFolderName"
+
+# Remove the legacy "FFTColorCustomizer" shadow folder (same ModId -> Reloaded loads the wrong copy)
+if ("$modsDir/FFTColorCustomizer" -ne $modPath -and (Test-Path "$modsDir/FFTColorCustomizer")) {
+    Write-Host "  Removing legacy shadow folder (shares ModId): FFTColorCustomizer" -ForegroundColor Yellow
+    Remove-Item "$modsDir/FFTColorCustomizer" -Force -Recurse -ErrorAction SilentlyContinue
+}
+
 # Clean existing dev installation (preserve user themes)
-$modPath = "$modsDir/FFTColorCustomizer"
 if (Test-Path $modPath) {
     Write-Host "  Cleaning existing dev installation (preserving user themes)..." -ForegroundColor Yellow
 
@@ -45,8 +57,8 @@ if (Test-Path $modPath) {
         Copy-Item $userThemesJson "$tempBackupPath/UserThemes.json" -Force
     }
 
-    # Remove everything
-    Remove-Item "$modPath/*" -Force -Recurse -ErrorAction SilentlyContinue
+    # Remove everything (keep the Vortex marker so Vortex doesn't treat the folder as orphaned)
+    Remove-Item "$modPath/*" -Exclude "__folder_managed_by_vortex" -Force -Recurse -ErrorAction SilentlyContinue
 
     # Restore UserThemes if backup exists
     if (Test-Path $tempBackupPath) {
@@ -145,6 +157,14 @@ if ($LASTEXITCODE -eq 0) {
             Copy-Item "ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_original/*.bin" $spritePath -Force
             $spriteCount = (Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_original/*.bin" | Measure-Object).Count
             Write-Host "Copied $spriteCount original sprite files to fftpack/unit" -ForegroundColor Green
+
+            # Also deploy sprites_original as a FOLDER. The theme editor loads each character's
+            # original template from unit/sprites_original/<sprite>.bin (e.g. the new Chocobo
+            # preview reads battle_cyoko_spr.bin from here). Flattening into unit/ alone isn't enough.
+            $spritesOriginalDest = "$spritePath/sprites_original"
+            New-Item -ItemType Directory -Force -Path $spritesOriginalDest | Out-Null
+            Copy-Item "ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_original/*.bin" $spritesOriginalDest -Force
+            Write-Host "Copied sprites_original folder ($spriteCount theme-editor templates incl. Chocobo)" -ForegroundColor Green
 
             # Copy story character themed folders (e.g., sprites_cloud_sephiroth_black)
             Write-Host "Copying story character themed sprites..." -ForegroundColor Cyan
@@ -410,6 +430,20 @@ if ($LASTEXITCODE -eq 0) {
         $verificationErrors += "ModConfig.json missing"
     } else {
         Write-Host "  [OK] ModConfig.json present" -ForegroundColor Green
+    }
+
+    # Verify Monster/Chocobo assets deployed (section mapping, HD preview BMP, original sprite template)
+    $chocoboAssets = @(
+        @{ Name = "Chocobo section mapping"; Path = "$modPath/Data/SectionMappings/Monster/Chocobo.json" },
+        @{ Name = "Chocobo HD preview BMP";  Path = "$modPath/Images/Chocobo/original/1068_Chocobo_hd.bmp" },
+        @{ Name = "Chocobo original sprite"; Path = "$modPath/FFTIVC/data/enhanced/fftpack/unit/sprites_original/battle_cyoko_spr.bin" }
+    )
+    foreach ($asset in $chocoboAssets) {
+        if (Test-Path $asset.Path) {
+            Write-Host "  [OK] $($asset.Name) deployed" -ForegroundColor Green
+        } else {
+            $verificationErrors += "$($asset.Name) missing: $($asset.Path)"
+        }
     }
 
     # Report results
