@@ -265,7 +265,10 @@
       "texFiles": [],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "Crimson",
+        "Cobalt",
+        "Verdant"
       ]
     }
   ]
