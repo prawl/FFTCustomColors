@@ -53,17 +53,9 @@ Python note: use `python` (not `python3`, which hits the Windows Store alias) an
 3. **Stage editor assets** (add to the repo *and* let `BuildLinked.ps1` deploy them):
    - original bin → `ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_original/battle_<name>_spr.bin`
    - `<id>_<Name>_hd.bmp` → `ColorMod/Images/<Family>/original/<id>_<Name>_hd.bmp`
-4. **Frame layout for the preview.** Monster HD sheets are irregular (poses aren't grid-aligned). Run
-   `scripts/overlay_frame_grid.ps1 -SrcPath <bmp> -OutPath grid.png -CellW 64 -CellH 64`, find a clean
-   standing-pose cell (or auto-detect bounding boxes — see chocobo notes), then add a case to
-   `SpriteSheetExtractor.FrameLayout.For("<Family>")`: `new FrameLayout(w, h, swCol, nwCol, row, offsetX, offsetY)`.
-   (Chocobo = `FrameLayout(64,64, 0,1,0, 368,400)`.)
-5. **Map index → body part.** Create a *diagnostic* `Data/SectionMappings/Monster/<Family>.json` with
-   **one section per index** (1–15, each `shadeMode: uniformHue`). `BuildLinked`, open the theme editor →
-   `── Monsters ──` → the family, twiddle each "Index N" slider and note what changes — OR read it off a
-   full-sheet render (decode the bin's 4-bit pixels at offset 512, 256-wide, even=low/odd=high nibble,
-   color each index). Then replace it with **grouped** sections (Primary / Feet / Eyes / …) like
-   `Data/SectionMappings/Monster/Chocobo.json`. Unused/inert indices are common — leave them out.
+4. **Cut a clean pose from the BMP** → a `FrameLayout` entry. See **"Cutting the sprite from the BMP"** below.
+5. **Map palette index → body part** → a grouped `Data/SectionMappings/Monster/<Family>.json`. See
+   **"Separating out the indices"** below.
 6. **Wire the feature** (mirror the chocobo):
    - `Config.cs`: 3 `_jobMetadata` entries (category `"Monsters"`) + 3 `[JsonIgnore]` props `<Family>_RankI/II/III`.
    - `ConfigurationForm.Data.cs` `LoadMonsters`: a `"— <Family> —"` sub-label + 3 `AddMonsterRow` rows.
@@ -71,6 +63,75 @@ Python note: use `python` (not `python3`, which hits the Windows Store alias) an
    - Presets + apply: see **Generalize** below.
    - Theme editor: nothing to do — the `Monster/` folder scan + `── Monsters ──` group pick up any new `Monster/<X>.json` automatically.
 7. **Deploy** with `BuildLinked.ps1` (game **closed** — it rebuilds the DLL), then restart + verify.
+
+---
+
+## Cutting the sprite from the BMP (the FrameLayout)
+
+The editor preview crops a single pose from the family's HD BMP (`<id>_<Name>_hd.bmp`, **512×512,
+4bpp indexed**). Monster sheets are **irregular** — poses are different sizes and are *not*
+grid-aligned, so a uniform grid will slice them. Process:
+
+1. **See the poses with numbered boxes** (handles the irregular layout for you):
+   ```
+   python scripts/monster/detect_bmp_poses.py "<...>/extracted_sprites/<id>_<Name>_hd.bmp" out\boxes.png
+   ```
+   It renders the BMP (native palette) with a numbered cyan box on each detected pose and prints exact
+   `(x, y, w, h)` rects. Open `boxes.png`, pick the **two clean front-facing standing poses** by number
+   (these become SW and NW; the editor mirrors them for NE/SE).
+   *(Alternative: `scripts/overlay_frame_grid.ps1 -SrcPath <bmp> -OutPath grid.png -CellW 64 -CellH 64`
+   draws a `(col,row)` grid if you prefer eyeballing cells — but the grid usually slices the poses, so
+   the auto-detect rects are what you actually encode.)*
+
+2. **Turn the two rects into a uniform cell + offset.** The two poses are usually one cell-width apart.
+   Find `frameW × frameH` that bounds each, and an `(offsetX, offsetY)` so cell `swCol` lands on pose A
+   and `nwCol` on pose B. Chocobo: boxes `(370,402,62×62)` and `(434,408,62×56)` → a **64×64** cell at
+   **offset (368,400)**, SW=col 0, NW=col 1.
+
+3. **Encode it** in `SpriteSheetExtractor.FrameLayout.For("<Family>")`:
+   ```csharp
+   "<Family>" => new FrameLayout(frameW, frameH, swCol, nwCol, row, offsetX, offsetY),
+   // Chocobo: new FrameLayout(64, 64, 0, 1, 0, 368, 400)
+   ```
+   (`FrameLayout` already supports `offsetX/offsetY`; that was added for the chocobo.)
+
+4. **Verify** by reopening the editor — the family should show a clean, full pose, not a sliced one.
+
+---
+
+## Separating out the indices (index → body part)
+
+The recolor edits palette **indices**, so you must learn which index paints which body part.
+
+**Bin pixel format:** after the **512-byte palette region** (16 palettes × 16 colors × 2 bytes BGR555),
+pixel data is **4-bit indexed**, **256-wide** sheet, **even pixel = low nibble, odd = high nibble**
+(note: this is the *opposite* nibble order from the 0x800-header character TEX format). Index 0 = transparent.
+
+**Method A — read it off a render (fast, no game):**
+```
+python scripts/monster/render_index_map.py "<...>/Pac Files/0002/fftpack/unit/battle_<name>_spr.bin" out\
+```
+Produces `<name>_indexmap.png` (each index a distinct color) + `<name>_real.png` (real palette 0) and
+prints the **pixel count per index**. Map by eye + counts: largest counts = the body gradient; a
+near-black index = outline; tiny counts = eye/claws; mid counts = beak/feet. The full sheet shows parts
+the single cropped editor pose hides (e.g. feet at the bottom of the sheet).
+
+**Method B — one-slider-per-index in the editor (visual confirm):**
+1. Drop a **diagnostic** `Data/SectionMappings/Monster/<Family>.json` with **one section per index**:
+   `{ "name":"Index5","displayName":"Index 5","indices":[5],"roles":["base"],"primaryIndex":5,"shadeMode":"uniformHue" }`
+   for indices 1–15.
+2. `BuildLinked` (needs the FrameLayout + BMP + `sprites_original/` bin staged), open the theme editor →
+   `── Monsters ──` → the family → move each "Index N" slider and watch which body part recolors.
+3. Record the groups; replace the diagnostic with the **grouped** mapping.
+
+**Grouped section shape** (final): each section is
+`{ name, displayName, indices:[dark..light], roles:[...], primaryIndex, shadeMode:"uniformHue" }`.
+`uniformHue` is **required** — it forces one hue and varies only L/S (clean shading). `Preserve` mode
+produces rainbow garbage on monsters. Leave **unused/inert** indices out (every sprite has a few).
+
+**Chocobo result (worked example):** Primary = `[3,4,5,6,7,8]` (body, `primaryIndex 6`) · Feet = `[9,10,11]`
+· Eyes = `[15]` · indices `1,2,12,13,14` unused. (Shipped mapping kept only Primary, since the editor's
+cropped pose can't show feet/eyes to verify — add Feet/Eyes once you pick a pose that shows them.)
 
 ---
 
