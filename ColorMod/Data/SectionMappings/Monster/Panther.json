@@ -1,0 +1,31 @@
+{
+  "_comment": "Panther (FFT 'Coeurl' sprite, battle_hyou_spr.bin). Tiers (Red Panther/Coeurl/Vampire Cat) = palettes 0/1/2. CONFIRMED in-editor, ordered dark->light by user-measured lightness: Ears=6,3,4,5 (19%..67%); Primary (fur)=8-14 (15%..58%); Eyes=15,7 (50%,66%). Outline (1) and white highlight (2) left unthemed. shadeMode uniformHue.",
+  "job": "Panther",
+  "sprite": "battle_hyou_spr.bin",
+  "sections": [
+    {
+      "name": "Ears",
+      "displayName": "Ears",
+      "indices": [6, 3, 4, 5],
+      "roles": ["outline", "shadow", "base", "highlight"],
+      "primaryIndex": 4,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Primary",
+      "displayName": "Primary Color",
+      "indices": [8, 9, 10, 11, 12, 13, 14],
+      "roles": ["outline", "shadow", "shadow", "base", "accent", "highlight", "highlight"],
+      "primaryIndex": 11,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Eyes",
+      "displayName": "Eye Color",
+      "indices": [15, 7],
+      "roles": ["shadow", "base"],
+      "primaryIndex": 7,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

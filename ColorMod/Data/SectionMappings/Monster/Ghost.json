@@ -1,0 +1,31 @@
+{
+  "_comment": "Ghost (battle_yurei_spr.bin). Tiers (Ghoul/Ghast/Revenant) = palettes 0/1/2. CONFIRMED in-editor, ordered dark->light by user-measured lightness: Primary (body/head)=3,4,5,6,7 (28%..78%); Robe=8,9,10,11,12 (22%..66%); Hair Band=13,14,15 (35%..62%). Outline (1) and glint (2) left unthemed. shadeMode uniformHue.",
+  "job": "Ghost",
+  "sprite": "battle_yurei_spr.bin",
+  "sections": [
+    {
+      "name": "Primary",
+      "displayName": "Primary Color",
+      "indices": [3, 4, 5, 6, 7],
+      "roles": ["outline", "shadow", "base", "accent", "highlight"],
+      "primaryIndex": 5,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Robe",
+      "displayName": "Robe",
+      "indices": [8, 9, 10, 11, 12],
+      "roles": ["outline", "shadow", "base", "accent", "highlight"],
+      "primaryIndex": 10,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "HairBand",
+      "displayName": "Hair Band",
+      "indices": [13, 14, 15],
+      "roles": ["shadow", "base", "highlight"],
+      "primaryIndex": 14,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

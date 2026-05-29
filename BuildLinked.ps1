@@ -432,18 +432,24 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "  [OK] ModConfig.json present" -ForegroundColor Green
     }
 
-    # Verify Monster/Chocobo assets deployed (section mapping, HD preview BMP, original sprite template)
-    $chocoboAssets = @(
-        @{ Name = "Chocobo section mapping"; Path = "$modPath/Data/SectionMappings/Monster/Chocobo.json" },
-        @{ Name = "Chocobo HD preview BMP";  Path = "$modPath/Images/Chocobo/original/1068_Chocobo_hd.bmp" },
-        @{ Name = "Chocobo original sprite"; Path = "$modPath/FFTIVC/data/enhanced/fftpack/unit/sprites_original/battle_cyoko_spr.bin" }
-    )
-    foreach ($asset in $chocoboAssets) {
-        if (Test-Path $asset.Path) {
-            Write-Host "  [OK] $($asset.Name) deployed" -ForegroundColor Green
-        } else {
-            $verificationErrors += "$($asset.Name) missing: $($asset.Path)"
+    # Verify EVERY monster family's assets deployed (section mapping + HD preview BMP + original
+    # sprite bin). Driven by the deployed Monster/*.json mappings, so new families are covered
+    # automatically and a missing asset fails the build (no silent drift).
+    $monsterMapDir = "$modPath/Data/SectionMappings/Monster"
+    if (Test-Path $monsterMapDir) {
+        $monsterMaps = Get-ChildItem "$monsterMapDir/*.json" -File
+        Write-Host "Verifying $($monsterMaps.Count) monster families..." -ForegroundColor Cyan
+        foreach ($map in $monsterMaps) {
+            $family = [System.IO.Path]::GetFileNameWithoutExtension($map.Name)
+            $sprite = (Get-Content $map.FullName -Raw | ConvertFrom-Json).sprite
+            $bmp = Get-ChildItem "$modPath/Images/$family/original/*.bmp" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            $binPath = "$modPath/FFTIVC/data/enhanced/fftpack/unit/sprites_original/$sprite"
+            if (-not $bmp) { $verificationErrors += "$family HD preview BMP missing: Images/$family/original/*.bmp" }
+            if (-not (Test-Path $binPath)) { $verificationErrors += "$family original sprite missing: $binPath" }
+            if ($bmp -and (Test-Path $binPath)) { Write-Host "  [OK] $family ($sprite + $($bmp.Name))" -ForegroundColor Green }
         }
+    } else {
+        $verificationErrors += "Monster section-mapping dir missing: $monsterMapDir"
     }
 
     # Report results

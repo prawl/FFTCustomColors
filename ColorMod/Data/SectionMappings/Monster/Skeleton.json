@@ -1,0 +1,31 @@
+{
+  "_comment": "Skeleton (battle_sukeru_spr.bin). Tiers (Skeleton/Bonesnatch/Skeletal Fiend) = palettes 0/1/2. CONFIRMED in-editor, ordered dark->light by user-measured lightness: Primary (bone)=3,4,5,6,7 (22%..77%); Cape=8,9,10,11 (27%..51%); Horns/Gloves/Boots=12,13,14,15 (19%..57%). Outline (1) and glint (2) left unthemed. shadeMode uniformHue.",
+  "job": "Skeleton",
+  "sprite": "battle_sukeru_spr.bin",
+  "sections": [
+    {
+      "name": "Primary",
+      "displayName": "Primary Color",
+      "indices": [3, 4, 5, 6, 7],
+      "roles": ["outline", "shadow", "base", "accent", "highlight"],
+      "primaryIndex": 5,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Cape",
+      "displayName": "Cape",
+      "indices": [8, 9, 10, 11],
+      "roles": ["outline", "shadow", "base", "highlight"],
+      "primaryIndex": 10,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Leather",
+      "displayName": "Horns, Gloves & Boots",
+      "indices": [12, 13, 14, 15],
+      "roles": ["outline", "shadow", "base", "highlight"],
+      "primaryIndex": 14,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

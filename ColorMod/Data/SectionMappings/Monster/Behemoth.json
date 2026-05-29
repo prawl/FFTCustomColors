@@ -1,0 +1,31 @@
+{
+  "_comment": "Behemoth (battle_behi_spr.bin). Tiers (Behemoth/Behemoth King/Dark Behemoth) = palettes 0/1/2. AUTO-DERIVED (not yet user-confirmed in-editor) from palette lightness + verified discovery: Body (hide)=3,4,5,6,7; Mane (crest)=8,9,10,11; Horns & Spikes=12,13,14,15 (each dark->light). Outline (1) and glint (2) left unthemed. shadeMode uniformHue.",
+  "job": "Behemoth",
+  "sprite": "battle_behi_spr.bin",
+  "sections": [
+    {
+      "name": "Body",
+      "displayName": "Body",
+      "indices": [3, 4, 5, 6, 7],
+      "roles": ["outline", "shadow", "base", "accent", "highlight"],
+      "primaryIndex": 5,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Mane",
+      "displayName": "Mane",
+      "indices": [8, 9, 10, 11],
+      "roles": ["shadow", "base", "accent", "highlight"],
+      "primaryIndex": 9,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Spikes",
+      "displayName": "Horns & Spikes",
+      "indices": [12, 13, 14, 15],
+      "roles": ["outline", "shadow", "base", "highlight"],
+      "primaryIndex": 14,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

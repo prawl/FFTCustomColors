@@ -1,0 +1,31 @@
+{
+  "_comment": "Mindflayer (FFT 'Squid' sprite, battle_ika_spr.bin). Tiers (Piscodaemon/Squidrakin/Mindflayer) = palettes 0/1/2. CONFIRMED in-editor, ordered dark->light by user-measured lightness: Hair & Skin=4,5,6 (41%..81%); Robe=7,8,9,10 (30%..54%); Robe Accent=11,12,13 (38%..75%). Outline (1), glint (2), and indices 3,14,15 left unthemed. shadeMode uniformHue.",
+  "job": "Mindflayer",
+  "sprite": "battle_ika_spr.bin",
+  "sections": [
+    {
+      "name": "HairSkin",
+      "displayName": "Hair and Skin",
+      "indices": [4, 5, 6],
+      "roles": ["shadow", "base", "highlight"],
+      "primaryIndex": 5,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Robe",
+      "displayName": "Robe",
+      "indices": [7, 8, 9, 10],
+      "roles": ["outline", "shadow", "base", "highlight"],
+      "primaryIndex": 9,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Accent",
+      "displayName": "Robe Accent",
+      "indices": [11, 12, 13],
+      "roles": ["shadow", "base", "highlight"],
+      "primaryIndex": 12,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

@@ -5,34 +5,43 @@ using FFTColorCustomizer.ThemeEditor;
 namespace FFTColorCustomizer.Services
 {
     /// <summary>
-    /// Pure palette recolor for the chocobo bin. Recolors one palette's section indices to a
-    /// base color, preserving the section's shade relationships (RelativeShadeGenerator). Mutates
-    /// the byte[] in place. Each palette is 16 colors * 2 bytes (16-bit BGR555) at offset
-    /// paletteIndex*32; index 0 is transparent and never touched.
+    /// Pure palette recolor for a monster bin. Recolors one palette's section indices to a base
+    /// color, preserving the section's shade relationships (RelativeShadeGenerator). Mutates the
+    /// byte[] in place. Each palette is 16 colors * 2 bytes (16-bit BGR555) at offset
+    /// paletteIndex*32; index 0 is transparent and never touched. Generic across all families —
+    /// the family/tier wiring lives in <see cref="MonsterThemeRegistry"/>.
     /// </summary>
-    public static class ChocoboRecolor
+    public static class MonsterRecolor
     {
         /// <summary>
-        /// Applies a chocobo theme (built-in preset or user-saved theme) to one tier's palette in
+        /// Applies a monster theme (built-in preset or user-saved theme) to one tier's palette in
         /// binData. Presets recolor via uniformHue from a base color; user themes copy the saved
         /// palette's section colors. Returns true if anything was applied ("original"/unknown = false).
         /// </summary>
         public static bool ApplyTheme(byte[] binData, int paletteIndex, IEnumerable<JobSection> sections,
             string tierKey, string themeName, UserThemeService userThemes)
         {
-            if (string.IsNullOrEmpty(themeName) || themeName == "original")
+            if (string.IsNullOrEmpty(themeName) || themeName == MonsterThemeRegistry.Original)
                 return false;
 
-            if (ChocoboThemePresets.TryGetBaseColor(tierKey, themeName, out var baseColor))
+            if (MonsterThemeRegistry.TryGetPreset(tierKey, themeName, out var preset))
             {
+                // Per-section colorway: each section takes its own color (or the whole-creature
+                // tint); sections the preset doesn't name are left at the original palette.
                 foreach (var section in sections)
-                    ApplySection(binData, paletteIndex, section, baseColor);
+                {
+                    var c = preset.ColorFor(section.Name);
+                    if (c.HasValue)
+                        ApplySection(binData, paletteIndex, section, c.Value);
+                }
                 return true;
             }
 
-            if (userThemes != null && userThemes.IsUserTheme(ChocoboThemePresets.EditorKey, themeName))
+            // User themes are tier-agnostic, saved under the family's editor key.
+            var editorKey = MonsterThemeRegistry.ForTierKey(tierKey)?.EditorKey;
+            if (userThemes != null && editorKey != null && userThemes.IsUserTheme(editorKey, themeName))
             {
-                var userPalette = userThemes.LoadTheme(ChocoboThemePresets.EditorKey, themeName);
+                var userPalette = userThemes.LoadTheme(editorKey, themeName);
                 if (userPalette != null && userPalette.Length >= 32)
                 {
                     foreach (var section in sections)
@@ -50,7 +59,7 @@ namespace FFTColorCustomizer.Services
             int palOff = paletteIndex * 32;
             foreach (var idx in section.Indices)
             {
-                int src = idx * 2;           // user palette stores the edited chocobo as palette 0
+                int src = idx * 2;           // user palette stores the edited monster as palette 0
                 int dst = palOff + idx * 2;
                 if (src + 1 < userPalette.Length && dst + 1 < binData.Length)
                 {

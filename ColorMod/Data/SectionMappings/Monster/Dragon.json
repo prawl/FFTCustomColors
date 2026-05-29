@@ -1,0 +1,23 @@
+{
+  "_comment": "Dragon (battle_dora1_spr.bin — palettes 0/1/2 = green/blue/red tiers). Tiers (Dragon/Blue Dragon/Red Dragon). AUTO-DERIVED (not yet user-confirmed in-editor) from palette lightness + verified discovery: Body (scales)=9,8,7,6,5,4,3 (dark->light); Belly / Wing (underscales)=14,13,12,11,10. Outline (1), glint (2), magenta eye sentinel (15) left unthemed. shadeMode uniformHue.",
+  "job": "Dragon",
+  "sprite": "battle_dora1_spr.bin",
+  "sections": [
+    {
+      "name": "Body",
+      "displayName": "Body Color",
+      "indices": [9, 8, 7, 6, 5, 4, 3],
+      "roles": ["outline", "shadow", "shadow", "base", "accent", "accent", "highlight"],
+      "primaryIndex": 6,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Belly",
+      "displayName": "Belly / Wing",
+      "indices": [14, 13, 12, 11, 10],
+      "roles": ["outline", "shadow", "base", "accent", "highlight"],
+      "primaryIndex": 12,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "_comment": "Pig (battle_uri_spr.bin). Tiers (Pig/Swine/Wild Boar) = palettes 0/1/2. CONFIRMED in-editor, ordered dark->light by user-measured lightness: Primary (hide)=9,8,7,6,5,4 (15%..59%); Nose & Ears=12,11,10 (40%..62%). Outline (1), glint (2), and indices 3,13,14,15 (back-cloth/detail) left unthemed. shadeMode uniformHue.",
+  "job": "Pig",
+  "sprite": "battle_uri_spr.bin",
+  "sections": [
+    {
+      "name": "Primary",
+      "displayName": "Primary Color",
+      "indices": [9, 8, 7, 6, 5, 4],
+      "roles": ["outline", "shadow", "base", "midtone", "accent", "highlight"],
+      "primaryIndex": 7,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "NoseEars",
+      "displayName": "Nose & Ears",
+      "indices": [12, 11, 10],
+      "roles": ["shadow", "base", "highlight"],
+      "primaryIndex": 11,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

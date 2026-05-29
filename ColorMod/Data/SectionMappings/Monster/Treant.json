@@ -1,0 +1,23 @@
+{
+  "_comment": "Treant (battle_ki_spr.bin). Tiers (Dryad/Treant/Elder Treant) = palettes 0/1/2. AUTO-DERIVED (not yet user-confirmed in-editor) from palette lightness + verified discovery: Foliage (crown)=3,4,5,6,7 (dark->light); Trunk & Limbs (bark)=10,9,11,12,13,14. Outline (1), glint (2) and magenta eye sentinels (8,15) left unthemed. shadeMode uniformHue.",
+  "job": "Treant",
+  "sprite": "battle_ki_spr.bin",
+  "sections": [
+    {
+      "name": "Foliage",
+      "displayName": "Foliage",
+      "indices": [3, 4, 5, 6, 7],
+      "roles": ["outline", "shadow", "base", "accent", "highlight"],
+      "primaryIndex": 5,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Trunk",
+      "displayName": "Trunk & Limbs",
+      "indices": [10, 9, 11, 12, 13, 14],
+      "roles": ["outline", "shadow", "base", "accent", "accent", "highlight"],
+      "primaryIndex": 12,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "_comment": "Ahriman (battle_arli_spr.bin). Tiers (Floating Eye/Ahriman/Plague Horror) = palettes 0/1/2. CONFIRMED in-editor: Primary (eye body) = 3-7 (user gave it lightest->darkest, stored here dark->light as 7,6,5,4,3); Wings = 8-15, ordered dark->light by the user's measured lightness (15=19% .. 11=62%). Outline (1) and glint (2) left unthemed. shadeMode uniformHue.",
+  "job": "Ahriman",
+  "sprite": "battle_arli_spr.bin",
+  "sections": [
+    {
+      "name": "Primary",
+      "displayName": "Primary Color",
+      "indices": [7, 6, 5, 4, 3],
+      "roles": ["outline", "shadow", "base", "accent", "highlight"],
+      "primaryIndex": 5,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Wings",
+      "displayName": "Wing Color",
+      "indices": [15, 14, 10, 9, 13, 12, 8, 11],
+      "roles": ["outline", "shadow", "shadow", "base", "base", "accent", "highlight", "highlight"],
+      "primaryIndex": 13,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

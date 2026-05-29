@@ -1,0 +1,39 @@
+{
+  "_comment": "Aevis (FFT 'Cockatrice' sprite, battle_tori_spr.bin). Tiers (Jura Aevis/Steelhawk/Cockatrice) = palettes 0/1/2. Index groups CONFIRMED in-editor: Eye=3, Wings=4-7, Chest & Head Band=8-11, Feet=12-15 (each listed dark->light). Outline (1) and white highlight (2) left unthemed. shadeMode uniformHue.",
+  "job": "Aevis",
+  "sprite": "battle_tori_spr.bin",
+  "sections": [
+    {
+      "name": "Eye",
+      "displayName": "Eye Color",
+      "indices": [3],
+      "roles": ["base"],
+      "primaryIndex": 3,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Wings",
+      "displayName": "Wing Color",
+      "indices": [4, 5, 6, 7],
+      "roles": ["outline", "shadow", "base", "highlight"],
+      "primaryIndex": 6,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Chest",
+      "displayName": "Chest & Head Band",
+      "indices": [8, 9, 10, 11],
+      "roles": ["outline", "shadow", "base", "highlight"],
+      "primaryIndex": 10,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Feet",
+      "displayName": "Feet Color",
+      "indices": [12, 13, 14, 15],
+      "roles": ["outline", "shadow", "base", "highlight"],
+      "primaryIndex": 14,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

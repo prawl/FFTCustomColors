@@ -1,0 +1,23 @@
+{
+  "_comment": "Malboro (battle_mol_spr.bin — 'mol' = Morbol). Tiers (Malboro/Ochu/Great Malboro) = palettes 0/1/2. AUTO-DERIVED (not yet user-confirmed in-editor) from palette lightness + verified discovery: Body (vine)=1,7,6,5,4,3 (dark->light); Maw / Tendrils (mouth)=10,9,8. Blue ground puddle (11,12,13) and specks (2,14,15) left unthemed. shadeMode uniformHue.",
+  "job": "Malboro",
+  "sprite": "battle_mol_spr.bin",
+  "sections": [
+    {
+      "name": "Body",
+      "displayName": "Body",
+      "indices": [1, 7, 6, 5, 4, 3],
+      "roles": ["outline", "shadow", "base", "midtone", "accent", "highlight"],
+      "primaryIndex": 5,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Maw",
+      "displayName": "Maw / Tendrils",
+      "indices": [10, 9, 8],
+      "roles": ["shadow", "base", "highlight"],
+      "primaryIndex": 9,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

@@ -174,11 +174,11 @@ namespace FFTColorCustomizer.Configuration.UI
         }
 
         /// <summary>
-        /// Adds a Monster row (e.g. a Chocobo tier): label + theme dropdown populated from the
-        /// monster's curated presets (ChocoboThemePresets), not the shared job theme list. No
-        /// preview carousel — monster sprites don't follow the humanoid preview convention.
+        /// Adds a Monster tier row: label + theme dropdown populated from the family's curated
+        /// presets (MonsterThemeRegistry) plus its tier-agnostic user themes, and a recolored
+        /// preview carousel. Generic across all families (Chocobo, Goblin, …).
         /// </summary>
-        public void AddMonsterRow(int row, string displayName, string tierKey, string currentTheme,
+        public void AddMonsterRow(int row, string displayName, string family, string tierKey, string currentTheme,
             Action<string> setter, Func<bool> isFullyLoaded, List<Control> controlsList)
         {
             var label = ConfigUIComponentFactory.CreateCharacterLabel(displayName);
@@ -187,29 +187,29 @@ namespace FFTColorCustomizer.Configuration.UI
 
             var comboBox = new ThemeComboBox();
             ConfigUIComponentFactory.ApplyThemeComboBoxStyling(comboBox);
-            var builtInThemes = FFTColorCustomizer.Services.ChocoboThemePresets.GetThemeNames(tierKey);
-            // Chocobo user themes are tier-agnostic — saved under one "Chocobo" editor key and
-            // offered on every tier (a custom recolor applies to any tier's palette).
-            var userThemes = _userThemeService.GetUserThemes(FFTColorCustomizer.Services.ChocoboThemePresets.EditorKey);
+            var builtInThemes = MonsterThemeRegistry.GetThemeNames(tierKey);
+            // Monster user themes are tier-agnostic — saved under one editor key (== family name)
+            // and offered on every tier (a custom recolor applies to any tier's palette).
+            var userThemes = _userThemeService.GetUserThemes(family);
             comboBox.SetThemesWithUserThemes(builtInThemes, userThemes);
             comboBox.SelectedThemeValue = currentTheme;
             _mainPanel.Controls.Add(comboBox, 1, row);
             controlsList.Add(comboBox);
 
-            // Preview carousel: the chocobo recolored for this tier + selected preset.
+            // Preview carousel: the family's sprite recolored for this tier + selected theme.
             var carousel = ConfigUIComponentFactory.CreatePreviewPictureBox();
-            carousel.Tag = new { TierKey = tierKey, Theme = currentTheme };
+            carousel.Tag = new { Family = family, TierKey = tierKey, Theme = currentTheme };
             carousel.LoadImagesCallback = (c) =>
             {
                 var tag = c.Tag as dynamic;
                 if (tag != null)
-                    UpdateChocoboPreviewImages(c as PreviewCarousel, tag.TierKey.ToString(), tag.Theme.ToString());
+                    UpdateMonsterPreviewImages(c as PreviewCarousel, tag.Family.ToString(), tag.TierKey.ToString(), tag.Theme.ToString());
             };
             _allCarousels.Add(carousel);
             _mainPanel.Controls.Add(carousel, 2, row);
             controlsList.Add(carousel);
 
-            comboBox.Tag = new { JobName = displayName, ExpectedValue = currentTheme, Setter = setter };
+            comboBox.Tag = new { JobName = displayName, Family = family, ExpectedValue = currentTheme, Setter = setter };
             comboBox.SelectedThemeChanged += (s, newTheme) =>
             {
                 if (_isInitializing != null && _isInitializing()) return;
@@ -218,30 +218,30 @@ namespace FFTColorCustomizer.Configuration.UI
                     ModLogger.Log($"Selection changed: {displayName} = {newTheme}");
                     setter(newTheme);
 
-                    carousel.Tag = new { TierKey = tierKey, Theme = newTheme };
+                    carousel.Tag = new { Family = family, TierKey = tierKey, Theme = newTheme };
                     if (carousel.HasImagesLoaded)
                     {
                         var captured = newTheme;
-                        ApplyPreviewAsync(carousel, captured, () => LoadChocoboPreview(tierKey, captured));
+                        ApplyPreviewAsync(carousel, captured, () => LoadMonsterPreview(family, tierKey, captured));
                     }
                 }
             };
         }
 
-        private void UpdateChocoboPreviewImages(PreviewCarousel carousel, string tierKey, string themeName)
+        private void UpdateMonsterPreviewImages(PreviewCarousel carousel, string family, string tierKey, string themeName)
         {
             if (carousel == null) return;
-            carousel.SetImages(LoadChocoboPreview(tierKey, themeName));
+            carousel.SetImages(LoadMonsterPreview(family, tierKey, themeName));
             carousel.Invalidate();
             carousel.Refresh();
         }
 
         /// <summary>
-        /// Pure loader for a chocobo tier preview — filesystem + GDI only, safe off the UI thread.
-        /// Loads the chocobo HD BMP and applies the tier's palette (recolored per preset, or the
-        /// original tier color for "original"), cropped via FrameLayout.For("Chocobo").
+        /// Pure loader for a monster tier preview — filesystem + GDI only, safe off the UI thread.
+        /// Loads the family's HD BMP and applies the tier's palette (recolored per preset/user
+        /// theme, or the original tier color for "original"), cropped via FrameLayout.For(family).
         /// </summary>
-        private Image[] LoadChocoboPreview(string tierKey, string themeName)
+        private Image[] LoadMonsterPreview(string family, string tierKey, string themeName)
         {
             if (!_previewManager.HasValidModPath()) return new Image[0];
             var modPathField = _previewManager.GetType().GetField("_modPath",
@@ -249,34 +249,36 @@ namespace FFTColorCustomizer.Configuration.UI
             var modPath = modPathField?.GetValue(_previewManager) as string;
             if (string.IsNullOrEmpty(modPath)) return new Image[0];
 
+            var fam = MonsterThemeRegistry.ForFamily(family);
+            if (fam == null) return new Image[0];
+
             var unitPath = FindActualUnitPath(modPath);
             if (string.IsNullOrEmpty(unitPath)) return new Image[0];
-            var binPath = System.IO.Path.Combine(unitPath, "sprites_original", "battle_cyoko_spr.bin");
+            var binPath = System.IO.Path.Combine(unitPath, "sprites_original", fam.Bin);
             if (!System.IO.File.Exists(binPath)) return new Image[0];
 
-            int paletteIndex = FFTColorCustomizer.Services.ChocoboThemePresets.PaletteIndexForTier(tierKey);
+            int paletteIndex = MonsterThemeRegistry.PaletteIndexForTier(tierKey);
             var bin = System.IO.File.ReadAllBytes(binPath);
             if (bin.Length < (paletteIndex + 1) * 32) return new Image[0];
 
             // Build a 512-byte palette buffer with this tier's 16 colors as palette 0, recolored
-            // if a preset is selected. BmpPaletteSwapper applies palette 0 to the indexed BMP.
+            // if a theme is selected. BmpPaletteSwapper applies palette 0 to the indexed BMP.
             var palette = new byte[512];
             System.Array.Copy(bin, paletteIndex * 32, palette, 0, 32);
-            // Apply the selected theme (preset or user theme) to this tier's palette for the preview.
-            var mapping = LoadChocoboMapping(modPath);
+            var mapping = LoadMonsterMapping(modPath, family);
             if (mapping != null)
-                FFTColorCustomizer.Services.ChocoboRecolor.ApplyTheme(palette, 0, mapping.Sections, tierKey, themeName, _userThemeService);
+                MonsterRecolor.ApplyTheme(palette, 0, mapping.Sections, tierKey, themeName, _userThemeService);
 
             var loader = new SpriteSheetPreviewLoader(modPath);
-            var sprites = loader.LoadPreviewsWithUserPalette("Chocobo", palette);
+            var sprites = loader.LoadPreviewsWithUserPalette(family, palette);
             return sprites != null ? sprites.Cast<Image>().ToArray() : new Image[0];
         }
 
-        private FFTColorCustomizer.ThemeEditor.SectionMapping LoadChocoboMapping(string modPath)
+        private FFTColorCustomizer.ThemeEditor.SectionMapping LoadMonsterMapping(string modPath, string family)
         {
             foreach (var sub in new[] { "Monster", "Story" })
             {
-                var p = System.IO.Path.Combine(modPath, "Data", "SectionMappings", sub, "Chocobo.json");
+                var p = System.IO.Path.Combine(modPath, "Data", "SectionMappings", sub, $"{family}.json");
                 if (System.IO.File.Exists(p))
                     return FFTColorCustomizer.ThemeEditor.SectionMappingLoader.LoadFromFile(p);
             }

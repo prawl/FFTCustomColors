@@ -135,18 +135,19 @@ cropped pose can't show feet/eyes to verify — add Feet/Eyes once you pick a po
 
 ---
 
-## Generalize the chocobo code (do this when adding monster #2)
+## Generalize the chocobo code — DONE (this refactor shipped with the 14-family batch)
 
-The chocobo shipped as bespoke classes to prove the path. Before adding Goblin et al., refactor so
-families are data, not code:
+The chocobo shipped as bespoke classes to prove the path; the families are now data, not code:
 
-- `ChocoboThemePresets` → **`MonsterThemeRegistry`**: a table (or JSON) of
+- `ChocoboThemePresets` → **`MonsterThemeRegistry`**: the `Families` table of
   `{ family, displayName, bin, tierDisplayNames, paletteIndices = [0,1,2], presets-per-tier }`.
-- `ChocoboThemeCoordinator` → **`MonsterThemeCoordinator`**: loop every registered family, recolor each
-  family's bin (the per-bin logic is unchanged — read original, `ChocoboRecolor.ApplyTheme` per tier, write).
-- `ChocoboRecolor` — already generic, keep as-is (rename if desired).
-- `CharacterRowBuilder.AddMonsterRow` / `LoadChocoboPreview` — parameterize by family (bin name, image folder, tier key).
-- `FrameLayout.For` and `Data/SectionMappings/Monster/` — already generic.
+- `ChocoboThemeCoordinator` → **`MonsterThemeCoordinator`**: loops every registered family, recolors each
+  family's bin (read original, `MonsterRecolor.ApplyTheme` per tier, write).
+- `ChocoboRecolor` → **`MonsterRecolor`**: generic; resolves the family/editor-key from the tier key.
+- `Config.cs` `_jobMetadata` is seeded from the registry (`BuildJobMetadata`) — no per-tier C# properties.
+- `ConfigurationForm.Data.cs` `LoadMonsters`/`ResetAllCharacters` and `CharacterRowBuilder.AddMonsterRow` /
+  `LoadMonsterPreview` are parameterized by family.
+- `FrameLayout.For`, `Data/SectionMappings/Monster/`, and the editor's `── Monsters ──` scan are generic.
 
 User themes are **tier-agnostic** and saved under one editor key per family (chocobo uses `"Chocobo"`).
 Keep that pattern: one editor entry per family, its saved themes offered on all three tier dropdowns.
@@ -173,11 +174,18 @@ bin's palettes 0/1/2 still drive all three ranks — confirm per family with the
 | **Pig** | `battle_uri_spr.bin` | 1086, 1087, 1145 (Pig_2) | `uri` = boar |
 | **Trent** | `battle_ki_spr.bin` | 1088, 1089 | FFT **Treant** (`ki` = tree) |
 | **Minotaur** | `battle_minota_spr.bin` | 1090, 1091, 1142 (Minotaur_2) | |
-| **Malboro** | `battle_mara_spr.bin` | 1092, 1093, 1143 (Malboro_2) | |
+| **Malboro** | `battle_mol_spr.bin` ⚠ | 1092, 1093, 1143 (Malboro_2) | **NOT `mara`** — `battle_mara_spr.bin` is a *humanoid* (Marach/Malak). `mol` = Morbol; its palettes 0/1/2 are the three tiers, and 1092's embedded palette matches `mol` pal0 exactly. |
 | **Behemoth** | `battle_behi_spr.bin` | 1094, 1095, 1132 (Behemoth_2) | |
-| **Dragon** | `battle_dora_spr.bin` (also `dora1`, `dora2`) | 1096, 1097, 1104, 1105 | Multiple dragon sprites; Tiamat is a *separate* family (`battle_hebi_spr.bin`? → 1098/1099/1136). Decode palettes to map ranks. |
+| **Dragon** | `battle_dora1_spr.bin` ⚠ | 1096, 1097, 1104, 1105 | **NOT `dora`** — `battle_dora_spr.bin` is a humanoid with empty palettes 1/2. `dora1` palettes 0/1/2 decode to **green / blue / red** = Dragon / Blue Dragon / Red Dragon. All four 1096–1105 BMPs share `dora1` pal0 1:1; 1096 is the editor crop sheet. |
+| **Hydra** *(deferred)* | `battle_hebi_spr.bin` ✗ | 1098/1099, 1136 (Tiamat_2) | **No 3-tier palette swap exists here** — `hebi` (`= snake`) has only palette 0 populated (1/2 are all-black), and its pixel data doesn't match the orange-dragon BMP 1098_Tiamat. Hydra/Greater Hydra/Tiamat need a separate source-bin study before they can ship. |
 
 (Reference / already shipped: **Chocobo** = `battle_cyoko_spr.bin`, HD `1068_Chocobo_hd.bmp` / `1069`.)
+
+**Status (2026-05-28):** all of the above are **implemented** except **Hydra** (deferred — see its row). The
+generalization below is **done**: families are now data in `MonsterThemeRegistry`, applied by
+`MonsterThemeCoordinator`, recolored by `MonsterRecolor`. Adding a family = one registry entry + its
+`Monster/<Family>.json`, HD BMP in `Images/<Family>/original/`, original bin in `sprites_original/`, and a
+`FrameLayout.For("<Family>")` case. No other code changes.
 
 ---
 

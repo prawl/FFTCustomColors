@@ -20,8 +20,12 @@ namespace FFTColorCustomizer.Configuration
         private Dictionary<string, string> _storyCharacterThemes = new();
 
         // Metadata for each job
-        private static readonly Dictionary<string, JobMetadata> _jobMetadata = new()
+        private static readonly Dictionary<string, JobMetadata> _jobMetadata = BuildJobMetadata();
+
+        private static Dictionary<string, JobMetadata> BuildJobMetadata()
         {
+            var d = new Dictionary<string, JobMetadata>
+            {
             // Squires
             ["Squire_Male"] = new JobMetadata("Generic Characters", "Male Squire", "Color scheme for all male squires", "SquireMale"),
             ["Squire_Female"] = new JobMetadata("Generic Characters", "Female Squire", "Color scheme for all female squires", "SquireFemale"),
@@ -108,12 +112,19 @@ namespace FFTColorCustomizer.Configuration
             ["OnionKnight_Male"] = new JobMetadata("WotL Jobs", "Male Onion Knight", "Color scheme for all male onion knights", "OnionKnightMale"),
             ["OnionKnight_Female"] = new JobMetadata("WotL Jobs", "Female Onion Knight", "Color scheme for all female onion knights", "OnionKnightFemale"),
 
-            // Monsters - Chocobo Family (all three tiers share battle_cyoko_spr.bin palettes 0/1/2;
-            // applied by ChocoboThemeCoordinator, not the generic _Male/_Female sprite-swap path)
-            ["Chocobo_RankI"] = new JobMetadata("Monsters", "Yellow Chocobo (Rank I)", "Color scheme for Rank I (Yellow) chocobos", "ChocoboRankI"),
-            ["Chocobo_RankII"] = new JobMetadata("Monsters", "Black Chocobo (Rank II)", "Color scheme for Rank II (Black) chocobos", "ChocoboRankII"),
-            ["Chocobo_RankIII"] = new JobMetadata("Monsters", "Red Chocobo (Rank III)", "Color scheme for Rank III (Red) chocobos", "ChocoboRankIII"),
-        };
+            };
+
+            // Monsters: each registered family contributes 3 tier entries (palettes 0/1/2 of one
+            // bin), applied by MonsterThemeCoordinator (not the generic _Male/_Female sprite-swap
+            // path). Seeded from MonsterThemeRegistry so adding a family needs no Config.cs edits.
+            foreach (var fam in Services.MonsterThemeRegistry.Families)
+                for (int i = 0; i < fam.TierKeys.Length; i++)
+                    d[fam.TierKeys[i]] = new JobMetadata("Monsters",
+                        $"{fam.TierDisplayNames[i]} (Rank {fam.Roman(i)})",
+                        $"Color scheme for {fam.TierDisplayNames[i]} ({fam.DisplayName})", fam.JsonKey(i));
+
+            return d;
+        }
 
         public Config()
         {
@@ -454,27 +465,9 @@ namespace FFTColorCustomizer.Configuration
             set => SetJobTheme("OnionKnight_Female", value);
         }
 
-        // Monsters - Chocobo Family (recolored by ChocoboThemeCoordinator via palette 0/1/2)
-        [Newtonsoft.Json.JsonIgnore]
-        public string Chocobo_RankI
-        {
-            get => GetJobTheme("Chocobo_RankI");
-            set => SetJobTheme("Chocobo_RankI", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Chocobo_RankII
-        {
-            get => GetJobTheme("Chocobo_RankII");
-            set => SetJobTheme("Chocobo_RankII", value);
-        }
-
-        [Newtonsoft.Json.JsonIgnore]
-        public string Chocobo_RankIII
-        {
-            get => GetJobTheme("Chocobo_RankIII");
-            set => SetJobTheme("Chocobo_RankIII", value);
-        }
+        // Monster tier themes (Chocobo_RankI, Goblin_RankII, …) are not exposed as individual C#
+        // properties — they're driven entirely by MonsterThemeRegistry and accessed via
+        // GetJobTheme/SetJobTheme. Serialization is handled by _jobMetadata (see BuildJobMetadata).
 
         // Story Character Properties (string-based themes)
         [Newtonsoft.Json.JsonProperty("RamzaChapter1")]

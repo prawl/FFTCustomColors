@@ -1,0 +1,15 @@
+{
+  "_comment": "Bomb (battle_bom_spr.bin). Tiers (Bomb/Grenade/Exploder) = palettes 0/1/2. Primary = the whole fiery body ramp, indices 3-9 (dark->light), CONFIRMED in-editor. Outline (1), eye glint (2) and sparse detail (10-15) left unthemed. Single section, so presets stay single-color. shadeMode uniformHue.",
+  "job": "Bomb",
+  "sprite": "battle_bom_spr.bin",
+  "sections": [
+    {
+      "name": "Primary",
+      "displayName": "Primary Color",
+      "indices": [3, 4, 5, 6, 7, 8, 9],
+      "roles": ["outline", "shadow", "shadow", "base", "accent", "highlight", "highlight"],
+      "primaryIndex": 6,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

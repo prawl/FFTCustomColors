@@ -1,0 +1,31 @@
+{
+  "_comment": "Minotaur (battle_minota_spr.bin). Tiers (Wisenkin/Minotaur/Sekhret) = palettes 0/1/2. AUTO-DERIVED (not yet user-confirmed in-editor) from palette lightness + verified discovery: Body (hide)=3,4,5,6; Arms & Legs (grey fur)=7,8,9; Horns & Hooves (warm keratin)=13,10,14,15,11,12,2. NOTE: the discovery left 7,8,9 neutral — added here as a Limbs section; remove if you want them untouched. Outline (1) left unthemed. shadeMode uniformHue.",
+  "job": "Minotaur",
+  "sprite": "battle_minota_spr.bin",
+  "sections": [
+    {
+      "name": "Body",
+      "displayName": "Body",
+      "indices": [3, 4, 5, 6],
+      "roles": ["outline", "shadow", "base", "highlight"],
+      "primaryIndex": 5,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Limbs",
+      "displayName": "Arms & Legs",
+      "indices": [7, 8, 9],
+      "roles": ["shadow", "base", "highlight"],
+      "primaryIndex": 8,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Horns",
+      "displayName": "Horns & Hooves",
+      "indices": [13, 10, 14, 15, 11, 12, 2],
+      "roles": ["outline", "shadow", "shadow", "base", "accent", "highlight", "highlight"],
+      "primaryIndex": 11,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

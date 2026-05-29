@@ -261,11 +261,14 @@ namespace FFTColorCustomizer.Configuration
                         {
                             var comboJobName = CharacterRowBuilder.ConvertJobNameToPropertyFormat(tag.JobName.ToString());
                             Utilities.ModLogger.Log($"[REFRESH] Checking comboBox: tag.JobName={tag.JobName}, converted={comboJobName}, target={jobName}");
-                            // Chocobo tier rows ("Yellow Chocobo (Rank I)" ...) share the tier-agnostic
-                            // "Chocobo" user-theme key, so refresh all of them when that key changes.
-                            var isChocoboMatch = jobName == FFTColorCustomizer.Services.ChocoboThemePresets.EditorKey
-                                && tag.JobName.ToString().Contains("Chocobo");
-                            if (comboJobName == jobName || isChocoboMatch)
+                            // Monster tier rows carry their family on the tag and share one
+                            // tier-agnostic user-theme key (== family name). When that key's themes
+                            // change, refresh every tier row of the family. Read Family via
+                            // reflection so job/story combos (no Family member) don't throw.
+                            var famProp = comboBox.Tag.GetType().GetProperty("Family");
+                            var tagFamily = famProp?.GetValue(comboBox.Tag) as string;
+                            var isMonsterMatch = tagFamily != null && tagFamily == jobName;
+                            if (comboJobName == jobName || isMonsterMatch)
                             {
                                 matchCount++;
                                 Utilities.ModLogger.Log($"[REFRESH] MATCH! Refreshing comboBox for {jobName}");
@@ -473,21 +476,30 @@ namespace FFTColorCustomizer.Configuration
 
         private void LoadMonsters(ref int row)
         {
-            // Chocobo Family subsection label (spans all 3 columns)
-            var familyLabel = ConfigUIComponentFactory.CreateCharacterLabel("— Chocobo Family —");
-            _mainPanel.Controls.Add(familyLabel, 0, row);
-            _mainPanel.SetColumnSpan(familyLabel, 3);
-            _monstersControls.Add(familyLabel);
-            row++;
+            // Every registered monster family: a "— <Family> —" subsection label spanning all 3
+            // columns, then one row per tier. Fully data-driven from MonsterThemeRegistry, so
+            // adding a family needs no edits here.
+            foreach (var fam in MonsterThemeRegistry.Families)
+            {
+                var familyLabel = ConfigUIComponentFactory.CreateCharacterLabel($"— {fam.DisplayName} —");
+                _mainPanel.Controls.Add(familyLabel, 0, row);
+                _mainPanel.SetColumnSpan(familyLabel, 3);
+                _monstersControls.Add(familyLabel);
+                row++;
 
-            AddMonsterRow(row++, "Yellow Chocobo (Rank I)", "Chocobo_RankI", _config.Chocobo_RankI, v => _config.Chocobo_RankI = v);
-            AddMonsterRow(row++, "Black Chocobo (Rank II)", "Chocobo_RankII", _config.Chocobo_RankII, v => _config.Chocobo_RankII = v);
-            AddMonsterRow(row++, "Red Chocobo (Rank III)", "Chocobo_RankIII", _config.Chocobo_RankIII, v => _config.Chocobo_RankIII = v);
+                for (int i = 0; i < fam.TierKeys.Length; i++)
+                {
+                    var tierKey = fam.TierKeys[i];
+                    var displayName = $"{fam.TierDisplayNames[i]} (Rank {fam.Roman(i)})";
+                    AddMonsterRow(row++, displayName, fam.Family, tierKey,
+                        _config.GetJobTheme(tierKey), v => _config.SetJobTheme(tierKey, v));
+                }
+            }
         }
 
-        private void AddMonsterRow(int row, string displayName, string tierKey, string currentTheme, Action<string> setter)
+        private void AddMonsterRow(int row, string displayName, string family, string tierKey, string currentTheme, Action<string> setter)
         {
-            _rowBuilder.AddMonsterRow(row, displayName, tierKey, currentTheme, setter,
+            _rowBuilder.AddMonsterRow(row, displayName, family, tierKey, currentTheme, setter,
                 () => _isFullyLoaded, _monstersControls);
         }
 
@@ -545,10 +557,10 @@ namespace FFTColorCustomizer.Configuration
             _config.OnionKnight_Male = "original";
             _config.OnionKnight_Female = "original";
 
-            // Reset Monsters (Chocobo Family)
-            _config.Chocobo_RankI = "original";
-            _config.Chocobo_RankII = "original";
-            _config.Chocobo_RankIII = "original";
+            // Reset Monsters (all registered families' tiers)
+            foreach (var fam in MonsterThemeRegistry.Families)
+                foreach (var tierKey in fam.TierKeys)
+                    _config.SetJobTheme(tierKey, "original");
 
             // Reset all story characters using the registry
             StoryCharacterRegistry.ResetAllStoryCharacters(_config);

@@ -1,0 +1,39 @@
+{
+  "_comment": "Goblin (battle_gob_spr.bin). Tiers (Goblin/Black Goblin/Gobbledygook) = palettes 0/1/2. Index groups CONFIRMED in-editor: Hat/Gloves/Shoes=12,3,4,5 (12 darkest); Arms & Legs=6,7,8; Stripe=9,10,11; Skin=13,14,15 (each dark->light). Outline (1) and highlight (2) left unthemed. shadeMode uniformHue.",
+  "job": "Goblin",
+  "sprite": "battle_gob_spr.bin",
+  "sections": [
+    {
+      "name": "Hat",
+      "displayName": "Hat, Gloves & Shoes",
+      "indices": [12, 3, 4, 5],
+      "roles": ["outline", "shadow", "base", "highlight"],
+      "primaryIndex": 4,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Limbs",
+      "displayName": "Arms & Legs",
+      "indices": [6, 7, 8],
+      "roles": ["shadow", "base", "highlight"],
+      "primaryIndex": 7,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Stripe",
+      "displayName": "Stripe",
+      "indices": [9, 10, 11],
+      "roles": ["shadow", "base", "highlight"],
+      "primaryIndex": 10,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Skin",
+      "displayName": "Skin Color",
+      "indices": [13, 14, 15],
+      "roles": ["shadow", "base", "highlight"],
+      "primaryIndex": 14,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}
