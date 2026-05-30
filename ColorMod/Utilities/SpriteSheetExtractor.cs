@@ -94,6 +94,9 @@ namespace FFTColorCustomizer.Utilities
                 "Malboro" => FrameLayout.Rects(105, 8, 74, 86, 299, 7, 74, 86),
                 "Behemoth" => FrameLayout.Rects(99, 1, 80, 90, 290, 1, 80, 90),
                 "Dragon" => FrameLayout.Rects(98, 0, 88, 92, 291, 1, 88, 92),
+                // Hydra/Tiamat (battle_dora2_spr.bin, HD 1098_Tiamat). Same dragon rig as Dragon:
+                // SW = pose col1 (front), NW = pose col3 (away), row 0. Detected on 1098_Tiamat_hd.bmp.
+                "Hydra" => FrameLayout.Rects(100, 8, 86, 82, 292, 8, 86, 82),
 
                 _ => Standard
             };

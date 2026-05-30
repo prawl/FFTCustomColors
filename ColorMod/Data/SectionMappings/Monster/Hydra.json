@@ -1,0 +1,23 @@
+{
+  "_comment": "Hydra (battle_dora2_spr.bin - palettes 0/1/2 = orange/ashen-violet/gold tiers). Tiers (Hydra/Greater Hydra/Tiamat). Structural twin of Dragon (dora1); pal0 == Tiamat HD BMP 1098/1099/1136 1:1 (quantized L1=0). From palette lightness + the dora1 sibling layout: Body (scales + WING membrane)=3..9 (dark->light); Belly / Feet (belly underscales + feet)=10,11,12,13,15. USER-CONFIRMED in-editor 2026-05-29: the wing recolors with Body, not this section, so this is labelled Belly / Feet. Outline (1), teeth/glint (2), and the cross-tier eye sentinel idx14 (blue/magenta/green per tier) left unthemed. shadeMode uniformHue.",
+  "job": "Hydra",
+  "sprite": "battle_dora2_spr.bin",
+  "sections": [
+    {
+      "name": "Body",
+      "displayName": "Body Color",
+      "indices": [9, 8, 7, 6, 5, 4, 3],
+      "roles": ["outline", "shadow", "shadow", "base", "accent", "accent", "highlight"],
+      "primaryIndex": 6,
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Belly",
+      "displayName": "Belly / Feet",
+      "indices": [10, 11, 12, 13, 15],
+      "roles": ["outline", "shadow", "base", "accent", "highlight"],
+      "primaryIndex": 12,
+      "shadeMode": "uniformHue"
+    }
+  ]
+}

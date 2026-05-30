@@ -461,6 +461,35 @@ namespace FFTColorCustomizer.Services
                         ["Ember"]   = Sec(("Body", "#C85020"), ("Belly", "#E0B890")),
                     },
                 }),
+
+            // Hydra — per-section presets (auto-derived: Body scales / Belly underscales; mirrors Dragon).
+            // Source bin battle_dora2_spr.bin (pal0/1/2 all populated 14/14/15; pal0 == Tiamat HD BMP
+            // 1098/1099/1136 1:1, quantized L1=0). Structural twin of the Dragon (dora1) family. The old
+            // guess battle_hebi_spr.bin had only pal0 live. idx14 is the cross-tier eye sentinel (blue/
+            // magenta/green per tier) — left unthemed, the mirror of Dragon's idx15 magenta sentinel.
+            new MonsterFamily("Hydra", "Hydra Family", "battle_dora2_spr.bin",
+                new[] { "Hydra", "Greater Hydra", "Tiamat" },
+                new Dictionary<string, Dictionary<string, MonsterPreset>>
+                {
+                    ["Hydra_RankI"] = new Dictionary<string, MonsterPreset>
+                    {
+                        ["Ember"] = Sec(("Body", "#C85820"), ("Belly", "#D8C088")),
+                        ["Magma"] = Sec(("Body", "#D86828"), ("Belly", "#E0C890")),
+                        ["Rust"]  = Sec(("Body", "#A8481C"), ("Belly", "#C8B078")),
+                    },
+                    ["Hydra_RankII"] = new Dictionary<string, MonsterPreset>
+                    {
+                        ["Wraith Violet"] = Sec(("Body", "#7A3D9E"), ("Belly", "#B0A8C0")),
+                        ["Ashen Slate"]   = Sec(("Body", "#5A5560"), ("Belly", "#C0C0B0")),
+                        ["Bruise Plum"]   = Sec(("Body", "#9B4FB0"), ("Belly", "#C8B8D0")),
+                    },
+                    ["Hydra_RankIII"] = new Dictionary<string, MonsterPreset>
+                    {
+                        ["Goldscale"]    = Sec(("Body", "#D8A828"), ("Belly", "#E0D090")),
+                        ["Sunfire"]      = Sec(("Body", "#E0B83A"), ("Belly", "#E8D8A0")),
+                        ["Brass Tyrant"] = Sec(("Body", "#B89030"), ("Belly", "#D0C080")),
+                    },
+                }),
         };
 
         /// <summary>The family that owns a tier key (e.g. "Goblin_RankII" -> Goblin), or null.</summary>

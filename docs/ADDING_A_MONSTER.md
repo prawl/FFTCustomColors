@@ -177,11 +177,14 @@ bin's palettes 0/1/2 still drive all three ranks — confirm per family with the
 | **Malboro** | `battle_mol_spr.bin` ⚠ | 1092, 1093, 1143 (Malboro_2) | **NOT `mara`** — `battle_mara_spr.bin` is a *humanoid* (Marach/Malak). `mol` = Morbol; its palettes 0/1/2 are the three tiers, and 1092's embedded palette matches `mol` pal0 exactly. |
 | **Behemoth** | `battle_behi_spr.bin` | 1094, 1095, 1132 (Behemoth_2) | |
 | **Dragon** | `battle_dora1_spr.bin` ⚠ | 1096, 1097, 1104, 1105 | **NOT `dora`** — `battle_dora_spr.bin` is a humanoid with empty palettes 1/2. `dora1` palettes 0/1/2 decode to **green / blue / red** = Dragon / Blue Dragon / Red Dragon. All four 1096–1105 BMPs share `dora1` pal0 1:1; 1096 is the editor crop sheet. |
-| **Hydra** *(deferred)* | `battle_hebi_spr.bin` ✗ | 1098/1099, 1136 (Tiamat_2) | **No 3-tier palette swap exists here** — `hebi` (`= snake`) has only palette 0 populated (1/2 are all-black), and its pixel data doesn't match the orange-dragon BMP 1098_Tiamat. Hydra/Greater Hydra/Tiamat need a separate source-bin study before they can ship. |
+| **Hydra** | `battle_dora2_spr.bin` ⚠ | 1098, 1099, 1104?, 1136 (Tiamat_2) | **NOT `hebi`** — `battle_hebi_spr.bin` (`= snake`) has only palette 0 populated (1/2 all-black), which is why this was first (mistakenly) deferred. `hebi` was never the Hydra bin. The real source is `battle_dora2_spr.bin` — the `dora1`/Dragon sibling: palettes 0/1/2 are all populated (14/14/15 distinct colors) = Hydra / Greater Hydra / Tiamat, and `dora2` pal0 matches all three 1098/1099/1136_Tiamat BMPs 1:1 (quantized L1=0, byte-perfect). 1098 is the editor crop sheet (poses 1&3 → `FrameLayout.Rects(100,8,86,82, 292,8,86,82)`). Same family shape as Dragon (pal0 has an HD BMP; pal1/pal2 are tier palettes with no dedicated BMP). Found via `scripts/monster/analyze_hydra_candidates.py`. |
 
 (Reference / already shipped: **Chocobo** = `battle_cyoko_spr.bin`, HD `1068_Chocobo_hd.bmp` / `1069`.)
 
-**Status (2026-05-28):** all of the above are **implemented** except **Hydra** (deferred — see its row). The
+**Status (2026-05-29):** all of the above are now **implemented, including Hydra** — its source bin was corrected
+from the deferred `battle_hebi_spr.bin` (only pal0 live) to `battle_dora2_spr.bin` (pal0/1/2 all populated; pal0
+== Tiamat HD BMP 1:1). Build clean, 1168 tests green. The Body/Belly section split is AUTO-DERIVED (pending an
+in-editor one-slider-per-index confirmation pass, like Dragon/Behemoth/Treant). The
 generalization below is **done**: families are now data in `MonsterThemeRegistry`, applied by
 `MonsterThemeCoordinator`, recolored by `MonsterRecolor`. Adding a family = one registry entry + its
 `Monster/<Family>.json`, HD BMP in `Images/<Family>/original/`, original bin in `sprites_original/`, and a
