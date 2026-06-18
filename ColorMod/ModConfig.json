@@ -2,7 +2,7 @@
   "ModId": "paxtrick.fft.colorcustomizer",
   "ModName": "FFT Color Customizer",
   "ModAuthor": "prawl",
-  "ModVersion": "3.0.8",
+  "ModVersion": "3.1.0",
   "ModDescription": "Endless new color themes for classes and story characters with an in-game theme editor. While the game is running, press F1 in-game or click the 'Configure Mod' button here to open the configuration window.",
   "ModDll": "FFTColorCustomizer.dll",
   "ModIcon": "Preview.png",
@@ -21,7 +21,7 @@
       "UserName": "prawl",
       "RepositoryName": "FFTCustomColors",
       "UseReleaseTag": true,
-      "AssetFileName": "Mod.zip"
+      "AssetFileName": "FFTColorCustomizer*.zip"
     }
   },
   "IsUniversalMod": false,

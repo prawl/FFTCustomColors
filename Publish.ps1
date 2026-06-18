@@ -359,13 +359,20 @@ function Create-Package {
     # Create ZIP using .NET compression
     Write-Host "  -> Compressing to: $packagePath"
 
-    # Load assembly properly
+    # Load assemblies properly. ZipFile/ZipFileExtensions live in
+    # System.IO.Compression.FileSystem; ZipArchive/ZipArchiveMode/CompressionLevel
+    # live in System.IO.Compression. The manual packer below references
+    # ZipArchiveMode directly as a type expression, which does NOT trigger the
+    # lazy dependency load — so BOTH assemblies must be loaded explicitly or it
+    # throws "Unable to find type [System.IO.Compression.ZipArchiveMode]".
     try {
         Add-Type -Assembly System.IO.Compression.FileSystem -ErrorAction Stop
+        Add-Type -Assembly System.IO.Compression -ErrorAction Stop
     }
     catch {
-        Write-Host "  -> Loading compression assembly using alternative method..."
+        Write-Host "  -> Loading compression assemblies using alternative method..."
         [Reflection.Assembly]::LoadWithPartialName("System.IO.Compression.FileSystem") | Out-Null
+        [Reflection.Assembly]::LoadWithPartialName("System.IO.Compression") | Out-Null
     }
 
     try {
@@ -376,15 +383,33 @@ function Create-Package {
         Write-Host "  -> Source: $absoluteBuildPath"
         Write-Host "  -> Target: $absolutePackagePath"
 
-        # includeBaseDirectory: $true wraps zip contents in a folder named after the
-        # build folder (paxtrick.fft.colorcustomizer). Vortex's FFT IC extension installer
-        # treats this as the proper structure and avoids creating a fake wrapper folder.
-        [System.IO.Compression.ZipFile]::CreateFromDirectory(
-            $absoluteBuildPath,
-            $absolutePackagePath,
-            [System.IO.Compression.CompressionLevel]::Optimal,
-            $true
-        )
+        # Build the zip MANUALLY with forward-slash entry names.
+        #
+        # WHY NOT ZipFile.CreateFromDirectory: on Windows PowerShell 5.1 / .NET
+        # Framework it writes BACKSLASH path separators into entry names. That is
+        # non-compliant (ZIP spec APPNOTE 4.4.17 mandates '/'). Windows Explorer
+        # tolerates '\' and rebuilds the tree, but strict/cross-platform extractors
+        # (Info-ZIP, some 7-Zip configs, some mod-manager unpackers) treat '\' as a
+        # literal filename char and dump 1200+ flat files with NO folder tree -> the
+        # modloader never finds ModConfig.json -> "installed but does nothing" for
+        # those users. This loop reproduces includeBaseDirectory=$true (wrap contents
+        # in a folder named after the build dir, which Vortex's FFT IC extension
+        # expects) while forcing '/' separators on every entry.
+        $wrapperName = Split-Path $absoluteBuildPath -Leaf
+        $archive = [System.IO.Compression.ZipFile]::Open(
+            $absolutePackagePath, [System.IO.Compression.ZipArchiveMode]::Create)
+        try {
+            foreach ($item in Get-ChildItem -LiteralPath $absoluteBuildPath -Recurse -File) {
+                $relative = $item.FullName.Substring($absoluteBuildPath.Length).TrimStart('\', '/')
+                $entryName = "$wrapperName/" + ($relative -replace '\\', '/')
+                [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                    $archive, $item.FullName, $entryName,
+                    [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+            }
+        }
+        finally {
+            $archive.Dispose()
+        }
 
         if (Test-Path $absolutePackagePath) {
             $packageInfo = Get-Item $absolutePackagePath
@@ -427,6 +452,21 @@ function Verify-Package {
 
     try {
         $zip = [System.IO.Compression.ZipFile]::OpenRead($PackagePath)
+
+        # GATE: reject any entry that uses a backslash separator. The ZIP spec
+        # mandates '/'; backslashes (the .NET Framework CreateFromDirectory bug)
+        # extract as flat literal-named files on strict extractors and silently
+        # break the mod for those users. Check the RAW FullName here, BEFORE the
+        # forward-slash normalization below would mask it. Belt-and-suspenders for
+        # the manual forward-slash packer in Create-Package: if a future change
+        # reintroduces backslashes, this fails the release loudly.
+        $backslashEntries = @($zip.Entries | Where-Object { $_.FullName -match '\\' })
+        if ($backslashEntries.Count -gt 0) {
+            Write-Host ("  [FAIL] {0} entries use backslash separators (non-compliant ZIP; breaks strict extractors)." -f $backslashEntries.Count) -ForegroundColor Red
+            Write-Host ("         first offender: {0}" -f $backslashEntries[0].FullName) -ForegroundColor Red
+            $zip.Dispose()
+            return $false
+        }
 
         # Normalize all entry paths to forward-slash and strip the wrapper
         # folder added by includeBaseDirectory=true so the required-file list
