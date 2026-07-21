@@ -86,6 +86,16 @@ if (Test-Path $modPath) {
     }
 }
 
+# The contract-test gate (tools/pipeline.ps1, CC-16): a malformed ledger or a
+# logging-contract violation refuses to deploy, same as the sibling mods.
+try {
+    Invoke-UnitTestGate -FailVerb DEPLOY
+} catch {
+    Write-Host "$_" -ForegroundColor Red
+    Pop-Location
+    exit 1
+}
+
 # Build and publish with IL trimming for smaller size (tools/pipeline.ps1)
 Write-Host "Publishing to Reloaded-II mods folder..." -ForegroundColor Cyan
 try {

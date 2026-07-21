@@ -48,6 +48,15 @@ that checklist.
   - Verify: the full suite stays green at every stage; LogContractTests goes red on a glossary
     drift or a raw Console.WriteLine; the owner eyeballs a live launch showing the new line
     shape with live_log.prev.txt preserved from the prior run.
+- **[CC-16] Make local builds refuse a broken ledger or logging contract** (opened 2026-07-21) [BUILDING]
+  - Done means: a local deploy or release build stops with a clear red message when the work
+    ledger or the logging contract is malformed, instead of quietly shipping while only CI
+    would have noticed. (Tech: Invoke-UnitTestGate in tools/pipeline.ps1 running
+    TodoContractTests plus LogContractTests via dotnet test --filter, called by
+    BuildLinked.ps1 and Publish.ps1; CI keeps running the full suite.)
+  - Verify: a deliberately corrupted Backlog row makes the gate refuse to deploy and a clean
+    tree passes end to end, with the filtered gate fast enough for the dev loop (under two
+    minutes total, the tests themselves under a second).
 
 ## Backlog
 
@@ -91,11 +100,11 @@ that checklist.
   clipped away, rows overlapping. Signature of fixed pixel row heights under Windows text
   scaling above 100 percent: the sliders are not gone, their rows are collapsed. This upgrades
   the DPI hypothesis from suspicion to near-certainty.
-- [CC-16] 2026-07-21: The ledger format is only checked when CI or a person runs the tests, so
-  a local build can deploy with a malformed ledger; wire the contract tests into the build
-  scripts the way the sibling repos do. (Tech: an Invoke-UnitTestGate in tools/pipeline.ps1
-  running Tests/TodoContractTests via dotnet test --filter, called from BuildLinked.ps1 and
-  Publish.ps1; keep it filtered so the dev loop does not pay for the full 1200-test suite.)
+- [CC-17] 2026-07-21: A ledger row accidentally pasted after the Format section escapes every
+  grammar and id-uniqueness scan, because the contract tests only read entries out of the Now,
+  Backlog, and changelog sections (found by a sabotage that landed after Format and stayed
+  green); decide whether entry-shaped lines in Walled or Format should fail the contract. The
+  sibling repos share the same blind spot.
 - [CC-14] 2026-07-21: Cleanup riders from the CC-10/CC-13 verify passes: remove the dead
   InterceptFilePath plumbing entirely (nothing calls it in production, but 7 test files
   exercise it, so it is its own refactor), and triage the pre-existing log noise seen in the

@@ -117,6 +117,27 @@ function Test-MonsterFamilyAssets {
     return $errs
 }
 
+function Invoke-UnitTestGate {
+    # The contract-test gate (CC-16): the work-ledger enforcement (TodoContractTests)
+    # and the logging contract (LogContractTests) run as a hard gate before any
+    # deploy or package, exactly as the sibling FFT mods run theirs. FILTERED to the
+    # two contract suites so the dev loop does not pay for the full 1200-test suite;
+    # CI still runs everything. ONE canonical flag set, so a gate that passes
+    # locally passed under the same conditions everywhere.
+    param(
+        [Parameter(Mandatory = $true)][ValidateSet('DEPLOY', 'PACKAGE')]
+        [string]$FailVerb
+    )
+
+    Write-Host "Running the contract-test gate (Todo + Log contracts)..." -ForegroundColor Cyan
+    & dotnet test "$PipelineRepoRoot\FFTColorCustomizer.Tests.csproj" --nologo -p:WarningLevel=0 `
+        --filter "FullyQualifiedName~TodoContractTests|FullyQualifiedName~LogContractTests"
+    if ($LASTEXITCODE -ne 0) {
+        throw "REFUSING TO ${FailVerb}: the contract tests failed (see above)."
+    }
+    Write-Host "  -> Contract gate green." -ForegroundColor Green
+}
+
 function Invoke-ColorModBuild {
     # Build the mod DLL (+ dependency tree) into $OutDir. Two flavors, one function:
     #   -Dev     the BuildLinked deploy build (Reloaded IL trimming for size)

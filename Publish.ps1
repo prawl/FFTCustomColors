@@ -103,6 +103,10 @@ function Clean-DevInstallations {
 }
 
 function Build-Project {
+    # The contract-test gate (tools/pipeline.ps1, CC-16): a malformed ledger or a
+    # logging-contract violation refuses to package, same as the sibling mods.
+    Invoke-UnitTestGate -FailVerb PACKAGE
+
     Write-Status "Building FFT Color Customizer in Release mode..." "Cyan"
     # The release-flavor build (clean + restore + framework-dependent publish)
     # is the shared Invoke-ColorModBuild (tools/pipeline.ps1); it throws red.
