@@ -8,6 +8,14 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-13] SHIPPED 0a34e6ac 2026-07-21: silent-failure hardening in the theme-apply path.
+  Locked and access-denied sprite copies now warn honestly that the change was NOT applied
+  (the old DEBUG lines promised a "path redirection" that never runs in production); apply
+  failures no longer masquerade as "Failed to open configuration UI"; and ConfigPathResolver
+  unifies Config.json on the Reloaded User path with one-time migration of legacy mod-folder
+  configs, ending the split-brain that could silently revert F1 selections. 9 tests. Owner
+  live-verified the unified config path in the live log the same day.
+
 - [CC-12] SHIPPED 853f9090 2026-07-21: the Reloaded-II Configure Mod button now copies sprites
   on release installs. The flow hard-coded the sprite target as Mods\FFTColorCustomizer, a
   folder that only exists on the dev machine, so every release user who configured via the

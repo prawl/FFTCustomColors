@@ -88,14 +88,12 @@ that checklist.
   clipped away, rows overlapping. Signature of fixed pixel row heights under Windows text
   scaling above 100 percent: the sliders are not gone, their rows are collapsed. This upgrades
   the DPI hypothesis from suspicion to near-certainty.
-- [CC-13] 2026-07-21: Silent-failure hardening in the apply path: InterceptFilePath "path
-  redirection" is dead code, yet catch blocks demote locked/read-only sprite-copy failures to
-  DEBUG with the false promise "theme will be applied via path redirection" (the change is
-  silently dropped); the F1 save+apply wraps everything in a catch that mislabels failures as
-  "Failed to open configuration UI"; and Config.json is split-brain (the User/Mods path wins
-  only if it already exists, the Configure button always creates it, F1 can write the
-  mod-folder copy, so selections can silently revert). Surface real warnings, delete the dead
-  promise, and unify the config path.
+- [CC-14] 2026-07-21: Cleanup riders from the CC-10/CC-13 verify passes: remove the dead
+  InterceptFilePath plumbing entirely (nothing calls it in production, but 7 test files
+  exercise it, so it is its own refactor), and triage the pre-existing log noise seen in the
+  owner's live log (three "missing theme files" warnings for RamzaChapter dirs that never
+  exist under unit/, and an empty-name "Original sprite not found for reis:" warning). Both
+  fold naturally into the CC-2 logging rework if that lands first.
 - [CC-11] 2026-07-21: ConfigOverwriteOnStartupTest.ModConfigurationUpdated_ShouldNotResetToDefaults
   flaked red on CI (run 29805522663, first CI exercise of the suite since 3.1.0): IOException,
   the shared bin-output Config.json "being used by another process". The test path writes the
