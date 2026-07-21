@@ -8,6 +8,17 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-15] SHIPPED da66c27a 2026-07-21: the dev deploy and the release zip no longer carry
+  duplicate copies of the build, staging, and verification code that could drift apart (the
+  drift class behind the v3.0.x broken zips). A shared dot-sourced tools/pipeline.ps1 feeds
+  both scripts, and deploy verification runs off the same tools/package_manifest.json as the
+  analyze.py zip gate. Two long-broken blocks are fixed: the User-config seed that never ran
+  (undefined variables) and the Publish dev-install cleanup that deleted nothing. Also fixed
+  in the pass: a red Publish gate could exit 0 because an exit from inside the try was
+  overridden by the finally with an unset exit code; gates now throw and the exit code
+  defaults to failure. Deployed and zipped file sets verified identical to pre-refactor
+  captures.
+
 - [CC-11] SHIPPED 7c4d5b8d 2026-07-21: the ConfigOverwriteOnStartupTest CI flake is fixed at
   the root. Constructing Mod writes Config.json into its own folder, the shared test bin dir,
   and xUnit class parallelism let two such classes race on that one file (the "being used by

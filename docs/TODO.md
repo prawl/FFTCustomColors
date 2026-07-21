@@ -89,11 +89,6 @@ that checklist.
   clipped away, rows overlapping. Signature of fixed pixel row heights under Windows text
   scaling above 100 percent: the sliders are not gone, their rows are collapsed. This upgrades
   the DPI hypothesis from suspicion to near-certainty.
-- [CC-15] 2026-07-21: Consolidate BuildLinked.ps1 and Publish.ps1 onto a shared dot-sourced
-  tools/pipeline.ps1 (the FFTLivingWeapons split): one build function, shared asset stagers,
-  and deploy verification driven by the same tools/package_manifest.json the analyze.py zip
-  gate reads, replacing the inline required-file lists; also fix the dead User-config seed
-  block (undefined gamePath/scriptDir variables) and the no-op Clean-DevInstallations target.
 - [CC-14] 2026-07-21: Cleanup riders from the CC-10/CC-13 verify passes: remove the dead
   InterceptFilePath plumbing entirely (nothing calls it in production, but 7 test files
   exercise it, so it is its own refactor), and triage the pre-existing log noise seen in the
