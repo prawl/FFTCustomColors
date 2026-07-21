@@ -89,6 +89,11 @@ that checklist.
   clipped away, rows overlapping. Signature of fixed pixel row heights under Windows text
   scaling above 100 percent: the sliders are not gone, their rows are collapsed. This upgrades
   the DPI hypothesis from suspicion to near-certainty.
+- [CC-16] 2026-07-21: The ledger format is only checked when CI or a person runs the tests, so
+  a local build can deploy with a malformed ledger; wire the contract tests into the build
+  scripts the way the sibling repos do. (Tech: an Invoke-UnitTestGate in tools/pipeline.ps1
+  running Tests/TodoContractTests via dotnet test --filter, called from BuildLinked.ps1 and
+  Publish.ps1; keep it filtered so the dev loop does not pay for the full 1200-test suite.)
 - [CC-14] 2026-07-21: Cleanup riders from the CC-10/CC-13 verify passes: remove the dead
   InterceptFilePath plumbing entirely (nothing calls it in production, but 7 test files
   exercise it, so it is its own refactor), and triage the pre-existing log noise seen in the
@@ -122,5 +127,7 @@ that checklist.
 - IDs are unique across this file and docs/CHANGELOG.md; never reuse a retired ID.
 - Items exit ONLY by moving to docs/CHANGELOG.md when they ship or die: in the shipping commit
   itself, or in the immediately following commit when the exit row cites that commit's own hash.
+  The Now section must stay non-empty: exiting the last Now item means promoting a successor in
+  the same commit.
 - No em dashes and no double-dash separators anywhere in this file or the changelog.
 - AWAITING-LIVE resolutions (flipping a row out of AWAITING-LIVE) are owner-only.
