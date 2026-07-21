@@ -239,26 +239,14 @@ namespace FFTColorCustomizer.Configuration
                     {
                         ModLogger.Log("Applying sprite changes for generic characters...");
 
-                        // Get the actual mod installation path (not the User config path)
-                        string actualModPath = ModFolder ?? string.Empty;
-                        if (saveConfigPath.Contains(@"User\Mods") || saveConfigPath.Contains(@"User/Mods"))
-                        {
-                            // Navigate from User config to actual mod installation
-                            var configDir = Path.GetDirectoryName(saveConfigPath);
-                            if (configDir != null)
-                            {
-                                var userModsIdx = configDir.IndexOf(@"User\Mods", StringComparison.OrdinalIgnoreCase);
-                                if (userModsIdx == -1)
-                                    userModsIdx = configDir.IndexOf(@"User/Mods", StringComparison.OrdinalIgnoreCase);
-
-                                if (userModsIdx >= 0)
-                                {
-                                    var reloadedRoot = configDir.Substring(0, userModsIdx);
-                                    actualModPath = Path.Combine(reloadedRoot, "Mods", "FFTColorCustomizer");
-                                    ModLogger.Log($"Using actual mod path for sprites: {actualModPath}");
-                                }
-                            }
-                        }
+                        // The mod install dir is wherever OUR DLL is actually running from;
+                        // never guess a folder name from the User config path (CC-12: the old
+                        // hard-coded Mods\FFTColorCustomizer guess silently copied zero sprites
+                        // for every release install, which is not named that).
+                        string assemblyDir = Path.GetDirectoryName(
+                            System.Reflection.Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+                        string actualModPath = ModInstallPathResolver.Resolve(assemblyDir, ModFolder);
+                        ModLogger.Log($"Using actual mod path for sprites: {actualModPath}");
 
                         // Initialize sprite manager and apply configuration
                         var spriteManager = new Utilities.ConfigBasedSpriteManager(
