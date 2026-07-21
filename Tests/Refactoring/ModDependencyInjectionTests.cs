@@ -11,6 +11,7 @@ namespace FFTColorCustomizer.Tests.Refactoring
     /// <summary>
     /// Tests to verify that the Mod class can work with dependency injection
     /// </summary>
+    [Collection("ModBinDir")]
     public class ModDependencyInjectionTests : IDisposable
     {
         private readonly string _testPath;

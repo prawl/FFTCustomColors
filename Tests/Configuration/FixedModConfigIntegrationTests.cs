@@ -7,6 +7,7 @@ using FFTColorCustomizer.Utilities;
 
 namespace FFTColorCustomizer.Tests
 {
+    [Collection("ModBinDir")]
     public class FixedModConfigIntegrationTests : IDisposable
     {
         private readonly string _testModPath;

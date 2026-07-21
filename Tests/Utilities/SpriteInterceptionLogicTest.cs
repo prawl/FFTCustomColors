@@ -7,6 +7,7 @@ using FFTColorCustomizer.Utilities;
 
 namespace Tests
 {
+    [Collection("ModBinDir")]
     public class SpriteInterceptionLogicTest
     {
         [Fact]

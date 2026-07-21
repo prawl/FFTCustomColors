@@ -14,6 +14,7 @@ namespace FFTColorCustomizer.Tests.Integration
     /// <summary>
     /// Comprehensive tests to ensure themes are applied correctly for both story characters and generic job classes
     /// </summary>
+    [Collection("ModBinDir")]
     public class ThemeApplicationTests : IDisposable
     {
         private readonly string _testDirectory;

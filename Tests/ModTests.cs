@@ -11,6 +11,7 @@ using Moq;
 
 namespace FFTColorCustomizer.Tests
 {
+    [Collection("ModBinDir")]
     public class ModTests
     {
 
@@ -147,6 +148,7 @@ namespace FFTColorCustomizer.Tests
     }
 
     // Mock that tracks if menu refresh was called
+    [Collection("ModBinDir")]
     public class TrackingMockInputSimulator : IInputSimulator
     {
         public bool MenuRefreshCalled { get; private set; }

@@ -7,6 +7,7 @@ using FFTColorCustomizer.Utilities;
 
 namespace FFTColorCustomizer.Tests
 {
+    [Collection("ModBinDir")]
     public class ModConfigIntegrationTests : IDisposable
     {
         private readonly string _testModPath;
@@ -210,6 +211,7 @@ namespace FFTColorCustomizer.Tests
     }
 
     // Test helper class
+    [Collection("ModBinDir")]
     public class TestInputSimulator : IInputSimulator
     {
         public bool SendKeyPress(int vkCode) => true;

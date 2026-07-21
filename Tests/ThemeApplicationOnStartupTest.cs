@@ -5,6 +5,7 @@ using Xunit;
 
 namespace FFTColorCustomizer.Tests
 {
+    [Collection("ModBinDir")]
     public class ThemeApplicationOnStartupTest : IDisposable
     {
         private readonly string _testConfigDir;

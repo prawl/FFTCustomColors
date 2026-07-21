@@ -15,6 +15,7 @@ namespace FFTColorCustomizer.Tests.Integration
     /// Comprehensive tests for the hot reload fix that allows F1 configuration changes
     /// to take effect immediately without restarting Reloaded-II
     /// </summary>
+    [Collection("ModBinDir")]
     public class HotReloadTests : IDisposable
     {
         private readonly string _testDirectory;
