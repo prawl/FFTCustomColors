@@ -48,6 +48,11 @@ that checklist.
   - Verify: the full suite stays green at every stage; LogContractTests goes red on a glossary
     drift or a raw Console.WriteLine; the owner eyeballs a live launch showing the new line
     shape with live_log.prev.txt preserved from the prior run.
+  - Stages 1 and 2 live-verified 2026-07-21 on an owner-driven double launch: the new line
+    shape (timestamps, levels, tag) confirmed in-game, and the second launch preserved the
+    whole first session in live_log.prev.txt with a fresh live_log.txt. Riders found and
+    fixed along the way: BuildLinked's clean was deleting logs/ on every deploy (9a16b092).
+    Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
 
 ## Backlog
 
