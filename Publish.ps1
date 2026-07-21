@@ -25,13 +25,15 @@ param (
     [string]$OutputPath = ""
 )
 
+## => Shared pipeline (build, shared asset staging, the CC-10 manifest) <= ##
+. "$PSScriptRoot\tools\pipeline.ps1"
+
 ## => Configuration <= ##
-$ProjectPath = "ColorMod/FFTColorCustomizer.csproj"
 # The build folder's NAME becomes the wrapper folder INSIDE the zip — Vortex's
 # FFT IC extension treats a zip with files-at-root as malformed and falls back
 # to creating a fake wrapper, which causes the double-nested install path. Naming
 # this folder after our ModId means the zip extracts to the expected layout.
-$BuildOutputPath = "Publish/paxtrick.fft.colorcustomizer"
+$BuildOutputPath = "Publish/$ColorModId"
 $TempBuildPath = "Publish/TempBuild"
 $ModConfigPath = "$BuildOutputPath/ModConfig.json"
 
@@ -54,9 +56,12 @@ function Write-Status {
 }
 
 function Write-ErrorMessage {
+    # Throws instead of `exit 1`: an exit from inside the main try unwinds into the
+    # script's `finally`, whose `exit $exitCode` then ran with $exitCode unset, so a
+    # red gate exited 0 (probe-confirmed; the sibling FFTLivingWeapons Publish fixed
+    # the same defect). The main catch prints the message and owns the exit code.
     param($Message)
-    Write-Host "`n[ERROR] $Message" -ForegroundColor Red
-    exit 1
+    throw $Message
 }
 
 function Clean-BuildDirectories {
@@ -74,39 +79,34 @@ function Clean-BuildDirectories {
 }
 
 function Clean-DevInstallations {
-    Write-Status "Removing dev build to prevent conflicts..." "Yellow"
+    # Remove CONFLICTING installs only: versioned copies and the legacy
+    # "FFTColorCustomizer" shadow folder (it shares our ModId, so Reloaded can load
+    # the wrong copy). The LIVE dev install ($ColorModId) is deliberately left
+    # alone: it holds the user's UserThemes/ and config, and packaging has no
+    # reason to delete it. (The old version of this function targeted only the
+    # legacy folder name, believing it was the dev build, so on a current setup
+    # it deleted nothing; this is the intended form.)
+    Write-Status "Removing conflicting installations..." "Yellow"
 
-    # Remove the linked dev build if it exists
-    $devModPath = "$env:RELOADEDIIMODS/FFTColorCustomizer"
-    if (Test-Path $devModPath) {
-        Write-Host "  -> Removing dev build from Reloaded-II mods folder..." -ForegroundColor Yellow
-        Remove-Item $devModPath -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
+    $modsDir = "$env:RELOADEDIIMODS"
+    if (-not $modsDir) { return }
+
+    Get-ChildItem $modsDir -Filter "FFTColorCustomizer_v*" -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+        Write-Host "  -> Removing versioned installation: $($_.Name)" -ForegroundColor Yellow
+        Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+    $shadowPath = "$modsDir/$LegacyShadowFolderName"
+    if (Test-Path $shadowPath) {
+        Write-Host "  -> Removing legacy shadow folder (shares ModId): $LegacyShadowFolderName" -ForegroundColor Yellow
+        Remove-Item $shadowPath -Recurse -Force -ErrorAction SilentlyContinue | Out-Null
     }
 }
 
 function Build-Project {
     Write-Status "Building FFT Color Customizer in Release mode..." "Cyan"
-
-    # Clean solution first
-    Write-Host "  -> Cleaning solution..."
-    dotnet clean $ProjectPath -c Release | Out-Null
-
-    # Restore packages
-    Write-Host "  -> Restoring NuGet packages..."
-    dotnet restore $ProjectPath | Out-Null
-
-    # Build in Release mode
-    Write-Host "  -> Building Release configuration..."
-    $buildResult = dotnet publish $ProjectPath `
-        -c Release `
-        --self-contained false `
-        -o $BuildOutputPath `
-        /p:OutputPath="$TempBuildPath"
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-ErrorMessage "Build failed!"
-    }
-
+    # The release-flavor build (clean + restore + framework-dependent publish)
+    # is the shared Invoke-ColorModBuild (tools/pipeline.ps1); it throws red.
+    Invoke-ColorModBuild -OutDir $BuildOutputPath -TempBuildPath $TempBuildPath
     Write-Host "  -> Build completed successfully!" -ForegroundColor Green
 }
 
@@ -120,36 +120,13 @@ function Copy-ModAssets {
         Copy-Item $sourceModConfig -Destination $BuildOutputPath -Force
     }
 
-    # Copy Preview.png
-    $sourcePreview = "ColorMod/Preview.png"
-    if (Test-Path $sourcePreview) {
-        Write-Host "  -> Copying Preview.png..."
-        Copy-Item $sourcePreview -Destination $BuildOutputPath -Force
-    }
-
-    # SQLite native library must ALSO sit at the mod root: Reloaded-II loads the mod in a
-    # context where runtimes/<rid>/native probing alone is not reliable, so the pinvoke
-    # falls back to same-directory resolution. BuildLinked.ps1 has done this for dev
-    # deploys since c686d852; the release zip never did, which crashed Ramza theme saves
-    # for every zip user (CC-10).
-    $sqliteNative = "$BuildOutputPath/runtimes/win-x64/native/e_sqlite3.dll"
-    if (Test-Path $sqliteNative) {
-        Copy-Item $sqliteNative -Destination "$BuildOutputPath/e_sqlite3.dll" -Force
-        Write-Host "  -> Copied e_sqlite3.dll to mod root (Reloaded-II native resolution)" -ForegroundColor Green
-    } else {
-        Write-ErrorMessage "runtimes/win-x64/native/e_sqlite3.dll missing from build output!"
-    }
-
-    # Copy Data folder with StoryCharacters.json and JobClasses.json
-    $sourceData = "ColorMod/Data"
-    if (Test-Path $sourceData) {
-        Write-Host "  -> Copying Data folder..."
-        $destData = "$BuildOutputPath/Data"
-        Copy-Item $sourceData -Destination $BuildOutputPath -Recurse -Force
-        Write-Host "  -> Data folder copied" -ForegroundColor Green
-    } else {
-        Write-Host "  -> Warning: Data folder not found at: $sourceData" -ForegroundColor Yellow
-    }
+    # Mod icon + the SQLite native root copy (shared, tools/pipeline.ps1). The
+    # root-level e_sqlite3.dll is the CC-10 fix: Reloaded-II loads the mod in a
+    # context where runtimes/<rid>/native probing alone is not reliable, so the
+    # pinvoke falls back to same-directory resolution; a zip without the root
+    # copy crashed Ramza theme saves for every zip user.
+    Copy-ModIcon -Dest $BuildOutputPath -RequirePreview
+    Copy-SqliteNativeToRoot -Dest $BuildOutputPath
 
     # Copy FFTIVC folder with all sprite themes
     $sourceFFTIVC = "ColorMod/FFTIVC"
@@ -198,79 +175,15 @@ function Copy-ModAssets {
         # Count sprite files
         $binFiles = Get-ChildItem -Path $destFFTIVC -Filter "*.bin" -Recurse
         Write-Host "  -> Copied $($binFiles.Count) sprite files" -ForegroundColor Green
-
-        # Deploy charclut.nxd to the NXD directory for Ramza color customization
-        $nxdSource = "ColorMod/Data/nxd/charclut.nxd"
-        $nxdDestDir = "$destFFTIVC/data/enhanced/nxd"
-        if (Test-Path $nxdSource) {
-            Write-Host "  -> Deploying charclut.nxd for Ramza customization..."
-            New-Item -ItemType Directory -Force -Path $nxdDestDir | Out-Null
-            Copy-Item $nxdSource -Destination "$nxdDestDir/charclut.nxd" -Force
-            Write-Host "  -> Deployed charclut.nxd" -ForegroundColor Green
-        }
     } else {
         Write-ErrorMessage "FFTIVC folder not found at: $sourceFFTIVC"
     }
 
-    # Copy RamzaThemes folder with tex themes
-    $ramzaThemesSource = "ColorMod/RamzaThemes"
-    if (Test-Path $ramzaThemesSource) {
-        Write-Host "  -> Copying Ramza tex themes to RamzaThemes folder..."
-        $ramzaThemesDest = "$BuildOutputPath/RamzaThemes"
-
-        # Copy white_heretic theme if it exists
-        $whiteHereticPath = "$ramzaThemesSource/white_heretic"
-        if (Test-Path $whiteHereticPath) {
-            $whiteHereticDest = "$ramzaThemesDest/white_heretic"
-            New-Item -ItemType Directory -Force -Path $whiteHereticDest | Out-Null
-            Copy-Item "$whiteHereticPath/*.bin" -Destination $whiteHereticDest -Force
-            $texCount = (Get-ChildItem "$whiteHereticDest/*.bin" | Measure-Object).Count
-            Write-Host "    -> Copied $texCount tex files for white_heretic theme" -ForegroundColor Green
-        }
-
-        # Copy dark_knight theme if it exists
-        $darkKnightPath = "$ramzaThemesSource/dark_knight"
-        if (Test-Path $darkKnightPath) {
-            $darkKnightDest = "$ramzaThemesDest/dark_knight"
-            New-Item -ItemType Directory -Force -Path $darkKnightDest | Out-Null
-            Copy-Item "$darkKnightPath/*.bin" -Destination $darkKnightDest -Force
-            $texCount = (Get-ChildItem "$darkKnightDest/*.bin" | Measure-Object).Count
-            Write-Host "    -> Copied $texCount tex files for dark_knight theme" -ForegroundColor Green
-        }
-
-        # Copy crimson_blade theme if it exists
-        $crimsonBladePath = "$ramzaThemesSource/crimson_blade"
-        if (Test-Path $crimsonBladePath) {
-            $crimsonBladeDest = "$ramzaThemesDest/crimson_blade"
-            New-Item -ItemType Directory -Force -Path $crimsonBladeDest | Out-Null
-            Copy-Item "$crimsonBladePath/*.bin" -Destination $crimsonBladeDest -Force
-            $texCount = (Get-ChildItem "$crimsonBladeDest/*.bin" | Measure-Object).Count
-            Write-Host "    -> Copied $texCount tex files for crimson_blade theme" -ForegroundColor Green
-        }
-    }
-
-    # Copy Images folder with Ramza sprite sheet previews
-    $imagesSource = "ColorMod/Images"
-    if (Test-Path $imagesSource) {
-        Write-Host "  -> Copying Images folder with HD sprite previews..."
-        $imagesDest = "$BuildOutputPath/Images"
-        New-Item -ItemType Directory -Force -Path $imagesDest | Out-Null
-
-        # Copy all character folders (Ramza chapters + story chars + generic jobs)
-        # with their original/theme subfolders and HD BMP sprite sheets
-        $characterFolders = Get-ChildItem "$imagesSource" -Directory
-        foreach ($folder in $characterFolders) {
-            $destFolder = "$imagesDest/$($folder.Name)"
-            Copy-Item $folder.FullName $destFolder -Recurse -Force
-        }
-
-        # Copy any root PNG files (like thunder_god.png)
-        Copy-Item "$imagesSource/*.png" $imagesDest -Force -ErrorAction SilentlyContinue
-
-        $totalBmpCount = (Get-ChildItem "$imagesDest" -Recurse -Filter "*.bmp" -ErrorAction SilentlyContinue | Measure-Object).Count
-        $totalPngCount = (Get-ChildItem "$imagesDest" -Recurse -Filter "*.png" -ErrorAction SilentlyContinue | Measure-Object).Count
-        Write-Host "    -> Copied $totalBmpCount BMP sprite sheets and $totalPngCount PNG previews" -ForegroundColor Green
-    }
+    # Data JSONs + charclut.nxd, Ramza TEX themes, HD preview Images
+    # (shared stagers, tools/pipeline.ps1 - one copy for deploy and release)
+    Copy-DataAssets -Dest $BuildOutputPath
+    Copy-RamzaThemeAssets -Dest $BuildOutputPath
+    Copy-ImageAssets -Dest $BuildOutputPath
 }
 
 function Update-Version {
@@ -502,49 +415,17 @@ function Verify-Package {
             Write-Host "  -> Wrapper folder: $wrapper" -ForegroundColor Gray
         }
 
-        $requiredFiles = @(
-            "ModConfig.json",
-            "FFTColorCustomizer.dll",
-            "Preview.png",
-            "Newtonsoft.Json.dll",
-            "Reloaded.Memory.dll",
-            "Reloaded.Mod.Interfaces.dll",
-            "Data/StoryCharacters.json",
-            "Data/JobClasses.json",
-            "Data/WotLClasses.json",
-            "Data/SectionMappings/Story/Cloud.json",
-            "FFTColorCustomizer.deps.json",
-            "e_sqlite3.dll",
-            "Microsoft.Data.Sqlite.dll",
-            "runtimes/win-x64/native/e_sqlite3.dll",
-            "FFTIVC/data/enhanced/system/ffto/g2d/tex_992.bin"
-        )
-
-        $requiredPaths = @(
-            "FFTIVC/data/enhanced/fftpack/unit",
-            "FFTIVC/data/enhanced/fftpack/unit_psp",
-            "Data",
-            "Data/SectionMappings/Story",
-            "Images",
-            "RamzaThemes"
-        )
-
-        foreach ($file in $requiredFiles) {
+        # Required entries come from the ONE manifest (tools/package_manifest.json,
+        # via tools/pipeline.ps1) - the same list BuildLinked's deploy verification
+        # and the analyze.py zip gate check, so the three can never drift apart.
+        # Payload completeness (sprite/unit_psp/RamzaThemes/Images floors, theme-dir
+        # minimum) is enforced by the analyze.py gate that runs right after this.
+        $manifest = Get-PackageManifest
+        foreach ($file in $manifest.required_entries) {
             if ($entryPaths -contains $file) {
                 Write-Host "  [OK] $file" -ForegroundColor Green
             } else {
                 Write-Host "  [MISSING] $file" -ForegroundColor Red
-                $missingCount++
-            }
-        }
-
-        foreach ($path in $requiredPaths) {
-            $hasEntries = $entryPaths | Where-Object { $_.StartsWith("$path/") } | Select-Object -First 1
-            if ($hasEntries) {
-                $binCount = ($entryPaths | Where-Object { $_.StartsWith("$path/") -and $_.EndsWith('.bin') } | Measure-Object).Count
-                Write-Host "  [OK] $path (with $binCount .bin files)" -ForegroundColor Green
-            } else {
-                Write-Host "  [MISSING] $path" -ForegroundColor Red
                 $missingCount++
             }
         }
@@ -575,6 +456,11 @@ Write-Host "=====================================" -ForegroundColor Magenta
 $originalLocation = Get-Location
 Split-Path $MyInvocation.MyCommand.Path | Push-Location
 [Environment]::CurrentDirectory = $PWD
+
+# Default to FAILURE. The finally below always runs `exit $exitCode`, so an early
+# failure that reaches it without an explicit assignment must read 1, never $null
+# (exit $null is exit 0 - the silent-green failure mode).
+$exitCode = 1
 
 try {
     # Step 1: Clean
@@ -651,7 +537,9 @@ try {
     }
 }
 catch {
-    Write-Host "`n[ERROR] An unexpected error occurred: $_" -ForegroundColor Red
+    # Expected gate refusals (Write-ErrorMessage / pipeline throws) and genuine
+    # surprises both land here; either way the exit code is nonzero.
+    Write-Host "`n[ERROR] $_" -ForegroundColor Red
     Write-Host "Stack Trace: $($_.ScriptStackTrace)" -ForegroundColor Red
     $exitCode = 1
 }
