@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Remove="Program.cs" />
     <Compile Remove="ColorMod\**" />
+    <Compile Remove="working\**" />
   </ItemGroup>
 
 </Project>
