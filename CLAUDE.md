@@ -31,6 +31,26 @@ powershell.exe -ExecutionPolicy Bypass -File ./BuildLinked.Production.ps1
 powershell.exe -ExecutionPolicy Bypass -File ./Publish.ps1
 ```
 
+## Work Ledger (TODO system)
+
+`docs/TODO.md` is the work ledger, a CONTRACT file machine-checked by `Tests/TodoContractTests.cs`
+(ported from the FFTLivingWeapons system). Rules that matter when touching it:
+
+- Sections in fixed order: Now (cap 5; every entry carries `- Done means:` + `- Verify:`),
+  Backlog, Walled, Format. IDs are `CC-<n>`, unique across TODO.md and docs/CHANGELOG.md;
+  never reuse a retired id.
+- Capture new work as a Backlog row (`- [CC-<n>] YYYY-MM-DD: <sentence>`) in the session it
+  surfaces; promote to Now by filling in Done means/Verify (demote something first if Now is
+  at cap).
+- Items exit ONLY by moving to docs/CHANGELOG.md (`SHIPPED <hash>` / `WONTFIX` / `RETRACTED`),
+  in the shipping commit or the immediately following commit citing that hash. The Now section
+  must stay non-empty: exiting the last Now item means promoting a successor in the same commit.
+- The release name in the Now header must appear in docs/RELEASE_SCOPE.md (lockstep-tested).
+- No em dashes and no " -- " separators anywhere in TODO.md or CHANGELOG.md (test-enforced).
+- AWAITING-LIVE resolutions and live-verify sign-offs are owner-only.
+- `handoff.md` at the repo root is disposable session-handoff scratch (state, next steps, traps);
+  durable work lives in the ledger, not there.
+
 ## Architecture
 
 ### Core Systems

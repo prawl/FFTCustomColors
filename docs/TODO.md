@@ -61,6 +61,13 @@ that checklist.
   (https://www.nexusmods.com/finalfantasytacticstheivalicechronicles/mods/56?tab=posts).
   Suspect display-scaling/DPI layout clipping in the editor since the sliders exist in code;
   reproduce at non-100-percent Windows scaling first, then fix the layout.
+- [CC-11] 2026-07-21: ConfigOverwriteOnStartupTest.ModConfigurationUpdated_ShouldNotResetToDefaults
+  flaked red on CI (run 29805522663, first CI exercise of the suite since 3.1.0): IOException,
+  the shared bin-output Config.json "being used by another process". The test path writes the
+  assembly-output Config.json (ConfigurationService.SaveConfig reached via
+  ThemeManagerAdapter.ApplyInitialThemes), shared mutable state under xUnit parallelism; isolate
+  the config path per test (temp dir). Same disease family as CC-8, different symptom: this one
+  fails loud instead of passing vacuously.
 
 ## Walled (blocked by engine / external)
 
