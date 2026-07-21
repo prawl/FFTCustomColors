@@ -1,0 +1,40 @@
+{
+  "_comment": "Load-bearing release-zip contents (CC-10). Verified against the ZIP by tools/analyze.py, which Publish.ps1 runs as a hard gate. Add entries when the mod grows a new must-ship asset; a miss fails the release.",
+  "required_entries": [
+    "ModConfig.json",
+    "Preview.png",
+    "FFTColorCustomizer.dll",
+    "FFTColorCustomizer.deps.json",
+    "e_sqlite3.dll",
+    "Newtonsoft.Json.dll",
+    "Microsoft.Data.Sqlite.dll",
+    "SQLitePCLRaw.batteries_v2.dll",
+    "SQLitePCLRaw.core.dll",
+    "SQLitePCLRaw.provider.e_sqlite3.dll",
+    "runtimes/win-x64/native/e_sqlite3.dll",
+    "Reloaded.Mod.Interfaces.dll",
+    "Data/StoryCharacters.json",
+    "Data/JobClasses.json",
+    "Data/WotLClasses.json",
+    "Data/nxd/charclut.sqlite",
+    "FFTIVC/data/enhanced/nxd/charclut.nxd",
+    "FFTIVC/data/enhanced/system/ffto/g2d/tex_992.bin",
+    "FFTIVC/data/enhanced/system/ffto/g2d/tex_993.bin",
+    "FFTIVC/data/enhanced/system/ffto/g2d/tex_1000.bin",
+    "FFTIVC/data/enhanced/system/ffto/g2d/tex_1001.bin",
+    "FFTIVC/data/enhanced/system/ffto/g2d/tex_1012.bin",
+    "FFTIVC/data/enhanced/system/ffto/g2d/tex_1013.bin"
+  ],
+  "parse_json": [
+    "Data/StoryCharacters.json",
+    "Data/JobClasses.json",
+    "Data/WotLClasses.json"
+  ],
+  "floors": [
+    { "prefix": "FFTIVC/data/enhanced/fftpack/unit/", "suffix": ".bin", "min": 900, "desc": "generic/story/monster sprite bins" },
+    { "prefix": "FFTIVC/data/enhanced/fftpack/unit_psp/", "suffix": ".bin", "min": 10, "desc": "WotL job sprite bins" },
+    { "prefix": "RamzaThemes/", "suffix": "", "min": 18, "desc": "Ramza battle TEX themes (3 themes x 6 tex)" },
+    { "prefix": "Images/", "suffix": "", "min": 100, "desc": "UI preview images" }
+  ],
+  "min_theme_dirs": 150
+}

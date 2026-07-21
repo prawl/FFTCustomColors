@@ -127,6 +127,19 @@ function Copy-ModAssets {
         Copy-Item $sourcePreview -Destination $BuildOutputPath -Force
     }
 
+    # SQLite native library must ALSO sit at the mod root: Reloaded-II loads the mod in a
+    # context where runtimes/<rid>/native probing alone is not reliable, so the pinvoke
+    # falls back to same-directory resolution. BuildLinked.ps1 has done this for dev
+    # deploys since c686d852; the release zip never did, which crashed Ramza theme saves
+    # for every zip user (CC-10).
+    $sqliteNative = "$BuildOutputPath/runtimes/win-x64/native/e_sqlite3.dll"
+    if (Test-Path $sqliteNative) {
+        Copy-Item $sqliteNative -Destination "$BuildOutputPath/e_sqlite3.dll" -Force
+        Write-Host "  -> Copied e_sqlite3.dll to mod root (Reloaded-II native resolution)" -ForegroundColor Green
+    } else {
+        Write-ErrorMessage "runtimes/win-x64/native/e_sqlite3.dll missing from build output!"
+    }
+
     # Copy Data folder with StoryCharacters.json and JobClasses.json
     $sourceData = "ColorMod/Data"
     if (Test-Path $sourceData) {
@@ -176,8 +189,10 @@ function Copy-ModAssets {
                     Remove-Item $dirPath -Recurse -Force -ErrorAction SilentlyContinue
                 }
             }
-            # Remove any loose tex files from development testing
-            Get-ChildItem "$g2dPath/tex_*.bin" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+            # The 6 tex_*.bin files here are the SHIPPED hair-highlight fixes
+            # (tex_992/993/1000/1001/1012/1013), deployed deliberately by BuildLinked.ps1.
+            # A previous blanket "remove loose dev tex files" delete stripped them from
+            # every release (CC-10 finding); do NOT delete tex_*.bin here.
         }
 
         # Count sprite files
@@ -291,10 +306,13 @@ function Clean-BuildOutput {
     Write-Status "Cleaning build output..." "Yellow"
 
     # Remove unnecessary files
+    # NOTE: *.deps.json is deliberately NOT in this list. FFTColorCustomizer.deps.json is
+    # load-bearing: without it .NET cannot map runtimes/win-x64/native/e_sqlite3.dll, and
+    # Ramza SQLite theming dies with a SqliteConnection type-initializer crash for every
+    # zip user (CC-10; deleting it here was the root cause).
     $patterns = @(
         "*.pdb",
         "*.xml",
-        "*.deps.json",
         "*.runtimeconfig.json",
         "*Test*",
         "xunit*",
@@ -494,7 +512,12 @@ function Verify-Package {
             "Data/StoryCharacters.json",
             "Data/JobClasses.json",
             "Data/WotLClasses.json",
-            "Data/SectionMappings/Story/Cloud.json"
+            "Data/SectionMappings/Story/Cloud.json",
+            "FFTColorCustomizer.deps.json",
+            "e_sqlite3.dll",
+            "Microsoft.Data.Sqlite.dll",
+            "runtimes/win-x64/native/e_sqlite3.dll",
+            "FFTIVC/data/enhanced/system/ffto/g2d/tex_992.bin"
         )
 
         $requiredPaths = @(
@@ -579,6 +602,27 @@ try {
         # ship to users (see v3.0.7 incident: source-archive shipped as the
         # release because nothing checked the artifact contents).
         $verifyOk = Verify-Package -PackagePath $packagePath
+
+        # Content gate: manifest-driven verification of the ZIP itself (CC-10).
+        if ($verifyOk) {
+            Write-Status "Running package content gate (tools/analyze.py)..." "Cyan"
+            python tools/analyze.py --zip "$packagePath"
+            if ($LASTEXITCODE -ne 0) {
+                Write-Status "Publishing failed - analyze.py content gate failed" "Red"
+                $verifyOk = $false
+            }
+        }
+
+        # Functional gate: SQLite must actually open from the packaged layout (CC-10).
+        if ($verifyOk) {
+            Write-Status "Running SQLite functional smoke (tools/SqliteSmoke)..." "Cyan"
+            dotnet run --project tools/SqliteSmoke -c Release -- "$packagePath"
+            if ($LASTEXITCODE -ne 0) {
+                Write-Status "Publishing failed - SQLite smoke failed on the packaged zip" "Red"
+                $verifyOk = $false
+            }
+        }
+
         if (-not $verifyOk) {
             Write-Status "Publishing failed - package verification failed" "Red"
             $exitCode = 1

@@ -11,12 +11,32 @@ that checklist.
 
 ## Now (release: 3.2.0)
 
-- **[CC-10] Investigate the mod-broken-after-game-update reports** (opened 2026-07-21) [QUEUED]
+- **[CC-10] Investigate the mod-broken-after-game-update reports** (opened 2026-07-21) [BUILDING]
   - Done means: the failure is reproduced or ruled out on the latest game patch, the root cause
     is identified (prior art: the earlier "broken on 1.5" report was a zip-packaging defect, not
     code; triage doc docs/PORT_1.5.md), and a fix or a pinned compatibility note ships to Nexus.
   - Verify: the owner, or a reporting user, confirms themes load and apply in-game on the latest
     game version.
+  - Findings 2026-07-21 (three-agent investigation): the SQLite report is SOLVED as a packaging
+    defect. The zip ships native e_sqlite3.dll only under runtimes/win-x64/native/, but
+    Publish.ps1 deletes FFTColorCustomizer.deps.json (Clean-BuildOutput, line 297) and never
+    mirrors BuildLinked.ps1's root-level e_sqlite3.dll copy (lines 92-98, added in c686d852
+    "for Reloaded-II compatibility"), so SqliteConnection's type initializer throws for every
+    zip user while the dev deploy carries both resolution paths. Consequence: Ramza NXD
+    theming has been silently dead for ALL zip users since v3.0.0 (the startup apply swallows
+    the same exception; the theme editor is just where it becomes visible). Also proven:
+    Publish.ps1 line 180 strips the six hair-highlight-fix g2d tex bins from every release,
+    and neither Verify-Package nor the CI artifact check can catch any of this. Fix batch:
+    keep deps.json, copy e_sqlite3.dll to the package root, stop deleting the g2d hair-fix
+    texes, add all three to the Verify-Package required list. The no-colors report has no
+    single proven cause; ranked suspects captured as CC-12 and CC-13.
+  - Packaging fix BUILT and OWNER LIVE-VERIFIED 2026-07-21: Publish.ps1 keeps deps.json,
+    copies e_sqlite3.dll to the mod root, ships the six g2d hair-fix texes; new hard gates
+    (tools/analyze.py against tools/package_manifest.json, tools/SqliteSmoke functional open)
+    run inside Publish and CI, both proven red on the old v3.1.0 zip (8 violations plus the
+    exact DllNotFoundException users hit) and green on the fixed zip; owner installed the
+    fixed zip as a user and saved a new Ramza theme with no SQLite error. Remaining on this
+    row: CC-12/CC-13 fixes and the Nexus outreach plus release.
 ## Backlog
 
 - [CC-2] 2026-07-21: Rework logging to the FFTLivingWeapons model: a typed ModLogger facade with
@@ -61,6 +81,29 @@ that checklist.
   (https://www.nexusmods.com/finalfantasytacticstheivalicechronicles/mods/56?tab=posts).
   Suspect display-scaling/DPI layout clipping in the editor since the sliders exist in code;
   reproduce at non-100-percent Windows scaling first, then fix the layout.
+  Screenshot received 2026-07-21 (preserved at docs/reports/cc9_theme_editor_clipped_ui.png):
+  every section label is vertically clipped, buttons truncate to "Sav"/"Can", and in each color
+  group all three slider LABELS render (Hue/Sat/Ligh) but only the Hue row shows an actual
+  slider track; the Sat and Lightness rows collapse to label plus value with the control
+  clipped away, rows overlapping. Signature of fixed pixel row heights under Windows text
+  scaling above 100 percent: the sliders are not gone, their rows are collapsed. This upgrades
+  the DPI hypothesis from suspicion to near-certainty.
+- [CC-12] 2026-07-21: The Reloaded-II Configure Mod button flow copies ZERO sprites for every
+  release user: Configurator.cs line 257 hard-codes the mod folder as Mods\FFTColorCustomizer,
+  but release installs are named paxtrick.fft.colorcustomizer (or the Vortex timestamped
+  name), and the fallback search only matches FFTColorCustomizer_v*. The config saves and the
+  UI reports success while no sprite is copied; it only ever worked because the dev deploy
+  folder is literally FFTColorCustomizer. Top suspect for the "nothing changes on any
+  character" report whenever a user configures via the launcher button instead of F1. Fix:
+  resolve the mod folder from the executing assembly location the way Mod.cs does.
+- [CC-13] 2026-07-21: Silent-failure hardening in the apply path: InterceptFilePath "path
+  redirection" is dead code, yet catch blocks demote locked/read-only sprite-copy failures to
+  DEBUG with the false promise "theme will be applied via path redirection" (the change is
+  silently dropped); the F1 save+apply wraps everything in a catch that mislabels failures as
+  "Failed to open configuration UI"; and Config.json is split-brain (the User/Mods path wins
+  only if it already exists, the Configure button always creates it, F1 can write the
+  mod-folder copy, so selections can silently revert). Surface real warnings, delete the dead
+  promise, and unify the config path.
 - [CC-11] 2026-07-21: ConfigOverwriteOnStartupTest.ModConfigurationUpdated_ShouldNotResetToDefaults
   flaked red on CI (run 29805522663, first CI exercise of the suite since 3.1.0): IOException,
   the shared bin-output Config.json "being used by another process". The test path writes the
