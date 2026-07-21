@@ -184,7 +184,7 @@ namespace FFTColorCustomizer.Configuration
             // them. F1 in-game and alt-tab-then-click both still work.
             if (!GameRunningDetector.IsGameRunning())
             {
-                ModLogger.Log("Configure clicked but game isn't running — showing hint modal.");
+                ModLogger.Log("Configure clicked but game isn't running; showing hint modal.");
                 System.Windows.Forms.MessageBox.Show(
                     "Start Final Fantasy Tactics first, then either:\n\n" +
                     "  • Press F1 in-game, or\n" +
