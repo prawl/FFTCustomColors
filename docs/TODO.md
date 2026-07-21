@@ -48,15 +48,6 @@ that checklist.
   - Verify: the full suite stays green at every stage; LogContractTests goes red on a glossary
     drift or a raw Console.WriteLine; the owner eyeballs a live launch showing the new line
     shape with live_log.prev.txt preserved from the prior run.
-- **[CC-16] Make local builds refuse a broken ledger or logging contract** (opened 2026-07-21) [BUILDING]
-  - Done means: a local deploy or release build stops with a clear red message when the work
-    ledger or the logging contract is malformed, instead of quietly shipping while only CI
-    would have noticed. (Tech: Invoke-UnitTestGate in tools/pipeline.ps1 running
-    TodoContractTests plus LogContractTests via dotnet test --filter, called by
-    BuildLinked.ps1 and Publish.ps1; CI keeps running the full suite.)
-  - Verify: a deliberately corrupted Backlog row makes the gate refuse to deploy and a clean
-    tree passes end to end, with the filtered gate fast enough for the dev loop (under two
-    minutes total, the tests themselves under a second).
 
 ## Backlog
 

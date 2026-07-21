@@ -8,6 +8,12 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-16] SHIPPED 08daee09 2026-07-21: local builds now stop with a clear red message when
+  the work ledger or the logging contract is malformed, instead of quietly deploying or
+  packaging while only CI would have noticed. (Tech: Invoke-UnitTestGate in
+  tools/pipeline.ps1, filtered to TodoContractTests plus LogContractTests, called by
+  BuildLinked.ps1 and Publish.ps1; proven by a corrupted Backlog row refusing to deploy and
+  a clean end-to-end BuildLinked run.)
 - [CC-15] SHIPPED da66c27a 2026-07-21: the dev deploy and the release zip no longer carry
   duplicate copies of the build, staging, and verification code that could drift apart (the
   drift class behind the v3.0.x broken zips). A shared dot-sourced tools/pipeline.ps1 feeds
