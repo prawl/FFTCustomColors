@@ -101,6 +101,10 @@ that checklist.
   Backlog, and changelog sections (found by a sabotage that landed after Format and stayed
   green); decide whether entry-shaped lines in Walled or Format should fail the contract. The
   sibling repos share the same blind spot.
+  Fixed in the TreasureMaster sibling 2026-07-21 (its TM-6, commit 5569e8e) and the decision
+  there was yes, they fail the contract: an entry-shape regex swept over the non-entry
+  sections, proven by a planted stray going red and the revert going green. The port is that
+  one test with the id prefix swapped to CC.
 - [CC-14] 2026-07-21: Cleanup riders from the CC-10/CC-13 verify passes: remove the dead
   InterceptFilePath plumbing entirely (nothing calls it in production, but 7 test files
   exercise it, so it is its own refactor), and triage the pre-existing log noise seen in the
