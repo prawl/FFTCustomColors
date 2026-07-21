@@ -115,6 +115,10 @@ that checklist.
   is at cap, demote something first.
 - Backlog: entry first line `- [CC-<n>] YYYY-MM-DD: <one sentence>`; indented continuation lines
   are free. Capture new items here in the session they surface.
+- ELI5-first prose (owner rule, 2026-07-21): the first sentence of every entry, and the opening
+  of every Done means / Verify, is plain language a non-programmer follows: what is broken or
+  wanted, for whom, what done looks like. Technical detail (file names, ids, gate numbers)
+  comes AFTER that opening, in continuation lines or a "(Tech: ...)" tail, never instead of it.
 - IDs are unique across this file and docs/CHANGELOG.md; never reuse a retired ID.
 - Items exit ONLY by moving to docs/CHANGELOG.md when they ship or die: in the shipping commit
   itself, or in the immediately following commit when the exit row cites that commit's own hash.
