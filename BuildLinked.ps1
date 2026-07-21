@@ -63,8 +63,14 @@ if (Test-Path $modPath) {
         Copy-Item $userThemesJson "$tempBackupPath/UserThemes.json" -Force
     }
 
-    # Remove everything (keep the Vortex marker so Vortex doesn't treat the folder as orphaned)
-    Remove-Item "$modPath/*" -Exclude "__folder_managed_by_vortex" -Force -Recurse -ErrorAction SilentlyContinue
+    # Remove everything except the Vortex marker (so Vortex doesn't treat the folder
+    # as orphaned) and logs/ (so a deploy never destroys the run evidence the log
+    # rotation exists to preserve; the sibling mods preserve their flight/ the same
+    # way). NOT -Exclude: with -Recurse it spares a directory itself but still wipes
+    # the directory's CONTENTS (proven empirically), so filter the top level instead.
+    Get-ChildItem $modPath -Force |
+        Where-Object { $_.Name -ne "__folder_managed_by_vortex" -and $_.Name -ne "logs" } |
+        Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
 
     # Restore UserThemes if backup exists
     if (Test-Path $tempBackupPath) {
