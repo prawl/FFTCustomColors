@@ -14,8 +14,8 @@ whatever player-facing QoL the owner locks in.
 ## IN (ship gate; every box green = ship)
 
 ### 1. Work-ledger system (CC-1)
-- [ ] docs/TODO.md + docs/CHANGELOG.md + TodoContractTests enforce the ledger contract; suite
-      green; owner has verified the shape.
+- [x] docs/TODO.md + docs/CHANGELOG.md + TodoContractTests enforce the ledger contract; suite
+      green; owner gave the go-ahead (shipped 3b82b132, 2026-07-21).
 
 ### 2. Game-update compatibility (CC-10)
 - [ ] Users report the mod does not work after the latest game update: investigate, fix or

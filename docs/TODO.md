@@ -17,15 +17,6 @@ that checklist.
     code; triage doc docs/PORT_1.5.md), and a fix or a pinned compatibility note ships to Nexus.
   - Verify: the owner, or a reporting user, confirms themes load and apply in-game on the latest
     game version.
-- **[CC-1] Adopt the work-ledger system** (opened 2026-07-21) [AWAITING-LIVE]
-  - Done means: docs/TODO.md, docs/CHANGELOG.md, and docs/RELEASE_SCOPE.md exist in the ported
-    shape; Tests/TodoContractTests.cs enforces the contract (section order, entry grammars, the
-    Now cap, Done means/Verify counts, CC-id uniqueness across ledger and changelog, the
-    release-name lockstep, the dash rules) and runs green with the full suite; a deliberate
-    sabotage of the ledger turns the gate red (non-vacuity proven, not assumed).
-  - Verify: the owner reviews the ledger shape and the test gate and gives the commit go-ahead;
-    this row exits to docs/CHANGELOG.md citing the shipping commit's hash.
-
 ## Backlog
 
 - [CC-2] 2026-07-21: Rework logging to the FFTLivingWeapons model: a typed ModLogger facade with
