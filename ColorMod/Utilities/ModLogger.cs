@@ -60,6 +60,65 @@ namespace FFTColorCustomizer.Utilities
             set => Instance.LogLevel = value;
         }
 
+        // --- Typed entry points (CC-2): the migration target for every call site. When the
+        // installed instance is the typed two-sink logger these flow through it (verb-aware
+        // rendering, console dedup); any other ILogger (tests, DI fakes) gets the verb folded
+        // into the message so captures still see one line per call. ---
+
+        /// <summary>
+        /// Logs an informational message under a verb from the closed glossary
+        /// </summary>
+        public static void Log(LogVerb verb, string message)
+        {
+            if (Instance is FileConsoleLogger typed) typed.Log(verb, message);
+            else Instance.Log($"[{verb.Token()}] {message}");
+        }
+
+        /// <summary>
+        /// Logs a warning under a verb from the closed glossary
+        /// </summary>
+        public static void LogWarning(LogVerb verb, string message)
+        {
+            if (Instance is FileConsoleLogger typed) typed.LogWarning(verb, message);
+            else Instance.LogWarning($"[{verb.Token()}] {message}");
+        }
+
+        /// <summary>
+        /// Logs an error under a verb from the closed glossary
+        /// </summary>
+        public static void LogError(LogVerb verb, string message)
+        {
+            if (Instance is FileConsoleLogger typed) typed.LogError(verb, message);
+            else Instance.LogError($"[{verb.Token()}] {message}");
+        }
+
+        /// <summary>
+        /// Logs an error with exception details under a verb from the closed glossary
+        /// </summary>
+        public static void LogError(LogVerb verb, string message, Exception exception)
+        {
+            if (Instance is FileConsoleLogger typed) typed.LogError(verb, message, exception);
+            else Instance.LogError($"[{verb.Token()}] {message}", exception);
+        }
+
+        /// <summary>
+        /// Logs a debug message under a verb from the closed glossary
+        /// </summary>
+        public static void LogDebug(LogVerb verb, string message)
+        {
+            if (Instance is FileConsoleLogger typed) typed.LogDebug(verb, message);
+            else Instance.LogDebug($"[{verb.Token()}] {message}");
+        }
+
+        /// <summary>
+        /// Marks the edge of an apply pass, resetting the console dedup so recurring
+        /// warnings print once per pass (no-op on a legacy logger instance)
+        /// </summary>
+        public static void NoteApplyPassEdge()
+        {
+            if (Instance is FileConsoleLogger typed) typed.NoteApplyPassEdge();
+        }
+
         /// <summary>
         /// Logs a standard information message
         /// </summary>

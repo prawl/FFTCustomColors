@@ -49,7 +49,9 @@ namespace FFTColorCustomizer.Core
             string userConfigPath = GetUserConfigPath(actualModPath);
 
             // Register core services
-            container.RegisterSingleton<ILogger>(() => new ConsoleLogger(ColorModConstants.LogPrefix));
+            // The injected ILogger shares the process-wide two-sink logger (ModLogger.Instance)
+            // so injected consumers and static call sites write into the same evidence chain.
+            container.RegisterSingleton<ILogger>(() => Utilities.ModLogger.Instance);
             container.RegisterSingleton<IPathResolver>(() => new PathResolver(actualModPath, sourcePath, userConfigPath));
 
             // Register configuration services

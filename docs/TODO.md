@@ -37,18 +37,20 @@ that checklist.
     exact DllNotFoundException users hit) and green on the fixed zip; owner installed the
     fixed zip as a user and saved a new Ramza theme with no SQLite error. Remaining on this
     row: CC-12/CC-13 fixes and the Nexus outreach plus release.
+- **[CC-2] Rework logging to the sibling mods' model** (opened 2026-07-21) [BUILDING]
+  - Done means: every line the mod prints says what kind of event it is and when it happened,
+    the log file keeps the previous run instead of erasing it at launch, and the console stays
+    quiet unless the player caused something or something went wrong. (Tech: typed ModLogger
+    facade over a two-sink FileConsoleLogger, closed 9-verb glossary, live_log.txt with .prev
+    rotation, docs/LOGGING.md pinned by LogContractTests, staged commits per the proposal
+    artifact: facade core, contract tests, three conversion sweeps, strictness flip, flight
+    recorder riders CC-3 and CC-14.)
+  - Verify: the full suite stays green at every stage; LogContractTests goes red on a glossary
+    drift or a raw Console.WriteLine; the owner eyeballs a live launch showing the new line
+    shape with live_log.prev.txt preserved from the prior run.
 
 ## Backlog
 
-- [CC-2] 2026-07-21: Rework logging to the FFTLivingWeapons model: a typed ModLogger facade with
-  a closed verb glossary, the two-sink rule (file gets every line timestamped and unconditional,
-  console curated by level), per-launch rotation of the log file, a LOGGING.md contract doc, and
-  LogContractTests to pin it. Current state mapped 2026-07-21: roughly 600 call sites, most
-  behind the static ModLogger facade (ColorMod/Utilities/ModLogger.cs) but with about 40 raw
-  Console.WriteLine stragglers in production code and one injected-logger consumer
-  (SpriteService); console lines carry no timestamps, live_log.txt is truncated per launch with
-  no rotation, and the only logging test exercises a test-local logger rather than the
-  production ConsoleLogger.
 - [CC-3] 2026-07-21: Add a flight recorder if it makes sense. The FFTLivingWeapons core (bounded
   ring, jsonl flush files, first-error FlushOnce trigger, retention prune) is domain-neutral and
   portable; the battle-edge flush triggers are not, so the port would flush on theme-apply edges

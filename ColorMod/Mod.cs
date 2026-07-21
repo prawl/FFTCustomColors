@@ -44,7 +44,7 @@ public class Mod : IMod, IConfigurable
     {
         // Initialize ModLogger with ConsoleLogger
         ModLogger.Reset();
-        ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
+        ModLogger.Instance = new FileConsoleLogger();
         ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD - Maximum verbosity
         ModLogger.Log("Mod constructor called - DEBUG BUILD v2.0.2-debug");
 
@@ -69,7 +69,7 @@ public class Mod : IMod, IConfigurable
     {
         // Initialize ModLogger with ConsoleLogger
         ModLogger.Reset();
-        ModLogger.Instance = new ConsoleLogger("[FFT Color Mod]");
+        ModLogger.Instance = new FileConsoleLogger();
         ModLogger.LogLevel = Interfaces.LogLevel.Debug; // DEBUG BUILD - Maximum verbosity for troubleshooting
 
         ModLogger.Log("Default constructor called");
