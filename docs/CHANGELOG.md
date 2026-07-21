@@ -8,6 +8,13 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-11] SHIPPED 7c4d5b8d 2026-07-21: the ConfigOverwriteOnStartupTest CI flake is fixed at
+  the root. Constructing Mod writes Config.json into its own folder, the shared test bin dir,
+  and xUnit class parallelism let two such classes race on that one file (the "being used by
+  another process" IOException, twice on CI the same day). All ten Mod-constructing test
+  classes now share the serialized ModBinDir collection; temp-dir tests stay parallel and the
+  suite runs in unchanged time.
+
 - [CC-13] SHIPPED 0a34e6ac 2026-07-21: silent-failure hardening in the theme-apply path.
   Locked and access-denied sprite copies now warn honestly that the change was NOT applied
   (the old DEBUG lines promised a "path redirection" that never runs in production); apply

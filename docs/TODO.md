@@ -37,6 +37,7 @@ that checklist.
     exact DllNotFoundException users hit) and green on the fixed zip; owner installed the
     fixed zip as a user and saved a new Ramza theme with no SQLite error. Remaining on this
     row: CC-12/CC-13 fixes and the Nexus outreach plus release.
+
 ## Backlog
 
 - [CC-2] 2026-07-21: Rework logging to the FFTLivingWeapons model: a typed ModLogger facade with
@@ -94,13 +95,6 @@ that checklist.
   owner's live log (three "missing theme files" warnings for RamzaChapter dirs that never
   exist under unit/, and an empty-name "Original sprite not found for reis:" warning). Both
   fold naturally into the CC-2 logging rework if that lands first.
-- [CC-11] 2026-07-21: ConfigOverwriteOnStartupTest.ModConfigurationUpdated_ShouldNotResetToDefaults
-  flaked red on CI (run 29805522663, first CI exercise of the suite since 3.1.0): IOException,
-  the shared bin-output Config.json "being used by another process". The test path writes the
-  assembly-output Config.json (ConfigurationService.SaveConfig reached via
-  ThemeManagerAdapter.ApplyInitialThemes), shared mutable state under xUnit parallelism; isolate
-  the config path per test (temp dir). Same disease family as CC-8, different symptom: this one
-  fails loud instead of passing vacuously.
 
 ## Walled (blocked by engine / external)
 
