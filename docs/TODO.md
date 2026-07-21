@@ -88,14 +88,6 @@ that checklist.
   clipped away, rows overlapping. Signature of fixed pixel row heights under Windows text
   scaling above 100 percent: the sliders are not gone, their rows are collapsed. This upgrades
   the DPI hypothesis from suspicion to near-certainty.
-- [CC-12] 2026-07-21: The Reloaded-II Configure Mod button flow copies ZERO sprites for every
-  release user: Configurator.cs line 257 hard-codes the mod folder as Mods\FFTColorCustomizer,
-  but release installs are named paxtrick.fft.colorcustomizer (or the Vortex timestamped
-  name), and the fallback search only matches FFTColorCustomizer_v*. The config saves and the
-  UI reports success while no sprite is copied; it only ever worked because the dev deploy
-  folder is literally FFTColorCustomizer. Top suspect for the "nothing changes on any
-  character" report whenever a user configures via the launcher button instead of F1. Fix:
-  resolve the mod folder from the executing assembly location the way Mod.cs does.
 - [CC-13] 2026-07-21: Silent-failure hardening in the apply path: InterceptFilePath "path
   redirection" is dead code, yet catch blocks demote locked/read-only sprite-copy failures to
   DEBUG with the false promise "theme will be applied via path redirection" (the change is

@@ -8,6 +8,14 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-12] SHIPPED 853f9090 2026-07-21: the Reloaded-II Configure Mod button now copies sprites
+  on release installs. The flow hard-coded the sprite target as Mods\FFTColorCustomizer, a
+  folder that only exists on the dev machine, so every release user who configured via the
+  launcher button got a saved config, a success report, and zero sprite changes (top suspect
+  for the Nexus "no modification on any character" report). ModInstallPathResolver now trusts
+  the executing DLL's directory with ModFolder fallback; 7 tests including a source-scan pin.
+  Owner live-verified same day on a paxtrick.fft.colorcustomizer install via the button.
+
 - [CC-1] SHIPPED 3b82b132 2026-07-21: the work-ledger system, adopted from FFTLivingWeapons:
   docs/TODO.md and this changelog under TodoContractTests enforcement (35 tests, proven
   non-vacuous by three deliberate sabotages), a draft RELEASE_SCOPE for 3.2.0 in lockstep with
