@@ -306,14 +306,11 @@ namespace FFTColorCustomizer.Utilities
                     }
                     catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
                     {
-                        // File is locked by the game - this is expected during runtime
-                        // The InterceptFilePath will handle the redirection
-                        ModLogger.LogDebug($"Sprite {spriteName} is in use, skipping restoration (will use path redirection)");
+                        ModLogger.LogWarning(SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
                     }
                     catch (UnauthorizedAccessException)
                     {
-                        // Permission issue - likely the file is read-only or locked
-                        ModLogger.LogDebug($"Cannot overwrite {spriteName} (access denied), using path redirection");
+                        ModLogger.LogWarning(SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
                     }
                     catch (Exception ex)
                     {
@@ -404,12 +401,11 @@ namespace FFTColorCustomizer.Utilities
             }
             catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
             {
-                // File is locked by the game - this is expected during runtime
-                ModLogger.LogDebug($"Sprite {spriteName} is in use, theme will be applied via path redirection");
+                ModLogger.LogWarning(SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
             }
             catch (UnauthorizedAccessException)
             {
-                ModLogger.LogDebug($"Cannot overwrite {spriteName} (access denied), using path redirection");
+                ModLogger.LogWarning(SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
             }
             catch (Exception ex)
             {
@@ -632,14 +628,11 @@ namespace FFTColorCustomizer.Utilities
                     }
                     catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
                     {
-                        // File is locked by the game - this is expected during runtime
-                        // The InterceptFilePath will handle the redirection
-                        ModLogger.LogDebug($"Sprite {spriteName} is in use, skipping restoration (will use path redirection)");
+                        ModLogger.LogWarning(SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
                     }
                     catch (UnauthorizedAccessException)
                     {
-                        // Permission issue - likely the file is read-only or locked
-                        ModLogger.LogDebug($"Cannot overwrite {spriteName} (access denied), using path redirection");
+                        ModLogger.LogWarning(SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
                     }
                     catch (Exception ex)
                     {
@@ -731,12 +724,11 @@ namespace FFTColorCustomizer.Utilities
             }
             catch (IOException ioEx) when (ioEx.Message.Contains("being used by another process"))
             {
-                // File is locked by the game - this is expected during runtime
-                ModLogger.LogDebug($"Sprite {spriteName} is in use, theme will be applied via path redirection");
+                ModLogger.LogWarning(SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.Locked));
             }
             catch (UnauthorizedAccessException)
             {
-                ModLogger.LogDebug($"Cannot overwrite {spriteName} (access denied), using path redirection");
+                ModLogger.LogWarning(SpriteCopyFailure.Compose(spriteName, SpriteCopyFailureKind.AccessDenied));
             }
             catch (Exception ex)
             {

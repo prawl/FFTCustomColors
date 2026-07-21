@@ -315,35 +315,13 @@ public class Mod : IMod, IConfigurable
 
     private string GetUserConfigPath()
     {
-        // Navigate from Mods/FFTColorCustomizer to User/Mods/paxtrick.fft.colorcustomizer
-        var parent = Directory.GetParent(_modPath);
-        if (parent != null)
-        {
-            var grandParent = Directory.GetParent(parent.FullName);
-            if (grandParent != null)
-            {
-                var reloadedRoot = grandParent.FullName;
-                var userConfigPath = Path.Combine(reloadedRoot, "User", "Mods", ModNamespace, ConfigFileName);
-
-                ModLogger.LogDebug($"Looking for user config at: {userConfigPath}");
-
-                // Use User config if it exists
-                if (File.Exists(userConfigPath))
-                {
-                    ModLogger.Log($"Using user config: {userConfigPath}");
-                    return userConfigPath;
-                }
-                else
-                {
-                    ModLogger.LogDebug("User config not found, falling back to mod config");
-                }
-            }
-        }
-
-        // Fallback to mod directory config
-        var fallbackPath = Path.Combine(_modPath, ConfigFileName);
-        ModLogger.Log($"Using fallback config: {fallbackPath}");
-        return fallbackPath;
+        // CC-13: every flow (F1 and the launcher Configure button) must converge on the
+        // Reloaded User config path; the old exists-check fallback let the two flows write
+        // different files, silently reverting selections. Migration of a legacy mod-folder
+        // config happens inside the resolver.
+        var configPath = Configuration.ConfigPathResolver.ResolveWithMigration(_modPath, ModNamespace, ConfigFileName);
+        ModLogger.Log($"Using config: {configPath}");
+        return configPath;
     }
 
     public void Suspend() => ModLogger.Log("Mod suspended");

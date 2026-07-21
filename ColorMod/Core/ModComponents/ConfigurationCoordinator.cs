@@ -237,7 +237,16 @@ namespace FFTColorCustomizer.Core.ModComponents
 
                     if (form.ShowDialog() == DialogResult.OK)
                     {
-                        onConfigUpdated?.Invoke(form.Configuration);
+                        // CC-13: apply failures must not masquerade as "Failed to open
+                        // configuration UI"; the window opened fine, the APPLY broke.
+                        try
+                        {
+                            onConfigUpdated?.Invoke(form.Configuration);
+                        }
+                        catch (Exception applyEx)
+                        {
+                            ModLogger.LogError($"Configuration was saved, but applying the themes failed: {applyEx.Message}");
+                        }
                     }
                 }
             }
