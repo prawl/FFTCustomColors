@@ -59,6 +59,9 @@ namespace FFTColorCustomizer.Configuration
 
             _contentPanel.Controls.Add(_mainPanel);
             Controls.Add(_contentPanel);
+            // Dock layout processes back-to-front; the Fill panel must sit in front
+            // of the Top-docked title bar or it extends underneath it.
+            _contentPanel.BringToFront();
         }
 
         private void CreateButtonPanel()

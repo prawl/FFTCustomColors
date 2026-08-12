@@ -1673,14 +1673,48 @@ namespace FFTColorCustomizer.Tests.ThemeEditor
 
         [Fact]
         [STAThread]
-        public void HslColorPicker_HasBottomMargin_ForSectionSeparation()
+        public void ThemeEditorPanel_SectionPickers_HaveRenderedGap_ForSectionSeparation()
         {
-            // Arrange & Act
-            using var picker = new HslColorPicker { SectionName = "Hood" };
+            // Arrange - WinForms ignores Margin on docked controls, so the separation
+            // between sections is a spacer control rendered by ThemeEditorPanel, not a
+            // property of HslColorPicker itself. Mirrors the mapping-only arrange used by
+            // ThemeEditorPanel_SectionColorPickers_DisplayInJsonOrder.
+            var tempDir = Path.Combine(Path.GetTempPath(), "ThemeEditorTest_" + Guid.NewGuid());
+            Directory.CreateDirectory(tempDir);
 
-            // Assert - Picker should have bottom margin/padding for visual separation
-            Assert.True(picker.Margin.Bottom >= 10,
-                $"HslColorPicker should have at least 10px bottom margin for section separation, was {picker.Margin.Bottom}px");
+            try
+            {
+                var mappingJson = @"{
+                    ""job"": ""Test_Job"",
+                    ""sprite"": ""test.bin"",
+                    ""sections"": [
+                        { ""name"": ""First"", ""displayName"": ""First Section"", ""indices"": [1], ""roles"": [""base""] },
+                        { ""name"": ""Second"", ""displayName"": ""Second Section"", ""indices"": [2], ""roles"": [""base""] }
+                    ]
+                }";
+                File.WriteAllText(Path.Combine(tempDir, "Test_Job.json"), mappingJson);
+
+                using var panel = new ThemeEditorPanel(tempDir);
+                var dropdown = panel.Controls.OfType<ComboBox>().First(c => c.Name == "TemplateDropdown");
+                dropdown.SelectedIndex = dropdown.Items.IndexOf("Test (Job)");
+
+                var colorPickersPanel = panel.Controls.OfType<Panel>().First(c => c.Name == "SectionColorPickersPanel");
+                var pickers = colorPickersPanel.Controls.OfType<HslColorPicker>().OrderBy(p => p.Top).ToList();
+                Assert.Equal(2, pickers.Count);
+
+                // Act - force layout so Top/Bottom positions are resolved
+                var _ = panel.Handle;
+                panel.PerformLayout();
+
+                // Assert - Sections should have a rendered gap for visual separation
+                var gap = pickers[1].Top - pickers[0].Bottom;
+                Assert.True(gap >= 15,
+                    $"Sections should have at least 15px rendered gap for separation, was {gap}px");
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
         }
 
         [Fact]

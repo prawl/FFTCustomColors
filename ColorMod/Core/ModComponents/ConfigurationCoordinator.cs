@@ -220,6 +220,9 @@ namespace FFTColorCustomizer.Core.ModComponents
         /// </summary>
         public void OpenConfigurationUI(Action<Config> onConfigUpdated)
         {
+            using var dpiScope = new DpiAwarenessScope();
+            ModLogger.LogDebug($"DPI awareness scope applied: {dpiScope.AppliedContext}.");
+
             try
             {
                 var config = GetConfiguration();

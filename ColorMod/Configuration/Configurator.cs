@@ -175,6 +175,9 @@ namespace FFTColorCustomizer.Configuration
         /// </summary>
         public bool TryRunCustomConfiguration()
         {
+            using var dpiScope = new DpiAwarenessScope();
+            ModLogger.LogDebug($"DPI awareness scope applied: {dpiScope.AppliedContext}.");
+
             ModLogger.Log("TryRunCustomConfiguration called!");
 
             // Gate the editor on the game being live. Reloaded-II's "Configure Mod"

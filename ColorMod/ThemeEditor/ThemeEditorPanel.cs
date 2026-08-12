@@ -53,6 +53,7 @@ namespace FFTColorCustomizer.ThemeEditor
         private const int FullPreviewWidth = 192;   // 6x scale (32 * 6)
         private const int FullPreviewHeight = 240;  // 6x scale (40 * 6)
         private const int ComparePreviewVerticalGap = 30; // room for the "Modified" label between the two previews
+        private const int SectionGap = 15; // rendered gap between docked section color pickers
         public bool HasUnsavedChanges { get; private set; }
 
         public event EventHandler? ThemeSaved;
@@ -557,7 +558,6 @@ namespace FFTColorCustomizer.ThemeEditor
                 {
                     SectionName = section.DisplayName,
                     Dock = DockStyle.Top,
-                    Margin = new Padding(0, 0, 0, 15), // Add spacing between sections
                     BorderStyle = BorderStyle.FixedSingle // Add border to separate sections
                 };
 
@@ -573,6 +573,12 @@ namespace FFTColorCustomizer.ThemeEditor
                 picker.ColorChanged += OnColorPickerChanged;
                 picker.ResetRequested += OnColorPickerResetRequested;
                 _sectionColorPickersPanel.Controls.Add(picker);
+
+                // Add spacing between sections. Additions are in reverse display
+                // order, so a spacer added after picker i lands above it, yielding
+                // picker/gap/picker/gap... top-to-bottom with no trailing gap.
+                if (i > 0)
+                    _sectionColorPickersPanel.Controls.Add(new Panel { Dock = DockStyle.Top, Height = SectionGap });
             }
         }
 

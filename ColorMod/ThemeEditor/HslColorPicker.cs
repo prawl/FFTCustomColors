@@ -45,8 +45,6 @@ namespace FFTColorCustomizer.ThemeEditor
 
         public HslColorPicker()
         {
-            // Add bottom margin for visual separation between sections
-            Margin = new Padding(0, 0, 0, 35);
             InitializeComponents();
         }
 
@@ -64,13 +62,13 @@ namespace FFTColorCustomizer.ThemeEditor
                 Text = _sectionName ?? "",
                 Top = 10,
                 Left = 0,
-                Height = 25,
                 Dock = DockStyle.Top,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new System.Drawing.Font("Segoe UI", 13f, System.Drawing.FontStyle.Bold),
                 ForeColor = Color.White,
                 Padding = new Padding(0, 5, 0, 5)
             };
+            _sectionHeaderLabel.Height = _sectionHeaderLabel.Font.Height + _sectionHeaderLabel.Padding.Vertical;
 
             // Reset button - positioned below sliders, to the right of Paste button
             _resetButton = new Button

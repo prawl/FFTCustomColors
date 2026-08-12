@@ -53,6 +53,41 @@ that checklist.
     whole first session in live_log.prev.txt with a fresh live_log.txt. Riders found and
     fixed along the way: BuildLinked's clean was deleting logs/ on every deploy (9a16b092).
     Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
+- **[CC-9] Fix the config window clipping and overlap on scaled and unusual displays** (opened 2026-07-21) [AWAITING-LIVE]
+  - Done means: a player at any Windows display scale sees every label, slider, and button in
+    the config window fully readable and clickable, on both ways of opening it (F1 in-game and
+    the Reloaded launcher Configure button), and the overlaps the owner sees even without
+    scaling are gone. (Tech: stage 1 per-thread DPI scope, UNAWARE_GDISCALED with UNAWARE
+    fallback, wrapped around both entry points; stage 2 dock order fix, rendered spacer gaps
+    between theme editor sections, font-derived header height. The durable font-measured
+    layout conversion is CC-19.)
+  - Verify: full suite green with the new red-first layout tests; the owner live-checks both
+    entry paths above 100 percent scaling, and the 5120x1440 monitor at 100 percent, and sees
+    no clipped labels and no overlaps.
+  - History: Nexus report and screenshot 2026-07-21 (docs/reports/cc9_theme_editor_clipped_ui.png),
+    second user screenshot 2026-08-12 (docs/reports/cc9_config_form_clipped_ui_2.png), owner
+    overlap on 5120x1440 at 100 percent. Audit 2026-08-12 confirmed two defect classes: text
+    scales with display scaling while every box is a fixed pixel count (no AutoScaleMode or DPI
+    handling anywhere, both entry paths affected), plus three 100 percent bugs: title bar
+    paints over the first content row (ConfigurationForm.Layout.cs:61), section gaps never
+    render because WinForms ignores Margin on docked controls (ThemeEditorPanel.cs:560,
+    HslColorPicker.cs:49), and the 13pt section header sits in a 25px label
+    (HslColorPicker.cs:70). Implementer traps: tests blessing broken pixels must be relaxed in
+    the same commit (ThemeEditorSectionTests.cs:1682, 1698 assert the never-rendered Margin);
+    the F1 dialog runs on an MTA thread pool thread, so the DPI scope wraps the existing call
+    site rather than moving to a new thread.
+  - Built and adversarially verified 2026-08-12: every fix landed behind a red first test
+    (title bar overlap, missing section gaps, clipped header, DPI scope), two independent
+    verify rounds ran (first found the key DPI test was vacuous in the DPI unaware test host
+    and blocked at 7/10; after the test gained real teeth by pinning the thread to
+    PerMonitorV2 first, a fresh round proved it by sabotage and shipped at 9/10), full suite
+    1253 green. Uncommitted, awaiting the owner live pass per the Verify bullet.
+  - Owner live pass PASSED 2026-08-12: both entry points tested (F1 in game and the Reloaded
+    Configure button) at 150 and 120 percent display scale, everything renders clean and
+    crisp, and the live log shows the scope applying its best variant (UnawareGdiScaled) on
+    both dialog opens. The 5120x1440 native check is moot: under the scope the window always
+    lays out internally at 100 percent, so the scaled views exercised all three overlap fixes.
+    Exit to the changelog rides the shipping commits.
 
 ## Backlog
 
@@ -84,18 +119,15 @@ that checklist.
   body and count as PASSED while asserting nothing (ThemeEditorRamzaTests, RamzaThemeSaverTests,
   NxdPatcherTests, CharacterDefinitionServiceTests). Convert them to reported skips or hermetic
   tests, or delete them.
-- [CC-9] 2026-07-21: A Nexus user reports the custom theme editor shows only one of its three
-  sliders, alongside UI scaling trouble they can work around
-  (https://www.nexusmods.com/finalfantasytacticstheivalicechronicles/mods/56?tab=posts).
-  Suspect display-scaling/DPI layout clipping in the editor since the sliders exist in code;
-  reproduce at non-100-percent Windows scaling first, then fix the layout.
-  Screenshot received 2026-07-21 (preserved at docs/reports/cc9_theme_editor_clipped_ui.png):
-  every section label is vertically clipped, buttons truncate to "Sav"/"Can", and in each color
-  group all three slider LABELS render (Hue/Sat/Ligh) but only the Hue row shows an actual
-  slider track; the Sat and Lightness rows collapse to label plus value with the control
-  clipped away, rows overlapping. Signature of fixed pixel row heights under Windows text
-  scaling above 100 percent: the sliders are not gone, their rows are collapsed. This upgrades
-  the DPI hypothesis from suspicion to near-certainty.
+- [CC-19] 2026-08-12: Convert the config window layout to measure its own text so any display
+  scale or font size lays out correctly by construction (AutoSize labels and buttons, table and
+  flow layout rows, theme editor first) behind a new FontScaleInvariantTests sweep, then retire
+  the CC-9 stage 1 DPI scope so the window renders crisp at native scale instead of OS-stretched.
+  Traps mapped by the CC-9 audit: relax each area's pixel-equality tests in the same commit
+  (ThemeEditorSectionTests.cs:1938, 1952, 2591 are true equalities); create handles before
+  PerformLayout so ComboBox and TrackBar realize sizes in tests; pin the inner panel width
+  against the AutoScroll feedback loop; retiring the scope makes saved window sizes jump once
+  (WindowStateService stores raw pixels with no scale stamp, worth stamping while in there).
 - [CC-17] 2026-07-21: A ledger row accidentally pasted after the Format section escapes every
   grammar and id-uniqueness scan, because the contract tests only read entries out of the Now,
   Backlog, and changelog sections (found by a sabotage that landed after Format and stayed
@@ -105,6 +137,12 @@ that checklist.
   there was yes, they fail the contract: an entry-shape regex swept over the non-entry
   sections, proven by a planted stray going red and the revert going green. The port is that
   one test with the id prefix swapped to CC.
+- [CC-18] 2026-08-12: Resizing the config window by its edges misbehaves for anyone whose
+  monitor sits left of or above their main monitor, because the window decodes the mouse
+  position without sign extension and negative screen coordinates read as huge positive
+  numbers. (Tech: WM_NCHITTEST lParam unpacked with unsigned 16-bit masks,
+  ConfigurationForm.cs:411; surfaced by the CC-9 audit; fold into whichever CC-9 stage
+  touches that handler.)
 - [CC-14] 2026-07-21: Cleanup riders from the CC-10/CC-13 verify passes: remove the dead
   InterceptFilePath plumbing entirely (nothing calls it in production, but 7 test files
   exercise it, so it is its own refactor), and triage the pre-existing log noise seen in the
