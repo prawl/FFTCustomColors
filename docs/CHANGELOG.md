@@ -8,6 +8,18 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-9] SHIPPED d3b10f3b 2026-08-12: the config window is readable at any Windows display
+  scale, on both ways of opening it, ending the Nexus clipped-slider report and the owner's
+  overlap sightings. Text used to outgrow its fixed pixel boxes above 100 percent scaling;
+  now a per-thread DPI scope has Windows scale the finished window (UnawareGdiScaled with
+  fallbacks), and three always-broken layout bugs are fixed: the title bar covering the
+  first content row, section gaps that never rendered (WinForms ignores Margin on docked
+  controls), and a section header clipped by its fixed height. Red first tests cover all
+  four fixes; two adversarial verify rounds ran (the first proved the key DPI test vacuous
+  in the DPI unaware test host and blocked at 7/10; the fixed test pins its thread to
+  PerMonitorV2 and the rerun shipped at 9/10), suite 1253 green, owner live verified at 150
+  and 120 percent on both entry paths with the log showing UnawareGdiScaled applied. The
+  durable font measured layout conversion is CC-19.
 - [CC-16] SHIPPED 08daee09 2026-07-21: local builds now stop with a clear red message when
   the work ledger or the logging contract is malformed, instead of quietly deploying or
   packaging while only CI would have noticed. (Tech: Invoke-UnitTestGate in

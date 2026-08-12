@@ -53,41 +53,6 @@ that checklist.
     whole first session in live_log.prev.txt with a fresh live_log.txt. Riders found and
     fixed along the way: BuildLinked's clean was deleting logs/ on every deploy (9a16b092).
     Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
-- **[CC-9] Fix the config window clipping and overlap on scaled and unusual displays** (opened 2026-07-21) [AWAITING-LIVE]
-  - Done means: a player at any Windows display scale sees every label, slider, and button in
-    the config window fully readable and clickable, on both ways of opening it (F1 in-game and
-    the Reloaded launcher Configure button), and the overlaps the owner sees even without
-    scaling are gone. (Tech: stage 1 per-thread DPI scope, UNAWARE_GDISCALED with UNAWARE
-    fallback, wrapped around both entry points; stage 2 dock order fix, rendered spacer gaps
-    between theme editor sections, font-derived header height. The durable font-measured
-    layout conversion is CC-19.)
-  - Verify: full suite green with the new red-first layout tests; the owner live-checks both
-    entry paths above 100 percent scaling, and the 5120x1440 monitor at 100 percent, and sees
-    no clipped labels and no overlaps.
-  - History: Nexus report and screenshot 2026-07-21 (docs/reports/cc9_theme_editor_clipped_ui.png),
-    second user screenshot 2026-08-12 (docs/reports/cc9_config_form_clipped_ui_2.png), owner
-    overlap on 5120x1440 at 100 percent. Audit 2026-08-12 confirmed two defect classes: text
-    scales with display scaling while every box is a fixed pixel count (no AutoScaleMode or DPI
-    handling anywhere, both entry paths affected), plus three 100 percent bugs: title bar
-    paints over the first content row (ConfigurationForm.Layout.cs:61), section gaps never
-    render because WinForms ignores Margin on docked controls (ThemeEditorPanel.cs:560,
-    HslColorPicker.cs:49), and the 13pt section header sits in a 25px label
-    (HslColorPicker.cs:70). Implementer traps: tests blessing broken pixels must be relaxed in
-    the same commit (ThemeEditorSectionTests.cs:1682, 1698 assert the never-rendered Margin);
-    the F1 dialog runs on an MTA thread pool thread, so the DPI scope wraps the existing call
-    site rather than moving to a new thread.
-  - Built and adversarially verified 2026-08-12: every fix landed behind a red first test
-    (title bar overlap, missing section gaps, clipped header, DPI scope), two independent
-    verify rounds ran (first found the key DPI test was vacuous in the DPI unaware test host
-    and blocked at 7/10; after the test gained real teeth by pinning the thread to
-    PerMonitorV2 first, a fresh round proved it by sabotage and shipped at 9/10), full suite
-    1253 green. Uncommitted, awaiting the owner live pass per the Verify bullet.
-  - Owner live pass PASSED 2026-08-12: both entry points tested (F1 in game and the Reloaded
-    Configure button) at 150 and 120 percent display scale, everything renders clean and
-    crisp, and the live log shows the scope applying its best variant (UnawareGdiScaled) on
-    both dialog opens. The 5120x1440 native check is moot: under the scope the window always
-    lays out internally at 100 percent, so the scaled views exercised all three overlap fixes.
-    Exit to the changelog rides the shipping commits.
 
 ## Backlog
 
