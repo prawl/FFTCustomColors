@@ -5,154 +5,30 @@
   ],
   "sections": [
     {
-      "name": "Index1",
-      "displayName": "Index 1",
-      "indices": [
-        1
-      ],
-      "roles": [
-        "base"
-      ]
+      "name": "HairAndShoes",
+      "displayName": "Hair & Shoes",
+      "indices": [2, 7, 6],
+      "roles": ["highlight", "accent", "base"],
+      "shadeMode": "uniformHue"
     },
     {
-      "name": "Index2",
-      "displayName": "Index 2",
-      "indices": [
-        2
-      ],
-      "roles": [
-        "base"
-      ]
+      "name": "Pants",
+      "displayName": "Pants",
+      "indices": [5, 4, 3],
+      "roles": ["highlight", "base", "shadow"]
     },
     {
-      "name": "Index3",
-      "displayName": "Index 3",
-      "indices": [
-        3
-      ],
-      "roles": [
-        "base"
-      ]
+      "name": "Cape",
+      "displayName": "Cape",
+      "indices": [10, 9, 8],
+      "roles": ["highlight", "base", "shadow"]
     },
     {
-      "name": "Index4",
-      "displayName": "Index 4",
-      "indices": [
-        4
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index5",
-      "displayName": "Index 5",
-      "indices": [
-        5
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index6",
-      "displayName": "Index 6",
-      "indices": [
-        6
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index7",
-      "displayName": "Index 7",
-      "indices": [
-        7
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index8",
-      "displayName": "Index 8",
-      "indices": [
-        8
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index9",
-      "displayName": "Index 9",
-      "indices": [
-        9
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index10",
-      "displayName": "Index 10",
-      "indices": [
-        10
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index11",
-      "displayName": "Index 11",
-      "indices": [
-        11
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index12",
-      "displayName": "Index 12",
-      "indices": [
-        12
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index13",
-      "displayName": "Index 13",
-      "indices": [
-        13
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index14",
-      "displayName": "Index 14",
-      "indices": [
-        14
-      ],
-      "roles": [
-        "base"
-      ]
-    },
-    {
-      "name": "Index15",
-      "displayName": "Index 15",
-      "indices": [
-        15
-      ],
-      "roles": [
-        "base"
-      ]
+      "name": "ChestAndSkin",
+      "displayName": "Chest & Skin Color",
+      "indices": [15, 12, 14, 13, 11],
+      "roles": ["highlight", "accent", "accent", "base", "shadow"],
+      "shadeMode": "uniformHue"
     }
   ]
 }
