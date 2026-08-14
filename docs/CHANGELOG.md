@@ -8,6 +8,21 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-20] SHIPPED 128fff2e 2026-08-13: twelve non-player characters (Alma, Argath, Celia,
+  Elmdore, Gaffgarion, Isilud, Lettie, Orran, Ovelia, Simon, Valmafra, Zalmour) can now be
+  picked in the config window and recolored in the theme editor, each with an HD preview
+  picture and a handful of named color sliders like "Cape" or "Surcoat". They live in their
+  own NPCs section so they never crowd the Story Characters list, and they ship with no
+  built-in color themes on purpose; authoring themes for them is CC-21. Owner confirmed all
+  twelve in-game. (Tech: CharacterDefinition.Category drives a new collapsible section and a
+  matching theme editor dropdown group backed by Data/SectionMappings/NPC; sprite bins
+  verified against the vanilla files by exact palette match, which also found duplicate
+  sprites now all registered for Alma, Gaffgarion, and both twins; Celia's preview is
+  Lettie's sheet re-indexed with Celia's palette since no toolkit sheet exists, and the twins
+  reuse the Dancer_Female layout because their indices 7 to 15 are byte identical; slider
+  anchors sit at each group's pixel-weighted lightness center, with shadeMode uniformHue
+  wherever a group is achromatic or a large single-hue ramp; roster pinned by
+  NpcRosterContractTests, suite 1309 green; infrastructure landed in 2e72f17e.)
 - [CC-9] SHIPPED d3b10f3b 2026-08-12: the config window is readable at any Windows display
   scale, on both ways of opening it, ending the Nexus clipped-slider report and the owner's
   overlap sightings. Text used to outgrow its fixed pixel boxes above 100 percent scaling;
