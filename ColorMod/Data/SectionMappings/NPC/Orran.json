@@ -1,0 +1,158 @@
+{
+  "job": "Orran",
+  "sprites": [
+    "battle_oran_spr.bin"
+  ],
+  "sections": [
+    {
+      "name": "Index1",
+      "displayName": "Index 1",
+      "indices": [
+        1
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index2",
+      "displayName": "Index 2",
+      "indices": [
+        2
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index3",
+      "displayName": "Index 3",
+      "indices": [
+        3
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index4",
+      "displayName": "Index 4",
+      "indices": [
+        4
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index5",
+      "displayName": "Index 5",
+      "indices": [
+        5
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index6",
+      "displayName": "Index 6",
+      "indices": [
+        6
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index7",
+      "displayName": "Index 7",
+      "indices": [
+        7
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index8",
+      "displayName": "Index 8",
+      "indices": [
+        8
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index9",
+      "displayName": "Index 9",
+      "indices": [
+        9
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index10",
+      "displayName": "Index 10",
+      "indices": [
+        10
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index11",
+      "displayName": "Index 11",
+      "indices": [
+        11
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index12",
+      "displayName": "Index 12",
+      "indices": [
+        12
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index13",
+      "displayName": "Index 13",
+      "indices": [
+        13
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index14",
+      "displayName": "Index 14",
+      "indices": [
+        14
+      ],
+      "roles": [
+        "base"
+      ]
+    },
+    {
+      "name": "Index15",
+      "displayName": "Index 15",
+      "indices": [
+        15
+      ],
+      "roles": [
+        "base"
+      ]
+    }
+  ]
+}

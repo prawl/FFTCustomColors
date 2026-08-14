@@ -154,6 +154,27 @@ namespace FFTColorCustomizer.Tests
         }
 
         [Fact]
+        public void Config_Should_Handle_Npc_Characters()
+        {
+            // NPC characters (Alma is the pilot) need a Config property so the config
+            // window can bind a row to them, defaulting to original
+
+            // Arrange
+            var config = new Config();
+
+            // Assert - default
+            config.Alma.Should().Be("original");
+
+            // Act - set survives a Newtonsoft round trip like every other character
+            config.Alma = "some_user_theme";
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(config);
+            var restored = Newtonsoft.Json.JsonConvert.DeserializeObject<Config>(json);
+
+            // Assert
+            restored.Alma.Should().Be("some_user_theme");
+        }
+
+        [Fact]
         public void Config_Should_Initialize_With_Default_Values()
         {
             // All properties should default to 'original' color scheme

@@ -1,0 +1,39 @@
+{
+  "job": "Argath",
+  "sprites": [
+    "battle_aru_spr.bin"
+  ],
+  "sections": [
+    {
+      "name": "ShouldersHandsBoots",
+      "displayName": "Shoulders, Hands, Boots",
+      "indices": [4, 13, 3, 10],
+      "roles": ["highlight", "accent", "base", "outline"],
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "Arms",
+      "displayName": "Arms",
+      "indices": [6, 5],
+      "roles": ["highlight", "base"]
+    },
+    {
+      "name": "Pants",
+      "displayName": "Pants",
+      "indices": [9, 8, 7],
+      "roles": ["highlight", "base", "shadow"]
+    },
+    {
+      "name": "SkinColor",
+      "displayName": "Skin Color",
+      "indices": [15],
+      "roles": ["base"]
+    },
+    {
+      "name": "HairColor",
+      "displayName": "Hair Color",
+      "indices": [12, 14, 11],
+      "roles": ["highlight", "accent", "base"]
+    }
+  ]
+}

@@ -23,6 +23,8 @@ namespace FFTColorCustomizer.Configuration.UI
             public SetValueDelegate SetValue { get; set; }
             public string PreviewName { get; set; }
             public string[] AvailableThemes { get; set; } = Array.Empty<string>();
+            // "Story" or "NPC"; drives which config-window section the row renders in
+            public string Category { get; set; } = "Story";
         }
 
         /// <summary>
@@ -87,7 +89,8 @@ namespace FFTColorCustomizer.Configuration.UI
                     GetValue = () => configProperty.GetValue(config) ?? character.DefaultTheme,
                     SetValue = (v) => configProperty.SetValue(config, v?.ToString() ?? character.DefaultTheme),
                     PreviewName = character.Name,
-                    AvailableThemes = character.AvailableThemes
+                    AvailableThemes = character.AvailableThemes,
+                    Category = character.Category
                 };
             }
 

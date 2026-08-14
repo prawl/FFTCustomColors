@@ -482,15 +482,18 @@ namespace FFTColorCustomizer.Services
         /// </summary>
         public string[] GetSpriteNamesForCharacter(string character)
         {
-            // Try to load from section mapping first (supports multi-sprite characters)
+            // Try to load from section mapping first (supports multi-sprite characters);
+            // story characters map under Story/, NPC characters under NPC/
             var mappingsPath = Path.Combine(_modPath, "Data", "SectionMappings");
-            var storyMappingPath = Path.Combine(mappingsPath, "Story", $"{character}.json");
-
-            if (File.Exists(storyMappingPath))
+            foreach (var subDir in new[] { "Story", "NPC" })
             {
+                var mappingPath = Path.Combine(mappingsPath, subDir, $"{character}.json");
+                if (!File.Exists(mappingPath))
+                    continue;
+
                 try
                 {
-                    var mapping = ThemeEditor.SectionMappingLoader.LoadFromFile(storyMappingPath);
+                    var mapping = ThemeEditor.SectionMappingLoader.LoadFromFile(mappingPath);
                     return mapping.Sprites;
                 }
                 catch

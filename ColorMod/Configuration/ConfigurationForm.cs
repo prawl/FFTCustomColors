@@ -49,6 +49,8 @@ namespace FFTColorCustomizer.Configuration
         private int _genericCharacterEndRow = -1;
         private bool _storyCharactersCollapsed = false;
         private List<Control> _storyCharacterControls = new List<Control>();
+        private bool _npcCharactersCollapsed = false;
+        private List<Control> _npcCharacterControls = new List<Control>();
         private bool _themeEditorCollapsed = false;
         private List<Control> _themeEditorControls = new List<Control>();
         private bool _myThemesCollapsed = false;
@@ -226,6 +228,34 @@ namespace FFTColorCustomizer.Configuration
             header.Text = _storyCharactersCollapsed ? "▶ Story Characters" : "▼ Story Characters";
 
             SetControlsVisibility(_storyCharacterControls, !_storyCharactersCollapsed);
+
+            _mainPanel.ResumeLayout(true);
+            this.ResumeLayout(true);
+
+            // Check visibility immediately and after a small delay
+            _lazyLoadingManager?.CheckAllCarouselsVisibility();
+
+            // Also check after layout settles
+            System.Windows.Forms.Timer delayTimer = new System.Windows.Forms.Timer();
+            delayTimer.Interval = 100; // 100ms delay
+            delayTimer.Tick += (s, e) =>
+            {
+                delayTimer.Stop();
+                delayTimer.Dispose();
+                _lazyLoadingManager?.CheckAllCarouselsVisibility();
+            };
+            delayTimer.Start();
+        }
+
+        private void ToggleNpcCharactersVisibility(Label header)
+        {
+            _mainPanel.SuspendLayout();
+            this.SuspendLayout();
+
+            _npcCharactersCollapsed = !_npcCharactersCollapsed;
+            header.Text = _npcCharactersCollapsed ? "▶ NPCs" : "▼ NPCs";
+
+            SetControlsVisibility(_npcCharacterControls, !_npcCharactersCollapsed);
 
             _mainPanel.ResumeLayout(true);
             this.ResumeLayout(true);
@@ -474,6 +504,7 @@ namespace FFTColorCustomizer.Configuration
                 _mainPanel.Controls.Clear();
                 _genericCharacterControls.Clear();
                 _storyCharacterControls.Clear();
+                _npcCharacterControls.Clear();
 
                 LoadConfiguration();
             }

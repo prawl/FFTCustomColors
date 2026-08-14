@@ -258,6 +258,188 @@
       ]
     },
     {
+      "name": "Alma",
+      "category": "NPC",
+      "spriteNames": [
+        "aruma",
+        "gyumu",
+        "h82"
+      ],
+      "texFiles": [
+        907,
+        908
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Argath",
+      "category": "NPC",
+      "spriteNames": [
+        "aru"
+      ],
+      "texFiles": [
+        842,
+        843
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Celia",
+      "category": "NPC",
+      "spriteNames": [
+        "seria",
+        "h83"
+      ],
+      "texFiles": [],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Elmdore",
+      "category": "NPC",
+      "spriteNames": [
+        "eru"
+      ],
+      "texFiles": [
+        874,
+        875
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Gaffgarion",
+      "category": "NPC",
+      "spriteNames": [
+        "baruna",
+        "h61"
+      ],
+      "texFiles": [
+        866,
+        867
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Isilud",
+      "category": "NPC",
+      "spriteNames": [
+        "h76"
+      ],
+      "texFiles": [
+        896,
+        897
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Lettie",
+      "category": "NPC",
+      "spriteNames": [
+        "ledy",
+        "arufu"
+      ],
+      "texFiles": [
+        928,
+        929
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Orran",
+      "category": "NPC",
+      "spriteNames": [
+        "oran"
+      ],
+      "texFiles": [
+        864,
+        865
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Ovelia",
+      "category": "NPC",
+      "spriteNames": [
+        "hime"
+      ],
+      "texFiles": [
+        852,
+        853
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Simon",
+      "category": "NPC",
+      "spriteNames": [
+        "simon"
+      ],
+      "texFiles": [
+        862,
+        863
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Valmafra",
+      "category": "NPC",
+      "spriteNames": [
+        "baru"
+      ],
+      "texFiles": [
+        886,
+        887
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
+      "name": "Zalmour",
+      "category": "NPC",
+      "spriteNames": [
+        "zarumou"
+      ],
+      "texFiles": [
+        860,
+        861
+      ],
+      "defaultTheme": "original",
+      "availableThemes": [
+        "original"
+      ]
+    },
+    {
       "name": "Construct8",
       "spriteNames": [
         "tetsu"

@@ -285,8 +285,13 @@ namespace FFTColorCustomizer.Configuration.UI
             return null;
         }
 
-        public void AddStoryCharacterRow(int row, StoryCharacterRegistry.StoryCharacterConfig characterConfig)
+        public void AddStoryCharacterRow(int row, StoryCharacterRegistry.StoryCharacterConfig characterConfig,
+            List<Control> targetControls = null)
         {
+            // NPC rows pass their own controls list so their section collapses independently;
+            // story rows default to the story section's list
+            var sectionControls = targetControls ?? _storyCharacterControls;
+
             // Create label with display name
             var displayName = GetCharacterDisplayName(characterConfig.Name);
             var label = ConfigUIComponentFactory.CreateCharacterLabel(displayName);
@@ -323,12 +328,12 @@ namespace FFTColorCustomizer.Configuration.UI
                 labelPanel.Height = label.Height + warningLabel.Height - 2;
 
                 _mainPanel.Controls.Add(labelPanel, 0, row);
-                _storyCharacterControls.Add(labelPanel);
+                sectionControls.Add(labelPanel);
             }
             else
             {
                 _mainPanel.Controls.Add(label, 0, row);
-                _storyCharacterControls.Add(label);
+                sectionControls.Add(label);
             }
 
             // Create theme combo box with formatted display
@@ -417,8 +422,8 @@ namespace FFTColorCustomizer.Configuration.UI
             comboBox.SelectedThemeValue = currentValue.ToString();
 
             // Track controls
-            _storyCharacterControls.Add(comboBox);
-            _storyCharacterControls.Add(carousel);
+            sectionControls.Add(comboBox);
+            sectionControls.Add(carousel);
         }
 
         private List<string> GetAvailableGenericThemes()

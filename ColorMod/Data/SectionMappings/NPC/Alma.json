@@ -1,0 +1,29 @@
+{
+  "job": "Alma",
+  "sprites": [
+    "battle_aruma_spr.bin",
+    "battle_gyumu_spr.bin",
+    "battle_h82_spr.bin"
+  ],
+  "sections": [
+    {
+      "name": "DressAndBow",
+      "displayName": "Dress & Hair Bow",
+      "indices": [5, 7, 4, 6],
+      "roles": ["highlight", "base", "shadow", "outline"],
+      "shadeMode": "uniformHue"
+    },
+    {
+      "name": "HairSkinStripe",
+      "displayName": "Hair, Skin & Dress Stripe",
+      "indices": [15, 12, 14, 8, 13],
+      "roles": ["highlight", "highlight", "base", "shadow", "shadow"]
+    },
+    {
+      "name": "Chest",
+      "displayName": "Chest",
+      "indices": [10, 9],
+      "roles": ["highlight", "base"]
+    }
+  ]
+}

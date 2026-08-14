@@ -107,6 +107,35 @@ namespace Tests.Registry
         }
 
         [Fact]
+        public void AlmaCharacter_ShouldBeDiscoverable_FromJson()
+        {
+            // Assert - Alma should be registered (plumbing-only character: original theme only)
+            Assert.True(StoryCharacterRegistry.HasCharacter("Alma"),
+                "Alma character not found. Available: " + string.Join(", ", StoryCharacterRegistry.GetAllCharacterNames()));
+
+            var alma = StoryCharacterRegistry.GetCharacter("Alma");
+            Assert.Equal("Alma", alma.Name);
+            Assert.Contains("aruma", alma.SpriteNames);
+            Assert.Equal("original", alma.DefaultTheme);
+
+            // NPC characters live in their own config-window section and ship with no
+            // built-in themes (original only; theming them is a later project)
+            var almaDefinition = _characterService.GetCharacterByName("Alma");
+            Assert.NotNull(almaDefinition);
+            Assert.Equal("NPC", almaDefinition.Category);
+            Assert.Equal(new[] { "original" }, almaDefinition.AvailableThemes);
+        }
+
+        [Fact]
+        public void ExistingCharacters_ShouldDefaultToStoryCategory()
+        {
+            // Characters without an explicit category in the JSON stay in the Story section
+            var agrias = _characterService.GetCharacterByName("Agrias");
+            Assert.NotNull(agrias);
+            Assert.Equal("Story", agrias.Category);
+        }
+
+        [Fact]
         public void AgriasCharacter_ShouldBeDiscoverable_FromJson()
         {
             // Assert - Agrias should be registered

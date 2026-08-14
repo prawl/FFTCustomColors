@@ -145,6 +145,20 @@ namespace FFTColorCustomizer.Configuration
             _storyCharacterThemes["Beowulf"] = "original";
             _storyCharacterThemes["Meliadoul"] = "original";
             _storyCharacterThemes["Construct8"] = "original";
+
+            // NPC characters
+            _storyCharacterThemes["Alma"] = "original";
+            _storyCharacterThemes["Argath"] = "original";
+            _storyCharacterThemes["Celia"] = "original";
+            _storyCharacterThemes["Elmdore"] = "original";
+            _storyCharacterThemes["Gaffgarion"] = "original";
+            _storyCharacterThemes["Isilud"] = "original";
+            _storyCharacterThemes["Lettie"] = "original";
+            _storyCharacterThemes["Orran"] = "original";
+            _storyCharacterThemes["Ovelia"] = "original";
+            _storyCharacterThemes["Simon"] = "original";
+            _storyCharacterThemes["Valmafra"] = "original";
+            _storyCharacterThemes["Zalmour"] = "original";
         }
 
         // Generic job theme accessors
@@ -559,6 +573,91 @@ namespace FFTColorCustomizer.Configuration
         {
             get => GetStoryCharacterTheme("Construct8");
             set => SetStoryCharacterTheme("Construct8", value);
+        }
+
+        // NPC characters (config-window NPC section; original only until themed)
+        [Newtonsoft.Json.JsonProperty("Alma")]
+        public string Alma
+        {
+            get => GetStoryCharacterTheme("Alma");
+            set => SetStoryCharacterTheme("Alma", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Argath")]
+        public string Argath
+        {
+            get => GetStoryCharacterTheme("Argath");
+            set => SetStoryCharacterTheme("Argath", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Celia")]
+        public string Celia
+        {
+            get => GetStoryCharacterTheme("Celia");
+            set => SetStoryCharacterTheme("Celia", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Elmdore")]
+        public string Elmdore
+        {
+            get => GetStoryCharacterTheme("Elmdore");
+            set => SetStoryCharacterTheme("Elmdore", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Gaffgarion")]
+        public string Gaffgarion
+        {
+            get => GetStoryCharacterTheme("Gaffgarion");
+            set => SetStoryCharacterTheme("Gaffgarion", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Isilud")]
+        public string Isilud
+        {
+            get => GetStoryCharacterTheme("Isilud");
+            set => SetStoryCharacterTheme("Isilud", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Lettie")]
+        public string Lettie
+        {
+            get => GetStoryCharacterTheme("Lettie");
+            set => SetStoryCharacterTheme("Lettie", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Orran")]
+        public string Orran
+        {
+            get => GetStoryCharacterTheme("Orran");
+            set => SetStoryCharacterTheme("Orran", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Ovelia")]
+        public string Ovelia
+        {
+            get => GetStoryCharacterTheme("Ovelia");
+            set => SetStoryCharacterTheme("Ovelia", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Simon")]
+        public string Simon
+        {
+            get => GetStoryCharacterTheme("Simon");
+            set => SetStoryCharacterTheme("Simon", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Valmafra")]
+        public string Valmafra
+        {
+            get => GetStoryCharacterTheme("Valmafra");
+            set => SetStoryCharacterTheme("Valmafra", value);
+        }
+
+        [Newtonsoft.Json.JsonProperty("Zalmour")]
+        public string Zalmour
+        {
+            get => GetStoryCharacterTheme("Zalmour");
+            set => SetStoryCharacterTheme("Zalmour", value);
         }
 
         // Helper methods

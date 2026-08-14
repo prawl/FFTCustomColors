@@ -68,6 +68,19 @@ namespace FFTColorCustomizer.Configuration
                 SetControlsVisibility(_monstersControls, false);
             }
 
+            // Add header for NPC characters (positioned after Monsters, before WotL Jobs)
+            var npcHeader = CreateCollapsibleHeader("NPCs", _npcCharactersCollapsed, row++);
+            npcHeader.Click += (sender, e) => ToggleNpcCharactersVisibility(npcHeader);
+
+            // Load NPC characters (same registry as story characters, category "NPC")
+            LoadNpcCharacters(ref row);
+
+            // Apply initial collapsed state for NPC characters
+            if (_npcCharactersCollapsed)
+            {
+                SetControlsVisibility(_npcCharacterControls, false);
+            }
+
             // Add header for WotL Jobs
             var wotlHeader = CreateCollapsibleHeader("WotL Jobs", _wotlJobsCollapsed, row++);
             wotlHeader.Click += (sender, e) => ToggleWotLJobsVisibility(wotlHeader);
@@ -181,7 +194,10 @@ namespace FFTColorCustomizer.Configuration
                 var wotlJobs = new HashSet<string> { "DarkKnight_Male", "DarkKnight_Female", "OnionKnight_Male", "OnionKnight_Female" };
                 var isWotlJob = wotlJobs.Contains(args.JobName);
                 var isStoryCharacter = _storyCharacters != null && _storyCharacters.ContainsKey(args.JobName);
-                var sectionName = isWotlJob ? "WotL Jobs" : (isStoryCharacter ? "Story Characters" : "Generic Characters");
+                var isNpcCharacter = isStoryCharacter && _storyCharacters[args.JobName].Category == "NPC";
+                var sectionName = isWotlJob ? "WotL Jobs"
+                    : isNpcCharacter ? "NPCs"
+                    : (isStoryCharacter ? "Story Characters" : "Generic Characters");
 
                 MessageBox.Show($"Theme '{args.ThemeName}' saved successfully!\n\nYou can select it under \"{displayJobName}\" in the \"{sectionName}\" section above.", "Theme Saved",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -373,8 +389,10 @@ namespace FFTColorCustomizer.Configuration
 
             // Load all available story characters from the registry
             // The registry automatically loads from StoryCharacters.json
+            // NPC-category characters render in their own section (LoadNpcCharacters)
             // Put Ramza characters first (in chapter order), then sort the rest alphabetically
             var sortedCharacters = _storyCharacters.Values
+                .Where(c => c.Category != "NPC")
                 .OrderBy(c =>
                 {
                     if (c.Name == "RamzaChapter1") return "0_1";
@@ -386,6 +404,21 @@ namespace FFTColorCustomizer.Configuration
             foreach (var characterConfig in sortedCharacters)
             {
                 _rowBuilder.AddStoryCharacterRow(row++, characterConfig);
+            }
+        }
+
+        private void LoadNpcCharacters(ref int row)
+        {
+            // Same registry and row machinery as story characters (lazy-loaded previews
+            // included); only the section and its collapse behavior differ
+            var npcCharacters = (_storyCharacters ?? StoryCharacterRegistry.GetStoryCharacters(_config))
+                .Values
+                .Where(c => c.Category == "NPC")
+                .OrderBy(c => c.Name);
+
+            foreach (var characterConfig in npcCharacters)
+            {
+                _rowBuilder.AddStoryCharacterRow(row++, characterConfig, _npcCharacterControls);
             }
         }
 

@@ -36,6 +36,7 @@ namespace FFTColorCustomizer.ThemeEditor
         private Dictionary<string, bool> _isStoryCharacter = new();
         private Dictionary<string, bool> _isWotLCharacter = new();
         private Dictionary<string, bool> _isMonster = new();
+        private Dictionary<string, bool> _isNpcCharacter = new();
         private bool _suppressColorChangedEvents;
 
         public SectionMapping? CurrentMapping { get; private set; }
@@ -176,6 +177,21 @@ namespace FFTColorCustomizer.ThemeEditor
                         _isStoryCharacter[monster] = false;
                         _isMonster[monster] = true;
                         _templateDropdown.Items.Add(monster);
+                    }
+                }
+
+                // Add NPC Characters section (mappings live in NPC/, sprites resolve like
+                // story characters)
+                var npcCharacters = SectionMappingLoader.GetAvailableNpcCharacters(_mappingsDirectory);
+                if (npcCharacters.Length > 0)
+                {
+                    _templateDropdown.Items.Add("── NPCs ──");
+                    foreach (var npc in npcCharacters)
+                    {
+                        _displayNameToJobName[npc] = npc;
+                        _isStoryCharacter[npc] = false;
+                        _isNpcCharacter[npc] = true;
+                        _templateDropdown.Items.Add(npc);
                     }
                 }
 
@@ -447,7 +463,8 @@ namespace FFTColorCustomizer.ThemeEditor
             var displayName = _templateDropdown.SelectedItem.ToString();
 
             // Ignore separator selections
-            if (displayName == "── Story Characters ──" || displayName == "── WotL Characters ──")
+            if (displayName == "── Story Characters ──" || displayName == "── WotL Characters ──"
+                || displayName == "── NPCs ──" || displayName == "── Monsters ──")
                 return;
 
             if (displayName == null || !_displayNameToJobName.TryGetValue(displayName, out var selectedJob))
@@ -457,16 +474,21 @@ namespace FFTColorCustomizer.ThemeEditor
             if (_mappingsDirectory == null)
                 return;
 
-            // Check character type (WotL / Monster / Story / generic)
+            // Check character type (WotL / Monster / Story / NPC / generic)
             var isWotL = _isWotLCharacter.TryGetValue(displayName, out var wotl) && wotl;
             var isMonster = _isMonster.TryGetValue(displayName, out var mon) && mon;
             var isStory = _isStoryCharacter.TryGetValue(displayName, out var st) && st;
+            var isNpc = _isNpcCharacter.TryGetValue(displayName, out var npc) && npc;
 
             // Determine mapping path based on character type
             string mappingPath;
             if (isMonster)
             {
                 mappingPath = Path.Combine(_mappingsDirectory, "Monster", $"{selectedJob}.json");
+            }
+            else if (isNpc)
+            {
+                mappingPath = Path.Combine(_mappingsDirectory, "NPC", $"{selectedJob}.json");
             }
             else if (isStory)
             {
@@ -486,7 +508,7 @@ namespace FFTColorCustomizer.ThemeEditor
                 {
                     // Resolve sprite path based on character type
                     string spritePath;
-                    if (isStory || isMonster)
+                    if (isStory || isMonster || isNpc)
                     {
                         spritePath = StoryCharacterSpritePathResolver.ResolveSpritePath(
                             _spritesDirectory, selectedJob, CurrentMapping.Sprite);
@@ -854,9 +876,10 @@ namespace FFTColorCustomizer.ThemeEditor
             if (displayName == null)
                 return null;
 
-            // Use resolver for story characters + monsters (handles fallback), simple path for generic jobs
+            // Use resolver for story/NPC characters + monsters (handles fallback), simple path for generic jobs
             if ((_isStoryCharacter.TryGetValue(displayName, out var isStory) && isStory)
-                || (_isMonster.TryGetValue(displayName, out var isMon) && isMon))
+                || (_isMonster.TryGetValue(displayName, out var isMon) && isMon)
+                || (_isNpcCharacter.TryGetValue(displayName, out var isNpc) && isNpc))
             {
                 var jobName = GetCurrentJobName();
                 return StoryCharacterSpritePathResolver.ResolveSpritePath(

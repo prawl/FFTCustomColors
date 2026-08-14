@@ -54,6 +54,25 @@ that checklist.
     fixed along the way: BuildLinked's clean was deleting logs/ on every deploy (9a16b092).
     Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
 
+- **[CC-20] Add eleven more story characters to the config window** (opened 2026-08-13) [BUILDING]
+  - Done means: Alma, Ovelia, Valmafra, Zalmour, Orran, Elmdore, Simon, Gaffgarion, Argath,
+    Izlude, and the assassin twins each get their own row in the config window with an HD
+    preview picture, wired the same way as the existing story characters, with no built-in
+    color themes yet (theming these characters is deliberately a later project). (Tech: per
+    character a StoryCharacters.json entry with availableThemes ["original"] only, a Config
+    string property, ModInitializer and ConfigurationManagerLegacy wiring, and
+    Images/<Name>/original HD bmps from the Sprite Toolkit export; Alma is the pilot that
+    proves the pattern.)
+  - Verify: the full test suite stays green after each character lands, and the owner opens
+    the config window and sees every new character row with its preview picture; a dropdown
+    change persists to Config.json and survives a reload.
+  - Progress 2026-08-13: all 12 NPCs landed and deployed (registry, config rows, NPCs
+    section, theme editor group, per-index calibration mappings, HD previews; sprite bins
+    verified by exact palette match, which also found duplicate sprites for Alma,
+    Gaffgarion, Celia, and Lettie now all covered). Alma's calibrated grouped mapping
+    (3 sliders) is built and owner-verified in-game; the other 11 stay per-index until
+    the owner calibrates each. NpcRosterContractTests (48 tests) pins the roster contract.
+
 ## Backlog
 
 - [CC-3] 2026-07-21: Add a flight recorder if it makes sense. The FFTLivingWeapons core (bounded

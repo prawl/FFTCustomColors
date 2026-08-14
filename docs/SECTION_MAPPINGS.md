@@ -1,127 +1,80 @@
 # Section Mappings Guide
 
-Section mapping files define how palette indices map to customizable sprite sections.
+Section mapping files tell the Theme Editor which palette indices belong to which part of
+a sprite (hair, armor, skirt...) and which index anchors each color slider.
+
+Directory layout under `ColorMod/Data/SectionMappings/`:
+
+| Location | Characters | Dropdown group |
+|---|---|---|
+| `*.json` (root) | Generic jobs (`Knight_Male.json`...) | Generic jobs, job-unlock order |
+| `Story/*.json` | Story characters (`Agrias.json`...) | ── Story Characters ── |
+| `NPC/*.json` | NPC characters (`Alma.json`...) | ── NPCs ── |
+| `Monster/*.json` | Monster families | ── Monsters ── |
+
+A character appears in the Theme Editor dropdown if and only if a mapping file exists.
+Story/NPC/Monster groups list alphabetically (explicitly sorted in the loader).
 
 ## File Structure
 
 ```json
 {
-  "job": "JobName_Gender",
-  "sprite": "battle_xxx_m_spr.bin",
+  "job": "Meliadoul",
+  "sprite": "battle_h80_spr.bin",
   "sections": [
     {
-      "name": "SectionName",
-      "displayName": "Display Name",
-      "indices": [5, 6, 4, 3],
-      "roles": ["base", "highlight", "shadow", "outline"]
+      "name": "Dress",
+      "displayName": "Dress",
+      "indices": [7, 8, 9],
+      "roles": ["shadow", "base", "highlight"]
     }
   ]
 }
 ```
 
-## Available Roles (from HslColor.cs)
+Multi-sprite characters use `"sprites": ["battle_aguri_spr.bin", "battle_kanba_spr.bin"]`
+instead of `"sprite"`. All listed sprites get the same palette treatment.
 
-| Role | Effect | Use For |
-|------|--------|---------|
-| `highlight` | Lightest (L * 1.35) | Brightest shade in set |
-| `base` | Primary color | Main/primary shade |
-| `shadow` | Darker (L * 0.65) | Second darkest |
-| `outline` | Darkest (L * 0.45) | Darkest edge pixels |
-| `accent` | Light detail (L * 1.5) | Light accent colors |
-| `accent_shadow` | Slightly dark accent (L * 1.25) | Still lighter than base! |
+## How shading ACTUALLY works (read this before trusting role names)
 
-**Important:** `accent_shadow` is LIGHTER than base, not darker.
+There are NO fixed role multipliers. An earlier system applied hardcoded lightness factors
+per role name; that system is gone. Today:
 
-## Index Order in Sections
+1. Each section has one anchor index: the index whose role is `"base"` (or the explicit
+   `"primaryIndex"` override). The color picker displays the anchor's color, and the color
+   the user picks lands on the anchor exactly.
+2. When a section is first edited, `RelativeShadeGenerator` snapshots every index's
+   ORIGINAL HSL relationship to the anchor (hue offset, saturation ratio, lightness ratio)
+   from the vanilla sprite, then re-applies those relationships to the picked color. The
+   sprite's own original shading structure is the shading model.
+3. Every role string other than `"base"` is documentation only. `"shadow"`, `"highlight"`,
+   `"outline"`, `"accent"` label intent for the next human reader; the code never reads them.
+   Keep using them for readability, but know they are inert.
 
-Indices are ordered by role assignment (first index gets first role):
+### Knobs that matter
 
-Example: `[12, 11, 13, 10]` with `["highlight", "base", "shadow", "outline"]`
-- Index 12 = highlight, Index 11 = base, Index 13 = shadow, Index 10 = outline
+| Field | Effect |
+|---|---|
+| `"base"` role (or `primaryIndex`) | The anchor. Pick the MID-TONE main color of the section, never the darkest or lightest, because every other index scales relative to it. |
+| `shadeMode` | Omitted = `preserve`: keeps the original hue drift between indices (good for 2-3 index clusters). `"uniformHue"`: forces every index to the picked hue with additive S/L offsets; use for 4+ index groups, which go incoherent at extreme colors in preserve mode. |
+| `linkedTo` | One slider drives two sections: the section naming another section via `linkedTo` hides that section's picker and pushes its color there too. |
+| `primaryIndex` | Explicit anchor override when the base-role index is not the right anchor. |
 
-## Skipped Indices
+## Conventions
 
-- Eyes: usually index 2
-- Skin tones: usually indices 14-15
-- Character outline: usually index 1
+- Index 0 is transparency; never include it in a section.
+- Index 1 is usually the character outline and index 2 the eyes; existing mappings leave
+  them out of every section so they never shift with a theme. Confirm per sprite.
+- Skin usually lives in the high indices (13-15). Some sprites share browns between hair
+  and skin; grouping decides which slider wins those indices.
 
----
+## NPC calibration workflow (2026-08-13)
 
-# Story Character Theme Editor - Implementation Plan
-
-## Overview
-
-Extend the existing Theme Editor to support story characters (Agrias, Mustadio, etc.).
-
-## Current Architecture
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `ThemeEditorPanel.cs` | ThemeEditor/ | Main UI, template dropdown, color pickers |
-| `UserThemeService.cs` | ThemeEditor/ | Save/load user themes, path: `UserThemes/[job]/[theme]/` |
-| `PaletteModifier.cs` | ThemeEditor/ | Palette manipulation engine |
-| `SectionMapping.cs` | ThemeEditor/ | Model + JSON loader |
-| `StoryCharacters.json` | Data/ | Character definitions (names, sprites, themes) |
-
-## Key Differences: Generic Jobs vs Story Characters
-
-| Aspect | Generic Jobs | Story Characters |
-|--------|--------------|------------------|
-| Naming | `Knight_Male` | `Agrias`, `Mustadio` |
-| Sprites | `battle_knight_m_spr.bin` | `battle_aguri_spr.bin` (no gender suffix) |
-| Theme folders | `sprites_[theme]/` | `sprites_[char]_[theme]/` |
-| Gender | Male/Female variants | Single variant per character |
-| Count | 38 jobs | 12 characters |
-
-## Implementation Phases
-
-### Phase 1: Section Mappings for Story Characters (~4 hrs)
-- Create `Data/SectionMappings/Story/` directory
-- Add JSON files: `Agrias.json`, `Mustadio.json`, `Orlandeau.json`, etc.
-- Same format as generic jobs, use verification process
-- Characters to map: Agrias, Cloud, Mustadio, Orlandeau, Reis, Rapha, Marach, Beowulf, Meliadoul
-
-### Phase 2: SectionMapping Loader Update (~1 hr)
-- `SectionMapping.cs` - Add `LoadStoryCharacterMapping(string charName)`
-- Look in `Data/SectionMappings/Story/[CharName].json`
-
-### Phase 3: ThemeEditorPanel Updates (~3 hrs)
-- Add character type toggle (Generic Jobs / Story Characters)
-- Populate dropdown from `StoryCharacters.json` when Story mode selected
-- Load correct mapping based on character name
-- Handle sprite path differences for preview
-
-### Phase 4: UserThemeService Extension (~2 hrs)
-- Update path resolution for story characters:
-  - Generic: `UserThemes/[Job]/[theme]/palette.bin`
-  - Story: `UserThemes/Story/[Character]/[theme]/palette.bin`
-- Update `SaveTheme`, `GetUserThemes`, `IsUserTheme`, `GetUserThemePalettePath`
-- Update registry format in `UserThemes.json`
-
-### Phase 5: Theme Application (~2 hrs)
-- `ConfigBasedSpriteManager.ApplyUserTheme()` - handle story character paths
-- Output to `sprites_[char]_[theme]/battle_[sprite]_spr.bin`
-- Integrate with existing theme dropdown in config form
-
-### Phase 6: Preview Images (~1 hr)
-- Ensure story character BMPs exist in `Images/` for preview
-- Update preview loader to find story character images
-
-## File Changes Summary
-
-| File | Change |
-|------|--------|
-| `Data/SectionMappings/Story/*.json` | NEW - 9-12 files |
-| `ThemeEditor/SectionMapping.cs` | Add story character loader |
-| `ThemeEditor/ThemeEditorPanel.cs` | Add character type toggle, update dropdown |
-| `ThemeEditor/UserThemeService.cs` | Add story character path handling |
-| `Utilities/ConfigBasedSpriteManager.cs` | Add story character sprite generation |
-
-## Estimated Total: 13-16 hours (~2-3 days)
-
-## Risks & Considerations
-
-1. **Ramza is special** - Uses TEX files, may need separate handling or exclusion
-2. **Multi-sprite characters** - Agrias has 2 sprites (aguri, kanba), Mustadio has 2 (musu, garu)
-3. **Preview images** - Need BMPs for all story characters
-4. **Testing** - Each character needs in-game verification
+New NPC characters ship with a PER-INDEX mapping: 15 sections named `Index 1` .. `Index 15`,
+one palette index each, all role `"base"`. This gives the owner one slider per index to
+discover empirically which index controls what, in-game. The owner then hands back
+groupings ("4,5,6,7 = skirt, 11-14 = hair...") and the per-index file is replaced with a
+grouped mapping: mid-tone anchor gets `"base"`, descriptive roles for the rest,
+`"uniformHue"` for 4+ index groups. `Tests/Registry/NpcRosterContractTests.cs` enforces
+full 1-15 coverage while a mapping is still per-index style (exactly 15 sections) and
+relaxes once it is grouped.

@@ -121,6 +121,20 @@ namespace FFTColorCustomizer.Core.ModComponents
                     storyManager.SetCurrentTheme("Meliadoul", config.Meliadoul);
                     storyManager.SetCurrentTheme("Construct8", config.Construct8);
 
+                    // NPC characters
+                    storyManager.SetCurrentTheme("Alma", config.Alma);
+                    storyManager.SetCurrentTheme("Argath", config.Argath);
+                    storyManager.SetCurrentTheme("Celia", config.Celia);
+                    storyManager.SetCurrentTheme("Elmdore", config.Elmdore);
+                    storyManager.SetCurrentTheme("Gaffgarion", config.Gaffgarion);
+                    storyManager.SetCurrentTheme("Isilud", config.Isilud);
+                    storyManager.SetCurrentTheme("Lettie", config.Lettie);
+                    storyManager.SetCurrentTheme("Orran", config.Orran);
+                    storyManager.SetCurrentTheme("Ovelia", config.Ovelia);
+                    storyManager.SetCurrentTheme("Simon", config.Simon);
+                    storyManager.SetCurrentTheme("Valmafra", config.Valmafra);
+                    storyManager.SetCurrentTheme("Zalmour", config.Zalmour);
+
                     // Log all themes for debugging
                     ModLogger.Log($"Applying initial Cloud theme: {config.Cloud}");
                     ModLogger.Log($"Applying initial Agrias theme: {config.Agrias}");
@@ -132,6 +146,7 @@ namespace FFTColorCustomizer.Core.ModComponents
                     ModLogger.Log($"Applying initial Beowulf theme: {config.Beowulf}");
                     ModLogger.Log($"Applying initial Meliadoul theme: {config.Meliadoul}");
                     ModLogger.Log($"Applying initial Construct8 theme: {config.Construct8}");
+                    ModLogger.Log($"Applying initial Alma theme: {config.Alma}");
                 }
             }
         }
