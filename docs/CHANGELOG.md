@@ -8,6 +8,23 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-22] SHIPPED 2ce9cf70 2026-08-13: a color theme you save for one of the twelve NPCs now
+  shows up in that NPC's little preview picture when you pick it, instead of stubbornly
+  showing the plain vanilla colors and looking like it did nothing. The theme was always
+  saved and always reached the game; only the preview lied about it, which is impossible to
+  tell apart from a theme that never applied. Owner confirmed live. (Tech: the preview
+  resolved a sprite file through a hand-written display-name table in CharacterRowBuilder
+  that stopped at Construct8, so every NPC fell through to battle_<displayname>_spr.bin,
+  which does not exist; the user-theme loader bailed there and the caller silently fell back
+  to the vanilla sheet, with Alma and Simon working only because their display name happens
+  to be their sprite name. Sprite names now come from Data/StoryCharacters.json through the
+  new InternalSpriteNameResolver, the same source the apply path already read, so preview and
+  apply cannot disagree and a new roster entry needs no code change; the old table survives
+  as an alias fallback for names with no registry row. The HD sheet plus palette render moved
+  ahead of the bin lookup so a missing bin can no longer abort a preview, and Meliadoul's
+  preview now follows the registry to h80 like the game does. NpcThemePipelineTests pins all
+  three links of the chain and was built red first, which split the diagnosis exactly:
+  preview failed, apply passed; suite 1329 green.)
 - [CC-20] SHIPPED 128fff2e 2026-08-13: twelve non-player characters (Alma, Argath, Celia,
   Elmdore, Gaffgarion, Isilud, Lettie, Orran, Ovelia, Simon, Valmafra, Zalmour) can now be
   picked in the config window and recolored in the theme editor, each with an HD preview
