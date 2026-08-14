@@ -25,6 +25,7 @@ namespace FFTColorCustomizer.Configuration.UI
         private readonly JobClassDefinitionService _jobClassService;
         private readonly List<PreviewCarousel> _allCarousels = new List<PreviewCarousel>();
         private readonly UserThemeService _userThemeService;
+        private readonly CharacterDefinitionService _characterService;
 
         public IReadOnlyList<PreviewCarousel> AllCarousels => _allCarousels;
 
@@ -42,6 +43,7 @@ namespace FFTColorCustomizer.Configuration.UI
             _storyCharacterControls = storyCharacterControls;
             _jobClassService = JobClassServiceSingleton.Instance;
             _userThemeService = UserThemeServiceSingleton.Instance;
+            _characterService = CharacterServiceSingleton.Instance;
             _binExtractor = new BinSpriteExtractor();
         }
 
@@ -988,6 +990,32 @@ namespace FFTColorCustomizer.Configuration.UI
                 return null;
             }
 
+            var userPalette = File.ReadAllBytes(palettePath);
+            if (userPalette.Length != 512)
+            {
+                ModLogger.LogWarning($"Invalid user palette size: {userPalette.Length} (expected 512)");
+                return null;
+            }
+
+            // The HD path only needs the character's preview sheet plus the palette, so try it
+            // before hunting for a vanilla .bin. Doing it the other way round made a missing or
+            // mis-named .bin abort the whole user-theme preview, and the caller then quietly
+            // fell back to the vanilla sheet — the theme looked like it had done nothing.
+            try
+            {
+                var hdLoader = new SpriteSheetPreviewLoader(modPath);
+                var hdImages = hdLoader.LoadPreviewsWithUserPalette(characterName, userPalette);
+                if (hdImages != null && hdImages.Count > 0)
+                {
+                    ModLogger.Log($"[STORY USER THEME] Character: '{characterName}', Theme: '{themeName}', HD sheet + user palette");
+                    return hdImages.Cast<Image>().ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogDebug($"HD user-theme preview unavailable for {characterName} - {themeName}: {ex.Message}");
+            }
+
             // For story characters, original sprites may be in character-specific folders
             // e.g., sprites_rapha_original/ or sprites_meliadoul_original/
             // Fall back to sprites_original/ if character-specific folder doesn't have the file
@@ -1015,31 +1043,7 @@ namespace FFTColorCustomizer.Configuration.UI
                 return null;
             }
 
-            // Read original sprite and user palette
             var originalSprite = File.ReadAllBytes(originalFile);
-            var userPalette = File.ReadAllBytes(palettePath);
-
-            // Validate palette size
-            if (userPalette.Length != 512)
-            {
-                ModLogger.LogWarning($"Invalid user palette size: {userPalette.Length} (expected 512)");
-                return null;
-            }
-
-            // Try the HD BMP path with the user's palette FIRST — gives a crisp preview AND
-            // 4-direction rotation. Tried before the single-frame fallback so Construct 8 (and
-            // any future non-standard chars) get full rotation when an HD BMP ships.
-            try
-            {
-                var loader = new SpriteSheetPreviewLoader(modPath);
-                var hdImages = loader.LoadPreviewsWithUserPalette(characterName, userPalette);
-                if (hdImages != null && hdImages.Count > 0)
-                    return hdImages.Cast<Image>().ToArray();
-            }
-            catch (Exception ex)
-            {
-                ModLogger.LogDebug($"HD user-theme preview unavailable for {characterName} - {themeName}: {ex.Message}");
-            }
 
             // Single-frame fallback for non-standard characters (Construct 8) when no HD BMP exists.
             if (TryGetSingleFrameRect(characterName, out var rect))
@@ -1486,47 +1490,15 @@ namespace FFTColorCustomizer.Configuration.UI
             return false;
         }
 
+        /// <summary>
+        /// Display name ("Argath") to internal FFT sprite name ("aru"). Delegates to the
+        /// registry-backed resolver so previews name the same sprite the game is handed;
+        /// this used to be a hand-maintained switch, which silently mis-named every
+        /// character added after it was written.
+        /// </summary>
         private string GetInternalSpriteName(string characterName)
         {
-            // Map display names to internal FFT sprite file names
-            switch (characterName.ToLower())
-            {
-                case "ramza":
-                    return "ramuza";
-                case "ramzachapter1":
-                    return "ramuza";
-                case "ramzachapter23":
-                    return "ramuza2";
-                case "ramzachapter4":
-                    return "ramuza3";
-                case "agrias":
-                    return "aguri";
-                case "cloud":
-                    return "cloud";
-                case "orlandeau":
-                    return "oru";
-                case "rapha":
-                    return "h79";
-                case "marach":
-                    return "mara";
-                case "mustadio":
-                    return "musu";
-                case "meliadoul":
-                    return "h85";
-                case "beowulf":
-                    return "beio";
-                case "reis":
-                    return "reze";
-                case "alma":
-                    return "aruma";
-                case "delita":
-                    return "dily";
-                case "construct8":
-                    return "tetsu";
-                default:
-                    // Fallback to the character name itself
-                    return characterName.ToLower();
-            }
+            return InternalSpriteNameResolver.Resolve(characterName, _characterService);
         }
 
         /// <summary>

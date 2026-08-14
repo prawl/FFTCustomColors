@@ -11,6 +11,22 @@ that checklist.
 
 ## Now (release: 3.2.0)
 
+- **[CC-22] Show a saved NPC theme in that NPC's preview picture** (opened 2026-08-13) [BUILDING]
+  - Done means: after saving a theme for one of the twelve NPCs in the theme editor, picking it
+    in that NPC's dropdown changes the little preview picture next to their name, and the same
+    colors show up on that character in the game. Before this, the preview kept showing the
+    plain vanilla colors, so the theme looked like it had done nothing at all. (Tech: the
+    preview path resolved a character's sprite file through a hand-written display-name switch
+    in CharacterRowBuilder that stopped at Construct8, so every NPC fell through to
+    battle_<displayname>_spr.bin, which does not exist; the user-theme loader then bailed and
+    the caller silently fell back to the vanilla sheet. Sprite names now come from
+    Data/StoryCharacters.json via InternalSpriteNameResolver, the same source the in-game apply
+    path already used, and the HD-sheet-plus-palette render runs before the bin lookup so a
+    missing bin can no longer abort a preview.)
+  - Verify: NpcThemePipelineTests covers all three links (dropdown lists the saved theme, the
+    preview differs from vanilla, the applied bin carries the saved palette) and the full suite
+    stays green; the owner saves a theme for an NPC in a live config window, sees the preview
+    change, and sees that NPC recolored in-game.
 - **[CC-10] Investigate the mod-broken-after-game-update reports** (opened 2026-07-21) [BUILDING]
   - Done means: the failure is reproduced or ruled out on the latest game patch, the root cause
     is identified (prior art: the earlier "broken on 1.5" report was a zip-packaging defect, not
