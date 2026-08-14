@@ -2,7 +2,10 @@
 
 STATUS: DRAFT (scope not yet locked by the owner)
 
-Current shipped version 3.1.0; proposed next **3.2.0** (owner confirms the bump). This doc is the
+Current shipped version **3.2.0**, cut 2026-08-13 on the owner's call. It carries the player-facing
+work of the cycle (twelve customizable NPCs, and their themes now visible in the preview pictures)
+and deliberately ships with box 2 below still open: the game-update compatibility investigation
+(CC-10) stays in the ledger's Now and rides the next release. This doc is the
 ship gate for the release named in docs/TODO.md's Now header; TodoContractTests keeps the two in
 lockstep (the release name must appear here). The heavier per-box enforcement the sibling repo
 runs (ReleaseScopeContractTests) is deliberately not ported yet; it comes in when this doc grows
