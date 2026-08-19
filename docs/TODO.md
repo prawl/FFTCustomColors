@@ -64,6 +64,16 @@ that checklist.
   deciding first: one generic color set for everyone (the Reis pattern, ~25 named colors,
   scriptable) versus hand-designed signature themes per character (the Agrias pattern).
 
+- [CC-25] 2026-08-17: Give the Nexus banner a fresh face the way Living Weapons got one: fewer,
+  bigger themed sprites arranged as a left-to-right rainbow, so a visitor instantly reads "this
+  mod recolors everything" instead of the current wall of hundreds of tiny sprites that blur
+  into brown mush. (Tech: port the FFTLivingWeapons recipe from tools/make_banner.py and
+  tools/lib/plate.py in that repo: exact-fit grid for the 1300x372 Nexus box rendered at 2x,
+  hue-sorted column-major fill, a colourfulness score picking the boldest themed sprite per
+  tile, the shared brushed slate-steel plate with cast shadows, and a mock pass overlaying
+  Nexus's scrim plus title to check legibility before upload. Tile source: standing frames
+  decoded from the sprites_* BINs via the renderer logic in scripts/render_sprite_preview.py,
+  integer NEAREST upscale to keep pixels crisp.)
 - [CC-3] 2026-07-21: Add a flight recorder if it makes sense. The FFTLivingWeapons core (bounded
   ring, jsonl flush files, first-error FlushOnce trigger, retention prune) is domain-neutral and
   portable; the battle-edge flush triggers are not, so the port would flush on theme-apply edges
@@ -122,6 +132,41 @@ that checklist.
   owner's live log (three "missing theme files" warnings for RamzaChapter dirs that never
   exist under unit/, and an empty-name "Original sprite not found for reis:" warning). Both
   fold naturally into the CC-2 logging rework if that lands first.
+
+- [CC-23] 2026-08-19: Let players recolour the weapons their units swing in battle, with the same
+  kind of sliders the jobs and monsters already have. The colour of a swung weapon lives in a small
+  colour table at the front of one sprite sheet, and shipping our own copy of that file changes it,
+  which is proven and owner live verified. Thirteen colour sets serve all 127 weapons, so a slider
+  moves a GROUP of weapons and not a single one, and which weapons sit in which group cannot be
+  changed by any file we ship. The control must therefore rotate the hue of whatever colours it
+  finds rather than set an absolute colour, so it composes with the Living Weapons bake instead of
+  fighting it and never needs the weapon to palette map at all. (Tech: FFTPack file 71
+  unit/battle_wep_spr.bin, 512 byte palette block of 16 palettes x 16 BGR555, deploy at
+  FFTIVC/data/enhanced/fftpack/unit/. Weapons draw from palettes 3 to 15 and effects from 0 to 2
+  with zero overlap across all 127 weapons, so a recolour can never retint a swing arc. Rides the
+  monster path almost verbatim: MonsterThemeCoordinator rebuild from original, MonsterRecolor
+  section apply, RelativeShadeGenerator, one Data/SectionMappings entry for the zone shape
+  {1-4}{5-7}{8-10}{11-14}{15}, and previews decoded from the sheet's own 4bpp pixels rather than a
+  staged HD BMP. Evidence, coverage table and controls in docs/WEAPON_COLOR_CC_FINDINGS.md; the
+  mechanism row is [wep-spr-palette-block] in the FFTLivingWeapons LIVE_LEDGER.)
+- [CC-24] 2026-08-19: Make the weapon recolour behave when Living Weapons is installed too. Both
+  mods write the same sprite sheet and there is no way to merge one, so whichever loads last
+  silently erases the other and the player gets no warning. Instead of competing, read whichever
+  sheet the other mod deployed and shift its colours rather than replacing them, which leaves each
+  mod doing the half it is good at. (Tech: detect the file owner via IFFTOModPackManager and take
+  their baked battle_wep_spr.bin as the rebuild base in place of sprites_original when they own it,
+  else vanilla. Depends on CC-23. Prior art for the detect half is GenericJobsDetector.)
+
+- [CC-26] 2026-08-19: Chase down a test that fails at random. During the CC-23 ledger work the
+  suite failed once on ApplyConfiguration_UsesCorrectModPath, then passed twice on re-run with not
+  a single character changed in between. A test that only sometimes passes is worse than one that
+  always fails, because it trains everyone to shrug and re-run, and the next real breakage gets
+  shrugged at too. Find out whether it is the test or the code that is unreliable. (Tech:
+  Tests/Core/ModComponents/ConfigurationCoordinatorPathTests.cs:171, seen 2026-08-19 on a
+  docs-only working tree, 1 fail then 1328 pass, then 1329 pass twice. Prime suspects are shared
+  temp-directory state or path casing between tests rather than a production defect, but that is a
+  guess and needs proving. If it turns out to be a real race in the coordinator's path resolution
+  it is a user-facing bug, not a test bug.)
 
 ## Walled (blocked by engine / external)
 

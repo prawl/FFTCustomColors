@@ -53,6 +53,34 @@ Newest first.
 
 ---
 
+## 2026-08-19  TIER 2 CEILING: re-indexing creates capacity, it does not find it
+
+**Plain version:** the idea behind per weapon colour control was that each weapon shape could be
+given its own private slice of a colour set, so two weapons sharing a set could still look
+different. That is still possible, but it is building work rather than free space. The original
+artists did not leave gaps for us; every weapon sharing a set overlaps every other one. So we would
+be carving the room out ourselves, and there is only enough for about two looks per set, not ten.
+
+**Claim, LW's measurement, accepted:** index zone addressing does not exist in vanilla. Of the 681
+within palette pairs of distinct weapon graphics, **zero are index disjoint**, and all 681 collide
+inside the base zone (slots 1 to 4).
+
+**Consequence for the tier 2 design:** per graphic control via pixel re-indexing remains PLAUSIBLE,
+but the honest ceiling is roughly **two schemes per palette**, so about 26 addressable looks across
+13 palettes rather than the "one per weapon shape" the tier was originally imagined to deliver.
+With 127 weapons that is still 5 weapons per look on average. It also costs shades, since a 4 step
+blade re-homed onto a 3 step slice loses one.
+
+**Reading:** this makes tier 2 a much weaker prize than it looked when this proposal opened, and it
+strengthens the case for shipping tier 1 and stopping. A hue rotation over 13 coherent groups is a
+clean, explicable feature; 26 groups carved out by rewriting the artists' index assignments is a
+lot of machinery and risk for a grain that is still nowhere near per weapon.
+
+**Supersedes:** the tier 2 sizing in my proposal artifact, which cited roughly 40 to 60 weapon
+shapes on the assumption that disjoint zones already existed to exploit. They do not.
+
+---
+
 ## 2026-08-19  VERDICT: the static hunt is closed and negative. No byte table source exists on disk.
 
 **Plain version:** the game builds a list of weapon colours in memory when it starts, and my job
@@ -110,13 +138,30 @@ see through any of those.
 to keep searching is expensive and, given the poke test, would likely find something the renderer
 does not read anyway.
 
-**Scope note added after LW flagged it 2026-08-19:** his in-memory multiset sweep ("no match in
-4192 MB") has an unfinished non-vacuity control and he is treating it as provisional. Agreed, and
-recording that the verdict above does not rest on it. My half rests on the disk sweeps and their
-three in-the-wild controls; the joint half rests on his **poke test**, which is a different and
-completed experiment (write the vanilla heap image, verify readback, verify again after a battle
-load, observe no colour change). If his memory sweep later fails its control, this verdict is
-unaffected.
+**UPGRADED 2026-08-19, hedge removed.** This entry briefly carried a scope note saying LW's
+in-memory sweep was provisional because its non-vacuity control was unfinished. That control is now
+finished and it PASSES, in two parts, so the memory half is settled and the joint verdict stands
+without qualification:
+
+- **Matching logic against real memory, not synthetic filler.** A live 32 MB committed region was
+  read out of the running game, the 127 X values spliced into it in SHUFFLED order at a deliberately
+  unaligned offset, and the scanner required to find them. `hits before splice: 0, hits after
+  splice: 1`, planted table at 7000003 FOUND. Exactly one new hit, no false positives added.
+- **Prefilter had real candidates to reject.** `scanned 4109 MB across 3423 regions,
+  250,482 candidate windows examined, longest in-band run 20,721 bytes`. So the negative is a
+  genuine rejection of a quarter of a million real candidates, not a search that never started.
+
+Both halves of the joint verdict are therefore controlled: my disk sweeps with three in-the-wild
+positive controls, and LW's memory sweep with the two above, plus the **poke test** as an
+independent third leg (write the vanilla heap image, verify readback, verify again after a battle
+load, observe no colour change).
+
+**Reusable caveat, paid for by LW and worth carrying.** Their first control window used a value band
+that included 0, which turned every zero-filled page into one enormous in-band run and drove the
+histogram step to roughly 10 GB per process. Our production band is 3 to 15, which excludes zero
+pages, so neither of us was ever exposed. But `scratchpad/multiset.py` allocates a
+`13 x (run_length)` int32 cumsum per qualifying run, so **if this scanner is ever reused with a
+caller-supplied band, bound the allocation or slice the run**. A band containing 0 will OOM it.
 
 ---
 
