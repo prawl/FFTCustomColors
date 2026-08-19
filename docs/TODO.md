@@ -11,6 +11,23 @@ that checklist.
 
 ## Now (release: 3.2.0)
 
+- **[CC-27] Two thirds of the monsters cannot be recoloured in the theme editor** (opened 2026-08-19) [QUEUED]
+  - Done means: every rank of every monster family can be opened, previewed and recoloured in the
+    theme editor, not just the first one. Sixteen families shipped with three ranks each, which is
+    forty eight themable monsters in the config dropdowns, but the editor lists one entry per
+    family and always opens the first rank's colours. So a player who wants to design a look for a
+    Black Chocobo or a Red Chocobo cannot see its colours at all: the editor shows them the yellow
+    one, and any theme they save is built against the wrong starting palette. Thirty two of the
+    forty eight are unreachable. The built-in presets are fine and already per rank; this is
+    specifically the custom theme editor. (Tech: PaletteModifier hardcodes palette 0 throughout,
+    SetPaletteColor writes at index*2 with no paletteIndex*32 offset and both preview extractors
+    pass paletteIndex: 0, while ThemeEditorPanel enumerates one entry per Data/SectionMappings/
+    Monster/<Family>.json. Needs a rank selector in the editor plus a palette index threaded
+    through PaletteModifier, the preview extractors and UserThemeService's save key, which is
+    currently the tier-agnostic EditorKey.)
+  - Verify: open the theme editor, pick a family, switch to rank II and then rank III, and see the
+    preview and the sliders change to that rank's own colours; save a theme on rank II, apply it in
+    game, and confirm rank II changed while ranks I and III kept their own looks.
 - **[CC-10] Investigate the mod-broken-after-game-update reports** (opened 2026-07-21) [BUILDING]
   - Done means: the failure is reproduced or ruled out on the latest game patch, the root cause
     is identified (prior art: the earlier "broken on 1.5" report was a zip-packaging defect, not
