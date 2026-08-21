@@ -11,23 +11,6 @@ that checklist.
 
 ## Now (release: 3.2.0)
 
-- **[CC-27] Two thirds of the monsters cannot be recoloured in the theme editor** (opened 2026-08-19) [QUEUED]
-  - Done means: every rank of every monster family can be opened, previewed and recoloured in the
-    theme editor, not just the first one. Sixteen families shipped with three ranks each, which is
-    forty eight themable monsters in the config dropdowns, but the editor lists one entry per
-    family and always opens the first rank's colours. So a player who wants to design a look for a
-    Black Chocobo or a Red Chocobo cannot see its colours at all: the editor shows them the yellow
-    one, and any theme they save is built against the wrong starting palette. Thirty two of the
-    forty eight are unreachable. The built-in presets are fine and already per rank; this is
-    specifically the custom theme editor. (Tech: PaletteModifier hardcodes palette 0 throughout,
-    SetPaletteColor writes at index*2 with no paletteIndex*32 offset and both preview extractors
-    pass paletteIndex: 0, while ThemeEditorPanel enumerates one entry per Data/SectionMappings/
-    Monster/<Family>.json. Needs a rank selector in the editor plus a palette index threaded
-    through PaletteModifier, the preview extractors and UserThemeService's save key, which is
-    currently the tier-agnostic EditorKey.)
-  - Verify: open the theme editor, pick a family, switch to rank II and then rank III, and see the
-    preview and the sliders change to that rank's own colours; save a theme on rank II, apply it in
-    game, and confirm rank II changed while ranks I and III kept their own looks.
 - **[CC-10] Investigate the mod-broken-after-game-update reports** (opened 2026-07-21) [BUILDING]
   - Done means: the failure is reproduced or ruled out on the latest game patch, the root cause
     is identified (prior art: the earlier "broken on 1.5" report was a zip-packaging defect, not
@@ -72,6 +55,20 @@ that checklist.
     Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
 
 ## Backlog
+
+- [CC-28] 2026-08-21: The config window has a thin light colored strip running along the very
+  top edge, above the red title bar, left over from window creation. A first attempt made it
+  worse instead of better: intercepting WM_NCCALCSIZE to claim the whole window as client area
+  removed the strip on first paint, but after the user dragged the title bar to move the window
+  the whole strip turned solid white and never repainted again, a bigger and more visible bug
+  than the original. That change was reverted; ConfigurationForm.cs's WndProc is back to its
+  original state, confirmed byte identical by diff. (Tech: the strip is OS drawn non client
+  area reserved by the WS_THICKFRAME window style even though FormBorderStyle is None, so no
+  client area control such as a docked panel can cover it. Two untested leads for whoever picks
+  this up: proper WM_NCCALCSIZE handling that also repaints correctly across WM_MOVE and
+  WM_NCPAINT, or dropping WS_THICKFRAME entirely and driving resize purely from the existing
+  WM_NCHITTEST logic. Neither has been tried; the WM_NCCALCSIZE only attempt above is what
+  broke on drag.)
 
 - [CC-21] 2026-08-13: Author built-in color themes for the twelve NPCs shipped in CC-20. They
   currently offer only "original" in their dropdowns, which was deliberate: the plumbing and
@@ -183,7 +180,17 @@ that checklist.
   docs-only working tree, 1 fail then 1328 pass, then 1329 pass twice. Prime suspects are shared
   temp-directory state or path casing between tests rather than a production defect, but that is a
   guess and needs proving. If it turns out to be a real race in the coordinator's path resolution
-  it is a user-facing bug, not a test bug.)
+  it is a user-facing bug, not a test bug. SECOND OFFENDER folded in 2026-08-21: three separate
+  agents have now also seen
+  Tests/Configuration/CharacterRowBuilderBinIntegrationTests fail once and pass in isolation,
+  twice on TryLoadGenericFromBinFile_Should_Use_External_Palette_For_UserThemes and once on
+  AddStoryCharacterRow_ShouldIncludeUserThemes_WhenUserThemesExist, each time a temp directory
+  file lock or leftover UserThemes.json during teardown under parallel execution. Two tests in
+  different files failing the same way points at SHARED TEMP STATE across test classes as the
+  single root cause rather than two unrelated bugs, so chase them together. Whatever the fix is,
+  it must make the suite trustworthy enough that a single red is treated as real, because the
+  current habit of re-running has already caused one mutation to be scored as caught when the
+  failure was actually the flake.)
 
 ## Walled (blocked by engine / external)
 

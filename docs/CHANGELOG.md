@@ -8,6 +8,34 @@ with a date and no hash.
 
 ## 3.2.0 cycle
 
+- [CC-27] SHIPPED 157bb593 2026-08-21: every rank of every monster can now be recoloured in the
+  theme editor, not just the first one. Sixteen families ship with three ranks each, so forty
+  eight monsters appear in the config dropdowns, but the editor listed one entry per family and
+  always opened the first rank's colours, leaving thirty two of them impossible to recolour by
+  hand. A player designing a Black Chocobo look was quietly shown the yellow one instead, so the
+  shades they adjusted belonged to a different creature and whatever they saved was built on the
+  wrong starting palette. Nothing errored; it edited the wrong thing. Each rank is now its own
+  entry carrying the creature's real name and a rank number, and picking one opens that
+  creature's colours in the sliders, the preview and the comparison pane, with per section reset
+  and reset all both staying on the chosen rank. Saved themes are untouched and need no
+  migration: a theme still belongs to the family, so anything saved before this loads and applies
+  exactly as before and is still offered on all three ranks. The save confirmation used to name
+  the family and point at the wrong section, telling someone who saved a Bonesnatch theme to look
+  for Skeleton under Generic Characters; it now names the selection, points at Monsters, and says
+  the theme covers every rank of that family. Owner live verified in game. (Tech: PaletteModifier
+  gains PaletteIndex with PaletteOffset of PaletteIndex times 32, threaded through SetPaletteColor,
+  GetColorFromData, CopyPaletteIndex and all three preview paths, the HD BMP swap now receiving
+  GetModifiedPalette so the selected rank sits at offset 0; default 0 leaves every single palette
+  caller byte identical. New pure MonsterEditorEntries expands MonsterThemeRegistry.Families into
+  one entry per family and rank, reading family.PaletteIndices rather than tier position.
+  ThemeEditorPanel maps each rank display name to the FAMILY name so the save key and mapping
+  lookups are unchanged, and funnels every modifier construction through LoadRankAwareModifier and
+  ReloadModifiersFromCurrentSprite; OnResetAllClick gained an internal ConfirmResetAll seam so both
+  the confirm and decline paths are testable. ThemeSavedEventArgs carries DisplayName and
+  ConfigurationForm.Data exposes BuildThemeSavedMessage. Seven adversarial verify rounds, final
+  score 9 of 10, every load bearing line proven by mutation with the catching test named.
+  Suite 1355 of 1355.)
+
 - [CC-22] SHIPPED 2ce9cf70 2026-08-13: a color theme you save for one of the twelve NPCs now
   shows up in that NPC's little preview picture when you pick it, instead of stubbornly
   showing the plain vanilla colors and looking like it did nothing. The theme was always
