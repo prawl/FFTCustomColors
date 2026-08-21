@@ -118,12 +118,14 @@ namespace Tests.Registry
             Assert.Contains("aruma", alma.SpriteNames);
             Assert.Equal("original", alma.DefaultTheme);
 
-            // NPC characters live in their own config-window section and ship with no
-            // built-in themes (original only; theming them is a later project)
+            // NPC characters live in their own config-window section, and "original" is
+            // always the first theme offered. The exact theme list is NOT pinned here:
+            // NpcRosterContractTests owns that contract, and Alma now ships authored
+            // themes (CC-21), so duplicating the list would mean two files to update.
             var almaDefinition = _characterService.GetCharacterByName("Alma");
             Assert.NotNull(almaDefinition);
             Assert.Equal("NPC", almaDefinition.Category);
-            Assert.Equal(new[] { "original" }, almaDefinition.AvailableThemes);
+            Assert.Equal("original", almaDefinition.AvailableThemes.First());
         }
 
         [Fact]

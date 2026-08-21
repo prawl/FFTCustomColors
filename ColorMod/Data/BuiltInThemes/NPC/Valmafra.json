@@ -1,0 +1,13 @@
+{
+  "character": "Valmafra",
+  "themes": [
+    {
+      "name": "dark_witch",
+      "sections": {
+        "Outfit": "#2D2D2D",
+        "HairRibbon": "#862727",
+        "Cape": "#7B2020"
+      }
+    }
+  ]
+}

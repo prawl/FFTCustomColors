@@ -1,0 +1,20 @@
+{
+  "character": "Zalmour",
+  "themes": [
+    {
+      "name": "pure_saint",
+      "sections": {
+        "Robe": "#7C6699",
+        "RobeTrim": "#298589"
+      }
+    },
+    {
+      "name": "druid",
+      "sections": {
+        "Robe": "#619E8B",
+        "UnderRobe": "#B5BFBD",
+        "RobeTrim": "#893929"
+      }
+    }
+  ]
+}

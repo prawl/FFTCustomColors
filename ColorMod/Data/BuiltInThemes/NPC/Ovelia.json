@@ -1,0 +1,20 @@
+{
+  "character": "Ovelia",
+  "themes": [
+    {
+      "name": "fantasia",
+      "sections": {
+        "Dress": "#EEDCD8",
+        "CapeAndSash": "#93475D"
+      }
+    },
+    {
+      "name": "scorned_princess",
+      "sections": {
+        "Dress": "#B8B0B0",
+        "CapeAndSash": "#654068",
+        "Hair": "#8A6347"
+      }
+    }
+  ]
+}

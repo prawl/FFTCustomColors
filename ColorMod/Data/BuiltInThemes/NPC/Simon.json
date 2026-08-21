@@ -1,0 +1,19 @@
+{
+  "character": "Simon",
+  "themes": [
+    {
+      "name": "blood_priest",
+      "sections": {
+        "Underrobe": "#B03052",
+        "RobeLining": "#892929"
+      }
+    },
+    {
+      "name": "bishop",
+      "sections": {
+        "Underrobe": "#8E8E8E",
+        "RobeLining": "#636363"
+      }
+    }
+  ]
+}

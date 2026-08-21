@@ -1,0 +1,20 @@
+{
+  "character": "Orran",
+  "themes": [
+    {
+      "name": "scholar",
+      "sections": {
+        "Belt": "#987676",
+        "ChestAndPants": "#BFBFBF",
+        "Armor": "#906D2D"
+      }
+    },
+    {
+      "name": "sea_scientist",
+      "sections": {
+        "Belt": "#207088",
+        "ChestAndPants": "#41716C"
+      }
+    }
+  ]
+}

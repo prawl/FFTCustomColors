@@ -1,0 +1,19 @@
+{
+  "character": "Gaffgarion",
+  "themes": [
+    {
+      "name": "dark_knight",
+      "sections": {
+        "Armor": "#51473D"
+      }
+    },
+    {
+      "name": "white_knight",
+      "sections": {
+        "Mustache": "#FFFFFF",
+        "Armor": "#757575",
+        "ArmorAccent": "#DACBAA"
+      }
+    }
+  ]
+}

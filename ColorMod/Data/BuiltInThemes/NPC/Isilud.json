@@ -1,0 +1,26 @@
+{
+  "character": "Isilud",
+  "themes": [
+    {
+      "name": "dusk_dragoon",
+      "sections": {
+        "Armor": "#866C4B",
+        "Surcoat": "#4F5546",
+        "HairAndBelt": "#5D351D"
+      }
+    },
+    {
+      "name": "night_blade",
+      "sections": {
+        "Armor": "#948471",
+        "Surcoat": "#556259"
+      }
+    },
+    {
+      "name": "gladiator",
+      "sections": {
+        "Surcoat": "#BFAF88"
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "character": "Elmdore",
+  "themes": [
+    {
+      "name": "silver_noble",
+      "sections": {
+        "HairAndShoes": "#78779C",
+        "Pants": "#666666",
+        "Cape": "#A06A40",
+        "ChestAndSkin": "#915C2D"
+      }
+    }
+  ]
+}

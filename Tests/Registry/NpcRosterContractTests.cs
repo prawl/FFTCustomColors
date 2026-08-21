@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Xunit;
@@ -10,7 +11,7 @@ namespace Tests.Registry
 {
     /// <summary>
     /// Contract for the NPC roster: every NPC character ships fully wired - registry entry
-    /// (category NPC, original-only themes), Config property, a per-index section mapping
+    /// (category NPC, the themes listed in ExpectedThemes), Config property, a per-index section mapping
     /// under NPC/, and an HD preview image. Sprite bin names were verified against the
     /// vanilla game files by exact palette match (2026-08-13).
     /// </summary>
@@ -31,6 +32,28 @@ namespace Tests.Registry
             { "Valmafra", new[] { "baru" } },
             { "Zalmour", new[] { "zarumou" } },
         };
+
+        /// <summary>
+        /// NPCs shipped with authored colour themes (CC-21). Everyone not listed here is still
+        /// original-only. Adding a theme means adding it here AND to the character registry;
+        /// the bytes themselves are pinned by NpcBuiltInThemeContractTests.
+        /// </summary>
+        private static readonly Dictionary<string, string[]> ExpectedThemes = new()
+        {
+            { "Valmafra", new[] { "original", "dark_witch" } },
+            { "Ovelia", new[] { "original", "fantasia", "scorned_princess" } },
+            { "Isilud", new[] { "original", "dusk_dragoon", "night_blade", "gladiator" } },
+            { "Alma", new[] { "original", "ballet", "nocturnal_rose", "flower_maid", "wedding", "rain_dancer" } },
+            { "Argath", new[] { "original", "red_snake", "water_rat" } },
+            { "Elmdore", new[] { "original", "silver_noble" } },
+            { "Zalmour", new[] { "original", "pure_saint", "druid" } },
+            { "Gaffgarion", new[] { "original", "dark_knight", "white_knight" } },
+            { "Orran", new[] { "original", "scholar", "sea_scientist" } },
+            { "Simon", new[] { "original", "blood_priest", "bishop" } },
+        };
+
+        private static string[] ThemesFor(string name) =>
+            ExpectedThemes.TryGetValue(name, out var themes) ? themes : new[] { "original" };
 
         private static string RepoRoot()
         {
@@ -56,13 +79,13 @@ namespace Tests.Registry
 
         [Theory]
         [MemberData(nameof(Roster))]
-        public void NpcCharacter_Is_Registered_With_Npc_Category_And_Original_Only(string name, string[] sprites)
+        public void NpcCharacter_Is_Registered_With_Npc_Category_And_Expected_Themes(string name, string[] sprites)
         {
             var character = LoadService().GetCharacterByName(name);
 
             Assert.NotNull(character);
             Assert.Equal("NPC", character.Category);
-            Assert.Equal(new[] { "original" }, character.AvailableThemes);
+            Assert.Equal(ThemesFor(name), character.AvailableThemes);
             Assert.Equal(sprites, character.SpriteNames);
         }
 

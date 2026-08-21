@@ -1,0 +1,20 @@
+{
+  "character": "Argath",
+  "themes": [
+    {
+      "name": "red_snake",
+      "sections": {
+        "Arms": "#B99546",
+        "Pants": "#7B150F"
+      }
+    },
+    {
+      "name": "water_rat",
+      "sections": {
+        "ShouldersHandsBoots": "#866718",
+        "Arms": "#46B9B7",
+        "Pants": "#107A6F"
+      }
+    }
+  ]
+}

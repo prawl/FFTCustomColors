@@ -1,0 +1,40 @@
+{
+  "character": "Alma",
+  "themes": [
+    {
+      "name": "ballet",
+      "sections": {
+        "DressAndBow": "#D09A9A",
+        "Chest": "#828282"
+      }
+    },
+    {
+      "name": "nocturnal_rose",
+      "sections": {
+        "DressAndBow": "#50201B",
+        "Chest": "#907A7A"
+      }
+    },
+    {
+      "name": "flower_maid",
+      "sections": {
+        "DressAndBow": "#D4B7AF",
+        "Chest": "#8F5B5B"
+      }
+    },
+    {
+      "name": "wedding",
+      "sections": {
+        "DressAndBow": "#EBDEDB",
+        "Chest": "#C5A5A5"
+      }
+    },
+    {
+      "name": "rain_dancer",
+      "sections": {
+        "DressAndBow": "#8BB1B0",
+        "Chest": "#9E9E9E"
+      }
+    }
+  ]
+}

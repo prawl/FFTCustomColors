@@ -271,7 +271,12 @@
       ],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "ballet",
+        "nocturnal_rose",
+        "flower_maid",
+        "wedding",
+        "rain_dancer"
       ]
     },
     {
@@ -286,7 +291,9 @@
       ],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "red_snake",
+        "water_rat"
       ]
     },
     {
@@ -314,7 +321,8 @@
       ],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "silver_noble"
       ]
     },
     {
@@ -330,7 +338,9 @@
       ],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "dark_knight",
+        "white_knight"
       ]
     },
     {
@@ -345,7 +355,10 @@
       ],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "dusk_dragoon",
+        "night_blade",
+        "gladiator"
       ]
     },
     {
@@ -376,7 +389,9 @@
       ],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "scholar",
+        "sea_scientist"
       ]
     },
     {
@@ -391,7 +406,9 @@
       ],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "fantasia",
+        "scorned_princess"
       ]
     },
     {
@@ -406,7 +423,9 @@
       ],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "blood_priest",
+        "bishop"
       ]
     },
     {
@@ -421,7 +440,8 @@
       ],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "dark_witch"
       ]
     },
     {
@@ -436,7 +456,9 @@
       ],
       "defaultTheme": "original",
       "availableThemes": [
-        "original"
+        "original",
+        "pure_saint",
+        "druid"
       ]
     },
     {
