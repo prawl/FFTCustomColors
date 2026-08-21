@@ -11,11 +11,21 @@ namespace FFTColorCustomizer.ThemeEditor
         public string ThemeName { get; }
         public byte[] PaletteData { get; }
 
-        public ThemeSavedEventArgs(string jobName, string themeName, byte[] paletteData)
+        /// <summary>
+        /// The dropdown entry the user actually picked (e.g. "Bonesnatch (rank 2)"). For a
+        /// monster, <see cref="JobName"/> is the FAMILY key ("Skeleton") since the save stays
+        /// family scoped by design — this is what a confirmation message should name instead.
+        /// Defaults to <see cref="JobName"/> for every existing caller that doesn't pass one.
+        /// See CC-27.
+        /// </summary>
+        public string DisplayName { get; }
+
+        public ThemeSavedEventArgs(string jobName, string themeName, byte[] paletteData, string displayName = null)
         {
             JobName = jobName;
             ThemeName = themeName;
             PaletteData = paletteData;
+            DisplayName = displayName ?? jobName;
         }
     }
 }

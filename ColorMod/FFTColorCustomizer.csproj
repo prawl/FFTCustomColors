@@ -24,6 +24,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Lets Tests drive ThemeEditorPanel.ConfirmResetAll (internal setter, see CC-27). -->
+    <InternalsVisibleTo Include="FFTColorCustomizer.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Reloaded.Memory.SigScan.ReloadedII.Interfaces" Version="1.2.0" />
     <PackageReference Include="Reloaded.Mod.Interfaces" Version="2.4.0" />
     <PackageReference Include="Reloaded.Hooks.Definitions" Version="1.11.0" />

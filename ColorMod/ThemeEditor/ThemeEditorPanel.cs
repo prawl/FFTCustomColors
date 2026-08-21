@@ -37,6 +37,11 @@ namespace FFTColorCustomizer.ThemeEditor
         private Dictionary<string, bool> _isWotLCharacter = new();
         private Dictionary<string, bool> _isMonster = new();
         private Dictionary<string, bool> _isNpcCharacter = new();
+        // Monster display name (e.g. "Black Chocobo") -> bin palette index (0/1/2) for that
+        // rank. A monster family's three ranks share one bin as palettes 0/1/2, so this is what
+        // lets the editor actually reach ranks II and III instead of always editing palette 0.
+        // Any display name missing from here (every non-monster template) defaults to 0. CC-27.
+        private Dictionary<string, int> _monsterPaletteIndex = new();
         private bool _suppressColorChangedEvents;
 
         public SectionMapping? CurrentMapping { get; private set; }
@@ -166,17 +171,24 @@ namespace FFTColorCustomizer.ThemeEditor
                     _templateDropdown.Items.Add(displayName);
                 }
 
-                // Add Monsters section (positioned before WotL Characters)
+                // Add Monsters section (positioned before WotL Characters). One dropdown entry
+                // per (family, rank) — 16 families x 3 ranks — not one per family, or ranks II
+                // and III are unreachable. See CC-27.
                 var monsters = SectionMappingLoader.GetAvailableMonsters(_mappingsDirectory);
-                if (monsters.Length > 0)
+                var monsterEntries = MonsterEditorEntries.Build(monsters);
+                if (monsterEntries.Count > 0)
                 {
                     _templateDropdown.Items.Add("── Monsters ──");
-                    foreach (var monster in monsters)
+                    foreach (var entry in monsterEntries)
                     {
-                        _displayNameToJobName[monster] = monster;
-                        _isStoryCharacter[monster] = false;
-                        _isMonster[monster] = true;
-                        _templateDropdown.Items.Add(monster);
+                        _templateDropdown.Items.Add(entry.DisplayName);
+
+                        // Maps to the FAMILY, not the rank — that's what keeps mapping-file
+                        // lookup, sprite-path resolution and the theme save key unchanged.
+                        _displayNameToJobName[entry.DisplayName] = entry.Family;
+                        _isStoryCharacter[entry.DisplayName] = false;
+                        _isMonster[entry.DisplayName] = true;
+                        _monsterPaletteIndex[entry.DisplayName] = entry.PaletteIndex;
                     }
                 }
 
@@ -526,14 +538,12 @@ namespace FFTColorCustomizer.ThemeEditor
 
                     if (File.Exists(spritePath))
                     {
-                        PaletteModifier = new PaletteModifier();
-                        PaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
+                        PaletteModifier = LoadRankAwareModifier(spritePath);
 
                         // Compare baseline — second loader on the same template,
                         // never mutated. Painting the Original side just calls
                         // OriginalPaletteModifier.GetPreview(direction).
-                        OriginalPaletteModifier = new PaletteModifier();
-                        OriginalPaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
+                        OriginalPaletteModifier = LoadRankAwareModifier(spritePath);
 
                         UpdateSpritePreview();
                         UpdateOriginalSpritePreview();
@@ -664,9 +674,9 @@ namespace FFTColorCustomizer.ThemeEditor
             if (spritePath == null || !File.Exists(spritePath))
                 return;
 
-            // Load the original sprite file to get the original palette colors
-            var originalPalette = new PaletteModifier();
-            originalPalette.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
+            // Load the original sprite file to get the original palette colors, at whichever
+            // rank is currently selected (LoadRankAwareModifier — see CC-27).
+            var originalPalette = LoadRankAwareModifier(spritePath);
 
             // Restore each index in this section from the original palette
             // Use raw byte copy to avoid precision loss from BGR555/RGB conversion
@@ -792,25 +802,31 @@ namespace FFTColorCustomizer.ThemeEditor
                 return;
 
             var jobName = GetCurrentJobName();
+            var displayName = _templateDropdown.SelectedItem?.ToString();
             var paletteData = PaletteModifier?.GetModifiedPalette() ?? new byte[512];
 
-            var args = new ThemeSavedEventArgs(jobName, themeName, paletteData);
+            var args = new ThemeSavedEventArgs(jobName, themeName, paletteData, displayName);
             ThemeSaved?.Invoke(this, args);
 
             // Clear the modified flag after saving
             ClearModified();
         }
 
+        /// <summary>
+        /// Collects the Reset All confirmation decision. A real yes/no MessageBox by default —
+        /// swap it out in tests, which can't drive a real modal dialog, so the reload behind it
+        /// (<see cref="OnResetAllClick"/> calling <see cref="ReloadModifiersFromCurrentSprite"/>)
+        /// stays provably reachable through the real button click. See CC-27.
+        /// </summary>
+        internal Func<bool> ConfirmResetAll = () => MessageBox.Show(
+            "Are you sure you want to reset all colors back to default? This will save immediately.",
+            "Reset All Colors",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question) == DialogResult.Yes;
+
         private void OnResetAllClick(object? sender, EventArgs e)
         {
-            // Confirm with user before resetting
-            var result = MessageBox.Show(
-                "Are you sure you want to reset all colors back to default? This will save immediately.",
-                "Reset All Colors",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-
-            if (result != DialogResult.Yes)
+            if (!ConfirmResetAll())
                 return;
 
             // Clear theme name
@@ -826,19 +842,29 @@ namespace FFTColorCustomizer.ThemeEditor
             }
 
             // Reload the palette from scratch to reset the preview
+            ReloadModifiersFromCurrentSprite();
+        }
+
+        /// <summary>
+        /// Reloads both <see cref="PaletteModifier"/> and <see cref="OriginalPaletteModifier"/>
+        /// from the current selection's sprite, each rank aware via <see cref="LoadRankAwareModifier"/>.
+        /// This is the seam <see cref="OnResetAllClick"/> calls after its confirmation dialog — a
+        /// separate, directly testable method so the reload logic doesn't hide behind a modal
+        /// MessageBox that can't be driven end to end in a test. See CC-27.
+        /// </summary>
+        private void ReloadModifiersFromCurrentSprite()
+        {
             var spritePath = GetCurrentSpritePath();
-            if (spritePath != null && File.Exists(spritePath))
-            {
-                PaletteModifier = new PaletteModifier();
-                PaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
+            if (spritePath == null || !File.Exists(spritePath))
+                return;
 
-                // Compare baseline — keep this in sync with the load site above.
-                OriginalPaletteModifier = new PaletteModifier();
-                OriginalPaletteModifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
+            PaletteModifier = LoadRankAwareModifier(spritePath);
 
-                UpdateSpritePreview();
-                UpdateOriginalSpritePreview();
-            }
+            // Compare baseline — keep this in sync with the load site above.
+            OriginalPaletteModifier = LoadRankAwareModifier(spritePath);
+
+            UpdateSpritePreview();
+            UpdateOriginalSpritePreview();
         }
 
         /// <summary>
@@ -855,6 +881,26 @@ namespace FFTColorCustomizer.ThemeEditor
             for (int i = 0; i < 5 && dir != null; i++)
                 dir = dir.Parent;
             return dir?.FullName;
+        }
+
+        /// <summary>
+        /// Loads a fresh <see cref="PaletteModifier"/> from <paramref name="spritePath"/> with
+        /// <see cref="PaletteModifier.PaletteIndex"/> set for whichever rank the currently
+        /// selected dropdown entry maps to (0 for every non-monster template). Every reload
+        /// site (initial load, per-section reset, reset-all) must go through this single
+        /// helper, or a monster's rank II/III edit silently reverts to rank I's colours. CC-27.
+        /// </summary>
+        private PaletteModifier LoadRankAwareModifier(string spritePath)
+        {
+            var modifier = new PaletteModifier();
+            modifier.LoadTemplate(spritePath, CurrentMapping?.Job, GetModPath());
+
+            var displayName = _templateDropdown.SelectedItem?.ToString();
+            modifier.PaletteIndex = displayName != null && _monsterPaletteIndex.TryGetValue(displayName, out var pi)
+                ? pi
+                : 0;
+
+            return modifier;
         }
 
         private string GetCurrentJobName()

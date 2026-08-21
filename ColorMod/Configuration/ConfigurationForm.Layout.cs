@@ -50,6 +50,13 @@ namespace FFTColorCustomizer.Configuration
 
             _mainPanel = ConfigUIComponentFactory.CreateMainPanel();
 
+            // Owner cosmetic pass: the title bar left ~15px of dead space above the "Themes"
+            // heading (this panel's own 10px top padding plus the header label's own 5px).
+            // Shrink just the top inset -- left/right/bottom stay at the factory default
+            // (UIConfiguration.MainPanelPadding) since every other row still wants that room.
+            _mainPanel.Padding = new Padding(
+                UIConfiguration.MainPanelPadding, 2, UIConfiguration.MainPanelPadding, UIConfiguration.MainPanelPadding);
+
             // Add header
             var headerLabel = ConfigUIComponentFactory.CreateCharacterLabel("Themes", true);
             headerLabel.Font = UIConfiguration.HeaderFont;

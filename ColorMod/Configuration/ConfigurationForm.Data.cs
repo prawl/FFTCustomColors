@@ -183,23 +183,7 @@ namespace FFTColorCustomizer.Configuration
                 // Refresh the My Themes panel
                 _myThemesPanel?.RefreshThemes();
 
-                // Format job name for display (e.g., "Squire_Male" -> "Squire (Male)")
-                var displayJobName = args.JobName.Replace("_", " (") + ")";
-                if (!args.JobName.Contains("_"))
-                {
-                    displayJobName = args.JobName;
-                }
-
-                // Determine which section this job belongs to
-                var wotlJobs = new HashSet<string> { "DarkKnight_Male", "DarkKnight_Female", "OnionKnight_Male", "OnionKnight_Female" };
-                var isWotlJob = wotlJobs.Contains(args.JobName);
-                var isStoryCharacter = _storyCharacters != null && _storyCharacters.ContainsKey(args.JobName);
-                var isNpcCharacter = isStoryCharacter && _storyCharacters[args.JobName].Category == "NPC";
-                var sectionName = isWotlJob ? "WotL Jobs"
-                    : isNpcCharacter ? "NPCs"
-                    : (isStoryCharacter ? "Story Characters" : "Generic Characters");
-
-                MessageBox.Show($"Theme '{args.ThemeName}' saved successfully!\n\nYou can select it under \"{displayJobName}\" in the \"{sectionName}\" section above.", "Theme Saved",
+                MessageBox.Show(BuildThemeSavedMessage(args), "Theme Saved",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
@@ -212,6 +196,51 @@ namespace FFTColorCustomizer.Configuration
                 MessageBox.Show($"Failed to save theme: {ex.Message}", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        /// <summary>
+        /// Builds the "Theme Saved" confirmation text. Extracted from the MessageBox.Show call
+        /// so the wording is directly assertable. A monster's JobName is its FAMILY key
+        /// ("Skeleton"), not what the user actually picked in the dropdown ("Bonesnatch (rank
+        /// 2)"), and monsters don't match any of the WotL/story/NPC checks below so they used
+        /// to fall through to "Generic Characters" -- both halves of the old message were wrong
+        /// for a monster save. Non-monster wording is untouched. See CC-27.
+        /// </summary>
+        internal string BuildThemeSavedMessage(ThemeSavedEventArgs args)
+        {
+            var isMonster = MonsterThemeRegistry.ForFamily(args.JobName) != null;
+
+            // Format job name for display (e.g., "Squire_Male" -> "Squire (Male)"). Monsters use
+            // the selected rank's own display name carried on the event args instead.
+            string displayJobName;
+            if (isMonster)
+            {
+                displayJobName = args.DisplayName;
+            }
+            else if (args.JobName.Contains("_"))
+            {
+                displayJobName = args.JobName.Replace("_", " (") + ")";
+            }
+            else
+            {
+                displayJobName = args.JobName;
+            }
+
+            // Determine which section this job belongs to
+            var wotlJobs = new HashSet<string> { "DarkKnight_Male", "DarkKnight_Female", "OnionKnight_Male", "OnionKnight_Female" };
+            var isWotlJob = wotlJobs.Contains(args.JobName);
+            var isStoryCharacter = _storyCharacters != null && _storyCharacters.ContainsKey(args.JobName);
+            var isNpcCharacter = isStoryCharacter && _storyCharacters[args.JobName].Category == "NPC";
+            var sectionName = isWotlJob ? "WotL Jobs"
+                : isNpcCharacter ? "NPCs"
+                : isMonster ? "Monsters"
+                : (isStoryCharacter ? "Story Characters" : "Generic Characters");
+
+            // Monster themes are family scoped by design (one recolor applies to every rank),
+            // which the per-rank dropdown rows make easy to miss -- say so explicitly.
+            var familyScopeNote = isMonster ? $" It is available on every rank of the {args.JobName} family." : string.Empty;
+
+            return $"Theme '{args.ThemeName}' saved successfully!\n\nYou can select it under \"{displayJobName}\" in the \"{sectionName}\" section above.{familyScopeNote}";
         }
 
         private void SaveRamzaTheme(ThemeSavedEventArgs args, Services.RamzaThemeSaver ramzaThemeSaver)
