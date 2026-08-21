@@ -555,6 +555,7 @@ namespace FFTColorCustomizer.Tests.Integration
 
         public void Dispose()
         {
+            JobClassServiceSingleton.Reset();
             try
             {
                 if (Directory.Exists(_testDirectory))

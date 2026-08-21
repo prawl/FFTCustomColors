@@ -51,13 +51,18 @@ namespace FFTColorCustomizer.Services
         }
 
         /// <summary>
-        /// Resets the singleton instance (mainly for testing)
+        /// Resets the singleton instance (mainly for testing). Clears the mod path too, so a
+        /// forgotten temp directory from one test can never be looked up by the next: without
+        /// this, _modPath stayed set after Reset() and the next Instance access anywhere in the
+        /// process would race to read StoryCharacters.json out of a folder that may already be
+        /// deleted (CC-26).
         /// </summary>
         public static void Reset()
         {
             lock (_lock)
             {
                 _instance = null;
+                _modPath = null;
             }
         }
 

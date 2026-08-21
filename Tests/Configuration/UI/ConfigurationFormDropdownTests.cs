@@ -421,6 +421,8 @@ namespace Tests.Configuration.UI
 
         public void Dispose()
         {
+            JobClassServiceSingleton.Reset();
+
             if (_form != null)
             {
                 if (_form.Visible)

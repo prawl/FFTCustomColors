@@ -67,6 +67,7 @@ namespace FFTColorCustomizer.Tests.Configuration.UI
         public void Dispose()
         {
             CharacterServiceSingleton.Reset();
+            UserThemeServiceSingleton.Reset();
             try
             {
                 if (Directory.Exists(_modPath))

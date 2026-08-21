@@ -23,5 +23,15 @@ namespace FFTColorCustomizer.Services
         {
             _instance = new JobClassDefinitionService(modPath);
         }
+
+        /// <summary>
+        /// Resets the singleton instance (mainly for testing), matching the Reset() every other
+        /// service singleton exposes. Without it, a test that Initializes this to a temp folder
+        /// leaves that instance live for whichever test reads Instance next (CC-26).
+        /// </summary>
+        public static void Reset()
+        {
+            _instance = null;
+        }
     }
 }

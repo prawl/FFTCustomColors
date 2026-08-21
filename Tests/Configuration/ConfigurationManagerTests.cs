@@ -70,6 +70,8 @@ namespace FFTColorCustomizer.Tests
 
         public void Dispose()
         {
+            JobClassServiceSingleton.Reset();
+
             if (File.Exists(_testConfigPath))
                 File.Delete(_testConfigPath);
 

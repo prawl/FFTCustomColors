@@ -11,6 +11,12 @@ namespace Tests.Core.ModComponents
     /// <summary>
     /// Tests for versioned directory path detection in ConfigurationCoordinator
     /// </summary>
+    // CC-26: constructing a ConfigurationCoordinator pulls CharacterServiceSingleton.Instance
+    // (a static, process-wide global) through ConfigBasedSpriteManager's default constructor.
+    // Sharing the RegistryTests collection keeps this class from running at the same time as
+    // another class that points that same global at its own temp folder, so this class can
+    // never read through the global into a folder the other has already deleted.
+    [Collection("RegistryTests")]
     public class ConfigurationCoordinatorPathTests : IDisposable
     {
         private string _testRootPath;
