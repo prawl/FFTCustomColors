@@ -177,10 +177,17 @@ if (Test-Path "ColorMod/FFTIVC") {
         Copy-Item "ColorMod/FFTIVC/data/enhanced/fftpack/unit/sprites_original/*.bin" $spritesOriginalDest -Force
         Write-Host "Copied sprites_original folder ($spriteCount theme-editor templates incl. Chocobo)" -ForegroundColor Green
 
-        # Copy story character themed folders (e.g., sprites_cloud_sephiroth_black)
+        # Copy story character themed folders (e.g., sprites_cloud_sephiroth_black).
+        # WHICH characters own themed folders is read from the character registry, never
+        # hardcoded here. A hardcoded list silently dropped every NPC theme folder: the
+        # registry advertised the theme, the folder never deployed, the player selected it
+        # and got vanilla, with no error in any log. See CC-21.
         Write-Host "Copying story character themed sprites..." -ForegroundColor Cyan
+        $registryCharacters = (Get-Content "ColorMod/Data/StoryCharacters.json" -Raw | ConvertFrom-Json).characters |
+            ForEach-Object { [regex]::Escape($_.name.ToLower()) }
+        $storyCharacterPattern = "^sprites_(" + ($registryCharacters -join "|") + ")_"
         $storyCharacterFolders = Get-ChildItem "ColorMod/FFTIVC/data/enhanced/fftpack/unit/" -Directory |
-            Where-Object { $_.Name -match "sprites_(cloud|agrias|orlandeau|rapha|marach|reis|mustadio|meliadoul|beowulf|construct8)_" }
+            Where-Object { $_.Name -match $storyCharacterPattern }
 
         foreach ($folder in $storyCharacterFolders) {
             $destFolder = "$spritePath/$($folder.Name)"
