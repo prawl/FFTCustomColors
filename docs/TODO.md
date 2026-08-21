@@ -53,6 +53,26 @@ that checklist.
     whole first session in live_log.prev.txt with a fresh live_log.txt. Riders found and
     fixed along the way: BuildLinked's clean was deleting logs/ on every deploy (9a16b092).
     Remaining: conversion sweeps (stages 3 to 5), strictness flip (6), flight recorder (7).
+- **[CC-21] Give the twelve story NPCs colour themes of their own** (opened 2026-08-13) [BUILDING]
+  - Done means: every one of the twelve NPCs offers more than "original" in its theme dropdown,
+    the colours are ones the owner has approved on screen, and choosing a theme actually recolours
+    that character everywhere the game draws them. (Tech: one hand-edited recipe per character in
+    ColorMod/Data/BuiltInThemes/NPC/, baked by tools/ThemeBaker into sprites_<char>_<theme>/ plus
+    an availableThemes entry in StoryCharacters.json, covering every bin in mapping.Sprites.)
+  - Verify: the owner picks each new theme in game and sees the intended colours on the unit, and
+    NpcBuiltInThemeContractTests re-bakes every recipe with the production code and byte-compares
+    the result against the shipped sprite.
+  - Landed 2026-08-21 and owner live-verified batch by batch: 22 themes across 10 of the 12 NPCs
+    (Alma 5, Isilud 3, Ovelia 2, Argath 2, Zalmour 2, Gaffgarion 2, Orran 2, Simon 2, Elmdore 1,
+    Valmafra 1). The colours were hand picked by a friend of the owner on the in-game sliders and
+    delivered as screenshots, then transcribed into recipes. Remaining: Celia and Lettie are still
+    original-only.
+  - Two defects were found and fixed on the way. BuildLinked.ps1 carried a hardcoded ten-character
+    allowlist, so no NPC theme folder ever deployed: the registry advertised the theme, the folder
+    never shipped, the player saw vanilla, and nothing logged a word. That list is now derived from
+    StoryCharacters.json. Separately the baker and the contract test only handled a character's
+    FIRST sprite, so Alma (three bins: aruma, gyumu, h82) would have reverted to vanilla in two of
+    her three appearances.
 
 ## Backlog
 
@@ -69,14 +89,6 @@ that checklist.
   WM_NCPAINT, or dropping WS_THICKFRAME entirely and driving resize purely from the existing
   WM_NCHITTEST logic. Neither has been tried; the WM_NCCALCSIZE only attempt above is what
   broke on drag.)
-
-- [CC-21] 2026-08-13: Author built-in color themes for the twelve NPCs shipped in CC-20. They
-  currently offer only "original" in their dropdowns, which was deliberate: the plumbing and
-  the per-part color sliders landed first so themes could be designed against working
-  sliders. Each theme is a palette saved from the theme editor into a sprites_<name>_<theme>
-  directory plus an availableThemes entry in StoryCharacters.json. Open question worth
-  deciding first: one generic color set for everyone (the Reis pattern, ~25 named colors,
-  scriptable) versus hand-designed signature themes per character (the Agrias pattern).
 
 - [CC-25] 2026-08-17: Give the Nexus banner a fresh face the way Living Weapons got one: fewer,
   bigger themed sprites arranged as a left-to-right rainbow, so a visitor instantly reads "this
@@ -177,6 +189,67 @@ that checklist.
   mod doing the half it is good at. (Tech: detect the file owner via IFFTOModPackManager and take
   their baked battle_wep_spr.bin as the rebuild base in place of sprites_original when they own it,
   else vanilla. Depends on CC-23. Prior art for the detect half is GenericJobsDetector.)
+
+- [CC-29] 2026-08-21: When a player recolours a unit, the face shown in menus and dialogue keeps
+  the original colours, so a themed unit reads as two different people. Recolour the portrait to
+  match the body. (Tech: the portrait lives in the SAME sprite bin the mod already ships, at
+  palette slots 8 to 15, with slots 0 to 7 holding the unit; documented at scripts/README.md:954
+  and consistent with a census of 38 generic job bins where slots 8 to 12 carry data whose
+  trailing skin colours are identical across slots. So no new file channel is needed. The catch
+  is that the index to body part mapping differs between the unit half and the portrait half, so
+  the existing Data/SectionMappings entries cannot be reused as is and a portrait side mapping is
+  needed per character. Measured 2026-08-21, the game derives that mapping for us: its own faction
+  portrait palettes sit in slots 8 to 12, and comparing them shows indices 1 to 4 vary on 36 to 38
+  of 38 generic job bins while index 15 never varies. So 1 to 4 are the team colour clothing block,
+  15 is skin, and 5 to 6 are secondary clothing varying on about 25 of 38. The indices the artists
+  recoloured per faction are exactly the ones a player theme should recolour.)
+  - Verify: the owner opens the formation and a dialogue scene on a themed unit and the face
+    matches the body.
+
+- [CC-30] 2026-08-21: Rework the older built in themes, which the owner rates as sloppy beside the
+  ones authored on 2026-08-21. Measurement says the cause is mostly colour choice rather than a
+  bug in the mod: across 353 recoloured sections only 24 lose real shading, and the median shading
+  lost is the same for old and new themes. (Tech: the audit measures ABSOLUTE lightness range lost
+  per section. An earlier ratio based version of the same metric was wrong and ranked Orlandeau
+  thunder_god the worst theme in the library when the owner rates it his favourite, because
+  dividing by a near zero original ramp turns a trivial change into a dramatic score; that theme
+  ranks 50th of 353 once measured absolutely, and its Armor section GAINS 0.23 contrast. Real
+  offenders worth fixing: Reis midnight_black Dress 0.32 to 0.05, Meliadoul plague_knight
+  SkinColor 0.39 to 0.13, Reis platinum Shirt 0.23 to 0.02. Decide separately whether to import
+  the FFTLivingWeapons docs/ICON_STYLE_BIBLE.md, noting it is written about pixel artwork such as
+  grain and engraving while this repo does indexed palette swaps, so only part of it can transfer.)
+
+- [CC-31] 2026-08-21: Ship the game's own unused colour schemes as themes. The four themes the
+  owner rates best are exactly that and were copied rather than designed, while every theme he
+  invented matches no vanilla palette at all. (Tech: Northern Sky, Southern Sky, Corpse Brigade
+  and Lucavi are verbatim copies of vanilla palette slots 1, 2, 3 and 4, matching on 38 of 38
+  generic job bins for three of them and 37 of 38 for Southern Sky, against 0 of 38 for every
+  invented generic theme tested. The generic job well is now dry: slots 1 to 4 are all shipped,
+  slots 5 to 7 carry data on only 6 or 7 of 38 bins, and slots 8 to 15 are portraits. Eight unit
+  palettes remain unharvested on five characters: Agrias slot 2 on both aguri and kanba,
+  Meliadoul slot 1 on h80, Argath slots 1 and 3 on aru, Elmdore slot 2 on eru, Simon slots 1 and
+  2 on simon. Each is a free artist authored theme; promote slot N to slot 0 and register it.)
+
+- [CC-32] 2026-08-21: Ramza's little figure that walks around the world map keeps his original
+  colours when a theme is applied, so a themed Ramza looks right in battle and wrong on the map.
+  This was built once and never landed, and the half that works is further along than "we tried
+  and failed" suggests. (Tech: the overworld sprite is a UI texture, not the battle sprite:
+  ui/ffto/worldmap/texture/ramza_{a,b,c}_uitx.tex plus matching textureparts .utexpt, in extracted
+  pac 0008, a separate channel from the battle g2d tex_830 to 835. Letter is by chapter, a is ch1
+  blue, b is ch2 and ch3 purple, c is ch4 teal. The work sits on branch worldmap-custom-theme-wip
+  at commit c17bd924, 1335 lines over 37 files: WorldMapTexSwapper, WorldMapTexCodec,
+  WorldMapCustomThemeApplier, 223 lines of tests, pre baked assets for all three built in themes,
+  and a post mortem at docs/WORLDMAP_CUSTOM_THEME_WIP.md. BUILT IN PRESETS WERE CONFIRMED WORKING
+  IN GAME by the owner; only CUSTOM user themes fail, because their texture must be generated at
+  runtime and that path was never bisected. Four suspects are recorded and none were isolated: the
+  game may reject the uncompressed R8G8B8A8 tex we write where vanilla ships BC7; the hue gate may
+  miss the armour pixels; the custom theme branch may not fire or may write the wrong override
+  path; a relaunch may be needed since UI textures map at launch. Merge cost measured 2026-08-21:
+  the branch is one commit off a base that main has since passed by 40, and a read only merge probe
+  conflicts ONLY in BuildLinked.ps1 and Publish.ps1, both rewritten wholesale by CC-10, while the
+  C# and the csproj auto merge clean. So the landing plan is to re apply the worldmap copy and
+  verify steps onto the current scripts rather than merge the old ones, and to bisect the four
+  suspects with the game closed.)
 
 ## Walled (blocked by engine / external)
 
